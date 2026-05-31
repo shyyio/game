@@ -445,7 +445,7 @@ export class BrowserGameBackend extends GameBackend {
 
         Object.assign(args, this.getOutputPorts(name, args, true))
         Object.assign(args, this.getInputPorts(name, args, true))
-        Object.assign(args, this.getInternalPorts(name, args, true))
+        Object.assign(args, this.getInternalPorts(name))
 
         this._execStatement(`Insert${name}`, args);
 
@@ -525,7 +525,6 @@ export class BrowserGameBackend extends GameBackend {
 
     async debugAddItem() {
         this.db.run("UPDATE Port SET item=1 WHERE id=1;");
-        this.db.run("UPDATE Port SET item=1 WHERE id=3;");
         console.log("2")
     }
 
@@ -603,6 +602,7 @@ export class BrowserGameBackend extends GameBackend {
         this.tick(TickPhase.SUBMIT_INTENTS);
         this.tick(TickPhase.RESOLVE_TRANSFERS);
         this.tick(TickPhase.POST_RESOLVE);
+        this.tick(TickPhase.COMMIT_TRANSFERS);
     }
 
     //
@@ -611,6 +611,10 @@ export class BrowserGameBackend extends GameBackend {
      * @param phase {TickPhase}
      */
     tick(phase) {
+        if (phase === TickPhase.RESOLVE_TRANSFERS) {
+            console.log(this.execPretty("SELECT * FROM PortTransferIntent"))
+        }
+
         this.schema.tickPhases[phase].forEach(op => {
             try {
                 this._execStatement(op.statementName);
@@ -619,6 +623,10 @@ export class BrowserGameBackend extends GameBackend {
                 throw ex;
             }
         });
+
+        if (phase === TickPhase.RESOLVE_TRANSFERS) {
+            console.log(this.execPretty("SELECT * FROM PortTransfer"))
+        }
     }
 
     _populateBeltPathPorts(id) {

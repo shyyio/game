@@ -57,7 +57,7 @@ const CoreTempSchema = `
         destination_is_empty INT DEFAULT (0)
             CHECK ( destination_is_empty=0 OR destination_is_empty=1 ), 
         
-        managed INT DEFAULT (0) -- When set to 0, the GameObject code
+        managed INT DEFAULT (1) -- When set to 0, the GameObject code
                                 -- is responsible for actually doing the transfer.
             CHECK ( managed=0 OR managed=1 ),
         
@@ -546,13 +546,14 @@ export class DbSchema {
                                destination,
                                destination_is_empty,
                                managed,
-                               ROW_NUMBER() OVER (PARTITION BY destination ORDER BY priority DESC, source) AS rank
+                               ROW_NUMBER() OVER (PARTITION BY destination ORDER BY priority DESC, source) AS dst_rank,
+                               ROW_NUMBER() OVER (PARTITION BY source ORDER BY priority DESC, destination) AS src_rank
                         FROM PortTransferIntent i
                     ),
                     deduped_intents AS (
                         SELECT source, destination, destination_is_empty, managed
                         FROM intents
-                        WHERE rank = 1
+                        WHERE src_rank=1 AND dst_rank=1
                     ),
                     resolved_chains AS (
                         SELECT source, destination, managed
@@ -571,8 +572,13 @@ export class DbSchema {
                         source, destination, src.item
                     FROM resolved_chains
                         INNER JOIN Port src ON src.id = source
-                    WHERE managed=FALSE; -- Ignore managed transfers`
-                )
+                    WHERE managed=TRUE; -- Ignore non-managed transfers`
+                ),
+
+                new TickOp(
+                    "TruncatePortTransferIntent",
+                    `DELETE FROM PortTransferIntent;`
+                ),
 
             ],
             [TickPhase.POST_RESOLVE]: [
@@ -600,7 +606,6 @@ export class DbSchema {
                     "TruncatePortTransfer",
                     `DELETE FROM PortTransfer;`
                 ),
-
             ],
         }
         this.triggers = [CoreTriggers, ...ruleSet.triggers];
@@ -730,7 +735,8 @@ export class DbSchema {
         Object.entries(definitions).forEach(([name, def]) => {
             const ports = [
                 ...def.inputPorts.map(p => p.name),
-                ...def.outputPorts.map(p => p.name)
+                ...def.outputPorts.map(p => p.name),
+                ...def.internalPorts.map(p => p.name),
             ];
             const portNames = ports.join(",");
             const args = ports.map(p=> "@" + p).join(",");

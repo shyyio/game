@@ -194,9 +194,10 @@ onMounted(async () => {
   let counter = 0;
 
   function tick() {
-    backend.tick(TickPhase.INIT);
-    backend.tick(TickPhase.OUTPUT);
-    backend.tick(TickPhase.INPUT);
+    backend.tick(TickPhase.SUBMIT_INTENTS);
+    backend.tick(TickPhase.RESOLVE_TRANSFERS);
+    backend.tick(TickPhase.POST_RESOLVE);
+    backend.tick(TickPhase.COMMIT_TRANSFERS);
   }
 
   Keyboard.on("i", () => {

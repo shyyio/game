@@ -7,7 +7,7 @@ export class TickOp {
 
     /**
      * @param [statementName] {StatementName}
-     * @param [sql] {string}
+     * @param [sql] {string|null}
      */
     constructor(statementName, sql) {
         this.statementName = statementName;
@@ -72,7 +72,8 @@ export class PortTransferOp extends TickOp {
             FROM
                 ${this.gameObject}
             INNER JOIN Port dst ON dst.id = ${this.gameObject}.${this.outputPort}
-        `;
+            INNER JOIN Port src ON src.id = ${this.gameObject}.${this.inputPort}
+            WHERE src.item IS NOT NULL;`;
     }
 }
 
