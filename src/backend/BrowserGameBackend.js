@@ -173,12 +173,16 @@ export class BrowserGameBackend extends GameBackend {
 
         const _stmt = this.statements[name];
 
+        if (_stmt === undefined) {
+            debugger
+        }
+
         if (args) {
             _stmt.bind(formatArgs(args));
         }
 
         if (this.debug) {
-            console.log(name + " " + (args ? JSON.stringify(args) : "{}"))
+            console.log(name + (args ? " " + JSON.stringify(args) : ""));
         }
 
         const startTime = performance.now();
@@ -205,7 +209,7 @@ export class BrowserGameBackend extends GameBackend {
         const result = [];
 
         if (this.debug) {
-            console.log(name + " " + (args ? JSON.stringify(args) : "{}") + " ?");
+            console.log(name + (args ? " " + JSON.stringify(args) : "") + " ?");
             // console.log(stmt)
         }
 
@@ -259,8 +263,8 @@ export class BrowserGameBackend extends GameBackend {
             try {
                 this.statements[name] = this.db.prepare(stmt);
             } catch (e) {
-                console.log(name, stmt)
-                console.error(e.message)
+                console.log(name, stmt);
+                console.error(e.message);
                 debugger
             }
 
@@ -441,6 +445,7 @@ export class BrowserGameBackend extends GameBackend {
 
         Object.assign(args, this.getOutputPorts(name, args, true))
         Object.assign(args, this.getInputPorts(name, args, true))
+        Object.assign(args, this.getInternalPorts(name, args, true))
 
         this._execStatement(`Insert${name}`, args);
 
@@ -486,6 +491,20 @@ export class BrowserGameBackend extends GameBackend {
             } else if (createMissing) {
                 ports[def.name] = this._queryStatementScalar("InsertPort");
             }
+        });
+
+        return ports;
+    }
+
+    /**
+     * @param name {GameObject}
+     */
+    getInternalPorts(name) {
+
+        const ports = {};
+
+        RS.definitions[name].internalPorts.forEach((def) => {
+            ports[def.name] = this._queryStatementScalar("InsertPort");
         });
 
         return ports;
@@ -567,7 +586,6 @@ export class BrowserGameBackend extends GameBackend {
      */
     _unStashItems() {
         this._execStatement("UnStashItems");
-
         this._execStatement("TruncateStashedItems")
     }
 
@@ -579,13 +597,23 @@ export class BrowserGameBackend extends GameBackend {
         return this._queryStatement("GetBeltPath", {id}).map(row => row.id);
     }
 
+    // test helpers
+
+    tickBeltPath() {
+        this.tick(TickPhase.SUBMIT_INTENTS);
+        this.tick(TickPhase.RESOLVE_TRANSFERS);
+        this.tick(TickPhase.POST_RESOLVE);
+    }
+
+    //
+
     /**
      * @param phase {TickPhase}
      */
     tick(phase) {
-        this.schema.tickPhases[phase].forEach(stmt => {
+        this.schema.tickPhases[phase].forEach(op => {
             try {
-                this._execStatement(stmt);
+                this._execStatement(op.statementName);
             } catch (ex) {
                 debugger
                 throw ex;
@@ -776,6 +804,12 @@ export class BrowserGameBackend extends GameBackend {
 
         // =========== Un-stash ============
         this._unStashItems();
+        // console.log(
+        //     this.execPretty("SELECT * FROM BeltPath")
+        // )
+        // console.log(
+        //     this.execPretty("SELECT * FROM BeltPathItem")
+        // )
         if (oldParentPathHead) {
             this._execStatement("FillHeadGap", {id: oldParentPathHead});
         }

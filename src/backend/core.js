@@ -1,52 +1,78 @@
-import {before} from "underscore";
+/**
+ * @typedef StatementName {string}
+ */
+
+
+export class TickOp {
+
+    /**
+     * @param [statementName] {StatementName}
+     * @param [sql] {string}
+     */
+    constructor(statementName, sql) {
+        this.statementName = statementName;
+        this._sql = sql;
+    }
+
+    /**
+     * @return string
+     */
+    get sql() {
+       return this._sql;
+    }
+}
 
 export class PortDefinition {
     /**
      * @param name {string}
-     * @param vec {Vec}
+     * @param [vec] {Vec|null}
      */
-    constructor(name, vec) {
+    constructor(name, vec=null) {
         this.name = name;
-        this.x = vec.x;
-        this.y = vec.y;
-        this.direction = vec.direction;
+        if (vec !== null) {
+            this.x = vec.x;
+            this.y = vec.y;
+            this.direction = vec.direction;
+        } else {
+            this.x = null;
+            this.y = null;
+            this.direction = null;
+        }
     }
 }
 
-export class TransferDefinition {
-    /**
-     * @param port {string}
-     * @param slot {string}
-     * @param [join] {string|null}
-     * @param [where] {string|null}
-     * @param [afterTransfer] {string|null}
-     * @param [visibilityTimeout] {number}
-     */
-    constructor(port, slot, join, where, afterTransfer, visibilityTimeout = 0) {
-        this.port = port;
-        this.slot = slot;
-        this.join = join || "";
-        this.where = where ? `AND ${where}` : "";
-        this.afterTransfer = afterTransfer || null;
-        this.visibilityTimeout = visibilityTimeout;
-    }
-}
-
-export class PortTransferDefinition {
+export class PortTransferOp extends TickOp {
 
     /**
+     * @param name {string}
+     * @param gameObject {GameObject}
      * @param inputPort {string}
      * @param outputPort {string}
-     * @param [join] {string|null}
-     * @param where {string}
-     * @param [afterTransfer] {string|null}
+     * @param [priority] {string} Transfer priority (higher value = higher priority)
+     * @param [onTransfer] {string|null}
      */
-    constructor(inputPort, outputPort, join, where, afterTransfer) {
+    constructor(name, gameObject, inputPort, outputPort, priority="0", onTransfer) {
+        super(name, null);
+        this.gameObject = gameObject
         this.inputPort = inputPort;
         this.outputPort = outputPort;
-        this.join = join;
-        this.where = where || "1=1";
-        this.afterTransfer = afterTransfer;
+        this.priority = priority;
+        // TODO
+        this.onTransfer = onTransfer;
+    }
+
+    get sql() {
+        return `
+            INSERT INTO PortTransferIntent (source, destination, priority, destination_is_empty)
+            SELECT 
+                ${this.gameObject}.${this.inputPort} source,
+                ${this.gameObject}.${this.outputPort} destination,
+                (${this.priority}) priority,
+                (dst.item IS NULL) destination_is_empty
+            FROM
+                ${this.gameObject}
+            INNER JOIN Port dst ON dst.id = ${this.gameObject}.${this.outputPort}
+        `;
     }
 }
 
@@ -54,9 +80,26 @@ export class PortTransferDefinition {
  * @enum
  */
 export const TickPhase = {
-    INIT: 0,
-    INPUT: 1,
-    OUTPUT: 2
+
+    /**
+     * Submit port transfer intents
+     */
+    SUBMIT_INTENTS: 1,
+
+    /**
+     * (internal) Resolve initial transfer intents and save the result in a temp table
+     */
+    RESOLVE_TRANSFERS: 2,
+
+    /**
+     * Executed after transfer intents
+     */
+    POST_RESOLVE: 3,
+
+    /**
+     * (internal) Flush transfers to Port
+     */
+    COMMIT_TRANSFERS: 4,
 }
 
 /**
@@ -69,37 +112,20 @@ export const OpCode = {
     STMT: 3,
 }
 
-export class TickOp {
-    /**
-     * @param op {OpCode}
-     * @param key {number|string}
-     */
-    constructor(op, key) {
-        this.op = op;
-        this.key = key;
-    }
-}
-
 export class ObjectDefinition {
 
     /**
      * @param inputPorts {PortDefinition[]}
      * @param outputPorts {PortDefinition[]}
-     * @param inputTransfers {TransferDefinition[]}
-     * @param outputTransfers {TransferDefinition[]}
-     * @param portTransfers {PortTransferDefinition[]}
-     * @param statements {Object.<string,string>}
+     * @param internalPorts {PortDefinition[]}
      * @param size {Vec}
      * @param tickPhases {Object.<TickPhase, TickOp[]>}
      */
-    constructor(inputPorts, outputPorts, inputTransfers, outputTransfers, portTransfers, statements, size, tickPhases) {
+    constructor(inputPorts, outputPorts, internalPorts, size, tickPhases) {
         this.inputPorts = inputPorts;
         this.outputPorts = outputPorts;
-        this.inputTransfers = inputTransfers;
-        this.outputTransfers = outputTransfers;
-        this.portTransfers = portTransfers;
+        this.internalPorts = internalPorts;
         this.size = size;
-        this.statements = statements;
         this.tickPhases = tickPhases || [];
     }
 }
@@ -133,6 +159,13 @@ export class Mod {
     get definitions() {
 
     }
-}
 
+    /**
+     * @abstract
+     * @returns string
+     */
+    get triggers() {
+
+    }
+}
 

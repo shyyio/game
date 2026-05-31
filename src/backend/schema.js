@@ -9,64 +9,31 @@ export const Chunk = `(
 )`;
 
 const CoreSchema = `
-    CREATE TABLE BeltPath (
-        id INTEGER PRIMARY KEY REFERENCES Belt(id) ON DELETE CASCADE,
-        tail INT UNIQUE REFERENCES Belt(id),
-        length INT,
-
-        head_gap INT
-            CHECK (head_gap >= 0 AND head_gap <= length),
-
-        in_port INT REFERENCES Port(id) ON DELETE SET NULL
-            CHECK (in_port IS NULL OR in_port != out_port),
-
-        out_port INT REFERENCES Port(id) ON DELETE SET NULL
-            CHECK (out_port IS NULL OR in_port != out_port),
-
-        next_gap_id INT,
-        next_item_id INT
-    );
-
-    CREATE INDEX BeltPath_ports ON BeltPath(in_port, out_port);
-
     CREATE TABLE Port (
         id INTEGER PRIMARY KEY,
-        item INT,
-        locked INT NOT NULL DEFAULT (0) CHECK ( locked=0 OR locked=1 )
+        item INT
     );
 
-    CREATE TABLE Belt
-    (
-        id INTEGER PRIMARY KEY,
-        parent INT UNIQUE REFERENCES Belt(id),
+    CREATE TABLE GameJournal (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        time INTEGER NOT NULL,
 
-        path INT REFERENCES BeltPath,
-        path_index INT,
+        type INTEGER NOT NULL, -- EventType
 
-        x INT NOT NULL,
-        y INT NOT NULL,
-        type INT NOT NULL
-            CHECK (type >= 0),
-
+        x INTEGER NOT NULL,
+        y INTEGER NOT NULL,
         chunk TEXT GENERATED ALWAYS AS (${Chunk}) VIRTUAL,
-
-        direction INT NOT NULL
+        
+        objectType INTEGER, -- TODO
+        
+        id INTEGER, 
+        
+        a INTEGER,
+        b INTEGER,
+        c INTEGER
     );
-
-    CREATE UNIQUE INDEX Belt_x_y_direction ON Belt(x, y, direction, type);
-    CREATE INDEX Belt_path ON Belt(path, path_index);
-
-    CREATE TABLE BeltPathItem (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        path INT NOT NULL REFERENCES BeltPath ON DELETE CASCADE,
-        length INT NOT NULL CHECK (length >= 0),
-
-        type INT NOT NULL CHECK (type >= 0)
-    );
-
-    CREATE INDEX BeltPathItem_path_id_type ON BeltPathItem(path, id, type);
-    CREATE INDEX BeltPathItem_length ON BeltPathItem (length);
+    CREATE INDEX GameJournal_time ON GameJournal(time ASC);
+    CREATE INDEX GameJournal_chunk ON GameJournal(chunk);
 `;
 
 const CoreTempSchema = `
@@ -82,35 +49,27 @@ const CoreTempSchema = `
     )
     SELECT value FROM series;
 
-    CREATE TEMPORARY TABLE StashedItem (
-        id INTEGER PRIMARY KEY,
-        belt INT,
-        type INT
-    );
-
-    CREATE TEMPORARY TABLE StashedOutputItem (
-        id INTEGER PRIMARY KEY,
-        belt INT,
-        type INT
-    );
-
-    CREATE TEMPORARY TABLE BeltPathInputItem (
-        path INT,
-        port INT
-    );
-
-    CREATE TEMPORARY TABLE BeltPathOutputItem (
-        path INTEGER PRIMARY KEY,
-        port INT NOT NULL,
-        item_id INT NOT NULL,
-        item_type INT NOT NULL
+    CREATE TEMPORARY TABLE PortTransferIntent (
+        source INT,
+        destination INT,
+        priority INT CHECK (priority >= 0),
+        
+        destination_is_empty INT DEFAULT (0)
+            CHECK ( destination_is_empty=0 OR destination_is_empty=1 ), 
+        
+        managed INT DEFAULT (0) -- When set to 0, the GameObject code
+                                -- is responsible for actually doing the transfer.
+            CHECK ( managed=0 OR managed=1 ),
+        
+        PRIMARY KEY (source, destination)
     );
 
     CREATE TEMPORARY TABLE PortTransfer (
-        port INTEGER PRIMARY KEY,
-        item INT,
-        tx_id INT
+        source INTEGER,
+        destination INTEGER PRIMARY KEY,
+        item INTEGER NOT NULL
     );
+    CREATE UNIQUE INDEX PortTransfer_source ON PortTransfer (source);
 `;
 
 const CorePragma = `
@@ -122,100 +81,6 @@ const CorePragma = `
 `;
 
 const CoreTriggers = `
-    CREATE TEMP TRIGGER Belt_parent_update AFTER UPDATE OF parent ON main.Belt
-    BEGIN
-        SELECT console_log('Belt_parent_update');
-        
-        WITH child AS (
-            VALUES (NEW.id, NEW.parent)
-        )
-        SELECT on_belt_update(CAST(child.id AS TEXT), parent.x, parent.y)
-            FROM child 
-            LEFT JOIN Belt parent ON child.parent = parent.id;
-    END;
-    
-    CREATE TEMP TRIGGER Belt_insert AFTER INSERT ON main.Belt
-    BEGIN
-        SELECT console_log('Belt_insert');
-        
-        WITH child AS (
-            VALUES (NEW.id, NEW.x, NEW.y, NEW.direction, NEW.type, NEW.parent)
-        )
-        SELECT on_belt_insert(CAST(child.id AS TEXT), child.x, child.y, child.direction, child.type, parent.x, parent.y)
-            FROM child 
-            LEFT JOIN Belt parent ON child.parent = parent.id;
-    END;
-    
-    CREATE TEMP TRIGGER Belt_delete BEFORE DELETE ON main.Belt
-    BEGIN
-        SELECT console_log('Belt_delete');
-        
-        -- If tail is deleted, invalidate path and remove output_item
-        UPDATE Port SET item=NULL WHERE id=(SELECT out_port FROM BeltPath WHERE id=OLD.path AND tail=OLD.id);
-        UPDATE BeltPath SET tail=NULL WHERE id=OLD.path AND tail=OLD.id;
-        
-        -- If head is deleted, invalidate the path
-        UPDATE Belt SET path=NULL, path_index=NULL WHERE OLD.id=OLD.path AND Belt.path=OLD.path;
-        
-        SELECT on_belt_delete(CAST(OLD.id AS TEXT));
-    END;
-    
-    CREATE TEMP TRIGGER BeltPath_delete AFTER DELETE ON main.BeltPath
-    BEGIN
-        SELECT console_log('BeltPath_delete');
-        
-        SELECT on_belt_path_delete(CAST(OLD.id AS TEXT));
-    END;
-    
-    CREATE TEMP TRIGGER BeltPathItem_insert AFTER INSERT ON main.BeltPathItem
-    BEGIN
-        SELECT console_log('BeltPathItem_insert');
-        
-        UPDATE BeltPath SET
-            next_gap_id = NEW.id
-        WHERE
-            NEW.type = ${ItemType.GAP}
-            AND id=NEW.path
-            AND next_gap_id IS NULL;
-            
-        UPDATE BeltPath SET
-            next_item_id = NEW.id
-        WHERE
-            NEW.type != ${ItemType.GAP}
-            AND id=NEW.path
-            AND next_item_id IS NULL;
-           
-        SELECT on_belt_path_item_insert(CAST(NEW.path AS TEXT), CAST(NEW.id AS TEXT), NEW.type, NEW.length,
-            CASE WHEN EXISTS (SELECT id FROM StashedItem) THEN ${ItemFlag.STASHED} ELSE 0 END
-        );
-    END;
-    
-    CREATE TEMP TRIGGER BeltPathItem_delete AFTER DELETE ON main.BeltPathItem
-    BEGIN
-        SELECT console_log('BeltPathItem_delete');
-    
-        UPDATE BeltPath SET
-            next_gap_id = (SELECT MIN(id) FROM BeltPathItem WHERE path=OLD.path AND type=${ItemType.GAP}) 
-        WHERE
-            OLD.type = ${ItemType.GAP}
-            AND id = OLD.path AND next_gap_id = OLD.id;
-            
-        UPDATE BeltPath SET
-            next_item_id = (SELECT MIN(id) FROM BeltPathItem WHERE path=OLD.path AND type!=${ItemType.GAP}) 
-        WHERE
-            OLD.type != ${ItemType.GAP}
-            AND id = OLD.path AND next_item_id = OLD.id;
-            
-        SELECT on_belt_path_item_delete(CAST(OLD.id AS TEXT));
-    END;
-    
-    CREATE TEMP TRIGGER BeltPathItem_update AFTER UPDATE OF length ON main.BeltPathItem
-    BEGIN
-        SELECT console_log('BeltPathItem_update');
-        
-        SELECT on_belt_path_item_update(CAST(NEW.id AS TEXT), NEW.length) 
-        WHERE NEW.length > 0; -- if length=0, it will be deleted anyway
-    END;
 `;
 
 const UP = Direction.UP;
@@ -585,128 +450,6 @@ const CoreStatements = {
           AND EXISTS (SELECT 1 FROM BeltPath WHERE id = CAST(@child AS INT) AND out_port IS NOT NULL)
     `,
 
-    /**
-     *  Case 1: Output is full, or next item is a gap
-     */
-    TickBeltPathCase1: `
-        UPDATE BeltPathItem
-        SET length = length - 1
-        WHERE id IN (
-            SELECT p.next_gap_id
-            FROM BeltPath p
-            INNER JOIN Port outPort ON outPort.id = p.out_port
-            WHERE (
-                p.next_gap_id IS NOT NULL
-                AND 
-                (
-                    -- Next item is a gap
-                    p.next_gap_id < p.next_item_id
-                    OR
-                    p.next_item_id IS NULL
-                    OR
-                    -- Output is full
-                    outPort.item IS NOT NULL
-                    -- TODO: Check if child belt could accept the item? Not recursive
-                )
-            )
-        );
-    `,
-
-    /**
-     * Case 2: output is not full and next item is not a gap
-     *  - pop item into output port
-     */
-    TickBeltPathCase2: `
-        INSERT INTO BeltPathOutputItem (path, item_id, item_type, port)
-        SELECT BeltPath.id, item.id, item.type, outPort.id
-        FROM BeltPath
-            INNER JOIN BeltPathItem item ON item.id = next_item_id
-            INNER JOIN Port outPort ON outPort.id = out_port
-        WHERE
-            -- Next item is an item
-            (
-                next_gap_id IS NULL
-                OR
-                next_item_id < next_gap_id
-            )
-            -- There is space in the output
-            AND outPort.item IS NULL;
-    `,
-
-    TickBeltPathRecalculateHeadGap: `
-        UPDATE BeltPath
-        SET head_gap = head_gap + 1
-        WHERE (next_gap_id IS NOT NULL
-            OR id IN (SELECT path FROM BeltPathOutputItem)
-        );
-        -- If there is a gap anywhere in the path (including a 0-length gap),
-        --  or if an item was consumed (output_item_id !=NULL)
-        --  this means that the head_gap needs to be incremented (UNLESS an item was inserted this tick)
-    `,
-
-    TickBeltFillOutPort: `
-        UPDATE Port
-        SET item=item.item_type, locked=1
-        FROM BeltPathOutputItem item
-        WHERE Port.id = item.port;
-    `,
-
-    TickBeltPathInsertItem: `
-        INSERT INTO BeltPathItem (path, type, length)
-        -- If the head gap is more than 1 spaces, add a gap item first
-        SELECT BeltPath.id,
-               0,
-               head_gap - 1
-        FROM BeltPath
-            INNER JOIN Port inPort ON inPort.id = in_port
-        WHERE head_gap > 1
-          AND inPort.item IS NOT NULL AND inPort.locked=0
-        UNION ALL
-        -- item
-        SELECT BeltPath.id,
-               inPort.item,
-               1
-        FROM BeltPath
-            INNER JOIN Port inPort ON inPort.id = in_port
-        WHERE head_gap > 0
-          AND inPort.item IS NOT NULL AND inPort.locked=0;
-    `,
-
-    TickBeltPathCleanup1: `
-        DELETE
-        FROM BeltPathItem
-        WHERE length = 0 OR id IN (SELECT item_id FROM BeltPathOutputItem);
-    `,
-
-    TickBeltPathCleanup2: `DELETE FROM BeltPathOutputItem;`,
-
-    TickBeltPathCleanup3: `
-        INSERT INTO BeltPathInputItem (path, port)
-        SELECT BeltPath.id, Port.id
-        FROM BeltPath
-            INNER JOIN Port ON Port.id = in_port
-        WHERE BeltPath.head_gap > 0
-          AND item IS NOT NULL
-          AND locked=0
-    `,
-
-    TickBeltPathCleanup4: `
-        UPDATE Port
-        SET item = NULL
-        FROM BeltPathInputItem
-        WHERE Port.id = BeltPathInputItem.port;
-    `,
-
-    TickBeltPathCleanup5: `
-        UPDATE BeltPath
-        SET head_gap = 0
-        FROM BeltPathInputItem
-        WHERE BeltPath.id = BeltPathInputItem.path;
-    `,
-    TickBeltPathCleanup6: `DELETE FROM BeltPathInputItem;`,
-
-    UnlockPorts: `UPDATE Port SET locked=0 WHERE locked=1;`,
-
     GetBeltPath: `SELECT id FROM Belt WHERE path = CAST(@id AS INT) ORDER BY path_index;`,
 
     RemoveBeltPath: `UPDATE Belt SET path=NULL WHERE id = CAST(@id AS INT);`,
@@ -777,17 +520,10 @@ const CoreStatements = {
     Begin: "BEGIN TRANSACTION;",
     Rollback: "ROLLBACK TRANSACTION;",
 
-    CleanPortTransfer: "UPDATE Port SET item=NULL WHERE id IN (SELECT port FROM PortTransfer);",
-    SetPort: `
-        UPDATE Port 
-        SET item=pt.item, locked=1
-        FROM PortTransfer pt WHERE Port.id = port;
-    `,
-    TruncatePortTransfer: "DELETE FROM PortTransfer;",
 }
 
+// noinspection SqlWithoutWhere
 export class DbSchema {
-
 
     /**
      @param ruleSet {RuleSet}
@@ -796,11 +532,78 @@ export class DbSchema {
         this.preparedStatements = {};
 
         this.tickPhases = {
-            [TickPhase.INIT]: [
-                "UnlockPorts"
-            ]
+            [TickPhase.SUBMIT_INTENTS]: [
+
+            ],
+            // (Internal)
+            [TickPhase.RESOLVE_TRANSFERS]: [
+                new TickOp(
+                    "ResolvePortTransfer",
+                    `WITH RECURSIVE intents AS (
+                        -- If there are multiple sources going to the same port, pick the one with the
+                        --  highest priority. If they are the same priority, pick the one with the lowest source id
+                        SELECT source,
+                               destination,
+                               destination_is_empty,
+                               managed,
+                               ROW_NUMBER() OVER (PARTITION BY destination ORDER BY priority DESC, source) AS rank
+                        FROM PortTransferIntent i
+                    ),
+                    deduped_intents AS (
+                        SELECT source, destination, destination_is_empty, managed
+                        FROM intents
+                        WHERE rank = 1
+                    ),
+                    resolved_chains AS (
+                        SELECT source, destination, managed
+                        FROM deduped_intents
+                        WHERE destination_is_empty=TRUE
+
+                        UNION ALL
+
+                        -- Get un-resolved upstream ports, recursively
+                        SELECT i.source, i.destination, i.managed
+                        FROM resolved_chains chain
+                            INNER JOIN deduped_intents i ON chain.destination = i.source
+                    )
+                    INSERT INTO PortTransfer (source, destination, item)
+                    SELECT
+                        source, destination, src.item
+                    FROM resolved_chains
+                        INNER JOIN Port src ON src.id = source
+                    WHERE managed=FALSE; -- Ignore managed transfers`
+                )
+
+            ],
+            [TickPhase.POST_RESOLVE]: [
+
+            ],
+            [TickPhase.COMMIT_TRANSFERS]: [
+
+                // TODO: Optimization; do this in a single UPDATE
+                new TickOp(
+                    "FlushPortTransferSource",
+                    `UPDATE Port
+                    SET item=NULL
+                    WHERE id IN (SELECT source FROM PortTransfer);`
+                ),
+
+                new TickOp(
+                    "FlushPortTransferDestination",
+                    `UPDATE Port
+                    SET item=pt.item
+                    FROM PortTransfer pt
+                    WHERE Port.id = pt.destination;`
+                ),
+
+                new TickOp(
+                    "TruncatePortTransfer",
+                    `DELETE FROM PortTransfer;`
+                ),
+
+            ],
         }
-        this.triggers = [CoreTriggers];
+        this.triggers = [CoreTriggers, ...ruleSet.triggers];
         this.initSchema = [CoreSchema, ...ruleSet.initSchema];
         this.tempSchema = [CoreTempSchema, ...ruleSet.tempSchema];
         this.pragma = [CorePragma];
@@ -808,7 +611,12 @@ export class DbSchema {
         this._createDeleteTriggers(ruleSet.definitions)
         this._createFanoutTriggers(ruleSet.definitions);
 
-        [TickPhase.INIT, TickPhase.INPUT, TickPhase.OUTPUT].forEach(phase => {
+        [
+            TickPhase.SUBMIT_INTENTS,
+            TickPhase.RESOLVE_TRANSFERS,
+            TickPhase.POST_RESOLVE,
+            TickPhase.COMMIT_TRANSFERS
+        ].forEach(phase => {
             this._prepareTick(ruleSet.definitions, phase);
         });
 
@@ -906,6 +714,11 @@ export class DbSchema {
     }
 
     _prepare(name, statement) {
+
+        if (name === undefined) {
+            debugger;
+        }
+
         this.preparedStatements[name] = statement;
     }
 
@@ -959,77 +772,19 @@ export class DbSchema {
         this.tickPhases[phase] ||= [];
         const phaseOps = this.tickPhases[phase];
 
-        Object.entries(definitions).forEach(([name, data]) => {
+        Object.entries(definitions).forEach(([name, definition]) => {
 
-            let i = 0;
-            if (data.tickPhases[phase] === undefined) {
+            if (definition.tickPhases[phase] === undefined) {
                 return;
             }
-            data.tickPhases[phase].forEach(op => {
 
-                if (op.op === OpCode.INPUT_TRANSFER) {
-                    const def = data.inputTransfers[op.key];
-                    const {slot, port, join, where, afterTransfer} = def;
+            definition.tickPhases[phase].forEach(op =>
+                phaseOps.push(op)
+            );
+        });
 
-                    this._prepare(`${name}_inTx_${i}_prepare`, prepareInputTransfer(name, slot, port, join, where));
-                    phaseOps.push(`${name}_inTx_${i}_prepare`);
-
-                    this._prepare(`${name}_inTx_${i}_setSlot`, setSlot(name, slot));
-                    phaseOps.push(`${name}_inTx_${i}_setSlot`);
-
-                    phaseOps.push("CleanPortTransfer");
-
-                    if (afterTransfer) {
-                        this._prepare(`${name}_inTx_${i}_afterTransfer`, afterTransfer);
-                        phaseOps.push(`${name}_inTx_${i}_afterTransfer`);
-                    }
-
-                    phaseOps.push("TruncatePortTransfer");
-
-                } else if (op.op === OpCode.OUTPUT_TRANSFER) {
-                    const def = data.outputTransfers[op.key];
-                    const {slot, port, join, where, afterTransfer} = def;
-
-                    this._prepare(`${name}_outTx_${i}_prepare`, prepareOutputTransfer(name, slot, port, join, where));
-                    phaseOps.push(`${name}_outTx_${i}_prepare`);
-
-                    this._prepare(`${name}_outTx_${i}_cleanSlot`, cleanSlot(name, slot));
-                    phaseOps.push(`${name}_outTx_${i}_cleanSlot`);
-
-                    phaseOps.push("SetPort");
-
-                    if (afterTransfer) {
-                        this._prepare(`${name}_outTx_${i}_afterTransfer`, afterTransfer);
-                        phaseOps.push(`${name}_outTx_${i}_afterTransfer`);
-                    }
-
-                    phaseOps.push("TruncatePortTransfer");
-
-                } else if (op.op === OpCode.PORT_TRANSFER) {
-
-                    const def = data.portTransfers[op.key];
-                    const {inputPort, outputPort, where, join, afterTransfer} = def;
-
-                    this._prepare(`${name}_pTx_${i}_prepare`, preparePortTransfer(name, inputPort, outputPort, join, where));
-                    phaseOps.push(`${name}_pTx_${i}_prepare`);
-
-                    phaseOps.push("SetPort");
-
-                    if (afterTransfer) {
-                        this._prepare(`${name}_pTx_${i}_afterTransfer`, afterTransfer);
-                        phaseOps.push(`${name}_pTx_${i}_afterTransfer`);
-                    }
-
-                    phaseOps.push("TruncatePortTransfer");
-                } else if (op.op === OpCode.STMT) {
-                    this._prepare(op.key, data.statements[op.key]);
-                    phaseOps.push(op.key);
-                } else  {
-                    throw new Error("Not Implemented");
-                }
-
-                i += 1;
-            });
+        phaseOps.forEach(op => {
+           this._prepare(op.statementName, op.sql);
         });
     }
 
@@ -1058,56 +813,6 @@ export class DbSchema {
     }
 }
 
-function prepareInputTransfer(gameObject, slot, port, join, where) {
-    return `INSERT INTO PortTransfer (port, item, tx_id)
-            SELECT Port.id, ${gameObject}.id, Port.item
-            FROM ${gameObject}
-                INNER JOIN Port on Port.id = ${port} ${join || ""}
-            WHERE Port.item IS NOT NULL
-                AND Port.locked = 0
-                AND ${slot} IS NULL 
-                ${where || ""};`
-}
-
-function preparePortTransfer(gameObject, inputPort, outputPort, join, where) {
-    return `
-        WITH ports AS (
-            SELECT
-                inPort.id input, outPort.id output, inPort.item
-            FROM ${gameObject}
-                INNER JOIN Port inPort ON inPort.id=${inputPort} AND inPort.item IS NOT NULL AND inPort.locked = 0
-                INNER JOIN Port outPort ON outPort.id=${outputPort} AND outPort.item IS NULL 
-                ${join || ""}
-            WHERE ${where}
-        )
-        INSERT INTO PortTransfer (port, item)
-        SELECT input, NULL FROM ports
-        UNION ALL
-        SELECT output, item FROM ports`;
-}
-
-function setSlot(gameObject, slot) {
-    return `UPDATE ${gameObject}
-            SET ${slot}=item
-            FROM PortTransfer pt
-            WHERE ${gameObject}.id = tx_id;`
-}
-
-function prepareOutputTransfer(gameObject, slot, port, join, where) {
-    return `INSERT INTO PortTransfer (port, tx_id, item)
-            SELECT Port.id, ${gameObject}.id, ${slot}
-            FROM ${gameObject}
-                 INNER JOIN Port on Port.id = ${port} ${join || ""}
-            WHERE Port.item IS NULL
-              AND ${slot} IS NOT NULL ${where || ""};`
-}
-
-function cleanSlot(gameObject, slot) {
-    return `UPDATE ${gameObject}
-            SET ${slot}=NULL
-            FROM PortTransfer pt
-            WHERE ${gameObject}.id = tx_id;`
-}
 
 function beltInputs(direction) {
     const directions = Directions.filter(
@@ -1153,3 +858,64 @@ function otherPorts(portMapping, direction) {
             }).join("\nUNION ALL\n");
         }).join("\nUNION ALL\n");
 }
+
+// if (op.op === OpCode.INPUT_TRANSFER) {
+//     const def = data.inputTransfers[op.key];
+//     const {slot, port, join, where, afterTransfer} = def;
+//
+//     this._prepare(`${name}_inTx_${i}_prepare`, prepareInputTransfer(name, slot, port, join, where));
+//     phaseOps.push(`${name}_inTx_${i}_prepare`);
+//
+//     this._prepare(`${name}_inTx_${i}_setSlot`, setSlot(name, slot));
+//     phaseOps.push(`${name}_inTx_${i}_setSlot`);
+//
+//     phaseOps.push("CleanPortTransfer");
+//
+//     if (afterTransfer) {
+//         this._prepare(`${name}_inTx_${i}_afterTransfer`, afterTransfer);
+//         phaseOps.push(`${name}_inTx_${i}_afterTransfer`);
+//     }
+//
+//     phaseOps.push("TruncatePortTransfer");
+//
+// } else if (op.op === OpCode.OUTPUT_TRANSFER) {
+//     const def = data.outputTransfers[op.key];
+//     const {slot, port, join, where, afterTransfer} = def;
+//
+//     this._prepare(`${name}_outTx_${i}_prepare`, prepareOutputTransfer(name, slot, port, join, where));
+//     phaseOps.push(`${name}_outTx_${i}_prepare`);
+//
+//     this._prepare(`${name}_outTx_${i}_cleanSlot`, cleanSlot(name, slot));
+//     phaseOps.push(`${name}_outTx_${i}_cleanSlot`);
+//
+//     phaseOps.push("SetPort");
+//
+//     if (afterTransfer) {
+//         this._prepare(`${name}_outTx_${i}_afterTransfer`, afterTransfer);
+//         phaseOps.push(`${name}_outTx_${i}_afterTransfer`);
+//     }
+//
+//     phaseOps.push("TruncatePortTransfer");
+//
+// } else if (op.op === OpCode.PORT_TRANSFER) {
+//
+//     const def = data.portTransfers[op.key];
+//     const {inputPort, outputPort, where, join, afterTransfer} = def;
+//
+//     this._prepare(`${name}_pTx_${i}_prepare`, preparePortTransfer(name, inputPort, outputPort, join, where));
+//     phaseOps.push(`${name}_pTx_${i}_prepare`);
+//
+//     phaseOps.push("SetPort");
+//
+//     if (afterTransfer) {
+//         this._prepare(`${name}_pTx_${i}_afterTransfer`, afterTransfer);
+//         phaseOps.push(`${name}_pTx_${i}_afterTransfer`);
+//     }
+//
+//     phaseOps.push("TruncatePortTransfer");
+// } else if (op.op === OpCode.STMT) {
+//     this._prepare(op.key, data.statements[op.key]);
+//     phaseOps.push(op.key);
+// } else  {
+//     throw new Error("Not Implemented");
+// }
