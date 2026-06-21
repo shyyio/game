@@ -591,9 +591,9 @@ test("testDisconnectRamp", async () => {
 
     assert.equal(game.exec(`SELECT COUNT(*) FROM Belt WHERE type=${BeltType.UNDERGROUND}`), 2);
 
-    assert.throws(() => {
-        game.createBelt(GameObject.RAMP_UP, {x: 1, y: 0, direction: Direction.RIGHT, rampParent: 1n});
-    });
+    game.createBelt(GameObject.RAMP_UP, {x: 1, y: 0, direction: Direction.RIGHT, rampParent: 1n});
+    assert.equal(game.exec("SELECT COUNT(*) FROM Belt"), 4);
+
     assert.throws(() => {
         game.createBelt(GameObject.RAMP_UP, {x: 1, y: 0, direction: Direction.RIGHT, rampParent: 1n, disconnectRampChild: 1n});
     });
@@ -607,6 +607,13 @@ test("testDisconnectRamp", async () => {
     game.createBelt(GameObject.RAMP_UP, {x: 1, y: 0, direction: Direction.RIGHT, rampParent: 1n, disconnectRampChild: 4n});
 
     assert.equal(game.exec(`SELECT COUNT(*) FROM Belt WHERE type=${BeltType.UNDERGROUND}`), 0);
+});
+
+test("testCreateBeltOverExisting", async () => {
+    const game = await setup();
+    game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.UP});
+    game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
+    assert.equal(game.exec("SELECT COUNT(*) FROM Belt WHERE x=0 AND y=0"), 1);
 });
 
 test("testDisconnectRampCrossChunk", async () => {

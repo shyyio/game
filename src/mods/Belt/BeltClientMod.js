@@ -14,7 +14,7 @@ export class BeltClientMod extends BeltMod {
 
     getTools(session, playerSettings) {
         // TODO: Return tools that are available for the player, based on playerSettings
-        return [new BeltTool(session)];
+        return [new BeltTool(session, this.game)];
     }
 
     miniMenuContextEntries(x, y, session) {

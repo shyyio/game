@@ -213,7 +213,8 @@ export class BeltMod extends Mod {
                 direction INT NOT NULL
             );
 
-            CREATE UNIQUE INDEX Belt_x_y_direction ON Belt(x, y, direction, type);
+            CREATE UNIQUE INDEX Belt_x_y_surface    ON Belt(x, y) WHERE type != ${BELT_UNDERGROUND};
+            CREATE UNIQUE INDEX Belt_x_y_underground ON Belt(x, y) WHERE type =  ${BELT_UNDERGROUND};
             CREATE INDEX Belt_path ON Belt(path, path_index);
 
             CREATE TABLE BeltPathItem (
@@ -1089,11 +1090,17 @@ export class BeltMod extends Mod {
         try {
             id = this.game.queryScalar("InsertBelt", options);
         } catch (e) {
-            if (!String(e).includes("UNIQUE")) {
-                debugger; /* FIXME */
-            }
             this.game.rollback();
-            throw new Error("belt error");
+            const msg = String(e);
+            if (msg.includes("Belt.x") && msg.includes("Belt.y")) {
+                console.warn("CreateBelt ignored: belt already exists at", options.x, options.y);
+                return;
+            }
+            if (msg.includes("Belt.parent")) {
+                console.warn("CreateBelt ignored: conflicting parent at", options.x, options.y);
+                return;
+            }
+            throw new Error("FIXME: InsertBelt");
         }
 
         const {

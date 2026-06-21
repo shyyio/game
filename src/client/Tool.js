@@ -12,9 +12,11 @@ export class Tool {
 
     /**
      * @param {Session} session
+     * @param {Game} game
      */
-    constructor(session) {
+    constructor(session, game) {
         this.session = session;
+        this.game = game;
     }
 
     /**
