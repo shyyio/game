@@ -609,6 +609,14 @@ test("testDisconnectRamp", async () => {
     assert.equal(game.exec(`SELECT COUNT(*) FROM Belt WHERE type=${BeltType.UNDERGROUND}`), 0);
 });
 
+test("testDeleteNonExistentBelt", async () => {
+    const game = await setup();
+    game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.UP});
+    game.removeGameObject(GameObject.BELT, 1n);
+    game.removeGameObject(GameObject.BELT, 1n);
+    assert.equal(game.exec("SELECT COUNT(*) FROM Belt"), 0);
+});
+
 test("testCreateBeltOverExisting", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.UP});

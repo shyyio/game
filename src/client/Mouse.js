@@ -181,6 +181,7 @@ class Mouse {
 
         this._longPressTimer = window.setTimeout(() => {
             this._longPressTimer = null;
+            this._hasDragged = true;
             this._longPressCallbacks.forEach(cb => {
                 cb(this._clickStartTileX, this._clickStartTileY, this._clickStartScreenX, this._clickStartScreenY);
             });

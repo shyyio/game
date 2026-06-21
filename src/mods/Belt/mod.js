@@ -1316,9 +1316,16 @@ export class BeltMod extends Mod {
             this.game.begin();
         }
 
-        this._stashOutputItem(id);
-
         const belt = this.game.querySingle("GetBelt", {id});
+        if (belt == null) {
+            console.warn("DeleteBelt ignored: no belt with id", id);
+            if (!recursive) {
+                this.game.rollback();
+            }
+            return;
+        }
+
+        this._stashOutputItem(id);
         if (belt.type === BELT_UNDERGROUND && !recursive) {
             this.game.end();
             throw new Error("Cannot manually delete underground belt.");
