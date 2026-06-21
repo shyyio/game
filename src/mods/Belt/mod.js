@@ -73,8 +73,8 @@ export class BeltInsertEvent extends LiveEvent {
         this.id = id;
         this.direction = direction;
         this.beltType = beltType;
-        this.parentX = parentX;
-        this.parentY = parentY;
+        this.parentX = parentX ?? null;
+        this.parentY = parentY ?? null;
     }
 }
 
@@ -119,7 +119,7 @@ export class BeltDeleteEvent extends LiveEvent {
 function getUndergroundBeltsToCreate(rampParent, options) {
     if (rampParent === null || rampParent.direction !== options.direction
         || (rampParent.type !== BELT_RAMP_DOWN && rampParent.type !== BELT_RAMP_UP)
-        || (rampParent.x !== options.x && rampParent.y !== rampParent.y)) {
+        || (rampParent.x !== options.x && rampParent.y !== options.y)) {
         debugger;
         return null;
     }
@@ -588,6 +588,111 @@ export class BeltMod extends Mod {
                 WHERE id = CAST(@id AS INT);
             `,
 
+            TransferBeltPathItems: `
+                UPDATE BeltPathItem
+                SET path = CAST(@to AS INT)
+                WHERE path = CAST(@from AS INT);
+            `,
+
+            RecalculateNextGapForPath: `
+                UPDATE BeltPath
+                SET next_gap_id = (
+                    SELECT MIN(id)
+                    FROM BeltPathItem
+                    WHERE path = CAST(@id AS INT)
+                      AND type = ${ITEM_TYPE_GAP}
+                )
+                WHERE id = CAST(@id AS INT);
+            `,
+
+            RecalculateNextItemForPath: `
+                UPDATE BeltPath
+                SET next_item_id = (
+                    SELECT MIN(id)
+                    FROM BeltPathItem
+                    WHERE path = CAST(@id AS INT)
+                      AND type != ${ITEM_TYPE_GAP}
+                )
+                WHERE id = CAST(@id AS INT);
+            `,
+
+            // Returns the head of the newly inserted belt's path, the downstream child belt (if any),
+            // and the old parent's path head (if the child had a previous parent in another path).
+            GetBeltCreateContext: `
+                WITH RECURSIVE
+                    head_path(id, parent, chunk) AS (
+                        SELECT id, parent, chunk FROM Belt WHERE id = CAST(@id AS INT)
+                        UNION
+                        SELECT p.id, p.parent, p.chunk
+                        FROM Belt p
+                            INNER JOIN head_path ON head_path.parent = p.id AND head_path.chunk = p.chunk
+                    ),
+                    head AS (
+                        SELECT h.id
+                        FROM head_path h
+                            LEFT JOIN head_path ancestor ON ancestor.id = h.parent
+                        WHERE ancestor.id IS NULL
+                    ),
+                    child AS (
+                        SELECT Belt.id, Belt.path, Belt.parent, Belt.chunk, Belt.x, Belt.y
+                        FROM Belt
+                            LEFT JOIN Belt new_parent       ON new_parent.x = @x AND new_parent.y = @y
+                            LEFT JOIN Belt new_grandparent  ON new_grandparent.id = new_parent.parent
+                        WHERE Belt.x = CASE
+                            WHEN @direction = ${UP}    THEN @x
+                            WHEN @direction = ${RIGHT} THEN @x + 1
+                            WHEN @direction = ${DOWN}  THEN @x
+                            WHEN @direction = ${LEFT}  THEN @x - 1
+                        END
+                          AND Belt.y = CASE
+                            WHEN @direction = ${UP}    THEN @y - 1
+                            WHEN @direction = ${RIGHT} THEN @y
+                            WHEN @direction = ${DOWN}  THEN @y + 1
+                            WHEN @direction = ${LEFT}  THEN @y
+                        END
+                          AND Belt.direction != CASE
+                            WHEN @direction = ${UP}    THEN ${DOWN}
+                            WHEN @direction = ${RIGHT} THEN ${LEFT}
+                            WHEN @direction = ${DOWN}  THEN ${UP}
+                            WHEN @direction = ${LEFT}  THEN ${RIGHT}
+                        END
+                          AND (new_grandparent.path IS NULL OR new_grandparent.path != Belt.id)
+                          AND (
+                            (Belt.type = ${BELT_NORMAL} AND @type = ${BELT_NORMAL})
+                                OR (Belt.type = ${BELT_NORMAL} AND @type = ${BELT_RAMP_UP})
+                                OR (
+                                    Belt.direction = @direction AND (
+                                        (Belt.type = ${BELT_RAMP_DOWN}   AND @type = ${BELT_NORMAL})
+                                     OR (Belt.type = ${BELT_NORMAL}      AND @type = ${BELT_RAMP_UP})
+                                     OR (Belt.type = ${BELT_RAMP_UP}     AND @type = ${BELT_RAMP_DOWN})
+                                     OR (Belt.type = ${BELT_UNDERGROUND} AND @type = ${BELT_RAMP_DOWN})
+                                     OR (Belt.type = ${BELT_RAMP_UP}     AND @type = ${BELT_UNDERGROUND})
+                                    )
+                                )
+                        )
+                    )
+                SELECT
+                    -- the head of the path the new belt joined or created
+                    head.id                         AS head,
+
+                    -- the belt immediately downstream (NULL if none)
+                    child.id                        AS child_id,
+                    child.x                         AS child_x,
+                    child.y                         AS child_y,
+                    child.chunk                     AS child_chunk,
+                    -- child.path = child.id means child was a standalone path head
+                    child.path                      AS child_path,
+
+                    -- child's previous upstream parent before this insert (NULL if child had none)
+                    child.parent                    AS child_old_parent,
+                    child_old_parent.chunk          AS child_old_parent_chunk,
+                    -- the path that must be re-stashed/recalculated because it lost a member
+                    child_old_parent.path           AS old_parent_path_head
+                FROM head
+                    LEFT JOIN child ON 1=1
+                    LEFT JOIN Belt child_old_parent ON child_old_parent.id = child.parent
+            `,
+
             GetBeltChild: `
                 SELECT Belt.id,
                        Belt.path,
@@ -909,39 +1014,31 @@ export class BeltMod extends Mod {
                 );
             `,
 
-            DeleteBelt0: `
+            DetachChild: `
                 UPDATE Belt
                 SET parent=NULL
                 WHERE parent = CAST(@id AS INT)
                 RETURNING id;
             `,
 
-            DeleteBelt2: `
-                DELETE FROM BeltPathItem
-                WHERE path = CAST(@id AS INT)
+            UnassignBeltPath: `
+                UPDATE Belt
+                SET path=NULL, path_index=NULL
+                WHERE path=CAST(@id AS INT);
             `,
 
-            DeleteBelt4: `
-                UPDATE Belt SET path=NULL, path_index=NULL WHERE path=CAST(@id AS INT);
-            `,
-
-            DeleteBelt5: `
-                DELETE FROM BeltPath
-                WHERE id = CAST(@id AS INT);
-            `,
-
-            DeleteBelt7: `
+            ClearSolitaryBeltPortItem: `
                 UPDATE Port SET item=NULL
                 FROM BeltPath path
                 WHERE Port.id=path.out_port AND path.id=@id AND path.tail=path.id;
             `,
 
-            DeleteBelt8: `
+            NullifyPathTail: `
                 UPDATE BeltPath SET tail=NULL
                 WHERE tail=CAST(@id AS INT);
             `,
 
-            DeleteBelt9: `
+            DeleteBeltRow: `
                 DELETE FROM Belt
                 WHERE id = CAST(@id AS INT)
                 RETURNING parent;
@@ -969,83 +1066,102 @@ export class BeltMod extends Mod {
     // ---- Belt creation ----
 
     /**
+     * @private
      * @param {{x: number, y: number, type: number, direction: Direction, [rampParent]: BigInt, [disconnectRampChild]: BigInt, [chunk]: string}} options
      * @param {boolean} tnx
-     * @private
      */
     _createBelt(options, tnx=true) {
-
         options.chunk = getChunk(options.x, options.y);
-
         if (tnx) {
             this.game.begin();
         }
 
-        // =========== Disconnect existing ramp =====
         if (options.disconnectRampChild) {
-            if (!options.rampParent || (options.type !== BELT_RAMP_UP && options.type !== BELT_RAMP_DOWN)) {
-                this.game.rollback();
-                throw new Error("belt error");
-            }
-
-            const rampChild = this.game.querySingle("GetBelt", {id: options.disconnectRampChild});
-            const distanceX = Math.abs(options.x - rampChild.x);
-            const distanceY = Math.abs(options.y - rampChild.y);
-
-            if ((distanceX !== 0 && distanceY !== 0)
-                || (Math.max(distanceX, distanceY) - 2) > MAX_UNDERGROUND_LENGTH
-                || !rampChild
-                || rampChild.type !== options.type
-            ) {
-                this.game.rollback();
-                throw new Error("belt error");
-            }
-
-            if (options.type === BELT_RAMP_DOWN) {
-                this.game.query("GetRampChildren", {id: options.disconnectRampChild})
-                    .forEach(child => this._removeBelt(child.id, true));
-            } else {
-                this.game.query("GetRampParents", {id: options.disconnectRampChild})
-                    .forEach(child => this._removeBelt(child.id, true));
-            }
+            this._disconnectRampChain(options);
         }
-
-        // =========== Create underground belts =====
         if (options.rampParent && (options.type === BELT_RAMP_UP || options.type === BELT_RAMP_DOWN)) {
-            const rampParent = this.game.querySingle("GetBelt", {id: options.rampParent});
-            const undergrounds = getUndergroundBeltsToCreate(rampParent, options);
-
-            undergrounds.forEach(underground =>
-                this._createBelt({
-                    x: underground.x,
-                    y: underground.y,
-                    direction: options.direction,
-                    type: BELT_UNDERGROUND
-                }, false)
-            );
+            this._createUndergrounds(options);
         }
 
         let id;
         try {
             id = this.game.queryScalar("InsertBelt", options);
         } catch (e) {
-            if (!e.message.includes("UNIQUE")) { /* FIXME */ debugger }
+            if (!e.message.includes("UNIQUE")) {
+                debugger; /* FIXME */
+            }
             this.game.rollback();
             throw new Error("belt error");
         }
 
-        const child = this.game.querySingle("GetBeltChild", options);
-        const head = this._getBeltPathHead(id);
+        const {
+            head,
+            child_id: childId,
+            child_x: childX,
+            child_y: childY,
+            child_chunk: childChunk,
+            child_path: childPath,
+            child_old_parent: childOldParent,
+            child_old_parent_chunk: childOldParentChunk,
+            old_parent_path_head: oldParentPathHead,
+        } = this.game.querySingle("GetBeltCreateContext", {id, ...options});
 
-        let oldParentPathHead = null;
+        let child = null;
+        if (childId !== null) {
+            child = {
+                id: childId,
+                x: childX,
+                y: childY,
+                chunk: childChunk,
+                path: childPath,
+                oldParent: childOldParent,
+                oldParentChunk: childOldParentChunk,
+            };
+        }
 
-        // =========== Handle child belt =====
-        if (child !== null) {
-            const updatedChild = this.game.exec("UpdateBeltChild", {id: child.id});
+        // =========== Simple case: new head merging with standalone child in same chunk =====
+        // No stash needed — child's path_indexes are unchanged; items transfer directly.
+        if (child !== null
+            && head === id
+            && child.path === child.id
+            && child.oldParent === null
+            && child.chunk === options.chunk) {
+            this.game.exec("UpdateBeltChild", {id: child.id});
+            this.game.publishEventNow(new BeltUpdateEvent(child.x, child.y, child.id, options.x, options.y));
 
-            if (updatedChild > 0) {
-                this.game.publishEventNow(new BeltUpdateEvent(child.x, child.y, child.id, options.x, options.y));
+            const createdNewPath = this.game.queryScalar("InsertBeltPath", {id: head});
+            this.game.exec("CalculateBeltPath", {id: head});
+            this.game.exec("TransferBeltPathItems", {from: child.id, to: head});
+            this.game.exec("DeleteOutPort", {id: head});
+
+            const inheritedOutPort = this.game.queryScalar("InheritOutPort", {child: child.id, parent: head});
+
+            this.game.exec("DeleteInPort", {id: child.id});
+            this.game.exec("DeletePath", {id: child.id});
+            this.game.exec("MaterializeBeltPath", {id: head});
+
+            if (createdNewPath) {
+                this._populateBeltPathPorts(head, inheritedOutPort);
             }
+            this.game.exec("FillHeadGap", {id: head});
+            this.game.exec("RecalculateNextGapForPath", {id: head});
+            this.game.exec("RecalculateNextItemForPath", {id: head});
+
+            const headPath = this._getPath(head);
+            this.game.publishEventNow(new BeltPathRecalculateEvent(options.x, options.y, headPath));
+            this._publishBeltInsert(id, options);
+
+            if (tnx) {
+                this.game.end();
+            }
+            return;
+        }
+
+        // =========== General case =====
+
+        if (child !== null) {
+            this.game.exec("UpdateBeltChild", {id: child.id});
+            this.game.publishEventNow(new BeltUpdateEvent(child.x, child.y, child.id, options.x, options.y));
 
             this._stashItems(child.id);
 
@@ -1054,7 +1170,6 @@ export class BeltMod extends Mod {
             }
 
             if (child.oldParent) {
-                oldParentPathHead = this.game.queryScalar("GetExistingBeltPathHead", {id: child.oldParent});
                 this._stashItems(oldParentPathHead);
                 this._stashOutputItem(oldParentPathHead);
 
@@ -1088,8 +1203,7 @@ export class BeltMod extends Mod {
         if (child !== null
             && (child.oldParent === null || child.oldParentChunk !== child.chunk)
             && child.id !== head
-            && child.chunk === options.chunk
-        ) {
+            && child.chunk === options.chunk) {
             this.game.exec("DeleteOutPort", {id: head});
             inheritedOutPort = this.game.queryScalar("InheritOutPort", {child: child.id, parent: head});
             this.game.exec("DeleteInPort", {id: child.id});
@@ -1123,22 +1237,70 @@ export class BeltMod extends Mod {
             this.game.exec("FillHeadGap", {id: child.id});
         }
 
-        // =========== Events ============
-        const parent = this.game.querySingle("GetBeltParent", {id});
-        this.game.publishEventNow(new BeltInsertEvent(options.x, options.y, id, options.direction, options.type, parent?.x ?? null, parent?.y ?? null));
+        this._publishBeltInsert(id, options);
 
         if (tnx) {
             this.game.end();
         }
     }
 
+    /**
+     * @private
+     * @param {{x: number, y: number, type: number, rampParent: BigInt, disconnectRampChild: BigInt}} options
+     */
+    _disconnectRampChain(options) {
+        if (!options.rampParent || (options.type !== BELT_RAMP_UP && options.type !== BELT_RAMP_DOWN)) {
+            this.game.rollback();
+            throw new Error("belt error");
+        }
+
+        const rampChild = this.game.querySingle("GetBelt", {id: options.disconnectRampChild});
+        if (!rampChild || rampChild.type !== options.type) {
+            this.game.rollback();
+            throw new Error("belt error");
+        }
+
+        const distanceX = Math.abs(options.x - rampChild.x);
+        const distanceY = Math.abs(options.y - rampChild.y);
+        if ((distanceX !== 0 && distanceY !== 0)
+            || (Math.max(distanceX, distanceY) - 2) > MAX_UNDERGROUND_LENGTH) {
+            this.game.rollback();
+            throw new Error("belt error");
+        }
+
+        if (options.type === BELT_RAMP_DOWN) {
+            const rampBelts = this.game.query("GetRampChildren", {id: options.disconnectRampChild});
+            rampBelts.forEach(belt => this._removeBelt(belt.id, true));
+        } else {
+            const rampBelts = this.game.query("GetRampParents", {id: options.disconnectRampChild});
+            rampBelts.forEach(belt => this._removeBelt(belt.id, true));
+        }
+    }
+
+    /**
+     * @private
+     * @param {{x: number, y: number, direction: Direction, type: number, rampParent: BigInt}} options
+     */
+    _createUndergrounds(options) {
+        const rampParent = this.game.querySingle("GetBelt", {id: options.rampParent});
+        const undergrounds = getUndergroundBeltsToCreate(rampParent, options);
+        undergrounds.forEach(underground => {
+            this._createBelt({
+                x: underground.x,
+                y: underground.y,
+                direction: options.direction,
+                type: BELT_UNDERGROUND,
+            }, false);
+        });
+    }
+
     // ---- Belt removal ----
 
     /**
+     * @private
      * @param {BigInt} id
      * @param {boolean} [recursive]
      * @param {BigInt[]} [fillHeadGap]
-     * @private
      */
     _removeBelt(id, recursive=false, fillHeadGap=[]) {
         if (!recursive) {
@@ -1153,41 +1315,34 @@ export class BeltMod extends Mod {
             throw new Error("Cannot manually delete underground belt.");
         }
 
-        let childId = this.game.queryScalar("DeleteBelt0", {id});
-        this.game.exec("DeleteBelt2", {id});
-        this.game.exec("DeleteBelt4", {id});
-        this.game.exec("DeleteUnusedPathPorts", {id});
-        this.game.exec("DeleteBelt5", {id});
-        this.game.exec("DeleteBelt7", {id});
-        this.game.exec("DeleteBelt8", {id});
-        let parentId = this.game.queryScalar("DeleteBelt9", {id});
+        let {childId, parentId} = this._eraseBelt(id);
         this.game.publishEventNow(new BeltDeleteEvent(belt.x, belt.y, id));
 
         if (belt.type === BELT_RAMP_DOWN) {
-            this.game.query("GetRampChildren", {id: childId})
-                .forEach(child => {
-                    this._removeBelt(child.id, true, fillHeadGap);
-                    childId = null;
-                });
+            const rampBelts = this.game.query("GetRampChildren", {id: childId});
+            rampBelts.forEach(child => {
+                this._removeBelt(child.id, true, fillHeadGap);
+                childId = null;
+            });
         } else if (belt.type === BELT_RAMP_UP) {
-            this.game.query("GetRampParents", {id: parentId})
-                .forEach(parent => {
-                    this._removeBelt(parent.id, true, fillHeadGap);
-                    parentId = null;
-                });
+            const rampBelts = this.game.query("GetRampParents", {id: parentId});
+            rampBelts.forEach(parent => {
+                this._removeBelt(parent.id, true, fillHeadGap);
+                parentId = null;
+            });
         }
 
-        let headOfParentPath = null;
+        let parentPathHead = null;
         if (parentId) {
-            headOfParentPath = this._getBeltPathHead(parentId);
-            this.game.exec("InsertBeltPath", {id: headOfParentPath});
-            this._stashItems(headOfParentPath);
-            this._stashOutputItem(headOfParentPath);
-            this.game.exec("CalculateBeltPath", {id: headOfParentPath});
-            this.game.exec("InvalidatePath", {id: headOfParentPath});
+            parentPathHead = this._getBeltPathHead(parentId);
+            this.game.exec("InsertBeltPath", {id: parentPathHead});
+            this._stashItems(parentPathHead);
+            this._stashOutputItem(parentPathHead);
+            this.game.exec("CalculateBeltPath", {id: parentPathHead});
+            this.game.exec("InvalidatePath", {id: parentPathHead});
         }
 
-        if (childId && childId !== headOfParentPath) {
+        if (childId && childId !== parentPathHead) {
             const created = this.game.queryScalar("InsertBeltPath", {id: childId});
             this._stashItems(childId);
             this.game.exec("CalculateBeltPath", {id: childId});
@@ -1198,11 +1353,11 @@ export class BeltMod extends Mod {
             }
         }
 
-        if (headOfParentPath) {
-            fillHeadGap.push(headOfParentPath);
-            this.game.exec("MaterializeBeltPath", {id: headOfParentPath});
-            const headOfParentPathParts = this._getPath(headOfParentPath);
-            this.game.publishEventNow(new BeltPathRecalculateEvent(belt.x, belt.y, headOfParentPathParts));
+        if (parentPathHead) {
+            fillHeadGap.push(parentPathHead);
+            this.game.exec("MaterializeBeltPath", {id: parentPathHead});
+            const parentPathHeadParts = this._getPath(parentPathHead);
+            this.game.publishEventNow(new BeltPathRecalculateEvent(belt.x, belt.y, parentPathHeadParts));
         }
 
         if (childId) {
@@ -1213,7 +1368,9 @@ export class BeltMod extends Mod {
             this._unStashItems();
             this._unStashOutputItem();
 
-            if (new Set(fillHeadGap).size !== fillHeadGap.length) { /* FIXME */ debugger }
+            if (new Set(fillHeadGap).size !== fillHeadGap.length) {
+                debugger; /* FIXME */
+            }
 
             fillHeadGap.forEach(pathId => {
                 this.game.exec("FillHeadGap", {id: pathId});
@@ -1224,6 +1381,34 @@ export class BeltMod extends Mod {
     }
 
     // ---- Helpers ----
+
+    /**
+     * @private
+     * Removes all DB rows for a belt and returns the IDs of its former child and parent.
+     * @param {BigInt} id
+     * @returns {{childId: BigInt|null, parentId: BigInt|null}}
+     */
+    _eraseBelt(id) {
+        const childId = this.game.queryScalar("DetachChild", {id});
+        this.game.exec("DeleteItems", {id});
+        this.game.exec("UnassignBeltPath", {id});
+        this.game.exec("DeleteUnusedPathPorts", {id});
+        this.game.exec("DeletePath", {id});
+        this.game.exec("ClearSolitaryBeltPortItem", {id});
+        this.game.exec("NullifyPathTail", {id});
+        const parentId = this.game.queryScalar("DeleteBeltRow", {id});
+        return {childId, parentId};
+    }
+
+    /**
+     * @private
+     * @param {BigInt} id
+     * @param {{x: number, y: number, direction: number, type: number}} options
+     */
+    _publishBeltInsert(id, options) {
+        const parent = this.game.querySingle("GetBeltParent", {id});
+        this.game.publishEventNow(new BeltInsertEvent(options.x, options.y, id, options.direction, options.type, parent?.x, parent?.y));
+    }
 
     _stashItems(id) {
         this.game.exec("StashItems", {id});
@@ -1248,14 +1433,17 @@ export class BeltMod extends Mod {
     }
 
     /**
+     * @private
      * @param {BigInt} id
      * @returns {BigInt[]}
      */
     _getPath(id) {
-        return this.game.query("GetBeltPath", {id}).map(row => row.id);
+        const rows = this.game.query("GetBeltPath", {id});
+        return rows.map(row => row.id);
     }
 
     /**
+     * @private
      * @param {BigInt} id
      * @returns {BigInt|null}
      */
@@ -1270,6 +1458,7 @@ export class BeltMod extends Mod {
     }
 
     /**
+     * @private
      * @param {BigInt} id
      * @param {BigInt|null} [inheritedOutPort] - existing out_port to preserve when no downstream exists
      */
