@@ -9,26 +9,44 @@ export class BeltTool extends Tool {
     constructor(session, game) {
         super(session, game);
         this._lastDirection = Direction.UP;
+        this._prevDragTileX = null;
+        this._prevDragTileY = null;
     }
 
     get label() {
         return "Belt";
     }
 
-    onTap(x, y) {
-        const existing = this.game.queryScalar("GetBeltAtTile", {x, y});
+    onTap(tileX, tileY) {
+        this._prevDragTileX = null;
+        this._prevDragTileY = null;
+        const existing = this.game.queryScalar("GetBeltAtTile", {x: tileX, y: tileY});
         if (existing != null) {
             this.session.sendMessage(new DeleteBeltMessage(existing));
         }
-        this.session.sendMessage(new CreateBeltMessage({x, y, direction: this._lastDirection, beltType: BeltType.NORMAL}));
+        this.session.sendMessage(new CreateBeltMessage({x: tileX, y: tileY, direction: this._lastDirection, beltType: BeltType.NORMAL}));
     }
 
-    onDragTile(x, y, direction) {
+    onDragTile(tileX, tileY, direction) {
+        const fromTileX = tileX - Direction.dx(direction);
+        const fromTileY = tileY - Direction.dy(direction);
+
+        if (direction !== this._lastDirection && this._prevDragTileX === fromTileX && this._prevDragTileY === fromTileY) {
+            const prevExisting = this.game.queryScalar("GetBeltAtTile", {x: fromTileX, y: fromTileY});
+            if (prevExisting != null) {
+                this.session.sendMessage(new DeleteBeltMessage(prevExisting));
+            }
+            this.session.sendMessage(new CreateBeltMessage({x: fromTileX, y: fromTileY, direction, beltType: BeltType.NORMAL}));
+        }
+
         this._lastDirection = direction;
-        const existing = this.game.queryScalar("GetBeltAtTile", {x, y});
+        this._prevDragTileX = tileX;
+        this._prevDragTileY = tileY;
+
+        const existing = this.game.queryScalar("GetBeltAtTile", {x: tileX, y: tileY});
         if (existing != null) {
             this.session.sendMessage(new DeleteBeltMessage(existing));
         }
-        this.session.sendMessage(new CreateBeltMessage({x, y, direction, beltType: BeltType.NORMAL}));
+        this.session.sendMessage(new CreateBeltMessage({x: tileX, y: tileY, direction, beltType: BeltType.NORMAL}));
     }
 }

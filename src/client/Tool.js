@@ -28,18 +28,18 @@ export class Tool {
     /**
      * @abstract
      * Called when the user taps (clicks without dragging) a tile.
-     * @param {number} x - tile x
-     * @param {number} y - tile y
+     * @param {number} tileX
+     * @param {number} tileY
      */
-    onTap(x, y) {}
+    onTap(tileX, tileY) {}
 
     /**
      * @abstract
      * Called once per tile entered during a drag.
      * Each call moves exactly one tile in a cardinal direction.
-     * @param {number} x - destination tile x
-     * @param {number} y - destination tile y
+     * @param {number} tileX - destination tile x
+     * @param {number} tileY - destination tile y
      * @param {Direction} direction - the step direction (UP / RIGHT / DOWN / LEFT)
      */
-    onDragTile(x, y, direction) {}
+    onDragTile(tileX, tileY, direction) {}
 }
