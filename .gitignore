@@ -111,3 +111,7 @@ lerna-debug.log
 # System Files
 Thumbs.db
 *.sqlite
+
+# misc
+recipes/
+_research

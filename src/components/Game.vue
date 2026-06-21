@@ -1,16 +1,24 @@
 <script setup>
-import {defineComponent, onMounted} from "vue";
-import {Application, Assets, Graphics, Container, FillGradient, Text, isMobile, Texture, Sprite} from "pixi.js";
+import {ref, reactive, onMounted} from "vue";
+import {Application, Graphics, Container, FillGradient, isMobile} from "pixi.js";
 import {Viewport} from "pixi-viewport";
 import Keyboard from "@/keyboard.js";
-import Mouse from "@/mouse.js";
-import {BrowserGameBackend} from "@/backend/BrowserGameBackend.js";
-import ClientState from "@/client/ClientState.js";
-import ClientRenderer from "@/client/ClientRenderer.js";
-import clientState from "@/client/ClientState.js";
-import "@/components/Game.vue";
-import BuildSystem from "@/client/buildSystem.js";
-import {TickPhase} from "@/backend/core.js";
+import Mouse from "@/client/Mouse.js";
+import {InputHandler} from "@/client/InputHandler.js";
+import {ModSet} from "@/common/ModSet.js";
+import {BeltClientMod} from "@/mods/Belt/BeltClientMod.js";
+import {SplitterClientMod} from "@/mods/Splitter/SplitterClientMod.js";
+import {CoreTexturesMod} from "@/mods/BaseTextures/mod.js";
+import {DatabaseSchema} from "@/common/DatabaseSchema.js";
+import {BrowserDatabase} from "@/client/BrowserDatabase.js";
+import {Game} from "@/common/Game.js";
+import {GameAPI} from "@/common/GameAPI.js";
+import {LocalSession} from "@/common/session.js";
+import {Client} from "@/client/Client.js";
+import {TickPhase} from "@/common/core.js";
+
+const tools = ref([]);
+const toolbarState = reactive({activeTool: null});
 
 const gameWidth = () => window.innerWidth - Number(document.getElementById("game").style.left.replace("px", ""));
 const gameHeight = () => window.innerHeight + 64;
@@ -53,55 +61,10 @@ function createShadowOverlay(width, height) {
   return container;
 }
 
-function createDebugInfo() {
-
-  const text = new Text({
-    text: "Loading...",
-    style: {
-      fontFamily: "monospace",
-      fontSize: 18,
-      fill: '#FF00FF',
-    }
-  });
-
-  text.x = 20;
-  text.y = 10;
-
-  return text;
-}
-
-/**
- * @type {Viewport}
- */
-let VIEWPORT = null;
-
-/**
- * @type {Container}
- */
-let GRID_CONTAINER = null;
-
-/**
- * @param text {Text}
- */
-function updateDebugText(text) {
-
-  let beltInfo = "";
-  const belt = clientState.getBelt(Mouse.tileX, Mouse.tileY);
-  if (belt) {
-    beltInfo = `id=${belt.id}, direction=${belt.direction}, bend=${belt.bend}`;
-  } else {
-    beltInfo = `${Mouse.tileX}, ${Mouse.tileY}`;
-  }
-
-  text.text =`${beltInfo}`;
-
-}
-
 onMounted(async () => {
 
   const app = new Application();
 
-  // Intialize the application.
   await app.init({
     background: "white",
     resolution: window.devicePixelRatio,
@@ -119,10 +82,9 @@ onMounted(async () => {
     threshold: 20,
   });
 
-  // add the viewport to the stage
   app.stage.addChild(viewport);
 
-  let overlay = createShadowOverlay(gameWidth(), gameHeight())
+  let overlay = createShadowOverlay(gameWidth(), gameHeight());
   app.stage.addChild(overlay);
 
   function handleResize() {
@@ -159,67 +121,56 @@ onMounted(async () => {
     viewport.pinch().decelerate();
   }
 
-  const container = new Container();
-  viewport.addChild(container);
-  VIEWPORT = viewport;
-
-  GRID_CONTAINER = new Container();
-  container.addChild(GRID_CONTAINER);
-
-  const debugText = createDebugInfo();
-  app.stage.addChild(debugText);
-
-  app.ticker.add(() => {
-    updateDebugText(debugText);
-  });
-
-
   Mouse.init(app, viewport);
 
   document.getElementById("game").appendChild(app.canvas);
 
-  const backend = new BrowserGameBackend();
-  await backend.init();
+  const modSet = new ModSet();
+  modSet.loadMod(new CoreTexturesMod());
+  modSet.loadMod(new BeltMod());
+  modSet.loadMod(new SplitterMod());
 
-  window.DB = sql => {
-    return backend.execPretty(sql);
-  }
+  const schema = new DatabaseSchema(modSet);
+  const db = new BrowserDatabase(schema);
+  const game = new Game(modSet, db);
+  await game.init();
 
-  ClientState.renderer = new ClientRenderer(app, viewport);
-  await ClientState.renderer.loadTextures();
-  ClientState.registerEventListeners(app, backend, viewport);
+  const api = new GameAPI(game);
+  const session = new LocalSession(api);
 
-  BuildSystem.init(app, viewport, backend);
+  const client = new Client(app, viewport, session, modSet);
+  session.client = client;
+  game.connect(session);
+  await client.init();
 
-  let counter = 0;
+  const refreshTools = () => {
+    tools.value = modSet.getTools(session, client.playerSettings);
+    if (!tools.value.includes(toolbarState.activeTool)) {
+      toolbarState.activeTool = tools.value[0] ?? null;
+    }
+  };
+
+  client.playerSettings.onChange(refreshTools);
+  refreshTools();
+
+  const inputHandler = new InputHandler(modSet, toolbarState);
+  inputHandler.onMiniMenuEntryClick((tileX, tileY) => {
+    // TODO: render mini menu UI
+    const entries = modSet.getMiniMenuContextEntries(tileX, tileY);
+    console.log("Mini menu", tileX, tileY, entries);
+  });
+  inputHandler.init();
 
   function tick() {
-    backend.tick(TickPhase.SUBMIT_INTENTS);
-    backend.tick(TickPhase.RESOLVE_TRANSFERS);
-    backend.tick(TickPhase.POST_RESOLVE);
-    backend.tick(TickPhase.COMMIT_TRANSFERS);
+    game.tick(TickPhase.SUBMIT_INTENTS);
+    game.tick(TickPhase.RESOLVE_TRANSFERS);
+    game.tick(TickPhase.POST_RESOLVE);
+    game.tick(TickPhase.COMMIT_TRANSFERS);
+    game.postTick();
   }
 
-  Keyboard.on("i", () => {
-    backend.debugAddItem();
-    tick();
-    counter += 1;
-  });
   Keyboard.on("t", () => {
     tick();
-    counter += 1;
-  });
-
-  Keyboard.on("e", () => {
-    backend.debugPrintDbSize();
-  });
-
-  Keyboard.on("m", () => {
-    backend.exportDb();
-  });
-
-  Keyboard.on("p", () => {
-    backend.printProfilingData();
   });
 });
 
@@ -237,11 +188,46 @@ export default defineComponent({
 <template>
   <div id="game" :style="{left: $store.state.canvasLeft + 'px'}">
   </div>
+  <div class="toolbar">
+    <button
+        v-for="tool in tools"
+        :key="tool.label"
+        :class="{active: tool === toolbarState.activeTool}"
+        @click="toolbarState.activeTool = tool"
+    >{{ tool.label }}</button>
+  </div>
 </template>
 
 <style scoped>
 #game {
   position: absolute;
   overflow: hidden;
+}
+
+.toolbar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.toolbar button {
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.toolbar button.active {
+  background: rgba(255, 255, 255, 0.35);
+  border-color: white;
 }
 </style>

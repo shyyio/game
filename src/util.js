@@ -1,4 +1,4 @@
-import {ChunkSize, Direction} from "@/backend/constants.js";
+import {CHUNK_SIZE, Direction} from "@/common/constants.js";
 
 /**
  * @param arr {Array}
@@ -14,7 +14,7 @@ export function fixNegativeZero(n) {
 }
 
 export function getChunk(x, y) {
-    return `${Math.floor(x / ChunkSize)},${Math.floor(y / ChunkSize)}`;
+    return `${Math.floor(x / CHUNK_SIZE)},${Math.floor(y / CHUNK_SIZE)}`;
 }
 
 /**
