@@ -24,6 +24,9 @@ export class Database {
      * @returns {object}
      */
     formatArgs(args) {
+        if (args === undefined) {
+            return {};
+        }
         const result = {};
         Object.entries(args).forEach(([key, value]) => {
             result[`@${key}`] = typeof value === "bigint" ? value.toString() : value;

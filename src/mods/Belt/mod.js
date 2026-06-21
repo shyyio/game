@@ -773,6 +773,8 @@ export class BeltMod extends Mod {
                 WHERE id = CAST(@id AS INT);
             `,
 
+            GetBeltAtTile: `SELECT id FROM Belt WHERE x = @x AND y = @y LIMIT 1;`,
+
             GetTail: `
                 SELECT x, y, type, direction, parent, chunk
                 FROM Belt
@@ -1087,7 +1089,7 @@ export class BeltMod extends Mod {
         try {
             id = this.game.queryScalar("InsertBelt", options);
         } catch (e) {
-            if (!e.message.includes("UNIQUE")) {
+            if (!String(e).includes("UNIQUE")) {
                 debugger; /* FIXME */
             }
             this.game.rollback();

@@ -185,13 +185,13 @@ export class BeltSprite extends Sprite {
         this.id = id;
         this.tileX = x;
         this.tileY = y;
-        this.x = x * TILE_SIZE + 32;
-        this.y = y * TILE_SIZE + 32;
         this.anchor = 0.5;
         this.angle = Direction.angle(direction);
         this.direction = direction;
         this.bend = bend;
         this.type = type;
+
+        this.position.set(x * TILE_SIZE + 32, y * TILE_SIZE + 32);
     }
 
     /**
@@ -215,8 +215,6 @@ export class BeltSprite extends Sprite {
         if (value === true) {
             this.alpha = 0.4;
             this.tint = 0xC8F902;
-        } else {
-            debugger;
         }
     }
 

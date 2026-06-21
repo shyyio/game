@@ -69,12 +69,13 @@ export class ModSet {
      * Aggregates mini menu entries from all mods for the tile at (x, y).
      * @param {number} x - tile x
      * @param {number} y - tile y
-     * @returns {{label: string, rank: number, handler: function(x: number, y: number): void}[]}
+     * @param {Session} session
+     * @returns {MiniMenuEntry[]}
      */
-    getMiniMenuContextEntries(x, y) {
+    miniMenuContextEntries(x, y, session) {
         const entries = [];
         this.mods.forEach(mod => {
-            const modEntries = mod.getMiniMenuContextEntries(x, y);
+            const modEntries = mod.miniMenuContextEntries(x, y, session);
             if (modEntries == null) {
                 return;
             }

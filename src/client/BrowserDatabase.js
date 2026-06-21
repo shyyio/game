@@ -1,6 +1,6 @@
 import initSqlJs from "sql.js";
 import {Database} from "@/common/database.js";
-import wasmFile from "@/assets/sql-wasm.wasm";
+import wasmFile from "@/assets/sql-wasm.wasm?url";
 import {get} from "idb-keyval";
 import {gzipCompress} from "@/util.js";
 

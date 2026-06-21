@@ -49,7 +49,7 @@ export default defineComponent({
     </BottomDrawer>
 
     <div class="game-wrapper">
-      <Game :left="$store.state.canvasLeft"/>
+      <Game/>
     </div>
 
   </v-layout>

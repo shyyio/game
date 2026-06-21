@@ -12,15 +12,10 @@ import '@mdi/font/css/materialdesignicons.css'
 
 // Vuex
 import store from "./store.js";
-import testBelts from "@/tests/testBelts.js";
-import testSplitter from "@/tests/testSplitter.js";
 
 BigInt.prototype.toJSON = function () {
   return this.toString() + "n";
 };
-
-testBelts();
-testSplitter();
 
 const vuetify = createVuetify({
   components,

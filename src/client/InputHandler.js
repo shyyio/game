@@ -43,17 +43,17 @@ export class InputHandler {
     }
 
     /**
-     * @param {function(tileX: number, tileY: number)} callback
+     * @param {function(tileX: number, tileY: number, screenX: number, screenY: number)} callback
      */
     onMiniMenuEntryClick(callback) {
         this._onMiniMenuEntryClick = callback;
     }
 
-    _openMiniMenu(tileX, tileY) {
+    _openMiniMenu(tileX, tileY, screenX, screenY) {
         if (this._onMiniMenuEntryClick == null) {
             debugger;
             return;
         }
-        this._onMiniMenuEntryClick(tileX, tileY);
+        this._onMiniMenuEntryClick(tileX, tileY, screenX, screenY);
     }
 }

@@ -3,6 +3,8 @@ import {BeltMod} from "@/mods/Belt/mod.js";
 import {BeltDrawLayer} from "@/mods/Belt/BeltLayer.js";
 import {BeltOverlayDrawLayer} from "@/mods/Belt/OverlayLayer.js";
 import {BeltTool} from "@/mods/Belt/BeltTool.js";
+import {DeleteBeltMessage} from "@/mods/Belt/messages.js";
+import {MiniMenuEntry} from "@/common/core.js";
 
 export class BeltClientMod extends BeltMod {
 
@@ -11,7 +13,24 @@ export class BeltClientMod extends BeltMod {
     }
 
     getTools(session, playerSettings) {
+        // TODO: Return tools that are available for the player, based on playerSettings
         return [new BeltTool(session)];
+    }
+
+    miniMenuContextEntries(x, y, session) {
+        const id = this.game.queryScalar("GetBeltAtTile", {x, y});
+
+        if (id == null) {
+            return [];
+        }
+
+        return [
+            new MiniMenuEntry(
+                "Delete belt",
+                10,
+                () => session.sendMessage(new DeleteBeltMessage(id)),
+            ),
+        ];
     }
 
 }

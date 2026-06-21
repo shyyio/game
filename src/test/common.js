@@ -36,12 +36,12 @@ export class TestBackend {
         this._session = session;
     }
 
-    createGameObject(type, options) {
+    createBelt(beltType, options) {
         this._game.dispatchMessage(new CreateBeltMessage({
             x: options.x,
             y: options.y,
             direction: options.direction,
-            type,
+            beltType,
             rampParent: options.rampParent,
             disconnectRampChild: options.disconnectRampChild,
         }), this._session);

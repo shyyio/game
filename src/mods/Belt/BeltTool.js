@@ -1,6 +1,7 @@
 
 import {Tool} from "@/client/Tool.js";
 import {CreateBeltMessage} from "@/mods/Belt/messages.js";
+import {BeltType} from "@/mods/Belt/mod.js";
 import {Direction} from "@/common/constants.js";
 
 export class BeltTool extends Tool {
@@ -15,11 +16,11 @@ export class BeltTool extends Tool {
     }
 
     onTap(x, y) {
-        this.session.sendMessage(new CreateBeltMessage({x, y, direction: this._lastDirection}));
+        this.session.sendMessage(new CreateBeltMessage({x, y, direction: this._lastDirection, beltType: BeltType.NORMAL}));
     }
 
     onDragTile(x, y, direction) {
         this._lastDirection = direction;
-        this.session.sendMessage(new CreateBeltMessage({x, y, direction}));
+        this.session.sendMessage(new CreateBeltMessage({x, y, direction, beltType: BeltType.NORMAL}));
     }
 }

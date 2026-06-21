@@ -198,6 +198,14 @@ class Mouse {
         }
 
         if (!this._hasDragged) {
+            const dx = event.data.global.x - this._clickStartScreenX;
+            const dy = event.data.global.y - this._clickStartScreenY;
+            if (dx * dx + dy * dy > 64) {
+                this._hasDragged = true;
+            }
+        }
+
+        if (!this._hasDragged) {
             this._tapCallbacks.forEach(cb => cb(this._clickStartTileX, this._clickStartTileY));
         }
 
@@ -221,6 +229,15 @@ class Mouse {
 
         if (this._clickStartX == null) {
             return;
+        }
+
+        if (this._longPressTimer != null) {
+            const screenDx = this._app.renderer.events.pointer.global.x - this._clickStartScreenX;
+            const screenDy = this._app.renderer.events.pointer.global.y - this._clickStartScreenY;
+            if (screenDx * screenDx + screenDy * screenDy > 64) {
+                window.clearTimeout(this._longPressTimer);
+                this._longPressTimer = null;
+            }
         }
 
         const startXTile = Math.floor(this._clickStartX / TILE_SIZE);

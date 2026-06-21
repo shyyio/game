@@ -2,6 +2,7 @@ import {TextureSet} from "@/client/TextureSet.js";
 import {DrawLayerSet} from "@/client/DrawLayerSet.js";
 import {PlayerSettings} from "@/client/PlayerSettings.js";
 import {GameSettings} from "@/client/GameSettings.js";
+import {MiniMenuLayer} from "@/client/MiniMenuLayer.js";
 import {CoreDrawLayers} from "@/client/coreDrawLayers.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {EVENT_PLAYER_SETTINGS_SYNC, EVENT_PLAYER_SETTINGS_UPDATE} from "@/common/PlayerSettingsEvents.js";
@@ -27,6 +28,7 @@ export class Client {
         this.drawLayerSet = new DrawLayerSet(modSet);
         this.playerSettings = new PlayerSettings();
         this.gameSettings = new GameSettings();
+        this.miniMenuLayer = new MiniMenuLayer();
         CoreDrawLayers.forEach(layer => {
             this.drawLayerSet.add(layer);
         });
@@ -44,6 +46,8 @@ export class Client {
             layer.textureSet = this.textureSet;
             this.viewport.addChild(layer);
         });
+
+        this.app.stage.addChild(this.miniMenuLayer);
 
         this.viewport.on('moved', () => this._updateViewportChunks());
         this.viewport.on('zoomed', () => this._updateViewportChunks());

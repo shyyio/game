@@ -120,6 +120,20 @@ export const OpCode = {
     STMT: 3,
 }
 
+export class MiniMenuEntry {
+
+    /**
+     * @param {string} label
+     * @param {number} rank
+     * @param {function(): void} handler
+     */
+    constructor(label, rank, handler) {
+        this.label = label;
+        this.rank = rank;
+        this.handler = handler;
+    }
+}
+
 export class ObjectDefinition {
 
     /**
@@ -193,9 +207,10 @@ export class Mod {
      * Each entry carries its own handler — the mod decides what happens when clicked.
      * @param {number} x - tile x
      * @param {number} y - tile y
-     * @returns {{label: string, rank: number, handler: function(x: number, y: number): void}[]}
+     * @param {Session} session
+     * @returns {MiniMenuEntry[]}
      */
-    getMiniMenuContextEntries(x, y) {}
+    miniMenuContextEntries(x, y, session) {}
 
     /**
      * @abstract

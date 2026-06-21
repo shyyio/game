@@ -1,7 +1,8 @@
 <script setup>
-import {ref, reactive, onMounted} from "vue";
+import {ref, reactive, markRaw, shallowRef, watch, onMounted} from "vue";
 import {Application, Graphics, Container, FillGradient, isMobile} from "pixi.js";
 import {Viewport} from "pixi-viewport";
+import {freezeViewport, unfreezeViewport} from "@/viewport.js";
 import Keyboard from "@/keyboard.js";
 import Mouse from "@/client/Mouse.js";
 import {InputHandler} from "@/client/InputHandler.js";
@@ -19,6 +20,18 @@ import {TickPhase} from "@/common/core.js";
 
 const tools = ref([]);
 const toolbarState = reactive({activeTool: null});
+const viewportRef = shallowRef(null);
+
+watch(() => toolbarState.activeTool, (tool) => {
+  if (viewportRef.value == null) {
+    return;
+  }
+  if (tool != null) {
+    freezeViewport(viewportRef.value);
+  } else {
+    unfreezeViewport(viewportRef.value);
+  }
+});
 
 const gameWidth = () => window.innerWidth - Number(document.getElementById("game").style.left.replace("px", ""));
 const gameHeight = () => window.innerHeight + 64;
@@ -121,14 +134,15 @@ onMounted(async () => {
     viewport.pinch().decelerate();
   }
 
+  viewportRef.value = viewport;
   Mouse.init(app, viewport);
 
   document.getElementById("game").appendChild(app.canvas);
 
   const modSet = new ModSet();
   modSet.loadMod(new CoreTexturesMod());
-  modSet.loadMod(new BeltMod());
-  modSet.loadMod(new SplitterMod());
+  modSet.loadMod(new BeltClientMod());
+  modSet.loadMod(new SplitterClientMod());
 
   const schema = new DatabaseSchema(modSet);
   const db = new BrowserDatabase(schema);
@@ -144,7 +158,7 @@ onMounted(async () => {
   await client.init();
 
   const refreshTools = () => {
-    tools.value = modSet.getTools(session, client.playerSettings);
+    tools.value = modSet.getTools(session, client.playerSettings).map(markRaw);
     if (!tools.value.includes(toolbarState.activeTool)) {
       toolbarState.activeTool = tools.value[0] ?? null;
     }
@@ -154,10 +168,9 @@ onMounted(async () => {
   refreshTools();
 
   const inputHandler = new InputHandler(modSet, toolbarState);
-  inputHandler.onMiniMenuEntryClick((tileX, tileY) => {
-    // TODO: render mini menu UI
-    const entries = modSet.getMiniMenuContextEntries(tileX, tileY);
-    console.log("Mini menu", tileX, tileY, entries);
+  inputHandler.onMiniMenuEntryClick((tileX, tileY, screenX, screenY) => {
+    const entries = modSet.miniMenuContextEntries(tileX, tileY, session);
+    client.miniMenuLayer.open(entries, screenX, screenY);
   });
   inputHandler.init();
 
@@ -193,7 +206,7 @@ export default defineComponent({
         v-for="tool in tools"
         :key="tool.label"
         :class="{active: tool === toolbarState.activeTool}"
-        @click="toolbarState.activeTool = tool"
+        @click="toolbarState.activeTool = (tool === toolbarState.activeTool ? null : tool)"
     >{{ tool.label }}</button>
   </div>
 </template>
@@ -227,7 +240,9 @@ export default defineComponent({
 }
 
 .toolbar button.active {
-  background: rgba(255, 255, 255, 0.35);
-  border-color: white;
+  background: rgba(255, 255, 255, 0.25);
+  border-color: #5bf;
+  box-shadow: inset 0 -3px 0 #5bf;
+  color: #fff;
 }
 </style>
