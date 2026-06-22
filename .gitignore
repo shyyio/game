@@ -115,5 +115,9 @@ Thumbs.db
 # misc
 recipes/
 _research
-TODO.md
 debubg_test.js
+debug_test.js
+
+# Markdown files (keep README.md)
+*.md
+!README.md
