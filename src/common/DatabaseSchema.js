@@ -1,5 +1,5 @@
 import {TickOp, TickPhase} from "@/common/core.js";
-import {CHUNK_SIZE, MAX_UNDERGROUND_LENGTH, GameSettingsKey} from "@/common/constants.js";
+import {CHUNK_SIZE, GameSettingsKey} from "@/common/constants.js";
 
 // TODO: Rename foreign key columns to use _id suffix (e.g., session -> session_id) at end of refactor.
 
@@ -32,7 +32,7 @@ const CoreStatements = {
     GetSessionsByChunk: `SELECT session FROM SessionViewport WHERE chunk = @chunk;`,
 }
 
-export const ChunkGenerated = `(
+export const CHUNK_KEY_SQL = `(
     CASE WHEN x < 0 AND x % ${CHUNK_SIZE} != 0 THEN x/${CHUNK_SIZE} -1 ELSE x/${CHUNK_SIZE} END
     || ',' ||
     CASE WHEN y < 0 AND y % ${CHUNK_SIZE} != 0 THEN y/${CHUNK_SIZE} -1 ELSE y/${CHUNK_SIZE} END
@@ -60,7 +60,7 @@ const CoreSchema = `
 
         x INT NOT NULL,
         y INT NOT NULL,
-        chunk TEXT GENERATED ALWAYS AS (${ChunkGenerated}) VIRTUAL,
+        chunk TEXT GENERATED ALWAYS AS (${CHUNK_KEY_SQL}) VIRTUAL,
 
         id INT NOT NULL,
         a INT,
@@ -90,8 +90,7 @@ const CoreTempSchema = `
     );
 
     INSERT INTO GameSettings (key, value) VALUES
-        (${GameSettingsKey.CHUNK_SIZE}, ${CHUNK_SIZE}),
-        (${GameSettingsKey.MAX_UNDERGROUND_LENGTH}, ${MAX_UNDERGROUND_LENGTH});
+        (${GameSettingsKey.CHUNK_SIZE}, ${CHUNK_SIZE});
 
     CREATE TEMPORARY TABLE PortTransferIntent (
         source INT,

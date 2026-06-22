@@ -8,7 +8,7 @@ import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {EVENT_PLAYER_SETTINGS_SYNC, EVENT_PLAYER_SETTINGS_UPDATE} from "@/common/PlayerSettingsEvents.js";
 import {EVENT_GAME_SETTINGS_SYNC, EVENT_GAME_SETTINGS_UPDATE} from "@/common/GameSettingsEvents.js";
 import {CHUNK_SIZE, TILE_SIZE, snapToChunk} from "@/constants.js";
-import {getChunk} from "@/util.js";
+import {chunkKey} from "@/util.js";
 
 export class Client {
 
@@ -63,7 +63,7 @@ export class Client {
         const chunks = [];
         for (let x = snapToChunk(x1) - CHUNK_SIZE; x <= snapToChunk(x2); x += CHUNK_SIZE) {
             for (let y = snapToChunk(y1) - CHUNK_SIZE; y <= snapToChunk(y2); y += CHUNK_SIZE) {
-                chunks.push(getChunk(x, y));
+                chunks.push(chunkKey(x, y));
             }
         }
         return chunks;

@@ -1,7 +1,4 @@
-import {Sprite, Texture} from "pixi.js";
-import {Direction} from "@/common/constants.js";
-import {TILE_SIZE} from "@/constants.js";
-import {ObjectDrawLayer} from "@/client/ObjectDrawLayer.js";
+import {Sprite, Texture, Direction, TILE_SIZE, ObjectDrawLayer} from "@/sdk/client.js";
 
 export class SplitterDrawLayer extends ObjectDrawLayer {
 

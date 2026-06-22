@@ -1,17 +1,29 @@
 
-import {Mod, ObjectDefinition, PortDefinition, TickOp, TickPhase} from "@/common/core.js";
-import {LiveEvent} from "@/common/LiveEvent.js";
+import {
+    Mod,
+    ObjectDefinition,
+    PortDefinition,
+    TickOp,
+    TickPhase,
+    LiveEvent,
+    Direction,
+    CHUNK_KEY_SQL,
+    chunkKey,
+    upstreamPorts,
+    downstreamPorts,
+} from "@/sdk/common.js";
 import {CreateBeltMessage, DeleteBeltMessage} from "@/mods/Belt/messages.js";
-
-import {Direction, MAX_UNDERGROUND_LENGTH} from "@/common/constants.js";
-import {ChunkGenerated} from "@/common/DatabaseSchema.js";
-import {getChunk} from "@/util.js";
-import {getOutputPorts, getInputPorts} from "@/common/portUtils.js";
 
 // ---- Object type IDs ----
 export const GAME_OBJECT_TYPE_BELT = 1;
 export const GAME_OBJECT_TYPE_BELT_RAMP_UP = 2;
 export const GAME_OBJECT_TYPE_BELT_RAMP_DOWN = 3;
+
+// Maximum number of tiles an underground belt may span.
+export const MAX_UNDERGROUND_LENGTH = 6;
+
+// Game-setting key this mod owns (core owns key 0; see GameSettingsKey).
+const GAME_SETTING_MAX_UNDERGROUND_LENGTH = 1;
 
 // ---- Belt types ----
 const BELT_NORMAL = 0;
@@ -252,7 +264,7 @@ export class BeltMod extends Mod {
                 type INT NOT NULL
                     CHECK (type >= 0),
 
-                chunk TEXT GENERATED ALWAYS AS (${ChunkGenerated}) VIRTUAL,
+                chunk TEXT GENERATED ALWAYS AS (${CHUNK_KEY_SQL}) VIRTUAL,
 
                 direction INT NOT NULL
             );
@@ -508,6 +520,9 @@ export class BeltMod extends Mod {
                 item_id INT NOT NULL,
                 item_type INT NOT NULL
             );
+
+            INSERT INTO GameSettings (key, value) VALUES
+                (${GAME_SETTING_MAX_UNDERGROUND_LENGTH}, ${MAX_UNDERGROUND_LENGTH});
         `;
     }
 
@@ -1120,7 +1135,7 @@ export class BeltMod extends Mod {
      * @param {boolean} tnx
      */
     _createBelt(options, tnx=true) {
-        options.chunk = getChunk(options.x, options.y);
+        options.chunk = chunkKey(options.x, options.y);
         if (tnx) {
             this.game.begin();
         }
@@ -1538,11 +1553,11 @@ export class BeltMod extends Mod {
         const head = this.game.querySingle("GetBelt", {id});
         const tail = this.game.querySingle("GetTail", {id});
 
-        const outputPorts = getOutputPorts(this.game, "Belt", head);
+        const outputPorts = upstreamPorts(this.game, "Belt", head);
 
         // When more than one adjacent output feeds this head, deterministically pick
         // the oldest (lowest id) port so path resolution is stable regardless of the
-        // order getOutputPorts returns them in. Math.min can't be used here: port ids
+        // order upstreamPorts returns them in. Math.min can't be used here: port ids
         // are BigInt.
         const candidatePorts = Object.values(outputPorts);
         let inputPort;
@@ -1552,7 +1567,7 @@ export class BeltMod extends Mod {
             inputPort = this.game.queryScalar("InsertPort");
         }
 
-        const inputPorts = getInputPorts(this.game, "Belt", tail);
+        const inputPorts = downstreamPorts(this.game, "Belt", tail);
         let outputPort = Object.values(inputPorts)[0];
         if (outputPort) {
             const childPath = this.game.queryScalar("GetBeltPathPortOwner", {id: outputPort});

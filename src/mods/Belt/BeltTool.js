@@ -1,8 +1,7 @@
 
-import {Tool} from "@/client/Tool.js";
+import {Tool, Direction} from "@/sdk/client.js";
 import {CreateBeltMessage, DeleteBeltMessage} from "@/mods/Belt/messages.js";
 import {BeltType} from "@/mods/Belt/mod.js";
-import {Direction} from "@/common/constants.js";
 
 export class BeltTool extends Tool {
 

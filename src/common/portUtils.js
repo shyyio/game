@@ -4,15 +4,16 @@ import {rotate} from "@/util.js";
 const DIRECTION_NAMES = ["Up", "Right", "Down", "Left"];
 
 /**
- * For each of objectType's inputPorts, find the matching output port
- * of an adjacent object at vec, or create a new Port if createMissing is set.
+ * Resolves the upstream connections feeding an object placed at vec: for each of
+ * objectType's input ports, finds the adjacent object's matching output port,
+ * creating a new Port when none exists and createMissing is set.
  * @param {Game} game
  * @param {string} objectType
  * @param {Vec} vec
  * @param {boolean} [createMissing]
- * @returns {Object.<string, BigInt>}
+ * @returns {Object.<string, BigInt>} map of this object's input port name -> shared Port id
  */
-export function getOutputPorts(game, objectType, vec, createMissing=false) {
+export function upstreamPorts(game, objectType, vec, createMissing=false) {
     const ports = {};
 
     game.modRegistry.definitions[objectType].inputPorts.forEach(def => {
@@ -34,15 +35,16 @@ export function getOutputPorts(game, objectType, vec, createMissing=false) {
 }
 
 /**
- * For each of objectType's outputPorts, find the matching input port
- * of an adjacent object at vec, or create a new Port if createMissing is set.
+ * Resolves the downstream connections an object placed at vec feeds into: for
+ * each of objectType's output ports, finds the adjacent object's matching input
+ * port, creating a new Port when none exists and createMissing is set.
  * @param {Game} game
  * @param {string} objectType
  * @param {Vec} vec
  * @param {boolean} [createMissing]
- * @returns {Object.<string, BigInt>}
+ * @returns {Object.<string, BigInt>} map of this object's output port name -> shared Port id
  */
-export function getInputPorts(game, objectType, vec, createMissing=false) {
+export function downstreamPorts(game, objectType, vec, createMissing=false) {
     const ports = {};
 
     game.modRegistry.definitions[objectType].outputPorts.forEach(def => {
@@ -69,7 +71,7 @@ export function getInputPorts(game, objectType, vec, createMissing=false) {
  * @param {string} objectType
  * @returns {Object.<string, BigInt>}
  */
-export function getInternalPorts(game, objectType) {
+export function createInternalPorts(game, objectType) {
     const ports = {};
 
     game.modRegistry.definitions[objectType].internalPorts.forEach(def => {

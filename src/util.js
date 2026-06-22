@@ -13,15 +13,22 @@ export function fixNegativeZero(n) {
     return n === -0 ? 0 : n;
 }
 
-export function getChunk(x, y) {
+/**
+ * Returns the "chunkX,chunkY" key string for the chunk containing tile (x, y).
+ * @param x {number} tile x
+ * @param y {number} tile y
+ * @returns {string}
+ */
+export function chunkKey(x, y) {
     return `${Math.floor(x / CHUNK_SIZE)},${Math.floor(y / CHUNK_SIZE)}`;
 }
 
 /**
+ * Inverse of {@link chunkKey}: parses a "chunkX,chunkY" key back into coords.
  * @param chunk {string}
  * @returns {{x: Number, y: Number}}
  */
-export function getChunkCoords(chunk) {
+export function chunkCoords(chunk) {
     const [x, y] = chunk.split(",", 2);
 
     return {x: Number(x), y: Number(y)};

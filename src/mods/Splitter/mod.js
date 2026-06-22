@@ -1,12 +1,13 @@
-import {Direction} from "@/common/constants.js";
 import {
+    Direction,
     Mod,
     ObjectDefinition,
     PortDefinition,
-    PortTransferOp, TickOp,
+    PortTransferOp,
+    TickOp,
     TickPhase,
-} from "@/common/core.js";
-import {ChunkGenerated} from "@/common/DatabaseSchema.js";
+    CHUNK_KEY_SQL,
+} from "@/sdk/common.js";
 
 export const GAME_OBJECT_TYPE_SPLITTER = 4;
 
@@ -28,7 +29,7 @@ export class SplitterMod extends Mod {
                 x          INT NOT NULL,
                 y          INT NOT NULL,
                 direction  INT NOT NULL,
-                chunk      TEXT GENERATED ALWAYS AS (${ChunkGenerated}) VIRTUAL,
+                chunk      TEXT GENERATED ALWAYS AS (${CHUNK_KEY_SQL}) VIRTUAL,
 
                 in_port_a  INT REFERENCES Port,
                 in_port_b  INT REFERENCES Port,

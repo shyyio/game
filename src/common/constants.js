@@ -74,12 +74,11 @@ export const Direction = {
 };
 
 export const CHUNK_SIZE = 64;
-export const MAX_UNDERGROUND_LENGTH = 6;
 
 /**
+ * Core game-setting keys. Mods own the keys for settings they introduce.
  * @enum
  */
 export const GameSettingsKey = {
     CHUNK_SIZE: 0,
-    MAX_UNDERGROUND_LENGTH: 1,
 };

@@ -1,7 +1,4 @@
-import {DrawLayer} from "@/client/DrawLayer.js";
-import {Graphics} from "pixi.js";
-import {drawLine, drawRect} from "@/pixiUtils.js";
-import {TILE_SIZE} from "@/constants.js";
+import {DrawLayer, Graphics, drawLine, drawRect, TILE_SIZE} from "@/sdk/client.js";
 
 export class BeltOverlayDrawLayer extends DrawLayer {
 

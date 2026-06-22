@@ -1,7 +1,4 @@
-import {Graphics, Sprite, Texture} from "pixi.js";
-import {TILE_SIZE} from "@/constants.js";
-import {Direction} from "@/common/constants.js";
-import {DrawLayer} from "@/client/DrawLayer.js";
+import {Graphics, Sprite, Texture, TILE_SIZE, Direction, DrawLayer} from "@/sdk/client.js";
 import {BeltBend, BeltType, BeltInsertEvent, BeltUpdateEvent, BeltDeleteEvent} from "@/mods/Belt/mod.js";
 
 export class Belt {

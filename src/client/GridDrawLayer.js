@@ -1,6 +1,6 @@
 import {DrawLayer} from "@/client/DrawLayer.js";
 import {Container, Graphics} from "pixi.js";
-import {getChunkCoords} from "@/util.js";
+import {chunkCoords} from "@/util.js";
 import {CHUNK_SIZE, TILE_SIZE} from "@/constants.js";
 import {EVENT_TYPE_CORE, EVENT_SUBTYPE_CHUNK_SUBSCRIBE, EVENT_SUBTYPE_CHUNK_UNSUBSCRIBE} from "@/common/core.js";
 
@@ -24,7 +24,7 @@ export class GridDrawLayer extends DrawLayer {
             return;
         }
 
-        const {x, y} = getChunkCoords(chunk);
+        const {x, y} = chunkCoords(chunk);
         const sprite = GridDrawLayer._createChunkGrid(x * CHUNK_SIZE, y * CHUNK_SIZE);
         sprite.children[1].visible = !this._lowRes;
         this._chunks[chunk] = sprite;

@@ -1,4 +1,4 @@
-import {getChunk} from "@/util.js";
+import {chunkKey} from "@/util.js";
 
 export class LiveEvent {
 
@@ -11,6 +11,6 @@ export class LiveEvent {
         this.type = type;
         this.x = x;
         this.y = y;
-        this.chunk = getChunk(x, y);
+        this.chunk = chunkKey(x, y);
     }
 }

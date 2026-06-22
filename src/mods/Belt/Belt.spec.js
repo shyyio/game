@@ -2,8 +2,8 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {setup, GameObject} from "@/test/common.js";
-import {BeltType} from "@/mods/Belt/mod.js";
-import {Direction, MAX_UNDERGROUND_LENGTH} from "@/common/constants.js";
+import {BeltType, MAX_UNDERGROUND_LENGTH} from "@/mods/Belt/mod.js";
+import {Direction} from "@/common/constants.js";
 
 test("testBeltParent", async () => {
     const game = await setup();

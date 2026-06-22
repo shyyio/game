@@ -1,5 +1,4 @@
-import {Mod} from "@/common/core.js";
-import {TextureDefinition} from "@/common/TextureDefinition.js";
+import {Mod, TextureDefinition} from "@/sdk/common.js";
 import imageUrl from "./sprites.png";
 import jsonUrl from "./sprites.json";
 
