@@ -1,4 +1,6 @@
 
+import {DEV} from "@/env.js";
+
 /**
  * @abstract
  */
@@ -58,18 +60,19 @@ export class LocalSession extends Session {
     }
 
     sendMessage(message) {
-        // Round-trip through the protobuf wire format even locally, so the
-        // encoding used by RemoteSession is always exercised and correct.
-        const decoded = this.api.wire.decode(this.api.wire.encode(message));
-        this.api.sendMessage(decoded, this);
+        // In dev, round-trip through the protobuf wire format so the encoding
+        // used by RemoteSession is always exercised; skipped in production to
+        // avoid the overhead for single-player.
+        const outgoing = DEV ? this.api.wire.decode(this.api.wire.encode(message)) : message;
+        this.api.sendMessage(outgoing, this);
     }
 
     publishEvent(event) {
         if (this.client == null) {
             return;
         }
-        const decoded = this.api.wire.decode(this.api.wire.encode(event));
-        this.client.publishEvent(decoded);
+        const outgoing = DEV ? this.api.wire.decode(this.api.wire.encode(event)) : event;
+        this.client.publishEvent(outgoing);
     }
 }
 
