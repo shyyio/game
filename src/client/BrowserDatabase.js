@@ -1,23 +1,7 @@
 import initSqlJs from "sql.js";
-import {Database} from "@/common/database.js";
+import {Database, formatRow} from "@/common/database.js";
 import wasmFile from "@/assets/sql-wasm.wasm?url";
-import {get} from "idb-keyval";
 import {gzipCompress} from "@/common/util.js";
-
-const BIGINT_COLS = new Set(["id", "parent_id", "belt_id", "path_id", "child", "parent_path", "head", "tail_id"]);
-
-
-function formatRow(row) {
-
-    Object.entries(row).forEach(([key, value]) => {
-        if (!BIGINT_COLS.has(key) && typeof value === "bigint") {
-            row[key] = Number(value);
-        }
-    });
-
-    return row;
-}
-
 
 export class BrowserDatabase extends Database {
 
@@ -39,15 +23,9 @@ export class BrowserDatabase extends Database {
             locateFile: file => wasmFile
         });
 
-        const dbData = await get("db");
-        if (dbData === undefined) {
-            this.db = new SQL.Database({useBigInt: true});
-            this.schema.pragma.forEach(stmt => this.db.run(stmt));
-            this.schema.initSchema.forEach(stmt => this.db.run(stmt));
-        } else {
-            this.db = new SQL.Database({useBigInt: true});
-            this.schema.pragma.forEach(stmt => this.db.run(stmt));
-        }
+        this.db = new SQL.Database({useBigInt: true});
+        this.schema.pragma.forEach(stmt => this.db.run(stmt));
+        this.schema.initSchema.forEach(stmt => this.db.run(stmt));
 
         this._postInit();
     }
@@ -96,6 +74,10 @@ export class BrowserDatabase extends Database {
 
     query(name, args) {
         const stmt = this.statements[name];
+
+        if (stmt === undefined) {
+            throw new Error(`Unknown prepared statement: ${name}`);
+        }
 
         stmt.bind(this.formatArgs(args));
 

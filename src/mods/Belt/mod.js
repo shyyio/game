@@ -1486,7 +1486,9 @@ export class BeltMod extends Mod {
      */
     _publishBeltInsert(id, options) {
         const parent = this.game.querySingle("GetBeltParent", {id});
-        this.game.publishEventNow(new BeltInsertEvent(options.x, options.y, id, options.direction, options.type, parent?.x, parent?.y));
+        const parentX = parent === null ? null : parent.x;
+        const parentY = parent === null ? null : parent.y;
+        this.game.publishEventNow(new BeltInsertEvent(options.x, options.y, id, options.direction, options.type, parentX, parentY));
     }
 
     _stashItems(id) {

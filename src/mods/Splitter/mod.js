@@ -10,8 +10,8 @@ import {
 } from "@/sdk/common.js";
 
 class SplitterPortTransferOp extends PortTransferOp {
-    constructor(name, inputPort, outputPort, priority="0", onTransfer) {
-        super(name, "Splitter", inputPort, outputPort, priority, onTransfer);
+    constructor(name, inputPort, outputPort, priority="0") {
+        super(name, "Splitter", inputPort, outputPort, priority);
     }
 }
 

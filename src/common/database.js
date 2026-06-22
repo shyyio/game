@@ -1,4 +1,26 @@
 /**
+ * Result columns whose values must stay BigInt. Every other BigInt-valued column
+ * is narrowed to Number by {@link formatRow}. Shared by both backends.
+ * @type {Set<string>}
+ */
+export const BIGINT_COLS = new Set(["id", "parent_id", "belt_id", "path_id", "head", "tail_id"]);
+
+/**
+ * Narrows BigInt values to Number for all columns not listed in {@link BIGINT_COLS},
+ * mutating and returning the row.
+ * @param {object} row
+ * @returns {object}
+ */
+export function formatRow(row) {
+    Object.entries(row).forEach(([key, value]) => {
+        if (!BIGINT_COLS.has(key) && typeof value === "bigint") {
+            row[key] = Number(value);
+        }
+    });
+    return row;
+}
+
+/**
  * @abstract
  */
 export class Database {

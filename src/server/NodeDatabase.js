@@ -1,17 +1,6 @@
 
 import BetterSqlite3 from "better-sqlite3";
-import {Database} from "@/common/database.js";
-
-const BIGINT_COLS = new Set(["id", "parent_id", "belt_id", "path_id", "child", "parent_path", "head", "tail_id"]);
-
-function formatRow(row) {
-    Object.entries(row).forEach(([key, value]) => {
-        if (!BIGINT_COLS.has(key) && typeof value === "bigint") {
-            row[key] = Number(value);
-        }
-    });
-    return row;
-}
+import {Database, formatRow} from "@/common/database.js";
 
 export class NodeDatabase extends Database {
 

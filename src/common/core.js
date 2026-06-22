@@ -56,16 +56,13 @@ export class PortTransferOp extends TickOp {
      * @param inputPort {string}
      * @param outputPort {string}
      * @param [priority] {string} Transfer priority (higher value = higher priority)
-     * @param [onTransfer] {string|null}
      */
-    constructor(name, gameObject, inputPort, outputPort, priority="0", onTransfer) {
+    constructor(name, gameObject, inputPort, outputPort, priority="0") {
         super(name, null);
-        this.gameObject = gameObject
+        this.gameObject = gameObject;
         this.inputPort = inputPort;
         this.outputPort = outputPort;
         this.priority = priority;
-        // TODO
-        this.onTransfer = onTransfer;
     }
 
     get sql() {
