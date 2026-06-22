@@ -3,7 +3,7 @@ import protobuf from "protobufjs";
 
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {BufferedEvent} from "@/common/BufferedEvent.js";
-import {PlayerSettingsSyncEvent, PlayerSettingUpdateEvent} from "@/common/PlayerSettingsEvents.js";
+import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 
 const {Type, Field, MapField} = protobuf;
@@ -21,7 +21,7 @@ const CORE_WIRE_CLASSES = [
     SetViewportMessage,
     BufferedEvent,
     PlayerSettingsSyncEvent,
-    PlayerSettingUpdateEvent,
+    PlayerSettingsUpdateEvent,
     GameSettingsSyncEvent,
     GameSettingsUpdateEvent,
 ];

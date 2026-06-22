@@ -6,7 +6,7 @@ import {WireRegistry} from "@/common/wire.js";
 
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {BufferedEvent} from "@/common/BufferedEvent.js";
-import {PlayerSettingsSyncEvent, PlayerSettingUpdateEvent} from "@/common/PlayerSettingsEvents.js";
+import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 
 // Core-only registry: common/ must not depend on mods/. Mod wire classes are
@@ -56,7 +56,7 @@ test("round-trips a sparse core BufferedEvent (chunk subscribe shape)", () => {
 test("round-trips player/game settings events", () => {
     const reg = registry();
     roundTrip(reg, new PlayerSettingsSyncEvent({1: 10, 2: 20}), PlayerSettingsSyncEvent);
-    roundTrip(reg, new PlayerSettingUpdateEvent(5, 50), PlayerSettingUpdateEvent);
+    roundTrip(reg, new PlayerSettingsUpdateEvent(5, 50), PlayerSettingsUpdateEvent);
     roundTrip(reg, new GameSettingsSyncEvent({3: 30}), GameSettingsSyncEvent);
     roundTrip(reg, new GameSettingsUpdateEvent(7, 70), GameSettingsUpdateEvent);
 });

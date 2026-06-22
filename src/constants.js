@@ -1,5 +1,6 @@
+import {CHUNK_SIZE} from "@/common/constants.js";
+
 export const TILE_SIZE = 64;
-export const CHUNK_SIZE = 64;
 
 export function snapToTile(n) {
     return Math.floor(n / TILE_SIZE) * TILE_SIZE;

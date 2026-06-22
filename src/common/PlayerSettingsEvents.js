@@ -23,7 +23,7 @@ export class PlayerSettingsSyncEvent extends LiveEvent {
     }
 }
 
-export class PlayerSettingUpdateEvent extends LiveEvent {
+export class PlayerSettingsUpdateEvent extends LiveEvent {
 
     static wireFields = {
         type: "int32",

@@ -1,7 +1,8 @@
 import {DrawLayer} from "@/client/DrawLayer.js";
 import {Container, Graphics} from "pixi.js";
 import {chunkCoords} from "@/util.js";
-import {CHUNK_SIZE, TILE_SIZE} from "@/constants.js";
+import {TILE_SIZE} from "@/constants.js";
+import {CHUNK_SIZE} from "@/common/constants.js";
 import {EVENT_TYPE_CORE, EVENT_SUBTYPE_CHUNK_SUBSCRIBE, EVENT_SUBTYPE_CHUNK_UNSUBSCRIBE} from "@/common/core.js";
 
 export class GridDrawLayer extends DrawLayer {
