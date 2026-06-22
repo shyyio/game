@@ -7,9 +7,9 @@ import {CoreDrawLayers} from "@/client/coreDrawLayers.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {EVENT_PLAYER_SETTINGS_SYNC, EVENT_PLAYER_SETTINGS_UPDATE} from "@/common/PlayerSettingsEvents.js";
 import {EVENT_GAME_SETTINGS_SYNC, EVENT_GAME_SETTINGS_UPDATE} from "@/common/GameSettingsEvents.js";
-import {TILE_SIZE, snapToChunk} from "@/constants.js";
+import {TILE_SIZE, snapToChunk} from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
-import {chunkKey} from "@/util.js";
+import {chunkKey} from "@/common/util.js";
 
 export class Client {
 

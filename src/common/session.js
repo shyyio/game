@@ -1,5 +1,5 @@
 
-import {DEV} from "@/env.js";
+import {DEV} from "@/common/env.js";
 
 /**
  * @abstract

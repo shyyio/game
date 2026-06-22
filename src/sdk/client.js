@@ -24,11 +24,11 @@ export {Tool} from "@/client/Tool.js";
 // `TILE_SIZE` is a tile's size in pixels; the snap helpers round pixel
 // coordinates to tile/chunk boundaries. (CHUNK_SIZE comes from the common SDK —
 // it is measured in tiles, not pixels, so it is not re-exported here.)
-export {TILE_SIZE, snapToTile, snapToChunk} from "@/constants.js";
+export {TILE_SIZE, snapToTile, snapToChunk} from "@/client/constants.js";
 
 // ---- Drawing helpers ----
 // Convenience wrappers for drawing onto a Pixi Graphics object.
-export {drawLine, drawRect, drawCircle} from "@/pixiUtils.js";
+export {drawLine, drawRect, drawCircle} from "@/client/pixiUtils.js";
 
 // ---- Pixi types ----
 // Passed through so mods share the engine's single Pixi instance rather than

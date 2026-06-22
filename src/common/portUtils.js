@@ -1,5 +1,5 @@
 
-import {rotate} from "@/util.js";
+import {rotate} from "@/common/util.js";
 
 const DIRECTION_NAMES = ["Up", "Right", "Down", "Left"];
 

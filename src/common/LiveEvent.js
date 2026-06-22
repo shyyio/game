@@ -1,4 +1,4 @@
-import {chunkKey} from "@/util.js";
+import {chunkKey} from "@/common/util.js";
 
 export class LiveEvent {
 

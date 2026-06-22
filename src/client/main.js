@@ -1,6 +1,6 @@
 import { createApp } from "vue";
-import App from "./App.vue";
-import "./assets/main.css";
+import App from "@/components/App.vue";
+import "@/assets/main.css";
 
 // Vuetify
 import "vuetify/styles";
@@ -11,7 +11,7 @@ import { aliases, mdi } from "vuetify/iconsets/mdi-svg";
 import "@mdi/font/css/materialdesignicons.css";
 
 // Vuex
-import store from "./store.js";
+import store from "@/client/store.js";
 
 BigInt.prototype.toJSON = function () {
   return this.toString() + "n";

@@ -2,7 +2,7 @@ import initSqlJs from "sql.js";
 import {Database} from "@/common/database.js";
 import wasmFile from "@/assets/sql-wasm.wasm?url";
 import {get} from "idb-keyval";
-import {gzipCompress} from "@/util.js";
+import {gzipCompress} from "@/common/util.js";
 
 const BIGINT_COLS = new Set(["id", "parent_id", "belt_id", "path_id", "child", "parent_path", "head", "tail_id"]);
 

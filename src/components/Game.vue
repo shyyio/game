@@ -2,8 +2,8 @@
 import {ref, reactive, markRaw, shallowRef, watch, onMounted} from "vue";
 import {Application, Graphics, Container, FillGradient, isMobile} from "pixi.js";
 import {Viewport} from "pixi-viewport";
-import {freezeViewport, unfreezeViewport} from "@/viewport.js";
-import Keyboard from "@/keyboard.js";
+import {freezeViewport, unfreezeViewport} from "@/client/viewport.js";
+import Keyboard from "@/client/keyboard.js";
 import Mouse from "@/client/Mouse.js";
 import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/ModRegistry.js";

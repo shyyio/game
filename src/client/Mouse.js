@@ -1,5 +1,5 @@
 
-import {TILE_SIZE} from "@/constants.js";
+import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
 
 const LONG_PRESS_MS = 400;

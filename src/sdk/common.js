@@ -45,7 +45,7 @@ export {upstreamPorts, downstreamPorts, createInternalPorts, objectTiles} from "
 // tileY)` computes that key in JS; `CHUNK_KEY_SQL` is the equivalent SQL
 // expression for use inside a mod's table schema (e.g. a generated `chunk`
 // column).
-export {chunkKey} from "@/util.js";
+export {chunkKey} from "@/common/util.js";
 export {CHUNK_KEY_SQL} from "@/common/DatabaseSchema.js";
 
 // ---- Textures ----

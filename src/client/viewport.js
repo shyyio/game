@@ -1,5 +1,5 @@
 import {isMobile} from "pixi.js";
-import Keyboard from "@/keyboard.js";
+import Keyboard from "@/client/keyboard.js";
 
 /**
  * @param viewport {Viewport}
