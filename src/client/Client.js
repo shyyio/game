@@ -49,8 +49,8 @@ export class Client {
 
         this.app.stage.addChild(this.miniMenuLayer);
 
-        this.viewport.on('moved', () => this._updateViewportChunks());
-        this.viewport.on('zoomed', () => this._updateViewportChunks());
+        this.viewport.on("moved", () => this._updateViewportChunks());
+        this.viewport.on("zoomed", () => this._updateViewportChunks());
         this._updateViewportChunks();
     }
 
@@ -71,7 +71,7 @@ export class Client {
 
     _updateViewportChunks() {
         const chunks = this._visibleChunks();
-        const key = chunks.slice().sort().join(';');
+        const key = chunks.slice().sort().join(";");
         if (key === this._lastViewportKey) {
             return;
         }

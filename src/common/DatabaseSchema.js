@@ -121,8 +121,6 @@ const CoreTempSchema = `
         session_id INT REFERENCES Session,
         chunk TEXT NOT NULL
     );
-
---     INSERT INTO Game(id, time) VALUES (0, 0);
 `;
 
 const CorePragma = `
@@ -200,9 +198,6 @@ export class DatabaseSchema {
         this.initSchema = [CoreSchema, modRegistry.initSchema];
         this.tempSchema = [CoreTempSchema, modRegistry.tempSchema];
         this.pragma = [CorePragma];
-        this.triggers = modRegistry.mods
-            .map(mod => mod.triggers)
-            .filter(t => t && t.trim().length > 0);
 
         // Collect statements from all mods
         modRegistry.mods.forEach(mod => {

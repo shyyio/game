@@ -42,7 +42,7 @@ export function createText(x, y, text, color = 0xFF00FF) {
         style: {
             fontFamily: "monospace",
             fontSize: 18,
-            fill: '#FF00FF',
+            fill: "#FF00FF",
         }
     });
     t.x = x;

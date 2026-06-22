@@ -1,6 +1,6 @@
 import {Message} from "@/common/Message.js";
 
-export const MESSAGE_SET_VIEWPORT = 0;
+const MESSAGE_SET_VIEWPORT = 0;
 
 const MAX_VIEWPORT_CHUNKS = 256;
 

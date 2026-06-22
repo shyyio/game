@@ -9,7 +9,7 @@ import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {BeltClientMod} from "@/mods/Belt/BeltClientMod.js";
 import {SplitterClientMod} from "@/mods/Splitter/SplitterClientMod.js";
-import {CoreTexturesMod} from "@/mods/BaseTextures/mod.js";
+import {BaseTexturesMod} from "@/mods/BaseTextures/mod.js";
 import {DatabaseSchema} from "@/common/DatabaseSchema.js";
 import {BrowserDatabase} from "@/client/BrowserDatabase.js";
 import {Game} from "@/common/Game.js";
@@ -119,7 +119,7 @@ onMounted(async () => {
     });
   });
 
-  observer.observe(document.getElementById("game"), {attributes: true, attributeFilter: ['style']});
+  observer.observe(document.getElementById("game"), {attributes: true, attributeFilter: ["style"]});
 
   viewport
       .drag()
@@ -140,7 +140,7 @@ onMounted(async () => {
   document.getElementById("game").appendChild(app.canvas);
 
   const modRegistry = new ModRegistry();
-  modRegistry.loadMod(new CoreTexturesMod());
+  modRegistry.loadMod(new BaseTexturesMod());
   modRegistry.loadMod(new BeltClientMod());
   modRegistry.loadMod(new SplitterClientMod());
 
@@ -158,9 +158,9 @@ onMounted(async () => {
   await client.init();
 
   const refreshTools = () => {
-    tools.value = modRegistry.getTools(session, client.playerSettings).map(markRaw);
+    tools.value = modRegistry.tools(session, client.playerSettings).map(markRaw);
     if (!tools.value.includes(toolbarState.activeTool)) {
-      toolbarState.activeTool = tools.value[0] ?? null;
+      toolbarState.activeTool = tools.value.length > 0 ? tools.value[0] : null;
     }
   };
 

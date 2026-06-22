@@ -151,17 +151,18 @@ export class BeltDrawLayer extends DrawLayer {
     _getTexture(bend, type) {
         let frameName;
         if (type === BeltType.RAMP_UP) {
-            frameName = 'belt-ramp-up/0';
+            frameName = "belt-ramp-up/0";
         } else if (type === BeltType.RAMP_DOWN) {
-            frameName = 'belt-ramp-down/0';
+            frameName = "belt-ramp-down/0";
         } else if (bend === BeltBend.LEFT) {
-            frameName = 'belt-left/0';
+            frameName = "belt-left/0";
         } else if (bend === BeltBend.RIGHT) {
-            frameName = 'belt-right/0';
+            frameName = "belt-right/0";
         } else {
-            frameName = 'belt-straight/0';
+            frameName = "belt-straight/0";
         }
-        return this.textureRegistry.get(frameName) ?? Texture.EMPTY;
+        const texture = this.textureRegistry.get(frameName);
+        return texture === undefined ? Texture.EMPTY : texture;
     }
 }
 

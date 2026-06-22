@@ -14,16 +14,16 @@ import {
 } from "@/sdk/common.js";
 import {CreateBeltMessage, DeleteBeltMessage} from "@/mods/Belt/messages.js";
 
-// ---- Object type IDs ----
-export const GAME_OBJECT_TYPE_BELT = 1;
-export const GAME_OBJECT_TYPE_BELT_RAMP_UP = 2;
-export const GAME_OBJECT_TYPE_BELT_RAMP_DOWN = 3;
-
 // Maximum number of tiles an underground belt may span.
 export const MAX_UNDERGROUND_LENGTH = 6;
 
-// Game-setting key this mod owns (core owns key 0; see GameSettingsKey).
-const GAME_SETTING_MAX_UNDERGROUND_LENGTH = 1;
+/**
+ * Game-setting keys this mod owns (core owns key 0; see GameSettingsKey).
+ * @enum
+ */
+const BeltGameSettingsKey = {
+    MAX_UNDERGROUND_LENGTH: 1,
+};
 
 // ---- Belt types ----
 const BELT_NORMAL = 0;
@@ -103,8 +103,8 @@ export class BeltInsertEvent extends LiveEvent {
         this.id = id;
         this.direction = direction;
         this.beltType = beltType;
-        this.parentX = parentX ?? null;
-        this.parentY = parentY ?? null;
+        this.parentX = parentX === undefined ? null : parentX;
+        this.parentY = parentY === undefined ? null : parentY;
     }
 }
 
@@ -281,10 +281,6 @@ export class BeltMod extends Mod {
 
                 type INT NOT NULL CHECK (type >= 0)
             );
-
-        -- TODO: Check if these are used at all
---             CREATE INDEX BeltPathItem_path_id_type ON BeltPathItem(path_id, id, type);
---             CREATE INDEX BeltPathItem_length ON BeltPathItem (length);
 
             CREATE INDEX BeltPathItem_gap ON BeltPathItem(path_id, id) WHERE type = ${ITEM_TYPE_GAP};
             CREATE INDEX BeltPathItem_item ON BeltPathItem(path_id, id) WHERE type != ${ITEM_TYPE_GAP};
@@ -522,12 +518,8 @@ export class BeltMod extends Mod {
             );
 
             INSERT INTO GameSettings (key, value) VALUES
-                (${GAME_SETTING_MAX_UNDERGROUND_LENGTH}, ${MAX_UNDERGROUND_LENGTH});
+                (${BeltGameSettingsKey.MAX_UNDERGROUND_LENGTH}, ${MAX_UNDERGROUND_LENGTH});
         `;
-    }
-
-    get triggers() {
-        return "";
     }
 
     get statements() {

@@ -69,8 +69,6 @@ export class BrowserDatabase extends Database {
 
             this.profilingData[name] = [];
         });
-
-        this.schema.triggers.forEach(trigger => this.db.run(trigger));
     }
 
     exec(name, args) {

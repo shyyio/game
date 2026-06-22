@@ -40,8 +40,6 @@ export class NodeDatabase extends Database {
                 throw e;
             }
         });
-
-        this.schema.triggers.forEach(sql => this.db.exec(sql));
     }
 
     formatArgs(args) {
@@ -57,13 +55,13 @@ export class NodeDatabase extends Database {
 
     exec(name, args) {
         const stmt = this.statements[name];
-        const info = stmt.run(this.formatArgs(args ?? {}));
+        const info = stmt.run(this.formatArgs(args));
         return info.changes;
     }
 
     query(name, args) {
         const stmt = this.statements[name];
-        const rows = stmt.all(this.formatArgs(args ?? {}));
+        const rows = stmt.all(this.formatArgs(args));
         return rows.map(formatRow);
     }
 

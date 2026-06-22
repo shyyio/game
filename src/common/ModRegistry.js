@@ -78,16 +78,16 @@ export class ModRegistry {
     }
 
     /**
-     * Aggregates mini menu entries from all mods for the tile at (x, y).
-     * @param {number} x - tile x
-     * @param {number} y - tile y
+     * Aggregates mini menu entries from all mods for the tile at (tileX, tileY).
+     * @param {number} tileX
+     * @param {number} tileY
      * @param {Session} session
      * @returns {MiniMenuEntry[]}
      */
-    miniMenuContextEntries(x, y, session) {
+    miniMenuContextEntries(tileX, tileY, session) {
         const entries = [];
         this.mods.forEach(mod => {
-            const modEntries = mod.miniMenuContextEntries(x, y, session);
+            const modEntries = mod.miniMenuContextEntries(tileX, tileY, session);
             if (modEntries == null) {
                 return;
             }
@@ -102,10 +102,10 @@ export class ModRegistry {
      * @param {PlayerSettings} playerSettings
      * @returns {Tool[]}
      */
-    getTools(session, playerSettings) {
+    tools(session, playerSettings) {
         const tools = [];
         this.mods.forEach(mod => {
-            const modTools = mod.getTools(session, playerSettings);
+            const modTools = mod.tools(session, playerSettings);
             if (modTools == null) {
                 return;
             }

@@ -12,13 +12,13 @@ export class BeltClientMod extends BeltMod {
         return [new BeltDrawLayer(), new BeltOverlayDrawLayer()];
     }
 
-    getTools(session, playerSettings) {
+    tools(session, playerSettings) {
         // TODO: Return tools that are available for the player, based on playerSettings
         return [new BeltTool(session, this.game)];
     }
 
-    miniMenuContextEntries(x, y, session) {
-        const id = this.game.queryScalar("GetBeltAtTile", {x, y});
+    miniMenuContextEntries(tileX, tileY, session) {
+        const id = this.game.queryScalar("GetBeltAtTile", {x: tileX, y: tileY});
 
         if (id == null) {
             return [];

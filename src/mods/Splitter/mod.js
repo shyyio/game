@@ -9,8 +9,6 @@ import {
     CHUNK_KEY_SQL,
 } from "@/sdk/common.js";
 
-export const GAME_OBJECT_TYPE_SPLITTER = 4;
-
 class SplitterPortTransferOp extends PortTransferOp {
     constructor(name, inputPort, outputPort, priority="0", onTransfer) {
         super(name, "Splitter", inputPort, outputPort, priority, onTransfer);
@@ -111,10 +109,6 @@ export class SplitterMod extends Mod {
     }
 
     get tempSchema() {
-        return "";
-    }
-
-    get triggers() {
         return "";
     }
 }

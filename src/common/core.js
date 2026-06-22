@@ -110,16 +110,6 @@ export const TickPhase = {
     COMMIT_TRANSFERS: 4,
 }
 
-/**
- * @enum
- */
-export const OpCode = {
-    OUTPUT_TRANSFER: 0,
-    INPUT_TRANSFER: 1,
-    PORT_TRANSFER: 2,
-    STMT: 3,
-}
-
 export class MiniMenuEntry {
 
     /**
@@ -148,7 +138,7 @@ export class ObjectDefinition {
         this.outputPorts = outputPorts;
         this.internalPorts = internalPorts;
         this.size = size;
-        this.tickPhases = tickPhases || [];
+        this.tickPhases = tickPhases || {};
     }
 }
 
@@ -196,14 +186,6 @@ export class Mod {
 
     /**
      * @abstract
-     * @returns string
-     */
-    get triggers() {
-
-    }
-
-    /**
-     * @abstract
      * @param {Message} message
      */
     onMessage(message) {
@@ -212,14 +194,14 @@ export class Mod {
 
     /**
      * @abstract
-     * Returns mini menu entries for the tile at (x, y).
+     * Returns mini menu entries for the tile at (tileX, tileY).
      * Each entry carries its own handler — the mod decides what happens when clicked.
-     * @param {number} x - tile x
-     * @param {number} y - tile y
+     * @param {number} tileX
+     * @param {number} tileY
      * @param {Session} session
      * @returns {MiniMenuEntry[]}
      */
-    miniMenuContextEntries(x, y, session) {}
+    miniMenuContextEntries(tileX, tileY, session) {}
 
     /**
      * @abstract
@@ -229,6 +211,6 @@ export class Mod {
      * @param {PlayerSettings} playerSettings
      * @returns {Tool[]}
      */
-    getTools(session, playerSettings) {}
+    tools(session, playerSettings) {}
 }
 

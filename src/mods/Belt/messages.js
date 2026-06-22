@@ -1,8 +1,8 @@
 
 import {Message} from "@/common/Message.js";
 
-export const MESSAGE_CREATE_BELT = 1;
-export const MESSAGE_DELETE_BELT = 2;
+const MESSAGE_CREATE_BELT = 1;
+const MESSAGE_DELETE_BELT = 2;
 
 export class CreateBeltMessage extends Message {
 

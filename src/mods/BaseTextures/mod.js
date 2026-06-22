@@ -2,7 +2,7 @@ import {Mod, TextureDefinition} from "@/sdk/common.js";
 import imageUrl from "./sprites.png";
 import jsonUrl from "./sprites.json";
 
-export class CoreTexturesMod extends Mod {
+export class BaseTexturesMod extends Mod {
 
     get textureDefinitions() {
         return {
@@ -19,10 +19,6 @@ export class CoreTexturesMod extends Mod {
     }
 
     get tempSchema() {
-        return "";
-    }
-
-    get triggers() {
         return "";
     }
 }
