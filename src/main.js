@@ -3,12 +3,12 @@ import App from "./App.vue";
 import "./assets/main.css";
 
 // Vuetify
-import 'vuetify/styles'
-import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
-import { aliases, mdi } from 'vuetify/iconsets/mdi-svg'
-import '@mdi/font/css/materialdesignicons.css'
+import "vuetify/styles";
+import { createVuetify } from "vuetify";
+import * as components from "vuetify/components";
+import * as directives from "vuetify/directives";
+import { aliases, mdi } from "vuetify/iconsets/mdi-svg";
+import "@mdi/font/css/materialdesignicons.css";
 
 // Vuex
 import store from "./store.js";
@@ -20,7 +20,7 @@ BigInt.prototype.toJSON = function () {
 const vuetify = createVuetify({
   components,
   directives,
-  defaultSet: 'mdi',
+  defaultSet: "mdi",
   aliases,
   sets: {
     mdi,
@@ -28,4 +28,4 @@ const vuetify = createVuetify({
 });
 
 
-createApp(App).use(vuetify).use(store).mount('#app')
+createApp(App).use(vuetify).use(store).mount("#app");

@@ -115,10 +115,6 @@ export class BrowserDatabase extends Database {
         return result;
     }
 
-    run(sql) {
-
-    }
-
     exportDb() {
         this.db.run("VACUUM;");
         const data = this.db.export();

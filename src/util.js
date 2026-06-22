@@ -1,14 +1,5 @@
 import {CHUNK_SIZE, Direction} from "@/common/constants.js";
 
-/**
- * @param arr {Array}
- * @param val
- */
-export function removeFromArray(arr, val) {
-    const index = arr.indexOf(val);
-    arr.splice(index, 1);
-}
-
 export function fixNegativeZero(n) {
     return n === -0 ? 0 : n;
 }
@@ -74,8 +65,4 @@ export async function gzipCompress(arr) {
     return await new Response(
         new Blob([arr]).stream().pipeThrough(new CompressionStream("gzip"))
       ).blob();
-}
-
-export function gzipDecompress(byteArray) {
-    
 }
