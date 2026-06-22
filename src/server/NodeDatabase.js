@@ -1,4 +1,3 @@
-
 import BetterSqlite3 from "better-sqlite3";
 import {Database, formatRow} from "@/common/database.js";
 

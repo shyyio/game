@@ -1,4 +1,3 @@
-
 import {setupGame} from "@/sdk/test.js";
 import {BeltMod} from "@/mods/Belt/mod.js";
 import {SplitterMod} from "@/mods/Splitter/mod.js";
