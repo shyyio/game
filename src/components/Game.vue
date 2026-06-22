@@ -14,7 +14,7 @@ import {DatabaseSchema} from "@/common/DatabaseSchema.js";
 import {BrowserDatabase} from "@/client/BrowserDatabase.js";
 import {Game} from "@/common/Game.js";
 import {GameAPI} from "@/common/GameAPI.js";
-import {LocalSession} from "@/common/session.js";
+import {LocalSession} from "@/common/LocalSession.js";
 import {Client} from "@/client/Client.js";
 import {TickPhase} from "@/common/core.js";
 
