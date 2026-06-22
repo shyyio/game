@@ -1,4 +1,3 @@
-
 import {LiveEvent} from "@/common/LiveEvent.js";
 
 export const EVENT_PLAYER_SETTINGS_SYNC = 100;
@@ -15,7 +14,7 @@ export class PlayerSettingsSyncEvent extends LiveEvent {
     };
 
     /**
-     * @param {Object.<number, number>} values - all key→value pairs for this player
+     * @param {Object.<number, number>} values key->value pairs for this player
      */
     constructor(values) {
         super(EVENT_PLAYER_SETTINGS_SYNC, 0, 0);

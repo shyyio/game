@@ -1,4 +1,3 @@
-
 import {BufferedEvent} from "@/common/BufferedEvent.js";
 import {EVENT_TYPE_CORE, EVENT_SUBTYPE_CHUNK_SUBSCRIBE, EVENT_SUBTYPE_CHUNK_UNSUBSCRIBE} from "@/common/core.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
@@ -80,17 +79,16 @@ export class Game {
      * @param {Session} session
      */
     connect(session) {
-        const sessionId = this.queryScalar("InsertSession", {user: 0});
+        // TODO: Get player ID from session
+        const sessionId = this.queryScalar("InsertSession", {player_id: 0});
         session.setId(sessionId);
         this.sessions[sessionId] = session;
 
-        const settingsRows = this.query("GetPlayerSettings", {player: 0});
-        const settingsValues = {};
-        settingsRows.forEach(row => {
-            settingsValues[row.key] = row.value;
-        });
-        session.publishEvent(new PlayerSettingsSyncEvent(settingsValues));
+        this._syncPlayerSettings(session);
+        this._syncGameSettings(session);
+    }
 
+    _syncGameSettings(session) {
         const infoRows = this.query("GetGameSettings", {});
         const infoValues = {};
         infoRows.forEach(row => {
@@ -99,11 +97,21 @@ export class Game {
         session.publishEvent(new GameSettingsSyncEvent(infoValues));
     }
 
+    _syncPlayerSettings(session) {
+        // TODO: Get player ID from session
+        const settingsRows = this.query("GetPlayerSettings", {player_id: 0});
+        const settingsValues = {};
+        settingsRows.forEach(row => {
+            settingsValues[row.key] = row.value;
+        });
+        session.publishEvent(new PlayerSettingsSyncEvent(settingsValues));
+    }
+
     /**
      * @param {number} sessionId
      */
     disconnect(sessionId) {
-        this.exec("DeleteSessionViewport", {session: sessionId});
+        this.exec("DeleteSessionViewport", {session_id: sessionId});
         delete this.sessions[sessionId];
     }
 
@@ -130,7 +138,7 @@ export class Game {
      * @param {string[]} chunks
      */
     _setSessionViewport(session, chunks) {
-        this.query("DeleteSessionViewport", {session: session.id}).forEach(row => {
+        this.query("DeleteSessionViewport", {session_id: session.id}).forEach(row => {
             session.publishEvent(new BufferedEvent({
                 type: EVENT_TYPE_CORE,
                 subtype: EVENT_SUBTYPE_CHUNK_UNSUBSCRIBE,
@@ -138,7 +146,7 @@ export class Game {
             }));
         });
         chunks.forEach(chunk => {
-            this.exec("InsertSessionViewport", {session: session.id, chunk});
+            this.exec("InsertSessionViewport", {session_id: session.id, chunk});
             session.publishEvent(new BufferedEvent({
                 type: EVENT_TYPE_CORE,
                 subtype: EVENT_SUBTYPE_CHUNK_SUBSCRIBE,
@@ -165,30 +173,13 @@ export class Game {
     // ---- Events ----
 
     /**
-     * Records an event in the GameJournal. Distinct from Session/Client.publishEvent
-     * (which delivers an event to a client) and from publishEventNow (immediate
-     * delivery): this only writes to the journal, to be flushed to viewports by
-     * postTick().
-     * @param {number} type
-     * @param {number} subtype
-     * @param {number} x
-     * @param {number} y
-     * @param {BigInt} id
-     * @param [a] {BigInt|number|null}
-     * @param [b] {BigInt|number|null}
-     * @param [c] {BigInt|number|null}
-     */
-    journalEvent(type, subtype, x, y, id, a=null, b=null, c=null) {
-        this.exec("InsertGameJournal", {type, subtype, x, y, id, a, b, c});
-    }
-
-    /**
      * Dispatches a LiveEvent immediately to all sessions whose viewport covers the event's chunk,
      * bypassing GameJournal. Use when the event must reach clients before postTick().
      * @param {LiveEvent} event
      */
     publishEventNow(event) {
         const sessions = this.query("GetSessionsByChunk", {chunk: event.chunk});
+
         sessions.forEach(row => {
             this.sessions[row.session_id].publishEvent(event);
         });
@@ -199,7 +190,9 @@ export class Game {
      * dispatches them to the appropriate session, then clears the journal.
      */
     _dispatchEvents() {
-        this.query("GetSessionEvents").forEach(row => {
+        const rows = this.query("GetSessionEvents");
+
+        rows.forEach(row => {
             this.sessions[row.session_id].publishEvent(new BufferedEvent(row));
         });
         this.exec("TruncateGameJournal");

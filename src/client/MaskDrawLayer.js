@@ -16,7 +16,7 @@ export class MaskDrawLayer extends DrawLayer {
         this._masks = {};
     }
 
-    get zLevel() {
+    get layerIndex() {
         return 5;
     }
 

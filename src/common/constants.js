@@ -8,7 +8,7 @@ export const Direction = {
     LEFT: 3,
 
     rotate(direction, rotation) {
-        return (direction + rotation) % 4
+        return (direction + rotation) % 4;
     },
 
     /**
@@ -69,6 +69,7 @@ export const Direction = {
         if (dx === -1 && dy === 0) {
             return Direction.LEFT;
         }
+
         throw new Error(`Not a unit cardinal delta: (${dx}, ${dy})`);
     }
 };

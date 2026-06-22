@@ -62,7 +62,7 @@ export class BeltDrawLayer extends DrawLayer {
         this._masks = {};
     }
 
-    get zLevel() {
+    get layerIndex() {
         return 10;
     }
 

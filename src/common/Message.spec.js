@@ -9,7 +9,6 @@ class ValidMessage extends Message {
     static wireFields = {
         type: "int32",
     };
-
 }
 
 class MissingFieldsMessage extends Message {
@@ -17,19 +16,19 @@ class MissingFieldsMessage extends Message {
 }
 
 test("A subclass that declares wireFields constructs", () => {
-    assert.doesNotThrow(() => new ValidMessage());
+    assert.doesNotThrow(() => new ValidMessage(1));
 });
 
 test("A subclass without wireFields throws on construction", () => {
-    assert.throws(() => new MissingFieldsMessage(), /MissingFieldsMessage.*wireFields/);
+    assert.throws(() => new MissingFieldsMessage(1), /MissingFieldsMessage.*wireFields/);
 });
 
 test("Instantiating the base Message directly throws", () => {
-    assert.throws(() => new Message(), /Message.*wireFields/);
+    assert.throws(() => new Message(1), /Message.*wireFields/);
 });
 
 test("Validate accepts by default", () => {
-    assert.strictEqual(new ValidMessage().validate(null, null), true);
+    assert.strictEqual(new ValidMessage(1).validate(null, null), true);
 });
 
 test("SetViewportMessage.validate accepts a chunk list within the limit", () => {

@@ -1,3 +1,4 @@
+import {NotImplementedError} from "@/common/error.js";
 
 /**
  * @abstract
@@ -35,7 +36,7 @@ export class Session {
      * @param sessionId {number}
      */
     setId(sessionId) {
-
+        throw new NotImplementedError();
     }
 
     /**
@@ -43,6 +44,6 @@ export class Session {
      * @param {Message} message
      */
     sendMessage(message) {
-
+        throw new NotImplementedError();
     }
 }

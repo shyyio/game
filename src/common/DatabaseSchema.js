@@ -6,8 +6,8 @@ const CoreStatements = {
     Begin: "BEGIN TRANSACTION;",
     Rollback: "ROLLBACK TRANSACTION;",
 
-    InsertSession: "INSERT INTO Session (user) VALUES (@user) RETURNING id;",
-    GetPlayerSettings: `SELECT key, value FROM PlayerSettings WHERE player = @player;`,
+    InsertSession: "INSERT INTO Session (player_id) VALUES (@player_id) RETURNING id;",
+    GetPlayerSettings: `SELECT key, value FROM PlayerSettings WHERE player_id = @player_id;`,
     GetGameSettings: `SELECT key, value FROM GameSettings;`,
 
     InsertPort: "INSERT INTO Port DEFAULT VALUES RETURNING id;",
@@ -25,9 +25,9 @@ const CoreStatements = {
 
     TruncateGameJournal: `DELETE FROM GameJournal;`,
 
-    DeleteSessionViewport: `DELETE FROM SessionViewport WHERE session_id = @session RETURNING chunk;`,
-    InsertSessionViewport: `INSERT INTO SessionViewport (session_id, chunk) VALUES (@session, @chunk);`,
-    GetSessionsByChunk: `SELECT session_id FROM SessionViewport WHERE chunk = @chunk;`,
+    DeleteSessionViewport: `DELETE FROM SessionViewport WHERE session_id = @session_id RETURNING chunk;`,
+    InsertSessionViewport: `INSERT INTO SessionViewport (session_id, chunk) VALUES (@session_id, @chunk);`,
+    GetSessionsByChunk: `SELECT DISTINCT session_id FROM SessionViewport WHERE chunk = @chunk;`,
 }
 
 export const CHUNK_KEY_SQL = `(
@@ -38,11 +38,16 @@ export const CHUNK_KEY_SQL = `(
 
 const CoreSchema = `
     CREATE TABLE PlayerSettings (
-        player INT NOT NULL,
+        player_id INT NOT NULL,
         key INT NOT NULL,
         value INT NOT NULL,
-        PRIMARY KEY (player, key)
+        PRIMARY KEY (player_id, key)
     ) WITHOUT ROWID;
+
+    CREATE TABLE GameSettings (
+        key INTEGER PRIMARY KEY,
+        value INT NOT NULL
+    );
 
     CREATE TABLE Port (
         id INTEGER PRIMARY KEY,
@@ -82,13 +87,9 @@ const CoreTempSchema = `
     )
     SELECT value FROM series;
 
-    CREATE TEMPORARY TABLE GameSettings (
-        key INTEGER PRIMARY KEY,
-        value INT NOT NULL
-    );
-
     INSERT INTO GameSettings (key, value) VALUES
-        (${GameSettingsKey.CHUNK_SIZE}, ${CHUNK_SIZE});
+        (${GameSettingsKey.CHUNK_SIZE}, ${CHUNK_SIZE})
+        ON CONFLICT DO UPDATE SET value=${CHUNK_SIZE};
 
     CREATE TEMPORARY TABLE PortTransferIntent (
         source_id INT,
@@ -114,7 +115,7 @@ const CoreTempSchema = `
 
     CREATE TEMPORARY TABLE Session (
         id INTEGER PRIMARY KEY,
-        user INT NOT NULL
+        player_id INT NOT NULL
     );
 
     CREATE TEMPORARY TABLE SessionViewport (

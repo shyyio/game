@@ -1,3 +1,5 @@
+import {NotImplementedError} from "@/common/error.js";
+
 /**
  * Result columns whose values must stay BigInt. Every other BigInt-valued column
  * is narrowed to Number by {@link formatRow}. Shared by both backends.
@@ -36,7 +38,7 @@ export class Database {
      * @abstract
      */
     async init() {
-
+        throw new NotImplementedError();
     }
 
     /**
@@ -75,7 +77,7 @@ export class Database {
      * @returns {number}
      */
     exec(name, args) {
-
+        throw new NotImplementedError();
     }
 
     /**
@@ -85,7 +87,7 @@ export class Database {
      * @returns {*[]}
      */
     query(name, args) {
-
+        throw new NotImplementedError();
     }
 
     /**

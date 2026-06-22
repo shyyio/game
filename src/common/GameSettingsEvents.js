@@ -1,4 +1,3 @@
-
 import {LiveEvent} from "@/common/LiveEvent.js";
 
 export const EVENT_GAME_SETTINGS_SYNC = 102;

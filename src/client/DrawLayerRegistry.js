@@ -20,7 +20,7 @@ export class DrawLayerRegistry {
      */
     add(layer) {
         let i = this.layers.length;
-        while (i > 0 && this.layers[i - 1].zLevel > layer.zLevel) {
+        while (i > 0 && this.layers[i - 1].layerIndex > layer.layerIndex) {
             i -= 1;
         }
         this.layers.splice(i, 0, layer);

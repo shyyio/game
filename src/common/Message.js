@@ -13,7 +13,12 @@ export class Message {
      */
     static wireFields;
 
-    constructor() {
+    /**
+     * @param type {number}
+     */
+    constructor(type) {
+        this.type = type;
+
         if (this.constructor.wireFields === undefined) {
             throw new Error(`${this.constructor.name} extends Message but has no static wireFields`);
         }

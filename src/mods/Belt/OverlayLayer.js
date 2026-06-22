@@ -7,7 +7,7 @@ export class BeltOverlayDrawLayer extends DrawLayer {
         this._highlights = [];
     }
 
-    get zLevel() {
+    get layerIndex() {
         return 100;
     }
 

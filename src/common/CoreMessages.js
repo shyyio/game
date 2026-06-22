@@ -15,8 +15,7 @@ export class SetViewportMessage extends Message {
      * @param {string[]} chunks
      */
     constructor(chunks) {
-        super();
-        this.type = MESSAGE_SET_VIEWPORT;
+        super(MESSAGE_SET_VIEWPORT);
         this.chunks = chunks;
     }
 

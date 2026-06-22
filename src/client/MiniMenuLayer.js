@@ -64,7 +64,7 @@ export class MiniMenuLayer extends Container {
             item.on("pointerout", () => { hoverBg.alpha = 0; });
             item.on("pointerdown", (e) => {
                 e.nativeEvent.stopPropagation();
-                entry.handler();
+                entry.callback();
                 this.close();
             });
 

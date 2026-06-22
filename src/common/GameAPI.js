@@ -3,7 +3,7 @@ import {Message} from "@/common/Message.js";
 export class GameAPI {
 
     /**
-     * @param game {Game}
+     * @param {Game} game
      */
     constructor(game) {
         /**
@@ -30,5 +30,4 @@ export class GameAPI {
 
         this._game.dispatchMessage(message, session);
     }
-
 }

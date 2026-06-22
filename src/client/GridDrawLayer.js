@@ -13,7 +13,7 @@ export class GridDrawLayer extends DrawLayer {
         this._lowRes = false;
     }
 
-    get zLevel() {
+    get layerIndex() {
         return 0;
     }
 

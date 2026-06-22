@@ -1,4 +1,3 @@
-
 import protobuf from "protobufjs";
 
 import {SetViewportMessage} from "@/common/CoreMessages.js";
@@ -15,7 +14,7 @@ const INT64_TYPES = new Set(["int64", "uint64", "sint64", "fixed64", "sfixed64"]
  * Core message/event classes that travel over the wire. Mods contribute the rest
  * via Mod.wireClasses. Order here is part of the wire-id assignment contract, so
  * only ever append.
- * @type {Function[]}
+ * @type {*[]}
  */
 const CORE_WIRE_CLASSES = [
     SetViewportMessage,

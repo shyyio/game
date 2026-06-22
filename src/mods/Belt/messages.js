@@ -1,4 +1,3 @@
-
 import {Message} from "@/sdk/common.js";
 
 const MESSAGE_CREATE_BELT = 1;
@@ -25,8 +24,7 @@ export class CreateBeltMessage extends Message {
      * @param {BigInt} [disconnectRampChild]
      */
     constructor({x, y, direction, beltType, rampParent, disconnectRampChild}) {
-        super();
-        this.type = MESSAGE_CREATE_BELT;
+        super(MESSAGE_CREATE_BELT);
         this.x = x;
         this.y = y;
         this.direction = direction;
@@ -47,8 +45,7 @@ export class DeleteBeltMessage extends Message {
      * @param {BigInt} id
      */
     constructor(id) {
-        super();
-        this.type = MESSAGE_DELETE_BELT;
+        super(MESSAGE_DELETE_BELT);
         this.id = id;
     }
 }

@@ -5,7 +5,8 @@ import {SplitterDrawLayer} from "./SplitterLayer.js";
 export class SplitterClientMod extends SplitterMod {
 
     get drawLayers() {
-        return [new SplitterDrawLayer()];
+        return [
+            new SplitterDrawLayer()
+        ];
     }
-
 }

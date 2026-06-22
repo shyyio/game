@@ -3,13 +3,19 @@ import {DrawLayerRegistry} from "@/client/DrawLayerRegistry.js";
 import {PlayerSettings} from "@/client/PlayerSettings.js";
 import {GameSettings} from "@/client/GameSettings.js";
 import {MiniMenuLayer} from "@/client/MiniMenuLayer.js";
-import {CoreDrawLayers} from "@/client/coreDrawLayers.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {EVENT_PLAYER_SETTINGS_SYNC, EVENT_PLAYER_SETTINGS_UPDATE} from "@/common/PlayerSettingsEvents.js";
 import {EVENT_GAME_SETTINGS_SYNC, EVENT_GAME_SETTINGS_UPDATE} from "@/common/GameSettingsEvents.js";
 import {TILE_SIZE, snapToChunk} from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 import {chunkKey} from "@/common/util.js";
+import {GridDrawLayer} from "@/client/GridDrawLayer.js";
+import {MaskDrawLayer} from "@/client/MaskDrawLayer.js";
+
+export const CoreDrawLayers = [
+    new GridDrawLayer(),
+    new MaskDrawLayer(),
+];
 
 export class Client {
 
@@ -30,6 +36,7 @@ export class Client {
         this.playerSettings = new PlayerSettings();
         this.gameSettings = new GameSettings();
         this.miniMenuLayer = new MiniMenuLayer();
+
         CoreDrawLayers.forEach(layer => {
             this.drawLayerRegistry.add(layer);
         });
@@ -55,6 +62,9 @@ export class Client {
         this._updateViewportChunks();
     }
 
+    /**
+     * @private
+     */
     _visibleChunks() {
         const x1 = this.viewport.left / TILE_SIZE;
         const y1 = this.viewport.top / TILE_SIZE;
@@ -70,6 +80,9 @@ export class Client {
         return chunks;
     }
 
+    /**
+     * @private
+     */
     _updateViewportChunks() {
         const chunks = this._visibleChunks();
         const key = chunks.slice().sort().join(";");

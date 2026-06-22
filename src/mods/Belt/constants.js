@@ -6,7 +6,7 @@
 export const MAX_UNDERGROUND_LENGTH = 6;
 
 /**
- * Game-setting keys this mod owns (core owns key 0; see GameSettingsKey).
+ * Game-setting keys this mod owns
  * @enum
  */
 export const BeltGameSettingsKey = {
@@ -19,6 +19,9 @@ export const BELT_RAMP_DOWN = 1;
 export const BELT_RAMP_UP = 2;
 export const BELT_UNDERGROUND = 3;
 
+/**
+ * @enum {number}
+ */
 export const BeltType = {
     NORMAL: BELT_NORMAL,
     RAMP_DOWN: BELT_RAMP_DOWN,

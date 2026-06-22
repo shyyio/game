@@ -11,7 +11,7 @@ export class ObjectDrawLayer extends DrawLayer {
         this._objects = {};
     }
 
-    get zLevel() {
+    get layerIndex() {
         return 20;
     }
 

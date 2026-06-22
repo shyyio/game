@@ -1,4 +1,5 @@
 import {Container} from "pixi.js";
+import {NotImplementedError} from "@/common/error.js";
 
 /**
  * @abstract
@@ -17,15 +18,16 @@ export class DrawLayer extends Container {
      * @abstract
      * @returns {number}
      */
-    get zLevel() {
-        return 0;
+    get layerIndex() {
+        throw new NotImplementedError();
     }
 
     /**
      * @abstract
      * @param {BufferedEvent|LiveEvent} event
+     * @returns void
      */
     onEvent(event) {
-
+        throw new NotImplementedError();
     }
 }

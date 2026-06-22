@@ -14,7 +14,7 @@ import {
 } from "./constants.js";
 import {getUndergroundBeltsToCreate} from "./geometry.js";
 import {beltSchema, beltTempSchema} from "./schema.js";
-import {beltDefinitions} from "./definitions.js";
+import {BeltDefinition} from "./definitions.js";
 import {beltStatements} from "./statements.js";
 import {
     BeltPathRecalculateEvent,
@@ -41,7 +41,7 @@ export class BeltMod extends Mod {
     }
 
     get definitions() {
-        return beltDefinitions;
+        return {Belt: BeltDefinition};
     }
 
     get tempSchema() {
@@ -115,10 +115,10 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * Inserts the Belt row (computing its upstream parent in SQL) and returns the
      * new id, or null if the placement conflicts with an existing belt. On conflict
      * the transaction is rolled back so no partial state survives.
+     * @private
      * @param {{x: number, y: number, type: number, direction: Direction}} options
      * @returns {BigInt|null}
      */
@@ -141,7 +141,6 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * Resolves the new belt's path head and its downstream child (the belt it now
      * feeds, if any) in a single query. The child carries derived, named booleans
      * describing the merge topology so callers branch on intent rather than on raw
@@ -150,6 +149,7 @@ export class BeltMod extends Mod {
      *   - hadParent: the child had an upstream parent belt before this placement
      *   - isCrossChunk: the child lies in a different chunk from the new belt
      *   - parentInDifferentChunk: the child's former parent lay in another chunk from the child
+     * @private
      * @param {BigInt} id
      * @param {{x: number, y: number, type: number, direction: Direction, chunk: string}} options
      * @returns {{head: BigInt, child: ({id: BigInt, x: number, y: number, oldParentPathHead: BigInt|null, isStandalone: boolean, hadParent: boolean, isCrossChunk: boolean, parentInDifferentChunk: boolean})|null}}
@@ -175,11 +175,11 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * True when the new belt is itself the path head merging with a same-chunk
      * standalone child (a child that was its own head and had no upstream parent).
      * In that case path_indexes don't shift, so items can be transferred directly
      * rather than stashed/recalculated — the fast path.
+     * @private
      */
     _isStandaloneChildMerge(id, head, child) {
         return child !== null
@@ -190,11 +190,11 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * Fast path: absorb a same-chunk standalone child into the new head without
      * stashing. BeltPathItem rows move directly via TransferBeltPathItems because
      * their path_indexes are preserved. Invariant: head_gap stays <= length (kept
      * by FillHeadGap after the path is re-materialized).
+     * @private
      */
     _mergeStandaloneChild(id, head, child, options) {
         this._relinkChild(child, options);
@@ -218,12 +218,12 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * General path: the new belt may merge paths, split a child onto a new path
      * (cross-chunk) and/or detach the child from a previous parent. Items along
      * every affected path are stashed before re-materialization and un-stashed
      * after, so positions survive the path_index shift. Invariant: each touched
      * path ends with head_gap <= length via FillHeadGap.
+     * @private
      */
     _rebuildPaths(id, head, child, options) {
         const oldParentPathHead = child === null ? null : child.oldParentPathHead;
@@ -297,8 +297,8 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * Re-points the downstream child at its new upstream parent and notifies clients.
+     * @private
      */
     _relinkChild(child, options) {
         this.game.exec("UpdateBeltChild", {id: child.id});
@@ -306,11 +306,11 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * Folds the child's path into `head`: head inherits the child's output port
      * (its downstream link), then the redundant child path and its input port are
      * removed. Returns the inherited out_port_id, used to seed head's ports when
      * head's path was freshly created.
+     * @private
      * @returns {BigInt|null}
      */
     _absorbChildPath(head, child) {
@@ -322,9 +322,9 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * Splits the child onto its own new path (it crossed into a different chunk
      * from the new belt, so they cannot share a path) and notifies clients.
+     * @private
      */
     _splitChildPath(child) {
         const created = this.game.queryScalar("InsertBeltPath", {id: child.id});
@@ -337,8 +337,8 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * Emits a path-recalculate event carrying the path's belt ids in order.
+     * @private
      */
     _publishPathRecalculate(pathHead, x, y) {
         const parts = this._getPath(pathHead);
@@ -478,11 +478,11 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * Describes @id's path when it is a loop: its head and the belt physically
      * upstream of that head (the wrap-around feeder). Returns null when the path is
      * not a loop. Capturing the feeder here lets _healLoopSeam reuse it instead of
      * re-deriving the geometry after the deletion has mutated the paths.
+     * @private
      * @param {BigInt} id
      * @returns {{head: BigInt, upstreamNeighbor: BigInt}|null}
      */
@@ -502,11 +502,11 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * Re-links a loop seam left dangling by a deletion: the recorded head still has
      * no parent but is now physically fed by a belt in a *different* path (the cycle
      * is broken). Re-point the head at that upstream neighbor and fold its path into
      * the neighbor's, so the remainder is the single run a fresh build would produce.
+     * @private
      * @param {{head: BigInt, upstreamNeighbor: BigInt}|null} loopSeam
      */
     _healLoopSeam(loopSeam) {
@@ -558,11 +558,11 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * Cascades a ramp deletion through its underground tunnel: deleting a RAMP_DOWN
      * removes the undergrounds downstream of it; deleting a RAMP_UP removes those
      * upstream. Once the tunnel is gone the corresponding child/parent link no
      * longer needs separate path handling, so it is cleared.
+     * @private
      * @returns {{childId: BigInt|null, parentId: BigInt|null}}
      */
     _collapseRampChain(belt, childId, parentId, fillHeadGap) {
@@ -583,9 +583,9 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * Stashes the former parent path's items and invalidates it so it can be
      * re-materialized (shorter, minus the removed belt) during finalization.
+     * @private
      * @returns {BigInt} the parent's path head
      */
     _prepareParentPath(parentId) {
@@ -599,9 +599,9 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * Promotes the removed belt's former child to the head of its own new path
      * (it lost its upstream parent) and stashes its items for re-materialization.
+     * @private
      */
     _splitOrphanedChildPath(childId) {
         this.game.exec("NullifyPathTail", {id: childId});
@@ -624,9 +624,9 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * Re-materializes the parent path and queues its head_gap refill (deferred
      * until after un-stash so item lengths are known).
+     * @private
      */
     _finalizeParentPath(parentPathHead, belt, fillHeadGap) {
         fillHeadGap.push(parentPathHead);
@@ -635,11 +635,11 @@ export class BeltMod extends Mod {
     }
 
     /**
-     * @private
      * Top-level wrap-up: restore all stashed items, refill the head_gap of every
      * path touched by the cascade, re-link any broken loop seam, then commit.
      * Invariant: fillHeadGap must hold no duplicates, or a path would be refilled
      * twice and break head_gap <= length.
+     * @private
      * @param {BigInt[]} fillHeadGap
      * @param {{head: BigInt, upstreamNeighbor: BigInt}|null} loopSeam
      */
@@ -669,8 +669,8 @@ export class BeltMod extends Mod {
     // ---- Helpers ----
 
     /**
-     * @private
      * Removes all DB rows for a belt and returns the IDs of its former child and parent.
+     * @private
      * @param {BigInt} id
      * @returns {{childId: BigInt|null, parentId: BigInt|null}}
      */
@@ -698,16 +698,27 @@ export class BeltMod extends Mod {
         this.game.publishEventNow(new BeltInsertEvent(options.x, options.y, id, options.direction, options.type, parentX, parentY));
     }
 
+    /**
+     * @param id {BigInt}
+     * @private
+     */
     _stashItems(id) {
         this.game.exec("StashItems", {id});
         this.game.exec("DeleteItems", {id});
     }
 
+    /**
+     * @param id {BigInt}
+     * @private
+     */
     _stashOutputItem(id) {
         this.game.exec("StashOutputItem", {id});
         this.game.exec("RemoveOutputItem", {id});
     }
 
+    /**
+     * @private
+     */
     _unStashItems() {
         this.game.exec("UnStashItems");
         this.game.exec("TruncateStashedItems");
@@ -715,6 +726,9 @@ export class BeltMod extends Mod {
         this.game.exec("RecalculateNextItem");
     }
 
+    /**
+     * @private
+     */
     _unStashOutputItem() {
         this.game.exec("UnStashOutputItem");
         this.game.exec("TruncateStashedOutputItem");

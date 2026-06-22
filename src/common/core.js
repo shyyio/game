@@ -1,7 +1,3 @@
-/**
- * @typedef StatementName {string}
- */
-
 // ---- Core event type ----
 export const EVENT_TYPE_CORE = 0;
 
@@ -13,7 +9,7 @@ export const EVENT_SUBTYPE_CHUNK_UNSUBSCRIBE = 2;
 export class TickOp {
 
     /**
-     * @param [statementName] {StatementName}
+     * @param [statementName] {string}
      * @param [sql] {string|null}
      */
     constructor(statementName, sql) {
@@ -73,10 +69,9 @@ export class PortTransferOp extends TickOp {
                 ${this.gameObject}.${this.outputPort} destination_id,
                 (${this.priority}) priority,
                 (dst.item IS NULL) destination_is_empty
-            FROM
-                ${this.gameObject}
-            INNER JOIN Port dst ON dst.id = ${this.gameObject}.${this.outputPort}
-            INNER JOIN Port src ON src.id = ${this.gameObject}.${this.inputPort}
+            FROM ${this.gameObject}
+                INNER JOIN Port dst ON dst.id = ${this.gameObject}.${this.outputPort}
+                INNER JOIN Port src ON src.id = ${this.gameObject}.${this.inputPort}
             WHERE src.item IS NOT NULL;`;
     }
 }
@@ -112,12 +107,12 @@ export class MiniMenuEntry {
     /**
      * @param {string} label
      * @param {number} rank
-     * @param {function(): void} handler
+     * @param {function(): void} callback
      */
-    constructor(label, rank, handler) {
+    constructor(label, rank, callback) {
         this.label = label;
         this.rank = rank;
-        this.handler = handler;
+        this.callback = callback;
     }
 }
 
@@ -149,27 +144,38 @@ export class Mod {
     }
 
     /**
-     * @abstract
+     * @returns {TextureDefinition[]}
+     */
+    get textureDefinitions() {
+
+    }
+
+    /**
+     * @returns {Object.<string, string>}
+     */
+    get statements() {
+        return {};
+    }
+
+    /**
      * @returns string
      */
     get schema() {
-
+        return "";
     }
 
     /**
-     * @abstract
      * @returns string
      */
     get tempSchema() {
-
+        return "";
     }
 
     /**
-     * @abstract
      * @returns {Object.<string, ObjectDefinition>}
      */
     get definitions() {
-
+        return {};
     }
 
     /**
@@ -182,7 +188,13 @@ export class Mod {
     }
 
     /**
-     * @abstract
+     * @returns {DrawLayer[]}
+     */
+    get drawLayers() {
+
+    }
+
+    /**
      * @param {Message} message
      */
     onMessage(message) {
@@ -190,7 +202,6 @@ export class Mod {
     }
 
     /**
-     * @abstract
      * Returns mini menu entries for the tile at (tileX, tileY).
      * Each entry carries its own handler — the mod decides what happens when clicked.
      * @param {number} tileX
@@ -198,16 +209,19 @@ export class Mod {
      * @param {Session} session
      * @returns {MiniMenuEntry[]}
      */
-    miniMenuContextEntries(tileX, tileY, session) {}
+    miniMenuContextEntries(tileX, tileY, session) {
+        return [];
+    }
 
     /**
-     * @abstract
      * Returns the tools this mod makes available given the current player settings.
      * Called on init and again whenever any PlayerSetting changes.
      * @param {Session} session
      * @param {PlayerSettings} playerSettings
      * @returns {Tool[]}
      */
-    tools(session, playerSettings) {}
+    tools(session, playerSettings) {
+        return [];
+    }
 }
 

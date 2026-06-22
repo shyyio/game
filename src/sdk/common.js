@@ -38,12 +38,11 @@ export {LiveEvent} from "@/common/LiveEvent.js";
 export {Direction, CHUNK_SIZE} from "@/common/constants.js";
 
 // ---- Port wiring ----
-// Helpers for connecting a freshly placed object to its neighbours. "Upstream"
-// = the neighbour OUTPUT ports that feed this object's inputs; "downstream" =
-// the neighbour INPUT ports this object's outputs feed. Both return a map of
-// { thisObjectsPortName -> sharedPortId }. `createInternalPorts` allocates new
-// ports an object owns internally (not shared with neighbours).
-export {upstreamPorts, downstreamPorts, createInternalPorts, objectTiles} from "@/common/portUtils.js";
+// Helpers for connecting a freshly placed object to its neighbors. "Upstream"
+// = the neighbor OUTPUT ports that feed this object's inputs; "downstream" =
+// the neighbor INPUT ports this object's outputs feed. Both return a map of
+// { thisObjectsPortName -> sharedPortId }.
+export {upstreamPorts, downstreamPorts} from "@/common/portUtils.js";
 
 // ---- Chunk keys ----
 // A chunk is identified by a "x,y" string key (NOT an object). `chunkKey(tileX,
