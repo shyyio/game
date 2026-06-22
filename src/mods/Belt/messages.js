@@ -1,8 +1,10 @@
 
+import {Message} from "@/common/Message.js";
+
 export const MESSAGE_CREATE_BELT = 1;
 export const MESSAGE_DELETE_BELT = 2;
 
-export class CreateBeltMessage {
+export class CreateBeltMessage extends Message {
 
     static wireFields = {
         type: "int32",
@@ -23,6 +25,7 @@ export class CreateBeltMessage {
      * @param {BigInt} [disconnectRampChild]
      */
     constructor({x, y, direction, beltType, rampParent, disconnectRampChild}) {
+        super();
         this.type = MESSAGE_CREATE_BELT;
         this.x = x;
         this.y = y;
@@ -33,7 +36,7 @@ export class CreateBeltMessage {
     }
 }
 
-export class DeleteBeltMessage {
+export class DeleteBeltMessage extends Message {
 
     static wireFields = {
         type: "int32",
@@ -44,6 +47,7 @@ export class DeleteBeltMessage {
      * @param {BigInt} id
      */
     constructor(id) {
+        super();
         this.type = MESSAGE_DELETE_BELT;
         this.id = id;
     }
