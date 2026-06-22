@@ -203,18 +203,128 @@ const RIGHT = Direction.RIGHT;
 const DOWN = Direction.DOWN;
 const LEFT = Direction.LEFT;
 
-const CompatibleStraightBeltConnection = `(
-       (type=${BELT_NORMAL}      AND @type=${BELT_NORMAL})
-    OR (type=${BELT_NORMAL}      AND @type=${BELT_RAMP_DOWN})
-    OR (type=${BELT_RAMP_DOWN}   AND @type=${BELT_UNDERGROUND})
-    OR (type=${BELT_RAMP_DOWN}   AND @type=${BELT_RAMP_UP})
-    OR (type=${BELT_UNDERGROUND} AND @type=${BELT_UNDERGROUND})
-    OR (type=${BELT_UNDERGROUND} AND @type=${BELT_RAMP_UP})
-    OR (type=${BELT_RAMP_UP}     AND @type=${BELT_NORMAL}))`;
+// Whether an upstream "parent" belt of type `parentType` may feed a downstream belt
+// of type `childType` through a straight (in-line) connection. `parentType`/`childType`
+// are SQL expressions (column refs or @params) so this composes into different queries.
+const compatibleStraightConnection = (parentType, childType) => `(
+       (${parentType}=${BELT_NORMAL}      AND ${childType}=${BELT_NORMAL})
+    OR (${parentType}=${BELT_NORMAL}      AND ${childType}=${BELT_RAMP_DOWN})
+    OR (${parentType}=${BELT_RAMP_DOWN}   AND ${childType}=${BELT_UNDERGROUND})
+    OR (${parentType}=${BELT_RAMP_DOWN}   AND ${childType}=${BELT_RAMP_UP})
+    OR (${parentType}=${BELT_UNDERGROUND} AND ${childType}=${BELT_UNDERGROUND})
+    OR (${parentType}=${BELT_UNDERGROUND} AND ${childType}=${BELT_RAMP_UP})
+    OR (${parentType}=${BELT_RAMP_UP}     AND ${childType}=${BELT_NORMAL}))`;
 
-const CompatibleBentBeltConnection = `(
-    (type=${BELT_NORMAL}  AND @type=${BELT_NORMAL})
- OR (type=${BELT_RAMP_UP} AND @type=${BELT_NORMAL}))`;
+// As above for a bent (cornering) connection, where only normal-into-normal and
+// ramp-up-into-normal are permitted.
+const compatibleBentConnection = (parentType, childType) => `(
+    (${parentType}=${BELT_NORMAL}  AND ${childType}=${BELT_NORMAL})
+ OR (${parentType}=${BELT_RAMP_UP} AND ${childType}=${BELT_NORMAL}))`;
+
+// Whether the belt downstream of a freshly placed belt (the "child") accepts it as
+// its new upstream parent. `Belt` is the candidate child row; `@type`/`@direction`
+// describe the belt being placed.
+const CompatibleChildBeltConnection = `(
+    (Belt.type = ${BELT_NORMAL} AND @type = ${BELT_NORMAL})
+        OR (Belt.type = ${BELT_NORMAL} AND @type = ${BELT_RAMP_UP})
+        OR (
+            Belt.direction = @direction AND (
+                (Belt.type = ${BELT_RAMP_DOWN}   AND @type = ${BELT_NORMAL})
+             OR (Belt.type = ${BELT_NORMAL}      AND @type = ${BELT_RAMP_UP})
+             OR (Belt.type = ${BELT_RAMP_UP}     AND @type = ${BELT_RAMP_DOWN})
+             OR (Belt.type = ${BELT_UNDERGROUND} AND @type = ${BELT_RAMP_DOWN})
+             OR (Belt.type = ${BELT_RAMP_UP}     AND @type = ${BELT_UNDERGROUND})
+            )
+        )
+)`;
+
+// The tile a belt at (@x, @y) facing @direction feeds into (its downstream "child"
+// tile), and the direction a head-on belt there would face (excluded so two belts
+// pointing at each other never connect).
+const CHILD_TILE_X = `CASE
+                    WHEN @direction = ${UP}    THEN @x
+                    WHEN @direction = ${RIGHT} THEN @x + 1
+                    WHEN @direction = ${DOWN}  THEN @x
+                    WHEN @direction = ${LEFT}  THEN @x - 1
+                END`;
+const CHILD_TILE_Y = `CASE
+                    WHEN @direction = ${UP}    THEN @y - 1
+                    WHEN @direction = ${RIGHT} THEN @y
+                    WHEN @direction = ${DOWN}  THEN @y + 1
+                    WHEN @direction = ${LEFT}  THEN @y
+                END`;
+const OPPOSITE_DIRECTION = `CASE
+                    WHEN @direction = ${UP}    THEN ${DOWN}
+                    WHEN @direction = ${RIGHT} THEN ${LEFT}
+                    WHEN @direction = ${DOWN}  THEN ${UP}
+                    WHEN @direction = ${LEFT}  THEN ${RIGHT}
+                END`;
+
+/**
+ * SQL `CASE` selecting MAX(id) of the belt that should feed a belt placed at
+ * (x, y) facing `direction`. The candidate upstream neighbors are the tile directly
+ * behind (a straight connection) and the two perpendicular tiles (bend connections),
+ * each filtered to a belt type compatible with the fed belt (`placedType`). Shared by
+ * InsertBelt (new belt's parent), UpdateBeltChild (a child's new parent), and
+ * FindUpstreamNeighbor (loop-seam feeder) so the geometry and the compatibility rules
+ * can never drift between placement and loop healing.
+ *
+ * @param {object} o
+ * @param {string} o.from - candidate table, e.g. "Belt" or "Belt b"
+ * @param {string} o.col - candidate column prefix, e.g. "" or "b."
+ * @param {string} o.x - origin x expression, e.g. "@x" or "Belt.x"
+ * @param {string} o.y - origin y expression, e.g. "@y" or "Belt.y"
+ * @param {string} o.direction - origin direction expression, e.g. "@direction" or "direction"
+ * @param {string} o.placedType - fed belt's type expression, e.g. "@type" or "Belt.type"
+ * @returns {string}
+ */
+function upstreamParentSql({from, col, x, y, direction, placedType}) {
+    const straightAnd = ` AND ${compatibleStraightConnection(`${col}type`, placedType)}`;
+    const bentAnd = ` AND ${compatibleBentConnection(`${col}type`, placedType)}`;
+    const upstreamNeighbor = (fx, fy, dir, extra) =>
+        `(${col}x = ${fx} AND ${col}y = ${fy} AND ${col}direction = ${dir}${extra})`;
+    const select = (straightNeighbor, bentA, bentB) =>
+        `(SELECT MAX(id) FROM ${from}
+                         WHERE ${straightNeighbor}
+                            OR ${bentA}
+                            OR ${bentB})`;
+    return `CASE
+                    WHEN ${direction} = ${UP} THEN
+                        ${select(
+                            upstreamNeighbor(x, `${y} + 1`, UP, straightAnd),
+                            upstreamNeighbor(`${x} - 1`, y, RIGHT, bentAnd),
+                            upstreamNeighbor(`${x} + 1`, y, LEFT, bentAnd))}
+                    WHEN ${direction} = ${RIGHT} THEN
+                        ${select(
+                            upstreamNeighbor(`${x} - 1`, y, RIGHT, straightAnd),
+                            upstreamNeighbor(x, `${y} + 1`, UP, bentAnd),
+                            upstreamNeighbor(x, `${y} - 1`, DOWN, bentAnd))}
+                    WHEN ${direction} = ${DOWN} THEN
+                        ${select(
+                            upstreamNeighbor(x, `${y} - 1`, DOWN, straightAnd),
+                            upstreamNeighbor(`${x} - 1`, y, RIGHT, bentAnd),
+                            upstreamNeighbor(`${x} + 1`, y, LEFT, bentAnd))}
+                    WHEN ${direction} = ${LEFT} THEN
+                        ${select(
+                            upstreamNeighbor(`${x} + 1`, y, LEFT, straightAnd),
+                            upstreamNeighbor(x, `${y} + 1`, UP, bentAnd),
+                            upstreamNeighbor(x, `${y} - 1`, DOWN, bentAnd))}
+                END`;
+}
+
+// All four input-port lookups are identical: the belt at (@x, @y) is its own path
+// head, so its in_port is read directly. portUtils dispatches by direction name
+// (GetInPort${dir}), so all four keys must resolve to this statement.
+const GetInPortAtTile = `
+                SELECT in_port_id FROM BeltPath
+                INNER JOIN Belt ON Belt.id = BeltPath.id
+                WHERE Belt.x = @x AND Belt.y = @y
+                LIMIT 1;
+            `;
+
+// The tail belt of a path is its lowest-path_index member. Shared so the standalone
+// GetPathTailBelt op and MaterializeBeltPath's new_tail can never disagree.
+const PATH_TAIL_BELT_SQL = "SELECT id FROM Belt WHERE path_id = CAST(@id AS INT) ORDER BY path_index LIMIT 1";
 
 // noinspection SqlWithoutWhere
 export class BeltMod extends Mod {
@@ -640,6 +750,50 @@ export class BeltMod extends Mod {
                 WHERE id = CAST(@id AS INT);
             `,
 
+            // Shortening a path (a belt removed from a full run) can leave more item
+            // content than the path can hold. Drop the head-most rows whose inclusion
+            // would push the total past the path length, keeping the tail-side items
+            // nearest the surviving downstream. Returns the dropped row ids.
+            TrimOverflowItems: `
+                WITH from_tail AS (
+                    SELECT id,
+                        SUM(length) OVER (ORDER BY id ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS tail_total
+                    FROM BeltPathItem
+                    WHERE path_id = CAST(@id AS INT)
+                ),
+                path_length AS (SELECT length FROM BeltPath WHERE id = CAST(@id AS INT))
+                DELETE FROM BeltPathItem
+                WHERE id IN (
+                    SELECT from_tail.id
+                    FROM from_tail
+                        CROSS JOIN path_length
+                    WHERE from_tail.tail_total > path_length.length
+                )
+                RETURNING id;
+            `,
+
+            // After TrimOverflowItems, a gap can be left as the head-most row (highest
+            // id) when the drop boundary fell just past it. Empty space at the head
+            // belongs in head_gap, not a gap item — otherwise an entering item is
+            // wrongly blocked — so remove any gap rows above the top-most real item;
+            // FillHeadGap then reclaims that space.
+            DropTrailingHeadGaps: `
+                WITH last_item AS (
+                    SELECT COALESCE(MAX(id), 0) AS id
+                    FROM BeltPathItem
+                    WHERE path_id = CAST(@id AS INT) AND type != ${ITEM_TYPE_GAP}
+                )
+                DELETE FROM BeltPathItem
+                WHERE id IN (
+                    SELECT gap.id
+                    FROM BeltPathItem gap
+                        CROSS JOIN last_item
+                    WHERE gap.path_id = CAST(@id AS INT)
+                      AND gap.type = ${ITEM_TYPE_GAP}
+                      AND gap.id > last_item.id
+                );
+            `,
+
             TransferBeltPathItems: `
                 UPDATE BeltPathItem
                 SET path_id = CAST(@to AS INT)
@@ -690,38 +844,11 @@ export class BeltMod extends Mod {
                         FROM Belt
                             LEFT JOIN Belt new_parent       ON new_parent.x = @x AND new_parent.y = @y
                             LEFT JOIN Belt new_grandparent  ON new_grandparent.id = new_parent.parent_id
-                        WHERE Belt.x = CASE
-                            WHEN @direction = ${UP}    THEN @x
-                            WHEN @direction = ${RIGHT} THEN @x + 1
-                            WHEN @direction = ${DOWN}  THEN @x
-                            WHEN @direction = ${LEFT}  THEN @x - 1
-                        END
-                          AND Belt.y = CASE
-                            WHEN @direction = ${UP}    THEN @y - 1
-                            WHEN @direction = ${RIGHT} THEN @y
-                            WHEN @direction = ${DOWN}  THEN @y + 1
-                            WHEN @direction = ${LEFT}  THEN @y
-                        END
-                          AND Belt.direction != CASE
-                            WHEN @direction = ${UP}    THEN ${DOWN}
-                            WHEN @direction = ${RIGHT} THEN ${LEFT}
-                            WHEN @direction = ${DOWN}  THEN ${UP}
-                            WHEN @direction = ${LEFT}  THEN ${RIGHT}
-                        END
+                        WHERE Belt.x = ${CHILD_TILE_X}
+                          AND Belt.y = ${CHILD_TILE_Y}
+                          AND Belt.direction != ${OPPOSITE_DIRECTION}
                           AND (new_grandparent.path_id IS NULL OR new_grandparent.path_id != Belt.id)
-                          AND (
-                            (Belt.type = ${BELT_NORMAL} AND @type = ${BELT_NORMAL})
-                                OR (Belt.type = ${BELT_NORMAL} AND @type = ${BELT_RAMP_UP})
-                                OR (
-                                    Belt.direction = @direction AND (
-                                        (Belt.type = ${BELT_RAMP_DOWN}   AND @type = ${BELT_NORMAL})
-                                     OR (Belt.type = ${BELT_NORMAL}      AND @type = ${BELT_RAMP_UP})
-                                     OR (Belt.type = ${BELT_RAMP_UP}     AND @type = ${BELT_RAMP_DOWN})
-                                     OR (Belt.type = ${BELT_UNDERGROUND} AND @type = ${BELT_RAMP_DOWN})
-                                     OR (Belt.type = ${BELT_RAMP_UP}     AND @type = ${BELT_UNDERGROUND})
-                                    )
-                                )
-                        )
+                          AND ${CompatibleChildBeltConnection}
                     )
                 SELECT
                     -- the head of the path the new belt joined or created
@@ -745,76 +872,16 @@ export class BeltMod extends Mod {
                     LEFT JOIN Belt child_old_parent ON child_old_parent.id = child.parent_id
             `,
 
-            GetBeltChild: `
-                SELECT Belt.id,
-                       Belt.path_id,
-                       Belt.parent_id       oldParent,
-                       Belt.chunk,
-                       current_parent.chunk oldParentChunk,
-                       Belt.x,
-                       Belt.y
-                FROM Belt
-                    LEFT JOIN Belt current_parent ON Belt.parent_id = current_parent.id
-                    LEFT JOIN Belt new_parent ON new_parent.x = @x AND new_parent.y = @y
-                    LEFT JOIN Belt new_grandparent ON new_grandparent.id = new_parent.parent_id
-                WHERE Belt.x = CASE
-                    WHEN @direction = ${UP}    THEN @x
-                    WHEN @direction = ${RIGHT} THEN @x + 1
-                    WHEN @direction = ${DOWN}  THEN @x
-                    WHEN @direction = ${LEFT}  THEN @x - 1
-                END
-                  AND Belt.y = CASE
-                    WHEN @direction = ${UP}    THEN @y - 1
-                    WHEN @direction = ${RIGHT} THEN @y
-                    WHEN @direction = ${DOWN}  THEN @y + 1
-                    WHEN @direction = ${LEFT}  THEN @y
-                END
-                  AND Belt.direction != CASE
-                    WHEN @direction = ${UP}    THEN ${DOWN}
-                    WHEN @direction = ${RIGHT} THEN ${LEFT}
-                    WHEN @direction = ${DOWN}  THEN ${UP}
-                    WHEN @direction = ${LEFT}  THEN ${RIGHT}
-                END
-                  AND (new_grandparent.path_id IS NULL OR new_grandparent.path_id != Belt.id)
-                  AND (
-                    (Belt.type = ${BELT_NORMAL} AND @type = ${BELT_NORMAL})
-                        OR (Belt.type = ${BELT_NORMAL} AND @type = ${BELT_RAMP_UP})
-                        OR (
-                            Belt.direction = @direction AND (
-                                (Belt.type = ${BELT_RAMP_DOWN}   AND @type = ${BELT_NORMAL})
-                             OR (Belt.type = ${BELT_NORMAL}      AND @type = ${BELT_RAMP_UP})
-                             OR (Belt.type = ${BELT_RAMP_UP}     AND @type = ${BELT_RAMP_DOWN})
-                             OR (Belt.type = ${BELT_UNDERGROUND} AND @type = ${BELT_RAMP_DOWN})
-                             OR (Belt.type = ${BELT_RAMP_UP}     AND @type = ${BELT_UNDERGROUND})
-                            )
-                        )
-                )
-            `,
-
             UpdateBeltChild: `
                 UPDATE Belt
-                SET parent_id = CASE
-                    WHEN direction = ${UP} THEN
-                        (SELECT MAX(id) FROM Belt b
-                         WHERE (b.x = Belt.x AND b.y = Belt.y + 1 AND b.direction = ${UP})
-                            OR (b.x = Belt.x - 1 AND b.y = Belt.y AND b.direction = ${RIGHT})
-                            OR (b.x = Belt.x + 1 AND b.y = Belt.y AND b.direction = ${LEFT}))
-                    WHEN direction = ${RIGHT} THEN
-                        (SELECT MAX(id) FROM Belt b
-                         WHERE (b.x = Belt.x - 1 AND b.y = Belt.y AND b.direction = ${RIGHT})
-                            OR (b.x = Belt.x AND b.y = Belt.y + 1 AND b.direction = ${UP})
-                            OR (b.x = Belt.x AND b.y = Belt.y - 1 AND b.direction = ${DOWN}))
-                    WHEN direction = ${DOWN} THEN
-                        (SELECT MAX(id) FROM Belt b
-                         WHERE (b.x = Belt.x AND b.y = Belt.y - 1 AND b.direction = ${DOWN})
-                            OR (b.x = Belt.x - 1 AND b.y = Belt.y AND b.direction = ${RIGHT})
-                            OR (b.x = Belt.x + 1 AND b.y = Belt.y AND b.direction = ${LEFT}))
-                    WHEN direction = ${LEFT} THEN
-                        (SELECT MAX(id) FROM Belt b
-                         WHERE (b.x = Belt.x + 1 AND b.y = Belt.y AND b.direction = ${LEFT})
-                            OR (b.x = Belt.x AND b.y = Belt.y + 1 AND b.direction = ${UP})
-                            OR (b.x = Belt.x AND b.y = Belt.y - 1 AND b.direction = ${DOWN}))
-                END
+                SET parent_id = ${upstreamParentSql({
+                    from: "Belt b",
+                    col: "b.",
+                    x: "Belt.x",
+                    y: "Belt.y",
+                    direction: "direction",
+                    placedType: "Belt.type",
+                })}
                 WHERE id = CAST(@id AS INT)
                 RETURNING 1;
             `,
@@ -845,28 +912,14 @@ export class BeltMod extends Mod {
 
             InsertBelt: `
                 INSERT INTO Belt (parent_id, x, y, type, direction)
-                VALUES (CASE
-                    WHEN @direction = ${UP} THEN
-                        (SELECT MAX(id) FROM Belt
-                         WHERE (x = @x AND y = @y + 1 AND direction = ${UP} AND ${CompatibleStraightBeltConnection})
-                            OR (x = @x - 1 AND y = @y AND direction = ${RIGHT} AND ${CompatibleBentBeltConnection})
-                            OR (x = @x + 1 AND y = @y AND direction = ${LEFT} AND ${CompatibleBentBeltConnection}))
-                    WHEN @direction = ${RIGHT} THEN
-                        (SELECT MAX(id) FROM Belt
-                         WHERE (x = @x - 1 AND y = @y AND direction = ${RIGHT} AND ${CompatibleStraightBeltConnection})
-                            OR (x = @x AND y = @y + 1 AND direction = ${UP} AND ${CompatibleBentBeltConnection})
-                            OR (x = @x AND y = @y - 1 AND direction = ${DOWN} AND ${CompatibleBentBeltConnection}))
-                    WHEN @direction = ${DOWN} THEN
-                        (SELECT MAX(id) FROM Belt
-                         WHERE (x = @x AND y = @y - 1 AND direction = ${DOWN} AND ${CompatibleStraightBeltConnection})
-                            OR (x = @x - 1 AND y = @y AND direction = ${RIGHT} AND ${CompatibleBentBeltConnection})
-                            OR (x = @x + 1 AND y = @y AND direction = ${LEFT} AND ${CompatibleBentBeltConnection}))
-                    WHEN @direction = ${LEFT} THEN
-                        (SELECT MAX(id) FROM Belt
-                         WHERE (x = @x + 1 AND y = @y AND direction = ${LEFT} AND ${CompatibleStraightBeltConnection})
-                            OR (x = @x AND y = @y + 1 AND direction = ${UP} AND ${CompatibleBentBeltConnection})
-                            OR (x = @x AND y = @y - 1 AND direction = ${DOWN} AND ${CompatibleBentBeltConnection}))
-                END,
+                VALUES (${upstreamParentSql({
+                    from: "Belt",
+                    col: "",
+                    x: "@x",
+                    y: "@y",
+                    direction: "@direction",
+                    placedType: "@type",
+                })},
                 @x, @y, @type, @direction)
                 RETURNING Belt.id;
             `,
@@ -885,12 +938,6 @@ export class BeltMod extends Mod {
                 )
                 SELECT id
                 FROM path;
-            `,
-
-            GetExistingBeltPathHead: `
-                SELECT path_id
-                FROM Belt
-                WHERE id = CAST(@id AS INT)
             `,
 
             CalculateBeltPath: `
@@ -912,7 +959,7 @@ export class BeltMod extends Mod {
             `,
 
             MaterializeBeltPath: `
-                WITH new_tail AS (SELECT id FROM Belt WHERE path_id = CAST(@id AS INT) ORDER BY path_index LIMIT 1),
+                WITH new_tail AS (${PATH_TAIL_BELT_SQL}),
                      path_length AS (SELECT COUNT(*) * 2 - 1 AS length FROM Belt WHERE path_id = CAST(@id AS INT))
                 UPDATE BeltPath
                 SET tail_id  = (SELECT id FROM new_tail),
@@ -1012,30 +1059,10 @@ export class BeltMod extends Mod {
                 WHERE Belt.x = @x + 1 AND Belt.y = @y AND Belt.direction = ${LEFT};
             `,
 
-            GetInPortUp: `
-                SELECT in_port_id FROM BeltPath
-                INNER JOIN Belt ON Belt.id = BeltPath.id
-                WHERE Belt.x = @x AND Belt.y = @y
-                LIMIT 1;
-            `,
-            GetInPortRight: `
-                SELECT in_port_id FROM BeltPath
-                INNER JOIN Belt ON Belt.id = BeltPath.id
-                WHERE Belt.x = @x AND Belt.y = @y
-                LIMIT 1;
-            `,
-            GetInPortDown: `
-                SELECT in_port_id FROM BeltPath
-                INNER JOIN Belt ON Belt.id = BeltPath.id
-                WHERE Belt.x = @x AND Belt.y = @y
-                LIMIT 1;
-            `,
-            GetInPortLeft: `
-                SELECT in_port_id FROM BeltPath
-                INNER JOIN Belt ON Belt.id = BeltPath.id
-                WHERE Belt.x = @x AND Belt.y = @y
-                LIMIT 1;
-            `,
+            GetInPortUp: GetInPortAtTile,
+            GetInPortRight: GetInPortAtTile,
+            GetInPortDown: GetInPortAtTile,
+            GetInPortLeft: GetInPortAtTile,
 
             DeletePath: `
                 DELETE FROM BeltPath
@@ -1094,6 +1121,26 @@ export class BeltMod extends Mod {
                 WHERE tail_id=CAST(@id AS INT);
             `,
 
+            // The belt that would be the tail (lowest path_index) of @id's path.
+            GetPathTailBelt: `${PATH_TAIL_BELT_SQL};`,
+
+            // The belt physically upstream of head @id (same geometry InsertBelt uses
+            // to pick a new belt's parent). Used to detect/heal a loop seam: a head
+            // whose upstream neighbor lives in a different path is a loop broken elsewhere.
+            // Aliased `id` so it narrows to BigInt like every other belt id.
+            FindUpstreamNeighbor: `
+                SELECT ${upstreamParentSql({
+                    from: "Belt upstream_neighbor",
+                    col: "upstream_neighbor.",
+                    x: "H.x",
+                    y: "H.y",
+                    direction: "H.direction",
+                    placedType: "H.type",
+                })} AS id
+                FROM Belt H
+                WHERE H.id = CAST(@id AS INT);
+            `,
+
             DeleteBeltRow: `
                 DELETE FROM Belt
                 WHERE id = CAST(@id AS INT)
@@ -1122,13 +1169,18 @@ export class BeltMod extends Mod {
     // ---- Belt creation ----
 
     /**
+     * Places one belt and rewires the affected paths around it. A newly placed
+     * belt always becomes (or extends) a path head; if it points at an existing
+     * belt that belt becomes its downstream "child", and the two paths may merge.
+     *
      * @private
      * @param {{x: number, y: number, type: number, direction: Direction, [rampParent]: BigInt, [disconnectRampChild]: BigInt, [chunk]: string}} options
-     * @param {boolean} tnx
+     * @param {boolean} [transaction] - false when called recursively (e.g. underground
+     *     segments) so only the outermost call owns the begin/end boundary.
      */
-    _createBelt(options, tnx=true) {
+    _createBelt(options, transaction=true) {
         options.chunk = chunkKey(options.x, options.y);
-        if (tnx) {
+        if (transaction) {
             this.game.begin();
         }
 
@@ -1139,116 +1191,157 @@ export class BeltMod extends Mod {
             this._createUndergrounds(options);
         }
 
-        let id;
+        const id = this._insertBelt(options);
+        if (id === null) {
+            // Placement rejected (tile occupied / parent conflict); _insertBelt
+            // already rolled the transaction back, so there is nothing to commit.
+            return;
+        }
+
+        const {head, child} = this._resolveCreateContext(id, options);
+
+        if (this._isStandaloneChildMerge(id, head, child)) {
+            this._mergeStandaloneChild(id, head, child, options);
+        } else {
+            this._rebuildPaths(id, head, child, options);
+        }
+
+        if (transaction) {
+            this.game.end();
+        }
+    }
+
+    /**
+     * @private
+     * Inserts the Belt row (computing its upstream parent in SQL) and returns the
+     * new id, or null if the placement conflicts with an existing belt. On conflict
+     * the transaction is rolled back so no partial state survives.
+     * @param {{x: number, y: number, type: number, direction: Direction}} options
+     * @returns {BigInt|null}
+     */
+    _insertBelt(options) {
         try {
-            id = this.game.queryScalar("InsertBelt", options);
+            return this.game.queryScalar("InsertBelt", options);
         } catch (e) {
             this.game.rollback();
             const msg = String(e);
             if (msg.includes("Belt.x") && msg.includes("Belt.y")) {
                 console.warn("CreateBelt ignored: belt already exists at", options.x, options.y);
-                return;
+                return null;
             }
             if (msg.includes("Belt.parent_id")) {
                 console.warn("CreateBelt ignored: conflicting parent at", options.x, options.y);
-                return;
+                return null;
             }
             throw new Error("FIXME: InsertBelt");
         }
+    }
 
-        const {
-            head,
-            child_id: childId,
-            child_x: childX,
-            child_y: childY,
-            child_chunk: childChunk,
-            child_path: childPath,
-            child_old_parent: childOldParent,
-            child_old_parent_chunk: childOldParentChunk,
-            old_parent_path_head: oldParentPathHead,
-        } = this.game.querySingle("GetBeltCreateContext", {id, ...options});
+    /**
+     * @private
+     * Resolves the new belt's path head and its downstream child (the belt it now
+     * feeds, if any) in a single query. The child carries derived, named booleans
+     * describing the merge topology so callers branch on intent rather than on raw
+     * id/chunk comparisons:
+     *   - isStandalone: the child was its own path head (no upstream parent in its path)
+     *   - hadParent: the child had an upstream parent belt before this placement
+     *   - isCrossChunk: the child lies in a different chunk from the new belt
+     *   - parentInDifferentChunk: the child's former parent lay in another chunk from the child
+     * @param {BigInt} id
+     * @param {{x: number, y: number, type: number, direction: Direction, chunk: string}} options
+     * @returns {{head: BigInt, child: ({id: BigInt, x: number, y: number, oldParentPathHead: BigInt|null, isStandalone: boolean, hadParent: boolean, isCrossChunk: boolean, parentInDifferentChunk: boolean})|null}}
+     */
+    _resolveCreateContext(id, options) {
+        const row = this.game.querySingle("GetBeltCreateContext", {id, ...options});
 
         let child = null;
-        if (childId !== null) {
+        if (row.child_id !== null) {
             child = {
-                id: childId,
-                x: childX,
-                y: childY,
-                chunk: childChunk,
-                path: childPath,
-                oldParent: childOldParent,
-                oldParentChunk: childOldParentChunk,
+                id: row.child_id,
+                x: row.child_x,
+                y: row.child_y,
+                oldParentPathHead: row.old_parent_path_head,
+                isStandalone: row.child_path === row.child_id,
+                hadParent: row.child_old_parent !== null,
+                isCrossChunk: row.child_chunk !== options.chunk,
+                parentInDifferentChunk: row.child_old_parent_chunk !== row.child_chunk,
             };
         }
 
-        // =========== Simple case: new head merging with standalone child in same chunk =====
-        // No stash needed — child's path_indexes are unchanged; items transfer directly.
-        if (child !== null
+        return {head: row.head, child};
+    }
+
+    /**
+     * @private
+     * True when the new belt is itself the path head merging with a same-chunk
+     * standalone child (a child that was its own head and had no upstream parent).
+     * In that case path_indexes don't shift, so items can be transferred directly
+     * rather than stashed/recalculated — the fast path.
+     */
+    _isStandaloneChildMerge(id, head, child) {
+        return child !== null
             && head === id
-            && child.path === child.id
-            && child.oldParent === null
-            && child.chunk === options.chunk) {
-            this.game.exec("UpdateBeltChild", {id: child.id});
-            this.game.publishEventNow(new BeltUpdateEvent(child.x, child.y, child.id, options.x, options.y));
+            && child.isStandalone
+            && !child.hadParent
+            && !child.isCrossChunk;
+    }
 
-            const createdNewPath = this.game.queryScalar("InsertBeltPath", {id: head});
-            this.game.exec("CalculateBeltPath", {id: head});
-            this.game.exec("TransferBeltPathItems", {from: child.id, to: head});
-            this.game.exec("DeleteOutPort", {id: head});
+    /**
+     * @private
+     * Fast path: absorb a same-chunk standalone child into the new head without
+     * stashing. BeltPathItem rows move directly via TransferBeltPathItems because
+     * their path_indexes are preserved. Invariant: head_gap stays <= length (kept
+     * by FillHeadGap after the path is re-materialized).
+     */
+    _mergeStandaloneChild(id, head, child, options) {
+        this._relinkChild(child, options);
 
-            const inheritedOutPort = this.game.queryScalar("InheritOutPort", {child: child.id, parent: head});
+        const createdNewPath = this.game.queryScalar("InsertBeltPath", {id: head});
+        this.game.exec("CalculateBeltPath", {id: head});
+        this.game.exec("TransferBeltPathItems", {from: child.id, to: head});
 
-            this.game.exec("DeleteInPort", {id: child.id});
-            this.game.exec("DeletePath", {id: child.id});
-            this.game.exec("MaterializeBeltPath", {id: head});
+        const inheritedOutPort = this._absorbChildPath(head, child);
 
-            if (createdNewPath) {
-                this._populateBeltPathPorts(head, inheritedOutPort);
-            }
-            this.game.exec("FillHeadGap", {id: head});
-            this.game.exec("RecalculateNextGapForPath", {id: head});
-            this.game.exec("RecalculateNextItemForPath", {id: head});
-
-            const headPath = this._getPath(head);
-            this.game.publishEventNow(new BeltPathRecalculateEvent(options.x, options.y, headPath));
-            this._publishBeltInsert(id, options);
-
-            if (tnx) {
-                this.game.end();
-            }
-            return;
+        this.game.exec("MaterializeBeltPath", {id: head});
+        if (createdNewPath) {
+            this._populateBeltPathPorts(head, inheritedOutPort);
         }
+        this.game.exec("FillHeadGap", {id: head});
+        this.game.exec("RecalculateNextGapForPath", {id: head});
+        this.game.exec("RecalculateNextItemForPath", {id: head});
 
-        // =========== General case =====
+        this._publishPathRecalculate(head, options.x, options.y);
+        this._publishBeltInsert(id, options);
+    }
+
+    /**
+     * @private
+     * General path: the new belt may merge paths, split a child onto a new path
+     * (cross-chunk) and/or detach the child from a previous parent. Items along
+     * every affected path are stashed before re-materialization and un-stashed
+     * after, so positions survive the path_index shift. Invariant: each touched
+     * path ends with head_gap <= length via FillHeadGap.
+     */
+    _rebuildPaths(id, head, child, options) {
+        const oldParentPathHead = child === null ? null : child.oldParentPathHead;
 
         if (child !== null) {
-            this.game.exec("UpdateBeltChild", {id: child.id});
-            this.game.publishEventNow(new BeltUpdateEvent(child.x, child.y, child.id, options.x, options.y));
-
+            this._relinkChild(child, options);
             this._stashItems(child.id);
 
-            if (child.path === child.id) {
+            if (child.isStandalone) {
                 this._stashOutputItem(child.id);
             }
 
-            if (child.oldParent) {
+            if (child.hadParent) {
                 this._stashItems(oldParentPathHead);
                 this._stashOutputItem(oldParentPathHead);
-
                 this.game.exec("CalculateBeltPath", {id: oldParentPathHead});
                 this.game.exec("InvalidatePath", {id: oldParentPathHead});
             }
 
-            if (child.chunk !== options.chunk) {
-                const created = this.game.queryScalar("InsertBeltPath", {id: child.id});
-                this.game.exec("CalculateBeltPath", {id: child.id});
-                this.game.exec("MaterializeBeltPath", {id: child.id});
-
-                if (created) {
-                    this._populateBeltPathPorts(child.id);
-                }
-                const childPath = this._getPath(child.id);
-                this.game.publishEventNow(new BeltPathRecalculateEvent(child.x, child.y, childPath));
+            if (child.isCrossChunk) {
+                this._splitChildPath(child);
             }
         }
 
@@ -1260,33 +1353,31 @@ export class BeltMod extends Mod {
         const createdNewPath = this.game.queryScalar("InsertBeltPath", {id: head});
         this.game.exec("CalculateBeltPath", {id: head});
 
-        // =========== Delete old path =====
-        let inheritedOutPort = null;
-        if (child !== null
-            && (child.oldParent === null || child.oldParentChunk !== child.chunk)
+        // The child's path folds into head only when the merge stays within one chunk
+        // and the child either had no upstream parent or that parent lived elsewhere
+        // (so head isn't stealing a still-connected cross-chunk link), and the child
+        // isn't head itself.
+        const childFoldsIntoHead = child !== null
+            && (!child.hadParent || child.parentInDifferentChunk)
             && child.id !== head
-            && child.chunk === options.chunk) {
-            this.game.exec("DeleteOutPort", {id: head});
-            inheritedOutPort = this.game.queryScalar("InheritOutPort", {child: child.id, parent: head});
-            this.game.exec("DeleteInPort", {id: child.id});
-            this.game.exec("DeletePath", {id: child.id});
+            && !child.isCrossChunk;
+
+        let inheritedOutPort = null;
+        if (childFoldsIntoHead) {
+            inheritedOutPort = this._absorbChildPath(head, child);
         }
 
-        // =========== Materialize paths =====
         this.game.exec("MaterializeBeltPath", {id: head});
         if (createdNewPath) {
             this._populateBeltPathPorts(head, inheritedOutPort);
         }
-        const headPath = this._getPath(head);
-        this.game.publishEventNow(new BeltPathRecalculateEvent(options.x, options.y, headPath));
+        this._publishPathRecalculate(head, options.x, options.y);
 
         if (oldParentPathHead) {
             this.game.exec("MaterializeBeltPath", {id: oldParentPathHead});
-            const oldParentPath = this._getPath(oldParentPathHead);
-            this.game.publishEventNow(new BeltPathRecalculateEvent(options.x, options.y, oldParentPath));
+            this._publishPathRecalculate(oldParentPathHead, options.x, options.y);
         }
 
-        // =========== Un-stash ============
         this._unStashItems();
 
         if (oldParentPathHead) {
@@ -1294,16 +1385,61 @@ export class BeltMod extends Mod {
         }
         this.game.exec("FillHeadGap", {id: head});
 
-        if (child !== null && (child.oldParent || child.path === child.id)) {
+        if (child !== null && (child.hadParent || child.isStandalone)) {
             this._unStashOutputItem();
             this.game.exec("FillHeadGap", {id: child.id});
         }
 
         this._publishBeltInsert(id, options);
+    }
 
-        if (tnx) {
-            this.game.end();
+    /**
+     * @private
+     * Re-points the downstream child at its new upstream parent and notifies clients.
+     */
+    _relinkChild(child, options) {
+        this.game.exec("UpdateBeltChild", {id: child.id});
+        this.game.publishEventNow(new BeltUpdateEvent(child.x, child.y, child.id, options.x, options.y));
+    }
+
+    /**
+     * @private
+     * Folds the child's path into `head`: head inherits the child's output port
+     * (its downstream link), then the redundant child path and its input port are
+     * removed. Returns the inherited out_port_id, used to seed head's ports when
+     * head's path was freshly created.
+     * @returns {BigInt|null}
+     */
+    _absorbChildPath(head, child) {
+        this.game.exec("DeleteOutPort", {id: head});
+        const inheritedOutPort = this.game.queryScalar("InheritOutPort", {child: child.id, parent: head});
+        this.game.exec("DeleteInPort", {id: child.id});
+        this.game.exec("DeletePath", {id: child.id});
+        return inheritedOutPort;
+    }
+
+    /**
+     * @private
+     * Splits the child onto its own new path (it crossed into a different chunk
+     * from the new belt, so they cannot share a path) and notifies clients.
+     */
+    _splitChildPath(child) {
+        const created = this.game.queryScalar("InsertBeltPath", {id: child.id});
+        this.game.exec("CalculateBeltPath", {id: child.id});
+        this.game.exec("MaterializeBeltPath", {id: child.id});
+        if (created) {
+            this._populateBeltPathPorts(child.id);
         }
+        this._publishPathRecalculate(child.id, child.x, child.y);
+    }
+
+    /**
+     * @private
+     * Emits a path-recalculate event carrying the path's belt ids in order.
+     */
+    _publishPathRecalculate(pathHead, x, y) {
+        const parts = this._getPath(pathHead);
+        this.game.publishEventNow(new BeltPathRecalculateEvent(x, y, parts));
     }
 
     /**
@@ -1359,10 +1495,16 @@ export class BeltMod extends Mod {
     // ---- Belt removal ----
 
     /**
+     * Removes one belt and rebuilds the paths it leaves behind: its former upstream
+     * parent loses its tail, and its former downstream child becomes a new path head.
+     * Ramp belts cascade to remove the whole underground tunnel they anchor.
+     *
      * @private
      * @param {BigInt} id
-     * @param {boolean} [recursive]
-     * @param {BigInt[]} [fillHeadGap]
+     * @param {boolean} [recursive] - true for cascaded underground/ramp segments;
+     *     only the outermost call owns the begin/end boundary and the final un-stash.
+     * @param {BigInt[]} [fillHeadGap] - path heads accumulated across the cascade
+     *     whose head_gap must be refilled once, after all items are un-stashed.
      */
     _removeBelt(id, recursive=false, fillHeadGap=[]) {
         if (!recursive) {
@@ -1386,6 +1528,14 @@ export class BeltMod extends Mod {
             throw new Error("Cannot manually delete underground belt.");
         }
 
+        // If this belt sits on a loop, remember the loop's seam (its head plus the
+        // belt that physically feeds it): loops are stored as a path whose head's
+        // parent is nulled, leaving the wrap-around connection disconnected. Once the
+        // deletion breaks the cycle that seam can (and must) be re-linked, or the run
+        // is left fragmented / a stale tail collides. Detect before mutating (so the
+        // feeder geometry is captured pre-deletion); heal after the removal settles.
+        const loopSeam = recursive ? null : this._loopSeam(id);
+
         this._stashOutputItem(id);
 
         let {childId, parentId} = this._eraseBelt(id);
@@ -1400,6 +1550,119 @@ export class BeltMod extends Mod {
             parentId = null;
         }
 
+        ({childId, parentId} = this._collapseRampChain(belt, childId, parentId, fillHeadGap));
+
+        let parentPathHead = null;
+        if (parentId) {
+            parentPathHead = this._prepareParentPath(parentId);
+        }
+
+        if (childId && childId !== parentPathHead) {
+            this._splitOrphanedChildPath(childId);
+        }
+
+        if (parentPathHead) {
+            this._finalizeParentPath(parentPathHead, belt, fillHeadGap);
+        }
+
+        if (childId && childId !== parentPathHead) {
+            fillHeadGap.push(childId);
+        }
+
+        if (!recursive) {
+            this._finalizeRemoval(fillHeadGap, loopSeam);
+        }
+    }
+
+    /**
+     * @private
+     * Describes @id's path when it is a loop: its head and the belt physically
+     * upstream of that head (the wrap-around feeder). Returns null when the path is
+     * not a loop. Capturing the feeder here lets _healLoopSeam reuse it instead of
+     * re-deriving the geometry after the deletion has mutated the paths.
+     * @param {BigInt} id
+     * @returns {{head: BigInt, upstreamNeighbor: BigInt}|null}
+     */
+    _loopSeam(id) {
+        const head = this._getBeltPathHead(id);
+        if (head === null) {
+            return null;
+        }
+        const upstreamNeighbor = this.game.queryScalar("FindUpstreamNeighbor", {id: head});
+        if (upstreamNeighbor === null) {
+            return null;
+        }
+        if (this._getBeltPathHead(upstreamNeighbor) !== head) {
+            return null;
+        }
+        return {head, upstreamNeighbor};
+    }
+
+    /**
+     * @private
+     * Re-links a loop seam left dangling by a deletion: the recorded head still has
+     * no parent but is now physically fed by a belt in a *different* path (the cycle
+     * is broken). Re-point the head at that upstream neighbor and fold its path into
+     * the neighbor's, so the remainder is the single run a fresh build would produce.
+     * @param {{head: BigInt, upstreamNeighbor: BigInt}|null} loopSeam
+     */
+    _healLoopSeam(loopSeam) {
+        if (loopSeam === null) {
+            return;
+        }
+        const {head: loopHead, upstreamNeighbor} = loopSeam;
+
+        // The seam head still dangles only if it survived the deletion and remains
+        // parentless; its GetBelt row (needed for the relink below) doubles as that
+        // check, so no separate IsNullHead query is required.
+        const seamBelt = this.game.querySingle("GetBelt", {id: loopHead});
+        if (seamBelt == null || seamBelt.parent_id !== null) {
+            return;
+        }
+        // The feeder captured pre-deletion may itself have been removed; if so the run
+        // is already open and there is nothing to re-link.
+        const neighborBelt = this.game.querySingle("GetBelt", {id: upstreamNeighbor});
+        if (neighborBelt == null) {
+            return;
+        }
+        const upstreamHead = this._getBeltPathHead(upstreamNeighbor);
+        if (upstreamHead === loopHead) {
+            // Still one path (an intact loop) — re-linking would recreate the cycle.
+            return;
+        }
+
+        // Preserve in-flight items across the re-index, mirroring path creation.
+        this._stashItems(loopHead);
+        this._stashItems(upstreamHead);
+
+        // Re-point the seam head at its upstream neighbor through the same helper
+        // creation uses, so parent_id is set by the shared geometry and clients get
+        // the BeltUpdateEvent that refreshes the belt's bend.
+        this._relinkChild(
+            {id: loopHead, x: seamBelt.x, y: seamBelt.y},
+            {x: neighborBelt.x, y: neighborBelt.y},
+        );
+
+        this.game.exec("CalculateBeltPath", {id: upstreamHead});
+        this._absorbChildPath(upstreamHead, {id: loopHead});
+        this.game.exec("MaterializeBeltPath", {id: upstreamHead});
+
+        this._unStashItems();
+        this.game.exec("FillHeadGap", {id: upstreamHead});
+
+        const head = this.game.querySingle("GetBelt", {id: upstreamHead});
+        this._publishPathRecalculate(upstreamHead, head.x, head.y);
+    }
+
+    /**
+     * @private
+     * Cascades a ramp deletion through its underground tunnel: deleting a RAMP_DOWN
+     * removes the undergrounds downstream of it; deleting a RAMP_UP removes those
+     * upstream. Once the tunnel is gone the corresponding child/parent link no
+     * longer needs separate path handling, so it is cleared.
+     * @returns {{childId: BigInt|null, parentId: BigInt|null}}
+     */
+    _collapseRampChain(belt, childId, parentId, fillHeadGap) {
         if (belt.type === BELT_RAMP_DOWN) {
             const rampBelts = this.game.query("GetRampChildren", {id: childId});
             rampBelts.forEach(child => {
@@ -1413,54 +1676,91 @@ export class BeltMod extends Mod {
                 parentId = null;
             });
         }
+        return {childId, parentId};
+    }
 
-        let parentPathHead = null;
-        if (parentId) {
-            parentPathHead = this._getBeltPathHead(parentId);
-            this.game.exec("InsertBeltPath", {id: parentPathHead});
-            this._stashItems(parentPathHead);
-            this._stashOutputItem(parentPathHead);
-            this.game.exec("CalculateBeltPath", {id: parentPathHead});
-            this.game.exec("InvalidatePath", {id: parentPathHead});
+    /**
+     * @private
+     * Stashes the former parent path's items and invalidates it so it can be
+     * re-materialized (shorter, minus the removed belt) during finalization.
+     * @returns {BigInt} the parent's path head
+     */
+    _prepareParentPath(parentId) {
+        const parentPathHead = this._getBeltPathHead(parentId);
+        this.game.exec("InsertBeltPath", {id: parentPathHead});
+        this._stashItems(parentPathHead);
+        this._stashOutputItem(parentPathHead);
+        this.game.exec("CalculateBeltPath", {id: parentPathHead});
+        this.game.exec("InvalidatePath", {id: parentPathHead});
+        return parentPathHead;
+    }
+
+    /**
+     * @private
+     * Promotes the removed belt's former child to the head of its own new path
+     * (it lost its upstream parent) and stashes its items for re-materialization.
+     */
+    _splitOrphanedChildPath(childId) {
+        this.game.exec("NullifyPathTail", {id: childId});
+        const created = this.game.queryScalar("InsertBeltPath", {id: childId});
+        this._stashItems(childId);
+        this.game.exec("CalculateBeltPath", {id: childId});
+
+        // When a loop is broken, the orphaned arc can wrap back onto a belt the old
+        // loop path still claims as its tail. Clear that stale claim before
+        // materializing so the UNIQUE(tail_id) constraint isn't violated; the old
+        // path is recalculated later in this same removal.
+        const newTail = this.game.queryScalar("GetPathTailBelt", {id: childId});
+        this.game.exec("NullifyPathTail", {id: newTail});
+
+        this.game.exec("MaterializeBeltPath", {id: childId});
+
+        if (created) {
+            this._populateBeltPathPorts(childId);
+        }
+    }
+
+    /**
+     * @private
+     * Re-materializes the parent path and queues its head_gap refill (deferred
+     * until after un-stash so item lengths are known).
+     */
+    _finalizeParentPath(parentPathHead, belt, fillHeadGap) {
+        fillHeadGap.push(parentPathHead);
+        this.game.exec("MaterializeBeltPath", {id: parentPathHead});
+        this._publishPathRecalculate(parentPathHead, belt.x, belt.y);
+    }
+
+    /**
+     * @private
+     * Top-level wrap-up: restore all stashed items, refill the head_gap of every
+     * path touched by the cascade, re-link any broken loop seam, then commit.
+     * Invariant: fillHeadGap must hold no duplicates, or a path would be refilled
+     * twice and break head_gap <= length.
+     * @param {BigInt[]} fillHeadGap
+     * @param {{head: BigInt, upstreamNeighbor: BigInt}|null} loopSeam
+     */
+    _finalizeRemoval(fillHeadGap, loopSeam) {
+        this._unStashItems();
+        this._unStashOutputItem();
+
+        if (new Set(fillHeadGap).size !== fillHeadGap.length) {
+            throw new Error("fillHeadGap has duplicate entries");
         }
 
-        if (childId && childId !== parentPathHead) {
-            this.game.exec("NullifyPathTail", {id: childId});
-            const created = this.game.queryScalar("InsertBeltPath", {id: childId});
-            this._stashItems(childId);
-            this.game.exec("CalculateBeltPath", {id: childId});
-            this.game.exec("MaterializeBeltPath", {id: childId});
-
-            if (created) {
-                this._populateBeltPathPorts(childId);
+        fillHeadGap.forEach(pathId => {
+            const trimmed = this.game.queryScalar("TrimOverflowItems", {id: pathId});
+            if (trimmed !== null) {
+                this.game.exec("DropTrailingHeadGaps", {id: pathId});
+                this.game.exec("RecalculateNextGapForPath", {id: pathId});
+                this.game.exec("RecalculateNextItemForPath", {id: pathId});
             }
-        }
+            this.game.exec("FillHeadGap", {id: pathId});
+        });
 
-        if (parentPathHead) {
-            fillHeadGap.push(parentPathHead);
-            this.game.exec("MaterializeBeltPath", {id: parentPathHead});
-            const parentPathHeadParts = this._getPath(parentPathHead);
-            this.game.publishEventNow(new BeltPathRecalculateEvent(belt.x, belt.y, parentPathHeadParts));
-        }
+        this._healLoopSeam(loopSeam);
 
-        if (childId && childId !== parentPathHead) {
-            fillHeadGap.push(childId);
-        }
-
-        if (!recursive) {
-            this._unStashItems();
-            this._unStashOutputItem();
-
-            if (new Set(fillHeadGap).size !== fillHeadGap.length) {
-                throw new Error("fillHeadGap has duplicate entries");
-            }
-
-            fillHeadGap.forEach(pathId => {
-                this.game.exec("FillHeadGap", {id: pathId});
-            });
-
-            this.game.end();
-        }
+        this.game.end();
     }
 
     // ---- Helpers ----
