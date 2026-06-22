@@ -769,9 +769,11 @@ export class BeltMod extends Mod {
             `,
 
             GetBelt: `
-                SELECT x, y, type, direction, parent, chunk
-                FROM Belt
-                WHERE id = CAST(@id AS INT);
+                SELECT belt.x, belt.y, belt.type, belt.direction, belt.parent, belt.chunk,
+                    parent.type AS parent_type
+                FROM Belt belt
+                    LEFT JOIN Belt parent ON parent.id = belt.parent
+                WHERE belt.id = CAST(@id AS INT);
             `,
 
             GetBeltAtTile: `SELECT id FROM Belt WHERE x = @x AND y = @y LIMIT 1;`,
@@ -905,7 +907,7 @@ export class BeltMod extends Mod {
                     FROM Belt parent
                         INNER JOIN path ON path.parent = parent.id AND parent.type = ${BELT_UNDERGROUND}
                 )
-                SELECT id
+                SELECT id, parent
                 FROM path
                 WHERE type = ${BELT_UNDERGROUND};
             `,
@@ -1334,6 +1336,15 @@ export class BeltMod extends Mod {
         let {childId, parentId} = this._eraseBelt(id);
         this.game.publishEventNow(new BeltDeleteEvent(belt.x, belt.y, id));
 
+        // When deleting a RAMP_UP with multiple underground belts, all undergrounds share the
+        // same path head. Only the innermost underground (whose parent is not underground) should
+        // manage the parent path head — otherwise each deletion stashes items independently and
+        // the accumulated stash exceeds the recalculated path length, violating the head_gap
+        // constraint.
+        if (belt.type === BELT_UNDERGROUND && recursive && belt.parent_type === BELT_UNDERGROUND) {
+            parentId = null;
+        }
+
         if (belt.type === BELT_RAMP_DOWN) {
             const rampBelts = this.game.query("GetRampChildren", {id: childId});
             rampBelts.forEach(child => {
@@ -1359,6 +1370,7 @@ export class BeltMod extends Mod {
         }
 
         if (childId && childId !== parentPathHead) {
+            this.game.exec("NullifyPathTail", {id: childId});
             const created = this.game.queryScalar("InsertBeltPath", {id: childId});
             this._stashItems(childId);
             this.game.exec("CalculateBeltPath", {id: childId});
@@ -1376,7 +1388,7 @@ export class BeltMod extends Mod {
             this.game.publishEventNow(new BeltPathRecalculateEvent(belt.x, belt.y, parentPathHeadParts));
         }
 
-        if (childId) {
+        if (childId && childId !== parentPathHead) {
             fillHeadGap.push(childId);
         }
 
@@ -1385,7 +1397,7 @@ export class BeltMod extends Mod {
             this._unStashOutputItem();
 
             if (new Set(fillHeadGap).size !== fillHeadGap.length) {
-                debugger; /* FIXME */
+                throw new Error("fillHeadGap has duplicate entries");
             }
 
             fillHeadGap.forEach(pathId => {

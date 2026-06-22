@@ -635,3 +635,30 @@ test("testDisconnectRampCrossChunk", async () => {
 
     assert.equal(game.exec(`SELECT COUNT(*) FROM Belt WHERE type=${BeltType.UNDERGROUND}`), 2);
 });
+
+test("testDeleteRampUpMultipleUnderground", async () => {
+    const game = await setup();
+    game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
+    game.createBelt(GameObject.RAMP_UP, {x: 4, y: 1, direction: Direction.RIGHT, rampParent: 1n});
+
+    game.removeGameObject(GameObject.BELT, 4n);
+
+    assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=1 AND length=1"), 1);
+    assert.equal(game.exec("SELECT COUNT(*) FROM Belt"), 1);
+    assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
+});
+
+test("testDeleteRampUpNormalBeltUpstream", async () => {
+    const game = await setup();
+    // BELT_NORMAL(0,1)→ RAMP_DOWN(1,1)→ UG(2,1) UG(3,1) RAMP_UP(4,1)
+    // ids: BN=1, RAMP_DOWN=2, UG1=3, UG2=4, RAMP_UP=5
+    game.createBelt(GameObject.BELT, {x: 0, y: 1, direction: Direction.RIGHT});
+    game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
+    game.createBelt(GameObject.RAMP_UP, {x: 4, y: 1, direction: Direction.RIGHT, rampParent: 2n});
+
+    game.removeGameObject(GameObject.BELT, 5n);
+
+    assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=1 AND length=3"), 1);
+    assert.equal(game.exec("SELECT COUNT(*) FROM Belt"), 2);
+    assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
+});
