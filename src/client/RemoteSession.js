@@ -1,5 +1,5 @@
 
-import {Session} from "@/common/session.js";
+import {Session} from "@/common/Session.js";
 
 /**
  * Browser's version of the session. On the client side, it is instantiated,

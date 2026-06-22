@@ -1,5 +1,5 @@
 
-import {Session} from "@/common/session.js";
+import {Session} from "@/common/Session.js";
 
 /**
  * Backend version of the session. On the server side, it is instantiated

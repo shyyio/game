@@ -15,7 +15,7 @@ import {DatabaseSchema} from "@/common/DatabaseSchema.js";
 import {NodeDatabase} from "@/server/NodeDatabase.js";
 import {Game} from "@/common/Game.js";
 import {GameAPI} from "@/common/GameAPI.js";
-import {LocalSession} from "@/common/session.js";
+import {LocalSession} from "@/common/LocalSession.js";
 import {TickPhase} from "@/common/core.js";
 
 // Re-exported so a spec can advance specific phases without a second import.
