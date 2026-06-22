@@ -3,14 +3,14 @@ import assert from "node:assert";
 
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {WireRegistry} from "@/common/wire.js";
-import {BeltMod} from "@/mods/Belt/mod.js";
-import {CreateBeltMessage, DeleteBeltMessage} from "@/mods/Belt/messages.js";
+import {BeltMod} from "./mod.js";
+import {CreateBeltMessage, DeleteBeltMessage} from "./messages.js";
 import {
     BeltInsertEvent,
     BeltUpdateEvent,
     BeltDeleteEvent,
     BeltPathRecalculateEvent,
-} from "@/mods/Belt/mod.js";
+} from "./events.js";
 
 function registry() {
     const modRegistry = new ModRegistry();

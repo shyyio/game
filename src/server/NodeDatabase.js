@@ -55,6 +55,15 @@ export class NodeDatabase extends Database {
     }
 
     /**
+     * Execute one or more raw SQL statements, ignoring any result rows.
+     * For use in tests only.
+     * @param {string} sql
+     */
+    rawExec(sql) {
+        this.db.exec(sql);
+    }
+
+    /**
      * Run raw SQL and return the first column of the first row, or undefined if no rows.
      * For use in tests only.
      * @param {string} sql

@@ -23,6 +23,11 @@ export {
     MiniMenuEntry,    // one entry in the right-click / long-press context menu
 } from "@/common/core.js";
 
+// ---- Messages ----
+// Base class for messages a session sends to the game (player intents). Subclass
+// it, declare a static `wireFields` map, and optionally override `validate`.
+export {Message} from "@/common/Message.js";
+
 // ---- Events ----
 // Base class for events a mod emits to connected clients (rendering, effects).
 export {LiveEvent} from "@/common/LiveEvent.js";

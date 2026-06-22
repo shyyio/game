@@ -1,5 +1,6 @@
 import {Graphics, Sprite, Texture, TILE_SIZE, Direction, DrawLayer} from "@/sdk/client.js";
-import {BeltBend, BeltType, BeltInsertEvent, BeltUpdateEvent, BeltDeleteEvent} from "@/mods/Belt/mod.js";
+import {BeltBend, BeltType} from "./constants.js";
+import {BeltInsertEvent, BeltUpdateEvent, BeltDeleteEvent} from "./events.js";
 
 export class Belt {
 

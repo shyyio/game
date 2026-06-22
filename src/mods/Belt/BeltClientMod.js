@@ -1,9 +1,9 @@
 
-import {BeltMod} from "@/mods/Belt/mod.js";
-import {BeltDrawLayer} from "@/mods/Belt/BeltLayer.js";
-import {BeltOverlayDrawLayer} from "@/mods/Belt/OverlayLayer.js";
-import {BeltTool} from "@/mods/Belt/BeltTool.js";
-import {DeleteBeltMessage} from "@/mods/Belt/messages.js";
+import {BeltMod} from "./mod.js";
+import {BeltDrawLayer} from "./BeltLayer.js";
+import {BeltOverlayDrawLayer} from "./OverlayLayer.js";
+import {BeltTool} from "./BeltTool.js";
+import {DeleteBeltMessage} from "./messages.js";
 import {MiniMenuEntry} from "@/sdk/client.js";
 
 export class BeltClientMod extends BeltMod {

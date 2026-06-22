@@ -1,5 +1,5 @@
 
-import {Message} from "@/common/Message.js";
+import {Message} from "@/sdk/common.js";
 
 const MESSAGE_CREATE_BELT = 1;
 const MESSAGE_DELETE_BELT = 2;

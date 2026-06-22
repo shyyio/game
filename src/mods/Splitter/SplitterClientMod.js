@@ -1,6 +1,6 @@
 
-import {SplitterMod} from "@/mods/Splitter/mod.js";
-import {SplitterDrawLayer} from "@/mods/Splitter/SplitterLayer.js";
+import {SplitterMod} from "./mod.js";
+import {SplitterDrawLayer} from "./SplitterLayer.js";
 
 export class SplitterClientMod extends SplitterMod {
 
