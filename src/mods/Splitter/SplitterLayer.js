@@ -45,7 +45,8 @@ class SplitterSprite extends Sprite {
             this.alpha = 0.4;
             this.tint = 0xC8F902;
         } else {
-            debugger;
+            this.alpha = 1;
+            this.tint = 0xFFFFFF;
         }
     }
 

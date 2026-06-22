@@ -51,7 +51,7 @@ export class InputHandler {
 
     _openMiniMenu(tileX, tileY, screenX, screenY) {
         if (this._onMiniMenuEntryClick == null) {
-            debugger;
+            console.trace("Mini menu opened before a click handler was registered");
             return;
         }
         this._onMiniMenuEntryClick(tileX, tileY, screenX, screenY);

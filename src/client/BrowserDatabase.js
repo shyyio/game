@@ -64,9 +64,8 @@ export class BrowserDatabase extends Database {
             try {
                 this.statements[name] = this.db.prepare(stmt);
             } catch (e) {
-                console.log(name, stmt);
-                console.error(e.message);
-                debugger
+                console.error(`Failed to prepare statement "${name}":`, e.message);
+                throw e;
             }
 
             this.profilingData[name] = [];
@@ -79,7 +78,7 @@ export class BrowserDatabase extends Database {
         const stmt = this.statements[name];
 
         if (stmt === undefined) {
-            debugger
+            throw new Error(`Unknown prepared statement: ${name}`);
         }
 
         stmt.bind(this.formatArgs(args));

@@ -114,14 +114,13 @@ export class BeltDeleteEvent extends LiveEvent {
 /**
  * @param rampParent {{x: number, y: number, type: number, direction: Direction}}
  * @param options {{x: number, y: number, type: number, direction: Direction}}
- * @returns {{x: number, y: number}[]|null}
+ * @returns {{x: number, y: number}[]}
  */
 function getUndergroundBeltsToCreate(rampParent, options) {
     if (rampParent === null || rampParent.direction !== options.direction
         || (rampParent.type !== BELT_RAMP_DOWN && rampParent.type !== BELT_RAMP_UP)
         || (rampParent.x !== options.x && rampParent.y !== options.y)) {
-        debugger;
-        return null;
+        throw new Error("Invalid ramp parent for underground belt creation");
     }
 
     const x1 = rampParent.type === BELT_RAMP_UP ? options.x : rampParent.x;
@@ -1496,11 +1495,17 @@ export class BeltMod extends Mod {
 
         const outputPorts = getOutputPorts(this.game, "Belt", head);
 
-        if (Object.values(outputPorts).length > 1) {
-            // FIXME: Choose oldest port?
-            debugger;
+        // When more than one adjacent output feeds this head, deterministically pick
+        // the oldest (lowest id) port so path resolution is stable regardless of the
+        // order getOutputPorts returns them in. Math.min can't be used here: port ids
+        // are BigInt.
+        const candidatePorts = Object.values(outputPorts);
+        let inputPort;
+        if (candidatePorts.length > 0) {
+            inputPort = candidatePorts.reduce((oldest, port) => (port < oldest ? port : oldest));
+        } else {
+            inputPort = this.game.queryScalar("InsertPort");
         }
-        const inputPort = Object.values(outputPorts)[0] || this.game.queryScalar("InsertPort");
 
         const inputPorts = getInputPorts(this.game, "Belt", tail);
         let outputPort = Object.values(inputPorts)[0];

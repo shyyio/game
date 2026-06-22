@@ -258,7 +258,7 @@ export class DatabaseSchema {
     _prepare(name, statement) {
 
         if (name === undefined) {
-            debugger;
+            throw new Error(`Cannot prepare statement with no name: ${statement}`);
         }
 
         this.preparedStatements[name] = statement;
