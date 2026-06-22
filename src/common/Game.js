@@ -4,6 +4,7 @@ import {EVENT_TYPE_CORE, EVENT_SUBTYPE_CHUNK_SUBSCRIBE, EVENT_SUBTYPE_CHUNK_UNSU
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {PlayerSettingsSyncEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
+import {WireRegistry} from "@/common/wire.js";
 
 export class Game {
 
@@ -15,6 +16,13 @@ export class Game {
         this.db = database;
         this.modSet = modSet;
         this.time = 0;
+
+        /**
+         * Protobuf wire codec registry, shared by sessions to encode/decode
+         * messages and events.
+         * @type {WireRegistry}
+         */
+        this.wire = new WireRegistry(modSet);
 
         /**
          * @type {Object.<number, Session>}

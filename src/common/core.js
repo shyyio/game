@@ -186,6 +186,15 @@ export class Mod {
     }
 
     /**
+     * Message/event classes this mod sends over the wire. Each must expose a
+     * static wireFields map.
+     * @returns {Function[]}
+     */
+    get wireClasses() {
+        return [];
+    }
+
+    /**
      * @abstract
      * @returns string
      */

@@ -42,8 +42,15 @@ const EVENT_BELT_INSERT = 2;
 const EVENT_BELT_UPDATE = 3;
 const EVENT_BELT_PATH_RECALCULATE = 4;
 
-// TODO: protobuf encode/decode
 export class BeltPathRecalculateEvent extends LiveEvent {
+
+    static wireFields = {
+        type: "int32",
+        x: "int32",
+        y: "int32",
+        chunk: "string",
+        parts: "int64[]",
+    };
 
     /**
      * @param {number} x
@@ -56,8 +63,19 @@ export class BeltPathRecalculateEvent extends LiveEvent {
     }
 }
 
-// TODO: protobuf encode/decode
 export class BeltInsertEvent extends LiveEvent {
+
+    static wireFields = {
+        type: "int32",
+        x: "int32",
+        y: "int32",
+        chunk: "string",
+        id: "int64",
+        direction: "int32",
+        beltType: "int32",
+        parentX: "int32?",
+        parentY: "int32?",
+    };
 
     /**
      * @param {number} x
@@ -78,8 +96,17 @@ export class BeltInsertEvent extends LiveEvent {
     }
 }
 
-// TODO: protobuf encode/decode
 export class BeltUpdateEvent extends LiveEvent {
+
+    static wireFields = {
+        type: "int32",
+        x: "int32",
+        y: "int32",
+        chunk: "string",
+        id: "int64",
+        newParentX: "int32?",
+        newParentY: "int32?",
+    };
 
     /**
      * @param {number} x
@@ -96,8 +123,15 @@ export class BeltUpdateEvent extends LiveEvent {
     }
 }
 
-// TODO: protobuf encode/decode
 export class BeltDeleteEvent extends LiveEvent {
+
+    static wireFields = {
+        type: "int32",
+        x: "int32",
+        y: "int32",
+        chunk: "string",
+        id: "int64",
+    };
 
     /**
      * @param {number} x
@@ -172,6 +206,17 @@ const CompatibleBentBeltConnection = `(
 
 // noinspection SqlWithoutWhere
 export class BeltMod extends Mod {
+
+    get wireClasses() {
+        return [
+            CreateBeltMessage,
+            DeleteBeltMessage,
+            BeltInsertEvent,
+            BeltUpdateEvent,
+            BeltDeleteEvent,
+            BeltPathRecalculateEvent,
+        ];
+    }
 
     get schema() {
         return `

@@ -4,6 +4,16 @@ export const MESSAGE_DELETE_BELT = 2;
 
 export class CreateBeltMessage {
 
+    static wireFields = {
+        type: "int32",
+        x: "int32",
+        y: "int32",
+        direction: "int32",
+        beltType: "int32?",
+        rampParent: "int64?",
+        disconnectRampChild: "int64?",
+    };
+
     /**
      * @param {number} x
      * @param {number} y
@@ -24,6 +34,11 @@ export class CreateBeltMessage {
 }
 
 export class DeleteBeltMessage {
+
+    static wireFields = {
+        type: "int32",
+        id: "int64",
+    };
 
     /**
      * @param {BigInt} id

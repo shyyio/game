@@ -6,6 +6,14 @@ export const EVENT_GAME_SETTINGS_UPDATE = 103;
 
 export class GameSettingsSyncEvent extends LiveEvent {
 
+    static wireFields = {
+        type: "int32",
+        x: "int32",
+        y: "int32",
+        chunk: "string",
+        values: "map<int32,int32>",
+    };
+
     /**
      * @param {Object.<number, number>} values - all key→value pairs
      */
@@ -16,6 +24,15 @@ export class GameSettingsSyncEvent extends LiveEvent {
 }
 
 export class GameSettingsUpdateEvent extends LiveEvent {
+
+    static wireFields = {
+        type: "int32",
+        x: "int32",
+        y: "int32",
+        chunk: "string",
+        key: "int32",
+        value: "int32",
+    };
 
     /**
      * @param {number} key

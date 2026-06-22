@@ -1,5 +1,19 @@
 export class BufferedEvent {
 
+    static wireFields = {
+        seq: "int32?",
+        time: "int32?",
+        type: "int32?",
+        subtype: "int32?",
+        x: "int32?",
+        y: "int32?",
+        chunk: "string?",
+        id: "int64?",
+        a: "int64?",
+        b: "int64?",
+        c: "int64?",
+    };
+
     /**
      * @param {object} row - Row from the GameJournal table
      * @param {number} row.seq

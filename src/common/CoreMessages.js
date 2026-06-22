@@ -2,6 +2,11 @@ export const MESSAGE_SET_VIEWPORT = 0;
 
 export class SetViewportMessage {
 
+    static wireFields = {
+        type: "int32",
+        chunks: "string[]",
+    };
+
     /**
      * @param {string[]} chunks
      */

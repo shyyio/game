@@ -41,6 +41,18 @@ export class ModSet {
     }
 
     /**
+     * Message/event classes contributed by all mods, in load order.
+     * @returns {Function[]}
+     */
+    get wireClasses() {
+        const classes = [];
+        this.mods.forEach(mod => {
+            mod.wireClasses.forEach(cls => classes.push(cls));
+        });
+        return classes;
+    }
+
+    /**
      * @param {Message} message
      */
     dispatchMessage(message) {

@@ -6,6 +6,14 @@ export const EVENT_PLAYER_SETTINGS_UPDATE = 101;
 
 export class PlayerSettingsSyncEvent extends LiveEvent {
 
+    static wireFields = {
+        type: "int32",
+        x: "int32",
+        y: "int32",
+        chunk: "string",
+        values: "map<int32,int32>",
+    };
+
     /**
      * @param {Object.<number, number>} values - all key→value pairs for this player
      */
@@ -16,6 +24,15 @@ export class PlayerSettingsSyncEvent extends LiveEvent {
 }
 
 export class PlayerSettingUpdateEvent extends LiveEvent {
+
+    static wireFields = {
+        type: "int32",
+        x: "int32",
+        y: "int32",
+        chunk: "string",
+        key: "int32",
+        value: "int32",
+    };
 
     /**
      * @param {number} key

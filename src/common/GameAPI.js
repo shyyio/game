@@ -20,6 +20,13 @@ export class GameAPI {
     }
 
     /**
+     * @returns {WireRegistry}
+     */
+    get wire() {
+        return this._game.wire;
+    }
+
+    /**
      * @param {Message} message
      * @param {Session} session
      */
