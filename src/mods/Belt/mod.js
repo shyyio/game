@@ -1378,11 +1378,15 @@ export class BeltMod extends Mod {
             return;
         }
 
-        this._stashOutputItem(id);
+        // Reject manual underground deletion before touching any state, and unwind
+        // with rollback (not end/commit) so a refused delete can never leave a
+        // partial mutation behind.
         if (belt.type === BELT_UNDERGROUND && !recursive) {
-            this.game.end();
+            this.game.rollback();
             throw new Error("Cannot manually delete underground belt.");
         }
+
+        this._stashOutputItem(id);
 
         let {childId, parentId} = this._eraseBelt(id);
         this.game.publishEventNow(new BeltDeleteEvent(belt.x, belt.y, id));

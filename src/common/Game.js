@@ -165,7 +165,10 @@ export class Game {
     // ---- Events ----
 
     /**
-     * Writes an event to the GameJournal.
+     * Records an event in the GameJournal. Distinct from Session/Client.publishEvent
+     * (which delivers an event to a client) and from publishEventNow (immediate
+     * delivery): this only writes to the journal, to be flushed to viewports by
+     * postTick().
      * @param {number} type
      * @param {number} subtype
      * @param {number} x
@@ -175,7 +178,7 @@ export class Game {
      * @param [b] {BigInt|number|null}
      * @param [c] {BigInt|number|null}
      */
-    publishEvent(type, subtype, x, y, id, a=null, b=null, c=null) {
+    journalEvent(type, subtype, x, y, id, a=null, b=null, c=null) {
         this.exec("InsertGameJournal", {type, subtype, x, y, id, a, b, c});
     }
 

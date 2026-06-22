@@ -662,3 +662,23 @@ test("testDeleteRampUpNormalBeltUpstream", async () => {
     assert.equal(game.exec("SELECT COUNT(*) FROM Belt"), 2);
     assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
 });
+
+test("testManualDeleteUndergroundRejectedNoStateChange", async () => {
+    const game = await setup();
+    // RAMP_DOWN(1,1)→ UG(2,1) UG(3,1) → RAMP_UP(4,1). ids: ramp_down=1, ug=2,3, ramp_up=4
+    game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
+    game.createBelt(GameObject.RAMP_UP, {x: 4, y: 1, direction: Direction.RIGHT, rampParent: 1n});
+
+    // Park an item on the path's output port so a faulty (commit-then-throw) delete
+    // would be observable as a cleared port and/or a stranded StashedOutputItem row.
+    game._db.db.exec("UPDATE Port SET item=7 WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)");
+
+    // Manually deleting a tunnel segment must be rejected...
+    assert.throws(() => game.removeGameObject(GameObject.BELT, 2n));
+
+    // ...and must leave all state untouched (no partial commit).
+    assert.equal(game.exec("SELECT item FROM Port WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)"), 7);
+    assert.equal(game.exec("SELECT COUNT(*) FROM StashedOutputItem"), 0);
+    assert.equal(game.exec("SELECT COUNT(*) FROM Belt"), 4);
+    assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
+});
