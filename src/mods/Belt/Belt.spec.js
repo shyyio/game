@@ -12,17 +12,17 @@ test("testBeltParent", async () => {
     game.createBelt(GameObject.BELT, {x: 0, y: -1, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 0, y: 1, direction: Direction.UP});
 
-    assert.equal(game.exec("SELECT parent FROM Belt WHERE id=1"), 3);
-    assert.equal(game.exec("SELECT parent FROM Belt WHERE id=2"), 1);
+    assert.equal(game.exec("SELECT parent_id FROM Belt WHERE id=1"), 3);
+    assert.equal(game.exec("SELECT parent_id FROM Belt WHERE id=2"), 1);
 
     game.createBelt(GameObject.BELT, {x: 1, y: 1, direction: Direction.LEFT});
-    assert.equal(game.exec("SELECT parent FROM Belt WHERE id=3"), 4);
+    assert.equal(game.exec("SELECT parent_id FROM Belt WHERE id=3"), 4);
 
     game.createBelt(GameObject.BELT, {x: -1, y: 0, direction: Direction.RIGHT});
-    assert.equal(game.exec("SELECT parent FROM Belt WHERE id=1"), 5);
+    assert.equal(game.exec("SELECT parent_id FROM Belt WHERE id=1"), 5);
 
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.LEFT});
-    assert.equal(game.exec("SELECT parent FROM Belt WHERE id=1"), 6);
+    assert.equal(game.exec("SELECT parent_id FROM Belt WHERE id=1"), 6);
 });
 
 test("testBeltCreate1", async () => {
@@ -31,13 +31,13 @@ test("testBeltCreate1", async () => {
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 2, y: 0, direction: Direction.RIGHT});
 
-    assert.equal(game.exec("SELECT length=(3*2-1) AND id=1 AND tail=3 FROM BeltPath"), 1);
+    assert.equal(game.exec("SELECT length=(3*2-1) AND id=1 AND tail_id=3 FROM BeltPath"), 1);
 
     game.createBelt(GameObject.BELT, {x: 1, y: 2, direction: Direction.UP});
     game.createBelt(GameObject.BELT, {x: 1, y: 1, direction: Direction.UP});
 
-    assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE length=(4*2-1) AND id=4 AND tail=3"), 1);
-    assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE length=1 AND id=1 AND tail=1"), 1);
+    assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE length=(4*2-1) AND id=4 AND tail_id=3"), 1);
+    assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE length=1 AND id=1 AND tail_id=1"), 1);
     assert.equal(game.exec("SELECT Count(*) FROM Port"), 4);
 });
 
@@ -47,12 +47,12 @@ test("testBeltCreate2", async () => {
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 2, y: 0, direction: Direction.RIGHT});
 
-    game._db.db.exec("UPDATE Port SET item=2 WHERE id=(SELECT out_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=2 WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)");
 
     game.createBelt(GameObject.BELT, {x: 1, y: 1, direction: Direction.UP});
 
-    assert.equal(game.exec("SELECT 1 FROM BeltPath INNER JOIN Port ON port.id=out_port WHERE BeltPath.id=1 AND item IS NULL"), 1);
-    assert.equal(game.exec("SELECT 1 FROM BeltPath INNER JOIN Port ON port.id=out_port WHERE BeltPath.id=4 AND item=2"), 1);
+    assert.equal(game.exec("SELECT 1 FROM BeltPath INNER JOIN Port ON port.id=out_port_id WHERE BeltPath.id=1 AND item IS NULL"), 1);
+    assert.equal(game.exec("SELECT 1 FROM BeltPath INNER JOIN Port ON port.id=out_port_id WHERE BeltPath.id=4 AND item=2"), 1);
     assert.equal(game.exec("SELECT Count(*) FROM Port"), 4);
 });
 
@@ -60,11 +60,11 @@ test("testBeltCreate3", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
 
-    game._db.db.exec("UPDATE Port SET item=2 WHERE id=(SELECT out_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=2 WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)");
 
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
 
-    assert.equal(game.exec("SELECT 1 FROM BeltPath INNER JOIN Port ON port.id=out_port WHERE BeltPath.id=2 AND item=2"), 1);
+    assert.equal(game.exec("SELECT 1 FROM BeltPath INNER JOIN Port ON port.id=out_port_id WHERE BeltPath.id=2 AND item=2"), 1);
     assert.equal(game.exec("SELECT Count(*) FROM Port"), 2);
 });
 
@@ -72,13 +72,13 @@ test("testBeltCreate4", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
 
-    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=1)");
     game.tickBeltPath();
 
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
 
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=2 AND next_item_id IS NOT NULL"), 1);
-    assert.equal(game.exec("SELECT 1 FROM BeltPath INNER JOIN Port ON port.id=in_port WHERE BeltPath.id=2 AND item IS NULL"), 1);
+    assert.equal(game.exec("SELECT 1 FROM BeltPath INNER JOIN Port ON port.id=in_port_id WHERE BeltPath.id=2 AND item IS NULL"), 1);
 });
 
 test("testBeltCreateLoop", async () => {
@@ -88,18 +88,18 @@ test("testBeltCreateLoop", async () => {
     game.createBelt(GameObject.BELT, {x: 1, y: 1, direction: Direction.LEFT});
     game.createBelt(GameObject.BELT, {x: 0, y: 1, direction: Direction.UP});
 
-    assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE length=(4*2-1) AND id=1 AND tail=4"), 1);
-    assert.equal(game.exec("SELECT parent FROM Belt WHERE id=1"), null);
+    assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE length=(4*2-1) AND id=1 AND tail_id=4"), 1);
+    assert.equal(game.exec("SELECT parent_id FROM Belt WHERE id=1"), null);
 });
 
 test("testBeltLink", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: -1, y: 0, direction: Direction.RIGHT});
-    assert.equal(game.exec("SELECT (SELECT in_port FROM BeltPath WHERE id=1) = (SELECT out_port FROM BeltPath WHERE id=2)"), 1);
+    assert.equal(game.exec("SELECT (SELECT in_port_id FROM BeltPath WHERE id=1) = (SELECT out_port_id FROM BeltPath WHERE id=2)"), 1);
 
     game.createBelt(GameObject.BELT, {x: 0, y: -1, direction: Direction.DOWN});
-    assert.equal(game.exec("SELECT (SELECT in_port FROM BeltPath WHERE id=1) = (SELECT out_port FROM BeltPath WHERE id=3)"), 1);
+    assert.equal(game.exec("SELECT (SELECT in_port_id FROM BeltPath WHERE id=1) = (SELECT out_port_id FROM BeltPath WHERE id=3)"), 1);
 
     assert.equal(game.exec("SELECT COUNT(*) FROM Port"), 5);
 });
@@ -125,7 +125,7 @@ test("testBeltTick1Item", async () => {
 
     assert.equal(game.exec("SELECT head_gap FROM BeltPath WHERE id=1"), 3*2-1);
 
-    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=1)");
 
     game.tickBeltPath();
     assert.equal(game.exec("SELECT head_gap FROM BeltPath WHERE id=1"), 0);
@@ -138,7 +138,7 @@ test("testBeltTick1Item", async () => {
     assert.equal(game.exec("SELECT head_gap FROM BeltPath WHERE id=1"), 3);
     game.tickBeltPath();
     game.tickBeltPath();
-    assert.equal(game.exec("SELECT item FROM Port WHERE id=(SELECT out_port FROM BeltPath WHERE id=1)"), 1);
+    assert.equal(game.exec("SELECT item FROM Port WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)"), 1);
 });
 
 test("testBeltTick2Items", async () => {
@@ -149,10 +149,10 @@ test("testBeltTick2Items", async () => {
 
     assert.equal(game.exec("SELECT head_gap FROM BeltPath WHERE id=1"), 3*2-1);
 
-    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=1)");
     game.tickBeltPath();
     game.tickBeltPath();
-    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=1)");
     game.tickBeltPath();
 
     assert.equal(game.exec("SELECT head_gap FROM BeltPath WHERE id=1"), 0);
@@ -161,15 +161,15 @@ test("testBeltTick2Items", async () => {
     game.tickBeltPath();
     assert.equal(game.exec("SELECT head_gap FROM BeltPath WHERE id=1"), 2);
     game.tickBeltPath();
-    assert.equal(game.exec("SELECT item FROM Port WHERE id=(SELECT out_port FROM BeltPath WHERE id=1)"), 1);
+    assert.equal(game.exec("SELECT item FROM Port WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)"), 1);
 
     game.tickBeltPath();
     assert.equal(game.exec("SELECT head_gap FROM BeltPath WHERE id=1"), 4);
 
-    game._db.db.exec("UPDATE Port SET item=NULL WHERE id=(SELECT out_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=NULL WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)");
     game.tickBeltPath();
     assert.equal(game.exec("SELECT head_gap FROM BeltPath WHERE id=1"), 5);
-    assert.equal(game.exec("SELECT item FROM Port WHERE id=(SELECT out_port FROM BeltPath WHERE id=1)"), 1);
+    assert.equal(game.exec("SELECT item FROM Port WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)"), 1);
 });
 
 test("testBeltDeleteStash1", async () => {
@@ -178,13 +178,13 @@ test("testBeltDeleteStash1", async () => {
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 2, y: 0, direction: Direction.RIGHT});
 
-    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port FROM BeltPath WHERE id=1)");
-    game._db.db.exec("UPDATE Port SET item=2 WHERE id=(SELECT out_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=2 WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)");
     game.tickBeltPath();
 
     game.removeGameObject(GameObject.BELT, 3n);
 
-    assert.equal(game.exec("SELECT 1 FROM Port WHERE id=(SELECT out_port FROM BeltPath WHERE id=1) AND item IS NULL"), 1);
+    assert.equal(game.exec("SELECT 1 FROM Port WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1) AND item IS NULL"), 1);
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=1 AND next_gap_id=3 AND next_item_id=4"), 1);
     assert.equal(game.exec("SELECT 1 FROM BeltPathItem WHERE id=3 AND length=2"), 1);
 });
@@ -195,14 +195,14 @@ test("testBeltDeleteStash2", async () => {
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 2, y: 0, direction: Direction.RIGHT});
 
-    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port FROM BeltPath WHERE id=1)");
-    game._db.db.exec("UPDATE Port SET item=2 WHERE id=(SELECT out_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=2 WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)");
     game.tickBeltPath();
 
     game.removeGameObject(GameObject.BELT, 2n);
 
-    assert.equal(game.exec("SELECT 1 FROM Port WHERE id=(SELECT out_port FROM BeltPath WHERE id=1) AND item IS NULL"), 1);
-    assert.equal(game.exec("SELECT 1 FROM Port WHERE id=(SELECT out_port FROM BeltPath WHERE id=3) AND item=2"), 1);
+    assert.equal(game.exec("SELECT 1 FROM Port WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1) AND item IS NULL"), 1);
+    assert.equal(game.exec("SELECT 1 FROM Port WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=3) AND item=2"), 1);
 
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=1 AND head_gap=0 AND next_gap_id IS NULL AND next_item_id IS NOT NULL"), 1);
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=3 AND head_gap=1 AND next_gap_id IS NULL AND next_item_id IS NULL"), 1);
@@ -214,13 +214,13 @@ test("testBeltDeleteStash3", async () => {
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 2, y: 0, direction: Direction.RIGHT});
 
-    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port FROM BeltPath WHERE id=1)");
-    game._db.db.exec("UPDATE Port SET item=2 WHERE id=(SELECT out_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=2 WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)");
     game.tickBeltPath();
 
     game.removeGameObject(GameObject.BELT, 1n);
 
-    assert.equal(game.exec("SELECT 1 FROM Port WHERE id=(SELECT out_port FROM BeltPath WHERE id=2) AND item=2"), 1);
+    assert.equal(game.exec("SELECT 1 FROM Port WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=2) AND item=2"), 1);
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=2 AND head_gap=(2*2-1) AND next_gap_id IS NULL AND next_item_id IS NULL"), 1);
 });
 
@@ -231,7 +231,7 @@ test("testBeltDeleteCreateStash", async () => {
 
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=1 AND head_gap=(2*2-1)"), 1);
 
-    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=1)");
     game.tickBeltPath();
 
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=1 AND head_gap=0"), 1);
@@ -246,12 +246,12 @@ test("testBeltLinkDeleteChild", async () => {
     game.createBelt(GameObject.BELT, {x: -1, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
 
-    assert.equal(game.exec("SELECT (SELECT out_port FROM BeltPath WHERE id=1) = (SELECT in_port FROM BeltPath WHERE id=2)"), 1);
+    assert.equal(game.exec("SELECT (SELECT out_port_id FROM BeltPath WHERE id=1) = (SELECT in_port_id FROM BeltPath WHERE id=2)"), 1);
     assert.equal(game.exec("SELECT COUNT(*) FROM Port"), 3);
 
     game.removeGameObject(GameObject.BELT, 2n);
 
-    assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE in_port IS NULL OR out_port IS NULL"), undefined);
+    assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE in_port_id IS NULL OR out_port_id IS NULL"), undefined);
     assert.equal(game.exec("SELECT COUNT(*) FROM Port"), 2);
 });
 
@@ -260,11 +260,11 @@ test("testBeltLinkDeleteParent", async () => {
     game.createBelt(GameObject.BELT, {x: -1, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
 
-    assert.equal(game.exec("SELECT (SELECT out_port FROM BeltPath WHERE id=1) = (SELECT in_port FROM BeltPath WHERE id=2)"), 1);
+    assert.equal(game.exec("SELECT (SELECT out_port_id FROM BeltPath WHERE id=1) = (SELECT in_port_id FROM BeltPath WHERE id=2)"), 1);
 
     game.removeGameObject(GameObject.BELT, 1n);
 
-    assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE in_port IS NULL OR out_port IS NULL"), undefined);
+    assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE in_port_id IS NULL OR out_port_id IS NULL"), undefined);
     assert.equal(game.exec("SELECT COUNT(*) FROM Port"), 2);
 });
 
@@ -375,14 +375,14 @@ test("testUndergroundBeltDeleteDownRamp2", async () => {
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 1n});
 
-    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=1)");
     game.tickBeltPath();
 
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=1 AND length=(3*2-1) AND head_gap=0"), 1);
 
     game.removeGameObject(GameObject.BELT, 3n);
 
-    assert.equal(game.exec("SELECT 1 FROM BeltPathItem WHERE path=1 AND type=1"), 1);
+    assert.equal(game.exec("SELECT 1 FROM BeltPathItem WHERE path_id=1 AND type=1"), 1);
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=1 AND length=1 AND head_gap=0"), 1);
     assert.equal(game.exec("SELECT COUNT(*) FROM Belt"), 1);
     assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
@@ -393,7 +393,7 @@ test("testUndergroundBeltDeleteDownRamp3", async () => {
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 1n});
 
-    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=1)");
     game.tickBeltPath();
     game.tickBeltPath();
 
@@ -436,20 +436,20 @@ test("testUndergroundBeltCrossChunk0Gap", async () => {
     game.createBelt(GameObject.RAMP_DOWN, {x: -1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 0, y: 1, direction: Direction.RIGHT, rampParent: 1n});
 
-    assert.equal(game.exec("SELECT (SELECT out_port FROM BeltPath WHERE id=1) = (SELECT in_port FROM BeltPath WHERE id=2)"), 1);
+    assert.equal(game.exec("SELECT (SELECT out_port_id FROM BeltPath WHERE id=1) = (SELECT in_port_id FROM BeltPath WHERE id=2)"), 1);
 
-    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=1)");
     game.tickBeltPath();
     game.tickBeltPath();
 
-    assert.equal(game.exec("SELECT 1 FROM BeltPathItem WHERE path=2"), 1);
+    assert.equal(game.exec("SELECT 1 FROM BeltPathItem WHERE path_id=2"), 1);
     game.tickBeltPath();
-    assert.equal(game.exec("SELECT 1 FROM Port WHERE id=(SELECT out_port FROM BeltPath WHERE id=2) AND item=1"), 1);
+    assert.equal(game.exec("SELECT 1 FROM Port WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=2) AND item=1"), 1);
 
     game.removeGameObject(GameObject.BELT, 1n);
 
-    assert.equal(game.exec("SELECT (SELECT out_port FROM BeltPath WHERE id=1) = (SELECT in_port FROM BeltPath WHERE id=2)"), null);
-    assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE in_port IS NULL OR out_port IS NULL"), undefined);
+    assert.equal(game.exec("SELECT (SELECT out_port_id FROM BeltPath WHERE id=1) = (SELECT in_port_id FROM BeltPath WHERE id=2)"), null);
+    assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE in_port_id IS NULL OR out_port_id IS NULL"), undefined);
 
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=2 AND length=1"), 1);
     assert.equal(game.exec("SELECT COUNT(*) FROM Belt"), 1);
@@ -461,16 +461,16 @@ test("testUndergroundBeltCrossChunk1", async () => {
     game.createBelt(GameObject.RAMP_DOWN, {x: -1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 1, y: 1, direction: Direction.RIGHT, rampParent: 1n});
 
-    assert.equal(game.exec("SELECT (SELECT out_port FROM BeltPath WHERE id=1) = (SELECT in_port FROM BeltPath WHERE id=2)"), 1);
+    assert.equal(game.exec("SELECT (SELECT out_port_id FROM BeltPath WHERE id=1) = (SELECT in_port_id FROM BeltPath WHERE id=2)"), 1);
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=1 AND length=1"), 1);
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=2 AND length=(2*2-1)"), 1);
 
-    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port FROM BeltPath WHERE id=1)");
+    game._db.db.exec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=1)");
     game.tickBeltPath();
     game.tickBeltPath();
     game.tickBeltPath();
 
-    assert.equal(game.exec("SELECT 1 FROM BeltPathItem WHERE path=2"), 1);
+    assert.equal(game.exec("SELECT 1 FROM BeltPathItem WHERE path_id=2"), 1);
 });
 
 test("testUndergroundBeltCrossChunk2", async () => {
@@ -478,7 +478,7 @@ test("testUndergroundBeltCrossChunk2", async () => {
     game.createBelt(GameObject.RAMP_DOWN, {x: -2, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 0, y: 1, direction: Direction.RIGHT, rampParent: 1n});
 
-    assert.equal(game.exec("SELECT (SELECT out_port FROM BeltPath WHERE id=1) = (SELECT in_port FROM BeltPath WHERE id=3)"), 1);
+    assert.equal(game.exec("SELECT (SELECT out_port_id FROM BeltPath WHERE id=1) = (SELECT in_port_id FROM BeltPath WHERE id=3)"), 1);
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=1 AND length=(2*2-1)"), 1);
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=3 AND length=1"), 1);
 });
@@ -488,7 +488,7 @@ test("testUndergroundBeltCrossChunk3", async () => {
     game.createBelt(GameObject.RAMP_DOWN, {x: -2, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 1, y: 1, direction: Direction.RIGHT, rampParent: 1n});
 
-    assert.equal(game.exec("SELECT (SELECT out_port FROM BeltPath WHERE id=1) = (SELECT in_port FROM BeltPath WHERE id=3)"), 1);
+    assert.equal(game.exec("SELECT (SELECT out_port_id FROM BeltPath WHERE id=1) = (SELECT in_port_id FROM BeltPath WHERE id=3)"), 1);
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=1 AND length=(2*2-1)"), 1);
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=3 AND length=(2*2-1)"), 1);
 });
@@ -498,7 +498,7 @@ test("testUndergroundBeltCrossChunk4", async () => {
     game.createBelt(GameObject.RAMP_UP, {x: 1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_DOWN, {x: -2, y: 1, direction: Direction.RIGHT, rampParent: 1n});
 
-    assert.equal(game.exec("SELECT (SELECT out_port FROM BeltPath WHERE id=4) = (SELECT in_port FROM BeltPath WHERE id=3)"), 1);
+    assert.equal(game.exec("SELECT (SELECT out_port_id FROM BeltPath WHERE id=4) = (SELECT in_port_id FROM BeltPath WHERE id=3)"), 1);
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=4 AND length=(2*2-1)"), 1);
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=3 AND length=(2*2-1)"), 1);
 });

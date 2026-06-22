@@ -70,10 +70,10 @@ export class PortTransferOp extends TickOp {
 
     get sql() {
         return `
-            INSERT INTO PortTransferIntent (source, destination, priority, destination_is_empty)
-            SELECT 
-                ${this.gameObject}.${this.inputPort} source,
-                ${this.gameObject}.${this.outputPort} destination,
+            INSERT INTO PortTransferIntent (source_id, destination_id, priority, destination_is_empty)
+            SELECT
+                ${this.gameObject}.${this.inputPort} source_id,
+                ${this.gameObject}.${this.outputPort} destination_id,
                 (${this.priority}) priority,
                 (dst.item IS NULL) destination_is_empty
             FROM

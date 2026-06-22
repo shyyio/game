@@ -1,8 +1,6 @@
 import {TickOp, TickPhase} from "@/common/core.js";
 import {CHUNK_SIZE, GameSettingsKey} from "@/common/constants.js";
 
-// TODO: Rename foreign key columns to use _id suffix (e.g., session -> session_id) at end of refactor.
-
 const CoreStatements = {
     End: "END TRANSACTION",
     Begin: "BEGIN TRANSACTION;",
@@ -20,16 +18,16 @@ const CoreStatements = {
 
     GetSessionEvents: `
         SELECT ev.seq, ev.time, ev.type, ev.subtype, ev.x, ev.y, ev.chunk, ev.id, ev.a, ev.b, ev.c,
-               sv.session
+               sv.session_id
         FROM GameJournal ev
             INNER JOIN SessionViewport sv ON ev.chunk = sv.chunk;
     `,
 
     TruncateGameJournal: `DELETE FROM GameJournal;`,
 
-    DeleteSessionViewport: `DELETE FROM SessionViewport WHERE session = @session RETURNING chunk;`,
-    InsertSessionViewport: `INSERT INTO SessionViewport (session, chunk) VALUES (@session, @chunk);`,
-    GetSessionsByChunk: `SELECT session FROM SessionViewport WHERE chunk = @chunk;`,
+    DeleteSessionViewport: `DELETE FROM SessionViewport WHERE session_id = @session RETURNING chunk;`,
+    InsertSessionViewport: `INSERT INTO SessionViewport (session_id, chunk) VALUES (@session, @chunk);`,
+    GetSessionsByChunk: `SELECT session_id FROM SessionViewport WHERE chunk = @chunk;`,
 }
 
 export const CHUNK_KEY_SQL = `(
@@ -93,26 +91,26 @@ const CoreTempSchema = `
         (${GameSettingsKey.CHUNK_SIZE}, ${CHUNK_SIZE});
 
     CREATE TEMPORARY TABLE PortTransferIntent (
-        source INT,
-        destination INT,
+        source_id INT,
+        destination_id INT,
         priority INT CHECK (priority >= 0),
 
         destination_is_empty INT DEFAULT (0)
-            CHECK ( destination_is_empty=0 OR destination_is_empty=1 ), 
+            CHECK ( destination_is_empty=0 OR destination_is_empty=1 ),
 
         managed INT DEFAULT (1) -- When set to 0, the GameObject code
                                 -- is responsible for actually doing the transfer.
             CHECK ( managed=0 OR managed=1 ),
 
-        PRIMARY KEY (source, destination)
+        PRIMARY KEY (source_id, destination_id)
     );
 
     CREATE TEMPORARY TABLE PortTransfer (
-        source INT,
-        destination INTEGER PRIMARY KEY,
+        source_id INT,
+        destination_id INTEGER PRIMARY KEY,
         item INT NOT NULL
     );
-    CREATE UNIQUE INDEX PortTransfer_source ON PortTransfer (source);
+    CREATE UNIQUE INDEX PortTransfer_source ON PortTransfer (source_id);
 
     CREATE TEMPORARY TABLE Session (
         id INTEGER PRIMARY KEY,
@@ -120,7 +118,7 @@ const CoreTempSchema = `
     );
 
     CREATE TEMPORARY TABLE SessionViewport (
-        session INT REFERENCES Session,
+        session_id INT REFERENCES Session,
         chunk TEXT NOT NULL
     );
 
@@ -140,40 +138,40 @@ const CoreTickPhases = {
         new TickOp(
             "ResolvePortTransfer",
             `WITH RECURSIVE intents AS (
-                SELECT source,
-                       destination,
+                SELECT source_id,
+                       destination_id,
                        destination_is_empty,
                        managed,
                        priority,
-                       ROW_NUMBER() OVER (PARTITION BY source ORDER BY priority DESC, destination) AS src_rank
+                       ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY priority DESC, destination_id) AS src_rank
                 FROM PortTransferIntent i
             ),
             deduped_intents1 AS (
-                SELECT source, destination, destination_is_empty, managed,
-                       ROW_NUMBER() OVER (PARTITION BY destination ORDER BY priority DESC, source) AS dst_rank
+                SELECT source_id, destination_id, destination_is_empty, managed,
+                       ROW_NUMBER() OVER (PARTITION BY destination_id ORDER BY priority DESC, source_id) AS dst_rank
                 FROM intents
                 WHERE src_rank=1
             ),
             deduped_intents2 AS (
-                SELECT source, destination, destination_is_empty, managed
+                SELECT source_id, destination_id, destination_is_empty, managed
                 FROM deduped_intents1
                 WHERE dst_rank=1
             ),
             resolved_chains AS (
-                SELECT source, destination, managed
+                SELECT source_id, destination_id, managed
                 FROM deduped_intents2
                 WHERE destination_is_empty=TRUE
 
                 UNION ALL
 
-                SELECT i.source, i.destination, i.managed
+                SELECT i.source_id, i.destination_id, i.managed
                 FROM resolved_chains chain
-                    INNER JOIN deduped_intents2 i ON chain.destination = i.source
+                    INNER JOIN deduped_intents2 i ON chain.destination_id = i.source_id
             )
-            INSERT INTO PortTransfer (source, destination, item)
-            SELECT source, destination, src.item
+            INSERT INTO PortTransfer (source_id, destination_id, item)
+            SELECT source_id, destination_id, src.item
             FROM resolved_chains
-                INNER JOIN Port src ON src.id = source
+                INNER JOIN Port src ON src.id = source_id
             WHERE managed=TRUE;`
         ),
         new TickOp("TruncatePortTransferIntent", `DELETE FROM PortTransferIntent;`),
@@ -181,11 +179,11 @@ const CoreTickPhases = {
     [TickPhase.COMMIT_TRANSFERS]: [
         new TickOp(
             "FlushPortTransferSource",
-            `UPDATE Port SET item=NULL WHERE id IN (SELECT source FROM PortTransfer);`
+            `UPDATE Port SET item=NULL WHERE id IN (SELECT source_id FROM PortTransfer);`
         ),
         new TickOp(
             "FlushPortTransferDestination",
-            `UPDATE Port SET item=pt.item FROM PortTransfer pt WHERE Port.id = pt.destination;`
+            `UPDATE Port SET item=pt.item FROM PortTransfer pt WHERE Port.id = pt.destination_id;`
         ),
         new TickOp("TruncatePortTransfer", `DELETE FROM PortTransfer;`),
     ],

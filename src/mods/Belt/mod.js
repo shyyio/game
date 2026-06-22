@@ -234,29 +234,29 @@ export class BeltMod extends Mod {
         return `
             CREATE TABLE BeltPath (
                 id INTEGER PRIMARY KEY REFERENCES Belt(id),
-                tail INT UNIQUE REFERENCES Belt(id),
+                tail_id INT UNIQUE REFERENCES Belt(id),
                 length INT,
 
                 head_gap INT
                     CHECK (head_gap >= 0 AND head_gap <= length),
 
-                in_port INT REFERENCES Port(id) ON DELETE SET NULL
-                    CHECK (in_port IS NULL OR in_port != out_port),
+                in_port_id INT REFERENCES Port(id) ON DELETE SET NULL
+                    CHECK (in_port_id IS NULL OR in_port_id != out_port_id),
 
-                out_port INT REFERENCES Port(id) ON DELETE SET NULL
-                    CHECK (out_port IS NULL OR in_port != out_port),
+                out_port_id INT REFERENCES Port(id) ON DELETE SET NULL
+                    CHECK (out_port_id IS NULL OR in_port_id != out_port_id),
 
                 next_gap_id INT,
                 next_item_id INT
             );
-            CREATE INDEX BeltPath_ports ON BeltPath(in_port, out_port);
+            CREATE INDEX BeltPath_ports ON BeltPath(in_port_id, out_port_id);
 
             CREATE TABLE Belt (
                 id INTEGER PRIMARY KEY,
-                parent INT UNIQUE REFERENCES Belt(id)
-                    CHECK ( parent IS NULL OR parent != id ),
+                parent_id INT UNIQUE REFERENCES Belt(id)
+                    CHECK ( parent_id IS NULL OR parent_id != id ),
 
-                path INT REFERENCES BeltPath,
+                path_id INT REFERENCES BeltPath,
                 path_index INT,
 
                 x INT NOT NULL,
@@ -271,23 +271,23 @@ export class BeltMod extends Mod {
 
             CREATE UNIQUE INDEX Belt_x_y_surface    ON Belt(x, y) WHERE type != ${BELT_UNDERGROUND};
             CREATE UNIQUE INDEX Belt_x_y_underground ON Belt(x, y) WHERE type =  ${BELT_UNDERGROUND};
-            CREATE INDEX Belt_path ON Belt(path, path_index);
+            CREATE INDEX Belt_path ON Belt(path_id, path_index);
 
             CREATE TABLE BeltPathItem (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-                path INT NOT NULL REFERENCES BeltPath,
+                path_id INT NOT NULL REFERENCES BeltPath,
                 length INT NOT NULL CHECK (length >= 0),
 
                 type INT NOT NULL CHECK (type >= 0)
             );
 
         -- TODO: Check if these are used at all
---             CREATE INDEX BeltPathItem_path_id_type ON BeltPathItem(path, id, type);
+--             CREATE INDEX BeltPathItem_path_id_type ON BeltPathItem(path_id, id, type);
 --             CREATE INDEX BeltPathItem_length ON BeltPathItem (length);
 
-            CREATE INDEX BeltPathItem_gap ON BeltPathItem(path, id) WHERE type = ${ITEM_TYPE_GAP};
-            CREATE INDEX BeltPathItem_item ON BeltPathItem(path, id) WHERE type != ${ITEM_TYPE_GAP};
+            CREATE INDEX BeltPathItem_gap ON BeltPathItem(path_id, id) WHERE type = ${ITEM_TYPE_GAP};
+            CREATE INDEX BeltPathItem_item ON BeltPathItem(path_id, id) WHERE type != ${ITEM_TYPE_GAP};
         `;
     }
 
@@ -317,7 +317,7 @@ export class BeltMod extends Mod {
                             WHERE id IN (
                                 SELECT p.next_gap_id
                                 FROM BeltPath p
-                                    INNER JOIN Port outPort ON outPort.id = p.out_port
+                                    INNER JOIN Port outPort ON outPort.id = p.out_port_id
                                 WHERE (
                                     p.next_gap_id IS NOT NULL
                                     AND
@@ -338,11 +338,11 @@ export class BeltMod extends Mod {
                         //  - pop item into output port
                         new TickOp(
                             "TickBeltPathCase2",
-                            `INSERT INTO BeltPathOutputItem (path, item_id, item_type, port)
+                            `INSERT INTO BeltPathOutputItem (path_id, item_id, item_type, port_id)
                             SELECT BeltPath.id, item.id, item.type, outPort.id
                             FROM BeltPath
                                      INNER JOIN BeltPathItem item ON item.id = next_item_id
-                                     INNER JOIN Port outPort ON outPort.id = out_port
+                                     INNER JOIN Port outPort ON outPort.id = out_port_id
                             WHERE
                               -- Next item is an item
                                 (
@@ -365,7 +365,7 @@ export class BeltMod extends Mod {
                             SET head_gap = head_gap + 1
                             WHERE (
                                 next_gap_id IS NOT NULL
-                                OR id IN (SELECT path FROM BeltPathOutputItem)
+                                OR id IN (SELECT path_id FROM BeltPathOutputItem)
                             );`
                         ),
 
@@ -374,18 +374,18 @@ export class BeltMod extends Mod {
                             `UPDATE Port
                             SET item=item.item_type
                             FROM BeltPathOutputItem item
-                            WHERE Port.id = item.port;`
+                            WHERE Port.id = item.port_id;`
                         ),
 
                         new TickOp(
                             "TickBeltPathInsertItem",
-                            `INSERT INTO BeltPathItem (path, type, length)
+                            `INSERT INTO BeltPathItem (path_id, type, length)
                                 -- If the head gap is more than 1 spaces, add a gap item first
                                 SELECT BeltPath.id,
                                        0,
                                        head_gap - 1
                                 FROM BeltPath
-                                    INNER JOIN Port inPort ON inPort.id = in_port
+                                    INNER JOIN Port inPort ON inPort.id = in_port_id
                                 WHERE head_gap > 1
                                   AND inPort.item IS NOT NULL
                                 UNION ALL
@@ -394,7 +394,7 @@ export class BeltMod extends Mod {
                                        inPort.item,
                                        1
                                 FROM BeltPath
-                                    INNER JOIN Port inPort ON inPort.id = in_port
+                                    INNER JOIN Port inPort ON inPort.id = in_port_id
                                 WHERE head_gap > 0
                                   AND inPort.item IS NOT NULL;`
                         ),
@@ -431,10 +431,10 @@ export class BeltMod extends Mod {
                         ),
                         new TickOp(
                             "TickBeltPathCleanup3",
-                            `INSERT INTO BeltPathInputItem (path, port)
+                            `INSERT INTO BeltPathInputItem (path_id, port_id)
                              SELECT BeltPath.id, Port.id
                              FROM BeltPath
-                                INNER JOIN Port ON Port.id = in_port
+                                INNER JOIN Port ON Port.id = in_port_id
                              WHERE BeltPath.head_gap > 0
                                AND item IS NOT NULL;`
                         ),
@@ -443,7 +443,7 @@ export class BeltMod extends Mod {
                             `UPDATE Port
                              SET item = NULL
                              FROM BeltPathInputItem
-                             WHERE Port.id = BeltPathInputItem.port;`
+                             WHERE Port.id = BeltPathInputItem.port_id;`
                         ),
 
                         new TickOp(
@@ -451,7 +451,7 @@ export class BeltMod extends Mod {
                             `UPDATE BeltPath
                                 SET head_gap = 0
                                 FROM BeltPathInputItem
-                                WHERE BeltPath.id = BeltPathInputItem.path;`
+                                WHERE BeltPath.id = BeltPathInputItem.path_id;`
                         ),
                         new TickOp(
                             "TickBeltPathCleanup6",
@@ -463,7 +463,7 @@ export class BeltMod extends Mod {
                             `WITH new_values (id, next_gap_id) AS (
                                     SELECT path.id, MIN(gap.id)
                                     FROM BeltPath path
-                                        INNER JOIN BeltPathItem gap ON gap.path = path.id AND gap.type = ${ITEM_TYPE_GAP}
+                                        INNER JOIN BeltPathItem gap ON gap.path_id = path.id AND gap.type = ${ITEM_TYPE_GAP}
                                     GROUP BY path.id
                                     HAVING path.next_gap_id IS NULL OR MIN(gap.id) != MAX(path.next_gap_id)
                                 )
@@ -478,7 +478,7 @@ export class BeltMod extends Mod {
                             `WITH new_values (id, next_item_id) AS (
                                     SELECT path.id, MIN(item.id)
                                     FROM BeltPath path
-                                        INNER JOIN BeltPathItem item ON item.path = path.id AND item.type != ${ITEM_TYPE_GAP}
+                                        INNER JOIN BeltPathItem item ON item.path_id = path.id AND item.type != ${ITEM_TYPE_GAP}
                                     GROUP BY path.id
                                     HAVING path.next_item_id IS NULL OR MIN(item.id) != MAX(path.next_item_id)
                                 )
@@ -499,24 +499,24 @@ export class BeltMod extends Mod {
         return `
             CREATE TEMPORARY TABLE StashedItem (
                 id INTEGER PRIMARY KEY,
-                belt INT,
+                belt_id INT,
                 type INT
             );
 
             CREATE TEMPORARY TABLE StashedOutputItem (
                 id INTEGER PRIMARY KEY,
-                belt INT,
+                belt_id INT,
                 type INT
             );
 
             CREATE TEMPORARY TABLE BeltPathInputItem (
-                path INT,
-                port INT
+                path_id INT,
+                port_id INT
             );
 
             CREATE TEMPORARY TABLE BeltPathOutputItem (
-                path INTEGER PRIMARY KEY,
-                port INT NOT NULL,
+                path_id INTEGER PRIMARY KEY,
+                port_id INT NOT NULL,
                 item_id INT NOT NULL,
                 item_type INT NOT NULL
             );
@@ -534,10 +534,10 @@ export class BeltMod extends Mod {
         return {
 
             StashOutputItem: `
-                INSERT INTO StashedOutputItem (belt, type)
-                SELECT tail, p.item
+                INSERT INTO StashedOutputItem (belt_id, type)
+                SELECT tail_id, p.item
                 FROM BeltPath
-                    INNER JOIN Port p ON p.id = BeltPath.out_port
+                    INNER JOIN Port p ON p.id = BeltPath.out_port_id
                 WHERE BeltPath.id = CAST(@id AS INT)
                   AND p.item IS NOT NULL;
             `,
@@ -547,39 +547,39 @@ export class BeltMod extends Mod {
                 SET item=NULL
                 FROM BeltPath
                 WHERE BeltPath.id = CAST(@id AS INT)
-                  AND Port.id = BeltPath.out_port;
+                  AND Port.id = BeltPath.out_port_id;
             `,
 
             UnStashOutputItem: `
                 UPDATE Port
                 SET item = StashedOutputItem.type
                 FROM StashedOutputItem
-                    INNER JOIN Belt ON Belt.id = StashedOutputItem.belt
-                    INNER JOIN BeltPath ON BeltPath.id = Belt.path
-                WHERE Port.id = BeltPath.out_port;
+                    INNER JOIN Belt ON Belt.id = StashedOutputItem.belt_id
+                    INNER JOIN BeltPath ON BeltPath.id = Belt.path_id
+                WHERE Port.id = BeltPath.out_port_id;
             `,
 
             TruncateStashedOutputItem: `DELETE FROM StashedOutputItem;`,
 
             StashGap: `
-                INSERT INTO StashedItem (belt, type) VALUES
+                INSERT INTO StashedItem (belt_id, type) VALUES
                     (CAST(@id AS INT), ${ITEM_TYPE_GAP}),
                     (CAST(@id AS INT), ${ITEM_TYPE_GAP});
             `,
 
             StashItems: `
-                INSERT INTO StashedItem (belt, type)
+                INSERT INTO StashedItem (belt_id, type)
                 WITH items AS (
                     SELECT
-                        path,
+                        path_id,
                         type,
                         length,
                         coalesce(SUM(length) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE CURRENT ROW), 0) AS path_index
                     FROM BeltPathItem
-                    WHERE path = CAST(@id AS INT)
+                    WHERE path_id = CAST(@id AS INT)
                     UNION ALL
                     SELECT
-                        BeltPath.id AS path,
+                        BeltPath.id AS path_id,
                         ${ITEM_TYPE_GAP} AS type,
                         head_gap AS length,
                         length - head_gap AS path_index
@@ -587,7 +587,7 @@ export class BeltMod extends Mod {
                     WHERE BeltPath.id = CAST(@id AS INT)
                 ),
                 items_exploded AS (
-                    SELECT path, type, path_index + value AS path_index
+                    SELECT path_id, type, path_index + value AS path_index
                     FROM items
                         CROSS JOIN Numbers
                     WHERE value < items.length
@@ -596,46 +596,46 @@ export class BeltMod extends Mod {
                 FROM items_exploded
                     INNER JOIN Belt ON
                         Belt.path_index = CAST(items_exploded.path_index / 2 AS INT)
-                        AND Belt.path = items_exploded.path
+                        AND Belt.path_id = items_exploded.path_id
                 ORDER BY items_exploded.path_index;
             `,
 
             DeleteItems: `
                 DELETE FROM BeltPathItem
-                WHERE path = CAST(@id AS INT);
+                WHERE path_id = CAST(@id AS INT);
             `,
 
             UnStashItems: `
-                INSERT INTO BeltPathItem (path, length, type)
+                INSERT INTO BeltPathItem (path_id, length, type)
                 WITH raw_items AS (
-                    SELECT Belt.id, Belt.path, item.type
+                    SELECT Belt.id, Belt.path_id, item.type
                     FROM StashedItem item
-                        INNER JOIN Belt ON Belt.id = item.belt
+                        INNER JOIN Belt ON Belt.id = item.belt_id
                     ORDER BY Belt.path_index
                 ),
                 items AS (
-                    SELECT path,
+                    SELECT path_id,
                            type,
                            row_number() over () global_index
                     FROM raw_items
                 ),
                 ranked_items AS (
-                    SELECT path,
+                    SELECT path_id,
                            type,
                            global_index,
                            row_number() over (PARTITION BY type ORDER BY global_index) group_index
                     FROM items
                 ),
                 grouped_items AS (
-                    SELECT path,
+                    SELECT path_id,
                            COUNT(*) as length,
                            type,
-                           SUM(type) OVER (PARTITION BY path) type_sum
+                           SUM(type) OVER (PARTITION BY path_id) type_sum
                     FROM ranked_items
-                    GROUP BY path, CASE WHEN type != ${ITEM_TYPE_GAP} THEN -global_index ELSE (global_index - group_index) END
+                    GROUP BY path_id, CASE WHEN type != ${ITEM_TYPE_GAP} THEN -global_index ELSE (global_index - group_index) END
                     ORDER BY global_index
                 )
-                SELECT path, length, type
+                SELECT path_id, length, type
                 FROM grouped_items
                 WHERE type_sum > 0;
             `,
@@ -644,14 +644,14 @@ export class BeltMod extends Mod {
 
             FillHeadGap: `
                 UPDATE BeltPath
-                SET head_gap = length - COALESCE((SELECT SUM(length) FROM BeltPathItem WHERE path = CAST(@id AS INT)), 0)
+                SET head_gap = length - COALESCE((SELECT SUM(length) FROM BeltPathItem WHERE path_id = CAST(@id AS INT)), 0)
                 WHERE id = CAST(@id AS INT);
             `,
 
             TransferBeltPathItems: `
                 UPDATE BeltPathItem
-                SET path = CAST(@to AS INT)
-                WHERE path = CAST(@from AS INT);
+                SET path_id = CAST(@to AS INT)
+                WHERE path_id = CAST(@from AS INT);
             `,
 
             RecalculateNextGapForPath: `
@@ -659,7 +659,7 @@ export class BeltMod extends Mod {
                 SET next_gap_id = (
                     SELECT MIN(id)
                     FROM BeltPathItem
-                    WHERE path = CAST(@id AS INT)
+                    WHERE path_id = CAST(@id AS INT)
                       AND type = ${ITEM_TYPE_GAP}
                 )
                 WHERE id = CAST(@id AS INT);
@@ -670,7 +670,7 @@ export class BeltMod extends Mod {
                 SET next_item_id = (
                     SELECT MIN(id)
                     FROM BeltPathItem
-                    WHERE path = CAST(@id AS INT)
+                    WHERE path_id = CAST(@id AS INT)
                       AND type != ${ITEM_TYPE_GAP}
                 )
                 WHERE id = CAST(@id AS INT);
@@ -680,24 +680,24 @@ export class BeltMod extends Mod {
             // and the old parent's path head (if the child had a previous parent in another path).
             GetBeltCreateContext: `
                 WITH RECURSIVE
-                    head_path(id, parent, chunk) AS (
-                        SELECT id, parent, chunk FROM Belt WHERE id = CAST(@id AS INT)
+                    head_path(id, parent_id, chunk) AS (
+                        SELECT id, parent_id, chunk FROM Belt WHERE id = CAST(@id AS INT)
                         UNION
-                        SELECT p.id, p.parent, p.chunk
+                        SELECT p.id, p.parent_id, p.chunk
                         FROM Belt p
-                            INNER JOIN head_path ON head_path.parent = p.id AND head_path.chunk = p.chunk
+                            INNER JOIN head_path ON head_path.parent_id = p.id AND head_path.chunk = p.chunk
                     ),
                     head AS (
                         SELECT h.id
                         FROM head_path h
-                            LEFT JOIN head_path ancestor ON ancestor.id = h.parent
+                            LEFT JOIN head_path ancestor ON ancestor.id = h.parent_id
                         WHERE ancestor.id IS NULL
                     ),
                     child AS (
-                        SELECT Belt.id, Belt.path, Belt.parent, Belt.chunk, Belt.x, Belt.y
+                        SELECT Belt.id, Belt.path_id, Belt.parent_id, Belt.chunk, Belt.x, Belt.y
                         FROM Belt
                             LEFT JOIN Belt new_parent       ON new_parent.x = @x AND new_parent.y = @y
-                            LEFT JOIN Belt new_grandparent  ON new_grandparent.id = new_parent.parent
+                            LEFT JOIN Belt new_grandparent  ON new_grandparent.id = new_parent.parent_id
                         WHERE Belt.x = CASE
                             WHEN @direction = ${UP}    THEN @x
                             WHEN @direction = ${RIGHT} THEN @x + 1
@@ -716,7 +716,7 @@ export class BeltMod extends Mod {
                             WHEN @direction = ${DOWN}  THEN ${UP}
                             WHEN @direction = ${LEFT}  THEN ${RIGHT}
                         END
-                          AND (new_grandparent.path IS NULL OR new_grandparent.path != Belt.id)
+                          AND (new_grandparent.path_id IS NULL OR new_grandparent.path_id != Belt.id)
                           AND (
                             (Belt.type = ${BELT_NORMAL} AND @type = ${BELT_NORMAL})
                                 OR (Belt.type = ${BELT_NORMAL} AND @type = ${BELT_RAMP_UP})
@@ -740,31 +740,31 @@ export class BeltMod extends Mod {
                     child.x                         AS child_x,
                     child.y                         AS child_y,
                     child.chunk                     AS child_chunk,
-                    -- child.path = child.id means child was a standalone path head
-                    child.path                      AS child_path,
+                    -- child.path_id = child.id means child was a standalone path head
+                    child.path_id                   AS child_path,
 
                     -- child's previous upstream parent before this insert (NULL if child had none)
-                    child.parent                    AS child_old_parent,
+                    child.parent_id                 AS child_old_parent,
                     child_old_parent.chunk          AS child_old_parent_chunk,
                     -- the path that must be re-stashed/recalculated because it lost a member
-                    child_old_parent.path           AS old_parent_path_head
+                    child_old_parent.path_id        AS old_parent_path_head
                 FROM head
                     LEFT JOIN child ON 1=1
-                    LEFT JOIN Belt child_old_parent ON child_old_parent.id = child.parent
+                    LEFT JOIN Belt child_old_parent ON child_old_parent.id = child.parent_id
             `,
 
             GetBeltChild: `
                 SELECT Belt.id,
-                       Belt.path,
-                       Belt.parent          oldParent,
+                       Belt.path_id,
+                       Belt.parent_id       oldParent,
                        Belt.chunk,
                        current_parent.chunk oldParentChunk,
                        Belt.x,
                        Belt.y
                 FROM Belt
-                    LEFT JOIN Belt current_parent ON Belt.parent = current_parent.id
+                    LEFT JOIN Belt current_parent ON Belt.parent_id = current_parent.id
                     LEFT JOIN Belt new_parent ON new_parent.x = @x AND new_parent.y = @y
-                    LEFT JOIN Belt new_grandparent ON new_grandparent.id = new_parent.parent
+                    LEFT JOIN Belt new_grandparent ON new_grandparent.id = new_parent.parent_id
                 WHERE Belt.x = CASE
                     WHEN @direction = ${UP}    THEN @x
                     WHEN @direction = ${RIGHT} THEN @x + 1
@@ -783,7 +783,7 @@ export class BeltMod extends Mod {
                     WHEN @direction = ${DOWN}  THEN ${UP}
                     WHEN @direction = ${LEFT}  THEN ${RIGHT}
                 END
-                  AND (new_grandparent.path IS NULL OR new_grandparent.path != Belt.id)
+                  AND (new_grandparent.path_id IS NULL OR new_grandparent.path_id != Belt.id)
                   AND (
                     (Belt.type = ${BELT_NORMAL} AND @type = ${BELT_NORMAL})
                         OR (Belt.type = ${BELT_NORMAL} AND @type = ${BELT_RAMP_UP})
@@ -801,7 +801,7 @@ export class BeltMod extends Mod {
 
             UpdateBeltChild: `
                 UPDATE Belt
-                SET parent = CASE
+                SET parent_id = CASE
                     WHEN direction = ${UP} THEN
                         (SELECT MAX(id) FROM Belt b
                          WHERE (b.x = Belt.x AND b.y = Belt.y + 1 AND b.direction = ${UP})
@@ -828,31 +828,31 @@ export class BeltMod extends Mod {
             `,
 
             GetBelt: `
-                SELECT belt.x, belt.y, belt.type, belt.direction, belt.parent, belt.chunk,
+                SELECT belt.x, belt.y, belt.type, belt.direction, belt.parent_id, belt.chunk,
                     parent.type AS parent_type
                 FROM Belt belt
-                    LEFT JOIN Belt parent ON parent.id = belt.parent
+                    LEFT JOIN Belt parent ON parent.id = belt.parent_id
                 WHERE belt.id = CAST(@id AS INT);
             `,
 
             GetBeltAtTile: `SELECT id FROM Belt WHERE x = @x AND y = @y LIMIT 1;`,
 
             GetTail: `
-                SELECT x, y, type, direction, parent, chunk
+                SELECT x, y, type, direction, parent_id, chunk
                 FROM Belt
-                WHERE id = (SELECT tail FROM BeltPath WHERE id = CAST(@id AS INT));
+                WHERE id = (SELECT tail_id FROM BeltPath WHERE id = CAST(@id AS INT));
             `,
 
             GetBeltParent: `
                 SELECT parent.id, parent.x, parent.y
                 FROM Belt
-                    INNER JOIN Belt parent ON parent.id = Belt.parent
+                    INNER JOIN Belt parent ON parent.id = Belt.parent_id
                 WHERE Belt.id = CAST(@id AS INT)
                 LIMIT 1;
             `,
 
             InsertBelt: `
-                INSERT INTO Belt (parent, x, y, type, direction)
+                INSERT INTO Belt (parent_id, x, y, type, direction)
                 VALUES (CASE
                     WHEN @direction = ${UP} THEN
                         (SELECT MAX(id) FROM Belt
@@ -881,22 +881,22 @@ export class BeltMod extends Mod {
 
             GetBeltPathHead: `
                 WITH RECURSIVE path AS (
-                    SELECT id, parent, chunk
+                    SELECT id, parent_id, chunk
                     FROM Belt
                     WHERE id = CAST(@id AS INT)
 
                     UNION
 
-                    SELECT parent.id, parent.parent, parent.chunk
+                    SELECT parent.id, parent.parent_id, parent.chunk
                     FROM Belt parent
-                        INNER JOIN path ON path.parent = parent.id AND path.chunk = parent.chunk
+                        INNER JOIN path ON path.parent_id = parent.id AND path.chunk = parent.chunk
                 )
                 SELECT id
                 FROM path;
             `,
 
             GetExistingBeltPathHead: `
-                SELECT path
+                SELECT path_id
                 FROM Belt
                 WHERE id = CAST(@id AS INT)
             `,
@@ -908,22 +908,22 @@ export class BeltMod extends Mod {
                         UNION
                         SELECT child.id, child.chunk
                         FROM Belt child
-                            INNER JOIN path ON path.id = child.parent
+                            INNER JOIN path ON path.id = child.parent_id
                         WHERE path.chunk = child.chunk
                      ),
                      indexed_path AS (SELECT id, row_number() over () idx FROM path),
                      reverse_path AS (SELECT id, ROW_NUMBER() OVER (ORDER BY idx DESC) - 1 seq FROM indexed_path)
                 UPDATE Belt
-                SET path=CAST(@id AS INT),
+                SET path_id=CAST(@id AS INT),
                     path_index=(SELECT seq FROM reverse_path WHERE reverse_path.id = Belt.id)
                 WHERE id IN (SELECT id FROM reverse_path);
             `,
 
             MaterializeBeltPath: `
-                WITH new_tail AS (SELECT id FROM Belt WHERE path = CAST(@id AS INT) ORDER BY path_index LIMIT 1),
-                     path_length AS (SELECT COUNT(*) * 2 - 1 AS length FROM Belt WHERE path = CAST(@id AS INT))
+                WITH new_tail AS (SELECT id FROM Belt WHERE path_id = CAST(@id AS INT) ORDER BY path_index LIMIT 1),
+                     path_length AS (SELECT COUNT(*) * 2 - 1 AS length FROM Belt WHERE path_id = CAST(@id AS INT))
                 UPDATE BeltPath
-                SET tail     = (SELECT id FROM new_tail),
+                SET tail_id  = (SELECT id FROM new_tail),
                     length   = path_length.length,
                     head_gap = path_length.length
                 FROM path_length
@@ -933,40 +933,40 @@ export class BeltMod extends Mod {
 
             DeleteInPort: `
                 DELETE FROM Port
-                WHERE id = (SELECT in_port FROM BeltPath WHERE id = CAST(@id AS INT))
-                  AND NOT EXISTS (SELECT 1 FROM BeltPath WHERE out_port = Port.id);
+                WHERE id = (SELECT in_port_id FROM BeltPath WHERE id = CAST(@id AS INT))
+                  AND NOT EXISTS (SELECT 1 FROM BeltPath WHERE out_port_id = Port.id);
             `,
 
             UpdateInPort: `
                 UPDATE BeltPath
-                SET in_port=CAST(@port AS INT)
+                SET in_port_id=CAST(@port AS INT)
                 WHERE id = CAST(@id AS INT)
             `,
 
             DeleteOutPort: `
                 DELETE FROM Port
-                WHERE id = (SELECT out_port FROM BeltPath WHERE id = CAST(@id AS INT))
+                WHERE id = (SELECT out_port_id FROM BeltPath WHERE id = CAST(@id AS INT))
             `,
 
             InheritOutPort: `
                 UPDATE BeltPath
-                SET out_port=(SELECT out_port FROM BeltPath WHERE id = CAST(@child AS INT))
+                SET out_port_id=(SELECT out_port_id FROM BeltPath WHERE id = CAST(@child AS INT))
                 WHERE id = CAST(@parent AS INT)
-                  AND EXISTS (SELECT 1 FROM BeltPath WHERE id = CAST(@child AS INT) AND out_port IS NOT NULL)
-                RETURNING out_port
+                  AND EXISTS (SELECT 1 FROM BeltPath WHERE id = CAST(@child AS INT) AND out_port_id IS NOT NULL)
+                RETURNING out_port_id
             `,
 
-            GetBeltPath: `SELECT id FROM Belt WHERE path = CAST(@id AS INT) ORDER BY path_index;`,
+            GetBeltPath: `SELECT id FROM Belt WHERE path_id = CAST(@id AS INT) ORDER BY path_index;`,
 
             GetRampParents: `
                 WITH RECURSIVE path AS (
-                    SELECT id, parent, type FROM Belt WHERE id = CAST(@id AS INT)
+                    SELECT id, parent_id, type FROM Belt WHERE id = CAST(@id AS INT)
                     UNION
-                    SELECT parent.id, parent.parent, parent.type
+                    SELECT parent.id, parent.parent_id, parent.type
                     FROM Belt parent
-                        INNER JOIN path ON path.parent = parent.id AND parent.type = ${BELT_UNDERGROUND}
+                        INNER JOIN path ON path.parent_id = parent.id AND parent.type = ${BELT_UNDERGROUND}
                 )
-                SELECT id, parent
+                SELECT id, parent_id
                 FROM path
                 WHERE type = ${BELT_UNDERGROUND};
             `,
@@ -977,7 +977,7 @@ export class BeltMod extends Mod {
                     UNION
                     SELECT child.id, child.type
                     FROM Belt child
-                        INNER JOIN path ON child.parent = path.id AND child.type = ${BELT_UNDERGROUND}
+                        INNER JOIN path ON child.parent_id = path.id AND child.type = ${BELT_UNDERGROUND}
                 )
                 SELECT id
                 FROM path
@@ -992,54 +992,54 @@ export class BeltMod extends Mod {
 
             UpdateBeltPathPorts: `
                 UPDATE BeltPath
-                SET in_port=CAST(@inPort AS INT),
-                    out_port=CAST(@outPort AS INT)
+                SET in_port_id=CAST(@inPort AS INT),
+                    out_port_id=CAST(@outPort AS INT)
                 WHERE id = CAST(@id AS INT);
             `,
 
-            GetBeltPathPortOwner: `SELECT id FROM BeltPath WHERE in_port = CAST(@id AS INT);`,
+            GetBeltPathPortOwner: `SELECT id FROM BeltPath WHERE in_port_id = CAST(@id AS INT);`,
 
             GetOutPortUp: `
-                SELECT out_port FROM BeltPath
-                INNER JOIN Belt ON Belt.id = BeltPath.tail
+                SELECT out_port_id FROM BeltPath
+                INNER JOIN Belt ON Belt.id = BeltPath.tail_id
                 WHERE Belt.x = @x AND Belt.y = @y + 1 AND Belt.direction = ${UP};
             `,
             GetOutPortRight: `
-                SELECT out_port FROM BeltPath
-                INNER JOIN Belt ON Belt.id = BeltPath.tail
+                SELECT out_port_id FROM BeltPath
+                INNER JOIN Belt ON Belt.id = BeltPath.tail_id
                 WHERE Belt.x = @x - 1 AND Belt.y = @y AND Belt.direction = ${RIGHT};
             `,
             GetOutPortDown: `
-                SELECT out_port FROM BeltPath
-                INNER JOIN Belt ON Belt.id = BeltPath.tail
+                SELECT out_port_id FROM BeltPath
+                INNER JOIN Belt ON Belt.id = BeltPath.tail_id
                 WHERE Belt.x = @x AND Belt.y = @y - 1 AND Belt.direction = ${DOWN};
             `,
             GetOutPortLeft: `
-                SELECT out_port FROM BeltPath
-                INNER JOIN Belt ON Belt.id = BeltPath.tail
+                SELECT out_port_id FROM BeltPath
+                INNER JOIN Belt ON Belt.id = BeltPath.tail_id
                 WHERE Belt.x = @x + 1 AND Belt.y = @y AND Belt.direction = ${LEFT};
             `,
 
             GetInPortUp: `
-                SELECT in_port FROM BeltPath
+                SELECT in_port_id FROM BeltPath
                 INNER JOIN Belt ON Belt.id = BeltPath.id
                 WHERE Belt.x = @x AND Belt.y = @y
                 LIMIT 1;
             `,
             GetInPortRight: `
-                SELECT in_port FROM BeltPath
+                SELECT in_port_id FROM BeltPath
                 INNER JOIN Belt ON Belt.id = BeltPath.id
                 WHERE Belt.x = @x AND Belt.y = @y
                 LIMIT 1;
             `,
             GetInPortDown: `
-                SELECT in_port FROM BeltPath
+                SELECT in_port_id FROM BeltPath
                 INNER JOIN Belt ON Belt.id = BeltPath.id
                 WHERE Belt.x = @x AND Belt.y = @y
                 LIMIT 1;
             `,
             GetInPortLeft: `
-                SELECT in_port FROM BeltPath
+                SELECT in_port_id FROM BeltPath
                 INNER JOIN Belt ON Belt.id = BeltPath.id
                 WHERE Belt.x = @x AND Belt.y = @y
                 LIMIT 1;
@@ -1052,7 +1052,7 @@ export class BeltMod extends Mod {
 
             InvalidatePath: `
                 UPDATE BeltPath
-                SET tail=NULL,
+                SET tail_id=NULL,
                     length=NULL,
                     next_gap_id=NULL,
                     next_item_id=NULL
@@ -1063,49 +1063,49 @@ export class BeltMod extends Mod {
             DeleteUnusedPathPorts: `
                 DELETE FROM Port
                 WHERE id IN (
-                    SELECT in_port  FROM BeltPath WHERE id = CAST(@id AS INT)
+                    SELECT in_port_id  FROM BeltPath WHERE id = CAST(@id AS INT)
                     UNION ALL
-                    SELECT out_port FROM BeltPath WHERE id = CAST(@id AS INT)
+                    SELECT out_port_id FROM BeltPath WHERE id = CAST(@id AS INT)
                 )
                 AND NOT EXISTS (
                     SELECT 1 FROM BeltPath
-                    WHERE id != CAST(@id AS INT) AND (in_port=Port.id OR out_port=Port.id)
+                    WHERE id != CAST(@id AS INT) AND (in_port_id=Port.id OR out_port_id=Port.id)
                     UNION ALL
                     SELECT 1 FROM Splitter
-                    WHERE in_port_a=Port.id OR in_port_b=Port.id
-                       OR out_port_a=Port.id OR out_port_b=Port.id
-                       OR int_port_a=Port.id OR int_port_b=Port.id
+                    WHERE in_port_a_id=Port.id OR in_port_b_id=Port.id
+                       OR out_port_a_id=Port.id OR out_port_b_id=Port.id
+                       OR int_port_a_id=Port.id OR int_port_b_id=Port.id
                 );
             `,
 
             DetachChild: `
                 UPDATE Belt
-                SET parent=NULL
-                WHERE parent = CAST(@id AS INT)
+                SET parent_id=NULL
+                WHERE parent_id = CAST(@id AS INT)
                 RETURNING id;
             `,
 
             UnassignBeltPath: `
                 UPDATE Belt
-                SET path=NULL, path_index=NULL
-                WHERE path=CAST(@id AS INT);
+                SET path_id=NULL, path_index=NULL
+                WHERE path_id=CAST(@id AS INT);
             `,
 
             ClearSolitaryBeltPortItem: `
                 UPDATE Port SET item=NULL
                 FROM BeltPath path
-                WHERE Port.id=path.out_port AND path.id=@id AND path.tail=path.id;
+                WHERE Port.id=path.out_port_id AND path.id=@id AND path.tail_id=path.id;
             `,
 
             NullifyPathTail: `
-                UPDATE BeltPath SET tail=NULL
-                WHERE tail=CAST(@id AS INT);
+                UPDATE BeltPath SET tail_id=NULL
+                WHERE tail_id=CAST(@id AS INT);
             `,
 
             DeleteBeltRow: `
                 DELETE FROM Belt
                 WHERE id = CAST(@id AS INT)
-                RETURNING parent;
+                RETURNING parent_id;
             `,
         };
     }
@@ -1157,7 +1157,7 @@ export class BeltMod extends Mod {
                 console.warn("CreateBelt ignored: belt already exists at", options.x, options.y);
                 return;
             }
-            if (msg.includes("Belt.parent")) {
+            if (msg.includes("Belt.parent_id")) {
                 console.warn("CreateBelt ignored: conflicting parent at", options.x, options.y);
                 return;
             }
@@ -1547,7 +1547,7 @@ export class BeltMod extends Mod {
     /**
      * @private
      * @param {BigInt} id
-     * @param {BigInt|null} [inheritedOutPort] - existing out_port to preserve when no downstream exists
+     * @param {BigInt|null} [inheritedOutPort] - existing out_port_id to preserve when no downstream exists
      */
     _populateBeltPathPorts(id, inheritedOutPort = null) {
         const head = this.game.querySingle("GetBelt", {id});

@@ -4,8 +4,7 @@ import wasmFile from "@/assets/sql-wasm.wasm?url";
 import {get} from "idb-keyval";
 import {gzipCompress} from "@/util.js";
 
-// TODO: Replace all those with *_id
-const BIGINT_COLS = new Set(["id", "parent", "belt", "path", "child", "parent_path", "head", "tail"]);
+const BIGINT_COLS = new Set(["id", "parent_id", "belt_id", "path_id", "child", "parent_path", "head", "tail_id"]);
 
 
 function formatRow(row) {

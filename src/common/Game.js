@@ -187,7 +187,7 @@ export class Game {
     publishEventNow(event) {
         const sessions = this.query("GetSessionsByChunk", {chunk: event.chunk});
         sessions.forEach(row => {
-            this.sessions[row.session].publishEvent(event);
+            this.sessions[row.session_id].publishEvent(event);
         });
     }
 
@@ -197,7 +197,7 @@ export class Game {
      */
     _dispatchEvents() {
         this.query("GetSessionEvents").forEach(row => {
-            this.sessions[row.session].publishEvent(new BufferedEvent(row));
+            this.sessions[row.session_id].publishEvent(new BufferedEvent(row));
         });
         this.exec("TruncateGameJournal");
     }
