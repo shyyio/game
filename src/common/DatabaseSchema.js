@@ -194,21 +194,21 @@ const CoreTickPhases = {
 
 export class DatabaseSchema {
 
-    constructor(modSet) {
-        this.modSet = modSet;
+    constructor(modRegistry) {
+        this.modRegistry = modRegistry;
 
         this.preparedStatements = {...CoreStatements};
         this.tickPhases = {};
 
-        this.initSchema = [CoreSchema, modSet.initSchema];
-        this.tempSchema = [CoreTempSchema, modSet.tempSchema];
+        this.initSchema = [CoreSchema, modRegistry.initSchema];
+        this.tempSchema = [CoreTempSchema, modRegistry.tempSchema];
         this.pragma = [CorePragma];
-        this.triggers = modSet.mods
+        this.triggers = modRegistry.mods
             .map(mod => mod.triggers)
             .filter(t => t && t.trim().length > 0);
 
         // Collect statements from all mods
-        modSet.mods.forEach(mod => {
+        modRegistry.mods.forEach(mod => {
             if (mod.statements) {
                 Object.assign(this.preparedStatements, mod.statements);
             }
@@ -229,7 +229,7 @@ export class DatabaseSchema {
             TickPhase.POST_RESOLVE,
             TickPhase.COMMIT_TRANSFERS
         ].forEach(phase => {
-            this._prepareTick(this.modSet.definitions, phase);
+            this._prepareTick(this.modRegistry.definitions, phase);
         });
 
     }

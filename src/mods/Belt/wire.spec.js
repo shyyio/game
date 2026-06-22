@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert";
 
-import {ModSet} from "@/common/ModSet.js";
+import {ModRegistry} from "@/common/ModRegistry.js";
 import {WireRegistry} from "@/common/wire.js";
 import {BeltMod} from "@/mods/Belt/mod.js";
 import {CreateBeltMessage, DeleteBeltMessage} from "@/mods/Belt/messages.js";
@@ -13,9 +13,9 @@ import {
 } from "@/mods/Belt/mod.js";
 
 function registry() {
-    const modSet = new ModSet();
-    modSet.loadMod(new BeltMod());
-    return new WireRegistry(modSet);
+    const modRegistry = new ModRegistry();
+    modRegistry.loadMod(new BeltMod());
+    return new WireRegistry(modRegistry);
 }
 
 /**

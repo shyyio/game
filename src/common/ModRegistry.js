@@ -1,5 +1,5 @@
 
-export class ModSet {
+export class ModRegistry {
 
     constructor() {
         /**

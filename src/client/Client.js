@@ -1,5 +1,5 @@
-import {TextureSet} from "@/client/TextureSet.js";
-import {DrawLayerSet} from "@/client/DrawLayerSet.js";
+import {TextureRegistry} from "@/client/TextureRegistry.js";
+import {DrawLayerRegistry} from "@/client/DrawLayerRegistry.js";
 import {PlayerSettings} from "@/client/PlayerSettings.js";
 import {GameSettings} from "@/client/GameSettings.js";
 import {MiniMenuLayer} from "@/client/MiniMenuLayer.js";
@@ -16,21 +16,21 @@ export class Client {
      * @param {Application} app
      * @param {Viewport} viewport
      * @param {Session} session
-     * @param {ModSet} modSet
+     * @param {ModRegistry} modRegistry
      */
-    constructor(app, viewport, session, modSet) {
+    constructor(app, viewport, session, modRegistry) {
         this.app = app;
         this.viewport = viewport;
         this.session = session;
-        this.modSet = modSet;
+        this.modRegistry = modRegistry;
 
-        this.textureSet = new TextureSet();
-        this.drawLayerSet = new DrawLayerSet(modSet);
+        this.textureRegistry = new TextureRegistry();
+        this.drawLayerRegistry = new DrawLayerRegistry(modRegistry);
         this.playerSettings = new PlayerSettings();
         this.gameSettings = new GameSettings();
         this.miniMenuLayer = new MiniMenuLayer();
         CoreDrawLayers.forEach(layer => {
-            this.drawLayerSet.add(layer);
+            this.drawLayerRegistry.add(layer);
         });
 
         this._lastViewportKey = null;
@@ -40,10 +40,10 @@ export class Client {
      * @returns {Promise<void>}
      */
     async init() {
-        await this.textureSet.loadFromModSet(this.modSet);
+        await this.textureRegistry.loadFromModRegistry(this.modRegistry);
 
-        this.drawLayerSet.layers.forEach(layer => {
-            layer.textureSet = this.textureSet;
+        this.drawLayerRegistry.layers.forEach(layer => {
+            layer.textureRegistry = this.textureRegistry;
             this.viewport.addChild(layer);
         });
 
@@ -110,6 +110,6 @@ export class Client {
             this.gameSettings.update(event.key, event.value);
             return;
         }
-        this.drawLayerSet.publishEvent(event);
+        this.drawLayerRegistry.publishEvent(event);
     }
 }

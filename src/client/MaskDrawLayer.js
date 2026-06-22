@@ -4,7 +4,7 @@ import {Sprite} from "pixi.js";
 /**
  * A shared mask layer that any DrawLayer can write mask sprites into.
  * Objects that should occlude items add a companion mask sprite here
- * (looked up from TextureSet) when they are placed.
+ * (looked up from TextureRegistry) when they are placed.
  *
  * ItemDrawLayer uses this layer as its pixi mask (inverse=true), so items
  * are hidden wherever a mask sprite covers them.

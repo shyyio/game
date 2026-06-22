@@ -13,8 +13,8 @@ export class SplitterDrawLayer extends ObjectDrawLayer {
      * @param {{id: BigInt, x: number, y: number, direction: Direction}} attrs
      */
     addSplitter(attrs) {
-        const texture = this.textureSet
-            ? this.textureSet.get("splitter")
+        const texture = this.textureRegistry
+            ? this.textureRegistry.get("splitter")
             : Texture.EMPTY; // TODO: define canonical splitter texture frame name
         const sprite = new SplitterSprite(attrs, texture);
         this.addObject(attrs.id, sprite);

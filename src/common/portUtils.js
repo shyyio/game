@@ -15,7 +15,7 @@ const DIRECTION_NAMES = ["Up", "Right", "Down", "Left"];
 export function getOutputPorts(game, objectType, vec, createMissing=false) {
     const ports = {};
 
-    game.modSet.definitions[objectType].inputPorts.forEach(def => {
+    game.modRegistry.definitions[objectType].inputPorts.forEach(def => {
         const rotated = rotate(def, vec.direction);
         const dirName = DIRECTION_NAMES[rotated.direction];
         const port = game.queryScalar(`GetOutPort${dirName}`, {
@@ -45,7 +45,7 @@ export function getOutputPorts(game, objectType, vec, createMissing=false) {
 export function getInputPorts(game, objectType, vec, createMissing=false) {
     const ports = {};
 
-    game.modSet.definitions[objectType].outputPorts.forEach(def => {
+    game.modRegistry.definitions[objectType].outputPorts.forEach(def => {
         const rotated = rotate(def, vec.direction);
         const dirName = DIRECTION_NAMES[rotated.direction];
         const port = game.queryScalar(`GetInPort${dirName}`, {
@@ -72,7 +72,7 @@ export function getInputPorts(game, objectType, vec, createMissing=false) {
 export function getInternalPorts(game, objectType) {
     const ports = {};
 
-    game.modSet.definitions[objectType].internalPorts.forEach(def => {
+    game.modRegistry.definitions[objectType].internalPorts.forEach(def => {
         ports[def.name] = game.queryScalar("InsertPort");
     });
 
@@ -81,15 +81,15 @@ export function getInternalPorts(game, objectType) {
 
 /**
  * Returns all tiles occupied by an object of the given type placed at (x, y, direction).
- * @param {ModSet} modSet
+ * @param {ModRegistry} modRegistry
  * @param {string} objectType
  * @param {number} x
  * @param {number} y
  * @param {Direction} direction
  * @returns {{x: number, y: number}[]}
  */
-export function objectTiles(modSet, objectType, x, y, direction) {
-    const def = modSet.definitions[objectType];
+export function objectTiles(modRegistry, objectType, x, y, direction) {
+    const def = modRegistry.definitions[objectType];
     const {x: w, y: h} = rotate(def.size, direction);
 
     const tiles = [];

@@ -1,6 +1,6 @@
 import {Assets, Spritesheet} from "pixi.js";
 
-export class TextureSet {
+export class TextureRegistry {
 
     constructor() {
         /**
@@ -10,11 +10,11 @@ export class TextureSet {
     }
 
     /**
-     * @param {ModSet} modSet
+     * @param {ModRegistry} modRegistry
      * @returns {Promise<void>}
      */
-    async loadFromModSet(modSet) {
-        await Promise.all(modSet.mods.map(async mod => {
+    async loadFromModRegistry(modRegistry) {
+        await Promise.all(modRegistry.mods.map(async mod => {
             if (!mod.textureDefinitions) {
                 return;
             }

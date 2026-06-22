@@ -164,7 +164,7 @@ export class BeltDrawLayer extends DrawLayer {
         } else {
             frameName = 'belt-straight/0';
         }
-        return this.textureSet.get(frameName) ?? Texture.EMPTY;
+        return this.textureRegistry.get(frameName) ?? Texture.EMPTY;
     }
 }
 

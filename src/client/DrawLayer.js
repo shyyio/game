@@ -8,9 +8,9 @@ export class DrawLayer extends Container {
     constructor() {
         super();
         /**
-         * @type {TextureSet|null}
+         * @type {TextureRegistry|null}
          */
-        this.textureSet = null;
+        this.textureRegistry = null;
     }
 
     /**

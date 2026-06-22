@@ -1,5 +1,5 @@
 
-import {ModSet} from "@/common/ModSet.js";
+import {ModRegistry} from "@/common/ModRegistry.js";
 import {BeltMod} from "@/mods/Belt/mod.js";
 import {SplitterMod} from "@/mods/Splitter/mod.js";
 import {DatabaseSchema} from "@/common/DatabaseSchema.js";
@@ -71,13 +71,13 @@ export class TestBackend {
 }
 
 export async function setup() {
-    const modSet = new ModSet();
-    modSet.loadMod(new BeltMod());
-    modSet.loadMod(new SplitterMod());
+    const modRegistry = new ModRegistry();
+    modRegistry.loadMod(new BeltMod());
+    modRegistry.loadMod(new SplitterMod());
 
-    const schema = new DatabaseSchema(modSet);
+    const schema = new DatabaseSchema(modRegistry);
     const db = new NodeDatabase(schema);
-    const game = new Game(modSet, db);
+    const game = new Game(modRegistry, db);
     await game.init();
 
     const api = new GameAPI(game);

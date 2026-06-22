@@ -6,7 +6,7 @@ import {freezeViewport, unfreezeViewport} from "@/viewport.js";
 import Keyboard from "@/keyboard.js";
 import Mouse from "@/client/Mouse.js";
 import {InputHandler} from "@/client/InputHandler.js";
-import {ModSet} from "@/common/ModSet.js";
+import {ModRegistry} from "@/common/ModRegistry.js";
 import {BeltClientMod} from "@/mods/Belt/BeltClientMod.js";
 import {SplitterClientMod} from "@/mods/Splitter/SplitterClientMod.js";
 import {CoreTexturesMod} from "@/mods/BaseTextures/mod.js";
@@ -139,26 +139,26 @@ onMounted(async () => {
 
   document.getElementById("game").appendChild(app.canvas);
 
-  const modSet = new ModSet();
-  modSet.loadMod(new CoreTexturesMod());
-  modSet.loadMod(new BeltClientMod());
-  modSet.loadMod(new SplitterClientMod());
+  const modRegistry = new ModRegistry();
+  modRegistry.loadMod(new CoreTexturesMod());
+  modRegistry.loadMod(new BeltClientMod());
+  modRegistry.loadMod(new SplitterClientMod());
 
-  const schema = new DatabaseSchema(modSet);
+  const schema = new DatabaseSchema(modRegistry);
   const db = new BrowserDatabase(schema);
-  const game = new Game(modSet, db);
+  const game = new Game(modRegistry, db);
   await game.init();
 
   const api = new GameAPI(game);
   const session = new LocalSession(api);
 
-  const client = new Client(app, viewport, session, modSet);
+  const client = new Client(app, viewport, session, modRegistry);
   session.client = client;
   game.connect(session);
   await client.init();
 
   const refreshTools = () => {
-    tools.value = modSet.getTools(session, client.playerSettings).map(markRaw);
+    tools.value = modRegistry.getTools(session, client.playerSettings).map(markRaw);
     if (!tools.value.includes(toolbarState.activeTool)) {
       toolbarState.activeTool = tools.value[0] ?? null;
     }
@@ -167,9 +167,9 @@ onMounted(async () => {
   client.playerSettings.onChange(refreshTools);
   refreshTools();
 
-  const inputHandler = new InputHandler(modSet, toolbarState);
+  const inputHandler = new InputHandler(modRegistry, toolbarState);
   inputHandler.onMiniMenuEntryClick((tileX, tileY, screenX, screenY) => {
-    const entries = modSet.miniMenuContextEntries(tileX, tileY, session);
+    const entries = modRegistry.miniMenuContextEntries(tileX, tileY, session);
     client.miniMenuLayer.open(entries, screenX, screenY);
   });
   inputHandler.init();

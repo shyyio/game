@@ -4,11 +4,11 @@ import Mouse from "@/client/Mouse.js";
 export class InputHandler {
 
     /**
-     * @param {ModSet} modSet
+     * @param {ModRegistry} modRegistry
      * @param {object} toolbarState - Vue reactive object with { activeTool }
      */
-    constructor(modSet, toolbarState) {
-        this.modSet = modSet;
+    constructor(modRegistry, toolbarState) {
+        this.modRegistry = modRegistry;
         this._toolbarState = toolbarState;
 
         this._onMiniMenuEntryClick = null;

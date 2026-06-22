@@ -86,15 +86,15 @@ function buildType(name, wireFields) {
 export class WireRegistry {
 
     /**
-     * @param {ModSet} modSet
+     * @param {ModRegistry} modRegistry
      */
-    constructor(modSet) {
+    constructor(modRegistry) {
         /** @type {Map<Function, object>} */
         this.byClass = new Map();
         /** @type {Map<number, object>} */
         this.byId = new Map();
 
-        const classes = CORE_WIRE_CLASSES.concat(modSet.wireClasses);
+        const classes = CORE_WIRE_CLASSES.concat(modRegistry.wireClasses);
         classes.forEach((cls, index) => {
             if (cls.wireFields === undefined) {
                 throw new Error(`Class ${cls.name} is registered for the wire but has no static wireFields`);

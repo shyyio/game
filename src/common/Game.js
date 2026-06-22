@@ -9,12 +9,12 @@ import {WireRegistry} from "@/common/wire.js";
 export class Game {
 
     /**
-     * @param {ModSet} modSet
+     * @param {ModRegistry} modRegistry
      * @param {Database} database
      */
-    constructor(modSet, database) {
+    constructor(modRegistry, database) {
         this.db = database;
-        this.modSet = modSet;
+        this.modRegistry = modRegistry;
         this.time = 0;
 
         /**
@@ -22,7 +22,7 @@ export class Game {
          * messages and events.
          * @type {WireRegistry}
          */
-        this.wire = new WireRegistry(modSet);
+        this.wire = new WireRegistry(modRegistry);
 
         /**
          * @type {Object.<number, Session>}
@@ -31,7 +31,7 @@ export class Game {
     }
 
     async init() {
-        this.modSet.mods.forEach(mod => {
+        this.modRegistry.mods.forEach(mod => {
             mod.game = this;
         });
 
@@ -120,7 +120,7 @@ export class Game {
             return;
         }
 
-        this.modSet.dispatchMessage(message);
+        this.modRegistry.dispatchMessage(message);
     }
 
     // ---- Viewport ----

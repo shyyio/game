@@ -1,15 +1,15 @@
-export class DrawLayerSet {
+export class DrawLayerRegistry {
 
     /**
-     * @param {ModSet} modSet
+     * @param {ModRegistry} modRegistry
      */
-    constructor(modSet) {
+    constructor(modRegistry) {
         /**
          * @type {DrawLayer[]}
          */
         this.layers = [];
 
-        modSet.drawLayers.forEach(layer => {
+        modRegistry.drawLayers.forEach(layer => {
             this.add(layer);
         });
     }
