@@ -33,12 +33,12 @@ function roundTrip(reg, instance, cls) {
     assert.deepStrictEqual(pick(decoded, cls), pick(instance, cls));
 }
 
-test("round-trips a SetViewportMessage", () => {
+test("Round-trips a SetViewportMessage", () => {
     const reg = registry();
     roundTrip(reg, new SetViewportMessage(["0_0", "1_0", "-1_2"]), SetViewportMessage);
 });
 
-test("round-trips a fully-populated BufferedEvent with BigInt fields", () => {
+test("Round-trips a fully-populated BufferedEvent with BigInt fields", () => {
     const reg = registry();
     const event = new BufferedEvent({
         seq: 1, time: 2, type: 3, subtype: 0, x: 5, y: 6, chunk: "0_0",
@@ -47,13 +47,13 @@ test("round-trips a fully-populated BufferedEvent with BigInt fields", () => {
     roundTrip(reg, event, BufferedEvent);
 });
 
-test("round-trips a sparse core BufferedEvent (chunk subscribe shape)", () => {
+test("Round-trips a sparse core BufferedEvent (chunk subscribe shape)", () => {
     const reg = registry();
     const event = new BufferedEvent({type: 0, subtype: 1, chunk: "2_-3"});
     roundTrip(reg, event, BufferedEvent);
 });
 
-test("round-trips player/game settings events", () => {
+test("Round-trips player/game settings events", () => {
     const reg = registry();
     roundTrip(reg, new PlayerSettingsSyncEvent({1: 10, 2: 20}), PlayerSettingsSyncEvent);
     roundTrip(reg, new PlayerSettingsUpdateEvent(5, 50), PlayerSettingsUpdateEvent);
@@ -61,7 +61,7 @@ test("round-trips player/game settings events", () => {
     roundTrip(reg, new GameSettingsUpdateEvent(7, 70), GameSettingsUpdateEvent);
 });
 
-test("decoded BigInt id is an exact, lossless BigInt", () => {
+test("Decoded BigInt id is an exact, lossless BigInt", () => {
     const reg = registry();
     const id = 9007199254740993n; // 2^53 + 1, beyond Number precision
     const decoded = reg.decode(reg.encode(new BufferedEvent({type: 0, id})));
@@ -69,7 +69,7 @@ test("decoded BigInt id is an exact, lossless BigInt", () => {
     assert.strictEqual(decoded.id, id);
 });
 
-test("throws on an unregistered class", () => {
+test("Throws on an unregistered class", () => {
     const reg = registry();
     class Bogus {}
     assert.throws(() => reg.encode(new Bogus()), /No wire codec/);

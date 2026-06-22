@@ -20,7 +20,7 @@ async function buildRing3x3() {
     return game;
 }
 
-test("sets each belt's parent to the belt it flows into", async () => {
+test("Sets each belt's parent to the belt it flows into", async () => {
     const game = await setup();
 
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.UP});
@@ -40,7 +40,7 @@ test("sets each belt's parent to the belt it flows into", async () => {
     assert.equal(game.exec("SELECT parent_id FROM Belt WHERE id=1"), 6);
 });
 
-test("builds BeltPaths with correct length and tail across straight runs", async () => {
+test("Builds BeltPaths with correct length and tail across straight runs", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
@@ -56,7 +56,7 @@ test("builds BeltPaths with correct length and tail across straight runs", async
     assert.equal(game.exec("SELECT Count(*) FROM Port"), 4);
 });
 
-test("moves the output item to the tail path when a branch splits a run", async () => {
+test("Moves the output item to the tail path when a branch splits a run", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
@@ -71,7 +71,7 @@ test("moves the output item to the tail path when a branch splits a run", async 
     assert.equal(game.exec("SELECT Count(*) FROM Port"), 4);
 });
 
-test("keeps the output item when a belt is prepended to a run", async () => {
+test("Keeps the output item when a belt is prepended to a run", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
 
@@ -83,7 +83,7 @@ test("keeps the output item when a belt is prepended to a run", async () => {
     assert.equal(game.exec("SELECT Count(*) FROM Port"), 2);
 });
 
-test("retains an in-flight item when a belt is prepended", async () => {
+test("Retains an in-flight item when a belt is prepended", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
 
@@ -96,7 +96,7 @@ test("retains an in-flight item when a belt is prepended", async () => {
     assert.equal(game.exec("SELECT 1 FROM BeltPath INNER JOIN Port ON port.id=in_port_id WHERE BeltPath.id=2 AND item IS NULL"), 1);
 });
 
-test("forms a closed loop into a single path with no parent", async () => {
+test("Forms a closed loop into a single path with no parent", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.DOWN});
@@ -107,7 +107,7 @@ test("forms a closed loop into a single path with no parent", async () => {
     assert.equal(game.exec("SELECT parent_id FROM Belt WHERE id=1"), null);
 });
 
-test("merges the remainder of a loop into one path when a belt is deleted", async () => {
+test("Merges the remainder of a loop into one path when a belt is deleted", async () => {
     const game = await buildRing3x3();
 
     // Removing one belt leaves the other seven physically connected in a single
@@ -119,7 +119,7 @@ test("merges the remainder of a loop into one path when a belt is deleted", asyn
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE length=(7*2-1)"), 1);
 });
 
-test("heals a loop seam past an incompatible higher-id belt at the seam tile", async () => {
+test("Heals a loop seam past an incompatible higher-id belt at the seam tile", async () => {
     const game = await buildRing3x3();
 
     // The seam head (belt 1 at (0,0) facing RIGHT) is really fed by belt 8 from (0,1).
@@ -138,7 +138,7 @@ test("heals a loop seam past an incompatible higher-id belt at the seam tile", a
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE length=(7*2-1)"), 1);
 });
 
-test("opens a loop cleanly when its seam head is deleted", async () => {
+test("Opens a loop cleanly when its seam head is deleted", async () => {
     const game = await buildRing3x3();
 
     // Deleting the seam head removes the only nulled-parent belt, so there is no
@@ -149,7 +149,7 @@ test("opens a loop cleanly when its seam head is deleted", async () => {
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE length=(7*2-1)"), 1);
 });
 
-test("opens a loop cleanly when the seam's feeder belt is deleted", async () => {
+test("Opens a loop cleanly when the seam's feeder belt is deleted", async () => {
     const game = await buildRing3x3();
 
     // Deleting the feeder leaves the seam head parentless with nothing to re-link to.
@@ -159,7 +159,7 @@ test("opens a loop cleanly when the seam's feeder belt is deleted", async () => 
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE length=(7*2-1)"), 1);
 });
 
-test("shares ports between belts that link head-to-tail", async () => {
+test("Shares ports between belts that link head-to-tail", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: -1, y: 0, direction: Direction.RIGHT});
@@ -171,7 +171,7 @@ test("shares ports between belts that link head-to-tail", async () => {
     assert.equal(game.exec("SELECT COUNT(*) FROM Port"), 5);
 });
 
-test("leaves head_gap unchanged when the belt is empty", async () => {
+test("Leaves head_gap unchanged when the belt is empty", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
@@ -184,7 +184,7 @@ test("leaves head_gap unchanged when the belt is empty", async () => {
     assert.equal(game.exec("SELECT head_gap FROM BeltPath WHERE id=1"), 3*2-1);
 });
 
-test("advances a single item along the belt to its output", async () => {
+test("Advances a single item along the belt to its output", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
@@ -208,7 +208,7 @@ test("advances a single item along the belt to its output", async () => {
     assert.equal(game.exec("SELECT item FROM Port WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)"), 1);
 });
 
-test("advances two spaced items and stalls them at a blocked output", async () => {
+test("Advances two spaced items and stalls them at a blocked output", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
@@ -239,7 +239,7 @@ test("advances two spaced items and stalls them at a blocked output", async () =
     assert.equal(game.exec("SELECT item FROM Port WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)"), 1);
 });
 
-test("stashes items when the tail belt is deleted", async () => {
+test("Stashes items when the tail belt is deleted", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
@@ -256,7 +256,7 @@ test("stashes items when the tail belt is deleted", async () => {
     assert.equal(game.exec("SELECT 1 FROM BeltPathItem WHERE id=3 AND length=2"), 1);
 });
 
-test("splits the path and stashes items when a middle belt is deleted", async () => {
+test("Splits the path and stashes items when a middle belt is deleted", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
@@ -275,7 +275,7 @@ test("splits the path and stashes items when a middle belt is deleted", async ()
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=3 AND head_gap=1 AND next_gap_id IS NULL AND next_item_id IS NULL"), 1);
 });
 
-test("keeps downstream items when the head belt is deleted", async () => {
+test("Keeps downstream items when the head belt is deleted", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
@@ -291,7 +291,7 @@ test("keeps downstream items when the head belt is deleted", async () => {
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=2 AND head_gap=(2*2-1) AND next_gap_id IS NULL AND next_item_id IS NULL"), 1);
 });
 
-test("keeps a waiting item in place when the path is extended", async () => {
+test("Keeps a waiting item in place when the path is extended", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
@@ -308,7 +308,7 @@ test("keeps a waiting item in place when the path is extended", async () => {
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=1 AND head_gap=0"), 1);
 });
 
-test("cleans up shared ports when the child belt is deleted", async () => {
+test("Cleans up shared ports when the child belt is deleted", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: -1, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
@@ -322,7 +322,7 @@ test("cleans up shared ports when the child belt is deleted", async () => {
     assert.equal(game.exec("SELECT COUNT(*) FROM Port"), 2);
 });
 
-test("cleans up shared ports when the parent belt is deleted", async () => {
+test("Cleans up shared ports when the parent belt is deleted", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: -1, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
@@ -335,7 +335,7 @@ test("cleans up shared ports when the parent belt is deleted", async () => {
     assert.equal(game.exec("SELECT COUNT(*) FROM Port"), 2);
 });
 
-test("spans an upward tunnel with one BeltPath through ramps", async () => {
+test("Spans an upward tunnel with one BeltPath through ramps", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 10, direction: Direction.RIGHT});
     game.createBelt(GameObject.BELT, {x: 1, y: 10, direction: Direction.RIGHT});
@@ -350,7 +350,7 @@ test("spans an upward tunnel with one BeltPath through ramps", async () => {
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=4 AND length=(5*2-1)"), 1);
 });
 
-test("connects adjacent ramps with zero gap", async () => {
+test("Connects adjacent ramps with zero gap", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 10, direction: Direction.UP});
     game.createBelt(GameObject.RAMP_UP, {x: 1, y: 9, direction: Direction.UP, rampParent: 1n});
@@ -358,7 +358,7 @@ test("connects adjacent ramps with zero gap", async () => {
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=1 AND length=(2*2-1)"), 1);
 });
 
-test("connects adjacent reversed ramps with zero gap", async () => {
+test("Connects adjacent reversed ramps with zero gap", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_UP, {x: 1, y: 0, direction: Direction.LEFT});
     game.createBelt(GameObject.RAMP_DOWN, {x: 2, y: 0, direction: Direction.LEFT, rampParent: 1n});
@@ -366,7 +366,7 @@ test("connects adjacent reversed ramps with zero gap", async () => {
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=2 AND length=(2*2-1)"), 1);
 });
 
-test("spans a leftward tunnel with one BeltPath through ramps", async () => {
+test("Spans a leftward tunnel with one BeltPath through ramps", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 10, y: 0, direction: Direction.DOWN});
     game.createBelt(GameObject.BELT, {x: 10, y: 1, direction: Direction.DOWN});
@@ -381,14 +381,14 @@ test("spans a leftward tunnel with one BeltPath through ramps", async () => {
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=4 AND length=(5*2-1)"), 1);
 });
 
-test("connects ramps at the maximum tunnel length", async () => {
+test("Connects ramps at the maximum tunnel length", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 1 + MAX_UNDERGROUND_LENGTH + 1, y: 1, direction: Direction.RIGHT, rampParent: 1n});
     assert.equal(game.exec(`SELECT 1 FROM BeltPath WHERE id=1 AND length=${(MAX_UNDERGROUND_LENGTH + 2)*2-1}`), 1);
 });
 
-test("connects ramps placed in reverse at the maximum tunnel length", async () => {
+test("Connects ramps placed in reverse at the maximum tunnel length", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_UP, {x: 1 + MAX_UNDERGROUND_LENGTH + 1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT, rampParent: 1n});
@@ -397,14 +397,14 @@ test("connects ramps placed in reverse at the maximum tunnel length", async () =
     assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
 });
 
-test("does not connect ramps beyond the maximum tunnel length", async () => {
+test("Does not connect ramps beyond the maximum tunnel length", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 1 + MAX_UNDERGROUND_LENGTH + 2, y: 1, direction: Direction.RIGHT, rampParent: 1n});
     assert.equal(game.exec(`SELECT 1 FROM BeltPath WHERE id=1 AND length=${(MAX_UNDERGROUND_LENGTH + 3)*2-1}`), undefined);
 });
 
-test("leaves over-long reversed ramps unconnected", async () => {
+test("Leaves over-long reversed ramps unconnected", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_UP, {x: 1 + MAX_UNDERGROUND_LENGTH + 2, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT, rampParent: 1n});
@@ -413,7 +413,7 @@ test("leaves over-long reversed ramps unconnected", async () => {
     assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 2);
 });
 
-test("collapses the tunnel when the up ramp is deleted", async () => {
+test("Collapses the tunnel when the up ramp is deleted", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 1n});
@@ -425,7 +425,7 @@ test("collapses the tunnel when the up ramp is deleted", async () => {
     assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
 });
 
-test("collapses the tunnel when the down ramp is deleted", async () => {
+test("Collapses the tunnel when the down ramp is deleted", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 1n});
@@ -437,7 +437,7 @@ test("collapses the tunnel when the down ramp is deleted", async () => {
     assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
 });
 
-test("stashes the tunnel item when the down ramp is deleted", async () => {
+test("Stashes the tunnel item when the down ramp is deleted", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 1n});
@@ -455,7 +455,7 @@ test("stashes the tunnel item when the down ramp is deleted", async () => {
     assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
 });
 
-test("leaves no stash when the down ramp is deleted after the item advances past the tunnel", async () => {
+test("Leaves no stash when the down ramp is deleted after the item advances past the tunnel", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 1n});
@@ -474,7 +474,7 @@ test("leaves no stash when the down ramp is deleted after the item advances past
     assert.equal(game.exec("SELECT 1 FROM BeltPathItem"), undefined);
 });
 
-test("collapses a zero-gap tunnel when the down ramp is deleted", async () => {
+test("Collapses a zero-gap tunnel when the down ramp is deleted", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 2, y: 1, direction: Direction.RIGHT, rampParent: 1n});
@@ -486,7 +486,7 @@ test("collapses a zero-gap tunnel when the down ramp is deleted", async () => {
     assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
 });
 
-test("collapses a zero-gap tunnel when the up ramp is deleted", async () => {
+test("Collapses a zero-gap tunnel when the up ramp is deleted", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 2, y: 1, direction: Direction.RIGHT, rampParent: 1n});
@@ -498,7 +498,7 @@ test("collapses a zero-gap tunnel when the up ramp is deleted", async () => {
     assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
 });
 
-test("moves items through a zero-gap tunnel across a chunk boundary and collapses on delete", async () => {
+test("Moves items through a zero-gap tunnel across a chunk boundary and collapses on delete", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: -1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 0, y: 1, direction: Direction.RIGHT, rampParent: 1n});
@@ -523,7 +523,7 @@ test("moves items through a zero-gap tunnel across a chunk boundary and collapse
     assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
 });
 
-test("carries an item through a tunnel crossing a chunk boundary", async () => {
+test("Carries an item through a tunnel crossing a chunk boundary", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: -1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 1, y: 1, direction: Direction.RIGHT, rampParent: 1n});
@@ -540,7 +540,7 @@ test("carries an item through a tunnel crossing a chunk boundary", async () => {
     assert.equal(game.exec("SELECT 1 FROM BeltPathItem WHERE path_id=2"), 1);
 });
 
-test("spans a tunnel across a chunk boundary with correct lengths", async () => {
+test("Spans a tunnel across a chunk boundary with correct lengths", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: -2, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 0, y: 1, direction: Direction.RIGHT, rampParent: 1n});
@@ -550,7 +550,7 @@ test("spans a tunnel across a chunk boundary with correct lengths", async () => 
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=3 AND length=1"), 1);
 });
 
-test("spans a longer tunnel across a chunk boundary", async () => {
+test("Spans a longer tunnel across a chunk boundary", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: -2, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 1, y: 1, direction: Direction.RIGHT, rampParent: 1n});
@@ -560,7 +560,7 @@ test("spans a longer tunnel across a chunk boundary", async () => {
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=3 AND length=(2*2-1)"), 1);
 });
 
-test("spans a reversed tunnel across a chunk boundary", async () => {
+test("Spans a reversed tunnel across a chunk boundary", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_UP, {x: 1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_DOWN, {x: -2, y: 1, direction: Direction.RIGHT, rampParent: 1n});
@@ -570,7 +570,7 @@ test("spans a reversed tunnel across a chunk boundary", async () => {
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=3 AND length=(2*2-1)"), 1);
 });
 
-test("connects a belt into a down ramp", async () => {
+test("Connects a belt into a down ramp", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 0, direction: Direction.RIGHT});
@@ -580,7 +580,7 @@ test("connects a belt into a down ramp", async () => {
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=3 AND length=1"), 1);
 });
 
-test("connects a belt out of an up ramp", async () => {
+test("Connects a belt out of an up ramp", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 1, y: 0, direction: Direction.RIGHT});
@@ -590,7 +590,7 @@ test("connects a belt out of an up ramp", async () => {
     assert.equal(game.exec("SELECT 1 FROM BeltPath WHERE id=2 AND length=(2*2-1)"), 1);
 });
 
-test("connects ramps only in matching orientations", async () => {
+test("Connects ramps only in matching orientations", async () => {
     const game = await setup();
 
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
@@ -650,7 +650,7 @@ test("connects ramps only in matching orientations", async () => {
     assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath WHERE length=(2*2-1)"), 4);
 });
 
-test("disconnects an existing ramp pair when a ramp is reused and rejects invalid disconnects", async () => {
+test("Disconnects an existing ramp pair when a ramp is reused and rejects invalid disconnects", async () => {
     const game = await setup();
 
     game.createBelt(GameObject.RAMP_DOWN, {x: 0, y: 0, direction: Direction.RIGHT});
@@ -676,7 +676,7 @@ test("disconnects an existing ramp pair when a ramp is reused and rejects invali
     assert.equal(game.exec(`SELECT COUNT(*) FROM Belt WHERE type=${BeltType.UNDERGROUND}`), 0);
 });
 
-test("ignores deleting a belt that does not exist", async () => {
+test("Ignores deleting a belt that does not exist", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.UP});
     game.removeGameObject(GameObject.BELT, 1n);
@@ -684,14 +684,14 @@ test("ignores deleting a belt that does not exist", async () => {
     assert.equal(game.exec("SELECT COUNT(*) FROM Belt"), 0);
 });
 
-test("ignores creating a belt over an existing one", async () => {
+test("Ignores creating a belt over an existing one", async () => {
     const game = await setup();
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.UP});
     game.createBelt(GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
     assert.equal(game.exec("SELECT COUNT(*) FROM Belt WHERE x=0 AND y=0"), 1);
 });
 
-test("disconnects a ramp pair across a chunk boundary", async () => {
+test("Disconnects a ramp pair across a chunk boundary", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: -2, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 2, y: 0, direction: Direction.RIGHT, rampParent: 1n});
@@ -703,7 +703,7 @@ test("disconnects a ramp pair across a chunk boundary", async () => {
     assert.equal(game.exec(`SELECT COUNT(*) FROM Belt WHERE type=${BeltType.UNDERGROUND}`), 2);
 });
 
-test("collapses a multi-segment tunnel when the up ramp is deleted", async () => {
+test("Collapses a multi-segment tunnel when the up ramp is deleted", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_UP, {x: 4, y: 1, direction: Direction.RIGHT, rampParent: 1n});
@@ -715,7 +715,7 @@ test("collapses a multi-segment tunnel when the up ramp is deleted", async () =>
     assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
 });
 
-test("rejoins an upstream belt when the up ramp is deleted", async () => {
+test("Rejoins an upstream belt when the up ramp is deleted", async () => {
     const game = await setup();
     // BELT_NORMAL(0,1)→ RAMP_DOWN(1,1)→ UG(2,1) UG(3,1) RAMP_UP(4,1)
     // ids: BN=1, RAMP_DOWN=2, UG1=3, UG2=4, RAMP_UP=5
@@ -730,7 +730,7 @@ test("rejoins an upstream belt when the up ramp is deleted", async () => {
     assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
 });
 
-test("rejects manually deleting a tunnel segment without changing state", async () => {
+test("Rejects manually deleting a tunnel segment without changing state", async () => {
     const game = await setup();
     // RAMP_DOWN(1,1)→ UG(2,1) UG(3,1) → RAMP_UP(4,1). ids: ramp_down=1, ug=2,3, ramp_up=4
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
@@ -750,7 +750,7 @@ test("rejects manually deleting a tunnel segment without changing state", async 
     assert.equal(game.exec("SELECT COUNT(*) FROM BeltPath"), 1);
 });
 
-test("spans a downward tunnel through ramps", async () => {
+test("Spans a downward tunnel through ramps", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: 1, y: 0, direction: Direction.DOWN});
     game.createBelt(GameObject.RAMP_UP, {x: 1, y: 3, direction: Direction.DOWN, rampParent: 1n});
@@ -759,7 +759,7 @@ test("spans a downward tunnel through ramps", async () => {
     assert.equal(game.exec("SELECT COUNT(*) FROM Belt"), 4);
 });
 
-test("rejects a diagonal ramp parent for an underground", async () => {
+test("Rejects a diagonal ramp parent for an underground", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: 0, y: 0, direction: Direction.RIGHT});
 
@@ -769,7 +769,7 @@ test("rejects a diagonal ramp parent for an underground", async () => {
     });
 });
 
-test("rejects disconnecting a ramp beyond the maximum tunnel length", async () => {
+test("Rejects disconnecting a ramp beyond the maximum tunnel length", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_DOWN, {x: 0, y: 0, direction: Direction.RIGHT});
 
@@ -786,7 +786,7 @@ test("rejects disconnecting a ramp beyond the maximum tunnel length", async () =
     assert.equal(game.exec("SELECT COUNT(*) FROM Belt"), 1);
 });
 
-test("disconnects a down-ramp tunnel when a down ramp is reused", async () => {
+test("Disconnects a down-ramp tunnel when a down ramp is reused", async () => {
     const game = await setup();
     game.createBelt(GameObject.RAMP_UP, {x: 3, y: 0, direction: Direction.RIGHT});
     game.createBelt(GameObject.RAMP_DOWN, {x: 0, y: 0, direction: Direction.RIGHT, rampParent: 1n});
@@ -798,7 +798,7 @@ test("disconnects a down-ramp tunnel when a down ramp is reused", async () => {
     assert.equal(game.exec(`SELECT COUNT(*) FROM Belt WHERE type=${BeltType.UNDERGROUND}`), 0);
 });
 
-test("deletes the down ramp of a looped tunnel without corrupting paths", async () => {
+test("Deletes the down ramp of a looped tunnel without corrupting paths", async () => {
     const game = await setup();
     // A loop whose top edge is a 1-underground tunnel:
     // (0,0)→[RAMP_DOWN(1,0) UG(2,0) RAMP_UP(3,0)]→(4,0)→(4,1)→(3,1)→(2,1)→(1,1)→(0,1)→(0,0)
@@ -845,7 +845,7 @@ test("deletes the down ramp of a looped tunnel without corrupting paths", async 
     assert.ok(arrived, "item never reached the tail of the broken-loop run");
 });
 
-test("drops overflow items instead of crashing when a belt is deleted from a full line", async () => {
+test("Drops overflow items instead of crashing when a belt is deleted from a full line", async () => {
     const game = await setup();
     for (let x = 0; x < 6; x++) {
         game.createBelt(GameObject.BELT, {x, y: 0, direction: Direction.RIGHT});
@@ -868,7 +868,7 @@ test("drops overflow items instead of crashing when a belt is deleted from a ful
     assert.ok(game.exec("SELECT COUNT(*) FROM BeltPathItem WHERE type != 0") > 0);
 });
 
-test("drops overflow items instead of crashing when a belt is deleted from a full loop", async () => {
+test("Drops overflow items instead of crashing when a belt is deleted from a full loop", async () => {
     const game = await buildRing3x3();
 
     // The disconnected seam dead-ends the output, so feeding fills the ring solid.
@@ -884,7 +884,7 @@ test("drops overflow items instead of crashing when a belt is deleted from a ful
     assert.ok(game.exec("SELECT COUNT(*) FROM BeltPathItem WHERE type != 0") > 0);
 });
 
-test("trims overflow from the head and keeps the item furthest from it", async () => {
+test("Trims overflow from the head and keeps the item furthest from it", async () => {
     const game = await buildRing3x3();
 
     // Pack the ring solid with distinctly-typed items so individual items are
@@ -909,7 +909,7 @@ test("trims overflow from the head and keeps the item furthest from it", async (
     assert.equal(game.exec(`SELECT COUNT(*) FROM BeltPathItem WHERE type=${frontItemType}`), 1);
 });
 
-test("absorbs a boundary gap into head_gap instead of leaving it at the head", async () => {
+test("Absorbs a boundary gap into head_gap instead of leaving it at the head", async () => {
     const game = await setup();
     for (let x = 0; x < 3; x++) {
         game.createBelt(GameObject.BELT, {x, y: 0, direction: Direction.RIGHT});

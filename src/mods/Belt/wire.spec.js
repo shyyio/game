@@ -36,7 +36,7 @@ function roundTrip(reg, instance, cls) {
     assert.deepStrictEqual(pick(decoded, cls), pick(instance, cls));
 }
 
-test("round-trips belt messages, including null and BigInt fields", () => {
+test("Round-trips belt messages, including null and BigInt fields", () => {
     const reg = registry();
     roundTrip(reg, new CreateBeltMessage({
         x: 1, y: 2, direction: 3, beltType: 0,
@@ -45,7 +45,7 @@ test("round-trips belt messages, including null and BigInt fields", () => {
     roundTrip(reg, new DeleteBeltMessage(123456789012345n), DeleteBeltMessage);
 });
 
-test("round-trips belt events, preserving exact BigInt ids", () => {
+test("Round-trips belt events, preserving exact BigInt ids", () => {
     const reg = registry();
     roundTrip(reg, new BeltInsertEvent(1, 2, 99n, 3, 0, null, null), BeltInsertEvent);
     roundTrip(reg, new BeltInsertEvent(4, 5, 100n, 1, 2, 4, 5), BeltInsertEvent);
@@ -55,7 +55,7 @@ test("round-trips belt events, preserving exact BigInt ids", () => {
     roundTrip(reg, new BeltPathRecalculateEvent(1, 2, [1n, 2n, 9999999999999999n]), BeltPathRecalculateEvent);
 });
 
-test("decoded belt id is an exact, lossless BigInt", () => {
+test("Decoded belt id is an exact, lossless BigInt", () => {
     const reg = registry();
     const id = 9007199254740993n; // 2^53 + 1, beyond Number precision
     const decoded = reg.decode(reg.encode(new DeleteBeltMessage(id)));

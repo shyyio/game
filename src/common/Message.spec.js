@@ -16,19 +16,19 @@ class MissingFieldsMessage extends Message {
 
 }
 
-test("a subclass that declares wireFields constructs", () => {
+test("A subclass that declares wireFields constructs", () => {
     assert.doesNotThrow(() => new ValidMessage());
 });
 
-test("a subclass without wireFields throws on construction", () => {
+test("A subclass without wireFields throws on construction", () => {
     assert.throws(() => new MissingFieldsMessage(), /MissingFieldsMessage.*wireFields/);
 });
 
-test("instantiating the base Message directly throws", () => {
+test("Instantiating the base Message directly throws", () => {
     assert.throws(() => new Message(), /Message.*wireFields/);
 });
 
-test("validate accepts by default", () => {
+test("Validate accepts by default", () => {
     assert.strictEqual(new ValidMessage().validate(null, null), true);
 });
 
