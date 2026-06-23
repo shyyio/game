@@ -1,11 +1,17 @@
-import {Tool, Direction} from "@/sdk/client.js";
+import {AbstractTool, Direction} from "@/sdk/client.js";
 import {CreateBeltMessage, DeleteBeltMessage} from "./messages.js";
 import {BeltType} from "@/mods/Belt/constants.js";
 
-export class BeltTool extends Tool {
+export class BeltTool extends AbstractTool {
 
-    constructor(session, game, ghostLayer) {
-        super(session, game);
+    /**
+     * @param {AbstractSession} session
+     * @param {ViewportCache} beltCache
+     * @param {BeltGhostLayer} ghostLayer
+     */
+    constructor(session, beltCache, ghostLayer) {
+        super(session);
+        this._beltCache = beltCache;
         this._ghostLayer = ghostLayer;
         this._lastDirection = Direction.UP;
         this._prevDragTileX = null;
@@ -38,6 +44,18 @@ export class BeltTool extends Tool {
     }
 
     /**
+     * The id of the surface belt at a tile, or null. Mirrors the old GetBeltAtTile
+     * query: underground belts are buried and never targeted by the surface tool.
+     * @private
+     * @returns {BigInt|null}
+     */
+    _surfaceBeltAt(tileX, tileY) {
+        const records = this._beltCache.getAtTile(tileX, tileY);
+        const surface = records.find(record => record.data.type !== BeltType.UNDERGROUND);
+        return surface === undefined ? null : surface.id;
+    }
+
+    /**
      * Places a normal belt at the tile facing `direction`, replacing any belt
      * already there.
      * @private
@@ -45,7 +63,7 @@ export class BeltTool extends Tool {
     _place(tileX, tileY, direction) {
         this._prevDragTileX = null;
         this._prevDragTileY = null;
-        const existing = this.game.queryScalar("GetBeltAtTile", {x: tileX, y: tileY});
+        const existing = this._surfaceBeltAt(tileX, tileY);
         if (existing != null) {
             this.session.sendMessage(new DeleteBeltMessage(existing));
         }
@@ -57,7 +75,7 @@ export class BeltTool extends Tool {
         const fromTileY = tileY - Direction.dy(direction);
 
         if (direction !== this._lastDirection && this._prevDragTileX === fromTileX && this._prevDragTileY === fromTileY) {
-            const prevExisting = this.game.queryScalar("GetBeltAtTile", {x: fromTileX, y: fromTileY});
+            const prevExisting = this._surfaceBeltAt(fromTileX, fromTileY);
             if (prevExisting != null) {
                 this.session.sendMessage(new DeleteBeltMessage(prevExisting));
             }
@@ -68,7 +86,7 @@ export class BeltTool extends Tool {
         this._prevDragTileX = tileX;
         this._prevDragTileY = tileY;
 
-        const existing = this.game.queryScalar("GetBeltAtTile", {x: tileX, y: tileY});
+        const existing = this._surfaceBeltAt(tileX, tileY);
         if (existing != null) {
             this.session.sendMessage(new DeleteBeltMessage(existing));
         }

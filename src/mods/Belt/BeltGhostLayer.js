@@ -1,4 +1,4 @@
-import {DrawLayer, Texture} from "@/sdk/client.js";
+import {AbstractDrawLayer, Texture} from "@/sdk/client.js";
 import {BeltBend} from "./constants.js";
 import {BeltSprite, beltFrameName} from "./BeltLayer.js";
 
@@ -9,7 +9,7 @@ import {BeltSprite, beltFrameName} from "./BeltLayer.js";
  * the texture registry or build sprites of their own. The registry is injected
  * by Client.init, like every other draw layer.
  */
-export class BeltGhostLayer extends DrawLayer {
+export class BeltGhostLayer extends AbstractDrawLayer {
 
     constructor() {
         super();

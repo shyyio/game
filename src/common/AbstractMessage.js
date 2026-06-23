@@ -3,7 +3,7 @@
  * their wire format via a static `wireFields` map and may override `validate`
  * to reject malformed or unauthorized messages before they reach the game.
  */
-export class Message {
+export class AbstractMessage {
 
     /**
      * Maps each wire-serialized field name to its protobuf spec string (see
@@ -13,14 +13,9 @@ export class Message {
      */
     static wireFields;
 
-    /**
-     * @param type {number}
-     */
-    constructor(type) {
-        this.type = type;
-
+    constructor() {
         if (this.constructor.wireFields === undefined) {
-            throw new Error(`${this.constructor.name} extends Message but has no static wireFields`);
+            throw new Error(`${this.constructor.name} extends AbstractMessage but has no static wireFields`);
         }
     }
 
@@ -29,7 +24,7 @@ export class Message {
      * implementation accepts everything; subclasses override to enforce limits
      * or check game/session state. Returning false silently drops the message.
      * @param {GameAPI} api
-     * @param {Session} session
+     * @param {AbstractSession} session
      * @returns {boolean}
      */
     validate(api, session) {

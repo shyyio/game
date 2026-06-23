@@ -1,4 +1,4 @@
-import {Tool, Direction} from "@/sdk/client.js";
+import {AbstractTool, Direction} from "@/sdk/client.js";
 import {CreateBeltMessage} from "./messages.js";
 import {BeltType, MAX_UNDERGROUND_LENGTH} from "./constants.js";
 
@@ -11,15 +11,16 @@ import {BeltType, MAX_UNDERGROUND_LENGTH} from "./constants.js";
  *
  * The pairing scan is ported from the old buildSystem/ClientState.findRampParent.
  */
-export class UndergroundBeltTool extends Tool {
+export class UndergroundBeltTool extends AbstractTool {
 
     /**
-     * @param {Session} session
-     * @param {Game} game
+     * @param {AbstractSession} session
+     * @param {ViewportCache} beltCache
      * @param {BeltGhostLayer} ghostLayer
      */
-    constructor(session, game, ghostLayer) {
-        super(session, game);
+    constructor(session, beltCache, ghostLayer) {
+        super(session);
+        this._beltCache = beltCache;
         this._ghostLayer = ghostLayer;
         this._direction = Direction.RIGHT;
         // The ramp the next tap will place. Alternates entrance/exit as a tunnel
@@ -55,6 +56,22 @@ export class UndergroundBeltTool extends Tool {
 
     rotate() {
         this._direction = Direction.rotate(this._direction, 1);
+    }
+
+    /**
+     * Any belt at a tile (surface or underground), or null. Mirrors the old
+     * GetBeltTypeAtTile query: the pairing scan needs underground belts too, so
+     * unlike the surface tool this does not filter them out.
+     * @private
+     * @returns {{id: BigInt, type: BeltType, direction: Direction}|null}
+     */
+    _beltAt(tileX, tileY) {
+        const records = this._beltCache.getAtTile(tileX, tileY);
+        if (records.length === 0) {
+            return null;
+        }
+        const record = records[0];
+        return {id: record.id, type: record.data.type, direction: record.data.direction};
     }
 
     /**
@@ -106,7 +123,7 @@ export class UndergroundBeltTool extends Tool {
         for (let i = 1; i < MAX_UNDERGROUND_LENGTH + 2; i += 1) {
             x += dx;
             y += dy;
-            const belt = this.game.querySingle("GetBeltTypeAtTile", {x, y});
+            const belt = this._beltAt(x, y);
             if (belt !== null && belt.type === childType) {
                 // A same-type ramp blocks the way: no valid pairing.
                 return {parentId: null, childId: null};
@@ -130,7 +147,7 @@ export class UndergroundBeltTool extends Tool {
         for (let i = 1; i < MAX_UNDERGROUND_LENGTH + 2; i += 1) {
             x -= dx;
             y -= dy;
-            const belt = this.game.querySingle("GetBeltTypeAtTile", {x, y});
+            const belt = this._beltAt(x, y);
             if (belt !== null && belt.type === parentType) {
                 break;
             }

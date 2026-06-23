@@ -4,7 +4,7 @@ import {NotImplementedError} from "@/common/error.js";
 /**
  * @abstract
  */
-export class DrawLayer extends Container {
+export class AbstractDrawLayer extends Container {
 
     constructor() {
         super();
@@ -24,7 +24,7 @@ export class DrawLayer extends Container {
 
     /**
      * @abstract
-     * @param {BufferedEvent|LiveEvent} event
+     * @param {AbstractEvent} event
      * @returns void
      */
     onEvent(event) {

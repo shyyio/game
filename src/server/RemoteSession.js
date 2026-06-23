@@ -1,4 +1,4 @@
-import {Session} from "@/common/Session.js";
+import {AbstractSession} from "@/common/AbstractSession.js";
 
 /**
  * Backend version of the session. On the server side, it is instantiated
@@ -7,7 +7,7 @@ import {Session} from "@/common/Session.js";
  * On the server: session = new RemoteSessionServerHandle(api, ctx);
  *                game.connect(session);
  */
-export class RemoteSessionServerHandle extends Session {
+export class RemoteSessionServerHandle extends AbstractSession {
 
     constructor(api, ctx) {
         super(api);

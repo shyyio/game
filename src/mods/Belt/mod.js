@@ -1,6 +1,6 @@
 
 import {
-    Mod,
+    AbstractMod,
     chunkKey,
     upstreamPorts,
     downstreamPorts,
@@ -21,9 +21,10 @@ import {
     BeltInsertEvent,
     BeltUpdateEvent,
     BeltDeleteEvent,
+    BeltSyncEvent,
 } from "./events.js";
 
-export class BeltMod extends Mod {
+export class BeltMod extends AbstractMod {
 
     get wireClasses() {
         return [
@@ -33,6 +34,7 @@ export class BeltMod extends Mod {
             BeltUpdateEvent,
             BeltDeleteEvent,
             BeltPathRecalculateEvent,
+            BeltSyncEvent,
         ];
     }
 
@@ -52,7 +54,31 @@ export class BeltMod extends Mod {
         return beltStatements;
     }
 
-    // ---- Message handling ----
+    // ---- Chunk sync ----
+
+    /**
+     * Returns a BeltSyncEvent for every belt in the chunk, so a freshly-loaded
+     * chunk seeds belts placed before it was viewed. Same payload as a live
+     * BeltInsertEvent but a distinct type, so the client seeds them without the
+     * placement feedback a real insert would trigger. Underground belts are included
+     * (the client index needs them for ramp scans); the draw layer skips drawing them.
+     * @param {string} chunk
+     * @returns {BeltSyncEvent[]}
+     */
+    collectChunkSync(chunk) {
+        const belts = this.game.query("GetBeltsInChunk", {chunk});
+        return belts.map(belt => new BeltSyncEvent(
+            belt.x,
+            belt.y,
+            belt.id,
+            belt.direction,
+            belt.type,
+            belt.parent_x,
+            belt.parent_y,
+        ));
+    }
+
+    // ---- AbstractMessage handling ----
 
     onMessage(message) {
         if (message instanceof CreateBeltMessage) {

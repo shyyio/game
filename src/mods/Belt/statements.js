@@ -399,11 +399,16 @@ export const beltStatements = {
         WHERE belt.id = CAST(@id AS INT);
     `,
 
-    // Surface belt at a tile. Excludes underground belts: they are buried, can't
-    // be selected/deleted, and a surface tool placing over one must not target it.
-    GetBeltAtTile: `SELECT id FROM Belt WHERE x = @x AND y = @y AND type != ${BELT_UNDERGROUND} LIMIT 1;`,
-
-    GetBeltTypeAtTile: `SELECT id, type, direction FROM Belt WHERE x = @x AND y = @y LIMIT 1;`,
+    // Every belt in a chunk, with its parent's tile, to seed a newly-subscribed
+    // client. Includes underground belts (no type filter): the client index keeps
+    // them for the underground tool's pairing scan even though they aren't drawn.
+    GetBeltsInChunk: `
+        SELECT belt.id, belt.x, belt.y, belt.direction, belt.type,
+            parent.x AS parent_x, parent.y AS parent_y
+        FROM Belt belt
+            LEFT JOIN Belt parent ON parent.id = belt.parent_id
+        WHERE belt.chunk = @chunk;
+    `,
 
     GetTail: `
         SELECT x, y, type, direction, parent_id, chunk

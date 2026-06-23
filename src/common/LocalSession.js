@@ -1,7 +1,7 @@
 import {DEV} from "@/common/env.js";
-import {Session} from "@/common/Session.js";
+import {AbstractSession} from "@/common/AbstractSession.js";
 
-export class LocalSession extends Session {
+export class LocalSession extends AbstractSession {
 
     constructor(api) {
         super(api);

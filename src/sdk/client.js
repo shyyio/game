@@ -10,15 +10,21 @@
 export * from "@/sdk/common.js";
 
 // ---- Rendering ----
-// `DrawLayer` is the base class for a Pixi layer that reacts to game events;
-// `ObjectDrawLayer` is a ready-made layer for simple insert/update/delete object
+// `AbstractDrawLayer` is the base class for a Pixi layer that reacts to game events;
+// `AbstractObjectDrawLayer` is a ready-made layer for simple insert/update/delete object
 // rendering.
-export {DrawLayer} from "@/client/DrawLayer.js";
-export {ObjectDrawLayer} from "@/client/ObjectDrawLayer.js";
+export {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
+export {AbstractObjectDrawLayer} from "@/client/AbstractObjectDrawLayer.js";
 
 // ---- Input ----
 // Base class for a placement/interaction tool shown in the toolbar.
-export {Tool} from "@/client/Tool.js";
+export {AbstractTool} from "@/client/AbstractTool.js";
+
+// ---- Client world state ----
+// A client mod's own picture of placed objects (indexed by id, tile, and chunk),
+// seeded from chunk-sync events. Client code queries this instead of the
+// simulation DB.
+export {ViewportCache} from "@/client/ViewportCache.js";
 
 // ---- Pixel-space geometry ----
 // `TILE_SIZE` is a tile's size in pixels; the snap helpers round pixel

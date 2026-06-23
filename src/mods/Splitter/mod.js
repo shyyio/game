@@ -1,6 +1,6 @@
 import {
     Direction,
-    Mod,
+    AbstractMod,
     ObjectDefinition,
     PortDefinition,
     PortTransferOp,
@@ -16,7 +16,7 @@ class SplitterPortTransferOp extends PortTransferOp {
 }
 
 // noinspection SqlWithoutWhere
-export class SplitterMod extends Mod {
+export class SplitterMod extends AbstractMod {
 
     get schema() {
         return `

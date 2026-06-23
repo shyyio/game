@@ -1,11 +1,11 @@
-import {DrawLayer} from "@/client/DrawLayer.js";
+import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {Container, Graphics} from "pixi.js";
-import {chunkCoords} from "@/common/util.js";
+import {chunkPosition} from "@/common/util.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
-import {EVENT_TYPE_CORE, EVENT_SUBTYPE_CHUNK_SUBSCRIBE, EVENT_SUBTYPE_CHUNK_UNSUBSCRIBE} from "@/common/core.js";
+import {ChunkSubscribeEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 
-export class GridDrawLayer extends DrawLayer {
+export class GridDrawLayer extends AbstractDrawLayer {
 
     constructor() {
         super();
@@ -25,7 +25,7 @@ export class GridDrawLayer extends DrawLayer {
             return;
         }
 
-        const {x, y} = chunkCoords(chunk);
+        const {x, y} = chunkPosition(chunk);
         const sprite = GridDrawLayer._createChunkGrid(x * CHUNK_SIZE, y * CHUNK_SIZE);
         sprite.children[1].visible = !this._lowRes;
         this._chunks[chunk] = sprite;
@@ -55,13 +55,9 @@ export class GridDrawLayer extends DrawLayer {
     }
 
     onEvent(event) {
-        if (event.type !== EVENT_TYPE_CORE) {
-            return;
-        }
-
-        if (event.subtype === EVENT_SUBTYPE_CHUNK_SUBSCRIBE) {
+        if (event instanceof ChunkSubscribeEvent) {
             this.addChunk(event.chunk);
-        } else if (event.subtype === EVENT_SUBTYPE_CHUNK_UNSUBSCRIBE) {
+        } else if (event instanceof ChunkUnsubscribeEvent) {
             this.removeChunk(event.chunk);
         }
     }

@@ -15,11 +15,11 @@ export function chunkKey(x, y) {
 }
 
 /**
- * Inverse of {@link chunkKey}: parses a "chunkX,chunkY" key back into coords.
+ * Inverse of {@link chunkKey}: parses a "chunkX,chunkY" key back into a chunk position.
  * @param chunk {string}
  * @returns {{x: Number, y: Number}}
  */
-export function chunkCoords(chunk) {
+export function chunkPosition(chunk) {
     const [x, y] = chunk.split(",", 2);
 
     return {x: Number(x), y: Number(y)};

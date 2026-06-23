@@ -25,7 +25,7 @@ export function formatRow(row) {
 /**
  * @abstract
  */
-export class Database {
+export class AbstractDatabase {
 
     /**
      * @param {DatabaseSchema} schema

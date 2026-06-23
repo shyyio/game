@@ -1,23 +1,29 @@
 import {TickOp, TickPhase} from "@/common/core.js";
 import {CHUNK_SIZE, GameSettingsKey} from "@/common/constants.js";
 
+export const CHUNK_KEY_SQL = `(
+    CASE WHEN x < 0 AND x % ${CHUNK_SIZE} != 0 THEN x/${CHUNK_SIZE} -1 ELSE x/${CHUNK_SIZE} END
+    || ',' ||
+    CASE WHEN y < 0 AND y % ${CHUNK_SIZE} != 0 THEN y/${CHUNK_SIZE} -1 ELSE y/${CHUNK_SIZE} END
+)`;
+
 const CoreStatements = {
     End: "END TRANSACTION",
     Begin: "BEGIN TRANSACTION;",
     Rollback: "ROLLBACK TRANSACTION;",
 
-    InsertSession: "INSERT INTO Session (player_id) VALUES (@player_id) RETURNING id;",
+    InsertSession: "INSERT INTO AbstractSession (player_id) VALUES (@player_id) RETURNING id;",
     GetPlayerSettings: `SELECT key, value FROM PlayerSettings WHERE player_id = @player_id;`,
     GetGameSettings: `SELECT key, value FROM GameSettings;`,
 
     InsertPort: "INSERT INTO Port DEFAULT VALUES RETURNING id;",
     InsertGameJournal: `
-        INSERT INTO GameJournal (time, type, subtype, x, y, id, a, b, c)
-        VALUES (@time, @type, @subtype, @x, @y, @id, @a, @b, @c);
+        INSERT INTO GameJournal (time, type, x, y, id, a, b, c)
+        VALUES (@time, @type, @x, @y, @id, @a, @b, @c);
     `,
 
     GetSessionEvents: `
-        SELECT ev.seq, ev.time, ev.type, ev.subtype, ev.x, ev.y, ev.chunk, ev.id, ev.a, ev.b, ev.c,
+        SELECT ev.seq, ev.time, ev.type, ev.x, ev.y, ev.id, ev.a, ev.b, ev.c,
                sv.session_id
         FROM GameJournal ev
             INNER JOIN SessionViewport sv ON ev.chunk = sv.chunk;
@@ -26,15 +32,11 @@ const CoreStatements = {
     TruncateGameJournal: `DELETE FROM GameJournal;`,
 
     DeleteSessionViewport: `DELETE FROM SessionViewport WHERE session_id = @session_id RETURNING chunk;`,
+    GetSessionViewport: `SELECT chunk FROM SessionViewport WHERE session_id = @session_id;`,
     InsertSessionViewport: `INSERT INTO SessionViewport (session_id, chunk) VALUES (@session_id, @chunk);`,
+    DeleteSessionViewportChunk: `DELETE FROM SessionViewport WHERE session_id = @session_id AND chunk = @chunk;`,
     GetSessionsByChunk: `SELECT DISTINCT session_id FROM SessionViewport WHERE chunk = @chunk;`,
 }
-
-export const CHUNK_KEY_SQL = `(
-    CASE WHEN x < 0 AND x % ${CHUNK_SIZE} != 0 THEN x/${CHUNK_SIZE} -1 ELSE x/${CHUNK_SIZE} END
-    || ',' ||
-    CASE WHEN y < 0 AND y % ${CHUNK_SIZE} != 0 THEN y/${CHUNK_SIZE} -1 ELSE y/${CHUNK_SIZE} END
-)`;
 
 const CoreSchema = `
     CREATE TABLE PlayerSettings (
@@ -59,7 +61,6 @@ const CoreSchema = `
         time INT NOT NULL,
 
         type INT NOT NULL,
-        subtype INT NOT NULL,
 
         x INT NOT NULL,
         y INT NOT NULL,
@@ -113,13 +114,13 @@ const CoreTempSchema = `
     );
     CREATE UNIQUE INDEX PortTransfer_source ON PortTransfer (source_id);
 
-    CREATE TEMPORARY TABLE Session (
+    CREATE TEMPORARY TABLE AbstractSession (
         id INTEGER PRIMARY KEY,
         player_id INT NOT NULL
     );
 
     CREATE TEMPORARY TABLE SessionViewport (
-        session_id INT REFERENCES Session,
+        session_id INT REFERENCES AbstractSession,
         chunk TEXT NOT NULL
     );
 `;

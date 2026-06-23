@@ -3,13 +3,13 @@ export class ModRegistry {
 
     constructor() {
         /**
-         * @type {Mod[]}
+         * @type {AbstractMod[]}
          */
         this.mods = [];
     }
 
     /**
-     * @param {Mod} mod
+     * @param {AbstractMod} mod
      */
     loadMod(mod) {
         this.mods.push(mod);
@@ -41,7 +41,7 @@ export class ModRegistry {
     }
 
     /**
-     * Message/event classes contributed by all mods, in load order.
+     * AbstractMessage/event classes contributed by all mods, in load order.
      * @returns {Function[]}
      */
     get wireClasses() {
@@ -53,12 +53,37 @@ export class ModRegistry {
     }
 
     /**
-     * @param {Message} message
+     * @param {AbstractMessage} message
      */
     dispatchMessage(message) {
         this.mods.forEach(mod => {
             mod.onMessage(message);
         });
+    }
+
+    /**
+     * Routes a client-delivered event to every mod's client-side handler.
+     * @param {AbstractEvent} event
+     * @param {Client} client
+     */
+    handleClientEvent(event, client) {
+        this.mods.forEach(mod => {
+            mod.onClientEvent(event, client);
+        });
+    }
+
+    /**
+     * Gathers every mod's individual seed events for a newly-visible chunk.
+     * @param {string} chunk
+     * @returns {AbstractEvent[]}
+     */
+    collectChunkSync(chunk) {
+        const events = [];
+        this.mods.forEach(mod => {
+            const modEvents = mod.collectChunkSync(chunk);
+            modEvents.forEach(event => events.push(event));
+        });
+        return events;
     }
 
     /**
@@ -81,7 +106,7 @@ export class ModRegistry {
      * Aggregates mini menu entries from all mods for the tile at (tileX, tileY).
      * @param {number} tileX
      * @param {number} tileY
-     * @param {Session} session
+     * @param {AbstractSession} session
      * @returns {MiniMenuEntry[]}
      */
     miniMenuContextEntries(tileX, tileY, session) {
@@ -98,9 +123,9 @@ export class ModRegistry {
     }
 
     /**
-     * @param {Session} session
+     * @param {AbstractSession} session
      * @param {PlayerSettings} playerSettings
-     * @returns {Tool[]}
+     * @returns {AbstractTool[]}
      */
     tools(session, playerSettings) {
         const tools = [];

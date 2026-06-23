@@ -1,4 +1,4 @@
-import {Message} from "@/common/Message.js";
+import {AbstractMessage} from "@/common/AbstractMessage.js";
 
 export class GameAPI {
 
@@ -20,8 +20,8 @@ export class GameAPI {
     }
 
     /**
-     * @param {Message} message
-     * @param {Session} session
+     * @param {AbstractMessage} message
+     * @param {AbstractSession} session
      */
     sendMessage(message, session) {
         if (!message.validate(this, session)) {

@@ -38,9 +38,3 @@ export const BeltBend = {
 // ---- Item types ----
 export const ITEM_TYPE_GAP = 0;
 export const ITEM_FLAG_STASHED = 1;
-
-// ---- Event types ----
-export const EVENT_BELT_DELETE = 1;
-export const EVENT_BELT_INSERT = 2;
-export const EVENT_BELT_UPDATE = 3;
-export const EVENT_BELT_PATH_RECALCULATE = 4;

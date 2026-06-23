@@ -1,7 +1,7 @@
 import BetterSqlite3 from "better-sqlite3";
-import {Database, formatRow} from "@/common/database.js";
+import {AbstractDatabase, formatRow} from "@/common/AbstractDatabase.js";
 
-export class NodeDatabase extends Database {
+export class NodeDatabase extends AbstractDatabase {
 
     constructor(schema) {
         super(schema);

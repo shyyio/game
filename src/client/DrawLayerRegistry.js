@@ -5,7 +5,7 @@ export class DrawLayerRegistry {
      */
     constructor(modRegistry) {
         /**
-         * @type {DrawLayer[]}
+         * @type {AbstractDrawLayer[]}
          */
         this.layers = [];
 
@@ -16,7 +16,7 @@ export class DrawLayerRegistry {
 
     /**
      * Inserts a layer in z-level order.
-     * @param {DrawLayer} layer
+     * @param {AbstractDrawLayer} layer
      */
     add(layer) {
         let i = this.layers.length;
@@ -27,7 +27,7 @@ export class DrawLayerRegistry {
     }
 
     /**
-     * @param {BufferedEvent|LiveEvent} event
+     * @param {AbstractEvent} event
      */
     publishEvent(event) {
         this.layers.forEach(layer => {

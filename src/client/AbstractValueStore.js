@@ -2,7 +2,7 @@
 /**
  * @abstract
  */
-export class ValueStore {
+export class AbstractValueStore {
 
     constructor() {
         this._values = new Map();

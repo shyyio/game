@@ -1,10 +1,10 @@
-import {Session} from "@/common/Session.js";
+import {AbstractSession} from "@/common/AbstractSession.js";
 
 /**
  * Browser's version of the session. On the client side, it is instantiated,
  * then connect is called.
  */
-export class RemoteSessionClientHandle extends Session {
+export class RemoteSessionClientHandle extends AbstractSession {
 
     connect(arg) {
         // Connect to the server WS

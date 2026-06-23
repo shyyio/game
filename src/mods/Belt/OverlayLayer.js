@@ -1,6 +1,6 @@
-import {DrawLayer, Graphics, drawLine, drawRect, TILE_SIZE} from "@/sdk/client.js";
+import {AbstractDrawLayer, Graphics, drawLine, drawRect, TILE_SIZE} from "@/sdk/client.js";
 
-export class BeltOverlayDrawLayer extends DrawLayer {
+export class BeltOverlayDrawLayer extends AbstractDrawLayer {
 
     constructor() {
         super();

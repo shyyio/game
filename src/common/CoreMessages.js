@@ -1,13 +1,10 @@
-import {Message} from "@/common/Message.js";
-
-const MESSAGE_SET_VIEWPORT = 0;
+import {AbstractMessage} from "@/common/AbstractMessage.js";
 
 const MAX_VIEWPORT_CHUNKS = 256;
 
-export class SetViewportMessage extends Message {
+export class SetViewportMessage extends AbstractMessage {
 
     static wireFields = {
-        type: "int32",
         chunks: "string[]",
     };
 
@@ -15,13 +12,13 @@ export class SetViewportMessage extends Message {
      * @param {string[]} chunks
      */
     constructor(chunks) {
-        super(MESSAGE_SET_VIEWPORT);
+        super();
         this.chunks = chunks;
     }
 
     /**
      * @param {GameAPI} api
-     * @param {Session} session
+     * @param {AbstractSession} session
      * @returns {boolean}
      */
     validate(api, session) {

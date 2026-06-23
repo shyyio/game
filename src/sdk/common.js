@@ -11,10 +11,10 @@
 // reachable from these two files and nowhere else.
 
 // ---- Mod framework ----
-// The building blocks of a mod. `Mod` is the base class you extend; the rest
+// The building blocks of a mod. `AbstractMod` is the base class you extend; the rest
 // describe the game objects your mod adds and how they behave each tick.
 export {
-    Mod,              // base class every mod extends
+    AbstractMod,              // base class every mod extends
     ObjectDefinition, // declares a placeable object: ports, footprint, per-tick ops
     PortDefinition,   // one input/output/internal port on an object (position + facing)
     TickOp,           // a SQL statement run during one tick phase
@@ -23,14 +23,26 @@ export {
     MiniMenuEntry,    // one entry in the right-click / long-press context menu
 } from "@/common/core.js";
 
+// ---- Engine events ----
+// Chunk subscribe/unsubscribe events, so a mod's client side can react to chunks
+// entering/leaving a session's viewport.
+export {
+    ChunkSubscribeEvent,
+    ChunkUnsubscribeEvent,
+} from "@/common/CoreEvents.js";
+
 // ---- Messages ----
 // Base class for messages a session sends to the game (player intents). Subclass
 // it, declare a static `wireFields` map, and optionally override `validate`.
-export {Message} from "@/common/Message.js";
+export {AbstractMessage} from "@/common/AbstractMessage.js";
 
 // ---- Events ----
-// Base class for events a mod emits to connected clients (rendering, effects).
-export {LiveEvent} from "@/common/LiveEvent.js";
+// Base classes for events a mod emits to connected clients (rendering, effects).
+// Subclasses must declare a static `wireFields` map. Extend `AbstractTilePositionedEvent`
+// for an event tied to a tile (adds x, y and a derived `chunk`); extend `AbstractEvent`
+// for one with no position.
+export {AbstractEvent} from "@/common/AbstractEvent.js";
+export {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
 
 // ---- World geometry ----
 // `Direction` is the cardinal-direction enum (with rotate/dx/dy helpers).

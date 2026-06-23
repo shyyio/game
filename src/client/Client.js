@@ -5,8 +5,9 @@ import {GameSettings} from "@/client/GameSettings.js";
 import {MiniMenuLayer} from "@/client/MiniMenuLayer.js";
 import {DirectionWheelLayer} from "@/client/DirectionWheelLayer.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
-import {EVENT_PLAYER_SETTINGS_SYNC, EVENT_PLAYER_SETTINGS_UPDATE} from "@/common/PlayerSettingsEvents.js";
-import {EVENT_GAME_SETTINGS_SYNC, EVENT_GAME_SETTINGS_UPDATE} from "@/common/GameSettingsEvents.js";
+import {ChunkSyncEvent} from "@/common/CoreEvents.js";
+import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
+import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {TILE_SIZE, snapToChunk} from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 import {chunkKey} from "@/common/util.js";
@@ -23,7 +24,7 @@ export class Client {
     /**
      * @param {Application} app
      * @param {Viewport} viewport
-     * @param {Session} session
+     * @param {AbstractSession} session
      * @param {ModRegistry} modRegistry
      */
     constructor(app, viewport, session, modRegistry) {
@@ -97,36 +98,44 @@ export class Client {
     }
 
     /**
-     * @param {Message} message
+     * @param {AbstractMessage} message
      */
     sendMessage(message) {
         this.session.sendMessage(message);
     }
 
     /**
-     * @param {BufferedEvent|LiveEvent} event
+     * @param {AbstractEvent} event
      */
     publishEvent(event) {
-        if (event.type === EVENT_PLAYER_SETTINGS_SYNC) {
+        if (event instanceof ChunkSyncEvent) {
+            // A chunk-seed bundle: replay each inner event through the normal path.
+            // Seed events are distinct types (e.g. BeltSyncEvent vs BeltInsertEvent),
+            // so handlers can already tell a load from a live change.
+            event.events.forEach(inner => this.publishEvent(inner));
+            return;
+        }
+        if (event instanceof PlayerSettingsSyncEvent) {
             Object.entries(event.values).forEach(([key, value]) => {
                 this.playerSettings.update(Number(key), value);
             });
             return;
         }
-        if (event.type === EVENT_PLAYER_SETTINGS_UPDATE) {
+        if (event instanceof PlayerSettingsUpdateEvent) {
             this.playerSettings.update(event.key, event.value);
             return;
         }
-        if (event.type === EVENT_GAME_SETTINGS_SYNC) {
+        if (event instanceof GameSettingsSyncEvent) {
             Object.entries(event.values).forEach(([key, value]) => {
                 this.gameSettings.update(Number(key), value);
             });
             return;
         }
-        if (event.type === EVENT_GAME_SETTINGS_UPDATE) {
+        if (event instanceof GameSettingsUpdateEvent) {
             this.gameSettings.update(event.key, event.value);
             return;
         }
+        this.modRegistry.handleClientEvent(event, this);
         this.drawLayerRegistry.publishEvent(event);
     }
 }

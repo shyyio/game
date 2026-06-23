@@ -1,6 +1,5 @@
-import {Graphics, Sprite, Texture, TILE_SIZE, Direction, DrawLayer} from "@/sdk/client.js";
+import {Graphics, Sprite, Texture, TILE_SIZE, Direction, AbstractDrawLayer} from "@/sdk/client.js";
 import {BeltBend, BeltType} from "./constants.js";
-import {BeltInsertEvent, BeltUpdateEvent, BeltDeleteEvent} from "./events.js";
 
 /**
  * The spritesheet frame name for a belt of the given bend and type. Shared by
@@ -73,7 +72,7 @@ export class Belt {
     }
 }
 
-export class BeltDrawLayer extends DrawLayer {
+export class BeltDrawLayer extends AbstractDrawLayer {
 
     constructor() {
         super();
@@ -94,37 +93,30 @@ export class BeltDrawLayer extends DrawLayer {
     }
 
     /**
-     * @param {BufferedEvent|LiveEvent} event
+     * Belt rendering is driven imperatively by BeltClientMod (the client event hub),
+     * not by events delivered to this layer.
+     * @param {AbstractEvent} event
      */
-    onEvent(event) {
-        if (event instanceof BeltInsertEvent) {
-            const bend = Belt.getBend(event.direction, event.x, event.y, event.parentX, event.parentY);
-            const belt = new Belt(event.id, event.x, event.y, event.direction, bend, event.beltType);
-            this.addBelt(belt);
-        } else if (event instanceof BeltUpdateEvent) {
-            const sprite = this._belts[event.id];
-            if (sprite === undefined) {
-                return;
-            }
-            const bend = Belt.getBend(sprite.direction, sprite.tileX, sprite.tileY, event.newParentX, event.newParentY);
-            const texture = this._getTexture(bend, sprite.type);
-            sprite.update(sprite.tileX, sprite.tileY, sprite.direction, bend, texture);
-        } else if (event instanceof BeltDeleteEvent) {
-            this.removeBelt(event.id);
-        }
-    }
+    onEvent(event) {}
 
     /**
-     * @param {Belt} belt
+     * Renders a newly-placed (or chunk-synced) belt. Underground belts are buried
+     * and never drawn — they're skipped here but still tracked in the mod's index.
+     * @param {BigInt} id
+     * @param {number} x
+     * @param {number} y
+     * @param {Direction} direction
+     * @param {BeltType} type
+     * @param {number|null} parentX
+     * @param {number|null} parentY
      */
-    addBelt(belt) {
-        if (belt.type === BeltType.UNDERGROUND) {
-            // Underground belts are buried — never rendered on the client. They
-            // also can't be selected or deleted (see GetBeltAtTile).
+    addBelt(id, x, y, direction, type, parentX, parentY) {
+        if (type === BeltType.UNDERGROUND) {
             return;
         }
-        const texture = this._getTexture(belt.bend, belt.type);
-        const sprite = new BeltSprite(belt.id, belt.x, belt.y, belt.direction, belt.bend, belt.type, texture);
+        const bend = Belt.getBend(direction, x, y, parentX, parentY);
+        const texture = this._getTexture(bend, type);
+        const sprite = new BeltSprite(id, x, y, direction, bend, type, texture);
         this.addChild(sprite);
 
         if (sprite.type !== BeltType.NORMAL) {
@@ -132,6 +124,23 @@ export class BeltDrawLayer extends DrawLayer {
         }
 
         this._belts[sprite.id] = sprite;
+    }
+
+    /**
+     * Re-renders an existing belt's bend after its parent changed. No-op for belts
+     * that aren't drawn (e.g. underground).
+     * @param {BigInt} id
+     * @param {number|null} newParentX
+     * @param {number|null} newParentY
+     */
+    updateBelt(id, newParentX, newParentY) {
+        const sprite = this._belts[id];
+        if (sprite === undefined) {
+            return;
+        }
+        const bend = Belt.getBend(sprite.direction, sprite.tileX, sprite.tileY, newParentX, newParentY);
+        const texture = this._getTexture(bend, sprite.type);
+        sprite.update(sprite.tileX, sprite.tileY, sprite.direction, bend, texture);
     }
 
     /**

@@ -1,6 +1,6 @@
-import {Sprite, Texture, Direction, TILE_SIZE, ObjectDrawLayer} from "@/sdk/client.js";
+import {Sprite, Texture, Direction, TILE_SIZE, AbstractObjectDrawLayer} from "@/sdk/client.js";
 
-export class SplitterDrawLayer extends ObjectDrawLayer {
+export class SplitterDrawLayer extends AbstractObjectDrawLayer {
 
     onEvent(event) {
         // TODO: handle splitter insert/delete events

@@ -1,11 +1,3 @@
-// ---- Core event type ----
-export const EVENT_TYPE_CORE = 0;
-
-// ---- Core event subtypes ----
-export const EVENT_SUBTYPE_CHUNK_SUBSCRIBE = 1;
-export const EVENT_SUBTYPE_CHUNK_UNSUBSCRIBE = 2;
-
-
 export class TickOp {
 
     /**
@@ -134,7 +126,7 @@ export class ObjectDefinition {
     }
 }
 
-export class Mod {
+export class AbstractMod {
 
     constructor() {
         /**
@@ -179,7 +171,7 @@ export class Mod {
     }
 
     /**
-     * Message/event classes this mod sends over the wire. Each must expose a
+     * AbstractMessage/event classes this mod sends over the wire. Each must expose a
      * static wireFields map.
      * @returns {Function[]}
      */
@@ -188,17 +180,40 @@ export class Mod {
     }
 
     /**
-     * @returns {DrawLayer[]}
+     * @returns {AbstractDrawLayer[]}
      */
     get drawLayers() {
 
     }
 
     /**
-     * @param {Message} message
+     * @param {AbstractMessage} message
      */
     onMessage(message) {
 
+    }
+
+    /**
+     * Client-side hook: handle an event delivered to this mod's client, updating
+     * its own world state and draw layers. The simulation-side base is a no-op;
+     * client mods override it. Defaults to a no-op.
+     * @param {AbstractEvent} event
+     * @param {Client} client
+     */
+    onClientEvent(event, client) {
+
+    }
+
+    /**
+     * Server-side hook: return the individual events that recreate this mod's
+     * objects in a freshly-loaded chunk (one per object, e.g. a BeltInsertEvent per
+     * belt). The engine bundles every mod's events into one ChunkSyncEvent per
+     * chunk. Defaults to none.
+     * @param {string} chunk - a chunk key that just entered a viewport
+     * @returns {AbstractEvent[]}
+     */
+    collectChunkSync(chunk) {
+        return [];
     }
 
     /**
@@ -206,7 +221,7 @@ export class Mod {
      * Each entry carries its own handler — the mod decides what happens when clicked.
      * @param {number} tileX
      * @param {number} tileY
-     * @param {Session} session
+     * @param {AbstractSession} session
      * @returns {MiniMenuEntry[]}
      */
     miniMenuContextEntries(tileX, tileY, session) {
@@ -216,9 +231,9 @@ export class Mod {
     /**
      * Returns the tools this mod makes available given the current player settings.
      * Called on init and again whenever any PlayerSetting changes.
-     * @param {Session} session
+     * @param {AbstractSession} session
      * @param {PlayerSettings} playerSettings
-     * @returns {Tool[]}
+     * @returns {AbstractTool[]}
      */
     tools(session, playerSettings) {
         return [];

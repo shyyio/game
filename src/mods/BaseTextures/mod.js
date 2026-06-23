@@ -1,8 +1,8 @@
-import {Mod, TextureDefinition} from "@/sdk/common.js";
+import {AbstractMod, TextureDefinition} from "@/sdk/common.js";
 import imageUrl from "./sprites.png";
 import jsonUrl from "./sprites.json";
 
-export class BaseTexturesMod extends Mod {
+export class BaseTexturesMod extends AbstractMod {
 
     get textureDefinitions() {
         return [

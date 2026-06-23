@@ -3,7 +3,7 @@ import {NotImplementedError} from "@/common/error.js";
 /**
  * @abstract
  */
-export class Session {
+export class AbstractSession {
 
     /**
      * @param {GameAPI} api
@@ -22,7 +22,7 @@ export class Session {
     }
 
     /**
-     * @param {BufferedEvent|LiveEvent} event
+     * @param {AbstractEvent} event
      */
     publishEvent(event) {
         if (this.client == null) {
@@ -41,7 +41,7 @@ export class Session {
 
     /**
      * @abstract
-     * @param {Message} message
+     * @param {AbstractMessage} message
      */
     sendMessage(message) {
         throw new NotImplementedError();

@@ -4,15 +4,21 @@ import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {BufferedEvent} from "@/common/BufferedEvent.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
+import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 
-const {Type, Field, MapField} = protobuf;
+const {Type, Field, MapField, Root} = protobuf;
 const Long = protobuf.util.Long;
 
 const INT64_TYPES = new Set(["int64", "uint64", "sint64", "fixed64", "sfixed64"]);
 
+// The message type that frames every encoded value (a wire id naming the concrete
+// class plus the encoded body), and the type name a `message[]` field references
+// for its nested elements.
+const ENVELOPE_TYPE = "Envelope";
+
 /**
  * Core message/event classes that travel over the wire. Mods contribute the rest
- * via Mod.wireClasses. Order here is part of the wire-id assignment contract, so
+ * via AbstractMod.wireClasses. Order here is part of the wire-id assignment contract, so
  * only ever append.
  * @type {*[]}
  */
@@ -23,15 +29,10 @@ const CORE_WIRE_CLASSES = [
     PlayerSettingsUpdateEvent,
     GameSettingsSyncEvent,
     GameSettingsUpdateEvent,
+    ChunkSubscribeEvent,
+    ChunkUnsubscribeEvent,
+    ChunkSyncEvent,
 ];
-
-/**
- * Envelope wrapping every encoded frame: a wire id identifying the concrete class
- * plus the encoded body.
- */
-const Envelope = new Type("Envelope")
-    .add(new Field("wireId", 1, "uint32"))
-    .add(new Field("payload", 2, "bytes"));
 
 /**
  * Parses a wireFields spec string into a descriptor.
@@ -39,10 +40,16 @@ const Envelope = new Type("Envelope")
  *   "int64?"           -> nullable scalar (cosmetic: all scalars are optional)
  *   "string[]"         -> repeated
  *   "map<int32,int32>" -> map
+ *   "message[]"        -> a repeated, polymorphic list of wire objects, each a
+ *                         nested Envelope message (lets one message/event bundle
+ *                         others of any registered class)
  * @param {string} spec
- * @returns {{kind: string, type: string, keyType?: string, int64: boolean}}
+ * @returns {{kind: string, type?: string, keyType?: string, int64?: boolean}}
  */
 function parseSpec(spec) {
+    if (spec === "message[]") {
+        return {kind: "messages"};
+    }
     const mapMatch = spec.match(/^map<\s*(\w+)\s*,\s*(\w+)\s*>$/);
     if (mapMatch) {
         return {kind: "map", keyType: mapMatch[1], type: mapMatch[2], int64: INT64_TYPES.has(mapMatch[2])};
@@ -58,7 +65,7 @@ function parseSpec(spec) {
 /**
  * Builds a protobufjs Type from a class's static wireFields. Scalars are marked
  * `optional` so explicit presence is tracked — that preserves zero/empty values
- * (e.g. x:0, EVENT_TYPE_CORE:0) and lets absent fields decode back to null.
+ * (e.g. x:0, a zero event type) and lets absent fields decode back to null.
  * @param {string} name
  * @param {Object.<string, string>} wireFields
  * @returns {{type: protobuf.Type, specs: Object.<string, object>}}
@@ -72,6 +79,10 @@ function buildType(name, wireFields) {
         specs[fieldName] = parsed;
         if (parsed.kind === "map") {
             type.add(new MapField(fieldName, tag, parsed.keyType, parsed.type));
+        } else if (parsed.kind === "messages") {
+            // A bundle of other wire objects, each a nested Envelope message so
+            // protobuf models the nesting natively (rather than opaque bytes).
+            type.add(new Field(fieldName, tag, ENVELOPE_TYPE, "repeated"));
         } else if (parsed.kind === "repeated") {
             type.add(new Field(fieldName, tag, parsed.type, "repeated"));
         } else {
@@ -80,6 +91,15 @@ function buildType(name, wireFields) {
         tag += 1;
     });
     return {type, specs};
+}
+
+/**
+ * @returns {protobuf.Type} a fresh Envelope type: a wire id plus the encoded body.
+ */
+function buildEnvelope() {
+    return new Type(ENVELOPE_TYPE)
+        .add(new Field("wireId", 1, "uint32"))
+        .add(new Field("payload", 2, "bytes"));
 }
 
 export class WireRegistry {
@@ -93,6 +113,12 @@ export class WireRegistry {
         /** @type {Map<number, object>} */
         this.byId = new Map();
 
+        // Every type lives in one Root so a `message[]` field can resolve the
+        // Envelope message type by name and nest it directly.
+        this.root = new Root();
+        this.envelope = buildEnvelope();
+        this.root.add(this.envelope);
+
         const classes = CORE_WIRE_CLASSES.concat(modRegistry.wireClasses);
         classes.forEach((cls, index) => {
             if (cls.wireFields === undefined) {
@@ -100,10 +126,13 @@ export class WireRegistry {
             }
             const wireId = index + 1;
             const {type, specs} = buildType(cls.name, cls.wireFields);
+            this.root.add(type);
             const codec = {cls, wireId, type, specs};
             this.byClass.set(cls, codec);
             this.byId.set(wireId, codec);
         });
+
+        this.root.resolveAll();
     }
 
     /**
@@ -113,6 +142,18 @@ export class WireRegistry {
      * @returns {Uint8Array}
      */
     encode(obj) {
+        return this.envelope.encode(this.envelope.create(this._toEnvelope(obj))).finish();
+    }
+
+    /**
+     * Builds the `{wireId, payload}` envelope object for an instance — its encoded
+     * body tagged with its class's wire id. Used both as the top-level frame and as
+     * each nested element of a `message[]` bundle.
+     * @private
+     * @param {object} obj
+     * @returns {{wireId: number, payload: Uint8Array}}
+     */
+    _toEnvelope(obj) {
         const codec = this.byClass.get(obj.constructor);
         if (codec === undefined) {
             throw new Error(`No wire codec registered for ${obj.constructor.name}`);
@@ -124,6 +165,9 @@ export class WireRegistry {
             if (spec.kind === "repeated") {
                 const arr = value == null ? [] : value;
                 payload[name] = spec.int64 ? arr.map(toLong) : arr;
+            } else if (spec.kind === "messages") {
+                const arr = value == null ? [] : value;
+                payload[name] = arr.map(message => this._toEnvelope(message));
             } else if (spec.kind === "map") {
                 payload[name] = value == null ? {} : value;
             } else if (value != null) {
@@ -132,7 +176,7 @@ export class WireRegistry {
         });
 
         const body = codec.type.encode(codec.type.create(payload)).finish();
-        return Envelope.encode(Envelope.create({wireId: codec.wireId, payload: body})).finish();
+        return {wireId: codec.wireId, payload: body};
     }
 
     /**
@@ -142,7 +186,17 @@ export class WireRegistry {
      * @returns {object}
      */
     decode(bytes) {
-        const envelope = Envelope.decode(bytes);
+        return this._fromEnvelope(this.envelope.decode(bytes));
+    }
+
+    /**
+     * Rebuilds an instance from a decoded envelope — a message or a plain
+     * `{wireId, payload}` object (as nested `message[]` elements arrive).
+     * @private
+     * @param {{wireId: number, payload: Uint8Array}} envelope
+     * @returns {object}
+     */
+    _fromEnvelope(envelope) {
         const codec = this.byId.get(envelope.wireId);
         if (codec === undefined) {
             throw new Error(`No wire codec registered for wire id ${envelope.wireId}`);
@@ -155,6 +209,9 @@ export class WireRegistry {
             if (spec.kind === "repeated") {
                 const arr = raw[name] === undefined ? [] : raw[name];
                 fields[name] = spec.int64 ? arr.map(v => BigInt(v)) : arr;
+            } else if (spec.kind === "messages") {
+                const arr = raw[name] === undefined ? [] : raw[name];
+                fields[name] = arr.map(sub => this._fromEnvelope(sub));
             } else if (spec.kind === "map") {
                 fields[name] = raw[name] === undefined ? {} : raw[name];
             } else if (name in raw) {

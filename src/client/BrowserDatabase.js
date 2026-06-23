@@ -1,9 +1,9 @@
 import initSqlJs from "sql.js";
-import {Database, formatRow} from "@/common/database.js";
+import {AbstractDatabase, formatRow} from "@/common/AbstractDatabase.js";
 import wasmFile from "@/assets/sql-wasm.wasm?url";
 import {gzipCompress} from "@/common/util.js";
 
-export class BrowserDatabase extends Database {
+export class BrowserDatabase extends AbstractDatabase {
 
     constructor(schema) {
         super(schema);

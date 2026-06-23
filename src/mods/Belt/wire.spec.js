@@ -7,6 +7,7 @@ import {BeltMod} from "./mod.js";
 import {CreateBeltMessage, DeleteBeltMessage} from "./messages.js";
 import {
     BeltInsertEvent,
+    BeltSyncEvent,
     BeltUpdateEvent,
     BeltDeleteEvent,
     BeltPathRecalculateEvent,
@@ -49,6 +50,7 @@ test("Round-trips belt events, preserving exact BigInt ids", () => {
     const reg = registry();
     roundTrip(reg, new BeltInsertEvent(1, 2, 99n, 3, 0, null, null), BeltInsertEvent);
     roundTrip(reg, new BeltInsertEvent(4, 5, 100n, 1, 2, 4, 5), BeltInsertEvent);
+    roundTrip(reg, new BeltSyncEvent(4, 5, 100n, 1, 2, 4, 5), BeltSyncEvent);
     roundTrip(reg, new BeltUpdateEvent(1, 2, 99n, 4, 5), BeltUpdateEvent);
     roundTrip(reg, new BeltUpdateEvent(1, 2, 99n, null, null), BeltUpdateEvent);
     roundTrip(reg, new BeltDeleteEvent(1, 2, 99n), BeltDeleteEvent);

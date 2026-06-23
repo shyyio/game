@@ -43,7 +43,7 @@ export class TestHarness {
     /**
      * Sends a player message to the game as the connected session, exactly as a
      * client would.
-     * @param {Message} message
+     * @param {AbstractMessage} message
      */
     dispatchMessage(message) {
         this.game.dispatchMessage(message, this.session);
@@ -113,7 +113,7 @@ export class TestHarness {
 /**
  * Boots an in-memory game with the given mods loaded and a session connected.
  * The one piece of setup every mod's tests share.
- * @param {Mod[]} mods
+ * @param {AbstractMod[]} mods
  * @returns {Promise<TestHarness>}
  */
 export async function setupGame(mods) {

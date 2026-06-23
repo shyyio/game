@@ -1,5 +1,6 @@
 import {BufferedEvent} from "@/common/BufferedEvent.js";
-import {EVENT_TYPE_CORE, EVENT_SUBTYPE_CHUNK_SUBSCRIBE, EVENT_SUBTYPE_CHUNK_UNSUBSCRIBE} from "@/common/core.js";
+import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
+import {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {PlayerSettingsSyncEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
@@ -9,7 +10,7 @@ export class Game {
 
     /**
      * @param {ModRegistry} modRegistry
-     * @param {Database} database
+     * @param {AbstractDatabase} database
      */
     constructor(modRegistry, database) {
         this.db = database;
@@ -24,7 +25,7 @@ export class Game {
         this.wire = new WireRegistry(modRegistry);
 
         /**
-         * @type {Object.<number, Session>}
+         * @type {Object.<number, AbstractSession>}
          */
         this.sessions = {};
     }
@@ -37,7 +38,7 @@ export class Game {
         await this.db.init();
     }
 
-    // ---- Database delegation ----
+    // ---- AbstractDatabase delegation ----
 
     _defaultArgs() {
         return {time: this.time};
@@ -76,7 +77,7 @@ export class Game {
     // ---- Sessions ----
 
     /**
-     * @param {Session} session
+     * @param {AbstractSession} session
      */
     connect(session) {
         // TODO: Get player ID from session
@@ -118,8 +119,8 @@ export class Game {
     // ---- Messages ----
 
     /**
-     * @param {Message} message
-     * @param {Session} session
+     * @param {AbstractMessage} message
+     * @param {AbstractSession} session
      */
     dispatchMessage(message, session) {
         // Core Events are handled here, and other events are dispatched to mods
@@ -134,24 +135,37 @@ export class Game {
     // ---- Viewport ----
 
     /**
-     * @param {Session} session
+     * Diffs the session's current viewport against the requested chunk set, so a
+     * pan only syncs the delta (the hot path: a one-chunk move re-syncs one row of
+     * chunks, not the whole screen). Removed chunks get an unsubscribe; added chunks
+     * get a subscribe plus, when they hold objects, one ChunkSyncEvent seeding them.
+     * @param {AbstractSession} session
      * @param {string[]} chunks
      */
     _setSessionViewport(session, chunks) {
-        this.query("DeleteSessionViewport", {session_id: session.id}).forEach(row => {
-            session.publishEvent(new BufferedEvent({
-                type: EVENT_TYPE_CORE,
-                subtype: EVENT_SUBTYPE_CHUNK_UNSUBSCRIBE,
-                chunk: row.chunk,
-            }));
+        const requested = new Set(chunks);
+        const currentRows = this.query("GetSessionViewport", {session_id: session.id});
+        const current = new Set(currentRows.map(row => row.chunk));
+
+        current.forEach(chunk => {
+            if (requested.has(chunk)) {
+                return;
+            }
+            this.exec("DeleteSessionViewportChunk", {session_id: session.id, chunk});
+            session.publishEvent(new ChunkUnsubscribeEvent(chunk));
         });
-        chunks.forEach(chunk => {
+
+        requested.forEach(chunk => {
+            if (current.has(chunk)) {
+                return;
+            }
             this.exec("InsertSessionViewport", {session_id: session.id, chunk});
-            session.publishEvent(new BufferedEvent({
-                type: EVENT_TYPE_CORE,
-                subtype: EVENT_SUBTYPE_CHUNK_SUBSCRIBE,
-                chunk,
-            }));
+            session.publishEvent(new ChunkSubscribeEvent(chunk));
+
+            const seedEvents = this.modRegistry.collectChunkSync(chunk);
+            if (seedEvents.length > 0) {
+                session.publishEvent(new ChunkSyncEvent(chunk, seedEvents));
+            }
         });
     }
 
@@ -173,11 +187,16 @@ export class Game {
     // ---- Events ----
 
     /**
-     * Dispatches a LiveEvent immediately to all sessions whose viewport covers the event's chunk,
-     * bypassing GameJournal. Use when the event must reach clients before postTick().
-     * @param {LiveEvent} event
+     * Dispatches an AbstractTilePositionedEvent immediately to all sessions whose viewport covers
+     * the event's chunk, bypassing GameJournal. Use when the event must reach clients
+     * before postTick(). Routing is by chunk, so the event must carry a position — a
+     * position-less AbstractEvent would match no session and vanish silently.
+     * @param {AbstractTilePositionedEvent} event
      */
     publishEventNow(event) {
+        if (!(event instanceof AbstractTilePositionedEvent)) {
+            throw new Error(`publishEventNow requires a positioned event, got ${event.constructor.name}`);
+        }
         const sessions = this.query("GetSessionsByChunk", {chunk: event.chunk});
 
         sessions.forEach(row => {

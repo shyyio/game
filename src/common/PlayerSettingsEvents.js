@@ -1,15 +1,8 @@
-import {LiveEvent} from "@/common/LiveEvent.js";
+import {AbstractEvent} from "@/common/AbstractEvent.js";
 
-export const EVENT_PLAYER_SETTINGS_SYNC = 100;
-export const EVENT_PLAYER_SETTINGS_UPDATE = 101;
-
-export class PlayerSettingsSyncEvent extends LiveEvent {
+export class PlayerSettingsSyncEvent extends AbstractEvent {
 
     static wireFields = {
-        type: "int32",
-        x: "int32",
-        y: "int32",
-        chunk: "string",
         values: "map<int32,int32>",
     };
 
@@ -17,18 +10,14 @@ export class PlayerSettingsSyncEvent extends LiveEvent {
      * @param {Object.<number, number>} values key->value pairs for this player
      */
     constructor(values) {
-        super(EVENT_PLAYER_SETTINGS_SYNC, 0, 0);
+        super();
         this.values = values;
     }
 }
 
-export class PlayerSettingsUpdateEvent extends LiveEvent {
+export class PlayerSettingsUpdateEvent extends AbstractEvent {
 
     static wireFields = {
-        type: "int32",
-        x: "int32",
-        y: "int32",
-        chunk: "string",
         key: "int32",
         value: "int32",
     };
@@ -38,7 +27,7 @@ export class PlayerSettingsUpdateEvent extends LiveEvent {
      * @param {number} value
      */
     constructor(key, value) {
-        super(EVENT_PLAYER_SETTINGS_UPDATE, 0, 0);
+        super();
         this.key = key;
         this.value = value;
     }

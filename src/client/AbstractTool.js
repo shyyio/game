@@ -9,15 +9,13 @@ import {NotImplementedError} from "@/common/error.js";
  * moves exactly one step in a cardinal direction (never diagonal).
  * Enforcement is the InputHandler's responsibility.
  */
-export class Tool {
+export class AbstractTool {
 
     /**
-     * @param {Session} session
-     * @param {Game} game
+     * @param {AbstractSession} session
      */
-    constructor(session, game) {
+    constructor(session) {
         this.session = session;
-        this.game = game;
     }
 
     /**
@@ -25,7 +23,7 @@ export class Tool {
      * @returns {string}
      */
     get label() {
-        throw NotImplementedError();
+        throw new NotImplementedError();
     }
 
     /**
@@ -35,7 +33,7 @@ export class Tool {
      * @param {number} tileY
      */
     onTap(tileX, tileY) {
-        throw NotImplementedError();
+        throw new NotImplementedError();
     }
 
     /**
@@ -47,7 +45,7 @@ export class Tool {
      * @param {Direction} direction - the step direction (UP / RIGHT / DOWN / LEFT)
      */
     onDragTile(tileX, tileY, direction) {
-        throw NotImplementedError();
+        throw new NotImplementedError();
     }
 
     /**

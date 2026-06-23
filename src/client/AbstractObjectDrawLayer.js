@@ -1,10 +1,10 @@
-import {DrawLayer} from "@/client/DrawLayer.js";
+import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 
 /**
- * Base DrawLayer for machine-type game objects.
+ * Base AbstractDrawLayer for machine-type game objects.
  * Mods extend this and provide their own sprite constructors.
  */
-export class ObjectDrawLayer extends DrawLayer {
+export class AbstractObjectDrawLayer extends AbstractDrawLayer {
 
     constructor() {
         super();

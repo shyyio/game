@@ -1,6 +1,6 @@
 
-import {ValueStore} from "@/client/ValueStore.js";
+import {AbstractValueStore} from "@/client/AbstractValueStore.js";
 
-export class GameSettings extends ValueStore {
+export class GameSettings extends AbstractValueStore {
 
 }

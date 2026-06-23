@@ -1,18 +1,10 @@
-import {LiveEvent} from "@/sdk/common.js";
-import {
-    EVENT_BELT_DELETE,
-    EVENT_BELT_INSERT,
-    EVENT_BELT_UPDATE,
-    EVENT_BELT_PATH_RECALCULATE,
-} from "./constants.js";
+import {AbstractTilePositionedEvent} from "@/sdk/common.js";
 
-export class BeltPathRecalculateEvent extends LiveEvent {
+export class BeltPathRecalculateEvent extends AbstractTilePositionedEvent {
 
     static wireFields = {
-        type: "int32",
         x: "int32",
         y: "int32",
-        chunk: "string",
         parts: "int64[]",
     };
 
@@ -22,18 +14,21 @@ export class BeltPathRecalculateEvent extends LiveEvent {
      * @param {BigInt[]} parts - Belt IDs in path order, head last
      */
     constructor(x, y, parts) {
-        super(EVENT_BELT_PATH_RECALCULATE, x, y);
+        super(x, y);
         this.parts = parts;
     }
 }
 
-export class BeltInsertEvent extends LiveEvent {
+/**
+ * A belt the player just placed (a live change). Carries the same payload as a
+ * BeltSyncEvent, but the distinct type lets the client react differently (e.g.
+ * placement feedback only for inserts).
+ */
+export class BeltInsertEvent extends AbstractTilePositionedEvent {
 
     static wireFields = {
-        type: "int32",
         x: "int32",
         y: "int32",
-        chunk: "string",
         id: "int64",
         direction: "int32",
         beltType: "int32",
@@ -51,7 +46,7 @@ export class BeltInsertEvent extends LiveEvent {
      * @param {number|null} parentY
      */
     constructor(x, y, id, direction, beltType, parentX, parentY) {
-        super(EVENT_BELT_INSERT, x, y);
+        super(x, y);
         this.id = id;
         this.direction = direction;
         this.beltType = beltType;
@@ -60,13 +55,47 @@ export class BeltInsertEvent extends LiveEvent {
     }
 }
 
-export class BeltUpdateEvent extends LiveEvent {
+/**
+ * A belt seeded into a freshly-loaded chunk — same payload as a BeltInsertEvent,
+ * but its own type so the client can skip placement feedback (animation/sound) for
+ * belts that merely came into view.
+ */
+export class BeltSyncEvent extends AbstractTilePositionedEvent {
 
     static wireFields = {
-        type: "int32",
         x: "int32",
         y: "int32",
-        chunk: "string",
+        id: "int64",
+        direction: "int32",
+        beltType: "int32",
+        parentX: "int32?",
+        parentY: "int32?",
+    };
+
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {BigInt} id
+     * @param {number} direction
+     * @param {number} beltType
+     * @param {number|null} parentX
+     * @param {number|null} parentY
+     */
+    constructor(x, y, id, direction, beltType, parentX, parentY) {
+        super(x, y);
+        this.id = id;
+        this.direction = direction;
+        this.beltType = beltType;
+        this.parentX = parentX === undefined ? null : parentX;
+        this.parentY = parentY === undefined ? null : parentY;
+    }
+}
+
+export class BeltUpdateEvent extends AbstractTilePositionedEvent {
+
+    static wireFields = {
+        x: "int32",
+        y: "int32",
         id: "int64",
         newParentX: "int32?",
         newParentY: "int32?",
@@ -80,20 +109,18 @@ export class BeltUpdateEvent extends LiveEvent {
      * @param {number|null} newParentY
      */
     constructor(x, y, id, newParentX, newParentY) {
-        super(EVENT_BELT_UPDATE, x, y);
+        super(x, y);
         this.id = id;
         this.newParentX = newParentX;
         this.newParentY = newParentY;
     }
 }
 
-export class BeltDeleteEvent extends LiveEvent {
+export class BeltDeleteEvent extends AbstractTilePositionedEvent {
 
     static wireFields = {
-        type: "int32",
         x: "int32",
         y: "int32",
-        chunk: "string",
         id: "int64",
     };
 
@@ -103,7 +130,7 @@ export class BeltDeleteEvent extends LiveEvent {
      * @param {BigInt} id
      */
     constructor(x, y, id) {
-        super(EVENT_BELT_DELETE, x, y);
+        super(x, y);
         this.id = id;
     }
 }
