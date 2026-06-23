@@ -3,6 +3,7 @@ import {DrawLayerRegistry} from "@/client/DrawLayerRegistry.js";
 import {PlayerSettings} from "@/client/PlayerSettings.js";
 import {GameSettings} from "@/client/GameSettings.js";
 import {MiniMenuLayer} from "@/client/MiniMenuLayer.js";
+import {DirectionWheelLayer} from "@/client/DirectionWheelLayer.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {EVENT_PLAYER_SETTINGS_SYNC, EVENT_PLAYER_SETTINGS_UPDATE} from "@/common/PlayerSettingsEvents.js";
 import {EVENT_GAME_SETTINGS_SYNC, EVENT_GAME_SETTINGS_UPDATE} from "@/common/GameSettingsEvents.js";
@@ -36,6 +37,7 @@ export class Client {
         this.playerSettings = new PlayerSettings();
         this.gameSettings = new GameSettings();
         this.miniMenuLayer = new MiniMenuLayer();
+        this.directionWheelLayer = new DirectionWheelLayer();
 
         CoreDrawLayers.forEach(layer => {
             this.drawLayerRegistry.add(layer);
@@ -56,6 +58,7 @@ export class Client {
         });
 
         this.app.stage.addChild(this.miniMenuLayer);
+        this.app.stage.addChild(this.directionWheelLayer);
 
         this.viewport.on("moved", () => this._updateViewportChunks());
         this.viewport.on("zoomed", () => this._updateViewportChunks());

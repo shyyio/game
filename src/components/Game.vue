@@ -17,12 +17,17 @@ import {GameAPI} from "@/common/GameAPI.js";
 import {LocalSession} from "@/common/LocalSession.js";
 import {Client} from "@/client/Client.js";
 import {TickPhase} from "@/common/core.js";
+import {TILE_SIZE} from "@/client/constants.js";
 
 const tools = ref([]);
 const toolbarState = reactive({activeTool: null});
 const viewportRef = shallowRef(null);
+const inputHandlerRef = shallowRef(null);
 
 watch(() => toolbarState.activeTool, (tool) => {
+  if (inputHandlerRef.value != null) {
+    inputHandlerRef.value.clearToolPreview();
+  }
   if (viewportRef.value == null) {
     return;
   }
@@ -160,7 +165,7 @@ onMounted(async () => {
   const refreshTools = () => {
     tools.value = modRegistry.tools(session, client.playerSettings).map(markRaw);
     if (!tools.value.includes(toolbarState.activeTool)) {
-      toolbarState.activeTool = tools.value.length > 0 ? tools.value[0] : null;
+      toolbarState.activeTool = null;
     }
   };
 
@@ -172,7 +177,12 @@ onMounted(async () => {
     const entries = modRegistry.miniMenuContextEntries(tileX, tileY, session);
     client.miniMenuLayer.open(entries, screenX, screenY);
   });
+  inputHandler.onDirectionWheel((tileX, tileY, onSelect) => {
+    const screen = viewport.toScreen(tileX * TILE_SIZE + TILE_SIZE / 2, tileY * TILE_SIZE + TILE_SIZE / 2);
+    client.directionWheelLayer.open(screen.x, screen.y, onSelect);
+  });
   inputHandler.init();
+  inputHandlerRef.value = inputHandler;
 
   function tick() {
     game.tick(TickPhase.SUBMIT_INTENTS);
@@ -182,7 +192,12 @@ onMounted(async () => {
     game.postTick();
   }
 
-  Keyboard.on("t", () => {
+  // Debug keybindings.
+  Keyboard.on("1", () => {
+    db.rawExec("UPDATE Port SET item = 1 WHERE id = 0");
+  });
+
+  Keyboard.on("2", () => {
     tick();
   });
 });

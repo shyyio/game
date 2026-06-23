@@ -97,6 +97,15 @@ export class BrowserDatabase extends Database {
         return result;
     }
 
+    /**
+     * Execute one or more raw SQL statements, ignoring any result rows.
+     * For debugging only.
+     * @param {string} sql
+     */
+    rawExec(sql) {
+        this.db.run(sql);
+    }
+
     exportDb() {
         this.db.run("VACUUM;");
         const data = this.db.export();

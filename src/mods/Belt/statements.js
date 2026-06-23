@@ -399,7 +399,11 @@ export const beltStatements = {
         WHERE belt.id = CAST(@id AS INT);
     `,
 
-    GetBeltAtTile: `SELECT id FROM Belt WHERE x = @x AND y = @y LIMIT 1;`,
+    // Surface belt at a tile. Excludes underground belts: they are buried, can't
+    // be selected/deleted, and a surface tool placing over one must not target it.
+    GetBeltAtTile: `SELECT id FROM Belt WHERE x = @x AND y = @y AND type != ${BELT_UNDERGROUND} LIMIT 1;`,
+
+    GetBeltTypeAtTile: `SELECT id, type, direction FROM Belt WHERE x = @x AND y = @y LIMIT 1;`,
 
     GetTail: `
         SELECT x, y, type, direction, parent_id, chunk

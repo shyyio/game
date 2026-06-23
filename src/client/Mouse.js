@@ -71,6 +71,9 @@ class Mouse {
         this.currentX = null;
         this.currentY = null;
 
+        this._hoverTileX = null;
+        this._hoverTileY = null;
+
         this._viewport = null;
         this._app = null;
 
@@ -78,6 +81,8 @@ class Mouse {
         this._tileDragCallbacks = [];
         this._longPressCallbacks = [];
         this._rightClickCallbacks = [];
+        this._tileEnterCallbacks = [];
+        this._tileExitCallbacks = [];
     }
 
     /**
@@ -146,6 +151,42 @@ class Mouse {
      */
     onRightClick(callback) {
         this._rightClickCallbacks.push(callback);
+    }
+
+    /**
+     * Cursor moved onto a new tile (hover; fires regardless of button state).
+     * @param {function(tileX: number, tileY: number)} callback
+     */
+    onTileEnter(callback) {
+        this._tileEnterCallbacks.push(callback);
+    }
+
+    /**
+     * Cursor left the tile it was hovering.
+     * @param {function(tileX: number, tileY: number)} callback
+     */
+    onTileExit(callback) {
+        this._tileExitCallbacks.push(callback);
+    }
+
+    /**
+     * Abandons the in-flight press/drag gesture without firing tap, drag or
+     * long-press. Used when a modal (e.g. the direction wheel) takes over input
+     * mid-gesture, so a release that lands on the modal can't leave a stale
+     * press that later reads as a drag.
+     */
+    cancelInteraction() {
+        if (this._longPressTimer != null) {
+            window.clearTimeout(this._longPressTimer);
+            this._longPressTimer = null;
+        }
+        this._clickStartX = null;
+        this._clickStartY = null;
+        this._clickStartTileX = null;
+        this._clickStartTileY = null;
+        this._clickStartScreenX = null;
+        this._clickStartScreenY = null;
+        this._hasDragged = false;
     }
 
     // ---- Getters ----
@@ -228,6 +269,8 @@ class Mouse {
         this.currentX = world.x;
         this.currentY = world.y;
 
+        this._updateHoverTile();
+
         if (this._clickStartX == null) {
             return;
         }
@@ -272,6 +315,27 @@ class Mouse {
 
         this._clickStartX = this.currentX;
         this._clickStartY = this.currentY;
+    }
+
+    /**
+     * Fires tile enter/exit callbacks when the hovered tile changes.
+     * @private
+     */
+    _updateHoverTile() {
+        const tileX = this.tileX;
+        const tileY = this.tileY;
+
+        if (tileX === this._hoverTileX && tileY === this._hoverTileY) {
+            return;
+        }
+
+        if (this._hoverTileX != null) {
+            this._tileExitCallbacks.forEach(cb => cb(this._hoverTileX, this._hoverTileY));
+        }
+
+        this._hoverTileX = tileX;
+        this._hoverTileY = tileY;
+        this._tileEnterCallbacks.forEach(cb => cb(tileX, tileY));
     }
 }
 

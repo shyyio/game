@@ -2,6 +2,29 @@ import {Graphics, Sprite, Texture, TILE_SIZE, Direction, DrawLayer} from "@/sdk/
 import {BeltBend, BeltType} from "./constants.js";
 import {BeltInsertEvent, BeltUpdateEvent, BeltDeleteEvent} from "./events.js";
 
+/**
+ * The spritesheet frame name for a belt of the given bend and type. Shared by
+ * the live belt layer and the ghost preview layer so both pick identical art.
+ * @param {BeltBend} bend
+ * @param {BeltType} type
+ * @returns {string}
+ */
+export function beltFrameName(bend, type) {
+    if (type === BeltType.RAMP_UP) {
+        return "belt-ramp-up/0";
+    }
+    if (type === BeltType.RAMP_DOWN) {
+        return "belt-ramp-down/0";
+    }
+    if (bend === BeltBend.LEFT) {
+        return "belt-left/0";
+    }
+    if (bend === BeltBend.RIGHT) {
+        return "belt-right/0";
+    }
+    return "belt-straight/0";
+}
+
 export class Belt {
 
     /**
@@ -95,6 +118,11 @@ export class BeltDrawLayer extends DrawLayer {
      * @param {Belt} belt
      */
     addBelt(belt) {
+        if (belt.type === BeltType.UNDERGROUND) {
+            // Underground belts are buried — never rendered on the client. They
+            // also can't be selected or deleted (see GetBeltAtTile).
+            return;
+        }
         const texture = this._getTexture(belt.bend, belt.type);
         const sprite = new BeltSprite(belt.id, belt.x, belt.y, belt.direction, belt.bend, belt.type, texture);
         this.addChild(sprite);
@@ -150,19 +178,7 @@ export class BeltDrawLayer extends DrawLayer {
      */
     // TODO: animate belts — each sprite has 8 frames (/0 to /7), cycle based on game tick.
     _getTexture(bend, type) {
-        let frameName;
-        if (type === BeltType.RAMP_UP) {
-            frameName = "belt-ramp-up/0";
-        } else if (type === BeltType.RAMP_DOWN) {
-            frameName = "belt-ramp-down/0";
-        } else if (bend === BeltBend.LEFT) {
-            frameName = "belt-left/0";
-        } else if (bend === BeltBend.RIGHT) {
-            frameName = "belt-right/0";
-        } else {
-            frameName = "belt-straight/0";
-        }
-        const texture = this.textureRegistry.get(frameName);
+        const texture = this.textureRegistry.get(beltFrameName(bend, type));
         return texture === undefined ? Texture.EMPTY : texture;
     }
 }

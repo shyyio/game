@@ -4,8 +4,9 @@ import {BeltType} from "@/mods/Belt/constants.js";
 
 export class BeltTool extends Tool {
 
-    constructor(session, game) {
+    constructor(session, game, ghostLayer) {
         super(session, game);
+        this._ghostLayer = ghostLayer;
         this._lastDirection = Direction.UP;
         this._prevDragTileX = null;
         this._prevDragTileY = null;
@@ -16,13 +17,39 @@ export class BeltTool extends Tool {
     }
 
     onTap(tileX, tileY) {
+        this._place(tileX, tileY, this._lastDirection);
+    }
+
+    onLongTap(tileX, tileY, direction) {
+        this._lastDirection = direction;
+        this._place(tileX, tileY, direction);
+    }
+
+    onTileEnter(tileX, tileY) {
+        this._ghostLayer.showGhost(tileX, tileY, this._lastDirection, BeltType.NORMAL);
+    }
+
+    onTileExit(tileX, tileY) {
+        this._ghostLayer.clear();
+    }
+
+    rotate() {
+        this._lastDirection = Direction.rotate(this._lastDirection, 1);
+    }
+
+    /**
+     * Places a normal belt at the tile facing `direction`, replacing any belt
+     * already there.
+     * @private
+     */
+    _place(tileX, tileY, direction) {
         this._prevDragTileX = null;
         this._prevDragTileY = null;
         const existing = this.game.queryScalar("GetBeltAtTile", {x: tileX, y: tileY});
         if (existing != null) {
             this.session.sendMessage(new DeleteBeltMessage(existing));
         }
-        this.session.sendMessage(new CreateBeltMessage({x: tileX, y: tileY, direction: this._lastDirection, beltType: BeltType.NORMAL}));
+        this.session.sendMessage(new CreateBeltMessage({x: tileX, y: tileY, direction, beltType: BeltType.NORMAL}));
     }
 
     onDragTile(tileX, tileY, direction) {

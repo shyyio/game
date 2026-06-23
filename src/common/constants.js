@@ -71,6 +71,28 @@ export const Direction = {
         }
 
         throw new Error(`Not a unit cardinal delta: (${dx}, ${dy})`);
+    },
+
+    /**
+     * Returns the nearest cardinal Direction for an arbitrary (non-unit) vector,
+     * snapping to whichever axis dominates (ties favour the vertical axis). Uses
+     * the same axis convention as dx/dy, so a negative dy points UP. Returns null
+     * for the zero vector. Unlike fromDelta, this never throws, so it suits
+     * free-form input like a radial direction wheel.
+     * @param {number} dx
+     * @param {number} dy
+     * @returns {Direction|null}
+     */
+    fromVector(dx, dy) {
+        if (dx === 0 && dy === 0) {
+            return null;
+        }
+
+        if (Math.abs(dy) >= Math.abs(dx)) {
+            return dy < 0 ? Direction.UP : Direction.DOWN;
+        }
+
+        return dx < 0 ? Direction.LEFT : Direction.RIGHT;
     }
 };
 
