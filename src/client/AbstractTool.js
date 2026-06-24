@@ -1,4 +1,3 @@
-
 import {Direction} from "@/common/constants.js";
 import {NotImplementedError} from "@/common/error.js";
 
@@ -35,6 +34,13 @@ export class AbstractTool {
     onTap(tileX, tileY) {
         throw new NotImplementedError();
     }
+
+    /**
+     * Called when a drag gesture begins, before onDragTile. Defaults to a no-op.
+     * @param {number} tileX
+     * @param {number} tileY
+     */
+    onDragStart(tileX, tileY) {}
 
     /**
      * Called once per tile entered during a drag.

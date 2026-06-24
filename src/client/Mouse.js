@@ -1,4 +1,3 @@
-
 import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
 
@@ -73,11 +72,13 @@ class Mouse {
 
         this._hoverTileX = null;
         this._hoverTileY = null;
+        this._hoverEnabled = true;
 
         this._viewport = null;
         this._app = null;
 
         this._tapCallbacks = [];
+        this._dragStartCallbacks = [];
         this._tileDragCallbacks = [];
         this._longPressCallbacks = [];
         this._rightClickCallbacks = [];
@@ -138,6 +139,15 @@ class Mouse {
     }
 
     /**
+     * A drag gesture began (the press moved off its start tile). Fires once,
+     * before the first onTileDrag, with the tile the press started on.
+     * @param {function(tileX: number, tileY: number)} callback
+     */
+    onDragStart(callback) {
+        this._dragStartCallbacks.push(callback);
+    }
+
+    /**
      * Left button held on the same tile for LONG_PRESS_MS without dragging.
      * @param {function(tileX: number, tileY: number, screenX: number, screenY: number)} callback
      */
@@ -167,6 +177,16 @@ class Mouse {
      */
     onTileExit(callback) {
         this._tileExitCallbacks.push(callback);
+    }
+
+    /**
+     * Toggles tile enter/exit hover events. Disabled while a modal (the
+     * direction wheel) is open so the active tool's ghost preview doesn't track
+     * the cursor behind the modal.
+     * @param {boolean} enabled
+     */
+    setHoverEnabled(enabled) {
+        this._hoverEnabled = enabled;
     }
 
     /**
@@ -223,6 +243,9 @@ class Mouse {
         this._longPressTimer = window.setTimeout(() => {
             this._longPressTimer = null;
             this._hasDragged = true;
+            // The long-press opens the direction wheel; clear the hovered tile
+            // first so the active tool's ghost preview drops while it is up.
+            this._emitTileExit();
             this._longPressCallbacks.forEach(cb => {
                 cb(this._clickStartTileX, this._clickStartTileY, this._clickStartScreenX, this._clickStartScreenY);
             });
@@ -299,6 +322,7 @@ class Mouse {
                 window.clearTimeout(this._longPressTimer);
                 this._longPressTimer = null;
             }
+            this._dragStartCallbacks.forEach(cb => cb(startXTile, startYTile));
         }
 
         const tiles = tilesInPath(this._clickStartX, this._clickStartY, this.currentX, this.currentY);
@@ -322,6 +346,10 @@ class Mouse {
      * @private
      */
     _updateHoverTile() {
+        if (!this._hoverEnabled) {
+            return;
+        }
+
         const tileX = this.tileX;
         const tileY = this.tileY;
 
@@ -336,6 +364,21 @@ class Mouse {
         this._hoverTileX = tileX;
         this._hoverTileY = tileY;
         this._tileEnterCallbacks.forEach(cb => cb(tileX, tileY));
+    }
+
+    /**
+     * Fires a tile-exit for the currently hovered tile, if any, and forgets it
+     * so the next hover update re-enters cleanly.
+     * @private
+     */
+    _emitTileExit() {
+        if (this._hoverTileX == null) {
+            return;
+        }
+
+        this._tileExitCallbacks.forEach(cb => cb(this._hoverTileX, this._hoverTileY));
+        this._hoverTileX = null;
+        this._hoverTileY = null;
     }
 }
 

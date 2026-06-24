@@ -23,7 +23,7 @@ export class Client {
 
     /**
      * @param {Application} app
-     * @param {Viewport} viewport
+     * @param {ClientViewport} viewport
      * @param {AbstractSession} session
      * @param {ModRegistry} modRegistry
      */
@@ -38,7 +38,7 @@ export class Client {
         this.playerSettings = new PlayerSettings();
         this.gameSettings = new GameSettings();
         this.miniMenuLayer = new MiniMenuLayer();
-        this.directionWheelLayer = new DirectionWheelLayer();
+        this.directionWheelLayer = new DirectionWheelLayer(viewport);
 
         CoreDrawLayers.forEach(layer => {
             this.drawLayerRegistry.add(layer);

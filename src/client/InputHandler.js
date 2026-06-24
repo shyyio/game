@@ -34,6 +34,13 @@ export class InputHandler {
             this.activeTool.onTap(tileX, tileY);
         });
 
+        Mouse.onDragStart((tileX, tileY) => {
+            if (this.activeTool == null) {
+                return;
+            }
+            this.activeTool.onDragStart(tileX, tileY);
+        });
+
         Mouse.onTileDrag((tileX, tileY, direction) => {
             if (this.activeTool == null) {
                 return;

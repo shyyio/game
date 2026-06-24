@@ -1,8 +1,7 @@
 <script setup>
 import {ref, reactive, markRaw, shallowRef, watch, onMounted} from "vue";
 import {Application, Graphics, Container, FillGradient, isMobile} from "pixi.js";
-import {Viewport} from "pixi-viewport";
-import {freezeViewport, unfreezeViewport} from "@/client/viewport.js";
+import {ClientViewport} from "@/client/ClientViewport.js";
 import Keyboard from "@/client/keyboard.js";
 import Mouse from "@/client/Mouse.js";
 import {InputHandler} from "@/client/InputHandler.js";
@@ -32,9 +31,9 @@ watch(() => toolbarState.activeTool, (tool) => {
     return;
   }
   if (tool != null) {
-    freezeViewport(viewportRef.value);
+    viewportRef.value.freezePan();
   } else {
-    unfreezeViewport(viewportRef.value);
+    viewportRef.value.unfreezePan();
   }
 });
 
@@ -91,7 +90,7 @@ onMounted(async () => {
     roundPixels: true
   });
 
-  const viewport = new Viewport({
+  const viewport = new ClientViewport({
     screenWidth: gameWidth(),
     screenHeight: gameHeight(),
     worldWidth: gameWidth(),

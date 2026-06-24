@@ -1,6 +1,6 @@
-
 import {Container, Graphics} from "pixi.js";
 import {Direction} from "@/common/constants.js";
+import Mouse from "@/client/Mouse.js";
 
 const WHEEL_RADIUS = 72;
 const DEAD_ZONE = 22;
@@ -18,8 +18,12 @@ const ARROW_INSET = 20;
  */
 export class DirectionWheelLayer extends Container {
 
-    constructor() {
+    /**
+     * @param {ClientViewport} viewport - frozen while the wheel is open
+     */
+    constructor(viewport) {
         super();
+        this._viewport = viewport;
         this._catcher = null;
         this._wheel = null;
         this.visible = false;
@@ -82,6 +86,11 @@ export class DirectionWheelLayer extends Container {
         this.addChild(this._catcher);
         this.addChild(this._wheel);
         this.visible = true;
+
+        // Freeze hover and the viewport (pan/zoom/decelerate) while the wheel is
+        // up so the tool's ghost preview and the world don't move behind it.
+        Mouse.setHoverEnabled(false);
+        this._viewport.freeze();
     }
 
     close() {
@@ -94,6 +103,8 @@ export class DirectionWheelLayer extends Container {
             this._catcher = null;
         }
         this.visible = false;
+        Mouse.setHoverEnabled(true);
+        this._viewport.unfreeze();
     }
 
     /**

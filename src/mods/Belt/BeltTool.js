@@ -16,6 +16,7 @@ export class BeltTool extends AbstractTool {
         this._lastDirection = Direction.UP;
         this._prevDragTileX = null;
         this._prevDragTileY = null;
+        this._firstDragStep = false;
     }
 
     get label() {
@@ -37,6 +38,10 @@ export class BeltTool extends AbstractTool {
 
     onTileExit(tileX, tileY) {
         this._ghostLayer.clear();
+    }
+
+    onDragStart(tileX, tileY) {
+        this._firstDragStep = true;
     }
 
     rotate() {
@@ -63,6 +68,15 @@ export class BeltTool extends AbstractTool {
     _place(tileX, tileY, direction) {
         this._prevDragTileX = null;
         this._prevDragTileY = null;
+        this._placeBelt(tileX, tileY, direction);
+    }
+
+    /**
+     * Deletes any surface belt at the tile, then lays a normal belt facing
+     * `direction`.
+     * @private
+     */
+    _placeBelt(tileX, tileY, direction) {
         const existing = this._surfaceBeltAt(tileX, tileY);
         if (existing != null) {
             this.session.sendMessage(new DeleteBeltMessage(existing));
@@ -74,22 +88,20 @@ export class BeltTool extends AbstractTool {
         const fromTileX = tileX - Direction.dx(direction);
         const fromTileY = tileY - Direction.dy(direction);
 
-        if (direction !== this._lastDirection && this._prevDragTileX === fromTileX && this._prevDragTileY === fromTileY) {
-            const prevExisting = this._surfaceBeltAt(fromTileX, fromTileY);
-            if (prevExisting != null) {
-                this.session.sendMessage(new DeleteBeltMessage(prevExisting));
-            }
-            this.session.sendMessage(new CreateBeltMessage({x: fromTileX, y: fromTileY, direction, beltType: BeltType.NORMAL}));
+        if (this._firstDragStep) {
+            // The tile the press started on gets its own belt, facing the drag,
+            // so the first drag step lays two belts and every step after lays one.
+            this._firstDragStep = false;
+            this._placeBelt(fromTileX, fromTileY, direction);
+        } else if (direction !== this._lastDirection && this._prevDragTileX === fromTileX && this._prevDragTileY === fromTileY) {
+            // Re-lay the corner tile facing the new direction on a turn.
+            this._placeBelt(fromTileX, fromTileY, direction);
         }
 
         this._lastDirection = direction;
         this._prevDragTileX = tileX;
         this._prevDragTileY = tileY;
 
-        const existing = this._surfaceBeltAt(tileX, tileY);
-        if (existing != null) {
-            this.session.sendMessage(new DeleteBeltMessage(existing));
-        }
-        this.session.sendMessage(new CreateBeltMessage({x: tileX, y: tileY, direction, beltType: BeltType.NORMAL}));
+        this._placeBelt(tileX, tileY, direction);
     }
 }
