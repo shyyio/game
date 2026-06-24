@@ -30,6 +30,7 @@ export class AbstractTool {
      * @abstract
      * @param {number} tileX
      * @param {number} tileY
+     * @returns {void}
      */
     onTap(tileX, tileY) {
         throw new NotImplementedError();
@@ -49,6 +50,7 @@ export class AbstractTool {
      * @param {number} tileX - destination tile x
      * @param {number} tileY - destination tile y
      * @param {Direction} direction - the step direction (UP / RIGHT / DOWN / LEFT)
+     * @returns {void}
      */
     onDragTile(tileX, tileY, direction) {
         throw new NotImplementedError();

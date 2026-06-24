@@ -34,6 +34,7 @@ export class AbstractSession {
     /**
      * @abstract
      * @param sessionId {number}
+     * @returns {void}
      */
     setId(sessionId) {
         throw new NotImplementedError();
@@ -42,6 +43,7 @@ export class AbstractSession {
     /**
      * @abstract
      * @param {AbstractMessage} message
+     * @returns {void}
      */
     sendMessage(message) {
         throw new NotImplementedError();

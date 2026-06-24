@@ -25,7 +25,7 @@ export class AbstractDrawLayer extends Container {
     /**
      * @abstract
      * @param {AbstractEvent} event
-     * @returns void
+     * @returns {void}
      */
     onEvent(event) {
         throw new NotImplementedError();

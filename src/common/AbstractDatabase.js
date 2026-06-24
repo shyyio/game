@@ -36,6 +36,7 @@ export class AbstractDatabase {
 
     /**
      * @abstract
+     * @returns {Promise<void>}
      */
     async init() {
         throw new NotImplementedError();
