@@ -1,6 +1,6 @@
-import {AbstractDrawLayer, Texture, currentAnimationFrame} from "@/sdk/client.js";
+import {AbstractDrawLayer, currentAnimationFrame} from "@/sdk/client.js";
 import {BeltBend} from "./constants.js";
-import {BeltSprite, beltFrameName} from "./BeltLayer.js";
+import {BeltSprite, beltFrameBase} from "./BeltLayer.js";
 
 /**
  * Renders a single semi-transparent "ghost" belt/ramp sprite at the tile a belt
@@ -36,7 +36,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
 
         // A ghost has no parent context yet, so it always previews as straight.
         const bend = BeltBend.STRAIGHT;
-        const texture = this.textureRegistry.get(beltFrameName(bend, beltType, currentAnimationFrame()));
+        const frames = this.textureRegistry.getAnimation(beltFrameBase(bend, beltType));
         const sprite = new BeltSprite(
             0,
             tileX,
@@ -44,8 +44,9 @@ export class BeltGhostLayer extends AbstractDrawLayer {
             direction,
             bend,
             beltType,
-            texture === undefined ? Texture.EMPTY : texture,
+            frames,
         );
+        sprite.setAnimationFrame(currentAnimationFrame());
         sprite.ghost = true;
 
         this._sprite = sprite;
@@ -69,7 +70,6 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         if (this._sprite === null) {
             return;
         }
-        const texture = this.textureRegistry.get(beltFrameName(this._sprite.bend, this._sprite.type, frame));
-        this._sprite.texture = texture === undefined ? Texture.EMPTY : texture;
+        this._sprite.setAnimationFrame(frame);
     }
 }

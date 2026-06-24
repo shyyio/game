@@ -6,12 +6,15 @@ const MAP_TILE_COLOR = 0xf7df9e;
 const MAP_RAMP_COLOR = 0xc8a16e;
 
 /**
- * The spritesheet base (frame-less) name for a belt of the given bend and type.
+ * The spritesheet base (frame-less) sequence name for a belt of the given bend and
+ * type. The animation frames live under "<base>/0".."<base>/7"; callers resolve the
+ * ordered frame array via TextureRegistry.getAnimation(base). Shared by the live
+ * belt layer and the ghost preview layer so both pick identical art.
  * @param {BeltBend} bend
  * @param {BeltType} type
  * @returns {string}
  */
-function beltFrameBase(bend, type) {
+export function beltFrameBase(bend, type) {
     if (type === BeltType.RAMP_UP) {
         return "belt-ramp-up";
     }
@@ -25,19 +28,6 @@ function beltFrameBase(bend, type) {
         return "belt-right";
     }
     return "belt-straight";
-}
-
-/**
- * The spritesheet frame name for a belt of the given bend and type at a given
- * animation frame. Shared by the live belt layer and the ghost preview layer so
- * both pick identical art.
- * @param {BeltBend} bend
- * @param {BeltType} type
- * @param {number} frame animation frame, in [0, 8)
- * @returns {string}
- */
-export function beltFrameName(bend, type, frame) {
-    return `${beltFrameBase(bend, type)}/${frame}`;
 }
 
 export class Belt {
@@ -157,8 +147,9 @@ export class BeltDrawLayer extends AbstractDrawLayer {
             return;
         }
         const bend = Belt.getBend(direction, x, y, parentX, parentY);
-        const texture = this._getTexture(bend, type, currentAnimationFrame());
-        const sprite = new BeltSprite(id, x, y, direction, bend, type, texture);
+        const frames = this._getFrames(bend, type);
+        const sprite = new BeltSprite(id, x, y, direction, bend, type, frames);
+        sprite.setAnimationFrame(currentAnimationFrame());
         this.addChild(sprite);
 
         this._belts[sprite.id] = sprite;
@@ -182,8 +173,9 @@ export class BeltDrawLayer extends AbstractDrawLayer {
             return;
         }
         const bend = Belt.getBend(sprite.direction, sprite.tileX, sprite.tileY, newParentX, newParentY);
-        const texture = this._getTexture(bend, sprite.type, currentAnimationFrame());
-        sprite.update(sprite.tileX, sprite.tileY, sprite.direction, bend, texture);
+        sprite.frames = this._getFrames(bend, sprite.type);
+        sprite.update(sprite.tileX, sprite.tileY, sprite.direction, bend);
+        sprite.setAnimationFrame(currentAnimationFrame());
     }
 
     /**
@@ -218,19 +210,18 @@ export class BeltDrawLayer extends AbstractDrawLayer {
             return;
         }
         Object.values(this._belts).forEach(sprite => {
-            sprite.texture = this._getTexture(sprite.bend, sprite.type, frame);
+            sprite.setAnimationFrame(frame);
         });
     }
 
     /**
-     * @param {number} bend
-     * @param {number} type
-     * @param {number} frame
-     * @returns {Texture}
+     * The ordered frame textures for a belt of the given bend and type.
+     * @param {BeltBend} bend
+     * @param {BeltType} type
+     * @returns {Texture[]|undefined}
      */
-    _getTexture(bend, type, frame) {
-        const texture = this.textureRegistry.get(beltFrameName(bend, type, frame));
-        return texture === undefined ? Texture.EMPTY : texture;
+    _getFrames(bend, type) {
+        return this.textureRegistry.getAnimation(beltFrameBase(bend, type));
     }
 }
 
@@ -243,10 +234,10 @@ export class BeltSprite extends Sprite {
      * @param {Direction} direction
      * @param {BeltBend} bend
      * @param {BeltType} type
-     * @param {Texture} texture
+     * @param {Texture[]|undefined} frames ordered animation frames for this bend/type
      */
-    constructor(id, x, y, direction, bend, type, texture) {
-        super(texture);
+    constructor(id, x, y, direction, bend, type, frames) {
+        super(Texture.EMPTY);
 
         this.id = id;
         this.tileX = x;
@@ -256,6 +247,7 @@ export class BeltSprite extends Sprite {
         this.direction = direction;
         this.bend = bend;
         this.type = type;
+        this.frames = frames;
 
         this.position.set(x * TILE_SIZE + 32, y * TILE_SIZE + 32);
     }
@@ -267,11 +259,21 @@ export class BeltSprite extends Sprite {
         }
     }
 
-    update(x, y, direction, bend, texture) {
+    /**
+     * Shows the given frame of this sprite's sequence. A plain array index — no
+     * string building or texture lookup — so it stays cheap when called for every
+     * belt on each animation step.
+     * @param {number} frame animation frame, in [0, 8)
+     */
+    setAnimationFrame(frame) {
+        const texture = this.frames === undefined ? undefined : this.frames[frame];
+        this.texture = texture === undefined ? Texture.EMPTY : texture;
+    }
+
+    update(x, y, direction, bend) {
         this.direction = direction;
         this.angle = Direction.angle(direction);
         this.bend = bend;
-        this.texture = texture;
         this.tileX = x;
         this.tileY = y;
         this.x = x * TILE_SIZE + 32;
