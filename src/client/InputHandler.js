@@ -77,6 +77,10 @@ export class InputHandler {
         Keyboard.on("r", () => {
             this._rotateActiveTool();
         });
+
+        Keyboard.on("q", () => {
+            this._clearActiveTool();
+        });
     }
 
     /**
@@ -154,6 +158,15 @@ export class InputHandler {
         if (this._hoverTileX != null) {
             this.activeTool.onTileEnter(this._hoverTileX, this._hoverTileY);
         }
+    }
+
+    /**
+     * Deselects the active tool. The toolbar watcher clears the hover ghost and
+     * unfreezes panning in response.
+     * @private
+     */
+    _clearActiveTool() {
+        this._toolbarState.activeTool = null;
     }
 
     /**
