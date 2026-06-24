@@ -90,6 +90,10 @@ onMounted(async () => {
     roundPixels: true
   });
 
+  // The whole game runs at a fixed 24fps, so one ticker tick is exactly one
+  // animation frame (see animation.js).
+  app.ticker.maxFPS = 24;
+
   const viewport = new ClientViewport({
     screenWidth: gameWidth(),
     screenHeight: gameHeight(),

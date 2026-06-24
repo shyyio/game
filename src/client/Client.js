@@ -13,7 +13,7 @@ import {CHUNK_SIZE} from "@/common/constants.js";
 import {chunkKey} from "@/common/util.js";
 import {GridDrawLayer} from "@/client/GridDrawLayer.js";
 import {MaskDrawLayer} from "@/client/MaskDrawLayer.js";
-import {advanceAnimationClock, currentAnimationFrame} from "@/client/animation.js";
+import {advanceAnimationFrame} from "@/client/animation.js";
 
 export const CoreDrawLayers = [
     new GridDrawLayer(),
@@ -48,7 +48,6 @@ export class Client {
         this._lastViewportKey = null;
         this._mapMode = false;
         this._onMapModeChange = null;
-        this._lastAnimationFrame = -1;
     }
 
     /**
@@ -80,26 +79,19 @@ export class Client {
             this._updateViewportChunks();
             this._updateMapMode();
         });
-        this.app.ticker.add(ticker => this._tickAnimations(ticker));
+        this.app.ticker.add(() => this._tickAnimations());
         this._updateViewportChunks();
         this._updateMapMode();
     }
 
     /**
-     * Drives sprite animation off the render loop. Advances the shared mod-8
-     * clock by the ticker delta, then re-ticks the layers only when the frame
-     * actually changes (8 times per cycle, not once per rendered frame).
-     * @param {Ticker} ticker
+     * Drives sprite animation off the render loop. The ticker is capped at the
+     * game's frame rate (Game.vue), so each tick advances one frame and re-ticks
+     * every layer.
      * @private
      */
-    _tickAnimations(ticker) {
-        advanceAnimationClock(ticker.deltaMS);
-        const frame = currentAnimationFrame();
-        if (frame === this._lastAnimationFrame) {
-            return;
-        }
-        this._lastAnimationFrame = frame;
-        this.drawLayerRegistry.tick(frame);
+    _tickAnimations() {
+        this.drawLayerRegistry.tick(advanceAnimationFrame());
     }
 
     /**

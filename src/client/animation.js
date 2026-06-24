@@ -1,20 +1,30 @@
-// 8 frames per sequence, played at 24fps.
+// Global sprite-animation clock.
+//
+// Convention: every animated spritesheet sequence has exactly 8 frames, named
+// "<base>/0" .. "<base>/7", and is played by showing "<base>/" plus the current
+// frame. The Pixi ticker is capped at the game's frame rate (see Game.vue), so
+// every tick advances exactly one frame. The frame is a single global counter, so
+// every animated sprite, across every mod, shows the same frame at the same instant
+// without any per-sprite state or phase. Mods animate simply by following this
+// naming convention and reading currentAnimationFrame().
+
+// 8 frames per sequence.
 const ANIMATION_FRAME_COUNT = 8;
-const ANIMATION_FRAME_MS = 1000 / 24;
 
 /**
- * Milliseconds accumulated from the Pixi ticker since startup.
+ * The current global animation frame.
  * @type {number}
  */
-let elapsedMS = 0;
+let frame = 0;
 
 /**
- * Advances the animation clock by one ticker step. Driven by the render loop
- * (Client), so the clock is measured off the Pixi ticker rather than wall time.
- * @param {number} deltaMS milliseconds elapsed since the previous tick
+ * Advances to the next frame. Called once per ticker tick by the Client; since the
+ * ticker runs at the game's frame rate, one tick is one frame.
+ * @returns {number} the new frame, in [0, 8)
  */
-export function advanceAnimationClock(deltaMS) {
-    elapsedMS += deltaMS;
+export function advanceAnimationFrame() {
+    frame = (frame + 1) % ANIMATION_FRAME_COUNT;
+    return frame;
 }
 
 /**
@@ -22,5 +32,5 @@ export function advanceAnimationClock(deltaMS) {
  * @returns {number} frame index in [0, 8)
  */
 export function currentAnimationFrame() {
-    return Math.floor(elapsedMS / ANIMATION_FRAME_MS) % ANIMATION_FRAME_COUNT;
+    return frame;
 }
