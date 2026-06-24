@@ -36,6 +36,12 @@ export {TILE_SIZE, snapToTile, snapToChunk} from "@/client/constants.js";
 // Convenience wrappers for drawing onto a Pixi Graphics object.
 export {drawLine, drawRect, drawCircle} from "@/client/pixiUtils.js";
 
+// ---- Animation ----
+// Shared mod-8 animation clock: every animated sequence has 8 frames named
+// "<base>/0".."<base>/7", and currentAnimationFrame() returns the single frame
+// every sprite shows right now, keeping all mods in lockstep.
+export {currentAnimationFrame} from "@/client/animation.js";
+
 // ---- Pixi types ----
 // Passed through so mods share the engine's single Pixi instance rather than
 // bundling their own (multiple Pixi copies break rendering).

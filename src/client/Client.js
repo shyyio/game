@@ -13,6 +13,7 @@ import {CHUNK_SIZE} from "@/common/constants.js";
 import {chunkKey} from "@/common/util.js";
 import {GridDrawLayer} from "@/client/GridDrawLayer.js";
 import {MaskDrawLayer} from "@/client/MaskDrawLayer.js";
+import {advanceAnimationClock, currentAnimationFrame} from "@/client/animation.js";
 
 export const CoreDrawLayers = [
     new GridDrawLayer(),
@@ -47,6 +48,7 @@ export class Client {
         this._lastViewportKey = null;
         this._mapMode = false;
         this._onMapModeChange = null;
+        this._lastAnimationFrame = -1;
     }
 
     /**
@@ -78,8 +80,26 @@ export class Client {
             this._updateViewportChunks();
             this._updateMapMode();
         });
+        this.app.ticker.add(ticker => this._tickAnimations(ticker));
         this._updateViewportChunks();
         this._updateMapMode();
+    }
+
+    /**
+     * Drives sprite animation off the render loop. Advances the shared mod-8
+     * clock by the ticker delta, then re-ticks the layers only when the frame
+     * actually changes (8 times per cycle, not once per rendered frame).
+     * @param {Ticker} ticker
+     * @private
+     */
+    _tickAnimations(ticker) {
+        advanceAnimationClock(ticker.deltaMS);
+        const frame = currentAnimationFrame();
+        if (frame === this._lastAnimationFrame) {
+            return;
+        }
+        this._lastAnimationFrame = frame;
+        this.drawLayerRegistry.tick(frame);
     }
 
     /**

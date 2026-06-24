@@ -44,4 +44,14 @@ export class DrawLayerRegistry {
             layer.lowRes = value;
         });
     }
+
+    /**
+     * Advances every layer's animated sprites to the given frame.
+     * @param {number} frame current animation frame, in [0, 8)
+     */
+    tick(frame) {
+        this.layers.forEach(layer => {
+            layer.tick(frame);
+        });
+    }
 }

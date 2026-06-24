@@ -38,4 +38,13 @@ export class AbstractDrawLayer extends Container {
      * @param {boolean} value
      */
     set lowRes(value) {}
+
+    /**
+     * Advances this layer's animated sprites to the globally-synchronized frame.
+     * Called only when the frame actually changes. Optional hook — layers with no
+     * animation ignore it.
+     * @param {number} frame current animation frame, in [0, 8)
+     * @returns {void}
+     */
+    tick(frame) {}
 }

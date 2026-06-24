@@ -1,4 +1,4 @@
-import {AbstractDrawLayer, Texture} from "@/sdk/client.js";
+import {AbstractDrawLayer, Texture, currentAnimationFrame} from "@/sdk/client.js";
 import {BeltBend} from "./constants.js";
 import {BeltSprite, beltFrameName} from "./BeltLayer.js";
 
@@ -36,7 +36,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
 
         // A ghost has no parent context yet, so it always previews as straight.
         const bend = BeltBend.STRAIGHT;
-        const texture = this.textureRegistry.get(beltFrameName(bend, beltType));
+        const texture = this.textureRegistry.get(beltFrameName(bend, beltType, currentAnimationFrame()));
         const sprite = new BeltSprite(
             0,
             tileX,
@@ -59,5 +59,17 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         this._sprite.destroy();
         this.removeChild(this._sprite);
         this._sprite = null;
+    }
+
+    /**
+     * Keeps the ghost preview on the shared animation frame.
+     * @param {number} frame animation frame, in [0, 8)
+     */
+    tick(frame) {
+        if (this._sprite === null) {
+            return;
+        }
+        const texture = this.textureRegistry.get(beltFrameName(this._sprite.bend, this._sprite.type, frame));
+        this._sprite.texture = texture === undefined ? Texture.EMPTY : texture;
     }
 }

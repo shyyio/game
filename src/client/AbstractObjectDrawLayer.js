@@ -92,9 +92,17 @@ export class AbstractObjectDrawLayer extends AbstractDrawLayer {
         }
     }
 
-    tick(ticker) {
+    /**
+     * Advances every object sprite to the shared animation frame. Skipped in map
+     * mode, where objects render as flat rectangles rather than sprites.
+     * @param {number} frame animation frame, in [0, 8)
+     */
+    tick(frame) {
+        if (this._lowRes) {
+            return;
+        }
         Object.values(this._objects).forEach(sprite => {
-            sprite.tick(ticker);
+            sprite.tick(frame);
         });
     }
 }

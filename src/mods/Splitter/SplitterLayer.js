@@ -56,7 +56,11 @@ class SplitterSprite extends Sprite {
         this.y = y * TILE_SIZE + 32;
     }
 
-    tick(ticker) {
+    /**
+     * Splitter art is not animated yet; no-op until it has a frame sequence.
+     * @param {number} frame
+     */
+    tick(frame) {
 
     }
 }

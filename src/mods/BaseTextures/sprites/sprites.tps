@@ -155,7 +155,7 @@
             <key>scale</key>
             <double>2</double>
             <key>scaleMode</key>
-            <enum type="ScaleMode">Scale2x</enum>
+            <enum type="ScaleMode">Fast</enum>
             <key>extrude</key>
             <uint>0</uint>
             <key>trimThreshold</key>

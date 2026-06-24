@@ -1,4 +1,4 @@
-import {Graphics, Sprite, Texture, TILE_SIZE, Direction, AbstractDrawLayer} from "@/sdk/client.js";
+import {Graphics, Sprite, Texture, TILE_SIZE, Direction, AbstractDrawLayer, currentAnimationFrame} from "@/sdk/client.js";
 import {BeltBend, BeltType} from "./constants.js";
 
 // Map-mode tile fill colors, keyed by belt type.
@@ -6,26 +6,38 @@ const MAP_TILE_COLOR = 0xf7df9e;
 const MAP_RAMP_COLOR = 0xc8a16e;
 
 /**
- * The spritesheet frame name for a belt of the given bend and type. Shared by
- * the live belt layer and the ghost preview layer so both pick identical art.
+ * The spritesheet base (frame-less) name for a belt of the given bend and type.
  * @param {BeltBend} bend
  * @param {BeltType} type
  * @returns {string}
  */
-export function beltFrameName(bend, type) {
+function beltFrameBase(bend, type) {
     if (type === BeltType.RAMP_UP) {
-        return "belt-ramp-up/0";
+        return "belt-ramp-up";
     }
     if (type === BeltType.RAMP_DOWN) {
-        return "belt-ramp-down/0";
+        return "belt-ramp-down";
     }
     if (bend === BeltBend.LEFT) {
-        return "belt-left/0";
+        return "belt-left";
     }
     if (bend === BeltBend.RIGHT) {
-        return "belt-right/0";
+        return "belt-right";
     }
-    return "belt-straight/0";
+    return "belt-straight";
+}
+
+/**
+ * The spritesheet frame name for a belt of the given bend and type at a given
+ * animation frame. Shared by the live belt layer and the ghost preview layer so
+ * both pick identical art.
+ * @param {BeltBend} bend
+ * @param {BeltType} type
+ * @param {number} frame animation frame, in [0, 8)
+ * @returns {string}
+ */
+export function beltFrameName(bend, type, frame) {
+    return `${beltFrameBase(bend, type)}/${frame}`;
 }
 
 export class Belt {
@@ -145,7 +157,7 @@ export class BeltDrawLayer extends AbstractDrawLayer {
             return;
         }
         const bend = Belt.getBend(direction, x, y, parentX, parentY);
-        const texture = this._getTexture(bend, type);
+        const texture = this._getTexture(bend, type, currentAnimationFrame());
         const sprite = new BeltSprite(id, x, y, direction, bend, type, texture);
         this.addChild(sprite);
 
@@ -170,7 +182,7 @@ export class BeltDrawLayer extends AbstractDrawLayer {
             return;
         }
         const bend = Belt.getBend(sprite.direction, sprite.tileX, sprite.tileY, newParentX, newParentY);
-        const texture = this._getTexture(bend, sprite.type);
+        const texture = this._getTexture(bend, sprite.type, currentAnimationFrame());
         sprite.update(sprite.tileX, sprite.tileY, sprite.direction, bend, texture);
     }
 
@@ -197,13 +209,27 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     }
 
     /**
+     * Advances every live belt sprite to the shared animation frame. Skipped in
+     * map mode, where belts render as flat rectangles rather than sprites.
+     * @param {number} frame animation frame, in [0, 8)
+     */
+    tick(frame) {
+        if (this._lowRes) {
+            return;
+        }
+        Object.values(this._belts).forEach(sprite => {
+            sprite.texture = this._getTexture(sprite.bend, sprite.type, frame);
+        });
+    }
+
+    /**
      * @param {number} bend
      * @param {number} type
+     * @param {number} frame
      * @returns {Texture}
      */
-    // TODO: animate belts — each sprite has 8 frames (/0 to /7), cycle based on game tick.
-    _getTexture(bend, type) {
-        const texture = this.textureRegistry.get(beltFrameName(bend, type));
+    _getTexture(bend, type, frame) {
+        const texture = this.textureRegistry.get(beltFrameName(bend, type, frame));
         return texture === undefined ? Texture.EMPTY : texture;
     }
 }
