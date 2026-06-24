@@ -1,4 +1,3 @@
-
 import {Container, Graphics, Text} from "pixi.js";
 import {MiniMenuEntry} from "@/common/core.js";
 

@@ -29,6 +29,9 @@ export const BeltType = {
     UNDERGROUND: BELT_UNDERGROUND,
 };
 
+/**
+ * @enum {number}
+ */
 export const BeltBend = {
     STRAIGHT: 0,
     LEFT: 1,
