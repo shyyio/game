@@ -34,7 +34,7 @@
         <key>dataFormat</key>
         <string>pixijs4</string>
         <key>textureFileName</key>
-        <filename>../5edd3be7/sprites.png</filename>
+        <filename>../6eb724d8/sprites.png</filename>
         <key>flipPVR</key>
         <false/>
         <key>pvrQualityLevel</key>
@@ -64,7 +64,7 @@
             </struct>
         </struct>
         <key>shapePadding</key>
-        <uint>0</uint>
+        <uint>2</uint>
         <key>jpgQuality</key>
         <uint>80</uint>
         <key>pngOptimizationLevel</key>
@@ -72,11 +72,11 @@
         <key>webpQualityLevel</key>
         <uint>101</uint>
         <key>textureSubPath</key>
-        <string></string>
+        <string>./sprites.png</string>
         <key>textureFormat</key>
         <enum type="SettingsBase::TextureFormat">png8</enum>
         <key>borderPadding</key>
-        <uint>0</uint>
+        <uint>2</uint>
         <key>maxTextureSize</key>
         <QSize>
             <key>width</key>
@@ -94,7 +94,7 @@
         <key>algorithmSettings</key>
         <struct type="AlgorithmSettings">
             <key>algorithm</key>
-            <enum type="AlgorithmSettings::AlgorithmId">MaxRects</enum>
+            <enum type="AlgorithmSettings::AlgorithmId">Basic</enum>
             <key>freeSizeMode</key>
             <enum type="AlgorithmSettings::AlgorithmFreeSizeMode">Best</enum>
             <key>sizeConstraints</key>
@@ -124,7 +124,7 @@
             <key>data</key>
             <struct type="DataFile">
                 <key>name</key>
-                <filename>../5edd3be7/sprites.json</filename>
+                <filename>../64ebf75b/sprites.json</filename>
             </struct>
         </map>
         <key>multiPackMode</key>
@@ -161,9 +161,9 @@
             <key>trimThreshold</key>
             <uint>1</uint>
             <key>trimMargin</key>
-            <uint>1</uint>
+            <uint>0</uint>
             <key>trimMode</key>
-            <enum type="SpriteSettings::TrimMode">Trim</enum>
+            <enum type="SpriteSettings::TrimMode">None</enum>
             <key>tracerTolerance</key>
             <int>200</int>
             <key>heuristicMask</key>
@@ -175,50 +175,122 @@
         </struct>
         <key>individualSpriteSettings</key>
         <map type="IndividualSpriteSettingsMap">
-            <key type="filename">../468300fe/sprites/belt-left/0.png</key>
-            <key type="filename">../468300fe/sprites/belt-left/1.png</key>
-            <key type="filename">../468300fe/sprites/belt-left/2.png</key>
-            <key type="filename">../468300fe/sprites/belt-left/3.png</key>
-            <key type="filename">../468300fe/sprites/belt-left/4.png</key>
-            <key type="filename">../468300fe/sprites/belt-left/5.png</key>
-            <key type="filename">../468300fe/sprites/belt-left/6.png</key>
-            <key type="filename">../468300fe/sprites/belt-left/7.png</key>
-            <key type="filename">../468300fe/sprites/belt-ramp-down/0.png</key>
-            <key type="filename">../468300fe/sprites/belt-ramp-down/1.png</key>
-            <key type="filename">../468300fe/sprites/belt-ramp-down/2.png</key>
-            <key type="filename">../468300fe/sprites/belt-ramp-down/3.png</key>
-            <key type="filename">../468300fe/sprites/belt-ramp-down/4.png</key>
-            <key type="filename">../468300fe/sprites/belt-ramp-down/5.png</key>
-            <key type="filename">../468300fe/sprites/belt-ramp-down/6.png</key>
-            <key type="filename">../468300fe/sprites/belt-ramp-down/7.png</key>
-            <key type="filename">../468300fe/sprites/belt-right/0.png</key>
-            <key type="filename">../468300fe/sprites/belt-right/1.png</key>
-            <key type="filename">../468300fe/sprites/belt-right/2.png</key>
-            <key type="filename">../468300fe/sprites/belt-right/3.png</key>
-            <key type="filename">../468300fe/sprites/belt-right/4.png</key>
-            <key type="filename">../468300fe/sprites/belt-right/5.png</key>
-            <key type="filename">../468300fe/sprites/belt-right/6.png</key>
-            <key type="filename">../468300fe/sprites/belt-right/7.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight-unconnected/0.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight-unconnected/1.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight-unconnected/2.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight-unconnected/3.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight-unconnected/4.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight-unconnected/5.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight-unconnected/6.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight-unconnected/7.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight/0.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight/1.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight/2.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight/3.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight/4.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight/5.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight/6.png</key>
-            <key type="filename">../468300fe/sprites/belt-straight/7.png</key>
-            <key type="filename">../468300fe/sprites/items/1.png</key>
-            <key type="filename">../468300fe/sprites/items/2.png</key>
-            <key type="filename">../468300fe/sprites/items/3.png</key>
-            <key type="filename">../468300fe/sprites/items/4.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left-unconnected-output/0.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left-unconnected-output/1.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left-unconnected-output/2.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left-unconnected-output/3.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left-unconnected-output/4.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left-unconnected-output/5.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left-unconnected-output/6.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left-unconnected-output/7.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left/0.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left/1.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left/2.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left/3.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left/4.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left/5.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left/6.png</key>
+            <key type="filename">../402f09d2/sprites/belt-left/7.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down-unconnected/0.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down-unconnected/1.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down-unconnected/2.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down-unconnected/3.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down-unconnected/4.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down-unconnected/5.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down-unconnected/6.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down-unconnected/7.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down/0.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down/1.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down/2.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down/3.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down/4.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down/5.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down/6.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down/7.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up-unconnected/0.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up-unconnected/1.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up-unconnected/2.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up-unconnected/3.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up-unconnected/4.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up-unconnected/5.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up-unconnected/6.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up-unconnected/7.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up/0.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up/1.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up/2.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up/3.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up/4.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up/5.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up/6.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up/7.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right-unconnected-output/0.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right-unconnected-output/1.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right-unconnected-output/2.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right-unconnected-output/3.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right-unconnected-output/4.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right-unconnected-output/5.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right-unconnected-output/6.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right-unconnected-output/7.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right/0.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right/1.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right/2.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right/3.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right/4.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right/5.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right/6.png</key>
+            <key type="filename">../402f09d2/sprites/belt-right/7.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-input/0.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-input/1.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-input/2.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-input/3.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-input/4.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-input/5.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-input/6.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-input/7.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-output/0.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-output/1.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-output/2.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-output/3.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-output/4.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-output/5.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-output/6.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected-output/7.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected/0.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected/1.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected/2.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected/3.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected/4.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected/5.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected/6.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight-unconnected/7.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight/0.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight/1.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight/2.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight/3.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight/4.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight/5.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight/6.png</key>
+            <key type="filename">../402f09d2/sprites/belt-straight/7.png</key>
+            <key type="filename">../402f09d2/sprites/items/1.png</key>
+            <key type="filename">../402f09d2/sprites/items/2.png</key>
+            <key type="filename">../402f09d2/sprites/items/3.png</key>
+            <key type="filename">../402f09d2/sprites/items/4.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-down/0.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-down/1.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-down/2.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-down/3.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-down/4.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-down/5.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-down/6.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-down/7.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-up/0.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-up/1.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-up/2.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-up/3.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-up/4.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-up/5.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-up/6.png</key>
+            <key type="filename">../402f09d2/sprites/machine-connection-up/7.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0,0</point_f>
@@ -233,7 +305,24 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">../468300fe/sprites/splitter/1.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-down/mask.png</key>
+            <key type="filename">../402f09d2/sprites/belt-ramp-up/mask.png</key>
+            <struct type="IndividualSpriteSettings">
+                <key>pivotPoint</key>
+                <point_f>0,0</point_f>
+                <key>spriteScale</key>
+                <double>1</double>
+                <key>scale9Enabled</key>
+                <false/>
+                <key>scale9Borders</key>
+                <rect>8,8,15,16</rect>
+                <key>scale9Paddings</key>
+                <rect>8,8,15,16</rect>
+                <key>scale9FromFile</key>
+                <false/>
+            </struct>
+            <key type="filename">../402f09d2/sprites/splitter/1.png</key>
+            <key type="filename">../402f09d2/sprites/splitter/mask.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0,0</point_f>
@@ -255,7 +344,7 @@
             <struct type="SpriteSheet">
                 <key>files</key>
                 <array>
-                    <filename>../468300fe/sprites</filename>
+                    <filename>../402f09d2/sprites</filename>
                 </array>
             </struct>
         </map>
