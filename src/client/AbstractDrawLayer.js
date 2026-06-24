@@ -30,4 +30,12 @@ export class AbstractDrawLayer extends Container {
     onEvent(event) {
         throw new NotImplementedError();
     }
+
+    /**
+     * Toggles map mode for this layer. In map mode the layer should render its
+     * objects as simple geometry instead of sprites. Optional hook — layers with
+     * no geometry representation ignore it.
+     * @param {boolean} value
+     */
+    set lowRes(value) {}
 }

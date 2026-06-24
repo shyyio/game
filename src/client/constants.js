@@ -2,6 +2,11 @@ import {CHUNK_SIZE} from "@/common/constants.js";
 
 export const TILE_SIZE = 64;
 
+// Viewport scale below which the client switches to map mode: objects render as
+// plain geometry instead of sprites and tile hover is disabled. Sits between the
+// viewport's minScale (0.05) and maxScale (2).
+export const MAP_MODE_SCALE_THRESHOLD = 0.25;
+
 export function snapToTile(n) {
     return Math.floor(n / TILE_SIZE) * TILE_SIZE;
 }

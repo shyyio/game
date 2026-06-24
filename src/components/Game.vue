@@ -131,7 +131,6 @@ onMounted(async () => {
       .clampZoom({
         maxScale: 2,
         minScale: 0.05
-        // TODO: when zooming out too much, switch to a simplified grid view (?)
       });
 
   if (isMobile.any) {
@@ -182,6 +181,15 @@ onMounted(async () => {
   });
   inputHandler.init();
   inputHandlerRef.value = inputHandler;
+
+  // Map mode (zoomed far out): disable tile hover and drop any active tool's
+  // ghost preview, since no onTileExit fires once hover is off.
+  client.onMapModeChange((mapMode) => {
+    Mouse.setHoverEnabled(!mapMode);
+    if (mapMode) {
+      inputHandler.clearToolPreview();
+    }
+  });
 
   function tick() {
     game.tick(TickPhase.SUBMIT_INTENTS);

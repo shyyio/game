@@ -8,7 +8,7 @@ import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
-import {TILE_SIZE, snapToChunk} from "@/client/constants.js";
+import {TILE_SIZE, snapToChunk, MAP_MODE_SCALE_THRESHOLD} from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 import {chunkKey} from "@/common/util.js";
 import {GridDrawLayer} from "@/client/GridDrawLayer.js";
@@ -45,6 +45,18 @@ export class Client {
         });
 
         this._lastViewportKey = null;
+        this._mapMode = false;
+        this._onMapModeChange = null;
+    }
+
+    /**
+     * Registers the handler invoked when the client enters or leaves map mode
+     * (zoomed out past {@link MAP_MODE_SCALE_THRESHOLD}). The draw layers switch
+     * to geometry on their own; this lets the host wire up the hover/tool side.
+     * @param {function(mapMode: boolean)} callback
+     */
+    onMapModeChange(callback) {
+        this._onMapModeChange = callback;
     }
 
     /**
@@ -62,8 +74,29 @@ export class Client {
         this.app.stage.addChild(this.directionWheelLayer);
 
         this.viewport.on("moved", () => this._updateViewportChunks());
-        this.viewport.on("zoomed", () => this._updateViewportChunks());
+        this.viewport.on("zoomed", () => {
+            this._updateViewportChunks();
+            this._updateMapMode();
+        });
         this._updateViewportChunks();
+        this._updateMapMode();
+    }
+
+    /**
+     * Switches between sprite and map (geometry) rendering when the viewport
+     * scale crosses {@link MAP_MODE_SCALE_THRESHOLD}.
+     * @private
+     */
+    _updateMapMode() {
+        const mapMode = this.viewport.scale.x < MAP_MODE_SCALE_THRESHOLD;
+        if (mapMode === this._mapMode) {
+            return;
+        }
+        this._mapMode = mapMode;
+        this.drawLayerRegistry.setLowRes(mapMode);
+        if (this._onMapModeChange != null) {
+            this._onMapModeChange(mapMode);
+        }
     }
 
     /**

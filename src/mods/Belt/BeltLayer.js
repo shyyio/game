@@ -1,6 +1,10 @@
 import {Graphics, Sprite, Texture, TILE_SIZE, Direction, AbstractDrawLayer} from "@/sdk/client.js";
 import {BeltBend, BeltType} from "./constants.js";
 
+// Map-mode tile fill colors, keyed by belt type.
+const MAP_TILE_COLOR = 0xf7df9e;
+const MAP_RAMP_COLOR = 0xc8a16e;
+
 /**
  * The spritesheet frame name for a belt of the given bend and type. Shared by
  * the live belt layer and the ghost preview layer so both pick identical art.
@@ -77,19 +81,45 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     constructor() {
         super();
 
-        this.itemMask = new Graphics();
-        this.addChild(this.itemMask);
-
         this._belts = {};
-        this._masks = {};
+        this._lowResBelts = {};
+        this._lowRes = false;
     }
 
     get layerIndex() {
         return 10;
     }
 
+    /**
+     * Toggles map mode by swapping each belt's full sprite for its persistent
+     * low-res rectangle (both are kept loaded, so this is just a visibility flip).
+     * @param {boolean} value
+     */
     set lowRes(value) {
-        // TODO: render belts as simple geometry at low res
+        this._lowRes = value;
+        Object.values(this._belts).forEach(sprite => {
+            sprite.visible = !value;
+        });
+        Object.values(this._lowResBelts).forEach(sprite => {
+            sprite.visible = value;
+        });
+    }
+
+    /**
+     * Builds the persistent low-res rectangle shown for a belt in map mode,
+     * colored by belt type and positioned over its tile.
+     * @param {BeltSprite} sprite
+     * @returns {Graphics}
+     * @private
+     */
+    _createLowResBelt(sprite) {
+        const color = sprite.type === BeltType.NORMAL ? MAP_TILE_COLOR : MAP_RAMP_COLOR;
+        const lowResSprite = new Graphics();
+        lowResSprite
+            .rect(sprite.tileX * TILE_SIZE, sprite.tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+            .fill(color);
+        lowResSprite.visible = this._lowRes;
+        return lowResSprite;
     }
 
     /**
@@ -119,11 +149,12 @@ export class BeltDrawLayer extends AbstractDrawLayer {
         const sprite = new BeltSprite(id, x, y, direction, bend, type, texture);
         this.addChild(sprite);
 
-        if (sprite.type !== BeltType.NORMAL) {
-            this._addMask(sprite.id, sprite.getItemMask());
-        }
-
         this._belts[sprite.id] = sprite;
+        sprite.visible = !this._lowRes;
+
+        const lowResSprite = this._createLowResBelt(sprite);
+        this._lowResBelts[sprite.id] = lowResSprite;
+        this.addChild(lowResSprite);
     }
 
     /**
@@ -146,15 +177,6 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     /**
      * @param {BigInt} id
      */
-    hideBelt(id) {
-        this.children.forEach(sprite => {
-            sprite.visible = sprite.id !== id;
-        });
-    }
-
-    /**
-     * @param {BigInt} id
-     */
     removeBelt(id) {
         const belt = this._belts[id];
 
@@ -165,19 +187,13 @@ export class BeltDrawLayer extends AbstractDrawLayer {
         belt.destroy();
         this.removeChild(belt);
         delete this._belts[id];
-    }
 
-    _addMask(id, rect) {
-        this._masks[id] = rect;
-        this._updateMask();
-    }
-
-    _updateMask() {
-        this.itemMask.clear();
-        Object.values(this._masks).forEach(rect => {
-            this.itemMask.rect(rect.x, rect.y, rect.width, rect.height);
-        });
-        this.itemMask.fill(0xFFFFFF);
+        const lowResBelt = this._lowResBelts[id];
+        if (lowResBelt !== undefined) {
+            lowResBelt.destroy();
+            this.removeChild(lowResBelt);
+            delete this._lowResBelts[id];
+        }
     }
 
     /**
@@ -216,23 +232,6 @@ export class BeltSprite extends Sprite {
         this.type = type;
 
         this.position.set(x * TILE_SIZE + 32, y * TILE_SIZE + 32);
-    }
-
-    /**
-     * @returns {{x: number, y: number, width: number, height: number}}
-     */
-    getItemMask() {
-        if (this.type === BeltType.RAMP_UP || this.type === BeltType.RAMP_DOWN) {
-            // TODO
-            return {x: this.x, y: this.y, width: 0, height: 0};
-        }
-
-        return {
-            x: this.x - 32,
-            y: this.y - 32,
-            width: TILE_SIZE,
-            height: TILE_SIZE
-        };
     }
 
     set ghost(value) {
