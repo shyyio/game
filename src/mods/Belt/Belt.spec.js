@@ -501,9 +501,9 @@ test("Collapses a zero-gap tunnel when the up ramp is deleted", async () => {
 
 test("Reconnects a surviving entrance to a free exit in range when the paired exit is deleted", async () => {
     const game = await setup();
-    createBelt(game, GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
-    createBelt(game, GameObject.RAMP_UP, {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 1n});
-    createBelt(game, GameObject.RAMP_UP, {x: 5, y: 1, direction: Direction.RIGHT});
+    createBelt(game, GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT}); // 1
+    createBelt(game, GameObject.RAMP_UP, {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 1n}); // 3
+    createBelt(game, GameObject.RAMP_UP, {x: 5, y: 1, direction: Direction.RIGHT}); // 4
 
     deleteBelt(game, 3n);
 

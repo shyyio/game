@@ -572,7 +572,7 @@ export const beltStatements = {
     // (@dx, @dy) axis step, tagged with its distance, nearest first. Drives the
     // server-side ramp pairing scan when a deletion orphans a tunnel partner.
     GetBeltsAlongAxis: `
-        SELECT belt.id, belt.type, belt.direction, Numbers.value + 1 AS distance
+        SELECT belt.id, belt.x, belt.y, belt.type, belt.direction, Numbers.value + 1 AS distance
         FROM Numbers
             INNER JOIN Belt belt
                 ON belt.x = @x + @dx * (Numbers.value + 1)

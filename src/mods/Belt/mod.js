@@ -4,6 +4,7 @@ import {
     chunkKey,
     upstreamPorts,
     downstreamPorts,
+    Direction,
 } from "@/sdk/common.js";
 import {CreateBeltMessage, DeleteBeltMessage} from "./messages.js";
 import {
@@ -666,9 +667,7 @@ export class BeltMod extends AbstractMod {
     }
 
     /**
-     * The opposite-end ramp of @belt's tunnel (its surviving partner once @belt is
-     * deleted), or null for a lone ramp or non-ramp belt. Captured before the
-     * deletion mutates the parent_id chain it walks.
+     * The opposite-end ramp of @belt's tunnel, or null for a lone ramp or non-ramp belt.
      * @private
      * @param {{type: number}} belt
      * @param {BigInt} id
@@ -685,11 +684,7 @@ export class BeltMod extends AbstractMod {
     }
 
     /**
-     * After a deletion orphans a tunnel's surviving ramp, scans its axis for another
-     * unpaired ramp now within reach and, if found, rebuilds the tunnel between them
-     * (preserving in-flight items through the standard create path). A no-op when the
-     * ramp didn't have a partner, no candidate is reachable, or the only candidate
-     * sits directly adjacent (a zero-length tunnel, left for the player to place).
+     * Rebuilds a tunnel from an orphaned surviving ramp to a free partner now within reach.
      * @private
      * @param {{id: BigInt, x: number, y: number, type: number, direction: Direction}|null} orphanedRamp
      */
@@ -732,11 +727,7 @@ export class BeltMod extends AbstractMod {
     }
 
     /**
-     * Scans the surviving ramp's axis for the nearest unpaired complementary ramp it
-     * can tunnel to (mirroring the client's placement pairing): an exit looks upstream
-     * for a free entrance, an entrance downstream for a free exit. Returns that ramp,
-     * or null when the path is blocked by a same-type ramp, the gap already holds an
-     * underground, the candidate is already paired, or nothing is in range.
+     * The nearest unpaired complementary ramp the surviving ramp can tunnel to along its axis, or null.
      * @private
      * @param {{x: number, y: number, type: number, direction: Direction}} survivor
      * @returns {{id: BigInt, x: number, y: number, type: number, direction: Direction}|null}
@@ -776,11 +767,11 @@ export class BeltMod extends AbstractMod {
         // ours, so refuse rather than abort the whole removal. A perpendicular one is
         // a crossing tunnel our undergrounds can share the tile with (see the
         // axis-aware Belt_x_y_underground index), so it doesn't block.
-        const axis = survivor.direction % 2;
+        const axis = Direction.axis(survivor.direction);
         const gapBlocked = rows.some(row =>
             row.type === BELT_UNDERGROUND
             && row.distance < candidate.distance
-            && row.direction % 2 === axis
+            && Direction.axis(row.direction) === axis
         );
         if (gapBlocked) {
             return null;
@@ -794,8 +785,7 @@ export class BeltMod extends AbstractMod {
             return null;
         }
 
-        const belt = this.game.querySingle("GetBelt", {id: candidate.id});
-        return {id: candidate.id, x: belt.x, y: belt.y, type: candidate.type, direction: belt.direction};
+        return {id: candidate.id, x: candidate.x, y: candidate.y, type: candidate.type, direction: candidate.direction};
     }
 
     // ---- Helpers ----

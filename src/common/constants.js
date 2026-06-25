@@ -59,6 +59,15 @@ export const Direction = {
     },
 
     /**
+     * The axis a direction runs on: 0 for vertical (UP/DOWN), 1 for horizontal (RIGHT/LEFT).
+     * @param {Direction} direction
+     * @returns {number}
+     */
+    axis(direction) {
+        return direction % 2;
+    },
+
+    /**
      * Returns the Direction for a unit cardinal delta (dx, dy); throws otherwise.
      * @param {number} dx
      * @param {number} dy
