@@ -12,7 +12,7 @@ import {
     BELT_UNDERGROUND,
     MAX_UNDERGROUND_LENGTH,
 } from "./constants.js";
-import {getUndergroundBeltsToCreate} from "./geometry.js";
+import {getUndergroundBeltsToCreate, tunnelStep} from "./geometry.js";
 import {beltSchema, beltTempSchema} from "./schema.js";
 import {BeltDefinition} from "./definitions.js";
 import {beltStatements} from "./statements.js";
@@ -432,6 +432,12 @@ export class BeltMod extends AbstractMod {
         // feeder geometry is captured pre-deletion); heal after the removal settles.
         const loopSeam = recursive ? null : this._loopSeam(id);
 
+        // Capture this ramp's tunnel partner (the opposite-end ramp) before the
+        // deletion tears the chain down: once it survives orphaned, the removal can
+        // try to re-link it to another ramp now within reach. Detect pre-mutation
+        // (the parent_id chain is still intact); reconnect after the removal settles.
+        const orphanedRamp = recursive ? null : this._tunnelPartner(belt, id);
+
         this._stashOutputItem(id);
 
         let {child, parentId} = this._eraseBelt(id);
@@ -467,7 +473,7 @@ export class BeltMod extends AbstractMod {
         }
 
         if (!recursive) {
-            this._finalizeRemoval(fillHeadGap, loopSeam);
+            this._finalizeRemoval(fillHeadGap, loopSeam, orphanedRamp);
         }
     }
 
@@ -628,12 +634,14 @@ export class BeltMod extends AbstractMod {
     }
 
     /**
-     * Top-level wrap-up: un-stash items, refill each touched path's head_gap, heal the loop seam, then commit.
+     * Top-level wrap-up: un-stash items, refill each touched path's head_gap, heal the
+     * loop seam, re-link an orphaned tunnel partner, then commit.
      * @private
      * @param {BigInt[]} fillHeadGap
      * @param {{head: BigInt, upstreamNeighbor: BigInt}|null} loopSeam
+     * @param {{id: BigInt, x: number, y: number, type: number, direction: Direction}|null} orphanedRamp
      */
-    _finalizeRemoval(fillHeadGap, loopSeam) {
+    _finalizeRemoval(fillHeadGap, loopSeam, orphanedRamp) {
         this._unStashItems();
         this._unStashOutputItem();
 
@@ -652,8 +660,137 @@ export class BeltMod extends AbstractMod {
         });
 
         this._healLoopSeam(loopSeam);
+        this._reconnectOrphanedRamp(orphanedRamp);
 
         this.game.end();
+    }
+
+    /**
+     * The opposite-end ramp of @belt's tunnel (its surviving partner once @belt is
+     * deleted), or null for a lone ramp or non-ramp belt. Captured before the
+     * deletion mutates the parent_id chain it walks.
+     * @private
+     * @param {{type: number}} belt
+     * @param {BigInt} id
+     * @returns {{id: BigInt, x: number, y: number, type: number, direction: Direction}|null}
+     */
+    _tunnelPartner(belt, id) {
+        if (belt.type === BELT_RAMP_DOWN) {
+            return this.game.querySingle("GetDownstreamRamp", {id});
+        }
+        if (belt.type === BELT_RAMP_UP) {
+            return this.game.querySingle("GetUpstreamRamp", {id});
+        }
+        return null;
+    }
+
+    /**
+     * After a deletion orphans a tunnel's surviving ramp, scans its axis for another
+     * unpaired ramp now within reach and, if found, rebuilds the tunnel between them
+     * (preserving in-flight items through the standard create path). A no-op when the
+     * ramp didn't have a partner, no candidate is reachable, or the only candidate
+     * sits directly adjacent (a zero-length tunnel, left for the player to place).
+     * @private
+     * @param {{id: BigInt, x: number, y: number, type: number, direction: Direction}|null} orphanedRamp
+     */
+    _reconnectOrphanedRamp(orphanedRamp) {
+        if (orphanedRamp === null) {
+            return;
+        }
+        // The partner survives the collapse, but guard against it having been
+        // consumed by another step of this removal before re-querying.
+        const survivor = this.game.querySingle("GetBelt", {id: orphanedRamp.id});
+        if (survivor === null) {
+            return;
+        }
+
+        const candidate = this._findReconnectRamp(orphanedRamp);
+        if (candidate === null) {
+            return;
+        }
+
+        // Order the pair entrance-first so the buried tiles read along the flow.
+        const entrance = orphanedRamp.type === BELT_RAMP_DOWN ? orphanedRamp : candidate;
+        const exit = orphanedRamp.type === BELT_RAMP_DOWN ? candidate : orphanedRamp;
+        const undergrounds = getUndergroundBeltsToCreate(entrance, exit);
+        if (undergrounds.length === 0) {
+            return;
+        }
+
+        // Laying the undergrounds entrance-to-exit re-links the whole chain: each
+        // underground picks up its upstream parent, and the last one re-parents the
+        // exit, folding its orphaned path back in (items stashed/un-stashed by the
+        // shared create path). transaction=false keeps it inside this removal.
+        undergrounds.forEach(underground => {
+            this._createBelt({
+                x: underground.x,
+                y: underground.y,
+                direction: entrance.direction,
+                type: BELT_UNDERGROUND,
+            }, false);
+        });
+    }
+
+    /**
+     * Scans the surviving ramp's axis for the nearest unpaired complementary ramp it
+     * can tunnel to (mirroring the client's placement pairing): an exit looks upstream
+     * for a free entrance, an entrance downstream for a free exit. Returns that ramp,
+     * or null when the path is blocked by a same-type ramp, the gap already holds an
+     * underground, the candidate is already paired, or nothing is in range.
+     * @private
+     * @param {{x: number, y: number, type: number, direction: Direction}} survivor
+     * @returns {{id: BigInt, x: number, y: number, type: number, direction: Direction}|null}
+     */
+    _findReconnectRamp(survivor) {
+        const {dx, dy} = tunnelStep(survivor.type, survivor.direction);
+        const complementaryType = survivor.type === BELT_RAMP_UP ? BELT_RAMP_DOWN : BELT_RAMP_UP;
+        const rows = this.game.query("GetBeltsAlongAxis", {
+            x: survivor.x,
+            y: survivor.y,
+            dx,
+            dy,
+            maxSteps: MAX_UNDERGROUND_LENGTH + 1,
+        });
+
+        // rows arrive nearest-first; stop at the first surface ramp. A same-type ramp
+        // blocks pairing; the complementary ramp facing the same way is the candidate;
+        // anything else (normal belts, buried undergrounds) the tunnel passes under.
+        let candidate = null;
+        for (let i = 0; i < rows.length && candidate === null; i += 1) {
+            const row = rows[i];
+            if (row.type === BELT_UNDERGROUND) {
+                continue;
+            }
+            if (row.type === survivor.type) {
+                return null;
+            }
+            if (row.type === complementaryType && row.direction === survivor.direction) {
+                candidate = row;
+            }
+        }
+        if (candidate === null) {
+            return null;
+        }
+
+        // A crossing tunnel's underground in the gap would collide with ours (one
+        // underground per tile), so refuse rather than abort the whole removal.
+        const gapHasUnderground = rows.some(row =>
+            row.type === BELT_UNDERGROUND && row.distance < candidate.distance
+        );
+        if (gapHasUnderground) {
+            return null;
+        }
+
+        // Only adopt a free ramp; never steal one already serving its own tunnel.
+        const candidatePaired = complementaryType === BELT_RAMP_DOWN
+            ? this.game.querySingle("GetDownstreamRamp", {id: candidate.id})
+            : this.game.querySingle("GetUpstreamRamp", {id: candidate.id});
+        if (candidatePaired !== null) {
+            return null;
+        }
+
+        const belt = this.game.querySingle("GetBelt", {id: candidate.id});
+        return {id: candidate.id, x: belt.x, y: belt.y, type: candidate.type, direction: belt.direction};
     }
 
     // ---- Helpers ----

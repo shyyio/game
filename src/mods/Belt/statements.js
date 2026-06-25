@@ -530,6 +530,57 @@ export const beltStatements = {
         WHERE type = ${BELT_UNDERGROUND};
     `,
 
+    // The RAMP_UP a RAMP_DOWN entrance tunnels into: follows the child chain
+    // (each belt's parent_id points at the one feeding it) downstream through the
+    // buried undergrounds until the surfacing exit. Empty for a lone entrance.
+    GetDownstreamRamp: `
+        WITH RECURSIVE chain AS (
+            SELECT id, type FROM Belt WHERE id = CAST(@id AS INT)
+            UNION
+            SELECT child.id, child.type
+            FROM Belt child
+                INNER JOIN chain ON child.parent_id = chain.id
+                    AND chain.type IN (${BELT_RAMP_DOWN}, ${BELT_UNDERGROUND})
+        )
+        SELECT belt.id, belt.x, belt.y, belt.type, belt.direction
+        FROM chain
+            INNER JOIN Belt belt ON belt.id = chain.id
+        WHERE chain.type = ${BELT_RAMP_UP}
+        LIMIT 1;
+    `,
+
+    // The RAMP_DOWN entrance feeding a RAMP_UP exit: follows the parent chain
+    // upstream through the buried undergrounds back to the entrance. Empty for a
+    // lone exit.
+    GetUpstreamRamp: `
+        WITH RECURSIVE chain AS (
+            SELECT id, parent_id, type FROM Belt WHERE id = CAST(@id AS INT)
+            UNION
+            SELECT parent.id, parent.parent_id, parent.type
+            FROM Belt parent
+                INNER JOIN chain ON chain.parent_id = parent.id
+                    AND chain.type IN (${BELT_RAMP_UP}, ${BELT_UNDERGROUND})
+        )
+        SELECT belt.id, belt.x, belt.y, belt.type, belt.direction
+        FROM chain
+            INNER JOIN Belt belt ON belt.id = chain.id
+        WHERE chain.type = ${BELT_RAMP_DOWN}
+        LIMIT 1;
+    `,
+
+    // Every belt sitting on the @maxSteps tiles ahead of (@x, @y) along the
+    // (@dx, @dy) axis step, tagged with its distance, nearest first. Drives the
+    // server-side ramp pairing scan when a deletion orphans a tunnel partner.
+    GetBeltsAlongAxis: `
+        SELECT belt.id, belt.type, belt.direction, Numbers.value + 1 AS distance
+        FROM Numbers
+            INNER JOIN Belt belt
+                ON belt.x = @x + @dx * (Numbers.value + 1)
+               AND belt.y = @y + @dy * (Numbers.value + 1)
+        WHERE Numbers.value + 1 <= @maxSteps
+        ORDER BY distance;
+    `,
+
     InsertBeltPath: `
         INSERT INTO BeltPath (id) VALUES (CAST(@id AS INT))
         ON CONFLICT DO NOTHING

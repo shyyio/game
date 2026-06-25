@@ -499,6 +499,100 @@ test("Collapses a zero-gap tunnel when the up ramp is deleted", async () => {
     assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 1);
 });
 
+test("Reconnects a surviving entrance to a free exit in range when the paired exit is deleted", async () => {
+    const game = await setup();
+    createBelt(game, GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
+    createBelt(game, GameObject.RAMP_UP, {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 1n});
+    createBelt(game, GameObject.RAMP_UP, {x: 5, y: 1, direction: Direction.RIGHT});
+
+    deleteBelt(game, 3n);
+
+    // Entrance 1 re-tunnels across the freed tiles to the lone exit 4, forming one path.
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=1 AND length=(5*2-1)"), 1);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt"), 5);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 1);
+    assert.equal(game.rawScalar("SELECT COUNT(DISTINCT path_id) FROM Belt"), 1);
+});
+
+test("Reconnects a surviving exit to a free entrance in range when the paired entrance is deleted", async () => {
+    const game = await setup();
+    createBelt(game, GameObject.RAMP_DOWN, {x: 3, y: 1, direction: Direction.RIGHT});
+    createBelt(game, GameObject.RAMP_UP, {x: 5, y: 1, direction: Direction.RIGHT, rampParent: 1n});
+    createBelt(game, GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
+
+    deleteBelt(game, 1n);
+
+    // Exit 3 re-tunnels back to the lone entrance 4, which heads the new path.
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=4 AND length=(5*2-1)"), 1);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt"), 5);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 1);
+    assert.equal(game.rawScalar("SELECT COUNT(DISTINCT path_id) FROM Belt"), 1);
+});
+
+test("Preserves a stalled item when a surviving entrance re-tunnels to a free exit", async () => {
+    const game = await setup();
+    createBelt(game, GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
+    createBelt(game, GameObject.RAMP_UP, {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 1n});
+    createBelt(game, GameObject.RAMP_UP, {x: 5, y: 1, direction: Direction.RIGHT});
+
+    game.rawExec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=1)");
+    game.tickAll();
+
+    deleteBelt(game, 3n);
+
+    // The in-flight item rides onto the re-tunnelled path rather than vanishing.
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPathItem WHERE path_id=1 AND type=1"), 1);
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=1 AND length=(5*2-1)"), 1);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt"), 5);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 1);
+});
+
+test("Does not reconnect a surviving entrance through an intervening same-type ramp", async () => {
+    const game = await setup();
+    createBelt(game, GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
+    createBelt(game, GameObject.RAMP_UP, {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 1n});
+    createBelt(game, GameObject.RAMP_DOWN, {x: 5, y: 1, direction: Direction.RIGHT});
+
+    deleteBelt(game, 3n);
+
+    // The only ramp in range is another entrance, which blocks pairing; 1 stays lone.
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=1 AND length=1"), 1);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt"), 2);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 2);
+});
+
+test("Does not reconnect a surviving entrance to an exit beyond tunnel range", async () => {
+    const game = await setup();
+    createBelt(game, GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
+    createBelt(game, GameObject.RAMP_UP, {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 1n});
+    createBelt(game, GameObject.RAMP_UP, {x: 1 + MAX_UNDERGROUND_LENGTH + 2, y: 1, direction: Direction.RIGHT});
+
+    deleteBelt(game, 3n);
+
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=1 AND length=1"), 1);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt"), 2);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 2);
+});
+
+test("Skips reconnection when a crossing tunnel buries the gap, leaving the deletion intact", async () => {
+    const game = await setup();
+    createBelt(game, GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
+    createBelt(game, GameObject.RAMP_UP, {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 1n});
+    createBelt(game, GameObject.RAMP_UP, {x: 5, y: 1, direction: Direction.RIGHT});
+
+    // A perpendicular tunnel buries an underground at (4,1), inside the would-be gap.
+    createBelt(game, GameObject.RAMP_DOWN, {x: 4, y: -1, direction: Direction.DOWN});
+    createBelt(game, GameObject.RAMP_UP, {x: 4, y: 2, direction: Direction.DOWN, rampParent: 5n});
+
+    deleteBelt(game, 3n);
+
+    // A new underground would collide with the crossing one, so 1 stays lone and the
+    // crossing tunnel is untouched.
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=1 AND length=1"), 1);
+    assert.equal(game.rawScalar(`SELECT 1 FROM Belt WHERE x=4 AND y=1 AND type=${BeltType.UNDERGROUND}`), 1);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt"), 6);
+});
+
 test("Moves items through a zero-gap tunnel across a chunk boundary and collapses on delete", async () => {
     const game = await setup();
     createBelt(game, GameObject.RAMP_DOWN, {x: -1, y: 1, direction: Direction.RIGHT});
