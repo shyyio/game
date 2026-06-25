@@ -25,7 +25,7 @@ const clientRef = shallowRef(null);
 
 // Mobile mode (touch device): panning stays live while a tool is active so the
 // player can aim the screen-center crosshair, hover/placement lock to center, and
-// the pixi rotate buttons replace the "r" key.
+// the pixi rotate button replaces the "r" key.
 const mobile = isMobile.any;
 
 // Map mode (zoomed far out) temporarily deactivates the active tool: the cursor acts
@@ -41,7 +41,7 @@ watch(effectiveTool, (tool) => {
     inputHandlerRef.value.clearInspect();
     inputHandlerRef.value.refreshHover();
   }
-  // The rotate controls are shown on both desktop and mobile while a tool is active.
+  // The rotate button is shown on both desktop and mobile while a tool is active.
   if (rotateButtonsRef.value != null) {
     rotateButtonsRef.value.setVisible(tool != null);
   }
@@ -202,12 +202,9 @@ onMounted(async () => {
   inputHandler.init();
   inputHandlerRef.value = inputHandler;
 
-  // Wire the pixi rotate buttons (shown while a tool is active, desktop or mobile).
+  // Wire the pixi rotate button (shown while a tool is active, desktop or mobile).
   rotateButtonsRef.value = client.rotateButtonsLayer;
-  client.rotateButtonsLayer.onRotate(
-      () => inputHandler.rotateLeft(),
-      () => inputHandler.rotateRight(),
-  );
+  client.rotateButtonsLayer.onRotate(() => inputHandler.rotateRight());
 
   // Map mode (zoomed far out): deactivate the active tool and disable tile hover via
   // the input handler, then flip the reactive flag so the effective-tool watcher

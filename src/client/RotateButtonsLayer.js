@@ -2,50 +2,44 @@ import {Container, Graphics, Text} from "pixi.js";
 import Haptics from "@/client/Haptics.js";
 
 const BUTTON_SIZE = 56;
-const BUTTON_GAP = 12;
 const BUTTON_RADIUS = 8;
 // Sits above the bottom-centered tool toolbar, anchored to the bottom-right.
 const MARGIN_BOTTOM = 96;
 const MARGIN_RIGHT = 24;
 
 /**
- * On-screen pixi buttons that rotate the active tool, toggled with the tool selection.
+ * On-screen pixi button that rotates the active tool clockwise, toggled with the tool selection.
  */
 export class RotateButtonsLayer extends Container {
 
     /**
-     * @param {Application} app - the canvas/stage these buttons live in (screen space)
+     * @param {Application} app - the canvas/stage this button lives in (screen space)
      * @param {ClientViewport} viewport - the game area; its screen width anchors the
-     *     buttons, since the canvas can be inset from the right edge of the window
+     *     button, since the canvas can be inset from the right edge of the window
      */
     constructor(app, viewport) {
         super();
         this._app = app;
         this._viewport = viewport;
-        this._onLeft = null;
-        this._onRight = null;
+        this._onRotate = null;
         this.visible = false;
         this.zIndex = 1000;
 
-        this._leftButton = this._createButton("↺", () => this._invoke(this._onLeft));
-        this._rightButton = this._createButton("↻", () => this._invoke(this._onRight));
-        this.addChild(this._leftButton);
-        this.addChild(this._rightButton);
+        this._button = this._createButton("↻", () => this._invoke(this._onRotate));
+        this.addChild(this._button);
 
-        // Re-anchor every frame so the buttons track the game area through window
+        // Re-anchor every frame so the button tracks the game area through window
         // resizes and changes to the canvas inset (which don't fire a renderer resize).
         this._layout();
         this._app.ticker.add(() => this._layout());
     }
 
     /**
-     * Registers the click callbacks for the two buttons.
-     * @param {function(): void} left - rotate counter-clockwise
-     * @param {function(): void} right - rotate clockwise
+     * Registers the click callback for the rotate (clockwise) button.
+     * @param {function(): void} rotate
      */
-    onRotate(left, right) {
-        this._onLeft = left;
-        this._onRight = right;
+    onRotate(rotate) {
+        this._onRotate = rotate;
     }
 
     /**
@@ -122,18 +116,13 @@ export class RotateButtonsLayer extends Container {
     }
 
     /**
-     * Stacks the two buttons vertically at the bottom-right of the screen, with the
-     * clockwise button at the bottom and the counter-clockwise button above it.
+     * Anchors the rotate button to the bottom-right of the screen.
      * @private
      */
     _layout() {
         // Anchor to the game area's right edge (the canvas may be inset from the
         // window's right), but the visible bottom is the full canvas height.
-        const x = this._viewport.screenWidth - MARGIN_RIGHT - BUTTON_SIZE;
-        const bottomY = this._app.screen.height - MARGIN_BOTTOM - BUTTON_SIZE;
-        this._rightButton.x = x;
-        this._rightButton.y = bottomY;
-        this._leftButton.x = x;
-        this._leftButton.y = bottomY - BUTTON_GAP - BUTTON_SIZE;
+        this._button.x = this._viewport.screenWidth - MARGIN_RIGHT - BUTTON_SIZE;
+        this._button.y = this._app.screen.height - MARGIN_BOTTOM - BUTTON_SIZE;
     }
 }

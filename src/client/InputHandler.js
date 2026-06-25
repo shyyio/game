@@ -183,14 +183,6 @@ export class InputHandler {
     }
 
     /**
-     * Rotates the active tool's facing direction one step counter-clockwise and
-     * refreshes its hover ghost in place.
-     */
-    rotateLeft() {
-        this._rotateActiveTool(3);
-    }
-
-    /**
      * Rotates the active tool's facing direction one step clockwise and refreshes
      * its hover ghost in place.
      */
