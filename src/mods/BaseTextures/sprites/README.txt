@@ -1,0 +1,1 @@
+This directory is a TexturePacker project. Individual sprites are published to ../sprites.png.
