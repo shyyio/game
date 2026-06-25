@@ -8,10 +8,7 @@ export class TextureRegistry {
          */
         this.textures = {};
         /**
-         * Frames grouped into ordered sequences by base name, so an animated sprite
-         * can index its frames as an array instead of rebuilding "<base>/<n>" and
-         * hashing it every tick. Built once from frame names of the form
-         * "<base>/<index>".
+         * Frames grouped into ordered sequences by base name, so animated sprites index frames as an array.
          * @type {Object.<string, Texture[]>}
          */
         this.animations = {};
@@ -27,8 +24,8 @@ export class TextureRegistry {
                 return;
             }
 
-            await Promise.all(Object.entries(mod.textureDefinitions).map(async ([name, def]) => {
-                const texture = await Assets.load({alias: name, src: def.imageUrl});
+            await Promise.all(mod.textureDefinitions.map(async def => {
+                const texture = await Assets.load(def.imageUrl);
 
                 texture.source.scaleMode = "nearest";
                 // TexturePacker sets scale=2 because source art was upscaled 2x; override so Pixi renders frames at actual pixel size.

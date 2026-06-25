@@ -1,11 +1,7 @@
 import {AbstractSession} from "@/common/AbstractSession.js";
 
 /**
- * Backend version of the session. On the server side, it is instantiated
- * when a new WS client connects.
- *
- * On the server: session = new RemoteSessionServerHandle(api, ctx);
- *                game.connect(session);
+ * Backend session handle, instantiated when a new WS client connects.
  */
 export class RemoteSessionServerHandle extends AbstractSession {
 

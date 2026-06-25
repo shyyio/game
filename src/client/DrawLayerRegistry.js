@@ -54,4 +54,14 @@ export class DrawLayerRegistry {
             layer.tick(frame);
         });
     }
+
+    /**
+     * Toggles center-lock presentation across every layer.
+     * @param {boolean} enabled
+     */
+    setCenterLock(enabled) {
+        this.layers.forEach(layer => {
+            layer.setCenterLock(enabled);
+        });
+    }
 }

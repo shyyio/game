@@ -73,6 +73,25 @@ export class ModRegistry {
     }
 
     /**
+     * Routes an inspect hover to every mod and drives the inspect-highlight layer with
+     * the tiles they return (empty clears it).
+     * @param {number|null} tileX
+     * @param {number|null} tileY
+     * @param {Client} client
+     */
+    handleInspect(tileX, tileY, client) {
+        const tiles = [];
+        this.mods.forEach(mod => {
+            const modTiles = mod.onInspect(tileX, tileY);
+            if (modTiles == null) {
+                return;
+            }
+            modTiles.forEach(tile => tiles.push(tile));
+        });
+        client.inspectLayer.show(tiles);
+    }
+
+    /**
      * Gathers every mod's individual seed events for a newly-visible chunk.
      * @param {string} chunk
      * @returns {AbstractEvent[]}
@@ -123,14 +142,14 @@ export class ModRegistry {
     }
 
     /**
-     * @param {AbstractSession} session
-     * @param {PlayerSettings} playerSettings
+     * Gathers the tools every mod makes available.
+     * @param {Client} client
      * @returns {AbstractTool[]}
      */
-    tools(session, playerSettings) {
+    tools(client) {
         const tools = [];
         this.mods.forEach(mod => {
-            const modTools = mod.tools(session, playerSettings);
+            const modTools = mod.tools(client);
             if (modTools == null) {
                 return;
             }

@@ -1,8 +1,7 @@
 import {NotImplementedError} from "@/common/error.js";
 
 /**
- * Result columns whose values must stay BigInt. Every other BigInt-valued column
- * is narrowed to Number by {@link formatRow}. Shared by both backends.
+ * Result columns whose values must stay BigInt (the rest are narrowed by {@link formatRow}).
  * @type {Set<string>}
  */
 export const BIGINT_COLS = new Set(["id", "parent_id", "belt_id", "path_id", "head", "tail_id"]);

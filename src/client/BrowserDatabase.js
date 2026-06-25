@@ -98,8 +98,7 @@ export class BrowserDatabase extends AbstractDatabase {
     }
 
     /**
-     * Execute one or more raw SQL statements, ignoring any result rows.
-     * For debugging only.
+     * Executes raw SQL ignoring result rows; for debugging only.
      * @param {string} sql
      */
     rawExec(sql) {

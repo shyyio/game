@@ -171,8 +171,7 @@ export class AbstractMod {
     }
 
     /**
-     * AbstractMessage/event classes this mod sends over the wire. Each must expose a
-     * static wireFields map.
+     * Message/event classes this mod sends over the wire (each with a static wireFields map).
      * @returns {Function[]}
      */
     get wireClasses() {
@@ -194,9 +193,7 @@ export class AbstractMod {
     }
 
     /**
-     * Client-side hook: handle an event delivered to this mod's client, updating
-     * its own world state and draw layers. The simulation-side base is a no-op;
-     * client mods override it. Defaults to a no-op.
+     * Client-side hook to handle an event, updating the mod's own state and draw layers.
      * @param {AbstractEvent} event
      * @param {Client} client
      */
@@ -205,10 +202,18 @@ export class AbstractMod {
     }
 
     /**
-     * Server-side hook: return the individual events that recreate this mod's
-     * objects in a freshly-loaded chunk (one per object, e.g. a BeltInsertEvent per
-     * belt). The engine bundles every mod's events into one ChunkSyncEvent per
-     * chunk. Defaults to none.
+     * Client-side inspect hook (null coords = cleared); returns the tiles to highlight
+     * and may update the mod's own draw layers.
+     * @param {number|null} tileX
+     * @param {number|null} tileY
+     * @returns {{x: number, y: number, alt?: boolean}[]}
+     */
+    onInspect(tileX, tileY) {
+        return [];
+    }
+
+    /**
+     * Server-side hook returning the per-object events that recreate this mod's objects in a chunk.
      * @param {string} chunk - a chunk key that just entered a viewport
      * @returns {AbstractEvent[]}
      */
@@ -217,8 +222,7 @@ export class AbstractMod {
     }
 
     /**
-     * Returns mini menu entries for the tile at (tileX, tileY).
-     * Each entry carries its own handler — the mod decides what happens when clicked.
+     * Returns mini-menu entries (each with its own handler) for the tile at (tileX, tileY).
      * @param {number} tileX
      * @param {number} tileY
      * @param {AbstractSession} session
@@ -229,13 +233,11 @@ export class AbstractMod {
     }
 
     /**
-     * Returns the tools this mod makes available given the current player settings.
-     * Called on init and again whenever any PlayerSetting changes.
-     * @param {AbstractSession} session
-     * @param {PlayerSettings} playerSettings
+     * Returns the tools this mod makes available, bound to the shared client surfaces.
+     * @param {Client} client
      * @returns {AbstractTool[]}
      */
-    tools(session, playerSettings) {
+    tools(client) {
         return [];
     }
 }

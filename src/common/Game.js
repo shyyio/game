@@ -135,10 +135,7 @@ export class Game {
     // ---- Viewport ----
 
     /**
-     * Diffs the session's current viewport against the requested chunk set, so a
-     * pan only syncs the delta (the hot path: a one-chunk move re-syncs one row of
-     * chunks, not the whole screen). Removed chunks get an unsubscribe; added chunks
-     * get a subscribe plus, when they hold objects, one ChunkSyncEvent seeding them.
+     * Diffs the session's viewport against the requested chunks so a pan only syncs the delta.
      * @param {AbstractSession} session
      * @param {string[]} chunks
      */
@@ -187,10 +184,7 @@ export class Game {
     // ---- Events ----
 
     /**
-     * Dispatches an AbstractTilePositionedEvent immediately to all sessions whose viewport covers
-     * the event's chunk, bypassing GameJournal. Use when the event must reach clients
-     * before postTick(). Routing is by chunk, so the event must carry a position — a
-     * position-less AbstractEvent would match no session and vanish silently.
+     * Dispatches a positioned event immediately to sessions covering its chunk, bypassing GameJournal.
      * @param {AbstractTilePositionedEvent} event
      */
     publishEventNow(event) {

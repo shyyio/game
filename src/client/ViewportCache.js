@@ -1,15 +1,7 @@
 import {chunkKey} from "@/common/util.js";
 
 /**
- * A content-agnostic, client-side spatial store of placed objects. Client mods own
- * an instance (one per object kind) and use it as their queryable picture of the
- * world: tools and context menus read it instead of touching the simulation
- * database, which the browser does not own in multiplayer.
- *
- * Records are `{id, tileX, tileY, chunk, data}` where `data` is the mod's opaque
- * payload (e.g. a belt's `{direction, type, parentX, parentY}`). A tile may hold
- * more than one object (e.g. a surface belt and a buried underground belt), so
- * tile lookups return an array.
+ * Client-side spatial store of placed objects (records `{id, tileX, tileY, chunk, data}`), queried by mods instead of the sim DB.
  */
 export class ViewportCache {
 
@@ -69,7 +61,7 @@ export class ViewportCache {
     }
 
     /**
-     * Merges `patch` into an existing record's `data`. No-op if the id is unknown.
+     * Merges `patch` into a record's `data`; no-op for unknown ids.
      * @param {BigInt} id
      * @param {object} patch
      */
@@ -150,8 +142,7 @@ export class ViewportCache {
     }
 
     /**
-     * Drops every record in `chunk`. Returns the dropped ids so the caller can
-     * remove the matching sprites — the chunk-unsubscribe path.
+     * Drops every record in `chunk`, returning the dropped ids.
      * @param {string} chunk
      * @returns {BigInt[]}
      */

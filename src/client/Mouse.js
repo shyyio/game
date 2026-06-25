@@ -73,6 +73,10 @@ class Mouse {
         this._hoverTileX = null;
         this._hoverTileY = null;
         this._hoverEnabled = true;
+        // Mobile-mode lock: while a tool is active the "cursor" is pinned to the
+        // screen center, so hover and tap-to-place use the center tile and the
+        // player pans the map to aim (see setCenterLock).
+        this._centerLock = false;
 
         this._viewport = null;
         this._app = null;
@@ -81,7 +85,6 @@ class Mouse {
         this._dragStartCallbacks = [];
         this._tileDragCallbacks = [];
         this._longPressCallbacks = [];
-        this._rightClickCallbacks = [];
         this._tileEnterCallbacks = [];
         this._tileExitCallbacks = [];
     }
@@ -139,8 +142,7 @@ class Mouse {
     }
 
     /**
-     * A drag gesture began (the press moved off its start tile). Fires once,
-     * before the first onTileDrag, with the tile the press started on.
+     * A drag gesture began; fires once before the first onTileDrag with the start tile.
      * @param {function(tileX: number, tileY: number)} callback
      */
     onDragStart(callback) {
@@ -148,19 +150,12 @@ class Mouse {
     }
 
     /**
-     * Left button held on the same tile for LONG_PRESS_MS without dragging.
+     * The context gesture: a left button held on the same tile for LONG_PRESS_MS
+     * without dragging (touch long-press), or a desktop right-click.
      * @param {function(tileX: number, tileY: number, screenX: number, screenY: number)} callback
      */
     onLongPress(callback) {
         this._longPressCallbacks.push(callback);
-    }
-
-    /**
-     * Right-click (or equivalent) on a tile.
-     * @param {function(tileX: number, tileY: number, screenX: number, screenY: number)} callback
-     */
-    onRightClick(callback) {
-        this._rightClickCallbacks.push(callback);
     }
 
     /**
@@ -180,9 +175,7 @@ class Mouse {
     }
 
     /**
-     * Toggles tile enter/exit hover events. Disabled while a modal (the
-     * direction wheel) is open so the active tool's ghost preview doesn't track
-     * the cursor behind the modal.
+     * Toggles tile enter/exit hover events, off in map mode.
      * @param {boolean} enabled
      */
     setHoverEnabled(enabled) {
@@ -190,10 +183,16 @@ class Mouse {
     }
 
     /**
-     * Abandons the in-flight press/drag gesture without firing tap, drag or
-     * long-press. Used when a modal (e.g. the direction wheel) takes over input
-     * mid-gesture, so a release that lands on the modal can't leave a stale
-     * press that later reads as a drag.
+     * Toggles center-lock (mobile mode): hover/tap use the screen-center tile and re-evaluate immediately.
+     * @param {boolean} enabled
+     */
+    setCenterLock(enabled) {
+        this._centerLock = enabled;
+        this._updateHoverTile();
+    }
+
+    /**
+     * Abandons the in-flight gesture without firing tap/drag/long-press, when a second finger lands (a pinch).
      */
     cancelInteraction() {
         if (this._longPressTimer != null) {
@@ -219,15 +218,51 @@ class Mouse {
         return Math.floor(this.currentY / TILE_SIZE);
     }
 
+    /**
+     * The tile under the screen center, used as the gesture target while
+     * center-lock is on.
+     * @private
+     * @returns {{tileX: number, tileY: number}}
+     */
+    _centerTile() {
+        const world = this._viewport.toWorld(
+            this._viewport.screenWidth / 2,
+            this._viewport.screenHeight / 2,
+        );
+        return {
+            tileX: Math.floor(world.x / TILE_SIZE),
+            tileY: Math.floor(world.y / TILE_SIZE),
+        };
+    }
+
     // ---- Internal handlers ----
 
     _handlePointerDown(event) {
         if (event.button === 2) {
+            // A right-click is the desktop equivalent of a touch long-press, so it
+            // fires the same context gesture. Stop the native event too: the
+            // mini-menu installs a window-level pointerdown click-off listener as
+            // it opens, and without this the very press that opened it would bubble
+            // up and close it again.
             event.stopPropagation();
+            event.nativeEvent.stopPropagation();
             const world = this._worldFromEvent(event);
             const tileX = Math.floor(world.x / TILE_SIZE);
             const tileY = Math.floor(world.y / TILE_SIZE);
-            this._rightClickCallbacks.forEach(cb => cb(tileX, tileY, event.data.global.x, event.data.global.y));
+            // Clear the hovered tile first so the active tool's ghost preview drops
+            // while the context gesture is up, matching the long-press path.
+            this._emitTileExit();
+            this._longPressCallbacks.forEach(cb => {
+                cb(tileX, tileY, event.data.global.x, event.data.global.y);
+            });
+            return;
+        }
+
+        if (this._clickStartX != null) {
+            // A press is already in flight, so this is a second finger: a pinch,
+            // not a tap or long-press. Drop the single-finger gesture so the pinch
+            // can't fire a tap or open the mini-menu.
+            this.cancelInteraction();
             return;
         }
 
@@ -240,11 +275,18 @@ class Mouse {
         this._clickStartScreenY = event.data.global.y;
         this._hasDragged = false;
 
+        // Center-lock (mobile, tool active) has no context gesture — orientation is
+        // set by the rotate buttons and a tap places — so the long-press timer is
+        // only armed for the mini-menu when the cursor isn't locked to center.
+        if (this._centerLock) {
+            return;
+        }
+
         this._longPressTimer = window.setTimeout(() => {
             this._longPressTimer = null;
             this._hasDragged = true;
-            // The long-press opens the direction wheel; clear the hovered tile
-            // first so the active tool's ghost preview drops while it is up.
+            // The long-press opens the mini-menu; clear the hovered tile first so
+            // the active tool's ghost preview drops while it is up.
             this._emitTileExit();
             this._longPressCallbacks.forEach(cb => {
                 cb(this._clickStartTileX, this._clickStartTileY, this._clickStartScreenX, this._clickStartScreenY);
@@ -271,7 +313,14 @@ class Mouse {
         }
 
         if (!this._hasDragged) {
-            this._tapCallbacks.forEach(cb => cb(this._clickStartTileX, this._clickStartTileY));
+            // Center-lock places under the screen center, not where the finger
+            // landed: the mouse is treated as locked to center.
+            let tapTileX = this._clickStartTileX;
+            let tapTileY = this._clickStartTileY;
+            if (this._centerLock) {
+                ({tileX: tapTileX, tileY: tapTileY} = this._centerTile());
+            }
+            this._tapCallbacks.forEach(cb => cb(tapTileX, tapTileY));
         }
 
         this._clickStartX = null;
@@ -295,6 +344,14 @@ class Mouse {
         this._updateHoverTile();
 
         if (this._clickStartX == null) {
+            return;
+        }
+
+        if (this._centerLock) {
+            // The cursor is locked to center, so finger movement pans the viewport
+            // (left to the pan plugin) and never paints. The release still becomes a
+            // tap only if the finger barely moved (the screen-distance check in
+            // _handlePointerUp), so a pan doesn't place.
             return;
         }
 
@@ -350,8 +407,13 @@ class Mouse {
             return;
         }
 
-        const tileX = this.tileX;
-        const tileY = this.tileY;
+        let tileX = this.tileX;
+        let tileY = this.tileY;
+        if (this._centerLock) {
+            // Locked to center: hover the tile under the screen center so the ghost
+            // tracks the center as the player pans (this runs every ticker frame).
+            ({tileX, tileY} = this._centerTile());
+        }
 
         if (tileX === this._hoverTileX && tileY === this._hoverTileY) {
             return;

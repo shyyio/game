@@ -12,6 +12,11 @@ export class AbstractDrawLayer extends Container {
          * @type {TextureRegistry|null}
          */
         this.textureRegistry = null;
+        /**
+         * The viewport this layer is drawn in, injected by Client.init.
+         * @type {ClientViewport|null}
+         */
+        this.viewport = null;
     }
 
     /**
@@ -32,19 +37,22 @@ export class AbstractDrawLayer extends Container {
     }
 
     /**
-     * Toggles map mode for this layer. In map mode the layer should render its
-     * objects as simple geometry instead of sprites. Optional hook — layers with
-     * no geometry representation ignore it.
+     * Optional hook: in map mode, render objects as simple geometry instead of sprites.
      * @param {boolean} value
      */
     set lowRes(value) {}
 
     /**
-     * Advances this layer's animated sprites to the globally-synchronized frame.
-     * Called only when the frame actually changes. Optional hook — layers with no
-     * animation ignore it.
+     * Optional hook: advances animated sprites to the synchronized frame.
      * @param {number} frame current animation frame, in [0, 8)
      * @returns {void}
      */
     tick(frame) {}
+
+    /**
+     * Optional hook: pin a placement preview to the screen center in center-lock (mobile) mode.
+     * @param {boolean} enabled
+     * @returns {void}
+     */
+    setCenterLock(enabled) {}
 }

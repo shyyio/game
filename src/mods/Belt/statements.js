@@ -71,14 +71,7 @@ const OPPOSITE_DIRECTION = `CASE
                 END`;
 
 /**
- * SQL `CASE` selecting MAX(id) of the belt that should feed a belt placed at
- * (x, y) facing `direction`. The candidate upstream neighbors are the tile directly
- * behind (a straight connection) and the two perpendicular tiles (bend connections),
- * each filtered to a belt type compatible with the fed belt (`placedType`). Shared by
- * InsertBelt (new belt's parent), UpdateBeltChild (a child's new parent), and
- * FindUpstreamNeighbor (loop-seam feeder) so the geometry and the compatibility rules
- * can never drift between placement and loop healing.
- *
+ * SQL `CASE` selecting MAX(id) of the belt that should feed a belt placed at (x, y) facing `direction`.
  * @param {object} o
  * @param {string} o.from - candidate table, e.g. "Belt" or "Belt b"
  * @param {string} o.col - candidate column prefix, e.g. "" or "b."
@@ -614,7 +607,7 @@ export const beltStatements = {
         UPDATE Belt
         SET parent_id=NULL
         WHERE parent_id = CAST(@id AS INT)
-        RETURNING id;
+        RETURNING id, x, y;
     `,
 
     UnassignBeltPath: `

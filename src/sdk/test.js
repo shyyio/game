@@ -22,10 +22,7 @@ import {TickPhase} from "@/common/core.js";
 export {TickPhase} from "@/common/core.js";
 
 /**
- * A booted single-player game for tests: one connected LocalSession against an
- * in-memory NodeDatabase. Thin by design — it forwards player intents and exposes
- * raw SQL reads so a mod's own test helpers can assert on engine state. Reach
- * `game` / `session` / `db` directly for anything this doesn't wrap.
+ * A booted single-player game for tests: one LocalSession against an in-memory NodeDatabase.
  */
 export class TestHarness {
 
@@ -69,8 +66,7 @@ export class TestHarness {
     }
 
     /**
-     * Runs a named prepared statement (one a mod registered via its `statements`
-     * getter), as the engine does each tick. Returns the number of changed rows.
+     * Runs a named prepared statement, returning the number of changed rows.
      * @param {string} name
      * @param {Object} [args]
      * @returns {number}
@@ -112,7 +108,6 @@ export class TestHarness {
 
 /**
  * Boots an in-memory game with the given mods loaded and a session connected.
- * The one piece of setup every mod's tests share.
  * @param {AbstractMod[]} mods
  * @returns {Promise<TestHarness>}
  */

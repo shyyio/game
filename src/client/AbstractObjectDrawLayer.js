@@ -5,8 +5,7 @@ import {TILE_SIZE} from "@/client/constants.js";
 const MAP_TILE_COLOR = 0x888888;
 
 /**
- * Base AbstractDrawLayer for machine-type game objects.
- * Mods extend this and provide their own sprite constructors.
+ * Base draw layer for machine-type game objects.
  */
 export class AbstractObjectDrawLayer extends AbstractDrawLayer {
 
@@ -93,8 +92,7 @@ export class AbstractObjectDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Advances every object sprite to the shared animation frame. Skipped in map
-     * mode, where objects render as flat rectangles rather than sprites.
+     * Advances every object sprite to the shared animation frame (skipped in map mode).
      * @param {number} frame animation frame, in [0, 8)
      */
     tick(frame) {

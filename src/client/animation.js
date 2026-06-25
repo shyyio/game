@@ -18,8 +18,7 @@ const ANIMATION_FRAME_COUNT = 8;
 let frame = 0;
 
 /**
- * Advances to the next frame. Called once per ticker tick by the Client; since the
- * ticker runs at the game's frame rate, one tick is one frame.
+ * Advances to the next frame, called once per ticker tick.
  * @returns {number} the new frame, in [0, 8)
  */
 export function advanceAnimationFrame() {

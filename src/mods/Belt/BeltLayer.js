@@ -6,15 +6,15 @@ const MAP_TILE_COLOR = 0xf7df9e;
 const MAP_RAMP_COLOR = 0xc8a16e;
 
 /**
- * The spritesheet base (frame-less) sequence name for a belt of the given bend and
- * type. The animation frames live under "<base>/0".."<base>/7"; callers resolve the
- * ordered frame array via TextureRegistry.getAnimation(base). Shared by the live
- * belt layer and the ghost preview layer so both pick identical art.
+ * The spritesheet base sequence name for a belt of the given bend and type (frames live under "<base>/0..7").
  * @param {BeltBend} bend
  * @param {BeltType} type
  * @returns {string}
  */
 export function beltFrameBase(bend, type) {
+    if (type === BeltType.UNDERGROUND) {
+        return "belt-underground";
+    }
     if (type === BeltType.RAMP_UP) {
         return "belt-ramp-up";
     }
@@ -125,15 +125,13 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Belt rendering is driven imperatively by BeltClientMod (the client event hub),
-     * not by events delivered to this layer.
+     * No-op: belt rendering is driven imperatively by BeltClientMod, not by events.
      * @param {AbstractEvent} event
      */
     onEvent(event) {}
 
     /**
-     * Renders a newly-placed (or chunk-synced) belt. Underground belts are buried
-     * and never drawn — they're skipped here but still tracked in the mod's index.
+     * Renders a newly-placed or chunk-synced belt (undergrounds are buried and skipped).
      * @param {BigInt} id
      * @param {number} x
      * @param {number} y
@@ -161,8 +159,7 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Re-renders an existing belt's bend after its parent changed. No-op for belts
-     * that aren't drawn (e.g. underground).
+     * Re-renders a belt's bend after its parent changed; no-op for undrawn belts.
      * @param {BigInt} id
      * @param {number|null} newParentX
      * @param {number|null} newParentY
@@ -201,8 +198,7 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Advances every live belt sprite to the shared animation frame. Skipped in
-     * map mode, where belts render as flat rectangles rather than sprites.
+     * Advances every live belt sprite to the shared animation frame (skipped in map mode).
      * @param {number} frame animation frame, in [0, 8)
      */
     tick(frame) {
@@ -252,22 +248,26 @@ export class BeltSprite extends Sprite {
         this.position.set(x * TILE_SIZE + 32, y * TILE_SIZE + 32);
     }
 
-    set ghost(value) {
-        if (value === true) {
-            this.alpha = 0.4;
-            this.tint = 0xC8F902;
-        }
+    /**
+     * Renders this sprite as a placement-preview ghost in the given tint and alpha.
+     * @param {number} tint
+     * @param {number} [alpha]
+     */
+    setGhost(tint, alpha=1) {
+        this.tint = tint;
+        this.alpha = alpha;
     }
 
     /**
-     * Shows the given frame of this sprite's sequence. A plain array index — no
-     * string building or texture lookup — so it stays cheap when called for every
-     * belt on each animation step.
+     * Shows the given frame by array index, wrapping modulo the sequence length so single-frame sprites stay put.
      * @param {number} frame animation frame, in [0, 8)
      */
     setAnimationFrame(frame) {
-        const texture = this.frames === undefined ? undefined : this.frames[frame];
-        this.texture = texture === undefined ? Texture.EMPTY : texture;
+        if (this.frames === undefined || this.frames.length === 0) {
+            this.texture = Texture.EMPTY;
+            return;
+        }
+        this.texture = this.frames[frame % this.frames.length];
     }
 
     update(x, y, direction, bend) {

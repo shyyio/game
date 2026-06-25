@@ -1,18 +1,22 @@
+import Mouse from "@/client/Mouse.js";
 import {TextureRegistry} from "@/client/TextureRegistry.js";
 import {DrawLayerRegistry} from "@/client/DrawLayerRegistry.js";
 import {PlayerSettings} from "@/client/PlayerSettings.js";
 import {GameSettings} from "@/client/GameSettings.js";
 import {MiniMenuLayer} from "@/client/MiniMenuLayer.js";
-import {DirectionWheelLayer} from "@/client/DirectionWheelLayer.js";
+import {RotateButtonsLayer} from "@/client/RotateButtonsLayer.js";
+import {ToolRotation} from "@/client/ToolRotation.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {TILE_SIZE, snapToChunk, MAP_MODE_SCALE_THRESHOLD} from "@/client/constants.js";
-import {CHUNK_SIZE} from "@/common/constants.js";
+import {CHUNK_SIZE, Direction} from "@/common/constants.js";
 import {chunkKey} from "@/common/util.js";
 import {GridDrawLayer} from "@/client/GridDrawLayer.js";
 import {MaskDrawLayer} from "@/client/MaskDrawLayer.js";
+import {BlockedTilesLayer} from "@/client/BlockedTilesLayer.js";
+import {InspectLayer} from "@/client/InspectLayer.js";
 import {advanceAnimationFrame} from "@/client/animation.js";
 
 export const CoreDrawLayers = [
@@ -38,22 +42,30 @@ export class Client {
         this.drawLayerRegistry = new DrawLayerRegistry(modRegistry);
         this.playerSettings = new PlayerSettings();
         this.gameSettings = new GameSettings();
-        this.miniMenuLayer = new MiniMenuLayer();
-        this.directionWheelLayer = new DirectionWheelLayer(viewport);
+        this.miniMenuLayer = new MiniMenuLayer(viewport);
+        // Rotate controls, toggled with the active tool by the host.
+        this.rotateButtonsLayer = new RotateButtonsLayer(app, viewport);
+        // Shared placement-feedback layer, driven by whichever tool is active.
+        this.blockedTilesLayer = new BlockedTilesLayer();
+        // Shared hover-highlight layer, driven by mods' inspect hover.
+        this.inspectLayer = new InspectLayer();
+        // Shared placement facing, so orientation persists across tool switches.
+        this.toolRotation = new ToolRotation();
 
         CoreDrawLayers.forEach(layer => {
             this.drawLayerRegistry.add(layer);
         });
+        this.drawLayerRegistry.add(this.blockedTilesLayer);
+        this.drawLayerRegistry.add(this.inspectLayer);
 
         this._lastViewportKey = null;
         this._mapMode = false;
         this._onMapModeChange = null;
+        this._centerLock = false;
     }
 
     /**
-     * Registers the handler invoked when the client enters or leaves map mode
-     * (zoomed out past {@link MAP_MODE_SCALE_THRESHOLD}). The draw layers switch
-     * to geometry on their own; this lets the host wire up the hover/tool side.
+     * Registers the handler invoked when the client enters or leaves map mode.
      * @param {function(mapMode: boolean)} callback
      */
     onMapModeChange(callback) {
@@ -68,26 +80,29 @@ export class Client {
 
         this.drawLayerRegistry.layers.forEach(layer => {
             layer.textureRegistry = this.textureRegistry;
+            layer.viewport = this.viewport;
             this.viewport.addChild(layer);
         });
 
         this.app.stage.addChild(this.miniMenuLayer);
-        this.app.stage.addChild(this.directionWheelLayer);
+        this.app.stage.addChild(this.rotateButtonsLayer);
 
         this.viewport.on("moved", () => this._updateViewportChunks());
         this.viewport.on("zoomed", () => {
             this._updateViewportChunks();
             this._updateMapMode();
         });
+        // While a pan is in progress, drop the rotate buttons out of hit-testing so
+        // a finger that crosses one keeps panning instead of being captured by it.
+        this.viewport.on("drag-start", () => this.rotateButtonsLayer.setInteractive(false));
+        this.viewport.on("drag-end", () => this.rotateButtonsLayer.setInteractive(true));
         this.app.ticker.add(() => this._tickAnimations());
         this._updateViewportChunks();
         this._updateMapMode();
     }
 
     /**
-     * Drives sprite animation off the render loop. The ticker is capped at the
-     * game's frame rate (Game.vue), so each tick advances one frame and re-ticks
-     * every layer.
+     * Drives sprite animation off the render loop, one frame per ticker tick.
      * @private
      */
     _tickAnimations() {
@@ -140,6 +155,46 @@ export class Client {
         }
         this._lastViewportKey = key;
         this.sendMessage(new SetViewportMessage(chunks));
+    }
+
+    /**
+     * Toggles center-lock (mobile mode): pins hover/placement and the preview to the screen center.
+     * @param {boolean} enabled
+     */
+    setCenterLock(enabled) {
+        this._centerLock = enabled;
+        // Draw layers before the input layer, so a hover Mouse emits renders with center-lock on.
+        this.drawLayerRegistry.setCenterLock(enabled);
+        Mouse.setCenterLock(enabled);
+    }
+
+    /**
+     * Eases the center-lock viewport one tile from (tileX, tileY) along `direction` so
+     * consecutive taps lay a line; a no-op off center-lock.
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Direction} direction
+     * @returns {void}
+     */
+    advanceCenterLock(tileX, tileY, direction) {
+        if (!this._centerLock) {
+            return;
+        }
+        // Absolute next-tile centre so rapid taps don't drift; snap emits "moved"
+        // each frame, so the chunk subscription refreshes via that listener.
+        const targetTileX = tileX + Direction.dx(direction);
+        const targetTileY = tileY + Direction.dy(direction);
+        this.viewport.snap(
+            targetTileX * TILE_SIZE + TILE_SIZE / 2,
+            targetTileY * TILE_SIZE + TILE_SIZE / 2,
+            {
+                time: 120,
+                ease: "easeOutBack", // single overshoot-and-settle
+                forceStart: true,
+                interrupt: true,
+                removeOnComplete: true,
+            },
+        );
     }
 
     /**

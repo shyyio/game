@@ -54,8 +54,7 @@ export class NodeDatabase extends AbstractDatabase {
     }
 
     /**
-     * Execute one or more raw SQL statements, ignoring any result rows.
-     * For use in tests only.
+     * Executes raw SQL ignoring result rows; tests only.
      * @param {string} sql
      */
     rawExec(sql) {
@@ -63,8 +62,7 @@ export class NodeDatabase extends AbstractDatabase {
     }
 
     /**
-     * Run raw SQL and return the first column of the first row, or undefined if no rows.
-     * For use in tests only.
+     * Runs raw SQL and returns the first column of the first row (or undefined); tests only.
      * @param {string} sql
      * @returns {*}
      */

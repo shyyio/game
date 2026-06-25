@@ -1,5 +1,5 @@
 /**
- * @enum
+ * @enum {number}
  */
 export const Direction = {
     UP: 0,
@@ -9,6 +9,15 @@ export const Direction = {
 
     rotate(direction, rotation) {
         return (direction + rotation) % 4;
+    },
+
+    /**
+     * The opposite direction (a 180° turn).
+     * @param {Direction} direction
+     * @returns {Direction}
+     */
+    invert(direction) {
+        return Direction.rotate(direction, 2);
     },
 
     /**
@@ -50,8 +59,7 @@ export const Direction = {
     },
 
     /**
-     * Returns the Direction for a unit cardinal delta (dx, dy).
-     * Throws if the delta is not a unit cardinal vector.
+     * Returns the Direction for a unit cardinal delta (dx, dy); throws otherwise.
      * @param {number} dx
      * @param {number} dy
      * @returns {Direction}
@@ -74,11 +82,7 @@ export const Direction = {
     },
 
     /**
-     * Returns the nearest cardinal Direction for an arbitrary (non-unit) vector,
-     * snapping to whichever axis dominates (ties favour the vertical axis). Uses
-     * the same axis convention as dx/dy, so a negative dy points UP. Returns null
-     * for the zero vector. Unlike fromDelta, this never throws, so it suits
-     * free-form input like a radial direction wheel.
+     * Returns the nearest cardinal Direction for an arbitrary vector (ties favour vertical), or null for the zero vector.
      * @param {number} dx
      * @param {number} dy
      * @returns {Direction|null}
@@ -99,7 +103,7 @@ export const Direction = {
 export const CHUNK_SIZE = 64;
 
 /**
- * Core game-setting keys. Mods own the keys for settings they introduce.
+ * Core game-setting keys (mods own keys for their own settings).
  * @enum
  */
 export const GameSettingsKey = {

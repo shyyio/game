@@ -17,9 +17,7 @@ const INT64_TYPES = new Set(["int64", "uint64", "sint64", "fixed64", "sfixed64"]
 const ENVELOPE_TYPE = "Envelope";
 
 /**
- * Core message/event classes that travel over the wire. Mods contribute the rest
- * via AbstractMod.wireClasses. Order here is part of the wire-id assignment contract, so
- * only ever append.
+ * Core wire classes; order is part of the wire-id contract, so only ever append.
  * @type {*[]}
  */
 const CORE_WIRE_CLASSES = [
@@ -63,9 +61,7 @@ function parseSpec(spec) {
 }
 
 /**
- * Builds a protobufjs Type from a class's static wireFields. Scalars are marked
- * `optional` so explicit presence is tracked — that preserves zero/empty values
- * (e.g. x:0, a zero event type) and lets absent fields decode back to null.
+ * Builds a protobufjs Type from a class's wireFields, marking scalars optional to preserve zeros and decode absences to null.
  * @param {string} name
  * @param {Object.<string, string>} wireFields
  * @returns {{type: protobuf.Type, specs: Object.<string, object>}}
@@ -136,8 +132,7 @@ export class WireRegistry {
     }
 
     /**
-     * Encodes a message/event instance to protobuf bytes. BigInt fields are
-     * converted to int64 automatically.
+     * Encodes a message/event instance to protobuf bytes (BigInt → int64).
      * @param {object} obj
      * @returns {Uint8Array}
      */
@@ -146,9 +141,7 @@ export class WireRegistry {
     }
 
     /**
-     * Builds the `{wireId, payload}` envelope object for an instance — its encoded
-     * body tagged with its class's wire id. Used both as the top-level frame and as
-     * each nested element of a `message[]` bundle.
+     * Builds the `{wireId, payload}` envelope for an instance — its body tagged with its class's wire id.
      * @private
      * @param {object} obj
      * @returns {{wireId: number, payload: Uint8Array}}
@@ -180,8 +173,7 @@ export class WireRegistry {
     }
 
     /**
-     * Decodes protobuf bytes back into a message/event instance. int64 fields are
-     * converted back to BigInt; absent scalar fields become null.
+     * Decodes protobuf bytes into a message/event instance (int64 → BigInt, absent scalars → null).
      * @param {Uint8Array} bytes
      * @returns {object}
      */

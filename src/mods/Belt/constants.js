@@ -3,7 +3,7 @@
 // logic, so they live in one place no other Belt module redefines.
 
 // Maximum number of tiles an underground belt may span.
-export const MAX_UNDERGROUND_LENGTH = 6;
+export const MAX_UNDERGROUND_LENGTH = 4;
 
 /**
  * Game-setting keys this mod owns

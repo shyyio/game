@@ -20,9 +20,7 @@ export class BeltPathRecalculateEvent extends AbstractTilePositionedEvent {
 }
 
 /**
- * A belt the player just placed (a live change). Carries the same payload as a
- * BeltSyncEvent, but the distinct type lets the client react differently (e.g.
- * placement feedback only for inserts).
+ * A belt the player just placed; same payload as BeltSyncEvent but a distinct type for live reactions.
  */
 export class BeltInsertEvent extends AbstractTilePositionedEvent {
 
@@ -56,9 +54,7 @@ export class BeltInsertEvent extends AbstractTilePositionedEvent {
 }
 
 /**
- * A belt seeded into a freshly-loaded chunk — same payload as a BeltInsertEvent,
- * but its own type so the client can skip placement feedback (animation/sound) for
- * belts that merely came into view.
+ * A belt seeded into a loaded chunk; same payload as BeltInsertEvent but a distinct type to skip placement feedback.
  */
 export class BeltSyncEvent extends AbstractTilePositionedEvent {
 

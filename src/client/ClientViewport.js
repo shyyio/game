@@ -4,7 +4,7 @@ import {isMobile} from "pixi.js";
 /**
  * The game's pan/zoom {@link Viewport}, with helpers to freeze interaction:
  * panning only (while a tool is active, so cursor drags paint tiles and zoom
- * stays live) or everything (while the direction wheel is open).
+ * stays live) or everything (while the direction wheel or mini-menu is open).
  */
 export class ClientViewport extends Viewport {
 

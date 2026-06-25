@@ -1,14 +1,10 @@
 /**
- * Base class for every message a session sends to the game. Subclasses declare
- * their wire format via a static `wireFields` map and may override `validate`
- * to reject malformed or unauthorized messages before they reach the game.
+ * Base class for every message a session sends to the game.
  */
 export class AbstractMessage {
 
     /**
-     * Maps each wire-serialized field name to its protobuf spec string (see
-     * common/wire.js for the spec grammar). Subclasses MUST override this; the
-     * base leaves it undefined so the constructor can detect omissions.
+     * Maps each wire-serialized field name to its protobuf spec string; subclasses MUST override.
      * @type {Object.<string, string>}
      */
     static wireFields;
@@ -20,9 +16,7 @@ export class AbstractMessage {
     }
 
     /**
-     * Returns whether this message should be accepted and dispatched. The base
-     * implementation accepts everything; subclasses override to enforce limits
-     * or check game/session state. Returning false silently drops the message.
+     * Returns whether to accept and dispatch this message; false silently drops it.
      * @param {GameAPI} api
      * @param {AbstractSession} session
      * @returns {boolean}

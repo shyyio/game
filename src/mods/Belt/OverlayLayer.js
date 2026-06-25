@@ -1,10 +1,15 @@
-import {AbstractDrawLayer, Graphics, drawLine, drawRect, TILE_SIZE} from "@/sdk/client.js";
+import {AbstractDrawLayer, currentAnimationFrame} from "@/sdk/client.js";
+import {BeltBend, BeltType} from "./constants.js";
+import {BeltSprite, beltFrameBase} from "./BeltLayer.js";
 
+/**
+ * Reveals the buried belts of an underground tunnel on hover; driven imperatively by BeltClientMod.onInspect.
+ */
 export class BeltOverlayDrawLayer extends AbstractDrawLayer {
 
     constructor() {
         super();
-        this._highlights = [];
+        this._revealSprites = [];
     }
 
     get layerIndex() {
@@ -16,26 +21,38 @@ export class BeltOverlayDrawLayer extends AbstractDrawLayer {
     }
 
     onEvent(event) {
-        // TODO: handle underground belt hover events to show/hide highlights
+        // No-op: the tunnel reveal reacts to inspect hover, not to journal events.
     }
 
-    highlightUndergroundBelt(x1, y1, x2, y2) {
-        this.clearHighlights();
-
-        const g = new Graphics();
-        drawLine(g, x1 * TILE_SIZE + 32, y1 * TILE_SIZE + 32, x2 * TILE_SIZE + 32, y2 * TILE_SIZE + 32, 0xD5B60A);
-        drawRect(g, x1 * TILE_SIZE, y1 * TILE_SIZE, TILE_SIZE, TILE_SIZE, 0xD5B60A);
-        drawRect(g, x2 * TILE_SIZE, y2 * TILE_SIZE, TILE_SIZE, TILE_SIZE, 0xD5B60A);
-
-        this.addChild(g);
-        this._highlights.push(g);
-    }
-
-    clearHighlights() {
-        this._highlights.forEach(g => {
-            g.destroy();
-            this.removeChild(g);
+    /**
+     * Reveals the underground belts of a tunnel as a line of buried-belt sprites.
+     * @param {{x: number, y: number}[]} tiles tunnel tiles, in order
+     * @param {Direction} direction the tunnel's facing
+     */
+    showUndergroundReveal(tiles, direction) {
+        this.clearUndergroundReveal();
+        tiles.forEach(tile => {
+            const frames = this.textureRegistry.getAnimation(beltFrameBase(BeltBend.STRAIGHT, BeltType.UNDERGROUND));
+            const sprite = new BeltSprite(
+                0,
+                tile.x,
+                tile.y,
+                direction,
+                BeltBend.STRAIGHT,
+                BeltType.UNDERGROUND,
+                frames,
+            );
+            sprite.setAnimationFrame(currentAnimationFrame());
+            this.addChild(sprite);
+            this._revealSprites.push(sprite);
         });
-        this._highlights.splice(0);
+    }
+
+    clearUndergroundReveal() {
+        this._revealSprites.forEach(sprite => {
+            sprite.destroy();
+            this.removeChild(sprite);
+        });
+        this._revealSprites.splice(0);
     }
 }

@@ -3,9 +3,7 @@ import {chunkPosition} from "@/common/util.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 
 /**
- * The (x, y) tile at the origin of a chunk. Carried by the chunk lifecycle events
- * so the chunk key can be recovered from (x, y) via AbstractTilePositionedEvent's `chunk` getter,
- * rather than sending the key string over the wire.
+ * The (x, y) tile at the origin of a chunk, so the key can be recovered from (x, y) instead of wired.
  * @param {string} chunk
  * @returns {{x: number, y: number}}
  */
@@ -15,8 +13,7 @@ function chunkOriginTile(chunk) {
 }
 
 /**
- * Tells a session a chunk has entered its viewport. Sent directly to the session
- * (not via the journal); mods seed the chunk's objects in response.
+ * Tells a session a chunk has entered its viewport, so mods seed its objects.
  */
 export class ChunkSubscribeEvent extends AbstractTilePositionedEvent {
 
@@ -35,8 +32,7 @@ export class ChunkSubscribeEvent extends AbstractTilePositionedEvent {
 }
 
 /**
- * Tells a session a chunk has left its viewport, so it can tear down that chunk's
- * sprites and state.
+ * Tells a session a chunk has left its viewport, so it can tear down that chunk's state.
  */
 export class ChunkUnsubscribeEvent extends AbstractTilePositionedEvent {
 
@@ -55,11 +51,7 @@ export class ChunkUnsubscribeEvent extends AbstractTilePositionedEvent {
 }
 
 /**
- * Seeds a freshly-subscribed chunk: a generic container bundling the individual
- * events that recreate the chunk's objects on the client (one per object, e.g. a
- * BeltInsertEvent per belt). Mods contribute these via `AbstractMod.collectChunkSync`; the
- * client unwraps the bundle and replays each inner event through its normal
- * dispatch, so seeding reuses the same handlers as live updates.
+ * Seeds a subscribed chunk by bundling the per-object events (from `AbstractMod.collectChunkSync`) that recreate it on the client.
  */
 export class ChunkSyncEvent extends AbstractTilePositionedEvent {
 

@@ -1,5 +1,5 @@
 <script setup>
-import {ref, reactive, markRaw, shallowRef, watch, onMounted} from "vue";
+import {reactive, markRaw, computed, ref, shallowRef, watch, onMounted} from "vue";
 import {Application, Graphics, Container, FillGradient, isMobile} from "pixi.js";
 import {ClientViewport} from "@/client/ClientViewport.js";
 import Keyboard from "@/client/keyboard.js";
@@ -16,18 +16,42 @@ import {GameAPI} from "@/common/GameAPI.js";
 import {LocalSession} from "@/common/LocalSession.js";
 import {Client} from "@/client/Client.js";
 import {TickPhase} from "@/common/core.js";
-import {TILE_SIZE} from "@/client/constants.js";
 
-const tools = ref([]);
-const toolbarState = reactive({activeTool: null});
+const toolbarState = reactive({activeTool: null, tools: []});
 const viewportRef = shallowRef(null);
 const inputHandlerRef = shallowRef(null);
+const rotateButtonsRef = shallowRef(null);
+const clientRef = shallowRef(null);
 
-watch(() => toolbarState.activeTool, (tool) => {
+// Mobile mode (touch device): panning stays live while a tool is active so the
+// player can aim the screen-center crosshair, hover/placement lock to center, and
+// the pixi rotate buttons replace the "r" key.
+const mobile = isMobile.any;
+
+// Map mode (zoomed far out) temporarily deactivates the active tool: the cursor acts
+// as if nothing were selected while the toolbar keeps the tool highlighted, so
+// zooming back in restores it. The side effects below key off this effective tool, so
+// they fire on both tool changes and map-mode toggles.
+const mapModeRef = ref(false);
+const effectiveTool = computed(() => (mapModeRef.value ? null : toolbarState.activeTool));
+
+watch(effectiveTool, (tool) => {
   if (inputHandlerRef.value != null) {
     inputHandlerRef.value.clearToolPreview();
+    inputHandlerRef.value.clearInspect();
+    inputHandlerRef.value.refreshHover();
+  }
+  // The rotate controls are shown on both desktop and mobile while a tool is active.
+  if (rotateButtonsRef.value != null) {
+    rotateButtonsRef.value.setVisible(tool != null);
   }
   if (viewportRef.value == null) {
+    return;
+  }
+  if (mobile) {
+    if (clientRef.value != null) {
+      clientRef.value.setCenterLock(tool != null);
+    }
     return;
   }
   if (tool != null) {
@@ -37,7 +61,7 @@ watch(() => toolbarState.activeTool, (tool) => {
   }
 });
 
-const gameWidth = () => window.innerWidth - Number(document.getElementById("game").style.left.replace("px", ""));
+const gameWidth = () => window.innerWidth;
 const gameHeight = () => window.innerHeight + 64;
 
 function createShadowOverlay(width, height) {
@@ -121,14 +145,6 @@ onMounted(async () => {
     handleResize();
   });
 
-  const observer = new MutationObserver(function (mutations) {
-    mutations.forEach(function (mutationRecord) {
-      handleResize();
-    });
-  });
-
-  observer.observe(document.getElementById("game"), {attributes: true, attributeFilter: ["style"]});
-
   viewport
       .drag()
       .wheel()
@@ -138,7 +154,7 @@ onMounted(async () => {
       });
 
   if (isMobile.any) {
-    viewport.pinch().decelerate();
+    viewport.pinch();
   }
 
   viewportRef.value = viewport;
@@ -160,13 +176,14 @@ onMounted(async () => {
   const session = new LocalSession(api);
 
   const client = new Client(app, viewport, session, modRegistry);
+  clientRef.value = client;
   session.client = client;
   game.connect(session);
   await client.init();
 
   const refreshTools = () => {
-    tools.value = modRegistry.tools(session, client.playerSettings).map(markRaw);
-    if (!tools.value.includes(toolbarState.activeTool)) {
+    toolbarState.tools = modRegistry.tools(client).map(markRaw);
+    if (!toolbarState.tools.includes(toolbarState.activeTool)) {
       toolbarState.activeTool = null;
     }
   };
@@ -175,24 +192,30 @@ onMounted(async () => {
   refreshTools();
 
   const inputHandler = new InputHandler(modRegistry, toolbarState);
-  inputHandler.onMiniMenuEntryClick((tileX, tileY, screenX, screenY) => {
+  inputHandler.onMiniMenuEntryClick((tileX, tileY, screenX, screenY, onClose) => {
     const entries = modRegistry.miniMenuContextEntries(tileX, tileY, session);
-    client.miniMenuLayer.open(entries, screenX, screenY);
+    client.miniMenuLayer.open(entries, screenX, screenY, onClose);
   });
-  inputHandler.onDirectionWheel((tileX, tileY, onSelect) => {
-    const screen = viewport.toScreen(tileX * TILE_SIZE + TILE_SIZE / 2, tileY * TILE_SIZE + TILE_SIZE / 2);
-    client.directionWheelLayer.open(screen.x, screen.y, onSelect);
+  inputHandler.onInspect((tileX, tileY) => {
+    modRegistry.handleInspect(tileX, tileY, client);
   });
   inputHandler.init();
   inputHandlerRef.value = inputHandler;
 
-  // Map mode (zoomed far out): disable tile hover and drop any active tool's
-  // ghost preview, since no onTileExit fires once hover is off.
+  // Wire the pixi rotate buttons (shown while a tool is active, desktop or mobile).
+  rotateButtonsRef.value = client.rotateButtonsLayer;
+  client.rotateButtonsLayer.onRotate(
+      () => inputHandler.rotateLeft(),
+      () => inputHandler.rotateRight(),
+  );
+
+  // Map mode (zoomed far out): deactivate the active tool and disable tile hover via
+  // the input handler, then flip the reactive flag so the effective-tool watcher
+  // drops the ghost, hides the rotate buttons and releases the pan lock. The toolbar
+  // selection is untouched, so the tool resumes on zoom-in.
   client.onMapModeChange((mapMode) => {
-    Mouse.setHoverEnabled(!mapMode);
-    if (mapMode) {
-      inputHandler.clearToolPreview();
-    }
+    inputHandler.setMapMode(mapMode);
+    mapModeRef.value = mapMode;
   });
 
   function tick() {
@@ -203,12 +226,12 @@ onMounted(async () => {
     game.postTick();
   }
 
-  // Debug keybindings.
-  Keyboard.on("1", () => {
+  // Debug keybindings (moved off the number keys, which now select tools).
+  Keyboard.on("i", () => {
     db.rawExec("UPDATE Port SET item = 1 WHERE id = 0");
   });
 
-  Keyboard.on("2", () => {
+  Keyboard.on("t", () => {
     tick();
   });
 });
@@ -225,15 +248,16 @@ export default defineComponent({
 </script>
 
 <template>
-  <div id="game" :style="{left: $store.state.canvasLeft + 'px'}">
+  <div id="game">
   </div>
   <div class="toolbar">
     <button
-        v-for="tool in tools"
+        v-for="tool in toolbarState.tools"
         :key="tool.label"
         :class="{active: tool === toolbarState.activeTool}"
         @click="toolbarState.activeTool = (tool === toolbarState.activeTool ? null : tool)"
-    >{{ tool.label }}</button>
+    >{{ tool.label }}
+    </button>
   </div>
 </template>
 

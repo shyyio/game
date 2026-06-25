@@ -1,8 +1,7 @@
 import {AbstractSession} from "@/common/AbstractSession.js";
 
 /**
- * Browser's version of the session. On the client side, it is instantiated,
- * then connect is called.
+ * Browser-side session handle, instantiated then connected.
  */
 export class RemoteSessionClientHandle extends AbstractSession {
 

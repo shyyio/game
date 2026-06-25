@@ -15,6 +15,10 @@ export class AbstractTool {
      */
     constructor(session) {
         this.session = session;
+        // Orientable tools assign the shared ToolRotation here so the placement
+        // facing persists across tool switches; tools with no orientation leave it
+        // null and rotate() is a no-op for them.
+        this._rotation = null;
     }
 
     /**
@@ -37,15 +41,14 @@ export class AbstractTool {
     }
 
     /**
-     * Called when a drag gesture begins, before onDragTile. Defaults to a no-op.
+     * Called when a drag gesture begins, before onDragTile.
      * @param {number} tileX
      * @param {number} tileY
      */
     onDragStart(tileX, tileY) {}
 
     /**
-     * Called once per tile entered during a drag.
-     * Each call moves exactly one tile in a cardinal direction.
+     * Called once per tile entered during a drag, one cardinal step at a time.
      * @abstract
      * @param {number} tileX - destination tile x
      * @param {number} tileY - destination tile y
@@ -57,36 +60,28 @@ export class AbstractTool {
     }
 
     /**
-     * Optional hover hook: called when the cursor enters a tile (desktop only;
-     * touch input has no hover). Intended for a placement "ghost" preview.
-     * Defaults to a no-op so tools without a preview need not override it.
+     * Optional hover hook: the cursor entered a tile (desktop only), for a ghost preview.
      * @param {number} tileX
      * @param {number} tileY
      */
     onTileEnter(tileX, tileY) {}
 
     /**
-     * Optional hover hook: called when the cursor leaves a tile. Pairs with
-     * onTileEnter to clear a placement preview. Defaults to a no-op.
+     * Optional hover hook: the cursor left a tile, pairing with onTileEnter.
      * @param {number} tileX
      * @param {number} tileY
      */
     onTileExit(tileX, tileY) {}
 
     /**
-     * Optional hook: called after the player picks a direction from the radial
-     * direction wheel (long-press while this tool is active). What it does is up
-     * to the tool — e.g. place an object facing that direction and remember it.
-     * Defaults to a no-op.
-     * @param {number} tileX - tile the wheel was opened on
-     * @param {number} tileY
-     * @param {Direction} direction - the chosen direction
+     * Rotates the facing by `rotation` clockwise quarter-turns; a no-op for tools with
+     * no orientation (`_rotation` unset).
+     * @param {number} rotation
+     * @returns {void}
      */
-    onLongTap(tileX, tileY, direction) {}
-
-    /**
-     * Optional hook: rotate the tool's facing direction one step clockwise (bound
-     * to the "r" key). Defaults to a no-op for tools that have no orientation.
-     */
-    rotate() {}
+    rotate(rotation) {
+        if (this._rotation != null) {
+            this._rotation.rotate(rotation);
+        }
+    }
 }

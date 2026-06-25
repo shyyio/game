@@ -10,9 +10,6 @@ import * as directives from "vuetify/directives";
 import { aliases, mdi } from "vuetify/iconsets/mdi-svg";
 import "@mdi/font/css/materialdesignicons.css";
 
-// Vuex
-import store from "@/client/store.js";
-
 BigInt.prototype.toJSON = function () {
   return this.toString() + "n";
 };
@@ -28,4 +25,4 @@ const vuetify = createVuetify({
 });
 
 
-createApp(App).use(vuetify).use(store).mount("#app");
+createApp(App).use(vuetify).mount("#app");

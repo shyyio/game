@@ -1,10 +1,67 @@
+import {Direction} from "@/sdk/common.js";
 import {
     BELT_RAMP_DOWN,
     BELT_RAMP_UP,
+    BELT_UNDERGROUND,
     MAX_UNDERGROUND_LENGTH,
 } from "./constants.js";
 
+/**
+ * The surface (non-underground) belt record at a tile, or null.
+ * @param {ViewportCache} beltCache
+ * @param {number} tileX
+ * @param {number} tileY
+ * @returns {object|null}
+ */
+export function surfaceBeltAt(beltCache, tileX, tileY) {
+    const records = beltCache.getAtTile(tileX, tileY);
+    const surface = records.find(record => record.data.type !== BELT_UNDERGROUND);
+    return surface === undefined ? null : surface;
+}
+
+/**
+ * Walks `ramp`'s tunnel along its axis, returning the buried tiles passed and the
+ * paired opposite ramp record (or null for a lone ramp).
+ * @param {ViewportCache} beltCache
+ * @param {object} ramp
+ * @returns {{tiles: {x: number, y: number}[], pair: object|null}}
+ */
+export function walkTunnel(beltCache, ramp) {
+    const {dx, dy} = tunnelStep(ramp.data.type, ramp.data.direction);
+    const pairType = ramp.data.type === BELT_RAMP_UP ? BELT_RAMP_DOWN : BELT_RAMP_UP;
+
+    let x = ramp.tileX;
+    let y = ramp.tileY;
+    const tiles = [];
+    for (let i = 0; i < MAX_UNDERGROUND_LENGTH + 1; i += 1) {
+        x += dx;
+        y += dy;
+        const records = beltCache.getAtTile(x, y);
+        const underground = records.find(record => record.data.type === BELT_UNDERGROUND);
+        if (underground !== undefined) {
+            tiles.push({x, y});
+            continue;
+        }
+        const pair = records.find(record =>
+            record.data.type === pairType && record.data.direction === ramp.data.direction
+        );
+        return {tiles, pair: pair === undefined ? null : pair};
+    }
+    return {tiles, pair: null};
+}
+
 // ---- Underground belt helpers ----
+
+/**
+ * The per-step (dx, dy) for walking a ramp's tunnel (a RAMP_UP steps against its facing, a RAMP_DOWN along it).
+ * @param {number} rampType BELT_RAMP_UP or BELT_RAMP_DOWN
+ * @param {Direction} direction the ramp's facing
+ * @returns {{dx: number, dy: number}}
+ */
+export function tunnelStep(rampType, direction) {
+    const sign = rampType === BELT_RAMP_UP ? -1 : 1;
+    return {dx: sign * Direction.dx(direction), dy: sign * Direction.dy(direction)};
+}
 
 /**
  * @param rampParent {{x: number, y: number, type: number, direction: Direction}}

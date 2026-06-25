@@ -117,6 +117,8 @@ recipes/
 _research
 debubg_test.js
 debug_test.js
+*.kra
+*.png~
 
 # Markdown files (keep README.md)
 *.md

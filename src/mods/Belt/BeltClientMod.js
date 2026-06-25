@@ -13,6 +13,7 @@ import {
     BeltDeleteEvent,
 } from "./events.js";
 import {BeltType} from "./constants.js";
+import {surfaceBeltAt, walkTunnel} from "./geometry.js";
 import {
     MiniMenuEntry,
     ViewportCache,
@@ -31,27 +32,24 @@ export class BeltClientMod extends BeltMod {
         this._beltCache = new ViewportCache();
         // Stable belt layer: onClientEvent drives it imperatively.
         this._beltLayer = new BeltDrawLayer();
+        // Reveals buried tunnel belts under a hovered ramp; driven by onInspect.
+        this._overlayLayer = new BeltOverlayDrawLayer();
     }
 
     get drawLayers() {
-        return [this._beltLayer, new BeltOverlayDrawLayer(), this._ghostLayer];
+        return [this._beltLayer, this._overlayLayer, this._ghostLayer];
     }
 
-    tools(session, playerSettings) {
-        // TODO: Return tools that are available for the player, based on playerSettings
+    tools(client) {
+        // TODO: Filter to the tools available for the player (client.playerSettings).
         return [
-            new BeltTool(session, this._beltCache, this._ghostLayer),
-            new UndergroundBeltTool(session, this._beltCache, this._ghostLayer)
+            new BeltTool(client, this._beltCache, this._ghostLayer),
+            new UndergroundBeltTool(client, this._beltCache, this._ghostLayer),
         ];
     }
 
     /**
-     * Single client-side hub for belt events: keeps the belt cache and belt layer
-     * in lockstep. A BeltInsertEvent is a live placement and a BeltSyncEvent seeds a
-     * belt that existed before its chunk loaded — same payload, handled identically
-     * for now (the distinct types leave room for placement-only feedback later);
-     * update/delete track changes; chunk-unsubscribe tears down the belts in chunks
-     * that left the viewport.
+     * Single client-side hub for belt events, keeping the belt cache and belt layer in lockstep.
      * @param {AbstractEvent} event
      * @param {Client} client
      */
@@ -79,8 +77,7 @@ export class BeltClientMod extends BeltMod {
     }
 
     /**
-     * Adds a belt to the viewport cache and the draw layer. Shared by live inserts and
-     * chunk-sync seeds, which carry identical data.
+     * Adds a belt to the viewport cache and the draw layer (shared by inserts and seeds).
      * @param {BeltInsertEvent|BeltSyncEvent} event
      * @private
      */
@@ -94,11 +91,45 @@ export class BeltClientMod extends BeltMod {
         this._beltLayer.addBelt(event.id, event.x, event.y, event.direction, event.beltType, event.parentX, event.parentY);
     }
 
-    miniMenuContextEntries(tileX, tileY, session) {
+    /**
+     * Tool-less hover: reveal the buried tunnel under a hovered ramp and return the tiles to highlight.
+     * @param {number|null} tileX
+     * @param {number|null} tileY
+     * @returns {{x: number, y: number, alt?: boolean}[]}
+     */
+    onInspect(tileX, tileY) {
+        if (tileX === null) {
+            this._overlayLayer.clearUndergroundReveal();
+            return [];
+        }
         const records = this._beltCache.getAtTile(tileX, tileY);
-        const surface = records.find(record => record.data.type !== BeltType.UNDERGROUND);
+        const surface = surfaceBeltAt(this._beltCache, tileX, tileY);
+        const ramp = records.find(record =>
+            record.data.type === BeltType.RAMP_DOWN || record.data.type === BeltType.RAMP_UP);
+        const tunnel = ramp === undefined ? null : walkTunnel(this._beltCache, ramp);
 
-        if (surface === undefined) {
+        // Highlight the hovered surface belt/ramp (buried undergrounds aren't drawn),
+        // plus the ramp it tunnels to (if any) with the alternate highlight.
+        const inspectTiles = [];
+        if (surface !== null) {
+            inspectTiles.push({x: tileX, y: tileY});
+        }
+        if (tunnel !== null && tunnel.pair !== null) {
+            inspectTiles.push({x: tunnel.pair.tileX, y: tunnel.pair.tileY, alt: true});
+        }
+
+        if (tunnel === null) {
+            this._overlayLayer.clearUndergroundReveal();
+        } else {
+            this._overlayLayer.showUndergroundReveal(tunnel.tiles, ramp.data.direction);
+        }
+        return inspectTiles;
+    }
+
+    miniMenuContextEntries(tileX, tileY, session) {
+        const surface = surfaceBeltAt(this._beltCache, tileX, tileY);
+
+        if (surface === null) {
             return [];
         }
 

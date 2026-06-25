@@ -7,10 +7,15 @@ const ITEM_PADDING_X = 12;
 
 export class MiniMenuLayer extends Container {
 
-    constructor() {
+    /**
+     * @param {ClientViewport} viewport - frozen while the menu is open
+     */
+    constructor(viewport) {
         super();
+        this._viewport = viewport;
         this._menu = null;
         this._clickOffMenuListener = null;
+        this._onClose = null;
         this.visible = false;
         this.zIndex = 1000;
     }
@@ -19,9 +24,11 @@ export class MiniMenuLayer extends Container {
      * @param {MiniMenuEntry[]} entries
      * @param {number} screenX
      * @param {number} screenY
+     * @param {function(): void} [onClose] - invoked once when the menu closes
      */
-    open(entries, screenX, screenY) {
+    open(entries, screenX, screenY, onClose=null) {
         this.close();
+        this._onClose = onClose;
 
         const allEntries = [...entries, new MiniMenuEntry("Cancel", -Infinity, () => {})];
 
@@ -63,6 +70,11 @@ export class MiniMenuLayer extends Container {
             item.on("pointerout", () => { hoverBg.alpha = 0; });
             item.on("pointerdown", (e) => {
                 e.nativeEvent.stopPropagation();
+                // Only a primary (left) click activates an entry; swallow other
+                // buttons so a right-click on an entry does nothing.
+                if (e.button !== 0) {
+                    return;
+                }
                 entry.callback();
                 this.close();
             });
@@ -78,6 +90,10 @@ export class MiniMenuLayer extends Container {
 
         this.addChild(this._menu);
         this.visible = true;
+
+        // The menu is anchored to a screen position; freeze the viewport so the
+        // world can't pan or zoom out from under it while it is open.
+        this._viewport.freeze();
     }
 
     close() {
@@ -90,5 +106,11 @@ export class MiniMenuLayer extends Container {
             this._clickOffMenuListener = null;
         }
         this.visible = false;
+        this._viewport.unfreeze();
+        if (this._onClose) {
+            const onClose = this._onClose;
+            this._onClose = null;
+            onClose();
+        }
     }
 }

@@ -1,10 +1,7 @@
 import {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
 
 /**
- * A journal-backed event: one row of the GameJournal event log, replayed to the
- * sessions whose viewport covers its chunk. Keeps `type` as the journal's own
- * event discriminator (other events carry none); `chunk` is derived from (x, y)
- * by AbstractTilePositionedEvent, so it is not a stored field.
+ * A GameJournal row replayed to sessions whose viewport covers its chunk, keeping `type` as the journal discriminator.
  */
 export class BufferedEvent extends AbstractTilePositionedEvent {
 
