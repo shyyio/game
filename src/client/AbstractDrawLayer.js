@@ -55,4 +55,11 @@ export class AbstractDrawLayer extends Container {
      * @returns {void}
      */
     setCenterLock(enabled) {}
+
+    /**
+     * Optional hook: show or hide a debug-only overlay; a no-op for non-debug layers.
+     * @param {boolean} enabled
+     * @returns {void}
+     */
+    setDebugMode(enabled) {}
 }

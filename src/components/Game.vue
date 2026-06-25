@@ -231,6 +231,11 @@ onMounted(async () => {
   Keyboard.on("t", () => {
     tick();
   });
+
+  // Toggle debug mode
+  Keyboard.on("d", () => {
+    client.toggleDebugMode();
+  });
 });
 
 </script>

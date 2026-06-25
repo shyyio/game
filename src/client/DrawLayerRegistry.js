@@ -64,4 +64,14 @@ export class DrawLayerRegistry {
             layer.setCenterLock(enabled);
         });
     }
+
+    /**
+     * Toggles debug overlays across every layer.
+     * @param {boolean} enabled
+     */
+    setDebugMode(enabled) {
+        this.layers.forEach(layer => {
+            layer.setDebugMode(enabled);
+        });
+    }
 }

@@ -3,6 +3,7 @@ import {BeltMod} from "./mod.js";
 import {BeltDrawLayer} from "./BeltLayer.js";
 import {BeltOverlayDrawLayer} from "./OverlayLayer.js";
 import {BeltGhostLayer} from "./BeltGhostLayer.js";
+import {PathDebugDrawLayer} from "./PathDebugLayer.js";
 import {BeltTool} from "./BeltTool.js";
 import {UndergroundBeltTool} from "./UndergroundBeltTool.js";
 import {DeleteBeltMessage} from "./messages.js";
@@ -11,6 +12,7 @@ import {
     BeltSyncEvent,
     BeltUpdateEvent,
     BeltDeleteEvent,
+    BeltPathRecalculateEvent,
 } from "./events.js";
 import {BeltType} from "./constants.js";
 import {surfaceBeltAt, walkTunnel} from "./geometry.js";
@@ -34,10 +36,13 @@ export class BeltClientMod extends BeltMod {
         this._beltLayer = new BeltDrawLayer();
         // Reveals buried tunnel belts under a hovered ramp; driven by onInspect.
         this._overlayLayer = new BeltOverlayDrawLayer();
+        // Debug overlay of belt paths, shown only in debug mode; reads positions
+        // from the shared belt cache and is driven by onClientEvent.
+        this._pathDebugLayer = new PathDebugDrawLayer(this._beltCache);
     }
 
     get drawLayers() {
-        return [this._beltLayer, this._overlayLayer, this._ghostLayer];
+        return [this._beltLayer, this._overlayLayer, this._ghostLayer, this._pathDebugLayer];
     }
 
     tools(client) {
@@ -56,6 +61,12 @@ export class BeltClientMod extends BeltMod {
     onClientEvent(event, client) {
         if (event instanceof BeltInsertEvent || event instanceof BeltSyncEvent) {
             this._addBelt(event);
+            // A live insert's path recalc is published before the belt itself, so the
+            // overlay must repaint once the new belt is in the cache. Chunk syncs
+            // already arrive before their recalcs, so they need no extra repaint.
+            if (event instanceof BeltInsertEvent) {
+                this._pathDebugLayer.redraw();
+            }
             return;
         }
         if (event instanceof BeltUpdateEvent) {
@@ -63,15 +74,21 @@ export class BeltClientMod extends BeltMod {
             this._beltLayer.updateBelt(event.id, event.newParentX, event.newParentY);
             return;
         }
+        if (event instanceof BeltPathRecalculateEvent) {
+            this._pathDebugLayer.updatePath(event.parts);
+            return;
+        }
         if (event instanceof BeltDeleteEvent) {
             this._beltCache.remove(event.id);
             this._beltLayer.removeBelt(event.id);
+            this._pathDebugLayer.removePath(event.id);
             return;
         }
         if (event instanceof ChunkUnsubscribeEvent) {
             const removedIds = this._beltCache.clearChunk(event.chunk);
             removedIds.forEach(id => {
                 this._beltLayer.removeBelt(id);
+                this._pathDebugLayer.removePath(id);
             });
         }
     }

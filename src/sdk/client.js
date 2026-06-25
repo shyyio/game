@@ -40,6 +40,9 @@ export {TILE_SIZE, snapToTile, snapToChunk} from "@/client/constants.js";
 // Convenience wrappers for drawing onto a Pixi Graphics object.
 export {drawLine, drawRect, drawCircle} from "@/client/pixiUtils.js";
 
+// `DEBUG_COLOR(n)` maps a numeric id to a stable color from a fixed debug palette.
+export {DEBUG_COLOR} from "@/client/constants.js";
+
 // ---- Animation ----
 // Shared mod-8 animation clock: every animated sequence has 8 frames named
 // "<base>/0".."<base>/7", and currentAnimationFrame() returns the single frame

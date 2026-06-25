@@ -395,12 +395,16 @@ export const beltStatements = {
     // Every belt in a chunk, with its parent's tile, to seed a newly-subscribed
     // client. Includes underground belts (no type filter): the client index keeps
     // them for the underground tool's pairing scan even though they aren't drawn.
+    // Every belt in the chunk, grouped by path (head last) so one scan seeds both the
+    // belt syncs and the path-debug overlay. A path lives entirely in one chunk (it is
+    // split at chunk borders), so a chunk's belts hold whole paths.
     GetBeltsInChunk: `
-        SELECT belt.id, belt.x, belt.y, belt.direction, belt.type,
+        SELECT belt.id, belt.x, belt.y, belt.direction, belt.type, belt.path_id,
             parent.x AS parent_x, parent.y AS parent_y
         FROM Belt belt
             LEFT JOIN Belt parent ON parent.id = belt.parent_id
-        WHERE belt.chunk = @chunk;
+        WHERE belt.chunk = @chunk
+        ORDER BY belt.path_id, belt.path_index;
     `,
 
     GetTail: `

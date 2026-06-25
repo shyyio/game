@@ -58,21 +58,44 @@ export class BeltMod extends AbstractMod {
     // ---- Chunk sync ----
 
     /**
-     * Returns a BeltSyncEvent for every belt in the chunk (undergrounds included, for the client's ramp scans).
+     * Seed events for a synced chunk: a BeltSyncEvent per belt (undergrounds included,
+     * for the client's ramp scans) then a BeltPathRecalculateEvent per path it touches.
      * @param {string} chunk
-     * @returns {BeltSyncEvent[]}
+     * @returns {AbstractTilePositionedEvent[]}
      */
     collectChunkSync(chunk) {
         const belts = this.game.query("GetBeltsInChunk", {chunk});
-        return belts.map(belt => new BeltSyncEvent(
-            belt.x,
-            belt.y,
-            belt.id,
-            belt.direction,
-            belt.type,
-            belt.parent_x,
-            belt.parent_y,
-        ));
+        const events = [];
+        const paths = new Map();
+        belts.forEach(belt => {
+            events.push(new BeltSyncEvent(
+                belt.x,
+                belt.y,
+                belt.id,
+                belt.direction,
+                belt.type,
+                belt.parent_x,
+                belt.parent_y,
+            ));
+            // Group the chunk's belts into their paths to seed the path-debug overlay.
+            let path = paths.get(belt.path_id);
+            if (path === undefined) {
+                path = {parts: []};
+                paths.set(belt.path_id, path);
+            }
+            path.parts.push(belt.id);
+            // Belts arrive head-last, so the final write leaves the head's position.
+            path.x = belt.x;
+            path.y = belt.y;
+        });
+
+        // The belt syncs above all come first, so the client's belt cache holds every
+        // position before each path recalc is replayed.
+        paths.forEach(path => {
+            events.push(new BeltPathRecalculateEvent(path.x, path.y, path.parts));
+        });
+
+        return events;
     }
 
     // ---- AbstractMessage handling ----

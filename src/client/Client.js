@@ -62,6 +62,16 @@ export class Client {
         this._mapMode = false;
         this._onMapModeChange = null;
         this._centerLock = false;
+        this._debugMode = false;
+    }
+
+    /**
+     * Toggles debug mode, showing or hiding debug-only draw layers.
+     * @returns {void}
+     */
+    toggleDebugMode() {
+        this._debugMode = !this._debugMode;
+        this.drawLayerRegistry.setDebugMode(this._debugMode);
     }
 
     /**
