@@ -20,6 +20,10 @@ export {AbstractObjectDrawLayer} from "@/client/AbstractObjectDrawLayer.js";
 // Base class for a placement/interaction tool shown in the toolbar.
 export {AbstractTool} from "@/client/AbstractTool.js";
 
+// ---- Feedback ----
+// Haptic (rumble) feedback for touch devices; a no-op where unavailable.
+export {default as Haptics} from "@/client/Haptics.js";
+
 // ---- Client world state ----
 // A client mod's own picture of placed objects (indexed by id, tile, and chunk),
 // seeded from chunk-sync events. Client code queries this instead of the

@@ -1,4 +1,4 @@
-import {AbstractTool, Direction} from "@/sdk/client.js";
+import {AbstractTool, Direction, Haptics} from "@/sdk/client.js";
 import {CreateBeltMessage, DeleteBeltMessage} from "./messages.js";
 import {BeltType, BeltBend, MAX_UNDERGROUND_LENGTH} from "./constants.js";
 import {Belt} from "./BeltLayer.js";
@@ -146,6 +146,7 @@ export class UndergroundBeltTool extends AbstractTool {
             rampParent: placement.parentId === null ? undefined : placement.parentId,
             disconnectRampChild: placement.childId === null ? undefined : placement.childId,
         }));
+        Haptics.tap();
 
         this._rotation.invert();
         this.onTileEnter(tileX, tileY);

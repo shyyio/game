@@ -6,7 +6,7 @@
 // degrades to a silent no-op, so callers never need to feature-check.
 
 // A short pulse for a discrete action: a button tap or a placement.
-const TAP_DURATION_MS = 12;
+const TAP_DURATION_MS = 10;
 
 class Haptics {
 

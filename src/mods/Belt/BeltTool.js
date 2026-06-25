@@ -1,4 +1,4 @@
-import {AbstractTool, Direction} from "@/sdk/client.js";
+import {AbstractTool, Direction, Haptics} from "@/sdk/client.js";
 import {CreateBeltMessage, DeleteBeltMessage} from "./messages.js";
 import {BeltType, BeltBend} from "@/mods/Belt/constants.js";
 import {Belt} from "./BeltLayer.js";
@@ -137,6 +137,7 @@ export class BeltTool extends AbstractTool {
             this.session.sendMessage(new DeleteBeltMessage(existing.id));
         }
         this.session.sendMessage(new CreateBeltMessage({x: tileX, y: tileY, direction, beltType: BeltType.NORMAL}));
+        Haptics.tap();
     }
 
     onDragTile(tileX, tileY, direction) {

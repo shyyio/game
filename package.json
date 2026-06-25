@@ -21,8 +21,7 @@
     "sql.js": "^1.13.0",
     "underscore": "^1.13.7",
     "vue": "^3.5.18",
-    "vuetify": "^3.9.5",
-    "vuex": "^4.0.2"
+    "vuetify": "^3.9.5"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.1",
