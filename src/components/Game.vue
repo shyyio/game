@@ -236,6 +236,10 @@ onMounted(async () => {
   Keyboard.on("d", () => {
     client.toggleDebugMode();
   });
+
+  window.dumpDatabase = () => {
+    return db.dump();
+  };
 });
 
 </script>

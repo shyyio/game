@@ -124,6 +124,38 @@ export class BrowserDatabase extends AbstractDatabase {
         });
     }
 
+    /**
+     * Dumps every table's rows as a plain JSON object keyed by table name; debugging only.
+     * @returns {object}
+     */
+    dump() {
+        const tables = this.db.exec(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        );
+        const dump = {};
+        if (tables.length === 0) {
+            return dump;
+        }
+        tables[0].values.forEach(([name]) => {
+            const result = this.db.exec(`SELECT * FROM "${name}"`);
+            if (result.length === 0) {
+                dump[name] = [];
+                return;
+            }
+            const {columns, values} = result[0];
+            dump[name] = values.map(row => {
+                const obj = {};
+                columns.forEach((column, i) => {
+                    // BigInt ids aren't JSON-serializable; narrow them for the dump.
+                    const value = row[i];
+                    obj[column] = typeof value === "bigint" ? Number(value) : value;
+                });
+                return obj;
+            });
+        });
+        return dump;
+    }
+
     async debugPrintDbSize() {
         this.db.run("VACUUM;");
 
