@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert";
 
 import {setup} from "@/test/common.js";
-import {createBelt} from "./testHelpers.js";
+import {createBelt, deleteBelt} from "./testHelpers.js";
 import {BeltSyncEvent, BeltPathRecalculateEvent} from "./events.js";
 import {BeltType} from "./constants.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
@@ -69,6 +69,29 @@ test("a multi-belt path is seeded as one recalc, head last", async () => {
     const head = harness.rawScalar("SELECT path_id FROM Belt WHERE x = 1 AND y = 1");
     const seededHead = pathSeeds[0].parts[pathSeeds[0].parts.length - 1];
     assert.strictEqual(Number(seededHead), Number(head));
+});
+
+test("deleting a path's head publishes a recalc for the re-headed survivor", async () => {
+    const harness = await setup();
+    createBelt(harness, BeltType.NORMAL, {x: 1, y: 1, direction: Direction.RIGHT});
+    createBelt(harness, BeltType.NORMAL, {x: 2, y: 1, direction: Direction.RIGHT});
+    createBelt(harness, BeltType.NORMAL, {x: 3, y: 1, direction: Direction.RIGHT});
+    harness.dispatchMessage(new SetViewportMessage([chunkKey(1, 1)]));
+
+    // The head belt is the path's id (its upstream-most belt).
+    const oldHead = harness.rawScalar("SELECT path_id FROM Belt WHERE x = 1 AND y = 1");
+
+    const events = captureEvents(harness);
+    deleteBelt(harness, BigInt(oldHead));
+
+    // The survivors re-head onto a new path, which must be announced or a client
+    // tracking paths (e.g. the debug overlay) never learns the new head.
+    const newHead = harness.rawScalar("SELECT path_id FROM Belt WHERE x = 2 AND y = 1");
+    const recalc = events.find(event =>
+        event instanceof BeltPathRecalculateEvent
+        && Number(event.parts[event.parts.length - 1]) === Number(newHead));
+    assert.ok(recalc, "expected a recalc for the re-headed surviving path");
+    assert.strictEqual(recalc.parts.length, 2);
 });
 
 test("an empty chunk seeds nothing", async () => {

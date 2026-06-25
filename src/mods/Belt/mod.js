@@ -644,6 +644,11 @@ export class BeltMod extends AbstractMod {
         // the BeltUpdateEvent a re-link publishes when a parent changes. The child's
         // tile is immutable, so it's reused from the DetachChild row — no re-query.
         this.game.publishEventNow(new BeltUpdateEvent(child.x, child.y, childId, null, null));
+
+        // The orphaned belts now form their own path; announce its composition under
+        // the new head (mirrors _finalizeParentPath) so clients tracking paths re-key
+        // it off the deleted head.
+        this._publishPathRecalculate(childId, child.x, child.y);
     }
 
     /**
