@@ -574,23 +574,37 @@ test("Does not reconnect a surviving entrance to an exit beyond tunnel range", a
     assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 2);
 });
 
-test("Skips reconnection when a crossing tunnel buries the gap, leaving the deletion intact", async () => {
+test("Lays two tunnels crossing on the same tile", async () => {
     const game = await setup();
-    createBelt(game, GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
-    createBelt(game, GameObject.RAMP_UP, {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 1n});
-    createBelt(game, GameObject.RAMP_UP, {x: 5, y: 1, direction: Direction.RIGHT});
+    createBelt(game, GameObject.RAMP_DOWN, {x: 10, y: 10, direction: Direction.RIGHT});
+    createBelt(game, GameObject.RAMP_UP, {x: 12, y: 10, direction: Direction.RIGHT, rampParent: 1n});
+    createBelt(game, GameObject.RAMP_DOWN, {x: 11, y: 9, direction: Direction.DOWN});
+    createBelt(game, GameObject.RAMP_UP, {x: 11, y: 11, direction: Direction.DOWN, rampParent: 4n});
 
-    // A perpendicular tunnel buries an underground at (4,1), inside the would-be gap.
-    createBelt(game, GameObject.RAMP_DOWN, {x: 4, y: -1, direction: Direction.DOWN});
-    createBelt(game, GameObject.RAMP_UP, {x: 4, y: 2, direction: Direction.DOWN, rampParent: 5n});
+    // Both undergrounds occupy (11,10) on different axes, each in its own tunnel path.
+    assert.equal(game.rawScalar(`SELECT COUNT(*) FROM Belt WHERE x=11 AND y=10 AND type=${BeltType.UNDERGROUND}`), 2);
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=1 AND length=(3*2-1)"), 1);
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=4 AND length=(3*2-1)"), 1);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 2);
+});
+
+test("Reconnects across a perpendicular crossing tunnel, sharing the buried tile", async () => {
+    const game = await setup();
+    createBelt(game, GameObject.RAMP_DOWN, {x: 10, y: 10, direction: Direction.RIGHT});
+    createBelt(game, GameObject.RAMP_UP, {x: 12, y: 10, direction: Direction.RIGHT, rampParent: 1n});
+    createBelt(game, GameObject.RAMP_UP, {x: 14, y: 10, direction: Direction.RIGHT});
+
+    // A perpendicular tunnel buries a vertical underground at (13,10), inside the gap.
+    createBelt(game, GameObject.RAMP_DOWN, {x: 13, y: 9, direction: Direction.DOWN});
+    createBelt(game, GameObject.RAMP_UP, {x: 13, y: 11, direction: Direction.DOWN, rampParent: 5n});
 
     deleteBelt(game, 3n);
 
-    // A new underground would collide with the crossing one, so 1 stays lone and the
-    // crossing tunnel is untouched.
-    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=1 AND length=1"), 1);
-    assert.equal(game.rawScalar(`SELECT 1 FROM Belt WHERE x=4 AND y=1 AND type=${BeltType.UNDERGROUND}`), 1);
-    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt"), 6);
+    // Entrance 1 re-tunnels to exit 4 right under the crossing tunnel; both undergrounds share (13,10).
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=1 AND length=(5*2-1)"), 1);
+    assert.equal(game.rawScalar(`SELECT COUNT(*) FROM Belt WHERE x=13 AND y=10 AND type=${BeltType.UNDERGROUND}`), 2);
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=5 AND length=(3*2-1)"), 1);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt"), 8);
 });
 
 test("Moves items through a zero-gap tunnel across a chunk boundary and collapses on delete", async () => {

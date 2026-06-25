@@ -37,7 +37,11 @@ export function walkTunnel(beltCache, ramp) {
         x += dx;
         y += dy;
         const records = beltCache.getAtTile(x, y);
-        const underground = records.find(record => record.data.type === BELT_UNDERGROUND);
+        // Match this tunnel's own underground, not a crossing one sharing the tile:
+        // a tunnel's undergrounds face the same direction as its ramps.
+        const underground = records.find(record =>
+            record.data.type === BELT_UNDERGROUND && record.data.direction === ramp.data.direction
+        );
         if (underground !== undefined) {
             tiles.push({x, y});
             continue;

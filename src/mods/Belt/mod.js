@@ -772,12 +772,17 @@ export class BeltMod extends AbstractMod {
             return null;
         }
 
-        // A crossing tunnel's underground in the gap would collide with ours (one
-        // underground per tile), so refuse rather than abort the whole removal.
-        const gapHasUnderground = rows.some(row =>
-            row.type === BELT_UNDERGROUND && row.distance < candidate.distance
+        // A same-axis underground in the gap (a parallel tunnel) would collide with
+        // ours, so refuse rather than abort the whole removal. A perpendicular one is
+        // a crossing tunnel our undergrounds can share the tile with (see the
+        // axis-aware Belt_x_y_underground index), so it doesn't block.
+        const axis = survivor.direction % 2;
+        const gapBlocked = rows.some(row =>
+            row.type === BELT_UNDERGROUND
+            && row.distance < candidate.distance
+            && row.direction % 2 === axis
         );
-        if (gapHasUnderground) {
+        if (gapBlocked) {
             return null;
         }
 
