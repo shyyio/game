@@ -16,6 +16,7 @@ export class UndergroundBeltTool extends AbstractTool {
      */
     constructor(client, beltCache, ghostLayer) {
         super(client.session);
+        this._client = client;
         this._beltCache = beltCache;
         this._ghostLayer = ghostLayer;
         this._blockedTilesLayer = client.blockedTilesLayer;
@@ -149,6 +150,18 @@ export class UndergroundBeltTool extends AbstractTool {
         Haptics.tap();
 
         this._rotation.invert();
+        // Pan the center-lock crosshair forward along the flow direction so building
+        // continues from where the belt resumes. A lone down ramp (entrance) advances
+        // two tiles, clearing room for the exit; an up ramp (exit) completing a tunnel
+        // back to an existing down ramp advances one. A no-op off center-lock.
+        const completesTunnel = placement.type === BeltType.RAMP_UP && placement.parentId !== null;
+        const loneEntrance = placement.type === BeltType.RAMP_DOWN && placement.parentId === null;
+        if (loneEntrance) {
+            this._client.advanceCenterLock(tileX, tileY, placement.direction, 2);
+        }
+        else if (completesTunnel) {
+            this._client.advanceCenterLock(tileX, tileY, placement.direction);
+        }
         this.onTileEnter(tileX, tileY);
     }
 

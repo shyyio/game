@@ -169,21 +169,22 @@ export class Client {
     }
 
     /**
-     * Eases the center-lock viewport one tile from (tileX, tileY) along `direction` so
+     * Eases the center-lock viewport `tiles` tiles from (tileX, tileY) along `direction` so
      * consecutive taps lay a line; a no-op off center-lock.
      * @param {number} tileX
      * @param {number} tileY
      * @param {Direction} direction
+     * @param {number} [tiles] - how many tiles to advance (default 1)
      * @returns {void}
      */
-    advanceCenterLock(tileX, tileY, direction) {
+    advanceCenterLock(tileX, tileY, direction, tiles = 1) {
         if (!this._centerLock) {
             return;
         }
         // Absolute next-tile centre so rapid taps don't drift; snap emits "moved"
         // each frame, so the chunk subscription refreshes via that listener.
-        const targetTileX = tileX + Direction.dx(direction);
-        const targetTileY = tileY + Direction.dy(direction);
+        const targetTileX = tileX + Direction.dx(direction) * tiles;
+        const targetTileY = tileY + Direction.dy(direction) * tiles;
         this.viewport.snap(
             targetTileX * TILE_SIZE + TILE_SIZE / 2,
             targetTileY * TILE_SIZE + TILE_SIZE / 2,
