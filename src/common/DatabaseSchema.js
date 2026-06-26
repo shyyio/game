@@ -171,7 +171,9 @@ const CoreTickPhases = {
             INSERT INTO PortTransfer (source_id, destination_id, item)
             SELECT source_id, destination_id, src.item
             FROM resolved_chains
-                INNER JOIN Port src ON src.id = source_id
+                -- CROSS JOIN forces resolved_chains (the small transfer set) to drive
+                -- the join; otherwise the planner scans the whole Port table.
+                CROSS JOIN Port src ON src.id = source_id
             WHERE managed=TRUE;`
         ),
         new TickOp("TruncatePortTransferIntent", `DELETE FROM PortTransferIntent;`),
@@ -182,8 +184,13 @@ const CoreTickPhases = {
             `UPDATE Port SET item=NULL WHERE id IN (SELECT source_id FROM PortTransfer);`
         ),
         new TickOp(
+            // Driven from PortTransfer (destination_id is its PRIMARY KEY) instead of
+            // UPDATE ... FROM, which made the planner scan the whole Port table. Mirrors
+            // FlushPortTransferSource, which already drives from the transfer set.
             "FlushPortTransferDestination",
-            `UPDATE Port SET item=pt.item FROM PortTransfer pt WHERE Port.id = pt.destination_id;`
+            `UPDATE Port
+             SET item = (SELECT pt.item FROM PortTransfer pt WHERE pt.destination_id = Port.id)
+             WHERE id IN (SELECT destination_id FROM PortTransfer);`
         ),
         new TickOp("TruncatePortTransfer", `DELETE FROM PortTransfer;`),
     ],
