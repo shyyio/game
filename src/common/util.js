@@ -55,14 +55,3 @@ export function rotate(point, direction) {
             return {x: point.y, y: fixNegativeZero(-point.x), direction: newDirection};
     }
 }
-
-
-/**
- * @param arr {Uint8Array}
- * @returns {Promise<Blob>}
- */
-export async function gzipCompress(arr) {
-    return await new Response(
-        new Blob([arr]).stream().pipeThrough(new CompressionStream("gzip"))
-      ).blob();
-}

@@ -1,7 +1,6 @@
 import initSqlJs from "sql.js";
 import {AbstractDatabase, formatRow} from "@/common/AbstractDatabase.js";
 import wasmFile from "@/assets/sql-wasm.wasm?url";
-import {gzipCompress} from "@/common/util.js";
 
 export class BrowserDatabase extends AbstractDatabase {
 
@@ -103,25 +102,6 @@ export class BrowserDatabase extends AbstractDatabase {
      */
     rawExec(sql) {
         this.db.run(sql);
-    }
-
-    exportDb() {
-        this.db.run("VACUUM;");
-        const data = this.db.export();
-        this._postInit();
-
-        gzipCompress(data).then(blob => {
-            const url = URL.createObjectURL(blob);
-
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "save.sqlite3.gz";
-            document.body.appendChild(a);
-            a.click();
-
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        });
     }
 
     /**
