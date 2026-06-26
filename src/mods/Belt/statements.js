@@ -340,7 +340,10 @@ export const beltStatements = {
             child AS (
                 SELECT Belt.id, Belt.path_id, Belt.parent_id, Belt.chunk, Belt.x, Belt.y
                 FROM Belt
-                    LEFT JOIN Belt new_parent       ON new_parent.x = @x AND new_parent.y = @y
+                    -- Match the placed belt by id, not its tile: an underground tunnel
+                    -- can share the tile, and joining it instead breaks the loop-back
+                    -- check below (its grandparent is the tunnel, not the new path).
+                    LEFT JOIN Belt new_parent ON new_parent.id = CAST(@id AS INT)
                     LEFT JOIN Belt new_grandparent  ON new_grandparent.id = new_parent.parent_id
                 WHERE Belt.x = ${CHILD_TILE_X}
                   AND Belt.y = ${CHILD_TILE_Y}
@@ -506,6 +509,10 @@ export const beltStatements = {
         RETURNING out_port_id
     `,
 
+    GetPathInPort: `SELECT in_port_id FROM BeltPath WHERE id = CAST(@id AS INT);`,
+
+    GetPathOutPort: `SELECT out_port_id FROM BeltPath WHERE id = CAST(@id AS INT);`,
+
     GetBeltPath: `SELECT id FROM Belt WHERE path_id = CAST(@id AS INT) ORDER BY path_index;`,
 
     GetRampParents: `
@@ -663,6 +670,12 @@ export const beltStatements = {
         SET parent_id=NULL
         WHERE parent_id = CAST(@id AS INT)
         RETURNING id, x, y;
+    `,
+
+    NullifyParent: `
+        UPDATE Belt
+        SET parent_id=NULL
+        WHERE id = CAST(@id AS INT);
     `,
 
     UnassignBeltPath: `

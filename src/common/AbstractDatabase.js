@@ -4,7 +4,20 @@ import {NotImplementedError} from "@/common/error.js";
  * Result columns whose values must stay BigInt (the rest are narrowed by {@link formatRow}).
  * @type {Set<string>}
  */
-export const BIGINT_COLS = new Set(["id", "parent_id", "belt_id", "path_id", "head", "tail_id"]);
+export const BIGINT_COLS = new Set([
+    "id",
+    "parent_id",
+    "belt_id",
+    "path_id",
+    "head",
+    "tail_id",
+    // Belt/path id aliases from GetBeltCreateContext; kept BigInt so id comparisons
+    // (e.g. child_id vs head, child_path vs child_id) don't mismatch BigInt vs Number.
+    "child_id",
+    "child_path",
+    "child_old_parent",
+    "old_parent_path_head",
+]);
 
 /**
  * Narrows BigInt values to Number for all columns not listed in {@link BIGINT_COLS},

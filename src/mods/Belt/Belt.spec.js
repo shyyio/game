@@ -150,6 +150,78 @@ test("Opens a loop cleanly when its seam head is deleted", async () => {
     assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE length=(7*2-1)"), 1);
 });
 
+test("Closes a loop split across two paths by a junction-feeder deletion", async () => {
+    const game = await setup();
+    // Belt 1 at (14,3) is fed both by belt 2 (in the loop) and the higher-id belt 3
+    // (a junction feeder), so belt 3 parents it.
+    createBelt(game, GameObject.BELT, {x: 14, y: 3, direction: Direction.UP});
+    createBelt(game, GameObject.BELT, {x: 13, y: 3, direction: Direction.RIGHT});
+    createBelt(game, GameObject.BELT, {x: 14, y: 4, direction: Direction.UP});
+    createBelt(game, GameObject.BELT, {x: 12, y: 3, direction: Direction.RIGHT});
+    createBelt(game, GameObject.BELT, {x: 12, y: 2, direction: Direction.DOWN});
+    createBelt(game, GameObject.BELT, {x: 13, y: 2, direction: Direction.LEFT});
+
+    // Removing the junction feeder leaves the ring split across two paths that feed
+    // each other through one shared port (the surviving feeder's output is the head's
+    // input). Closing the ring folds those paths together: the head must not inherit
+    // an output port equal to its own input (CHECK in_port_id != out_port_id) — a loop
+    // gets two distinct ports, reconnected by its tail→head adjacency.
+    deleteBelt(game, 3n);
+    createBelt(game, GameObject.BELT, {x: 14, y: 2, direction: Direction.LEFT});
+
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 1);
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE length=(6*2-1)"), 1);
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE in_port_id != out_port_id"), 1);
+});
+
+test("Closes a surface loop crossing over an underground tunnel", async () => {
+    const game = await setup();
+    // Vertical tunnel up column x=11: ramp_down (11,5) into ramp_up (11,2), burying
+    // undergrounds at (11,4) and (11,3).
+    createBelt(game, GameObject.RAMP_DOWN, {x: 11, y: 5, direction: Direction.UP});
+    createBelt(game, GameObject.RAMP_UP, {x: 11, y: 2, direction: Direction.UP, rampParent: 1n});
+
+    // A surface loop crossing the tunnel at (11,4) and (11,3) — both over undergrounds.
+    createBelt(game, GameObject.BELT, {x: 10, y: 3, direction: Direction.DOWN});
+    createBelt(game, GameObject.BELT, {x: 10, y: 4, direction: Direction.RIGHT});
+    createBelt(game, GameObject.BELT, {x: 11, y: 4, direction: Direction.RIGHT});
+    createBelt(game, GameObject.BELT, {x: 12, y: 4, direction: Direction.UP});
+    createBelt(game, GameObject.BELT, {x: 12, y: 3, direction: Direction.LEFT});
+    // The closing belt sits on the underground at (11,3): the buried belt must not be
+    // mistaken for the new belt's upstream chain, or loop-back detection fails and the
+    // path folds into itself (a parentless cycle, no seam).
+    createBelt(game, GameObject.BELT, {x: 11, y: 3, direction: Direction.LEFT});
+
+    // The tunnel is untouched; the surface belts form one proper loop: a single nulled
+    // seam (not a parent cycle) with two distinct ports.
+    assert.equal(game.rawScalar("SELECT length FROM BeltPath WHERE id=1"), 7);
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id != 1 AND length=(6*2-1) AND in_port_id != out_port_id"), 1);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt WHERE type=0 AND parent_id IS NULL"), 1);
+});
+
+test("Splits a feeder stub from a loop closed onto its entry belt", async () => {
+    const game = await setup();
+    // A stub (belt 1) feeds the loop entry (belt 2); the loop is closed last by belt 7,
+    // which feeds back into belt 2 — a non-head member of belt 7's own path.
+    createBelt(game, GameObject.BELT, {x: 10, y: 4, direction: Direction.RIGHT}); // 1 stub
+    createBelt(game, GameObject.BELT, {x: 11, y: 4, direction: Direction.RIGHT}); // 2 loop entry
+    createBelt(game, GameObject.BELT, {x: 12, y: 4, direction: Direction.DOWN});  // 3
+    createBelt(game, GameObject.BELT, {x: 12, y: 5, direction: Direction.DOWN});  // 4
+    createBelt(game, GameObject.BELT, {x: 12, y: 6, direction: Direction.LEFT});  // 5
+    createBelt(game, GameObject.BELT, {x: 11, y: 6, direction: Direction.UP});    // 6
+    createBelt(game, GameObject.BELT, {x: 11, y: 5, direction: Direction.UP});    // 7 closes loop onto belt 2
+
+    // The closing belt 7 becomes the loop's seam head (parent nulled, no cycle); belt
+    // 2 keeps a parent (the loop's internal link) and the stub splits into its own
+    // path. Two paths, no belt left unpathed.
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 2);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt WHERE path_id IS NULL"), 0);
+    assert.equal(game.rawScalar("SELECT parent_id FROM Belt WHERE id=2"), 7);
+    assert.equal(game.rawScalar("SELECT parent_id FROM Belt WHERE id=7"), null);
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=7 AND length=(6*2-1) AND in_port_id != out_port_id"), 1);
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=1 AND length=1"), 1);
+});
+
 test("Opens a loop cleanly when the seam's feeder belt is deleted", async () => {
     const game = await buildRing3x3();
 

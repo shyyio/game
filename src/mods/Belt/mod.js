@@ -251,6 +251,14 @@ export class BeltMod extends AbstractMod {
     _rebuildPaths(id, head, child, options) {
         const oldParentPathHead = child === null ? null : child.oldParentPathHead;
 
+        // The new belt closed a loop by feeding `child`, a non-head belt of its own
+        // path (the child's old parent already lived in that path). `child` becomes the
+        // loop's seam head and the run upstream of it splits into its own path.
+        if (child !== null && child.hadParent && child.oldParentPathHead === head && child.id !== head) {
+            this._closeLoopOntoMiddle(id, head, child, options);
+            return;
+        }
+
         if (child !== null) {
             this._relinkChild(child, options);
             this._stashItems(child.id);
@@ -320,6 +328,45 @@ export class BeltMod extends AbstractMod {
     }
 
     /**
+     * Splits a path where a newly-placed belt closed a loop onto one of its own
+     * members: @child becomes the loop's seam head (parent nulled) and the run that
+     * was upstream of it (still headed by @head) becomes a separate path feeding the
+     * loop through ports.
+     * @private
+     */
+    _closeLoopOntoMiddle(id, head, child, options) {
+        // Stash the old path's items before the split; each re-materializes onto
+        // whichever of the two new paths its belt lands in.
+        this._stashItems(head);
+
+        // Re-point the child at the new belt (the loop's internal link), then make the
+        // new belt the loop's seam head, breaking the cycle. The run that was upstream
+        // of the child splits off, still headed by @head.
+        this._relinkChild(child, options);
+        this.game.exec("NullifyParent", {id});
+
+        this.game.exec("InvalidatePath", {id: head});
+        this.game.exec("CalculateBeltPath", {id: head});
+        const createdLoop = this.game.queryScalar("InsertBeltPath", {id});
+        this.game.exec("CalculateBeltPath", {id});
+
+        this.game.exec("MaterializeBeltPath", {id: head});
+        this._populateBeltPathPorts(head);
+        this.game.exec("MaterializeBeltPath", {id});
+        if (createdLoop) {
+            this._populateBeltPathPorts(id);
+        }
+
+        this._unStashItems();
+        this.game.exec("FillHeadGap", {id: head});
+        this.game.exec("FillHeadGap", {id});
+
+        this._publishPathRecalculate(head, options.x, options.y);
+        this._publishPathRecalculate(id, options.x, options.y);
+        this._publishBeltInsert(id, options);
+    }
+
+    /**
      * Re-points the downstream child at its new upstream parent and notifies clients.
      * @private
      */
@@ -335,6 +382,19 @@ export class BeltMod extends AbstractMod {
      */
     _absorbChildPath(head, child) {
         this.game.exec("DeleteOutPort", {id: head});
+
+        // When the child already feeds the head, folding it in closes a loop and the
+        // out port it contributes is the head's own in port. A path can't use one port
+        // for both ends (CHECK in_port != out_port), and a loop needs two regardless —
+        // its physical tail→head adjacency reconnects them — so rekey the head's in
+        // port to a fresh one before inheriting the child's out port.
+        const childOutPort = this.game.queryScalar("GetPathOutPort", {id: child.id});
+        const headInPort = this.game.queryScalar("GetPathInPort", {id: head});
+        if (childOutPort !== null && childOutPort === headInPort) {
+            const freshInPort = this.game.queryScalar("InsertPort");
+            this.game.exec("UpdateInPort", {id: head, port: freshInPort});
+        }
+
         const inheritedOutPort = this.game.queryScalar("InheritOutPort", {child: child.id, parent: head});
         this.game.exec("DeleteInPort", {id: child.id});
         this.game.exec("DeletePath", {id: child.id});
