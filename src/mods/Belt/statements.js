@@ -455,21 +455,28 @@ export const beltStatements = {
     `,
 
     CalculateBeltPath: `
-        WITH parent_belt AS (SELECT id, chunk FROM Belt WHERE id = @id),
-             path AS (
-                SELECT id, chunk FROM parent_belt
-                UNION
-                SELECT child.id, child.chunk
-                FROM Belt child
-                    INNER JOIN path ON path.id = child.parent_id
-                WHERE path.chunk = child.chunk
-             ),
-             indexed_path AS (SELECT id, row_number() over () idx FROM path),
-             reverse_path AS (SELECT id, ROW_NUMBER() OVER (ORDER BY idx DESC) - 1 seq FROM indexed_path)
+        WITH parent_belt AS (
+            SELECT id, chunk FROM Belt WHERE id = @id
+        ), path AS (
+            SELECT id, chunk FROM parent_belt
+            UNION
+            SELECT child.id, child.chunk
+            FROM Belt child
+                INNER JOIN path ON path.id = child.parent_id
+            WHERE path.chunk = child.chunk
+        ), indexed_path AS (
+            SELECT id, ROW_NUMBER() OVER () idx FROM path
+        ), reverse_path AS (
+            SELECT id, ROW_NUMBER() OVER (ORDER BY idx DESC) - 1 seq FROM indexed_path
+        )
         UPDATE Belt
-        SET path_id=CAST(@id AS INT),
-            path_index=(SELECT seq FROM reverse_path WHERE reverse_path.id = Belt.id)
-        WHERE id IN (SELECT id FROM reverse_path);
+        SET path_id=CASE WHEN Belt.id IN (SELECT id FROM reverse_path) THEN CAST(@id AS INT) ELSE NULL END,
+            path_index=(
+                SELECT seq FROM reverse_path 
+                WHERE reverse_path.id = Belt.id
+            )
+        WHERE id IN (SELECT id FROM reverse_path)
+           OR path_id = CAST(@id AS INT);
     `,
 
     MaterializeBeltPath: `

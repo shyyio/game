@@ -498,6 +498,24 @@ test("Collapses the tunnel when the up ramp is deleted", async () => {
     assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 1);
 });
 
+test("Drops the orphaned downstream belt from the parent path when the up ramp is deleted", async () => {
+    const game = await setup();
+    createBelt(game, GameObject.BELT,      {x: 0, y: 1, direction: Direction.RIGHT}); // 1
+    createBelt(game, GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT}); // 2
+    createBelt(game, GameObject.RAMP_UP,   {x: 3, y: 1, direction: Direction.RIGHT, rampParent: 2n}); // underground 3, ramp 4
+    createBelt(game, GameObject.BELT,      {x: 4, y: 1, direction: Direction.RIGHT}); // 5
+
+    deleteBelt(game, 4n);
+
+    // The tunnel collapses to two paths: the upstream run (belts 1,2) keeps head 1,
+    // and the downstream belt 5 splits onto its own path. Belt 5 must not linger as a
+    // stale member of path 1 — its length would otherwise read 5 instead of 3.
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=1 AND length=(2*2-1)"), 1);
+    assert.equal(game.rawScalar("SELECT path_id FROM Belt WHERE id=5"), 5);
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=5 AND length=1"), 1);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt WHERE path_id=1"), 2);
+});
+
 test("Collapses the tunnel when the down ramp is deleted", async () => {
     const game = await setup();
     createBelt(game, GameObject.RAMP_DOWN, {x: 1, y: 1, direction: Direction.RIGHT});
