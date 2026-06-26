@@ -61,6 +61,16 @@ export const beltSchema = `
     CREATE INDEX Belt_x_y ON Belt(x, y);
     CREATE INDEX Belt_path ON Belt(path_id, path_index);
 
+    -- Partial indexes that let a tick enumerate only the paths that can do work,
+    -- instead of scanning every path. A path is "active" if it can pop (has an
+    -- item ready), is shuffling a gap, or is taking input (see ActivePath build).
+    CREATE INDEX BeltPath_next_item ON BeltPath(id) WHERE next_item_id IS NOT NULL;
+    CREATE INDEX BeltPath_next_gap  ON BeltPath(id) WHERE next_gap_id IS NOT NULL;
+
+    -- A path takes input only when its in-port holds an item; this partial index of
+    -- the (few) filled ports lets the tick find those paths without scanning Port.
+    CREATE INDEX Port_filled ON Port(id) WHERE item IS NOT NULL;
+
     CREATE TABLE BeltPathItem (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -105,6 +115,13 @@ export const beltTempSchema = `
     -- popped, or a gap was consumed). The tick's next_gap/next_item recalc reads
     -- this instead of scanning every path; PRIMARY KEY dedups the INSERT OR IGNOREs.
     CREATE TEMPORARY TABLE ChangedPath (
+        path_id INTEGER PRIMARY KEY
+    );
+
+    -- The paths a tick needs to process at all: rebuilt at the start of each tick
+    -- from the partial indexes above so the movement ops touch only live paths
+    -- instead of every path in the world. PRIMARY KEY dedups the union inserts.
+    CREATE TEMPORARY TABLE ActivePath (
         path_id INTEGER PRIMARY KEY
     );
 

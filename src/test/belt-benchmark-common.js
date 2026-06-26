@@ -22,7 +22,7 @@ export const MAX_SEED_COUNT = NUMBERS_ROWS ** 2;
  * @param {NodeDatabase} db
  * @param {number} count
  */
-export function seedDatabase(db, count) {
+export function seedDatabase(db, count, itemCount = count) {
     db.rawExec("BEGIN");
 
     // Belts: ids 1..count, fanned across the grid by id. Two cross-joined Numbers
@@ -41,19 +41,21 @@ export function seedDatabase(db, count) {
     db.rawExec("INSERT INTO Port (id) SELECT id FROM Belt;");
     db.rawExec(`INSERT INTO Port (id) SELECT id + ${count} FROM Belt;`);
 
-    // Each belt is its own single-belt path; in_port != out_port satisfies the CHECK.
+    // Each belt is its own single-belt path. The first `itemCount` paths carry an
+    // item (head_gap 0); the rest are empty (head_gap = length). in_port != out_port
+    // satisfies the CHECK.
     db.rawExec(`
         INSERT INTO BeltPath (id, tail_id, length, head_gap, in_port_id, out_port_id)
-        SELECT id, id, 1, 0, id, id + ${count} FROM Belt;
+        SELECT id, id, 1, CASE WHEN id <= ${itemCount} THEN 0 ELSE 1 END, id, id + ${count} FROM Belt;
     `);
     db.rawExec("UPDATE Belt SET path_id = id, path_index = 0;");
 
-    // One real (non-gap) item per path, giving a comparable item count.
-    db.rawExec("INSERT INTO BeltPathItem (path_id, length, type) SELECT id, 1, 1 FROM Belt;");
+    // One real (non-gap) item on each loaded path, giving a comparable item count.
+    db.rawExec(`INSERT INTO BeltPathItem (path_id, length, type) SELECT id, 1, 1 FROM Belt WHERE id <= ${itemCount};`);
 
-    // Point each path at its item, as a live game would: the tick's incremental
-    // recalc only fixes paths whose items change, so a valid seed must already have
-    // next_item_id set (next_gap_id stays NULL — the seed has no gap items).
+    // Point each loaded path at its item, as a live game would: the tick's
+    // incremental recalc only fixes paths whose items change, so a valid seed must
+    // already have next_item_id set (next_gap_id stays NULL — no gap items).
     db.rawExec("UPDATE BeltPath SET next_item_id = (SELECT MIN(id) FROM BeltPathItem WHERE path_id = BeltPath.id);");
 
     db.rawExec("COMMIT");
