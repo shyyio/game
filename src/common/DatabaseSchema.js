@@ -12,7 +12,7 @@ const CoreStatements = {
     Begin: "BEGIN TRANSACTION;",
     Rollback: "ROLLBACK TRANSACTION;",
 
-    InsertSession: "INSERT INTO AbstractSession (player_id) VALUES (@player_id) RETURNING id;",
+    InsertSession: "INSERT INTO Session (player_id) VALUES (@player_id) RETURNING id;",
     GetPlayerSettings: `SELECT key, value FROM PlayerSettings WHERE player_id = @player_id;`,
     GetGameSettings: `SELECT key, value FROM GameSettings;`,
 
@@ -53,7 +53,12 @@ const CoreSchema = `
 
     CREATE TABLE Port (
         id INTEGER PRIMARY KEY,
-        item INT
+        item INT,
+
+        -- Set by a mod when the port is an object's input port. Lets a mod build a
+        -- partial index of filled input ports (item IS NOT NULL AND is_in_port = 1)
+        -- so a tick can find ports taking input directly.
+        is_in_port INT NOT NULL DEFAULT 0
     );
 
     CREATE TABLE GameJournal (
@@ -114,13 +119,13 @@ const CoreTempSchema = `
     );
     CREATE UNIQUE INDEX PortTransfer_source ON PortTransfer (source_id);
 
-    CREATE TEMPORARY TABLE AbstractSession (
+    CREATE TEMPORARY TABLE Session (
         id INTEGER PRIMARY KEY,
         player_id INT NOT NULL
     );
 
     CREATE TEMPORARY TABLE SessionViewport (
-        session_id INT REFERENCES AbstractSession,
+        session_id INT REFERENCES Session,
         chunk TEXT NOT NULL
     );
 `;
@@ -171,7 +176,9 @@ const CoreTickPhases = {
             INSERT INTO PortTransfer (source_id, destination_id, item)
             SELECT source_id, destination_id, src.item
             FROM resolved_chains
-                INNER JOIN Port src ON src.id = source_id
+                -- CROSS JOIN forces resolved_chains (the small transfer set) to drive
+                -- the join; otherwise the planner scans the whole Port table.
+                CROSS JOIN Port src ON src.id = source_id
             WHERE managed=TRUE;`
         ),
         new TickOp("TruncatePortTransferIntent", `DELETE FROM PortTransferIntent;`),
@@ -182,8 +189,13 @@ const CoreTickPhases = {
             `UPDATE Port SET item=NULL WHERE id IN (SELECT source_id FROM PortTransfer);`
         ),
         new TickOp(
+            // Driven from PortTransfer (destination_id is its PRIMARY KEY) instead of
+            // UPDATE ... FROM, which made the planner scan the whole Port table. Mirrors
+            // FlushPortTransferSource, which already drives from the transfer set.
             "FlushPortTransferDestination",
-            `UPDATE Port SET item=pt.item FROM PortTransfer pt WHERE Port.id = pt.destination_id;`
+            `UPDATE Port
+             SET item = (SELECT pt.item FROM PortTransfer pt WHERE pt.destination_id = Port.id)
+             WHERE id IN (SELECT destination_id FROM PortTransfer);`
         ),
         new TickOp("TruncatePortTransfer", `DELETE FROM PortTransfer;`),
     ],
