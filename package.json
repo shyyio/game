@@ -11,7 +11,8 @@
     "build": "vite build",
     "test": "node --import ./src/test/test-loader.js --test 'src/**/*.spec.js'",
     "bench": "node --import ./src/test/test-loader.js src/test/belt-benchmark.js",
-    "bench:tick": "node --import ./src/test/test-loader.js src/test/belt-tick-benchmark.js"
+    "bench:tick": "node --import ./src/test/test-loader.js src/test/belt-tick-benchmark.js",
+    "bench:pathlen": "node --import ./src/test/test-loader.js src/test/belt-path-length-benchmark.js"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
