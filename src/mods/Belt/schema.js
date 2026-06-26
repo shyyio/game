@@ -72,6 +72,10 @@ export const beltSchema = `
 
     CREATE INDEX BeltPathItem_gap ON BeltPathItem(path_id, id) WHERE type = ${ITEM_TYPE_GAP};
     CREATE INDEX BeltPathItem_item ON BeltPathItem(path_id, id) WHERE type != ${ITEM_TYPE_GAP};
+    -- The two indexes above are partial, so the many type-agnostic per-path item
+    -- lookups (delete/stash/trim/transfer/sum) can't use them and would full-scan
+    -- BeltPathItem; this plain index serves them and the BeltPath ON DELETE FK.
+    CREATE INDEX BeltPathItem_path ON BeltPathItem(path_id);
 `;
 
 // Per-run temp tables and seed rows owned by the Belt mod.
