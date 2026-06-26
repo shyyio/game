@@ -933,9 +933,11 @@ export class BeltMod extends AbstractMod {
      */
     _unStashItems() {
         this.game.exec("UnStashItems");
+        // Recalculate only the paths the un-stash touched (still recorded in
+        // StashedItem), not every path in the world, then clear the stash.
+        this.game.exec("RecalculateNextGapForStashedPaths");
+        this.game.exec("RecalculateNextItemForStashedPaths");
         this.game.exec("TruncateStashedItems");
-        this.game.exec("RecalculateNextGap");
-        this.game.exec("RecalculateNextItem");
     }
 
     /**

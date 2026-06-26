@@ -320,6 +320,45 @@ export const beltStatements = {
         WHERE id = CAST(@id AS INT);
     `,
 
+    // The next_gap recalc scoped to just the paths an un-stash touched (the
+    // distinct paths of the stashed belts), so a create/delete never scans every
+    // path in the world the way the global RecalculateNextGap tick op does.
+    RecalculateNextGapForStashedPaths: `
+        WITH stashed_paths AS (
+            SELECT DISTINCT Belt.path_id AS id
+            FROM StashedItem
+                INNER JOIN Belt ON Belt.id = StashedItem.belt_id
+        ),
+        next_gaps AS (
+            SELECT stashed_paths.id, MIN(gap.id) AS next_gap_id
+            FROM stashed_paths
+                LEFT JOIN BeltPathItem gap ON gap.path_id = stashed_paths.id AND gap.type = ${ITEM_TYPE_GAP}
+            GROUP BY stashed_paths.id
+        )
+        UPDATE BeltPath
+        SET next_gap_id = next_gaps.next_gap_id
+        FROM next_gaps
+        WHERE BeltPath.id = next_gaps.id;
+    `,
+
+    RecalculateNextItemForStashedPaths: `
+        WITH stashed_paths AS (
+            SELECT DISTINCT Belt.path_id AS id
+            FROM StashedItem
+                INNER JOIN Belt ON Belt.id = StashedItem.belt_id
+        ),
+        next_items AS (
+            SELECT stashed_paths.id, MIN(item.id) AS next_item_id
+            FROM stashed_paths
+                LEFT JOIN BeltPathItem item ON item.path_id = stashed_paths.id AND item.type != ${ITEM_TYPE_GAP}
+            GROUP BY stashed_paths.id
+        )
+        UPDATE BeltPath
+        SET next_item_id = next_items.next_item_id
+        FROM next_items
+        WHERE BeltPath.id = next_items.id;
+    `,
+
     // Returns the head of the newly inserted belt's path, the downstream child belt (if any),
     // and the old parent's path head (if the child had a previous parent in another path).
     GetBeltCreateContext: `
