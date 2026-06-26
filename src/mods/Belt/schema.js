@@ -26,6 +26,10 @@ export const beltSchema = `
         next_item_id INT
     );
     CREATE INDEX BeltPath_ports ON BeltPath(in_port_id, out_port_id);
+    -- out_port_id needs its own leading index: the composite above only serves
+    -- in_port_id lookups, so without this every Port delete full-scans BeltPath to
+    -- honor the out_port_id ON DELETE SET NULL action (and out_port_id = ? filters).
+    CREATE INDEX BeltPath_out_port ON BeltPath(out_port_id);
 
     CREATE TABLE Belt (
         id INTEGER PRIMARY KEY,
