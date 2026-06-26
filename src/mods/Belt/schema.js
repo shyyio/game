@@ -54,6 +54,11 @@ export const beltSchema = `
     -- crossing tunnel): direction % 2 is the axis (0 = vertical, 1 = horizontal), so
     -- a perpendicular pair coexists while a same-axis overlap still conflicts.
     CREATE UNIQUE INDEX Belt_x_y_underground ON Belt(x, y, (direction % 2)) WHERE type = ${BELT_UNDERGROUND};
+    -- The two indexes above are partial, so SQLite can't use them for the many
+    -- position lookups (port/parent/neighbor queries) that don't carry a matching
+    -- type predicate. This plain index serves those lookups regardless of type;
+    -- the partials still enforce the per-tile uniqueness rules.
+    CREATE INDEX Belt_x_y ON Belt(x, y);
     CREATE INDEX Belt_path ON Belt(path_id, path_index);
 
     CREATE TABLE BeltPathItem (
