@@ -542,6 +542,16 @@ export const beltStatements = {
         WHERE id = CAST(@id AS INT)
     `,
 
+    // Flag a port as a path's in-port so the Port_in_filled partial index covers it.
+    // Called wherever in_port_id is assigned; the flag is never cleared (a stale flag
+    // only costs the index a row, never a wrong activation), and the Port row is
+    // dropped outright when the path is removed.
+    MarkPortAsInput: `
+        UPDATE Port
+        SET is_in_port=1
+        WHERE id = CAST(@port AS INT)
+    `,
+
     DeleteOutPort: `
         DELETE FROM Port
         WHERE id = (SELECT out_port_id FROM BeltPath WHERE id = CAST(@id AS INT))

@@ -2,6 +2,7 @@ import {CHUNK_KEY_SQL} from "@/sdk/common.js";
 import {
     BELT_UNDERGROUND,
     BeltGameSettingsKey,
+    ITEM_TYPE_GAP,
     MAX_UNDERGROUND_LENGTH,
 } from "./constants.js";
 
@@ -60,15 +61,18 @@ export const beltSchema = `
     CREATE INDEX Belt_x_y ON Belt(x, y);
     CREATE INDEX Belt_path ON Belt(path_id, path_index);
 
-    -- Partial indexes that let a tick enumerate only the paths that can do work,
-    -- instead of scanning every path. A path is "active" if it can pop (has an
-    -- item ready), is shuffling a gap, or is taking input (see ActivePath build).
+    -- Partial indexes that let a tick enumerate only the paths that can do work.
+    -- A path is "active" if it can pop (has an item ready), is shuffling a gap, or
+    -- is taking input (see ActivePath build).
     CREATE INDEX BeltPath_next_item ON BeltPath(id) WHERE next_item_id IS NOT NULL;
     CREATE INDEX BeltPath_next_gap  ON BeltPath(id) WHERE next_gap_id IS NOT NULL;
 
-    -- A path takes input only when its in-port holds an item; this partial index of
-    -- the (few) filled ports lets the tick find those paths without scanning Port.
-    CREATE INDEX Port_filled ON Port(id) WHERE item IS NOT NULL;
+    -- Enumerates only the *filled* in-ports (core Port.is_in_port is set when a path is
+    -- wired, see MarkPortAsInput), so the tick's input-activation reads just the in-ports
+    -- holding an item. SQLite re-checks the partial
+    -- predicate on every Port.item write, so a newly filled in-port enters the index no
+    -- matter which code path filled it.
+    CREATE INDEX Port_in_filled ON Port(id) WHERE item IS NOT NULL AND is_in_port = 1;
 
     CREATE TABLE BeltPathItem (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,13 +84,18 @@ export const beltSchema = `
     );
 
     -- One index on path_id serves every per-path item lookup (delete/stash/trim/
-    -- transfer/sum and the next-gap/next-item MIN scans, which filter type in the
-    -- query) plus the BeltPath ON DELETE FK. Keeping it the only non-PK index here
-    -- minimises the index maintenance paid on every per-tick item pop/insert.
+    -- transfer/sum) plus the BeltPath ON DELETE FK.
     CREATE INDEX BeltPathItem_path ON BeltPathItem(path_id);
+
+    -- Type-split partial indexes so the tick's next-item / next-gap recompute is an
+    -- O(1) leftmost lookup per path (MIN(id) WHERE path_id = ? AND type ...). The id is
+    -- the rowid, and each
+    -- index is ordered (path_id, id), so the first entry for a path is its MIN id.
+    CREATE INDEX BeltPathItem_next_item ON BeltPathItem(path_id) WHERE type != ${ITEM_TYPE_GAP};
+    CREATE INDEX BeltPathItem_next_gap  ON BeltPathItem(path_id) WHERE type =  ${ITEM_TYPE_GAP};
     -- Items only sit at length 0 transiently (a gap a tick is consuming, about to be
-    -- deleted). This partial index lets the tick collect those paths without scanning
-    -- every item; it stays tiny because almost no rows match.
+    -- deleted). This partial index lets the tick collect those paths directly; it
+    -- stays tiny because almost no rows match.
     CREATE INDEX BeltPathItem_zero ON BeltPathItem(path_id) WHERE length = 0;
 `;
 
@@ -111,14 +120,14 @@ export const beltTempSchema = `
 
     -- The paths whose item rows changed during the current tick (an item entered,
     -- popped, or a gap was consumed). The tick's next_gap/next_item recalc reads
-    -- this instead of scanning every path; PRIMARY KEY dedups the INSERT OR IGNOREs.
+    -- this to touch only changed paths; PRIMARY KEY dedups the INSERT OR IGNOREs.
     CREATE TEMPORARY TABLE ChangedPath (
         path_id INTEGER PRIMARY KEY
     );
 
     -- The paths a tick needs to process at all: rebuilt at the start of each tick
     -- from the partial indexes above so the movement ops touch only live paths
-    -- instead of every path in the world. PRIMARY KEY dedups the union inserts.
+    -- instead of every path. PRIMARY KEY dedups the union inserts.
     CREATE TEMPORARY TABLE ActivePath (
         path_id INTEGER PRIMARY KEY
     );

@@ -12,7 +12,7 @@ const CoreStatements = {
     Begin: "BEGIN TRANSACTION;",
     Rollback: "ROLLBACK TRANSACTION;",
 
-    InsertSession: "INSERT INTO AbstractSession (player_id) VALUES (@player_id) RETURNING id;",
+    InsertSession: "INSERT INTO Session (player_id) VALUES (@player_id) RETURNING id;",
     GetPlayerSettings: `SELECT key, value FROM PlayerSettings WHERE player_id = @player_id;`,
     GetGameSettings: `SELECT key, value FROM GameSettings;`,
 
@@ -53,7 +53,12 @@ const CoreSchema = `
 
     CREATE TABLE Port (
         id INTEGER PRIMARY KEY,
-        item INT
+        item INT,
+
+        -- Set by a mod when the port is an object's input port. Lets a mod build a
+        -- partial index of filled input ports (item IS NOT NULL AND is_in_port = 1)
+        -- so a tick can find ports taking input directly.
+        is_in_port INT NOT NULL DEFAULT 0
     );
 
     CREATE TABLE GameJournal (
@@ -114,13 +119,13 @@ const CoreTempSchema = `
     );
     CREATE UNIQUE INDEX PortTransfer_source ON PortTransfer (source_id);
 
-    CREATE TEMPORARY TABLE AbstractSession (
+    CREATE TEMPORARY TABLE Session (
         id INTEGER PRIMARY KEY,
         player_id INT NOT NULL
     );
 
     CREATE TEMPORARY TABLE SessionViewport (
-        session_id INT REFERENCES AbstractSession,
+        session_id INT REFERENCES Session,
         chunk TEXT NOT NULL
     );
 `;

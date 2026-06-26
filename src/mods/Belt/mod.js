@@ -393,6 +393,7 @@ export class BeltMod extends AbstractMod {
         if (childOutPort !== null && childOutPort === headInPort) {
             const freshInPort = this.game.queryScalar("InsertPort");
             this.game.exec("UpdateInPort", {id: head, port: freshInPort});
+            this.game.exec("MarkPortAsInput", {port: freshInPort});
         }
 
         const inheritedOutPort = this.game.queryScalar("InheritOutPort", {child: child.id, parent: head});
@@ -1005,6 +1006,7 @@ export class BeltMod extends AbstractMod {
                 this.game.exec("DeleteInPort", {id: childPath});
                 const port = this.game.queryScalar("InsertPort");
                 this.game.exec("UpdateInPort", {id: childPath, port});
+                this.game.exec("MarkPortAsInput", {port});
                 outputPort = port;
             }
         } else {
@@ -1012,5 +1014,6 @@ export class BeltMod extends AbstractMod {
         }
 
         this.game.exec("UpdateBeltPathPorts", {id, inPort: inputPort, outPort: outputPort});
+        this.game.exec("MarkPortAsInput", {port: inputPort});
     }
 }

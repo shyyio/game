@@ -30,19 +30,16 @@ export const BeltDefinition = new ObjectDefinition(
                 "ClearActivePath",
                 `DELETE FROM ActivePath;`
             ),
-            new TickOp(
-                "ActivePathPoppable",
-                `INSERT OR IGNORE INTO ActivePath (path_id)
-                 SELECT path.id
-                 FROM BeltPath path
-                    INNER JOIN Port outPort ON outPort.id = path.out_port_id
-                 WHERE path.next_item_id IS NOT NULL
-                   AND outPort.item IS NULL;`
-            ),
+            // Only gap-shuffling paths need to be in ActivePath for the movement ops:
+            // Case2 finds the paths that pop directly off the BeltPath_next_item partial
+            // index (see below), and RecalculateHeadGap picks the popped paths back up
+            // from BeltPathOutputItem.
+            // INDEXED BY pins the query plan to the BeltPath_next_gap partial index
+            // (every gap-shuffling path), so this is O(gap paths).
             new TickOp(
                 "ActivePathGap",
                 `INSERT OR IGNORE INTO ActivePath (path_id)
-                 SELECT id FROM BeltPath WHERE next_gap_id IS NOT NULL;`
+                 SELECT id FROM BeltPath INDEXED BY BeltPath_next_gap WHERE next_gap_id IS NOT NULL;`
             ),
             // Input activity is added later (after the out-ports are filled below),
             // because a path's out-port can be the downstream path's in-port: the pop
@@ -57,7 +54,6 @@ export const BeltDefinition = new ObjectDefinition(
                 WHERE id IN (
                     SELECT p.next_gap_id
                     FROM BeltPath p
-                        INNER JOIN ActivePath ON ActivePath.path_id = p.id
                         INNER JOIN Port outPort ON outPort.id = p.out_port_id
                     WHERE (
                         p.next_gap_id IS NOT NULL
@@ -72,6 +68,10 @@ export const BeltDefinition = new ObjectDefinition(
                             outPort.item IS NOT NULL
                             -- TODO: Check if child belt could accept the item? Not recursive
                         )
+                        AND
+                        p.id IN (
+                            SELECT path_id FROM ActivePath
+                        )
                     )
                 );`
             ),
@@ -79,18 +79,20 @@ export const BeltDefinition = new ObjectDefinition(
             //  - pop item into output port
             new TickOp(
                 "TickBeltPathCase2",
+                // Drives off the BeltPath_next_item partial index (every path with an
+                // item ready to pop), so it is O(loaded paths). INDEXED BY pins the
+                // query plan to that partial index.
                 `INSERT INTO BeltPathOutputItem (path_id, item_id, item_type, port_id)
                 SELECT BeltPath.id, item.id, item.type, outPort.id
-                FROM BeltPath
-                         INNER JOIN ActivePath ON ActivePath.path_id = BeltPath.id
-                         INNER JOIN BeltPathItem item ON item.id = next_item_id
-                         INNER JOIN Port outPort ON outPort.id = out_port_id
-                WHERE
+                FROM BeltPath INDEXED BY BeltPath_next_item
+                    INNER JOIN BeltPathItem item ON item.id = BeltPath.next_item_id
+                    INNER JOIN Port outPort ON outPort.id = BeltPath.out_port_id
+                WHERE BeltPath.next_item_id IS NOT NULL
                   -- Next item is an item
-                    (
-                        next_gap_id IS NULL
+                  AND (
+                        BeltPath.next_gap_id IS NULL
                             OR
-                        next_item_id < next_gap_id
+                        BeltPath.next_item_id < BeltPath.next_gap_id
                     )
                   -- There is space in the output
                   AND outPort.item IS NULL;`
@@ -103,13 +105,13 @@ export const BeltDefinition = new ObjectDefinition(
             // in TickBeltPathCleanup5)
             new TickOp(
                 "TickBeltPathRecalculateHeadGap",
+                // A path advances its head gap if it shuffled a gap (an active gap path)
+                // or popped an item this tick (in BeltPathOutputItem). The popped half is
+                // caught via BeltPathOutputItem membership directly.
                 `UPDATE BeltPath
                 SET head_gap = head_gap + 1
-                WHERE id IN (SELECT path_id FROM ActivePath)
-                  AND (
-                    next_gap_id IS NOT NULL
-                    OR id IN (SELECT path_id FROM BeltPathOutputItem)
-                );`
+                WHERE (next_gap_id IS NOT NULL AND id IN (SELECT path_id FROM ActivePath))
+                   OR id IN (SELECT path_id FROM BeltPathOutputItem);`
             ),
 
             new TickOp(
@@ -123,13 +125,20 @@ export const BeltDefinition = new ObjectDefinition(
             // Now that this tick's pops have filled the out-ports (which are the
             // downstream paths' in-ports in a zero-gap chain), mark every path whose
             // in-port holds an item active, so InsertItem below ingests it this tick.
+            //
+            // INDEXED BY pins the query plan to the Port_in_filled partial index (the
+            // is_in_port = 1 predicate matches it), so this reads only the filled
+            // *in*-ports. The index is maintained by SQLite on every Port.item
+            // write, so an item delivered into an in-port by any path (a pop, a transfer
+            // flush, a direct write) is picked up here regardless of how it arrived.
             new TickOp(
                 "ActivePathInput",
                 `INSERT OR IGNORE INTO ActivePath (path_id)
                  SELECT path.id
-                 FROM Port inPort
+                 FROM Port inPort INDEXED BY Port_in_filled
                     INNER JOIN BeltPath path ON path.in_port_id = inPort.id
-                 WHERE inPort.item IS NOT NULL;`
+                 WHERE inPort.item IS NOT NULL
+                   AND inPort.is_in_port = 1;`
             ),
 
             new TickOp(
@@ -172,10 +181,12 @@ export const BeltDefinition = new ObjectDefinition(
                 `INSERT OR IGNORE INTO ChangedPath (path_id)
                  SELECT path_id FROM BeltPathOutputItem;`
             ),
+            // INDEXED BY pins the tiny BeltPathItem_zero partial index (length = 0 rows
+            // are transient), so this collects the consumed-gap paths directly.
             new TickOp(
                 "CaptureChangedFromZeroLength",
                 `INSERT OR IGNORE INTO ChangedPath (path_id)
-                 SELECT path_id FROM BeltPathItem WHERE length = 0;`
+                 SELECT path_id FROM BeltPathItem INDEXED BY BeltPathItem_zero WHERE length = 0;`
             ),
 
             new TickOp(
@@ -231,23 +242,22 @@ export const BeltDefinition = new ObjectDefinition(
 
             // next_gap/next_item are the MIN id of a path's gap/non-gap rows. A path's
             // values are still correct unless its items changed this tick, so recompute
-            // only ChangedPath, in a single pass over its items with conditional MINs
-            // (LEFT JOIN yields NULL for a kind of row the path no longer has).
+            // only ChangedPath. Each pointer is an O(1) leftmost lookup on its type-split
+            // partial index (BeltPathItem_next_item / _next_gap, both ordered (path_id,
+            // id)), so the recompute is O(changed paths). A correlated MIN yields NULL
+            // when the path has no row of that kind.
             new TickOp(
                 "RecalculateNextPointers",
-                `WITH new_values (id, next_gap_id, next_item_id) AS (
-                        SELECT changed.path_id,
-                               MIN(CASE WHEN item.type =  ${ITEM_TYPE_GAP} THEN item.id END),
-                               MIN(CASE WHEN item.type != ${ITEM_TYPE_GAP} THEN item.id END)
-                        FROM ChangedPath changed
-                            LEFT JOIN BeltPathItem item ON item.path_id = changed.path_id
-                        GROUP BY changed.path_id
-                    )
-                    UPDATE BeltPath
-                        SET next_gap_id = new.next_gap_id,
-                            next_item_id = new.next_item_id
-                    FROM new_values new
-                    WHERE BeltPath.id = new.id;`
+                `UPDATE BeltPath
+                    SET next_item_id = (
+                            SELECT MIN(item.id) FROM BeltPathItem item INDEXED BY BeltPathItem_next_item
+                            WHERE item.path_id = BeltPath.id AND item.type != ${ITEM_TYPE_GAP}
+                        ),
+                        next_gap_id = (
+                            SELECT MIN(gap.id) FROM BeltPathItem gap INDEXED BY BeltPathItem_next_gap
+                            WHERE gap.path_id = BeltPath.id AND gap.type = ${ITEM_TYPE_GAP}
+                        )
+                    WHERE id IN (SELECT path_id FROM ChangedPath);`
             ),
 
             new TickOp(
