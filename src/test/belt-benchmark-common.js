@@ -51,6 +51,11 @@ export function seedDatabase(db, count) {
     // One real (non-gap) item per path, giving a comparable item count.
     db.rawExec("INSERT INTO BeltPathItem (path_id, length, type) SELECT id, 1, 1 FROM Belt;");
 
+    // Point each path at its item, as a live game would: the tick's incremental
+    // recalc only fixes paths whose items change, so a valid seed must already have
+    // next_item_id set (next_gap_id stays NULL — the seed has no gap items).
+    db.rawExec("UPDATE BeltPath SET next_item_id = (SELECT MIN(id) FROM BeltPathItem WHERE path_id = BeltPath.id);");
+
     db.rawExec("COMMIT");
 }
 

@@ -76,6 +76,10 @@ export const beltSchema = `
     -- lookups (delete/stash/trim/transfer/sum) can't use them and would full-scan
     -- BeltPathItem; this plain index serves them and the BeltPath ON DELETE FK.
     CREATE INDEX BeltPathItem_path ON BeltPathItem(path_id);
+    -- Items only sit at length 0 transiently (a gap a tick is consuming, about to be
+    -- deleted). This partial index lets the tick collect those paths without scanning
+    -- every item; it stays tiny because almost no rows match.
+    CREATE INDEX BeltPathItem_zero ON BeltPathItem(path_id) WHERE length = 0;
 `;
 
 // Per-run temp tables and seed rows owned by the Belt mod.
@@ -95,6 +99,13 @@ export const beltTempSchema = `
     CREATE TEMPORARY TABLE BeltPathInputItem (
         path_id INT,
         port_id INT
+    );
+
+    -- The paths whose item rows changed during the current tick (an item entered,
+    -- popped, or a gap was consumed). The tick's next_gap/next_item recalc reads
+    -- this instead of scanning every path; PRIMARY KEY dedups the INSERT OR IGNOREs.
+    CREATE TEMPORARY TABLE ChangedPath (
+        path_id INTEGER PRIMARY KEY
     );
 
     CREATE TEMPORARY TABLE BeltPathOutputItem (
