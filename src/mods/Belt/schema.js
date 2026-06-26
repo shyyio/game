@@ -1,7 +1,6 @@
 import {CHUNK_KEY_SQL} from "@/sdk/common.js";
 import {
     BELT_UNDERGROUND,
-    ITEM_TYPE_GAP,
     BeltGameSettingsKey,
     MAX_UNDERGROUND_LENGTH,
 } from "./constants.js";
@@ -80,11 +79,10 @@ export const beltSchema = `
         type INT NOT NULL CHECK (type >= 0)
     );
 
-    CREATE INDEX BeltPathItem_gap ON BeltPathItem(path_id, id) WHERE type = ${ITEM_TYPE_GAP};
-    CREATE INDEX BeltPathItem_item ON BeltPathItem(path_id, id) WHERE type != ${ITEM_TYPE_GAP};
-    -- The two indexes above are partial, so the many type-agnostic per-path item
-    -- lookups (delete/stash/trim/transfer/sum) can't use them and would full-scan
-    -- BeltPathItem; this plain index serves them and the BeltPath ON DELETE FK.
+    -- One index on path_id serves every per-path item lookup (delete/stash/trim/
+    -- transfer/sum and the next-gap/next-item MIN scans, which filter type in the
+    -- query) plus the BeltPath ON DELETE FK. Keeping it the only non-PK index here
+    -- minimises the index maintenance paid on every per-tick item pop/insert.
     CREATE INDEX BeltPathItem_path ON BeltPathItem(path_id);
     -- Items only sit at length 0 transiently (a gap a tick is consuming, about to be
     -- deleted). This partial index lets the tick collect those paths without scanning
