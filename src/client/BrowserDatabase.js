@@ -7,9 +7,7 @@ export class BrowserDatabase extends AbstractDatabase {
     constructor(schema) {
         super(schema);
 
-        this.statements = {};
         this.db = null;
-        this.profilingData = {};
     }
 
     /**
@@ -30,68 +28,42 @@ export class BrowserDatabase extends AbstractDatabase {
     }
 
     /**
-     * @private
+     * @protected
+     * @param {string} sql
+     * @returns {*}
      */
-    _postInit() {
-
-        this.schema.tempSchema.forEach(stmt => this.db.run(stmt));
-
-        Object.entries(this.schema.preparedStatements).forEach(([name, stmt]) => {
-            try {
-                this.statements[name] = this.db.prepare(stmt);
-            } catch (e) {
-                console.error(`Failed to prepare statement "${name}":`, e.message);
-                throw e;
-            }
-
-            this.profilingData[name] = [];
-        });
+    _prepareStatement(sql) {
+        return this.db.prepare(sql);
     }
 
-    exec(name, args) {
-        const stmt = this.statements[name];
-
-        if (stmt === undefined) {
-            throw new Error(`Unknown prepared statement: ${name}`);
-        }
-
+    /**
+     * @protected
+     * @param {*} stmt
+     * @param [args] {*}
+     * @returns {number}
+     */
+    _exec(stmt, args) {
         stmt.bind(this.formatArgs(args));
-
-        if (this.debug) {
-            console.log(name + (args ? " " + JSON.stringify(args) : ""));
-        }
-
-        const startTime = performance.now();
         stmt.step();
         stmt.reset();
-        const duration = performance.now() - startTime;
-
-        this.profilingData[name].push(duration);
 
         return this.db.getRowsModified();
     }
 
-    query(name, args) {
-        const stmt = this.statements[name];
-
-        if (stmt === undefined) {
-            throw new Error(`Unknown prepared statement: ${name}`);
-        }
-
+    /**
+     * @protected
+     * @param {*} stmt
+     * @param [args] {*}
+     * @returns {*[]}
+     */
+    _query(stmt, args) {
         stmt.bind(this.formatArgs(args));
 
         const result = [];
 
-        if (this.debug) {
-            console.log(name + (args ? " " + JSON.stringify(args) : "") + " ?");
-        }
-
-        const startTime = performance.now();
         while (stmt.step()) {
             result.push(formatRow(stmt.getAsObject(null, {useBigInt: true})));
         }
-        const duration = performance.now() - startTime;
-        this.profilingData[name].push(duration);
 
         return result;
     }

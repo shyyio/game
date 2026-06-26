@@ -5,7 +5,6 @@ export class NodeDatabase extends AbstractDatabase {
 
     constructor(schema) {
         super(schema);
-        this.statements = {};
         this.db = null;
     }
 
@@ -17,17 +16,13 @@ export class NodeDatabase extends AbstractDatabase {
         this._postInit();
     }
 
-    _postInit() {
-        this.schema.tempSchema.forEach(sql => this.db.exec(sql));
-
-        Object.entries(this.schema.preparedStatements).forEach(([name, sql]) => {
-            try {
-                this.statements[name] = this.db.prepare(sql);
-            } catch (e) {
-                console.error(`Failed to prepare statement "${name}":`, e.message);
-                throw e;
-            }
-        });
+    /**
+     * @protected
+     * @param {string} sql
+     * @returns {*}
+     */
+    _prepareStatement(sql) {
+        return this.db.prepare(sql);
     }
 
     formatArgs(args) {
@@ -41,14 +36,24 @@ export class NodeDatabase extends AbstractDatabase {
         return result;
     }
 
-    exec(name, args) {
-        const stmt = this.statements[name];
+    /**
+     * @protected
+     * @param {*} stmt
+     * @param [args] {*}
+     * @returns {number}
+     */
+    _exec(stmt, args) {
         const info = stmt.run(this.formatArgs(args));
         return info.changes;
     }
 
-    query(name, args) {
-        const stmt = this.statements[name];
+    /**
+     * @protected
+     * @param {*} stmt
+     * @param [args] {*}
+     * @returns {*[]}
+     */
+    _query(stmt, args) {
         const rows = stmt.all(this.formatArgs(args));
         return rows.map(formatRow);
     }

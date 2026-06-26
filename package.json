@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node --import ./src/test/test-loader.js --test 'src/**/*.spec.js'"
+    "test": "node --import ./src/test/test-loader.js --test 'src/**/*.spec.js'",
+    "bench": "node --import ./src/test/test-loader.js src/test/belt-benchmark.js"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
