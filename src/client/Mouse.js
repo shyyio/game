@@ -32,15 +32,20 @@ function tilesInPath(x1, y1, x2, y2) {
             continue;
         }
 
-        // Insert an axis-aligned intermediate tile to avoid diagonal steps
-        if (tileX === prevTileX - 1 && tileY === prevTileY - 1) {
-            tiles.push([tileX, tileY + 1]);
-        } else if (tileX === prevTileX + 1 && tileY === prevTileY - 1) {
-            tiles.push([tileX, tileY + 1]);
-        } else if (tileX === prevTileX - 1 && tileY === prevTileY + 1) {
-            tiles.push([tileX, tileY - 1]);
-        } else if (tileX === prevTileX + 1 && tileY === prevTileY + 1) {
-            tiles.push([tileX, tileY - 1]);
+        // Insert an axis-aligned intermediate tile to avoid diagonal steps. Guarded
+        // on a real previous tile: on the first iteration prevTileX/Y are null, and
+        // `null + 1 === 1` would spuriously match a first tile at (1, 1) and prepend a
+        // bogus tile, leaving the real start tile duplicated (a zero-length step).
+        if (prevTileX !== null) {
+            if (tileX === prevTileX - 1 && tileY === prevTileY - 1) {
+                tiles.push([tileX, tileY + 1]);
+            } else if (tileX === prevTileX + 1 && tileY === prevTileY - 1) {
+                tiles.push([tileX, tileY + 1]);
+            } else if (tileX === prevTileX - 1 && tileY === prevTileY + 1) {
+                tiles.push([tileX, tileY - 1]);
+            } else if (tileX === prevTileX + 1 && tileY === prevTileY + 1) {
+                tiles.push([tileX, tileY - 1]);
+            }
         }
 
         tiles.push([tileX, tileY]);
