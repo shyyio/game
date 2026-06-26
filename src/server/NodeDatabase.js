@@ -83,4 +83,23 @@ export class NodeDatabase extends AbstractDatabase {
         }
         return val;
     }
+
+    /**
+     * Returns the live database schema as one SQL string: every persistent object's
+     * DDL followed by the temporary ones (temp tables/indexes live in a separate
+     * sqlite_temp_master and would be missed by a plain sqlite_master dump). Each
+     * source is read in creation order; rows with NULL sql (auto-created indexes)
+     * and SQLite's own bookkeeping objects (sqlite_sequence, etc.) are skipped.
+     * Node/CLI debugging only.
+     * @returns {string}
+     */
+    dumpSchema() {
+        const dumpSource = source => this.db
+            .prepare(`SELECT sql FROM ${source} WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' ORDER BY rowid`)
+            .all()
+            .map(row => row.sql + ";")
+            .join("\n\n");
+
+        return `${dumpSource("sqlite_master")}\n\n-- Temporary tables\n\n${dumpSource("sqlite_temp_master")}\n`;
+    }
 }
