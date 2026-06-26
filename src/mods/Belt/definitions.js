@@ -157,27 +157,11 @@ export const BeltDefinition = new ObjectDefinition(
                     WHERE head_gap > 0
                       AND inPort.item IS NOT NULL;`
             ),
-            new TickOp(
-                "NullNextGapBeforeDelete",
-                `UPDATE BeltPath
-                    SET next_gap_id = NULL
-                    WHERE id IN (SELECT path_id FROM ActivePath)
-                      AND next_gap_id IS NOT NULL
-                      AND next_gap_id IN (
-                          SELECT id FROM BeltPathItem WHERE length = 0
-                      );`
-            ),
-
-            new TickOp(
-                "NullNextItemBeforeDelete",
-                `UPDATE BeltPath
-                    SET next_item_id = NULL
-                    WHERE id IN (SELECT path_id FROM ActivePath)
-                      AND next_item_id IS NOT NULL
-                      AND next_item_id IN (
-                          SELECT item_id FROM BeltPathOutputItem
-                      );`
-            ),
+            // No explicit null-before-delete of next_gap_id/next_item_id: those
+            // pointers are read only at the start of a tick (Case1/Case2, above) and
+            // recomputed at the end (RecalculateNext*), and the recalc's LEFT JOIN
+            // over ChangedPath already resets every changed/emptied path. A pointer
+            // left dangling at a row Cleanup1 deletes below is never read before then.
 
             // Record the paths Cleanup1 is about to change before it deletes the
             // rows: items popped to an out-port (BeltPathOutputItem) and gaps a tick
@@ -245,34 +229,23 @@ export const BeltDefinition = new ObjectDefinition(
                 `DELETE FROM BeltPathInputItem;`
             ),
 
-            // next_gap/next_item are MIN(id) of the path's gap/item rows. A path's
-            // value is still correct unless its items changed this tick, so recompute
-            // only ChangedPath instead of every path in the world. LEFT JOIN yields
-            // NULL (no gap/item left) for paths that emptied.
+            // next_gap/next_item are the MIN id of a path's gap/non-gap rows. A path's
+            // values are still correct unless its items changed this tick, so recompute
+            // only ChangedPath, in a single pass over its items with conditional MINs
+            // (LEFT JOIN yields NULL for a kind of row the path no longer has).
             new TickOp(
-                "RecalculateNextGap",
-                `WITH new_values (id, next_gap_id) AS (
-                        SELECT changed.path_id, MIN(gap.id)
+                "RecalculateNextPointers",
+                `WITH new_values (id, next_gap_id, next_item_id) AS (
+                        SELECT changed.path_id,
+                               MIN(CASE WHEN item.type =  ${ITEM_TYPE_GAP} THEN item.id END),
+                               MIN(CASE WHEN item.type != ${ITEM_TYPE_GAP} THEN item.id END)
                         FROM ChangedPath changed
-                            LEFT JOIN BeltPathItem gap ON gap.path_id = changed.path_id AND gap.type = ${ITEM_TYPE_GAP}
+                            LEFT JOIN BeltPathItem item ON item.path_id = changed.path_id
                         GROUP BY changed.path_id
                     )
                     UPDATE BeltPath
-                        SET next_gap_id = new.next_gap_id
-                    FROM new_values new
-                    WHERE BeltPath.id = new.id;`
-            ),
-
-            new TickOp(
-                "RecalculateNextItem",
-                `WITH new_values (id, next_item_id) AS (
-                        SELECT changed.path_id, MIN(item.id)
-                        FROM ChangedPath changed
-                            LEFT JOIN BeltPathItem item ON item.path_id = changed.path_id AND item.type != ${ITEM_TYPE_GAP}
-                        GROUP BY changed.path_id
-                    )
-                    UPDATE BeltPath
-                        SET next_item_id = new.next_item_id
+                        SET next_gap_id = new.next_gap_id,
+                            next_item_id = new.next_item_id
                     FROM new_values new
                     WHERE BeltPath.id = new.id;`
             ),
