@@ -46,6 +46,11 @@ export const ITEM_FLAG_STASHED = 1;
 // BufferedEvent `type` discriminators for the Belt tick's item deltas. UPSERT
 // inserts-or-resizes a path's RLE row (id=path, a=row id, b=length, c=type);
 // DELETE drops one (a=row id). The client keeps each path's rows and derives item
-// positions from them.
+// positions from them. (Engine port-item types take 3-4.)
 export const BUFFERED_EVENT_TYPE_ITEM_UPSERT = 1;
 export const BUFFERED_EVENT_TYPE_ITEM_DELETE = 2;
+
+// A path's items were re-rowed (a belt edit, or a fresh viewer). RESET (id=path)
+// clears the client's old rows, then the path's rows are re-emitted as UPSERTs in the
+// same drain — an atomic swap, no flicker, and each re-created sprite glides on.
+export const BUFFERED_EVENT_TYPE_ITEM_RESET = 5;

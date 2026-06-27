@@ -112,11 +112,12 @@ export class Client {
     }
 
     /**
-     * Drives sprite animation off the render loop, one frame per ticker tick.
+     * Drives sprite animation off the render loop, one frame per ticker tick. Passes
+     * the frame's elapsed time so layers can interpolate continuous motion.
      * @private
      */
     _tickAnimations() {
-        this.drawLayerRegistry.tick(advanceAnimationFrame());
+        this.drawLayerRegistry.tick(advanceAnimationFrame(), this.app.ticker.deltaMS);
     }
 
     /**

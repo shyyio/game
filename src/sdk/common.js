@@ -50,7 +50,12 @@ export {BufferedEvent} from "@/common/BufferedEvent.js";
 // ---- World geometry ----
 // `Direction` is the cardinal-direction enum (with rotate/dx/dy helpers).
 // `CHUNK_SIZE` is the width/height of a chunk in tiles.
-export {Direction, CHUNK_SIZE} from "@/common/constants.js";
+export {
+    Direction,
+    CHUNK_SIZE,
+    BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
+    BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
+} from "@/common/constants.js";
 
 // ---- Port wiring ----
 // Helpers for connecting a freshly placed object to its neighbors. "Upstream"

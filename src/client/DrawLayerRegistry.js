@@ -46,12 +46,14 @@ export class DrawLayerRegistry {
     }
 
     /**
-     * Advances every layer's animated sprites to the given frame.
+     * Advances every layer's animated sprites to the given frame, passing the frame's
+     * elapsed milliseconds for continuous (interpolated) motion.
      * @param {number} frame current animation frame, in [0, 8)
+     * @param {number} deltaMS elapsed time since the previous tick, in ms
      */
-    tick(frame) {
+    tick(frame, deltaMS) {
         this.layers.forEach(layer => {
-            layer.tick(frame);
+            layer.tick(frame, deltaMS);
         });
     }
 

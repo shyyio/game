@@ -4,11 +4,14 @@ import {
     TickOp,
     TickPhase,
     Direction,
+    BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
+    BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
 } from "@/sdk/common.js";
 import {
     ITEM_TYPE_GAP,
     BUFFERED_EVENT_TYPE_ITEM_UPSERT,
     BUFFERED_EVENT_TYPE_ITEM_DELETE,
+    BUFFERED_EVENT_TYPE_ITEM_RESET,
 } from "./constants.js";
 
 export const BeltDefinition = new ObjectDefinition(
@@ -337,9 +340,24 @@ export const BeltDefinition = new ObjectDefinition(
             // join, no chunk filter. The sim runs everywhere, but a delta only matters
             // to a session watching that chunk (unwatched chunks re-sync on subscribe).
 
-            // Resync: full RLE (every row) of each path the client must rebuild — a
-            // belt edit re-rowed it, or a new viewer subscribed. Still gated here, since
-            // ResyncItemPath isn't viewport-filtered. x/y is the head tile (one chunk).
+            // Resync: rebuild each path the client must re-row — a belt edit re-rowed it,
+            // or a new viewer subscribed. RESET clears the client's stale rows first, in
+            // the same drain as the re-emitted rows below (an atomic swap, no flicker).
+            // The rows come as plain UPSERTs so each re-created sprite glides in from a
+            // half-tile upstream ≈ the departed sprite's spot (no teleport). Both gated
+            // on viewport; x/y is the head tile (one chunk).
+            new TickOp(
+                "EmitResyncReset",
+                `INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
+                 SELECT @time, ${BUFFERED_EVENT_TYPE_ITEM_RESET}, head.x, head.y,
+                        rp.path_id, NULL, NULL, NULL
+                 -- CROSS JOIN forces the tiny resync set to drive. ANALYZE can't help:
+                 -- ResyncItemPath is a rowid-only temp table, so it gets no stat1 row and
+                 -- the planner otherwise scans the whole Belt table every idle tick.
+                 FROM ResyncItemPath rp
+                    CROSS JOIN Belt head ON head.id = rp.path_id
+                 WHERE head.chunk IN (SELECT chunk FROM SessionViewport);`
+            ),
             new TickOp(
                 "EmitResyncItems",
                 `INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
@@ -375,6 +393,54 @@ export const BeltDefinition = new ObjectDefinition(
             )
         ],
         [TickPhase.COMMIT_TRANSFERS]: [
+            // Port transfers have settled (core ops ran first this phase). Emit deltas
+            // for watched out-ports whose resting item changed, diffing against
+            // OutPortItemShadow. The event carries only the port id (a=item type); the
+            // client infers the render tile from the out-port -> path mapping it holds.
+            // x/y is the head tile, for chunk routing only. These drive from the watched
+            // chunks (via Belt_chunk) -> their head belts -> out-ports, so the cost is
+            // O(belts in view), not O(filled ports in the whole world).
+            new TickOp(
+                "EmitOutPortItemSet",
+                `WITH viewed_chunk AS (SELECT DISTINCT chunk FROM SessionViewport)
+                 INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
+                 SELECT @time, ${BUFFERED_EVENT_TYPE_PORT_ITEM_SET}, head.x, head.y, p.id, p.item, NULL, NULL
+                 FROM viewed_chunk vc
+                    CROSS JOIN Belt head INDEXED BY Belt_chunk ON head.chunk = vc.chunk
+                    CROSS JOIN BeltPath bp ON bp.id = head.id
+                    CROSS JOIN Port p ON p.id = bp.out_port_id
+                    LEFT JOIN OutPortItemShadow s ON s.port_id = p.id
+                 WHERE p.item IS NOT NULL
+                    AND (s.port_id IS NULL OR s.item != p.item);`
+            ),
+            new TickOp(
+                "EmitOutPortItemClear",
+                `WITH viewed_chunk AS (SELECT DISTINCT chunk FROM SessionViewport),
+                      viewed_filled AS (
+                        SELECT p.id
+                        FROM viewed_chunk vc
+                            CROSS JOIN Belt head INDEXED BY Belt_chunk ON head.chunk = vc.chunk
+                            CROSS JOIN BeltPath bp ON bp.id = head.id
+                            CROSS JOIN Port p ON p.id = bp.out_port_id
+                        WHERE p.item IS NOT NULL
+                      )
+                 INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
+                 SELECT @time, ${BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR}, s.x, s.y, s.port_id, NULL, NULL, NULL
+                 FROM OutPortItemShadow s
+                 WHERE s.port_id NOT IN (SELECT id FROM viewed_filled);`
+            ),
+            new TickOp("ClearOutPortItemShadow", `DELETE FROM OutPortItemShadow;`),
+            new TickOp(
+                "RebuildOutPortItemShadow",
+                `WITH viewed_chunk AS (SELECT DISTINCT chunk FROM SessionViewport)
+                 INSERT INTO OutPortItemShadow (port_id, item, x, y)
+                 SELECT p.id, p.item, head.x, head.y
+                 FROM viewed_chunk vc
+                    CROSS JOIN Belt head INDEXED BY Belt_chunk ON head.chunk = vc.chunk
+                    CROSS JOIN BeltPath bp ON bp.id = head.id
+                    CROSS JOIN Port p ON p.id = bp.out_port_id
+                 WHERE p.item IS NOT NULL;`
+            ),
         ]
     },
 );

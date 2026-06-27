@@ -60,6 +60,9 @@ export const beltSchema = `
     -- the partials still enforce the per-tile uniqueness rules.
     CREATE INDEX Belt_x_y ON Belt(x, y);
     CREATE INDEX Belt_path ON Belt(path_id, path_index);
+    -- Lets viewport-gated tick ops find the belts in watched chunks directly, instead
+    -- of scanning every belt (or every filled port) and filtering by chunk afterward.
+    CREATE INDEX Belt_chunk ON Belt(chunk);
 
     -- Partial indexes that let a tick enumerate only the paths that can do work.
     -- A path is "active" if it can pop (has an item ready), is shuffling a gap, or
@@ -170,6 +173,16 @@ export const beltTempSchema = `
     -- RLE of UPSERTs.
     CREATE TEMPORARY TABLE ResyncItemPath (
         path_id INTEGER PRIMARY KEY
+    );
+
+    -- Last item shown in each watched out-port (with the path head tile for routing
+    -- clears), so the tick emits only out-ports whose item changed. Global to the sim
+    -- — fine single-session; a multi-session build would key it per session.
+    CREATE TEMPORARY TABLE OutPortItemShadow (
+        port_id INTEGER PRIMARY KEY,
+        item INT,
+        x INT,
+        y INT
     );
 
     -- Single-row marker holding the max BeltPathItem id before InsertItem runs, so

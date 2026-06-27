@@ -94,7 +94,9 @@ export class BeltMod extends AbstractMod {
         // The belt syncs above all come first, so the client's belt cache holds every
         // position before each path recalc is replayed.
         paths.forEach(path => {
-            events.push(new BeltPathRecalculateEvent(path.x, path.y, path.parts));
+            const head = path.parts[path.parts.length - 1];
+            const outPortId = this.game.queryScalar("GetPathOutPort", {id: head});
+            events.push(new BeltPathRecalculateEvent(path.x, path.y, path.parts, outPortId));
         });
 
         return events;
@@ -281,14 +283,6 @@ export class BeltMod extends AbstractMod {
             }
         }
 
-        if (child !== null || head !== id) {
-            this.game.exec("StashGap", {id});
-            this._stashItems(head);
-        }
-
-        const createdNewPath = this.game.queryScalar("InsertBeltPath", {id: head});
-        this.game.exec("CalculateBeltPath", {id: head});
-
         // The child's path folds into head only when the merge stays within one chunk
         // and the child either had no upstream parent or that parent lived elsewhere
         // (so head isn't stealing a still-connected cross-chunk link), and the child
@@ -297,6 +291,30 @@ export class BeltMod extends AbstractMod {
             && (!child.hadParent || child.parentInDifferentChunk)
             && child.id !== head
             && !child.isCrossChunk;
+
+        if (child !== null || head !== id) {
+            // head !== id means the new belt extends the path's output side (a tail
+            // extension, or a merge linking the tail onto a downstream belt), so it sits
+            // on the path's former output tile. If the path's output item is resting in
+            // the port, flow it onto that belt's input edge rather than leaving it in the
+            // out-port — which the merge discards (losing it) or the extension reuses a
+            // tile downstream (teleporting it forward).
+            if (head !== id && this.game.queryScalar("PathHasOutputItem", {id: head})) {
+                // A folding child adds one boundary slot its standalone stash omits; pad an
+                // output gap ahead of the item so it stays on its tile, not a half downstream.
+                if (childFoldsIntoHead) {
+                    this.game.exec("StashGapSlot", {id});
+                }
+                this.game.exec("StashNewBeltWithOutputItem", {id, head});
+                this.game.exec("RemoveOutputItem", {id: head});
+            } else {
+                this.game.exec("StashGap", {id});
+            }
+            this._stashItems(head);
+        }
+
+        const createdNewPath = this.game.queryScalar("InsertBeltPath", {id: head});
+        this.game.exec("CalculateBeltPath", {id: head});
 
         let inheritedOutPort = null;
         if (childFoldsIntoHead) {
@@ -427,7 +445,8 @@ export class BeltMod extends AbstractMod {
         const parts = this._getPath(pathHead);
         // An edit re-rows the path under new ids, so the client must re-sync its items.
         this.game.exec("MarkPathForResync", {id: pathHead});
-        this.game.publishEventNow(new BeltPathRecalculateEvent(x, y, parts));
+        const outPortId = this.game.queryScalar("GetPathOutPort", {id: pathHead});
+        this.game.publishEventNow(new BeltPathRecalculateEvent(x, y, parts, outPortId));
     }
 
     /**

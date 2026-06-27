@@ -224,9 +224,9 @@ onMounted(async () => {
   }
 
   // Debug keybindings (moved off the number keys, which now select tools).
-  // Insert an item of value 1 onto belt path 1 via its in-port.
+  // Insert an item of value 1 onto the lowest-id belt path via its in-port.
   Keyboard.on("i", () => {
-    db.rawExec("UPDATE Port SET item = 1 WHERE id = (SELECT in_port_id FROM BeltPath WHERE id = 1)");
+    db.rawExec("UPDATE Port SET item = 1 WHERE id = (SELECT in_port_id FROM BeltPath WHERE id = (SELECT MIN(id) FROM BeltPath))");
   });
 
   Keyboard.on("t", () => {

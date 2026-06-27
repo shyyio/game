@@ -6,16 +6,19 @@ export class BeltPathRecalculateEvent extends AbstractTilePositionedEvent {
         x: "int32",
         y: "int32",
         parts: "int64[]",
+        outPortId: "int64?",
     };
 
     /**
      * @param {number} x
      * @param {number} y
      * @param {BigInt[]} parts - Belt IDs in path order, head last
+     * @param {BigInt|null} [outPortId] - the path's out-port id, so the client can map it to this path
      */
-    constructor(x, y, parts) {
+    constructor(x, y, parts, outPortId=null) {
         super(x, y);
         this.parts = parts;
+        this.outPortId = outPortId;
     }
 }
 

@@ -20,6 +20,7 @@ import {
     ITEM_TYPE_GAP,
     BUFFERED_EVENT_TYPE_ITEM_UPSERT,
     BUFFERED_EVENT_TYPE_ITEM_DELETE,
+    BUFFERED_EVENT_TYPE_ITEM_RESET,
 } from "./constants.js";
 import {surfaceBeltAt, walkTunnel} from "./geometry.js";
 import {
@@ -27,7 +28,14 @@ import {
     ViewportCache,
     ChunkUnsubscribeEvent,
     BufferedEvent,
+    Direction,
+    BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
+    BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
 } from "@/sdk/client.js";
+
+// Item sprites resting in out-ports share the item layer; their keys are namespaced
+// from the path-item row-id keys so the two can't collide.
+const PORT_SPRITE_KEY = portId => `port:${portId}`;
 
 export class BeltClientMod extends BeltMod {
 
@@ -51,6 +59,9 @@ export class BeltClientMod extends BeltMod {
         // Head id → Map<row id, {length, type}>: each path's RLE rows, synced and kept
         // current by item deltas. Item positions are derived from these, not sent.
         this._pathItems = new Map();
+        // Out-port id → path head id, learned from path recalcs/chunk sync, so a
+        // port-item event (which carries only the port id) resolves to a path and tile.
+        this._outPortToPath = new Map();
         // Debug overlay of belt paths, shown only in debug mode; reads the shared
         // path map and belt cache.
         this._pathDebugLayer = new PathDebugDrawLayer(this._beltCache, this._pathParts);
@@ -91,6 +102,9 @@ export class BeltClientMod extends BeltMod {
         }
         if (event instanceof BeltPathRecalculateEvent) {
             this._updatePath(event.parts);
+            if (event.outPortId !== null) {
+                this._outPortToPath.set(event.outPortId, event.parts[event.parts.length - 1]);
+            }
             this._pathDebugLayer.redraw();
             return;
         }
@@ -105,22 +119,25 @@ export class BeltClientMod extends BeltMod {
         }
         if (event instanceof ChunkUnsubscribeEvent) {
             const removedIds = this._beltCache.clearChunk(event.chunk);
+            const removed = new Set(removedIds);
             removedIds.forEach(id => {
                 this._beltLayer.removeBelt(id);
                 this._clearPathItems(id);
                 this._pathParts.delete(id);
             });
+            this._clearPortItems(removed);
             this._pathDebugLayer.redraw();
             return;
         }
         if (event instanceof BufferedEvent) {
-            this._handleItemEvent(event);
+            this._handleBufferedEvent(event);
         }
     }
 
     /**
      * Records a recalculated path under its head id, dropping any head a merge absorbed.
-     * An edit re-rows the path under new ids, so its items are cleared and re-synced.
+     * Items aren't touched here: an edit re-rows them, but the swap is done atomically
+     * by the RESET + re-emitted UPSERT rows (same drain) so they never blink out.
      * @param {BigInt[]} parts - belt ids in path order, head last
      * @private
      */
@@ -129,11 +146,95 @@ export class BeltClientMod extends BeltMod {
         parts.forEach(id => {
             if (id !== head) {
                 this._pathParts.delete(id);
-                this._clearPathItems(id);
             }
         });
         this._pathParts.set(head, parts);
-        this._clearPathItems(head);
+    }
+
+    /**
+     * Routes a buffered event to the belt-item or out-port-item handler by type.
+     * @param {BufferedEvent} event
+     * @private
+     */
+    _handleBufferedEvent(event) {
+        if (event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_SET
+            || event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR) {
+            this._handlePortItemEvent(event);
+            return;
+        }
+        this._handleItemEvent(event);
+    }
+
+    /**
+     * Renders or removes an item resting in an out-port. The event carries only the
+     * port id; the render tile is inferred from the out-port's path and tail belt.
+     * @param {BufferedEvent} event - id=out-port id, a=item type (SET only)
+     * @private
+     */
+    _handlePortItemEvent(event) {
+        const portId = event.id;
+        if (event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR) {
+            this._itemLayer.removeItem(PORT_SPRITE_KEY(portId));
+            return;
+        }
+        this._renderPortItem(portId);
+    }
+
+    /**
+     * Places an out-port's item sprite at the belt's output boundary (the tile
+     * downstream of the tail, on its upstream edge — where the item just popped off).
+     * @param {BigInt} portId
+     * @private
+     */
+    _renderPortItem(portId) {
+        const belt = this._resolvePortBelt(portId);
+        if (belt === null) {
+            return;
+        }
+        this._itemLayer.moveItem(PORT_SPRITE_KEY(portId), belt.tileX, belt.tileY, true, belt.sourceDir);
+    }
+
+    /**
+     * The tile an out-port's item rests on: one downstream of the path's tail (output)
+     * belt, with sourceDir pointing back at the tail (the edge it popped off). Returns
+     * null when the path or belt isn't cached yet.
+     * @param {BigInt} portId
+     * @returns {{tileX: number, tileY: number, sourceDir: Direction}|null}
+     * @private
+     */
+    _resolvePortBelt(portId) {
+        const head = this._outPortToPath.get(portId);
+        if (head === undefined) {
+            return null;
+        }
+        const parts = this._pathParts.get(head);
+        if (parts === undefined) {
+            return null;
+        }
+        const tail = this._beltCache.get(parts[0]);
+        if (tail === null) {
+            return null;
+        }
+        const direction = tail.data.direction;
+        return {
+            tileX: tail.tileX + Direction.dx(direction),
+            tileY: tail.tileY + Direction.dy(direction),
+            sourceDir: Direction.invert(direction),
+        };
+    }
+
+    /**
+     * Drops out-port item sprites whose path head left the viewport.
+     * @param {Set<BigInt>} removedHeads
+     * @private
+     */
+    _clearPortItems(removedHeads) {
+        this._outPortToPath.forEach((head, portId) => {
+            if (removedHeads.has(head)) {
+                this._itemLayer.removeItem(PORT_SPRITE_KEY(portId));
+                this._outPortToPath.delete(portId);
+            }
+        });
     }
 
     /**
@@ -144,6 +245,10 @@ export class BeltClientMod extends BeltMod {
      */
     _handleItemEvent(event) {
         const pathId = event.id;
+        if (event.type === BUFFERED_EVENT_TYPE_ITEM_RESET) {
+            this._resetPathItems(pathId);
+            return;
+        }
         const rowId = event.a;
         if (event.type === BUFFERED_EVENT_TYPE_ITEM_DELETE) {
             const rows = this._pathItems.get(pathId);
@@ -164,6 +269,22 @@ export class BeltClientMod extends BeltMod {
         }
         rows.set(rowId, {length: Number(event.b), type: Number(event.c)});
         this._recomputePathItems(pathId);
+    }
+
+    /**
+     * Clears the item sprites/rows of a path about to be re-synced, under every belt in
+     * it — the head and any former heads a merge folded in — so no stale sprite survives
+     * the re-keyed rebuild. The following re-emitted UPSERT rows (same drain) repopulate it.
+     * @param {BigInt} pathId
+     * @private
+     */
+    _resetPathItems(pathId) {
+        const parts = this._pathParts.get(pathId);
+        if (parts === undefined) {
+            this._clearPathItems(pathId);
+            return;
+        }
+        parts.forEach(id => this._clearPathItems(id));
     }
 
     /**
@@ -192,7 +313,7 @@ export class BeltClientMod extends BeltMod {
             if (row.type !== ITEM_TYPE_GAP) {
                 const belt = this._resolveItemBelt(pathId, slot);
                 if (belt !== null) {
-                    this._itemLayer.moveItem(rowId, belt.tileX, belt.tileY, belt.halfTile, belt.direction);
+                    this._itemLayer.moveItem(rowId, belt.tileX, belt.tileY, belt.halfTile, belt.sourceDir);
                 }
             }
             slot += row.length;
@@ -219,10 +340,11 @@ export class BeltClientMod extends BeltMod {
      * Maps an item's path and slot to the belt it sits on. slot counts half-tiles
      * from the input (head); each belt past the head owns a full then a half slot, so
      * the belt is parts[(N-1) - floor((slot+1)/2)] and an odd slot is the half-tile
-     * straddle. Returns null when the path or belt isn't cached yet.
+     * straddle. sourceDir points at the belt feeding this one (the bend's input edge).
+     * Returns null when the path or belt isn't cached yet.
      * @param {BigInt} pathId
      * @param {number} slot
-     * @returns {{tileX: number, tileY: number, direction: Direction, halfTile: boolean}|null}
+     * @returns {{tileX: number, tileY: number, sourceDir: Direction, halfTile: boolean}|null}
      * @private
      */
     _resolveItemBelt(pathId, slot) {
@@ -241,9 +363,25 @@ export class BeltClientMod extends BeltMod {
         return {
             tileX: record.tileX,
             tileY: record.tileY,
-            direction: record.data.direction,
+            sourceDir: this._sourceDirection(record),
             halfTile: slot % 2 === 1,
         };
+    }
+
+    /**
+     * The direction toward the belt feeding `record` — the side an item enters from
+     * (perpendicular to the flow on a bend). Falls back to opposite the flow for a head
+     * belt (fed by its in-port) or one whose parent isn't cached.
+     * @param {object} record - belt cache record
+     * @returns {Direction}
+     * @private
+     */
+    _sourceDirection(record) {
+        const {direction, parentX, parentY} = record.data;
+        if (parentX !== null && parentY !== null) {
+            return Direction.fromDelta(Math.sign(parentX - record.tileX), Math.sign(parentY - record.tileY));
+        }
+        return Direction.invert(direction);
     }
 
     /**

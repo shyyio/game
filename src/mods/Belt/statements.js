@@ -150,6 +150,39 @@ export const beltStatements = {
           AND Port.id = BeltPath.out_port_id;
     `,
 
+    PathHasOutputItem: `
+        SELECT 1
+        FROM BeltPath
+            INNER JOIN Port p ON p.id = BeltPath.out_port_id
+        WHERE BeltPath.id = CAST(@id AS INT)
+          AND p.item IS NOT NULL;
+    `,
+
+    // Stashes the two slots of a belt newly placed on a path's former output tile (a
+    // tail extension, or a merge linking the tail onto a downstream belt), flowing the
+    // path's resting output item onto the belt's input slot so it re-materializes on the
+    // tile it already occupied — rather than vanishing with a discarded out-port or
+    // riding a reused one downstream. The output-then-input row order is the tail-to-head
+    // slot order UnStashItems reads.
+    StashNewBeltWithOutputItem: `
+        INSERT INTO StashedItem (belt_id, type)
+        SELECT CAST(@id AS INT), ${ITEM_TYPE_GAP}
+        UNION ALL
+        SELECT CAST(@id AS INT), p.item
+        FROM BeltPath
+            INNER JOIN Port p ON p.id = BeltPath.out_port_id
+        WHERE BeltPath.id = CAST(@head AS INT)
+          AND p.item IS NOT NULL;
+    `,
+
+    // One empty slot on a belt. Used to pad the output side ahead of a re-ingested output
+    // item when the new belt also links onto a downstream belt folding into the path: that
+    // adds a boundary slot the child's standalone stash omits, which would otherwise shift
+    // the item a half-tile downstream.
+    StashGapSlot: `
+        INSERT INTO StashedItem (belt_id, type) VALUES (CAST(@id AS INT), ${ITEM_TYPE_GAP});
+    `,
+
     UnStashOutputItem: `
         UPDATE Port
         SET item = StashedOutputItem.type

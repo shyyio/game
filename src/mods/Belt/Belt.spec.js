@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {setup} from "@/test/common.js";
 import {GameObject, createBelt, deleteBelt} from "./testHelpers.js";
 import {BeltType, MAX_UNDERGROUND_LENGTH} from "./constants.js";
-import {Direction} from "@/common/constants.js";
+import {Direction, BUFFERED_EVENT_TYPE_PORT_ITEM_SET, BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR} from "@/common/constants.js";
 
 // A 3x3 ring of normal belts (ids 1..8, clockwise from the top-left). id1 is the
 // loop's seam head (its parent is nulled); id8 physically feeds it.
@@ -379,6 +379,78 @@ test("Keeps a waiting item in place when the path is extended", async () => {
     createBelt(game, GameObject.BELT, {x: 2, y: 0, direction: Direction.RIGHT});
 
     assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=1 AND head_gap=0"), 1);
+});
+
+test("Re-ingests a resting output item onto the new tail when the path is extended", async () => {
+    const game = await setup();
+    createBelt(game, GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
+    createBelt(game, GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
+    createBelt(game, GameObject.BELT, {x: 2, y: 0, direction: Direction.RIGHT});
+
+    // An item rests in the terminal output port — physically the (2,0)→(3,0) boundary.
+    game.rawExec("UPDATE Port SET item=2 WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)");
+
+    // Extend the tail onto that very tile.
+    createBelt(game, GameObject.BELT, {x: 3, y: 0, direction: Direction.RIGHT});
+
+    // The item flows onto the new tail, not riding the out-port a tile forward (the
+    // out-port now sits downstream of (3,0)).
+    assert.equal(game.rawScalar("SELECT 1 FROM Port WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1) AND item IS NULL"), 1);
+    // It's the path's only item, resting on the new tail's input half: one empty slot
+    // (the output-most row) sits below it, so it's two steps from popping back out.
+    assert.equal(game.rawScalar("SELECT type FROM BeltPathItem WHERE path_id=1 AND type!=0"), 2);
+    assert.equal(game.rawScalar("SELECT length FROM BeltPathItem WHERE path_id=1 AND type=0 AND id=(SELECT MIN(id) FROM BeltPathItem WHERE path_id=1)"), 1);
+});
+
+test("Re-ingests a resting output item when the tail merges onto a downstream belt", async () => {
+    const game = await setup();
+    createBelt(game, GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
+    createBelt(game, GameObject.BELT, {x: 1, y: 0, direction: Direction.RIGHT});
+    createBelt(game, GameObject.BELT, {x: 2, y: 0, direction: Direction.RIGHT});
+    createBelt(game, GameObject.BELT, {x: 4, y: 0, direction: Direction.RIGHT});
+
+    // An item rests in the terminal output port — physically the (2,0)→(3,0) boundary.
+    game.rawExec("UPDATE Port SET item=2 WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1)");
+
+    // The connecting belt at (3,0) links the tail onto (4,0); the merged tail becomes
+    // (4,0), and the merge discards the old out-port.
+    createBelt(game, GameObject.BELT, {x: 3, y: 0, direction: Direction.RIGHT});
+
+    // The item lands on the connecting belt (3,0)'s input half — the tile it occupied —
+    // not vanishing with the discarded out-port nor riding to the merged output.
+    assert.equal(game.rawScalar("SELECT 1 FROM Port WHERE id=(SELECT out_port_id FROM BeltPath WHERE id=1) AND item IS NULL"), 1);
+    assert.equal(game.rawScalar("SELECT type FROM BeltPathItem WHERE path_id=1 AND type!=0"), 2);
+    // Three empty slots below it: the new tail (4,0)'s two plus (3,0)'s output half.
+    assert.equal(game.rawScalar("SELECT length FROM BeltPathItem WHERE path_id=1 AND type=0 AND id=(SELECT MIN(id) FROM BeltPathItem WHERE path_id=1)"), 3);
+});
+
+test("Emits out-port item deltas only for watched chunks, diffed against the shadow", async () => {
+    const game = await setup();
+    // Path A in chunk (0,0); path B a chunk away (CHUNK_SIZE is 64).
+    [0, 1, 2].forEach(x => createBelt(game, GameObject.BELT, {x, y: 0, direction: Direction.RIGHT}));
+    [64, 65, 66].forEach(x => createBelt(game, GameObject.BELT, {x, y: 0, direction: Direction.RIGHT}));
+    const outA = game.rawScalar("SELECT out_port_id FROM BeltPath WHERE id=1");
+    const outB = game.rawScalar("SELECT out_port_id FROM BeltPath WHERE id=4");
+    game.rawExec(`UPDATE Port SET item=7 WHERE id=${outA}`);
+    game.rawExec(`UPDATE Port SET item=9 WHERE id=${outB}`);
+    game.rawExec("INSERT INTO SessionViewport (session_id, chunk) VALUES (1, '0,0')");
+    const portEvents = `type IN (${BUFFERED_EVENT_TYPE_PORT_ITEM_SET}, ${BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR})`;
+
+    game.tickAll();
+    // A is watched: SET carrying its item. B is a chunk away: nothing.
+    assert.equal(game.rawScalar(`SELECT a FROM BufferedEvent WHERE type=${BUFFERED_EVENT_TYPE_PORT_ITEM_SET} AND id=${outA}`), 7);
+    assert.equal(game.rawScalar(`SELECT COUNT(*) FROM BufferedEvent WHERE ${portEvents} AND id=${outB}`), 0);
+
+    // Unchanged next tick: the shadow diff emits nothing.
+    game.rawExec("DELETE FROM BufferedEvent");
+    game.tickAll();
+    assert.equal(game.rawScalar(`SELECT COUNT(*) FROM BufferedEvent WHERE ${portEvents}`), 0);
+
+    // Item leaves the port: a CLEAR.
+    game.rawExec("DELETE FROM BufferedEvent");
+    game.rawExec(`UPDATE Port SET item=NULL WHERE id=${outA}`);
+    game.tickAll();
+    assert.equal(game.rawScalar(`SELECT COUNT(*) FROM BufferedEvent WHERE type=${BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR} AND id=${outA}`), 1);
 });
 
 test("Cleans up shared ports when the child belt is deleted", async () => {

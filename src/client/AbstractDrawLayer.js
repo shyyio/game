@@ -43,11 +43,13 @@ export class AbstractDrawLayer extends Container {
     set lowRes(value) {}
 
     /**
-     * Optional hook: advances animated sprites to the synchronized frame.
+     * Optional hook: advances animated sprites to the synchronized frame, with the
+     * frame's elapsed ms for layers that interpolate continuous motion.
      * @param {number} frame current animation frame, in [0, 8)
+     * @param {number} deltaMS elapsed time since the previous tick, in ms
      * @returns {void}
      */
-    tick(frame) {}
+    tick(frame, deltaMS) {}
 
     /**
      * Optional hook: pin a placement preview to the screen center in center-lock (mobile) mode.

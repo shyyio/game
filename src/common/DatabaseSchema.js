@@ -61,6 +61,10 @@ const CoreSchema = `
         is_in_port INT NOT NULL DEFAULT 0
     );
 
+    -- Filled ports — the items resting in ports a mod renders. Sparse (few items sit
+    -- in ports at once), so this stays tiny; mods drive their port-item emit off it.
+    CREATE INDEX Port_filled ON Port(id) WHERE item IS NOT NULL;
+
     CREATE TABLE BufferedEvent (
         seq INTEGER PRIMARY KEY AUTOINCREMENT,
         time INT NOT NULL,
