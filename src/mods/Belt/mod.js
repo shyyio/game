@@ -135,6 +135,9 @@ export class BeltMod extends AbstractMod {
         if (transaction) {
             this.game.begin();
             this._resyncHeads = new Set();
+            // A ramp disconnect here removes belts (recursively), which may add orphaned
+            // heads; the create rewire that follows re-links them, so it's never drained.
+            this._orphanedHeads = new Set();
         }
 
         if (options.disconnectRampChild) {
@@ -561,6 +564,7 @@ export class BeltMod extends AbstractMod {
         if (!recursive) {
             this.game.begin();
             this._resyncHeads = new Set();
+            this._orphanedHeads = new Set();
         }
 
         const belt = this.game.querySingle("GetBelt", {id});
@@ -685,28 +689,73 @@ export class BeltMod extends AbstractMod {
             // Still one path (an intact loop) — re-linking would recreate the cycle.
             return;
         }
+        this._foldHeadIntoUpstream(
+            {id: loopHead, x: seamBelt.x, y: seamBelt.y},
+            neighborBelt,
+            upstreamHead,
+        );
+    }
 
-        // Preserve in-flight items across the re-index, mirroring path creation.
-        this._stashItems(loopHead);
+    /**
+     * Folds a dangling parentless head into its straight upstream neighbor's path,
+     * preserving in-flight items across the re-index.
+     * @private
+     * @param {{id: BigInt, x: number, y: number}} head - the dangling head
+     * @param {{x: number, y: number}} neighborBelt - the belt feeding it
+     * @param {BigInt} upstreamHead - head of the neighbor's path, which absorbs head
+     */
+    _foldHeadIntoUpstream(head, neighborBelt, upstreamHead) {
+        this._stashItems(head.id);
         this._stashItems(upstreamHead);
 
-        // Re-point the seam head at its upstream neighbor through the same helper
-        // creation uses, so parent_id is set by the shared geometry and clients get
-        // the BeltUpdateEvent that refreshes the belt's bend.
+        // Re-point the head at its upstream neighbor through the same helper creation
+        // uses, so parent_id is set by the shared geometry and clients get the bend update.
         this._relinkChild(
-            {id: loopHead, x: seamBelt.x, y: seamBelt.y},
+            {id: head.id, x: head.x, y: head.y},
             {x: neighborBelt.x, y: neighborBelt.y},
         );
 
         this.game.exec("CalculateBeltPath", {id: upstreamHead});
-        this._absorbChildPath(upstreamHead, {id: loopHead});
+        this._absorbChildPath(upstreamHead, {id: head.id});
         this.game.exec("MaterializeBeltPath", {id: upstreamHead});
 
         this._unStashItems();
         this.game.exec("FillHeadGap", {id: upstreamHead});
 
-        const head = this.game.querySingle("GetBelt", {id: upstreamHead});
-        this._publishPathRecalculate(upstreamHead, head.x, head.y);
+        const upstreamBelt = this.game.querySingle("GetBelt", {id: upstreamHead});
+        this._publishPathRecalculate(upstreamHead, upstreamBelt.x, upstreamBelt.y);
+    }
+
+    /**
+     * Merges each orphaned head left by the removal into a straight upstream neighbor
+     * on another path. A junction that fed the head through a port becomes a direct
+     * inline feeder once the head's own upstream belt is gone, making the two one run.
+     * @private
+     */
+    _reconnectOrphanedHeads() {
+        this._orphanedHeads.forEach(headId => {
+            const headBelt = this.game.querySingle("GetBelt", {id: headId});
+            if (headBelt === null || headBelt.parent_id !== null) {
+                return;
+            }
+            const upstreamNeighbor = this.game.queryScalar("FindUpstreamNeighbor", {id: headId});
+            if (upstreamNeighbor === null) {
+                return;
+            }
+            const neighborBelt = this.game.querySingle("GetBelt", {id: upstreamNeighbor});
+            if (neighborBelt === null) {
+                return;
+            }
+            const upstreamHead = this._getBeltPathHead(upstreamNeighbor);
+            if (upstreamHead === headId) {
+                return;
+            }
+            this._foldHeadIntoUpstream(
+                {id: headId, x: headBelt.x, y: headBelt.y},
+                neighborBelt,
+                upstreamHead,
+            );
+        });
     }
 
     /**
@@ -783,6 +832,10 @@ export class BeltMod extends AbstractMod {
         // the new head (mirrors _finalizeParentPath) so clients tracking paths re-key
         // it off the deleted head.
         this._publishPathRecalculate(childId, child.x, child.y);
+
+        // The deletion may have exposed a belt straight behind this new head (a junction
+        // feeder that fed it through a port); reconnect once the removal settles.
+        this._orphanedHeads.add(childId);
     }
 
     /**
@@ -823,6 +876,7 @@ export class BeltMod extends AbstractMod {
         });
 
         this._healLoopSeam(loopSeam);
+        this._reconnectOrphanedHeads();
         this._reconnectOrphanedRamp(orphanedRamp);
 
         this._flushItemResync();

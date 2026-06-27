@@ -199,6 +199,25 @@ test("Closes a loop split across two paths by a junction-feeder deletion", async
     assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE in_port_id = out_port_id"), 1);
 });
 
+test("Merges an orphaned head into a junction feeder exposed by a deletion", async () => {
+    const game = await setup();
+    // belt1 feeds belt3 straight from the west through a port; belt2 feeds belt3 from
+    // the south and parents it, so belt1 and belt2/3/4 are two separate paths.
+    createBelt(game, GameObject.BELT, {x: 12, y: 3, direction: Direction.RIGHT}); // 1
+    createBelt(game, GameObject.BELT, {x: 13, y: 4, direction: Direction.UP});    // 2
+    createBelt(game, GameObject.BELT, {x: 13, y: 3, direction: Direction.RIGHT}); // 3
+    createBelt(game, GameObject.BELT, {x: 14, y: 3, direction: Direction.RIGHT}); // 4
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 2);
+
+    // Deleting belt2 orphans belt3, now fed straight by belt1; the two runs must
+    // collapse into one path (belt1 -> belt3 -> belt4), not stay two segments.
+    deleteBelt(game, 2n);
+
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 1);
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE length=(3*2-1)"), 1);
+    assert.equal(game.rawScalar("SELECT parent_id FROM Belt WHERE id=3"), 1);
+});
+
 test("Closes a surface loop crossing over an underground tunnel", async () => {
     const game = await setup();
     // Vertical tunnel up column x=11: ramp_down (11,5) into ramp_up (11,2), burying
