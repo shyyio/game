@@ -218,6 +218,23 @@ test("Merges an orphaned head into a junction feeder exposed by a deletion", asy
     assert.equal(game.rawScalar("SELECT parent_id FROM Belt WHERE id=3"), 1);
 });
 
+test("Keeps a cross-chunk junction feeder as a port link when a deletion orphans its child", async () => {
+    const game = await setup();
+    // belt1 (chunk 0) feeds belt3 across the x=64 chunk border; belt2 feeds belt3 from
+    // the south within chunk 1 and parents it. A path never spans a chunk border.
+    createBelt(game, GameObject.BELT, {x: 63, y: 3, direction: Direction.RIGHT}); // 1 chunk 0
+    createBelt(game, GameObject.BELT, {x: 64, y: 4, direction: Direction.UP});    // 2 chunk 1
+    createBelt(game, GameObject.BELT, {x: 64, y: 3, direction: Direction.RIGHT}); // 3 chunk 1
+    createBelt(game, GameObject.BELT, {x: 65, y: 3, direction: Direction.RIGHT}); // 4 chunk 1
+
+    // Deleting belt2 orphans belt3, whose only straight feeder (belt1) is in another
+    // chunk — it must stay a separate path fed through a port, not fold across the border.
+    deleteBelt(game, 2n);
+
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 2);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt WHERE path_id IS NULL"), 0);
+});
+
 test("Closes a surface loop crossing over an underground tunnel", async () => {
     const game = await setup();
     // Vertical tunnel up column x=11: ramp_down (11,5) into ramp_up (11,2), burying

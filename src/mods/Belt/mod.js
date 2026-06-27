@@ -746,6 +746,10 @@ export class BeltMod extends AbstractMod {
             if (neighborBelt === null) {
                 return;
             }
+            // Paths never cross a chunk border, so a cross-chunk feeder stays a port link.
+            if (neighborBelt.chunk !== headBelt.chunk) {
+                return;
+            }
             const upstreamHead = this._getBeltPathHead(upstreamNeighbor);
             if (upstreamHead === headId) {
                 return;
