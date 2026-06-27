@@ -151,23 +151,15 @@ export const BeltDefinition = new ObjectDefinition(
                    OR id IN (SELECT path_id FROM BeltPathOutputItem);`
             ),
 
-            new TickOp(
-                "TickBeltFillOutPort",
-                `UPDATE Port
-                SET item=item.item_type
-                FROM BeltPathOutputItem item
-                WHERE Port.id = item.port_id;`
-            ),
-
-            // Now that this tick's pops have filled the out-ports (which are the
-            // downstream paths' in-ports in a zero-gap chain), mark every path whose
-            // in-port holds an item active, so InsertItem below ingests it this tick.
+            // Mark every path whose in-port already holds an item — left by a prior
+            // tick, or by a transfer flush or direct write — active, so InsertItem
+            // ingests it. This tick's own pops only reach the out-ports later
+            // (FillOutPort, below), so an item popped into a shared port rests there a
+            // tick before the downstream path ingests it.
             //
             // INDEXED BY pins the query plan to the Port_in_filled partial index (the
             // is_in_port = 1 predicate matches it), so this reads only the filled
-            // *in*-ports. The index is maintained by SQLite on every Port.item
-            // write, so an item delivered into an in-port by any path (a pop, a transfer
-            // flush, a direct write) is picked up here regardless of how it arrived.
+            // *in*-ports.
             new TickOp(
                 "ActivePathInput",
                 `INSERT OR IGNORE INTO ActivePath (path_id)
@@ -230,6 +222,18 @@ export const BeltDefinition = new ObjectDefinition(
                  SELECT path_id FROM BeltPathItem
                  WHERE id > (SELECT max_id FROM ItemIdMarker) AND type = ${ITEM_TYPE_GAP};`
             ),
+
+            // Deliver this tick's pops to the out-ports — a downstream path's in-port
+            // when they share it. Runs after InsertItem (above), so a popped item rests
+            // in the shared port for a tick before the downstream path ingests it next.
+            new TickOp(
+                "TickBeltFillOutPort",
+                `UPDATE Port
+                SET item=item.item_type
+                FROM BeltPathOutputItem item
+                WHERE Port.id = item.port_id;`
+            ),
+
             // No explicit null-before-delete of next_gap_id/next_item_id: those
             // pointers are read only at the start of a tick (Case1/Case2, above) and
             // recomputed at the end, which resets every changed/emptied path. A pointer

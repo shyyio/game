@@ -244,6 +244,37 @@ test("Shares ports between belts that link head-to-tail", async () => {
     assert.equal(game.rawScalar("SELECT COUNT(*) FROM Port"), 5);
 });
 
+test("Hands an item across a shared belt-path port over two ticks, resting in the port", async () => {
+    const game = await setup();
+    // Downstream path A in chunk 0; upstream path B in chunk -1. The chunk boundary
+    // splits them into separate paths sharing the port between them (B's out-port =
+    // A's in-port).
+    createBelt(game, GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
+    createBelt(game, GameObject.BELT, {x: -1, y: 0, direction: Direction.RIGHT});
+    createBelt(game, GameObject.BELT, {x: -2, y: 0, direction: Direction.RIGHT});
+    const shared = game.rawScalar("SELECT out_port_id FROM BeltPath WHERE out_port_id IN (SELECT in_port_id FROM BeltPath)");
+    const pathB = game.rawScalar(`SELECT id FROM BeltPath WHERE out_port_id=${shared}`);
+    const pathA = game.rawScalar(`SELECT id FROM BeltPath WHERE in_port_id=${shared}`);
+
+    game.rawExec(`UPDATE Port SET item=5 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=${pathB})`);
+    // Carry the item down B until it reaches B's output belt.
+    for (let i = 0; i < 3; i += 1) {
+        game.tickAll();
+    }
+    assert.equal(game.rawScalar(`SELECT 1 FROM BeltPathItem WHERE path_id=${pathB} AND type=5`), 1);
+
+    // Hand-off tick 1: the item pops into the shared port and rests there — A must not
+    // ingest it the same tick it leaves B.
+    game.tickAll();
+    assert.equal(game.rawScalar(`SELECT item FROM Port WHERE id=${shared}`), 5);
+    assert.equal(game.rawScalar(`SELECT COUNT(*) FROM BeltPathItem WHERE path_id=${pathA} AND type!=0`), 0);
+
+    // Hand-off tick 2: A ingests it; the port clears.
+    game.tickAll();
+    assert.equal(game.rawScalar(`SELECT 1 FROM Port WHERE id=${shared} AND item IS NULL`), 1);
+    assert.equal(game.rawScalar(`SELECT 1 FROM BeltPathItem WHERE path_id=${pathA} AND type=5`), 1);
+});
+
 test("Leaves head_gap unchanged when the belt is empty", async () => {
     const game = await setup();
     createBelt(game, GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
@@ -778,6 +809,8 @@ test("Moves items through a zero-gap tunnel across a chunk boundary and collapse
 
     game.rawExec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE id=1)");
     game.tickAll();
+    game.tickAll();
+    // The item rests a tick in the shared port (path 1's out, path 2's in) before path 2 ingests it.
     game.tickAll();
 
     assert.equal(game.rawScalar("SELECT 1 FROM BeltPathItem WHERE path_id=2"), 1);
