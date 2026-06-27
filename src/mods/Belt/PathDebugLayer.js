@@ -18,8 +18,9 @@ export class PathDebugDrawLayer extends AbstractDrawLayer {
 
     /**
      * @param {ViewportCache} beltCache - shared belt index, read for tile positions
+     * @param {Map<BigInt, BigInt[]>} paths - shared head id → ordered belt ids (head last), owned by BeltClientMod
      */
-    constructor(beltCache) {
+    constructor(beltCache, paths) {
         super();
         this.visible = false;
         this._beltCache = beltCache;
@@ -27,12 +28,7 @@ export class PathDebugDrawLayer extends AbstractDrawLayer {
         // Map mode (zoomed far out) swaps sprites for low-res geometry; the overlay
         // is too fine to read there, so it hides regardless of debug mode.
         this._lowRes = false;
-        /**
-         * Belt ids in path order (head last), keyed by the head belt id.
-         * @type {Map<BigInt, BigInt[]>}
-         * @private
-         */
-        this._paths = new Map();
+        this._paths = paths;
         this._graphics = new Graphics();
         this.addChild(this._graphics);
     }
@@ -75,32 +71,6 @@ export class PathDebugDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     onEvent(event) {}
-
-    /**
-     * Records a recalculated path under its head id, dropping any head it just absorbed by a merge.
-     * @param {BigInt[]} parts - belt ids in path order, head last
-     */
-    updatePath(parts) {
-        const head = parts[parts.length - 1];
-        // A merge folds another path's head in as a mid-belt; drop its stale entry.
-        parts.forEach(id => {
-            if (id !== head) {
-                this._paths.delete(id);
-            }
-        });
-        this._paths.set(head, parts);
-        this.redraw();
-    }
-
-    /**
-     * Drops the path headed by @id (its head belt was removed); a no-op for non-heads.
-     * @param {BigInt} id
-     */
-    removePath(id) {
-        if (this._paths.delete(id)) {
-            this.redraw();
-        }
-    }
 
     /**
      * Repaints every tracked path; skipped while hidden. Called when a path's belts

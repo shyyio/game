@@ -1,6 +1,7 @@
 
 import {BeltMod} from "./mod.js";
 import {BeltDrawLayer} from "./BeltLayer.js";
+import {BeltItemDrawLayer} from "./BeltItemLayer.js";
 import {BeltOverlayDrawLayer} from "./OverlayLayer.js";
 import {BeltGhostLayer} from "./BeltGhostLayer.js";
 import {PathDebugDrawLayer} from "./PathDebugLayer.js";
@@ -14,12 +15,18 @@ import {
     BeltDeleteEvent,
     BeltPathRecalculateEvent,
 } from "./events.js";
-import {BeltType} from "./constants.js";
+import {
+    BeltType,
+    ITEM_TYPE_GAP,
+    BUFFERED_EVENT_TYPE_ITEM_UPSERT,
+    BUFFERED_EVENT_TYPE_ITEM_DELETE,
+} from "./constants.js";
 import {surfaceBeltAt, walkTunnel} from "./geometry.js";
 import {
     MiniMenuEntry,
     ViewportCache,
     ChunkUnsubscribeEvent,
+    BufferedEvent,
 } from "@/sdk/client.js";
 
 export class BeltClientMod extends BeltMod {
@@ -34,15 +41,23 @@ export class BeltClientMod extends BeltMod {
         this._beltCache = new ViewportCache();
         // Stable belt layer: onClientEvent drives it imperatively.
         this._beltLayer = new BeltDrawLayer();
+        // Items riding the belts; driven imperatively from the tick's buffered events.
+        this._itemLayer = new BeltItemDrawLayer();
         // Reveals buried tunnel belts under a hovered ramp; driven by onInspect.
         this._overlayLayer = new BeltOverlayDrawLayer();
-        // Debug overlay of belt paths, shown only in debug mode; reads positions
-        // from the shared belt cache and is driven by onClientEvent.
-        this._pathDebugLayer = new PathDebugDrawLayer(this._beltCache);
+        // Head id → belt ids in path order (head last); kept current by onClientEvent
+        // and used to resolve an item's slot to a belt, plus drawn by the debug layer.
+        this._pathParts = new Map();
+        // Head id → Map<row id, {length, type}>: each path's RLE rows, synced and kept
+        // current by item deltas. Item positions are derived from these, not sent.
+        this._pathItems = new Map();
+        // Debug overlay of belt paths, shown only in debug mode; reads the shared
+        // path map and belt cache.
+        this._pathDebugLayer = new PathDebugDrawLayer(this._beltCache, this._pathParts);
     }
 
     get drawLayers() {
-        return [this._beltLayer, this._overlayLayer, this._ghostLayer, this._pathDebugLayer];
+        return [this._beltLayer, this._itemLayer, this._overlayLayer, this._ghostLayer, this._pathDebugLayer];
     }
 
     tools(client) {
@@ -75,26 +90,164 @@ export class BeltClientMod extends BeltMod {
             return;
         }
         if (event instanceof BeltPathRecalculateEvent) {
-            this._pathDebugLayer.updatePath(event.parts);
+            this._updatePath(event.parts);
+            this._pathDebugLayer.redraw();
             return;
         }
         if (event instanceof BeltDeleteEvent) {
             this._beltCache.remove(event.id);
             this._beltLayer.removeBelt(event.id);
-            this._pathDebugLayer.removePath(event.id);
+            this._clearPathItems(event.id);
+            if (this._pathParts.delete(event.id)) {
+                this._pathDebugLayer.redraw();
+            }
             return;
         }
         if (event instanceof ChunkUnsubscribeEvent) {
             const removedIds = this._beltCache.clearChunk(event.chunk);
             removedIds.forEach(id => {
                 this._beltLayer.removeBelt(id);
-                this._pathDebugLayer.removePath(id);
+                this._clearPathItems(id);
+                this._pathParts.delete(id);
             });
+            this._pathDebugLayer.redraw();
+            return;
+        }
+        if (event instanceof BufferedEvent) {
+            this._handleItemEvent(event);
         }
     }
 
     /**
-     * Adds a belt to the viewport cache and the draw layer (shared by inserts and seeds).
+     * Records a recalculated path under its head id, dropping any head a merge absorbed.
+     * An edit re-rows the path under new ids, so its items are cleared and re-synced.
+     * @param {BigInt[]} parts - belt ids in path order, head last
+     * @private
+     */
+    _updatePath(parts) {
+        const head = parts[parts.length - 1];
+        parts.forEach(id => {
+            if (id !== head) {
+                this._pathParts.delete(id);
+                this._clearPathItems(id);
+            }
+        });
+        this._pathParts.set(head, parts);
+        this._clearPathItems(head);
+    }
+
+    /**
+     * Applies one item delta: UPSERT inserts-or-resizes a row, DELETE drops one. Either
+     * way the path's items are repositioned, since one row change shifts the whole path.
+     * @param {BufferedEvent} event - id=path, a=row id, b=length, c=type
+     * @private
+     */
+    _handleItemEvent(event) {
+        const pathId = event.id;
+        const rowId = event.a;
+        if (event.type === BUFFERED_EVENT_TYPE_ITEM_DELETE) {
+            const rows = this._pathItems.get(pathId);
+            if (rows !== undefined) {
+                rows.delete(rowId);
+            }
+            this._itemLayer.removeItem(rowId);
+            this._recomputePathItems(pathId);
+            return;
+        }
+        if (event.type !== BUFFERED_EVENT_TYPE_ITEM_UPSERT) {
+            return;
+        }
+        let rows = this._pathItems.get(pathId);
+        if (rows === undefined) {
+            rows = new Map();
+            this._pathItems.set(pathId, rows);
+        }
+        rows.set(rowId, {length: Number(event.b), type: Number(event.c)});
+        this._recomputePathItems(pathId);
+    }
+
+    /**
+     * Repositions every item on a path from its RLE rows. Rows lie output-to-input in
+     * ascending id order; walking input-to-output (descending id) and accumulating
+     * lengths gives each row's slot = head_gap + lengths nearer the input, where
+     * head_gap = path length − Σ row lengths.
+     * @param {BigInt} pathId
+     * @private
+     */
+    _recomputePathItems(pathId) {
+        const parts = this._pathParts.get(pathId);
+        const rows = this._pathItems.get(pathId);
+        if (parts === undefined || rows === undefined) {
+            return;
+        }
+        const pathLength = 2 * parts.length - 1;
+        let total = 0;
+        rows.forEach(row => {
+            total += row.length;
+        });
+        let slot = pathLength - total;
+        const rowIds = Array.from(rows.keys()).sort((a, b) => (a < b ? 1 : -1));
+        rowIds.forEach(rowId => {
+            const row = rows.get(rowId);
+            if (row.type !== ITEM_TYPE_GAP) {
+                const belt = this._resolveItemBelt(pathId, slot);
+                if (belt !== null) {
+                    this._itemLayer.moveItem(rowId, belt.tileX, belt.tileY, belt.halfTile, belt.direction);
+                }
+            }
+            slot += row.length;
+        });
+    }
+
+    /**
+     * Drops a path's item sprites and tracked rows (head removed, or about to be re-synced).
+     * @param {BigInt} pathId
+     * @private
+     */
+    _clearPathItems(pathId) {
+        const rows = this._pathItems.get(pathId);
+        if (rows === undefined) {
+            return;
+        }
+        rows.forEach((row, rowId) => {
+            this._itemLayer.removeItem(rowId);
+        });
+        this._pathItems.delete(pathId);
+    }
+
+    /**
+     * Maps an item's path and slot to the belt it sits on. slot counts half-tiles
+     * from the input (head); each belt past the head owns a full then a half slot, so
+     * the belt is parts[(N-1) - floor((slot+1)/2)] and an odd slot is the half-tile
+     * straddle. Returns null when the path or belt isn't cached yet.
+     * @param {BigInt} pathId
+     * @param {number} slot
+     * @returns {{tileX: number, tileY: number, direction: Direction, halfTile: boolean}|null}
+     * @private
+     */
+    _resolveItemBelt(pathId, slot) {
+        const parts = this._pathParts.get(pathId);
+        if (parts === undefined) {
+            return null;
+        }
+        const beltIndex = (parts.length - 1) - Math.floor((slot + 1) / 2);
+        if (beltIndex < 0 || beltIndex >= parts.length) {
+            return null;
+        }
+        const record = this._beltCache.get(parts[beltIndex]);
+        if (record === null) {
+            return null;
+        }
+        return {
+            tileX: record.tileX,
+            tileY: record.tileY,
+            direction: record.data.direction,
+            halfTile: slot % 2 === 1,
+        };
+    }
+
+    /**
+     * Adds a belt to the viewport cache and the draw layer (shared by inserts and syncs).
      * @param {BeltInsertEvent|BeltSyncEvent} event
      * @private
      */

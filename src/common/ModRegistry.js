@@ -92,7 +92,7 @@ export class ModRegistry {
     }
 
     /**
-     * Gathers every mod's individual seed events for a newly-visible chunk.
+     * Gathers every mod's individual sync events for a newly-visible chunk.
      * @param {string} chunk
      * @returns {AbstractEvent[]}
      */

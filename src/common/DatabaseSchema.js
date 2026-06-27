@@ -17,19 +17,19 @@ const CoreStatements = {
     GetGameSettings: `SELECT key, value FROM GameSettings;`,
 
     InsertPort: "INSERT INTO Port DEFAULT VALUES RETURNING id;",
-    InsertGameJournal: `
-        INSERT INTO GameJournal (time, type, x, y, id, a, b, c)
+    InsertBufferedEvent: `
+        INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
         VALUES (@time, @type, @x, @y, @id, @a, @b, @c);
     `,
 
     GetSessionEvents: `
         SELECT ev.seq, ev.time, ev.type, ev.x, ev.y, ev.id, ev.a, ev.b, ev.c,
                sv.session_id
-        FROM GameJournal ev
+        FROM BufferedEvent ev
             INNER JOIN SessionViewport sv ON ev.chunk = sv.chunk;
     `,
 
-    TruncateGameJournal: `DELETE FROM GameJournal;`,
+    TruncateBufferedEvent: `DELETE FROM BufferedEvent;`,
 
     DeleteSessionViewport: `DELETE FROM SessionViewport WHERE session_id = @session_id RETURNING chunk;`,
     GetSessionViewport: `SELECT chunk FROM SessionViewport WHERE session_id = @session_id;`,
@@ -61,7 +61,7 @@ const CoreSchema = `
         is_in_port INT NOT NULL DEFAULT 0
     );
 
-    CREATE TABLE GameJournal (
+    CREATE TABLE BufferedEvent (
         seq INTEGER PRIMARY KEY AUTOINCREMENT,
         time INT NOT NULL,
 
@@ -76,8 +76,8 @@ const CoreSchema = `
         b INT,
         c INT
     );
-    CREATE INDEX GameJournal_time ON GameJournal(time ASC);
-    CREATE INDEX GameJournal_chunk ON GameJournal(chunk);
+    CREATE INDEX BufferedEvent_time ON BufferedEvent(time ASC);
+    CREATE INDEX BufferedEvent_chunk ON BufferedEvent(chunk);
 `;
 
 const CoreTempSchema = `

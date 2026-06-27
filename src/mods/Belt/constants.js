@@ -41,3 +41,11 @@ export const BeltBend = {
 // ---- Item types ----
 export const ITEM_TYPE_GAP = 0;
 export const ITEM_FLAG_STASHED = 1;
+
+// ---- Buffered event types ----
+// BufferedEvent `type` discriminators for the Belt tick's item deltas. UPSERT
+// inserts-or-resizes a path's RLE row (id=path, a=row id, b=length, c=type);
+// DELETE drops one (a=row id). The client keeps each path's rows and derives item
+// positions from them.
+export const BUFFERED_EVENT_TYPE_ITEM_UPSERT = 1;
+export const BUFFERED_EVENT_TYPE_ITEM_DELETE = 2;

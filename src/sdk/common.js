@@ -44,6 +44,9 @@ export {AbstractMessage} from "@/common/AbstractMessage.js";
 export {AbstractEvent} from "@/common/AbstractEvent.js";
 export {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
 
+// A drained BufferedEvent row; a mod's draw layer filters by `type` to react to tick events.
+export {BufferedEvent} from "@/common/BufferedEvent.js";
+
 // ---- World geometry ----
 // `Direction` is the cardinal-direction enum (with rotate/dx/dy helpers).
 // `CHUNK_SIZE` is the width/height of a chunk in tiles.

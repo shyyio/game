@@ -220,8 +220,8 @@ export class Client {
      */
     publishEvent(event) {
         if (event instanceof ChunkSyncEvent) {
-            // A chunk-seed bundle: replay each inner event through the normal path.
-            // Seed events are distinct types (e.g. BeltSyncEvent vs BeltInsertEvent),
+            // A chunk-sync bundle: replay each inner event through the normal path.
+            // Sync events are distinct types (e.g. BeltSyncEvent vs BeltInsertEvent),
             // so handlers can already tell a load from a live change.
             event.events.forEach(inner => this.publishEvent(inner));
             return;

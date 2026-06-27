@@ -174,7 +174,7 @@ export const beltStatements = {
                 path_id,
                 type,
                 length,
-                coalesce(SUM(length) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE CURRENT ROW), 0) AS path_index
+                coalesce(SUM(length) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS path_index
             FROM BeltPathItem
             WHERE path_id = CAST(@id AS INT)
             UNION ALL
@@ -434,10 +434,10 @@ export const beltStatements = {
         WHERE belt.id = CAST(@id AS INT);
     `,
 
-    // Every belt in a chunk, with its parent's tile, to seed a newly-subscribed
+    // Every belt in a chunk, with its parent's tile, to sync a newly-subscribed
     // client. Includes underground belts (no type filter): the client index keeps
     // them for the underground tool's pairing scan even though they aren't drawn.
-    // Every belt in the chunk, grouped by path (head last) so one scan seeds both the
+    // Every belt in the chunk, grouped by path (head last) so one scan syncs both the
     // belt syncs and the path-debug overlay. A path lives entirely in one chunk (it is
     // split at chunk borders), so a chunk's belts hold whole paths.
     GetBeltsInChunk: `
@@ -570,6 +570,17 @@ export const beltStatements = {
     GetPathOutPort: `SELECT out_port_id FROM BeltPath WHERE id = CAST(@id AS INT);`,
 
     GetBeltPath: `SELECT id FROM Belt WHERE path_id = CAST(@id AS INT) ORDER BY path_index;`,
+
+    // Flag a path (its head id) for a full client item re-sync on the next tick.
+    MarkPathForResync: `INSERT OR IGNORE INTO ResyncItemPath (path_id) VALUES (CAST(@id AS INT));`,
+
+    // Flag every path with a belt in a chunk for re-sync, when a viewer subscribes to it.
+    MarkChunkPathsForResync: `
+        INSERT OR IGNORE INTO ResyncItemPath (path_id)
+        SELECT DISTINCT path_id FROM Belt
+        WHERE chunk = @chunk
+          AND path_id IS NOT NULL;
+    `,
 
     GetRampParents: `
         WITH RECURSIVE path AS (

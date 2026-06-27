@@ -118,10 +118,18 @@ export const beltTempSchema = `
         port_id INT
     );
 
-    -- The paths whose item rows changed during the current tick (an item entered,
-    -- popped, or a gap was consumed). The tick's next_gap/next_item recalc reads
-    -- this to touch only changed paths; PRIMARY KEY dedups the INSERT OR IGNOREs.
+    -- Paths whose next_item_id may have moved this tick: an item was popped (its min
+    -- non-gap row removed) or ingested (a non-gap row added). The next_item recalc
+    -- touches only these; PRIMARY KEY dedups the INSERT OR IGNOREs.
     CREATE TEMPORARY TABLE ChangedPath (
+        path_id INTEGER PRIMARY KEY
+    );
+
+    -- Paths whose next_gap_id may have moved this tick: a gap was consumed to nothing
+    -- (its min gap row deleted) or a fresh gap was ingested. A resize only changes a
+    -- gap's length, not its id, so it never lands here. Usually far smaller than
+    -- ChangedPath, so the next_gap recalc stays cheap.
+    CREATE TEMPORARY TABLE GapChangedPath (
         path_id INTEGER PRIMARY KEY
     );
 
@@ -138,6 +146,38 @@ export const beltTempSchema = `
         item_id INT NOT NULL,
         item_type INT NOT NULL
     );
+
+    -- The BeltPathItem rows mutated this tick (resized, popped, or inserted) in a
+    -- watched chunk, with their path and head tile. The captures gate on viewport, so
+    -- the emit ops just fan these out (no Belt join, no chunk filter): still in
+    -- BeltPathItem -> UPSERT, gone -> DELETE.
+    CREATE TEMPORARY TABLE ChangedItem (
+        row_id INTEGER PRIMARY KEY,
+        path_id INT,
+        x INT,
+        y INT
+    );
+
+    -- The lead gaps Case1 shrinks this tick (all active paths, unwatched included):
+    -- the sim resizes from here, and the watched subset is captured into ChangedItem.
+    CREATE TEMPORARY TABLE ResizeGap (
+        row_id INTEGER PRIMARY KEY,
+        path_id INT
+    );
+
+    -- Paths whose item rows the client must re-sync in full (a belt edit rebuilt
+    -- them under new ids, or a new viewer subscribed). Flushed each tick as a full
+    -- RLE of UPSERTs.
+    CREATE TEMPORARY TABLE ResyncItemPath (
+        path_id INTEGER PRIMARY KEY
+    );
+
+    -- Single-row marker holding the max BeltPathItem id before InsertItem runs, so
+    -- the rows it inserts (higher ids, AUTOINCREMENT) can be captured afterward.
+    CREATE TEMPORARY TABLE ItemIdMarker (
+        max_id INT
+    );
+    INSERT INTO ItemIdMarker (max_id) VALUES (0);
 
     INSERT INTO GameSettings (key, value) VALUES
         (${BeltGameSettingsKey.MAX_UNDERGROUND_LENGTH}, ${MAX_UNDERGROUND_LENGTH});

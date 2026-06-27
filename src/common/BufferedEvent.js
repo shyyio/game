@@ -1,7 +1,7 @@
 import {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
 
 /**
- * A GameJournal row replayed to sessions whose viewport covers its chunk, keeping `type` as the journal discriminator.
+ * A row from the BufferedEvent table, replayed to sessions whose viewport covers its chunk; `type` is the discriminator.
  */
 export class BufferedEvent extends AbstractTilePositionedEvent {
 
@@ -18,7 +18,7 @@ export class BufferedEvent extends AbstractTilePositionedEvent {
     };
 
     /**
-     * @param {object} row - Row from the GameJournal table
+     * @param {object} row - Row from the BufferedEvent table
      * @param {number} row.seq
      * @param {number} row.time
      * @param {number} row.type

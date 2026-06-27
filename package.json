@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "vite build",
     "test": "node --import ./src/test/test-loader.js --test 'src/**/*.spec.js'",
-    "schema": "rm SCHEMA.sqlite3; node --import ./src/test/test-loader.js src/test/dump-schema.js | sqlite3 SCHEMA.sqlite3"
+    "schema": "rm SCHEMA.sqlite3; node --import ./src/test/test-loader.js src/test/dump-schema.js | sqlite3 SCHEMA.sqlite3",
+    "bench:tick": "node --import ./src/test/test-loader.js src/test/belt-tick-benchmark.js"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",

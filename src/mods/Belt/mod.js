@@ -58,12 +58,14 @@ export class BeltMod extends AbstractMod {
     // ---- Chunk sync ----
 
     /**
-     * Seed events for a synced chunk: a BeltSyncEvent per belt (undergrounds included,
+     * Sync events for a synced chunk: a BeltSyncEvent per belt (undergrounds included,
      * for the client's ramp scans) then a BeltPathRecalculateEvent per path it touches.
      * @param {string} chunk
      * @returns {AbstractTilePositionedEvent[]}
      */
     collectChunkSync(chunk) {
+        // Re-sync this chunk's paths' items to the subscribing viewport next tick.
+        this.game.exec("MarkChunkPathsForResync", {chunk});
         const belts = this.game.query("GetBeltsInChunk", {chunk});
         const events = [];
         const paths = new Map();
@@ -77,7 +79,7 @@ export class BeltMod extends AbstractMod {
                 belt.parent_x,
                 belt.parent_y,
             ));
-            // Group the chunk's belts into their paths to seed the path-debug overlay.
+            // Group the chunk's belts into their paths to sync the path-debug overlay.
             let path = paths.get(belt.path_id);
             if (path === undefined) {
                 path = {parts: []};
@@ -423,6 +425,8 @@ export class BeltMod extends AbstractMod {
      */
     _publishPathRecalculate(pathHead, x, y) {
         const parts = this._getPath(pathHead);
+        // An edit re-rows the path under new ids, so the client must re-sync its items.
+        this.game.exec("MarkPathForResync", {id: pathHead});
         this.game.publishEventNow(new BeltPathRecalculateEvent(x, y, parts));
     }
 

@@ -5,7 +5,11 @@ import {
     TickPhase,
     Direction,
 } from "@/sdk/common.js";
-import {ITEM_TYPE_GAP} from "./constants.js";
+import {
+    ITEM_TYPE_GAP,
+    BUFFERED_EVENT_TYPE_ITEM_UPSERT,
+    BUFFERED_EVENT_TYPE_ITEM_DELETE,
+} from "./constants.js";
 
 export const BeltDefinition = new ObjectDefinition(
     [
@@ -30,6 +34,14 @@ export const BeltDefinition = new ObjectDefinition(
                 "ClearActivePath",
                 `DELETE FROM ActivePath;`
             ),
+            new TickOp(
+                "ClearChangedItem",
+                `DELETE FROM ChangedItem;`
+            ),
+            new TickOp(
+                "ClearResizeGap",
+                `DELETE FROM ResizeGap;`
+            ),
             // Only gap-shuffling paths need to be in ActivePath for the movement ops:
             // Case2 finds the paths that pop directly off the BeltPath_next_item partial
             // index (see below), and RecalculateHeadGap picks the popped paths back up
@@ -45,20 +57,18 @@ export const BeltDefinition = new ObjectDefinition(
             // because a path's out-port can be the downstream path's in-port: the pop
             // this tick must be visible to that downstream path's InsertItem.
 
-            // Case 1: Output is full, or next item is a gap
-            // TODO: Get list of items about to be resized, then insert event for those
+            // Case 1: Output is full, or next item is a gap — the lead gap shrinks by
+            // one. ResizeGap names those gaps (all active paths) so Case1 resizes from
+            // it; the predicate lives here once. CaptureViewedResize (below) copies the
+            // watched subset into ChangedItem for the emit.
             new TickOp(
-                "TickBeltPathCase1",
-                `UPDATE BeltPathItem
-                SET length = length - 1
-                WHERE id IN (
-                    SELECT p.next_gap_id
+                "CaptureResizeGaps",
+                `INSERT OR IGNORE INTO ResizeGap (row_id, path_id)
+                    SELECT p.next_gap_id, p.id
                     FROM BeltPath p
                         INNER JOIN Port outPort ON outPort.id = p.out_port_id
-                    WHERE (
-                        p.next_gap_id IS NOT NULL
-                        AND
-                        (
+                    WHERE p.next_gap_id IS NOT NULL
+                      AND (
                             -- Next item is a gap
                             p.next_gap_id < p.next_item_id
                                 OR
@@ -68,12 +78,24 @@ export const BeltDefinition = new ObjectDefinition(
                             outPort.item IS NOT NULL
                             -- TODO: Check if child belt could accept the item? Not recursive
                         )
-                        AND
-                        p.id IN (
-                            SELECT path_id FROM ActivePath
-                        )
-                    )
-                );`
+                      AND p.id IN (SELECT path_id FROM ActivePath);`
+            ),
+            new TickOp(
+                "TickBeltPathCase1",
+                `UPDATE BeltPathItem
+                SET length = length - 1
+                WHERE id IN (SELECT row_id FROM ResizeGap);`
+            ),
+            // Capture the watched resized gaps into ChangedItem (gated on viewport).
+            // CROSS JOIN drives from the small ResizeGap; an INNER JOIN lets the planner
+            // scan all of Belt instead.
+            new TickOp(
+                "CaptureViewedResize",
+                `INSERT OR IGNORE INTO ChangedItem (row_id, path_id, x, y)
+                 SELECT g.row_id, g.path_id, head.x, head.y
+                 FROM ResizeGap g
+                    CROSS JOIN Belt head ON head.id = g.path_id
+                 WHERE head.chunk IN (SELECT chunk FROM SessionViewport);`
             ),
             // Case 2: output is not full and next item is not a gap
             //  - pop item into output port
@@ -96,6 +118,18 @@ export const BeltDefinition = new ObjectDefinition(
                     )
                   -- There is space in the output
                   AND outPort.item IS NULL;`
+            ),
+            // Popped items are deleted by Cleanup1; capture the watched ones now (gated
+            // on viewport) so the emit phase reports each as a DELETE delta.
+            new TickOp(
+                "CapturePoppedItems",
+                // CROSS JOIN drives from BeltPathOutputItem; an INNER JOIN lets the
+                // planner scan all of Belt instead.
+                `INSERT OR IGNORE INTO ChangedItem (row_id, path_id, x, y)
+                 SELECT popped.item_id, popped.path_id, head.x, head.y
+                 FROM BeltPathOutputItem popped
+                    CROSS JOIN Belt head ON head.id = popped.path_id
+                 WHERE head.chunk IN (SELECT chunk FROM SessionViewport);`
             ),
 
             // If there is a gap anywhere in the path (including a 0-length gap),
@@ -141,6 +175,13 @@ export const BeltDefinition = new ObjectDefinition(
                    AND inPort.is_in_port = 1;`
             ),
 
+            // Snapshot the max row id so the rows InsertItem appends (higher ids) can
+            // be captured into ChangedItem afterward as UPSERT deltas.
+            new TickOp(
+                "RecordMaxItemId",
+                `UPDATE ItemIdMarker SET max_id = COALESCE((SELECT MAX(id) FROM BeltPathItem), 0);`
+            ),
+
             new TickOp(
                 "TickBeltPathInsertItem",
                 // CROSS JOIN forces ActivePath as the driving table (otherwise the
@@ -166,16 +207,34 @@ export const BeltDefinition = new ObjectDefinition(
                     WHERE head_gap > 0
                       AND inPort.item IS NOT NULL;`
             ),
+            // Capture the watched newly-inserted rows (gated on viewport). CROSS JOIN
+            // drives from the new BeltPathItem rows (id > marker), not all of Belt.
+            new TickOp(
+                "CaptureInsertedItems",
+                `INSERT OR IGNORE INTO ChangedItem (row_id, path_id, x, y)
+                 SELECT item.id, item.path_id, head.x, head.y
+                 FROM BeltPathItem item
+                    CROSS JOIN Belt head ON head.id = item.path_id
+                 WHERE item.id > (SELECT max_id FROM ItemIdMarker)
+                   AND head.chunk IN (SELECT chunk FROM SessionViewport);`
+            ),
+            // Newly-ingested gaps (a path with head_gap > 1 took input) move its
+            // next_gap_id, so record those paths. The gap rows are the new BeltPathItem
+            // rows of type GAP (id > marker), found via the same marker as the inserts.
+            new TickOp(
+                "CaptureGapChangedFromInput",
+                `INSERT OR IGNORE INTO GapChangedPath (path_id)
+                 SELECT path_id FROM BeltPathItem
+                 WHERE id > (SELECT max_id FROM ItemIdMarker) AND type = ${ITEM_TYPE_GAP};`
+            ),
             // No explicit null-before-delete of next_gap_id/next_item_id: those
             // pointers are read only at the start of a tick (Case1/Case2, above) and
-            // recomputed at the end (RecalculateNext*), and the recalc's LEFT JOIN
-            // over ChangedPath already resets every changed/emptied path. A pointer
+            // recomputed at the end, which resets every changed/emptied path. A pointer
             // left dangling at a row Cleanup1 deletes below is never read before then.
 
-            // Record the paths Cleanup1 is about to change before it deletes the
-            // rows: items popped to an out-port (BeltPathOutputItem) and gaps a tick
-            // consumed down to length 0. These plus the input paths below are the
-            // only paths whose next_gap/next_item can have moved this tick.
+            // Record the paths Cleanup1 is about to change before it deletes the rows:
+            // items popped to an out-port move next_item_id (the min non-gap row went),
+            // and gaps consumed to length 0 move next_gap_id (the min gap row went).
             new TickOp(
                 "CaptureChangedFromOutput",
                 `INSERT OR IGNORE INTO ChangedPath (path_id)
@@ -185,7 +244,7 @@ export const BeltDefinition = new ObjectDefinition(
             // are transient), so this collects the consumed-gap paths directly.
             new TickOp(
                 "CaptureChangedFromZeroLength",
-                `INSERT OR IGNORE INTO ChangedPath (path_id)
+                `INSERT OR IGNORE INTO GapChangedPath (path_id)
                  SELECT path_id FROM BeltPathItem INDEXED BY BeltPathItem_zero WHERE length = 0;`
             ),
 
@@ -240,29 +299,79 @@ export const BeltDefinition = new ObjectDefinition(
                 `DELETE FROM BeltPathInputItem;`
             ),
 
-            // next_gap/next_item are the MIN id of a path's gap/non-gap rows. A path's
-            // values are still correct unless its items changed this tick, so recompute
-            // only ChangedPath. Each pointer is an O(1) leftmost lookup on its type-split
-            // partial index (BeltPathItem_next_item / _next_gap, both ordered (path_id,
-            // id)), so the recompute is O(changed paths). A correlated MIN yields NULL
-            // when the path has no row of that kind.
+            // next_item/next_gap are the MIN id of a path's non-gap/gap rows — an O(1)
+            // leftmost lookup on the type-split partial index (BeltPathItem_next_item /
+            // _next_gap, ordered (path_id, id)). Each pointer is recomputed only for the
+            // paths whose rows of that kind changed, so most ticks the gap pass touches
+            // almost nothing. A correlated MIN yields NULL when the path has no such row.
             new TickOp(
-                "RecalculateNextPointers",
+                "RecalculateNextItem",
                 `UPDATE BeltPath
                     SET next_item_id = (
                             SELECT MIN(item.id) FROM BeltPathItem item INDEXED BY BeltPathItem_next_item
                             WHERE item.path_id = BeltPath.id AND item.type != ${ITEM_TYPE_GAP}
-                        ),
-                        next_gap_id = (
+                        )
+                    WHERE id IN (SELECT path_id FROM ChangedPath);`
+            ),
+            new TickOp(
+                "RecalculateNextGap",
+                `UPDATE BeltPath
+                    SET next_gap_id = (
                             SELECT MIN(gap.id) FROM BeltPathItem gap INDEXED BY BeltPathItem_next_gap
                             WHERE gap.path_id = BeltPath.id AND gap.type = ${ITEM_TYPE_GAP}
                         )
-                    WHERE id IN (SELECT path_id FROM ChangedPath);`
+                    WHERE id IN (SELECT path_id FROM GapChangedPath);`
             ),
 
             new TickOp(
                 "ClearChangedPath",
                 `DELETE FROM ChangedPath;`
+            ),
+            new TickOp(
+                "ClearGapChangedPath",
+                `DELETE FROM GapChangedPath;`
+            ),
+
+            // ChangedItem already holds only watched rows (the captures gate on
+            // viewport) with the head tile, so the item emits just fan it out — no Belt
+            // join, no chunk filter. The sim runs everywhere, but a delta only matters
+            // to a session watching that chunk (unwatched chunks re-sync on subscribe).
+
+            // Resync: full RLE (every row) of each path the client must rebuild — a
+            // belt edit re-rowed it, or a new viewer subscribed. Still gated here, since
+            // ResyncItemPath isn't viewport-filtered. x/y is the head tile (one chunk).
+            new TickOp(
+                "EmitResyncItems",
+                `INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
+                 SELECT @time, ${BUFFERED_EVENT_TYPE_ITEM_UPSERT}, head.x, head.y,
+                        item.path_id, item.id, item.length, item.type
+                 FROM BeltPathItem item
+                    INNER JOIN Belt head ON head.id = item.path_id
+                 WHERE item.path_id IN (SELECT path_id FROM ResyncItemPath)
+                   AND head.chunk IN (SELECT chunk FROM SessionViewport);`
+            ),
+            new TickOp(
+                "ClearResyncItemPath",
+                `DELETE FROM ResyncItemPath;`
+            ),
+
+            // UPSERT delta for each changed row still present (resized or inserted).
+            new TickOp(
+                "EmitItemUpserts",
+                `INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
+                 SELECT @time, ${BUFFERED_EVENT_TYPE_ITEM_UPSERT}, ci.x, ci.y,
+                        ci.path_id, ci.row_id, item.length, item.type
+                 FROM ChangedItem ci
+                    INNER JOIN BeltPathItem item ON item.id = ci.row_id;`
+            ),
+            // DELETE delta for each changed row now gone (popped or shrunk to nothing).
+            new TickOp(
+                "EmitItemDeletes",
+                `INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
+                 SELECT @time, ${BUFFERED_EVENT_TYPE_ITEM_DELETE}, ci.x, ci.y,
+                        ci.path_id, ci.row_id, NULL, NULL
+                 FROM ChangedItem ci
+                 WHERE ci.row_id NOT IN (SELECT id FROM BeltPathItem);`
             )
         ],
         [TickPhase.COMMIT_TRANSFERS]: [

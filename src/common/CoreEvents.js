@@ -13,7 +13,7 @@ function chunkOriginTile(chunk) {
 }
 
 /**
- * Tells a session a chunk has entered its viewport, so mods seed its objects.
+ * Tells a session a chunk has entered its viewport, so mods sync its objects.
  */
 export class ChunkSubscribeEvent extends AbstractTilePositionedEvent {
 
@@ -51,7 +51,7 @@ export class ChunkUnsubscribeEvent extends AbstractTilePositionedEvent {
 }
 
 /**
- * Seeds a subscribed chunk by bundling the per-object events (from `AbstractMod.collectChunkSync`) that recreate it on the client.
+ * Syncs a subscribed chunk by bundling the per-object events (from `AbstractMod.collectChunkSync`) that recreate it on the client.
  */
 export class ChunkSyncEvent extends AbstractTilePositionedEvent {
 

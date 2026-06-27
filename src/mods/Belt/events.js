@@ -54,7 +54,7 @@ export class BeltInsertEvent extends AbstractTilePositionedEvent {
 }
 
 /**
- * A belt seeded into a loaded chunk; same payload as BeltInsertEvent but a distinct type to skip placement feedback.
+ * A belt synced into a loaded chunk; same payload as BeltInsertEvent but a distinct type to skip placement feedback.
  */
 export class BeltSyncEvent extends AbstractTilePositionedEvent {
 

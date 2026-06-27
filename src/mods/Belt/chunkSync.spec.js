@@ -20,7 +20,7 @@ function captureEvents(harness) {
     return events;
 }
 
-test("subscribing a chunk seeds the client with belts already in it", async () => {
+test("subscribing a chunk syncs the client with belts already in it", async () => {
     const harness = await setup();
     // Belt placed before the chunk is ever viewed: no viewport, so nothing is
     // pushed live — it must be delivered later by the chunk-sync bundle.
@@ -31,28 +31,28 @@ test("subscribing a chunk seeds the client with belts already in it", async () =
 
     const sync = events.find(event => event instanceof ChunkSyncEvent);
     assert.ok(sync, "expected a ChunkSyncEvent");
-    // One belt sync plus a path-recalc seed for the lone belt's path.
+    // One belt sync plus a path-recalc sync for the lone belt's path.
     assert.strictEqual(sync.events.length, 2);
 
-    const seeded = sync.events.find(event => event instanceof BeltSyncEvent);
-    assert.ok(seeded, "bundle holds a BeltSyncEvent");
-    assert.strictEqual(typeof seeded.id, "bigint");
-    assert.strictEqual(seeded.x, 1);
-    assert.strictEqual(seeded.y, 1);
-    assert.strictEqual(seeded.direction, Direction.UP);
-    assert.strictEqual(seeded.beltType, BeltType.NORMAL);
+    const synced = sync.events.find(event => event instanceof BeltSyncEvent);
+    assert.ok(synced, "bundle holds a BeltSyncEvent");
+    assert.strictEqual(typeof synced.id, "bigint");
+    assert.strictEqual(synced.x, 1);
+    assert.strictEqual(synced.y, 1);
+    assert.strictEqual(synced.direction, Direction.UP);
+    assert.strictEqual(synced.beltType, BeltType.NORMAL);
     // Standalone belt has no parent.
-    assert.strictEqual(seeded.parentX, null);
-    assert.strictEqual(seeded.parentY, null);
+    assert.strictEqual(synced.parentX, null);
+    assert.strictEqual(synced.parentY, null);
 
-    // The belt syncs precede the path seed, so the client has positions before it draws.
+    // The belt syncs precede the path sync, so the client has positions before it draws.
     assert.ok(sync.events[0] instanceof BeltSyncEvent, "belt syncs come first");
-    const pathSeed = sync.events.find(event => event instanceof BeltPathRecalculateEvent);
-    assert.ok(pathSeed, "bundle holds a BeltPathRecalculateEvent");
-    assert.deepStrictEqual(pathSeed.parts, [seeded.id]);
+    const pathSync = sync.events.find(event => event instanceof BeltPathRecalculateEvent);
+    assert.ok(pathSync, "bundle holds a BeltPathRecalculateEvent");
+    assert.deepStrictEqual(pathSync.parts, [synced.id]);
 });
 
-test("a multi-belt path is seeded as one recalc, head last", async () => {
+test("a multi-belt path is synced as one recalc, head last", async () => {
     const harness = await setup();
     createBelt(harness, BeltType.NORMAL, {x: 1, y: 1, direction: Direction.RIGHT});
     createBelt(harness, BeltType.NORMAL, {x: 2, y: 1, direction: Direction.RIGHT});
@@ -62,13 +62,13 @@ test("a multi-belt path is seeded as one recalc, head last", async () => {
     harness.dispatchMessage(new SetViewportMessage([chunkKey(1, 1)]));
 
     const sync = events.find(event => event instanceof ChunkSyncEvent);
-    const pathSeeds = sync.events.filter(event => event instanceof BeltPathRecalculateEvent);
-    assert.strictEqual(pathSeeds.length, 1, "one recalc for the single shared path");
-    assert.strictEqual(pathSeeds[0].parts.length, 3);
+    const pathSyncs = sync.events.filter(event => event instanceof BeltPathRecalculateEvent);
+    assert.strictEqual(pathSyncs.length, 1, "one recalc for the single shared path");
+    assert.strictEqual(pathSyncs[0].parts.length, 3);
     // parts run head last; the head belt id is the path's id.
     const head = harness.rawScalar("SELECT path_id FROM Belt WHERE x = 1 AND y = 1");
-    const seededHead = pathSeeds[0].parts[pathSeeds[0].parts.length - 1];
-    assert.strictEqual(Number(seededHead), Number(head));
+    const syncedHead = pathSyncs[0].parts[pathSyncs[0].parts.length - 1];
+    assert.strictEqual(Number(syncedHead), Number(head));
 });
 
 test("deleting a path's head publishes a recalc for the re-headed survivor", async () => {
@@ -94,7 +94,7 @@ test("deleting a path's head publishes a recalc for the re-headed survivor", asy
     assert.strictEqual(recalc.parts.length, 2);
 });
 
-test("an empty chunk seeds nothing", async () => {
+test("an empty chunk syncs nothing", async () => {
     const harness = await setup();
     const events = captureEvents(harness);
     harness.dispatchMessage(new SetViewportMessage([chunkKey(1, 1)]));
@@ -116,7 +116,7 @@ test("leaving a chunk unsubscribes it; re-entering re-syncs only the delta", asy
         event instanceof ChunkUnsubscribeEvent
         && event.chunk === chunkKey(1, 1));
     assert.ok(unsubscribe, "expected a chunk-unsubscribe for the chunk left behind");
-    // The empty chunk we panned into seeds nothing.
+    // The empty chunk we panned into syncs nothing.
     assert.ok(!events.some(event => event instanceof ChunkSyncEvent));
 
     // Pan back: only the re-entered chunk is synced again.
@@ -124,6 +124,6 @@ test("leaving a chunk unsubscribes it; re-entering re-syncs only the delta", asy
     harness.dispatchMessage(new SetViewportMessage([chunkKey(1, 1)]));
     const resync = events.find(event => event instanceof ChunkSyncEvent);
     assert.ok(resync, "expected a re-sync when the chunk re-enters the viewport");
-    // One belt sync plus the path-recalc seed for its path.
+    // One belt sync plus the path-recalc sync for its path.
     assert.strictEqual(resync.events.length, 2);
 });

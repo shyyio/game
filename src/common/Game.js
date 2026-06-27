@@ -159,9 +159,9 @@ export class Game {
             this.exec("InsertSessionViewport", {session_id: session.id, chunk});
             session.publishEvent(new ChunkSubscribeEvent(chunk));
 
-            const seedEvents = this.modRegistry.collectChunkSync(chunk);
-            if (seedEvents.length > 0) {
-                session.publishEvent(new ChunkSyncEvent(chunk, seedEvents));
+            const syncEvents = this.modRegistry.collectChunkSync(chunk);
+            if (syncEvents.length > 0) {
+                session.publishEvent(new ChunkSyncEvent(chunk, syncEvents));
             }
         });
     }
@@ -184,7 +184,7 @@ export class Game {
     // ---- Events ----
 
     /**
-     * Dispatches a positioned event immediately to sessions covering its chunk, bypassing GameJournal.
+     * Dispatches a positioned event immediately to sessions covering its chunk, bypassing the BufferedEvent buffer.
      * @param {AbstractTilePositionedEvent} event
      */
     publishEventNow(event) {
@@ -199,7 +199,7 @@ export class Game {
     }
 
     /**
-     * Reads events from GameJournal that fall within each session's viewport,
+     * Reads events from BufferedEvent that fall within each session's viewport,
      * dispatches them to the appropriate session, then clears the journal.
      */
     _dispatchEvents() {
@@ -208,6 +208,6 @@ export class Game {
         rows.forEach(row => {
             this.sessions[row.session_id].publishEvent(new BufferedEvent(row));
         });
-        this.exec("TruncateGameJournal");
+        this.exec("TruncateBufferedEvent");
     }
 }

@@ -26,7 +26,7 @@ export {default as Haptics} from "@/client/Haptics.js";
 
 // ---- Client world state ----
 // A client mod's own picture of placed objects (indexed by id, tile, and chunk),
-// seeded from chunk-sync events. Client code queries this instead of the
+// synced from chunk-sync events. Client code queries this instead of the
 // simulation DB.
 export {ViewportCache} from "@/client/ViewportCache.js";
 
