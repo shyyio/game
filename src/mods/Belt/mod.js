@@ -1,10 +1,11 @@
-
 import {
     AbstractMod,
     chunkKey,
+    CHUNK_SIZE,
     upstreamPorts,
     downstreamPorts,
     Direction,
+    BufferedEvent,
 } from "@/sdk/common.js";
 import {CreateBeltMessage, DeleteBeltMessage} from "./messages.js";
 import {
@@ -12,6 +13,8 @@ import {
     BELT_RAMP_UP,
     BELT_UNDERGROUND,
     MAX_UNDERGROUND_LENGTH,
+    BUFFERED_EVENT_TYPE_ITEM_RESET,
+    BUFFERED_EVENT_TYPE_ITEM_SYNC,
 } from "./constants.js";
 import {getUndergroundBeltsToCreate, tunnelStep} from "./geometry.js";
 import {beltSchema, beltTempSchema} from "./schema.js";
@@ -131,6 +134,7 @@ export class BeltMod extends AbstractMod {
         options.chunk = chunkKey(options.x, options.y);
         if (transaction) {
             this.game.begin();
+            this._resyncHeads = new Set();
         }
 
         if (options.disconnectRampChild) {
@@ -156,6 +160,7 @@ export class BeltMod extends AbstractMod {
         }
 
         if (transaction) {
+            this._flushItemResync();
             this.game.end();
         }
     }
@@ -325,7 +330,12 @@ export class BeltMod extends AbstractMod {
         if (createdNewPath) {
             this._populateBeltPathPorts(head, inheritedOutPort);
         }
+        const loopTail = this._unifyLoopPort(head);
         this._publishPathRecalculate(head, options.x, options.y);
+        // head is an existing belt the client already holds, so the bend can publish now.
+        if (loopTail !== null) {
+            this._publishLoopSeamBend(head, loopTail);
+        }
 
         if (oldParentPathHead) {
             this.game.exec("MaterializeBeltPath", {id: oldParentPathHead});
@@ -376,6 +386,7 @@ export class BeltMod extends AbstractMod {
         if (createdLoop) {
             this._populateBeltPathPorts(id);
         }
+        const loopTail = this._unifyLoopPort(id);
 
         this._unStashItems();
         this.game.exec("FillHeadGap", {id: head});
@@ -384,6 +395,10 @@ export class BeltMod extends AbstractMod {
         this._publishPathRecalculate(head, options.x, options.y);
         this._publishPathRecalculate(id, options.x, options.y);
         this._publishBeltInsert(id, options);
+        // id is the newly-placed seam head, so bend it only after its insert reaches the client.
+        if (loopTail !== null) {
+            this._publishLoopSeamBend(id, loopTail);
+        }
     }
 
     /**
@@ -403,19 +418,9 @@ export class BeltMod extends AbstractMod {
     _absorbChildPath(head, child) {
         this.game.exec("DeleteOutPort", {id: head});
 
-        // When the child already feeds the head, folding it in closes a loop and the
-        // out port it contributes is the head's own in port. A path can't use one port
-        // for both ends (CHECK in_port != out_port), and a loop needs two regardless —
-        // its physical tail→head adjacency reconnects them — so rekey the head's in
-        // port to a fresh one before inheriting the child's out port.
-        const childOutPort = this.game.queryScalar("GetPathOutPort", {id: child.id});
-        const headInPort = this.game.queryScalar("GetPathInPort", {id: head});
-        if (childOutPort !== null && childOutPort === headInPort) {
-            const freshInPort = this.game.queryScalar("InsertPort");
-            this.game.exec("UpdateInPort", {id: head, port: freshInPort});
-            this.game.exec("MarkPortAsInput", {port: freshInPort});
-        }
-
+        // When the child already feeds the head, folding it in closes a loop: the
+        // inherited out port equals the head's own in port, so the path shares one port
+        // for both ends (kept by _unifyLoopPort) and items circulate through it.
         const inheritedOutPort = this.game.queryScalar("InheritOutPort", {child: child.id, parent: head});
         this.game.exec("DeleteInPort", {id: child.id});
         this.game.exec("DeletePath", {id: child.id});
@@ -443,10 +448,52 @@ export class BeltMod extends AbstractMod {
      */
     _publishPathRecalculate(pathHead, x, y) {
         const parts = this._getPath(pathHead);
-        // An edit re-rows the path under new ids, so the client must re-sync its items.
-        this.game.exec("MarkPathForResync", {id: pathHead});
         const outPortId = this.game.queryScalar("GetPathOutPort", {id: pathHead});
         this.game.publishEventNow(new BeltPathRecalculateEvent(x, y, parts, outPortId));
+        // An edit re-rows the path under new ids; the client re-syncs its items at the
+        // edit's end (_flushItemResync), so a destroyed item's sprite doesn't linger a tick.
+        this._resyncHeads.add(pathHead);
+    }
+
+    /**
+     * Re-syncs every path touched this edit, once — after all belt inserts and item
+     * un-stashing are done. The timing is essential: an edit can flow an out-port item onto
+     * a freshly inserted belt only at its very end, so re-syncing at each path recalc would
+     * miss the new row (and its belt would not be in the client cache yet).
+     * @private
+     */
+    _flushItemResync() {
+        this._resyncHeads.forEach(head => {
+            const belt = this.game.querySingle("GetBelt", {id: head});
+            if (belt !== null) {
+                this._resyncPathItemsNow(head, belt.x, belt.y);
+            }
+        });
+        this._resyncHeads.clear();
+    }
+
+    /**
+     * Re-syncs a path's items on the client immediately: emits a RESET then an UPSERT per
+     * RLE row, mirroring EmitResyncReset + EmitResyncItems but published now rather than via
+     * the next tick's journal drain.
+     * @private
+     * @param {BigInt} pathHead
+     * @param {number} x - head tile, for the routing chunk
+     * @param {number} y
+     */
+    _resyncPathItemsNow(pathHead, x, y) {
+        const routing_chunk_x = Math.floor(x / CHUNK_SIZE);
+        const routing_chunk_y = Math.floor(y / CHUNK_SIZE);
+        this.game.publishEventNow(new BufferedEvent({
+            type: BUFFERED_EVENT_TYPE_ITEM_RESET, routing_chunk_x, routing_chunk_y, id: pathHead,
+        }));
+        this.game.query("GetBeltPathItems", {id: pathHead}).forEach(row => {
+            this.game.publishEventNow(new BufferedEvent({
+                // Number(row.id): the journal path narrows a to Number; key it the same.
+                type: BUFFERED_EVENT_TYPE_ITEM_SYNC, routing_chunk_x, routing_chunk_y, id: pathHead,
+                a: Number(row.id), b: row.length, c: row.type,
+            }));
+        });
     }
 
     /**
@@ -513,6 +560,7 @@ export class BeltMod extends AbstractMod {
     _removeBelt(id, recursive=false, fillHeadGap=[]) {
         if (!recursive) {
             this.game.begin();
+            this._resyncHeads = new Set();
         }
 
         const belt = this.game.querySingle("GetBelt", {id});
@@ -625,9 +673,11 @@ export class BeltMod extends AbstractMod {
             return;
         }
         // The feeder captured pre-deletion may itself have been removed; if so the run
-        // is already open and there is nothing to re-link.
+        // is already open and there is nothing to re-link. The seam head is now a plain
+        // straight head, so reset the loop render-bend it carried toward that feeder.
         const neighborBelt = this.game.querySingle("GetBelt", {id: upstreamNeighbor});
         if (neighborBelt == null) {
+            this.game.publishEventNow(new BeltUpdateEvent(seamBelt.x, seamBelt.y, loopHead, null, null));
             return;
         }
         const upstreamHead = this._getBeltPathHead(upstreamNeighbor);
@@ -775,6 +825,7 @@ export class BeltMod extends AbstractMod {
         this._healLoopSeam(loopSeam);
         this._reconnectOrphanedRamp(orphanedRamp);
 
+        this._flushItemResync();
         this.game.end();
     }
 
@@ -1038,5 +1089,51 @@ export class BeltMod extends AbstractMod {
 
         this.game.exec("UpdateBeltPathPorts", {id, inPort: inputPort, outPort: outputPort});
         this.game.exec("MarkPortAsInput", {port: inputPort});
+    }
+
+    /**
+     * Collapses a loop's two seam ports into one shared port. A loop's tail belt feeds its
+     * own head, so the head's in-port and the tail's out-port land at the same boundary as
+     * distinct rows; sharing one port lets the popped lead item re-ingest, so items
+     * circulate. No-op for an open path (tail feeds elsewhere) or an already-shared loop.
+     * @private
+     * @param {BigInt} head
+     */
+    _unifyLoopPort(head) {
+        const headBelt = this.game.querySingle("GetBelt", {id: head});
+        const tail = this.game.querySingle("GetTail", {id: head});
+        if (headBelt === null || tail === null) {
+            return null;
+        }
+        // A loop only when the tail belt physically feeds the head's tile.
+        if (tail.x + Direction.dx(tail.direction) !== headBelt.x
+            || tail.y + Direction.dy(tail.direction) !== headBelt.y) {
+            return null;
+        }
+
+        // Share one port for both ends so the popped lead item re-ingests (items circulate).
+        const inPort = this.game.queryScalar("GetPathInPort", {id: head});
+        const outPort = this.game.queryScalar("GetPathOutPort", {id: head});
+        if (inPort !== null && outPort !== null && inPort !== outPort) {
+            this.game.exec("DeleteOutPort", {id: head});
+            this.game.exec("UpdateBeltPathPorts", {id: head, inPort, outPort: inPort});
+        }
+        return tail;
+    }
+
+    /**
+     * Re-bends a loop's seam head toward the tail that physically feeds it. Its parent is
+     * nulled to break the path cycle, so the client would otherwise render it straight.
+     * Must run once the head belt has reached the client (after its own insert, when the
+     * head is the newly-placed belt).
+     * @private
+     * @param {BigInt} head
+     * @param {{x: number, y: number}} tail
+     */
+    _publishLoopSeamBend(head, tail) {
+        const headBelt = this.game.querySingle("GetBelt", {id: head});
+        if (headBelt !== null) {
+            this.game.publishEventNow(new BeltUpdateEvent(headBelt.x, headBelt.y, head, tail.x, tail.y));
+        }
     }
 }

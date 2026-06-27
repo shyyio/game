@@ -119,8 +119,9 @@ export const GameSettingsKey = {
     CHUNK_SIZE: 0,
 };
 
-// BufferedEvent `type` discriminators owned by the engine. The type space is flat
-// and shared with mods (Belt uses 1-2); the engine reserves 3+. PORT_ITEM_SET sets
-// the item in an output port (id=port, a=item type); PORT_ITEM_CLEAR empties one.
+// BufferedEvent `type` discriminators owned by the engine. The type space is flat and
+// shared with mods: the engine reserves 1-100, mods start at 100 (Belt's are 100+).
+// PORT_ITEM_SET sets the item in an output port (id=port, a=item type); PORT_ITEM_CLEAR
+// empties one.
 export const BUFFERED_EVENT_TYPE_PORT_ITEM_SET = 3;
 export const BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR = 4;

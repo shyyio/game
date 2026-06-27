@@ -4,6 +4,7 @@ import {
     TickOp,
     TickPhase,
     Direction,
+    CHUNK_COORD_SQL,
     BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
     BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
 } from "@/sdk/common.js";
@@ -56,20 +57,46 @@ export const BeltDefinition = new ObjectDefinition(
                 `INSERT OR IGNORE INTO ActivePath (path_id)
                  SELECT id FROM BeltPath INDEXED BY BeltPath_next_gap WHERE next_gap_id IS NOT NULL;`
             ),
-            // Input activity is added later (after the out-ports are filled below),
-            // because a path's out-port can be the downstream path's in-port: the pop
-            // this tick must be visible to that downstream path's InsertItem.
 
-            // Case 1: Output is full, or next item is a gap — the lead gap shrinks by
-            // one. ResizeGap names those gaps (all active paths) so Case1 resizes from
-            // it; the predicate lives here once. CaptureViewedResize (below) copies the
-            // watched subset into ChangedItem for the emit.
+            // Each loaded path (a lead item ready to pop) submits a virtual port-transfer
+            // intent (in-port -> out-port, managed=0) so the engine resolves the shift
+            // chain across shared seam ports. destination_is_empty is the base case the
+            // generic resolver can't see for itself: the out-port is free, or the
+            // downstream path can ingest this tick without itself popping (it has head
+            // room or a gap to shrink). The resolver's recursion then adds the packed-
+            // chain-also-pops case. The movement below pops exactly the paths whose intent
+            // resolved (PortTransfer rows with managed=0).
+            new TickOp(
+                "SubmitBeltShiftIntent",
+                `INSERT INTO PortTransferIntent (source_id, destination_id, priority, destination_is_empty, managed)
+                 SELECT p.in_port_id AS source_id,
+                        p.out_port_id AS destination_id,
+                        0 AS priority,
+                        (op.item IS NULL
+                            OR (down.id IS NOT NULL AND (down.head_gap > 0 OR down.next_gap_id IS NOT NULL)))
+                            AS destination_is_empty,
+                        0 AS managed
+                 FROM BeltPath p INDEXED BY BeltPath_next_item
+                    INNER JOIN Port op ON op.id = p.out_port_id
+                    LEFT JOIN BeltPath down ON down.in_port_id = p.out_port_id
+                 WHERE p.next_item_id IS NOT NULL
+                   AND (p.next_gap_id IS NULL OR p.next_item_id < p.next_gap_id);`
+            ),
+        ],
+
+        // The engine has now resolved the shift chain. The movement runs here, popping
+        // the paths whose virtual intent succeeded.
+        [TickPhase.POST_RESOLVE]: [
+            // Case 1: the path can't pop (its intent didn't resolve) or its next item is a
+            // gap — the lead gap shrinks by one. ResizeGap names those gaps (all active
+            // paths) so Case1 resizes from it; the predicate lives here once.
+            // CaptureViewedResize (below) copies the watched subset into ChangedItem.
             new TickOp(
                 "CaptureResizeGaps",
                 `INSERT OR IGNORE INTO ResizeGap (row_id, path_id)
-                    SELECT p.next_gap_id, p.id
+                    SELECT p.next_gap_id AS row_id,
+                           p.id AS path_id
                     FROM BeltPath p
-                        INNER JOIN Port outPort ON outPort.id = p.out_port_id
                     WHERE p.next_gap_id IS NOT NULL
                       AND (
                             -- Next item is a gap
@@ -77,9 +104,8 @@ export const BeltDefinition = new ObjectDefinition(
                                 OR
                             p.next_item_id IS NULL
                                 OR
-                                -- Output is full
-                            outPort.item IS NOT NULL
-                            -- TODO: Check if child belt could accept the item? Not recursive
+                            -- The path can't pop this tick: its shift intent didn't resolve.
+                            p.out_port_id NOT IN (SELECT destination_id FROM PortTransfer WHERE managed=0)
                         )
                       AND p.id IN (SELECT path_id FROM ActivePath);`
             ),
@@ -108,10 +134,12 @@ export const BeltDefinition = new ObjectDefinition(
                 // item ready to pop), so it is O(loaded paths). INDEXED BY pins the
                 // query plan to that partial index.
                 `INSERT INTO BeltPathOutputItem (path_id, item_id, item_type, port_id)
-                SELECT BeltPath.id, item.id, item.type, outPort.id
+                SELECT BeltPath.id AS path_id,
+                       item.id AS item_id,
+                       item.type AS item_type,
+                       BeltPath.out_port_id AS port_id
                 FROM BeltPath INDEXED BY BeltPath_next_item
                     INNER JOIN BeltPathItem item ON item.id = BeltPath.next_item_id
-                    INNER JOIN Port outPort ON outPort.id = BeltPath.out_port_id
                 WHERE BeltPath.next_item_id IS NOT NULL
                   -- Next item is an item
                   AND (
@@ -119,8 +147,9 @@ export const BeltDefinition = new ObjectDefinition(
                             OR
                         BeltPath.next_item_id < BeltPath.next_gap_id
                     )
-                  -- There is space in the output
-                  AND outPort.item IS NULL;`
+                  -- The path's shift intent resolved: the output is free now, or it
+                  -- drains this tick (the downstream ingests, recursively up the chain).
+                  AND BeltPath.out_port_id IN (SELECT destination_id FROM PortTransfer WHERE managed=0);`
             ),
             // Popped items are deleted by Cleanup1; capture the watched ones now (gated
             // on viewport) so the emit phase reports each as a DELETE delta.
@@ -223,17 +252,6 @@ export const BeltDefinition = new ObjectDefinition(
                  WHERE id > (SELECT max_id FROM ItemIdMarker) AND type = ${ITEM_TYPE_GAP};`
             ),
 
-            // Deliver this tick's pops to the out-ports — a downstream path's in-port
-            // when they share it. Runs after InsertItem (above), so a popped item rests
-            // in the shared port for a tick before the downstream path ingests it next.
-            new TickOp(
-                "TickBeltFillOutPort",
-                `UPDATE Port
-                SET item=item.item_type
-                FROM BeltPathOutputItem item
-                WHERE Port.id = item.port_id;`
-            ),
-
             // No explicit null-before-delete of next_gap_id/next_item_id: those
             // pointers are read only at the start of a tick (Case1/Case2, above) and
             // recomputed at the end, which resets every changed/emptied path. A pointer
@@ -262,10 +280,6 @@ export const BeltDefinition = new ObjectDefinition(
                  WHERE length = 0 OR id IN (SELECT item_id FROM BeltPathOutputItem);`
             ),
 
-            new TickOp(
-                "TickBeltPathCleanup2",
-                `DELETE FROM BeltPathOutputItem;`
-            ),
             new TickOp(
                 "TickBeltPathCleanup3",
                 // CROSS JOIN forces ActivePath as the driving table (head_gap > 0
@@ -304,6 +318,23 @@ export const BeltDefinition = new ObjectDefinition(
             new TickOp(
                 "TickBeltPathCleanup6",
                 `DELETE FROM BeltPathInputItem;`
+            ),
+
+            // Deliver this tick's pops to the out-ports. Deferred to here — after the
+            // in-port ingest (Cleanup3-5) — so filling a shared seam port (a downstream
+            // path's in-port) isn't mistaken for an ingest by that path: the popped item
+            // rests in the seam a tick before the downstream path takes it next tick.
+            new TickOp(
+                "TickBeltFillOutPort",
+                `UPDATE Port
+                SET item=item.item_type
+                FROM BeltPathOutputItem item
+                WHERE Port.id = item.port_id;`
+            ),
+            // FillOutPort was the last reader of BeltPathOutputItem, so clear it now.
+            new TickOp(
+                "TickBeltPathCleanup2",
+                `DELETE FROM BeltPathOutputItem;`
             ),
 
             // next_item/next_gap are the MIN id of a path's non-gap/gap rows — an O(1)
@@ -352,8 +383,8 @@ export const BeltDefinition = new ObjectDefinition(
             // on viewport; x/y is the head tile (one chunk).
             new TickOp(
                 "EmitResyncReset",
-                `INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
-                 SELECT @time, ${BUFFERED_EVENT_TYPE_ITEM_RESET}, head.x, head.y,
+                `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
+                 SELECT ${BUFFERED_EVENT_TYPE_ITEM_RESET}, ${CHUNK_COORD_SQL("head.x")}, ${CHUNK_COORD_SQL("head.y")},
                         rp.path_id, NULL, NULL, NULL
                  -- CROSS JOIN forces the tiny resync set to drive. ANALYZE can't help:
                  -- ResyncItemPath is a rowid-only temp table, so it gets no stat1 row and
@@ -364,8 +395,8 @@ export const BeltDefinition = new ObjectDefinition(
             ),
             new TickOp(
                 "EmitResyncItems",
-                `INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
-                 SELECT @time, ${BUFFERED_EVENT_TYPE_ITEM_UPSERT}, head.x, head.y,
+                `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
+                 SELECT ${BUFFERED_EVENT_TYPE_ITEM_UPSERT}, ${CHUNK_COORD_SQL("head.x")}, ${CHUNK_COORD_SQL("head.y")},
                         item.path_id, item.id, item.length, item.type
                  FROM BeltPathItem item
                     INNER JOIN Belt head ON head.id = item.path_id
@@ -380,8 +411,8 @@ export const BeltDefinition = new ObjectDefinition(
             // UPSERT delta for each changed row still present (resized or inserted).
             new TickOp(
                 "EmitItemUpserts",
-                `INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
-                 SELECT @time, ${BUFFERED_EVENT_TYPE_ITEM_UPSERT}, ci.x, ci.y,
+                `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
+                 SELECT ${BUFFERED_EVENT_TYPE_ITEM_UPSERT}, ${CHUNK_COORD_SQL("ci.x")}, ${CHUNK_COORD_SQL("ci.y")},
                         ci.path_id, ci.row_id, item.length, item.type
                  FROM ChangedItem ci
                     INNER JOIN BeltPathItem item ON item.id = ci.row_id;`
@@ -389,61 +420,52 @@ export const BeltDefinition = new ObjectDefinition(
             // DELETE delta for each changed row now gone (popped or shrunk to nothing).
             new TickOp(
                 "EmitItemDeletes",
-                `INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
-                 SELECT @time, ${BUFFERED_EVENT_TYPE_ITEM_DELETE}, ci.x, ci.y,
+                `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
+                 SELECT ${BUFFERED_EVENT_TYPE_ITEM_DELETE}, ${CHUNK_COORD_SQL("ci.x")}, ${CHUNK_COORD_SQL("ci.y")},
                         ci.path_id, ci.row_id, NULL, NULL
                  FROM ChangedItem ci
                  WHERE ci.row_id NOT IN (SELECT id FROM BeltPathItem);`
             )
         ],
         [TickPhase.COMMIT_TRANSFERS]: [
-            // Port transfers have settled (core ops ran first this phase). Emit deltas
-            // for watched out-ports whose resting item changed, diffing against
-            // OutPortItemShadow. The event carries only the port id (a=item type); the
-            // client infers the render tile from the out-port -> path mapping it holds.
-            // x/y is the head tile, for chunk routing only. These drive from the watched
-            // chunks (via Belt_chunk) -> their head belts -> out-ports, so the cost is
-            // O(belts in view), not O(filled ports in the whole world).
+            // Port transfers have settled. Gather the watched filled out-ports once —
+            // O(belts in view) via Belt_chunk — then the SET/CLEAR/rebuild below share it.
+            new TickOp("ClearViewedOutPortItems", `DELETE FROM ViewedOutPortItem;`),
             new TickOp(
-                "EmitOutPortItemSet",
+                "CaptureViewedOutPortItems",
                 `WITH viewed_chunk AS (SELECT DISTINCT chunk FROM SessionViewport)
-                 INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
-                 SELECT @time, ${BUFFERED_EVENT_TYPE_PORT_ITEM_SET}, head.x, head.y, p.id, p.item, NULL, NULL
-                 FROM viewed_chunk vc
-                    CROSS JOIN Belt head INDEXED BY Belt_chunk ON head.chunk = vc.chunk
-                    CROSS JOIN BeltPath bp ON bp.id = head.id
-                    CROSS JOIN Port p ON p.id = bp.out_port_id
-                    LEFT JOIN OutPortItemShadow s ON s.port_id = p.id
-                 WHERE p.item IS NOT NULL
-                    AND (s.port_id IS NULL OR s.item != p.item);`
-            ),
-            new TickOp(
-                "EmitOutPortItemClear",
-                `WITH viewed_chunk AS (SELECT DISTINCT chunk FROM SessionViewport),
-                      viewed_filled AS (
-                        SELECT p.id
-                        FROM viewed_chunk vc
-                            CROSS JOIN Belt head INDEXED BY Belt_chunk ON head.chunk = vc.chunk
-                            CROSS JOIN BeltPath bp ON bp.id = head.id
-                            CROSS JOIN Port p ON p.id = bp.out_port_id
-                        WHERE p.item IS NOT NULL
-                      )
-                 INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
-                 SELECT @time, ${BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR}, s.x, s.y, s.port_id, NULL, NULL, NULL
-                 FROM OutPortItemShadow s
-                 WHERE s.port_id NOT IN (SELECT id FROM viewed_filled);`
-            ),
-            new TickOp("ClearOutPortItemShadow", `DELETE FROM OutPortItemShadow;`),
-            new TickOp(
-                "RebuildOutPortItemShadow",
-                `WITH viewed_chunk AS (SELECT DISTINCT chunk FROM SessionViewport)
-                 INSERT INTO OutPortItemShadow (port_id, item, x, y)
+                 INSERT INTO ViewedOutPortItem (port_id, item, x, y)
                  SELECT p.id, p.item, head.x, head.y
                  FROM viewed_chunk vc
                     CROSS JOIN Belt head INDEXED BY Belt_chunk ON head.chunk = vc.chunk
                     CROSS JOIN BeltPath bp ON bp.id = head.id
                     CROSS JOIN Port p ON p.id = bp.out_port_id
                  WHERE p.item IS NOT NULL;`
+            ),
+            // SET for each out-port whose resting item changed (diff vs OutPortItemShadow).
+            // Carries only the port id (a=item type); the client infers the render tile.
+            // x/y is the head tile, for chunk routing.
+            new TickOp(
+                "EmitOutPortItemSet",
+                `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
+                 SELECT ${BUFFERED_EVENT_TYPE_PORT_ITEM_SET}, ${CHUNK_COORD_SQL("v.x")}, ${CHUNK_COORD_SQL("v.y")}, v.port_id, v.item, NULL, NULL
+                 FROM ViewedOutPortItem v
+                    LEFT JOIN OutPortItemShadow s ON s.port_id = v.port_id
+                 WHERE s.port_id IS NULL OR s.item != v.item;`
+            ),
+            new TickOp(
+                "EmitOutPortItemClear",
+                `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
+                 SELECT ${BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR}, ${CHUNK_COORD_SQL("s.x")}, ${CHUNK_COORD_SQL("s.y")}, s.port_id, NULL, NULL, NULL
+                 FROM OutPortItemShadow s
+                 WHERE s.port_id NOT IN (SELECT port_id FROM ViewedOutPortItem);`
+            ),
+            new TickOp("ClearOutPortItemShadow", `DELETE FROM OutPortItemShadow;`),
+            new TickOp(
+                "RebuildOutPortItemShadow",
+                `INSERT INTO OutPortItemShadow (port_id, item, x, y)
+                 SELECT v.port_id, v.item, v.x, v.y
+                 FROM ViewedOutPortItem v;`
             ),
         ]
     },

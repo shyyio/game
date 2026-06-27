@@ -21,6 +21,7 @@ import {
     BUFFERED_EVENT_TYPE_ITEM_UPSERT,
     BUFFERED_EVENT_TYPE_ITEM_DELETE,
     BUFFERED_EVENT_TYPE_ITEM_RESET,
+    BUFFERED_EVENT_TYPE_ITEM_SYNC,
 } from "./constants.js";
 import {surfaceBeltAt, walkTunnel} from "./geometry.js";
 import {
@@ -62,6 +63,9 @@ export class BeltClientMod extends BeltMod {
         // Out-port id → path head id, learned from path recalcs/chunk sync, so a
         // port-item event (which carries only the port id) resolves to a path and tile.
         this._outPortToPath = new Map();
+        // The inverse, path head id → out-port id, so a lead item's DELETE (a pop) can
+        // hand its sprite to the out-port it popped into.
+        this._pathToOutPort = new Map();
         // Debug overlay of belt paths, shown only in debug mode; reads the shared
         // path map and belt cache.
         this._pathDebugLayer = new PathDebugDrawLayer(this._beltCache, this._pathParts);
@@ -103,7 +107,9 @@ export class BeltClientMod extends BeltMod {
         if (event instanceof BeltPathRecalculateEvent) {
             this._updatePath(event.parts);
             if (event.outPortId !== null) {
-                this._outPortToPath.set(event.outPortId, event.parts[event.parts.length - 1]);
+                const head = event.parts[event.parts.length - 1];
+                this._outPortToPath.set(event.outPortId, head);
+                this._pathToOutPort.set(head, event.outPortId);
             }
             this._pathDebugLayer.redraw();
             return;
@@ -112,6 +118,7 @@ export class BeltClientMod extends BeltMod {
             this._beltCache.remove(event.id);
             this._beltLayer.removeBelt(event.id);
             this._clearPathItems(event.id);
+            this._clearOutPortItemAt(event.id);
             if (this._pathParts.delete(event.id)) {
                 this._pathDebugLayer.redraw();
             }
@@ -233,6 +240,30 @@ export class BeltClientMod extends BeltMod {
             if (removedHeads.has(head)) {
                 this._itemLayer.removeItem(PORT_SPRITE_KEY(portId));
                 this._outPortToPath.delete(portId);
+                this._pathToOutPort.delete(head);
+            }
+        });
+    }
+
+    /**
+     * Drops the resting out-port item when the path's output belt (parts[0], where that
+     * item renders) is the one being deleted: its port item is destroyed server-side, so
+     * clear the sprite now instead of waiting for the next tick's PORT_ITEM_CLEAR. Deleting
+     * the input/head belt instead leaves the output item in place, so it is untouched.
+     * Forgets the port mapping only when the head itself goes (the whole path is gone).
+     * @param {BigInt} deletedBelt
+     * @private
+     */
+    _clearOutPortItemAt(deletedBelt) {
+        this._pathToOutPort.forEach((portId, head) => {
+            const parts = this._pathParts.get(head);
+            if (parts === undefined || parts[0] !== deletedBelt) {
+                return;
+            }
+            this._itemLayer.removeItem(PORT_SPRITE_KEY(portId));
+            if (head === deletedBelt) {
+                this._outPortToPath.delete(portId);
+                this._pathToOutPort.delete(head);
             }
         });
     }
@@ -252,14 +283,16 @@ export class BeltClientMod extends BeltMod {
         const rowId = event.a;
         if (event.type === BUFFERED_EVENT_TYPE_ITEM_DELETE) {
             const rows = this._pathItems.get(pathId);
+            const row = rows === undefined ? undefined : rows.get(rowId);
+            this._dropDeletedItem(pathId, rowId, row);
             if (rows !== undefined) {
                 rows.delete(rowId);
             }
-            this._itemLayer.removeItem(rowId);
             this._recomputePathItems(pathId);
             return;
         }
-        if (event.type !== BUFFERED_EVENT_TYPE_ITEM_UPSERT) {
+        const sync = event.type === BUFFERED_EVENT_TYPE_ITEM_SYNC;
+        if (event.type !== BUFFERED_EVENT_TYPE_ITEM_UPSERT && !sync) {
             return;
         }
         let rows = this._pathItems.get(pathId);
@@ -268,7 +301,29 @@ export class BeltClientMod extends BeltMod {
             this._pathItems.set(pathId, rows);
         }
         rows.set(rowId, {length: Number(event.b), type: Number(event.c)});
-        this._recomputePathItems(pathId);
+        // A SYNC row was only re-keyed, not moved, so place its sprite without animating.
+        this._recomputePathItems(pathId, sync);
+    }
+
+    /**
+     * Disposes a deleted item's sprite. A non-gap delete on a path with an out-port is a
+     * pop (edits re-sync via RESET, not DELETE): hand the sprite to the out-port so it
+     * glides the last stretch in — replacing the previous occupant, which the downstream
+     * path's freshly-ingested item already covers — instead of vanishing while the
+     * same-type (so un-refreshed) port sprite sits still. Anything else is just removed.
+     * @param {BigInt} pathId
+     * @param {BigInt} rowId
+     * @param {{length: number, type: number}|undefined} row - the item's RLE row, if tracked
+     * @private
+     */
+    _dropDeletedItem(pathId, rowId, row) {
+        const outPortId = this._pathToOutPort.get(pathId);
+        if (row === undefined || row.type === ITEM_TYPE_GAP || outPortId === undefined) {
+            this._itemLayer.removeItem(rowId);
+            return;
+        }
+        this._itemLayer.renameItem(rowId, PORT_SPRITE_KEY(outPortId));
+        this._renderPortItem(outPortId);
     }
 
     /**
@@ -293,9 +348,10 @@ export class BeltClientMod extends BeltMod {
      * lengths gives each row's slot = head_gap + lengths nearer the input, where
      * head_gap = path length − Σ row lengths.
      * @param {BigInt} pathId
+     * @param {boolean} [snap] - place sprites without animating (a re-sync, not a move)
      * @private
      */
-    _recomputePathItems(pathId) {
+    _recomputePathItems(pathId, snap=false) {
         const parts = this._pathParts.get(pathId);
         const rows = this._pathItems.get(pathId);
         if (parts === undefined || rows === undefined) {
@@ -313,7 +369,7 @@ export class BeltClientMod extends BeltMod {
             if (row.type !== ITEM_TYPE_GAP) {
                 const belt = this._resolveItemBelt(pathId, slot);
                 if (belt !== null) {
-                    this._itemLayer.moveItem(rowId, belt.tileX, belt.tileY, belt.halfTile, belt.sourceDir);
+                    this._itemLayer.moveItem(rowId, belt.tileX, belt.tileY, belt.halfTile, belt.sourceDir, snap);
                 }
             }
             slot += row.length;

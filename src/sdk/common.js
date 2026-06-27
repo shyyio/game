@@ -70,7 +70,7 @@ export {upstreamPorts, downstreamPorts} from "@/common/portUtils.js";
 // expression for use inside a mod's table schema (e.g. a generated `chunk`
 // column).
 export {chunkKey} from "@/common/util.js";
-export {CHUNK_KEY_SQL} from "@/common/DatabaseSchema.js";
+export {CHUNK_KEY_SQL, CHUNK_COORD_SQL} from "@/common/DatabaseSchema.js";
 
 // ---- Textures ----
 // Describes a texture atlas (image + frame data) a mod contributes.

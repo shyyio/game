@@ -42,7 +42,7 @@ test("Round-trips a SetViewportMessage", () => {
 test("Round-trips a fully-populated BufferedEvent with BigInt fields", () => {
     const reg = registry();
     const event = new BufferedEvent({
-        seq: 1, time: 2, type: 3, x: 5, y: 6,
+        type: 3,
         id: 9999999999999999n, a: 8n, b: 0n, c: null,
     });
     roundTrip(reg, event, BufferedEvent);

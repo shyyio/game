@@ -23,7 +23,13 @@ export class LocalSession extends AbstractSession {
         if (this.client == null) {
             return;
         }
-        const outgoing = DEV ? this.api.wire.decode(this.api.wire.encode(event)) : event;
-        this.client.publishEvent(outgoing);
+        if (DEV) {
+            // Round-trip through the protobuf wire format (exercising it), and report the
+            // encoded byte count to the client's received-bytes counter.
+            const encoded = this.api.wire.encode(event);
+            this.client.publishEvent(this.api.wire.decode(encoded), encoded.length);
+            return;
+        }
+        this.client.publishEvent(event);
     }
 }

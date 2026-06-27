@@ -1,7 +1,7 @@
 import {Sprite, Texture, TILE_SIZE, Direction, AbstractDrawLayer} from "@/sdk/client.js";
 
 // Hard-coded item sprite for now.
-const ITEM_TEXTURE = "items/4";
+const ITEM_TEXTURE = "items/3";
 
 // Items glide to each new position over this long (the game tick is 600ms, so they
 // arrive and briefly rest before the next move).
@@ -60,15 +60,38 @@ export class BeltItemDrawLayer extends AbstractDrawLayer {
      * @param {number} tileY
      * @param {boolean} halfTile
      * @param {Direction} sourceDir - toward the belt feeding this one (the input/bend edge)
+     * @param {boolean} [snap] - place at the target without animating (a re-sync)
      */
-    moveItem(key, tileX, tileY, halfTile, sourceDir) {
+    moveItem(key, tileX, tileY, halfTile, sourceDir, snap=false) {
         let sprite = this._items[key];
         if (sprite === undefined) {
             sprite = new ItemSprite(this.textureRegistry.get(ITEM_TEXTURE));
             this.addChild(sprite);
             this._items[key] = sprite;
         }
-        sprite.moveTo(tileX, tileY, halfTile, sourceDir);
+        sprite.moveTo(tileX, tileY, halfTile, sourceDir, snap);
+    }
+
+    /**
+     * Re-keys a live sprite, preserving it (and its in-flight glide) so a moved item can
+     * keep gliding under a new identity — e.g. a belt item popping into an out-port.
+     * Drops whatever sprite already held the new key (the previous occupant). No-op for an
+     * unknown source key.
+     * @param {BigInt|string} oldKey
+     * @param {BigInt|string} newKey
+     */
+    renameItem(oldKey, newKey) {
+        const sprite = this._items[oldKey];
+        if (sprite === undefined) {
+            return;
+        }
+        const existing = this._items[newKey];
+        if (existing !== undefined && existing !== sprite) {
+            existing.destroy();
+            this.removeChild(existing);
+        }
+        delete this._items[oldKey];
+        this._items[newKey] = sprite;
     }
 
     /**
@@ -112,17 +135,26 @@ class ItemSprite extends Sprite {
      * @param {number} tileY
      * @param {boolean} halfTile
      * @param {Direction} sourceDir - toward the source (parent) belt
+     * @param {boolean} [snap] - jump straight to the target without gliding (a re-sync: the
+     *     item was re-keyed in place, not moved, so animating it would look like motion)
      */
-    moveTo(tileX, tileY, halfTile, sourceDir) {
+    moveTo(tileX, tileY, halfTile, sourceDir, snap=false) {
         const half = TILE_SIZE / 2;
         const sdx = Direction.dx(sourceDir);
         const sdy = Direction.dy(sourceDir);
         const targetX = tileX * TILE_SIZE + half + (halfTile ? sdx * half : 0);
         const targetY = tileY * TILE_SIZE + half + (halfTile ? sdy * half : 0);
+        if (snap) {
+            this.x = targetX;
+            this.y = targetY;
+            this._startX = null;
+            this._targetX = targetX;
+            this._targetY = targetY;
+            return;
+        }
         if (this._targetX === null) {
-            // First placement: start a half-tile further toward the source so the item
-            // slides in along the flow. On a re-sync this lands the re-created sprite ≈
-            // the departed sprite's spot, so it glides on smoothly.
+            // First placement of a new item entering the belt: start a half-tile further
+            // toward the source so it slides in along the flow. (A re-sync snaps instead.)
             this.x = targetX + sdx * half;
             this.y = targetY + sdy * half;
             this._startX = this.x;

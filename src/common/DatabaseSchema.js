@@ -1,11 +1,12 @@
 import {TickOp, TickPhase} from "@/common/core.js";
 import {CHUNK_SIZE, GameSettingsKey} from "@/common/constants.js";
 
-export const CHUNK_KEY_SQL = `(
-    CASE WHEN x < 0 AND x % ${CHUNK_SIZE} != 0 THEN x/${CHUNK_SIZE} -1 ELSE x/${CHUNK_SIZE} END
-    || ',' ||
-    CASE WHEN y < 0 AND y % ${CHUNK_SIZE} != 0 THEN y/${CHUNK_SIZE} -1 ELSE y/${CHUNK_SIZE} END
-)`;
+// The chunk coordinate (floored division, matching JS Math.floor for negatives) of a
+// tile-coordinate column.
+export const CHUNK_COORD_SQL = (col) =>
+    `(CASE WHEN ${col} < 0 AND ${col} % ${CHUNK_SIZE} != 0 THEN ${col}/${CHUNK_SIZE} - 1 ELSE ${col}/${CHUNK_SIZE} END)`;
+
+export const CHUNK_KEY_SQL = `(${CHUNK_COORD_SQL("x")} || ',' || ${CHUNK_COORD_SQL("y")})`;
 
 const CoreStatements = {
     End: "END TRANSACTION",
@@ -17,16 +18,13 @@ const CoreStatements = {
     GetGameSettings: `SELECT key, value FROM GameSettings;`,
 
     InsertPort: "INSERT INTO Port DEFAULT VALUES RETURNING id;",
-    InsertBufferedEvent: `
-        INSERT INTO BufferedEvent (time, type, x, y, id, a, b, c)
-        VALUES (@time, @type, @x, @y, @id, @a, @b, @c);
-    `,
 
     GetSessionEvents: `
-        SELECT ev.seq, ev.time, ev.type, ev.x, ev.y, ev.id, ev.a, ev.b, ev.c,
+        SELECT ev.type, ev.id, ev.a, ev.b, ev.c,
                sv.session_id
         FROM BufferedEvent ev
-            INNER JOIN SessionViewport sv ON ev.chunk = sv.chunk;
+            INNER JOIN SessionViewport sv ON ev.chunk = sv.chunk
+        ORDER BY ev.rowid;
     `,
 
     TruncateBufferedEvent: `DELETE FROM BufferedEvent;`,
@@ -66,21 +64,19 @@ const CoreSchema = `
     CREATE INDEX Port_filled ON Port(id) WHERE item IS NOT NULL;
 
     CREATE TABLE BufferedEvent (
-        seq INTEGER PRIMARY KEY AUTOINCREMENT,
-        time INT NOT NULL,
-
         type INT NOT NULL,
 
-        x INT NOT NULL,
-        y INT NOT NULL,
-        chunk TEXT GENERATED ALWAYS AS (${CHUNK_KEY_SQL}) VIRTUAL,
+        -- The chunk this event routes to (its position is never sent to the client, which
+        -- derives item positions from the path). The chunk key joins SessionViewport.
+        routing_chunk_x INT NOT NULL,
+        routing_chunk_y INT NOT NULL,
+        chunk TEXT GENERATED ALWAYS AS (routing_chunk_x || ',' || routing_chunk_y) VIRTUAL,
 
         id INT NOT NULL,
-        a INT,
-        b INT,
-        c INT
+        a INT DEFAULT NULL,
+        b INT DEFAULT NULL,
+        c INT DEFAULT NULL
     );
-    CREATE INDEX BufferedEvent_time ON BufferedEvent(time ASC);
     CREATE INDEX BufferedEvent_chunk ON BufferedEvent(chunk);
 `;
 
@@ -119,7 +115,10 @@ const CoreTempSchema = `
     CREATE TEMPORARY TABLE PortTransfer (
         source_id INT,
         destination_id INTEGER PRIMARY KEY,
-        item INT NOT NULL
+        -- The item being moved, or NULL for an unmanaged (virtual) transfer the engine
+        -- only resolved — the owning mod reads it (managed=0) and does the move itself.
+        item INT,
+        managed INT NOT NULL
     );
     CREATE UNIQUE INDEX PortTransfer_source ON PortTransfer (source_id);
 
@@ -167,30 +166,39 @@ const CoreTickPhases = {
                 WHERE dst_rank=1
             ),
             resolved_chains AS (
+                -- Resolve backward from a free destination: a transfer can happen if its
+                -- destination is empty, or if the transfer draining that destination is
+                -- itself resolved (a packed chain shifts as one). UNION (not ALL) so a
+                -- cycle terminates.
                 SELECT source_id, destination_id, managed
                 FROM deduped_intents2
                 WHERE destination_is_empty=TRUE
 
-                UNION ALL
+                UNION
 
                 SELECT i.source_id, i.destination_id, i.managed
                 FROM resolved_chains chain
-                    INNER JOIN deduped_intents2 i ON chain.destination_id = i.source_id
+                    INNER JOIN deduped_intents2 i ON i.destination_id = chain.source_id
             )
-            INSERT INTO PortTransfer (source_id, destination_id, item)
-            SELECT source_id, destination_id, src.item
+            -- Record every resolved transfer, managed or not. The engine commits the
+            -- managed ones below (item moved); unmanaged ones (item left NULL) are read
+            -- by the owning mod, which performs its own move.
+            INSERT INTO PortTransfer (source_id, destination_id, item, managed)
+            SELECT source_id AS source_id,
+                   destination_id AS destination_id,
+                   CASE WHEN managed THEN src.item END AS item,
+                   managed AS managed
             FROM resolved_chains
                 -- CROSS JOIN forces resolved_chains (the small transfer set) to drive
                 -- the join; otherwise the planner scans the whole Port table.
-                CROSS JOIN Port src ON src.id = source_id
-            WHERE managed=TRUE;`
+                CROSS JOIN Port src ON src.id = source_id;`
         ),
         new TickOp("TruncatePortTransferIntent", `DELETE FROM PortTransferIntent;`),
     ],
     [TickPhase.COMMIT_TRANSFERS]: [
         new TickOp(
             "FlushPortTransferSource",
-            `UPDATE Port SET item=NULL WHERE id IN (SELECT source_id FROM PortTransfer);`
+            `UPDATE Port SET item=NULL WHERE id IN (SELECT source_id FROM PortTransfer WHERE managed=1);`
         ),
         new TickOp(
             // Driven from PortTransfer (destination_id is its PRIMARY KEY) instead of
@@ -199,7 +207,7 @@ const CoreTickPhases = {
             "FlushPortTransferDestination",
             `UPDATE Port
              SET item = (SELECT pt.item FROM PortTransfer pt WHERE pt.destination_id = Port.id)
-             WHERE id IN (SELECT destination_id FROM PortTransfer);`
+             WHERE id IN (SELECT destination_id FROM PortTransfer WHERE managed=1);`
         ),
         new TickOp("TruncatePortTransfer", `DELETE FROM PortTransfer;`),
     ],

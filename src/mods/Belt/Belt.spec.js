@@ -108,6 +108,32 @@ test("Forms a closed loop into a single path with no parent", async () => {
     assert.equal(game.rawScalar("SELECT parent_id FROM Belt WHERE id=1"), null);
 });
 
+test("Circulates an item around a shared-port loop", async () => {
+    const game = await setup();
+    createBelt(game, GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
+    createBelt(game, GameObject.BELT, {x: 1, y: 0, direction: Direction.DOWN});
+    createBelt(game, GameObject.BELT, {x: 1, y: 1, direction: Direction.LEFT});
+    createBelt(game, GameObject.BELT, {x: 0, y: 1, direction: Direction.UP});
+
+    // The loop uses one port for both ends, so a popped lead item re-ingests.
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE in_port_id = out_port_id"), 1);
+    const port = game.rawScalar("SELECT out_port_id FROM BeltPath");
+
+    // Seed one item, then let it lap with no external feed.
+    game.rawExec(`UPDATE Port SET item=1 WHERE id=${port}`);
+    let rests = 0;
+    for (let i = 0; i < 16; i += 1) {
+        game.tickAll();
+        // The item is never lost: exactly one exists, on the belt or resting in the port.
+        const onBelt = Number(game.rawScalar("SELECT COUNT(*) FROM BeltPathItem WHERE type != 0"));
+        const inPort = Number(game.rawScalar(`SELECT COUNT(*) FROM Port WHERE id=${port} AND item IS NOT NULL`));
+        assert.equal(onBelt + inPort, 1);
+        rests += inPort;
+    }
+    // It rested in the shared port on two separate laps, so it genuinely circulates.
+    assert.ok(rests >= 2, `expected the item to lap; rested in the port ${rests} ticks`);
+});
+
 test("Merges the remainder of a loop into one path when a belt is deleted", async () => {
     const game = await buildRing3x3();
 
@@ -163,15 +189,14 @@ test("Closes a loop split across two paths by a junction-feeder deletion", async
 
     // Removing the junction feeder leaves the ring split across two paths that feed
     // each other through one shared port (the surviving feeder's output is the head's
-    // input). Closing the ring folds those paths together: the head must not inherit
-    // an output port equal to its own input (CHECK in_port_id != out_port_id) — a loop
-    // gets two distinct ports, reconnected by its tail→head adjacency.
+    // input). Closing the ring folds those paths into one loop that shares a single port
+    // for both ends, so the popped lead item re-ingests and items circulate.
     deleteBelt(game, 3n);
     createBelt(game, GameObject.BELT, {x: 14, y: 2, direction: Direction.LEFT});
 
     assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPath"), 1);
     assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE length=(6*2-1)"), 1);
-    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE in_port_id != out_port_id"), 1);
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE in_port_id = out_port_id"), 1);
 });
 
 test("Closes a surface loop crossing over an underground tunnel", async () => {
@@ -193,9 +218,9 @@ test("Closes a surface loop crossing over an underground tunnel", async () => {
     createBelt(game, GameObject.BELT, {x: 11, y: 3, direction: Direction.LEFT});
 
     // The tunnel is untouched; the surface belts form one proper loop: a single nulled
-    // seam (not a parent cycle) with two distinct ports.
+    // seam (not a parent cycle) sharing one port for both ends.
     assert.equal(game.rawScalar("SELECT length FROM BeltPath WHERE id=1"), 7);
-    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id != 1 AND length=(6*2-1) AND in_port_id != out_port_id"), 1);
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id != 1 AND length=(6*2-1) AND in_port_id = out_port_id"), 1);
     assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt WHERE type=0 AND parent_id IS NULL"), 1);
 });
 
@@ -218,7 +243,7 @@ test("Splits a feeder stub from a loop closed onto its entry belt", async () => 
     assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt WHERE path_id IS NULL"), 0);
     assert.equal(game.rawScalar("SELECT parent_id FROM Belt WHERE id=2"), 7);
     assert.equal(game.rawScalar("SELECT parent_id FROM Belt WHERE id=7"), null);
-    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=7 AND length=(6*2-1) AND in_port_id != out_port_id"), 1);
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=7 AND length=(6*2-1) AND in_port_id = out_port_id"), 1);
     assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=1 AND length=1"), 1);
 });
 
@@ -273,6 +298,59 @@ test("Hands an item across a shared belt-path port over two ticks, resting in th
     game.tickAll();
     assert.equal(game.rawScalar(`SELECT 1 FROM Port WHERE id=${shared} AND item IS NULL`), 1);
     assert.equal(game.rawScalar(`SELECT 1 FROM BeltPathItem WHERE path_id=${pathA} AND type=5`), 1);
+});
+
+test("Keeps both items when two adjacent items hand off across a shared port", async () => {
+    const game = await setup();
+    // Two 2-belt paths flowing UP across the y=0/-1 chunk boundary, sharing the seam
+    // port between them (path 1's out-port = path 3's in-port).
+    createBelt(game, GameObject.BELT, {x: 11, y: 1, direction: Direction.UP});
+    createBelt(game, GameObject.BELT, {x: 11, y: 0, direction: Direction.UP});
+    createBelt(game, GameObject.BELT, {x: 11, y: -1, direction: Direction.UP});
+    createBelt(game, GameObject.BELT, {x: 11, y: -2, direction: Direction.UP});
+    const inPort = game.rawScalar("SELECT in_port_id FROM BeltPath WHERE id=1");
+
+    // Feed two items a tick apart, so they ride directly adjacent.
+    game.rawExec(`UPDATE Port SET item=1 WHERE id=${inPort}`);
+    game.tickAll();
+    game.rawExec(`UPDATE Port SET item=1 WHERE id=${inPort}`);
+    game.tickAll();
+
+    // Both items are now in the system; neither may be lost crossing the seam.
+    const count = () => Number(game.rawScalar("SELECT COUNT(*) FROM BeltPathItem WHERE type!=0"))
+                      + Number(game.rawScalar("SELECT COUNT(*) FROM Port WHERE item IS NOT NULL"));
+    assert.equal(count(), 2);
+    for (let i = 0; i < 8; i += 1) {
+        game.tickAll();
+        assert.equal(count(), 2);
+    }
+});
+
+test("Flows a packed path across a shared port at one item per tick", async () => {
+    const game = await setup();
+    [1, 0, -1, -2].forEach(y => createBelt(game, GameObject.BELT, {x: 11, y, direction: Direction.UP}));
+    const inPort = game.rawScalar("SELECT in_port_id FROM BeltPath WHERE id=1");
+    const outPort = game.rawScalar("SELECT out_port_id FROM BeltPath WHERE id=3");
+
+    // Keep the input supplied and the output drained, so the seam is the sole constraint.
+    const step = () => {
+        game.rawExec(`UPDATE Port SET item=1 WHERE id=${inPort} AND item IS NULL`);
+        game.tickAll();
+        const out = game.rawScalar(`SELECT item FROM Port WHERE id=${outPort}`);
+        if (out != null) {
+            game.rawExec(`UPDATE Port SET item=NULL WHERE id=${outPort}`);
+        }
+        return out != null ? 1 : 0;
+    };
+    for (let i = 0; i < 12; i += 1) {
+        step();
+    }
+    let delivered = 0;
+    for (let i = 0; i < 20; i += 1) {
+        delivered += step();
+    }
+    // A packed run flows 1 item/tick; a one-tick gap per item at the seam halves it.
+    assert.ok(delivered >= 19, `expected ~20 (1 item/tick), got ${delivered}`);
 });
 
 test("Leaves head_gap unchanged when the belt is empty", async () => {

@@ -16,11 +16,11 @@ export const beltSchema = `
         head_gap INT
             CHECK (head_gap >= 0 AND head_gap <= length),
 
-        in_port_id INT REFERENCES Port(id) ON DELETE SET NULL
-            CHECK (in_port_id IS NULL OR in_port_id != out_port_id),
+        -- A loop shares one port for both ends (in_port_id = out_port_id): the lead item
+        -- pops into it and the tail re-ingests it, so items circulate.
+        in_port_id INT REFERENCES Port(id) ON DELETE SET NULL,
 
-        out_port_id INT REFERENCES Port(id) ON DELETE SET NULL
-            CHECK (out_port_id IS NULL OR in_port_id != out_port_id),
+        out_port_id INT REFERENCES Port(id) ON DELETE SET NULL,
 
         next_gap_id INT,
         next_item_id INT
@@ -179,6 +179,15 @@ export const beltTempSchema = `
     -- clears), so the tick emits only out-ports whose item changed. Global to the sim
     -- — fine single-session; a multi-session build would key it per session.
     CREATE TEMPORARY TABLE OutPortItemShadow (
+        port_id INTEGER PRIMARY KEY,
+        item INT,
+        x INT,
+        y INT
+    );
+
+    -- This tick's watched filled out-ports (port, item, head tile), gathered once for
+    -- the SET diff, CLEAR, and shadow rebuild to share.
+    CREATE TEMPORARY TABLE ViewedOutPortItem (
         port_id INTEGER PRIMARY KEY,
         item INT,
         x INT,

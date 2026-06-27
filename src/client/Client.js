@@ -18,11 +18,17 @@ import {MaskDrawLayer} from "@/client/MaskDrawLayer.js";
 import {BlockedTilesLayer} from "@/client/BlockedTilesLayer.js";
 import {InspectLayer} from "@/client/InspectLayer.js";
 import {advanceAnimationFrame} from "@/client/animation.js";
+import {DEV, BROWSER} from "@/common/env.js";
 
 export const CoreDrawLayers = [
     new GridDrawLayer(),
     new MaskDrawLayer(),
 ];
+
+function formatBytes(n) {
+    const text = n > 1024 ? `${Math.round(n / 1024)}K` : `${n}B`;
+    return text.padStart(5);
+}
 
 export class Client {
 
@@ -218,8 +224,14 @@ export class Client {
 
     /**
      * @param {AbstractEvent} event
+     * @param {number} [bytes] - protobuf bytes this event arrived as (dev only; 0 for the
+     *     inner events of a re-published bundle, already counted in the bundle)
      */
-    publishEvent(event) {
+    publishEvent(event, bytes=0) {
+        if (DEV && BROWSER) {
+            this._bytesReceived = (this._bytesReceived || 0) + bytes;
+            console.log(`↓ [${formatBytes(this._bytesReceived)}]`, event.constructor.name, event);
+        }
         if (event instanceof ChunkSyncEvent) {
             // A chunk-sync bundle: replay each inner event through the normal path.
             // Sync events are distinct types (e.g. BeltSyncEvent vs BeltInsertEvent),

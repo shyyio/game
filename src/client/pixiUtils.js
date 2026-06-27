@@ -56,7 +56,7 @@ export function drawLine(g, x1, y1, x2, y2, color = 0xFF00FF) {
 
     g.moveTo(x1, y1)
         .lineTo(x2, y2)
-        .stroke({color: color, width: 3});
+        .stroke({color: color, width: 2});
 
     return g;
 }
@@ -65,7 +65,7 @@ export function drawCircle(g, x, y, r, color = 0xFF00FF) {
 
     g.moveTo(x, y)
         .circle(x, y, r)
-        .stroke({color: color, width: 3});
+        .stroke({color: color, width: 2});
 
     return g;
 }
@@ -74,7 +74,7 @@ export function drawRect(g, x, y, w, h, color = 0xFF00FF) {
 
     g.moveTo(x, y)
         .rect(x, y, w, h)
-        .stroke({color: color, width: 3});
+        .stroke({color: color, width: 2});
 
     return g;
 }

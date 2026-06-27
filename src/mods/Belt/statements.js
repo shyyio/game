@@ -604,8 +604,12 @@ export const beltStatements = {
 
     GetBeltPath: `SELECT id FROM Belt WHERE path_id = CAST(@id AS INT) ORDER BY path_index;`,
 
-    // Flag a path (its head id) for a full client item re-sync on the next tick.
-    MarkPathForResync: `INSERT OR IGNORE INTO ResyncItemPath (path_id) VALUES (CAST(@id AS INT));`,
+    // A path's RLE item rows, for an immediate (on-edit) client item re-sync.
+    GetBeltPathItems: `
+        SELECT id, length, type
+        FROM BeltPathItem
+        WHERE path_id = CAST(@id AS INT);
+    `,
 
     // Flag every path with a belt in a chunk for re-sync, when a viewer subscribes to it.
     MarkChunkPathsForResync: `

@@ -15,7 +15,6 @@ export class Game {
     constructor(modRegistry, database) {
         this.db = database;
         this.modRegistry = modRegistry;
-        this.time = 0;
 
         /**
          * Protobuf wire codec registry, shared by sessions to encode/decode
@@ -40,18 +39,12 @@ export class Game {
 
     // ---- AbstractDatabase delegation ----
 
-    _defaultArgs() {
-        return {time: this.time};
-    }
-
     exec(name, args) {
-        const merged = Object.assign({}, this._defaultArgs(), args);
-        return this.db.exec(name, merged);
+        return this.db.exec(name, args);
     }
 
     query(name, args) {
-        const merged = Object.assign({}, this._defaultArgs(), args);
-        return this.db.query(name, merged);
+        return this.db.query(name, args);
     }
 
     querySingle(name, args) {
@@ -188,8 +181,8 @@ export class Game {
      * @param {AbstractTilePositionedEvent} event
      */
     publishEventNow(event) {
-        if (!(event instanceof AbstractTilePositionedEvent)) {
-            throw new Error(`publishEventNow requires a positioned event, got ${event.constructor.name}`);
+        if (!(event instanceof AbstractTilePositionedEvent) && !(event instanceof BufferedEvent)) {
+            throw new Error(`publishEventNow requires a chunk-routable event, got ${event.constructor.name}`);
         }
         const sessions = this.query("GetSessionsByChunk", {chunk: event.chunk});
 
