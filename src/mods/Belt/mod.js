@@ -7,7 +7,12 @@ import {
     Direction,
     BufferedEvent,
 } from "@/sdk/common.js";
-import {CreateBeltMessage, DeleteBeltMessage} from "./messages.js";
+import {
+    CreateBeltMessage,
+    DeleteBeltMessage,
+    CreateSplitterMessage,
+    DeleteSplitterMessage,
+} from "./messages.js";
 import {
     BELT_RAMP_DOWN,
     BELT_RAMP_UP,
@@ -18,7 +23,7 @@ import {
 } from "./constants.js";
 import {getUndergroundBeltsToCreate, tunnelStep} from "./geometry.js";
 import {beltSchema, beltTempSchema} from "./schema.js";
-import {BeltDefinition} from "./definitions.js";
+import {BeltDefinition, SplitterDefinition} from "./definitions.js";
 import {beltStatements} from "./statements.js";
 import {
     BeltPathRecalculateEvent,
@@ -39,6 +44,8 @@ export class BeltMod extends AbstractMod {
             BeltDeleteEvent,
             BeltPathRecalculateEvent,
             BeltSyncEvent,
+            CreateSplitterMessage,
+            DeleteSplitterMessage,
         ];
     }
 
@@ -47,7 +54,7 @@ export class BeltMod extends AbstractMod {
     }
 
     get definitions() {
-        return {Belt: BeltDefinition};
+        return {Belt: BeltDefinition, Splitter: SplitterDefinition};
     }
 
     get tempSchema() {
@@ -119,7 +126,74 @@ export class BeltMod extends AbstractMod {
             });
         } else if (message instanceof DeleteBeltMessage) {
             this._removeBelt(message.id);
+        } else if (message instanceof CreateSplitterMessage) {
+            this._createSplitter({
+                x: message.x,
+                y: message.y,
+                direction: message.direction,
+            });
+        } else if (message instanceof DeleteSplitterMessage) {
+            this._removeSplitter(message.id);
         }
+    }
+
+    // ---- Splitter creation / removal ----
+
+    /**
+     * Places a splitter, sharing its four ports with adjacent belts (a belt already
+     * present is adopted; a missing side gets a fresh Port).
+     * @private
+     * @param {{x: number, y: number, direction: Direction}} options
+     */
+    _createSplitter(options) {
+        this.game.begin();
+
+        try {
+            const inPorts = upstreamPorts(this.game, "Splitter", options, true);
+            const outPorts = downstreamPorts(this.game, "Splitter", options, true);
+
+            this.game.queryScalar("InsertSplitter", {
+                x: options.x,
+                y: options.y,
+                direction: options.direction,
+                in_port_a_id: inPorts.in_port_a_id,
+                in_port_b_id: inPorts.in_port_b_id,
+                out_port_a_id: outPorts.out_port_a_id,
+                out_port_b_id: outPorts.out_port_b_id,
+                // The internal buffer ports are never shared, so they're always fresh.
+                int_port_a_id: this.game.queryScalar("InsertPort"),
+                int_port_b_id: this.game.queryScalar("InsertPort"),
+            });
+        } catch (e) {
+            this.game.rollback();
+            const msg = String(e);
+            if (msg.includes("Splitter.x") && msg.includes("Splitter.y")) {
+                console.warn("CreateSplitter ignored: splitter already exists at", options.x, options.y);
+                return;
+            }
+            throw e;
+        }
+
+        this.game.end();
+    }
+
+    /**
+     * Removes a splitter and drops any of its ports no surviving belt or splitter shares.
+     * @private
+     * @param {BigInt} id
+     */
+    _removeSplitter(id) {
+        this.game.begin();
+
+        const splitter = this.game.querySingle("DeleteSplitter", {id});
+        if (splitter === null) {
+            console.warn("DeleteSplitter ignored: no splitter with id", id);
+            this.game.rollback();
+            return;
+        }
+
+        this.game.exec("DeleteSplitterPorts", splitter);
+        this.game.end();
     }
 
     // ---- Belt creation ----

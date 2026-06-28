@@ -7,7 +7,6 @@ import Mouse from "@/client/Mouse.js";
 import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {BeltClientMod} from "@/mods/Belt/BeltClientMod.js";
-import {SplitterClientMod} from "@/mods/Splitter/SplitterClientMod.js";
 import {BaseTexturesMod} from "@/mods/BaseTextures/mod.js";
 import {DatabaseSchema} from "@/common/DatabaseSchema.js";
 import {BrowserDatabase} from "@/client/BrowserDatabase.js";
@@ -165,7 +164,6 @@ onMounted(async () => {
   const modRegistry = new ModRegistry();
   modRegistry.loadMod(new BaseTexturesMod());
   modRegistry.loadMod(new BeltClientMod());
-  modRegistry.loadMod(new SplitterClientMod());
 
   const schema = new DatabaseSchema(modRegistry);
   const db = new BrowserDatabase(schema);

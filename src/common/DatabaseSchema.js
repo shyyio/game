@@ -99,8 +99,13 @@ const CoreTempSchema = `
 
     CREATE TEMPORARY TABLE PortTransferIntent (
         source_id INT,
+
+        -- A NULL destination flags a self-draining source instead of a move: source_id is a
+        -- port its owner empties internally this tick (e.g. a belt ingesting into head room
+        -- without popping), so an upstream transfer into it still resolves through the chain
+        -- even though no transfer drains it. Such rows skip the per-destination dedup and
+        -- never become an actual move; a real transfer always names a destination.
         destination_id INT,
-        priority INT CHECK (priority >= 0),
 
         destination_is_empty INT DEFAULT (0)
             CHECK ( destination_is_empty=0 OR destination_is_empty=1 ),
@@ -108,6 +113,14 @@ const CoreTempSchema = `
         managed INT DEFAULT (1) -- When set to 0, the GameObject code
                                 -- is responsible for actually doing the transfer.
             CHECK ( managed=0 OR managed=1 ),
+
+        -- NULL for an ordinary transfer with a single destination. A fan-out source (one
+        -- that submits a competing intent per candidate destination, e.g. a splitter) ranks
+        -- them 1, 2, ...: the lowest rank wins both the per-destination dedup (which source
+        -- gets a contested destination) and the post-chain per-source pick (which
+        -- destination a source keeps). Its presence (NOT NULL) is also what opts a row into
+        -- that per-source pick, so single-destination sources skip that window entirely.
+        alternatives_rank INT,
 
         PRIMARY KEY (source_id, destination_id)
     );
@@ -144,54 +157,80 @@ const CorePragma = `
 const CoreTickPhases = {
     [TickPhase.RESOLVE_TRANSFERS]: [
         new TickOp(
-            "ResolvePortTransfer",
-            `WITH RECURSIVE intents AS (
-                SELECT source_id,
-                       destination_id,
-                       destination_is_empty,
-                       managed,
-                       priority,
-                       ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY priority DESC, destination_id) AS src_rank
-                FROM PortTransferIntent i
+                "ResolvePortTransfer",
+            `WITH RECURSIVE ranked_per_destination AS (
+                -- Rank contenders for each destination (a port takes one item): lowest
+                -- alternatives_rank wins, ties by source_id. A NULL rank (single-destination
+                -- sources) sorts first -- harmless, they only share a partition with each other.
+                SELECT 
+                    source_id,
+                    destination_id,
+                    destination_is_empty,
+                    managed,
+                    alternatives_rank,
+                    ROW_NUMBER() OVER (PARTITION BY destination_id ORDER BY alternatives_rank ASC, source_id) AS dst_rank
+                FROM PortTransferIntent
+                WHERE destination_id IS NOT NULL
             ),
-            deduped_intents1 AS (
-                SELECT source_id, destination_id, destination_is_empty, managed,
-                       ROW_NUMBER() OVER (PARTITION BY destination_id ORDER BY priority DESC, source_id) AS dst_rank
-                FROM intents
-                WHERE src_rank=1
-            ),
-            deduped_intents2 AS (
-                SELECT source_id, destination_id, destination_is_empty, managed
-                FROM deduped_intents1
+            one_per_destination AS (
+                SELECT source_id, destination_id, destination_is_empty, managed, alternatives_rank
+                FROM ranked_per_destination
                 WHERE dst_rank=1
             ),
-            resolved_chains AS (
-                -- Resolve backward from a free destination: a transfer can happen if its
-                -- destination is empty, or if the transfer draining that destination is
-                -- itself resolved (a packed chain shifts as one). UNION (not ALL) so a
-                -- cycle terminates.
-                SELECT source_id, destination_id, managed
-                FROM deduped_intents2
+            resolved AS (
+                -- A transfer resolves if its destination is empty...
+                SELECT source_id, destination_id, managed, alternatives_rank
+                FROM one_per_destination
                 WHERE destination_is_empty=TRUE
 
                 UNION
 
-                SELECT i.source_id, i.destination_id, i.managed
-                FROM resolved_chains chain
-                    INNER JOIN deduped_intents2 i ON i.destination_id = chain.source_id
+                -- ...or its source drains itself this tick: a destination-less row whose
+                -- source its owner empties internally (e.g. a belt ingesting into head room),
+                -- which no transfer would show. Only source_id matters; filtered out before
+                -- the move below.
+                SELECT source_id, NULL, NULL, NULL
+                FROM PortTransferIntent
+                WHERE destination_id IS NULL
+
+                UNION
+
+                -- ...or the transfer draining its destination resolves (a packed chain
+                -- shifts as one). UNION (not ALL) terminates cycles.
+                SELECT i.source_id, i.destination_id, i.managed, i.alternatives_rank
+                FROM resolved chain
+                    INNER JOIN one_per_destination i ON i.destination_id = chain.source_id
+            ),
+            one_per_source AS (
+                -- Single-destination sources (belts) pass through. A fan-out source keeps
+                -- only its best-ranked resolved destination -- a dedup over just the tiny
+                -- fan-out set, so belts pay no extra sort.
+                SELECT source_id, destination_id, managed
+                FROM resolved
+                WHERE alternatives_rank IS NULL AND destination_id IS NOT NULL
+
+                UNION ALL
+
+                SELECT source_id, destination_id, managed
+                FROM (
+                    SELECT source_id, destination_id, managed,
+                           ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY alternatives_rank ASC, destination_id) AS src_rank
+                    FROM resolved
+                    WHERE alternatives_rank IS NOT NULL
+                )
+                WHERE src_rank=1
             )
-            -- Record every resolved transfer, managed or not. The engine commits the
-            -- managed ones below (item moved); unmanaged ones (item left NULL) are read
-            -- by the owning mod, which performs its own move.
+            -- Commit each resolved transfer. Managed ones carry the item (engine moves it);
+            -- unmanaged ones leave it NULL for the owning mod to move itself.
             INSERT INTO PortTransfer (source_id, destination_id, item, managed)
-            SELECT source_id AS source_id,
-                   destination_id AS destination_id,
+            SELECT source_id,
+                   destination_id,
                    CASE WHEN managed THEN src.item END AS item,
-                   managed AS managed
-            FROM resolved_chains
-                -- CROSS JOIN forces resolved_chains (the small transfer set) to drive
-                -- the join; otherwise the planner scans the whole Port table.
+                   managed
+            FROM one_per_source
+                -- CROSS JOIN drives from the small transfer set; else the planner scans Port.
                 CROSS JOIN Port src ON src.id = source_id;`
+
         ),
         new TickOp("TruncatePortTransferIntent", `DELETE FROM PortTransferIntent;`),
     ],

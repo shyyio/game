@@ -13,8 +13,8 @@ function makePorts(game, count, filledIds) {
 
 function intent(game, source, destination, destinationEmpty) {
     game.rawExec(
-        `INSERT INTO PortTransferIntent (source_id, destination_id, priority, destination_is_empty)
-         VALUES (${source}, ${destination}, 0, ${destinationEmpty ? 1 : 0})`
+        `INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty)
+         VALUES (${source}, ${destination}, ${destinationEmpty ? 1 : 0})`
     );
 }
 

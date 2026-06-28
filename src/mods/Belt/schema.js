@@ -100,6 +100,33 @@ export const beltSchema = `
     -- deleted). This partial index lets the tick collect those paths directly; it
     -- stays tiny because almost no rows match.
     CREATE INDEX BeltPathItem_zero ON BeltPathItem(path_id) WHERE length = 0;
+
+    -- A 1x2 router: two input and two output ports sharing Port rows with adjacent
+    -- belts. Items from in_A round-robin to out_A/out_B; items from in_B to out_B/out_A
+    -- (inverse), falling back to the other output when the preferred one can't take it.
+    -- The round-robin phase is the single state bit, advanced once per tick a move runs.
+    -- The two internal ports buffer an item for a tick (in -> int -> out), so it crosses
+    -- the splitter at belt speed (three ticks) rather than teleporting input to output.
+    CREATE TABLE Splitter (
+        id INTEGER PRIMARY KEY,
+
+        x INT NOT NULL,
+        y INT NOT NULL,
+        direction INT NOT NULL,
+        chunk TEXT GENERATED ALWAYS AS (${CHUNK_KEY_SQL}) VIRTUAL,
+
+        in_port_a_id  INT REFERENCES Port,
+        in_port_b_id  INT REFERENCES Port,
+        out_port_a_id INT REFERENCES Port,
+        out_port_b_id INT REFERENCES Port,
+        int_port_a_id INT REFERENCES Port,
+        int_port_b_id INT REFERENCES Port,
+
+        state INT NOT NULL DEFAULT 0
+            CHECK (state = 0 OR state = 1)
+    );
+
+    CREATE UNIQUE INDEX Splitter_x_y_direction ON Splitter (x, y, direction);
 `;
 
 // Per-run temp tables and seed rows owned by the Belt mod.
@@ -200,6 +227,22 @@ export const beltTempSchema = `
         max_id INT
     );
     INSERT INTO ItemIdMarker (max_id) VALUES (0);
+
+    -- Carry each splitter's two resolved hops between the POST_RESOLVE seam ops that
+    -- read a source port and the later ones that write the destination. Stage 1 buffers
+    -- an input into an internal port; stage 2 routes an internal port to an output. Both
+    -- destinations are unique per tick (the resolver allows one transfer per destination).
+    CREATE TEMPORARY TABLE SplitterStage1 (
+        int_port_id INTEGER PRIMARY KEY,
+        item INT NOT NULL,
+        in_port_id INT NOT NULL
+    );
+
+    CREATE TEMPORARY TABLE SplitterStage2 (
+        out_port_id INTEGER PRIMARY KEY,
+        item INT NOT NULL,
+        int_port_id INT NOT NULL
+    );
 
     INSERT INTO GameSettings (key, value) VALUES
         (${BeltGameSettingsKey.MAX_UNDERGROUND_LENGTH}, ${MAX_UNDERGROUND_LENGTH});

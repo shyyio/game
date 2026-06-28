@@ -15,6 +15,100 @@ import {
     BUFFERED_EVENT_TYPE_ITEM_RESET,
 } from "./constants.js";
 
+// ---- Splitter seam ops ----
+// A splitter shares its input Port rows with the upstream belts and its output Port rows
+// with the downstream belts, so its item moves must interleave with the belt POST_RESOLVE
+// handoff exactly where a belt-belt seam does. The two stages run as one pipeline each
+// tick (so throughput is full), but in an order that leaves each item resting one tick in
+// an internal port (so it crosses at belt speed, not instantly):
+//   1. read the rested int item and the rested in item (RecordStage2 / RecordStage1),
+//   2. clear those source ports (ClearStage2Source / ClearStage1Source) — the in clear
+//      must precede TickBeltFillOutPort, which is where the upstream belt refills it,
+//   3. refill the internal ports from stage 1 (FillStage1),
+//   4. after TickBeltFillOutPort (so the downstream belt ingested the previous output),
+//      write the chosen out ports from stage 2 (FillStage2Output).
+// Self-managed (the resolved intents are managed=0): the engine's managed commit clears a
+// source in COMMIT_TRANSFERS, too late — it would wipe the upstream belt's fresh fill.
+// Each op scans Splitter and probes PortTransfer by source_id (the PortTransfer_source
+// index); only a splitter whose hop resolved this tick emits a row.
+
+// Stage 2: record each internal port's resolved output target (and its item) before clearing it.
+const SplitterRecordStage2 = new TickOp(
+    "SplitterRecordStage2",
+    `INSERT INTO SplitterStage2 (out_port_id, item, int_port_id)
+     SELECT pt.destination_id, src.item, s.int_port_a_id
+     FROM Splitter s
+        INNER JOIN PortTransfer pt ON pt.source_id = s.int_port_a_id
+        INNER JOIN Port src ON src.id = s.int_port_a_id
+     WHERE src.item IS NOT NULL
+     UNION ALL
+     SELECT pt.destination_id, src.item, s.int_port_b_id
+     FROM Splitter s
+        INNER JOIN PortTransfer pt ON pt.source_id = s.int_port_b_id
+        INNER JOIN Port src ON src.id = s.int_port_b_id
+     WHERE src.item IS NOT NULL;`
+);
+
+// Stage 1: record each input port's resolved internal target (and its item) before clearing it.
+const SplitterRecordStage1 = new TickOp(
+    "SplitterRecordStage1",
+    `INSERT INTO SplitterStage1 (int_port_id, item, in_port_id)
+     SELECT pt.destination_id, src.item, s.in_port_a_id
+     FROM Splitter s
+        INNER JOIN PortTransfer pt ON pt.source_id = s.in_port_a_id
+        INNER JOIN Port src ON src.id = s.in_port_a_id
+     WHERE src.item IS NOT NULL
+     UNION ALL
+     SELECT pt.destination_id, src.item, s.in_port_b_id
+     FROM Splitter s
+        INNER JOIN PortTransfer pt ON pt.source_id = s.in_port_b_id
+        INNER JOIN Port src ON src.id = s.in_port_b_id
+     WHERE src.item IS NOT NULL;`
+);
+
+// Clear the consumed internal ports (drained to an output this tick); FillStage1 refills
+// the ones stage 1 fed, leaving empty any that stage 1 did not.
+const SplitterClearStage2Source = new TickOp(
+    "SplitterClearStage2Source",
+    `UPDATE Port SET item = NULL WHERE id IN (SELECT int_port_id FROM SplitterStage2);`
+);
+
+// Clear the consumed input ports before the upstream belt refills them (TickBeltFillOutPort).
+const SplitterClearStage1Source = new TickOp(
+    "SplitterClearStage1Source",
+    `UPDATE Port SET item = NULL WHERE id IN (SELECT in_port_id FROM SplitterStage1);`
+);
+
+// Buffer stage 1's items into the internal ports (just cleared by ClearStage2Source for
+// the pipelined ones), where they rest a tick before stage 2 routes them next tick.
+const SplitterFillStage1 = new TickOp(
+    "SplitterFillStage1",
+    `UPDATE Port
+     SET item = s.item
+     FROM SplitterStage1 s
+     WHERE Port.id = s.int_port_id;`
+);
+
+// Write each routed item into its chosen out-port, after the downstream belt ingested the
+// previous one — so it rests there a tick, matching the belt-belt seam.
+const SplitterFillStage2Output = new TickOp(
+    "SplitterFillStage2Output",
+    `UPDATE Port
+     SET item = s.item
+     FROM SplitterStage2 s
+     WHERE Port.id = s.out_port_id;`
+);
+
+const SplitterClearStage1 = new TickOp(
+    "SplitterClearStage1",
+    `DELETE FROM SplitterStage1;`
+);
+
+const SplitterClearStage2 = new TickOp(
+    "SplitterClearStage2",
+    `DELETE FROM SplitterStage2;`
+);
+
 export const BeltDefinition = new ObjectDefinition(
     [
         new PortDefinition("virtual_left", {x: 0, y: 0, direction: Direction.RIGHT}),
@@ -68,10 +162,9 @@ export const BeltDefinition = new ObjectDefinition(
             // resolved (PortTransfer rows with managed=0).
             new TickOp(
                 "SubmitBeltShiftIntent",
-                `INSERT INTO PortTransferIntent (source_id, destination_id, priority, destination_is_empty, managed)
+                `INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty, managed)
                  SELECT p.in_port_id AS source_id,
                         p.out_port_id AS destination_id,
-                        0 AS priority,
                         (op.item IS NULL
                             OR (down.id IS NOT NULL AND (down.head_gap > 0 OR down.next_gap_id IS NOT NULL)))
                             AS destination_is_empty,
@@ -81,6 +174,24 @@ export const BeltDefinition = new ObjectDefinition(
                     LEFT JOIN BeltPath down ON down.in_port_id = p.out_port_id
                  WHERE p.next_item_id IS NOT NULL
                    AND (p.next_gap_id IS NULL OR p.next_item_id < p.next_gap_id);`
+            ),
+
+            // Declare each in-port a path will drain this tick by ingesting it into head
+            // room (head_gap > 0 / a gap to shrink) without popping — a drain the chain
+            // can't otherwise see (no transfer represents it). A destination-less intent
+            // marks the in-port a resolved source, so an upstream transfer into it (a belt,
+            // or a splitter output) resolves, agnostic to who is upstream. Gated on a filled
+            // in-port, so it rides the Port_in_filled partial index and stays proportional
+            // to active seams rather than every path.
+            new TickOp(
+                "SubmitBeltIngestReadiness",
+                `INSERT INTO PortTransferIntent (source_id, destination_id)
+                 SELECT inPort.id, NULL
+                 FROM Port inPort INDEXED BY Port_in_filled
+                    INNER JOIN BeltPath path ON path.in_port_id = inPort.id
+                 WHERE inPort.item IS NOT NULL
+                   AND inPort.is_in_port = 1
+                   AND (path.head_gap > 0 OR path.next_gap_id IS NOT NULL);`
             ),
         ],
 
@@ -320,6 +431,16 @@ export const BeltDefinition = new ObjectDefinition(
                 `DELETE FROM BeltPathInputItem;`
             ),
 
+            // Splitter consume: read each resolved hop's rested item, then clear its
+            // source port. The input clears must precede TickBeltFillOutPort below, where
+            // the upstream belt refills that shared port. FillStage1 then re-buffers the
+            // internal ports for next tick. See the seam-op block above for the ordering.
+            SplitterRecordStage2,
+            SplitterRecordStage1,
+            SplitterClearStage2Source,
+            SplitterClearStage1Source,
+            SplitterFillStage1,
+
             // Deliver this tick's pops to the out-ports. Deferred to here — after the
             // in-port ingest (Cleanup3-5) — so filling a shared seam port (a downstream
             // path's in-port) isn't mistaken for an ingest by that path: the popped item
@@ -331,6 +452,12 @@ export const BeltDefinition = new ObjectDefinition(
                 FROM BeltPathOutputItem item
                 WHERE Port.id = item.port_id;`
             ),
+
+            // Splitter fill: write each routed item into its chosen out-port, after the
+            // downstream belt above ingested the previous one — so it rests there a tick.
+            SplitterFillStage2Output,
+            SplitterClearStage1,
+            SplitterClearStage2,
             // FillOutPort was the last reader of BeltPathOutputItem, so clear it now.
             new TickOp(
                 "TickBeltPathCleanup2",
@@ -468,5 +595,108 @@ export const BeltDefinition = new ObjectDefinition(
                  FROM ViewedOutPortItem v;`
             ),
         ]
+    },
+);
+
+// A 1x2 router with two inputs and two outputs (ports shared with adjacent belts) and two
+// internal buffer ports. Each item flows in_X -> int_X -> out_Y, resting a tick in int_X so
+// it crosses at belt speed. It submits managed=0 chain intents (the resolver links the whole
+// in -> int -> out -> downstream run so it pipelines at full throughput); the moves are done
+// by the seam ops spliced into BeltDefinition's POST_RESOLVE above. See those ops for why.
+//
+// Stage 2 fans out: it submits BOTH int_X -> out_A and int_X -> out_B, ranked by
+// `alternatives_rank` (round-robin state ranks the preferred output 1, the other 2). The
+// resolver hands each output to its best-ranking source and keeps each internal port's
+// best-ranked resolved output, so the item takes the preferred output, or the other when the
+// preferred can't drain this tick — agnostic to whatever is downstream, since drainability
+// comes from the chain, not a peek at the neighbor.
+export const SplitterDefinition = new ObjectDefinition(
+    [
+        new PortDefinition("in_port_a_id", {x: 0, y: 0, direction: Direction.UP}),
+        new PortDefinition("in_port_b_id", {x: 1, y: 0, direction: Direction.UP}),
+    ],
+    [
+        new PortDefinition("out_port_a_id", {x: 0, y: -1, direction: Direction.UP}),
+        new PortDefinition("out_port_b_id", {x: 1, y: -1, direction: Direction.UP}),
+    ],
+    [
+        new PortDefinition("int_port_a_id"),
+        new PortDefinition("int_port_b_id"),
+    ],
+    {x: 1, y: 0},
+    {
+        [TickPhase.SUBMIT_INTENTS]: [
+            // Stage 1: buffer each loaded input into its internal port. Single destination
+            // (not a fan-out), destination_is_empty is exact (the internal port is the
+            // splitter's own), and the chain resolves it when stage 2 drains int_X this
+            // tick — so input and output pipeline together at full throughput.
+            new TickOp(
+                "SubmitSplitterStage1",
+                `INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty, managed)
+                 SELECT s.in_port_a_id, s.int_port_a_id, (ia.item IS NULL), 0
+                 FROM Splitter s
+                    INNER JOIN Port inp ON inp.id = s.in_port_a_id
+                    INNER JOIN Port ia ON ia.id = s.int_port_a_id
+                 WHERE inp.item IS NOT NULL
+                 UNION ALL
+                 SELECT s.in_port_b_id, s.int_port_b_id, (ib.item IS NULL), 0
+                 FROM Splitter s
+                    INNER JOIN Port inp ON inp.id = s.in_port_b_id
+                    INNER JOIN Port ib ON ib.id = s.int_port_b_id
+                 WHERE inp.item IS NOT NULL;`
+            ),
+
+            // Stage 2: route each loaded internal port to BOTH outputs as competing fan-out
+            // intents. alternatives_rank encodes the round-robin choice, ranking the
+            // preferred output 1 and the other 2 (state=0: A->out_A, B->out_B; state=1
+            // inverted). destination_is_empty is the base case (out empty);
+            // an occupied-but-draining output still resolves through the chain recursion.
+            new TickOp(
+                "SubmitSplitterStage2",
+                `INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty, managed, alternatives_rank)
+                 SELECT s.int_port_a_id, s.out_port_a_id, (oa.item IS NULL), 0,
+                        CASE WHEN s.state = 0 THEN 1 ELSE 2 END
+                 FROM Splitter s
+                    INNER JOIN Port ia ON ia.id = s.int_port_a_id
+                    INNER JOIN Port oa ON oa.id = s.out_port_a_id
+                 WHERE ia.item IS NOT NULL
+                 UNION ALL
+                 SELECT s.int_port_a_id, s.out_port_b_id, (ob.item IS NULL), 0,
+                        CASE WHEN s.state = 0 THEN 2 ELSE 1 END
+                 FROM Splitter s
+                    INNER JOIN Port ia ON ia.id = s.int_port_a_id
+                    INNER JOIN Port ob ON ob.id = s.out_port_b_id
+                 WHERE ia.item IS NOT NULL
+                 UNION ALL
+                 SELECT s.int_port_b_id, s.out_port_b_id, (ob.item IS NULL), 0,
+                        CASE WHEN s.state = 0 THEN 1 ELSE 2 END
+                 FROM Splitter s
+                    INNER JOIN Port ib ON ib.id = s.int_port_b_id
+                    INNER JOIN Port ob ON ob.id = s.out_port_b_id
+                 WHERE ib.item IS NOT NULL
+                 UNION ALL
+                 SELECT s.int_port_b_id, s.out_port_a_id, (oa.item IS NULL), 0,
+                        CASE WHEN s.state = 0 THEN 2 ELSE 1 END
+                 FROM Splitter s
+                    INNER JOIN Port ib ON ib.id = s.int_port_b_id
+                    INNER JOIN Port oa ON oa.id = s.out_port_a_id
+                 WHERE ib.item IS NOT NULL;`
+            ),
+        ],
+        [TickPhase.POST_RESOLVE]: [
+            // Advance the round-robin phase once for each splitter that routed an item this
+            // tick (a resolved transfer sourced from one of its internal ports). One flip
+            // per tick (not per lane) keeps both outputs saturated when both inputs are.
+            new TickOp(
+                "AdvanceSplitterState",
+                `UPDATE Splitter
+                 SET state = 1 - state
+                 WHERE EXISTS (
+                     SELECT 1 FROM PortTransfer pt
+                     WHERE pt.source_id = Splitter.int_port_a_id
+                        OR pt.source_id = Splitter.int_port_b_id
+                 );`
+            ),
+        ],
     },
 );

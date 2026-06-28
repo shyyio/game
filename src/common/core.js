@@ -43,23 +43,20 @@ export class PortTransferOp extends TickOp {
      * @param gameObject {GameObject}
      * @param inputPort {string}
      * @param outputPort {string}
-     * @param [priority] {string} Transfer priority (higher value = higher priority)
      */
-    constructor(name, gameObject, inputPort, outputPort, priority="0") {
+    constructor(name, gameObject, inputPort, outputPort) {
         super(name, null);
         this.gameObject = gameObject;
         this.inputPort = inputPort;
         this.outputPort = outputPort;
-        this.priority = priority;
     }
 
     get sql() {
         return `
-            INSERT INTO PortTransferIntent (source_id, destination_id, priority, destination_is_empty)
+            INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty)
             SELECT
                 ${this.gameObject}.${this.inputPort} source_id,
                 ${this.gameObject}.${this.outputPort} destination_id,
-                (${this.priority}) priority,
                 (dst.item IS NULL) destination_is_empty
             FROM ${this.gameObject}
                 INNER JOIN Port dst ON dst.id = ${this.gameObject}.${this.outputPort}
