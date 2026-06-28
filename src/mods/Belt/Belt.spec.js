@@ -526,6 +526,29 @@ test("Keeps a waiting item in place when the path is extended", async () => {
     assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE id=1 AND head_gap=0"), 1);
 });
 
+test("Keeps an in-flight item on the source belt when a gap is filled to merge two paths", async () => {
+    const game = await setup();
+    // A source belt (12,6) and a detached downstream belt (12,4), with a one-tile gap
+    // at (12,5) between them; both face UP so the source feeds toward the sink.
+    createBelt(game, GameObject.BELT, {x: 12, y: 6, direction: Direction.UP});
+    createBelt(game, GameObject.BELT, {x: 12, y: 4, direction: Direction.UP});
+
+    // Rest an item on the source belt — it can't advance across the gap.
+    game.rawExec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE tail_id=1)");
+    game.tickAll();
+    assert.equal(game.rawScalar("SELECT 1 FROM BeltPath WHERE tail_id=1 AND head_gap=0 AND next_item_id IS NOT NULL"), 1);
+
+    // Fill the gap, folding the downstream belt's standalone path into the source's. The
+    // item must stay on the source belt, not slide a slot toward the sink.
+    createBelt(game, GameObject.BELT, {x: 12, y: 5, direction: Direction.UP});
+
+    // The item sits flush at the head (source) with the whole rest of the path empty
+    // ahead of it: no head gap, one item slot above a four-slot gap.
+    assert.equal(game.rawScalar("SELECT head_gap FROM BeltPath"), 0);
+    assert.equal(game.rawScalar("SELECT length FROM BeltPathItem WHERE type!=0"), 1);
+    assert.equal(game.rawScalar("SELECT length FROM BeltPathItem WHERE type=0"), 4);
+});
+
 test("Re-ingests a resting output item onto the new tail when the path is extended", async () => {
     const game = await setup();
     createBelt(game, GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});

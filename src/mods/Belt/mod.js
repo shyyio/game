@@ -444,6 +444,12 @@ export class BeltMod extends AbstractMod {
             && !child.isCrossChunk;
 
         if (child !== null || head !== id) {
+            // A folding child's standalone stash omits the one boundary slot that becomes
+            // internal once it joins the head's path; pad it so the head's items keep their
+            // distance from the out-port instead of sliding a slot toward the sink.
+            if (childFoldsIntoHead) {
+                this.game.exec("StashGapSlot", {id});
+            }
             // head !== id means the new belt extends the path's output side (a tail
             // extension, or a merge linking the tail onto a downstream belt), so it sits
             // on the path's former output tile. If the path's output item is resting in
@@ -451,11 +457,6 @@ export class BeltMod extends AbstractMod {
             // out-port — which the merge discards (losing it) or the extension reuses a
             // tile downstream (teleporting it forward).
             if (head !== id && this.game.queryScalar("PathHasOutputItem", {id: head})) {
-                // A folding child adds one boundary slot its standalone stash omits; pad an
-                // output gap ahead of the item so it stays on its tile, not a half downstream.
-                if (childFoldsIntoHead) {
-                    this.game.exec("StashGapSlot", {id});
-                }
                 this.game.exec("StashNewBeltWithOutputItem", {id, head});
                 this.game.exec("RemoveOutputItem", {id: head});
             } else {
