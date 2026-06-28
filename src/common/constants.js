@@ -111,6 +111,13 @@ export const Direction = {
 
 export const CHUNK_SIZE = 64;
 
+// Occupancy layers. A tile can hold one object per layer, so objects on different layers
+// coexist (e.g. a surface belt and two crossing underground tunnels). The keyspace is flat
+// and shared across mods by convention: SURFACE is the default ground layer (belts,
+// splitters, machines); a mod with stackable objects (e.g. belt undergrounds, per axis)
+// allocates its own further layers.
+export const OCCUPANCY_LAYER_SURFACE = 0;
+
 /**
  * Core game-setting keys (mods own keys for their own settings).
  * @enum

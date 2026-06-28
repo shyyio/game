@@ -1,20 +1,19 @@
-import {AbstractTool, Direction, Haptics} from "@/sdk/client.js";
+import {AbstractTool, Direction, Haptics, OCCUPANCY_LAYER_SURFACE} from "@/sdk/client.js";
 import {CreateBeltMessage, DeleteBeltMessage} from "./messages.js";
-import {BeltType, BeltBend} from "@/mods/Belt/constants.js";
+import {BeltType, OccupantKind} from "@/mods/Belt/constants.js";
 import {Belt} from "./BeltLayer.js";
-import {surfaceBeltAt} from "./geometry.js";
+import {inferBeltParent} from "./geometry.js";
 
 export class BeltTool extends AbstractTool {
 
     /**
      * @param {Client} client
-     * @param {ViewportCache} beltCache
      * @param {BeltGhostLayer} ghostLayer
      */
-    constructor(client, beltCache, ghostLayer) {
+    constructor(client, ghostLayer) {
         super(client.session);
         this._client = client;
-        this._beltCache = beltCache;
+        this._cache = client.cache;
         this._ghostLayer = ghostLayer;
         this._blockedTilesLayer = client.blockedTilesLayer;
         this._rotation = client.toolRotation;
@@ -49,7 +48,8 @@ export class BeltTool extends AbstractTool {
     _showGhost(tileX, tileY, direction) {
         const blocked = this._blocked(tileX, tileY);
         this._blockedTilesLayer.show(blocked ? [{x: tileX, y: tileY}] : []);
-        const bend = this._inferBend(tileX, tileY, direction);
+        const {parentX, parentY} = inferBeltParent(this._cache, tileX, tileY, direction);
+        const bend = Belt.getBend(direction, tileX, tileY, parentX, parentY);
         this._ghostLayer.showGhost(tileX, tileY, direction, BeltType.NORMAL, bend, blocked);
     }
 
@@ -63,54 +63,23 @@ export class BeltTool extends AbstractTool {
     }
 
     /**
-     * Whether a surface belt the tool can't overwrite (anything but a normal belt) blocks the tile.
+     * Whether the surface layer holds something the tool can't overwrite (a ramp, a splitter,
+     * any non-normal-belt object). A normal belt is overwritable, so it doesn't block.
      * @private
      * @returns {boolean}
      */
     _blocked(tileX, tileY) {
-        const existing = surfaceBeltAt(this._beltCache, tileX, tileY);
-        return existing !== null && existing.data.type !== BeltType.NORMAL;
+        const occupant = this._cache.at(tileX, tileY, OCCUPANCY_LAYER_SURFACE);
+        return occupant !== null && !this._overwritable(occupant);
     }
 
     /**
-     * The bend a belt placed here facing `direction` would take from its inferred upstream parent.
+     * Whether a surface occupant is a normal belt the tool may delete to re-lay (e.g. to rotate it).
      * @private
-     * @returns {BeltBend}
+     * @returns {boolean}
      */
-    _inferBend(tileX, tileY, direction) {
-        // Mirrors upstreamParentSql (statements.js): highest-id NORMAL/RAMP_UP neighbour
-        // pointing into this tile wins (the tile behind, or the two perpendicular tiles).
-        const candidates = [
-            {x: tileX - Direction.dx(direction), y: tileY - Direction.dy(direction), facing: direction},
-        ];
-        [Direction.rotate(direction, 1), Direction.rotate(direction, 3)].forEach(perpendicular => {
-            candidates.push({
-                x: tileX + Direction.dx(perpendicular),
-                y: tileY + Direction.dy(perpendicular),
-                facing: Direction.invert(perpendicular),
-            });
-        });
-
-        let parent = null;
-        candidates.forEach(candidate => {
-            const records = this._beltCache.getAtTile(candidate.x, candidate.y);
-            records.forEach(record => {
-                if (record.data.direction !== candidate.facing) {
-                    return;
-                }
-                if (record.data.type !== BeltType.NORMAL && record.data.type !== BeltType.RAMP_UP) {
-                    return;
-                }
-                if (parent === null || record.id > parent.id) {
-                    parent = record;
-                }
-            });
-        });
-
-        if (parent === null) {
-            return BeltBend.STRAIGHT;
-        }
-        return Belt.getBend(direction, tileX, tileY, parent.tileX, parent.tileY);
+    _overwritable(occupant) {
+        return occupant.data.kind === OccupantKind.BELT && occupant.data.type === BeltType.NORMAL;
     }
 
     /**
@@ -125,16 +94,17 @@ export class BeltTool extends AbstractTool {
     }
 
     /**
-     * Lays a normal belt facing `direction`, replacing a normal belt there but leaving a ramp untouched.
+     * Lays a normal belt facing `direction`, replacing a normal belt there but leaving a ramp
+     * or any other surface object untouched.
      * @private
      */
     _placeBelt(tileX, tileY, direction) {
-        const existing = surfaceBeltAt(this._beltCache, tileX, tileY);
-        if (existing !== null) {
-            if (existing.data.type !== BeltType.NORMAL) {
+        const occupant = this._cache.at(tileX, tileY, OCCUPANCY_LAYER_SURFACE);
+        if (occupant !== null) {
+            if (!this._overwritable(occupant)) {
                 return;
             }
-            this.session.sendMessage(new DeleteBeltMessage(existing.id));
+            this.session.sendMessage(new DeleteBeltMessage(occupant.id));
         }
         this.session.sendMessage(new CreateBeltMessage({x: tileX, y: tileY, direction, beltType: BeltType.NORMAL}));
         Haptics.tap();

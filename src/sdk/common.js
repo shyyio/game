@@ -36,6 +36,11 @@ export {
 // it, declare a static `wireFields` map, and optionally override `validate`.
 export {AbstractMessage} from "@/common/AbstractMessage.js";
 
+// ---- Errors ----
+// Thrown by a mod's placement code to refuse a creation; unwinds to the transaction
+// owner, which rolls back exactly once (so nested creations stay all-or-nothing).
+export {PlacementRejected} from "@/common/error.js";
+
 // ---- Events ----
 // Base classes for events a mod emits to connected clients (rendering, effects).
 // Subclasses must declare a static `wireFields` map. Extend `AbstractTilePositionedEvent`
@@ -53,6 +58,7 @@ export {BufferedEvent} from "@/common/BufferedEvent.js";
 export {
     Direction,
     CHUNK_SIZE,
+    OCCUPANCY_LAYER_SURFACE,
     BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
     BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
 } from "@/common/constants.js";
@@ -63,6 +69,10 @@ export {
 // the neighbor INPUT ports this object's outputs feed. Both return a map of
 // { thisObjectsPortName -> sharedPortId }.
 export {upstreamPorts, downstreamPorts} from "@/common/portUtils.js";
+
+// Rotates a `{x, y}` offset (a port or size vector) by a placement direction, so a mod
+// can compute where an object's ports/footprint land from its ObjectDefinition.
+export {rotate} from "@/common/util.js";
 
 // ---- Chunk keys ----
 // A chunk is identified by a "x,y" string key (NOT an object). `chunkKey(tileX,

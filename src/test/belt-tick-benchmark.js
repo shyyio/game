@@ -14,9 +14,9 @@
 import {setup} from "@/test/common.js";
 import {seedDatabase, printReport, intArg, MAX_SEED_COUNT} from "@/test/belt-benchmark-common.js";
 
-const DEFAULT_SEED_COUNT = 10_000_000;
-const DEFAULT_TICKS = 20;
-const DEFAULT_ITEM_COUNT = 100_000;
+const DEFAULT_SEED_COUNT = 100_000;
+const DEFAULT_TICKS = 50;
+const DEFAULT_ITEM_COUNT = 50_000;
 
 async function main() {
     const seedCount = Math.min(intArg(process.argv[2], DEFAULT_SEED_COUNT), MAX_SEED_COUNT);

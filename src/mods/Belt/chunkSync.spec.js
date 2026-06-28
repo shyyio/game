@@ -41,9 +41,6 @@ test("subscribing a chunk syncs the client with belts already in it", async () =
     assert.strictEqual(synced.y, 1);
     assert.strictEqual(synced.direction, Direction.UP);
     assert.strictEqual(synced.beltType, BeltType.NORMAL);
-    // Standalone belt has no parent.
-    assert.strictEqual(synced.parentX, null);
-    assert.strictEqual(synced.parentY, null);
 
     // The belt syncs precede the path sync, so the client has positions before it draws.
     assert.ok(sync.events[0] instanceof BeltSyncEvent, "belt syncs come first");

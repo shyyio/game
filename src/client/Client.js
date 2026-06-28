@@ -17,6 +17,7 @@ import {GridDrawLayer} from "@/client/GridDrawLayer.js";
 import {MaskDrawLayer} from "@/client/MaskDrawLayer.js";
 import {BlockedTilesLayer} from "@/client/BlockedTilesLayer.js";
 import {InspectLayer} from "@/client/InspectLayer.js";
+import {ClientCache} from "@/client/ClientCache.js";
 import {advanceAnimationFrame} from "@/client/animation.js";
 import {DEV, BROWSER} from "@/common/env.js";
 
@@ -57,6 +58,9 @@ export class Client {
         this.inspectLayer = new InspectLayer();
         // Shared placement facing, so orientation persists across tool switches.
         this.toolRotation = new ToolRotation();
+        // Shared cross-mod object index, fed by mods' insert/delete handling and queried by
+        // tools/layers for tile lookups, placement collision, and connection rendering.
+        this.cache = new ClientCache();
 
         CoreDrawLayers.forEach(layer => {
             this.drawLayerRegistry.add(layer);
@@ -97,7 +101,12 @@ export class Client {
         this.drawLayerRegistry.layers.forEach(layer => {
             layer.textureRegistry = this.textureRegistry;
             layer.viewport = this.viewport;
+            layer.cache = this.cache;
             this.viewport.addChild(layer);
+        });
+
+        this.modRegistry.mods.forEach(mod => {
+            mod.clientInit(this);
         });
 
         this.app.stage.addChild(this.miniMenuLayer);

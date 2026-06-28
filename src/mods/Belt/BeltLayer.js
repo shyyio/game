@@ -1,5 +1,6 @@
 import {Graphics, Sprite, Texture, TILE_SIZE, Direction, AbstractDrawLayer, currentAnimationFrame} from "@/sdk/client.js";
 import {BeltBend, BeltType} from "./constants.js";
+import {inferBeltParent} from "./geometry.js";
 
 // Map-mode tile fill colors, keyed by belt type.
 const MAP_TILE_COLOR = 0xf7df9e;
@@ -131,22 +132,20 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     onEvent(event) {}
 
     /**
-     * Renders a newly-placed or chunk-synced belt (undergrounds are buried and skipped).
+     * Renders a newly-placed or chunk-synced belt (undergrounds are buried and skipped). The
+     * bend is added straight and re-derived from neighbours each frame in tick.
      * @param {BigInt} id
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
      * @param {BeltType} type
-     * @param {number|null} parentX
-     * @param {number|null} parentY
      */
-    addBelt(id, x, y, direction, type, parentX, parentY) {
+    addBelt(id, x, y, direction, type) {
         if (type === BeltType.UNDERGROUND) {
             return;
         }
-        const bend = Belt.getBend(direction, x, y, parentX, parentY);
-        const frames = this._getFrames(bend, type);
-        const sprite = new BeltSprite(id, x, y, direction, bend, type, frames);
+        const frames = this._getFrames(BeltBend.STRAIGHT, type);
+        const sprite = new BeltSprite(id, x, y, direction, BeltBend.STRAIGHT, type, frames);
         sprite.setAnimationFrame(currentAnimationFrame());
         this.addChild(sprite);
 
@@ -159,20 +158,18 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Re-renders a belt's bend after its parent changed; no-op for undrawn belts.
-     * @param {BigInt} id
-     * @param {number|null} newParentX
-     * @param {number|null} newParentY
+     * Re-derives a normal belt's bend from its cached neighbours, re-rendering only on a change.
+     * @param {BeltSprite} sprite
+     * @private
      */
-    updateBelt(id, newParentX, newParentY) {
-        const sprite = this._belts[id];
-        if (sprite === undefined) {
+    _applyBend(sprite) {
+        const {parentX, parentY} = inferBeltParent(this.cache, sprite.tileX, sprite.tileY, sprite.direction);
+        const bend = Belt.getBend(sprite.direction, sprite.tileX, sprite.tileY, parentX, parentY);
+        if (bend === sprite.bend) {
             return;
         }
-        const bend = Belt.getBend(sprite.direction, sprite.tileX, sprite.tileY, newParentX, newParentY);
         sprite.frames = this._getFrames(bend, sprite.type);
         sprite.update(sprite.tileX, sprite.tileY, sprite.direction, bend);
-        sprite.setAnimationFrame(currentAnimationFrame());
     }
 
     /**
@@ -202,10 +199,13 @@ export class BeltDrawLayer extends AbstractDrawLayer {
      * @param {number} frame animation frame, in [0, 8)
      */
     tick(frame) {
-        if (this._lowRes) {
+        if (this._lowRes || this.cache === null) {
             return;
         }
         Object.values(this._belts).forEach(sprite => {
+            if (sprite.type === BeltType.NORMAL) {
+                this._applyBend(sprite);
+            }
             sprite.setAnimationFrame(frame);
         });
     }

@@ -1,8 +1,8 @@
-import {AbstractTool, Direction, Haptics} from "@/sdk/client.js";
+import {AbstractTool, Direction, Haptics, OCCUPANCY_LAYER_SURFACE} from "@/sdk/client.js";
 import {CreateBeltMessage, DeleteBeltMessage} from "./messages.js";
-import {BeltType, BeltBend, MAX_UNDERGROUND_LENGTH} from "./constants.js";
+import {BeltType, BeltBend, MAX_UNDERGROUND_LENGTH, OccupantKind} from "./constants.js";
 import {Belt} from "./BeltLayer.js";
-import {getUndergroundBeltsToCreate, surfaceBeltAt, tunnelStep} from "./geometry.js";
+import {getUndergroundBeltsToCreate, surfaceBeltAt, tunnelStep, inferBeltParent} from "./geometry.js";
 
 /**
  * Rotatable single-ramp tool that drops one ramp per tap, pairing it with the ramp it tunnels to.
@@ -11,13 +11,12 @@ export class UndergroundBeltTool extends AbstractTool {
 
     /**
      * @param {Client} client
-     * @param {ViewportCache} beltCache
      * @param {BeltGhostLayer} ghostLayer
      */
-    constructor(client, beltCache, ghostLayer) {
+    constructor(client, ghostLayer) {
         super(client.session);
         this._client = client;
-        this._beltCache = beltCache;
+        this._cache = client.cache;
         this._ghostLayer = ghostLayer;
         this._blockedTilesLayer = client.blockedTilesLayer;
         this._rotation = client.toolRotation;
@@ -66,11 +65,10 @@ export class UndergroundBeltTool extends AbstractTool {
      * @returns {{id: BigInt, type: BeltType, direction: Direction}|null}
      */
     _beltAt(tileX, tileY) {
-        const records = this._beltCache.getAtTile(tileX, tileY);
-        if (records.length === 0) {
+        const record = this._cache.getAtTile(tileX, tileY).find(other => other.data.kind === OccupantKind.BELT);
+        if (record === undefined) {
             return null;
         }
-        const record = records[0];
         return {id: record.id, type: record.data.type, direction: record.data.direction};
     }
 
@@ -80,17 +78,12 @@ export class UndergroundBeltTool extends AbstractTool {
      * @returns {{id: BigInt, type: BeltType, direction: Direction, straight: boolean}|null}
      */
     _surfaceBeltAt(tileX, tileY) {
-        const surface = surfaceBeltAt(this._beltCache, tileX, tileY);
+        const surface = surfaceBeltAt(this._cache, tileX, tileY);
         if (surface === null) {
             return null;
         }
-        const bend = Belt.getBend(
-            surface.data.direction,
-            surface.tileX,
-            surface.tileY,
-            surface.data.parentX,
-            surface.data.parentY,
-        );
+        const {parentX, parentY} = inferBeltParent(this._cache, surface.tileX, surface.tileY, surface.data.direction);
+        const bend = Belt.getBend(surface.data.direction, surface.tileX, surface.tileY, parentX, parentY);
         return {
             id: surface.id,
             type: surface.data.type,
@@ -119,6 +112,11 @@ export class UndergroundBeltTool extends AbstractTool {
      * @returns {boolean}
      */
     _blocked(tileX, tileY, direction) {
+        // A non-belt surface object (e.g. a splitter) the ramp can't replace blocks outright.
+        const occupant = this._cache.at(tileX, tileY, OCCUPANCY_LAYER_SURFACE);
+        if (occupant !== null && occupant.data.kind !== OccupantKind.BELT) {
+            return true;
+        }
         const belt = this._surfaceBeltAt(tileX, tileY);
         return belt !== null && !this._overwritable(belt, direction);
     }
@@ -250,7 +248,7 @@ export class UndergroundBeltTool extends AbstractTool {
      * @returns {{x: number, y: number}[]}
      */
     _undergroundTilesFor(parentId, tileX, tileY, type, direction) {
-        const parent = this._beltCache.get(parentId);
+        const parent = this._cache.get(parentId);
         if (parent === null) {
             return [];
         }

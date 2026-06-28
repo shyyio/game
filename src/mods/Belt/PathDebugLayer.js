@@ -17,13 +17,11 @@ const END_MARKER_RADIUS = 10;
 export class PathDebugDrawLayer extends AbstractDrawLayer {
 
     /**
-     * @param {ViewportCache} beltCache - shared belt index, read for tile positions
      * @param {Map<BigInt, BigInt[]>} paths - shared head id → ordered belt ids (head last), owned by BeltClientMod
      */
-    constructor(beltCache, paths) {
+    constructor(paths) {
         super();
         this.visible = false;
-        this._beltCache = beltCache;
         this._debugMode = false;
         // Map mode (zoomed far out) swaps sprites for low-res geometry; the overlay
         // is too fine to read there, so it hides regardless of debug mode.
@@ -92,7 +90,7 @@ export class PathDebugDrawLayer extends AbstractDrawLayer {
      * @private
      */
     _drawPath(parts) {
-        const records = parts.map(id => this._beltCache.get(id));
+        const records = parts.map(id => this.cache.get(id));
         // A belt left the viewport (or was just deleted): wait for the next recalc.
         if (records.length === 0 || records.some(record => record === null)) {
             return;

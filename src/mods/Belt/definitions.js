@@ -5,11 +5,14 @@ import {
     TickPhase,
     Direction,
     CHUNK_COORD_SQL,
+    OCCUPANCY_LAYER_SURFACE,
     BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
     BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
 } from "@/sdk/common.js";
 import {
     ITEM_TYPE_GAP,
+    BELT_UNDERGROUND,
+    OCCUPANCY_LAYER_UNDERGROUND_BASE,
     BUFFERED_EVENT_TYPE_ITEM_UPSERT,
     BUFFERED_EVENT_TYPE_ITEM_DELETE,
     BUFFERED_EVENT_TYPE_ITEM_RESET,
@@ -109,7 +112,45 @@ const SplitterClearStage2 = new TickOp(
     `DELETE FROM SplitterStage2;`
 );
 
-export const BeltDefinition = new ObjectDefinition(
+// A belt's ports live on BeltPath (head's in_port, tail's out_port), not a Belt column,
+// so the generic per-column lookup can't reach them.
+class BeltObjectDefinition extends ObjectDefinition {
+
+    portLookups(table, portKind, direction) {
+        if (portKind === "inputPorts") {
+            // A head receives at its in_port from any side, so direction is ignored.
+            return [`
+                SELECT BeltPath.in_port_id AS id
+                FROM BeltPath
+                    INNER JOIN Belt head ON head.id = BeltPath.id
+                WHERE head.x = @x AND head.y = @y`];
+        }
+        return [`
+            SELECT BeltPath.out_port_id AS id
+            FROM BeltPath
+                INNER JOIN Belt tail ON tail.id = BeltPath.tail_id
+            WHERE tail.x = @x - ${Direction.dx(direction)}
+              AND tail.y = @y - ${Direction.dy(direction)}
+              AND tail.direction = ${direction}`];
+    }
+
+    // A surface belt sits on SURFACE; an underground occupies one layer per axis, so a
+    // surface belt and two crossing tunnels coexist on a tile.
+    occupancyLookups(table) {
+        return [`
+            SELECT 1 FROM ${table}
+            WHERE @layer = ${OCCUPANCY_LAYER_SURFACE}
+              AND ${table}.type != ${BELT_UNDERGROUND}
+              AND ${table}.x = @x AND ${table}.y = @y`,
+        `
+            SELECT 1 FROM ${table}
+            WHERE @layer = ${OCCUPANCY_LAYER_UNDERGROUND_BASE} + (${table}.direction % 2)
+              AND ${table}.type = ${BELT_UNDERGROUND}
+              AND ${table}.x = @x AND ${table}.y = @y`];
+    }
+}
+
+export const BeltDefinition = new BeltObjectDefinition(
     [
         new PortDefinition("virtual_left", {x: 0, y: 0, direction: Direction.RIGHT}),
         new PortDefinition("virtual_down", {x: 0, y: 0, direction: Direction.UP}),
@@ -567,6 +608,26 @@ export const BeltDefinition = new ObjectDefinition(
                     CROSS JOIN Belt head INDEXED BY Belt_chunk ON head.chunk = vc.chunk
                     CROSS JOIN BeltPath bp ON bp.id = head.id
                     CROSS JOIN Port p ON p.id = bp.out_port_id
+                 WHERE p.item IS NOT NULL;`
+            ),
+            // Splitter output ports rest items for a tick too; gather the watched ones into
+            // the same table (routed by the splitter tile) so the SET/CLEAR diff below covers
+            // them. Each splitter out-port is a downstream belt's in-port, never a path
+            // out-port, so it can't collide with a row CaptureViewedOutPortItems inserted.
+            new TickOp(
+                "CaptureViewedSplitterPortItems",
+                `WITH viewed_chunk AS (SELECT DISTINCT chunk FROM SessionViewport)
+                 INSERT INTO ViewedOutPortItem (port_id, item, x, y)
+                 SELECT p.id, p.item, s.x, s.y
+                 FROM viewed_chunk vc
+                    CROSS JOIN Splitter s INDEXED BY Splitter_chunk ON s.chunk = vc.chunk
+                    CROSS JOIN Port p ON p.id = s.out_port_a_id
+                 WHERE p.item IS NOT NULL
+                 UNION ALL
+                 SELECT p.id, p.item, s.x, s.y
+                 FROM viewed_chunk vc
+                    CROSS JOIN Splitter s INDEXED BY Splitter_chunk ON s.chunk = vc.chunk
+                    CROSS JOIN Port p ON p.id = s.out_port_b_id
                  WHERE p.item IS NOT NULL;`
             ),
             // SET for each out-port whose resting item changed (diff vs OutPortItemShadow).

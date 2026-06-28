@@ -3,7 +3,13 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {setup} from "@/test/common.js";
 import {GameObject, createBelt, createSplitter} from "./testHelpers.js";
-import {Direction} from "@/common/constants.js";
+import {
+    Direction,
+    OCCUPANCY_LAYER_SURFACE,
+    BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
+    BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
+} from "@/common/constants.js";
+import {OCCUPANCY_LAYER_UNDERGROUND_BASE} from "./constants.js";
 
 // The lone splitter's port row (in/out/internal port ids + state).
 function splitterPorts(game) {
@@ -48,6 +54,48 @@ test("Creates a splitter wired to six distinct ports", async () => {
     assert.equal(s.state, 0);
 });
 
+test("Merges a belt into one fed by a splitter without dropping the shared port", async () => {
+    const game = await setup();
+    createSplitter(game, {x: 12, y: 6, direction: Direction.UP});
+    // This belt adopts the splitter's out_port_b as its in-port (the splitter feeds it).
+    createBelt(game, GameObject.BELT, {x: 13, y: 5, direction: Direction.UP});
+    const sharedPort = game.rawScalar("SELECT out_port_b_id FROM Splitter");
+
+    // A belt feeding that belt from the left merges the two into one path. The merge must not
+    // delete the shared in-port (still owned by the splitter) — doing so broke its foreign key.
+    createBelt(game, GameObject.BELT, {x: 12, y: 5, direction: Direction.RIGHT});
+
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt"), 2);
+    assert.equal(game.rawScalar("SELECT COUNT(DISTINCT path_id) FROM Belt"), 1);
+    // The splitter still owns the shared port.
+    assert.equal(game.rawScalar("SELECT out_port_b_id FROM Splitter"), Number(sharedPort));
+    assert.equal(game.rawScalar(`SELECT COUNT(*) FROM Port WHERE id=${Number(sharedPort)}`), 1);
+});
+
+test("Emits out-port item deltas for a watched splitter output", async () => {
+    const game = await setup();
+    createSplitter(game, {x: 5, y: 5, direction: Direction.UP});
+    const s = splitterPorts(game);
+    // Rest an item in output A; with no downstream belt it stays put for the capture.
+    inject(game, s.out_port_a_id);
+    game.rawExec("INSERT INTO SessionViewport (session_id, chunk) VALUES (1, '0,0')");
+
+    game.tickAll();
+    assert.equal(
+        game.rawScalar(`SELECT a FROM BufferedEvent WHERE type=${BUFFERED_EVENT_TYPE_PORT_ITEM_SET} AND id=${s.out_port_a_id}`),
+        1,
+    );
+
+    // Item leaves the port: a CLEAR.
+    game.rawExec("DELETE FROM BufferedEvent");
+    clear(game, s.out_port_a_id);
+    game.tickAll();
+    assert.equal(
+        game.rawScalar(`SELECT COUNT(*) FROM BufferedEvent WHERE type=${BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR} AND id=${s.out_port_a_id}`),
+        1,
+    );
+});
+
 test("Rejects a splitter overlapping an existing one", async () => {
     const game = await setup();
 
@@ -55,6 +103,42 @@ test("Rejects a splitter overlapping an existing one", async () => {
     createSplitter(game, {x: 5, y: 5, direction: Direction.UP});
 
     assert.equal(game.rawScalar("SELECT COUNT(*) FROM Splitter"), 1);
+});
+
+test("A belt path extended onto a splitter input adopts the shared port (placement order)", async () => {
+    const game = await setup();
+    // Splitter facing up; its in_B sits at the far cell (14,4), fed from (14,5).
+    createSplitter(game, {x: 13, y: 4, direction: Direction.UP});
+    // Place the upstream belt first, then the tail belt that turns up into in_B — so the tail
+    // is added to an already-built path. The path's out-port must still adopt in_B.
+    createBelt(game, GameObject.BELT, {x: 15, y: 5, direction: Direction.LEFT});
+    createBelt(game, GameObject.BELT, {x: 14, y: 5, direction: Direction.UP});
+
+    const inB = game.rawScalar("SELECT in_port_b_id FROM Splitter");
+    assert.equal(game.rawScalar("SELECT out_port_id FROM BeltPath"), Number(inB));
+});
+
+test("Rejects a splitter whose far footprint tile overlaps a belt", async () => {
+    const game = await setup();
+
+    // A belt on the splitter's second tile (6,5); its base tile (5,5) is clear. The engine's
+    // footprint collision must still reject it — the old per-tile unique index never saw the far cell.
+    createBelt(game, GameObject.BELT, {x: 6, y: 5, direction: Direction.UP});
+    createSplitter(game, {x: 5, y: 5, direction: Direction.UP});
+
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Splitter"), 0);
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt"), 1);
+});
+
+test("IsOccupied reports a belt on the surface layer only", async () => {
+    const game = await setup();
+
+    createBelt(game, GameObject.BELT, {x: 5, y: 5, direction: Direction.UP});
+
+    assert.notEqual(game.queryScalar("IsOccupied", {x: 5, y: 5, layer: OCCUPANCY_LAYER_SURFACE}), null);
+    // The underground axis layers stay free, so a tunnel could still pass under the belt.
+    assert.equal(game.queryScalar("IsOccupied", {x: 5, y: 5, layer: OCCUPANCY_LAYER_UNDERGROUND_BASE}), null);
+    assert.equal(game.queryScalar("IsOccupied", {x: 5, y: 5, layer: OCCUPANCY_LAYER_UNDERGROUND_BASE + 1}), null);
 });
 
 test("Shares ports with the belts it sits between", async () => {
@@ -71,6 +155,23 @@ test("Shares ports with the belts it sits between", async () => {
 
     assert.equal(Number(s.in_port_a_id), Number(game.queryScalar("GetPathOutPort", {id: feederId})));
     assert.equal(Number(s.out_port_a_id), Number(game.queryScalar("GetPathInPort", {id: drainId})));
+});
+
+test("Adopts a splitter's ports when belts are placed around it afterwards", async () => {
+    const game = await setup();
+
+    // Splitter first, then a feeder belt below in_A and a drain belt above out_A: the
+    // belts must attach to the splitter's existing ports, not mint fresh ones.
+    createSplitter(game, {x: 5, y: 5, direction: Direction.UP});
+    createBelt(game, GameObject.BELT, {x: 5, y: 6, direction: Direction.UP});
+    createBelt(game, GameObject.BELT, {x: 5, y: 4, direction: Direction.UP});
+
+    const s = splitterPorts(game);
+    const feederId = game.rawScalar("SELECT id FROM Belt WHERE x=5 AND y=6");
+    const drainId = game.rawScalar("SELECT id FROM Belt WHERE x=5 AND y=4");
+
+    assert.equal(Number(game.queryScalar("GetPathOutPort", {id: feederId})), Number(s.in_port_a_id));
+    assert.equal(Number(game.queryScalar("GetPathInPort", {id: drainId})), Number(s.out_port_a_id));
 });
 
 test("Takes three ticks to cross (input, internal, output) — no teleport", async () => {

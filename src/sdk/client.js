@@ -25,10 +25,11 @@ export {AbstractTool} from "@/client/AbstractTool.js";
 export {default as Haptics} from "@/client/Haptics.js";
 
 // ---- Client world state ----
-// A client mod's own picture of placed objects (indexed by id, tile, and chunk),
-// synced from chunk-sync events. Client code queries this instead of the
-// simulation DB.
-export {ViewportCache} from "@/client/ViewportCache.js";
+// The shared cross-mod index of placed objects (by id, primary tile, chunk, and
+// tile+layer cell), reached via `client.cache` and injected into draw layers as
+// `this.cache`. Mods feed it from their insert/delete handling; client code queries
+// it instead of the simulation DB (tile lookups, placement collision, connection).
+export {ClientCache} from "@/client/ClientCache.js";
 
 // ---- Pixel-space geometry ----
 // `TILE_SIZE` is a tile's size in pixels; the snap helpers round pixel

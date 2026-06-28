@@ -127,6 +127,10 @@ export const beltSchema = `
     );
 
     CREATE UNIQUE INDEX Splitter_x_y_direction ON Splitter (x, y, direction);
+
+    -- Find the splitters in watched chunks directly (chunk sync + the per-tick out-port
+    -- item capture), instead of scanning every splitter.
+    CREATE INDEX Splitter_chunk ON Splitter(chunk);
 `;
 
 // Per-run temp tables and seed rows owned by the Belt mod.
@@ -232,14 +236,18 @@ export const beltTempSchema = `
     -- read a source port and the later ones that write the destination. Stage 1 buffers
     -- an input into an internal port; stage 2 routes an internal port to an output. Both
     -- destinations are unique per tick (the resolver allows one transfer per destination).
+    -- Port columns are plain (not INTEGER PRIMARY KEY): the FillStage ops join Port on these,
+    -- and an aliased rowid here would let SQLite drive that join from the whole Port table
+    -- (a full scan per tick) instead of scanning these few per-tick rows. Uniqueness is
+    -- guaranteed by construction (each splitter contributes two globally-unique port ids).
     CREATE TEMPORARY TABLE SplitterStage1 (
-        int_port_id INTEGER PRIMARY KEY,
+        int_port_id INT NOT NULL,
         item INT NOT NULL,
         in_port_id INT NOT NULL
     );
 
     CREATE TEMPORARY TABLE SplitterStage2 (
-        out_port_id INTEGER PRIMARY KEY,
+        out_port_id INT NOT NULL,
         item INT NOT NULL,
         int_port_id INT NOT NULL
     );

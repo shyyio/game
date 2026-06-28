@@ -5,6 +5,8 @@ import {
     upstreamPorts,
     downstreamPorts,
     Direction,
+    OCCUPANCY_LAYER_SURFACE,
+    PlacementRejected,
     BufferedEvent,
 } from "@/sdk/common.js";
 import {
@@ -21,16 +23,18 @@ import {
     BUFFERED_EVENT_TYPE_ITEM_RESET,
     BUFFERED_EVENT_TYPE_ITEM_SYNC,
 } from "./constants.js";
-import {getUndergroundBeltsToCreate, tunnelStep} from "./geometry.js";
+import {getUndergroundBeltsToCreate, tunnelStep, beltOccupancyLayer} from "./geometry.js";
 import {beltSchema, beltTempSchema} from "./schema.js";
 import {BeltDefinition, SplitterDefinition} from "./definitions.js";
 import {beltStatements} from "./statements.js";
 import {
     BeltPathRecalculateEvent,
     BeltInsertEvent,
-    BeltUpdateEvent,
     BeltDeleteEvent,
     BeltSyncEvent,
+    SplitterInsertEvent,
+    SplitterSyncEvent,
+    SplitterDeleteEvent,
 } from "./events.js";
 
 export class BeltMod extends AbstractMod {
@@ -40,12 +44,14 @@ export class BeltMod extends AbstractMod {
             CreateBeltMessage,
             DeleteBeltMessage,
             BeltInsertEvent,
-            BeltUpdateEvent,
             BeltDeleteEvent,
             BeltPathRecalculateEvent,
             BeltSyncEvent,
             CreateSplitterMessage,
             DeleteSplitterMessage,
+            SplitterInsertEvent,
+            SplitterSyncEvent,
+            SplitterDeleteEvent,
         ];
     }
 
@@ -109,6 +115,17 @@ export class BeltMod extends AbstractMod {
             events.push(new BeltPathRecalculateEvent(path.x, path.y, path.parts, outPortId));
         });
 
+        this.game.query("GetSplittersInChunk", {chunk}).forEach(splitter => {
+            events.push(new SplitterSyncEvent(
+                splitter.x,
+                splitter.y,
+                splitter.id,
+                splitter.direction,
+                splitter.out_port_a_id,
+                splitter.out_port_b_id,
+            ));
+        });
+
         return events;
     }
 
@@ -146,13 +163,39 @@ export class BeltMod extends AbstractMod {
      * @param {{x: number, y: number, direction: Direction}} options
      */
     _createSplitter(options) {
+        // Reject a footprint that crosses a chunk boundary, so the splitter lives in exactly
+        // one chunk (chunk-keyed sync and occupancy assume a single owning chunk). A
+        // well-behaved client blocks this; reaching here means a malicious or desynced client.
+        if (SplitterDefinition.footprintSpansChunks(options.x, options.y, options.direction)) {
+            console.warn("CreateSplitter ignored: footprint spans chunks at", options.x, options.y);
+            return;
+        }
+
         this.game.begin();
 
+        // Reject a footprint overlap on the surface layer. A well-behaved client blocks this
+        // in its tool, so reaching here means a malicious or desynced client.
+        const occupied = SplitterDefinition.footprint(options.direction).some(cell =>
+            this.game.queryScalar("IsOccupied", {
+                x: options.x + cell.x,
+                y: options.y + cell.y,
+                layer: OCCUPANCY_LAYER_SURFACE,
+            }) !== null
+        );
+        if (occupied) {
+            console.warn("CreateSplitter ignored: footprint occupied at", options.x, options.y);
+            this.game.rollback();
+            return;
+        }
+
+        let id;
+        let outPorts;
         try {
             const inPorts = upstreamPorts(this.game, "Splitter", options, true);
-            const outPorts = downstreamPorts(this.game, "Splitter", options, true);
+            outPorts = downstreamPorts(this.game, "Splitter", options, true);
 
-            this.game.queryScalar("InsertSplitter", {
+            id = this.game.queryScalar("InsertSplitter", {
+                id: this.game.queryScalar("AllocateObjectId"),
                 x: options.x,
                 y: options.y,
                 direction: options.direction,
@@ -175,6 +218,14 @@ export class BeltMod extends AbstractMod {
         }
 
         this.game.end();
+        this.game.publishEventNow(new SplitterInsertEvent(
+            options.x,
+            options.y,
+            id,
+            options.direction,
+            outPorts.out_port_a_id,
+            outPorts.out_port_b_id,
+        ));
     }
 
     /**
@@ -194,6 +245,7 @@ export class BeltMod extends AbstractMod {
 
         this.game.exec("DeleteSplitterPorts", splitter);
         this.game.end();
+        this.game.publishEventNow(new SplitterDeleteEvent(splitter.x, splitter.y, id));
     }
 
     // ---- Belt creation ----
@@ -214,26 +266,33 @@ export class BeltMod extends AbstractMod {
             this._orphanedHeads = new Set();
         }
 
-        if (options.disconnectRampChild) {
-            this._disconnectRampChain(options);
-        }
-        if (options.rampParent && (options.type === BELT_RAMP_UP || options.type === BELT_RAMP_DOWN)) {
-            this._createUndergrounds(options);
-        }
+        try {
+            if (options.disconnectRampChild) {
+                this._disconnectRampChain(options);
+            }
+            if (options.rampParent && (options.type === BELT_RAMP_UP || options.type === BELT_RAMP_DOWN)) {
+                this._createUndergrounds(options);
+            }
 
-        const id = this._insertBelt(options);
-        if (id === null) {
-            // Placement rejected (tile occupied / parent conflict); _insertBelt
-            // already rolled the transaction back, so there is nothing to commit.
-            return;
-        }
+            const id = this._insertBelt(options);
+            const {head, child} = this._resolveCreateContext(id, options);
 
-        const {head, child} = this._resolveCreateContext(id, options);
-
-        if (this._isStandaloneChildMerge(id, head, child)) {
-            this._mergeStandaloneChild(id, head, child, options);
-        } else {
-            this._rebuildPaths(id, head, child, options);
+            if (this._isStandaloneChildMerge(id, head, child)) {
+                this._mergeStandaloneChild(id, head, child, options);
+            } else {
+                this._rebuildPaths(id, head, child, options);
+            }
+        } catch (e) {
+            // Only the transaction owner unwinds: a nested create (an underground laid
+            // for a ramp) rethrows so the owner rolls back exactly once.
+            if (!transaction) {
+                throw e;
+            }
+            this.game.rollback();
+            if (e instanceof PlacementRejected) {
+                return;
+            }
+            throw e;
         }
 
         if (transaction) {
@@ -243,24 +302,34 @@ export class BeltMod extends AbstractMod {
     }
 
     /**
-     * Inserts the Belt row and returns its id, or null (rolling back) on a placement conflict.
+     * Inserts the Belt row and returns its id, throwing PlacementRejected on a placement
+     * conflict (the transaction owner in _createBelt rolls back).
      * @private
      * @param {{x: number, y: number, type: number, direction: Direction}} options
-     * @returns {BigInt|null}
+     * @returns {BigInt}
      */
     _insertBelt(options) {
+        // Reject a tile already occupied on this belt's layer (a surface object under a
+        // surface belt, a same-axis underground under another). A well-behaved client blocks
+        // this in its tool, so reaching here means a malicious or desynced client. Undergrounds
+        // sit on a per-axis layer, so a crossing tunnel or a surface belt above does not collide.
+        const layer = beltOccupancyLayer(options.type, options.direction);
+        if (this.game.queryScalar("IsOccupied", {x: options.x, y: options.y, layer}) !== null) {
+            console.warn("CreateBelt ignored: tile occupied at", options.x, options.y);
+            throw new PlacementRejected();
+        }
         try {
-            return this.game.queryScalar("InsertBelt", options);
+            const id = this.game.queryScalar("AllocateObjectId");
+            return this.game.queryScalar("InsertBelt", {id, ...options});
         } catch (e) {
-            this.game.rollback();
             const msg = String(e);
             if (msg.includes("Belt.x") && msg.includes("Belt.y")) {
                 console.warn("CreateBelt ignored: belt already exists at", options.x, options.y);
-                return null;
+                throw new PlacementRejected();
             }
             if (msg.includes("Belt.parent_id")) {
                 console.warn("CreateBelt ignored: conflicting parent at", options.x, options.y);
-                return null;
+                throw new PlacementRejected();
             }
             throw new Error("FIXME: InsertBelt");
         }
@@ -406,13 +475,14 @@ export class BeltMod extends AbstractMod {
         this.game.exec("MaterializeBeltPath", {id: head});
         if (createdNewPath) {
             this._populateBeltPathPorts(head, inheritedOutPort);
+        } else if (child === null && head !== id) {
+            // The new belt extended an existing path as its new tail (no downstream belt to
+            // merge), so the path's out-port still points at the old tail's downstream. Re-adopt
+            // the new tail's downstream in-port (e.g. a splitter the belt now feeds into).
+            this._adoptTailOutPort(head);
         }
-        const loopTail = this._unifyLoopPort(head);
+        this._unifyLoopPort(head);
         this._publishPathRecalculate(head, options.x, options.y);
-        // head is an existing belt the client already holds, so the bend can publish now.
-        if (loopTail !== null) {
-            this._publishLoopSeamBend(head, loopTail);
-        }
 
         if (oldParentPathHead) {
             this.game.exec("MaterializeBeltPath", {id: oldParentPathHead});
@@ -463,7 +533,7 @@ export class BeltMod extends AbstractMod {
         if (createdLoop) {
             this._populateBeltPathPorts(id);
         }
-        const loopTail = this._unifyLoopPort(id);
+        this._unifyLoopPort(id);
 
         this._unStashItems();
         this.game.exec("FillHeadGap", {id: head});
@@ -472,10 +542,6 @@ export class BeltMod extends AbstractMod {
         this._publishPathRecalculate(head, options.x, options.y);
         this._publishPathRecalculate(id, options.x, options.y);
         this._publishBeltInsert(id, options);
-        // id is the newly-placed seam head, so bend it only after its insert reaches the client.
-        if (loopTail !== null) {
-            this._publishLoopSeamBend(id, loopTail);
-        }
     }
 
     /**
@@ -484,7 +550,6 @@ export class BeltMod extends AbstractMod {
      */
     _relinkChild(child, options) {
         this.game.exec("UpdateBeltChild", {id: child.id});
-        this.game.publishEventNow(new BeltUpdateEvent(child.x, child.y, child.id, options.x, options.y));
     }
 
     /**
@@ -751,11 +816,10 @@ export class BeltMod extends AbstractMod {
             return;
         }
         // The feeder captured pre-deletion may itself have been removed; if so the run
-        // is already open and there is nothing to re-link. The seam head is now a plain
-        // straight head, so reset the loop render-bend it carried toward that feeder.
+        // is already open and there is nothing to re-link (the client re-derives the seam
+        // head's bend from the cache, so no render update is needed).
         const neighborBelt = this.game.querySingle("GetBelt", {id: upstreamNeighbor});
         if (neighborBelt == null) {
-            this.game.publishEventNow(new BeltUpdateEvent(seamBelt.x, seamBelt.y, loopHead, null, null));
             return;
         }
         const upstreamHead = this._getBeltPathHead(upstreamNeighbor);
@@ -899,12 +963,6 @@ export class BeltMod extends AbstractMod {
         if (created) {
             this._populateBeltPathPorts(childId);
         }
-
-        // The child lost its upstream parent, so its bend is now straight. Notify
-        // clients (null parent → straight) so its sprite is re-rendered, mirroring
-        // the BeltUpdateEvent a re-link publishes when a parent changes. The child's
-        // tile is immutable, so it's reused from the DetachChild row — no re-query.
-        this.game.publishEventNow(new BeltUpdateEvent(child.x, child.y, childId, null, null));
 
         // The orphaned belts now form their own path; announce its composition under
         // the new head (mirrors _finalizeParentPath) so clients tracking paths re-key
@@ -1111,10 +1169,7 @@ export class BeltMod extends AbstractMod {
      * @param {{x: number, y: number, direction: number, type: number}} options
      */
     _publishBeltInsert(id, options) {
-        const parent = this.game.querySingle("GetBeltParent", {id});
-        const parentX = parent === null ? null : parent.x;
-        const parentY = parent === null ? null : parent.y;
-        this.game.publishEventNow(new BeltInsertEvent(options.x, options.y, id, options.direction, options.type, parentX, parentY));
+        this.game.publishEventNow(new BeltInsertEvent(options.x, options.y, id, options.direction, options.type));
     }
 
     /**
@@ -1224,6 +1279,28 @@ export class BeltMod extends AbstractMod {
     }
 
     /**
+     * Re-adopts the path's out-port from its (new) tail's downstream in-port, replacing the
+     * stale out-port a tail extension left behind. Only when the downstream is a non-belt
+     * object's in-port (a belt downstream is a child merge, handled elsewhere); a tail feeding
+     * nothing keeps its fresh out-port.
+     * @private
+     * @param {BigInt} head
+     */
+    _adoptTailOutPort(head) {
+        const tail = this.game.querySingle("GetTail", {id: head});
+        if (tail === null) {
+            return;
+        }
+        const adopted = Object.values(downstreamPorts(this.game, "Belt", tail))[0];
+        if (!adopted || this.game.queryScalar("GetBeltPathPortOwner", {id: adopted})) {
+            return;
+        }
+        const inPort = this.game.queryScalar("GetPathInPort", {id: head});
+        this.game.exec("DeleteOutPort", {id: head});
+        this.game.exec("UpdateBeltPathPorts", {id: head, inPort, outPort: adopted});
+    }
+
+    /**
      * Collapses a loop's two seam ports into one shared port. A loop's tail belt feeds its
      * own head, so the head's in-port and the tail's out-port land at the same boundary as
      * distinct rows; sharing one port lets the popped lead item re-ingest, so items
@@ -1235,12 +1312,12 @@ export class BeltMod extends AbstractMod {
         const headBelt = this.game.querySingle("GetBelt", {id: head});
         const tail = this.game.querySingle("GetTail", {id: head});
         if (headBelt === null || tail === null) {
-            return null;
+            return;
         }
         // A loop only when the tail belt physically feeds the head's tile.
         if (tail.x + Direction.dx(tail.direction) !== headBelt.x
             || tail.y + Direction.dy(tail.direction) !== headBelt.y) {
-            return null;
+            return;
         }
 
         // Share one port for both ends so the popped lead item re-ingests (items circulate).
@@ -1249,23 +1326,6 @@ export class BeltMod extends AbstractMod {
         if (inPort !== null && outPort !== null && inPort !== outPort) {
             this.game.exec("DeleteOutPort", {id: head});
             this.game.exec("UpdateBeltPathPorts", {id: head, inPort, outPort: inPort});
-        }
-        return tail;
-    }
-
-    /**
-     * Re-bends a loop's seam head toward the tail that physically feeds it. Its parent is
-     * nulled to break the path cycle, so the client would otherwise render it straight.
-     * Must run once the head belt has reached the client (after its own insert, when the
-     * head is the newly-placed belt).
-     * @private
-     * @param {BigInt} head
-     * @param {{x: number, y: number}} tail
-     */
-    _publishLoopSeamBend(head, tail) {
-        const headBelt = this.game.querySingle("GetBelt", {id: head});
-        if (headBelt !== null) {
-            this.game.publishEventNow(new BeltUpdateEvent(headBelt.x, headBelt.y, head, tail.x, tail.y));
         }
     }
 }

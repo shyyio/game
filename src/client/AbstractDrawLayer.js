@@ -17,6 +17,12 @@ export class AbstractDrawLayer extends Container {
          * @type {ClientViewport|null}
          */
         this.viewport = null;
+        /**
+         * The shared cross-mod object index, injected by Client.init, for layers that derive
+         * rendering from neighbouring objects.
+         * @type {ClientCache|null}
+         */
+        this.cache = null;
     }
 
     /**

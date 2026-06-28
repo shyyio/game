@@ -21,6 +21,8 @@ export const BIGINT_COLS = new Set([
     // Port ids — BigInt to match the id carried by port events.
     "in_port_id",
     "out_port_id",
+    "out_port_a_id",
+    "out_port_b_id",
     // Belt/path id aliases from GetBeltCreateContext; kept BigInt so id comparisons
     // (e.g. child_id vs head, child_path vs child_id) don't mismatch BigInt vs Number.
     "child_id",

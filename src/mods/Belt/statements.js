@@ -115,16 +115,6 @@ function upstreamParentSql({from, col, x, y, direction, placedType}) {
                 END`;
 }
 
-// All four input-port lookups are identical: the belt at (@x, @y) is its own path
-// head, so its in_port is read directly. portUtils dispatches by direction name
-// (GetInPort${dir}), so all four keys must resolve to this statement.
-const GetInPortAtTile = `
-                SELECT in_port_id FROM BeltPath
-                INNER JOIN Belt ON Belt.id = BeltPath.id
-                WHERE Belt.x = @x AND Belt.y = @y
-                LIMIT 1;
-            `;
-
 // The tail belt of a path is its lowest-path_index member. Shared so the standalone
 // GetPathTailBelt op and MaterializeBeltPath's new_tail can never disagree.
 const PATH_TAIL_BELT_SQL = "SELECT id FROM Belt WHERE path_id = CAST(@id AS INT) ORDER BY path_index LIMIT 1";
@@ -488,17 +478,16 @@ export const beltStatements = {
         WHERE id = (SELECT tail_id FROM BeltPath WHERE id = CAST(@id AS INT));
     `,
 
-    GetBeltParent: `
-        SELECT parent.id, parent.x, parent.y
-        FROM Belt
-            INNER JOIN Belt parent ON parent.id = Belt.parent_id
-        WHERE Belt.id = CAST(@id AS INT)
-        LIMIT 1;
+    // Every splitter in a chunk, to sync a newly-subscribed client.
+    GetSplittersInChunk: `
+        SELECT id, x, y, direction, out_port_a_id, out_port_b_id
+        FROM Splitter INDEXED BY Splitter_chunk
+        WHERE chunk = @chunk;
     `,
 
     InsertBelt: `
-        INSERT INTO Belt (parent_id, x, y, type, direction)
-        VALUES (${upstreamParentSql({
+        INSERT INTO Belt (id, parent_id, x, y, type, direction)
+        VALUES (CAST(@id AS INT), ${upstreamParentSql({
             from: "Belt",
             col: "",
             x: "@x",
@@ -511,10 +500,10 @@ export const beltStatements = {
     `,
 
     InsertSplitter: `
-        INSERT INTO Splitter (x, y, direction,
+        INSERT INTO Splitter (id, x, y, direction,
                               in_port_a_id, in_port_b_id, out_port_a_id, out_port_b_id,
                               int_port_a_id, int_port_b_id)
-        VALUES (@x, @y, @direction,
+        VALUES (CAST(@id AS INT), @x, @y, @direction,
                 @in_port_a_id, @in_port_b_id, @out_port_a_id, @out_port_b_id,
                 @int_port_a_id, @int_port_b_id)
         RETURNING id;
@@ -603,7 +592,8 @@ export const beltStatements = {
     DeleteInPort: `
         DELETE FROM Port
         WHERE id = (SELECT in_port_id FROM BeltPath WHERE id = CAST(@id AS INT))
-          AND NOT EXISTS (SELECT 1 FROM BeltPath WHERE out_port_id = Port.id);
+          AND NOT EXISTS (SELECT 1 FROM BeltPath WHERE out_port_id = Port.id)
+          AND NOT EXISTS (SELECT 1 FROM Splitter WHERE Port.id IN (out_port_a_id, out_port_b_id));
     `,
 
     UpdateInPort: `
@@ -747,32 +737,6 @@ export const beltStatements = {
     `,
 
     GetBeltPathPortOwner: `SELECT id FROM BeltPath WHERE in_port_id = CAST(@id AS INT);`,
-
-    GetOutPortUp: `
-        SELECT out_port_id FROM BeltPath
-        INNER JOIN Belt ON Belt.id = BeltPath.tail_id
-        WHERE Belt.x = @x AND Belt.y = @y + 1 AND Belt.direction = ${UP};
-    `,
-    GetOutPortRight: `
-        SELECT out_port_id FROM BeltPath
-        INNER JOIN Belt ON Belt.id = BeltPath.tail_id
-        WHERE Belt.x = @x - 1 AND Belt.y = @y AND Belt.direction = ${RIGHT};
-    `,
-    GetOutPortDown: `
-        SELECT out_port_id FROM BeltPath
-        INNER JOIN Belt ON Belt.id = BeltPath.tail_id
-        WHERE Belt.x = @x AND Belt.y = @y - 1 AND Belt.direction = ${DOWN};
-    `,
-    GetOutPortLeft: `
-        SELECT out_port_id FROM BeltPath
-        INNER JOIN Belt ON Belt.id = BeltPath.tail_id
-        WHERE Belt.x = @x + 1 AND Belt.y = @y AND Belt.direction = ${LEFT};
-    `,
-
-    GetInPortUp: GetInPortAtTile,
-    GetInPortRight: GetInPortAtTile,
-    GetInPortDown: GetInPortAtTile,
-    GetInPortLeft: GetInPortAtTile,
 
     DeletePath: `
         DELETE FROM BeltPath

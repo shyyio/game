@@ -1,5 +1,8 @@
 import {TickOp, TickPhase} from "@/common/core.js";
-import {CHUNK_SIZE, GameSettingsKey} from "@/common/constants.js";
+import {CHUNK_SIZE, GameSettingsKey, Direction} from "@/common/constants.js";
+
+// Statement-name suffix per direction (GetInPortUp, GetOutPortRight, ...), indexed by Direction.
+const DIRECTION_NAMES = ["Up", "Right", "Down", "Left"];
 
 // The chunk coordinate (floored division, matching JS Math.floor for negatives) of a
 // tile-coordinate column.
@@ -18,6 +21,10 @@ const CoreStatements = {
     GetGameSettings: `SELECT key, value FROM GameSettings;`,
 
     InsertPort: "INSERT INTO Port DEFAULT VALUES RETURNING id;",
+
+    // Allocates the next global object id (see the ObjectId table). Mods call this and insert
+    // the object with the returned id, instead of relying on per-table autoincrement.
+    AllocateObjectId: "UPDATE ObjectId SET next = next + 1 RETURNING next;",
 
     GetSessionEvents: `
         SELECT ev.type, ev.id, ev.a, ev.b, ev.c,
@@ -48,6 +55,13 @@ const CoreSchema = `
         key INTEGER PRIMARY KEY,
         value INT NOT NULL
     );
+
+    -- A single global id sequence shared by every placeable object (belts, splitters, …), so
+    -- object ids are unique across types and a later id means a later placement. Comparing ids
+    -- across object types is how connections resolve "most recently placed wins". (A future
+    -- sharded build can band this per region: region id high bits + sequence low bits.)
+    CREATE TABLE ObjectId (next INTEGER NOT NULL);
+    INSERT INTO ObjectId (next) VALUES (0);
 
     CREATE TABLE Port (
         id INTEGER PRIMARY KEY,
@@ -289,6 +303,55 @@ export class DatabaseSchema {
             this._prepareTick(this.modRegistry.definitions, phase);
         });
 
+        this._preparePortQueries(this.modRegistry.definitions);
+        this._prepareOccupancyQuery(this.modRegistry.definitions);
+    }
+
+    /**
+     * Prepares IsOccupied(@x, @y, @layer): the UNION of every ObjectDefinition's occupancy
+     * fragments, returning 1 if any object covers that tile on that layer. Placement checks
+     * each of a new object's footprint cells against it to reject overlaps (block + warn) —
+     * a backstop against malicious or desynced clients, not a hot path.
+     * @param {Object<string, ObjectDefinition>} definitions
+     */
+    _prepareOccupancyQuery(definitions) {
+        const clauses = [];
+        Object.entries(definitions).forEach(([table, definition]) => {
+            clauses.push(...definition.occupancyLookups(table));
+        });
+        const body = clauses.length === 0 ? "SELECT 1 WHERE 0" : clauses.join("\nUNION ALL\n");
+        this._prepare("IsOccupied", `${body}\nLIMIT 1;`);
+    }
+
+    /**
+     * Prepares the position-based port lookups (GetInPort{dir} / GetOutPort{dir}) for wiring
+     * a placed object to its neighbours: each UNIONs every ObjectDefinition's fragments, so a
+     * placement sees any object type's ports at a tile. Player-placement path only, not hot.
+     * @param {Object<string, ObjectDefinition>} definitions
+     */
+    _preparePortQueries(definitions) {
+        DIRECTION_NAMES.forEach((name, direction) => {
+            this._prepare(`GetInPort${name}`, this._portQuery(definitions, "inputPorts", direction));
+            this._prepare(`GetOutPort${name}`, this._portQuery(definitions, "outputPorts", direction));
+        });
+    }
+
+    /**
+     * @param {Object<string, ObjectDefinition>} definitions
+     * @param {("inputPorts"|"outputPorts")} portKind
+     * @param {Direction} direction
+     * @returns {string}
+     */
+    _portQuery(definitions, portKind, direction) {
+        const clauses = [];
+        Object.entries(definitions).forEach(([table, definition]) => {
+            clauses.push(...definition.portLookups(table, portKind, direction));
+        });
+        // No object has a port of this kind: match nothing.
+        if (clauses.length === 0) {
+            return "SELECT NULL AS id WHERE 0;";
+        }
+        return `${clauses.join("\nUNION ALL\n")};`;
     }
 
     /**

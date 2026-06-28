@@ -8,9 +8,11 @@ import {CreateBeltMessage, DeleteBeltMessage} from "./messages.js";
 import {
     BeltInsertEvent,
     BeltSyncEvent,
-    BeltUpdateEvent,
     BeltDeleteEvent,
     BeltPathRecalculateEvent,
+    SplitterInsertEvent,
+    SplitterSyncEvent,
+    SplitterDeleteEvent,
 } from "./events.js";
 
 function registry() {
@@ -48,13 +50,17 @@ test("Round-trips belt messages, including null and BigInt fields", () => {
 
 test("Round-trips belt events, preserving exact BigInt ids", () => {
     const reg = registry();
-    roundTrip(reg, new BeltInsertEvent(1, 2, 99n, 3, 0, null, null), BeltInsertEvent);
-    roundTrip(reg, new BeltInsertEvent(4, 5, 100n, 1, 2, 4, 5), BeltInsertEvent);
-    roundTrip(reg, new BeltSyncEvent(4, 5, 100n, 1, 2, 4, 5), BeltSyncEvent);
-    roundTrip(reg, new BeltUpdateEvent(1, 2, 99n, 4, 5), BeltUpdateEvent);
-    roundTrip(reg, new BeltUpdateEvent(1, 2, 99n, null, null), BeltUpdateEvent);
+    roundTrip(reg, new BeltInsertEvent(1, 2, 99n, 3, 0), BeltInsertEvent);
+    roundTrip(reg, new BeltSyncEvent(4, 5, 100n, 1, 2), BeltSyncEvent);
     roundTrip(reg, new BeltDeleteEvent(1, 2, 99n), BeltDeleteEvent);
     roundTrip(reg, new BeltPathRecalculateEvent(1, 2, [1n, 2n, 9999999999999999n]), BeltPathRecalculateEvent);
+});
+
+test("Round-trips splitter events, preserving exact BigInt port ids", () => {
+    const reg = registry();
+    roundTrip(reg, new SplitterInsertEvent(5, 6, 99n, 1, 7n, 8n), SplitterInsertEvent);
+    roundTrip(reg, new SplitterSyncEvent(5, 6, 100n, 2, 9999999999999999n, 8n), SplitterSyncEvent);
+    roundTrip(reg, new SplitterDeleteEvent(5, 6, 99n), SplitterDeleteEvent);
 });
 
 test("Decoded belt id is an exact, lossless BigInt", () => {
