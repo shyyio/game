@@ -446,9 +446,15 @@ export class BeltMod extends AbstractMod {
         if (child !== null || head !== id) {
             // A folding child's standalone stash omits the one boundary slot that becomes
             // internal once it joins the head's path; pad it so the head's items keep their
-            // distance from the out-port instead of sliding a slot toward the sink.
+            // distance from the out-port instead of sliding a slot toward the sink. An item
+            // resting in the child's (now interior) in-port rides that slot rather than
+            // vanishing with the discarded port.
             if (childFoldsIntoHead) {
-                this.game.exec("StashGapSlot", {id});
+                if (this.game.queryScalar("ChildHasInputItem", {id: child.id}) !== null) {
+                    this.game.exec("StashChildInputItem", {id, child: child.id});
+                } else {
+                    this.game.exec("StashGapSlot", {id});
+                }
             }
             // head !== id means the new belt extends the path's output side (a tail
             // extension, or a merge linking the tail onto a downstream belt), so it sits

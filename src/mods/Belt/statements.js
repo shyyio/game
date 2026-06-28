@@ -173,6 +173,29 @@ export const beltStatements = {
         INSERT INTO StashedItem (belt_id, type) VALUES (CAST(@id AS INT), ${ITEM_TYPE_GAP});
     `,
 
+    // Whether the child belt's path holds an item resting in its in-port.
+    ChildHasInputItem: `
+        SELECT 1
+        FROM Belt
+            INNER JOIN BeltPath ON BeltPath.id = Belt.path_id
+            INNER JOIN Port p ON p.id = BeltPath.in_port_id
+        WHERE Belt.id = CAST(@id AS INT)
+          AND p.item IS NOT NULL;
+    `,
+
+    // Stashes a folding child's resting in-port item onto the boundary slot its standalone
+    // stash omits, so it re-materializes on the child's input edge instead of vanishing with
+    // the discarded interior in-port. Replaces the StashGapSlot pad when that item is present.
+    StashChildInputItem: `
+        INSERT INTO StashedItem (belt_id, type)
+        SELECT CAST(@id AS INT), p.item
+        FROM Belt
+            INNER JOIN BeltPath ON BeltPath.id = Belt.path_id
+            INNER JOIN Port p ON p.id = BeltPath.in_port_id
+        WHERE Belt.id = CAST(@child AS INT)
+          AND p.item IS NOT NULL;
+    `,
+
     UnStashOutputItem: `
         UPDATE Port
         SET item = StashedOutputItem.type

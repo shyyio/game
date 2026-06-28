@@ -549,6 +549,28 @@ test("Keeps an in-flight item on the source belt when a gap is filled to merge t
     assert.equal(game.rawScalar("SELECT length FROM BeltPathItem WHERE type=0"), 4);
 });
 
+test("Keeps an item resting in the sink belt's in-port when a gap is filled to merge two paths", async () => {
+    const game = await setup();
+    // A source belt (12,6) and a detached downstream belt (12,4), one-tile gap at (12,5).
+    createBelt(game, GameObject.BELT, {x: 12, y: 6, direction: Direction.UP});
+    createBelt(game, GameObject.BELT, {x: 12, y: 4, direction: Direction.UP});
+
+    // An item rests in the downstream belt's in-port — physically the (12,5)→(12,4) boundary.
+    game.rawExec("UPDATE Port SET item=1 WHERE id=(SELECT in_port_id FROM BeltPath WHERE tail_id=2)");
+
+    // Fill the gap, folding the downstream belt's standalone path into the source's.
+    createBelt(game, GameObject.BELT, {x: 12, y: 5, direction: Direction.UP});
+
+    // The item survives, re-materialized on the sink belt's input half: one empty slot
+    // (the output-most row) sits below it, the rest of the path empty above. It must not
+    // vanish with the discarded interior in-port.
+    assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPathItem WHERE type!=0"), 1);
+    assert.equal(game.rawScalar("SELECT type FROM BeltPathItem WHERE id=(SELECT next_item_id FROM BeltPath)"), 1);
+    assert.equal(game.rawScalar("SELECT length FROM BeltPathItem WHERE id=(SELECT next_item_id FROM BeltPath)"), 1);
+    assert.equal(game.rawScalar("SELECT length FROM BeltPathItem WHERE id=(SELECT next_gap_id FROM BeltPath)"), 1);
+    assert.equal(game.rawScalar("SELECT head_gap FROM BeltPath"), 0);
+});
+
 test("Re-ingests a resting output item onto the new tail when the path is extended", async () => {
     const game = await setup();
     createBelt(game, GameObject.BELT, {x: 0, y: 0, direction: Direction.RIGHT});
