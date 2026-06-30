@@ -1,14 +1,9 @@
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
-import {Sprite} from "pixi.js";
-import {TILE_SIZE} from "@/client/constants.js";
-
-// The hover-highlight sprites: the primary one over the hovered object, and the
-// alternate over a related object (e.g. the ramp the hovered ramp tunnels to).
-const INSPECT_TEXTURE = "inspect/1x1";
-const INSPECT_ALT_TEXTURE = "inspect/1x1-alt";
+import {EasySprite} from "@/client/EasySprite.js";
 
 /**
- * Shared layer that highlights tiles a mod marks on hover; driven imperatively by mods.
+ * Shared layer that highlights objects a mod marks on hover; driven imperatively by mods with
+ * InspectHighlights.
  */
 export class InspectLayer extends AbstractDrawLayer {
 
@@ -27,16 +22,15 @@ export class InspectLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Highlights the given tiles (`alt: true` uses the alternate texture), replacing any previous; empty clears.
-     * @param {{x: number, y: number, alt?: boolean}[]} tiles
+     * Highlights the given objects, replacing any previous (empty clears). Each is sized/rotated to its
+     * geometry — a 1x2 splitter draws a single 1x2 highlight; `alt` uses the alternate texture.
+     * @param {InspectHighlight[]} highlights
      */
-    show(tiles) {
+    show(highlights) {
         this.clear();
-        tiles.forEach(tile => {
-            const texture = tile.alt === true ? INSPECT_ALT_TEXTURE : INSPECT_TEXTURE;
-            const sprite = new Sprite(this.textureRegistry.get(texture));
-            sprite.anchor = 0.5;
-            sprite.position.set(tile.x * TILE_SIZE + TILE_SIZE / 2, tile.y * TILE_SIZE + TILE_SIZE / 2);
+        highlights.forEach(highlight => {
+            const texture = this.textureRegistry.require(`inspect/${highlight.definition.geometryName}${highlight.alt ? "-alt" : ""}`);
+            const sprite = new EasySprite(0n, highlight.tileX, highlight.tileY, highlight.direction, texture, highlight.definition);
             this.addChild(sprite);
             this._sprites.push(sprite);
         });

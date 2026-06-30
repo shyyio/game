@@ -115,12 +115,12 @@ export const beltSchema = `
         direction INT NOT NULL,
         chunk TEXT GENERATED ALWAYS AS (${CHUNK_KEY_SQL}) VIRTUAL,
 
-        in_port_a_id  INT REFERENCES Port,
-        in_port_b_id  INT REFERENCES Port,
-        out_port_a_id INT REFERENCES Port,
-        out_port_b_id INT REFERENCES Port,
-        int_port_a_id INT REFERENCES Port,
-        int_port_b_id INT REFERENCES Port,
+        in_a_id  INT REFERENCES Port,
+        in_b_id  INT REFERENCES Port,
+        out_a_id INT REFERENCES Port,
+        out_b_id INT REFERENCES Port,
+        int_a_id INT REFERENCES Port,
+        int_b_id INT REFERENCES Port,
 
         state INT NOT NULL DEFAULT 0
             CHECK (state = 0 OR state = 1)
@@ -204,25 +204,6 @@ export const beltTempSchema = `
     -- RLE of UPSERTs.
     CREATE TEMPORARY TABLE ResyncItemPath (
         path_id INTEGER PRIMARY KEY
-    );
-
-    -- Last item shown in each watched out-port (with the path head tile for routing
-    -- clears), so the tick emits only out-ports whose item changed. Global to the sim
-    -- — fine single-session; a multi-session build would key it per session.
-    CREATE TEMPORARY TABLE OutPortItemShadow (
-        port_id INTEGER PRIMARY KEY,
-        item INT,
-        x INT,
-        y INT
-    );
-
-    -- This tick's watched filled out-ports (port, item, head tile), gathered once for
-    -- the SET diff, CLEAR, and shadow rebuild to share.
-    CREATE TEMPORARY TABLE ViewedOutPortItem (
-        port_id INTEGER PRIMARY KEY,
-        item INT,
-        x INT,
-        y INT
     );
 
     -- Single-row marker holding the max BeltPathItem id before InsertItem runs, so

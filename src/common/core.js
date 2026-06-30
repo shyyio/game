@@ -1,5 +1,6 @@
-import {rotate, chunkKey} from "@/common/util.js";
+import {rotate} from "@/common/util.js";
 import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
+import {ObjectGeometries} from "@/common/ObjectGeometry.js";
 
 export class TickOp {
 
@@ -24,9 +25,12 @@ export class PortDefinition {
     /**
      * @param name {string}
      * @param [vec] {Vec|null}
+     * @param [render] {boolean} the engine captures this out-port's resting item into ViewedPortItem;
+     *     opt out for virtual ports or out-ports captured manually
      */
-    constructor(name, vec=null) {
+    constructor(name, vec=null, render=true) {
         this.name = name;
+        this.render = render;
         if (vec !== null) {
             this.x = vec.x;
             this.y = vec.y;
@@ -36,6 +40,14 @@ export class PortDefinition {
             this.y = null;
             this.direction = null;
         }
+    }
+
+    /**
+     * The SQL column backing this port: its name with an `_id` suffix (it holds a Port id).
+     * @returns {string}
+     */
+    get column() {
+        return `${this.name}_id`;
     }
 }
 
@@ -84,14 +96,24 @@ export const TickPhase = {
     RESOLVE_TRANSFERS: 2,
 
     /**
+     * Clear consumed source ports before the producers (belts) refill them in POST_RESOLVE.
+     */
+    CONSUME_INPUTS: 3,
+
+    /**
      * Executed after transfer intents
      */
-    POST_RESOLVE: 3,
+    POST_RESOLVE: 4,
+
+    /**
+     * Write resolved items into destination ports after the consumers ingested in POST_RESOLVE.
+     */
+    PRODUCE_OUTPUTS: 5,
 
     /**
      * (internal) Flush transfers to Port
      */
-    COMMIT_TRANSFERS: 4,
+    COMMIT_TRANSFERS: 6,
 }
 
 export class MiniMenuEntry {
@@ -111,60 +133,65 @@ export class MiniMenuEntry {
 export class ObjectDefinition {
 
     /**
-     * @param inputPorts {PortDefinition[]}
-     * @param outputPorts {PortDefinition[]}
-     * @param internalPorts {PortDefinition[]}
-     * @param size {Vec}
-     * @param tickPhases {Object.<TickPhase, TickOp[]>}
+     * @param config {object}
+     * @param config.table {string} the table instances of this type live in (also the definitions key)
+     * @param config.inputPorts {PortDefinition[]}
+     * @param config.outputPorts {PortDefinition[]}
+     * @param config.internalPorts {PortDefinition[]}
+     * @param config.geometry {string} a named geometry (key of ObjectGeometries, e.g. "1x1", "1x2")
+     * @param [config.tickPhases] {Object.<TickPhase, TickOp[]>}
+     * @param [config.renderConnections] {boolean} whether the shared ConnectionDrawLayer draws animated
+     *     stubs at this object's connected ports (belts render their own bends instead)
+     * @param [config.textureName] {string|null} the object sprite's texture, used by the EasyObject layers
+     * @param [config.label] {string|null} the placement tool's label
      */
-    constructor(inputPorts, outputPorts, internalPorts, size, tickPhases) {
+    constructor({
+        table,
+        inputPorts,
+        outputPorts,
+        internalPorts,
+        geometry,
+        tickPhases={},
+        renderConnections=false,
+        textureName=null,
+        label=null,
+    }) {
+        if (ObjectGeometries[geometry] === undefined) {
+            throw new Error(`Unknown object geometry "${geometry}"`);
+        }
+        this.table = table;
         this.inputPorts = inputPorts;
         this.outputPorts = outputPorts;
         this.internalPorts = internalPorts;
-        this.size = size;
-        this.tickPhases = tickPhases || {};
+        // The named geometry; the `geometry` getter resolves it to the ObjectGeometry.
+        this.geometryName = geometry;
+        this.tickPhases = tickPhases;
+        this.renderConnections = renderConnections;
+        this.textureName = textureName;
+        this.label = label;
         // The occupancy layer this object sits on. Objects on different layers coexist on a
         // tile; objects on the same layer collide. Multi-layer objects override occupancyLookups.
         this.occupancyLayer = OCCUPANCY_LAYER_SURFACE;
+        // Stable numeric identity assigned by ModRegistry (registration order); the wire carries it
+        // and the client cache keys off this definition. Null until the registry assigns it.
+        this.typeId = null;
+        // Extra non-port columns for the table (e.g. a recipe's inventory/cooldown), appended by
+        // EasyObjectPlacement.
+        this.stateColumns = [];
     }
 
     /**
-     * The tile offsets this object covers when placed facing `direction`, derived from its
-     * size (a single tile for a 0-size object). Add the base tile to get world tiles.
-     * @param {Direction} direction
-     * @returns {{x: number, y: number}[]}
+     * The geometry (tiles/corner/spansChunks) for this object's named size.
+     * @returns {ObjectGeometry}
      */
-    footprint(direction) {
-        const corner = rotate(this.size, direction);
-        const stepX = Math.sign(corner.x);
-        const stepY = Math.sign(corner.y);
-        const cells = [];
-        for (let i = 0; i <= Math.abs(corner.x); i += 1) {
-            for (let j = 0; j <= Math.abs(corner.y); j += 1) {
-                cells.push({x: i * stepX, y: j * stepY});
-            }
-        }
-        return cells;
-    }
-
-    /**
-     * Whether this object's footprint at (tileX, tileY) facing `direction` crosses a chunk
-     * boundary. Placement rejects it, so every object lives in exactly one chunk (chunk-keyed
-     * sync and occupancy assume a single owning chunk).
-     * @param {number} tileX
-     * @param {number} tileY
-     * @param {Direction} direction
-     * @returns {boolean}
-     */
-    footprintSpansChunks(tileX, tileY, direction) {
-        const base = chunkKey(tileX, tileY);
-        return this.footprint(direction).some(cell => chunkKey(tileX + cell.x, tileY + cell.y) !== base);
+    get geometry() {
+        return ObjectGeometries[this.geometryName];
     }
 
     /**
      * SQL SELECT-1 fragments matching when this object covers tile (@x, @y) on layer @layer,
      * UNIONed by the engine into IsOccupied for placement collision. The default checks the
-     * size-derived footprint in every orientation against this object's single layer; objects
+     * size-derived geometry in every orientation against this object's single layer; objects
      * whose layer depends on row state override this.
      * @param {string} table - this object's table name
      * @returns {string[]}
@@ -172,7 +199,7 @@ export class ObjectDefinition {
     occupancyLookups(table) {
         const conditions = [];
         [Direction.UP, Direction.RIGHT, Direction.DOWN, Direction.LEFT].forEach(direction => {
-            this.footprint(direction).forEach(cell => {
+            this.geometry.tiles(direction).forEach(cell => {
                 conditions.push(`(${table}.direction = ${direction} AND ${table}.x = @x - ${cell.x} AND ${table}.y = @y - ${cell.y})`);
             });
         });
@@ -193,13 +220,50 @@ export class ObjectDefinition {
         return this[portKind].map(port => {
             const offset = rotate(port, direction);
             return `
-                SELECT ${table}.${port.name} AS id
+                SELECT ${table}.${port.column} AS id
                 FROM ${table}
-                    INNER JOIN Port ON Port.id = ${table}.${port.name}
+                    INNER JOIN Port ON Port.id = ${table}.${port.column}
                 WHERE ${table}.direction = ${direction}
                   AND ${table}.x = @x - ${offset.x}
                   AND ${table}.y = @y - ${offset.y}`;
         });
+    }
+
+    /**
+     * SQL SELECT-1 fragments matching when this object references the outer Port.id through a port
+     * column — UNIONed into the {{PORT_REFERENCED}} GC guard. Override if ports live elsewhere.
+     * @param {string} table
+     * @returns {string[]}
+     */
+    portReferenceLookups(table) {
+        return this._portReferenceFragment(table, [
+            ...this.inputPorts,
+            ...this.outputPorts,
+            ...this.internalPorts,
+        ]);
+    }
+
+    /**
+     * As portReferenceLookups but for OUTPUT ports only — the {{PORT_OUTPUT_REFERENCED}} guard.
+     * @param {string} table
+     * @returns {string[]}
+     */
+    outputPortReferenceLookups(table) {
+        return this._portReferenceFragment(table, this.outputPorts);
+    }
+
+    /**
+     * @private
+     * @param {string} table
+     * @param {PortDefinition[]} ports
+     * @returns {string[]}
+     */
+    _portReferenceFragment(table, ports) {
+        if (ports.length === 0) {
+            return [];
+        }
+        const conditions = ports.map(port => `${table}.${port.column} = Port.id`).join(" OR ");
+        return [`SELECT 1 FROM ${table} WHERE ${conditions}`];
     }
 }
 
@@ -263,19 +327,17 @@ export class AbstractMod {
     }
 
     /**
-     * @param {AbstractMessage} message
+     * Item type -> texture name, for the shared item layer.
+     * @returns {Object.<number, string>}
      */
-    onMessage(message) {
-
+    get itemTextures() {
+        return {};
     }
 
     /**
-     * Client-side init, called once by Client.init, so a mod can grab shared client surfaces
-     * (e.g. the object index) for use in hooks that aren't passed `client`.
-     * @param {Client} client
-     * @returns {void}
+     * @param {AbstractMessage} message
      */
-    clientInit(client) {
+    onMessage(message) {
 
     }
 
@@ -289,13 +351,14 @@ export class AbstractMod {
     }
 
     /**
-     * Client-side inspect hook (null coords = cleared); returns the tiles to highlight
+     * Client-side inspect hook (null coords = cleared); returns the objects to highlight
      * and may update the mod's own draw layers.
      * @param {number|null} tileX
      * @param {number|null} tileY
-     * @returns {{x: number, y: number, alt?: boolean}[]}
+     * @param {Client} client
+     * @returns {InspectHighlight[]}
      */
-    onInspect(tileX, tileY) {
+    onInspect(tileX, tileY, client) {
         return [];
     }
 
@@ -304,7 +367,7 @@ export class AbstractMod {
      * @param {string} chunk - a chunk key that just entered a viewport
      * @returns {AbstractEvent[]}
      */
-    collectChunkSync(chunk) {
+    chunkSyncEvents(chunk) {
         return [];
     }
 
@@ -313,9 +376,10 @@ export class AbstractMod {
      * @param {number} tileX
      * @param {number} tileY
      * @param {AbstractSession} session
+     * @param {Client} client
      * @returns {MiniMenuEntry[]}
      */
-    miniMenuContextEntries(tileX, tileY, session) {
+    miniMenuEntries(tileX, tileY, session, client) {
         return [];
     }
 

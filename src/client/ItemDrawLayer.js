@@ -1,17 +1,28 @@
-import {Sprite, Texture, TILE_SIZE, Direction, AbstractDrawLayer} from "@/sdk/client.js";
+import {Sprite, Texture} from "pixi.js";
+import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
+import {TILE_SIZE} from "@/client/constants.js";
+import {Direction, BUFFERED_EVENT_TYPE_PORT_ITEM_SET, BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR} from "@/common/constants.js";
+import {rotate} from "@/common/util.js";
+import {BufferedEvent} from "@/common/BufferedEvent.js";
 
-// Hard-coded item sprite for now.
-const ITEM_TEXTURE = "items/3";
+// Item sprites resting in out-ports share this layer with belt-path items; their keys are
+// namespaced from the path-item row-id keys so the two can't collide.
+export const PORT_SPRITE_KEY = portId => `port:${portId}`;
+
+// Texture for an item type with no mod-supplied mapping.
+const DEFAULT_ITEM_TEXTURE = "items/3";
 
 // Items glide to each new position over this long (the game tick is 600ms, so they
 // arrive and briefly rest before the next move).
 const MOVE_DURATION_MS = 190;
 
 /**
- * Renders belt items, keyed by item id. Driven imperatively by BeltClientMod, which
- * resolves the tick's item events to a belt tile.
+ * The single shared item layer. Renders item sprites keyed by id, with glide. Mods that
+ * compute item positions (belts) drive it imperatively; resting items in render-flagged
+ * out-ports are driven here from the PORT_ITEM_SET/CLEAR events, with the render tile derived
+ * from the shared object index and the owning object's PortDefinition.
  */
-export class BeltItemDrawLayer extends AbstractDrawLayer {
+export class ItemDrawLayer extends AbstractDrawLayer {
 
     constructor() {
         super();
@@ -22,6 +33,8 @@ export class BeltItemDrawLayer extends AbstractDrawLayer {
          * @private
          */
         this._items = {};
+        // Item type -> texture name, merged across mods and injected by Client.
+        this.itemTextures = {};
     }
 
     get layerIndex() {
@@ -33,16 +46,65 @@ export class BeltItemDrawLayer extends AbstractDrawLayer {
      * Hides items in map mode.
      * @param {boolean} value
      */
-    set lowRes(value) {
+    set mapMode(value) {
         this.visible = !value;
     }
 
     /**
-     * No-op: BeltClientMod drives this layer imperatively.
+     * Renders or clears a resting out-port item, deriving its tile from the object index;
+     * ignores ports not in the index (e.g. belt-path ports, which the belt mod drives).
      * @param {AbstractEvent} event
      * @returns {void}
      */
-    onEvent(event) {}
+    onEvent(event) {
+        if (!(event instanceof BufferedEvent)) {
+            return;
+        }
+        // A null placement means a port this layer doesn't own (a belt-path port, or a
+        // non-port event whose id isn't in the index) — leave it to the owning mod.
+        const placement = this._resolvePort(event.id);
+        if (placement === null) {
+            return;
+        }
+        if (event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_SET) {
+            this.moveItem(PORT_SPRITE_KEY(event.id), placement.tileX, placement.tileY, true, placement.sourceDir, Number(event.a));
+        } else if (event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR) {
+            this.removeItem(PORT_SPRITE_KEY(event.id));
+        }
+    }
+
+    /**
+     * The render tile for a port id, derived from its owning object's cached position/direction
+     * and the matching output PortDefinition (offset + facing rotated by the object). Null when
+     * the port isn't in the object index (another mod's port, or not yet cached).
+     * @param {BigInt} portId
+     * @returns {{tileX: number, tileY: number, sourceDir: Direction}|null}
+     * @private
+     */
+    _resolvePort(portId) {
+        const entry = this.cache.getByPort(portId);
+        if (entry === null) {
+            return null;
+        }
+        const portDef = entry.data.definition.outputPorts.find(port => port.name === entry.portName(portId));
+        const world = rotate(portDef, entry.data.direction);
+        return {
+            tileX: entry.tileX + world.x,
+            tileY: entry.tileY + world.y,
+            sourceDir: Direction.invert(world.direction),
+        };
+    }
+
+    /**
+     * Drops the resting item sprites of a removed object (driven by the cache's removal hook).
+     * @param {CacheEntry} entry - the removed cache entry
+     * @returns {void}
+     */
+    dropPorts(entry) {
+        Object.values(entry.ports).forEach(portId => {
+            this.removeItem(PORT_SPRITE_KEY(portId));
+        });
+    }
 
     /**
      * Advances each item's glide toward its target by the frame's elapsed time.
@@ -54,22 +116,39 @@ export class BeltItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Places or repositions a sprite at a belt tile and half-tile offset.
+     * Places or repositions a sprite at a belt tile and half-tile offset, with the texture for
+     * its item type.
      * @param {BigInt|string} key - sprite key (row id for belt items, namespaced string for out-port items)
      * @param {number} tileX
      * @param {number} tileY
      * @param {boolean} halfTile
      * @param {Direction} sourceDir - toward the belt feeding this one (the input/bend edge)
+     * @param {number} type - item type, selecting the sprite texture
      * @param {boolean} [snap] - place at the target without animating (a re-sync)
      */
-    moveItem(key, tileX, tileY, halfTile, sourceDir, snap=false) {
+    moveItem(key, tileX, tileY, halfTile, sourceDir, type, snap=false) {
+        const texture = this._textureForType(type);
         let sprite = this._items[key];
         if (sprite === undefined) {
-            sprite = new ItemSprite(this.textureRegistry.get(ITEM_TEXTURE));
+            sprite = new ItemSprite(texture);
             this.addChild(sprite);
             this._items[key] = sprite;
+        } else if (sprite.texture !== texture) {
+            // The port now rests a different item type: swap the sprite's texture in place.
+            sprite.texture = texture;
         }
         sprite.moveTo(tileX, tileY, halfTile, sourceDir, snap);
+    }
+
+    /**
+     * The texture for an item type, or the default for an unmapped type.
+     * @param {number} type
+     * @returns {Texture}
+     * @private
+     */
+    _textureForType(type) {
+        const name = this.itemTextures[type] !== undefined ? this.itemTextures[type] : DEFAULT_ITEM_TEXTURE;
+        return this.textureRegistry.get(name);
     }
 
     /**

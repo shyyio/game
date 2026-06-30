@@ -10,7 +10,7 @@ const DIRECTION_NAMES = ["Up", "Right", "Down", "Left"];
  * @param {string} objectType
  * @param {Vec} vec
  * @param {boolean} [createMissing]
- * @returns {Object.<string, BigInt>} map of this object's input port name -> shared Port id
+ * @returns {Object.<string, BigInt>} map of this object's input port column -> shared Port id
  */
 export function upstreamPorts(game, objectType, vec, createMissing=false) {
     const ports = {};
@@ -24,9 +24,9 @@ export function upstreamPorts(game, objectType, vec, createMissing=false) {
         });
 
         if (port) {
-            ports[def.name] = port;
+            ports[def.column] = port;
         } else if (createMissing) {
-            ports[def.name] = game.queryScalar("InsertPort");
+            ports[def.column] = game.queryScalar("InsertPort");
         }
     });
 
@@ -41,7 +41,7 @@ export function upstreamPorts(game, objectType, vec, createMissing=false) {
  * @param {string} objectType
  * @param {Vec} vec
  * @param {boolean} [createMissing]
- * @returns {Object.<string, BigInt>} map of this object's output port name -> shared Port id
+ * @returns {Object.<string, BigInt>} map of this object's output port column -> shared Port id
  */
 export function downstreamPorts(game, objectType, vec, createMissing=false) {
     const ports = {};
@@ -55,9 +55,9 @@ export function downstreamPorts(game, objectType, vec, createMissing=false) {
         });
 
         if (port) {
-            ports[def.name] = port;
+            ports[def.column] = port;
         } else if (createMissing) {
-            ports[def.name] = game.queryScalar("InsertPort");
+            ports[def.column] = game.queryScalar("InsertPort");
         }
     });
 

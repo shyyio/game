@@ -33,15 +33,6 @@ export const BeltType = {
 // so a surface belt and two crossing tunnels coexist on a tile. Layer = BASE + (direction % 2).
 export const OCCUPANCY_LAYER_UNDERGROUND_BASE = 1;
 
-// Tags a client occupancy entry so a tool can apply the right collision policy to it.
-/**
- * @enum {number}
- */
-export const OccupantKind = {
-    BELT: 0,
-    SPLITTER: 1,
-};
-
 /**
  * @enum {number}
  */

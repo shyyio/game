@@ -46,7 +46,7 @@ export class AbstractDrawLayer extends Container {
      * Optional hook: in map mode, render objects as simple geometry instead of sprites.
      * @param {boolean} value
      */
-    set lowRes(value) {}
+    set mapMode(value) {}
 
     /**
      * Optional hook: advances animated sprites to the synchronized frame, with the

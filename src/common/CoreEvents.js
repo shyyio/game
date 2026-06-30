@@ -51,7 +51,7 @@ export class ChunkUnsubscribeEvent extends AbstractTilePositionedEvent {
 }
 
 /**
- * Syncs a subscribed chunk by bundling the per-object events (from `AbstractMod.collectChunkSync`) that recreate it on the client.
+ * Syncs a subscribed chunk by bundling the per-object events (from `AbstractMod.chunkSyncEvents`) that recreate it on the client.
  */
 export class ChunkSyncEvent extends AbstractTilePositionedEvent {
 

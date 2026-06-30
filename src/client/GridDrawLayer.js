@@ -10,7 +10,7 @@ export class GridDrawLayer extends AbstractDrawLayer {
     constructor() {
         super();
         this._chunks = {};
-        this._lowRes = false;
+        this._mapMode = false;
     }
 
     get layerIndex() {
@@ -27,7 +27,7 @@ export class GridDrawLayer extends AbstractDrawLayer {
 
         const {x, y} = chunkPosition(chunk);
         const sprite = GridDrawLayer._createChunkGrid(x * CHUNK_SIZE, y * CHUNK_SIZE);
-        sprite.children[1].visible = !this._lowRes;
+        sprite.children[1].visible = !this._mapMode;
         this._chunks[chunk] = sprite;
         this.addChild(sprite);
     }
@@ -47,8 +47,8 @@ export class GridDrawLayer extends AbstractDrawLayer {
         delete this._chunks[chunk];
     }
 
-    set lowRes(value) {
-        this._lowRes = value;
+    set mapMode(value) {
+        this._mapMode = value;
         this.children.forEach(grid => {
             grid.children[1].visible = !value;
         });

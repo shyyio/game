@@ -19,7 +19,7 @@ function intent(game, source, destination, destinationEmpty) {
 }
 
 function resolved(game) {
-    return game.db.db.prepare("SELECT source_id, destination_id FROM PortTransfer ORDER BY source_id")
+    return game.db.db.prepare("SELECT source_id, destination_id FROM ResolvedPortTransfer ORDER BY source_id")
         .all()
         .map(r => `${r.source_id}->${r.destination_id}`)
         .join(", ");
@@ -50,4 +50,69 @@ test("Resolves no transfer when the chain's end is blocked", async () => {
     game.exec("ResolvePortTransfer");
 
     assert.equal(resolved(game), "");
+});
+
+// Runs the resolve + commit ops so the move (or sink) lands in Port.
+function settle(game) {
+    game.exec("ResolvePortTransfer");
+    game.exec("CaptureResolvedSinks");
+    game.exec("FlushResolvedPortTransferSource");
+    game.exec("FlushResolvedPortTransferDestination");
+    game.exec("FlushResolvedSink");
+}
+
+function portItem(game, id) {
+    return game.rawScalar(`SELECT item FROM Port WHERE id=${id}`);
+}
+
+test("Translates the item type on a managed transfer via output_item", async () => {
+    const game = await setup();
+    makePorts(game, 2, [1]);
+    game.rawExec(
+        `INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty, output_item, managed)
+         VALUES (1, 2, 1, 99, 1)`
+    );
+
+    settle(game);
+
+    assert.equal(portItem(game, 1), null);
+    assert.equal(portItem(game, 2), 99);
+});
+
+test("Creates a brand-new item with a source-less managed intent", async () => {
+    const game = await setup();
+    makePorts(game, 1, []);
+    game.rawExec(
+        `INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty, output_item, managed)
+         VALUES (NULL, 1, 1, 55, 1)`
+    );
+
+    settle(game);
+
+    assert.equal(portItem(game, 1), 55);
+});
+
+test("Sinks (consumes) the source item on a managed destination-less intent", async () => {
+    const game = await setup();
+    makePorts(game, 1, [1]);
+    game.rawExec(
+        `INSERT INTO PortTransferIntent (source_id, destination_id, managed) VALUES (1, NULL, 1)`
+    );
+
+    settle(game);
+
+    assert.equal(portItem(game, 1), null);
+});
+
+test("Leaves an unmanaged destination-less intent (self-drain) untouched", async () => {
+    const game = await setup();
+    makePorts(game, 1, [1]);
+    game.rawExec(
+        `INSERT INTO PortTransferIntent (source_id, destination_id, managed) VALUES (1, NULL, 0)`
+    );
+
+    settle(game);
+
+    // managed=0 means the owner does the move; the engine must not clear it.
+    assert.equal(portItem(game, 1), 1);
 });

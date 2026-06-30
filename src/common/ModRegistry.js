@@ -33,9 +33,13 @@ export class ModRegistry {
      * @returns {Object.<string, ObjectDefinition>}
      */
     get definitions() {
-        const defs = {};
+        const defs = this.mods.reduce((acc, mod) => Object.assign(acc, mod.definitions), {});
 
-        this.mods.forEach(mod => Object.assign(defs, mod.definitions));
+        // Assign each definition a stable numeric typeId by registration order — the wire's object
+        // type discriminator and the client cache's identity. Same positional contract as wire ids.
+        Object.values(defs).forEach((definition, typeId) => {
+            definition.typeId = typeId;
+        });
 
         return defs;
     }
@@ -73,22 +77,16 @@ export class ModRegistry {
     }
 
     /**
-     * Routes an inspect hover to every mod and drives the inspect-highlight layer with
-     * the tiles they return (empty clears it).
+     * Routes an inspect hover to every mod and drives the inspect-highlight layer with the
+     * highlights they return (empty clears it).
      * @param {number|null} tileX
      * @param {number|null} tileY
      * @param {Client} client
      */
     handleInspect(tileX, tileY, client) {
-        const tiles = [];
-        this.mods.forEach(mod => {
-            const modTiles = mod.onInspect(tileX, tileY);
-            if (modTiles == null) {
-                return;
-            }
-            modTiles.forEach(tile => tiles.push(tile));
-        });
-        client.inspectLayer.show(tiles);
+        const highlights = this.mods
+            .flatMap(mod => mod.onInspect(tileX, tileY, client));
+        client.inspectLayer.show(highlights);
     }
 
     /**
@@ -96,29 +94,27 @@ export class ModRegistry {
      * @param {string} chunk
      * @returns {AbstractEvent[]}
      */
-    collectChunkSync(chunk) {
-        const events = [];
-        this.mods.forEach(mod => {
-            const modEvents = mod.collectChunkSync(chunk);
-            modEvents.forEach(event => events.push(event));
-        });
-        return events;
+    chunkSyncEvents(chunk) {
+        return this.mods
+            .flatMap(mod => mod.chunkSyncEvents(chunk));
     }
 
     /**
      * @returns {Array}
      */
     get drawLayers() {
-        const result = [];
-        this.mods.forEach(mod => {
-            if (mod.drawLayers == null) {
-                return;
-            }
-            mod.drawLayers.forEach(layer => {
-                result.push(layer);
-            });
-        });
-        return result;
+        return this.mods
+            .filter(mod => mod.drawLayers != null)
+            .flatMap(mod => mod.drawLayers);
+    }
+
+    /**
+     * Item type -> texture name, merged across all mods, for the shared item layer.
+     * @returns {Object.<number, string>}
+     */
+    get itemTextures() {
+        return this.mods
+            .reduce((textures, mod) => Object.assign(textures, mod.itemTextures), {});
     }
 
     /**
@@ -126,19 +122,13 @@ export class ModRegistry {
      * @param {number} tileX
      * @param {number} tileY
      * @param {AbstractSession} session
+     * @param {Client} client
      * @returns {MiniMenuEntry[]}
      */
-    miniMenuContextEntries(tileX, tileY, session) {
-        const entries = [];
-        this.mods.forEach(mod => {
-            const modEntries = mod.miniMenuContextEntries(tileX, tileY, session);
-            if (modEntries == null) {
-                return;
-            }
-            modEntries.forEach(entry => entries.push(entry));
-        });
-        entries.sort((a, b) => b.rank - a.rank);
-        return entries;
+    miniMenuEntries(tileX, tileY, session, client) {
+        return this.mods
+            .flatMap(mod => mod.miniMenuEntries(tileX, tileY, session, client))
+            .sort((a, b) => b.rank - a.rank);
     }
 
     /**
@@ -147,14 +137,7 @@ export class ModRegistry {
      * @returns {AbstractTool[]}
      */
     tools(client) {
-        const tools = [];
-        this.mods.forEach(mod => {
-            const modTools = mod.tools(client);
-            if (modTools == null) {
-                return;
-            }
-            modTools.forEach(tool => tools.push(tool));
-        });
-        return tools;
+        return this.mods
+            .flatMap(mod => mod.tools(client));
     }
 }

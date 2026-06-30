@@ -36,12 +36,12 @@ export class DrawLayerRegistry {
     }
 
     /**
-     * Toggles map mode across every layer (low-res geometry instead of sprites).
+     * Toggles map mode across every layer (simplified geometry instead of sprites).
      * @param {boolean} value
      */
-    setLowRes(value) {
+    setMapMode(value) {
         this.layers.forEach(layer => {
-            layer.lowRes = value;
+            layer.mapMode = value;
         });
     }
 

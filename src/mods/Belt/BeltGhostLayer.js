@@ -5,7 +5,7 @@ import {BeltSprite, beltFrameBase} from "./BeltLayer.js";
 // Tints for tool preview ghosts.
 const GHOST_TINT = 0xC8F902; // normal placement preview (green)
 const GHOST_AT_MAX_TINT = 0xF2A900; // tunnel preview at maximum length (amber)
-const GHOST_BLOCKED_TINT = 0xF23030; // placement blocked (red), matches BlockedTilesLayer
+const GHOST_BLOCKED_TINT = 0xF23030; // placement blocked (red), matches PlacementFeedbackLayer
 const GHOST_BLOCKED_ALPHA = 0.8;
 
 // Green marker drawn on the locked placement target tile in center-lock mode: an
@@ -42,7 +42,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         // not, so its line of buried belts stays aligned to the grid.
         this._pinToCenter = true;
         // Whether the current ghost sits on a blocked tile. The green target marker
-        // is suppressed when set, leaving the BlockedTilesLayer's red square to mark
+        // is suppressed when set, leaving the PlacementFeedbackLayer's red square to mark
         // the tile (the two are mutually exclusive).
         this._blocked = false;
     }
@@ -171,7 +171,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         this._targetGraphics.clear();
         if (!this._centerLock || !this._pinToCenter || this._anchorTileX === null || this._blocked) {
             // No marker when the ghost already follows the grid (the tunnel preview)
-            // or sits on a blocked tile (the BlockedTilesLayer's red square marks it
+            // or sits on a blocked tile (the PlacementFeedbackLayer's red square marks it
             // instead): the green target is mutually exclusive with both.
             return;
         }

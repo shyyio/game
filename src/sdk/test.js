@@ -55,13 +55,14 @@ export class TestHarness {
     }
 
     /**
-     * Runs one whole tick: all four phases in pipeline order, as Game.vue does
-     * each frame.
+     * Runs one whole tick: every phase in pipeline order, as Game.vue does each frame.
      */
     tickAll() {
         this.game.tick(TickPhase.SUBMIT_INTENTS);
         this.game.tick(TickPhase.RESOLVE_TRANSFERS);
+        this.game.tick(TickPhase.CONSUME_INPUTS);
         this.game.tick(TickPhase.POST_RESOLVE);
+        this.game.tick(TickPhase.PRODUCE_OUTPUTS);
         this.game.tick(TickPhase.COMMIT_TRANSFERS);
     }
 

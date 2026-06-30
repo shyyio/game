@@ -19,7 +19,7 @@ export class CreateBeltMessage extends AbstractMessage {
      * @param {BigInt} [rampParent]
      * @param {BigInt} [disconnectRampChild]
      */
-    constructor({x, y, direction, beltType, rampParent, disconnectRampChild}) {
+    constructor(x, y, direction, beltType, rampParent, disconnectRampChild) {
         super();
         this.x = x;
         this.y = y;
@@ -27,56 +27,5 @@ export class CreateBeltMessage extends AbstractMessage {
         this.beltType = beltType;
         this.rampParent = rampParent;
         this.disconnectRampChild = disconnectRampChild;
-    }
-}
-
-export class DeleteBeltMessage extends AbstractMessage {
-
-    static wireFields = {
-        id: "int64",
-    };
-
-    /**
-     * @param {BigInt} id
-     */
-    constructor(id) {
-        super();
-        this.id = id;
-    }
-}
-
-export class CreateSplitterMessage extends AbstractMessage {
-
-    static wireFields = {
-        x: "int32",
-        y: "int32",
-        direction: "int32",
-    };
-
-    /**
-     * @param {number} x
-     * @param {number} y
-     * @param {Direction} direction
-     */
-    constructor({x, y, direction}) {
-        super();
-        this.x = x;
-        this.y = y;
-        this.direction = direction;
-    }
-}
-
-export class DeleteSplitterMessage extends AbstractMessage {
-
-    static wireFields = {
-        id: "int64",
-    };
-
-    /**
-     * @param {BigInt} id
-     */
-    constructor(id) {
-        super();
-        this.id = id;
     }
 }

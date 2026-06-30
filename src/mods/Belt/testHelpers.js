@@ -3,12 +3,9 @@
 // instead of constructing a CreateBeltMessage by hand. They live with the mod
 // they serve — the harness itself (`@/sdk/test.js`) stays content-agnostic.
 
-import {
-    CreateBeltMessage,
-    DeleteBeltMessage,
-    CreateSplitterMessage,
-    DeleteSplitterMessage,
-} from "./messages.js";
+import {DeleteObjectMessage, CreateObjectMessage} from "@/sdk/common.js";
+import {CreateBeltMessage} from "./messages.js";
+import {SplitterDefinition} from "./definitions.js";
 
 const BELT_NORMAL    = 0;
 const BELT_RAMP_DOWN = 1;
@@ -31,43 +28,44 @@ export const GameObject = {
  * @param {{x: number, y: number, direction: Direction, rampParent?: BigInt, disconnectRampChild?: BigInt}} options
  */
 export function createBelt(game, beltType, options) {
-    game.dispatchMessage(new CreateBeltMessage({
-        x: options.x,
-        y: options.y,
-        direction: options.direction,
+    game.dispatchMessage(new CreateBeltMessage(
+        options.x,
+        options.y,
+        options.direction,
         beltType,
-        rampParent: options.rampParent,
-        disconnectRampChild: options.disconnectRampChild,
-    }));
+        options.rampParent,
+        options.disconnectRampChild,
+    ));
 }
 
 /**
- * Removes a belt by dispatching a DeleteBeltMessage.
+ * Removes a belt by dispatching a DeleteObjectMessage.
  * @param {TestHarness} game
  * @param {BigInt} id
  */
 export function deleteBelt(game, id) {
-    game.dispatchMessage(new DeleteBeltMessage(id));
+    game.dispatchMessage(new DeleteObjectMessage(id));
 }
 
 /**
- * Places a splitter by dispatching a CreateSplitterMessage.
+ * Places a splitter by dispatching a CreateObjectMessage.
  * @param {TestHarness} game
  * @param {{x: number, y: number, direction: Direction}} options
  */
 export function createSplitter(game, options) {
-    game.dispatchMessage(new CreateSplitterMessage({
-        x: options.x,
-        y: options.y,
-        direction: options.direction,
-    }));
+    game.dispatchMessage(new CreateObjectMessage(
+        SplitterDefinition.typeId,
+        options.x,
+        options.y,
+        options.direction,
+    ));
 }
 
 /**
- * Removes a splitter by dispatching a DeleteSplitterMessage.
+ * Removes a splitter by dispatching a DeleteObjectMessage.
  * @param {TestHarness} game
  * @param {BigInt} id
  */
 export function deleteSplitter(game, id) {
-    game.dispatchMessage(new DeleteSplitterMessage(id));
+    game.dispatchMessage(new DeleteObjectMessage(id));
 }

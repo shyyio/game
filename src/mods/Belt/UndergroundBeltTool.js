@@ -1,6 +1,7 @@
-import {AbstractTool, Direction, Haptics, OCCUPANCY_LAYER_SURFACE} from "@/sdk/client.js";
-import {CreateBeltMessage, DeleteBeltMessage} from "./messages.js";
-import {BeltType, BeltBend, MAX_UNDERGROUND_LENGTH, OccupantKind} from "./constants.js";
+import {AbstractTool, Direction, Haptics, OCCUPANCY_LAYER_SURFACE, DeleteObjectMessage} from "@/sdk/client.js";
+import {CreateBeltMessage} from "./messages.js";
+import {BeltType, BeltBend, MAX_UNDERGROUND_LENGTH} from "./constants.js";
+import {BeltDefinition} from "./definitions.js";
 import {Belt} from "./BeltLayer.js";
 import {getUndergroundBeltsToCreate, surfaceBeltAt, tunnelStep, inferBeltParent} from "./geometry.js";
 
@@ -18,7 +19,7 @@ export class UndergroundBeltTool extends AbstractTool {
         this._client = client;
         this._cache = client.cache;
         this._ghostLayer = ghostLayer;
-        this._blockedTilesLayer = client.blockedTilesLayer;
+        this._placementFeedbackLayer = client.placementFeedbackLayer;
         this._rotation = client.toolRotation;
     }
 
@@ -33,7 +34,7 @@ export class UndergroundBeltTool extends AbstractTool {
     onTileEnter(tileX, tileY) {
         const placement = this._resolvePlacement(tileX, tileY, this._rotation.direction);
         const blocked = this._blocked(tileX, tileY, placement.direction);
-        this._blockedTilesLayer.show(blocked ? [{x: tileX, y: tileY}] : []);
+        this._placementFeedbackLayer.show(blocked ? [{x: tileX, y: tileY}] : []);
         if (blocked || placement.parentId === null) {
             this._ghostLayer.showGhost(tileX, tileY, placement.direction, placement.type, BeltBend.STRAIGHT, blocked);
             return;
@@ -51,7 +52,7 @@ export class UndergroundBeltTool extends AbstractTool {
 
     onTileExit(tileX, tileY) {
         this._ghostLayer.clear();
-        this._blockedTilesLayer.clear();
+        this._placementFeedbackLayer.clear();
     }
 
     onDragTile(tileX, tileY, direction) {
@@ -65,7 +66,7 @@ export class UndergroundBeltTool extends AbstractTool {
      * @returns {{id: BigInt, type: BeltType, direction: Direction}|null}
      */
     _beltAt(tileX, tileY) {
-        const record = this._cache.getAtTile(tileX, tileY).find(other => other.data.kind === OccupantKind.BELT);
+        const record = this._cache.getAtTile(tileX, tileY).find(other => other.data.definition === BeltDefinition);
         if (record === undefined) {
             return null;
         }
@@ -114,7 +115,7 @@ export class UndergroundBeltTool extends AbstractTool {
     _blocked(tileX, tileY, direction) {
         // A non-belt surface object (e.g. a splitter) the ramp can't replace blocks outright.
         const occupant = this._cache.at(tileX, tileY, OCCUPANCY_LAYER_SURFACE);
-        if (occupant !== null && occupant.data.kind !== OccupantKind.BELT) {
+        if (occupant !== null && occupant.data.definition !== BeltDefinition) {
             return true;
         }
         const belt = this._surfaceBeltAt(tileX, tileY);
@@ -134,17 +135,17 @@ export class UndergroundBeltTool extends AbstractTool {
                 return;
             }
             // Overwrite: the client removes the same-axis belt before laying the ramp.
-            this.session.sendMessage(new DeleteBeltMessage(existing.id));
+            this.session.sendMessage(new DeleteObjectMessage(existing.id));
         }
 
-        this.session.sendMessage(new CreateBeltMessage({
-            x: tileX,
-            y: tileY,
-            direction: placement.direction,
-            beltType: placement.type,
-            rampParent: placement.parentId === null ? undefined : placement.parentId,
-            disconnectRampChild: placement.childId === null ? undefined : placement.childId,
-        }));
+        this.session.sendMessage(new CreateBeltMessage(
+            tileX,
+            tileY,
+            placement.direction,
+            placement.type,
+            placement.parentId === null ? undefined : placement.parentId,
+            placement.childId === null ? undefined : placement.childId,
+        ));
         Haptics.tap();
 
         this._rotation.invert();

@@ -152,7 +152,7 @@ export class Game {
             this.exec("InsertSessionViewport", {session_id: session.id, chunk});
             session.publishEvent(new ChunkSubscribeEvent(chunk));
 
-            const syncEvents = this.modRegistry.collectChunkSync(chunk);
+            const syncEvents = this.modRegistry.chunkSyncEvents(chunk);
             if (syncEvents.length > 0) {
                 session.publishEvent(new ChunkSyncEvent(chunk, syncEvents));
             }

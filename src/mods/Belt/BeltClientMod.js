@@ -1,49 +1,41 @@
 
 import {BeltMod} from "./mod.js";
 import {BeltDrawLayer} from "./BeltLayer.js";
-import {BeltItemDrawLayer} from "./BeltItemLayer.js";
 import {BeltOverlayDrawLayer} from "./OverlayLayer.js";
 import {BeltGhostLayer} from "./BeltGhostLayer.js";
 import {PathDebugDrawLayer} from "./PathDebugLayer.js";
-import {SplitterDrawLayer} from "./SplitterLayer.js";
-import {SplitterConnectionLayer} from "./SplitterConnectionLayer.js";
-import {SplitterGhostLayer} from "./SplitterGhostLayer.js";
 import {BeltTool} from "./BeltTool.js";
 import {UndergroundBeltTool} from "./UndergroundBeltTool.js";
-import {SplitterTool} from "./SplitterTool.js";
-import {DeleteBeltMessage} from "./messages.js";
+import {BeltDefinition, SplitterDefinition} from "./definitions.js";
 import {
     BeltInsertEvent,
     BeltSyncEvent,
     BeltDeleteEvent,
     BeltPathRecalculateEvent,
-    SplitterInsertEvent,
-    SplitterSyncEvent,
-    SplitterDeleteEvent,
 } from "./events.js";
 import {
     BeltType,
     ITEM_TYPE_GAP,
-    OccupantKind,
     BUFFERED_EVENT_TYPE_ITEM_UPSERT,
     BUFFERED_EVENT_TYPE_ITEM_DELETE,
     BUFFERED_EVENT_TYPE_ITEM_RESET,
     BUFFERED_EVENT_TYPE_ITEM_SYNC,
 } from "./constants.js";
-import {surfaceBeltAt, walkTunnel, beltOccupancyLayer, splitterFootprint, splitterOutputTiles, inferBeltParent} from "./geometry.js";
+import {surfaceBeltAt, walkTunnel, beltOccupancyLayer, inferBeltParent} from "./geometry.js";
 import {
     MiniMenuEntry,
     ChunkUnsubscribeEvent,
     BufferedEvent,
     Direction,
-    OCCUPANCY_LAYER_SURFACE,
     BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
     BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
+    DeleteObjectMessage,
+    PORT_SPRITE_KEY,
+    EasyObjectTool,
+    EasyObjectGhostLayer,
+    EasyObjectDrawLayer,
+    InspectHighlight,
 } from "@/sdk/client.js";
-
-// Item sprites resting in out-ports share the item layer; their keys are namespaced
-// from the path-item row-id keys so the two can't collide.
-const PORT_SPRITE_KEY = portId => `port:${portId}`;
 
 export class BeltClientMod extends BeltMod {
 
@@ -52,13 +44,13 @@ export class BeltClientMod extends BeltMod {
         // One stable instance shared between drawLayers (which renders it) and
         // tools (which drive it via showGhost/clear).
         this._ghostLayer = new BeltGhostLayer();
-        // The shared cross-mod object index, grabbed in clientInit; the mod registers its
-        // belts and splitters into it and queries it instead of the simulation DB.
+        // The shared cross-mod object index, captured on the first client hook; the mod registers
+        // its belts and splitters into it and queries it instead of the simulation DB.
         this._cache = null;
         // Stable belt layer: onClientEvent drives it imperatively.
         this._beltLayer = new BeltDrawLayer();
-        // Items riding the belts; driven imperatively from the tick's buffered events.
-        this._itemLayer = new BeltItemDrawLayer();
+        // The shared item layer, captured on the first client hook; belts drive their items imperatively.
+        this._itemLayer = null;
         // Reveals buried tunnel belts under a hovered ramp; driven by onInspect.
         this._overlayLayer = new BeltOverlayDrawLayer();
         // Head id → belt ids in path order (head last); kept current by onClientEvent
@@ -76,25 +68,15 @@ export class BeltClientMod extends BeltMod {
         // Debug overlay of belt paths, shown only in debug mode; reads the shared
         // path map and the object index (injected).
         this._pathDebugLayer = new PathDebugDrawLayer(this._pathParts);
-        // Stable splitter layer: onClientEvent drives it imperatively.
-        this._splitterLayer = new SplitterDrawLayer();
-        // Animated half-belt stubs at connected splitter ports, derived from the object index
-        // each frame.
-        this._splitterConnectionLayer = new SplitterConnectionLayer();
+        // Splitter sprites; the layer drives its own cache + sprite lifecycle off the object events.
+        this._splitterLayer = new EasyObjectDrawLayer(SplitterDefinition);
         // Splitter placement preview, driven by the splitter tool via showGhost/clear.
-        this._splitterGhostLayer = new SplitterGhostLayer();
-        // Splitter out-port id → render tile {tileX, tileY, sourceDir}, so a port-item event
-        // (which carries only the port id) resolves to a tile for a resting splitter output.
-        this._splitterOutPort = new Map();
-        // Splitter id → its two out-port ids, to drop those entries/sprites on removal.
-        this._splitterToOutPorts = new Map();
+        this._splitterGhostLayer = new EasyObjectGhostLayer(SplitterDefinition);
     }
 
     get drawLayers() {
         return [
             this._beltLayer,
-            this._splitterConnectionLayer,
-            this._itemLayer,
             this._splitterLayer,
             this._overlayLayer,
             this._ghostLayer,
@@ -103,12 +85,21 @@ export class BeltClientMod extends BeltMod {
         ];
     }
 
+    get itemTextures() {
+        return {3: "items/1"};
+    }
+
     /**
-     * Grabs the shared object index for use in hooks that aren't passed `client`.
+     * Captures the shared object index and item layer on the first client hook, for the imperative
+     * event handlers that aren't passed `client`.
      * @param {Client} client
+     * @returns {void}
      */
-    clientInit(client) {
-        this._cache = client.cache;
+    _useClient(client) {
+        if (this._cache === null) {
+            this._cache = client.cache;
+            this._itemLayer = client.itemLayer;
+        }
     }
 
     tools(client) {
@@ -116,7 +107,7 @@ export class BeltClientMod extends BeltMod {
         return [
             new BeltTool(client, this._ghostLayer),
             new UndergroundBeltTool(client, this._ghostLayer),
-            new SplitterTool(client, this._splitterGhostLayer),
+            new EasyObjectTool(client, SplitterDefinition, this._splitterGhostLayer, false),
         ];
     }
 
@@ -126,6 +117,7 @@ export class BeltClientMod extends BeltMod {
      * @param {Client} client
      */
     onClientEvent(event, client) {
+        this._useClient(client);
         if (event instanceof BeltInsertEvent || event instanceof BeltSyncEvent) {
             this._addBelt(event);
             // A live insert's path recalc is published before the belt itself, so the
@@ -156,38 +148,20 @@ export class BeltClientMod extends BeltMod {
             }
             return;
         }
-        if (event instanceof SplitterInsertEvent || event instanceof SplitterSyncEvent) {
-            const cells = splitterFootprint(event.x, event.y, event.direction).map(cell => ({
-                x: cell.x,
-                y: cell.y,
-                layer: OCCUPANCY_LAYER_SURFACE,
-            }));
-            this._cache.set(event.id, event.x, event.y, cells, {kind: OccupantKind.SPLITTER, direction: event.direction});
-            this._splitterLayer.addSplitter(event.id, event.x, event.y, event.direction);
-            this._mapSplitterOutPorts(event);
-            return;
-        }
-        if (event instanceof SplitterDeleteEvent) {
-            this._cache.remove(event.id);
-            this._splitterLayer.removeSplitter(event.id);
-            this._clearSplitterOutPorts(event.id);
-            return;
-        }
         if (event instanceof ChunkUnsubscribeEvent) {
+            // Drop only this mod's own belts — the splitter layer drops its own, and other mods
+            // theirs.
             const removedBelts = new Set();
             this._cache.getByChunk(event.chunk).forEach(record => {
-                if (record.data.kind === OccupantKind.SPLITTER) {
-                    this._splitterLayer.removeSplitter(record.id);
-                    this._clearSplitterOutPorts(record.id);
-                } else {
+                if (record.data.definition === BeltDefinition) {
                     removedBelts.add(record.id);
                     this._beltLayer.removeBelt(record.id);
                     this._clearPathItems(record.id);
                     this._pathParts.delete(record.id);
+                    this._cache.remove(record.id);
                 }
             });
             this._clearPortItems(removedBelts);
-            this._cache.clearChunk(event.chunk);
             this._pathDebugLayer.redraw();
             return;
         }
@@ -228,65 +202,37 @@ export class BeltClientMod extends BeltMod {
     }
 
     /**
-     * Renders or removes an item resting in an out-port. The event carries only the
-     * port id; the render tile is inferred from the out-port's path and tail belt.
+     * Renders or removes an item resting in a belt path's out-port (the render tile is computed
+     * from the path's tail belt). Splitter out-ports are static, so the engine renders those —
+     * skip any port this mod doesn't own a path for.
      * @param {BufferedEvent} event - id=out-port id, a=item type (SET only)
      * @private
      */
     _handlePortItemEvent(event) {
         const portId = event.id;
+        if (!this._outPortToPath.has(portId)) {
+            return;
+        }
         if (event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR) {
             this._itemLayer.removeItem(PORT_SPRITE_KEY(portId));
             return;
         }
-        this._renderPortItem(portId);
+        this._renderPortItem(portId, Number(event.a));
     }
 
     /**
-     * Records each of a splitter's output ports against its render tile, so a port-item
-     * event resolves a resting splitter output to a tile.
-     * @param {SplitterInsertEvent|SplitterSyncEvent} event
-     * @private
-     */
-    _mapSplitterOutPorts(event) {
-        const tiles = splitterOutputTiles(event.x, event.y, event.direction);
-        const portIds = [event.outPortAId, event.outPortBId];
-        portIds.forEach((portId, i) => {
-            this._splitterOutPort.set(portId, tiles[i]);
-        });
-        this._splitterToOutPorts.set(event.id, portIds);
-    }
-
-    /**
-     * Drops a splitter's out-port mappings and any item sprites resting in them.
-     * @param {BigInt} splitterId
-     * @private
-     */
-    _clearSplitterOutPorts(splitterId) {
-        const portIds = this._splitterToOutPorts.get(splitterId);
-        if (portIds === undefined) {
-            return;
-        }
-        portIds.forEach(portId => {
-            this._itemLayer.removeItem(PORT_SPRITE_KEY(portId));
-            this._splitterOutPort.delete(portId);
-        });
-        this._splitterToOutPorts.delete(splitterId);
-    }
-
-    /**
-     * Places an out-port's item sprite at its output boundary: for a belt, the tile
-     * downstream of the tail; for a splitter, the tile past its output edge. Either way on
-     * the upstream edge, where the item just popped off.
+     * Places a belt path out-port's item sprite at its output boundary: the tile downstream of
+     * the tail, on the upstream edge where the item just popped off.
      * @param {BigInt} portId
+     * @param {number} type - item type, selecting the sprite texture
      * @private
      */
-    _renderPortItem(portId) {
-        const port = this._resolvePortBelt(portId) || this._splitterOutPort.get(portId);
-        if (port === undefined || port === null) {
+    _renderPortItem(portId, type) {
+        const port = this._resolvePortBelt(portId);
+        if (port === null) {
             return;
         }
-        this._itemLayer.moveItem(PORT_SPRITE_KEY(portId), port.tileX, port.tileY, true, port.sourceDir);
+        this._itemLayer.moveItem(PORT_SPRITE_KEY(portId), port.tileX, port.tileY, true, port.sourceDir, type);
     }
 
     /**
@@ -411,7 +357,7 @@ export class BeltClientMod extends BeltMod {
             return;
         }
         this._itemLayer.renameItem(rowId, PORT_SPRITE_KEY(outPortId));
-        this._renderPortItem(outPortId);
+        this._renderPortItem(outPortId, row.type);
     }
 
     /**
@@ -457,7 +403,7 @@ export class BeltClientMod extends BeltMod {
             if (row.type !== ITEM_TYPE_GAP) {
                 const belt = this._resolveItemBelt(pathId, slot);
                 if (belt !== null) {
-                    this._itemLayer.moveItem(rowId, belt.tileX, belt.tileY, belt.halfTile, belt.sourceDir, snap);
+                    this._itemLayer.moveItem(rowId, belt.tileX, belt.tileY, belt.halfTile, belt.sourceDir, row.type, snap);
                 }
             }
             slot += row.length;
@@ -516,7 +462,7 @@ export class BeltClientMod extends BeltMod {
      * The direction toward the object feeding `record` — the side an item enters from
      * (perpendicular to the flow on a bend), inferred from the cache. Falls back to opposite
      * the flow for a head belt (fed by its in-port) or one with no cached feeder.
-     * @param {object} record - belt cache record
+     * @param {CacheEntry} record - belt cache entry
      * @returns {Direction}
      * @private
      */
@@ -539,7 +485,16 @@ export class BeltClientMod extends BeltMod {
             event.x,
             event.y,
             [{x: event.x, y: event.y, layer: beltOccupancyLayer(event.beltType, event.direction)}],
-            {kind: OccupantKind.BELT, direction: event.direction, type: event.beltType},
+            {},
+            // `conveyor` is a generic cache convention: a straight surface lane an aligned
+            // placement (a splitter, a machine) may overwrite. Other mods read it without
+            // knowing belt types.
+            {
+                definition: BeltDefinition,
+                direction: event.direction,
+                type: event.beltType,
+                conveyor: event.beltType === BeltType.NORMAL,
+            },
         );
         // Bend is derived from neighbours each frame by the belt layer, so it's added straight.
         this._beltLayer.addBelt(event.id, event.x, event.y, event.direction, event.beltType);
@@ -549,13 +504,15 @@ export class BeltClientMod extends BeltMod {
      * Tool-less hover: reveal the buried tunnel under a hovered ramp and return the tiles to highlight.
      * @param {number|null} tileX
      * @param {number|null} tileY
+     * @param {Client} client
      * @returns {{x: number, y: number, alt?: boolean}[]}
      */
-    onInspect(tileX, tileY) {
+    onInspect(tileX, tileY, client) {
         if (tileX === null) {
             this._overlayLayer.clearUndergroundReveal();
             return [];
         }
+        this._useClient(client);
         const records = this._cache.getAtTile(tileX, tileY);
         const surface = surfaceBeltAt(this._cache, tileX, tileY);
         const ramp = records.find(record =>
@@ -564,12 +521,12 @@ export class BeltClientMod extends BeltMod {
 
         // Highlight the hovered surface belt/ramp (buried undergrounds aren't drawn),
         // plus the ramp it tunnels to (if any) with the alternate highlight.
-        const inspectTiles = [];
+        const highlights = [];
         if (surface !== null) {
-            inspectTiles.push({x: tileX, y: tileY});
+            highlights.push(new InspectHighlight(tileX, tileY, surface.data.direction, surface.data.definition));
         }
         if (tunnel !== null && tunnel.pair !== null) {
-            inspectTiles.push({x: tunnel.pair.tileX, y: tunnel.pair.tileY, alt: true});
+            highlights.push(new InspectHighlight(tunnel.pair.tileX, tunnel.pair.tileY, tunnel.pair.data.direction, tunnel.pair.data.definition, true));
         }
 
         if (tunnel === null) {
@@ -577,10 +534,16 @@ export class BeltClientMod extends BeltMod {
         } else {
             this._overlayLayer.showUndergroundReveal(tunnel.tiles, ramp.data.direction);
         }
-        return inspectTiles;
+
+        const splitter = this._cache.objectAt(tileX, tileY, SplitterDefinition);
+        if (splitter !== null) {
+            highlights.push(new InspectHighlight(splitter.tileX, splitter.tileY, splitter.data.direction, splitter.data.definition));
+        }
+        return highlights;
     }
 
-    miniMenuContextEntries(tileX, tileY, session) {
+    miniMenuEntries(tileX, tileY, session, client) {
+        this._useClient(client);
         const surface = surfaceBeltAt(this._cache, tileX, tileY);
 
         if (surface === null) {
@@ -591,7 +554,7 @@ export class BeltClientMod extends BeltMod {
             new MiniMenuEntry(
                 "Delete belt",
                 10,
-                () => session.sendMessage(new DeleteBeltMessage(surface.id)),
+                () => session.sendMessage(new DeleteObjectMessage(surface.id)),
             ),
         ];
     }

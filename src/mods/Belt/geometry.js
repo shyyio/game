@@ -1,5 +1,5 @@
-import {Direction, rotate, OCCUPANCY_LAYER_SURFACE} from "@/sdk/common.js";
-import {SplitterDefinition} from "./definitions.js";
+import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/sdk/common.js";
+import {BeltDefinition} from "./definitions.js";
 import {
     BeltType,
     BELT_RAMP_DOWN,
@@ -7,29 +7,25 @@ import {
     BELT_UNDERGROUND,
     MAX_UNDERGROUND_LENGTH,
     OCCUPANCY_LAYER_UNDERGROUND_BASE,
-    OccupantKind,
 } from "./constants.js";
 
 /**
- * Whether a surface occupant feeds a belt placed downstream of it: a normal belt, a ramp exit,
- * or any splitter cell (its output port). Ramp entrances and undergrounds do not feed forward.
- * @param {object} data - an occupant record's data
+ * Whether a feeder feeds forward on the surface: ramp entrances/undergrounds share the belt's
+ * forward output port but bury the flow, so exclude them; any non-belt object feeds forward.
+ * @param {object} data - a feeder record's data
  * @returns {boolean}
  */
-function isBeltParentSource(data) {
-    if (data.kind === OccupantKind.SPLITTER) {
-        return true;
+function feedsForward(data) {
+    if (data.definition === BeltDefinition) {
+        return data.type === BeltType.NORMAL || data.type === BeltType.RAMP_UP;
     }
-    return data.kind === OccupantKind.BELT
-        && (data.type === BeltType.NORMAL || data.type === BeltType.RAMP_UP);
+    return true;
 }
 
 /**
- * The tile a belt at (tileX, tileY) facing `direction` is fed from, inferred from the shared
- * cache — or {parentX: null, parentY: null} if nothing feeds it. Mirrors the server's
- * upstreamParentSql: the highest-id feeder pointing into this tile wins, checking the tile
- * behind (a straight feed) and the two perpendicular tiles (a bend). A feeder is a normal belt
- * or ramp exit facing this way, or a splitter cell whose output lands here.
+ * The tile a belt at (tileX, tileY) facing `direction` is fed from (via the cache's port-connection
+ * query, so any object's output landing here counts), or {parentX: null, parentY: null}. The
+ * highest-id feeder that feeds forward wins, mirroring the server's upstreamParentSql.
  * @param {ClientCache} cache
  * @param {number} tileX
  * @param {number} tileY
@@ -37,35 +33,22 @@ function isBeltParentSource(data) {
  * @returns {{parentX: number|null, parentY: number|null}}
  */
 export function inferBeltParent(cache, tileX, tileY, direction) {
-    const candidates = [
-        {x: tileX - Direction.dx(direction), y: tileY - Direction.dy(direction), facing: direction},
-    ];
-    [Direction.rotate(direction, 1), Direction.rotate(direction, 3)].forEach(perpendicular => {
-        candidates.push({
-            x: tileX + Direction.dx(perpendicular),
-            y: tileY + Direction.dy(perpendicular),
-            facing: Direction.invert(perpendicular),
-        });
-    });
+    const belt = {tileX, tileY, data: {definition: BeltDefinition, direction}};
 
     let parent = null;
-    candidates.forEach(candidate => {
-        const occupant = cache.at(candidate.x, candidate.y, OCCUPANCY_LAYER_SURFACE);
-        if (occupant === null || occupant.data.direction !== candidate.facing) {
+    cache.connectedPorts(belt).forEach(connection => {
+        if (connection.isOutput || !feedsForward(connection.neighbor.data)) {
             return;
         }
-        if (!isBeltParentSource(occupant.data)) {
-            return;
-        }
-        if (parent === null || occupant.id > parent.id) {
-            parent = {id: occupant.id, x: candidate.x, y: candidate.y};
+        if (parent === null || connection.neighbor.id > parent.neighbor.id) {
+            parent = connection;
         }
     });
 
     if (parent === null) {
         return {parentX: null, parentY: null};
     }
-    return {parentX: parent.x, parentY: parent.y};
+    return {parentX: parent.neighborX, parentY: parent.neighborY};
 }
 
 /**
@@ -83,108 +66,26 @@ export function beltOccupancyLayer(type, direction) {
 }
 
 /**
- * The surface (non-underground) belt record at a tile, or null. Other object kinds (splitters)
+ * The surface (non-underground) belt entry at a tile, or null. Other object kinds (splitters)
  * sharing the index are ignored.
  * @param {ClientCache} index
  * @param {number} tileX
  * @param {number} tileY
- * @returns {object|null}
+ * @returns {CacheEntry|null}
  */
 export function surfaceBeltAt(index, tileX, tileY) {
-    const records = index.getAtTile(tileX, tileY);
-    const surface = records.find(record =>
-        record.data.kind === OccupantKind.BELT && record.data.type !== BELT_UNDERGROUND);
+    const entries = index.getAtTile(tileX, tileY);
+    const surface = entries.find(record =>
+        record.data.definition === BeltDefinition && record.data.type !== BELT_UNDERGROUND);
     return surface === undefined ? null : surface;
 }
 
 /**
- * The two tiles a splitter placed at (x, y) facing `direction` occupies: its base tile
- * and the far cell, its definition's size offset rotated by the facing.
- * @param {number} x
- * @param {number} y
- * @param {Direction} direction
- * @returns {{x: number, y: number}[]}
- */
-export function splitterFootprint(x, y, direction) {
-    const far = rotate(SplitterDefinition.size, direction);
-    return [
-        {x, y},
-        {x: x + far.x, y: y + far.y},
-    ];
-}
-
-/**
- * The render tile for each of a splitter's output ports (in out_port_a, out_port_b order):
- * the tile just past the splitter's output edge, with sourceDir pointing back at the splitter
- * (the edge the item popped from). Used to draw items resting in the shared output ports.
- * @param {number} x
- * @param {number} y
- * @param {Direction} direction
- * @returns {{tileX: number, tileY: number, sourceDir: Direction}[]}
- */
-export function splitterOutputTiles(x, y, direction) {
-    return SplitterDefinition.outputPorts.map(port => {
-        const offset = rotate(port, direction);
-        return {
-            tileX: x + offset.x,
-            tileY: y + offset.y,
-            sourceDir: Direction.invert(direction),
-        };
-    });
-}
-
-// Items flow through a splitter in its facing, so both belts move the same way: the output
-// (front edge) is the top-up stub, the input (back edge) the bottom-up stub, and the whole
-// thing is rotated by the facing (an UP splitter draws them unrotated).
-const SPLITTER_OUTPUT_CONNECTION = "machine-connection-top-up";
-const SPLITTER_INPUT_CONNECTION = "machine-connection-bottom-up";
-
-/**
- * The four external connection points of a splitter at (x, y): for each footprint cell, an
- * output (along the facing) and an input (opposite). `neighborX/Y` is the tile a connecting
- * object occupies (tested for a connection); `tileX/Y` is the splitter cell the stub draws on;
- * `base`/`angle` are the connection sprite and its rotation; `isOutput` distinguishes the two.
- * @param {number} x
- * @param {number} y
- * @param {Direction} direction
- * @returns {{key: string, base: string, angle: number, isOutput: boolean, tileX: number, tileY: number, neighborX: number, neighborY: number}[]}
- */
-export function splitterConnections(x, y, direction) {
-    const dx = Direction.dx(direction);
-    const dy = Direction.dy(direction);
-    const angle = Direction.angle(direction);
-    const specs = [];
-    splitterFootprint(x, y, direction).forEach((cell, i) => {
-        specs.push({
-            key: `out_${i}`,
-            base: SPLITTER_OUTPUT_CONNECTION,
-            angle,
-            isOutput: true,
-            tileX: cell.x,
-            tileY: cell.y,
-            neighborX: cell.x + dx,
-            neighborY: cell.y + dy,
-        });
-        specs.push({
-            key: `in_${i}`,
-            base: SPLITTER_INPUT_CONNECTION,
-            angle,
-            isOutput: false,
-            tileX: cell.x,
-            tileY: cell.y,
-            neighborX: cell.x - dx,
-            neighborY: cell.y - dy,
-        });
-    });
-    return specs;
-}
-
-/**
  * Walks `ramp`'s tunnel along its axis, returning the buried tiles passed and the
- * paired opposite ramp record (or null for a lone ramp).
+ * paired opposite ramp entry (or null for a lone ramp).
  * @param {ClientCache} index
- * @param {object} ramp
- * @returns {{tiles: {x: number, y: number}[], pair: object|null}}
+ * @param {CacheEntry} ramp
+ * @returns {{tiles: {x: number, y: number}[], pair: CacheEntry|null}}
  */
 export function walkTunnel(index, ramp) {
     const {dx, dy} = tunnelStep(ramp.data.type, ramp.data.direction);

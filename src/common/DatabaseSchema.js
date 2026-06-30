@@ -1,5 +1,11 @@
 import {TickOp, TickPhase} from "@/common/core.js";
-import {CHUNK_SIZE, GameSettingsKey, Direction} from "@/common/constants.js";
+import {
+    CHUNK_SIZE,
+    GameSettingsKey,
+    Direction,
+    BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
+    BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
+} from "@/common/constants.js";
 
 // Statement-name suffix per direction (GetInPortUp, GetOutPortRight, ...), indexed by Direction.
 const DIRECTION_NAMES = ["Up", "Right", "Down", "Left"];
@@ -21,6 +27,10 @@ const CoreStatements = {
     GetGameSettings: `SELECT key, value FROM GameSettings;`,
 
     InsertPort: "INSERT INTO Port DEFAULT VALUES RETURNING id;",
+
+    // Garbage-collects a port once nothing references it (guard filled from every definition's
+    // port columns, see _substitutePortReferenceTokens), so port removal needs no per-table knowledge.
+    DeletePortIfUnreferenced: "DELETE FROM Port WHERE id = CAST(@port AS INT) AND NOT EXISTS ({{PORT_REFERENCED}});",
 
     // Allocates the next global object id (see the ObjectId table). Mods call this and insert
     // the object with the returned id, instead of relying on per-table autoincrement.
@@ -128,6 +138,10 @@ const CoreTempSchema = `
                                 -- is responsible for actually doing the transfer.
             CHECK ( managed=0 OR managed=1 ),
 
+        -- The item the destination receives, overriding the source's item (a machine translating
+        -- its input to a product, or — with a NULL source — creating one). NULL moves it unchanged.
+        output_item INT,
+
         -- NULL for an ordinary transfer with a single destination. A fan-out source (one
         -- that submits a competing intent per candidate destination, e.g. a splitter) ranks
         -- them 1, 2, ...: the lowest rank wins both the per-destination dedup (which source
@@ -139,7 +153,7 @@ const CoreTempSchema = `
         PRIMARY KEY (source_id, destination_id)
     );
 
-    CREATE TEMPORARY TABLE PortTransfer (
+    CREATE TEMPORARY TABLE ResolvedPortTransfer (
         source_id INT,
         destination_id INTEGER PRIMARY KEY,
         -- The item being moved, or NULL for an unmanaged (virtual) transfer the engine
@@ -147,7 +161,13 @@ const CoreTempSchema = `
         item INT,
         managed INT NOT NULL
     );
-    CREATE UNIQUE INDEX PortTransfer_source ON PortTransfer (source_id);
+    CREATE UNIQUE INDEX ResolvedPortTransfer_source ON ResolvedPortTransfer (source_id);
+
+    -- Sources of resolved sink intents (managed, destination-less): items the engine consumes
+    -- (clears) this tick without a destination. Drained in COMMIT_TRANSFERS.
+    CREATE TEMPORARY TABLE ResolvedSink (
+        source_id INTEGER PRIMARY KEY
+    );
 
     CREATE TEMPORARY TABLE Session (
         id INTEGER PRIMARY KEY,
@@ -157,6 +177,25 @@ const CoreTempSchema = `
     CREATE TEMPORARY TABLE SessionViewport (
         session_id INT REFERENCES Session,
         chunk TEXT NOT NULL
+    );
+
+    -- This tick's watched filled out-ports (port, item, routing tile), gathered by each mod's
+    -- capture op for the SET/CLEAR diff and shadow rebuild to share.
+    CREATE TEMPORARY TABLE ViewedPortItem (
+        port_id INTEGER PRIMARY KEY,
+        item INT,
+        x INT,
+        y INT
+    );
+
+    -- Last item shown in each watched out-port (with the routing tile for clears), so the tick
+    -- emits only out-ports whose item changed. Global to the sim -- fine single-session; a
+    -- multi-session build would key it per session.
+    CREATE TEMPORARY TABLE PortItemShadow (
+        port_id INTEGER PRIMARY KEY,
+        item INT,
+        x INT,
+        y INT
     );
 `;
 
@@ -176,34 +215,36 @@ const CoreTickPhases = {
                 -- Rank contenders for each destination (a port takes one item): lowest
                 -- alternatives_rank wins, ties by source_id. A NULL rank (single-destination
                 -- sources) sorts first -- harmless, they only share a partition with each other.
-                SELECT 
+                SELECT
                     source_id,
                     destination_id,
                     destination_is_empty,
                     managed,
                     alternatives_rank,
+                    output_item,
                     ROW_NUMBER() OVER (PARTITION BY destination_id ORDER BY alternatives_rank ASC, source_id) AS dst_rank
                 FROM PortTransferIntent
                 WHERE destination_id IS NOT NULL
             ),
             one_per_destination AS (
-                SELECT source_id, destination_id, destination_is_empty, managed, alternatives_rank
+                SELECT source_id, destination_id, destination_is_empty, managed, alternatives_rank, output_item
                 FROM ranked_per_destination
                 WHERE dst_rank=1
             ),
             resolved AS (
                 -- A transfer resolves if its destination is empty...
-                SELECT source_id, destination_id, managed, alternatives_rank
+                SELECT source_id, destination_id, managed, alternatives_rank, output_item
                 FROM one_per_destination
                 WHERE destination_is_empty=TRUE
 
                 UNION
 
-                -- ...or its source drains itself this tick: a destination-less row whose
-                -- source its owner empties internally (e.g. a belt ingesting into head room),
-                -- which no transfer would show. Only source_id matters; filtered out before
-                -- the move below.
-                SELECT source_id, NULL, NULL, NULL
+                -- ...or its source drains this tick: a destination-less row marking a port emptied
+                -- without a transfer to show it — an unmanaged self-drain (a belt ingesting into head
+                -- room, the owner clears it) or a managed sink (the engine clears it, in CONSUME_INPUTS
+                -- before producers refill). Either way it lets an upstream transfer into that port
+                -- resolve. Only source_id matters; filtered out before the move below.
+                SELECT source_id, NULL, NULL, NULL, NULL
                 FROM PortTransferIntent
                 WHERE destination_id IS NULL
 
@@ -211,7 +252,7 @@ const CoreTickPhases = {
 
                 -- ...or the transfer draining its destination resolves (a packed chain
                 -- shifts as one). UNION (not ALL) terminates cycles.
-                SELECT i.source_id, i.destination_id, i.managed, i.alternatives_rank
+                SELECT i.source_id, i.destination_id, i.managed, i.alternatives_rank, i.output_item
                 FROM resolved chain
                     INNER JOIN one_per_destination i ON i.destination_id = chain.source_id
             ),
@@ -219,50 +260,101 @@ const CoreTickPhases = {
                 -- Single-destination sources (belts) pass through. A fan-out source keeps
                 -- only its best-ranked resolved destination -- a dedup over just the tiny
                 -- fan-out set, so belts pay no extra sort.
-                SELECT source_id, destination_id, managed
+                SELECT source_id, destination_id, managed, output_item
                 FROM resolved
                 WHERE alternatives_rank IS NULL AND destination_id IS NOT NULL
 
                 UNION ALL
 
-                SELECT source_id, destination_id, managed
+                SELECT source_id, destination_id, managed, output_item
                 FROM (
-                    SELECT source_id, destination_id, managed,
+                    SELECT source_id, destination_id, managed, output_item,
                            ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY alternatives_rank ASC, destination_id) AS src_rank
                     FROM resolved
                     WHERE alternatives_rank IS NOT NULL
                 )
                 WHERE src_rank=1
             )
-            -- Commit each resolved transfer. Managed ones carry the item (engine moves it);
-            -- unmanaged ones leave it NULL for the owning mod to move itself.
-            INSERT INTO PortTransfer (source_id, destination_id, item, managed)
-            SELECT source_id,
-                   destination_id,
-                   CASE WHEN managed THEN src.item END AS item,
-                   managed
-            FROM one_per_source
-                -- CROSS JOIN drives from the small transfer set; else the planner scans Port.
-                CROSS JOIN Port src ON src.id = source_id;`
+            -- Commit each resolved transfer. Managed ones carry the item the destination receives:
+            -- output_item if set (a translation, or a creation when there is no source), else the
+            -- source's own item. Unmanaged ones leave it NULL for the owning mod to move itself.
+            INSERT INTO ResolvedPortTransfer (source_id, destination_id, item, managed)
+            SELECT ops.source_id,
+                   ops.destination_id,
+                   CASE WHEN ops.managed THEN COALESCE(ops.output_item, src.item) END AS item,
+                   ops.managed
+            FROM one_per_source ops
+                -- LEFT JOIN (not CROSS) so a source-less create still commits; drives from the
+                -- small transfer set with an indexed rowid lookup, so the plan is unchanged.
+                LEFT JOIN Port src ON src.id = ops.source_id;`
 
+        ),
+        new TickOp(
+            // Sinks (managed, destination-less) always resolve — there is no destination to gate
+            // on. Capture their sources before the intents are truncated; CONSUME_INPUTS clears them.
+            "CaptureResolvedSinks",
+            `INSERT OR IGNORE INTO ResolvedSink (source_id)
+             SELECT source_id FROM PortTransferIntent WHERE destination_id IS NULL AND managed = 1;`
         ),
         new TickOp("TruncatePortTransferIntent", `DELETE FROM PortTransferIntent;`),
     ],
+    [TickPhase.CONSUME_INPUTS]: [
+        new TickOp(
+            // Consume sunk items here, before producers (belts) refill the ports in POST_RESOLVE, so
+            // an upstream item shifts forward into the freed port the same tick.
+            "FlushResolvedSink",
+            `UPDATE Port SET item=NULL WHERE id IN (SELECT source_id FROM ResolvedSink);`
+        ),
+    ],
     [TickPhase.COMMIT_TRANSFERS]: [
         new TickOp(
-            "FlushPortTransferSource",
-            `UPDATE Port SET item=NULL WHERE id IN (SELECT source_id FROM PortTransfer WHERE managed=1);`
+            "FlushResolvedPortTransferSource",
+            `UPDATE Port SET item=NULL WHERE id IN (SELECT source_id FROM ResolvedPortTransfer WHERE managed=1);`
         ),
         new TickOp(
-            // Driven from PortTransfer (destination_id is its PRIMARY KEY) instead of
+            // Driven from ResolvedPortTransfer (destination_id is its PRIMARY KEY) instead of
             // UPDATE ... FROM, which made the planner scan the whole Port table. Mirrors
-            // FlushPortTransferSource, which already drives from the transfer set.
-            "FlushPortTransferDestination",
+            // FlushResolvedPortTransferSource, which already drives from the transfer set.
+            "FlushResolvedPortTransferDestination",
             `UPDATE Port
-             SET item = (SELECT pt.item FROM PortTransfer pt WHERE pt.destination_id = Port.id)
-             WHERE id IN (SELECT destination_id FROM PortTransfer WHERE managed=1);`
+             SET item = (SELECT pt.item FROM ResolvedPortTransfer pt WHERE pt.destination_id = Port.id)
+             WHERE id IN (SELECT destination_id FROM ResolvedPortTransfer WHERE managed=1);`
         ),
-        new TickOp("TruncatePortTransfer", `DELETE FROM PortTransfer;`),
+        new TickOp("TruncateResolvedPortTransfer", `DELETE FROM ResolvedPortTransfer;`),
+        new TickOp("TruncateResolvedSink", `DELETE FROM ResolvedSink;`),
+        // Clear the render staging before mods capture this tick's watched out-ports into it.
+        new TickOp("ClearViewedPortItem", `DELETE FROM ViewedPortItem;`),
+    ],
+};
+
+// Core ops appended after every mod's tick ops, so they run on the rows mods produced this phase.
+// The out-port render diff reads ViewedPortItem (filled by mod capture ops) against the shadow.
+const CoreTickPhasesTrailing = {
+    [TickPhase.COMMIT_TRANSFERS]: [
+        // SET for each out-port whose resting item changed (diff vs PortItemShadow). Carries only
+        // the port id (a=item type); the client infers the render tile. x/y is the routing tile.
+        new TickOp(
+            "EmitPortItemSet",
+            `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
+             SELECT ${BUFFERED_EVENT_TYPE_PORT_ITEM_SET}, ${CHUNK_COORD_SQL("v.x")}, ${CHUNK_COORD_SQL("v.y")}, v.port_id, v.item, NULL, NULL
+             FROM ViewedPortItem v
+                LEFT JOIN PortItemShadow s ON s.port_id = v.port_id
+             WHERE s.port_id IS NULL OR s.item != v.item;`
+        ),
+        new TickOp(
+            "EmitPortItemClear",
+            `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
+             SELECT ${BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR}, ${CHUNK_COORD_SQL("s.x")}, ${CHUNK_COORD_SQL("s.y")}, s.port_id, NULL, NULL, NULL
+             FROM PortItemShadow s
+             WHERE s.port_id NOT IN (SELECT port_id FROM ViewedPortItem);`
+        ),
+        new TickOp("ClearPortItemShadow", `DELETE FROM PortItemShadow;`),
+        new TickOp(
+            "RebuildPortItemShadow",
+            `INSERT INTO PortItemShadow (port_id, item, x, y)
+             SELECT v.port_id, v.item, v.x, v.y
+             FROM ViewedPortItem v;`
+        ),
     ],
 };
 
@@ -285,32 +377,102 @@ export class DatabaseSchema {
             }
         });
 
-        // Register core tick phase operations
-        Object.entries(CoreTickPhases).forEach(([phase, ops]) => {
+        // Leading core ops, then mod ops, then trailing core ops -- so a trailing op (the out-port
+        // render diff) runs on the rows mod capture ops produced this phase.
+        this._registerCoreTickPhases(CoreTickPhases);
+
+        [
+            TickPhase.SUBMIT_INTENTS,
+            TickPhase.RESOLVE_TRANSFERS,
+            TickPhase.CONSUME_INPUTS,
+            TickPhase.POST_RESOLVE,
+            TickPhase.PRODUCE_OUTPUTS,
+            TickPhase.COMMIT_TRANSFERS
+        ].forEach(phase => {
+            this._prepareTick(this.modRegistry.definitions, phase);
+        });
+
+        this._prepareRenderCapture(this.modRegistry.definitions);
+        this._registerCoreTickPhases(CoreTickPhasesTrailing);
+
+        this._preparePortQueries(this.modRegistry.definitions);
+        this._prepareOccupancyQuery(this.modRegistry.definitions);
+        this._substitutePortReferenceTokens(this.modRegistry.definitions);
+    }
+
+    /**
+     * @param phases {Object.<TickPhase, TickOp[]>}
+     * @returns {void}
+     */
+    _registerCoreTickPhases(phases) {
+        Object.entries(phases).forEach(([phase, ops]) => {
             this.tickPhases[phase] ||= [];
             ops.forEach(op => {
                 this._prepare(op.statementName, op.sql);
                 this.tickPhases[phase].push(op);
             });
         });
+    }
 
-        [
-            TickPhase.SUBMIT_INTENTS,
-            TickPhase.RESOLVE_TRANSFERS,
-            TickPhase.POST_RESOLVE,
-            TickPhase.COMMIT_TRANSFERS
-        ].forEach(phase => {
-            this._prepareTick(this.modRegistry.definitions, phase);
+    /**
+     * Generates the COMMIT_TRANSFERS capture op for each definition with render-flagged out-ports:
+     * gathers their watched filled ports into ViewedPortItem, routed by the object's own tile.
+     * @param {Object<string, ObjectDefinition>} definitions
+     * @returns {void}
+     */
+    _prepareRenderCapture(definitions) {
+        this.tickPhases[TickPhase.COMMIT_TRANSFERS] ||= [];
+        Object.entries(definitions).forEach(([table, definition]) => {
+            const renderedPorts = definition.outputPorts.filter(port => port.render);
+            if (renderedPorts.length === 0) {
+                return;
+            }
+            const branches = renderedPorts.map(port => `
+                SELECT p.id, p.item, o.x, o.y
+                FROM viewed_chunk vc
+                    CROSS JOIN ${table} o INDEXED BY ${table}_chunk ON o.chunk = vc.chunk
+                    CROSS JOIN Port p ON p.id = o.${port.column}
+                WHERE p.item IS NOT NULL`);
+            const op = new TickOp(
+                `Capture${table}PortItems`,
+                `WITH viewed_chunk AS (SELECT DISTINCT chunk FROM SessionViewport)
+                 INSERT INTO ViewedPortItem (port_id, item, x, y)
+                 ${branches.join("\nUNION ALL\n")};`
+            );
+            this._prepare(op.statementName, op.sql);
+            this.tickPhases[TickPhase.COMMIT_TRANSFERS].push(op);
         });
+    }
 
-        this._preparePortQueries(this.modRegistry.definitions);
-        this._prepareOccupancyQuery(this.modRegistry.definitions);
+    /**
+     * Fills the {{PORT_REFERENCED}} / {{PORT_OUTPUT_REFERENCED}} tokens in every prepared statement
+     * with the UNION of every definition's port-reference fragments, so the GC guards cover all
+     * object types generically. Run last, after every statement is assembled.
+     * @param {Object<string, ObjectDefinition>} definitions
+     */
+    _substitutePortReferenceTokens(definitions) {
+        const referenced = [];
+        const outputReferenced = [];
+        Object.entries(definitions).forEach(([table, definition]) => {
+            referenced.push(...definition.portReferenceLookups(table));
+            outputReferenced.push(...definition.outputPortReferenceLookups(table));
+        });
+        const body = (fragments) =>
+            fragments.length === 0 ? "SELECT 1 WHERE 0" : fragments.join("\nUNION ALL\n");
+        const referencedBody = body(referenced);
+        const outputReferencedBody = body(outputReferenced);
+
+        Object.keys(this.preparedStatements).forEach(name => {
+            this.preparedStatements[name] = this.preparedStatements[name]
+                .replaceAll("{{PORT_OUTPUT_REFERENCED}}", outputReferencedBody)
+                .replaceAll("{{PORT_REFERENCED}}", referencedBody);
+        });
     }
 
     /**
      * Prepares IsOccupied(@x, @y, @layer): the UNION of every ObjectDefinition's occupancy
      * fragments, returning 1 if any object covers that tile on that layer. Placement checks
-     * each of a new object's footprint cells against it to reject overlaps (block + warn) —
+     * each of a new object's geometry cells against it to reject overlaps (block + warn) —
      * a backstop against malicious or desynced clients, not a hot path.
      * @param {Object<string, ObjectDefinition>} definitions
      */

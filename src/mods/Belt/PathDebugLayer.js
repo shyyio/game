@@ -23,9 +23,9 @@ export class PathDebugDrawLayer extends AbstractDrawLayer {
         super();
         this.visible = false;
         this._debugMode = false;
-        // Map mode (zoomed far out) swaps sprites for low-res geometry; the overlay
+        // Map mode (zoomed far out) swaps sprites for simplified geometry; the overlay
         // is too fine to read there, so it hides regardless of debug mode.
-        this._lowRes = false;
+        this._mapMode = false;
         this._paths = paths;
         this._graphics = new Graphics();
         this.addChild(this._graphics);
@@ -46,11 +46,11 @@ export class PathDebugDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Hides the overlay in map mode (low-res), restoring it on zoom-in if debug mode is on.
+     * Hides the overlay in map mode, restoring it on zoom-in if debug mode is on.
      * @param {boolean} value
      */
-    set lowRes(value) {
-        this._lowRes = value;
+    set mapMode(value) {
+        this._mapMode = value;
         this._updateVisibility();
     }
 
@@ -59,7 +59,7 @@ export class PathDebugDrawLayer extends AbstractDrawLayer {
      * @private
      */
     _updateVisibility() {
-        this.visible = this._debugMode && !this._lowRes;
+        this.visible = this._debugMode && !this._mapMode;
         this.redraw();
     }
 

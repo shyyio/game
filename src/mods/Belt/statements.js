@@ -501,13 +501,6 @@ export const beltStatements = {
         WHERE id = (SELECT tail_id FROM BeltPath WHERE id = CAST(@id AS INT));
     `,
 
-    // Every splitter in a chunk, to sync a newly-subscribed client.
-    GetSplittersInChunk: `
-        SELECT id, x, y, direction, out_port_a_id, out_port_b_id
-        FROM Splitter INDEXED BY Splitter_chunk
-        WHERE chunk = @chunk;
-    `,
-
     InsertBelt: `
         INSERT INTO Belt (id, parent_id, x, y, type, direction)
         VALUES (CAST(@id AS INT), ${upstreamParentSql({
@@ -520,43 +513,6 @@ export const beltStatements = {
         })},
         @x, @y, @type, @direction)
         RETURNING Belt.id;
-    `,
-
-    InsertSplitter: `
-        INSERT INTO Splitter (id, x, y, direction,
-                              in_port_a_id, in_port_b_id, out_port_a_id, out_port_b_id,
-                              int_port_a_id, int_port_b_id)
-        VALUES (CAST(@id AS INT), @x, @y, @direction,
-                @in_port_a_id, @in_port_b_id, @out_port_a_id, @out_port_b_id,
-                @int_port_a_id, @int_port_b_id)
-        RETURNING id;
-    `,
-
-    DeleteSplitter: `
-        DELETE FROM Splitter
-        WHERE id = CAST(@id AS INT)
-        RETURNING x, y,
-                  in_port_a_id, in_port_b_id, out_port_a_id, out_port_b_id,
-                  int_port_a_id, int_port_b_id;
-    `,
-
-    // Drops a removed splitter's ports, but only those no belt or surviving splitter still
-    // shares (a shared seam port stays, owned by the belt; the internal ports are never
-    // shared). Run after DeleteSplitter so the surviving-splitter check excludes the removed one.
-    DeleteSplitterPorts: `
-        DELETE FROM Port
-        WHERE id IN (CAST(@in_port_a_id AS INT), CAST(@in_port_b_id AS INT),
-                     CAST(@out_port_a_id AS INT), CAST(@out_port_b_id AS INT),
-                     CAST(@int_port_a_id AS INT), CAST(@int_port_b_id AS INT))
-          AND NOT EXISTS (
-              SELECT 1 FROM BeltPath WHERE in_port_id = Port.id OR out_port_id = Port.id
-          )
-          AND NOT EXISTS (
-              SELECT 1 FROM Splitter
-              WHERE in_port_a_id = Port.id OR in_port_b_id = Port.id
-                 OR out_port_a_id = Port.id OR out_port_b_id = Port.id
-                 OR int_port_a_id = Port.id OR int_port_b_id = Port.id
-          );
     `,
 
     GetBeltPathHead: `
@@ -612,11 +568,12 @@ export const beltStatements = {
         RETURNING length;
     `,
 
+    // Drops a path's in-port unless another object still feeds it (uses it as one of its
+    // output ports) — keeping a shared seam port alive when a downstream path is reassigned.
     DeleteInPort: `
         DELETE FROM Port
         WHERE id = (SELECT in_port_id FROM BeltPath WHERE id = CAST(@id AS INT))
-          AND NOT EXISTS (SELECT 1 FROM BeltPath WHERE out_port_id = Port.id)
-          AND NOT EXISTS (SELECT 1 FROM Splitter WHERE Port.id IN (out_port_a_id, out_port_b_id));
+          AND NOT EXISTS ({{PORT_OUTPUT_REFERENCED}});
     `,
 
     UpdateInPort: `
@@ -775,23 +732,6 @@ export const beltStatements = {
         WHERE id = CAST(@id AS INT)
     `,
 
-    DeleteUnusedPathPorts: `
-        DELETE FROM Port
-        WHERE id IN (
-            SELECT in_port_id  FROM BeltPath WHERE id = CAST(@id AS INT)
-            UNION ALL
-            SELECT out_port_id FROM BeltPath WHERE id = CAST(@id AS INT)
-        )
-        AND NOT EXISTS (
-            SELECT 1 FROM BeltPath
-            WHERE id != CAST(@id AS INT) AND (in_port_id=Port.id OR out_port_id=Port.id)
-            UNION ALL
-            SELECT 1 FROM Splitter
-            WHERE in_port_a_id=Port.id OR in_port_b_id=Port.id
-               OR out_port_a_id=Port.id OR out_port_b_id=Port.id
-               OR int_port_a_id=Port.id OR int_port_b_id=Port.id
-        );
-    `,
 
     DetachChild: `
         UPDATE Belt

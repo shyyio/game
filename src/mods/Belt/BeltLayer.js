@@ -85,8 +85,8 @@ export class BeltDrawLayer extends AbstractDrawLayer {
         super();
 
         this._belts = {};
-        this._lowResBelts = {};
-        this._lowRes = false;
+        this._mapModeBelts = {};
+        this._mapMode = false;
     }
 
     get layerIndex() {
@@ -95,34 +95,34 @@ export class BeltDrawLayer extends AbstractDrawLayer {
 
     /**
      * Toggles map mode by swapping each belt's full sprite for its persistent
-     * low-res rectangle (both are kept loaded, so this is just a visibility flip).
+     * map-mode rectangle (both are kept loaded, so this is just a visibility flip).
      * @param {boolean} value
      */
-    set lowRes(value) {
-        this._lowRes = value;
+    set mapMode(value) {
+        this._mapMode = value;
         Object.values(this._belts).forEach(sprite => {
             sprite.visible = !value;
         });
-        Object.values(this._lowResBelts).forEach(sprite => {
+        Object.values(this._mapModeBelts).forEach(sprite => {
             sprite.visible = value;
         });
     }
 
     /**
-     * Builds the persistent low-res rectangle shown for a belt in map mode,
+     * Builds the persistent map-mode rectangle shown for a belt in map mode,
      * colored by belt type and positioned over its tile.
      * @param {BeltSprite} sprite
      * @returns {Graphics}
      * @private
      */
-    _createLowResBelt(sprite) {
+    _createMapModeBelt(sprite) {
         const color = sprite.type === BeltType.NORMAL ? MAP_TILE_COLOR : MAP_RAMP_COLOR;
-        const lowResSprite = new Graphics();
-        lowResSprite
+        const mapModeSprite = new Graphics();
+        mapModeSprite
             .rect(sprite.tileX * TILE_SIZE, sprite.tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE)
             .fill(color);
-        lowResSprite.visible = this._lowRes;
-        return lowResSprite;
+        mapModeSprite.visible = this._mapMode;
+        return mapModeSprite;
     }
 
     /**
@@ -150,11 +150,11 @@ export class BeltDrawLayer extends AbstractDrawLayer {
         this.addChild(sprite);
 
         this._belts[sprite.id] = sprite;
-        sprite.visible = !this._lowRes;
+        sprite.visible = !this._mapMode;
 
-        const lowResSprite = this._createLowResBelt(sprite);
-        this._lowResBelts[sprite.id] = lowResSprite;
-        this.addChild(lowResSprite);
+        const mapModeSprite = this._createMapModeBelt(sprite);
+        this._mapModeBelts[sprite.id] = mapModeSprite;
+        this.addChild(mapModeSprite);
     }
 
     /**
@@ -186,11 +186,11 @@ export class BeltDrawLayer extends AbstractDrawLayer {
         this.removeChild(belt);
         delete this._belts[id];
 
-        const lowResBelt = this._lowResBelts[id];
-        if (lowResBelt !== undefined) {
-            lowResBelt.destroy();
-            this.removeChild(lowResBelt);
-            delete this._lowResBelts[id];
+        const mapModeBelt = this._mapModeBelts[id];
+        if (mapModeBelt !== undefined) {
+            mapModeBelt.destroy();
+            this.removeChild(mapModeBelt);
+            delete this._mapModeBelts[id];
         }
     }
 
@@ -199,7 +199,7 @@ export class BeltDrawLayer extends AbstractDrawLayer {
      * @param {number} frame animation frame, in [0, 8)
      */
     tick(frame) {
-        if (this._lowRes || this.cache === null) {
+        if (this._mapMode || this.cache === null) {
             return;
         }
         Object.values(this._belts).forEach(sprite => {

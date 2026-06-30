@@ -11,25 +11,41 @@ export * from "@/sdk/common.js";
 
 // ---- Rendering ----
 // `AbstractDrawLayer` is the base class for a Pixi layer that reacts to game events;
-// `AbstractObjectDrawLayer` is a ready-made layer for simple insert/update/delete object
-// rendering.
+// `EasyObjectDrawLayer` is the base-case layer a mod composes to render a placed object type from
+// the generic object events (cache + sprite + chunk lifecycle, all handled).
 export {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
-export {AbstractObjectDrawLayer} from "@/client/AbstractObjectDrawLayer.js";
+export {EasyObjectDrawLayer} from "@/client/EasyObjectDrawLayer.js";
+// The base-case object sprite (static, geometry-centered); EasyObject layers build it from a texture.
+export {EasySprite} from "@/client/EasySprite.js";
+// The single shared item layer; mods that compute item positions (belts) drive it via
+// `client.itemLayer`. PORT_SPRITE_KEY namespaces resting out-port item sprites.
+export {ItemDrawLayer, PORT_SPRITE_KEY} from "@/client/ItemDrawLayer.js";
+// The single shared connection-stub layer; a mod opts in via ObjectDefinition.renderConnections.
+export {ConnectionDrawLayer} from "@/client/ConnectionDrawLayer.js";
+// The base-case placement-preview ghost (single sprite + center-lock); paired with EasyObjectTool.
+export {EasyObjectGhostLayer} from "@/client/EasyObjectGhostLayer.js";
 
 // ---- Input ----
 // Base class for a placement/interaction tool shown in the toolbar.
 export {AbstractTool} from "@/client/AbstractTool.js";
+// The base-case tap-to-place tool (with center-lock); a mod composes it for a simple object.
+export {EasyObjectTool} from "@/client/EasyObjectTool.js";
 
 // ---- Feedback ----
 // Haptic (rumble) feedback for touch devices; a no-op where unavailable.
 export {default as Haptics} from "@/client/Haptics.js";
 
+// One inspect-hover highlight (an object outlined at a tile), returned in arrays from a mod's onInspect.
+export {InspectHighlight} from "@/client/InspectHighlight.js";
+
 // ---- Client world state ----
-// The shared cross-mod index of placed objects (by id, primary tile, chunk, and
-// tile+layer cell), reached via `client.cache` and injected into draw layers as
-// `this.cache`. Mods feed it from their insert/delete handling; client code queries
-// it instead of the simulation DB (tile lookups, placement collision, connection).
-export {ClientCache} from "@/client/ClientCache.js";
+// The shared cross-mod index of placed objects (a CacheEntry each, by id, primary tile,
+// chunk, tile+layer cell, and rendered out-port id), reached via `client.cache` and injected
+// into draw layers as `this.cache`. Mods feed it from their insert/delete handling; client
+// code queries it instead of the simulation DB (tile lookups, placement collision, connection).
+// Holds a `CacheEntry` per object, also indexed by rendered out-port id.
+export {ClientCache, CacheEntry} from "@/client/ClientCache.js";
+
 
 // ---- Pixel-space geometry ----
 // `TILE_SIZE` is a tile's size in pixels; the snap helpers round pixel
@@ -43,6 +59,16 @@ export {drawLine, drawRect, drawCircle} from "@/client/pixiUtils.js";
 
 // `DEBUG_COLOR(n)` maps a numeric id to a stable color from a fixed debug palette.
 export {DEBUG_COLOR} from "@/client/constants.js";
+
+// Shared placement-ghost palette + center-lock target-tile marker, for tool ghost layers.
+export {
+    GHOST_TINT,
+    GHOST_BLOCKED_TINT,
+    GHOST_BLOCKED_ALPHA,
+    TARGET_TILE_COLOR,
+    TARGET_TILE_FILL_ALPHA,
+    TARGET_TILE_BORDER_WIDTH,
+} from "@/client/constants.js";
 
 // ---- Animation ----
 // Shared mod-8 animation clock: every animated sequence has 8 frames named

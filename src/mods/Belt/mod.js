@@ -1,20 +1,16 @@
 import {
     AbstractMod,
+    EasyObjectPlacement,
     chunkKey,
     CHUNK_SIZE,
     upstreamPorts,
     downstreamPorts,
     Direction,
-    OCCUPANCY_LAYER_SURFACE,
     PlacementRejected,
     BufferedEvent,
+    DeleteObjectMessage,
 } from "@/sdk/common.js";
-import {
-    CreateBeltMessage,
-    DeleteBeltMessage,
-    CreateSplitterMessage,
-    DeleteSplitterMessage,
-} from "./messages.js";
+import {CreateBeltMessage} from "./messages.js";
 import {
     BELT_RAMP_DOWN,
     BELT_RAMP_UP,
@@ -32,26 +28,24 @@ import {
     BeltInsertEvent,
     BeltDeleteEvent,
     BeltSyncEvent,
-    SplitterInsertEvent,
-    SplitterSyncEvent,
-    SplitterDeleteEvent,
 } from "./events.js";
 
 export class BeltMod extends AbstractMod {
 
+    constructor() {
+        super();
+        // The splitter is a plain port-sharing object; the engine handles its place/remove/sync.
+        // Belts themselves stay bespoke (paths, undergrounds, recalc).
+        this._splitterPlacement = new EasyObjectPlacement(SplitterDefinition);
+    }
+
     get wireClasses() {
         return [
             CreateBeltMessage,
-            DeleteBeltMessage,
             BeltInsertEvent,
             BeltDeleteEvent,
             BeltPathRecalculateEvent,
             BeltSyncEvent,
-            CreateSplitterMessage,
-            DeleteSplitterMessage,
-            SplitterInsertEvent,
-            SplitterSyncEvent,
-            SplitterDeleteEvent,
         ];
     }
 
@@ -60,7 +54,7 @@ export class BeltMod extends AbstractMod {
     }
 
     get definitions() {
-        return {Belt: BeltDefinition, Splitter: SplitterDefinition};
+        return {[BeltDefinition.table]: BeltDefinition, [SplitterDefinition.table]: SplitterDefinition};
     }
 
     get tempSchema() {
@@ -68,7 +62,7 @@ export class BeltMod extends AbstractMod {
     }
 
     get statements() {
-        return beltStatements;
+        return {...beltStatements, ...this._splitterPlacement.statements};
     }
 
     // ---- Chunk sync ----
@@ -79,7 +73,7 @@ export class BeltMod extends AbstractMod {
      * @param {string} chunk
      * @returns {AbstractTilePositionedEvent[]}
      */
-    collectChunkSync(chunk) {
+    chunkSyncEvents(chunk) {
         // Re-sync this chunk's paths' items to the subscribing viewport next tick.
         this.game.exec("MarkChunkPathsForResync", {chunk});
         const belts = this.game.query("GetBeltsInChunk", {chunk});
@@ -115,16 +109,7 @@ export class BeltMod extends AbstractMod {
             events.push(new BeltPathRecalculateEvent(path.x, path.y, path.parts, outPortId));
         });
 
-        this.game.query("GetSplittersInChunk", {chunk}).forEach(splitter => {
-            events.push(new SplitterSyncEvent(
-                splitter.x,
-                splitter.y,
-                splitter.id,
-                splitter.direction,
-                splitter.out_port_a_id,
-                splitter.out_port_b_id,
-            ));
-        });
+        this._splitterPlacement.chunkSyncEvents(this.game, chunk).forEach(event => events.push(event));
 
         return events;
     }
@@ -132,6 +117,8 @@ export class BeltMod extends AbstractMod {
     // ---- AbstractMessage handling ----
 
     onMessage(message) {
+        // The splitter's place/remove is engine-handled; belts are bespoke.
+        this._splitterPlacement.handleMessage(this.game, message);
         if (message instanceof CreateBeltMessage) {
             this._createBelt({
                 x: message.x,
@@ -141,111 +128,21 @@ export class BeltMod extends AbstractMod {
                 rampParent: message.rampParent,
                 disconnectRampChild: message.disconnectRampChild,
             });
-        } else if (message instanceof DeleteBeltMessage) {
-            this._removeBelt(message.id);
-        } else if (message instanceof CreateSplitterMessage) {
-            this._createSplitter({
-                x: message.x,
-                y: message.y,
-                direction: message.direction,
-            });
-        } else if (message instanceof DeleteSplitterMessage) {
-            this._removeSplitter(message.id);
+        } else if (message instanceof DeleteObjectMessage) {
+            this._deleteObject(message.id);
         }
     }
 
-    // ---- Splitter creation / removal ----
-
     /**
-     * Places a splitter, sharing its four ports with adjacent belts (a belt already
-     * present is adopted; a missing side gets a fresh Port).
-     * @private
-     * @param {{x: number, y: number, direction: Direction}} options
-     */
-    _createSplitter(options) {
-        // Reject a footprint that crosses a chunk boundary, so the splitter lives in exactly
-        // one chunk (chunk-keyed sync and occupancy assume a single owning chunk). A
-        // well-behaved client blocks this; reaching here means a malicious or desynced client.
-        if (SplitterDefinition.footprintSpansChunks(options.x, options.y, options.direction)) {
-            console.warn("CreateSplitter ignored: footprint spans chunks at", options.x, options.y);
-            return;
-        }
-
-        this.game.begin();
-
-        // Reject a footprint overlap on the surface layer. A well-behaved client blocks this
-        // in its tool, so reaching here means a malicious or desynced client.
-        const occupied = SplitterDefinition.footprint(options.direction).some(cell =>
-            this.game.queryScalar("IsOccupied", {
-                x: options.x + cell.x,
-                y: options.y + cell.y,
-                layer: OCCUPANCY_LAYER_SURFACE,
-            }) !== null
-        );
-        if (occupied) {
-            console.warn("CreateSplitter ignored: footprint occupied at", options.x, options.y);
-            this.game.rollback();
-            return;
-        }
-
-        let id;
-        let outPorts;
-        try {
-            const inPorts = upstreamPorts(this.game, "Splitter", options, true);
-            outPorts = downstreamPorts(this.game, "Splitter", options, true);
-
-            id = this.game.queryScalar("InsertSplitter", {
-                id: this.game.queryScalar("AllocateObjectId"),
-                x: options.x,
-                y: options.y,
-                direction: options.direction,
-                in_port_a_id: inPorts.in_port_a_id,
-                in_port_b_id: inPorts.in_port_b_id,
-                out_port_a_id: outPorts.out_port_a_id,
-                out_port_b_id: outPorts.out_port_b_id,
-                // The internal buffer ports are never shared, so they're always fresh.
-                int_port_a_id: this.game.queryScalar("InsertPort"),
-                int_port_b_id: this.game.queryScalar("InsertPort"),
-            });
-        } catch (e) {
-            this.game.rollback();
-            const msg = String(e);
-            if (msg.includes("Splitter.x") && msg.includes("Splitter.y")) {
-                console.warn("CreateSplitter ignored: splitter already exists at", options.x, options.y);
-                return;
-            }
-            throw e;
-        }
-
-        this.game.end();
-        this.game.publishEventNow(new SplitterInsertEvent(
-            options.x,
-            options.y,
-            id,
-            options.direction,
-            outPorts.out_port_a_id,
-            outPorts.out_port_b_id,
-        ));
-    }
-
-    /**
-     * Removes a splitter and drops any of its ports no surviving belt or splitter shares.
+     * Removes the belt with this id if it's one of ours; ignores ids belonging to no belt (the
+     * generic delete is broadcast to every mod, and the splitter placement handles its own).
      * @private
      * @param {BigInt} id
      */
-    _removeSplitter(id) {
-        this.game.begin();
-
-        const splitter = this.game.querySingle("DeleteSplitter", {id});
-        if (splitter === null) {
-            console.warn("DeleteSplitter ignored: no splitter with id", id);
-            this.game.rollback();
-            return;
+    _deleteObject(id) {
+        if (this.game.querySingle("GetBelt", {id}) !== null) {
+            this._removeBelt(id);
         }
-
-        this.game.exec("DeleteSplitterPorts", splitter);
-        this.game.end();
-        this.game.publishEventNow(new SplitterDeleteEvent(splitter.x, splitter.y, id));
     }
 
     // ---- Belt creation ----
@@ -1162,8 +1059,17 @@ export class BeltMod extends AbstractMod {
         const child = this.game.querySingle("DetachChild", {id});
         this.game.exec("DeleteItems", {id});
         this.game.exec("UnassignBeltPath", {id});
-        this.game.exec("DeleteUnusedPathPorts", {id});
+        // Capture the path's ports before its row goes, then drop the path and GC each port once
+        // nothing (this path's row now gone, plus any other object) still references it.
+        const inPort = this.game.queryScalar("GetPathInPort", {id});
+        const outPort = this.game.queryScalar("GetPathOutPort", {id});
         this.game.exec("DeletePath", {id});
+        if (inPort !== null) {
+            this.game.exec("DeletePortIfUnreferenced", {port: inPort});
+        }
+        if (outPort !== null) {
+            this.game.exec("DeletePortIfUnreferenced", {port: outPort});
+        }
         this.game.exec("ClearSolitaryBeltPortItem", {id});
         this.game.exec("NullifyPathTail", {id});
         const parentId = this.game.queryScalar("DeleteBeltRow", {id});

@@ -1,6 +1,7 @@
-import {AbstractTool, Direction, Haptics, OCCUPANCY_LAYER_SURFACE} from "@/sdk/client.js";
-import {CreateBeltMessage, DeleteBeltMessage} from "./messages.js";
-import {BeltType, OccupantKind} from "@/mods/Belt/constants.js";
+import {AbstractTool, Direction, Haptics, OCCUPANCY_LAYER_SURFACE, DeleteObjectMessage} from "@/sdk/client.js";
+import {CreateBeltMessage} from "./messages.js";
+import {BeltType} from "@/mods/Belt/constants.js";
+import {BeltDefinition} from "./definitions.js";
 import {Belt} from "./BeltLayer.js";
 import {inferBeltParent} from "./geometry.js";
 
@@ -15,7 +16,7 @@ export class BeltTool extends AbstractTool {
         this._client = client;
         this._cache = client.cache;
         this._ghostLayer = ghostLayer;
-        this._blockedTilesLayer = client.blockedTilesLayer;
+        this._placementFeedbackLayer = client.placementFeedbackLayer;
         this._rotation = client.toolRotation;
         this._prevDragTileX = null;
         this._prevDragTileY = null;
@@ -47,7 +48,7 @@ export class BeltTool extends AbstractTool {
      */
     _showGhost(tileX, tileY, direction) {
         const blocked = this._blocked(tileX, tileY);
-        this._blockedTilesLayer.show(blocked ? [{x: tileX, y: tileY}] : []);
+        this._placementFeedbackLayer.show(blocked ? [{x: tileX, y: tileY}] : []);
         const {parentX, parentY} = inferBeltParent(this._cache, tileX, tileY, direction);
         const bend = Belt.getBend(direction, tileX, tileY, parentX, parentY);
         this._ghostLayer.showGhost(tileX, tileY, direction, BeltType.NORMAL, bend, blocked);
@@ -55,7 +56,7 @@ export class BeltTool extends AbstractTool {
 
     onTileExit(tileX, tileY) {
         this._ghostLayer.clear();
-        this._blockedTilesLayer.clear();
+        this._placementFeedbackLayer.clear();
     }
 
     onDragStart(tileX, tileY) {
@@ -79,7 +80,7 @@ export class BeltTool extends AbstractTool {
      * @returns {boolean}
      */
     _overwritable(occupant) {
-        return occupant.data.kind === OccupantKind.BELT && occupant.data.type === BeltType.NORMAL;
+        return occupant.data.definition === BeltDefinition && occupant.data.type === BeltType.NORMAL;
     }
 
     /**
@@ -104,9 +105,9 @@ export class BeltTool extends AbstractTool {
             if (!this._overwritable(occupant)) {
                 return;
             }
-            this.session.sendMessage(new DeleteBeltMessage(occupant.id));
+            this.session.sendMessage(new DeleteObjectMessage(occupant.id));
         }
-        this.session.sendMessage(new CreateBeltMessage({x: tileX, y: tileY, direction, beltType: BeltType.NORMAL}));
+        this.session.sendMessage(new CreateBeltMessage(tileX, tileY, direction, BeltType.NORMAL));
         Haptics.tap();
     }
 

@@ -15,6 +15,17 @@ export function snapToChunk(n) {
     return Math.floor(n / CHUNK_SIZE) * CHUNK_SIZE;
 }
 
+// Shared placement-preview ghost palette (used by every tool's ghost layer).
+export const GHOST_TINT = 0xC8F902; // normal placement preview (green)
+export const GHOST_BLOCKED_TINT = 0xF23030; // placement blocked (red), matches PlacementFeedbackLayer
+export const GHOST_BLOCKED_ALPHA = 0.8;
+
+// Green marker drawn on the locked placement target tile in center-lock mode: an inset square
+// with a semi-transparent fill and an opaque border.
+export const TARGET_TILE_COLOR = 0x4CFF50;
+export const TARGET_TILE_FILL_ALPHA = 0.22;
+export const TARGET_TILE_BORDER_WIDTH = 3;
+
 // Saturated, distinct hues chosen to stay legible over belts on the white
 // background; pale tints and bright yellows wash out, so they are avoided.
 const DEBUG_COLORS = [

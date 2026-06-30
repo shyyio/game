@@ -30,7 +30,7 @@ export class InputHandler {
     get activeTool() {
         // In map mode the tool is deactivated without clearing the toolbar
         // selection, so the cursor acts as if nothing were selected: no placement,
-        // no drag, no ghost preview, no context gesture suppression.
+        // no drag, no ghost preview. (The mini-menu is suppressed too — see _handleContextGesture.)
         if (this._mapMode) {
             return null;
         }
@@ -172,11 +172,12 @@ export class InputHandler {
     }
 
     /**
-     * The context gesture (long-press or right-click) opens the mini-menu when no tool is active.
+     * The context gesture (long-press or right-click) opens the mini-menu when no tool is active and
+     * not in map mode (where tile interactions are suppressed).
      * @private
      */
     _handleContextGesture(tileX, tileY, screenX, screenY) {
-        if (this.activeTool != null) {
+        if (this._mapMode || this.activeTool != null) {
             return;
         }
         this._openMiniMenu(tileX, tileY, screenX, screenY);

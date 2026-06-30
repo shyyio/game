@@ -70,6 +70,19 @@ export class TextureRegistry {
     }
 
     /**
+     * The texture for `name`, throwing if it isn't loaded (a missing texture is a content bug).
+     * @param {string} name
+     * @returns {Texture}
+     */
+    require(name) {
+        const texture = this.textures[name];
+        if (texture === undefined) {
+            throw new Error(`No texture loaded: "${name}"`);
+        }
+        return texture;
+    }
+
+    /**
      * The ordered frame textures for an animation sequence, or undefined if no
      * frames are grouped under that base name.
      * @param {string} name base sequence name (e.g. "belt-straight")

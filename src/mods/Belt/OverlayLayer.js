@@ -16,7 +16,7 @@ export class BeltOverlayDrawLayer extends AbstractDrawLayer {
         return 100;
     }
 
-    set lowRes(value) {
+    set mapMode(value) {
         this.visible = !value;
     }
 

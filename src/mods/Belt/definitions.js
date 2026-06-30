@@ -6,8 +6,6 @@ import {
     Direction,
     CHUNK_COORD_SQL,
     OCCUPANCY_LAYER_SURFACE,
-    BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
-    BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
 } from "@/sdk/common.js";
 import {
     ITEM_TYPE_GAP,
@@ -32,23 +30,23 @@ import {
 //      write the chosen out ports from stage 2 (FillStage2Output).
 // Self-managed (the resolved intents are managed=0): the engine's managed commit clears a
 // source in COMMIT_TRANSFERS, too late — it would wipe the upstream belt's fresh fill.
-// Each op scans Splitter and probes PortTransfer by source_id (the PortTransfer_source
+// Each op scans Splitter and probes ResolvedPortTransfer by source_id (the ResolvedPortTransfer_source
 // index); only a splitter whose hop resolved this tick emits a row.
 
 // Stage 2: record each internal port's resolved output target (and its item) before clearing it.
 const SplitterRecordStage2 = new TickOp(
     "SplitterRecordStage2",
     `INSERT INTO SplitterStage2 (out_port_id, item, int_port_id)
-     SELECT pt.destination_id, src.item, s.int_port_a_id
+     SELECT pt.destination_id, src.item, s.int_a_id
      FROM Splitter s
-        INNER JOIN PortTransfer pt ON pt.source_id = s.int_port_a_id
-        INNER JOIN Port src ON src.id = s.int_port_a_id
+        INNER JOIN ResolvedPortTransfer pt ON pt.source_id = s.int_a_id
+        INNER JOIN Port src ON src.id = s.int_a_id
      WHERE src.item IS NOT NULL
      UNION ALL
-     SELECT pt.destination_id, src.item, s.int_port_b_id
+     SELECT pt.destination_id, src.item, s.int_b_id
      FROM Splitter s
-        INNER JOIN PortTransfer pt ON pt.source_id = s.int_port_b_id
-        INNER JOIN Port src ON src.id = s.int_port_b_id
+        INNER JOIN ResolvedPortTransfer pt ON pt.source_id = s.int_b_id
+        INNER JOIN Port src ON src.id = s.int_b_id
      WHERE src.item IS NOT NULL;`
 );
 
@@ -56,16 +54,16 @@ const SplitterRecordStage2 = new TickOp(
 const SplitterRecordStage1 = new TickOp(
     "SplitterRecordStage1",
     `INSERT INTO SplitterStage1 (int_port_id, item, in_port_id)
-     SELECT pt.destination_id, src.item, s.in_port_a_id
+     SELECT pt.destination_id, src.item, s.in_a_id
      FROM Splitter s
-        INNER JOIN PortTransfer pt ON pt.source_id = s.in_port_a_id
-        INNER JOIN Port src ON src.id = s.in_port_a_id
+        INNER JOIN ResolvedPortTransfer pt ON pt.source_id = s.in_a_id
+        INNER JOIN Port src ON src.id = s.in_a_id
      WHERE src.item IS NOT NULL
      UNION ALL
-     SELECT pt.destination_id, src.item, s.in_port_b_id
+     SELECT pt.destination_id, src.item, s.in_b_id
      FROM Splitter s
-        INNER JOIN PortTransfer pt ON pt.source_id = s.in_port_b_id
-        INNER JOIN Port src ON src.id = s.in_port_b_id
+        INNER JOIN ResolvedPortTransfer pt ON pt.source_id = s.in_b_id
+        INNER JOIN Port src ON src.id = s.in_b_id
      WHERE src.item IS NOT NULL;`
 );
 
@@ -134,6 +132,16 @@ class BeltObjectDefinition extends ObjectDefinition {
               AND tail.direction = ${direction}`];
     }
 
+    // A belt's ports live on BeltPath (head's in_port, tail's out_port), not a Belt column,
+    // so the generic per-column reference guards can't reach them.
+    portReferenceLookups(table) {
+        return [`SELECT 1 FROM BeltPath WHERE BeltPath.in_port_id = Port.id OR BeltPath.out_port_id = Port.id`];
+    }
+
+    outputPortReferenceLookups(table) {
+        return [`SELECT 1 FROM BeltPath WHERE BeltPath.out_port_id = Port.id`];
+    }
+
     // A surface belt sits on SURFACE; an underground occupies one layer per axis, so a
     // surface belt and two crossing tunnels coexist on a tile.
     occupancyLookups(table) {
@@ -150,18 +158,20 @@ class BeltObjectDefinition extends ObjectDefinition {
     }
 }
 
-export const BeltDefinition = new BeltObjectDefinition(
-    [
+export const BeltDefinition = new BeltObjectDefinition({
+    table: "Belt",
+    inputPorts: [
         new PortDefinition("virtual_left", {x: 0, y: 0, direction: Direction.RIGHT}),
         new PortDefinition("virtual_down", {x: 0, y: 0, direction: Direction.UP}),
         new PortDefinition("virtual_right", {x: 0, y: 0, direction: Direction.LEFT}),
     ],
-    [
-        new PortDefinition("virtual_up", {x: 0, y: -1, direction: Direction.UP}),
+    outputPorts: [
+        // Captured manually from BeltPath (CaptureBeltPathPortItems), not this virtual port.
+        new PortDefinition("virtual_up", {x: 0, y: -1, direction: Direction.UP}, false),
     ],
-    [],
-    {x: 0, y: 0},
-    {
+    internalPorts: [],
+    geometry: "1x1",
+    tickPhases: {
         [TickPhase.SUBMIT_INTENTS]: [
 
             // Rebuild the set of paths that can do anything this tick, so the
@@ -200,7 +210,7 @@ export const BeltDefinition = new BeltObjectDefinition(
             // downstream path can ingest this tick without itself popping (it has head
             // room or a gap to shrink). The resolver's recursion then adds the packed-
             // chain-also-pops case. The movement below pops exactly the paths whose intent
-            // resolved (PortTransfer rows with managed=0).
+            // resolved (ResolvedPortTransfer rows with managed=0).
             new TickOp(
                 "SubmitBeltShiftIntent",
                 `INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty, managed)
@@ -226,8 +236,8 @@ export const BeltDefinition = new BeltObjectDefinition(
             // to active seams rather than every path.
             new TickOp(
                 "SubmitBeltIngestReadiness",
-                `INSERT INTO PortTransferIntent (source_id, destination_id)
-                 SELECT inPort.id, NULL
+                `INSERT INTO PortTransferIntent (source_id, destination_id, managed)
+                 SELECT inPort.id, NULL AS destination_id, 0 AS managed
                  FROM Port inPort INDEXED BY Port_in_filled
                     INNER JOIN BeltPath path ON path.in_port_id = inPort.id
                  WHERE inPort.item IS NOT NULL
@@ -257,7 +267,7 @@ export const BeltDefinition = new BeltObjectDefinition(
                             p.next_item_id IS NULL
                                 OR
                             -- The path can't pop this tick: its shift intent didn't resolve.
-                            p.out_port_id NOT IN (SELECT destination_id FROM PortTransfer WHERE managed=0)
+                            p.out_port_id NOT IN (SELECT destination_id FROM ResolvedPortTransfer WHERE managed=0)
                         )
                       AND p.id IN (SELECT path_id FROM ActivePath);`
             ),
@@ -301,7 +311,7 @@ export const BeltDefinition = new BeltObjectDefinition(
                     )
                   -- The path's shift intent resolved: the output is free now, or it
                   -- drains this tick (the downstream ingests, recursively up the chain).
-                  AND BeltPath.out_port_id IN (SELECT destination_id FROM PortTransfer WHERE managed=0);`
+                  AND BeltPath.out_port_id IN (SELECT destination_id FROM ResolvedPortTransfer WHERE managed=0);`
             ),
             // Popped items are deleted by Cleanup1; capture the watched ones now (gated
             // on viewport) so the emit phase reports each as a DELETE delta.
@@ -596,13 +606,14 @@ export const BeltDefinition = new BeltObjectDefinition(
             )
         ],
         [TickPhase.COMMIT_TRANSFERS]: [
-            // Port transfers have settled. Gather the watched filled out-ports once —
-            // O(belts in view) via Belt_chunk — then the SET/CLEAR/rebuild below share it.
-            new TickOp("ClearViewedOutPortItems", `DELETE FROM ViewedOutPortItem;`),
+            // Port transfers have settled. A belt's rendered out-port lives on BeltPath (head's
+            // out_port), not the Belt row, so it can't go through the engine's declarative
+            // renderedOutputPorts; capture it manually into the shared ViewedPortItem, routed by
+            // the head tile. O(belts in view) via Belt_chunk. The engine diffs/emits/rebuilds.
             new TickOp(
-                "CaptureViewedOutPortItems",
+                "CaptureBeltPathPortItems",
                 `WITH viewed_chunk AS (SELECT DISTINCT chunk FROM SessionViewport)
-                 INSERT INTO ViewedOutPortItem (port_id, item, x, y)
+                 INSERT INTO ViewedPortItem (port_id, item, x, y)
                  SELECT p.id, p.item, head.x, head.y
                  FROM viewed_chunk vc
                     CROSS JOIN Belt head INDEXED BY Belt_chunk ON head.chunk = vc.chunk
@@ -610,54 +621,9 @@ export const BeltDefinition = new BeltObjectDefinition(
                     CROSS JOIN Port p ON p.id = bp.out_port_id
                  WHERE p.item IS NOT NULL;`
             ),
-            // Splitter output ports rest items for a tick too; gather the watched ones into
-            // the same table (routed by the splitter tile) so the SET/CLEAR diff below covers
-            // them. Each splitter out-port is a downstream belt's in-port, never a path
-            // out-port, so it can't collide with a row CaptureViewedOutPortItems inserted.
-            new TickOp(
-                "CaptureViewedSplitterPortItems",
-                `WITH viewed_chunk AS (SELECT DISTINCT chunk FROM SessionViewport)
-                 INSERT INTO ViewedOutPortItem (port_id, item, x, y)
-                 SELECT p.id, p.item, s.x, s.y
-                 FROM viewed_chunk vc
-                    CROSS JOIN Splitter s INDEXED BY Splitter_chunk ON s.chunk = vc.chunk
-                    CROSS JOIN Port p ON p.id = s.out_port_a_id
-                 WHERE p.item IS NOT NULL
-                 UNION ALL
-                 SELECT p.id, p.item, s.x, s.y
-                 FROM viewed_chunk vc
-                    CROSS JOIN Splitter s INDEXED BY Splitter_chunk ON s.chunk = vc.chunk
-                    CROSS JOIN Port p ON p.id = s.out_port_b_id
-                 WHERE p.item IS NOT NULL;`
-            ),
-            // SET for each out-port whose resting item changed (diff vs OutPortItemShadow).
-            // Carries only the port id (a=item type); the client infers the render tile.
-            // x/y is the head tile, for chunk routing.
-            new TickOp(
-                "EmitOutPortItemSet",
-                `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
-                 SELECT ${BUFFERED_EVENT_TYPE_PORT_ITEM_SET}, ${CHUNK_COORD_SQL("v.x")}, ${CHUNK_COORD_SQL("v.y")}, v.port_id, v.item, NULL, NULL
-                 FROM ViewedOutPortItem v
-                    LEFT JOIN OutPortItemShadow s ON s.port_id = v.port_id
-                 WHERE s.port_id IS NULL OR s.item != v.item;`
-            ),
-            new TickOp(
-                "EmitOutPortItemClear",
-                `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
-                 SELECT ${BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR}, ${CHUNK_COORD_SQL("s.x")}, ${CHUNK_COORD_SQL("s.y")}, s.port_id, NULL, NULL, NULL
-                 FROM OutPortItemShadow s
-                 WHERE s.port_id NOT IN (SELECT port_id FROM ViewedOutPortItem);`
-            ),
-            new TickOp("ClearOutPortItemShadow", `DELETE FROM OutPortItemShadow;`),
-            new TickOp(
-                "RebuildOutPortItemShadow",
-                `INSERT INTO OutPortItemShadow (port_id, item, x, y)
-                 SELECT v.port_id, v.item, v.x, v.y
-                 FROM ViewedOutPortItem v;`
-            ),
         ]
     },
-);
+});
 
 // A 1x2 router with two inputs and two outputs (ports shared with adjacent belts) and two
 // internal buffer ports. Each item flows in_X -> int_X -> out_Y, resting a tick in int_X so
@@ -671,21 +637,22 @@ export const BeltDefinition = new BeltObjectDefinition(
 // best-ranked resolved output, so the item takes the preferred output, or the other when the
 // preferred can't drain this tick — agnostic to whatever is downstream, since drainability
 // comes from the chain, not a peek at the neighbor.
-export const SplitterDefinition = new ObjectDefinition(
-    [
-        new PortDefinition("in_port_a_id", {x: 0, y: 0, direction: Direction.UP}),
-        new PortDefinition("in_port_b_id", {x: 1, y: 0, direction: Direction.UP}),
+export const SplitterDefinition = new ObjectDefinition({
+    table: "Splitter",
+    inputPorts: [
+        new PortDefinition("in_a", {x: 0, y: 0, direction: Direction.UP}),
+        new PortDefinition("in_b", {x: 1, y: 0, direction: Direction.UP}),
     ],
-    [
-        new PortDefinition("out_port_a_id", {x: 0, y: -1, direction: Direction.UP}),
-        new PortDefinition("out_port_b_id", {x: 1, y: -1, direction: Direction.UP}),
+    outputPorts: [
+        new PortDefinition("out_a", {x: 0, y: -1, direction: Direction.UP}),
+        new PortDefinition("out_b", {x: 1, y: -1, direction: Direction.UP}),
     ],
-    [
-        new PortDefinition("int_port_a_id"),
-        new PortDefinition("int_port_b_id"),
+    internalPorts: [
+        new PortDefinition("int_a"),
+        new PortDefinition("int_b"),
     ],
-    {x: 1, y: 0},
-    {
+    geometry: "1x2",
+    tickPhases: {
         [TickPhase.SUBMIT_INTENTS]: [
             // Stage 1: buffer each loaded input into its internal port. Single destination
             // (not a fan-out), destination_is_empty is exact (the internal port is the
@@ -694,16 +661,16 @@ export const SplitterDefinition = new ObjectDefinition(
             new TickOp(
                 "SubmitSplitterStage1",
                 `INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty, managed)
-                 SELECT s.in_port_a_id, s.int_port_a_id, (ia.item IS NULL), 0
+                 SELECT s.in_a_id, s.int_a_id, (ia.item IS NULL), 0
                  FROM Splitter s
-                    INNER JOIN Port inp ON inp.id = s.in_port_a_id
-                    INNER JOIN Port ia ON ia.id = s.int_port_a_id
+                    INNER JOIN Port inp ON inp.id = s.in_a_id
+                    INNER JOIN Port ia ON ia.id = s.int_a_id
                  WHERE inp.item IS NOT NULL
                  UNION ALL
-                 SELECT s.in_port_b_id, s.int_port_b_id, (ib.item IS NULL), 0
+                 SELECT s.in_b_id, s.int_b_id, (ib.item IS NULL), 0
                  FROM Splitter s
-                    INNER JOIN Port inp ON inp.id = s.in_port_b_id
-                    INNER JOIN Port ib ON ib.id = s.int_port_b_id
+                    INNER JOIN Port inp ON inp.id = s.in_b_id
+                    INNER JOIN Port ib ON ib.id = s.int_b_id
                  WHERE inp.item IS NOT NULL;`
             ),
 
@@ -715,32 +682,32 @@ export const SplitterDefinition = new ObjectDefinition(
             new TickOp(
                 "SubmitSplitterStage2",
                 `INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty, managed, alternatives_rank)
-                 SELECT s.int_port_a_id, s.out_port_a_id, (oa.item IS NULL), 0,
+                 SELECT s.int_a_id, s.out_a_id, (oa.item IS NULL), 0,
                         CASE WHEN s.state = 0 THEN 1 ELSE 2 END
                  FROM Splitter s
-                    INNER JOIN Port ia ON ia.id = s.int_port_a_id
-                    INNER JOIN Port oa ON oa.id = s.out_port_a_id
+                    INNER JOIN Port ia ON ia.id = s.int_a_id
+                    INNER JOIN Port oa ON oa.id = s.out_a_id
                  WHERE ia.item IS NOT NULL
                  UNION ALL
-                 SELECT s.int_port_a_id, s.out_port_b_id, (ob.item IS NULL), 0,
+                 SELECT s.int_a_id, s.out_b_id, (ob.item IS NULL), 0,
                         CASE WHEN s.state = 0 THEN 2 ELSE 1 END
                  FROM Splitter s
-                    INNER JOIN Port ia ON ia.id = s.int_port_a_id
-                    INNER JOIN Port ob ON ob.id = s.out_port_b_id
+                    INNER JOIN Port ia ON ia.id = s.int_a_id
+                    INNER JOIN Port ob ON ob.id = s.out_b_id
                  WHERE ia.item IS NOT NULL
                  UNION ALL
-                 SELECT s.int_port_b_id, s.out_port_b_id, (ob.item IS NULL), 0,
+                 SELECT s.int_b_id, s.out_b_id, (ob.item IS NULL), 0,
                         CASE WHEN s.state = 0 THEN 1 ELSE 2 END
                  FROM Splitter s
-                    INNER JOIN Port ib ON ib.id = s.int_port_b_id
-                    INNER JOIN Port ob ON ob.id = s.out_port_b_id
+                    INNER JOIN Port ib ON ib.id = s.int_b_id
+                    INNER JOIN Port ob ON ob.id = s.out_b_id
                  WHERE ib.item IS NOT NULL
                  UNION ALL
-                 SELECT s.int_port_b_id, s.out_port_a_id, (oa.item IS NULL), 0,
+                 SELECT s.int_b_id, s.out_a_id, (oa.item IS NULL), 0,
                         CASE WHEN s.state = 0 THEN 2 ELSE 1 END
                  FROM Splitter s
-                    INNER JOIN Port ib ON ib.id = s.int_port_b_id
-                    INNER JOIN Port oa ON oa.id = s.out_port_a_id
+                    INNER JOIN Port ib ON ib.id = s.int_b_id
+                    INNER JOIN Port oa ON oa.id = s.out_a_id
                  WHERE ib.item IS NOT NULL;`
             ),
         ],
@@ -753,11 +720,14 @@ export const SplitterDefinition = new ObjectDefinition(
                 `UPDATE Splitter
                  SET state = 1 - state
                  WHERE EXISTS (
-                     SELECT 1 FROM PortTransfer pt
-                     WHERE pt.source_id = Splitter.int_port_a_id
-                        OR pt.source_id = Splitter.int_port_b_id
+                     SELECT 1 FROM ResolvedPortTransfer pt
+                     WHERE pt.source_id = Splitter.int_a_id
+                        OR pt.source_id = Splitter.int_b_id
                  );`
             ),
         ],
     },
-);
+    renderConnections: true,
+    textureName: "splitter/1",
+    label: "Splitter",
+});

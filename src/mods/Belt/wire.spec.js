@@ -3,16 +3,15 @@ import assert from "node:assert";
 
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {WireRegistry} from "@/common/wire.js";
+import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
+import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
 import {BeltMod} from "./mod.js";
-import {CreateBeltMessage, DeleteBeltMessage} from "./messages.js";
+import {CreateBeltMessage} from "./messages.js";
 import {
     BeltInsertEvent,
     BeltSyncEvent,
     BeltDeleteEvent,
     BeltPathRecalculateEvent,
-    SplitterInsertEvent,
-    SplitterSyncEvent,
-    SplitterDeleteEvent,
 } from "./events.js";
 
 function registry() {
@@ -41,11 +40,8 @@ function roundTrip(reg, instance, cls) {
 
 test("Round-trips belt messages, including null and BigInt fields", () => {
     const reg = registry();
-    roundTrip(reg, new CreateBeltMessage({
-        x: 1, y: 2, direction: 3, beltType: 0,
-        rampParent: undefined, disconnectRampChild: 123456789012345n,
-    }), CreateBeltMessage);
-    roundTrip(reg, new DeleteBeltMessage(123456789012345n), DeleteBeltMessage);
+    roundTrip(reg, new CreateBeltMessage(1, 2, 3, 0, undefined, 123456789012345n), CreateBeltMessage);
+    roundTrip(reg, new DeleteObjectMessage(123456789012345n), DeleteObjectMessage);
 });
 
 test("Round-trips belt events, preserving exact BigInt ids", () => {
@@ -56,17 +52,18 @@ test("Round-trips belt events, preserving exact BigInt ids", () => {
     roundTrip(reg, new BeltPathRecalculateEvent(1, 2, [1n, 2n, 9999999999999999n]), BeltPathRecalculateEvent);
 });
 
-test("Round-trips splitter events, preserving exact BigInt port ids", () => {
+test("Round-trips generic object events, preserving exact BigInt ids in the port-id array", () => {
     const reg = registry();
-    roundTrip(reg, new SplitterInsertEvent(5, 6, 99n, 1, 7n, 8n), SplitterInsertEvent);
-    roundTrip(reg, new SplitterSyncEvent(5, 6, 100n, 2, 9999999999999999n, 8n), SplitterSyncEvent);
-    roundTrip(reg, new SplitterDeleteEvent(5, 6, 99n), SplitterDeleteEvent);
+    roundTrip(reg, new ObjectInsertEvent(1, 99n, 5, 6, 1, [7n, 9999999999999999n]), ObjectInsertEvent);
+    roundTrip(reg, new ObjectSyncEvent(2, 100n, 5, 6, 2, [9007199254740993n]), ObjectSyncEvent);
+    roundTrip(reg, new ObjectDeleteEvent(1, 99n, 5, 6), ObjectDeleteEvent);
+    roundTrip(reg, new CreateObjectMessage(1, 5, 6, 1), CreateObjectMessage);
 });
 
 test("Decoded belt id is an exact, lossless BigInt", () => {
     const reg = registry();
     const id = 9007199254740993n; // 2^53 + 1, beyond Number precision
-    const decoded = reg.decode(reg.encode(new DeleteBeltMessage(id)));
+    const decoded = reg.decode(reg.encode(new DeleteObjectMessage(id)));
     assert.strictEqual(typeof decoded.id, "bigint");
     assert.strictEqual(decoded.id, id);
 });

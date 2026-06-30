@@ -25,3 +25,52 @@ export class SetViewportMessage extends AbstractMessage {
         return this.chunks.length <= MAX_VIEWPORT_CHUNKS;
     }
 }
+
+/**
+ * Deletes a placed object by its (globally unique) id. Dispatched to every mod; each deletes
+ * the object if the id is one of its own and ignores it otherwise — so a tool can remove any
+ * object without knowing which mod owns it.
+ */
+export class DeleteObjectMessage extends AbstractMessage {
+
+    static wireFields = {
+        id: "int64",
+    };
+
+    /**
+     * @param {BigInt} id
+     */
+    constructor(id) {
+        super();
+        this.id = id;
+    }
+}
+
+/**
+ * Places an object of `typeId` (an ObjectDefinition's engine-assigned type id) at a tile. Dispatched
+ * to every mod; the mod whose EasyObjectPlacement owns that type places it, the rest ignore it — so a
+ * tool places any simple object without a per-object message class.
+ */
+export class CreateObjectMessage extends AbstractMessage {
+
+    static wireFields = {
+        typeId: "int32",
+        x: "int32",
+        y: "int32",
+        direction: "int32",
+    };
+
+    /**
+     * @param {number} typeId
+     * @param {number} x
+     * @param {number} y
+     * @param {Direction} direction
+     */
+    constructor(typeId, x, y, direction) {
+        super();
+        this.typeId = typeId;
+        this.x = x;
+        this.y = y;
+        this.direction = direction;
+    }
+}

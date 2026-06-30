@@ -15,9 +15,11 @@ import {CHUNK_SIZE, Direction} from "@/common/constants.js";
 import {chunkKey} from "@/common/util.js";
 import {GridDrawLayer} from "@/client/GridDrawLayer.js";
 import {MaskDrawLayer} from "@/client/MaskDrawLayer.js";
-import {BlockedTilesLayer} from "@/client/BlockedTilesLayer.js";
+import {PlacementFeedbackLayer} from "@/client/PlacementFeedbackLayer.js";
 import {InspectLayer} from "@/client/InspectLayer.js";
 import {ClientCache} from "@/client/ClientCache.js";
+import {ItemDrawLayer} from "@/client/ItemDrawLayer.js";
+import {ConnectionDrawLayer} from "@/client/ConnectionDrawLayer.js";
 import {advanceAnimationFrame} from "@/client/animation.js";
 import {DEV, BROWSER} from "@/common/env.js";
 
@@ -53,7 +55,7 @@ export class Client {
         // Rotate controls, toggled with the active tool by the host.
         this.rotateButtonsLayer = new RotateButtonsLayer(app, viewport);
         // Shared placement-feedback layer, driven by whichever tool is active.
-        this.blockedTilesLayer = new BlockedTilesLayer();
+        this.placementFeedbackLayer = new PlacementFeedbackLayer();
         // Shared hover-highlight layer, driven by mods' inspect hover.
         this.inspectLayer = new InspectLayer();
         // Shared placement facing, so orientation persists across tool switches.
@@ -61,12 +63,22 @@ export class Client {
         // Shared cross-mod object index, fed by mods' insert/delete handling and queried by
         // tools/layers for tile lookups, placement collision, and connection rendering.
         this.cache = new ClientCache();
+        // The single shared item layer: belts drive their computed-position items imperatively;
+        // resting out-port items render here automatically from the port-item events.
+        this.itemLayer = new ItemDrawLayer();
+        this.itemLayer.itemTextures = modRegistry.itemTextures;
+        // A removed object's resting out-port item sprites go with it.
+        this.cache.onRemove(record => this.itemLayer.dropPorts(record));
+        // The single shared connection-stub layer, derived from the cache each frame.
+        this.connectionLayer = new ConnectionDrawLayer();
 
         CoreDrawLayers.forEach(layer => {
             this.drawLayerRegistry.add(layer);
         });
-        this.drawLayerRegistry.add(this.blockedTilesLayer);
+        this.drawLayerRegistry.add(this.placementFeedbackLayer);
         this.drawLayerRegistry.add(this.inspectLayer);
+        this.drawLayerRegistry.add(this.itemLayer);
+        this.drawLayerRegistry.add(this.connectionLayer);
 
         this._lastViewportKey = null;
         this._mapMode = false;
@@ -103,10 +115,6 @@ export class Client {
             layer.viewport = this.viewport;
             layer.cache = this.cache;
             this.viewport.addChild(layer);
-        });
-
-        this.modRegistry.mods.forEach(mod => {
-            mod.clientInit(this);
         });
 
         this.app.stage.addChild(this.miniMenuLayer);
@@ -146,7 +154,7 @@ export class Client {
             return;
         }
         this._mapMode = mapMode;
-        this.drawLayerRegistry.setLowRes(mapMode);
+        this.drawLayerRegistry.setMapMode(mapMode);
         if (this._onMapModeChange != null) {
             this._onMapModeChange(mapMode);
         }

@@ -1,10 +1,11 @@
 import protobuf from "protobufjs";
 
-import {SetViewportMessage} from "@/common/CoreMessages.js";
+import {SetViewportMessage, DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {BufferedEvent} from "@/common/BufferedEvent.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
+import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
 
 const {Type, Field, MapField, Root} = protobuf;
 const Long = protobuf.util.Long;
@@ -30,6 +31,11 @@ const CORE_WIRE_CLASSES = [
     ChunkSubscribeEvent,
     ChunkUnsubscribeEvent,
     ChunkSyncEvent,
+    DeleteObjectMessage,
+    CreateObjectMessage,
+    ObjectInsertEvent,
+    ObjectSyncEvent,
+    ObjectDeleteEvent,
 ];
 
 /**

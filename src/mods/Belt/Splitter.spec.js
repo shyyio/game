@@ -16,12 +16,12 @@ function splitterPorts(game) {
     const id = game.rawScalar("SELECT id FROM Splitter LIMIT 1");
     const col = (name) => game.rawScalar(`SELECT ${name} FROM Splitter WHERE id=${id}`);
     return {
-        in_port_a_id: col("in_port_a_id"),
-        in_port_b_id: col("in_port_b_id"),
-        out_port_a_id: col("out_port_a_id"),
-        out_port_b_id: col("out_port_b_id"),
-        int_port_a_id: col("int_port_a_id"),
-        int_port_b_id: col("int_port_b_id"),
+        in_a_id: col("in_a_id"),
+        in_b_id: col("in_b_id"),
+        out_a_id: col("out_a_id"),
+        out_b_id: col("out_b_id"),
+        int_a_id: col("int_a_id"),
+        int_b_id: col("int_b_id"),
         state: col("state"),
     };
 }
@@ -45,9 +45,9 @@ test("Creates a splitter wired to six distinct ports", async () => {
 
     const s = splitterPorts(game);
     const ids = [
-        s.in_port_a_id, s.in_port_b_id,
-        s.out_port_a_id, s.out_port_b_id,
-        s.int_port_a_id, s.int_port_b_id,
+        s.in_a_id, s.in_b_id,
+        s.out_a_id, s.out_b_id,
+        s.int_a_id, s.int_b_id,
     ];
     ids.forEach(id => assert.notEqual(id, null));
     assert.equal(new Set(ids.map(Number)).size, 6);
@@ -59,7 +59,7 @@ test("Merges a belt into one fed by a splitter without dropping the shared port"
     createSplitter(game, {x: 12, y: 6, direction: Direction.UP});
     // This belt adopts the splitter's out_port_b as its in-port (the splitter feeds it).
     createBelt(game, GameObject.BELT, {x: 13, y: 5, direction: Direction.UP});
-    const sharedPort = game.rawScalar("SELECT out_port_b_id FROM Splitter");
+    const sharedPort = game.rawScalar("SELECT out_b_id FROM Splitter");
 
     // A belt feeding that belt from the left merges the two into one path. The merge must not
     // delete the shared in-port (still owned by the splitter) — doing so broke its foreign key.
@@ -68,7 +68,7 @@ test("Merges a belt into one fed by a splitter without dropping the shared port"
     assert.equal(game.rawScalar("SELECT COUNT(*) FROM Belt"), 2);
     assert.equal(game.rawScalar("SELECT COUNT(DISTINCT path_id) FROM Belt"), 1);
     // The splitter still owns the shared port.
-    assert.equal(game.rawScalar("SELECT out_port_b_id FROM Splitter"), Number(sharedPort));
+    assert.equal(game.rawScalar("SELECT out_b_id FROM Splitter"), Number(sharedPort));
     assert.equal(game.rawScalar(`SELECT COUNT(*) FROM Port WHERE id=${Number(sharedPort)}`), 1);
 });
 
@@ -77,21 +77,21 @@ test("Emits out-port item deltas for a watched splitter output", async () => {
     createSplitter(game, {x: 5, y: 5, direction: Direction.UP});
     const s = splitterPorts(game);
     // Rest an item in output A; with no downstream belt it stays put for the capture.
-    inject(game, s.out_port_a_id);
+    inject(game, s.out_a_id);
     game.rawExec("INSERT INTO SessionViewport (session_id, chunk) VALUES (1, '0,0')");
 
     game.tickAll();
     assert.equal(
-        game.rawScalar(`SELECT a FROM BufferedEvent WHERE type=${BUFFERED_EVENT_TYPE_PORT_ITEM_SET} AND id=${s.out_port_a_id}`),
+        game.rawScalar(`SELECT a FROM BufferedEvent WHERE type=${BUFFERED_EVENT_TYPE_PORT_ITEM_SET} AND id=${s.out_a_id}`),
         1,
     );
 
     // Item leaves the port: a CLEAR.
     game.rawExec("DELETE FROM BufferedEvent");
-    clear(game, s.out_port_a_id);
+    clear(game, s.out_a_id);
     game.tickAll();
     assert.equal(
-        game.rawScalar(`SELECT COUNT(*) FROM BufferedEvent WHERE type=${BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR} AND id=${s.out_port_a_id}`),
+        game.rawScalar(`SELECT COUNT(*) FROM BufferedEvent WHERE type=${BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR} AND id=${s.out_a_id}`),
         1,
     );
 });
@@ -114,15 +114,15 @@ test("A belt path extended onto a splitter input adopts the shared port (placeme
     createBelt(game, GameObject.BELT, {x: 15, y: 5, direction: Direction.LEFT});
     createBelt(game, GameObject.BELT, {x: 14, y: 5, direction: Direction.UP});
 
-    const inB = game.rawScalar("SELECT in_port_b_id FROM Splitter");
+    const inB = game.rawScalar("SELECT in_b_id FROM Splitter");
     assert.equal(game.rawScalar("SELECT out_port_id FROM BeltPath"), Number(inB));
 });
 
-test("Rejects a splitter whose far footprint tile overlaps a belt", async () => {
+test("Rejects a splitter whose far geometry tile overlaps a belt", async () => {
     const game = await setup();
 
     // A belt on the splitter's second tile (6,5); its base tile (5,5) is clear. The engine's
-    // footprint collision must still reject it — the old per-tile unique index never saw the far cell.
+    // geometry collision must still reject it — the old per-tile unique index never saw the far cell.
     createBelt(game, GameObject.BELT, {x: 6, y: 5, direction: Direction.UP});
     createSplitter(game, {x: 5, y: 5, direction: Direction.UP});
 
@@ -153,8 +153,8 @@ test("Shares ports with the belts it sits between", async () => {
     const feederId = game.rawScalar("SELECT id FROM Belt WHERE x=5 AND y=6");
     const drainId = game.rawScalar("SELECT id FROM Belt WHERE x=5 AND y=4");
 
-    assert.equal(Number(s.in_port_a_id), Number(game.queryScalar("GetPathOutPort", {id: feederId})));
-    assert.equal(Number(s.out_port_a_id), Number(game.queryScalar("GetPathInPort", {id: drainId})));
+    assert.equal(Number(s.in_a_id), Number(game.queryScalar("GetPathOutPort", {id: feederId})));
+    assert.equal(Number(s.out_a_id), Number(game.queryScalar("GetPathInPort", {id: drainId})));
 });
 
 test("Adopts a splitter's ports when belts are placed around it afterwards", async () => {
@@ -170,8 +170,8 @@ test("Adopts a splitter's ports when belts are placed around it afterwards", asy
     const feederId = game.rawScalar("SELECT id FROM Belt WHERE x=5 AND y=6");
     const drainId = game.rawScalar("SELECT id FROM Belt WHERE x=5 AND y=4");
 
-    assert.equal(Number(game.queryScalar("GetPathOutPort", {id: feederId})), Number(s.in_port_a_id));
-    assert.equal(Number(game.queryScalar("GetPathInPort", {id: drainId})), Number(s.out_port_a_id));
+    assert.equal(Number(game.queryScalar("GetPathOutPort", {id: feederId})), Number(s.in_a_id));
+    assert.equal(Number(game.queryScalar("GetPathInPort", {id: drainId})), Number(s.out_a_id));
 });
 
 test("Takes three ticks to cross (input, internal, output) — no teleport", async () => {
@@ -179,18 +179,18 @@ test("Takes three ticks to cross (input, internal, output) — no teleport", asy
     createSplitter(game, {x: 5, y: 5, direction: Direction.UP});
     const s = splitterPorts(game);
 
-    inject(game, s.in_port_a_id);
+    inject(game, s.in_a_id);
 
     // After one tick the item has only reached the internal buffer, not an output.
     game.tickAll();
-    assert.notEqual(item(game, s.int_port_a_id), null);
-    assert.equal(item(game, s.out_port_a_id), null);
-    assert.equal(item(game, s.out_port_b_id), null);
+    assert.notEqual(item(game, s.int_a_id), null);
+    assert.equal(item(game, s.out_a_id), null);
+    assert.equal(item(game, s.out_b_id), null);
 
     // The next tick routes it to an output.
     game.tickAll();
-    assert.equal(item(game, s.int_port_a_id), null);
-    assert.notEqual(item(game, s.out_port_a_id), null);
+    assert.equal(item(game, s.int_a_id), null);
+    assert.notEqual(item(game, s.out_a_id), null);
 });
 
 test("Round-robins a single lane across both outputs", async () => {
@@ -200,13 +200,13 @@ test("Round-robins a single lane across both outputs", async () => {
 
     const out = [];
     for (let i = 0; i < 4; i += 1) {
-        clear(game, s.out_port_a_id);
-        clear(game, s.out_port_b_id);
-        inject(game, s.int_port_a_id);
+        clear(game, s.out_a_id);
+        clear(game, s.out_b_id);
+        inject(game, s.int_a_id);
 
         game.tickAll();
 
-        out.push(item(game, s.out_port_a_id) !== null ? "A" : (item(game, s.out_port_b_id) !== null ? "B" : "-"));
+        out.push(item(game, s.out_a_id) !== null ? "A" : (item(game, s.out_b_id) !== null ? "B" : "-"));
     }
 
     assert.deepEqual(out, ["A", "B", "A", "B"]);
@@ -218,16 +218,16 @@ test("Saturates both outputs when both lanes are saturated", async () => {
     const s = splitterPorts(game);
 
     for (let i = 0; i < 4; i += 1) {
-        clear(game, s.out_port_a_id);
-        clear(game, s.out_port_b_id);
-        inject(game, s.int_port_a_id);
-        inject(game, s.int_port_b_id);
+        clear(game, s.out_a_id);
+        clear(game, s.out_b_id);
+        inject(game, s.int_a_id);
+        inject(game, s.int_b_id);
 
         game.tickAll();
 
         // Each lane routes to a different output every tick, so both stay filled.
-        assert.notEqual(item(game, s.out_port_a_id), null);
-        assert.notEqual(item(game, s.out_port_b_id), null);
+        assert.notEqual(item(game, s.out_a_id), null);
+        assert.notEqual(item(game, s.out_b_id), null);
     }
 });
 
@@ -303,16 +303,16 @@ test("Routes into a downstream that ingests into head room without popping", asy
     const s = splitterPorts(game);
 
     // out_A holds a resting item the belt will ingest; out_B is blocked; int_A is loaded.
-    inject(game, s.out_port_a_id);
-    inject(game, s.out_port_b_id);
-    inject(game, s.int_port_a_id);
+    inject(game, s.out_a_id);
+    inject(game, s.out_b_id);
+    inject(game, s.int_a_id);
 
     game.tickAll();
 
     // The belt ingested out_A's item (now in the path) AND the splitter refilled out_A the
     // same tick — only possible because the belt declared its in-port drainable this tick.
-    assert.notEqual(item(game, s.out_port_a_id), null);
-    assert.equal(item(game, s.int_port_a_id), null);
+    assert.notEqual(item(game, s.out_a_id), null);
+    assert.equal(item(game, s.int_a_id), null);
     assert.equal(game.rawScalar("SELECT COUNT(*) FROM BeltPathItem WHERE type != 0"), 1);
 });
 
@@ -322,20 +322,20 @@ test("Routes around a blocked output at full throughput", async () => {
     const s = splitterPorts(game);
 
     // out_A is permanently blocked (an item that never drains, no downstream).
-    inject(game, s.out_port_a_id);
+    inject(game, s.out_a_id);
 
     let delivered = 0;
     for (let i = 0; i < 4; i += 1) {
-        clear(game, s.out_port_b_id);
-        inject(game, s.int_port_a_id);
+        clear(game, s.out_b_id);
+        inject(game, s.int_a_id);
 
         game.tickAll();
 
-        if (item(game, s.out_port_b_id) !== null) {
+        if (item(game, s.out_b_id) !== null) {
             delivered += 1;
         }
         // The blocked output is never written.
-        assert.notEqual(item(game, s.out_port_a_id), null);
+        assert.notEqual(item(game, s.out_a_id), null);
     }
 
     assert.equal(delivered, 4);

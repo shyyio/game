@@ -15,7 +15,7 @@
 // describe the game objects your mod adds and how they behave each tick.
 export {
     AbstractMod,              // base class every mod extends
-    ObjectDefinition, // declares a placeable object: ports, footprint, per-tick ops
+    ObjectDefinition, // declares a placeable object: ports, geometry, per-tick ops
     PortDefinition,   // one input/output/internal port on an object (position + facing)
     TickOp,           // a SQL statement run during one tick phase
     PortTransferOp,   // a TickOp that moves an item from one port to another
@@ -35,6 +35,16 @@ export {
 // Base class for messages a session sends to the game (player intents). Subclass
 // it, declare a static `wireFields` map, and optionally override `validate`.
 export {AbstractMessage} from "@/common/AbstractMessage.js";
+
+// Generic "delete the object with this id" message, dispatched to every mod; a mod deletes
+// the object if it owns the id and ignores it otherwise. Lets a tool remove any object
+// (belt, splitter, machine, …) without knowing which mod owns it.
+export {DeleteObjectMessage} from "@/common/CoreMessages.js";
+
+// Generic object-placement message (tagged with an ObjectDefinition table name) and the generic
+// object lifecycle events EasyObjectPlacement emits — a mod uses these instead of per-object classes.
+export {CreateObjectMessage} from "@/common/CoreMessages.js";
+export {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
 
 // ---- Errors ----
 // Thrown by a mod's placement code to refuse a creation; unwinds to the transaction
@@ -70,8 +80,18 @@ export {
 // { thisObjectsPortName -> sharedPortId }.
 export {upstreamPorts, downstreamPorts} from "@/common/portUtils.js";
 
+// Sim-side create/remove/sync flow for a port-sharing object placed by a Create<T>Message; a mod
+// composes one per object type and delegates onMessage/chunkSyncEvents to it. "Easy" = the
+// base-case helper most mods build on (vs bespoke belt placement).
+export {EasyObjectPlacement} from "@/common/EasyObjectPlacement.js";
+
+// Base-case machine behavior: consume N inputs, then after a countdown create one output, all via
+// transfer intents. Build it, then `install(definition)` to set the definition's tickPhases +
+// stateColumns (derived from its table + ports).
+export {EasyRecipe} from "@/common/EasyRecipe.js";
+
 // Rotates a `{x, y}` offset (a port or size vector) by a placement direction, so a mod
-// can compute where an object's ports/footprint land from its ObjectDefinition.
+// can compute where an object's ports/geometry land from its ObjectDefinition.
 export {rotate} from "@/common/util.js";
 
 // ---- Chunk keys ----

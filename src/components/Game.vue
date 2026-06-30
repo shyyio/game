@@ -7,6 +7,7 @@ import Mouse from "@/client/Mouse.js";
 import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {BeltClientMod} from "@/mods/Belt/BeltClientMod.js";
+import {DemoClientMod} from "@/mods/DemoMod/DemoMod.js";
 import {BaseTexturesMod} from "@/mods/BaseTextures/mod.js";
 import {DatabaseSchema} from "@/common/DatabaseSchema.js";
 import {BrowserDatabase} from "@/client/BrowserDatabase.js";
@@ -164,6 +165,7 @@ onMounted(async () => {
   const modRegistry = new ModRegistry();
   modRegistry.loadMod(new BaseTexturesMod());
   modRegistry.loadMod(new BeltClientMod());
+  modRegistry.loadMod(new DemoClientMod());
 
   const schema = new DatabaseSchema(modRegistry);
   const db = new BrowserDatabase(schema);
@@ -191,7 +193,7 @@ onMounted(async () => {
 
   const inputHandler = new InputHandler(modRegistry, toolbarState);
   inputHandler.onMiniMenuEntryClick((tileX, tileY, screenX, screenY, onClose) => {
-    const entries = modRegistry.miniMenuContextEntries(tileX, tileY, session);
+    const entries = modRegistry.miniMenuEntries(tileX, tileY, session, client);
     client.miniMenuLayer.open(entries, screenX, screenY, onClose);
   });
   inputHandler.onInspect((tileX, tileY) => {
@@ -216,7 +218,9 @@ onMounted(async () => {
   function tick() {
     game.tick(TickPhase.SUBMIT_INTENTS);
     game.tick(TickPhase.RESOLVE_TRANSFERS);
+    game.tick(TickPhase.CONSUME_INPUTS);
     game.tick(TickPhase.POST_RESOLVE);
+    game.tick(TickPhase.PRODUCE_OUTPUTS);
     game.tick(TickPhase.COMMIT_TRANSFERS);
     game.postTick();
   }
