@@ -1,7 +1,7 @@
 import {
     ObjectDefinition,
     PortDefinition,
-    TickOp,
+    SqlStatement,
     TickPhase,
     Direction,
     CHUNK_COORD_SQL,
@@ -15,100 +15,6 @@ import {
     BUFFERED_EVENT_TYPE_ITEM_DELETE,
     BUFFERED_EVENT_TYPE_ITEM_RESET,
 } from "./constants.js";
-
-// ---- Splitter seam ops ----
-// A splitter shares its input Port rows with the upstream belts and its output Port rows
-// with the downstream belts, so its item moves must interleave with the belt POST_RESOLVE
-// handoff exactly where a belt-belt seam does. The two stages run as one pipeline each
-// tick (so throughput is full), but in an order that leaves each item resting one tick in
-// an internal port (so it crosses at belt speed, not instantly):
-//   1. read the rested int item and the rested in item (RecordStage2 / RecordStage1),
-//   2. clear those source ports (ClearStage2Source / ClearStage1Source) — the in clear
-//      must precede TickBeltFillOutPort, which is where the upstream belt refills it,
-//   3. refill the internal ports from stage 1 (FillStage1),
-//   4. after TickBeltFillOutPort (so the downstream belt ingested the previous output),
-//      write the chosen out ports from stage 2 (FillStage2Output).
-// Self-managed (the resolved intents are managed=0): the engine's managed commit clears a
-// source in COMMIT_TRANSFERS, too late — it would wipe the upstream belt's fresh fill.
-// Each op scans Splitter and probes ResolvedPortTransfer by source_id (the ResolvedPortTransfer_source
-// index); only a splitter whose hop resolved this tick emits a row.
-
-// Stage 2: record each internal port's resolved output target (and its item) before clearing it.
-const SplitterRecordStage2 = new TickOp(
-    "SplitterRecordStage2",
-    `INSERT INTO SplitterStage2 (out_port_id, item, int_port_id)
-     SELECT pt.destination_id, src.item, s.int_a_id
-     FROM Splitter s
-        INNER JOIN ResolvedPortTransfer pt ON pt.source_id = s.int_a_id
-        INNER JOIN Port src ON src.id = s.int_a_id
-     WHERE src.item IS NOT NULL
-     UNION ALL
-     SELECT pt.destination_id, src.item, s.int_b_id
-     FROM Splitter s
-        INNER JOIN ResolvedPortTransfer pt ON pt.source_id = s.int_b_id
-        INNER JOIN Port src ON src.id = s.int_b_id
-     WHERE src.item IS NOT NULL;`
-);
-
-// Stage 1: record each input port's resolved internal target (and its item) before clearing it.
-const SplitterRecordStage1 = new TickOp(
-    "SplitterRecordStage1",
-    `INSERT INTO SplitterStage1 (int_port_id, item, in_port_id)
-     SELECT pt.destination_id, src.item, s.in_a_id
-     FROM Splitter s
-        INNER JOIN ResolvedPortTransfer pt ON pt.source_id = s.in_a_id
-        INNER JOIN Port src ON src.id = s.in_a_id
-     WHERE src.item IS NOT NULL
-     UNION ALL
-     SELECT pt.destination_id, src.item, s.in_b_id
-     FROM Splitter s
-        INNER JOIN ResolvedPortTransfer pt ON pt.source_id = s.in_b_id
-        INNER JOIN Port src ON src.id = s.in_b_id
-     WHERE src.item IS NOT NULL;`
-);
-
-// Clear the consumed internal ports (drained to an output this tick); FillStage1 refills
-// the ones stage 1 fed, leaving empty any that stage 1 did not.
-const SplitterClearStage2Source = new TickOp(
-    "SplitterClearStage2Source",
-    `UPDATE Port SET item = NULL WHERE id IN (SELECT int_port_id FROM SplitterStage2);`
-);
-
-// Clear the consumed input ports before the upstream belt refills them (TickBeltFillOutPort).
-const SplitterClearStage1Source = new TickOp(
-    "SplitterClearStage1Source",
-    `UPDATE Port SET item = NULL WHERE id IN (SELECT in_port_id FROM SplitterStage1);`
-);
-
-// Buffer stage 1's items into the internal ports (just cleared by ClearStage2Source for
-// the pipelined ones), where they rest a tick before stage 2 routes them next tick.
-const SplitterFillStage1 = new TickOp(
-    "SplitterFillStage1",
-    `UPDATE Port
-     SET item = s.item
-     FROM SplitterStage1 s
-     WHERE Port.id = s.int_port_id;`
-);
-
-// Write each routed item into its chosen out-port, after the downstream belt ingested the
-// previous one — so it rests there a tick, matching the belt-belt seam.
-const SplitterFillStage2Output = new TickOp(
-    "SplitterFillStage2Output",
-    `UPDATE Port
-     SET item = s.item
-     FROM SplitterStage2 s
-     WHERE Port.id = s.out_port_id;`
-);
-
-const SplitterClearStage1 = new TickOp(
-    "SplitterClearStage1",
-    `DELETE FROM SplitterStage1;`
-);
-
-const SplitterClearStage2 = new TickOp(
-    "SplitterClearStage2",
-    `DELETE FROM SplitterStage2;`
-);
 
 // A belt's ports live on BeltPath (head's in_port, tail's out_port), not a Belt column,
 // so the generic per-column lookup can't reach them.
@@ -145,16 +51,17 @@ class BeltObjectDefinition extends ObjectDefinition {
     // A surface belt sits on SURFACE; an underground occupies one layer per axis, so a
     // surface belt and two crossing tunnels coexist on a tile.
     occupancyLookups(table) {
-        return [`
-            SELECT 1 FROM ${table}
+        return [
+            `SELECT 1 FROM ${table}
             WHERE @layer = ${OCCUPANCY_LAYER_SURFACE}
               AND ${table}.type != ${BELT_UNDERGROUND}
               AND ${table}.x = @x AND ${table}.y = @y`,
-        `
-            SELECT 1 FROM ${table}
+
+            `SELECT 1 FROM ${table}
             WHERE @layer = ${OCCUPANCY_LAYER_UNDERGROUND_BASE} + (${table}.direction % 2)
               AND ${table}.type = ${BELT_UNDERGROUND}
-              AND ${table}.x = @x AND ${table}.y = @y`];
+              AND ${table}.x = @x AND ${table}.y = @y`
+        ];
     }
 }
 
@@ -179,15 +86,15 @@ export const BeltDefinition = new BeltObjectDefinition({
             // path is live if it can pop an item (item ready + out-port free), is
             // shuffling a gap, or has an item waiting at its in-port. Each source is
             // an indexed lookup, so this is O(active), not O(world).
-            new TickOp(
+            new SqlStatement(
                 "ClearActivePath",
                 `DELETE FROM ActivePath;`
             ),
-            new TickOp(
+            new SqlStatement(
                 "ClearChangedItem",
                 `DELETE FROM ChangedItem;`
             ),
-            new TickOp(
+            new SqlStatement(
                 "ClearResizeGap",
                 `DELETE FROM ResizeGap;`
             ),
@@ -197,7 +104,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             // from BeltPathOutputItem.
             // INDEXED BY pins the query plan to the BeltPath_next_gap partial index
             // (every gap-shuffling path), so this is O(gap paths).
-            new TickOp(
+            new SqlStatement(
                 "ActivePathGap",
                 `INSERT OR IGNORE INTO ActivePath (path_id)
                  SELECT id FROM BeltPath INDEXED BY BeltPath_next_gap WHERE next_gap_id IS NOT NULL;`
@@ -211,7 +118,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             // room or a gap to shrink). The resolver's recursion then adds the packed-
             // chain-also-pops case. The movement below pops exactly the paths whose intent
             // resolved (ResolvedPortTransfer rows with managed=0).
-            new TickOp(
+            new SqlStatement(
                 "SubmitBeltShiftIntent",
                 `INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty, managed)
                  SELECT p.in_port_id AS source_id,
@@ -234,7 +141,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             // or a splitter output) resolves, agnostic to who is upstream. Gated on a filled
             // in-port, so it rides the Port_in_filled partial index and stays proportional
             // to active seams rather than every path.
-            new TickOp(
+            new SqlStatement(
                 "SubmitBeltIngestReadiness",
                 `INSERT INTO PortTransferIntent (source_id, destination_id, managed)
                  SELECT inPort.id, NULL AS destination_id, 0 AS managed
@@ -253,7 +160,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             // gap — the lead gap shrinks by one. ResizeGap names those gaps (all active
             // paths) so Case1 resizes from it; the predicate lives here once.
             // CaptureViewedResize (below) copies the watched subset into ChangedItem.
-            new TickOp(
+            new SqlStatement(
                 "CaptureResizeGaps",
                 `INSERT OR IGNORE INTO ResizeGap (row_id, path_id)
                     SELECT p.next_gap_id AS row_id,
@@ -271,7 +178,7 @@ export const BeltDefinition = new BeltObjectDefinition({
                         )
                       AND p.id IN (SELECT path_id FROM ActivePath);`
             ),
-            new TickOp(
+            new SqlStatement(
                 "TickBeltPathCase1",
                 `UPDATE BeltPathItem
                 SET length = length - 1
@@ -280,7 +187,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             // Capture the watched resized gaps into ChangedItem (gated on viewport).
             // CROSS JOIN drives from the small ResizeGap; an INNER JOIN lets the planner
             // scan all of Belt instead.
-            new TickOp(
+            new SqlStatement(
                 "CaptureViewedResize",
                 `INSERT OR IGNORE INTO ChangedItem (row_id, path_id, x, y)
                  SELECT g.row_id, g.path_id, head.x, head.y
@@ -290,7 +197,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             ),
             // Case 2: output is not full and next item is not a gap
             //  - pop item into output port
-            new TickOp(
+            new SqlStatement(
                 "TickBeltPathCase2",
                 // Drives off the BeltPath_next_item partial index (every path with an
                 // item ready to pop), so it is O(loaded paths). INDEXED BY pins the
@@ -315,7 +222,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             ),
             // Popped items are deleted by Cleanup1; capture the watched ones now (gated
             // on viewport) so the emit phase reports each as a DELETE delta.
-            new TickOp(
+            new SqlStatement(
                 "CapturePoppedItems",
                 // CROSS JOIN drives from BeltPathOutputItem; an INNER JOIN lets the
                 // planner scan all of Belt instead.
@@ -331,7 +238,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             // this means that the head_gap needs to be incremented
             // (UNLESS an item was inserted this tick, in which case, head_gap will be reset to 0
             // in TickBeltPathCleanup5)
-            new TickOp(
+            new SqlStatement(
                 "TickBeltPathRecalculateHeadGap",
                 // A path advances its head gap if it shuffled a gap (an active gap path)
                 // or popped an item this tick (in BeltPathOutputItem). The popped half is
@@ -351,7 +258,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             // INDEXED BY pins the query plan to the Port_in_filled partial index (the
             // is_in_port = 1 predicate matches it), so this reads only the filled
             // *in*-ports.
-            new TickOp(
+            new SqlStatement(
                 "ActivePathInput",
                 `INSERT OR IGNORE INTO ActivePath (path_id)
                  SELECT path.id
@@ -363,12 +270,12 @@ export const BeltDefinition = new BeltObjectDefinition({
 
             // Snapshot the max row id so the rows InsertItem appends (higher ids) can
             // be captured into ChangedItem afterward as UPSERT deltas.
-            new TickOp(
+            new SqlStatement(
                 "RecordMaxItemId",
                 `UPDATE ItemIdMarker SET max_id = COALESCE((SELECT MAX(id) FROM BeltPathItem), 0);`
             ),
 
-            new TickOp(
+            new SqlStatement(
                 "TickBeltPathInsertItem",
                 // CROSS JOIN forces ActivePath as the driving table (otherwise the
                 // planner scans all of BeltPath, since head_gap > 0 matches every path).
@@ -395,7 +302,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             ),
             // Capture the watched newly-inserted rows (gated on viewport). CROSS JOIN
             // drives from the new BeltPathItem rows (id > marker), not all of Belt.
-            new TickOp(
+            new SqlStatement(
                 "CaptureInsertedItems",
                 `INSERT OR IGNORE INTO ChangedItem (row_id, path_id, x, y)
                  SELECT item.id, item.path_id, head.x, head.y
@@ -407,7 +314,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             // Newly-ingested gaps (a path with head_gap > 1 took input) move its
             // next_gap_id, so record those paths. The gap rows are the new BeltPathItem
             // rows of type GAP (id > marker), found via the same marker as the inserts.
-            new TickOp(
+            new SqlStatement(
                 "CaptureGapChangedFromInput",
                 `INSERT OR IGNORE INTO GapChangedPath (path_id)
                  SELECT path_id FROM BeltPathItem
@@ -422,27 +329,27 @@ export const BeltDefinition = new BeltObjectDefinition({
             // Record the paths Cleanup1 is about to change before it deletes the rows:
             // items popped to an out-port move next_item_id (the min non-gap row went),
             // and gaps consumed to length 0 move next_gap_id (the min gap row went).
-            new TickOp(
+            new SqlStatement(
                 "CaptureChangedFromOutput",
                 `INSERT OR IGNORE INTO ChangedPath (path_id)
                  SELECT path_id FROM BeltPathOutputItem;`
             ),
             // INDEXED BY pins the tiny BeltPathItem_zero partial index (length = 0 rows
             // are transient), so this collects the consumed-gap paths directly.
-            new TickOp(
+            new SqlStatement(
                 "CaptureChangedFromZeroLength",
                 `INSERT OR IGNORE INTO GapChangedPath (path_id)
                  SELECT path_id FROM BeltPathItem INDEXED BY BeltPathItem_zero WHERE length = 0;`
             ),
 
-            new TickOp(
+            new SqlStatement(
                 "TickBeltPathCleanup1",
                 `DELETE
                  FROM BeltPathItem
                  WHERE length = 0 OR id IN (SELECT item_id FROM BeltPathOutputItem);`
             ),
 
-            new TickOp(
+            new SqlStatement(
                 "TickBeltPathCleanup3",
                 // CROSS JOIN forces ActivePath as the driving table (head_gap > 0
                 // alone matches every path, so the planner would otherwise scan all).
@@ -457,12 +364,12 @@ export const BeltDefinition = new BeltObjectDefinition({
 
             // The paths that just took in an item/gap from their in-port (the other
             // half of this tick's item changes; see CaptureChangedFromOutput).
-            new TickOp(
+            new SqlStatement(
                 "CaptureChangedFromInput",
                 `INSERT OR IGNORE INTO ChangedPath (path_id)
                  SELECT path_id FROM BeltPathInputItem;`
             ),
-            new TickOp(
+            new SqlStatement(
                 "TickBeltPathCleanup4",
                 `UPDATE Port
                  SET item = NULL
@@ -470,33 +377,80 @@ export const BeltDefinition = new BeltObjectDefinition({
                  WHERE Port.id = BeltPathInputItem.port_id;`
             ),
 
-            new TickOp(
+            new SqlStatement(
                 "TickBeltPathCleanup5",
                 `UPDATE BeltPath
                     SET head_gap = 0
                     FROM BeltPathInputItem
                     WHERE BeltPath.id = BeltPathInputItem.path_id;`
             ),
-            new TickOp(
+            new SqlStatement(
                 "TickBeltPathCleanup6",
                 `DELETE FROM BeltPathInputItem;`
             ),
 
-            // Splitter consume: read each resolved hop's rested item, then clear its
-            // source port. The input clears must precede TickBeltFillOutPort below, where
-            // the upstream belt refills that shared port. FillStage1 then re-buffers the
-            // internal ports for next tick. See the seam-op block above for the ordering.
-            SplitterRecordStage2,
-            SplitterRecordStage1,
-            SplitterClearStage2Source,
-            SplitterClearStage1Source,
-            SplitterFillStage1,
+            // Splitter seam ops: a splitter shares its in-ports with upstream belts and its out-ports
+            // with downstream belts, so its moves must interleave with the belt POST_RESOLVE handoff,
+            // each item resting a tick in an internal port (so it crosses at belt speed). These probe
+            // ResolvedPortTransfer by source_id; managed=0, so the engine's COMMIT_TRANSFERS clear
+            // can't wipe the upstream belt's fresh fill. The in-port clears MUST precede
+            // TickBeltFillOutPort below, where the upstream belt refills those shared ports.
+            new SqlStatement(
+                // Record each internal port's resolved out-port target + item before clearing it.
+                "SplitterRecordStage2",
+                `INSERT INTO SplitterStage2 (out_port_id, item, int_port_id)
+                 SELECT pt.destination_id, src.item, s.int_a_id
+                 FROM Splitter s
+                    INNER JOIN ResolvedPortTransfer pt ON pt.source_id = s.int_a_id
+                    INNER JOIN Port src ON src.id = s.int_a_id
+                 WHERE src.item IS NOT NULL
+                 UNION ALL
+                 SELECT pt.destination_id, src.item, s.int_b_id
+                 FROM Splitter s
+                    INNER JOIN ResolvedPortTransfer pt ON pt.source_id = s.int_b_id
+                    INNER JOIN Port src ON src.id = s.int_b_id
+                 WHERE src.item IS NOT NULL;`
+            ),
+            new SqlStatement(
+                // Record each input port's resolved internal target + item before clearing it.
+                "SplitterRecordStage1",
+                `INSERT INTO SplitterStage1 (int_port_id, item, in_port_id)
+                 SELECT pt.destination_id, src.item, s.in_a_id
+                 FROM Splitter s
+                    INNER JOIN ResolvedPortTransfer pt ON pt.source_id = s.in_a_id
+                    INNER JOIN Port src ON src.id = s.in_a_id
+                 WHERE src.item IS NOT NULL
+                 UNION ALL
+                 SELECT pt.destination_id, src.item, s.in_b_id
+                 FROM Splitter s
+                    INNER JOIN ResolvedPortTransfer pt ON pt.source_id = s.in_b_id
+                    INNER JOIN Port src ON src.id = s.in_b_id
+                 WHERE src.item IS NOT NULL;`
+            ),
+            new SqlStatement(
+                // Clear the consumed internal ports (drained to an output this tick).
+                "SplitterClearStage2Source",
+                `UPDATE Port SET item = NULL WHERE id IN (SELECT int_port_id FROM SplitterStage2);`
+            ),
+            new SqlStatement(
+                // Clear the consumed input ports before the upstream belt refills them.
+                "SplitterClearStage1Source",
+                `UPDATE Port SET item = NULL WHERE id IN (SELECT in_port_id FROM SplitterStage1);`
+            ),
+            new SqlStatement(
+                // Buffer stage 1's items into the internal ports, to rest a tick before stage 2 routes them.
+                "SplitterFillStage1",
+                `UPDATE Port
+                 SET item = s.item
+                 FROM SplitterStage1 s
+                 WHERE Port.id = s.int_port_id;`
+            ),
 
             // Deliver this tick's pops to the out-ports. Deferred to here — after the
             // in-port ingest (Cleanup3-5) — so filling a shared seam port (a downstream
             // path's in-port) isn't mistaken for an ingest by that path: the popped item
             // rests in the seam a tick before the downstream path takes it next tick.
-            new TickOp(
+            new SqlStatement(
                 "TickBeltFillOutPort",
                 `UPDATE Port
                 SET item=item.item_type
@@ -504,13 +458,25 @@ export const BeltDefinition = new BeltObjectDefinition({
                 WHERE Port.id = item.port_id;`
             ),
 
-            // Splitter fill: write each routed item into its chosen out-port, after the
-            // downstream belt above ingested the previous one — so it rests there a tick.
-            SplitterFillStage2Output,
-            SplitterClearStage1,
-            SplitterClearStage2,
+            new SqlStatement(
+                // Splitter fill: write each routed item into its chosen out-port, after the downstream
+                // belt above ingested the previous one — so it rests there a tick (the belt-belt seam).
+                "SplitterFillStage2Output",
+                `UPDATE Port
+                 SET item = s.item
+                 FROM SplitterStage2 s
+                 WHERE Port.id = s.out_port_id;`
+            ),
+            new SqlStatement(
+                "SplitterClearStage1",
+                `DELETE FROM SplitterStage1;`
+            ),
+            new SqlStatement(
+                "SplitterClearStage2",
+                `DELETE FROM SplitterStage2;`
+            ),
             // FillOutPort was the last reader of BeltPathOutputItem, so clear it now.
-            new TickOp(
+            new SqlStatement(
                 "TickBeltPathCleanup2",
                 `DELETE FROM BeltPathOutputItem;`
             ),
@@ -520,7 +486,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             // _next_gap, ordered (path_id, id)). Each pointer is recomputed only for the
             // paths whose rows of that kind changed, so most ticks the gap pass touches
             // almost nothing. A correlated MIN yields NULL when the path has no such row.
-            new TickOp(
+            new SqlStatement(
                 "RecalculateNextItem",
                 `UPDATE BeltPath
                     SET next_item_id = (
@@ -529,7 +495,7 @@ export const BeltDefinition = new BeltObjectDefinition({
                         )
                     WHERE id IN (SELECT path_id FROM ChangedPath);`
             ),
-            new TickOp(
+            new SqlStatement(
                 "RecalculateNextGap",
                 `UPDATE BeltPath
                     SET next_gap_id = (
@@ -539,11 +505,11 @@ export const BeltDefinition = new BeltObjectDefinition({
                     WHERE id IN (SELECT path_id FROM GapChangedPath);`
             ),
 
-            new TickOp(
+            new SqlStatement(
                 "ClearChangedPath",
                 `DELETE FROM ChangedPath;`
             ),
-            new TickOp(
+            new SqlStatement(
                 "ClearGapChangedPath",
                 `DELETE FROM GapChangedPath;`
             ),
@@ -559,7 +525,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             // The rows come as plain UPSERTs so each re-created sprite glides in from a
             // half-tile upstream ≈ the departed sprite's spot (no teleport). Both gated
             // on viewport; x/y is the head tile (one chunk).
-            new TickOp(
+            new SqlStatement(
                 "EmitResyncReset",
                 `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
                  SELECT ${BUFFERED_EVENT_TYPE_ITEM_RESET}, ${CHUNK_COORD_SQL("head.x")}, ${CHUNK_COORD_SQL("head.y")},
@@ -571,7 +537,7 @@ export const BeltDefinition = new BeltObjectDefinition({
                     CROSS JOIN Belt head ON head.id = rp.path_id
                  WHERE head.chunk IN (SELECT chunk FROM SessionViewport);`
             ),
-            new TickOp(
+            new SqlStatement(
                 "EmitResyncItems",
                 `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
                  SELECT ${BUFFERED_EVENT_TYPE_ITEM_UPSERT}, ${CHUNK_COORD_SQL("head.x")}, ${CHUNK_COORD_SQL("head.y")},
@@ -581,13 +547,13 @@ export const BeltDefinition = new BeltObjectDefinition({
                  WHERE item.path_id IN (SELECT path_id FROM ResyncItemPath)
                    AND head.chunk IN (SELECT chunk FROM SessionViewport);`
             ),
-            new TickOp(
+            new SqlStatement(
                 "ClearResyncItemPath",
                 `DELETE FROM ResyncItemPath;`
             ),
 
             // UPSERT delta for each changed row still present (resized or inserted).
-            new TickOp(
+            new SqlStatement(
                 "EmitItemUpserts",
                 `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
                  SELECT ${BUFFERED_EVENT_TYPE_ITEM_UPSERT}, ${CHUNK_COORD_SQL("ci.x")}, ${CHUNK_COORD_SQL("ci.y")},
@@ -596,7 +562,7 @@ export const BeltDefinition = new BeltObjectDefinition({
                     INNER JOIN BeltPathItem item ON item.id = ci.row_id;`
             ),
             // DELETE delta for each changed row now gone (popped or shrunk to nothing).
-            new TickOp(
+            new SqlStatement(
                 "EmitItemDeletes",
                 `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
                  SELECT ${BUFFERED_EVENT_TYPE_ITEM_DELETE}, ${CHUNK_COORD_SQL("ci.x")}, ${CHUNK_COORD_SQL("ci.y")},
@@ -610,7 +576,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             // out_port), not the Belt row, so it can't go through the engine's declarative
             // renderedOutputPorts; capture it manually into the shared ViewedPortItem, routed by
             // the head tile. O(belts in view) via Belt_chunk. The engine diffs/emits/rebuilds.
-            new TickOp(
+            new SqlStatement(
                 "CaptureBeltPathPortItems",
                 `WITH viewed_chunk AS (SELECT DISTINCT chunk FROM SessionViewport)
                  INSERT INTO ViewedPortItem (port_id, item, x, y)
@@ -658,7 +624,7 @@ export const SplitterDefinition = new ObjectDefinition({
             // (not a fan-out), destination_is_empty is exact (the internal port is the
             // splitter's own), and the chain resolves it when stage 2 drains int_X this
             // tick — so input and output pipeline together at full throughput.
-            new TickOp(
+            new SqlStatement(
                 "SubmitSplitterStage1",
                 `INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty, managed)
                  SELECT s.in_a_id, s.int_a_id, (ia.item IS NULL), 0
@@ -679,7 +645,7 @@ export const SplitterDefinition = new ObjectDefinition({
             // preferred output 1 and the other 2 (state=0: A->out_A, B->out_B; state=1
             // inverted). destination_is_empty is the base case (out empty);
             // an occupied-but-draining output still resolves through the chain recursion.
-            new TickOp(
+            new SqlStatement(
                 "SubmitSplitterStage2",
                 `INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty, managed, alternatives_rank)
                  SELECT s.int_a_id, s.out_a_id, (oa.item IS NULL), 0,
@@ -715,7 +681,7 @@ export const SplitterDefinition = new ObjectDefinition({
             // Advance the round-robin phase once for each splitter that routed an item this
             // tick (a resolved transfer sourced from one of its internal ports). One flip
             // per tick (not per lane) keeps both outputs saturated when both inputs are.
-            new TickOp(
+            new SqlStatement(
                 "AdvanceSplitterState",
                 `UPDATE Splitter
                  SET state = 1 - state

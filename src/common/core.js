@@ -2,22 +2,15 @@ import {rotate} from "@/common/util.js";
 import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
 import {ObjectGeometries} from "@/common/ObjectGeometry.js";
 
-export class TickOp {
+export class SqlStatement {
 
     /**
      * @param [statementName] {string}
-     * @param [sql] {string|null}
+     * @param [sql] {string}
      */
     constructor(statementName, sql) {
         this.statementName = statementName;
-        this._sql = sql;
-    }
-
-    /**
-     * @return string
-     */
-    get sql() {
-       return this._sql;
+        this.sql = sql;
     }
 }
 
@@ -50,36 +43,6 @@ export class PortDefinition {
         return `${this.name}_id`;
     }
 }
-
-export class PortTransferOp extends TickOp {
-
-    /**
-     * @param name {string}
-     * @param gameObject {GameObject}
-     * @param inputPort {string}
-     * @param outputPort {string}
-     */
-    constructor(name, gameObject, inputPort, outputPort) {
-        super(name, null);
-        this.gameObject = gameObject;
-        this.inputPort = inputPort;
-        this.outputPort = outputPort;
-    }
-
-    get sql() {
-        return `
-            INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty)
-            SELECT
-                ${this.gameObject}.${this.inputPort} source_id,
-                ${this.gameObject}.${this.outputPort} destination_id,
-                (dst.item IS NULL) destination_is_empty
-            FROM ${this.gameObject}
-                INNER JOIN Port dst ON dst.id = ${this.gameObject}.${this.outputPort}
-                INNER JOIN Port src ON src.id = ${this.gameObject}.${this.inputPort}
-            WHERE src.item IS NOT NULL;`;
-    }
-}
-
 /**
  * @enum
  */
@@ -139,7 +102,7 @@ export class ObjectDefinition {
      * @param config.outputPorts {PortDefinition[]}
      * @param config.internalPorts {PortDefinition[]}
      * @param config.geometry {string} a named geometry (key of ObjectGeometries, e.g. "1x1", "1x2")
-     * @param [config.tickPhases] {Object.<TickPhase, TickOp[]>}
+     * @param [config.tickPhases] {Object.<TickPhase, SqlStatement[]>}
      * @param [config.renderConnections] {boolean} whether the shared ConnectionDrawLayer draws animated
      *     stubs at this object's connected ports (belts render their own bends instead)
      * @param [config.textureName] {string|null} the object sprite's texture, used by the EasyObject layers

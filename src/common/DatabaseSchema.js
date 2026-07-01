@@ -1,4 +1,4 @@
-import {TickOp, TickPhase} from "@/common/core.js";
+import {SqlStatement, TickPhase} from "@/common/core.js";
 import {
     CHUNK_SIZE,
     GameSettingsKey,
@@ -209,7 +209,7 @@ const CorePragma = `
 
 const CoreTickPhases = {
     [TickPhase.RESOLVE_TRANSFERS]: [
-        new TickOp(
+        new SqlStatement(
                 "ResolvePortTransfer",
             `WITH RECURSIVE ranked_per_destination AS (
                 -- Rank contenders for each destination (a port takes one item): lowest
@@ -289,17 +289,17 @@ const CoreTickPhases = {
                 LEFT JOIN Port src ON src.id = ops.source_id;`
 
         ),
-        new TickOp(
+        new SqlStatement(
             // Sinks (managed, destination-less) always resolve — there is no destination to gate
             // on. Capture their sources before the intents are truncated; CONSUME_INPUTS clears them.
             "CaptureResolvedSinks",
             `INSERT OR IGNORE INTO ResolvedSink (source_id)
              SELECT source_id FROM PortTransferIntent WHERE destination_id IS NULL AND managed = 1;`
         ),
-        new TickOp("TruncatePortTransferIntent", `DELETE FROM PortTransferIntent;`),
+        new SqlStatement("TruncatePortTransferIntent", `DELETE FROM PortTransferIntent;`),
     ],
     [TickPhase.CONSUME_INPUTS]: [
-        new TickOp(
+        new SqlStatement(
             // Consume sunk items here, before producers (belts) refill the ports in POST_RESOLVE, so
             // an upstream item shifts forward into the freed port the same tick.
             "FlushResolvedSink",
@@ -307,11 +307,11 @@ const CoreTickPhases = {
         ),
     ],
     [TickPhase.COMMIT_TRANSFERS]: [
-        new TickOp(
+        new SqlStatement(
             "FlushResolvedPortTransferSource",
             `UPDATE Port SET item=NULL WHERE id IN (SELECT source_id FROM ResolvedPortTransfer WHERE managed=1);`
         ),
-        new TickOp(
+        new SqlStatement(
             // Driven from ResolvedPortTransfer (destination_id is its PRIMARY KEY) instead of
             // UPDATE ... FROM, which made the planner scan the whole Port table. Mirrors
             // FlushResolvedPortTransferSource, which already drives from the transfer set.
@@ -320,10 +320,10 @@ const CoreTickPhases = {
              SET item = (SELECT pt.item FROM ResolvedPortTransfer pt WHERE pt.destination_id = Port.id)
              WHERE id IN (SELECT destination_id FROM ResolvedPortTransfer WHERE managed=1);`
         ),
-        new TickOp("TruncateResolvedPortTransfer", `DELETE FROM ResolvedPortTransfer;`),
-        new TickOp("TruncateResolvedSink", `DELETE FROM ResolvedSink;`),
+        new SqlStatement("TruncateResolvedPortTransfer", `DELETE FROM ResolvedPortTransfer;`),
+        new SqlStatement("TruncateResolvedSink", `DELETE FROM ResolvedSink;`),
         // Clear the render staging before mods capture this tick's watched out-ports into it.
-        new TickOp("ClearViewedPortItem", `DELETE FROM ViewedPortItem;`),
+        new SqlStatement("ClearViewedPortItem", `DELETE FROM ViewedPortItem;`),
     ],
 };
 
@@ -333,7 +333,7 @@ const CoreTickPhasesTrailing = {
     [TickPhase.COMMIT_TRANSFERS]: [
         // SET for each out-port whose resting item changed (diff vs PortItemShadow). Carries only
         // the port id (a=item type); the client infers the render tile. x/y is the routing tile.
-        new TickOp(
+        new SqlStatement(
             "EmitPortItemSet",
             `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
              SELECT ${BUFFERED_EVENT_TYPE_PORT_ITEM_SET}, ${CHUNK_COORD_SQL("v.x")}, ${CHUNK_COORD_SQL("v.y")}, v.port_id, v.item, NULL, NULL
@@ -341,15 +341,15 @@ const CoreTickPhasesTrailing = {
                 LEFT JOIN PortItemShadow s ON s.port_id = v.port_id
              WHERE s.port_id IS NULL OR s.item != v.item;`
         ),
-        new TickOp(
+        new SqlStatement(
             "EmitPortItemClear",
             `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
              SELECT ${BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR}, ${CHUNK_COORD_SQL("s.x")}, ${CHUNK_COORD_SQL("s.y")}, s.port_id, NULL, NULL, NULL
              FROM PortItemShadow s
              WHERE s.port_id NOT IN (SELECT port_id FROM ViewedPortItem);`
         ),
-        new TickOp("ClearPortItemShadow", `DELETE FROM PortItemShadow;`),
-        new TickOp(
+        new SqlStatement("ClearPortItemShadow", `DELETE FROM PortItemShadow;`),
+        new SqlStatement(
             "RebuildPortItemShadow",
             `INSERT INTO PortItemShadow (port_id, item, x, y)
              SELECT v.port_id, v.item, v.x, v.y
@@ -401,7 +401,7 @@ export class DatabaseSchema {
     }
 
     /**
-     * @param phases {Object.<TickPhase, TickOp[]>}
+     * @param phases {Object.<TickPhase, SqlStatement[]>}
      * @returns {void}
      */
     _registerCoreTickPhases(phases) {
@@ -433,7 +433,7 @@ export class DatabaseSchema {
                     CROSS JOIN ${table} o INDEXED BY ${table}_chunk ON o.chunk = vc.chunk
                     CROSS JOIN Port p ON p.id = o.${port.column}
                 WHERE p.item IS NOT NULL`);
-            const op = new TickOp(
+            const op = new SqlStatement(
                 `Capture${table}PortItems`,
                 `WITH viewed_chunk AS (SELECT DISTINCT chunk FROM SessionViewport)
                  INSERT INTO ViewedPortItem (port_id, item, x, y)

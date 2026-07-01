@@ -1,4 +1,4 @@
-import {TickOp, TickPhase} from "@/common/core.js";
+import {SqlStatement, TickPhase} from "@/common/core.js";
 
 /**
  * The base-case machine behavior: consume `inputCount` items from a (single) input port, count them in
@@ -44,11 +44,11 @@ export class EasyRecipe {
 
         definition.tickPhases = {
             [TickPhase.SUBMIT_INTENTS]: [
-                new TickOp(
+                new SqlStatement(
                     `${table}Countdown`,
                     `UPDATE ${table} SET cooldown = cooldown - 1 WHERE cooldown > 0;`
                 ),
-                new TickOp(
+                new SqlStatement(
                     // Accumulate inputs; also sink the next one on the production tick so the belt shifts as the output appears.
                     `${table}Sink`,
                     `INSERT INTO PortTransferIntent (source_id, destination_id, managed)
@@ -59,7 +59,7 @@ export class EasyRecipe {
                      WHERE inp.item IS NOT NULL
                        AND (m.inventory < ${inputCount} OR (m.cooldown = 0 AND op.item IS NULL));`
                 ),
-                new TickOp(
+                new SqlStatement(
                     `${table}Create`,
                     `INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty, output_item, managed)
                      SELECT NULL AS source_id, m.${outPort}, (op.item IS NULL) AS destination_is_empty, ${output} AS output_item, 1 AS managed
@@ -69,17 +69,17 @@ export class EasyRecipe {
                 ),
             ],
             [TickPhase.POST_RESOLVE]: [
-                new TickOp(
+                new SqlStatement(
                     `${table}CountInput`,
                     `UPDATE ${table} SET inventory = inventory + 1
                      WHERE ${inPort} IN (SELECT source_id FROM ResolvedSink);`
                 ),
-                new TickOp(
+                new SqlStatement(
                     `${table}StartCooldown`,
                     `UPDATE ${table} SET cooldown = ${processingTicks}
                      WHERE inventory = ${inputCount} AND cooldown IS NULL;`
                 ),
-                new TickOp(
+                new SqlStatement(
                     // Decrement (not zero) so a next-batch input sunk on the production tick carries over.
                     `${table}Reset`,
                     `UPDATE ${table} SET inventory = inventory - ${inputCount}, cooldown = NULL

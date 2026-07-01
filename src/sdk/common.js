@@ -17,8 +17,7 @@ export {
     AbstractMod,              // base class every mod extends
     ObjectDefinition, // declares a placeable object: ports, geometry, per-tick ops
     PortDefinition,   // one input/output/internal port on an object (position + facing)
-    TickOp,           // a SQL statement run during one tick phase
-    PortTransferOp,   // a TickOp that moves an item from one port to another
+    SqlStatement,           // a SQL statement run during one tick phase
     TickPhase,        // enum of the per-tick phases ops are scheduled into
     MiniMenuEntry,    // one entry in the right-click / long-press context menu
 } from "@/common/core.js";
