@@ -7,17 +7,24 @@ export function fixNegativeZero(n) {
 }
 
 /**
- * The ordinal id of the chunk containing tile (x, y): its index within the region,
+ * The ordinal id of a chunk from its chunk coordinate: its index within the region,
  * counted left-to-right, top-to-bottom from the top-left chunk (id 0).
+ * @param chunkX {number}
+ * @param chunkY {number}
+ * @returns {number}
+ */
+export function chunkOrdinal(chunkX, chunkY) {
+    return (chunkY + REGION_HALF) * REGION_SIZE + (chunkX + REGION_HALF);
+}
+
+/**
+ * The ordinal id of the chunk containing tile (x, y).
  * @param x {number} tile x
  * @param y {number} tile y
  * @returns {number}
  */
 export function chunkId(x, y) {
-    const chunkX = Math.floor(x / CHUNK_SIZE);
-    const chunkY = Math.floor(y / CHUNK_SIZE);
-
-    return (chunkY + REGION_HALF) * REGION_SIZE + (chunkX + REGION_HALF);
+    return chunkOrdinal(Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE));
 }
 
 /**

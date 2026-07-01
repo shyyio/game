@@ -4,11 +4,12 @@ import assert from "node:assert";
 import {setup} from "@/test/common.js";
 import {createBelt, deleteBelt} from "./testHelpers.js";
 import {BeltSyncEvent, BeltPathRecalculateEvent} from "./events.js";
-import {BeltType} from "./constants.js";
+import {BeltType, BUFFERED_EVENT_TYPE_ITEM_RESET, BUFFERED_EVENT_TYPE_ITEM_SYNC} from "./constants.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {chunkId} from "@/common/util.js";
 import {Direction} from "@/common/constants.js";
 import {ChunkSyncEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
+import {BufferedEvent} from "@/common/BufferedEvent.js";
 
 /**
  * Captures the events the game pushes to the session — the harness leaves
@@ -123,4 +124,41 @@ test("leaving a chunk unsubscribes it; re-entering re-syncs only the delta", asy
     assert.ok(resync, "expected a re-sync when the chunk re-enters the viewport");
     // One belt sync plus the path-recalc sync for its path.
     assert.strictEqual(resync.events.length, 2);
+});
+
+test("extending a path's tail re-syncs its items to a watching client", async () => {
+    const harness = await setup();
+    // A run flowing RIGHT, tail (output) at x = 3, with an in-flight item.
+    createBelt(harness, BeltType.NORMAL, {x: 1, y: 1, direction: Direction.RIGHT});
+    createBelt(harness, BeltType.NORMAL, {x: 2, y: 1, direction: Direction.RIGHT});
+    createBelt(harness, BeltType.NORMAL, {x: 3, y: 1, direction: Direction.RIGHT});
+    harness.dispatchMessage(new SetViewportMessage([chunkId(1, 1)]));
+
+    const head = Number(harness.rawScalar("SELECT path_id FROM Belt WHERE x = 1 AND y = 1"));
+    harness.rawExec(`UPDATE Port SET item = 7 WHERE id = (SELECT in_port_id FROM BeltPath WHERE id = ${head})`);
+    harness.tickAll();
+    harness.tickAll();
+
+    const events = captureEvents(harness);
+    // Extend the tail by one belt. This re-rows the path under new item ids, so the
+    // client must be re-synced now — the resync publishes immediately via
+    // publishEventNow, whose routing must match the viewport's chunk ids.
+    createBelt(harness, BeltType.NORMAL, {x: 4, y: 1, direction: Direction.RIGHT});
+
+    const reset = events.find(event =>
+        event instanceof BufferedEvent && event.type === BUFFERED_EVENT_TYPE_ITEM_RESET);
+    assert.ok(reset, "expected an item RESET for the re-rowed path");
+
+    // The synced rows must mirror the rebuilt RLE exactly; a dropped resync (the old
+    // string chunk key never matched the viewport) would leave the client with stale
+    // rows against the now-longer path, teleporting the item a tile on the next tick.
+    const synced = events
+        .filter(event => event instanceof BufferedEvent && event.type === BUFFERED_EVENT_TYPE_ITEM_SYNC)
+        .sort((a, b) => Number(a.a) - Number(b.a))
+        .map(event => `${Number(event.a)}:${Number(event.b)}:${Number(event.c)}`)
+        .join(" ");
+    const rows = harness.rawScalar(
+        `SELECT group_concat(id || ':' || length || ':' || type, ' ') FROM BeltPathItem WHERE path_id = ${head} ORDER BY id`
+    );
+    assert.strictEqual(synced, rows);
 });

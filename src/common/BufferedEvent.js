@@ -1,4 +1,5 @@
 import {AbstractEvent} from "@/common/AbstractEvent.js";
+import {chunkOrdinal} from "@/common/util.js";
 
 /**
  * A buffered tick event, replayed to sessions whose viewport covers its chunk; `type` is
@@ -38,11 +39,11 @@ export class BufferedEvent extends AbstractEvent {
     }
 
     /**
-     * The chunk to route to. Used by publishEventNow for immediate publishes; journaled
-     * events route via the SQL join on the table's generated chunk column instead.
-     * @returns {string}
+     * The ordinal chunk id to route to, matching the table's generated chunk column. Used by
+     * publishEventNow for immediate publishes; journaled events route via the SQL join instead.
+     * @returns {number}
      */
     get chunk() {
-        return `${this.routingChunkX},${this.routingChunkY}`;
+        return chunkOrdinal(this.routingChunkX, this.routingChunkY);
     }
 }
