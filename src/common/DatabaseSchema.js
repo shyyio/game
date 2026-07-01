@@ -102,6 +102,23 @@ const CoreSchema = `
         c INT DEFAULT NULL
     );
     CREATE INDEX BufferedEvent_chunk ON BufferedEvent(chunk);
+
+    -- A verb's recipes: a sorted-canonical input set (input_1<=input_2<=input_3, 0 = unused slot)
+    -- maps to one output. Shared across every machine implementing the verb; seeded from mods.
+    CREATE TABLE Recipes (
+        verb INT NOT NULL,
+        input_1 INT NOT NULL,
+        input_2 INT NOT NULL,
+        input_3 INT NOT NULL,
+        output_item INT NOT NULL,
+        PRIMARY KEY (verb, input_1, input_2, input_3)
+    );
+
+    -- The output a verb yields when a machine's gathered inputs match no recipe.
+    CREATE TABLE VerbFallback (
+        verb INTEGER PRIMARY KEY,
+        output_item INT NOT NULL
+    );
 `;
 
 const CoreTempSchema = `
@@ -363,7 +380,7 @@ export class DatabaseSchema {
         this.tickPhases = {};
 
         this.initSchema = [CoreSchema, modRegistry.initSchema];
-        this.tempSchema = [CoreTempSchema, modRegistry.tempSchema];
+        this.tempSchema = [CoreTempSchema, modRegistry.tempSchema, this._recipeSeed()];
         this.pragma = [CorePragma];
 
         CoreStatements.forEach(statement => {
@@ -397,6 +414,57 @@ export class DatabaseSchema {
         this._preparePortQueries(this.modRegistry.definitions);
         this._prepareOccupancyQuery(this.modRegistry.definitions);
         this._preparePortGCStatements(this.modRegistry.definitions);
+    }
+
+    /**
+     * Validates the verb wiring and returns the SQL seeding Recipes + VerbFallback from every mod's
+     * declarations. Each verb-implementing definition's input-port count must match its recipes'
+     * arity, and the verb must have a fallback — both throw loudly here.
+     * @returns {string}
+     */
+    _recipeSeed() {
+        const recipes = this.modRegistry.recipes;
+        const fallbacks = this.modRegistry.verbFallbacks;
+        const fallbackVerbs = new Set(fallbacks.map(fallback => fallback.verb));
+
+        Object.values(this.modRegistry.definitions).forEach(definition => {
+            if (definition.verb === null) {
+                return;
+            }
+            if (!fallbackVerbs.has(definition.verb)) {
+                throw new Error(`Verb ${definition.verb} (${definition.table}) has no fallback output`);
+            }
+            const portCount = definition.inputPorts.length;
+            recipes.filter(recipe => recipe.verb === definition.verb).forEach(recipe => {
+                if (recipe.inputs.length !== portCount) {
+                    throw new Error(`Verb ${definition.verb} recipe has ${recipe.inputs.length} inputs but ${definition.table} has ${portCount} input ports`);
+                }
+            });
+        });
+
+        const lines = [];
+        recipes.forEach(recipe => {
+            const [input1, input2, input3] = this._canonicalInputs(recipe.inputs);
+            lines.push(`INSERT INTO Recipes (verb, input_1, input_2, input_3, output_item) VALUES (${recipe.verb}, ${input1}, ${input2}, ${input3}, ${recipe.output});`);
+        });
+        fallbacks.forEach(fallback => {
+            lines.push(`INSERT INTO VerbFallback (verb, output_item) VALUES (${fallback.verb}, ${fallback.output});`);
+        });
+        return lines.join("\n");
+    }
+
+    /**
+     * A recipe's inputs as a sorted-ascending triple, zero-padded at the low end (the canonical form
+     * stored in Recipes and matched by EasyMachine's min/max key).
+     * @param {number[]} inputs
+     * @returns {number[]}
+     */
+    _canonicalInputs(inputs) {
+        const sorted = [...inputs].sort((a, b) => a - b);
+        while (sorted.length < 3) {
+            sorted.unshift(0);
+        }
+        return sorted;
     }
 
     /**

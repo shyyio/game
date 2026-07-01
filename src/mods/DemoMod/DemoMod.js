@@ -1,9 +1,9 @@
-// Reference mod: a 1x1 machine that consumes two input items and, after a delay, produces one output
-// item, sharing its ports with adjacent belts. Just ports + an EasyRecipe; the rest is Easy*.
+// Reference mod: a 1x1 furnace that "cooks" one input item into an output (or Junk when the item has
+// no recipe), sharing its ports with adjacent belts. Just ports + an EasyMachine; the rest is Easy*.
 import {
     AbstractMod,
     EasyObjectPlacement,
-    EasyRecipe,
+    EasyMachine,
     ObjectDefinition,
     PortDefinition,
     Direction,
@@ -12,8 +12,11 @@ import {
 } from "@/sdk/common.js";
 import {EasyObjectTool, EasyObjectGhostLayer, EasyObjectDrawLayer, InspectHighlight} from "@/sdk/client.js";
 
-// The item type a DemoMachine produces.
+// The verb the furnace implements, the item it cooks, and the outputs (a real product + the fallback).
+export const DEMO_COOK_VERB = 1;
+export const DEMO_INPUT_ITEM_TYPE = 7;
 export const DEMO_OUTPUT_ITEM_TYPE = 101;
+export const DEMO_JUNK_ITEM_TYPE = 102;
 
 export const DemoMachineDefinition = new ObjectDefinition({
     table: "DemoMachine",
@@ -26,13 +29,9 @@ export const DemoMachineDefinition = new ObjectDefinition({
     label: "Machine",
 });
 
-// 2 inputs -> 1 output, 2 ticks after the recipe completes; install sets tickPhases + stateColumns.
-const demoRecipe = new EasyRecipe({
-    inputCount: 2,
-    output: DEMO_OUTPUT_ITEM_TYPE,
-    processingTicks: 2
-});
-demoRecipe.install(DemoMachineDefinition);
+// A Cook furnace: gathers its one input, produces the recipe's output 2 ticks later; install sets
+// verb + tickPhases + stateColumns.
+new EasyMachine({verb: DEMO_COOK_VERB, processingTicks: 2}).install(DemoMachineDefinition);
 
 export class DemoMod extends AbstractMod {
 
@@ -48,6 +47,18 @@ export class DemoMod extends AbstractMod {
 
     get definitions() {
         return {[DemoMachineDefinition.table]: DemoMachineDefinition};
+    }
+
+    get recipes() {
+        return [
+            {verb: DEMO_COOK_VERB, inputs: [DEMO_INPUT_ITEM_TYPE], output: DEMO_OUTPUT_ITEM_TYPE}
+        ];
+    }
+
+    get verbFallbacks() {
+        return [
+            {verb: DEMO_COOK_VERB, output: DEMO_JUNK_ITEM_TYPE}
+        ];
     }
 
     get extraStatements() {
@@ -80,7 +91,10 @@ export class DemoClientMod extends DemoMod {
     }
 
     get itemTextures() {
-        return {[DEMO_OUTPUT_ITEM_TYPE]: "items/1"};
+        return {
+            [DEMO_OUTPUT_ITEM_TYPE]: "items/1",
+            [DEMO_JUNK_ITEM_TYPE]: "items/1",
+        };
     }
 
     tools(client) {

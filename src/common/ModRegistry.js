@@ -109,6 +109,22 @@ export class ModRegistry {
     }
 
     /**
+     * Every mod's recipes, for seeding the shared Recipes table.
+     * @returns {{verb: number, inputs: number[], output: number}[]}
+     */
+    get recipes() {
+        return this.mods.flatMap(mod => mod.recipes);
+    }
+
+    /**
+     * Every mod's per-verb fallback outputs, for seeding VerbFallback.
+     * @returns {{verb: number, output: number}[]}
+     */
+    get verbFallbacks() {
+        return this.mods.flatMap(mod => mod.verbFallbacks);
+    }
+
+    /**
      * Item type -> texture name, merged across all mods, for the shared item layer.
      * @returns {Object.<number, string>}
      */

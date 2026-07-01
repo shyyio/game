@@ -8,7 +8,13 @@ import {
     BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
     BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
 } from "@/common/constants.js";
-import {DemoMod, DemoMachineDefinition, DEMO_OUTPUT_ITEM_TYPE} from "@/mods/DemoMod/DemoMod.js";
+import {
+    DemoMod,
+    DemoMachineDefinition,
+    DEMO_INPUT_ITEM_TYPE,
+    DEMO_OUTPUT_ITEM_TYPE,
+    DEMO_JUNK_ITEM_TYPE,
+} from "@/mods/DemoMod/DemoMod.js";
 import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {chunkId} from "@/common/util.js";
 
@@ -35,7 +41,7 @@ function machinePorts(game) {
     };
 }
 
-function inject(game, portId, type=7) {
+function inject(game, portId, type=DEMO_INPUT_ITEM_TYPE) {
     game.rawExec(`UPDATE Port SET item=${type} WHERE id=${portId}`);
 }
 
@@ -85,67 +91,60 @@ test("Adopts the belts' ports when they are placed around it afterwards", async 
     assert.equal(Number(game.queryScalar("GetPathInPort", {id: drainId})), Number(m.out_id));
 });
 
-test("Creates one output two ticks after the second input is consumed", async () => {
+test("Cooks its input into the recipe output two ticks later", async () => {
     const game = await setup();
     createMachine(game, {x: 5, y: 5, direction: Direction.UP});
     const m = machinePorts(game);
 
-    // First input is consumed and counted; one input alone never produces.
-    inject(game, m.in_id, 7);
+    // The input is consumed the tick it lands and the cooldown starts.
+    inject(game, m.in_id);
     game.tickAll();
     assert.equal(item(game, m.in_id), null);
     assert.equal(item(game, m.out_id), null);
 
-    // Second input completes the recipe and starts the cooldown.
-    inject(game, m.in_id, 7);
-    game.tickAll();
-    assert.equal(item(game, m.out_id), null);
-
-    // The output appears two ticks later.
+    // The output appears two ticks after consumption.
     game.tickAll();
     assert.equal(item(game, m.out_id), null);
     game.tickAll();
     assert.equal(item(game, m.out_id), DEMO_OUTPUT_ITEM_TYPE);
 });
 
-test("Needs two inputs per output (2:1)", async () => {
+test("Produces the fallback Junk when the input has no recipe", async () => {
     const game = await setup();
     createMachine(game, {x: 5, y: 5, direction: Direction.UP});
     const m = machinePorts(game);
 
-    // One input is consumed but never produces on its own.
-    inject(game, m.in_id, 7);
-    for (let i = 0; i < 5; i += 1) {
+    // An item with no Cook recipe is still consumed, but yields the verb's fallback output.
+    inject(game, m.in_id, DEMO_INPUT_ITEM_TYPE + 50);
+    for (let i = 0; i < 4; i += 1) {
         game.tickAll();
     }
-    assert.equal(item(game, m.out_id), null);
-
-    // The second input completes the recipe and an output appears.
-    inject(game, m.in_id, 7);
-    for (let i = 0; i < 5; i += 1) {
-        game.tickAll();
-    }
-    assert.equal(item(game, m.out_id), DEMO_OUTPUT_ITEM_TYPE);
+    assert.equal(item(game, m.in_id), null);
+    assert.equal(item(game, m.out_id), DEMO_JUNK_ITEM_TYPE);
 });
 
-test("Consumes the next input the same tick it produces an output", async () => {
+test("Consumes the next input the same tick it produces an output (pipelining)", async () => {
     const game = await setup();
     createMachine(game, {x: 5, y: 5, direction: Direction.UP});
     const m = machinePorts(game);
 
-    // Keep the in-port fed and drain the output each tick; on every tick an output is created the
-    // waiting input is consumed too, so an upstream belt shifts forward exactly when the output appears.
+    // Keep the in-port fed and drain the output each tick; the tick an output is created the next
+    // input is consumed in step, so an upstream belt shifts forward exactly then.
     let producedOnce = false;
+    let consumedOnProduction = false;
     for (let i = 0; i < 12; i += 1) {
-        inject(game, m.in_id, 7);
+        inject(game, m.in_id);
         game.rawExec(`UPDATE Port SET item=NULL WHERE id=${m.out_id}`);
         game.tickAll();
         if (item(game, m.out_id) === DEMO_OUTPUT_ITEM_TYPE) {
-            assert.equal(item(game, m.in_id), null);
             producedOnce = true;
+            if (item(game, m.in_id) === null) {
+                consumedOnProduction = true;
+            }
         }
     }
     assert.ok(producedOnce);
+    assert.ok(consumedOnProduction);
 });
 
 test("Stalls with the next input held when the output is blocked (backpressure)", async () => {
@@ -153,19 +152,19 @@ test("Stalls with the next input held when the output is blocked (backpressure)"
     createMachine(game, {x: 5, y: 5, direction: Direction.UP});
     const m = machinePorts(game);
 
-    // Occupy the output with no downstream to drain it, run a full recipe, then leave a third input.
+    // Occupy the output with no downstream to drain it, run a batch, then leave another input waiting.
     inject(game, m.out_id, DEMO_OUTPUT_ITEM_TYPE);
-    inject(game, m.in_id, 7);
-    game.tickAll();
-    inject(game, m.in_id, 7);
-    game.tickAll();
-    inject(game, m.in_id, 7);
-    for (let i = 0; i < 5; i += 1) {
+    inject(game, m.in_id);
+    for (let i = 0; i < 4; i += 1) {
+        game.tickAll();
+    }
+    inject(game, m.in_id);
+    for (let i = 0; i < 4; i += 1) {
         game.tickAll();
     }
 
-    // The create can't resolve, so the recipe never resets and the third input is left untouched.
-    assert.equal(item(game, m.in_id), 7);
+    // The create can't resolve, so the machine never finishes and the waiting input is untouched.
+    assert.equal(item(game, m.in_id), DEMO_INPUT_ITEM_TYPE);
     assert.equal(item(game, m.out_id), DEMO_OUTPUT_ITEM_TYPE);
 });
 
@@ -180,16 +179,16 @@ test("Flows created output onto a downstream belt end to end", async () => {
     const feederInPort = game.queryScalar("GetPathInPort", {id: feederId});
 
     // Feed the upstream belt for a while, then let the line drain.
-    for (let i = 0; i < 30; i += 1) {
+    for (let i = 0; i < 40; i += 1) {
         if (i < 10) {
-            inject(game, feederInPort, 7);
+            inject(game, feederInPort);
         }
         game.tickAll();
     }
 
-    // The created output type rode onto the downstream belt; the consumed input type never did.
+    // The cooked output rode onto the downstream belt; the raw input never passed through as itself.
     assert.ok(game.rawScalar(`SELECT COUNT(*) FROM BeltPathItem WHERE path_id=${drainPath} AND type=${DEMO_OUTPUT_ITEM_TYPE}`) > 0);
-    assert.equal(game.rawScalar(`SELECT COUNT(*) FROM BeltPathItem WHERE type=7`), 0);
+    assert.equal(game.rawScalar(`SELECT COUNT(*) FROM BeltPathItem WHERE path_id=${drainPath} AND type=${DEMO_INPUT_ITEM_TYPE}`), 0);
 });
 
 test("Emits out-port item deltas for a watched machine output", async () => {

@@ -144,9 +144,12 @@ export class ObjectDefinition {
         // Stable numeric identity assigned by ModRegistry (registration order); the wire carries it
         // and the client cache keys off this definition. Null until the registry assigns it.
         this.typeId = null;
-        // Extra non-port columns for the table (e.g. a recipe's inventory/cooldown), appended by
+        // Extra non-port columns for the table (e.g. a machine's slots/cooldown), appended by
         // EasyObjectPlacement.
         this.stateColumns = [];
+        // The verb this object implements over the shared Recipes table, or null. Set by EasyMachine;
+        // the schema seed validates each verb's recipes against the object's input-port count.
+        this.verb = null;
     }
 
     /**
@@ -301,6 +304,22 @@ export class AbstractMod {
      */
     get itemTextures() {
         return {};
+    }
+
+    /**
+     * Recipes this mod contributes to the shared Recipes table (any mod may extend any verb).
+     * @returns {{verb: number, inputs: number[], output: number}[]}
+     */
+    get recipes() {
+        return [];
+    }
+
+    /**
+     * The fallback output per verb, produced when a machine's gathered inputs match no recipe.
+     * @returns {{verb: number, output: number}[]}
+     */
+    get verbFallbacks() {
+        return [];
     }
 
     /**

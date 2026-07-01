@@ -82,10 +82,10 @@ export {upstreamPorts, downstreamPorts} from "@/common/portUtils.js";
 // base-case helper most mods build on (vs bespoke belt placement).
 export {EasyObjectPlacement} from "@/common/EasyObjectPlacement.js";
 
-// Base-case machine behavior: consume N inputs, then after a countdown create one output, all via
-// transfer intents. Build it, then `install(definition)` to set the definition's tickPhases +
-// stateColumns (derived from its table + ports).
-export {EasyRecipe} from "@/common/EasyRecipe.js";
+// Base-case machine behavior: implement one verb over the shared Recipes table — gather one input per
+// port, match the set (fallback when none), then after a countdown create the output, all via transfer
+// intents. Build it, then `install(definition)` to set the definition's verb/tickPhases/stateColumns.
+export {EasyMachine} from "@/common/EasyMachine.js";
 
 // Rotates a `{x, y}` offset (a port or size vector) by a placement direction, so a mod
 // can compute where an object's ports/geometry land from its ObjectDefinition.
