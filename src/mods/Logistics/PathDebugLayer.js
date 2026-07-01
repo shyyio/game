@@ -17,7 +17,7 @@ const END_MARKER_RADIUS = 10;
 export class PathDebugDrawLayer extends AbstractDrawLayer {
 
     /**
-     * @param {Map<BigInt, BigInt[]>} paths - shared head id → ordered belt ids (head last), owned by BeltClientMod
+     * @param {Map<BigInt, BigInt[]>} paths - shared head id → ordered belt ids (head last), owned by LogisticsClientMod
      */
     constructor(paths) {
         super();
@@ -64,7 +64,7 @@ export class PathDebugDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * No-op: BeltClientMod drives this layer imperatively.
+     * No-op: LogisticsClientMod drives this layer imperatively.
      * @param {AbstractEvent} event
      * @returns {void}
      */

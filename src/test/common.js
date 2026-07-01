@@ -1,5 +1,5 @@
 import {setupGame} from "@/sdk/test.js";
-import {BeltMod} from "@/mods/Belt/mod.js";
+import {LogisticsMod} from "@/mods/Logistics/mod.js";
 import {DemoMod} from "@/mods/DemoMod/DemoMod.js";
 
 /**
@@ -9,7 +9,7 @@ import {DemoMod} from "@/mods/DemoMod/DemoMod.js";
  */
 export async function setup() {
     return setupGame([
-        new BeltMod(),
+        new LogisticsMod(),
         new DemoMod(),
     ]);
 }

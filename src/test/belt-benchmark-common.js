@@ -2,7 +2,7 @@
 // benchmark and the tick benchmark seed the same large database and print the
 // same per-statement profiling table, so that machinery lives here.
 
-import {BELT_NORMAL} from "@/mods/Belt/constants.js";
+import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {Direction, CHUNK_SIZE} from "@/common/constants.js";
 
 // Width of the seed grid in tiles. The seed spans CHUNK_SIZE-square chunks, so a

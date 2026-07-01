@@ -1,5 +1,5 @@
 
-import {BeltMod} from "./mod.js";
+import {LogisticsMod} from "./mod.js";
 import {BeltDrawLayer} from "./BeltLayer.js";
 import {BeltOverlayDrawLayer} from "./OverlayLayer.js";
 import {BeltGhostLayer} from "./BeltGhostLayer.js";
@@ -37,7 +37,7 @@ import {
     InspectHighlight,
 } from "@/sdk/client.js";
 
-export class BeltClientMod extends BeltMod {
+export class LogisticsClientMod extends LogisticsMod {
 
     constructor() {
         super();

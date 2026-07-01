@@ -5,7 +5,7 @@ import {ModRegistry} from "@/common/ModRegistry.js";
 import {WireRegistry} from "@/common/wire.js";
 import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
-import {BeltMod} from "./mod.js";
+import {LogisticsMod} from "./mod.js";
 import {CreateBeltMessage} from "./messages.js";
 import {
     BeltInsertEvent,
@@ -16,7 +16,7 @@ import {
 
 function registry() {
     const modRegistry = new ModRegistry();
-    modRegistry.loadMod(new BeltMod());
+    modRegistry.loadMod(new LogisticsMod());
     return new WireRegistry(modRegistry);
 }
 

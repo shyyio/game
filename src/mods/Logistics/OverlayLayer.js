@@ -3,7 +3,7 @@ import {BeltBend, BeltType} from "./constants.js";
 import {BeltSprite, beltFrameBase} from "./BeltLayer.js";
 
 /**
- * Reveals the buried belts of an underground tunnel on hover; driven imperatively by BeltClientMod.onInspect.
+ * Reveals the buried belts of an underground tunnel on hover; driven imperatively by LogisticsClientMod.onInspect.
  */
 export class BeltOverlayDrawLayer extends AbstractDrawLayer {
 

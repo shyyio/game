@@ -1,8 +1,8 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {setupGame} from "@/sdk/test.js";
-import {BeltMod} from "@/mods/Belt/mod.js";
-import {createBelt, deleteBelt, GameObject} from "@/mods/Belt/testHelpers.js";
+import {LogisticsMod} from "@/mods/Logistics/mod.js";
+import {createBelt, deleteBelt, GameObject} from "@/mods/Logistics/testHelpers.js";
 import {
     Direction,
     BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
@@ -21,7 +21,7 @@ import {chunkId} from "@/common/util.js";
 // The DemoMachine shares belt ports, so its specs boot both mods (Demo after Belt, so its
 // seam ops splice into the belt pipeline).
 async function setup() {
-    return setupGame([new BeltMod(), new DemoMod()]);
+    return setupGame([new LogisticsMod(), new DemoMod()]);
 }
 
 function createMachine(game, options) {

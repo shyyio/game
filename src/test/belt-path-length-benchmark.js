@@ -9,7 +9,7 @@
 // If a length-L path costs the same as a length-1 path, us/belt should fall ~1/L.
 
 import {setup} from "@/test/common.js";
-import {GameObject, createBelt} from "@/mods/Belt/testHelpers.js";
+import {GameObject, createBelt} from "@/mods/Logistics/testHelpers.js";
 import {intArg} from "@/test/belt-benchmark-common.js";
 import {Direction} from "@/common/constants.js";
 

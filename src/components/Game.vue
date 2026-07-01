@@ -6,7 +6,7 @@ import Keyboard from "@/client/Keyboard.js";
 import Mouse from "@/client/Mouse.js";
 import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
-import {BeltClientMod} from "@/mods/Belt/BeltClientMod.js";
+import {LogisticsClientMod} from "@/mods/Logistics/LogisticsClientMod.js";
 import {DemoClientMod} from "@/mods/DemoMod/DemoMod.js";
 import {BaseTexturesMod} from "@/mods/BaseTextures/mod.js";
 import {DatabaseSchema} from "@/common/DatabaseSchema.js";
@@ -169,7 +169,7 @@ onMounted(async () => {
 
   const modRegistry = new ModRegistry();
   modRegistry.loadMod(new BaseTexturesMod());
-  modRegistry.loadMod(new BeltClientMod());
+  modRegistry.loadMod(new LogisticsClientMod());
   modRegistry.loadMod(new DemoClientMod());
 
   const schema = new DatabaseSchema(modRegistry);

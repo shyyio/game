@@ -12,7 +12,7 @@ import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/comm
 import {chunkId} from "@/common/util.js";
 
 // Core-only registry: common/ must not depend on mods/. AbstractMod wire classes are
-// covered by their own specs (e.g. src/mods/Belt/wire.spec.js).
+// covered by their own specs (e.g. src/mods/Logistics/wire.spec.js).
 function registry() {
     return new WireRegistry(new ModRegistry());
 }

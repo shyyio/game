@@ -1,6 +1,6 @@
 import {AbstractTool, Direction, Haptics, OCCUPANCY_LAYER_SURFACE, DeleteObjectMessage} from "@/sdk/client.js";
 import {CreateBeltMessage} from "./messages.js";
-import {BeltType} from "@/mods/Belt/constants.js";
+import {BeltType} from "@/mods/Logistics/constants.js";
 import {BeltDefinition} from "./definitions.js";
 import {Belt} from "./BeltLayer.js";
 import {inferBeltParent} from "./geometry.js";

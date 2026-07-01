@@ -30,7 +30,7 @@ import {
     BeltSyncEvent,
 } from "./events.js";
 
-export class BeltMod extends AbstractMod {
+export class LogisticsMod extends AbstractMod {
 
     constructor() {
         super();

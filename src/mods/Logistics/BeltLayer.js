@@ -149,7 +149,7 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * No-op: belt rendering is driven imperatively by BeltClientMod, not by events.
+     * No-op: belt rendering is driven imperatively by LogisticsClientMod, not by events.
      * @param {AbstractEvent} event
      */
     onEvent(event) {}
