@@ -172,12 +172,16 @@ export class InputHandler {
     }
 
     /**
-     * The context gesture (long-press or right-click) opens the mini-menu when no tool is active and
-     * not in map mode (where tile interactions are suppressed).
+     * The context gesture (long-press or right-click), suppressed in map mode: with a tool active it
+     * deselects the tool, otherwise it opens the mini-menu.
      * @private
      */
     _handleContextGesture(tileX, tileY, screenX, screenY) {
-        if (this._mapMode || this.activeTool != null) {
+        if (this._mapMode) {
+            return;
+        }
+        if (this.activeTool != null) {
+            this._clearActiveTool();
             return;
         }
         this._openMiniMenu(tileX, tileY, screenX, screenY);
