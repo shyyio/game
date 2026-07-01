@@ -179,6 +179,17 @@ export class ObjectDefinition {
     }
 
     /**
+     * The subset of this object's `portKind` ports exposed for a record in state `data`. The
+     * default is all of them; objects that bury a port in some states (a belt ramp) override this.
+     * @param {("inputPorts"|"outputPorts")} portKind
+     * @param {object} data - the record's data (type, direction, ...)
+     * @returns {PortDefinition[]}
+     */
+    activePorts(portKind, data) {
+        return this[portKind];
+    }
+
+    /**
      * SQL SELECT fragments (one per port) resolving the Port id at tile (@x, @y) for this
      * object's input/output ports facing `direction`, UNIONed by the engine for a
      * position-based port lookup. The default reads each port from its own column; objects

@@ -9,6 +9,8 @@ import {
 } from "@/sdk/common.js";
 import {
     ITEM_TYPE_GAP,
+    BELT_RAMP_DOWN,
+    BELT_RAMP_UP,
     BELT_UNDERGROUND,
     OCCUPANCY_LAYER_UNDERGROUND_BASE,
     BUFFERED_EVENT_TYPE_ITEM_UPSERT,
@@ -46,6 +48,23 @@ class BeltObjectDefinition extends ObjectDefinition {
 
     outputPortReferenceLookups(table) {
         return [`SELECT 1 FROM BeltPath WHERE BeltPath.out_port_id = Port.id`];
+    }
+
+    // A ramp buries one end, so it exposes no surface port there: a RAMP_DOWN entrance's
+    // forward output is buried (surface inputs only), a RAMP_UP exit's back input is buried
+    // (it emerges from the tunnel), and an underground has no surface ports at all.
+    activePorts(portKind, data) {
+        if (data.type === BELT_UNDERGROUND) {
+            return [];
+        }
+        if (portKind === "outputPorts") {
+            return data.type === BELT_RAMP_DOWN ? [] : this.outputPorts;
+        }
+        if (data.type === BELT_RAMP_UP) {
+            // Drop the back (forward-facing) input; keep the side inputs.
+            return this.inputPorts.filter(port => port.direction !== Direction.UP);
+        }
+        return this.inputPorts;
     }
 
     // A surface belt sits on SURFACE; an underground occupies one layer per axis, so a
