@@ -5,6 +5,7 @@ import {PlayerSettings} from "@/client/PlayerSettings.js";
 import {GameSettings} from "@/client/GameSettings.js";
 import {MiniMenuLayer} from "@/client/MiniMenuLayer.js";
 import {RotateButtonsLayer} from "@/client/RotateButtonsLayer.js";
+import {ToolbarLayer} from "@/client/ToolbarLayer.js";
 import {ToolRotation} from "@/client/ToolRotation.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
@@ -50,6 +51,8 @@ export class Client {
         this.miniMenuLayer = new MiniMenuLayer(viewport);
         // Rotate controls, toggled with the active tool by the host.
         this.rotateButtonsLayer = new RotateButtonsLayer(app, viewport);
+        // Bottom-center tool bar; the host feeds it the tool list and reacts to selection.
+        this.toolbarLayer = new ToolbarLayer(app, viewport);
         // Shared placement-feedback layer, driven by whichever tool is active.
         this.placementFeedbackLayer = new PlacementFeedbackLayer();
         // Shared hover-highlight layer, driven by mods' inspect hover.
@@ -119,8 +122,10 @@ export class Client {
             this.viewport.addChild(layer);
         });
 
+        this.toolbarLayer.textureRegistry = this.textureRegistry;
         this.app.stage.addChild(this.miniMenuLayer);
         this.app.stage.addChild(this.rotateButtonsLayer);
+        this.app.stage.addChild(this.toolbarLayer);
         this.app.stage.addChild(this.statusLayer);
 
         this.viewport.on("moved", () => this._updateViewportChunks());

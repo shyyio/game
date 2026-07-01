@@ -24,7 +24,11 @@ export class UndergroundBeltTool extends AbstractTool {
     }
 
     get label() {
-        return "Underground";
+        return "Ramp";
+    }
+
+    get textureName() {
+        return "belt-ramp-down/0";
     }
 
     onTap(tileX, tileY) {

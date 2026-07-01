@@ -35,6 +35,10 @@ export class EasyObjectTool extends AbstractTool {
         return this._definition.label;
     }
 
+    get textureName() {
+        return this._definition.textureName;
+    }
+
     onTap(tileX, tileY) {
         const direction = this._rotation.direction;
         const {blockedCells, overwriteIds} = this._evaluate(tileX, tileY, direction);

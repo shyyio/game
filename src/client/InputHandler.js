@@ -9,11 +9,11 @@ export class InputHandler {
 
     /**
      * @param {ModRegistry} modRegistry
-     * @param {object} toolbarState - Vue reactive object with { activeTool, tools }
+     * @param {ToolbarLayer} toolbar - the pixi tool bar, owning the tool list and active selection
      */
-    constructor(modRegistry, toolbarState) {
+    constructor(modRegistry, toolbar) {
         this.modRegistry = modRegistry;
-        this._toolbarState = toolbarState;
+        this._toolbar = toolbar;
 
         this._onMiniMenuEntryClick = null;
         this._onInspect = null;
@@ -34,7 +34,7 @@ export class InputHandler {
         if (this._mapMode) {
             return null;
         }
-        return this._toolbarState.activeTool;
+        return this._toolbar.activeTool;
     }
 
     init() {
@@ -208,11 +208,11 @@ export class InputHandler {
     }
 
     /**
-     * Deselects the active tool; the toolbar watcher reacts.
+     * Deselects the active tool; the toolbar's change callback reacts.
      * @private
      */
     _clearActiveTool() {
-        this._toolbarState.activeTool = null;
+        this._toolbar.setActiveTool(null);
     }
 
     /**
@@ -220,11 +220,11 @@ export class InputHandler {
      * @private
      */
     _selectTool(index) {
-        const tools = this._toolbarState.tools;
+        const tools = this._toolbar.tools;
         if (index >= tools.length) {
             return;
         }
-        this._toolbarState.activeTool = tools[index];
+        this._toolbar.setActiveTool(tools[index]);
     }
 
     /**

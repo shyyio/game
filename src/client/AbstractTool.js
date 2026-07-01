@@ -30,6 +30,15 @@ export class AbstractTool {
     }
 
     /**
+     * Texture name for the tool's toolbar icon.
+     * @abstract
+     * @returns {string}
+     */
+    get textureName() {
+        throw new NotImplementedError();
+    }
+
+    /**
      * Called when the user taps (clicks without dragging) a tile.
      * @abstract
      * @param {number} tileX

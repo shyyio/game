@@ -27,6 +27,10 @@ export class BeltTool extends AbstractTool {
         return "Belt";
     }
 
+    get textureName() {
+        return "belt-straight/0";
+    }
+
     onTap(tileX, tileY) {
         const direction = this._rotation.direction;
         const blocked = this._blocked(tileX, tileY);

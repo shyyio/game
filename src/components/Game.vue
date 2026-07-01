@@ -1,5 +1,5 @@
 <script setup>
-import {reactive, markRaw, computed, ref, shallowRef, watch, onMounted} from "vue";
+import {onMounted} from "vue";
 import {Application, Graphics, Container, FillGradient, isMobile} from "pixi.js";
 import {ClientViewport} from "@/client/ClientViewport.js";
 import Keyboard from "@/client/Keyboard.js";
@@ -18,49 +18,10 @@ import {Client} from "@/client/Client.js";
 import {TickPhase} from "@/common/core.js";
 import {GAME_FONT} from "@/client/constants.js";
 
-const toolbarState = reactive({activeTool: null, tools: []});
-const viewportRef = shallowRef(null);
-const inputHandlerRef = shallowRef(null);
-const rotateButtonsRef = shallowRef(null);
-const clientRef = shallowRef(null);
-
 // Mobile mode (touch device): panning stays live while a tool is active so the
 // player can aim the screen-center crosshair, hover/placement lock to center, and
 // the pixi rotate button replaces the "r" key.
 const mobile = isMobile.any;
-
-// Map mode (zoomed far out) temporarily deactivates the active tool: the cursor acts
-// as if nothing were selected while the toolbar keeps the tool highlighted, so
-// zooming back in restores it. The side effects below key off this effective tool, so
-// they fire on both tool changes and map-mode toggles.
-const mapModeRef = ref(false);
-const effectiveTool = computed(() => (mapModeRef.value ? null : toolbarState.activeTool));
-
-watch(effectiveTool, (tool) => {
-  if (inputHandlerRef.value != null) {
-    inputHandlerRef.value.clearToolPreview();
-    inputHandlerRef.value.clearInspect();
-    inputHandlerRef.value.refreshHover();
-  }
-  // The rotate button is shown on both desktop and mobile while a tool is active.
-  if (rotateButtonsRef.value != null) {
-    rotateButtonsRef.value.setVisible(tool != null);
-  }
-  if (viewportRef.value == null) {
-    return;
-  }
-  if (mobile) {
-    if (clientRef.value != null) {
-      clientRef.value.setCenterLock(tool != null);
-    }
-    return;
-  }
-  if (tool != null) {
-    viewportRef.value.freezePan();
-  } else {
-    viewportRef.value.unfreezePan();
-  }
-});
 
 const gameWidth = () => window.innerWidth;
 const gameHeight = () => window.innerHeight + 64;
@@ -162,7 +123,6 @@ onMounted(async () => {
     viewport.pinch();
   }
 
-  viewportRef.value = viewport;
   Mouse.init(app, viewport);
 
   document.getElementById("game").appendChild(app.canvas);
@@ -181,22 +141,13 @@ onMounted(async () => {
   const session = new LocalSession(api);
 
   const client = new Client(app, viewport, session, modRegistry);
-  clientRef.value = client;
   session.client = client;
   game.connect(session);
   await client.init();
 
-  const refreshTools = () => {
-    toolbarState.tools = modRegistry.tools(client).map(markRaw);
-    if (!toolbarState.tools.includes(toolbarState.activeTool)) {
-      toolbarState.activeTool = null;
-    }
-  };
+  const toolbar = client.toolbarLayer;
 
-  client.playerSettings.onChange(refreshTools);
-  refreshTools();
-
-  const inputHandler = new InputHandler(modRegistry, toolbarState);
+  const inputHandler = new InputHandler(modRegistry, toolbar);
   inputHandler.onMiniMenuEntryClick((tileX, tileY, screenX, screenY, onClose) => {
     const entries = modRegistry.miniMenuEntries(tileX, tileY, session, client);
     client.miniMenuLayer.open(entries, screenX, screenY, onClose);
@@ -205,19 +156,46 @@ onMounted(async () => {
     modRegistry.handleInspect(tileX, tileY, client);
   });
   inputHandler.init();
-  inputHandlerRef.value = inputHandler;
 
-  // Wire the pixi rotate button (shown while a tool is active, desktop or mobile).
-  rotateButtonsRef.value = client.rotateButtonsLayer;
   client.rotateButtonsLayer.onRotate(() => inputHandler.rotateRight());
 
-  // Map mode (zoomed far out): deactivate the active tool and disable tile hover via
-  // the input handler, then flip the reactive flag so the effective-tool watcher
-  // drops the ghost, hides the rotate buttons and releases the pan lock. The toolbar
-  // selection is untouched, so the tool resumes on zoom-in.
-  client.onMapModeChange((mapMode) => {
-    inputHandler.setMapMode(mapMode);
-    mapModeRef.value = mapMode;
+  // Map mode (zoomed far out) deactivates the active tool without clearing the toolbar
+  // selection, so the cursor acts as if nothing were selected and the tool resumes on
+  // zoom-in. The effective tool (null in map mode) drives the side effects below.
+  let mapMode = false;
+
+  // Applies the effective-tool side effects on both tool changes and map-mode toggles:
+  // drop the current ghost/hover, toggle the rotate button, and freeze pan (desktop) or
+  // enable center-lock (mobile) while a tool is active.
+  const applyEffectiveTool = () => {
+    const tool = mapMode ? null : toolbar.activeTool;
+    inputHandler.clearToolPreview();
+    inputHandler.clearInspect();
+    inputHandler.refreshHover();
+    client.rotateButtonsLayer.setVisible(tool != null);
+    if (mobile) {
+      client.setCenterLock(tool != null);
+      return;
+    }
+    if (tool != null) {
+      viewport.freezePan();
+    } else {
+      viewport.unfreezePan();
+    }
+  };
+
+  toolbar.onChange(applyEffectiveTool);
+
+  const refreshTools = () => {
+    toolbar.setTools(modRegistry.tools(client));
+  };
+  client.playerSettings.onChange(refreshTools);
+  refreshTools();
+
+  client.onMapModeChange((mode) => {
+    inputHandler.setMapMode(mode);
+    mapMode = mode;
+    applyEffectiveTool();
   });
 
   function tick() {
@@ -265,50 +243,11 @@ export default defineComponent({
 <template>
   <div id="game">
   </div>
-  <div class="toolbar">
-    <button
-        v-for="tool in toolbarState.tools"
-        :key="tool.label"
-        :class="{active: tool === toolbarState.activeTool}"
-        @click="toolbarState.activeTool = (tool === toolbarState.activeTool ? null : tool)"
-    >{{ tool.label }}
-    </button>
-  </div>
 </template>
 
 <style scoped>
 #game {
   position: absolute;
   overflow: hidden;
-}
-
-.toolbar {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 8px;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 8px 12px;
-  border-radius: 8px;
-}
-
-.toolbar button {
-  font-family: "Lexend", sans-serif;
-  padding: 6px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.toolbar button.active {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: #5bf;
-  box-shadow: inset 0 -3px 0 #5bf;
-  color: #fff;
 }
 </style>
