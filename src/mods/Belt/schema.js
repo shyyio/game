@@ -1,4 +1,4 @@
-import {CHUNK_KEY_SQL} from "@/sdk/common.js";
+import {CHUNK_ID_SQL} from "@/sdk/common.js";
 import {
     BELT_UNDERGROUND,
     BeltGameSettingsKey,
@@ -44,7 +44,7 @@ export const beltSchema = `
         type INT NOT NULL
             CHECK (type >= 0),
 
-        chunk TEXT GENERATED ALWAYS AS (${CHUNK_KEY_SQL}) VIRTUAL,
+        chunk INT GENERATED ALWAYS AS (${CHUNK_ID_SQL}) VIRTUAL,
 
         direction INT NOT NULL
     );
@@ -113,7 +113,7 @@ export const beltSchema = `
         x INT NOT NULL,
         y INT NOT NULL,
         direction INT NOT NULL,
-        chunk TEXT GENERATED ALWAYS AS (${CHUNK_KEY_SQL}) VIRTUAL,
+        chunk INT GENERATED ALWAYS AS (${CHUNK_ID_SQL}) VIRTUAL,
 
         in_a_id  INT REFERENCES Port,
         in_b_id  INT REFERENCES Port,

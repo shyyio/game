@@ -4,7 +4,7 @@ import assert from "node:assert";
 import {ClientCache} from "@/client/ClientCache.js";
 import {ObjectDefinition, PortDefinition} from "@/common/core.js";
 import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkId} from "@/common/util.js";
 
 // A single-cell object on layer 0 at its primary tile.
 function cell(x, y, layer=0) {
@@ -32,7 +32,7 @@ test("set then get returns the record with derived chunk", () => {
     assert.strictEqual(record.id, 1n);
     assert.strictEqual(record.tileX, 3);
     assert.strictEqual(record.tileY, 4);
-    assert.strictEqual(record.chunk, chunkKey(3, 4));
+    assert.strictEqual(record.chunk, chunkId(3, 4));
     assert.deepStrictEqual(record.data, {type: 0});
 });
 
@@ -84,7 +84,7 @@ test("remove clears all indexes and returns the record", () => {
     assert.strictEqual(cache.get(1n), null);
     assert.deepStrictEqual(cache.getAtTile(7, 8), []);
     assert.strictEqual(cache.at(7, 8, 0), null);
-    assert.deepStrictEqual(cache.getByChunk(chunkKey(7, 8)), []);
+    assert.deepStrictEqual(cache.getByChunk(chunkId(7, 8)), []);
     assert.strictEqual(cache.remove(1n), null);
 });
 
@@ -103,10 +103,10 @@ test("getByChunk returns objects grouped by chunk", () => {
     cache.set(2n, 2, 2, cell(2, 2), {}, {type: 0});
     cache.set(3n, 200, 200, cell(200, 200), {}, {type: 0});
 
-    const near = cache.getByChunk(chunkKey(1, 1));
+    const near = cache.getByChunk(chunkId(1, 1));
     assert.strictEqual(near.length, 2);
     assert.deepStrictEqual(near.map(record => record.id).sort(), [1n, 2n]);
-    assert.strictEqual(cache.getByChunk(chunkKey(200, 200)).length, 1);
+    assert.strictEqual(cache.getByChunk(chunkId(200, 200)).length, 1);
 });
 
 test("getByPort resolves a rendered out-port to its entry and port name", () => {

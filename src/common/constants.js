@@ -103,6 +103,12 @@ export const Direction = {
 
 export const CHUNK_SIZE = 64;
 
+// A region is REGION_SIZE x REGION_SIZE chunks, centered on the origin, so chunk
+// coordinates run from -REGION_SIZE/2 to REGION_SIZE/2 - 1 on each axis. A chunk's
+// id is its ordinal within the region, counted left-to-right, top-to-bottom from
+// the top-left chunk (id 0).
+export const REGION_SIZE = 64;
+
 // Occupancy layers. A tile can hold one object per layer, so objects on different layers
 // coexist (e.g. a surface belt and two crossing underground tunnels). The keyspace is flat
 // and shared across mods by convention: SURFACE is the default ground layer (belts,

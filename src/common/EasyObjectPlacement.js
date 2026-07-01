@@ -2,7 +2,7 @@ import {SqlStatement} from "@/common/core.js";
 import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
 import {upstreamPorts, downstreamPorts} from "@/common/portUtils.js";
-import {CHUNK_KEY_SQL} from "@/common/DatabaseSchema.js";
+import {CHUNK_ID_SQL} from "@/common/DatabaseSchema.js";
 
 /**
  * Sim-side create/remove/sync/schema/statements for a port-sharing object placed by a
@@ -56,7 +56,7 @@ export class EasyObjectPlacement {
                 x INT NOT NULL,
                 y INT NOT NULL,
                 direction INT NOT NULL,
-                chunk TEXT GENERATED ALWAYS AS (${CHUNK_KEY_SQL}) VIRTUAL,
+                chunk INT GENERATED ALWAYS AS (${CHUNK_ID_SQL}) VIRTUAL,
                 ${columns}
             );
 
@@ -114,7 +114,7 @@ export class EasyObjectPlacement {
     /**
      * Every object of this type in a chunk, as sync events for a newly-subscribed client.
      * @param {Game} game
-     * @param {string} chunk
+     * @param {number} chunk
      * @returns {AbstractEvent[]}
      */
     chunkSyncEvents(game, chunk) {

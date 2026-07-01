@@ -1,4 +1,4 @@
-import {chunkKey} from "@/common/util.js";
+import {chunkId} from "@/common/util.js";
 import {AbstractEvent} from "@/common/AbstractEvent.js";
 
 /**
@@ -17,9 +17,9 @@ export class AbstractTilePositionedEvent extends AbstractEvent {
     }
 
     /**
-     * @returns {string}
+     * @returns {number}
      */
     get chunk() {
-        return chunkKey(this.x, this.y);
+        return chunkId(this.x, this.y);
     }
 }

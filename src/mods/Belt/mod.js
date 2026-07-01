@@ -1,7 +1,7 @@
 import {
     AbstractMod,
     EasyObjectPlacement,
-    chunkKey,
+    chunkId,
     CHUNK_SIZE,
     upstreamPorts,
     downstreamPorts,
@@ -70,7 +70,7 @@ export class BeltMod extends AbstractMod {
     /**
      * Sync events for a synced chunk: a BeltSyncEvent per belt (undergrounds included,
      * for the client's ramp scans) then a BeltPathRecalculateEvent per path it touches.
-     * @param {string} chunk
+     * @param {number} chunk
      * @returns {AbstractTilePositionedEvent[]}
      */
     chunkSyncEvents(chunk) {
@@ -150,11 +150,11 @@ export class BeltMod extends AbstractMod {
     /**
      * Places one belt and rewires the affected paths around it.
      * @private
-     * @param {{x: number, y: number, type: number, direction: Direction, [rampParent]: BigInt, [disconnectRampChild]: BigInt, [chunk]: string}} options
+     * @param {{x: number, y: number, type: number, direction: Direction, [rampParent]: BigInt, [disconnectRampChild]: BigInt, [chunk]: number}} options
      * @param {boolean} [transaction] - false when called recursively, so only the outermost call owns the begin/end boundary
      */
     _createBelt(options, transaction=true) {
-        options.chunk = chunkKey(options.x, options.y);
+        options.chunk = chunkId(options.x, options.y);
         if (transaction) {
             this.game.begin();
             this._resyncHeads = new Set();
@@ -236,7 +236,7 @@ export class BeltMod extends AbstractMod {
      * Resolves the new belt's path head and downstream child (with derived merge-topology flags) in one query.
      * @private
      * @param {BigInt} id
-     * @param {{x: number, y: number, type: number, direction: Direction, chunk: string}} options
+     * @param {{x: number, y: number, type: number, direction: Direction, chunk: number}} options
      * @returns {{head: BigInt, child: ({id: BigInt, x: number, y: number, oldParentPathHead: BigInt|null, isStandalone: boolean, hadParent: boolean, isCrossChunk: boolean, parentInDifferentChunk: boolean})|null}}
      */
     _resolveCreateContext(id, options) {

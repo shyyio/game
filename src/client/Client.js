@@ -12,7 +12,7 @@ import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/Playe
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {TILE_SIZE, snapToChunk, MAP_MODE_SCALE_THRESHOLD, CHUNK_UNSUBSCRIBE_DELAY_MS} from "@/client/constants.js";
 import {CHUNK_SIZE, Direction} from "@/common/constants.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkId} from "@/common/util.js";
 import {GridDrawLayer} from "@/client/GridDrawLayer.js";
 import {MaskDrawLayer} from "@/client/MaskDrawLayer.js";
 import {PlacementFeedbackLayer} from "@/client/PlacementFeedbackLayer.js";
@@ -177,7 +177,7 @@ export class Client {
         const chunks = [];
         for (let x = snapToChunk(x1) - CHUNK_SIZE; x <= snapToChunk(x2); x += CHUNK_SIZE) {
             for (let y = snapToChunk(y1) - CHUNK_SIZE; y <= snapToChunk(y2); y += CHUNK_SIZE) {
-                chunks.push(chunkKey(x, y));
+                chunks.push(chunkId(x, y));
             }
         }
         return chunks;

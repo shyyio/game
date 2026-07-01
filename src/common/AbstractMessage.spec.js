@@ -32,11 +32,11 @@ test("Validate accepts by default", () => {
 });
 
 test("SetViewportMessage.validate accepts a chunk list within the limit", () => {
-    const chunks = Array.from({length: 256}, (_, i) => `${i}_0`);
+    const chunks = Array.from({length: 256}, (_, i) => i);
     assert.strictEqual(new SetViewportMessage(chunks).validate(null, null), true);
 });
 
 test("SetViewportMessage.validate rejects a chunk list over the limit", () => {
-    const chunks = Array.from({length: 257}, (_, i) => `${i}_0`);
+    const chunks = Array.from({length: 257}, (_, i) => i);
     assert.strictEqual(new SetViewportMessage(chunks).validate(null, null), false);
 });

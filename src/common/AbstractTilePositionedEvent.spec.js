@@ -3,6 +3,7 @@ import assert from "node:assert";
 
 import {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
 import {AbstractEvent} from "@/common/AbstractEvent.js";
+import {chunkId} from "@/common/util.js";
 
 test("AbstractTilePositionedEvent derives its chunk from its tile position", () => {
     class WithFields extends AbstractTilePositionedEvent {
@@ -12,7 +13,7 @@ test("AbstractTilePositionedEvent derives its chunk from its tile position", () 
     assert.ok(event instanceof AbstractEvent);
     assert.strictEqual(event.x, 70);
     assert.strictEqual(event.y, 5);
-    assert.strictEqual(event.chunk, "1,0");
+    assert.strictEqual(event.chunk, chunkId(70, 5));
 });
 
 test("a AbstractTilePositionedEvent subclass without wireFields throws", () => {

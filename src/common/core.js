@@ -333,7 +333,7 @@ export class AbstractMod {
 
     /**
      * Server-side hook returning the per-object events that recreate this mod's objects in a chunk.
-     * @param {string} chunk - a chunk key that just entered a viewport
+     * @param {number} chunk - a chunk id that just entered a viewport
      * @returns {AbstractEvent[]}
      */
     chunkSyncEvents(chunk) {

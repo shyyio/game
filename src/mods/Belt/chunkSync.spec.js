@@ -6,7 +6,7 @@ import {createBelt, deleteBelt} from "./testHelpers.js";
 import {BeltSyncEvent, BeltPathRecalculateEvent} from "./events.js";
 import {BeltType} from "./constants.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkId} from "@/common/util.js";
 import {Direction} from "@/common/constants.js";
 import {ChunkSyncEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 
@@ -27,7 +27,7 @@ test("subscribing a chunk syncs the client with belts already in it", async () =
     createBelt(harness, BeltType.NORMAL, {x: 1, y: 1, direction: Direction.UP});
 
     const events = captureEvents(harness);
-    harness.dispatchMessage(new SetViewportMessage([chunkKey(1, 1)]));
+    harness.dispatchMessage(new SetViewportMessage([chunkId(1, 1)]));
 
     const sync = events.find(event => event instanceof ChunkSyncEvent);
     assert.ok(sync, "expected a ChunkSyncEvent");
@@ -56,7 +56,7 @@ test("a multi-belt path is synced as one recalc, head last", async () => {
     createBelt(harness, BeltType.NORMAL, {x: 3, y: 1, direction: Direction.RIGHT});
 
     const events = captureEvents(harness);
-    harness.dispatchMessage(new SetViewportMessage([chunkKey(1, 1)]));
+    harness.dispatchMessage(new SetViewportMessage([chunkId(1, 1)]));
 
     const sync = events.find(event => event instanceof ChunkSyncEvent);
     const pathSyncs = sync.events.filter(event => event instanceof BeltPathRecalculateEvent);
@@ -73,7 +73,7 @@ test("deleting a path's head publishes a recalc for the re-headed survivor", asy
     createBelt(harness, BeltType.NORMAL, {x: 1, y: 1, direction: Direction.RIGHT});
     createBelt(harness, BeltType.NORMAL, {x: 2, y: 1, direction: Direction.RIGHT});
     createBelt(harness, BeltType.NORMAL, {x: 3, y: 1, direction: Direction.RIGHT});
-    harness.dispatchMessage(new SetViewportMessage([chunkKey(1, 1)]));
+    harness.dispatchMessage(new SetViewportMessage([chunkId(1, 1)]));
 
     // The head belt is the path's id (its upstream-most belt).
     const oldHead = harness.rawScalar("SELECT path_id FROM Belt WHERE x = 1 AND y = 1");
@@ -94,7 +94,7 @@ test("deleting a path's head publishes a recalc for the re-headed survivor", asy
 test("an empty chunk syncs nothing", async () => {
     const harness = await setup();
     const events = captureEvents(harness);
-    harness.dispatchMessage(new SetViewportMessage([chunkKey(1, 1)]));
+    harness.dispatchMessage(new SetViewportMessage([chunkId(1, 1)]));
 
     assert.ok(!events.some(event => event instanceof ChunkSyncEvent));
 });
@@ -104,21 +104,21 @@ test("leaving a chunk unsubscribes it; re-entering re-syncs only the delta", asy
     createBelt(harness, BeltType.NORMAL, {x: 1, y: 1, direction: Direction.UP});
 
     const events = captureEvents(harness);
-    harness.dispatchMessage(new SetViewportMessage([chunkKey(1, 1)]));
+    harness.dispatchMessage(new SetViewportMessage([chunkId(1, 1)]));
     events.length = 0;
 
     // Pan away: the chunk leaves the viewport.
-    harness.dispatchMessage(new SetViewportMessage([chunkKey(500, 500)]));
+    harness.dispatchMessage(new SetViewportMessage([chunkId(500, 500)]));
     const unsubscribe = events.find(event =>
         event instanceof ChunkUnsubscribeEvent
-        && event.chunk === chunkKey(1, 1));
+        && event.chunk === chunkId(1, 1));
     assert.ok(unsubscribe, "expected a chunk-unsubscribe for the chunk left behind");
     // The empty chunk we panned into syncs nothing.
     assert.ok(!events.some(event => event instanceof ChunkSyncEvent));
 
     // Pan back: only the re-entered chunk is synced again.
     events.length = 0;
-    harness.dispatchMessage(new SetViewportMessage([chunkKey(1, 1)]));
+    harness.dispatchMessage(new SetViewportMessage([chunkId(1, 1)]));
     const resync = events.find(event => event instanceof ChunkSyncEvent);
     assert.ok(resync, "expected a re-sync when the chunk re-enters the viewport");
     // One belt sync plus the path-recalc sync for its path.

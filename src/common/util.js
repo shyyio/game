@@ -1,28 +1,35 @@
-import {CHUNK_SIZE, Direction} from "@/common/constants.js";
+import {CHUNK_SIZE, REGION_SIZE, Direction} from "@/common/constants.js";
+
+const REGION_HALF = REGION_SIZE / 2;
 
 export function fixNegativeZero(n) {
     return n === -0 ? 0 : n;
 }
 
 /**
- * Returns the "chunkX,chunkY" key string for the chunk containing tile (x, y).
+ * The ordinal id of the chunk containing tile (x, y): its index within the region,
+ * counted left-to-right, top-to-bottom from the top-left chunk (id 0).
  * @param x {number} tile x
  * @param y {number} tile y
- * @returns {string}
+ * @returns {number}
  */
-export function chunkKey(x, y) {
-    return `${Math.floor(x / CHUNK_SIZE)},${Math.floor(y / CHUNK_SIZE)}`;
+export function chunkId(x, y) {
+    const chunkX = Math.floor(x / CHUNK_SIZE);
+    const chunkY = Math.floor(y / CHUNK_SIZE);
+
+    return (chunkY + REGION_HALF) * REGION_SIZE + (chunkX + REGION_HALF);
 }
 
 /**
- * Inverse of {@link chunkKey}: parses a "chunkX,chunkY" key back into a chunk position.
- * @param chunk {string}
- * @returns {{x: Number, y: Number}}
+ * Inverse of {@link chunkId}: the chunk coordinate (chunkX, chunkY) of a chunk id.
+ * @param chunk {number}
+ * @returns {{x: number, y: number}}
  */
 export function chunkPosition(chunk) {
-    const [x, y] = chunk.split(",", 2);
-
-    return {x: Number(x), y: Number(y)};
+    return {
+        x: chunk % REGION_SIZE - REGION_HALF,
+        y: Math.floor(chunk / REGION_SIZE) - REGION_HALF,
+    };
 }
 
 

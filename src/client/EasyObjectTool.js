@@ -1,6 +1,6 @@
 import {AbstractTool} from "@/client/AbstractTool.js";
 import {Direction} from "@/common/constants.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkId} from "@/common/util.js";
 import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import Haptics from "@/client/Haptics.js";
 
@@ -84,9 +84,9 @@ export class EasyObjectTool extends AbstractTool {
         const overwriteCells = [];
         const clearCells = [];
         const overwriteIds = [];
-        const base = chunkKey(tileX, tileY);
+        const base = chunkId(tileX, tileY);
         this._geometryTiles(tileX, tileY, direction).forEach(cell => {
-            if (chunkKey(cell.x, cell.y) !== base) {
+            if (chunkId(cell.x, cell.y) !== base) {
                 blockedCells.push(cell);
                 return;
             }

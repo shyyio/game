@@ -5,11 +5,11 @@ const MAX_VIEWPORT_CHUNKS = 256;
 export class SetViewportMessage extends AbstractMessage {
 
     static wireFields = {
-        chunks: "string[]",
+        chunks: "int32[]",
     };
 
     /**
-     * @param {string[]} chunks
+     * @param {number[]} chunks
      */
     constructor(chunks) {
         super();

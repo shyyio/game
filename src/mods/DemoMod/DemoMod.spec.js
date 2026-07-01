@@ -10,6 +10,7 @@ import {
 } from "@/common/constants.js";
 import {DemoMod, DemoMachineDefinition, DEMO_OUTPUT_ITEM_TYPE} from "@/mods/DemoMod/DemoMod.js";
 import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
+import {chunkId} from "@/common/util.js";
 
 // The DemoMachine shares belt ports, so its specs boot both mods (Demo after Belt, so its
 // seam ops splice into the belt pipeline).
@@ -197,7 +198,7 @@ test("Emits out-port item deltas for a watched machine output", async () => {
     const m = machinePorts(game);
     // Rest an item in the output; with no downstream belt it stays put for the capture.
     inject(game, m.out_id, DEMO_OUTPUT_ITEM_TYPE);
-    game.rawExec("INSERT INTO SessionViewport (session_id, chunk) VALUES (1, '0,0')");
+    game.rawExec(`INSERT INTO SessionViewport (session_id, chunk) VALUES (1, ${chunkId(0, 0)})`);
 
     game.tickAll();
     assert.equal(

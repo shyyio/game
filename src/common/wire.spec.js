@@ -9,6 +9,7 @@ import {BufferedEvent} from "@/common/BufferedEvent.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
+import {chunkId} from "@/common/util.js";
 
 // Core-only registry: common/ must not depend on mods/. AbstractMod wire classes are
 // covered by their own specs (e.g. src/mods/Belt/wire.spec.js).
@@ -36,7 +37,7 @@ function roundTrip(reg, instance, cls) {
 
 test("Round-trips a SetViewportMessage", () => {
     const reg = registry();
-    roundTrip(reg, new SetViewportMessage(["0_0", "1_0", "-1_2"]), SetViewportMessage);
+    roundTrip(reg, new SetViewportMessage([0, 1, chunkId(-64, 128)]), SetViewportMessage);
 });
 
 test("Round-trips a fully-populated BufferedEvent with BigInt fields", () => {
@@ -48,28 +49,30 @@ test("Round-trips a fully-populated BufferedEvent with BigInt fields", () => {
     roundTrip(reg, event, BufferedEvent);
 });
 
-test("Round-trips chunk subscribe/unsubscribe events, recovering the chunk key", () => {
+test("Round-trips chunk subscribe/unsubscribe events, recovering the chunk id", () => {
     const reg = registry();
-    roundTrip(reg, new ChunkSubscribeEvent("2,-3"), ChunkSubscribeEvent);
-    roundTrip(reg, new ChunkUnsubscribeEvent("2,-3"), ChunkUnsubscribeEvent);
-    // chunk is derived from the transmitted (x, y), not sent, so it survives decode.
-    const decoded = reg.decode(reg.encode(new ChunkUnsubscribeEvent("2,-3")));
-    assert.strictEqual(decoded.chunk, "2,-3");
+    const chunk = chunkId(128, -192);
+    roundTrip(reg, new ChunkSubscribeEvent(chunk), ChunkSubscribeEvent);
+    roundTrip(reg, new ChunkUnsubscribeEvent(chunk), ChunkUnsubscribeEvent);
+    // The chunk id is wired directly.
+    const decoded = reg.decode(reg.encode(new ChunkUnsubscribeEvent(chunk)));
+    assert.strictEqual(decoded.chunk, chunk);
 });
 
 test("ChunkSyncEvent round-trips its bundle of polymorphic inner events", () => {
     const reg = registry();
+    const chunk = chunkId(128, -192);
     const inner = [
-        new ChunkSubscribeEvent("2,-3"),
+        new ChunkSubscribeEvent(chunk),
         new GameSettingsUpdateEvent(7, 70),
     ];
-    const decoded = reg.decode(reg.encode(new ChunkSyncEvent("2,-3", inner)));
+    const decoded = reg.decode(reg.encode(new ChunkSyncEvent(chunk, inner)));
 
     assert.ok(decoded instanceof ChunkSyncEvent);
-    assert.strictEqual(decoded.chunk, "2,-3");
+    assert.strictEqual(decoded.chunk, chunk);
     assert.strictEqual(decoded.events.length, 2);
     assert.ok(decoded.events[0] instanceof ChunkSubscribeEvent);
-    assert.strictEqual(decoded.events[0].chunk, "2,-3");
+    assert.strictEqual(decoded.events[0].chunk, chunk);
     assert.ok(decoded.events[1] instanceof GameSettingsUpdateEvent);
     assert.strictEqual(decoded.events[1].key, 7);
     assert.strictEqual(decoded.events[1].value, 70);

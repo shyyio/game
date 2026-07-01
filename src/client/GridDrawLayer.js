@@ -18,7 +18,7 @@ export class GridDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {string} chunk
+     * @param {number} chunk
      */
     addChunk(chunk) {
         if (this._chunks[chunk] !== undefined) {
@@ -33,7 +33,7 @@ export class GridDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {string} chunk
+     * @param {number} chunk
      */
     removeChunk(chunk) {
         const sprite = this._chunks[chunk];

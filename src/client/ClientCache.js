@@ -1,4 +1,4 @@
-import {chunkKey, rotate} from "@/common/util.js";
+import {chunkId, rotate} from "@/common/util.js";
 import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
 
 /**
@@ -20,7 +20,7 @@ export class CacheEntry {
         this.id = id;
         this.tileX = tileX;
         this.tileY = tileY;
-        this.chunk = chunkKey(tileX, tileY);
+        this.chunk = chunkId(tileX, tileY);
         this.cells = cells;
         this.ports = ports;
         this.data = data;
@@ -286,7 +286,7 @@ export class ClientCache {
     }
 
     /**
-     * @param {string} chunk
+     * @param {number} chunk
      * @returns {CacheEntry[]}
      */
     getByChunk(chunk) {

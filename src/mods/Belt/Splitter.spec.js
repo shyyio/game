@@ -10,6 +10,7 @@ import {
     BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
 } from "@/common/constants.js";
 import {OCCUPANCY_LAYER_UNDERGROUND_BASE} from "./constants.js";
+import {chunkId} from "@/common/util.js";
 
 // The lone splitter's port row (in/out/internal port ids + state).
 function splitterPorts(game) {
@@ -78,7 +79,7 @@ test("Emits out-port item deltas for a watched splitter output", async () => {
     const s = splitterPorts(game);
     // Rest an item in output A; with no downstream belt it stays put for the capture.
     inject(game, s.out_a_id);
-    game.rawExec("INSERT INTO SessionViewport (session_id, chunk) VALUES (1, '0,0')");
+    game.rawExec(`INSERT INTO SessionViewport (session_id, chunk) VALUES (1, ${chunkId(0, 0)})`);
 
     game.tickAll();
     assert.equal(

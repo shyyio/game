@@ -91,13 +91,13 @@ export {EasyRecipe} from "@/common/EasyRecipe.js";
 // can compute where an object's ports/geometry land from its ObjectDefinition.
 export {rotate} from "@/common/util.js";
 
-// ---- Chunk keys ----
-// A chunk is identified by a "x,y" string key (NOT an object). `chunkKey(tileX,
-// tileY)` computes that key in JS; `CHUNK_KEY_SQL` is the equivalent SQL
-// expression for use inside a mod's table schema (e.g. a generated `chunk`
+// ---- Chunk ids ----
+// A chunk is identified by an integer ordinal id (its index within the region).
+// `chunkId(tileX, tileY)` computes that id in JS; `CHUNK_ID_SQL` is the equivalent
+// SQL expression for use inside a mod's table schema (e.g. a generated `chunk`
 // column).
-export {chunkKey} from "@/common/util.js";
-export {CHUNK_KEY_SQL, CHUNK_COORD_SQL} from "@/common/DatabaseSchema.js";
+export {chunkId} from "@/common/util.js";
+export {CHUNK_ID_SQL, CHUNK_COORD_SQL} from "@/common/DatabaseSchema.js";
 
 // ---- Textures ----
 // Describes a texture atlas (image + frame data) a mod contributes.

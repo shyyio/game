@@ -5,6 +5,7 @@ import {setup} from "@/test/common.js";
 import {GameObject, createBelt, deleteBelt} from "./testHelpers.js";
 import {BeltType, MAX_UNDERGROUND_LENGTH} from "./constants.js";
 import {Direction, BUFFERED_EVENT_TYPE_PORT_ITEM_SET, BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR} from "@/common/constants.js";
+import {chunkId} from "@/common/util.js";
 
 // A 3x3 ring of normal belts (ids 1..8, clockwise from the top-left). id1 is the
 // loop's seam head (its parent is nulled); id8 physically feeds it.
@@ -623,7 +624,7 @@ test("Emits out-port item deltas only for watched chunks, diffed against the sha
     const outB = game.rawScalar("SELECT out_port_id FROM BeltPath WHERE id=4");
     game.rawExec(`UPDATE Port SET item=7 WHERE id=${outA}`);
     game.rawExec(`UPDATE Port SET item=9 WHERE id=${outB}`);
-    game.rawExec("INSERT INTO SessionViewport (session_id, chunk) VALUES (1, '0,0')");
+    game.rawExec(`INSERT INTO SessionViewport (session_id, chunk) VALUES (1, ${chunkId(0, 0)})`);
     const portEvents = `type IN (${BUFFERED_EVENT_TYPE_PORT_ITEM_SET}, ${BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR})`;
 
     game.tickAll();

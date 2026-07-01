@@ -1,4 +1,4 @@
-import {rotate, chunkKey} from "@/common/util.js";
+import {rotate, chunkId} from "@/common/util.js";
 
 /**
  * The geometry for a named object size: a base (unrotated) extent vector plus the
@@ -50,8 +50,8 @@ export class ObjectGeometry {
      * @returns {boolean}
      */
     spansChunks(tileX, tileY, direction) {
-        const base = chunkKey(tileX, tileY);
-        return this.tiles(direction).some(tile => chunkKey(tileX + tile.x, tileY + tile.y) !== base);
+        const base = chunkId(tileX, tileY);
+        return this.tiles(direction).some(tile => chunkId(tileX + tile.x, tileY + tile.y) !== base);
     }
 }
 

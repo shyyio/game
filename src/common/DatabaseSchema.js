@@ -1,18 +1,26 @@
 import {SqlStatement, TickPhase} from "@/common/core.js";
 import {
     CHUNK_SIZE,
+    REGION_SIZE,
     GameSettingsKey,
     Direction,
     BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
     BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
 } from "@/common/constants.js";
 
+const REGION_HALF = REGION_SIZE / 2;
+
 // The chunk coordinate (floored division, matching JS Math.floor for negatives) of a
 // tile-coordinate column.
 export const CHUNK_COORD_SQL = (col) =>
     `(CASE WHEN ${col} < 0 AND ${col} % ${CHUNK_SIZE} != 0 THEN ${col}/${CHUNK_SIZE} - 1 ELSE ${col}/${CHUNK_SIZE} END)`;
 
-export const CHUNK_KEY_SQL = `(${CHUNK_COORD_SQL("x")} || ',' || ${CHUNK_COORD_SQL("y")})`;
+// The ordinal chunk id (see chunkId) from chunk-coordinate expressions.
+const chunkIdSql = (chunkX, chunkY) =>
+    `(((${chunkY}) + ${REGION_HALF}) * ${REGION_SIZE} + ((${chunkX}) + ${REGION_HALF}))`;
+
+// The chunk id for a table's tile columns x, y.
+export const CHUNK_ID_SQL = chunkIdSql(CHUNK_COORD_SQL("x"), CHUNK_COORD_SQL("y"));
 
 const CoreStatements = [
     new SqlStatement("End", "END TRANSACTION"),
@@ -83,10 +91,10 @@ const CoreSchema = `
         type INT NOT NULL,
 
         -- The chunk this event routes to (its position is never sent to the client, which
-        -- derives item positions from the path). The chunk key joins SessionViewport.
+        -- derives item positions from the path). The chunk id joins SessionViewport.
         routing_chunk_x INT NOT NULL,
         routing_chunk_y INT NOT NULL,
-        chunk TEXT GENERATED ALWAYS AS (routing_chunk_x || ',' || routing_chunk_y) VIRTUAL,
+        chunk INT GENERATED ALWAYS AS (${chunkIdSql("routing_chunk_x", "routing_chunk_y")}) VIRTUAL,
 
         id INT NOT NULL,
         a INT DEFAULT NULL,
@@ -168,7 +176,7 @@ const CoreTempSchema = `
 
     CREATE TEMPORARY TABLE SessionViewport (
         session_id INT REFERENCES Session,
-        chunk TEXT NOT NULL
+        chunk INT NOT NULL
     );
 
     -- This tick's watched filled out-ports (item + routing x/y), filled by mod capture ops in
