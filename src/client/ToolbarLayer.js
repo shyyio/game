@@ -26,6 +26,8 @@ const SLIDE_DURATION_MS = 230;
 // this much (plus a fixed cushion) so the overshoot never exposes its bottom edge.
 const OPEN_OVERSHOOT = 0.2;
 const DRAWER_BOTTOM_PAD = 12;
+// Pointer travel (px) past which a press on the panel is a drawer drag, not a tool tap.
+const DRAG_THRESHOLD = 6;
 
 const CELL_HEIGHT = SQUARE_SIZE + LABEL_GAP + LABEL_HEIGHT;
 
@@ -57,8 +59,14 @@ export class ToolbarLayer extends Container {
         this._cells = [];
         // Always-present top-row cell that selects "no tool" (activeTool null).
         this._noneCell = null;
+        // Desktop-only toggle; mobile opens the drawer by dragging the panel.
         this._drawerButton = null;
         this._drawerOpen = false;
+        // Vertical-drag state for opening/closing the drawer by dragging the panel.
+        this._dragging = false;
+        this._dragMoved = false;
+        this._dragStartY = 0;
+        this._dragStartOffset = 0;
         // Window pointerdown listener that closes the drawer on a click off it; installed while
         // open, mirroring MiniMenuLayer.
         this._clickOffListener = null;
@@ -80,6 +88,14 @@ export class ToolbarLayer extends Container {
         this._panelBg.eventMode = "static";
         this._panelBg.on("pointerdown", (e) => e.nativeEvent.stopPropagation());
         this._panel.addChild(this._panelBg);
+
+        // Drag the panel vertically to open/close the drawer (the only way on mobile; alongside the
+        // button on desktop). Handlers ride the bubbled events from the cells and background.
+        this._panel.eventMode = "static";
+        this._panel.on("pointerdown", (e) => this._onDragStart(e));
+        this._panel.on("globalpointermove", (e) => this._onDragMove(e));
+        this._panel.on("pointerup", () => this._onDragEnd());
+        this._panel.on("pointerupoutside", () => this._onDragEnd());
 
         this._layout();
         this._app.ticker.add(() => this._layout());
@@ -134,7 +150,7 @@ export class ToolbarLayer extends Container {
             return;
         }
         this._activeTool = tool;
-        this._closeDrawer();
+        this._setDrawerOpen(false);
         this._refreshHighlights();
         if (this._onChange !== null) {
             this._onChange();
@@ -148,7 +164,7 @@ export class ToolbarLayer extends Container {
      */
     _rebuild() {
         // Detach any click-off listener and snap to closed before the old squares are destroyed.
-        this._closeDrawer();
+        this._setDrawerOpen(false);
         this._slide.reset(0);
         [this._drawerButton, this._noneCell, ...this._cells].forEach(square => {
             if (square !== null) {
@@ -169,10 +185,12 @@ export class ToolbarLayer extends Container {
             this._panel.addChild(square);
         });
 
-        // The toggle sits outside the sliding panel (a direct child), so it stays put while the
-        // drawer slides.
-        this._drawerButton = this._createDrawerButton();
-        this.addChild(this._drawerButton);
+        // Desktop toggle sits outside the sliding panel (a direct child), so it stays put while the
+        // drawer slides; mobile has no button and drags the panel instead.
+        this._drawerButton = MOBILE ? null : this._createDrawerButton();
+        if (this._drawerButton !== null) {
+            this.addChild(this._drawerButton);
+        }
 
         this._panelWidth = this._columns * SQUARE_SIZE + (this._columns - 1) * CELL_GAP + PANEL_PADDING * 2;
         this._slideDistance = (this._rowCount - 1) * (CELL_HEIGHT + ROW_GAP);
@@ -221,8 +239,13 @@ export class ToolbarLayer extends Container {
             square.addChild(text);
         }
 
-        square.on("pointerdown", (e) => {
-            e.nativeEvent.stopPropagation();
+        // Swallow the press so it neither pans the viewport nor places a tile beneath.
+        square.on("pointerdown", (e) => e.nativeEvent.stopPropagation());
+        // Act on release, unless the gesture became a drawer drag (then it's not a tap).
+        square.on("pointerup", () => {
+            if (this._dragMoved) {
+                return;
+            }
             Haptics.tap();
             onPress();
         });
@@ -287,43 +310,74 @@ export class ToolbarLayer extends Container {
      * @private
      */
     _toggleDrawer() {
-        if (this._drawerOpen) {
-            this._closeDrawer();
-        } else {
-            this._openDrawer();
+        this._setDrawerOpen(!this._drawerOpen);
+    }
+
+    /**
+     * Opens or closes the drawer: tweens the slide (overshoot open / accelerate closed), lights the
+     * button, and installs/removes the click-off listener. The press that toggles it is stopped
+     * before it bubbles to the window, so it doesn't self-close.
+     * @private
+     * @param {boolean} open
+     */
+    _setDrawerOpen(open) {
+        this._drawerOpen = open;
+        if (this._drawerButton !== null) {
+            this._drawBg(this._drawerButton._bg, open);
+        }
+        this._slide.to(open ? this._slideDistance : 0, open ? easeOutBack : easeInCubic);
+        if (open && this._clickOffListener === null) {
+            this._clickOffListener = () => this._setDrawerOpen(false);
+            window.addEventListener("pointerdown", this._clickOffListener);
+        } else if (!open && this._clickOffListener !== null) {
+            window.removeEventListener("pointerdown", this._clickOffListener);
+            this._clickOffListener = null;
         }
     }
 
     /**
-     * Opens the drawer and installs the click-off listener that closes it on a press elsewhere. The
-     * press that opened it is stopped before it bubbles to the window, so it doesn't self-close.
+     * Begins tracking a possible drawer drag; the press is a tool tap until it moves past the threshold.
      * @private
+     * @param {FederatedPointerEvent} e
      */
-    _openDrawer() {
-        this._drawerOpen = true;
-        this._drawBg(this._drawerButton._bg, true);
-        // Slide up with a slight overshoot as the rows spring into view.
-        this._slide.to(this._slideDistance, easeOutBack);
-        this._clickOffListener = () => this._closeDrawer();
-        window.addEventListener("pointerdown", this._clickOffListener);
+    _onDragStart(e) {
+        this._dragging = true;
+        this._dragMoved = false;
+        this._dragStartY = e.global.y;
+        this._dragStartOffset = this._slide.value;
     }
 
     /**
-     * Closes the drawer and removes the click-off listener (a no-op when already closed).
+     * While dragging, moves the panel with the pointer (up reveals rows, down hides them).
      * @private
+     * @param {FederatedPointerEvent} e
      */
-    _closeDrawer() {
-        if (!this._drawerOpen) {
+    _onDragMove(e) {
+        if (!this._dragging) {
             return;
         }
-        this._drawerOpen = false;
-        if (this._drawerButton !== null) {
-            this._drawBg(this._drawerButton._bg, false);
+        const dy = e.global.y - this._dragStartY;
+        if (Math.abs(dy) > DRAG_THRESHOLD) {
+            this._dragMoved = true;
         }
-        // Slide back down, accelerating in — no overshoot that would dip the bar off-screen.
-        this._slide.to(0, easeInCubic);
-        window.removeEventListener("pointerdown", this._clickOffListener);
-        this._clickOffListener = null;
+        const offset = Math.max(0, Math.min(this._slideDistance, this._dragStartOffset - dy));
+        this._slide.reset(offset);
+    }
+
+    /**
+     * Settles a drag to fully open or closed by how far it was pulled; a tap (no drag) is left to the cell.
+     * @private
+     */
+    _onDragEnd() {
+        if (!this._dragging) {
+            return;
+        }
+        this._dragging = false;
+        if (this._dragMoved) {
+            this._setDrawerOpen(this._slide.value > this._slideDistance / 2);
+        }
+        // Cleared after the cells' pointerup handlers have read it (they fire first, as the target).
+        this._dragMoved = false;
     }
 
     /**
@@ -365,14 +419,12 @@ export class ToolbarLayer extends Container {
         const collapsedTop = this._app.screen.height - MARGIN_BOTTOM - PANEL_PADDING - CELL_HEIGHT;
         const offset = this._slide.advance(this._app.ticker.deltaMS);
 
-        // Desktop centers the panel with the toggle to its left; mobile centers the whole
-        // button + panel group so the panel shifts right to make room.
-        const buttonLead = SQUARE_SIZE + CELL_GAP;
-        const panelX = MOBILE
-            ? (this._viewport.screenWidth - buttonLead - this._panelWidth) / 2 + buttonLead
-            : (this._viewport.screenWidth - this._panelWidth) / 2;
+        // Center the panel; the desktop toggle sits just to its left.
+        const panelX = (this._viewport.screenWidth - this._panelWidth) / 2;
         this._panel.position.set(panelX, collapsedTop - offset);
-        // Static: pinned to the resting top-row height, unaffected by the slide offset.
-        this._drawerButton.position.set(panelX - buttonLead, collapsedTop + PANEL_PADDING);
+        if (this._drawerButton !== null) {
+            // Static: pinned to the resting top-row height, unaffected by the slide offset.
+            this._drawerButton.position.set(panelX - CELL_GAP - SQUARE_SIZE, collapsedTop + PANEL_PADDING);
+        }
     }
 }
