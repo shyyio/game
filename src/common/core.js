@@ -190,6 +190,18 @@ export class ObjectDefinition {
     }
 
     /**
+     * The subset of activePorts a surface neighbor can connect to (for the client's connection
+     * rendering / adjacency). The default is all active ports; objects that bury a port in some
+     * states override this.
+     * @param {("inputPorts"|"outputPorts")} portKind
+     * @param {object} data - the record's data (type, direction, ...)
+     * @returns {PortDefinition[]}
+     */
+    surfacePorts(portKind, data) {
+        return this.activePorts(portKind, data);
+    }
+
+    /**
      * SQL SELECT fragments (one per port) resolving the Port id at tile (@x, @y) for this
      * object's input/output ports facing `direction`, UNIONed by the engine for a
      * position-based port lookup. The default reads each port from its own column; objects

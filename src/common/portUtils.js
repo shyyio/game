@@ -14,7 +14,8 @@ import {Direction} from "@/common/constants.js";
 export function upstreamPorts(game, objectType, vec, createMissing=false) {
     const ports = {};
 
-    game.modRegistry.definitions[objectType].inputPorts.forEach(def => {
+    const definition = game.modRegistry.definitions[objectType];
+    definition.activePorts("inputPorts", vec).forEach(def => {
         const rotated = rotate(def, vec.direction);
         const dirName = Direction.name(rotated.direction);
         const port = game.queryScalar(`GetOutPort${dirName}`, {
@@ -45,7 +46,8 @@ export function upstreamPorts(game, objectType, vec, createMissing=false) {
 export function downstreamPorts(game, objectType, vec, createMissing=false) {
     const ports = {};
 
-    game.modRegistry.definitions[objectType].outputPorts.forEach(def => {
+    const definition = game.modRegistry.definitions[objectType];
+    definition.activePorts("outputPorts", vec).forEach(def => {
         const rotated = rotate(def, vec.direction);
         const dirName = Direction.name(rotated.direction);
         const port = game.queryScalar(`GetInPort${dirName}`, {

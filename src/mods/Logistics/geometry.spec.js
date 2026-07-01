@@ -63,9 +63,9 @@ test("a machine between a tunnel's ramps connects to neither buried end", () => 
     assert.deepEqual(cache.connectedPorts(cache.get(4n)), []);
 });
 
-test("a machine connects to a ramp's exposed surface ports", () => {
+test("a machine connects to a ramp's exposed surface ports along its axis", () => {
     const cache = new ClientCache();
-    // RAMP_DOWN entrance takes a surface feed from behind (its output is buried, not its input).
+    // RAMP_DOWN entrance takes a straight feed from behind (its output is buried, not its input).
     surface(cache, 1n, 5, 4, {definition: BeltDefinition, direction: Direction.UP, type: BeltType.RAMP_DOWN});
     surface(cache, 2n, 5, 5, {definition: machineDefinition, direction: Direction.UP});
     // RAMP_UP exit emits forward onto the surface (its input is buried, not its output).
@@ -73,6 +73,16 @@ test("a machine connects to a ramp's exposed surface ports", () => {
 
     const connections = cache.connectedPorts(cache.get(2n));
     assert.deepEqual(connections.map(connection => connection.neighbor.id).sort(), [1n, 3n]);
+});
+
+test("a machine beside a ramp does not connect from the side", () => {
+    const cache = new ClientCache();
+    // RAMP_DOWN entrance facing UP; a machine to its left points right into the ramp's tile.
+    // A normal belt would merge in from the side, but a ramp only takes a straight feed.
+    surface(cache, 1n, 5, 5, {definition: BeltDefinition, direction: Direction.UP, type: BeltType.RAMP_DOWN});
+    surface(cache, 2n, 4, 5, {definition: machineDefinition, direction: Direction.RIGHT});
+
+    assert.deepEqual(cache.connectedPorts(cache.get(2n)), []);
 });
 
 test("inferBeltParent recognizes a non-belt object (a machine) feeding a belt", () => {

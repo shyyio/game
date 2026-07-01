@@ -91,6 +91,44 @@ test("Adopts the belts' ports when they are placed around it afterwards", async 
     assert.equal(Number(game.queryScalar("GetPathInPort", {id: drainId})), Number(m.out_id));
 });
 
+test("Does not share a port with a machine beside a ramp entrance (machine placed after)", async () => {
+    const game = await setup();
+
+    // A lone down-ramp facing UP; a machine to its left points right into the ramp's tile.
+    // A ramp takes only a straight feed, so the side machine must not share the ramp's in-port.
+    createBelt(game, GameObject.RAMP_DOWN, {x: 5, y: 5, direction: Direction.UP});
+    createMachine(game, {x: 4, y: 5, direction: Direction.RIGHT});
+
+    const m = machinePorts(game);
+    const rampId = game.rawScalar("SELECT id FROM Belt WHERE x=5 AND y=5");
+    const rampInPort = game.queryScalar("GetPathInPort", {id: rampId});
+    assert.notEqual(Number(m.out_id), Number(rampInPort));
+});
+
+test("Does not share a port with a machine beside a ramp entrance (ramp placed after)", async () => {
+    const game = await setup();
+
+    createMachine(game, {x: 4, y: 5, direction: Direction.RIGHT});
+    createBelt(game, GameObject.RAMP_DOWN, {x: 5, y: 5, direction: Direction.UP});
+
+    const m = machinePorts(game);
+    const rampId = game.rawScalar("SELECT id FROM Belt WHERE x=5 AND y=5");
+    const rampInPort = game.queryScalar("GetPathInPort", {id: rampId});
+    assert.notEqual(Number(m.out_id), Number(rampInPort));
+});
+
+test("Still shares a port with a machine feeding a ramp entrance straight from behind", async () => {
+    const game = await setup();
+
+    createBelt(game, GameObject.RAMP_DOWN, {x: 5, y: 5, direction: Direction.UP});
+    createMachine(game, {x: 5, y: 6, direction: Direction.UP});
+
+    const m = machinePorts(game);
+    const rampId = game.rawScalar("SELECT id FROM Belt WHERE x=5 AND y=5");
+    const rampInPort = game.queryScalar("GetPathInPort", {id: rampId});
+    assert.equal(Number(m.out_id), Number(rampInPort));
+});
+
 test("Cooks its input into the recipe output two ticks later", async () => {
     const game = await setup();
     createMachine(game, {x: 5, y: 5, direction: Direction.UP});

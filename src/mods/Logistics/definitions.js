@@ -9,6 +9,7 @@ import {
 } from "@/sdk/common.js";
 import {
     ITEM_TYPE_GAP,
+    BELT_NORMAL,
     BELT_RAMP_DOWN,
     BELT_RAMP_UP,
     BELT_UNDERGROUND,
@@ -24,12 +25,14 @@ class BeltObjectDefinition extends ObjectDefinition {
 
     portLookups(table, portKind, direction) {
         if (portKind === "inputPorts") {
-            // A head receives at its in_port from any side, so direction is ignored.
+            // A normal head receives at its in_port from any side, so direction is ignored; a
+            // ramp/underground head takes only a straight feed, so it must face @direction.
             return [`
                 SELECT BeltPath.in_port_id AS id
                 FROM BeltPath
                     INNER JOIN Belt head ON head.id = BeltPath.id
-                WHERE head.x = @x AND head.y = @y`];
+                WHERE head.x = @x AND head.y = @y
+                  AND (head.type = ${BELT_NORMAL} OR head.direction = ${direction})`];
         }
         return [`
             SELECT BeltPath.out_port_id AS id
@@ -50,21 +53,31 @@ class BeltObjectDefinition extends ObjectDefinition {
         return [`SELECT 1 FROM BeltPath WHERE BeltPath.out_port_id = Port.id`];
     }
 
-    // A ramp buries one end, so it exposes no surface port there: a RAMP_DOWN entrance's
-    // forward output is buried (surface inputs only), a RAMP_UP exit's back input is buried
-    // (it emerges from the tunnel), and an underground has no surface ports at all.
+    // A ramp/underground never merges from the side: it exposes only its straight axis input
+    // (local direction UP), so a belt path or shared port links along the tunnel axis alone. Its
+    // outputs are unchanged (the single forward port), which the buried tunnel seam still needs.
     activePorts(portKind, data) {
+        if (portKind === "inputPorts" && data.type !== undefined && data.type !== BELT_NORMAL) {
+            return this.inputPorts.filter(port => port.direction === Direction.UP);
+        }
+        return this[portKind];
+    }
+
+    // The subset of activePorts a surface neighbor can connect to. A ramp buries one end, so it
+    // shows no port there: a RAMP_DOWN entrance exposes only its input, a RAMP_UP exit only its
+    // output, and an underground nothing (its whole run is buried). The client relies on this
+    // because, unlike the server's BeltPath head/tail roles, it can't tell a buried end apart.
+    surfacePorts(portKind, data) {
+        if (data.type === BELT_RAMP_DOWN) {
+            return portKind === "inputPorts" ? this.activePorts(portKind, data) : [];
+        }
+        if (data.type === BELT_RAMP_UP) {
+            return portKind === "outputPorts" ? this.outputPorts : [];
+        }
         if (data.type === BELT_UNDERGROUND) {
             return [];
         }
-        if (portKind === "outputPorts") {
-            return data.type === BELT_RAMP_DOWN ? [] : this.outputPorts;
-        }
-        if (data.type === BELT_RAMP_UP) {
-            // Drop the back (forward-facing) input; keep the side inputs.
-            return this.inputPorts.filter(port => port.direction !== Direction.UP);
-        }
-        return this.inputPorts;
+        return this.activePorts(portKind, data);
     }
 
     // A surface belt sits on SURFACE; an underground occupies one layer per axis, so a

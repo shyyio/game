@@ -354,7 +354,7 @@ export class ClientCache {
      * @private
      */
     _portMatch(entry, portKind, portX, portY, facing) {
-        const port = entry.data.definition.activePorts(portKind, entry.data).find(candidate => {
+        const port = entry.data.definition.surfacePorts(portKind, entry.data).find(candidate => {
             const rotated = rotate(candidate, entry.data.direction);
             return entry.tileX + rotated.x === portX
                 && entry.tileY + rotated.y === portY
@@ -376,7 +376,7 @@ export class ClientCache {
         const direction = record.data.direction;
         const connections = [];
 
-        definition.activePorts("outputPorts", record.data).forEach(port => {
+        definition.surfacePorts("outputPorts", record.data).forEach(port => {
             const rotated = rotate(port, direction);
             const portX = record.tileX + rotated.x;
             const portY = record.tileY + rotated.y;
@@ -394,7 +394,7 @@ export class ClientCache {
             }
         });
 
-        definition.activePorts("inputPorts", record.data).forEach(port => {
+        definition.surfacePorts("inputPorts", record.data).forEach(port => {
             const rotated = rotate(port, direction);
             const portX = record.tileX + rotated.x;
             const portY = record.tileY + rotated.y;
