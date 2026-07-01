@@ -568,14 +568,6 @@ export const beltStatements = [
         RETURNING length;
     `),
 
-    // Drops a path's in-port unless another object still feeds it (uses it as one of its
-    // output ports) — keeping a shared seam port alive when a downstream path is reassigned.
-    new SqlStatement("DeleteInPort", `
-        DELETE FROM Port
-        WHERE id = (SELECT in_port_id FROM BeltPath WHERE id = CAST(@id AS INT))
-          AND NOT EXISTS ({{PORT_OUTPUT_REFERENCED}});
-    `),
-
     new SqlStatement("UpdateInPort", `
         UPDATE BeltPath
         SET in_port_id=CAST(@port AS INT)

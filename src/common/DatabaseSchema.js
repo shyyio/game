@@ -28,10 +28,6 @@ const CoreStatements = [
 
     new SqlStatement("InsertPort", "INSERT INTO Port DEFAULT VALUES RETURNING id;"),
 
-    // Garbage-collects a port once nothing references it (guard filled from every definition's
-    // port columns, see _substitutePortReferenceTokens), so port removal needs no per-table knowledge.
-    new SqlStatement("DeletePortIfUnreferenced", "DELETE FROM Port WHERE id = CAST(@port AS INT) AND NOT EXISTS ({{PORT_REFERENCED}});"),
-
     // Allocates the next global object id (see the ObjectId table). Mods call this and insert
     // the object with the returned id, instead of relying on per-table autoincrement.
     new SqlStatement("AllocateObjectId", "UPDATE ObjectId SET next = next + 1 RETURNING next;"),
@@ -401,7 +397,7 @@ export class DatabaseSchema {
 
         this._preparePortQueries(this.modRegistry.definitions);
         this._prepareOccupancyQuery(this.modRegistry.definitions);
-        this._substitutePortReferenceTokens(this.modRegistry.definitions);
+        this._preparePortGCStatements(this.modRegistry.definitions);
     }
 
     /**
@@ -409,11 +405,11 @@ export class DatabaseSchema {
      * @returns {void}
      */
     _registerCoreTickPhases(phases) {
-        Object.entries(phases).forEach(([phase, ops]) => {
+        Object.entries(phases).forEach(([phase, stmts]) => {
             this.tickPhases[phase] ||= [];
-            ops.forEach(op => {
-                this._prepare(op.statementName, op.sql);
-                this.tickPhases[phase].push(op);
+            stmts.forEach(stmt => {
+                this._prepare(stmt.statementName, stmt.sql);
+                this.tickPhases[phase].push(stmt);
             });
         });
     }
@@ -437,40 +433,37 @@ export class DatabaseSchema {
                     CROSS JOIN ${table} o INDEXED BY ${table}_chunk ON o.chunk = vc.chunk
                     CROSS JOIN Port p ON p.id = o.${port.column}
                 WHERE p.item IS NOT NULL`);
-            const op = new SqlStatement(
+            const stmt = new SqlStatement(
                 `Capture${table}PortItems`,
                 `WITH viewed_chunk AS (SELECT DISTINCT chunk FROM SessionViewport)
                  INSERT INTO ViewedPortItem (port_id, item, x, y)
                  ${branches.join("\nUNION ALL\n")};`
             );
-            this._prepare(op.statementName, op.sql);
-            this.tickPhases[TickPhase.COMMIT_TRANSFERS].push(op);
+            this._prepare(stmt.statementName, stmt.sql);
+            this.tickPhases[TickPhase.COMMIT_TRANSFERS].push(stmt);
         });
     }
 
     /**
-     * Fills the {{PORT_REFERENCED}} / {{PORT_OUTPUT_REFERENCED}} tokens in every prepared statement
-     * with the UNION of every definition's port-reference fragments, so the GC guards cover all
-     * object types generically. Run last, after every statement is assembled.
+     * Prepares the generic port GC statements mods call to drop a port (@port) once nothing
+     * references it: DeletePortIfUnreferenced (no reference of any kind) and
+     * DeletePortIfNotOutputReferenced (no object feeds it as an output). Each guard is the UNION
+     * of every definition's reference fragments, so a mod needs no per-table knowledge.
      * @param {Object<string, ObjectDefinition>} definitions
      */
-    _substitutePortReferenceTokens(definitions) {
+    _preparePortGCStatements(definitions) {
         const referenced = [];
         const outputReferenced = [];
         Object.entries(definitions).forEach(([table, definition]) => {
             referenced.push(...definition.portReferenceLookups(table));
             outputReferenced.push(...definition.outputPortReferenceLookups(table));
         });
-        const body = (fragments) =>
-            fragments.length === 0 ? "SELECT 1 WHERE 0" : fragments.join("\nUNION ALL\n");
-        const referencedBody = body(referenced);
-        const outputReferencedBody = body(outputReferenced);
-
-        Object.keys(this.preparedStatements).forEach(name => {
-            this.preparedStatements[name] = this.preparedStatements[name]
-                .replaceAll("{{PORT_OUTPUT_REFERENCED}}", outputReferencedBody)
-                .replaceAll("{{PORT_REFERENCED}}", referencedBody);
-        });
+        const guard = (fragments) =>
+            `DELETE FROM Port WHERE id = CAST(@port AS INT) AND NOT EXISTS (${
+                fragments.length === 0 ? "SELECT 1 WHERE 0" : fragments.join("\nUNION ALL\n")
+            });`;
+        this._prepare("DeletePortIfUnreferenced", guard(referenced));
+        this._prepare("DeletePortIfNotOutputReferenced", guard(outputReferenced));
     }
 
     /**
@@ -534,9 +527,9 @@ export class DatabaseSchema {
                 return;
             }
 
-            definition.tickPhases[phase].forEach(op => {
-                this._prepare(op.statementName, op.sql);
-                this.tickPhases[phase].push(op);
+            definition.tickPhases[phase].forEach(stmt => {
+                this._prepare(stmt.statementName, stmt.sql);
+                this.tickPhases[phase].push(stmt);
             });
         });
     }

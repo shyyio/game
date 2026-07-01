@@ -194,7 +194,7 @@ export class ObjectDefinition {
 
     /**
      * SQL SELECT-1 fragments matching when this object references the outer Port.id through a port
-     * column — UNIONed into the {{PORT_REFERENCED}} GC guard. Override if ports live elsewhere.
+     * column — UNIONed into the DeletePortIfUnreferenced GC guard. Override if ports live elsewhere.
      * @param {string} table
      * @returns {string[]}
      */
@@ -207,7 +207,7 @@ export class ObjectDefinition {
     }
 
     /**
-     * As portReferenceLookups but for OUTPUT ports only — the {{PORT_OUTPUT_REFERENCED}} guard.
+     * As portReferenceLookups but for OUTPUT ports only — the DeletePortIfNotOutputReferenced guard.
      * @param {string} table
      * @returns {string[]}
      */

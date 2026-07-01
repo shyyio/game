@@ -468,9 +468,23 @@ export class BeltMod extends AbstractMod {
         // inherited out port equals the head's own in port, so the path shares one port
         // for both ends (kept by _unifyLoopPort) and items circulate through it.
         const inheritedOutPort = this.game.queryScalar("InheritOutPort", {child: child.id, parent: head});
-        this.game.exec("DeleteInPort", {id: child.id});
+        this._deletePathInPort(child.id);
         this.game.exec("DeletePath", {id: child.id});
         return inheritedOutPort;
+    }
+
+    /**
+     * Drops a path's in-port unless another object still feeds it (uses it as one of its output
+     * ports) — keeping a shared seam port alive when a downstream path is reassigned.
+     * @private
+     * @param {BigInt} pathId
+     * @returns {void}
+     */
+    _deletePathInPort(pathId) {
+        const inPort = this.game.queryScalar("GetPathInPort", {id: pathId});
+        if (inPort !== null) {
+            this.game.exec("DeletePortIfNotOutputReferenced", {port: inPort});
+        }
     }
 
     /**
@@ -1177,7 +1191,7 @@ export class BeltMod extends AbstractMod {
             const childPath = this.game.queryScalar("GetBeltPathPortOwner", {id: outputPort});
 
             if (childPath) {
-                this.game.exec("DeleteInPort", {id: childPath});
+                this._deletePathInPort(childPath);
                 const port = this.game.queryScalar("InsertPort");
                 this.game.exec("UpdateInPort", {id: childPath, port});
                 this.game.exec("MarkPortAsInput", {port});

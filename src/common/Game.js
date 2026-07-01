@@ -165,8 +165,8 @@ export class Game {
      * @param {TickPhase} phase
      */
     tick(phase) {
-        this.db.schema.tickPhases[phase].forEach(op => {
-            this.exec(op.statementName);
+        this.db.schema.tickPhases[phase].forEach(stmt => {
+            this.exec(stmt.statementName);
         });
     }
 
