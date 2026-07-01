@@ -496,7 +496,7 @@ export class BeltClientMod extends BeltMod {
                 conveyor: event.beltType === BeltType.NORMAL,
             },
         );
-        // Bend is derived from neighbors each frame by the belt layer, so it's added straight.
+        // Bend is derived from neighbors by the belt layer on structural cache changes; added straight.
         this._beltLayer.addBelt(event.id, event.x, event.y, event.direction, event.beltType);
     }
 

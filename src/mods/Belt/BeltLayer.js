@@ -87,10 +87,33 @@ export class BeltDrawLayer extends AbstractDrawLayer {
         this._belts = {};
         this._mapModeBelts = {};
         this._mapMode = false;
+        this._bendsStale = false;
     }
 
     get layerIndex() {
         return 10;
+    }
+
+    /**
+     * Injected by Client.init; subscribing to structural cache changes flags bends for a
+     * one-pass rebuild on the next tick, since a belt's bend depends on neighboring objects
+     * of any mod (belts, splitters, machines feeding it from the side).
+     * @param {ClientCache|null} value
+     */
+    set cache(value) {
+        this._cache = value;
+        if (value !== null) {
+            value.onStructuralChange(() => {
+                this._bendsStale = true;
+            });
+        }
+    }
+
+    /**
+     * @returns {ClientCache|null}
+     */
+    get cache() {
+        return this._cache;
     }
 
     /**
@@ -133,7 +156,7 @@ export class BeltDrawLayer extends AbstractDrawLayer {
 
     /**
      * Renders a newly-placed or chunk-synced belt (undergrounds are buried and skipped). The
-     * bend is added straight and re-derived from neighbors each frame in tick.
+     * bend is added straight and re-derived from neighbors on the next structural cache change.
      * @param {BigInt} id
      * @param {number} x
      * @param {number} y
@@ -195,15 +218,18 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Advances every live belt sprite to the shared animation frame (skipped in map mode).
+     * Advances every live belt sprite to the shared animation frame, re-deriving bends in a
+     * single pass when the cache changed structurally since the last tick (skipped in map mode).
      * @param {number} frame animation frame, in [0, 8)
      */
     tick(frame) {
         if (this._mapMode || this.cache === null) {
             return;
         }
+        const rebuildBends = this._bendsStale;
+        this._bendsStale = false;
         Object.values(this._belts).forEach(sprite => {
-            if (sprite.type === BeltType.NORMAL) {
+            if (rebuildBends && sprite.type === BeltType.NORMAL) {
                 this._applyBend(sprite);
             }
             sprite.setAnimationFrame(frame);

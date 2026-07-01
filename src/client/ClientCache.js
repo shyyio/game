@@ -76,6 +76,11 @@ export class ClientCache {
          * @private
          */
         this._removeListeners = [];
+        /**
+         * @type {function(): void[]}
+         * @private
+         */
+        this._structuralListeners = [];
     }
 
     /**
@@ -84,6 +89,23 @@ export class ClientCache {
      */
     onRemove(listener) {
         this._removeListeners.push(listener);
+    }
+
+    /**
+     * Registers a callback invoked whenever an object is added or removed, for layers that
+     * re-derive rendering from neighboring objects.
+     * @param {function(): void} listener
+     */
+    onStructuralChange(listener) {
+        this._structuralListeners.push(listener);
+    }
+
+    /**
+     * @private
+     * @returns {void}
+     */
+    _notifyStructural() {
+        this._structuralListeners.forEach(listener => listener());
     }
 
     /**
@@ -144,6 +166,8 @@ export class ClientCache {
         cells.forEach(cell => {
             this._byCell.set(ClientCache._cellKey(cell.x, cell.y, cell.layer), entry);
         });
+
+        this._notifyStructural();
     }
 
     /**
@@ -203,6 +227,7 @@ export class ClientCache {
         });
 
         this._removeListeners.forEach(listener => listener(entry));
+        this._notifyStructural();
         return entry;
     }
 
