@@ -130,7 +130,7 @@ export class EasyObjectPlacement {
     }
 
     /**
-     * Places the object, adopting shared ports from neighbours (fresh ports for a missing side or an
+     * Places the object, adopting shared ports from neighbors (fresh ports for a missing side or an
      * internal port). Rejects a geometry that spans chunks or overlaps an occupant.
      * @param {Game} game
      * @param {{x: number, y: number, direction: Direction}} options

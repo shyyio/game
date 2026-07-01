@@ -13,7 +13,7 @@ export class EasySprite extends Sprite {
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
-     * @param {Texture} texture - already resolved (the layer fails loudly on a missing one)
+     * @param {Texture} texture - already resolved
      * @param {ObjectDefinition} definition - for the geometry the sprite centers on
      */
     constructor(id, x, y, direction, texture, definition) {

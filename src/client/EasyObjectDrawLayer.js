@@ -49,7 +49,7 @@ export class EasyObjectDrawLayer extends AbstractDrawLayer {
     /**
      * Builds the persistent map-mode rectangle shown for an object in map mode, spanning its whole
      * geometry (one tile per geometry cell).
-     * @param {ObjectSprite} sprite
+     * @param {Sprite} sprite
      * @returns {Graphics}
      * @private
      */
@@ -100,7 +100,7 @@ export class EasyObjectDrawLayer extends AbstractDrawLayer {
     /**
      * The cache entry + sprite for an insert/sync event of this layer's object type, or null.
      * @param {AbstractEvent} event
-     * @returns {{id: BigInt, tileX: number, tileY: number, cells: object[], ports: object, data: object, sprite: ObjectSprite}|null}
+     * @returns {{id: BigInt, tileX: number, tileY: number, cells: object[], ports: object, data: object, sprite: Sprite}|null}
      * @private
      */
     _objectFor(event) {
@@ -146,7 +146,7 @@ export class EasyObjectDrawLayer extends AbstractDrawLayer {
 
     /**
      * @param {BigInt} id
-     * @param {ObjectSprite} sprite
+     * @param {Sprite} sprite
      */
     addObject(id, sprite) {
         this._objects[id] = sprite;

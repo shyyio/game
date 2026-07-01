@@ -2,9 +2,7 @@
 //
 // This is the stable, documented API that mods bind to instead of reaching into
 // engine internals. It imports only from `src/common/` and `src/util.js`, so it
-// runs identically on client and server. A future runtime mod loader exposes
-// this module to zip-installed mods via an import map (bare specifier "pipesjs");
-// built-in mods import it as `@/sdk/common.js`.
+// runs identically on client and server. Mods import it as `@/sdk/common.js`.
 //
 // Client-only API (draw layers, tools, pixi types) lives in `@/sdk/client.js`,
 // which re-exports everything here. Everything a mod is meant to use should be

@@ -23,11 +23,6 @@ import {ConnectionDrawLayer} from "@/client/ConnectionDrawLayer.js";
 import {advanceAnimationFrame} from "@/client/animation.js";
 import {DEV, BROWSER} from "@/common/env.js";
 
-export const CoreDrawLayers = [
-    new GridDrawLayer(),
-    new MaskDrawLayer(),
-];
-
 function formatBytes(n) {
     const text = n > 1024 ? `${Math.round(n / 1024)}K` : `${n}B`;
     return text.padStart(5);
@@ -65,16 +60,14 @@ export class Client {
         this.cache = new ClientCache();
         // The single shared item layer: belts drive their computed-position items imperatively;
         // resting out-port items render here automatically from the port-item events.
-        this.itemLayer = new ItemDrawLayer();
-        this.itemLayer.itemTextures = modRegistry.itemTextures;
+        this.itemLayer = new ItemDrawLayer(modRegistry.itemTextures);
         // A removed object's resting out-port item sprites go with it.
         this.cache.onRemove(record => this.itemLayer.dropPorts(record));
         // The single shared connection-stub layer, derived from the cache each frame.
         this.connectionLayer = new ConnectionDrawLayer();
 
-        CoreDrawLayers.forEach(layer => {
-            this.drawLayerRegistry.add(layer);
-        });
+        this.drawLayerRegistry.add(new GridDrawLayer());
+        this.drawLayerRegistry.add(new MaskDrawLayer());
         this.drawLayerRegistry.add(this.placementFeedbackLayer);
         this.drawLayerRegistry.add(this.inspectLayer);
         this.drawLayerRegistry.add(this.itemLayer);
@@ -215,7 +208,7 @@ export class Client {
         if (!this._centerLock) {
             return;
         }
-        // Absolute next-tile centre so rapid taps don't drift; snap emits "moved"
+        // Absolute next-tile center so rapid taps don't drift; snap emits "moved"
         // each frame, so the chunk subscription refreshes via that listener.
         const targetTileX = tileX + Direction.dx(direction) * tiles;
         const targetTileY = tileY + Direction.dy(direction) * tiles;

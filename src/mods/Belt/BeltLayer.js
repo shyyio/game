@@ -133,7 +133,7 @@ export class BeltDrawLayer extends AbstractDrawLayer {
 
     /**
      * Renders a newly-placed or chunk-synced belt (undergrounds are buried and skipped). The
-     * bend is added straight and re-derived from neighbours each frame in tick.
+     * bend is added straight and re-derived from neighbors each frame in tick.
      * @param {BigInt} id
      * @param {number} x
      * @param {number} y
@@ -158,7 +158,7 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Re-derives a normal belt's bend from its cached neighbours, re-rendering only on a change.
+     * Re-derives a normal belt's bend from its cached neighbors, re-rendering only on a change.
      * @param {BeltSprite} sprite
      * @private
      */

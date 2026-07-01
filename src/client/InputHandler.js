@@ -1,6 +1,6 @@
 
 import Mouse from "@/client/Mouse.js";
-import Keyboard from "@/client/keyboard.js";
+import Keyboard from "@/client/Keyboard.js";
 
 // Number keys 1-9 select the toolbar tool at that position (1 = first tool).
 const TOOL_HOTKEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];

@@ -339,8 +339,8 @@ export class ClientCache {
     }
 
     /**
-     * The ports of `record` connected to a neighbour: the stub's geometry tile (tileX/tileY), the
-     * neighbour cell reached (neighborX/neighborY), and the neighbour entry. Two objects connect
+     * The ports of `record` connected to a neighbor: the stub's geometry tile (tileX/tileY), the
+     * neighbor cell reached (neighborX/neighborY), and the neighbor entry. Two objects connect
      * where one's output port and the other's input port share a cell and facing — derived from
      * each definition's rotated ports (mod-agnostic).
      * @param {CacheEntry|{tileX: number, tileY: number, data: object}} record - needs data.definition, data.direction

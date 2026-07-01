@@ -3,8 +3,7 @@
 // Re-exports the full engine-agnostic API (`@/sdk/common.js`) plus the
 // browser-only pieces a client mod needs. Simulation-side mod files (the parts
 // that run on both client and server) import from `@/sdk/common.js`; files that
-// render or handle input import from here. A future zip's `client/index.js`
-// resolves the bare specifier "pipesjs" to this module via an import map.
+// render or handle input import from here.
 
 // Everything from the engine-agnostic SDK is available here too.
 export * from "@/sdk/common.js";

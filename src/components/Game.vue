@@ -2,7 +2,7 @@
 import {reactive, markRaw, computed, ref, shallowRef, watch, onMounted} from "vue";
 import {Application, Graphics, Container, FillGradient, isMobile} from "pixi.js";
 import {ClientViewport} from "@/client/ClientViewport.js";
-import Keyboard from "@/client/keyboard.js";
+import Keyboard from "@/client/Keyboard.js";
 import Mouse from "@/client/Mouse.js";
 import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
@@ -222,6 +222,7 @@ onMounted(async () => {
     game.tick(TickPhase.POST_RESOLVE);
     game.tick(TickPhase.PRODUCE_OUTPUTS);
     game.tick(TickPhase.COMMIT_TRANSFERS);
+    game.tick(TickPhase.EMIT_RENDER);
     game.postTick();
   }
 

@@ -7,9 +7,6 @@ import {
     BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
 } from "@/common/constants.js";
 
-// Statement-name suffix per direction (GetInPortUp, GetOutPortRight, ...), indexed by Direction.
-const DIRECTION_NAMES = ["Up", "Right", "Down", "Left"];
-
 // The chunk coordinate (floored division, matching JS Math.floor for negatives) of a
 // tile-coordinate column.
 export const CHUNK_COORD_SQL = (col) =>
@@ -64,8 +61,7 @@ const CoreSchema = `
 
     -- A single global id sequence shared by every placeable object (belts, splitters, …), so
     -- object ids are unique across types and a later id means a later placement. Comparing ids
-    -- across object types is how connections resolve "most recently placed wins". (A future
-    -- sharded build can band this per region: region id high bits + sequence low bits.)
+    -- across object types is how connections resolve "most recently placed wins".
     CREATE TABLE ObjectId (next INTEGER NOT NULL);
     INSERT INTO ObjectId (next) VALUES (0);
 
@@ -175,8 +171,8 @@ const CoreTempSchema = `
         chunk TEXT NOT NULL
     );
 
-    -- This tick's watched filled out-ports (port, item, routing tile), gathered by each mod's
-    -- capture op for the SET/CLEAR diff and shadow rebuild to share.
+    -- This tick's watched filled out-ports (item + routing x/y), filled by mod capture ops in
+    -- COMMIT_TRANSFERS; EMIT_RENDER diffs it against PortItemShadow, then rebuilds the shadow from it.
     CREATE TEMPORARY TABLE ViewedPortItem (
         port_id INTEGER PRIMARY KEY,
         item INT,
@@ -184,9 +180,8 @@ const CoreTempSchema = `
         y INT
     );
 
-    -- Last item shown in each watched out-port (with the routing tile for clears), so the tick
-    -- emits only out-ports whose item changed. Global to the sim -- fine single-session; a
-    -- multi-session build would key it per session.
+    -- Previous tick's ViewedPortItem, so EMIT_RENDER emits only out-ports whose item changed (x/y
+    -- routes clears).
     CREATE TEMPORARY TABLE PortItemShadow (
         port_id INTEGER PRIMARY KEY,
         item INT,
@@ -321,12 +316,9 @@ const CoreTickPhases = {
         // Clear the render staging before mods capture this tick's watched out-ports into it.
         new SqlStatement("ClearViewedPortItem", `DELETE FROM ViewedPortItem;`),
     ],
-};
-
-// Core ops appended after every mod's tick ops, so they run on the rows mods produced this phase.
-// The out-port render diff reads ViewedPortItem (filled by mod capture ops) against the shadow.
-const CoreTickPhasesTrailing = {
-    [TickPhase.COMMIT_TRANSFERS]: [
+    // Engine-only phase running after COMMIT_TRANSFERS, so the out-port render diff reads
+    // ViewedPortItem (filled by mod capture ops in COMMIT_TRANSFERS) against the shadow.
+    [TickPhase.EMIT_RENDER]: [
         // SET for each out-port whose resting item changed (diff vs PortItemShadow). Carries only
         // the port id (a=item type); the client infers the render tile. x/y is the routing tile.
         new SqlStatement(
@@ -377,8 +369,8 @@ export class DatabaseSchema {
             });
         });
 
-        // Leading core ops, then mod ops, then trailing core ops -- so a trailing op (the out-port
-        // render diff) runs on the rows mod capture ops produced this phase.
+        // Core ops per phase first, then mod ops appended after them. The out-port render diff runs
+        // in its own engine-only EMIT_RENDER phase, after mods capture in COMMIT_TRANSFERS.
         this._registerCoreTickPhases(CoreTickPhases);
 
         [
@@ -393,7 +385,6 @@ export class DatabaseSchema {
         });
 
         this._prepareRenderCapture(this.modRegistry.definitions);
-        this._registerCoreTickPhases(CoreTickPhasesTrailing);
 
         this._preparePortQueries(this.modRegistry.definitions);
         this._prepareOccupancyQuery(this.modRegistry.definitions);
@@ -484,12 +475,13 @@ export class DatabaseSchema {
 
     /**
      * Prepares the position-based port lookups (GetInPort{dir} / GetOutPort{dir}) for wiring
-     * a placed object to its neighbours: each UNIONs every ObjectDefinition's fragments, so a
+     * a placed object to its neighbors: each UNIONs every ObjectDefinition's fragments, so a
      * placement sees any object type's ports at a tile. Player-placement path only, not hot.
      * @param {Object<string, ObjectDefinition>} definitions
      */
     _preparePortQueries(definitions) {
-        DIRECTION_NAMES.forEach((name, direction) => {
+        [Direction.UP, Direction.RIGHT, Direction.DOWN, Direction.LEFT].forEach(direction => {
+            const name = Direction.name(direction);
             this._prepare(`GetInPort${name}`, this._portQuery(definitions, "inputPorts", direction));
             this._prepare(`GetOutPort${name}`, this._portQuery(definitions, "outputPorts", direction));
         });

@@ -77,6 +77,12 @@ export const TickPhase = {
      * (internal) Flush transfers to Port
      */
     COMMIT_TRANSFERS: 6,
+
+    /**
+     * (internal, engine-only) Diff/emit the out-port render events after mods have captured this
+     * tick's watched port items in COMMIT_TRANSFERS. Mods register no ops here.
+     */
+    EMIT_RENDER: 7,
 }
 
 export class MiniMenuEntry {

@@ -40,7 +40,7 @@ class ConnectionSprite extends Sprite {
 /**
  * The single shared connection layer: draws an animated stub at each connected port of every cached
  * object whose definition opts in (`renderConnections`), derived each frame from the cache's
- * port-connection queries — so it tracks neighbours added or removed with no extra event plumbing.
+ * port-connection queries — so it tracks neighbors added or removed with no extra event plumbing.
  */
 export class ConnectionDrawLayer extends AbstractDrawLayer {
 

@@ -1,4 +1,4 @@
-import {Assets, Spritesheet} from "pixi.js";
+import {Assets, Spritesheet, Texture} from "pixi.js";
 
 export class TextureRegistry {
 

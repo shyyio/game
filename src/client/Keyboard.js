@@ -45,13 +45,6 @@ class Keyboard {
     _keyUp(event) {
         this._keys[event.key] = false;
     }
-
-    /**
-     * @param key {string}
-     */
-    keyIsDown(key) {
-        return this._keys[key] === true;
-    }
 }
 
 export default new Keyboard();

@@ -8,7 +8,7 @@
 // Where the create/delete benchmark drives editing, this drives the simulation:
 // it seeds a large world, then runs whole ticks and reports which tick-phase SQL
 // ops cost the most. Only `itemCount` of the belts carry an item; the rest are
-// idle — modelling a realistic large map where most belts sit empty. A tick
+// idle — modeling a realistic large map where most belts sit empty. A tick
 // should cost in proportion to the active belts, not the whole world.
 
 import {setup} from "@/test/common.js";

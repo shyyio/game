@@ -19,7 +19,7 @@ const LENGTHS = [1, 4, 16, 64];
 
 /**
  * Builds `paths` straight rightward runs of length `len`, one per row (rows spaced
- * by 2 so neighbouring runs never connect), then times one tick popping them.
+ * by 2 so neighboring runs never connect), then times one tick popping them.
  * @param {number} paths
  * @param {number} len
  * @returns {{belts: number, active: number, tickMs: number}}

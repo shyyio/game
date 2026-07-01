@@ -24,7 +24,10 @@ const MOVE_DURATION_MS = 190;
  */
 export class ItemDrawLayer extends AbstractDrawLayer {
 
-    constructor() {
+    /**
+     * @param {Object.<number, string>} itemTextures item type -> texture name, merged across mods
+     */
+    constructor(itemTextures) {
         super();
         /**
          * Live sprites, keyed by sprite key — a BigInt row id for belt items, a
@@ -33,8 +36,12 @@ export class ItemDrawLayer extends AbstractDrawLayer {
          * @private
          */
         this._items = {};
-        // Item type -> texture name, merged across mods and injected by Client.
-        this.itemTextures = {};
+        /**
+         * Item type -> texture name, merged across mods.
+         * @type {Object.<number, string>}
+         * @private
+         */
+        this._itemTextures = itemTextures;
     }
 
     get layerIndex() {
@@ -147,7 +154,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @private
      */
     _textureForType(type) {
-        const name = this.itemTextures[type] !== undefined ? this.itemTextures[type] : DEFAULT_ITEM_TEXTURE;
+        const name = this._itemTextures[type] !== undefined ? this._itemTextures[type] : DEFAULT_ITEM_TEXTURE;
         return this.textureRegistry.get(name);
     }
 

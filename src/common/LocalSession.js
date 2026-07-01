@@ -12,11 +12,12 @@ export class LocalSession extends AbstractSession {
     }
 
     sendMessage(message) {
-        // In dev, round-trip through the protobuf wire format so the encoding
-        // used by RemoteSession is always exercised; skipped in production to
-        // avoid the overhead for single-player.
-        const outgoing = DEV ? this.api.wire.decode(this.api.wire.encode(message)) : message;
-        this.api.sendMessage(outgoing, this);
+        if (DEV) {
+            // Test wire encoding/decoding
+            this.api.sendMessage(this.api.wire.decode(this.api.wire.encode(message)), this);
+        } else {
+            this.api.sendMessage(message, this);
+        }
     }
 
     publishEvent(event) {
@@ -24,12 +25,10 @@ export class LocalSession extends AbstractSession {
             return;
         }
         if (DEV) {
-            // Round-trip through the protobuf wire format (exercising it), and report the
-            // encoded byte count to the client's received-bytes counter.
             const encoded = this.api.wire.encode(event);
             this.client.publishEvent(this.api.wire.decode(encoded), encoded.length);
-            return;
+        } else {
+            this.client.publishEvent(event);
         }
-        this.client.publishEvent(event);
     }
 }

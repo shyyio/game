@@ -1,6 +1,5 @@
 import {rotate} from "@/common/util.js";
-
-const DIRECTION_NAMES = ["Up", "Right", "Down", "Left"];
+import {Direction} from "@/common/constants.js";
 
 /**
  * Resolves the upstream connections feeding an object placed at vec: for each of
@@ -17,7 +16,7 @@ export function upstreamPorts(game, objectType, vec, createMissing=false) {
 
     game.modRegistry.definitions[objectType].inputPorts.forEach(def => {
         const rotated = rotate(def, vec.direction);
-        const dirName = DIRECTION_NAMES[rotated.direction];
+        const dirName = Direction.name(rotated.direction);
         const port = game.queryScalar(`GetOutPort${dirName}`, {
             x: vec.x + rotated.x,
             y: vec.y + rotated.y,
@@ -48,7 +47,7 @@ export function downstreamPorts(game, objectType, vec, createMissing=false) {
 
     game.modRegistry.definitions[objectType].outputPorts.forEach(def => {
         const rotated = rotate(def, vec.direction);
-        const dirName = DIRECTION_NAMES[rotated.direction];
+        const dirName = Direction.name(rotated.direction);
         const port = game.queryScalar(`GetInPort${dirName}`, {
             x: vec.x + rotated.x,
             y: vec.y + rotated.y,

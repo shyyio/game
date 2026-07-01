@@ -19,7 +19,7 @@ const MARKER_BORDER_WIDTH = 4;
 /**
  * Shared placement-feedback layer, driven imperatively by tools: each geometry tile is marked blocked
  * (red), overwritable (blue), or — under center-lock, where the ghost sprite is pinned to screen
- * centre — clear (the green target). One layer so the three never compete or drift apart.
+ * center — clear (the green target). One layer so the three never compete or drift apart.
  */
 export class PlacementFeedbackLayer extends AbstractDrawLayer {
 

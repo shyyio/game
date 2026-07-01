@@ -7,8 +7,7 @@
 //
 // It imports the Node database backend, so it must only be used from tests run
 // under Node (the `@/` alias is resolved there by `src/test/test-loader.js` —
-// see the "test" script in package.json). The future runtime mod loader exposes this
-// to zip-installed mods as the bare specifier "pipesjs/test".
+// see the "test" script in package.json).
 
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {DatabaseSchema} from "@/common/DatabaseSchema.js";
@@ -64,6 +63,7 @@ export class TestHarness {
         this.game.tick(TickPhase.POST_RESOLVE);
         this.game.tick(TickPhase.PRODUCE_OUTPUTS);
         this.game.tick(TickPhase.COMMIT_TRANSFERS);
+        this.game.tick(TickPhase.EMIT_RENDER);
     }
 
     /**

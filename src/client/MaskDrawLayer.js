@@ -1,5 +1,5 @@
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
-import {Sprite} from "pixi.js";
+import {Sprite, Texture} from "pixi.js";
 
 /**
  * Shared mask layer any draw layer writes occluder sprites into; ItemDrawLayer uses

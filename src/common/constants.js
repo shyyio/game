@@ -7,6 +7,16 @@ export const Direction = {
     DOWN: 2,
     LEFT: 3,
 
+    /**
+     * A direction's capitalized name (Up, Right, Down, Left) — the suffix of the
+     * position-keyed port-lookup statements (GetInPortUp, ...).
+     * @param {Direction} direction
+     * @returns {string}
+     */
+    name(direction) {
+        return ["Up", "Right", "Down", "Left"][direction];
+    },
+
     rotate(direction, rotation) {
         return (direction + rotation) % 4;
     },
@@ -88,24 +98,6 @@ export const Direction = {
         }
 
         throw new Error(`Not a unit cardinal delta: (${dx}, ${dy})`);
-    },
-
-    /**
-     * Returns the nearest cardinal Direction for an arbitrary vector (ties favour vertical), or null for the zero vector.
-     * @param {number} dx
-     * @param {number} dy
-     * @returns {Direction|null}
-     */
-    fromVector(dx, dy) {
-        if (dx === 0 && dy === 0) {
-            return null;
-        }
-
-        if (Math.abs(dy) >= Math.abs(dx)) {
-            return dy < 0 ? Direction.UP : Direction.DOWN;
-        }
-
-        return dx < 0 ? Direction.LEFT : Direction.RIGHT;
     }
 };
 

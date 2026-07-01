@@ -12,11 +12,6 @@ const Long = protobuf.util.Long;
 
 const INT64_TYPES = new Set(["int64", "uint64", "sint64", "fixed64", "sfixed64"]);
 
-// The message type that frames every encoded value (a wire id naming the concrete
-// class plus the encoded body), and the type name a `message[]` field references
-// for its nested elements.
-const ENVELOPE_TYPE = "Envelope";
-
 /**
  * Core wire classes; order is part of the wire-id contract, so only ever append.
  * @type {*[]}
@@ -84,7 +79,7 @@ function buildType(name, wireFields) {
         } else if (parsed.kind === "messages") {
             // A bundle of other wire objects, each a nested Envelope message so
             // protobuf models the nesting natively (rather than opaque bytes).
-            type.add(new Field(fieldName, tag, ENVELOPE_TYPE, "repeated"));
+            type.add(new Field(fieldName, tag, "Envelope", "repeated"));
         } else if (parsed.kind === "repeated") {
             type.add(new Field(fieldName, tag, parsed.type, "repeated"));
         } else {
@@ -99,7 +94,7 @@ function buildType(name, wireFields) {
  * @returns {protobuf.Type} a fresh Envelope type: a wire id plus the encoded body.
  */
 function buildEnvelope() {
-    return new Type(ENVELOPE_TYPE)
+    return new Type("Envelope")
         .add(new Field("wireId", 1, "uint32"))
         .add(new Field("payload", 2, "bytes"));
 }
