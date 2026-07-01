@@ -1,7 +1,7 @@
 import {Container} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {EasySprite} from "@/client/EasySprite.js";
-import {TILE_SIZE, GHOST_TINT, GHOST_BLOCKED_TINT, GHOST_BLOCKED_ALPHA} from "@/client/constants.js";
+import {TILE_SIZE, GHOST_TINT, GHOST_ALPHA, GHOST_BLOCKED_TINT, GHOST_BLOCKED_ALPHA} from "@/client/constants.js";
 
 /**
  * Placement-preview ghost: one tinted EasySprite at the hovered tile, pinned to screen center in
@@ -45,7 +45,7 @@ export class EasyObjectGhostLayer extends AbstractDrawLayer {
         this._anchorTileX = tileX;
         this._anchorTileY = tileY;
         const sprite = new EasySprite(0n, tileX, tileY, direction, this.textureRegistry.require(this._definition.textureName), this._definition);
-        sprite.setGhost(blocked ? GHOST_BLOCKED_TINT : GHOST_TINT, blocked ? GHOST_BLOCKED_ALPHA : 1);
+        sprite.setGhost(blocked ? GHOST_BLOCKED_TINT : GHOST_TINT, blocked ? GHOST_BLOCKED_ALPHA : GHOST_ALPHA);
         this._sprite = sprite;
         this._spriteContainer.addChild(sprite);
         this._updateCenterPin();

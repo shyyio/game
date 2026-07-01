@@ -16,7 +16,8 @@ export function snapToChunk(n) {
 }
 
 // Shared placement-preview ghost palette (used by every tool's ghost layer).
-export const GHOST_TINT = 0xC8F902; // normal placement preview (green)
+export const GHOST_TINT = 0xFFFFFF; // normal placement preview: untinted (natural sprite color)
+export const GHOST_ALPHA = 0.9; // ghosts are always semi-transparent so the world shows through
 export const GHOST_BLOCKED_TINT = 0xF23030; // placement blocked (red), matches PlacementFeedbackLayer
 export const GHOST_BLOCKED_ALPHA = 0.8;
 

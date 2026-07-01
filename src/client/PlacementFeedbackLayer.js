@@ -12,9 +12,10 @@ import {
 // inset warning markers; the green target fills the tile.
 const BLOCKED_TILE_COLOR = 0xF23030;
 const OVERWRITE_TILE_COLOR = 0x3098F2;
-const TILE_INSET = 6; // px inset on every side for every feedback square, so it sits inside the tile
+const TILE_INSET = 8; // px inset on every side for every feedback square, so it sits inside the tile
 const MARKER_FILL_ALPHA = 0.4;
 const MARKER_BORDER_WIDTH = 4;
+const FEEDBACK_ALPHA = 0.6; // overall opacity so the ghost sprite shows through the highlights
 
 /**
  * Shared placement-feedback layer, driven imperatively by tools: each geometry tile is marked blocked
@@ -26,6 +27,7 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
     constructor() {
         super();
         this._graphics = new Graphics();
+        this._graphics.alpha = FEEDBACK_ALPHA;
         this.addChild(this._graphics);
         this._blocked = [];
         this._overwrite = [];

@@ -78,6 +78,11 @@ class Mouse {
         this._hoverTileX = null;
         this._hoverTileY = null;
         this._hoverEnabled = true;
+        // After the mini-menu closes, hover is held until the cursor next moves at all
+        // (any pixel), so selecting an entry doesn't re-inspect under a stationary cursor.
+        this._hoverSuppressed = false;
+        this._suppressAnchorX = null;
+        this._suppressAnchorY = null;
         // Mobile-mode lock: while a tool is active the "cursor" is pinned to the
         // screen center, so hover and tap-to-place use the center tile and the
         // player pans the map to aim (see setCenterLock).
@@ -185,6 +190,18 @@ class Mouse {
      */
     setHoverEnabled(enabled) {
         this._hoverEnabled = enabled;
+    }
+
+    /**
+     * Re-enables hover but holds it until the cursor next moves (any pixel), then
+     * resumes with an enter for whatever tile it lands on. Used when the mini-menu
+     * closes, so selecting an entry doesn't re-inspect under a stationary cursor.
+     */
+    resumeHoverOnMove() {
+        this._hoverEnabled = true;
+        this._hoverSuppressed = true;
+        this._suppressAnchorX = this._app.renderer.events.pointer.global.x;
+        this._suppressAnchorY = this._app.renderer.events.pointer.global.y;
     }
 
     /**
@@ -346,6 +363,7 @@ class Mouse {
         this.currentX = world.x;
         this.currentY = world.y;
 
+        this._resumeHoverIfMoved();
         this._updateHoverTile();
 
         if (this._clickStartX == null) {
@@ -404,11 +422,29 @@ class Mouse {
     }
 
     /**
+     * Lifts the post-menu hover hold once the cursor moves at all, clearing the
+     * hovered tile so the next update fires an enter for the current tile.
+     * @private
+     */
+    _resumeHoverIfMoved() {
+        if (!this._hoverSuppressed) {
+            return;
+        }
+        const global = this._app.renderer.events.pointer.global;
+        if (global.x === this._suppressAnchorX && global.y === this._suppressAnchorY) {
+            return;
+        }
+        this._hoverSuppressed = false;
+        this._hoverTileX = null;
+        this._hoverTileY = null;
+    }
+
+    /**
      * Fires tile enter/exit callbacks when the hovered tile changes.
      * @private
      */
     _updateHoverTile() {
-        if (!this._hoverEnabled) {
+        if (!this._hoverEnabled || this._hoverSuppressed) {
             return;
         }
 

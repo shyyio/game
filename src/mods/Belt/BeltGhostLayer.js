@@ -3,7 +3,8 @@ import {BeltBend, BeltType} from "./constants.js";
 import {BeltSprite, beltFrameBase} from "./BeltLayer.js";
 
 // Tints for tool preview ghosts.
-const GHOST_TINT = 0xC8F902; // normal placement preview (green)
+const GHOST_TINT = 0xFFFFFF; // normal placement preview: untinted (natural sprite color)
+const GHOST_ALPHA = 0.9; // ghosts are always semi-transparent so the world shows through
 const GHOST_AT_MAX_TINT = 0xF2A900; // tunnel preview at maximum length (amber)
 const GHOST_BLOCKED_TINT = 0xF23030; // placement blocked (red), matches PlacementFeedbackLayer
 const GHOST_BLOCKED_ALPHA = 0.8;
@@ -71,7 +72,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         this._pinToCenter = true;
         this._blocked = blocked;
         const tint = blocked ? GHOST_BLOCKED_TINT : GHOST_TINT;
-        const alpha = blocked ? GHOST_BLOCKED_ALPHA : 1;
+        const alpha = blocked ? GHOST_BLOCKED_ALPHA : GHOST_ALPHA;
         this._addSprite(tileX, tileY, direction, beltType, tint, bend, alpha);
         this._drawTarget();
         this._updateCenterPin();
@@ -118,7 +119,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
      * @param {number} [alpha] sprite opacity
      * @private
      */
-    _addSprite(tileX, tileY, direction, beltType, tint, bend, alpha=1) {
+    _addSprite(tileX, tileY, direction, beltType, tint, bend, alpha=GHOST_ALPHA) {
         const frames = this.textureRegistry.getAnimation(beltFrameBase(bend, beltType));
         const sprite = new BeltSprite(
             0n,
