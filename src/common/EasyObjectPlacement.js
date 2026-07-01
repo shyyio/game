@@ -1,3 +1,4 @@
+import {SqlStatement} from "@/common/core.js";
 import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
 import {upstreamPorts, downstreamPorts} from "@/common/portUtils.js";
@@ -69,28 +70,28 @@ export class EasyObjectPlacement {
     /**
      * The Insert/Delete/Get/GetInChunk statements for this table, generated from its port columns
      * (each `<portName>_id`). A mod merges these into its `statements`.
-     * @returns {Object.<string, string>}
+     * @returns {SqlStatement[]}
      */
     get statements() {
         const insertCols = ["id", "x", "y", "direction", ...this._portColumns].join(", ");
         const insertVals = ["CAST(@id AS INT)", "@x", "@y", "@direction", ...this._portColumns.map(column => `@${column}`)].join(", ");
         const selectCols = ["id", "x", "y", "direction", ...this._portColumns].join(", ");
         const returningCols = ["x", "y", ...this._portColumns].join(", ");
-        return {
-            [`Insert${this.table}`]: `
+        return [
+            new SqlStatement(`Insert${this.table}`, `
                 INSERT INTO ${this.table} (${insertCols})
                 VALUES (${insertVals})
-                RETURNING id;`,
-            [`Delete${this.table}`]: `
+                RETURNING id;`),
+            new SqlStatement(`Delete${this.table}`, `
                 DELETE FROM ${this.table}
                 WHERE id = CAST(@id AS INT)
-                RETURNING ${returningCols};`,
-            [`Get${this.table}`]: `SELECT id FROM ${this.table} WHERE id = CAST(@id AS INT);`,
-            [`Get${this.table}InChunk`]: `
+                RETURNING ${returningCols};`),
+            new SqlStatement(`Get${this.table}`, `SELECT id FROM ${this.table} WHERE id = CAST(@id AS INT);`),
+            new SqlStatement(`Get${this.table}InChunk`, `
                 SELECT ${selectCols}
                 FROM ${this.table} INDEXED BY ${this.table}_chunk
-                WHERE chunk = @chunk;`,
-        };
+                WHERE chunk = @chunk;`),
+        ];
     }
 
     /**

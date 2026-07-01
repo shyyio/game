@@ -17,41 +17,41 @@ export const CHUNK_COORD_SQL = (col) =>
 
 export const CHUNK_KEY_SQL = `(${CHUNK_COORD_SQL("x")} || ',' || ${CHUNK_COORD_SQL("y")})`;
 
-const CoreStatements = {
-    End: "END TRANSACTION",
-    Begin: "BEGIN TRANSACTION;",
-    Rollback: "ROLLBACK TRANSACTION;",
+const CoreStatements = [
+    new SqlStatement("End", "END TRANSACTION"),
+    new SqlStatement("Begin", "BEGIN TRANSACTION;"),
+    new SqlStatement("Rollback", "ROLLBACK TRANSACTION;"),
 
-    InsertSession: "INSERT INTO Session (player_id) VALUES (@player_id) RETURNING id;",
-    GetPlayerSettings: `SELECT key, value FROM PlayerSettings WHERE player_id = @player_id;`,
-    GetGameSettings: `SELECT key, value FROM GameSettings;`,
+    new SqlStatement("InsertSession", "INSERT INTO Session (player_id) VALUES (@player_id) RETURNING id;"),
+    new SqlStatement("GetPlayerSettings", `SELECT key, value FROM PlayerSettings WHERE player_id = @player_id;`),
+    new SqlStatement("GetGameSettings", `SELECT key, value FROM GameSettings;`),
 
-    InsertPort: "INSERT INTO Port DEFAULT VALUES RETURNING id;",
+    new SqlStatement("InsertPort", "INSERT INTO Port DEFAULT VALUES RETURNING id;"),
 
     // Garbage-collects a port once nothing references it (guard filled from every definition's
     // port columns, see _substitutePortReferenceTokens), so port removal needs no per-table knowledge.
-    DeletePortIfUnreferenced: "DELETE FROM Port WHERE id = CAST(@port AS INT) AND NOT EXISTS ({{PORT_REFERENCED}});",
+    new SqlStatement("DeletePortIfUnreferenced", "DELETE FROM Port WHERE id = CAST(@port AS INT) AND NOT EXISTS ({{PORT_REFERENCED}});"),
 
     // Allocates the next global object id (see the ObjectId table). Mods call this and insert
     // the object with the returned id, instead of relying on per-table autoincrement.
-    AllocateObjectId: "UPDATE ObjectId SET next = next + 1 RETURNING next;",
+    new SqlStatement("AllocateObjectId", "UPDATE ObjectId SET next = next + 1 RETURNING next;"),
 
-    GetSessionEvents: `
+    new SqlStatement("GetSessionEvents", `
         SELECT ev.type, ev.id, ev.a, ev.b, ev.c,
                sv.session_id
         FROM BufferedEvent ev
             INNER JOIN SessionViewport sv ON ev.chunk = sv.chunk
         ORDER BY ev.rowid;
-    `,
+    `),
 
-    TruncateBufferedEvent: `DELETE FROM BufferedEvent;`,
+    new SqlStatement("TruncateBufferedEvent", `DELETE FROM BufferedEvent;`),
 
-    DeleteSessionViewport: `DELETE FROM SessionViewport WHERE session_id = @session_id RETURNING chunk;`,
-    GetSessionViewport: `SELECT chunk FROM SessionViewport WHERE session_id = @session_id;`,
-    InsertSessionViewport: `INSERT INTO SessionViewport (session_id, chunk) VALUES (@session_id, @chunk);`,
-    DeleteSessionViewportChunk: `DELETE FROM SessionViewport WHERE session_id = @session_id AND chunk = @chunk;`,
-    GetSessionsByChunk: `SELECT DISTINCT session_id FROM SessionViewport WHERE chunk = @chunk;`,
-}
+    new SqlStatement("DeleteSessionViewport", `DELETE FROM SessionViewport WHERE session_id = @session_id RETURNING chunk;`),
+    new SqlStatement("GetSessionViewport", `SELECT chunk FROM SessionViewport WHERE session_id = @session_id;`),
+    new SqlStatement("InsertSessionViewport", `INSERT INTO SessionViewport (session_id, chunk) VALUES (@session_id, @chunk);`),
+    new SqlStatement("DeleteSessionViewportChunk", `DELETE FROM SessionViewport WHERE session_id = @session_id AND chunk = @chunk;`),
+    new SqlStatement("GetSessionsByChunk", `SELECT DISTINCT session_id FROM SessionViewport WHERE chunk = @chunk;`),
+];
 
 const CoreSchema = `
     CREATE TABLE PlayerSettings (
@@ -363,18 +363,22 @@ export class DatabaseSchema {
     constructor(modRegistry) {
         this.modRegistry = modRegistry;
 
-        this.preparedStatements = {...CoreStatements};
+        this.preparedStatements = {};
         this.tickPhases = {};
 
         this.initSchema = [CoreSchema, modRegistry.initSchema];
         this.tempSchema = [CoreTempSchema, modRegistry.tempSchema];
         this.pragma = [CorePragma];
 
+        CoreStatements.forEach(statement => {
+            this._prepare(statement.statementName, statement.sql);
+        });
+
         // Collect statements from all mods
         modRegistry.mods.forEach(mod => {
-            if (mod.statements) {
-                Object.assign(this.preparedStatements, mod.statements);
-            }
+            mod.extraStatements.forEach(statement => {
+                this._prepare(statement.statementName, statement.sql);
+            });
         });
 
         // Leading core ops, then mod ops, then trailing core ops -- so a trailing op (the out-port

@@ -50,7 +50,7 @@ export class DemoMod extends AbstractMod {
         return {[DemoMachineDefinition.table]: DemoMachineDefinition};
     }
 
-    get statements() {
+    get extraStatements() {
         return this._placement.statements;
     }
 

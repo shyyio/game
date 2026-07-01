@@ -1,4 +1,4 @@
-import {Direction} from "@/sdk/common.js";
+import {Direction, SqlStatement} from "@/sdk/common.js";
 import {
     BELT_NORMAL,
     BELT_RAMP_DOWN,
@@ -121,32 +121,32 @@ const PATH_TAIL_BELT_SQL = "SELECT id FROM Belt WHERE path_id = CAST(@id AS INT)
 
 // Named prepared statements the Belt mod registers with the database.
 // noinspection SqlWithoutWhere
-export const beltStatements = {
+export const beltStatements = [
 
-    StashOutputItem: `
+    new SqlStatement("StashOutputItem", `
         INSERT INTO StashedOutputItem (belt_id, type)
         SELECT tail_id, p.item
         FROM BeltPath
             INNER JOIN Port p ON p.id = BeltPath.out_port_id
         WHERE BeltPath.id = CAST(@id AS INT)
           AND p.item IS NOT NULL;
-    `,
+    `),
 
-    RemoveOutputItem: `
+    new SqlStatement("RemoveOutputItem", `
         UPDATE Port
         SET item=NULL
         FROM BeltPath
         WHERE BeltPath.id = CAST(@id AS INT)
           AND Port.id = BeltPath.out_port_id;
-    `,
+    `),
 
-    PathHasOutputItem: `
+    new SqlStatement("PathHasOutputItem", `
         SELECT 1
         FROM BeltPath
             INNER JOIN Port p ON p.id = BeltPath.out_port_id
         WHERE BeltPath.id = CAST(@id AS INT)
           AND p.item IS NOT NULL;
-    `,
+    `),
 
     // Stashes the two slots of a belt newly placed on a path's former output tile (a
     // tail extension, or a merge linking the tail onto a downstream belt), flowing the
@@ -154,7 +154,7 @@ export const beltStatements = {
     // tile it already occupied — rather than vanishing with a discarded out-port or
     // riding a reused one downstream. The output-then-input row order is the tail-to-head
     // slot order UnStashItems reads.
-    StashNewBeltWithOutputItem: `
+    new SqlStatement("StashNewBeltWithOutputItem", `
         INSERT INTO StashedItem (belt_id, type)
         SELECT CAST(@id AS INT), ${ITEM_TYPE_GAP}
         UNION ALL
@@ -163,30 +163,30 @@ export const beltStatements = {
             INNER JOIN Port p ON p.id = BeltPath.out_port_id
         WHERE BeltPath.id = CAST(@head AS INT)
           AND p.item IS NOT NULL;
-    `,
+    `),
 
     // One empty slot on a belt. Used to pad the output side ahead of a re-ingested output
     // item when the new belt also links onto a downstream belt folding into the path: that
     // adds a boundary slot the child's standalone stash omits, which would otherwise shift
     // the item a half-tile downstream.
-    StashGapSlot: `
+    new SqlStatement("StashGapSlot", `
         INSERT INTO StashedItem (belt_id, type) VALUES (CAST(@id AS INT), ${ITEM_TYPE_GAP});
-    `,
+    `),
 
     // Whether the child belt's path holds an item resting in its in-port.
-    ChildHasInputItem: `
+    new SqlStatement("ChildHasInputItem", `
         SELECT 1
         FROM Belt
             INNER JOIN BeltPath ON BeltPath.id = Belt.path_id
             INNER JOIN Port p ON p.id = BeltPath.in_port_id
         WHERE Belt.id = CAST(@id AS INT)
           AND p.item IS NOT NULL;
-    `,
+    `),
 
     // Stashes a folding child's resting in-port item onto the boundary slot its standalone
     // stash omits, so it re-materializes on the child's input edge instead of vanishing with
     // the discarded interior in-port. Replaces the StashGapSlot pad when that item is present.
-    StashChildInputItem: `
+    new SqlStatement("StashChildInputItem", `
         INSERT INTO StashedItem (belt_id, type)
         SELECT CAST(@id AS INT), p.item
         FROM Belt
@@ -194,26 +194,26 @@ export const beltStatements = {
             INNER JOIN Port p ON p.id = BeltPath.in_port_id
         WHERE Belt.id = CAST(@child AS INT)
           AND p.item IS NOT NULL;
-    `,
+    `),
 
-    UnStashOutputItem: `
+    new SqlStatement("UnStashOutputItem", `
         UPDATE Port
         SET item = StashedOutputItem.type
         FROM StashedOutputItem
             INNER JOIN Belt ON Belt.id = StashedOutputItem.belt_id
             INNER JOIN BeltPath ON BeltPath.id = Belt.path_id
         WHERE Port.id = BeltPath.out_port_id;
-    `,
+    `),
 
-    TruncateStashedOutputItem: `DELETE FROM StashedOutputItem;`,
+    new SqlStatement("TruncateStashedOutputItem", `DELETE FROM StashedOutputItem;`),
 
-    StashGap: `
+    new SqlStatement("StashGap", `
         INSERT INTO StashedItem (belt_id, type) VALUES
             (CAST(@id AS INT), ${ITEM_TYPE_GAP}),
             (CAST(@id AS INT), ${ITEM_TYPE_GAP});
-    `,
+    `),
 
-    StashItems: `
+    new SqlStatement("StashItems", `
         INSERT INTO StashedItem (belt_id, type)
         WITH items AS (
             SELECT
@@ -244,14 +244,14 @@ export const beltStatements = {
                 Belt.path_index = CAST(items_exploded.path_index / 2 AS INT)
                 AND Belt.path_id = items_exploded.path_id
         ORDER BY items_exploded.path_index;
-    `,
+    `),
 
-    DeleteItems: `
+    new SqlStatement("DeleteItems", `
         DELETE FROM BeltPathItem
         WHERE path_id = CAST(@id AS INT);
-    `,
+    `),
 
-    UnStashItems: `
+    new SqlStatement("UnStashItems", `
         INSERT INTO BeltPathItem (path_id, length, type)
         WITH raw_items AS (
             SELECT Belt.id, Belt.path_id, item.type
@@ -284,21 +284,21 @@ export const beltStatements = {
         SELECT path_id, length, type
         FROM grouped_items
         WHERE type_sum > 0;
-    `,
+    `),
 
-    TruncateStashedItems: `DELETE FROM StashedItem;`,
+    new SqlStatement("TruncateStashedItems", `DELETE FROM StashedItem;`),
 
-    FillHeadGap: `
+    new SqlStatement("FillHeadGap", `
         UPDATE BeltPath
         SET head_gap = length - COALESCE((SELECT SUM(length) FROM BeltPathItem WHERE path_id = CAST(@id AS INT)), 0)
         WHERE id = CAST(@id AS INT);
-    `,
+    `),
 
     // Shortening a path (a belt removed from a full run) can leave more item
     // content than the path can hold. Drop the head-most rows whose inclusion
     // would push the total past the path length, keeping the tail-side items
     // nearest the surviving downstream. Returns the dropped row ids.
-    TrimOverflowItems: `
+    new SqlStatement("TrimOverflowItems", `
         WITH from_tail AS (
             SELECT id,
                 SUM(length) OVER (ORDER BY id ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS tail_total
@@ -314,14 +314,14 @@ export const beltStatements = {
             WHERE from_tail.tail_total > path_length.length
         )
         RETURNING id;
-    `,
+    `),
 
     // After TrimOverflowItems, a gap can be left as the head-most row (highest
     // id) when the drop boundary fell just past it. Empty space at the head
     // belongs in head_gap, not a gap item — otherwise an entering item is
     // wrongly blocked — so remove any gap rows above the top-most real item;
     // FillHeadGap then reclaims that space.
-    DropTrailingHeadGaps: `
+    new SqlStatement("DropTrailingHeadGaps", `
         WITH last_item AS (
             SELECT COALESCE(MAX(id), 0) AS id
             FROM BeltPathItem
@@ -336,15 +336,15 @@ export const beltStatements = {
               AND gap.type = ${ITEM_TYPE_GAP}
               AND gap.id > last_item.id
         );
-    `,
+    `),
 
-    TransferBeltPathItems: `
+    new SqlStatement("TransferBeltPathItems", `
         UPDATE BeltPathItem
         SET path_id = CAST(@to AS INT)
         WHERE path_id = CAST(@from AS INT);
-    `,
+    `),
 
-    RecalculateNextGapForPath: `
+    new SqlStatement("RecalculateNextGapForPath", `
         UPDATE BeltPath
         SET next_gap_id = (
             SELECT MIN(id)
@@ -353,9 +353,9 @@ export const beltStatements = {
               AND type = ${ITEM_TYPE_GAP}
         )
         WHERE id = CAST(@id AS INT);
-    `,
+    `),
 
-    RecalculateNextItemForPath: `
+    new SqlStatement("RecalculateNextItemForPath", `
         UPDATE BeltPath
         SET next_item_id = (
             SELECT MIN(id)
@@ -364,12 +364,12 @@ export const beltStatements = {
               AND type != ${ITEM_TYPE_GAP}
         )
         WHERE id = CAST(@id AS INT);
-    `,
+    `),
 
     // The next_gap recalc scoped to just the paths an un-stash touched (the
     // distinct paths of the stashed belts), so a create/delete never scans every
     // path in the world the way the global RecalculateNextGap tick op does.
-    RecalculateNextGapForStashedPaths: `
+    new SqlStatement("RecalculateNextGapForStashedPaths", `
         WITH stashed_paths AS (
             SELECT DISTINCT Belt.path_id AS id
             FROM StashedItem
@@ -385,9 +385,9 @@ export const beltStatements = {
         SET next_gap_id = next_gaps.next_gap_id
         FROM next_gaps
         WHERE BeltPath.id = next_gaps.id;
-    `,
+    `),
 
-    RecalculateNextItemForStashedPaths: `
+    new SqlStatement("RecalculateNextItemForStashedPaths", `
         WITH stashed_paths AS (
             SELECT DISTINCT Belt.path_id AS id
             FROM StashedItem
@@ -403,11 +403,11 @@ export const beltStatements = {
         SET next_item_id = next_items.next_item_id
         FROM next_items
         WHERE BeltPath.id = next_items.id;
-    `,
+    `),
 
     // Returns the head of the newly inserted belt's path, the downstream child belt (if any),
     // and the old parent's path head (if the child had a previous parent in another path).
-    GetBeltCreateContext: `
+    new SqlStatement("GetBeltCreateContext", `
         WITH RECURSIVE
             head_path(id, parent_id, chunk) AS (
                 SELECT id, parent_id, chunk FROM Belt WHERE id = CAST(@id AS INT)
@@ -456,9 +456,9 @@ export const beltStatements = {
         FROM head
             LEFT JOIN child ON 1=1
             LEFT JOIN Belt child_old_parent ON child_old_parent.id = child.parent_id
-    `,
+    `),
 
-    UpdateBeltChild: `
+    new SqlStatement("UpdateBeltChild", `
         UPDATE Belt
         SET parent_id = ${upstreamParentSql({
             from: "Belt b",
@@ -470,15 +470,15 @@ export const beltStatements = {
         })}
         WHERE id = CAST(@id AS INT)
         RETURNING 1;
-    `,
+    `),
 
-    GetBelt: `
+    new SqlStatement("GetBelt", `
         SELECT belt.x, belt.y, belt.type, belt.direction, belt.parent_id, belt.chunk,
             parent.type AS parent_type
         FROM Belt belt
             LEFT JOIN Belt parent ON parent.id = belt.parent_id
         WHERE belt.id = CAST(@id AS INT);
-    `,
+    `),
 
     // Every belt in a chunk, with its parent's tile, to sync a newly-subscribed
     // client. Includes underground belts (no type filter): the client index keeps
@@ -486,22 +486,22 @@ export const beltStatements = {
     // Every belt in the chunk, grouped by path (head last) so one scan syncs both the
     // belt syncs and the path-debug overlay. A path lives entirely in one chunk (it is
     // split at chunk borders), so a chunk's belts hold whole paths.
-    GetBeltsInChunk: `
+    new SqlStatement("GetBeltsInChunk", `
         SELECT belt.id, belt.x, belt.y, belt.direction, belt.type, belt.path_id,
             parent.x AS parent_x, parent.y AS parent_y
         FROM Belt belt
             LEFT JOIN Belt parent ON parent.id = belt.parent_id
         WHERE belt.chunk = @chunk
         ORDER BY belt.path_id, belt.path_index;
-    `,
+    `),
 
-    GetTail: `
+    new SqlStatement("GetTail", `
         SELECT x, y, type, direction, parent_id, chunk
         FROM Belt
         WHERE id = (SELECT tail_id FROM BeltPath WHERE id = CAST(@id AS INT));
-    `,
+    `),
 
-    InsertBelt: `
+    new SqlStatement("InsertBelt", `
         INSERT INTO Belt (id, parent_id, x, y, type, direction)
         VALUES (CAST(@id AS INT), ${upstreamParentSql({
             from: "Belt",
@@ -513,9 +513,9 @@ export const beltStatements = {
         })},
         @x, @y, @type, @direction)
         RETURNING Belt.id;
-    `,
+    `),
 
-    GetBeltPathHead: `
+    new SqlStatement("GetBeltPathHead", `
         WITH RECURSIVE path AS (
             SELECT id, parent_id, chunk
             FROM Belt
@@ -529,9 +529,9 @@ export const beltStatements = {
         )
         SELECT id
         FROM path;
-    `,
+    `),
 
-    CalculateBeltPath: `
+    new SqlStatement("CalculateBeltPath", `
         WITH parent_belt AS (
             SELECT id, chunk FROM Belt WHERE id = @id
         ), path AS (
@@ -554,9 +554,9 @@ export const beltStatements = {
             )
         WHERE id IN (SELECT id FROM reverse_path)
            OR path_id = CAST(@id AS INT);
-    `,
+    `),
 
-    MaterializeBeltPath: `
+    new SqlStatement("MaterializeBeltPath", `
         WITH new_tail AS (${PATH_TAIL_BELT_SQL}),
              path_length AS (SELECT COUNT(*) * 2 - 1 AS length FROM Belt WHERE path_id = CAST(@id AS INT))
         UPDATE BeltPath
@@ -566,67 +566,67 @@ export const beltStatements = {
         FROM path_length
         WHERE id = CAST(@id AS INT)
         RETURNING length;
-    `,
+    `),
 
     // Drops a path's in-port unless another object still feeds it (uses it as one of its
     // output ports) — keeping a shared seam port alive when a downstream path is reassigned.
-    DeleteInPort: `
+    new SqlStatement("DeleteInPort", `
         DELETE FROM Port
         WHERE id = (SELECT in_port_id FROM BeltPath WHERE id = CAST(@id AS INT))
           AND NOT EXISTS ({{PORT_OUTPUT_REFERENCED}});
-    `,
+    `),
 
-    UpdateInPort: `
+    new SqlStatement("UpdateInPort", `
         UPDATE BeltPath
         SET in_port_id=CAST(@port AS INT)
         WHERE id = CAST(@id AS INT)
-    `,
+    `),
 
     // Flag a port as a path's in-port so the Port_in_filled partial index covers it.
     // Called wherever in_port_id is assigned; the flag is never cleared (a stale flag
     // only costs the index a row, never a wrong activation), and the Port row is
     // dropped outright when the path is removed.
-    MarkPortAsInput: `
+    new SqlStatement("MarkPortAsInput", `
         UPDATE Port
         SET is_in_port=1
         WHERE id = CAST(@port AS INT)
-    `,
+    `),
 
-    DeleteOutPort: `
+    new SqlStatement("DeleteOutPort", `
         DELETE FROM Port
         WHERE id = (SELECT out_port_id FROM BeltPath WHERE id = CAST(@id AS INT))
-    `,
+    `),
 
-    InheritOutPort: `
+    new SqlStatement("InheritOutPort", `
         UPDATE BeltPath
         SET out_port_id=(SELECT out_port_id FROM BeltPath WHERE id = CAST(@child AS INT))
         WHERE id = CAST(@parent AS INT)
           AND EXISTS (SELECT 1 FROM BeltPath WHERE id = CAST(@child AS INT) AND out_port_id IS NOT NULL)
         RETURNING out_port_id
-    `,
+    `),
 
-    GetPathInPort: `SELECT in_port_id FROM BeltPath WHERE id = CAST(@id AS INT);`,
+    new SqlStatement("GetPathInPort", `SELECT in_port_id FROM BeltPath WHERE id = CAST(@id AS INT);`),
 
-    GetPathOutPort: `SELECT out_port_id FROM BeltPath WHERE id = CAST(@id AS INT);`,
+    new SqlStatement("GetPathOutPort", `SELECT out_port_id FROM BeltPath WHERE id = CAST(@id AS INT);`),
 
-    GetBeltPath: `SELECT id FROM Belt WHERE path_id = CAST(@id AS INT) ORDER BY path_index;`,
+    new SqlStatement("GetBeltPath", `SELECT id FROM Belt WHERE path_id = CAST(@id AS INT) ORDER BY path_index;`),
 
     // A path's RLE item rows, for an immediate (on-edit) client item re-sync.
-    GetBeltPathItems: `
+    new SqlStatement("GetBeltPathItems", `
         SELECT id, length, type
         FROM BeltPathItem
         WHERE path_id = CAST(@id AS INT);
-    `,
+    `),
 
     // Flag every path with a belt in a chunk for re-sync, when a viewer subscribes to it.
-    MarkChunkPathsForResync: `
+    new SqlStatement("MarkChunkPathsForResync", `
         INSERT OR IGNORE INTO ResyncItemPath (path_id)
         SELECT DISTINCT path_id FROM Belt
         WHERE chunk = @chunk
           AND path_id IS NOT NULL;
-    `,
+    `),
 
-    GetRampParents: `
+    new SqlStatement("GetRampParents", `
         WITH RECURSIVE path AS (
             SELECT id, parent_id, type FROM Belt WHERE id = CAST(@id AS INT)
             UNION
@@ -637,9 +637,9 @@ export const beltStatements = {
         SELECT id, parent_id
         FROM path
         WHERE type = ${BELT_UNDERGROUND};
-    `,
+    `),
 
-    GetRampChildren: `
+    new SqlStatement("GetRampChildren", `
         WITH RECURSIVE path AS (
             SELECT id, type FROM Belt WHERE id = CAST(@id AS INT)
             UNION
@@ -650,12 +650,12 @@ export const beltStatements = {
         SELECT id
         FROM path
         WHERE type = ${BELT_UNDERGROUND};
-    `,
+    `),
 
     // The RAMP_UP a RAMP_DOWN entrance tunnels into: follows the child chain
     // (each belt's parent_id points at the one feeding it) downstream through the
     // buried undergrounds until the surfacing exit. Empty for a lone entrance.
-    GetDownstreamRamp: `
+    new SqlStatement("GetDownstreamRamp", `
         WITH RECURSIVE chain AS (
             SELECT id, type FROM Belt WHERE id = CAST(@id AS INT)
             UNION
@@ -669,12 +669,12 @@ export const beltStatements = {
             INNER JOIN Belt belt ON belt.id = chain.id
         WHERE chain.type = ${BELT_RAMP_UP}
         LIMIT 1;
-    `,
+    `),
 
     // The RAMP_DOWN entrance feeding a RAMP_UP exit: follows the parent chain
     // upstream through the buried undergrounds back to the entrance. Empty for a
     // lone exit.
-    GetUpstreamRamp: `
+    new SqlStatement("GetUpstreamRamp", `
         WITH RECURSIVE chain AS (
             SELECT id, parent_id, type FROM Belt WHERE id = CAST(@id AS INT)
             UNION
@@ -688,12 +688,12 @@ export const beltStatements = {
             INNER JOIN Belt belt ON belt.id = chain.id
         WHERE chain.type = ${BELT_RAMP_DOWN}
         LIMIT 1;
-    `,
+    `),
 
     // Every belt sitting on the @maxSteps tiles ahead of (@x, @y) along the
     // (@dx, @dy) axis step, tagged with its distance, nearest first. Drives the
     // server-side ramp pairing scan when a deletion orphans a tunnel partner.
-    GetBeltsAlongAxis: `
+    new SqlStatement("GetBeltsAlongAxis", `
         SELECT belt.id, belt.x, belt.y, belt.type, belt.direction, Numbers.value + 1 AS distance
         FROM Numbers
             INNER JOIN Belt belt
@@ -701,76 +701,76 @@ export const beltStatements = {
                AND belt.y = @y + @dy * (Numbers.value + 1)
         WHERE Numbers.value + 1 <= @maxSteps
         ORDER BY distance;
-    `,
+    `),
 
-    InsertBeltPath: `
+    new SqlStatement("InsertBeltPath", `
         INSERT INTO BeltPath (id) VALUES (CAST(@id AS INT))
         ON CONFLICT DO NOTHING
         RETURNING 1 AS created;
-    `,
+    `),
 
-    UpdateBeltPathPorts: `
+    new SqlStatement("UpdateBeltPathPorts", `
         UPDATE BeltPath
         SET in_port_id=CAST(@inPort AS INT),
             out_port_id=CAST(@outPort AS INT)
         WHERE id = CAST(@id AS INT);
-    `,
+    `),
 
-    GetBeltPathPortOwner: `SELECT id FROM BeltPath WHERE in_port_id = CAST(@id AS INT);`,
+    new SqlStatement("GetBeltPathPortOwner", `SELECT id FROM BeltPath WHERE in_port_id = CAST(@id AS INT);`),
 
-    DeletePath: `
+    new SqlStatement("DeletePath", `
         DELETE FROM BeltPath
         WHERE id = CAST(@id AS INT)
-    `,
+    `),
 
-    InvalidatePath: `
+    new SqlStatement("InvalidatePath", `
         UPDATE BeltPath
         SET tail_id=NULL,
             length=NULL,
             next_gap_id=NULL,
             next_item_id=NULL
         WHERE id = CAST(@id AS INT)
-    `,
+    `),
 
 
-    DetachChild: `
+    new SqlStatement("DetachChild", `
         UPDATE Belt
         SET parent_id=NULL
         WHERE parent_id = CAST(@id AS INT)
         RETURNING id, x, y;
-    `,
+    `),
 
-    NullifyParent: `
+    new SqlStatement("NullifyParent", `
         UPDATE Belt
         SET parent_id=NULL
         WHERE id = CAST(@id AS INT);
-    `,
+    `),
 
-    UnassignBeltPath: `
+    new SqlStatement("UnassignBeltPath", `
         UPDATE Belt
         SET path_id=NULL, path_index=NULL
         WHERE path_id=CAST(@id AS INT);
-    `,
+    `),
 
-    ClearSolitaryBeltPortItem: `
+    new SqlStatement("ClearSolitaryBeltPortItem", `
         UPDATE Port SET item=NULL
         FROM BeltPath path
         WHERE Port.id=path.out_port_id AND path.id=@id AND path.tail_id=path.id;
-    `,
+    `),
 
-    NullifyPathTail: `
+    new SqlStatement("NullifyPathTail", `
         UPDATE BeltPath SET tail_id=NULL
         WHERE tail_id=CAST(@id AS INT);
-    `,
+    `),
 
     // The belt that would be the tail (lowest path_index) of @id's path.
-    GetPathTailBelt: `${PATH_TAIL_BELT_SQL};`,
+    new SqlStatement("GetPathTailBelt", `${PATH_TAIL_BELT_SQL};`),
 
     // The belt physically upstream of head @id (same geometry InsertBelt uses
     // to pick a new belt's parent). Used to detect/heal a loop seam: a head
     // whose upstream neighbor lives in a different path is a loop broken elsewhere.
     // Aliased `id` so it narrows to BigInt like every other belt id.
-    FindUpstreamNeighbor: `
+    new SqlStatement("FindUpstreamNeighbor", `
         SELECT ${upstreamParentSql({
             from: "Belt upstream_neighbor",
             col: "upstream_neighbor.",
@@ -781,11 +781,11 @@ export const beltStatements = {
         })} AS id
         FROM Belt H
         WHERE H.id = CAST(@id AS INT);
-    `,
+    `),
 
-    DeleteBeltRow: `
+    new SqlStatement("DeleteBeltRow", `
         DELETE FROM Belt
         WHERE id = CAST(@id AS INT)
         RETURNING parent_id;
-    `,
-};
+    `),
+];

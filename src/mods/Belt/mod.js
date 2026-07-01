@@ -61,8 +61,8 @@ export class BeltMod extends AbstractMod {
         return beltTempSchema;
     }
 
-    get statements() {
-        return {...beltStatements, ...this._splitterPlacement.statements};
+    get extraStatements() {
+        return [...beltStatements, ...this._splitterPlacement.statements];
     }
 
     // ---- Chunk sync ----

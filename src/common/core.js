@@ -247,10 +247,10 @@ export class AbstractMod {
     }
 
     /**
-     * @returns {Object.<string, string>}
+     * @returns {SqlStatement[]}
      */
-    get statements() {
-        return {};
+    get extraStatements() {
+        return [];
     }
 
     /**
