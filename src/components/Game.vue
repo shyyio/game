@@ -16,6 +16,7 @@ import {GameAPI} from "@/common/GameAPI.js";
 import {LocalSession} from "@/common/LocalSession.js";
 import {Client} from "@/client/Client.js";
 import {TickPhase} from "@/common/core.js";
+import {GAME_FONT} from "@/client/constants.js";
 
 const toolbarState = reactive({activeTool: null, tools: []});
 const viewportRef = shallowRef(null);
@@ -107,7 +108,7 @@ onMounted(async () => {
   const app = new Application();
 
   await app.init({
-    background: "white",
+    background: "#f5f0e6",
     resolution: window.devicePixelRatio,
     resizeTo: window,
     autoDensity: true,
@@ -117,6 +118,10 @@ onMounted(async () => {
   // The whole game runs at a fixed 24fps, so one ticker tick is exactly one
   // animation frame (see animation.js).
   app.ticker.maxFPS = 24;
+
+  // Load the game font before pixi rasterizes any text; a Text drawn before the face
+  // is ready caches at the fallback and never re-rasterizes on its own.
+  await document.fonts.load(`1em ${GAME_FONT}`);
 
   const viewport = new ClientViewport({
     screenWidth: gameWidth(),
@@ -290,6 +295,7 @@ export default defineComponent({
 }
 
 .toolbar button {
+  font-family: "Lexend", sans-serif;
   padding: 6px 14px;
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 4px;

@@ -1,5 +1,6 @@
 import {Container, Graphics, Text} from "pixi.js";
 import {MiniMenuEntry} from "@/common/core.js";
+import {GAME_FONT} from "@/client/constants.js";
 
 const PADDING = 6;
 const ITEM_HEIGHT = 28;
@@ -38,7 +39,7 @@ export class MiniMenuLayer extends Container {
 
         const labels = allEntries.map(entry => new Text({
             text: entry.label,
-            style: {fontFamily: "monospace", fontSize: 13, fill: 0xffffff},
+            style: {fontFamily: GAME_FONT, fontSize: 13, fill: 0xffffff},
         }));
 
         const menuWidth = Math.max(...labels.map(l => l.width)) + ITEM_PADDING_X * 2;

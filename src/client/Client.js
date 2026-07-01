@@ -10,7 +10,7 @@ import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
-import {TILE_SIZE, snapToChunk, MAP_MODE_SCALE_THRESHOLD} from "@/client/constants.js";
+import {TILE_SIZE, snapToChunk, MAP_MODE_SCALE_THRESHOLD, CHUNK_UNSUBSCRIBE_DELAY_MS} from "@/client/constants.js";
 import {CHUNK_SIZE, Direction} from "@/common/constants.js";
 import {chunkKey} from "@/common/util.js";
 import {GridDrawLayer} from "@/client/GridDrawLayer.js";
@@ -20,6 +20,7 @@ import {InspectLayer} from "@/client/InspectLayer.js";
 import {ClientCache} from "@/client/ClientCache.js";
 import {ItemDrawLayer} from "@/client/ItemDrawLayer.js";
 import {ConnectionDrawLayer} from "@/client/ConnectionDrawLayer.js";
+import {StatusMessageLayer} from "@/client/StatusMessageLayer.js";
 import {advanceAnimationFrame} from "@/client/animation.js";
 import {DEV, BROWSER} from "@/common/env.js";
 
@@ -65,6 +66,10 @@ export class Client {
         this.cache.onRemove(record => this.itemLayer.dropPorts(record));
         // The single shared connection-stub layer, derived from the cache each frame.
         this.connectionLayer = new ConnectionDrawLayer();
+        // Top-left connection/chunk-loading status overlay. A static screen-space HUD on
+        // app.stage (sibling of the viewport), so it never pans or zooms with the world.
+        this.statusLayer = new StatusMessageLayer();
+        this.statusLayer.setConnecting();
 
         this.drawLayerRegistry.add(new GridDrawLayer());
         this.drawLayerRegistry.add(new MaskDrawLayer());
@@ -73,7 +78,11 @@ export class Client {
         this.drawLayerRegistry.add(this.itemLayer);
         this.drawLayerRegistry.add(this.connectionLayer);
 
-        this._lastViewportKey = null;
+        // The chunks currently requested from the server (subscribed): the visible chunks
+        // plus any that recently panned out and are awaiting a throttled unsubscribe.
+        this._requestedChunks = new Set();
+        this._lastVisibleKey = null;
+        this._unsubscribeTimer = null;
         this._mapMode = false;
         this._onMapModeChange = null;
         this._centerLock = false;
@@ -112,12 +121,15 @@ export class Client {
 
         this.app.stage.addChild(this.miniMenuLayer);
         this.app.stage.addChild(this.rotateButtonsLayer);
+        this.app.stage.addChild(this.statusLayer);
 
         this.viewport.on("moved", () => this._updateViewportChunks());
-        this.viewport.on("zoomed", () => {
-            this._updateViewportChunks();
-            this._updateMapMode();
-        });
+        // "zoomed" fires mid-wheel with the over-zoomed scale, before clampZoom restores it;
+        // reading the viewport here would briefly see an expanded area and subscribe chunks
+        // that aren't really on screen. The chunk update rides "moved", which fires after the
+        // clamp with the settled scale, so only map mode (threshold well inside the zoom
+        // limits, never mid-clamp) keys off "zoomed".
+        this.viewport.on("zoomed", () => this._updateMapMode());
         // While a pan is in progress, drop the rotate buttons out of hit-testing so
         // a finger that crosses one keeps panning instead of being captured by it.
         this.viewport.on("drag-start", () => this.rotateButtonsLayer.setInteractive(false));
@@ -175,13 +187,74 @@ export class Client {
      * @private
      */
     _updateViewportChunks() {
-        const chunks = this._visibleChunks();
-        const key = chunks.slice().sort().join(";");
-        if (key === this._lastViewportKey) {
+        const visible = this._visibleChunks();
+        const visibleKey = visible.slice().sort().join(";");
+        if (visibleKey === this._lastVisibleKey) {
             return;
         }
-        this._lastViewportKey = key;
+        this._lastVisibleKey = visibleKey;
+
+        // Subscribe to any newly visible chunks at once; chunks that left the viewport
+        // stay requested until a throttled pass drops them.
+        let added = false;
+        visible.forEach(chunk => {
+            if (!this._requestedChunks.has(chunk)) {
+                this._requestedChunks.add(chunk);
+                added = true;
+            }
+        });
+        if (added) {
+            this._sendViewport(true);
+        }
+        this._scheduleUnsubscribe();
+    }
+
+    /**
+     * Sends the current requested-chunk set to the server.
+     * @private
+     * @param {boolean} loading - whether to drive the loading status (only when subscribing)
+     */
+    _sendViewport(loading) {
+        const chunks = [...this._requestedChunks];
+        if (loading) {
+            // Track the request before sending: single-player replies with the
+            // ChunkSubscribeEvents synchronously, so the layer must already be counting.
+            this.statusLayer.beginChunkLoad(chunks);
+        }
         this.sendMessage(new SetViewportMessage(chunks));
+    }
+
+    /**
+     * Schedules a throttled pass that unsubscribes chunks now outside the viewport, so a
+     * quick pan back doesn't re-sync them. Runs at most once per delay while panning.
+     * @private
+     */
+    _scheduleUnsubscribe() {
+        if (this._unsubscribeTimer != null) {
+            return;
+        }
+        this._unsubscribeTimer = setTimeout(() => {
+            this._unsubscribeTimer = null;
+            this._pruneHiddenChunks();
+        }, CHUNK_UNSUBSCRIBE_DELAY_MS);
+    }
+
+    /**
+     * Drops requested chunks that are no longer visible, resyncing if any left.
+     * @private
+     */
+    _pruneHiddenChunks() {
+        const visible = new Set(this._visibleChunks());
+        let removed = false;
+        this._requestedChunks.forEach(chunk => {
+            if (!visible.has(chunk)) {
+                this._requestedChunks.delete(chunk);
+                removed = true;
+            }
+        });
+        if (removed) {
+            this._sendViewport(false);
+        }
     }
 
     /**
@@ -271,5 +344,7 @@ export class Client {
         }
         this.modRegistry.handleClientEvent(event, this);
         this.drawLayerRegistry.publishEvent(event);
+        // The status HUD isn't a viewport draw layer, so feed it chunk events directly.
+        this.statusLayer.onEvent(event);
     }
 }

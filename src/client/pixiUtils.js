@@ -1,4 +1,5 @@
 import {Graphics, Point, Text} from "pixi.js";
+import {GAME_FONT} from "@/client/constants.js";
 
 export function createArrow(x1, y1, x2, y2, color = 0xFF00FF) {
     const g = new Graphics();
@@ -40,7 +41,7 @@ export function createText(x, y, text, color = 0xFF00FF) {
     const t = new Text({
         text: text,
         style: {
-            fontFamily: "monospace",
+            fontFamily: GAME_FONT,
             fontSize: 18,
             fill: "#FF00FF",
         }

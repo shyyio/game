@@ -1,5 +1,6 @@
 import {Container, Graphics, Text} from "pixi.js";
 import Haptics from "@/client/Haptics.js";
+import {GAME_FONT} from "@/client/constants.js";
 
 const BUTTON_SIZE = 56;
 const BUTTON_RADIUS = 8;
@@ -93,7 +94,7 @@ export class RotateButtonsLayer extends Container {
 
         const text = new Text({
             text: label,
-            style: {fontFamily: "monospace", fontSize: 30, fill: 0xffffff},
+            style: {fontFamily: GAME_FONT, fontSize: 30, fill: 0xffffff},
         });
         text.x = (BUTTON_SIZE - text.width) / 2;
         text.y = (BUTTON_SIZE - text.height) / 2;

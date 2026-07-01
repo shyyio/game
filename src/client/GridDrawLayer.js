@@ -74,7 +74,7 @@ export class GridDrawLayer extends AbstractDrawLayer {
         gMajor
             .rect(anchorX, anchorY, TILE_SIZE * CHUNK_SIZE, TILE_SIZE * CHUNK_SIZE)
             .fill("white")
-            .stroke({color: 0x000000, pixelLine: true, alpha: 0.1});
+            .stroke({color: 0x000000, pixelLine: true, alpha: 0.2});
 
         for (let i = 0; i < CHUNK_SIZE; i++) {
             gMinor
@@ -86,7 +86,7 @@ export class GridDrawLayer extends AbstractDrawLayer {
                 .lineTo(anchorX + CHUNK_SIZE * TILE_SIZE, anchorY + i * TILE_SIZE);
         }
 
-        gMinor.stroke({color: 0x000000, pixelLine: true, alpha: 0.075});
+        gMinor.stroke({color: 0x000000, pixelLine: true, alpha: 0.1});
 
         container.addChild(gMajor);
         container.addChild(gMinor);
