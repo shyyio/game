@@ -99,6 +99,20 @@ export class MiniMenuEntry {
     }
 }
 
+export class RecipeDefinition {
+
+    /**
+     * @param {number} verb
+     * @param {number[]} inputs
+     * @param {number} output
+     */
+    constructor(verb, inputs, output) {
+        this.verb = verb;
+        this.inputs = inputs;
+        this.output = output;
+    }
+}
+
 export class ObjectDefinition {
 
     /**
@@ -147,7 +161,7 @@ export class ObjectDefinition {
         // Extra non-port columns for the table (e.g. a machine's slots/cooldown), appended by
         // EasyObjectPlacement.
         this.stateColumns = [];
-        // The verb this object implements over the shared Recipes table, or null. Set by EasyMachine;
+        // The verb this object implements over the shared Recipes table, or null. Set by EasyRecipeProcessor;
         // the schema seed validates each verb's recipes against the object's input-port count.
         this.verb = null;
     }
@@ -331,7 +345,7 @@ export class AbstractMod {
 
     /**
      * Recipes this mod contributes to the shared Recipes table (any mod may extend any verb).
-     * @returns {{verb: number, inputs: number[], output: number}[]}
+     * @returns {RecipeDefinition[]}
      */
     get recipes() {
         return [];

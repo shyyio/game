@@ -8,7 +8,7 @@ import {SqlStatement, TickPhase} from "@/common/core.js";
  * output `processingTicks` later. Backpressure and belt chaining stay the engine's. Build it, then
  * `install(definition)` to set the definition's `verb`, `tickPhases`, and per-port-slot `stateColumns`.
  */
-export class EasyMachine {
+export class EasyRecipeProcessor {
 
     /**
      * @param {object} config

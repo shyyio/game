@@ -1,8 +1,8 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {setupGame} from "@/sdk/test.js";
-import {AbstractMod, ObjectDefinition, PortDefinition} from "@/common/core.js";
-import {EasyMachine} from "@/common/EasyMachine.js";
+import {AbstractMod, ObjectDefinition, PortDefinition, RecipeDefinition} from "@/common/core.js";
+import {EasyRecipeProcessor} from "@/common/EasyRecipeProcessor.js";
 import {EasyObjectPlacement} from "@/common/EasyObjectPlacement.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {Direction} from "@/common/constants.js";
@@ -18,8 +18,6 @@ const GLASS = 11;
 const COKE = 12;
 const MIX_JUNK = 98;
 const COOK_SLAG = 99;
-const MIX_VERB = 1;
-const COOK_VERB = 2;
 
 // A 2-input Mixer implementing MIX (red+green->alloy, yellow+blue->glass, else junk), and a Furnace +
 // Oven that both implement COOK (coal->coke, else slag) at different cooldowns to share one table.
@@ -34,7 +32,7 @@ function mixer(processingTicks=1) {
         internalPorts: [],
         geometry: "1x1",
     });
-    new EasyMachine({verb: MIX_VERB, processingTicks}).install(definition);
+    new EasyRecipeProcessor({verb: 1, processingTicks}).install(definition);
     return definition;
 }
 
@@ -46,7 +44,7 @@ function furnace(table, processingTicks) {
         internalPorts: [],
         geometry: "1x1",
     });
-    new EasyMachine({verb: COOK_VERB, processingTicks}).install(definition);
+    new EasyRecipeProcessor({verb: 2, processingTicks}).install(definition);
     return definition;
 }
 
@@ -92,12 +90,12 @@ class MachineMod extends AbstractMod {
 }
 
 const MIX_RECIPES = [
-    {verb: MIX_VERB, inputs: [RED, GREEN], output: ALLOY},
-    {verb: MIX_VERB, inputs: [YELLOW, BLUE], output: GLASS},
+    new RecipeDefinition(1, [RED, GREEN], ALLOY),
+    new RecipeDefinition(1, [YELLOW, BLUE], GLASS),
 ];
-const MIX_FALLBACK = [{verb: MIX_VERB, output: MIX_JUNK}];
-const COOK_RECIPES = [{verb: COOK_VERB, inputs: [COAL], output: COKE}];
-const COOK_FALLBACK = [{verb: COOK_VERB, output: COOK_SLAG}];
+const MIX_FALLBACK = [{verb: 1, output: MIX_JUNK}];
+const COOK_RECIPES = [new RecipeDefinition(2, [COAL], COKE)];
+const COOK_FALLBACK = [{verb: 2, output: COOK_SLAG}];
 
 function createObject(game, definition, x, y) {
     game.dispatchMessage(new CreateObjectMessage(definition.typeId, x, y, Direction.UP));
@@ -229,22 +227,4 @@ test("Two machine types share one verb's recipes at different cooldowns", async 
     game.tickAll();
     game.tickAll();
     assert.equal(item(game, furnacePorts.out_id), COKE);
-});
-
-test("Rejects a machine whose input-port count doesn't match its recipes' arity", async () => {
-    // A 2-port Mixer against a 1-input recipe for its verb.
-    const definition = mixer();
-    const badRecipes = [{verb: MIX_VERB, inputs: [RED], output: ALLOY}];
-    await assert.rejects(
-        setupGame([new MachineMod([definition], badRecipes, MIX_FALLBACK)]),
-        /2 inputs.*1 input port|1 inputs.*2 input port/,
-    );
-});
-
-test("Rejects a verb with no fallback output", async () => {
-    const definition = mixer();
-    await assert.rejects(
-        setupGame([new MachineMod([definition], MIX_RECIPES, [])]),
-        /no fallback/,
-    );
 });

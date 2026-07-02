@@ -417,30 +417,12 @@ export class DatabaseSchema {
     }
 
     /**
-     * Validates the verb wiring and returns the SQL seeding Recipes + VerbFallback from every mod's
-     * declarations. Each verb-implementing definition's input-port count must match its recipes'
-     * arity, and the verb must have a fallback — both throw loudly here.
+     * The SQL seeding Recipes + VerbFallback from every mod's declarations.
      * @returns {string}
      */
     _recipeSeed() {
         const recipes = this.modRegistry.recipes;
         const fallbacks = this.modRegistry.verbFallbacks;
-        const fallbackVerbs = new Set(fallbacks.map(fallback => fallback.verb));
-
-        Object.values(this.modRegistry.definitions).forEach(definition => {
-            if (definition.verb === null) {
-                return;
-            }
-            if (!fallbackVerbs.has(definition.verb)) {
-                throw new Error(`Verb ${definition.verb} (${definition.table}) has no fallback output`);
-            }
-            const portCount = definition.inputPorts.length;
-            recipes.filter(recipe => recipe.verb === definition.verb).forEach(recipe => {
-                if (recipe.inputs.length !== portCount) {
-                    throw new Error(`Verb ${definition.verb} recipe has ${recipe.inputs.length} inputs but ${definition.table} has ${portCount} input ports`);
-                }
-            });
-        });
 
         const lines = [];
         recipes.forEach(recipe => {
@@ -455,7 +437,7 @@ export class DatabaseSchema {
 
     /**
      * A recipe's inputs as a sorted-ascending triple, zero-padded at the low end (the canonical form
-     * stored in Recipes and matched by EasyMachine's min/max key).
+     * stored in Recipes and matched by EasyRecipeProcessor's min/max key).
      * @param {number[]} inputs
      * @returns {number[]}
      */

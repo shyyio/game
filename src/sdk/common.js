@@ -15,6 +15,7 @@ export {
     AbstractMod,              // base class every mod extends
     ObjectDefinition, // declares a placeable object: ports, geometry, per-tick ops
     PortDefinition,   // one input/output/internal port on an object (position + facing)
+    RecipeDefinition, // one verb recipe: an input item set mapping to an output item
     SqlStatement,           // a SQL statement run during one tick phase
     TickPhase,        // enum of the per-tick phases ops are scheduled into
     MiniMenuEntry,    // one entry in the right-click / long-press context menu
@@ -85,7 +86,7 @@ export {EasyObjectPlacement} from "@/common/EasyObjectPlacement.js";
 // Base-case machine behavior: implement one verb over the shared Recipes table — gather one input per
 // port, match the set (fallback when none), then after a countdown create the output, all via transfer
 // intents. Build it, then `install(definition)` to set the definition's verb/tickPhases/stateColumns.
-export {EasyMachine} from "@/common/EasyMachine.js";
+export {EasyRecipeProcessor} from "@/common/EasyRecipeProcessor.js";
 
 // Rotates a `{x, y}` offset (a port or size vector) by a placement direction, so a mod
 // can compute where an object's ports/geometry land from its ObjectDefinition.

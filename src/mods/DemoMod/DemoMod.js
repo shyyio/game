@@ -1,19 +1,19 @@
 // Reference mod: a 1x1 furnace that "cooks" one input item into an output (or Junk when the item has
-// no recipe), sharing its ports with adjacent belts. Just ports + an EasyMachine; the rest is Easy*.
+// no recipe), sharing its ports with adjacent belts. Just ports + an EasyRecipeProcessor; the rest is Easy*.
 import {
     AbstractMod,
     EasyObjectPlacement,
-    EasyMachine,
+    EasyRecipeProcessor,
     ObjectDefinition,
     PortDefinition,
+    RecipeDefinition,
     Direction,
     DeleteObjectMessage,
     MiniMenuEntry,
 } from "@/sdk/common.js";
 import {EasyObjectTool, EasyObjectGhostLayer, EasyObjectDrawLayer, InspectHighlight} from "@/sdk/client.js";
 
-// The verb the furnace implements, the item it cooks, and the outputs (a real product + the fallback).
-export const DEMO_COOK_VERB = 1;
+// The item the furnace cooks and the outputs (a real product + the fallback).
 export const DEMO_INPUT_ITEM_TYPE = 7;
 export const DEMO_OUTPUT_ITEM_TYPE = 101;
 export const DEMO_JUNK_ITEM_TYPE = 102;
@@ -29,9 +29,11 @@ export const DemoMachineDefinition = new ObjectDefinition({
     label: "Machine",
 });
 
+const VERB_COOK = 1;
+
 // A Cook furnace: gathers its one input, produces the recipe's output 2 ticks later; install sets
 // verb + tickPhases + stateColumns.
-new EasyMachine({verb: DEMO_COOK_VERB, processingTicks: 2}).install(DemoMachineDefinition);
+new EasyRecipeProcessor({verb: VERB_COOK, processingTicks: 2}).install(DemoMachineDefinition);
 
 export class DemoMod extends AbstractMod {
 
@@ -51,13 +53,13 @@ export class DemoMod extends AbstractMod {
 
     get recipes() {
         return [
-            {verb: DEMO_COOK_VERB, inputs: [DEMO_INPUT_ITEM_TYPE], output: DEMO_OUTPUT_ITEM_TYPE}
+            new RecipeDefinition(VERB_COOK, [DEMO_INPUT_ITEM_TYPE], DEMO_OUTPUT_ITEM_TYPE)
         ];
     }
 
     get verbFallbacks() {
         return [
-            {verb: DEMO_COOK_VERB, output: DEMO_JUNK_ITEM_TYPE}
+            {verb: VERB_COOK, output: DEMO_JUNK_ITEM_TYPE}
         ];
     }
 

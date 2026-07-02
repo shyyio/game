@@ -110,7 +110,7 @@ export class ModRegistry {
 
     /**
      * Every mod's recipes, for seeding the shared Recipes table.
-     * @returns {{verb: number, inputs: number[], output: number}[]}
+     * @returns {RecipeDefinition[]}
      */
     get recipes() {
         return this.mods.flatMap(mod => mod.recipes);
