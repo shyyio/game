@@ -18,8 +18,10 @@ const GLASS = 11;
 const COKE = 12;
 const MIX_JUNK = 98;
 const COOK_SLAG = 99;
+const INVERSE_ALLOY = 13;
 
-// A 2-input Mixer implementing MIX (red+green->alloy, yellow+blue->glass, else junk), and a Furnace +
+// A 2-input Mixer implementing MIX (red+green->alloy, green+red->inverse alloy, yellow+blue->glass,
+// else junk), and a Furnace +
 // Oven that both implement COOK (coal->coke, else slag) at different cooldowns to share one table.
 function mixer(processingTicks=1) {
     const definition = new ObjectDefinition({
@@ -91,6 +93,7 @@ class MachineMod extends AbstractMod {
 
 const MIX_RECIPES = [
     new RecipeDefinition(1, [RED, GREEN], ALLOY),
+    new RecipeDefinition(1, [GREEN, RED], INVERSE_ALLOY),
     new RecipeDefinition(1, [YELLOW, BLUE], GLASS),
 ];
 const MIX_FALLBACK = [{verb: 1, output: MIX_JUNK}];
@@ -134,18 +137,18 @@ test("Mixes two inputs into the recipe output", async () => {
     assert.equal(item(game, p.out_id), ALLOY);
 });
 
-test("Matches inputs regardless of which port they arrive on", async () => {
+test("Matches inputs by port order", async () => {
     const definition = mixer();
     const game = await setupGame([new MachineMod([definition], MIX_RECIPES, MIX_FALLBACK)]);
     createObject(game, definition, 5, 5);
     const p = ports(game, "Mixer", ["a_id", "b_id", "out_id"]);
 
-    // Swap the ports vs. the recipe order: green on a, red on b — still matches red+green.
+    // Same items, swapped ports: green on a, red on b matches green+red, not red+green.
     inject(game, p.a_id, GREEN);
     inject(game, p.b_id, RED);
     game.tickAll();
     game.tickAll();
-    assert.equal(item(game, p.out_id), ALLOY);
+    assert.equal(item(game, p.out_id), INVERSE_ALLOY);
 });
 
 test("Produces the verb fallback for an input combination with no recipe", async () => {

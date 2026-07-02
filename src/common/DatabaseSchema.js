@@ -103,8 +103,8 @@ const CoreSchema = `
     );
     CREATE INDEX BufferedEvent_chunk ON BufferedEvent(chunk);
 
-    -- A verb's recipes: a sorted-canonical input set (input_1<=input_2<=input_3, 0 = unused slot)
-    -- maps to one output. Shared across every machine implementing the verb; seeded from mods.
+    -- A verb's recipes: an input list in port order (input_N = the Nth input port's item, 0 = unused
+    -- slot) maps to one output. Shared across every machine implementing the verb; seeded from mods.
     CREATE TABLE Recipes (
         verb INT NOT NULL,
         input_1 INT NOT NULL,
@@ -426,7 +426,7 @@ export class DatabaseSchema {
 
         const lines = [];
         recipes.forEach(recipe => {
-            const [input1, input2, input3] = this._canonicalInputs(recipe.inputs);
+            const [input1, input2, input3] = this._paddedInputs(recipe.inputs);
             lines.push(`INSERT INTO Recipes (verb, input_1, input_2, input_3, output_item) VALUES (${recipe.verb}, ${input1}, ${input2}, ${input3}, ${recipe.output});`);
         });
         fallbacks.forEach(fallback => {
@@ -436,17 +436,17 @@ export class DatabaseSchema {
     }
 
     /**
-     * A recipe's inputs as a sorted-ascending triple, zero-padded at the low end (the canonical form
-     * stored in Recipes and matched by EasyRecipeProcessor's min/max key).
+     * A recipe's inputs as a triple in port order, zero-padded at the high end (the form stored in
+     * Recipes and matched by EasyRecipeProcessor's slot keys).
      * @param {number[]} inputs
      * @returns {number[]}
      */
-    _canonicalInputs(inputs) {
-        const sorted = [...inputs].sort((a, b) => a - b);
-        while (sorted.length < 3) {
-            sorted.unshift(0);
+    _paddedInputs(inputs) {
+        const padded = [...inputs];
+        while (padded.length < 3) {
+            padded.push(0);
         }
-        return sorted;
+        return padded;
     }
 
     /**

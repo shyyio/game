@@ -103,7 +103,7 @@ export class RecipeDefinition {
 
     /**
      * @param {number} verb
-     * @param {number[]} inputs
+     * @param {number[]} inputs - one item per input port, in port order
      * @param {number} output
      */
     constructor(verb, inputs, output) {
@@ -161,8 +161,7 @@ export class ObjectDefinition {
         // Extra non-port columns for the table (e.g. a machine's slots/cooldown), appended by
         // EasyObjectPlacement.
         this.stateColumns = [];
-        // The verb this object implements over the shared Recipes table, or null. Set by EasyRecipeProcessor;
-        // the schema seed validates each verb's recipes against the object's input-port count.
+        // The verb this object implements over the shared Recipes table, or null. Set by EasyRecipeProcessor.
         this.verb = null;
     }
 

@@ -3,8 +3,8 @@ import {SqlStatement, TickPhase} from "@/common/core.js";
 /**
  * The base-case machine behavior: implement one `verb` over the shared Recipes table. Each input port
  * gathers one item — consumed immediately via a sink (a mod never writes Port directly) and recorded in
- * that port's slot. Once every port has contributed, the machine matches the sorted slot set against the
- * verb's recipes (falling back to the verb's fallback output when none matches), then produces the
+ * that port's slot. Once every port has contributed, the machine matches the slots in port order against
+ * the verb's recipes (falling back to the verb's fallback output when none matches), then produces the
  * output `processingTicks` later. Backpressure and belt chaining stay the engine's. Build it, then
  * `install(definition)` to set the definition's `verb`, `tickPhases`, and per-port-slot `stateColumns`.
  */
@@ -42,15 +42,12 @@ export class EasyRecipeProcessor {
             "processing_output INT",
         ];
 
-        // The gathered slots as a sorted key (input_1<=input_2<=input_3, 0-padded low) matching the
-        // canonical form stored in Recipes. Scalar min/max need >=2 args, so pad to 3.
-        const values = inputPorts.map(port => `COALESCE(${slot(port)}, 0)`);
-        while (values.length < 3) {
-            values.push("0");
+        // The gathered slots in port order (input_N = Nth input port, 0 = unused slot), matching the
+        // form stored in Recipes.
+        const keys = inputPorts.map(port => `COALESCE(${slot(port)}, 0)`);
+        while (keys.length < 3) {
+            keys.push("0");
         }
-        const key1 = `min(${values.join(", ")})`;
-        const key3 = `max(${values.join(", ")})`;
-        const key2 = `(${values.join(" + ")} - ${key1} - ${key3})`;
 
         const allFilled = inputPorts.map(port => `${slot(port)} IS NOT NULL`).join(" AND ");
         const clearSlots = inputPorts.map(port => `${slot(port)} = NULL`).join(", ");
@@ -89,13 +86,13 @@ export class EasyRecipeProcessor {
                     ),
                 ]),
                 new SqlStatement(
-                    // Every port contributed: match the set against the verb's recipes (fallback when none),
+                    // Every port contributed: match the slots against the verb's recipes (fallback when none),
                     // start the cooldown, and clear the slots for the next batch.
                     `${table}Resolve`,
                     `UPDATE ${table} SET
                         processing_output = COALESCE(
                             (SELECT r.output_item FROM Recipes r
-                             WHERE r.verb = ${verb} AND r.input_1 = ${key1} AND r.input_2 = ${key2} AND r.input_3 = ${key3}),
+                             WHERE r.verb = ${verb} AND r.input_1 = ${keys[0]} AND r.input_2 = ${keys[1]} AND r.input_3 = ${keys[2]}),
                             (SELECT f.output_item FROM VerbFallback f WHERE f.verb = ${verb})
                         ),
                         cooldown = ${processingTicks},
