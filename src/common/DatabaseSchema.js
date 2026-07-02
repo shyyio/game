@@ -78,9 +78,9 @@ const CoreSchema = `
         item INT,
 
         -- Set by a mod when the port is an object's input port. Lets a mod build a
-        -- partial index of filled input ports (item IS NOT NULL AND is_in_port = 1)
+        -- partial index of filled input ports (item IS NOT NULL AND is_input_port = 1)
         -- so a tick can find ports taking input directly.
-        is_in_port INT NOT NULL DEFAULT 0
+        is_input_port INT NOT NULL DEFAULT 0
     );
 
     -- Filled ports — the items resting in ports a mod renders. Sparse (few items sit

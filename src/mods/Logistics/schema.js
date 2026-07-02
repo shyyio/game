@@ -70,12 +70,12 @@ export const beltSchema = `
     CREATE INDEX BeltPath_next_item ON BeltPath(id) WHERE next_item_id IS NOT NULL;
     CREATE INDEX BeltPath_next_gap  ON BeltPath(id) WHERE next_gap_id IS NOT NULL;
 
-    -- Enumerates only the *filled* in-ports (core Port.is_in_port is set when a path is
+    -- Enumerates only the *filled* in-ports (core Port.is_input_port is set when a path is
     -- wired, see MarkPortAsInput), so the tick's input-activation reads just the in-ports
     -- holding an item. SQLite re-checks the partial
     -- predicate on every Port.item write, so a newly filled in-port enters the index no
     -- matter which code path filled it.
-    CREATE INDEX Port_in_filled ON Port(id) WHERE item IS NOT NULL AND is_in_port = 1;
+    CREATE INDEX Port_in_filled ON Port(id) WHERE item IS NOT NULL AND is_input_port = 1;
 
     CREATE TABLE BeltPathItem (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

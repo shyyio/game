@@ -180,7 +180,7 @@ export const BeltDefinition = new BeltObjectDefinition({
                  FROM Port inPort INDEXED BY Port_in_filled
                     INNER JOIN BeltPath path ON path.in_port_id = inPort.id
                  WHERE inPort.item IS NOT NULL
-                   AND inPort.is_in_port = 1
+                   AND inPort.is_input_port = 1
                    AND (path.head_gap > 0 OR path.next_gap_id IS NOT NULL);`
             ),
         ],
@@ -288,7 +288,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             // tick before the downstream path ingests it.
             //
             // INDEXED BY pins the query plan to the Port_in_filled partial index (the
-            // is_in_port = 1 predicate matches it), so this reads only the filled
+            // is_input_port = 1 predicate matches it), so this reads only the filled
             // *in*-ports.
             new SqlStatement(
                 "ActivePathInput",
@@ -297,7 +297,7 @@ export const BeltDefinition = new BeltObjectDefinition({
                  FROM Port inPort INDEXED BY Port_in_filled
                     INNER JOIN BeltPath path ON path.in_port_id = inPort.id
                  WHERE inPort.item IS NOT NULL
-                   AND inPort.is_in_port = 1;`
+                   AND inPort.is_input_port = 1;`
             ),
 
             // Snapshot the max row id so the rows InsertItem appends (higher ids) can

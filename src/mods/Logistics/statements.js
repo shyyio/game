@@ -580,7 +580,7 @@ export const beltStatements = [
     // dropped outright when the path is removed.
     new SqlStatement("MarkPortAsInput", `
         UPDATE Port
-        SET is_in_port=1
+        SET is_input_port=1
         WHERE id = CAST(@port AS INT)
     `),
 
