@@ -1,11 +1,5 @@
-// Haptic (rumble) feedback for touch devices, via the Web Vibration API.
-//
-// Support is uneven: Android Chrome/Firefox vibrate, while iOS Safari exposes no
-// `navigator.vibrate` at all. The API also only fires inside a user gesture (a
-// tap), which is exactly when this is used. Everywhere it isn't available it
-// degrades to a silent no-op, so callers never need to feature-check.
+// Haptic feedback via Web Vibration API; silent no-op where unavailable.
 
-// A short pulse for a discrete action: a button tap or a placement.
 const TAP_DURATION_MS = 10;
 
 class Haptics {
@@ -16,7 +10,7 @@ class Haptics {
     }
 
     /**
-     * Whether the device exposes the Vibration API.
+     * Whether the Vibration API is available.
      * @returns {boolean}
      */
     get supported() {
@@ -24,7 +18,7 @@ class Haptics {
     }
 
     /**
-     * A short pulse acknowledging a discrete action (button tap, placement).
+     * Short pulse for a discrete action.
      * @returns {void}
      */
     tap() {
@@ -32,7 +26,7 @@ class Haptics {
     }
 
     /**
-     * Plays a vibration (a duration in ms or on/off pattern); ignored where unavailable.
+     * Play a vibration; ignored where unavailable.
      * @param {number|number[]} pattern - duration in ms, or alternating on/off ms
      * @returns {void}
      */

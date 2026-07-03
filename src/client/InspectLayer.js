@@ -2,8 +2,7 @@ import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {EasySprite} from "@/client/EasySprite.js";
 
 /**
- * Shared layer that highlights objects a mod marks on hover; driven imperatively by mods with
- * InspectHighlights.
+ * Draws inspect highlights on hover. Mods drive it with InspectHighlights.
  */
 export class InspectLayer extends AbstractDrawLayer {
 
@@ -13,17 +12,16 @@ export class InspectLayer extends AbstractDrawLayer {
     }
 
     get layerIndex() {
-        // Above the object/overlay/ghost layers so the highlight sits on top.
+        // Above object/overlay/ghost layers.
         return 300;
     }
 
     onEvent(event) {
-        // No-op: the inspect highlight is driven by hover, not by game events.
+        // No-op: driven by hover, not game events.
     }
 
     /**
-     * Highlights the given objects, replacing any previous (empty clears). Each is sized/rotated to its
-     * geometry — a 1x2 splitter draws a single 1x2 highlight; `alt` uses the alternate texture.
+     * Replaces the current highlights (empty clears).
      * @param {InspectHighlight[]} highlights
      */
     show(highlights) {

@@ -1,15 +1,14 @@
 /**
- * One inspect-hover highlight: an object outlined at a tile, sized/rotated to its geometry. A mod's
- * `onInspect` returns an array of these; the InspectLayer renders each as an `inspect/<geometry>` sprite.
+ * One highlight drawn when inspecting an object. Mods return these from `onInspect`.
  */
 export class InspectHighlight {
 
     /**
      * @param {number} tileX
      * @param {number} tileY
-     * @param {Direction} direction - the object's facing (rotates/sizes the highlight)
-     * @param {ObjectDefinition} definition - its geometry picks the inspect texture and the footprint
-     * @param {boolean} [alt] - use the alternate texture (a related/secondary highlight)
+     * @param {Direction} direction - object facing
+     * @param {ObjectDefinition} definition - picks the texture and footprint
+     * @param {boolean} [alt] - use the alternate texture
      */
     constructor(tileX, tileY, direction, definition, alt=false) {
         this.tileX = tileX;

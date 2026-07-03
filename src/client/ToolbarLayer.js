@@ -1,8 +1,7 @@
 import {Container, Graphics, Sprite, Text, isMobile} from "pixi.js";
 import Haptics from "@/client/Haptics.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {easeOutBack, easeInCubic} from "@/client/easing.js";
-import {Tween} from "@/client/Tween.js";
+import {Tween, easeOutBack, easeInCubic} from "@/client/Tween.js";
 
 const SQUARE_SIZE = 56;
 const SQUARE_RADIUS = 6;
