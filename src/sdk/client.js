@@ -57,7 +57,7 @@ export {TILE_SIZE, snapToTile, snapToChunk} from "@/client/constants.js";
 export {drawLine, drawRect, drawCircle} from "@/client/pixiUtils.js";
 
 // `DEBUG_COLOR(n)` maps a numeric id to a stable color from a fixed debug palette.
-export {DEBUG_COLOR} from "@/client/constants.js";
+export {DEBUG_COLOR} from "@/client/Theme.js";
 
 // Shared placement-ghost palette + center-lock target-tile marker, for tool ghost layers.
 export {
@@ -67,7 +67,7 @@ export {
     TARGET_TILE_COLOR,
     TARGET_TILE_FILL_ALPHA,
     TARGET_TILE_BORDER_WIDTH,
-} from "@/client/constants.js";
+} from "@/client/Theme.js";
 
 // ---- Animation ----
 // Shared mod-8 animation clock: every animated sequence has 8 frames named

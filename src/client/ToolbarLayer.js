@@ -1,6 +1,14 @@
 import {Container, Graphics, Sprite, Text, isMobile} from "pixi.js";
 import Haptics from "@/client/Haptics.js";
 import {GAME_FONT} from "@/client/constants.js";
+import {
+    TOOLBAR_FILL,
+    TOOLBAR_BORDER,
+    TOOLBAR_TEXT,
+    TOOLBAR_SLOT_FILL,
+    TOOLBAR_SLOT_ACTIVE_FILL,
+    ACTIVE_ACCENT,
+} from "@/client/Theme.js";
 import {Tween, easeOutBack, easeInCubic} from "@/client/Tween.js";
 
 const SQUARE_SIZE = 56;
@@ -206,8 +214,8 @@ export class ToolbarLayer extends Container {
         const bottomBleed = MARGIN_BOTTOM + DRAWER_BOTTOM_PAD + this._slideDistance * OPEN_OVERSHOOT;
         this._panelBg.clear()
             .roundRect(0, 0, this._panelWidth, PANEL_PADDING + content + bottomBleed, PANEL_RADIUS)
-            .fill({color: 0xe6ddcc, alpha: 0.95})
-            .stroke({color: 0xbbb2a0, width: 1});
+            .fill({color: TOOLBAR_FILL, alpha: 0.95})
+            .stroke({color: TOOLBAR_BORDER, width: 1});
     }
 
     /**
@@ -231,7 +239,7 @@ export class ToolbarLayer extends Container {
         if (label !== null) {
             const text = new Text({
                 text: label,
-                style: {fontFamily: GAME_FONT, fontSize: LABEL_SIZE, fill: 0x000000},
+                style: {fontFamily: GAME_FONT, fontSize: LABEL_SIZE, fill: TOOLBAR_TEXT},
             });
             text.x = (SQUARE_SIZE - text.width) / 2;
             text.y = SQUARE_SIZE + LABEL_GAP;
@@ -399,8 +407,8 @@ export class ToolbarLayer extends Container {
     _drawBg(bg, active) {
         bg.clear()
             .roundRect(0, 0, SQUARE_SIZE, SQUARE_SIZE, SQUARE_RADIUS)
-            .fill({color: active ? 0xd6ebff : 0xf5f0e6, alpha: 0.92})
-            .stroke({color: active ? 0x5bb5ff : 0xbbb2a0, width: active ? 2 : 1});
+            .fill({color: active ? TOOLBAR_SLOT_ACTIVE_FILL : TOOLBAR_SLOT_FILL, alpha: 0.92})
+            .stroke({color: active ? ACTIVE_ACCENT : TOOLBAR_BORDER, width: active ? 2 : 1});
     }
 
     /**

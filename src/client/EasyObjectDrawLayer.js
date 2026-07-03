@@ -1,11 +1,10 @@
 import {Graphics} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {TILE_SIZE} from "@/client/constants.js";
+import {MAP_TILE_COLOR} from "@/client/Theme.js";
 import {ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
 import {EasySprite} from "@/client/EasySprite.js";
-
-const MAP_TILE_COLOR = 0x888888;
 
 /**
  * Owns a placed object type's full client lifecycle off the generic events (cache + sprite + chunk

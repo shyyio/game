@@ -1,6 +1,7 @@
 import {Container, Graphics, Text} from "pixi.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {GAME_FONT} from "@/client/constants.js";
+import {PANEL_FILL, PANEL_FILL_ALPHA, PANEL_BORDER, PANEL_TEXT} from "@/client/Theme.js";
 
 // Screen-pixel inset of the panel from the top-left corner.
 const MARGIN = 12;
@@ -35,7 +36,7 @@ export class StatusMessageLayer extends Container {
         this._background = new Graphics();
         this._text = new Text({
             text: "",
-            style: {fontFamily: GAME_FONT, fontSize: 14, fill: 0xffffff},
+            style: {fontFamily: GAME_FONT, fontSize: 14, fill: PANEL_TEXT},
         });
         this._text.x = PADDING_X;
         this._text.y = PADDING_Y;
@@ -123,8 +124,8 @@ export class StatusMessageLayer extends Container {
         this._background
             .clear()
             .roundRect(0, 0, this._text.width + PADDING_X * 2, this._text.height + PADDING_Y * 2, 4)
-            .fill({color: 0x1a1a1a, alpha: 0.92})
-            .stroke({color: 0x555555, width: 1});
+            .fill({color: PANEL_FILL, alpha: PANEL_FILL_ALPHA})
+            .stroke({color: PANEL_BORDER, width: 1});
         this.visible = true;
     }
 }

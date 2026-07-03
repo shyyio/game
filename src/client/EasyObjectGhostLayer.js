@@ -1,7 +1,8 @@
 import {Container} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {EasySprite} from "@/client/EasySprite.js";
-import {TILE_SIZE, GHOST_TINT, GHOST_ALPHA, GHOST_BLOCKED_TINT, GHOST_BLOCKED_ALPHA} from "@/client/constants.js";
+import {TILE_SIZE} from "@/client/constants.js";
+import {GHOST_TINT, GHOST_ALPHA, GHOST_BLOCKED_TINT, GHOST_BLOCKED_ALPHA} from "@/client/Theme.js";
 
 /**
  * Placement-preview ghost: one tinted EasySprite at the hovered tile, pinned to screen center in

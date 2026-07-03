@@ -633,19 +633,24 @@ export class LogisticsClientMod extends LogisticsMod {
 
     miniMenuEntries(tileX, tileY, session, client) {
         this._useClient(client);
+        const entries = [];
         const surface = surfaceBeltAt(this._cache, tileX, tileY);
-
-        if (surface === null) {
-            return [];
-        }
-
-        return [
-            new MiniMenuEntry(
-                "Delete belt",
+        if (surface !== null) {
+            entries.push(new MiniMenuEntry(
+                "Delete Belt",
                 10,
                 () => session.sendMessage(new DeleteObjectMessage(surface.id)),
-            ),
-        ];
+            ));
+        }
+        const splitter = this._cache.objectAt(tileX, tileY, SplitterDefinition);
+        if (splitter !== null) {
+            entries.push(new MiniMenuEntry(
+                "Delete Splitter",
+                10,
+                () => session.sendMessage(new DeleteObjectMessage(splitter.id)),
+            ));
+        }
+        return entries;
     }
 
 }

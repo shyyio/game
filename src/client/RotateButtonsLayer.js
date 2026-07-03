@@ -1,6 +1,7 @@
 import {Container, Graphics, Text} from "pixi.js";
 import Haptics from "@/client/Haptics.js";
 import {GAME_FONT} from "@/client/constants.js";
+import {PANEL_FILL, PANEL_FILL_ALPHA, PANEL_BORDER, PANEL_TEXT, ACTIVE_ACCENT} from "@/client/Theme.js";
 
 const BUTTON_SIZE = 56;
 const BUTTON_RADIUS = 8;
@@ -82,19 +83,19 @@ export class RotateButtonsLayer extends Container {
 
         const bg = new Graphics();
         bg.roundRect(0, 0, BUTTON_SIZE, BUTTON_SIZE, BUTTON_RADIUS)
-            .fill({color: 0x1a1a1a, alpha: 0.92})
-            .stroke({color: 0x555555, width: 1});
+            .fill({color: PANEL_FILL, alpha: PANEL_FILL_ALPHA})
+            .stroke({color: PANEL_BORDER, width: 1});
         button.addChild(bg);
 
         // Lit on press for tap feedback, cleared on release.
         const pressBg = new Graphics();
-        pressBg.roundRect(0, 0, BUTTON_SIZE, BUTTON_SIZE, BUTTON_RADIUS).fill({color: 0x5bb5ff});
+        pressBg.roundRect(0, 0, BUTTON_SIZE, BUTTON_SIZE, BUTTON_RADIUS).fill({color: ACTIVE_ACCENT});
         pressBg.alpha = 0;
         button.addChild(pressBg);
 
         const text = new Text({
             text: label,
-            style: {fontFamily: GAME_FONT, fontSize: 30, fill: 0xffffff},
+            style: {fontFamily: GAME_FONT, fontSize: 30, fill: PANEL_TEXT},
         });
         text.x = (BUTTON_SIZE - text.width) / 2;
         text.y = (BUTTON_SIZE - text.height) / 2;

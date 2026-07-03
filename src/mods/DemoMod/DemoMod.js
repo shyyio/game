@@ -122,7 +122,7 @@ export class DemoClientMod extends DemoMod {
         }
         return [
             new MiniMenuEntry(
-                "Delete machine",
+                "Delete Machine",
                 10,
                 () => session.sendMessage(new DeleteObjectMessage(machine.id)),
             ),

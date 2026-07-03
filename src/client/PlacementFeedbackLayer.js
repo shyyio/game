@@ -1,17 +1,17 @@
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {Graphics} from "pixi.js";
+import {TILE_SIZE} from "@/client/constants.js";
 import {
-    TILE_SIZE,
     TARGET_TILE_COLOR,
     TARGET_TILE_FILL_ALPHA,
     TARGET_TILE_BORDER_WIDTH,
-} from "@/client/constants.js";
+    BLOCKED_TILE_COLOR,
+    OVERWRITE_TILE_COLOR,
+} from "@/client/Theme.js";
 
 // Per-tile placement feedback: a tile the placement can't use (red), one it would overwrite (blue),
 // and — in center-lock only — the clear geometry tiles as the green target marker. Red/blue are
 // inset warning markers; the green target fills the tile.
-const BLOCKED_TILE_COLOR = 0xF23030;
-const OVERWRITE_TILE_COLOR = 0x3098F2;
 const TILE_INSET = 8; // px inset on every side for every feedback square, so it sits inside the tile
 const MARKER_FILL_ALPHA = 0.4;
 const MARKER_BORDER_WIDTH = 4;
