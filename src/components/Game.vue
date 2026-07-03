@@ -23,6 +23,13 @@ import {GAME_FONT} from "@/client/constants.js";
 // the pixi rotate button replaces the "r" key.
 const mobile = isMobile.any;
 
+// Selecting a tool zooms in to at least this scale (a no-op if already past it): on
+// mobile, far enough that tiles are large enough to aim the center crosshair; on desktop,
+// just past the map-mode threshold (0.25) so a tool is usable without leaving map mode far.
+const TOOL_SELECT_ZOOM_MOBILE = 0.7;
+const TOOL_SELECT_ZOOM_DESKTOP = 0.4;
+const TOOL_SELECT_ZOOM_MS = 650;
+
 const gameWidth = () => window.innerWidth;
 const gameHeight = () => window.innerHeight + 64;
 
@@ -184,7 +191,28 @@ onMounted(async () => {
     }
   };
 
-  toolbar.onChange(applyEffectiveTool);
+  // Selecting a toolbar tool zooms in. On desktop the zoom homes on the mouse cursor
+  toolbar.onChange(() => {
+    applyEffectiveTool();
+    const target = mobile ? TOOL_SELECT_ZOOM_MOBILE : TOOL_SELECT_ZOOM_DESKTOP;
+    if (toolbar.activeTool == null || viewport.scale.x >= target) {
+      return;
+    }
+    const options = {
+      scale: target,
+      time: TOOL_SELECT_ZOOM_MS,
+      ease: "easeOutCubic",
+      removeOnInterrupt: true
+    };
+    if (!mobile && Mouse.currentX != null) {
+      const ratio = viewport.scale.x / target;
+      options.position = {
+        x: Mouse.currentX - (Mouse.currentX - viewport.center.x) * ratio,
+        y: Mouse.currentY - (Mouse.currentY - viewport.center.y) * ratio,
+      };
+    }
+    viewport.animate(options);
+  });
 
   const refreshTools = () => {
     toolbar.setTools(modRegistry.tools(client));
