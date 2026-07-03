@@ -15,7 +15,6 @@ import {TILE_SIZE, snapToChunk, MAP_MODE_SCALE_THRESHOLD, CHUNK_UNSUBSCRIBE_DELA
 import {CHUNK_SIZE, Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {GridDrawLayer} from "@/client/GridDrawLayer.js";
-import {MaskDrawLayer} from "@/client/MaskDrawLayer.js";
 import {PlacementFeedbackLayer} from "@/client/PlacementFeedbackLayer.js";
 import {InspectLayer} from "@/client/InspectLayer.js";
 import {ClientCache} from "@/client/ClientCache.js";
@@ -75,7 +74,6 @@ export class Client {
         this.statusLayer.setConnecting();
 
         this.drawLayerRegistry.add(new GridDrawLayer());
-        this.drawLayerRegistry.add(new MaskDrawLayer());
         this.drawLayerRegistry.add(this.placementFeedbackLayer);
         this.drawLayerRegistry.add(this.inspectLayer);
         this.drawLayerRegistry.add(this.itemLayer);

@@ -19,7 +19,7 @@ import {
     BUFFERED_EVENT_TYPE_ITEM_RESET,
     BUFFERED_EVENT_TYPE_ITEM_SYNC,
 } from "./constants.js";
-import {getUndergroundBeltsToCreate, tunnelStep, beltOccupancyLayer} from "./geometry.js";
+import {getUndergroundBeltsToCreate, isRamp, tunnelStep, beltOccupancyLayer} from "./geometry.js";
 import {beltSchema, beltTempSchema} from "./schema.js";
 import {BeltDefinition, SplitterDefinition} from "./definitions.js";
 import {beltStatements} from "./statements.js";
@@ -167,7 +167,7 @@ export class LogisticsMod extends AbstractMod {
             if (options.disconnectRampChild) {
                 this._disconnectRampChain(options);
             }
-            if (options.rampParent && (options.type === BELT_RAMP_UP || options.type === BELT_RAMP_DOWN)) {
+            if (options.rampParent && isRamp(options.type)) {
                 this._createUndergrounds(options);
             }
 
@@ -561,7 +561,7 @@ export class LogisticsMod extends AbstractMod {
      * @param {{x: number, y: number, type: number, rampParent: BigInt, disconnectRampChild: BigInt}} options
      */
     _disconnectRampChain(options) {
-        if (!options.rampParent || (options.type !== BELT_RAMP_UP && options.type !== BELT_RAMP_DOWN)) {
+        if (!options.rampParent || !isRamp(options.type)) {
             this.game.rollback();
             throw new Error("belt error");
         }

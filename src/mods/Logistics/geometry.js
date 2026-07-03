@@ -118,6 +118,15 @@ export function walkTunnel(index, ramp) {
 // ---- Underground belt helpers ----
 
 /**
+ * Whether a belt type is a ramp entrance or exit.
+ * @param {number} type
+ * @returns {boolean}
+ */
+export function isRamp(type) {
+    return type === BELT_RAMP_UP || type === BELT_RAMP_DOWN;
+}
+
+/**
  * The per-step (dx, dy) for walking a ramp's tunnel (a RAMP_UP steps against its facing, a RAMP_DOWN along it).
  * @param {number} rampType BELT_RAMP_UP or BELT_RAMP_DOWN
  * @param {Direction} direction the ramp's facing
@@ -135,7 +144,7 @@ export function tunnelStep(rampType, direction) {
  */
 export function getUndergroundBeltsToCreate(rampParent, options) {
     if (rampParent === null || rampParent.direction !== options.direction
-        || (rampParent.type !== BELT_RAMP_DOWN && rampParent.type !== BELT_RAMP_UP)
+        || !isRamp(rampParent.type)
         || (rampParent.x !== options.x && rampParent.y !== options.y)) {
         throw new Error("Invalid ramp parent for underground belt creation");
     }

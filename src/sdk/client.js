@@ -78,4 +78,4 @@ export {currentAnimationFrame} from "@/client/animation.js";
 // ---- Pixi types ----
 // Passed through so mods share the engine's single Pixi instance rather than
 // bundling their own (multiple Pixi copies break rendering).
-export {Graphics, Sprite, Texture, Container} from "pixi.js";
+export {Graphics, Rectangle, Sprite, Texture, Container} from "pixi.js";

@@ -21,7 +21,7 @@ import {
     BUFFERED_EVENT_TYPE_ITEM_RESET,
     BUFFERED_EVENT_TYPE_ITEM_SYNC,
 } from "./constants.js";
-import {surfaceBeltAt, walkTunnel, beltOccupancyLayer, inferBeltParent} from "./geometry.js";
+import {surfaceBeltAt, walkTunnel, tunnelStep, isRamp, beltOccupancyLayer, inferBeltParent} from "./geometry.js";
 import {
     MiniMenuEntry,
     ChunkUnsubscribeEvent,
@@ -35,6 +35,8 @@ import {
     EasyObjectGhostLayer,
     EasyObjectDrawLayer,
     InspectHighlight,
+    Rectangle,
+    TILE_SIZE,
 } from "@/sdk/client.js";
 
 export class LogisticsClientMod extends LogisticsMod {
@@ -139,6 +141,10 @@ export class LogisticsClientMod extends LogisticsMod {
             return;
         }
         if (event instanceof BeltDeleteEvent) {
+            const record = this._cache.get(event.id);
+            if (record !== null && isRamp(record.data.type)) {
+                this._removeRampMasks(event.id);
+            }
             this._cache.remove(event.id);
             this._beltLayer.removeBelt(event.id);
             this._clearPathItems(event.id);
@@ -155,6 +161,9 @@ export class LogisticsClientMod extends LogisticsMod {
             this._cache.getByChunk(event.chunk).forEach(record => {
                 if (record.data.definition === BeltDefinition) {
                     removedBelts.add(record.id);
+                    if (isRamp(record.data.type)) {
+                        this._removeRampMasks(record.id);
+                    }
                     this._beltLayer.removeBelt(record.id);
                     this._clearPathItems(record.id);
                     this._pathParts.delete(record.id);
@@ -403,7 +412,7 @@ export class LogisticsClientMod extends LogisticsMod {
             if (row.type !== ITEM_TYPE_GAP) {
                 const belt = this._resolveItemBelt(pathId, slot);
                 if (belt !== null) {
-                    this._itemLayer.moveItem(rowId, belt.tileX, belt.tileY, belt.halfTile, belt.sourceDir, row.type, snap);
+                    this._itemLayer.moveItem(rowId, belt.tileX, belt.tileY, belt.halfTile, belt.sourceDir, row.type, snap, belt.hidden);
                 }
             }
             slot += row.length;
@@ -434,7 +443,7 @@ export class LogisticsClientMod extends LogisticsMod {
      * Returns null when the path or belt isn't cached yet.
      * @param {BigInt} pathId
      * @param {number} slot
-     * @returns {{tileX: number, tileY: number, sourceDir: Direction, halfTile: boolean}|null}
+     * @returns {{tileX: number, tileY: number, sourceDir: Direction, halfTile: boolean, hidden: boolean}|null}
      * @private
      */
     _resolveItemBelt(pathId, slot) {
@@ -450,18 +459,65 @@ export class LogisticsClientMod extends LogisticsMod {
         if (record === null) {
             return null;
         }
+        const halfTile = slot % 2 === 1;
+        // A non-head belt's feeder is the next part toward the input; only the head
+        // (fed through its in-port by an unknown neighbor) needs cache inference.
+        const sourceDir = beltIndex + 1 < parts.length
+            ? this._pathSourceDirection(record, parts[beltIndex + 1])
+            : this._sourceDirection(record);
         return {
             tileX: record.tileX,
             tileY: record.tileY,
-            sourceDir: this._sourceDirection(record),
-            halfTile: slot % 2 === 1,
+            sourceDir: sourceDir,
+            halfTile: halfTile,
+            // Boundary half slots: a ramp-up's is still buried; the first buried tile's
+            // renders, covered by the roof and threshold occluders.
+            hidden: (record.data.type === BeltType.UNDERGROUND
+                    && !(halfTile && this._rampDownBehind(record)))
+                || (record.data.type === BeltType.RAMP_UP && halfTile),
         };
     }
 
     /**
-     * The direction toward the object feeding `record` — the side an item enters from
-     * (perpendicular to the flow on a bend), inferred from the cache. Falls back to opposite
-     * the flow for a head belt (fed by its in-port) or one with no cached feeder.
+     * Whether the tile behind a buried belt (toward its source) holds the tunnel's
+     * entrance ramp — marking it as the first buried tile.
+     * @param {CacheEntry} record - underground belt cache entry
+     * @returns {boolean}
+     * @private
+     */
+    _rampDownBehind(record) {
+        const direction = record.data.direction;
+        const behind = this._cache.getAtTile(
+            record.tileX - Direction.dx(direction),
+            record.tileY - Direction.dy(direction),
+        );
+        return behind.some(neighbor =>
+            neighbor.data.type === BeltType.RAMP_DOWN && neighbor.data.direction === direction);
+    }
+
+    /**
+     * The direction toward the path belt feeding `record`; opposite the flow when the
+     * feeder isn't cached.
+     * @param {CacheEntry} record - belt cache entry
+     * @param {BigInt} feederId - the next part toward the input
+     * @returns {Direction}
+     * @private
+     */
+    _pathSourceDirection(record, feederId) {
+        const feeder = this._cache.get(feederId);
+        if (feeder === null) {
+            return Direction.invert(record.data.direction);
+        }
+        return Direction.fromDelta(
+            Math.sign(feeder.tileX - record.tileX),
+            Math.sign(feeder.tileY - record.tileY),
+        );
+    }
+
+    /**
+     * The direction toward the object feeding a head belt through its in-port — the side
+     * an item enters from, inferred from the cache. Falls back to opposite the flow when
+     * no feeder is cached.
      * @param {CacheEntry} record - belt cache entry
      * @returns {Direction}
      * @private
@@ -476,6 +532,7 @@ export class LogisticsClientMod extends LogisticsMod {
 
     /**
      * Adds a belt to the viewport cache and the draw layer (shared by inserts and syncs).
+     * A ramp also masks the item layer with its roof, so items seem to pass beneath it.
      * @param {BeltInsertEvent|BeltSyncEvent} event
      * @private
      */
@@ -498,6 +555,39 @@ export class LogisticsClientMod extends LogisticsMod {
         );
         // Bend is derived from neighbors by the belt layer on structural cache changes; added straight.
         this._beltLayer.addBelt(event.id, event.x, event.y, event.direction, event.beltType);
+        if (isRamp(event.beltType)) {
+            this._addRampMasks(event);
+        }
+    }
+
+    /**
+     * Adds a ramp's two item occluders: a roof over its own tile and a threshold strip on the
+     * buried neighbor.
+     * @param {BeltInsertEvent|BeltSyncEvent} event
+     * @private
+     */
+    _addRampMasks(event) {
+        // A RAMP_DOWN's roof sits on its up edge (the tunnel mouth it faces into), a RAMP_UP's
+        // on its down edge (where items surface); the facing rotation orients both.
+        const roofY = event.beltType === BeltType.RAMP_UP ? TILE_SIZE - 36 : 0;
+        const roof = new Rectangle(0, roofY, TILE_SIZE, 36);
+        this._itemLayer.addMask(`roof:${event.id}`, event.x, event.y, roof, event.direction);
+        const step = tunnelStep(event.beltType, event.direction);
+        // The band sits on the rect's up edge; rotating by the direction from the threshold
+        // tile back toward the ramp lands it on the shared edge.
+        const edgeDir = Direction.fromDelta(-step.dx, -step.dy);
+        const threshold = new Rectangle(0, 0, TILE_SIZE, TILE_SIZE / 4);
+        this._itemLayer.addMask(`threshold:${event.id}`, event.x + step.dx, event.y + step.dy, threshold, edgeDir);
+    }
+
+    /**
+     * Removes a ramp's roof and threshold occluders.
+     * @param {BigInt} id - the ramp's belt id
+     * @private
+     */
+    _removeRampMasks(id) {
+        this._itemLayer.removeMask(`roof:${id}`);
+        this._itemLayer.removeMask(`threshold:${id}`);
     }
 
     /**
@@ -515,8 +605,7 @@ export class LogisticsClientMod extends LogisticsMod {
         this._useClient(client);
         const records = this._cache.getAtTile(tileX, tileY);
         const surface = surfaceBeltAt(this._cache, tileX, tileY);
-        const ramp = records.find(record =>
-            record.data.type === BeltType.RAMP_DOWN || record.data.type === BeltType.RAMP_UP);
+        const ramp = records.find(record => isRamp(record.data.type));
         const tunnel = ramp === undefined ? null : walkTunnel(this._cache, ramp);
 
         // Highlight the hovered surface belt/ramp (buried undergrounds aren't drawn),
