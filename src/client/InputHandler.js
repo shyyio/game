@@ -239,14 +239,16 @@ export class InputHandler {
             console.trace("Mini menu opened before a click handler was registered");
             return;
         }
-        // Pin the inspect highlight to the menu's tile and freeze hover so it stays put
-        // while the menu is open. On close, clear it and resume hover from the current
-        // tile so selecting an entry doesn't immediately re-inspect under the cursor.
-        Mouse.setHoverEnabled(false);
-        this._emitInspect(tileX, tileY);
+        // Open first: this closes any prior menu, firing its onClose (which resumes hover
+        // and clears the old highlight). Only then pin the inspect highlight to this menu's
+        // tile and freeze hover, so a reopen doesn't get its freeze clobbered by the old
+        // menu's teardown. On close, clear it and resume hover from the current tile so
+        // selecting an entry doesn't immediately re-inspect under the cursor.
         this._onMiniMenuEntryClick(tileX, tileY, screenX, screenY, () => {
             this._emitInspect(null, null);
             Mouse.resumeHoverOnMove();
         });
+        Mouse.setHoverEnabled(false);
+        this._emitInspect(tileX, tileY);
     }
 }
