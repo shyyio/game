@@ -246,15 +246,29 @@ export class ToolbarLayer extends Container {
             square.addChild(text);
         }
 
+        // The pointer id whose press landed on this square; a tap only counts if release matches, so a
+        // map drag or pinch that merely ends over the square (its press was elsewhere) never clicks.
+        square._pressPointerId = null;
         // Swallow the press so it neither pans the viewport nor places a tile beneath.
-        square.on("pointerdown", (e) => e.nativeEvent.stopPropagation());
-        // Act on release, unless the gesture became a drawer drag (then it's not a tap).
-        square.on("pointerup", () => {
-            if (this._dragMoved) {
+        square.on("pointerdown", (e) => {
+            e.nativeEvent.stopPropagation();
+            // Only the primary button arms a tap; a right/middle press never counts as a click.
+            if (e.button === 0) {
+                square._pressPointerId = e.pointerId;
+            }
+        });
+        // Act on release only when this square held the press, and the gesture didn't become a drawer drag.
+        square.on("pointerup", (e) => {
+            const pressed = square._pressPointerId === e.pointerId;
+            square._pressPointerId = null;
+            if (!pressed || this._dragMoved) {
                 return;
             }
             Haptics.tap();
             onPress();
+        });
+        square.on("pointerupoutside", () => {
+            square._pressPointerId = null;
         });
         return square;
     }
