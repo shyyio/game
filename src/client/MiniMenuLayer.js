@@ -73,13 +73,14 @@ export class MiniMenuLayer extends Container {
         const allEntries = [...entries, new MiniMenuEntry("Cancel", -Infinity, () => {})];
 
         this._menu = new Container();
-        this._menu.x = screenX;
-        this._menu.y = screenY;
 
         const labels = allEntries.map(entry => buildLabel(entry.label));
 
         const menuWidth = Math.max(...labels.map(l => l.width)) + ITEM_PADDING_X * 2;
         const menuHeight = allEntries.length * ITEM_HEIGHT + PADDING * 2;
+
+        this._menu.x = screenX - menuWidth / 2;
+        this._menu.y = screenY;
 
         const bg = new Graphics();
         bg.rect(0, 0, menuWidth, menuHeight)
