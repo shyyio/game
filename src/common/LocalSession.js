@@ -93,4 +93,8 @@ export class LocalSession extends AbstractSession {
         const encoded = this.api.wire.encode(event);
         this.client.publishEvent(this.api.wire.decode(encoded), encoded.length);
     }
+
+    get playerId() {
+        return 0;
+    }
 }

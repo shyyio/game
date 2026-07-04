@@ -73,8 +73,7 @@ export class Game {
      * @param {AbstractSession} session
      */
     connect(session) {
-        // TODO: Get player ID from session
-        const sessionId = this.queryScalar("InsertSession", {player_id: 0});
+        const sessionId = this.queryScalar("InsertSession", {player_id: session.playerId});
         session.setId(sessionId);
         this.sessions[sessionId] = session;
 
@@ -91,9 +90,12 @@ export class Game {
         session.publishEvent(new GameSettingsSyncEvent(infoValues));
     }
 
+    /**
+     * @param session {AbstractSession}
+     * @private
+     */
     _syncPlayerSettings(session) {
-        // TODO: Get player ID from session
-        const settingsRows = this.query("GetPlayerSettings", {player_id: 0});
+        const settingsRows = this.query("GetPlayerSettings", {player_id: session.playerId});
         const settingsValues = {};
         settingsRows.forEach(row => {
             settingsValues[row.key] = row.value;

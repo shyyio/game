@@ -48,4 +48,12 @@ export class AbstractSession {
     sendMessage(message) {
         throw new NotImplementedError();
     }
+
+    /**
+     * @abstract
+     * @returns {number}
+     */
+    get playerId() {
+        throw new NotImplementedError();
+    }
 }
