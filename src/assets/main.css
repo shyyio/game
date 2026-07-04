@@ -29,8 +29,3 @@ body {
     overflow: hidden;
     font-family: "Lexend", sans-serif;
 }
-
-
-.v-list--nav {
-    user-select: none;
-}
