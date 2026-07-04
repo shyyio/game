@@ -7,6 +7,7 @@ import {MiniMenuLayer} from "@/client/MiniMenuLayer.js";
 import {RotateButtonsLayer} from "@/client/RotateButtonsLayer.js";
 import {ToolbarLayer} from "@/client/ToolbarLayer.js";
 import {ToolRotation} from "@/client/ToolRotation.js";
+import {EraserTool} from "@/client/EraserTool.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
@@ -88,6 +89,13 @@ export class Client {
         this._onMapModeChange = null;
         this._centerLock = false;
         this._debugMode = false;
+    }
+
+    /**
+     * @returns {AbstractTool[]}
+     */
+    coreTools() {
+        return [new EraserTool(this)];
     }
 
     /**

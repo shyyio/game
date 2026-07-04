@@ -179,9 +179,9 @@ onMounted(async () => {
     inputHandler.clearToolPreview();
     inputHandler.clearInspect();
     inputHandler.refreshHover();
-    client.rotateButtonsLayer.setVisible(tool != null);
+    client.rotateButtonsLayer.setVisible(tool != null && tool.orientable);
     if (mobile) {
-      client.setCenterLock(tool != null);
+      client.setCenterLock(tool != null && tool.usesCenterLock);
       return;
     }
     if (tool != null) {
@@ -215,7 +215,7 @@ onMounted(async () => {
   });
 
   const refreshTools = () => {
-    toolbar.setTools(modRegistry.tools(client));
+    toolbar.setTools([...client.coreTools(), ...modRegistry.tools(client)]);
   };
   client.playerSettings.onChange(refreshTools);
   refreshTools();

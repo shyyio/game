@@ -39,6 +39,20 @@ export class AbstractTool {
     }
 
     /**
+     * @returns {boolean}
+     */
+    get usesCenterLock() {
+        return true;
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    get orientable() {
+        return this._rotation !== null;
+    }
+
+    /**
      * Called when the user taps (clicks without dragging) a tile.
      * @abstract
      * @param {number} tileX

@@ -128,7 +128,7 @@ export class EasyObjectTool extends AbstractTool {
      */
     _showGhost(tileX, tileY, direction) {
         const {blockedCells, overwriteCells, clearCells} = this._evaluate(tileX, tileY, direction);
-        this._placementFeedbackLayer.show(blockedCells, overwriteCells, clearCells);
+        this._placementFeedbackLayer.show({blocked: blockedCells, overwrite: overwriteCells, clear: clearCells});
         this._ghostLayer.showGhost(tileX, tileY, direction, blockedCells.length > 0);
     }
 }

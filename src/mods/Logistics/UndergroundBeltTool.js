@@ -38,7 +38,7 @@ export class UndergroundBeltTool extends AbstractTool {
     onTileEnter(tileX, tileY) {
         const placement = this._resolvePlacement(tileX, tileY, this._rotation.direction);
         const blocked = this._blocked(tileX, tileY, placement.direction);
-        this._placementFeedbackLayer.show(blocked ? [{x: tileX, y: tileY}] : []);
+        this._placementFeedbackLayer.show({blocked: blocked ? [{x: tileX, y: tileY}] : []});
         if (blocked || placement.parentId === null) {
             this._ghostLayer.showGhost(tileX, tileY, placement.direction, placement.type, BeltBend.STRAIGHT, blocked);
             return;

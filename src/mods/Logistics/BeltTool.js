@@ -52,7 +52,7 @@ export class BeltTool extends AbstractTool {
      */
     _showGhost(tileX, tileY, direction) {
         const blocked = this._blocked(tileX, tileY);
-        this._placementFeedbackLayer.show(blocked ? [{x: tileX, y: tileY}] : []);
+        this._placementFeedbackLayer.show({blocked: blocked ? [{x: tileX, y: tileY}] : []});
         const {parentX, parentY} = inferBeltParent(this._cache, tileX, tileY, direction);
         const bend = Belt.getBend(direction, tileX, tileY, parentX, parentY);
         this._ghostLayer.showGhost(tileX, tileY, direction, BeltType.NORMAL, bend, blocked);

@@ -45,15 +45,14 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Shows the current placement's geometry feedback, replacing any previous (all empty clears).
-     * @param {{x: number, y: number}[]} blockedTiles - marked red
-     * @param {{x: number, y: number}[]} [overwriteTiles] - marked blue
-     * @param {{x: number, y: number}[]} [clearTiles] - the green target, drawn only under center-lock
+     * Shows the current placement's geometry feedback, replacing any previous.
+     * @param {{blocked?: {x: number, y: number}[], overwrite?: {x: number, y: number}[], clear?: {x: number, y: number}[]}} feedback
+     *     - blocked (red), overwrite (blue), clear (green target, center-lock only)
      */
-    show(blockedTiles, overwriteTiles=[], clearTiles=[]) {
-        this._blocked = blockedTiles;
-        this._overwrite = overwriteTiles;
-        this._clear = clearTiles;
+    show({blocked=[], overwrite=[], clear=[]}) {
+        this._blocked = blocked;
+        this._overwrite = overwrite;
+        this._clear = clear;
         this._redraw();
     }
 
