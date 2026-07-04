@@ -119,7 +119,7 @@ function upstreamParentSql({from, col, x, y, direction, placedType}) {
 // GetPathTailBelt op and MaterializeBeltPath's new_tail can never disagree.
 const PATH_TAIL_BELT_SQL = "SELECT id FROM Belt WHERE path_id = CAST(@id AS INT) ORDER BY path_index LIMIT 1";
 
-// Named prepared statements the Belt mod registers with the database.
+// Named prepared statements the Logistics mod registers with the database.
 // noinspection SqlWithoutWhere
 export const beltStatements = [
 

@@ -83,7 +83,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
 
     /**
      * Renders or clears a resting out-port item, deriving its tile from the object index;
-     * ignores ports not in the index (e.g. belt-path ports, which the belt mod drives).
+     * ignores ports not in the index (e.g. belt-path ports, which the Logistics mod drives).
      * @param {AbstractEvent} event
      * @returns {void}
      */

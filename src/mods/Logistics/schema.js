@@ -6,7 +6,7 @@ import {
     MAX_UNDERGROUND_LENGTH,
 } from "./constants.js";
 
-// Permanent tables owned by the Belt mod.
+// Permanent tables owned by the Logistics mod.
 export const beltSchema = `
     CREATE TABLE BeltPath (
         id INTEGER PRIMARY KEY REFERENCES Belt(id),
@@ -133,7 +133,7 @@ export const beltSchema = `
     CREATE INDEX Splitter_chunk ON Splitter(chunk);
 `;
 
-// Per-run temp tables and seed rows owned by the Belt mod.
+// Per-run temp tables and seed rows owned by the Logistics mod.
 export const beltTempSchema = `
     CREATE TEMPORARY TABLE StashedItem (
         id INTEGER PRIMARY KEY,

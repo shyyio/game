@@ -1,6 +1,6 @@
-// Numeric constants and enums for the Belt mod. These are shared across the
+// Numeric constants and enums for the Logistics mod. These are shared across the
 // mod's SQL (schema, statements, tick ops), its events, and its imperative
-// logic, so they live in one place no other Belt module redefines.
+// logic, so they live in one place no other module redefines.
 
 // Maximum number of tiles an underground belt may span.
 export const MAX_UNDERGROUND_LENGTH = 4;
@@ -46,7 +46,7 @@ export const BeltBend = {
 export const ITEM_TYPE_GAP = 0;
 
 // ---- Buffered event types ----
-// BufferedEvent `type` discriminators for the Belt mod's item deltas. The flat type
+// BufferedEvent `type` discriminators for the Logistics mod's item deltas. The flat type
 // space reserves 1-100 for the engine, so mod types start at 100. UPSERT inserts-or-
 // resizes a path's RLE row (id=path, a=row id, b=length, c=type); DELETE drops one
 // (a=row id). The client keeps each path's rows and derives item positions from them.

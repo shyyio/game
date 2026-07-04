@@ -266,7 +266,7 @@ export const BeltDefinition = new BeltObjectDefinition({
             ),
 
             // If there is a gap anywhere in the path (including a 0-length gap),
-            // or if an item was consumed (output_item_id !=NULL)
+            // or if an item was consumed (output_item_id IS NOT NULL)
             // this means that the head_gap needs to be incremented
             // (UNLESS an item was inserted this tick, in which case, head_gap will be reset to 0
             // in TickBeltPathCleanup5)
