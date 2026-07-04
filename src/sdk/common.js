@@ -1,7 +1,7 @@
 // Mod SDK — engine-agnostic surface.
 //
 // This is the stable, documented API that mods bind to instead of reaching into
-// engine internals. It imports only from `src/common/` and `src/util.js`, so it
+// engine internals. It imports only from `src/common/`, so it
 // runs identically on client and server. Mods import it as `@/sdk/common.js`.
 //
 // Client-only API (draw layers, tools, pixi types) lives in `@/sdk/client.js`,

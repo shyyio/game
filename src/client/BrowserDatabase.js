@@ -107,14 +107,4 @@ export class BrowserDatabase extends AbstractDatabase {
         });
         return dump;
     }
-
-    async debugPrintDbSize() {
-        this.db.run("VACUUM;");
-
-        const pageCount = this.db.exec("PRAGMA page_count;")[0].values[0][0];
-        const pageSize = this.db.exec("PRAGMA page_size;")[0].values[0][0];
-        const size = pageCount * pageSize;
-
-        console.log(`${size/1024}kB (${(size/(1024*1024)).toFixed(2)}MB)`)
-    }
 }

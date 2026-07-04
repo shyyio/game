@@ -228,7 +228,7 @@ export class LogisticsMod extends AbstractMod {
                 console.warn("CreateBelt ignored: conflicting parent at", options.x, options.y);
                 throw new PlacementRejected();
             }
-            throw new Error("FIXME: InsertBelt");
+            throw e;
         }
     }
 
@@ -561,23 +561,21 @@ export class LogisticsMod extends AbstractMod {
      * @param {{x: number, y: number, type: number, rampParent: BigInt, disconnectRampChild: BigInt}} options
      */
     _disconnectRampChain(options) {
+        // Validation throws propagate to the transaction owner (_createBelt), which rolls back once.
         if (!options.rampParent || !isRamp(options.type)) {
-            this.game.rollback();
-            throw new Error("belt error");
+            throw new Error("Ramp disconnect: no valid ramp parent");
         }
 
         const rampChild = this.game.querySingle("GetBelt", {id: options.disconnectRampChild});
         if (!rampChild || rampChild.type !== options.type) {
-            this.game.rollback();
-            throw new Error("belt error");
+            throw new Error("Ramp disconnect: ramp child missing or type mismatch");
         }
 
         const distanceX = Math.abs(options.x - rampChild.x);
         const distanceY = Math.abs(options.y - rampChild.y);
         if ((distanceX !== 0 && distanceY !== 0)
             || (Math.max(distanceX, distanceY) - 2) > MAX_UNDERGROUND_LENGTH) {
-            this.game.rollback();
-            throw new Error("belt error");
+            throw new Error("Ramp disconnect: span not straight or exceeds MAX_UNDERGROUND_LENGTH");
         }
 
         if (options.type === BELT_RAMP_DOWN) {
