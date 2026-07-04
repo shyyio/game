@@ -140,16 +140,27 @@ export class AbstractDatabase {
     }
 
     /**
+     * @private
      * @param {string} name
-     * @param [args] {*}
-     * @returns {number}
+     * @returns {*} the backend's prepared-statement handle
      */
-    exec(name, args) {
+    _resolveStatement(name) {
         const stmt = this.statements[name];
 
         if (stmt === undefined) {
             throw new Error(`Unknown prepared statement: ${name}`);
         }
+
+        return stmt;
+    }
+
+    /**
+     * @param {string} name
+     * @param [args] {*}
+     * @returns {number}
+     */
+    exec(name, args) {
+        const stmt = this._resolveStatement(name);
 
         if (this.debug) {
             console.log(name + (args ? " " + JSON.stringify(args) : ""));
@@ -172,11 +183,7 @@ export class AbstractDatabase {
      * @returns {*[]}
      */
     query(name, args) {
-        const stmt = this.statements[name];
-
-        if (stmt === undefined) {
-            throw new Error(`Unknown prepared statement: ${name}`);
-        }
+        const stmt = this._resolveStatement(name);
 
         if (this.debug) {
             console.log(name + (args ? " " + JSON.stringify(args) : "") + " ?");

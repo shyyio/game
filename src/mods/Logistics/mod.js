@@ -578,13 +578,9 @@ export class LogisticsMod extends AbstractMod {
             throw new Error("Ramp disconnect: span not straight or exceeds MAX_UNDERGROUND_LENGTH");
         }
 
-        if (options.type === BELT_RAMP_DOWN) {
-            const rampBelts = this.game.query("GetRampChildren", {id: options.disconnectRampChild});
-            rampBelts.forEach(belt => this._removeBelt(belt.id, true));
-        } else {
-            const rampBelts = this.game.query("GetRampParents", {id: options.disconnectRampChild});
-            rampBelts.forEach(belt => this._removeBelt(belt.id, true));
-        }
+        const rampQuery = options.type === BELT_RAMP_DOWN ? "GetRampChildren" : "GetRampParents";
+        const rampBelts = this.game.query(rampQuery, {id: options.disconnectRampChild});
+        rampBelts.forEach(belt => this._removeBelt(belt.id, true));
     }
 
     /**
