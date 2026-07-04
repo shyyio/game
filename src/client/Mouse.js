@@ -3,6 +3,14 @@ import {Direction} from "@/common/constants.js";
 
 const LONG_PRESS_MS = 400;
 
+// A fast, near-cardinal drag flick locks painting to one axis, laying a straight
+// run instead of a staircase of bends. A slow or angled drag releases the lock.
+// Speeds are world px per ms, angles degrees off the locked axis.
+const STRAIGHT_SNAP_SPEED_ON = 1.0;
+const STRAIGHT_SNAP_SPEED_OFF = 0.5;
+const STRAIGHT_SNAP_ANGLE_ON = 28;
+const STRAIGHT_SNAP_ANGLE_OFF = 40;
+
 function tilesInPath(x1, y1, x2, y2) {
 
     const tiles = [];
@@ -71,6 +79,13 @@ class Mouse {
         this._clickStartScreenY = null;
         this._longPressTimer = null;
         this._hasDragged = false;
+
+        // Straight-snap: axis the drag is locked to ("x"/"y"/null) and the previous
+        // velocity sample used to detect a fast flick.
+        this._dragAxis = null;
+        this._lastMoveTime = null;
+        this._lastMoveX = null;
+        this._lastMoveY = null;
 
         this.currentX = null;
         this.currentY = null;
@@ -228,6 +243,7 @@ class Mouse {
         this._clickStartScreenX = null;
         this._clickStartScreenY = null;
         this._hasDragged = false;
+        this._dragAxis = null;
     }
 
     // ---- Getters ----
@@ -296,6 +312,8 @@ class Mouse {
         this._clickStartScreenX = event.data.global.x;
         this._clickStartScreenY = event.data.global.y;
         this._hasDragged = false;
+        this._dragAxis = null;
+        this._lastMoveTime = null;
 
         // Center-lock (mobile, tool active) has no context gesture — orientation is
         // set by the rotate buttons and a tap places — so the long-press timer is
@@ -387,12 +405,19 @@ class Mouse {
             }
         }
 
+        const speed = this._sampleDragSpeed();
+        this._updateAxisLock(speed);
+
+        // A locked drag paints toward the pointer projected onto the axis, so the
+        // perpendicular drift is dropped and the run stays straight.
+        const {endX, endY} = this._axisSnappedEnd();
+
         const startXTile = Math.floor(this._clickStartX / TILE_SIZE);
         const startYTile = Math.floor(this._clickStartY / TILE_SIZE);
-        const currentXTile = Math.floor(this.currentX / TILE_SIZE);
-        const currentYTile = Math.floor(this.currentY / TILE_SIZE);
+        const endXTile = Math.floor(endX / TILE_SIZE);
+        const endYTile = Math.floor(endY / TILE_SIZE);
 
-        if (startXTile === currentXTile && startYTile === currentYTile) {
+        if (startXTile === endXTile && startYTile === endYTile) {
             return;
         }
 
@@ -405,7 +430,7 @@ class Mouse {
             this._dragStartCallbacks.forEach(cb => cb(startXTile, startYTile));
         }
 
-        const tiles = tilesInPath(this._clickStartX, this._clickStartY, this.currentX, this.currentY);
+        const tiles = tilesInPath(this._clickStartX, this._clickStartY, endX, endY);
 
         let x = startXTile;
         let y = startYTile;
@@ -417,8 +442,74 @@ class Mouse {
             y = tile[1];
         });
 
-        this._clickStartX = this.currentX;
-        this._clickStartY = this.currentY;
+        // Advance the anchor to the projected endpoint, not the raw cursor, so an
+        // unlock mid-drag continues from the straight line without a jump.
+        this._clickStartX = endX;
+        this._clickStartY = endY;
+    }
+
+    /**
+     * Samples pointer speed (world px per ms) since the last drag frame, seeding the
+     * baseline on the first frame of a press.
+     * @private
+     * @returns {number}
+     */
+    _sampleDragSpeed() {
+        const now = performance.now();
+        if (this._lastMoveTime === null) {
+            this._lastMoveTime = now;
+            this._lastMoveX = this.currentX;
+            this._lastMoveY = this.currentY;
+            return 0;
+        }
+        const dt = Math.max(now - this._lastMoveTime, 1);
+        const dx = this.currentX - this._lastMoveX;
+        const dy = this.currentY - this._lastMoveY;
+        this._lastMoveTime = now;
+        this._lastMoveX = this.currentX;
+        this._lastMoveY = this.currentY;
+        return Math.hypot(dx, dy) / dt;
+    }
+
+    /**
+     * Engages the straight-snap axis lock on a fast near-cardinal flick, releases it
+     * when the drag slows or angles away.
+     * @private
+     * @param {number} speed - world px per ms from the last frame
+     * @returns {void}
+     */
+    _updateAxisLock(speed) {
+        const vx = this.currentX - this._clickStartX;
+        const vy = this.currentY - this._clickStartY;
+        const horizontal = Math.abs(vx) > Math.abs(vy);
+        const offAxisRad = horizontal ? Math.abs(Math.atan2(vy, vx)) : Math.abs(Math.atan2(vx, vy));
+        const offAxis = offAxisRad * (180 / Math.PI);
+
+        if (this._dragAxis === null) {
+            const moved = Math.hypot(vx, vy) > TILE_SIZE / 4;
+            if (moved && speed > STRAIGHT_SNAP_SPEED_ON && offAxis < STRAIGHT_SNAP_ANGLE_ON) {
+                this._dragAxis = horizontal ? "x" : "y";
+            }
+            return;
+        }
+        if (speed < STRAIGHT_SNAP_SPEED_OFF || offAxis > STRAIGHT_SNAP_ANGLE_OFF) {
+            this._dragAxis = null;
+        }
+    }
+
+    /**
+     * The drag endpoint with the off-axis component dropped while axis-locked, else the raw pointer.
+     * @private
+     * @returns {{endX: number|null, endY: number|null}}
+     */
+    _axisSnappedEnd() {
+        if (this._dragAxis === "x") {
+            return {endX: this.currentX, endY: this._clickStartY};
+        }
+        if (this._dragAxis === "y") {
+            return {endX: this._clickStartX, endY: this.currentY};
+        }
+        return {endX: this.currentX, endY: this.currentY};
     }
 
     /**
