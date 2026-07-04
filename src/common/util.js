@@ -3,7 +3,7 @@ import {CHUNK_SIZE, REGION_SIZE, Direction} from "@/common/constants.js";
 const REGION_HALF = REGION_SIZE / 2;
 
 export function fixNegativeZero(n) {
-    return n === -0 ? 0 : n;
+    return Object.is(n, -0) ? 0 : n;
 }
 
 /**
