@@ -23,6 +23,10 @@ export class EraserTool extends AbstractTool {
         return "Eraser";
     }
 
+    get hotkey() {
+        return "e";
+    }
+
     get textureName() {
         // Placeholder
         return "inspect/1x1";

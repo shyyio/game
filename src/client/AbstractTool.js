@@ -46,6 +46,14 @@ export class AbstractTool {
     }
 
     /**
+     * Letter hotkey for core tools; mod tools return null and get a number-key slot instead.
+     * @returns {string|null}
+     */
+    get hotkey() {
+        return null;
+    }
+
+    /**
      * @returns {boolean}
      */
     get orientable() {

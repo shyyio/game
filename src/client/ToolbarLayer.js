@@ -13,6 +13,10 @@ const SLOT_SIZE = 56;
 const ICON_PADDING = 7;
 const LABEL_GAP = 6;
 const LABEL_SIZE = 15;
+// Shortcut badge (number/letter) drawn above each slot's icon.
+const SHORTCUT_INSET = 4;
+// Number-key hotkeys cover the first this-many mod tools (keys 1-9).
+const TOOL_SHORTCUT_COUNT = 9;
 // Reserved height for the label under each slot, so cells align regardless of text.
 const LABEL_HEIGHT = 16;
 const CELL_GAP = 12;
@@ -59,6 +63,8 @@ export class ToolbarLayer extends Container {
         this._viewport = viewport;
         this.textureRegistry = null;
         this._tools = [];
+        this._coreTools = [];
+        this._modTools = [];
         this._activeTool = null;
         this._onChange = null;
         // One cell Container per tool, parallel to _tools, so highlights update in place.
@@ -120,6 +126,20 @@ export class ToolbarLayer extends Container {
     }
 
     /**
+     * @returns {AbstractTool[]} the core tools (letter hotkeys), leading the bar
+     */
+    get coreTools() {
+        return this._coreTools;
+    }
+
+    /**
+     * @returns {AbstractTool[]} the mod tools (number-key hotkeys), after the core tools
+     */
+    get modTools() {
+        return this._modTools;
+    }
+
+    /**
      * Registers the callback invoked whenever the active tool changes (click or programmatic).
      * @param {function(): void} callback
      * @returns {void}
@@ -130,13 +150,16 @@ export class ToolbarLayer extends Container {
 
     /**
      * Rebuilds the panel grid for a new tool list, dropping the active selection if it's gone.
-     * @param {AbstractTool[]} tools
+     * @param {AbstractTool[]} coreTools - leading tools with letter hotkeys
+     * @param {AbstractTool[]} modTools - tools with number-key hotkeys
      * @returns {void}
      */
-    setTools(tools) {
-        this._tools = tools;
+    setTools(coreTools, modTools) {
+        this._coreTools = coreTools;
+        this._modTools = modTools;
+        this._tools = [...coreTools, ...modTools];
         this._rebuild();
-        if (!tools.includes(this._activeTool)) {
+        if (!this._tools.includes(this._activeTool)) {
             this.setActiveTool(null);
         }
         this._refreshHighlights();
@@ -159,6 +182,14 @@ export class ToolbarLayer extends Container {
         if (this._onChange !== null) {
             this._onChange();
         }
+    }
+
+    /**
+     * Opens or closes the drawer (keyboard shortcut entry point).
+     * @returns {void}
+     */
+    toggleDrawer() {
+        this._toggleDrawer();
     }
 
     /**
@@ -243,11 +274,12 @@ export class ToolbarLayer extends Container {
      * The press is stopped so it neither pans the viewport nor places a tile beneath.
      * @private
      * @param {string|null} label
+     * @param {string|null} shortcut - the key badge drawn top-left, or null for none
      * @param {function(Container): void} addIcon - adds the slot's icon
      * @param {function(): void} onPress
      * @returns {Container}
      */
-    _createSlot(label, addIcon, onPress) {
+    _createSlot(label, shortcut, addIcon, onPress) {
         const slot = new Container();
         slot.eventMode = "static";
         slot.cursor = "pointer";
@@ -261,10 +293,25 @@ export class ToolbarLayer extends Container {
 
         addIcon(slot);
 
+        // Badge sits above the icon; only read with the drawer open, so hidden on the resting top row.
+        if (shortcut !== null) {
+            const badge = new Text({
+                text: shortcut,
+                style: {fontFamily: GAME_FONT, fontSize: SLOT_SIZE - 3, fill: 0xffffff, stroke: {color: 0x000000, width: 1}},
+            });
+            badge.x = slot.width / 2 + 1;
+            badge.y = (slot.height / 2) - 2;
+            badge.anchor = 0.5;
+            badge.alpha = 0.5;
+            badge.visible = this._drawerOpen;
+            slot.addChild(badge);
+            slot._badge = badge;
+        }
+
         if (label !== null) {
             const text = new Text({
                 text: label,
-                style: {fontFamily: GAME_FONT, fontSize: LABEL_SIZE, fill: TOOLBAR_TEXT},
+                style: {fontFamily: GAME_FONT, fontSize: LABEL_SIZE, fill: 0xffffff, stroke: {color: 0x000000, width: 1}},
             });
             text.x = (SLOT_SIZE - text.width) / 2;
             text.y = SLOT_SIZE + LABEL_GAP;
@@ -307,9 +354,27 @@ export class ToolbarLayer extends Container {
     _createCell(tool) {
         return this._createSlot(
             tool.label,
+            this._shortcutFor(tool),
             (slot) => this._addSprite(slot, tool.textureName),
             () => this.setActiveTool(tool === this._activeTool ? null : tool),
         );
+    }
+
+    /**
+     * Shortcut badge for a tool: its core letter hotkey, or its number-key slot among mod tools.
+     * @private
+     * @param {AbstractTool} tool
+     * @returns {string|null}
+     */
+    _shortcutFor(tool) {
+        if (tool.hotkey !== null) {
+            return tool.hotkey.toUpperCase();
+        }
+        const index = this._modTools.indexOf(tool);
+        if (index < 0 || index >= TOOL_SHORTCUT_COUNT) {
+            return null;
+        }
+        return String(index + 1);
     }
 
     /**
@@ -320,6 +385,7 @@ export class ToolbarLayer extends Container {
     _createNoneCell() {
         return this._createSlot(
             "Inspect",
+            "Q",
             (slot) => this._addSprite(slot, "inspect/1x1"),
             () => this.setActiveTool(null),
         );
@@ -392,6 +458,7 @@ export class ToolbarLayer extends Container {
      */
     _setDrawerOpen(open) {
         this._drawerOpen = open;
+        this._setBadgesVisible(open);
         this._slide.to(open ? this._slideDistance : 0, open ? easeOutBack : easeInCubic);
         if (open && this._clickOffListener === null) {
             this._clickOffListener = () => this._setDrawerOpen(false);
@@ -400,6 +467,19 @@ export class ToolbarLayer extends Container {
             window.removeEventListener("pointerdown", this._clickOffListener);
             this._clickOffListener = null;
         }
+    }
+
+    /**
+     * Shows or hides every slot's shortcut badge (badges only read with the drawer open).
+     * @private
+     * @param {boolean} visible
+     */
+    _setBadgesVisible(visible) {
+        [this._noneCell, ...this._cells].forEach(slot => {
+            if (slot !== null && slot._badge != null) {
+                slot._badge.visible = visible;
+            }
+        });
     }
 
     /**

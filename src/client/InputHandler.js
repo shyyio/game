@@ -2,8 +2,12 @@
 import Mouse from "@/client/Mouse.js";
 import Keyboard from "@/client/Keyboard.js";
 
-// Number keys 1-9 select the toolbar tool at that position (1 = first tool).
+// Number keys 1-9 select the mod tool at that position (1 = first mod tool); core tools use
+// their own letter hotkeys instead.
 const TOOL_HOTKEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
+// Letter keys bound for core tools; the pressed key is matched against each core tool's `hotkey`.
+const CORE_TOOL_HOTKEYS = ["e"];
 
 export class InputHandler {
 
@@ -84,9 +88,20 @@ export class InputHandler {
             this._clearActiveTool();
         });
 
+        Keyboard.on("i", () => {
+            this._toolbar.toggleDrawer();
+        });
+
         TOOL_HOTKEYS.forEach((key, index) => {
             Keyboard.on(key, () => {
                 this._selectTool(index);
+            });
+        });
+
+        // Core tools bind their declared letter hotkey (e.g. the eraser's "e").
+        CORE_TOOL_HOTKEYS.forEach(key => {
+            Keyboard.on(key, () => {
+                this._selectCoreTool(key);
             });
         });
     }
@@ -224,11 +239,23 @@ export class InputHandler {
      * @private
      */
     _selectTool(index) {
-        const tools = this._toolbar.tools;
+        const tools = this._toolbar.modTools;
         if (index >= tools.length) {
             return;
         }
         this._toolbar.setActiveTool(tools[index]);
+    }
+
+    /**
+     * Selects the core tool whose declared `hotkey` matches `key`, if present.
+     * @private
+     */
+    _selectCoreTool(key) {
+        const tool = this._toolbar.coreTools.find(t => t.hotkey === key);
+        if (tool == null) {
+            return;
+        }
+        this._toolbar.setActiveTool(tool);
     }
 
     /**

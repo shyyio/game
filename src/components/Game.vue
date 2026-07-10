@@ -215,7 +215,7 @@ onMounted(async () => {
   });
 
   const refreshTools = () => {
-    toolbar.setTools([...client.coreTools(), ...modRegistry.tools(client)]);
+    toolbar.setTools(client.coreTools(), modRegistry.tools(client));
   };
   client.playerSettings.onChange(refreshTools);
   refreshTools();
@@ -240,7 +240,7 @@ onMounted(async () => {
 
   // Debug keybindings (moved off the number keys, which now select tools).
   // Insert an item of value 1 onto the lowest-id belt path via its in-port.
-  Keyboard.on("i", () => {
+  Keyboard.on("b", () => {
     db.rawExec("UPDATE Port SET item = 1 WHERE id = (SELECT in_port_id FROM BeltPath WHERE id = (SELECT MIN(id) FROM BeltPath))");
   });
 
