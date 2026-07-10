@@ -13,8 +13,6 @@ const SLOT_SIZE = 56;
 const ICON_PADDING = 7;
 const LABEL_GAP = 6;
 const LABEL_SIZE = 15;
-// Shortcut badge (number/letter) drawn above each slot's icon.
-const SHORTCUT_INSET = 4;
 // Number-key hotkeys cover the first this-many mod tools (keys 1-9).
 const TOOL_SHORTCUT_COUNT = 9;
 // Reserved height for the label under each slot, so cells align regardless of text.
@@ -26,12 +24,18 @@ const MARGIN_BOTTOM = 6;
 const MAX_BAR_TOOLS = 4;
 // Inset of the cells from the enclosing panel edge.
 const PANEL_PADDING = 10;
+// Gap between the outer frame and the sunken inset body (matches the inspect panel's body margin).
+const INSET_MARGIN = 6;
 // Vertical drawer-toggle strip on the panel's left, as thick as the UIPanel title bar.
 const STRIP_WIDTH = 25;
-// Gap between the strip and the first cell column.
-const STRIP_GAP = 8;
-// Left edge of the cell grid: past the strip and its gap.
-const GRID_LEFT = PANEL_PADDING + STRIP_WIDTH + STRIP_GAP;
+// Gap between the strip and the inset body's left edge.
+const STRIP_GAP = 6;
+// Left edge of the inset body: past the strip and its gap.
+const INSET_LEFT = PANEL_PADDING + STRIP_WIDTH + STRIP_GAP;
+// Left padding inside the inset before the first cell column.
+const INSET_PADDING = 12;
+// Left edge of the cell grid.
+const GRID_LEFT = INSET_LEFT + INSET_PADDING;
 // Duration of the drawer open/close slide tween.
 const SLIDE_DURATION_MS = 230;
 // Upper bound on the open-slide overshoot as a fraction of the slide; the panel bottom is bled by
@@ -96,6 +100,7 @@ export class ToolbarLayer extends Container {
         this.addChild(this._panel);
         // Panel background (UIPanel frame), rebuilt in _drawPanel once the size is known.
         this._panelBg = null;
+        this._inset = null;
         // Magenta layout-debug outlines (setDebug), a child of _panel so it slides with it.
         this._debugOutlines = null;
 
@@ -255,6 +260,7 @@ export class ToolbarLayer extends Container {
         const height = PANEL_PADDING + content + bottomBleed;
         if (this._panelBg !== null) {
             this._panelBg.destroy();
+            this._inset.destroy();
             this._drawerStrip.destroy({children: true});
         }
         this._panelBg = UIPanel.frameSprite(this.textureRegistry, this._panelWidth, height, PANEL_TINT);
@@ -263,10 +269,16 @@ export class ToolbarLayer extends Container {
         this._panelBg.on("pointerdown", (e) => e.nativeEvent.stopPropagation());
         this._panel.addChildAt(this._panelBg, 0);
 
-        // Drawer-toggle strip on the left, spanning the grid rows; above the frame, below the cells.
+        // Inset holds only the cell grid: it starts right of the pattern strip.
+        const insetWidth = this._panelWidth - INSET_MARGIN - INSET_LEFT;
+        this._inset = UIPanel.insetSprite(this.textureRegistry, insetWidth, height - INSET_MARGIN * 2, PANEL_TINT);
+        this._inset.position.set(INSET_LEFT, INSET_MARGIN);
+        this._panel.addChildAt(this._inset, 1);
+
+        // Drawer-toggle strip on the left, spanning the grid rows; above the inset, below the cells.
         this._drawerStrip = this._createDrawerStrip(content);
         this._drawerStrip.position.set(PANEL_PADDING, PANEL_PADDING);
-        this._panel.addChildAt(this._drawerStrip, 1);
+        this._panel.addChildAt(this._drawerStrip, 2);
     }
 
     /**
@@ -311,7 +323,7 @@ export class ToolbarLayer extends Container {
         if (label !== null) {
             const text = new Text({
                 text: label,
-                style: {fontFamily: GAME_FONT, fontSize: LABEL_SIZE, fill: 0xffffff, stroke: {color: 0x000000, width: 1}},
+                style: {fontFamily: GAME_FONT, fontSize: LABEL_SIZE, fill: TOOLBAR_TEXT},
             });
             text.x = (SLOT_SIZE - text.width) / 2;
             text.y = SLOT_SIZE + LABEL_GAP;

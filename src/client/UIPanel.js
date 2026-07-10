@@ -191,6 +191,30 @@ export class UIPanel extends Container {
     }
 
     /**
+     * The panel's sunken inset body as a standalone tinted 9-slice sprite, matching the inspect
+     * panel's body (for chrome that wants the inset look without the rest of the panel).
+     * @param {TextureRegistry} textureRegistry
+     * @param {number} width
+     * @param {number} height
+     * @param {number} tint
+     * @returns {NineSliceSprite}
+     */
+    static insetSprite(textureRegistry, width, height, tint) {
+        const sprite = new NineSliceSprite({
+            texture: textureRegistry.get(TX_FRAME_INSET),
+            leftWidth: FRAME_INSET,
+            rightWidth: FRAME_INSET,
+            topHeight: FRAME_INSET,
+            bottomHeight: FRAME_INSET,
+        });
+        sprite.width = width / FRAME_SCALE;
+        sprite.height = height / FRAME_SCALE;
+        sprite.scale.set(FRAME_SCALE);
+        sprite.tint = tint;
+        return sprite;
+    }
+
+    /**
      * @returns {number} the title row's height (also the decorative strip's thickness)
      */
     static get TITLE_HEIGHT() {
