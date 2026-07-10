@@ -4,12 +4,17 @@ import {DrawLayerRegistry} from "@/client/DrawLayerRegistry.js";
 import {PlayerSettings} from "@/client/PlayerSettings.js";
 import {GameSettings} from "@/client/GameSettings.js";
 import {MiniMenuLayer} from "@/client/MiniMenuLayer.js";
+import {InspectPanelLayer} from "@/client/InspectPanelLayer.js";
 import {RotateButtonsLayer} from "@/client/RotateButtonsLayer.js";
 import {ToolbarLayer} from "@/client/ToolbarLayer.js";
 import {ToolRotation} from "@/client/ToolRotation.js";
 import {EraserTool} from "@/client/EraserTool.js";
-import {SetViewportMessage} from "@/common/CoreMessages.js";
+import {SetViewportMessage, SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
+import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
+import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
+import {BufferedEvent} from "@/common/BufferedEvent.js";
+import {BUFFERED_EVENT_TYPE_EASY_OBJECT_UPDATE} from "@/common/constants.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {TILE_SIZE, snapToChunk, MAP_MODE_SCALE_THRESHOLD, CHUNK_UNSUBSCRIBE_DELAY_MS} from "@/client/constants.js";
@@ -49,6 +54,8 @@ export class Client {
         this.playerSettings = new PlayerSettings();
         this.gameSettings = new GameSettings();
         this.miniMenuLayer = new MiniMenuLayer(viewport);
+        // Screen-space panels for open machine menus; fed by InspectHeartbeatEvents.
+        this.inspectPanelLayer = new InspectPanelLayer(app);
         // Rotate controls, toggled with the active tool by the host.
         this.rotateButtonsLayer = new RotateButtonsLayer(app, viewport);
         // Bottom-center tool bar; the host feeds it the tool list and reacts to selection.
@@ -89,6 +96,39 @@ export class Client {
         this._onMapModeChange = null;
         this._centerLock = false;
         this._debugMode = false;
+        // Machine ids (BigInt) with open menus; sent to the game as the inspect set.
+        this._inspectedObjects = new Set();
+        // Object id (string) -> last produced item.
+        this._lastProduced = new Map();
+        // Object id (string) -> {x, y} tile position.
+        this._objectPos = new Map();
+    }
+
+    /**
+     * Opens a machine's menu: subscribes to its per-tick inspect snapshots.
+     * @param {BigInt} objectId
+     * @returns {void}
+     */
+    inspectObject(objectId) {
+        this._inspectedObjects.add(objectId);
+        this._sendInspectedObjects();
+    }
+
+    /**
+     * Closes a machine's menu: drops its subscription and its panel.
+     * @param {BigInt} objectId
+     * @returns {void}
+     */
+    unInspectObject(objectId) {
+        if (!this._inspectedObjects.delete(objectId)) {
+            return;
+        }
+        this.inspectPanelLayer.remove(objectId);
+        this._sendInspectedObjects();
+    }
+
+    _sendInspectedObjects() {
+        this.sendMessage(new SetInspectedObjectsMessage([...this._inspectedObjects]));
     }
 
     /**
@@ -105,6 +145,8 @@ export class Client {
     toggleDebugMode() {
         this._debugMode = !this._debugMode;
         this.drawLayerRegistry.setDebugMode(this._debugMode);
+        this.inspectPanelLayer.setDebug(this._debugMode);
+        this.toolbarLayer.setDebug(this._debugMode);
     }
 
     /**
@@ -129,10 +171,16 @@ export class Client {
         });
 
         this.toolbarLayer.textureRegistry = this.textureRegistry;
+        this.inspectPanelLayer.textureRegistry = this.textureRegistry;
+        this.inspectPanelLayer.itemTextures = this.modRegistry.itemTextures;
+        this.inspectPanelLayer.viewport = this.viewport;
+        this.inspectPanelLayer.onClose(objectId => this.unInspectObject(objectId));
         this.app.stage.addChild(this.miniMenuLayer);
         this.app.stage.addChild(this.rotateButtonsLayer);
         this.app.stage.addChild(this.toolbarLayer);
         this.app.stage.addChild(this.statusLayer);
+        // Panels sit above every other HUD layer.
+        this.app.stage.addChild(this.inspectPanelLayer);
 
         this.viewport.on("moved", () => this._updateViewportChunks());
         // "zoomed" fires mid-wheel with the over-zoomed scale, before clampZoom restores it;
@@ -353,9 +401,43 @@ export class Client {
             this.gameSettings.update(event.key, event.value);
             return;
         }
+        if (event instanceof InspectHeartbeatEvent) {
+            // Ignore a heartbeat in flight past a close, so it can't revive a shut panel.
+            if (this._inspectedObjects.has(event.objectId)) {
+                const key = String(event.objectId);
+                this.inspectPanelLayer.update(event, this._lastProduced.get(key), this._objectPos.get(key));
+            }
+            return;
+        }
+        if (event instanceof InspectClosedEvent) {
+            this.unInspectObject(event.objectId);
+            return;
+        }
+        this._trackObjectState(event);
         this.modRegistry.handleClientEvent(event, this);
         this.drawLayerRegistry.publishEvent(event);
         // The status HUD isn't a viewport draw layer, so feed it chunk events directly.
         this.statusLayer.onEvent(event);
+    }
+
+    /**
+     * Tracks each object's tile position and last produced item from chunk sync / lifecycle events
+     * (position feeds the inspect panel's machine-to-panel connectors; last output the output slot).
+     * @param {AbstractEvent} event
+     * @returns {void}
+     * @private
+     */
+    _trackObjectState(event) {
+        if (event instanceof EasyObjectSyncEvent || event instanceof EasyObjectInsertEvent) {
+            this._objectPos.set(String(event.id), {x: event.x, y: event.y});
+            if (event.lastOutput !== null) {
+                this._lastProduced.set(String(event.id), event.lastOutput);
+            }
+        } else if (event instanceof EasyObjectDeleteEvent) {
+            this._objectPos.delete(String(event.id));
+            this._lastProduced.delete(String(event.id));
+        } else if (event instanceof BufferedEvent && event.type === BUFFERED_EVENT_TYPE_EASY_OBJECT_UPDATE) {
+            this._lastProduced.set(String(event.id), Number(event.a));
+        }
     }
 }

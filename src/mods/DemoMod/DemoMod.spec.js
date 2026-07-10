@@ -134,7 +134,7 @@ test("Cooks its input into the recipe output two ticks later", async () => {
     createMachine(game, {x: 5, y: 5, direction: Direction.UP});
     const m = machinePorts(game);
 
-    // The input is consumed the tick it lands and the cooldown starts.
+    // The input is consumed the tick it lands and the processing countdown starts.
     inject(game, m.in_id);
     game.tickAll();
     assert.equal(item(game, m.in_id), null);

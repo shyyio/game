@@ -12,12 +12,19 @@ export const PANEL_HOVER_FILL = 0x5a5a5a;
 export const ACTIVE_ACCENT = 0x5bb5ff; // pressed/active control highlight
 export const LABEL_EMPHASIS = 0xffd24a;
 
-// ---- Toolbar chrome (light parchment style) ----
-export const TOOLBAR_FILL = 0xe6ddcc;
-export const TOOLBAR_BORDER = 0xbbb2a0;
 export const TOOLBAR_TEXT = 0x000000;
-export const TOOLBAR_SLOT_FILL = 0xf5f0e6;
-export const TOOLBAR_SLOT_ACTIVE_FILL = 0xd6ebff;
+
+// ---- Inspect & toolbar panels (ui_flat frame chrome) ----
+export const PANEL_TINT = 0xd0c6b4; // warm-gray tint over the ui_flat frame
+export const PANEL_TITLE_TEXT = 0xffffff;
+export const SLOT_HIGHLIGHT_COLOR = 0x9be89b; // active/hover slot highlight (green)
+export const CONNECTOR_COLOR = 0x000000; // machine<->panel connector curve
+export const PROGRESS_BAR_TINT = 0x81ff08; // progress bar fill (green)
+export const PROGRESS_TEXT_COLOR = 0xffffff;
+export const PROGRESS_TEXT_STROKE = 0x111111;
+
+// ---- Layout debug ----
+export const DEBUG_OUTLINE_COLOR = 0xff00ff;
 
 // ---- Placement-preview ghost palette (used by every tool's ghost layer) ----
 export const GHOST_TINT = 0xFFFFFF;

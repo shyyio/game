@@ -372,6 +372,27 @@ class Mouse {
         this._hasDragged = false;
     }
 
+    /**
+     * True when the global pointer sits over a HUD element drawn on top of the world (so the
+     * viewport is not the topmost hit target).
+     * @returns {boolean}
+     * @private
+     */
+    _pointerOverHud() {
+        const events = this._app.renderer.events;
+        const boundary = events.rootBoundary;
+        boundary.rootTarget = this._app.stage;
+        const hit = boundary.hitTest(events.pointer.global.x, events.pointer.global.y);
+        let target = hit;
+        while (target != null) {
+            if (target === this._viewport) {
+                return false;
+            }
+            target = target.parent;
+        }
+        return hit != null;
+    }
+
     _updateCurrentMousePos() {
         const world = this._viewport.toWorld(
             this._app.renderer.events.pointer.global.x,
@@ -381,8 +402,13 @@ class Mouse {
         this.currentX = world.x;
         this.currentY = world.y;
 
-        this._resumeHoverIfMoved();
-        this._updateHoverTile();
+        // No hover ghost while the pointer sits over a HUD panel.
+        if (this._pointerOverHud()) {
+            this._emitTileExit();
+        } else {
+            this._resumeHoverIfMoved();
+            this._updateHoverTile();
+        }
 
         if (this._clickStartX == null) {
             return;

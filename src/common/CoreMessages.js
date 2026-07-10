@@ -1,6 +1,7 @@
 import {AbstractMessage} from "@/common/AbstractMessage.js";
 
 const MAX_VIEWPORT_CHUNKS = 256;
+const MAX_INSPECTED_OBJECTS = 32;
 
 export class SetViewportMessage extends AbstractMessage {
 
@@ -23,6 +24,33 @@ export class SetViewportMessage extends AbstractMessage {
      */
     validate(api, session) {
         return this.chunks.length <= MAX_VIEWPORT_CHUNKS;
+    }
+}
+
+/**
+ * The full set of machines a session is inspecting (one per open menu); the game diffs the delta.
+ */
+export class SetInspectedObjectsMessage extends AbstractMessage {
+
+    static wireFields = {
+        objectIds: "int64[]",
+    };
+
+    /**
+     * @param {BigInt[]} objectIds
+     */
+    constructor(objectIds) {
+        super();
+        this.objectIds = objectIds;
+    }
+
+    /**
+     * @param {GameAPI} api
+     * @param {AbstractSession} session
+     * @returns {boolean}
+     */
+    validate(api, session) {
+        return this.objectIds.length <= MAX_INSPECTED_OBJECTS;
     }
 }
 

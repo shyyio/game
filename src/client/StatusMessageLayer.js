@@ -36,7 +36,7 @@ export class StatusMessageLayer extends Container {
         this._background = new Graphics();
         this._text = new Text({
             text: "",
-            style: {fontFamily: GAME_FONT, fontSize: 14, fill: PANEL_TEXT},
+            style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TEXT},
         });
         this._text.x = PADDING_X;
         this._text.y = PADDING_Y;

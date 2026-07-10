@@ -94,6 +94,7 @@ export class DemoClientMod extends DemoMod {
 
     get itemTextures() {
         return {
+            [DEMO_INPUT_ITEM_TYPE]: "items/2",
             [DEMO_OUTPUT_ITEM_TYPE]: "items/1",
             [DEMO_JUNK_ITEM_TYPE]: "items/1",
         };
@@ -121,6 +122,11 @@ export class DemoClientMod extends DemoMod {
             return [];
         }
         return [
+            new MiniMenuEntry(
+                "Inspect Machine",
+                20,
+                () => client.inspectObject(machine.id),
+            ),
             new MiniMenuEntry(
                 "Delete Machine",
                 10,

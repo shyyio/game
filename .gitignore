@@ -121,6 +121,7 @@ debug_test.js
 *.png~
 SCHEMA.sqlite3
 docs/
+.backup/
 
 # Markdown files (keep README.md)
 *.md

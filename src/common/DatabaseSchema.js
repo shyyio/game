@@ -10,8 +10,7 @@ import {
 
 const REGION_HALF = REGION_SIZE / 2;
 
-// The chunk coordinate (floored division, matching JS Math.floor for negatives) of a
-// tile-coordinate column.
+// Chunk coordinate of a tile column (floored division, matching JS Math.floor for negatives).
 export const CHUNK_COORD_SQL = (col) =>
     `(CASE WHEN ${col} < 0 AND ${col} % ${CHUNK_SIZE} != 0 THEN ${col}/${CHUNK_SIZE} - 1 ELSE ${col}/${CHUNK_SIZE} END)`;
 
@@ -33,9 +32,8 @@ const CoreStatements = [
 
     new SqlStatement("InsertPort", "INSERT INTO Port DEFAULT VALUES RETURNING id;"),
 
-    // Allocates the next global object id (see the ObjectId table). Mods call this and insert
-    // the object with the returned id, instead of relying on per-table autoincrement.
-    new SqlStatement("AllocateObjectId", "UPDATE ObjectId SET next = next + 1 RETURNING next;"),
+    // Next global object id (ObjectIdSeq); mods insert with it instead of per-table autoincrement.
+    new SqlStatement("AllocateObjectId", "UPDATE ObjectIdSeq SET seq = seq + 1 RETURNING seq;"),
 
     new SqlStatement("GetSessionEvents", `
         SELECT ev.type, ev.id, ev.a, ev.b, ev.c,
@@ -52,6 +50,33 @@ const CoreStatements = [
     new SqlStatement("InsertSessionViewport", `INSERT INTO SessionViewport (session_id, chunk) VALUES (@session_id, @chunk);`),
     new SqlStatement("DeleteSessionViewportChunk", `DELETE FROM SessionViewport WHERE session_id = @session_id AND chunk = @chunk;`),
     new SqlStatement("GetSessionsByChunk", `SELECT DISTINCT session_id FROM SessionViewport WHERE chunk = @chunk;`),
+
+    // Inspect subscriptions: the object ids a session has menus open for.
+    new SqlStatement("GetSessionInspect", `SELECT object_id FROM SessionInspect WHERE session_id = @session_id;`),
+    new SqlStatement("InsertSessionInspect", `INSERT INTO SessionInspect (session_id, object_id) VALUES (@session_id, @object_id);`),
+    new SqlStatement("DeleteSessionInspectObject", `DELETE FROM SessionInspect WHERE session_id = @session_id AND object_id = @object_id;`),
+    new SqlStatement("DeleteSessionInspect", `DELETE FROM SessionInspect WHERE session_id = @session_id;`),
+    new SqlStatement("GetSessionsInspectingObject", `SELECT session_id FROM SessionInspect WHERE object_id = @object_id;`),
+    new SqlStatement("DeleteInspectObject", `DELETE FROM SessionInspect WHERE object_id = @object_id;`),
+
+    // Drains this tick's machine snapshots to every subscribing session.
+    new SqlStatement("GetSessionInspectEvents", `
+        SELECT si.session_id,
+               snap.object_id,
+               snap.in_1_port, snap.in_1_mem, snap.in_2_port, snap.in_2_mem, snap.in_3_port, snap.in_3_mem,
+               snap.processing_remaining, snap.processing_total, snap.output_item, snap.recipe_output
+        FROM BufferedInspectHeartbeatEvent snap
+            INNER JOIN SessionInspect si ON si.object_id = snap.object_id;
+    `),
+    new SqlStatement("TruncateBufferedInspectHeartbeatEvent", `DELETE FROM BufferedInspectHeartbeatEvent;`),
+
+    // All snapshot rows, session-agnostic (read after an on-open sync).
+    new SqlStatement("GetInspectSnapshotRows", `
+        SELECT object_id,
+               in_1_port, in_1_mem, in_2_port, in_2_mem, in_3_port, in_3_mem,
+               processing_remaining, processing_total, output_item, recipe_output
+        FROM BufferedInspectHeartbeatEvent;
+    `),
 ];
 
 const CoreSchema = `
@@ -67,31 +92,28 @@ const CoreSchema = `
         value INT NOT NULL
     );
 
-    -- A single global id sequence shared by every placeable object (belts, splitters, …), so
-    -- object ids are unique across types and a later id means a later placement. Comparing ids
-    -- across object types is how connections resolve "most recently placed wins".
-    CREATE TABLE ObjectId (next INTEGER NOT NULL);
-    INSERT INTO ObjectId (next) VALUES (0);
+    -- Global id sequence for every placeable object: ids unique across types, higher = placed
+    -- later — how connections resolve "most recently placed wins".
+    CREATE TABLE ObjectIdSeq (seq INTEGER NOT NULL);
+    INSERT INTO ObjectIdSeq (seq) VALUES (0);
 
     CREATE TABLE Port (
         id INTEGER PRIMARY KEY,
         item INT,
 
-        -- Set by a mod when the port is an object's input port. Lets a mod build a
-        -- partial index of filled input ports (item IS NOT NULL AND is_input_port = 1)
-        -- so a tick can find ports taking input directly.
+        -- Set by a mod for an object's input port, so it can partial-index filled input
+        -- ports (item IS NOT NULL AND is_input_port = 1) to find ports taking input.
         is_input_port INT NOT NULL DEFAULT 0
     );
 
-    -- Filled ports — the items resting in ports a mod renders. Sparse (few items sit
-    -- in ports at once), so this stays tiny; mods drive their port-item emit off it.
+    -- Filled ports (resting rendered items). Sparse, so tiny; mods drive port-item emit off it.
     CREATE INDEX Port_filled ON Port(id) WHERE item IS NOT NULL;
 
     CREATE TABLE BufferedEvent (
         type INT NOT NULL,
 
-        -- The chunk this event routes to (its position is never sent to the client, which
-        -- derives item positions from the path). The chunk id joins SessionViewport.
+        -- Chunk this event routes to (position never sent — client derives from the path);
+        -- the chunk id joins SessionViewport.
         routing_chunk_x INT NOT NULL,
         routing_chunk_y INT NOT NULL,
         chunk INT GENERATED ALWAYS AS (${chunkIdSql("routing_chunk_x", "routing_chunk_y")}) VIRTUAL,
@@ -103,8 +125,8 @@ const CoreSchema = `
     );
     CREATE INDEX BufferedEvent_chunk ON BufferedEvent(chunk);
 
-    -- A verb's recipes: an input list in port order (input_N = the Nth input port's item, 0 = unused
-    -- slot) maps to one output. Shared across every machine implementing the verb; seeded from mods.
+    -- A verb's recipes: inputs in port order (input_N = Nth port's item, 0 = unused) → one output.
+    -- Shared by every machine implementing the verb; seeded from mods.
     CREATE TABLE Recipes (
         verb INT NOT NULL,
         input_1 INT NOT NULL,
@@ -141,30 +163,26 @@ const CoreTempSchema = `
     CREATE TEMPORARY TABLE PortTransferIntent (
         source_id INT,
 
-        -- A NULL destination flags a self-draining source instead of a move: source_id is a
-        -- port its owner empties internally this tick (e.g. a belt ingesting into head room
-        -- without popping), so an upstream transfer into it still resolves through the chain
-        -- even though no transfer drains it. Such rows skip the per-destination dedup and
-        -- never become an actual move; a real transfer always names a destination.
+        -- NULL destination marks a self-draining source, not a move: the owner empties source_id
+        -- internally this tick (e.g. a belt ingesting into head room without popping), so an
+        -- upstream transfer into it still resolves. Skips the per-destination dedup, never a real
+        -- move (which always names a destination).
         destination_id INT,
 
         destination_is_empty INT DEFAULT (0)
             CHECK ( destination_is_empty=0 OR destination_is_empty=1 ),
 
-        managed INT DEFAULT (1) -- When set to 0, the GameObject code
-                                -- is responsible for actually doing the transfer.
+        managed INT DEFAULT (1) -- 0 = the owning mod does the transfer itself.
             CHECK ( managed=0 OR managed=1 ),
 
-        -- The item the destination receives, overriding the source's item (a machine translating
-        -- its input to a product, or — with a NULL source — creating one). NULL moves it unchanged.
+        -- Item the destination receives, overriding the source's (a machine's product, or a
+        -- creation when source is NULL); NULL moves it unchanged.
         output_item INT,
 
-        -- NULL for an ordinary transfer with a single destination. A fan-out source (one
-        -- that submits a competing intent per candidate destination, e.g. a splitter) ranks
-        -- them 1, 2, ...: the lowest rank wins both the per-destination dedup (which source
-        -- gets a contested destination) and the post-chain per-source pick (which
-        -- destination a source keeps). Its presence (NOT NULL) is also what opts a row into
-        -- that per-source pick, so single-destination sources skip that window entirely.
+        -- NULL for a single-destination transfer. A fan-out source (competing intent per candidate,
+        -- e.g. a splitter) ranks them 1, 2, …: lowest wins both the per-destination dedup (which
+        -- source gets a contested destination) and the per-source pick (which destination a source
+        -- keeps). NOT NULL also opts a row into that per-source pick; single-destination sources skip it.
         alternatives_rank INT,
 
         PRIMARY KEY (source_id, destination_id)
@@ -173,15 +191,15 @@ const CoreTempSchema = `
     CREATE TEMPORARY TABLE ResolvedPortTransfer (
         source_id INT,
         destination_id INTEGER PRIMARY KEY,
-        -- The item being moved, or NULL for an unmanaged (virtual) transfer the engine
-        -- only resolved — the owning mod reads it (managed=0) and does the move itself.
+        -- Item moved, or NULL for an unmanaged transfer (managed=0): the engine only resolved it;
+        -- the owning mod does the move.
         item INT,
         managed INT NOT NULL
     );
     CREATE UNIQUE INDEX ResolvedPortTransfer_source ON ResolvedPortTransfer (source_id);
 
-    -- Sources of resolved sink intents (managed, destination-less): items the engine consumes
-    -- (clears) this tick without a destination. Drained in COMMIT_TRANSFERS.
+    -- Resolved sink sources (managed, destination-less): items the engine clears this tick.
+    -- Drained in COMMIT_TRANSFERS.
     CREATE TEMPORARY TABLE ResolvedSink (
         source_id INTEGER PRIMARY KEY
     );
@@ -196,8 +214,28 @@ const CoreTempSchema = `
         chunk INT NOT NULL
     );
 
-    -- This tick's watched filled out-ports (item + routing x/y), filled by mod capture ops in
-    -- COMMIT_TRANSFERS; EMIT_RENDER diffs it against PortItemShadow, then rebuilds the shadow from it.
+    -- Open machine menus: one row per inspected object (multiple per session).
+    CREATE TEMPORARY TABLE SessionInspect (
+        session_id INT REFERENCES Session,
+        object_id INT NOT NULL,
+        PRIMARY KEY (session_id, object_id)
+    );
+
+    -- This tick's inspected-machine snapshots (EMIT_INSPECT fills, postTick drains). Column semantics
+    -- documented on InspectHeartbeatEvent.
+    CREATE TEMPORARY TABLE BufferedInspectHeartbeatEvent (
+        object_id INTEGER PRIMARY KEY,
+        in_1_port INT, in_1_mem INT,
+        in_2_port INT, in_2_mem INT,
+        in_3_port INT, in_3_mem INT,
+        processing_remaining INT,
+        processing_total INT,
+        output_item INT,
+        recipe_output INT
+    );
+
+    -- This tick's watched filled out-ports (item + routing x/y), filled by mod capture in
+    -- COMMIT_TRANSFERS; EMIT_RENDER diffs it against PortItemShadow, then rebuilds the shadow.
     CREATE TEMPORARY TABLE ViewedPortItem (
         port_id INTEGER PRIMARY KEY,
         item INT,
@@ -205,8 +243,7 @@ const CoreTempSchema = `
         y INT
     );
 
-    -- Previous tick's ViewedPortItem, so EMIT_RENDER emits only out-ports whose item changed (x/y
-    -- routes clears).
+    -- Previous tick's ViewedPortItem; EMIT_RENDER emits only out-ports whose item changed (x/y routes clears).
     CREATE TEMPORARY TABLE PortItemShadow (
         port_id INTEGER PRIMARY KEY,
         item INT,
@@ -228,9 +265,9 @@ const CoreTickPhases = {
         new SqlStatement(
                 "ResolvePortTransfer",
             `WITH RECURSIVE ranked_per_destination AS (
-                -- Rank contenders for each destination (a port takes one item): lowest
-                -- alternatives_rank wins, ties by source_id. A NULL rank (single-destination
-                -- sources) sorts first -- harmless, they only share a partition with each other.
+                -- Rank contenders per destination (a port takes one): lowest alternatives_rank wins,
+                -- ties by source_id. NULL rank (single-destination) sorts first — harmless, they
+                -- share a partition only with each other.
                 SELECT
                     source_id,
                     destination_id,
@@ -255,11 +292,10 @@ const CoreTickPhases = {
 
                 UNION
 
-                -- ...or its source drains this tick: a destination-less row marking a port emptied
-                -- without a transfer to show it — an unmanaged self-drain (a belt ingesting into head
-                -- room, the owner clears it) or a managed sink (the engine clears it, in CONSUME_INPUTS
-                -- before producers refill). Either way it lets an upstream transfer into that port
-                -- resolve. Only source_id matters; filtered out before the move below.
+                -- ...or its source drains this tick: a destination-less row for a port emptied without
+                -- a transfer — an unmanaged self-drain (belt into head room) or a managed sink (engine
+                -- clears in CONSUME_INPUTS before producers refill). Lets an upstream transfer into that
+                -- port resolve; only source_id matters, filtered out before the move.
                 SELECT source_id, NULL, NULL, NULL, NULL
                 FROM PortTransferIntent
                 WHERE destination_id IS NULL
@@ -273,9 +309,8 @@ const CoreTickPhases = {
                     INNER JOIN one_per_destination i ON i.destination_id = chain.source_id
             ),
             one_per_source AS (
-                -- Single-destination sources (belts) pass through. A fan-out source keeps
-                -- only its best-ranked resolved destination -- a dedup over just the tiny
-                -- fan-out set, so belts pay no extra sort.
+                -- Single-destination sources (belts) pass through. A fan-out source keeps only its
+                -- best-ranked resolved destination — dedup over the tiny fan-out set, so belts pay no extra sort.
                 SELECT source_id, destination_id, managed, output_item
                 FROM resolved
                 WHERE alternatives_rank IS NULL AND destination_id IS NOT NULL
@@ -291,23 +326,23 @@ const CoreTickPhases = {
                 )
                 WHERE src_rank=1
             )
-            -- Commit each resolved transfer. Managed ones carry the item the destination receives:
-            -- output_item if set (a translation, or a creation when there is no source), else the
-            -- source's own item. Unmanaged ones leave it NULL for the owning mod to move itself.
+            -- Commit each resolved transfer. Managed: destination gets output_item if set
+            -- (translation, or creation when there is no source), else the source's item.
+            -- Unmanaged: NULL, the owning mod moves it.
             INSERT INTO ResolvedPortTransfer (source_id, destination_id, item, managed)
             SELECT ops.source_id,
                    ops.destination_id,
                    CASE WHEN ops.managed THEN COALESCE(ops.output_item, src.item) END AS item,
                    ops.managed
             FROM one_per_source ops
-                -- LEFT JOIN (not CROSS) so a source-less create still commits; drives from the
-                -- small transfer set with an indexed rowid lookup, so the plan is unchanged.
+                -- LEFT JOIN (not CROSS) so a source-less create still commits; drives from the small
+                -- transfer set via indexed rowid lookup, plan unchanged.
                 LEFT JOIN Port src ON src.id = ops.source_id;`
 
         ),
         new SqlStatement(
-            // Sinks (managed, destination-less) always resolve — there is no destination to gate
-            // on. Capture their sources before the intents are truncated; CONSUME_INPUTS clears them.
+            // Sinks (managed, destination-less) always resolve (no destination to gate on). Capture
+            // sources before intents truncate; CONSUME_INPUTS clears them.
             "CaptureResolvedSinks",
             `INSERT OR IGNORE INTO ResolvedSink (source_id)
              SELECT source_id FROM PortTransferIntent WHERE destination_id IS NULL AND managed = 1;`
@@ -316,8 +351,8 @@ const CoreTickPhases = {
     ],
     [TickPhase.CONSUME_INPUTS]: [
         new SqlStatement(
-            // Consume sunk items here, before producers (belts) refill the ports in POST_RESOLVE, so
-            // an upstream item shifts forward into the freed port the same tick.
+            // Consume sunk items before producers refill ports in POST_RESOLVE, so an upstream item
+            // shifts into the freed port the same tick.
             "FlushResolvedSink",
             `UPDATE Port SET item=NULL WHERE id IN (SELECT source_id FROM ResolvedSink);`
         ),
@@ -328,9 +363,8 @@ const CoreTickPhases = {
             `UPDATE Port SET item=NULL WHERE id IN (SELECT source_id FROM ResolvedPortTransfer WHERE managed=1);`
         ),
         new SqlStatement(
-            // Driven from ResolvedPortTransfer (destination_id is its PRIMARY KEY) instead of
-            // UPDATE ... FROM, which made the planner scan the whole Port table. Mirrors
-            // FlushResolvedPortTransferSource, which already drives from the transfer set.
+            // Driven from ResolvedPortTransfer (destination_id PK), not UPDATE ... FROM (which scanned
+            // the whole Port table). Mirrors FlushResolvedPortTransferSource.
             "FlushResolvedPortTransferDestination",
             `UPDATE Port
              SET item = (SELECT pt.item FROM ResolvedPortTransfer pt WHERE pt.destination_id = Port.id)
@@ -338,14 +372,14 @@ const CoreTickPhases = {
         ),
         new SqlStatement("TruncateResolvedPortTransfer", `DELETE FROM ResolvedPortTransfer;`),
         new SqlStatement("TruncateResolvedSink", `DELETE FROM ResolvedSink;`),
-        // Clear the render staging before mods capture this tick's watched out-ports into it.
+        // Clear render staging before mods capture this tick's out-ports.
         new SqlStatement("ClearViewedPortItem", `DELETE FROM ViewedPortItem;`),
     ],
-    // Engine-only phase running after COMMIT_TRANSFERS, so the out-port render diff reads
-    // ViewedPortItem (filled by mod capture ops in COMMIT_TRANSFERS) against the shadow.
+    // Engine-only, after COMMIT_TRANSFERS: the render diff reads ViewedPortItem (filled by mod
+    // capture) against the shadow.
     [TickPhase.EMIT_RENDER]: [
-        // SET for each out-port whose resting item changed (diff vs PortItemShadow). Carries only
-        // the port id (a=item type); the client infers the render tile. x/y is the routing tile.
+        // One SET per out-port whose resting item changed (vs PortItemShadow). Carries port id +
+        // a=item type; client infers the render tile, x/y routes.
         new SqlStatement(
             "EmitPortItemSet",
             `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
@@ -394,8 +428,7 @@ export class DatabaseSchema {
             });
         });
 
-        // Core ops per phase first, then mod ops appended after them. The out-port render diff runs
-        // in its own engine-only EMIT_RENDER phase, after mods capture in COMMIT_TRANSFERS.
+        // Core ops per phase first, then mod ops. The render diff runs in its own engine-only EMIT_RENDER phase.
         this._registerCoreTickPhases(CoreTickPhases);
 
         [
@@ -404,12 +437,14 @@ export class DatabaseSchema {
             TickPhase.CONSUME_INPUTS,
             TickPhase.POST_RESOLVE,
             TickPhase.PRODUCE_OUTPUTS,
-            TickPhase.COMMIT_TRANSFERS
+            TickPhase.COMMIT_TRANSFERS,
+            TickPhase.EMIT_INSPECT
         ].forEach(phase => {
             this._prepareTick(this.modRegistry.definitions, phase);
         });
 
         this._prepareRenderCapture(this.modRegistry.definitions);
+        this._prepareInspectOne(this.modRegistry.definitions);
 
         this._preparePortQueries(this.modRegistry.definitions);
         this._prepareOccupancyQuery(this.modRegistry.definitions);
@@ -447,6 +482,23 @@ export class DatabaseSchema {
             padded.push(0);
         }
         return padded;
+    }
+
+    /**
+     * Collects each definition's on-open inspect snapshot statement into `inspectStatements`.
+     * @param {Object<string, ObjectDefinition>} definitions
+     * @returns {void}
+     */
+    _prepareInspectOne(definitions) {
+        this.inspectStatements = [];
+        Object.values(definitions).forEach(definition => {
+            const stmt = definition.inspectOneStatement;
+            if (stmt === null) {
+                return;
+            }
+            this._prepare(stmt.statementName, stmt.sql);
+            this.inspectStatements.push(stmt.statementName);
+        });
     }
 
     /**

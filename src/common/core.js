@@ -83,6 +83,12 @@ export const TickPhase = {
      * tick's watched port items in COMMIT_TRANSFERS. Mods register no ops here.
      */
     EMIT_RENDER: 7,
+
+    /**
+     * Mods snapshot inspected machines (joined on SessionInspect) here; the engine drains them to
+     * sessions in postTick.
+     */
+    EMIT_INSPECT: 8,
 }
 
 export class MiniMenuEntry {
@@ -158,11 +164,13 @@ export class ObjectDefinition {
         // Stable numeric identity assigned by ModRegistry (registration order); the wire carries it
         // and the client cache keys off this definition. Null until the registry assigns it.
         this.typeId = null;
-        // Extra non-port columns for the table (e.g. a machine's slots/cooldown), appended by
+        // Extra non-port columns for the table (e.g. a machine's slots/processing_remaining), appended by
         // EasyObjectPlacement.
         this.stateColumns = [];
         // The verb this object implements over the shared Recipes table, or null. Set by EasyRecipeProcessor.
         this.verb = null;
+        // The on-open inspect snapshot statement, or null. Set by EasyRecipeProcessor.
+        this.inspectOneStatement = null;
     }
 
     /**

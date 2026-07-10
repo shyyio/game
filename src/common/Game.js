@@ -1,7 +1,8 @@
 import {BufferedEvent} from "@/common/BufferedEvent.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
-import {SetViewportMessage} from "@/common/CoreMessages.js";
+import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
+import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
 import {WireRegistry} from "@/common/wire.js";
@@ -108,6 +109,7 @@ export class Game {
      */
     disconnect(sessionId) {
         this.exec("DeleteSessionViewport", {session_id: sessionId});
+        this.exec("DeleteSessionInspect", {session_id: sessionId});
         delete this.sessions[sessionId];
     }
 
@@ -124,7 +126,17 @@ export class Game {
             return;
         }
 
+        if (message instanceof SetInspectedObjectsMessage) {
+            this._setSessionInspect(session, message.objectIds);
+            return;
+        }
+
         this.modRegistry.dispatchMessage(message);
+
+        // Close menus after the object is actually deleted, never before.
+        if (message instanceof DeleteObjectMessage) {
+            this._closeInspect(message.id);
+        }
     }
 
     // ---- Viewport ----
@@ -161,6 +173,67 @@ export class Game {
         });
     }
 
+    // ---- Inspect ----
+
+    /**
+     * Diffs the session's inspected-object set against the requested ids.
+     * @param {AbstractSession} session
+     * @param {BigInt[]} objectIds
+     * @returns {void}
+     */
+    _setSessionInspect(session, objectIds) {
+        // Keyed by string id (dedups the message) mapping to the BigInt to bind.
+        const requested = new Map(objectIds.map(id => [String(id), id]));
+        const currentRows = this.query("GetSessionInspect", {session_id: session.id});
+        const current = new Set(currentRows.map(row => String(row.object_id)));
+
+        current.forEach(objectId => {
+            if (requested.has(objectId)) {
+                return;
+            }
+            this.exec("DeleteSessionInspectObject", {session_id: session.id, object_id: objectId});
+        });
+
+        requested.forEach((objectId, key) => {
+            if (current.has(key)) {
+                return;
+            }
+            this.exec("InsertSessionInspect", {session_id: session.id, object_id: objectId});
+            // Fill the new menu now, not on the next heartbeat.
+            this._syncInspect(session, objectId);
+        });
+    }
+
+    /**
+     * Sends a session one machine's current snapshot when its menu opens.
+     * @param {AbstractSession} session
+     * @param {BigInt} objectId
+     * @returns {void}
+     */
+    _syncInspect(session, objectId) {
+        this.db.schema.inspectStatements.forEach(name => {
+            this.exec(name, {object_id: objectId});
+        });
+        const rows = this.query("GetInspectSnapshotRows");
+        rows.forEach(row => {
+            session.publishEvent(new InspectHeartbeatEvent(row));
+        });
+        this.exec("TruncateBufferedInspectHeartbeatEvent");
+    }
+
+    /**
+     * Drops the deleted object's inspect subscriptions and closes its menu on those sessions.
+     * @param {BigInt} objectId
+     * @returns {void}
+     */
+    _closeInspect(objectId) {
+        const sessions = this.query("GetSessionsInspectingObject", {object_id: objectId});
+        this.exec("DeleteInspectObject", {object_id: objectId});
+        sessions.forEach(row => {
+            this.sessions[row.session_id].publishEvent(new InspectClosedEvent(objectId));
+        });
+    }
+
     // ---- Tick ----
 
     /**
@@ -173,7 +246,8 @@ export class Game {
     }
 
     postTick() {
-        this._dispatchEvents();
+        this._dispatchBufferedEvents();
+        this._dispatchInspectEvents();
     }
 
     // ---- Events ----
@@ -194,15 +268,28 @@ export class Game {
     }
 
     /**
-     * Reads events from BufferedEvent that fall within each session's viewport,
-     * dispatches them to the appropriate session, then clears the journal.
+     * Dispatches each session its viewport's buffered events, then clears the journal.
+     * @private
      */
-    _dispatchEvents() {
+    _dispatchBufferedEvents() {
         const rows = this.query("GetSessionEvents");
 
         rows.forEach(row => {
             this.sessions[row.session_id].publishEvent(new BufferedEvent(row));
         });
         this.exec("TruncateBufferedEvent");
+    }
+
+    /**
+     * Sends this tick's machine snapshots to each subscribing session, then clears them.
+     * @private
+     */
+    _dispatchInspectEvents() {
+        const rows = this.query("GetSessionInspectEvents");
+
+        rows.forEach(row => {
+            this.sessions[row.session_id].publishEvent(new InspectHeartbeatEvent(row));
+        });
+        this.exec("TruncateBufferedInspectHeartbeatEvent");
     }
 }

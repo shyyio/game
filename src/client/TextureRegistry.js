@@ -62,19 +62,11 @@ export class TextureRegistry {
     }
 
     /**
-     * @param {string} name
-     * @returns {Texture}
-     */
-    get(name) {
-        return this.textures[name];
-    }
-
-    /**
      * The texture for `name`, throwing if it isn't loaded (a missing texture is a content bug).
      * @param {string} name
      * @returns {Texture}
      */
-    require(name) {
+    get(name) {
         const texture = this.textures[name];
         if (texture === undefined) {
             throw new Error(`No texture loaded: "${name}"`);

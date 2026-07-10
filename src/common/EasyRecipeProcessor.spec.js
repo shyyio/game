@@ -22,7 +22,7 @@ const INVERSE_ALLOY = 13;
 
 // A 2-input Mixer implementing MIX (red+green->alloy, green+red->inverse alloy, yellow+blue->glass,
 // else junk), and a Furnace +
-// Oven that both implement COOK (coal->coke, else slag) at different cooldowns to share one table.
+// Oven that both implement COOK (coal->coke, else slag) at different processing times to share one table.
 function mixer(processingTicks=1) {
     const definition = new ObjectDefinition({
         table: "Mixer",
@@ -210,7 +210,7 @@ test("Consumes the next batch on every port the tick it produces (pipelining)", 
     assert.ok(consumedBothOnProduction);
 });
 
-test("Two machine types share one verb's recipes at different cooldowns", async () => {
+test("Two machine types share one verb's recipes at different processing times", async () => {
     const oven = furnace("Oven", 1);
     const slowFurnace = furnace("Furnace", 3);
     const game = await setupGame([new MachineMod([oven, slowFurnace], COOK_RECIPES, COOK_FALLBACK)]);
@@ -222,7 +222,7 @@ test("Two machine types share one verb's recipes at different cooldowns", async 
     inject(game, ovenPorts.in_id, COAL);
     inject(game, furnacePorts.in_id, COAL);
 
-    // Both cook coal into coke off the same table; the oven (cooldown 1) finishes before the furnace (3).
+    // Both cook coal into coke off the same table; the oven (1 tick) finishes before the furnace (3).
     game.tickAll();
     game.tickAll();
     assert.equal(item(game, ovenPorts.out_id), COKE);

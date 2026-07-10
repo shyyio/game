@@ -13,6 +13,7 @@ const PROFILING_HISTORY = 10000;
  */
 export const BIGINT_COLS = new Set([
     "id",
+    "object_id",
     "parent_id",
     "belt_id",
     "path_id",

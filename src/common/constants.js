@@ -130,3 +130,5 @@ export const GameSettingsKey = {
 // empties one.
 export const BUFFERED_EVENT_TYPE_PORT_ITEM_SET = 3;
 export const BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR = 4;
+// An object's last produced item changed (id=object, a=item); routed by chunk, independent of inspect.
+export const BUFFERED_EVENT_TYPE_EASY_OBJECT_UPDATE = 5;

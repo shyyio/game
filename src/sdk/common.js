@@ -42,7 +42,7 @@ export {DeleteObjectMessage} from "@/common/CoreMessages.js";
 // Generic object-placement message (tagged with an ObjectDefinition table name) and the generic
 // object lifecycle events EasyObjectPlacement emits — a mod uses these instead of per-object classes.
 export {CreateObjectMessage} from "@/common/CoreMessages.js";
-export {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
+export {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
 
 // ---- Errors ----
 // Thrown by a mod's placement code to refuse a creation; unwinds to the transaction

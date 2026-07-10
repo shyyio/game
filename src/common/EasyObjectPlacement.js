@@ -1,6 +1,6 @@
 import {SqlStatement} from "@/common/core.js";
 import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
-import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
+import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
 import {upstreamPorts, downstreamPorts} from "@/common/portUtils.js";
 import {CHUNK_ID_SQL} from "@/common/DatabaseSchema.js";
 
@@ -12,12 +12,14 @@ export class EasyObjectPlacement {
 
     /**
      * @param {ObjectDefinition} definition - its `table` names the object's table; its `stateColumns`
-     *     are extra non-port columns (e.g. a recipe's `inventory`/`cooldown`) that take DB defaults on insert
+     *     are extra non-port columns (e.g. a recipe's `slots`/`processing_remaining`) that take DB defaults on insert
      */
     constructor(definition) {
         this.table = definition.table;
         this.definition = definition;
         this._stateColumns = definition.stateColumns;
+        // Producers (a recipe verb) keep a last_output column that rides sync/last-produced events.
+        this._producesOutput = definition.verb !== null;
         // All port columns, in insert order: inputs, then outputs, then internals.
         this._portColumns = [
             ...definition.inputPorts,
@@ -47,6 +49,8 @@ export class EasyObjectPlacement {
      */
     get schema() {
         const columns = [
+            // Producers keep a last produced item (NULL = none); rides sync events + the last-produced BufferedEvent.
+            ...(this._producesOutput ? ["last_output INT"] : []),
             ...this._portColumns.map(column => `${column} INT REFERENCES Port(id) ON DELETE SET NULL`),
             ...this._stateColumns,
         ].map(column => `        ${column}`).join(",\n");
@@ -75,7 +79,7 @@ export class EasyObjectPlacement {
     get statements() {
         const insertCols = ["id", "x", "y", "direction", ...this._portColumns].join(", ");
         const insertVals = ["CAST(@id AS INT)", "@x", "@y", "@direction", ...this._portColumns.map(column => `@${column}`)].join(", ");
-        const selectCols = ["id", "x", "y", "direction", ...this._portColumns].join(", ");
+        const selectCols = ["id", "x", "y", "direction", ...(this._producesOutput ? ["last_output"] : []), ...this._portColumns].join(", ");
         const returningCols = ["x", "y", ...this._portColumns].join(", ");
         return [
             new SqlStatement(`Insert${this.table}`, `
@@ -119,13 +123,14 @@ export class EasyObjectPlacement {
      */
     chunkSyncEvents(game, chunk) {
         return game.query(`Get${this.table}InChunk`, {chunk}).map(row =>
-            new ObjectSyncEvent(
+            new EasyObjectSyncEvent(
                 this.definition.typeId,
                 row.id,
                 row.x,
                 row.y,
                 row.direction,
                 this._renderedPortIds(row),
+                this._producesOutput ? row.last_output : null,
             ));
     }
 
@@ -189,13 +194,14 @@ export class EasyObjectPlacement {
         }
 
         game.end();
-        game.publishEventNow(new ObjectInsertEvent(
+        game.publishEventNow(new EasyObjectInsertEvent(
             this.definition.typeId,
             id,
             x,
             y,
             direction,
             this._renderedPortIds(ports),
+            null,
         ));
     }
 
@@ -224,6 +230,6 @@ export class EasyObjectPlacement {
         });
 
         game.end();
-        game.publishEventNow(new ObjectDeleteEvent(this.definition.typeId, id, row.x, row.y));
+        game.publishEventNow(new EasyObjectDeleteEvent(this.definition.typeId, id, row.x, row.y));
     }
 }

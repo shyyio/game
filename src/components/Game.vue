@@ -234,6 +234,7 @@ onMounted(async () => {
     game.tick(TickPhase.PRODUCE_OUTPUTS);
     game.tick(TickPhase.COMMIT_TRANSFERS);
     game.tick(TickPhase.EMIT_RENDER);
+    game.tick(TickPhase.EMIT_INSPECT);
     game.postTick();
   }
 

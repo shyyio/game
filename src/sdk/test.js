@@ -64,6 +64,7 @@ export class TestHarness {
         this.game.tick(TickPhase.PRODUCE_OUTPUTS);
         this.game.tick(TickPhase.COMMIT_TRANSFERS);
         this.game.tick(TickPhase.EMIT_RENDER);
+        this.game.tick(TickPhase.EMIT_INSPECT);
     }
 
     /**

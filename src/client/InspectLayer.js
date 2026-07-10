@@ -27,7 +27,7 @@ export class InspectLayer extends AbstractDrawLayer {
     show(highlights) {
         this.clear();
         highlights.forEach(highlight => {
-            const texture = this.textureRegistry.require(`inspect/${highlight.definition.geometryName}${highlight.alt ? "-alt" : ""}`);
+            const texture = this.textureRegistry.get(`inspect/${highlight.definition.geometryName}${highlight.alt ? "-alt" : ""}`);
             const sprite = new EasySprite(0n, highlight.tileX, highlight.tileY, highlight.direction, texture, highlight.definition);
             this.addChild(sprite);
             this._sprites.push(sprite);

@@ -3,7 +3,7 @@ import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {MAP_TILE_COLOR} from "@/client/Theme.js";
 import {ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
-import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
+import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
 import {EasySprite} from "@/client/EasySprite.js";
 
 /**
@@ -103,7 +103,7 @@ export class EasyObjectDrawLayer extends AbstractDrawLayer {
      * @private
      */
     _objectFor(event) {
-        const placed = event instanceof ObjectInsertEvent || event instanceof ObjectSyncEvent;
+        const placed = event instanceof EasyObjectInsertEvent || event instanceof EasyObjectSyncEvent;
         if (!placed || event.typeId !== this._definition.typeId) {
             return null;
         }
@@ -127,7 +127,7 @@ export class EasyObjectDrawLayer extends AbstractDrawLayer {
                 event.x,
                 event.y,
                 event.direction,
-                this.textureRegistry.require(this._definition.textureName),
+                this.textureRegistry.get(this._definition.textureName),
                 this._definition,
             ),
         };
@@ -140,7 +140,7 @@ export class EasyObjectDrawLayer extends AbstractDrawLayer {
      * @private
      */
     _removedId(event) {
-        return event instanceof ObjectDeleteEvent && event.typeId === this._definition.typeId ? event.id : null;
+        return event instanceof EasyObjectDeleteEvent && event.typeId === this._definition.typeId ? event.id : null;
     }
 
     /**

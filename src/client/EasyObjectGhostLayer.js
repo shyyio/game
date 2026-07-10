@@ -45,7 +45,7 @@ export class EasyObjectGhostLayer extends AbstractDrawLayer {
         this.clear();
         this._anchorTileX = tileX;
         this._anchorTileY = tileY;
-        const sprite = new EasySprite(0n, tileX, tileY, direction, this.textureRegistry.require(this._definition.textureName), this._definition);
+        const sprite = new EasySprite(0n, tileX, tileY, direction, this.textureRegistry.get(this._definition.textureName), this._definition);
         sprite.setGhost(blocked ? GHOST_BLOCKED_TINT : GHOST_TINT, blocked ? GHOST_BLOCKED_ALPHA : GHOST_ALPHA);
         this._sprite = sprite;
         this._spriteContainer.addChild(sprite);

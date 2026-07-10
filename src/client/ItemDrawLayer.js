@@ -10,7 +10,7 @@ import {BufferedEvent} from "@/common/BufferedEvent.js";
 export const PORT_SPRITE_KEY = portId => `port:${portId}`;
 
 // Texture for an item type with no mod-supplied mapping.
-const DEFAULT_ITEM_TEXTURE = "items/3";
+export const DEFAULT_ITEM_TEXTURE = "items/3";
 
 // Items glide to each new position over this long (the game tick is 600ms, so they
 // arrive and briefly rest before the next move).

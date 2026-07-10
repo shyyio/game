@@ -4,7 +4,7 @@ import assert from "node:assert";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {WireRegistry} from "@/common/wire.js";
 import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
-import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
+import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
 import {LogisticsMod} from "./mod.js";
 import {CreateBeltMessage} from "./messages.js";
 import {
@@ -54,9 +54,9 @@ test("Round-trips belt events, preserving exact BigInt ids", () => {
 
 test("Round-trips generic object events, preserving exact BigInt ids in the port-id array", () => {
     const reg = registry();
-    roundTrip(reg, new ObjectInsertEvent(1, 99n, 5, 6, 1, [7n, 9999999999999999n]), ObjectInsertEvent);
-    roundTrip(reg, new ObjectSyncEvent(2, 100n, 5, 6, 2, [9007199254740993n]), ObjectSyncEvent);
-    roundTrip(reg, new ObjectDeleteEvent(1, 99n, 5, 6), ObjectDeleteEvent);
+    roundTrip(reg, new EasyObjectInsertEvent(1, 99n, 5, 6, 1, [7n, 9999999999999999n], null), EasyObjectInsertEvent);
+    roundTrip(reg, new EasyObjectSyncEvent(2, 100n, 5, 6, 2, [9007199254740993n], 42), EasyObjectSyncEvent);
+    roundTrip(reg, new EasyObjectDeleteEvent(1, 99n, 5, 6), EasyObjectDeleteEvent);
     roundTrip(reg, new CreateObjectMessage(1, 5, 6, 1), CreateObjectMessage);
 });
 
