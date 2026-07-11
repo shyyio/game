@@ -402,8 +402,11 @@ class Mouse {
         this.currentX = world.x;
         this.currentY = world.y;
 
-        // No hover ghost while the pointer sits over a HUD panel.
-        if (this._pointerOverHud()) {
+        // Center-lock pins the ghost to the screen center, so a finger resting on the toolbar (HUD)
+        // must not suppress it; otherwise skip the hover ghost while the pointer sits over a panel.
+        if (this._centerLock) {
+            this._updateHoverTile();
+        } else if (this._pointerOverHud()) {
             this._emitTileExit();
         } else {
             this._resumeHoverIfMoved();

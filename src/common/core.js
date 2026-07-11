@@ -171,6 +171,14 @@ export class ObjectDefinition {
         this.verb = null;
         // The on-open inspect snapshot statement, or null. Set by EasyRecipeProcessor.
         this.inspectOneStatement = null;
+        // Post-placement hook (game, id, {x, y, direction}), or null. Set by EasyExtractor.
+        this.afterCreate = null;
+        // Placement precondition (game, {x, y, direction}) => boolean, or null (always allowed). Set
+        // by EasyExtractor to require a resource under the footprint.
+        this.canPlace = null;
+        // Relative tiles an extractor draws this object from (a resource's extraction set), or null.
+        // Set by EasyResource.
+        this.extractionTiles = null;
     }
 
     /**
@@ -182,6 +190,19 @@ export class ObjectDefinition {
     }
 
     /**
+     * The tiles this object occupies per layer facing `direction`: `{layer, cells}` records. The
+     * default is its geometry body on its own layer; a resource overrides this (body + extraction on
+     * the resource layer, body on the surface block). Used by both occupancyLookups (existing
+     * objects) and the placement overlap check (the new object), so placement is symmetric.
+     * @param {Direction} direction
+     * @returns {{layer: number, cells: {x: number, y: number}[]}[]}
+     */
+    occupancyLayerTiles(direction) {
+        const cells = this.geometry.tiles(direction);
+        return [{layer: this.occupancyLayer, cells}];
+    }
+
+    /**
      * SQL SELECT-1 fragments matching when this object covers tile (@x, @y) on layer @layer,
      * UNIONed by the engine into IsOccupied for placement collision. The default checks the
      * size-derived geometry in every orientation against this object's single layer; objects
@@ -190,13 +211,21 @@ export class ObjectDefinition {
      * @returns {string[]}
      */
     occupancyLookups(table) {
-        const conditions = [];
+        // Gather this object's occupied cells per layer across all orientations, then one SELECT per layer.
+        const byLayer = new Map();
         [Direction.UP, Direction.RIGHT, Direction.DOWN, Direction.LEFT].forEach(direction => {
-            this.geometry.tiles(direction).forEach(cell => {
-                conditions.push(`(${table}.direction = ${direction} AND ${table}.x = @x - ${cell.x} AND ${table}.y = @y - ${cell.y})`);
+            this.occupancyLayerTiles(direction).forEach(({layer, cells}) => {
+                if (!byLayer.has(layer)) {
+                    byLayer.set(layer, []);
+                }
+                cells.forEach(cell => {
+                    byLayer.get(layer).push(`(${table}.direction = ${direction} AND ${table}.x = @x - ${cell.x} AND ${table}.y = @y - ${cell.y})`);
+                });
             });
         });
-        return [`SELECT 1 FROM ${table} WHERE @layer = ${this.occupancyLayer} AND (${conditions.join(" OR ")})`];
+        return [...byLayer].map(([layer, conditions]) =>
+            `SELECT 1 FROM ${table} WHERE @layer = ${layer} AND (${conditions.join(" OR ")})`
+        );
     }
 
     /**

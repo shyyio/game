@@ -116,6 +116,9 @@ export const REGION_SIZE = 64;
 // allocates its own further layers.
 export const OCCUPANCY_LAYER_SURFACE = 0;
 
+// Resource bodies (lakes, ore, volcanoes) sit here so a surface extractor coexists on top.
+export const OCCUPANCY_LAYER_RESOURCE = 1;
+
 /**
  * Core game-setting keys (mods own keys for their own settings).
  * @enum

@@ -317,6 +317,13 @@ export class Client {
     }
 
     /**
+     * @returns {boolean} whether center-lock (mobile mode) is active
+     */
+    get centerLock() {
+        return this._centerLock;
+    }
+
+    /**
      * Toggles center-lock (mobile mode): pins hover/placement and the preview to the screen center.
      * @param {boolean} enabled
      */

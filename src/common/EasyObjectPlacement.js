@@ -49,19 +49,19 @@ export class EasyObjectPlacement {
      */
     get schema() {
         const columns = [
+            "id INTEGER PRIMARY KEY",
+            "x INT NOT NULL",
+            "y INT NOT NULL",
+            "direction INT NOT NULL",
+            `chunk INT GENERATED ALWAYS AS (${CHUNK_ID_SQL}) VIRTUAL`,
             // Producers keep a last produced item (NULL = none); rides sync events + the last-produced BufferedEvent.
             ...(this._producesOutput ? ["last_output INT"] : []),
             ...this._portColumns.map(column => `${column} INT REFERENCES Port(id) ON DELETE SET NULL`),
             ...this._stateColumns,
-        ].map(column => `        ${column}`).join(",\n");
+        ].map(column => `                ${column}`).join(",\n");
         return `
             CREATE TABLE ${this.table} (
-                id INTEGER PRIMARY KEY,
-                x INT NOT NULL,
-                y INT NOT NULL,
-                direction INT NOT NULL,
-                chunk INT GENERATED ALWAYS AS (${CHUNK_ID_SQL}) VIRTUAL,
-                ${columns}
+${columns}
             );
 
             CREATE UNIQUE INDEX ${this.table}_x_y ON ${this.table}(x, y);
@@ -152,15 +152,27 @@ export class EasyObjectPlacement {
         game.begin();
 
         // The tool blocks overlaps client-side; reaching here means a malicious or desynced client.
-        const occupied = this.definition.geometry.tiles(direction).some(cell =>
-            game.queryScalar("IsOccupied", {
-                x: x + cell.x,
-                y: y + cell.y,
-                layer: this.definition.occupancyLayer,
-            }) !== null
+        // Each layer the object occupies is checked against its own occupants (a solid resource also
+        // blocks the surface, so it never lands on a belt).
+        const occupied = this.definition.occupancyLayerTiles(direction).some(({layer, cells}) =>
+            cells.some(cell =>
+                game.queryScalar("IsOccupied", {
+                    x: x + cell.x,
+                    y: y + cell.y,
+                    layer,
+                }) !== null
+            )
         );
         if (occupied) {
             console.warn(`Create${this.table} ignored: geometry occupied at`, x, y);
+            game.rollback();
+            return;
+        }
+
+        // A placement precondition (e.g. an extractor requiring a resource under it); the tool blocks
+        // this client-side, so failing here means a malicious or desynced client.
+        if (this.definition.canPlace !== null && !this.definition.canPlace(game, options)) {
+            console.warn(`Create${this.table} ignored: placement precondition failed at`, x, y);
             game.rollback();
             return;
         }
@@ -191,6 +203,12 @@ export class EasyObjectPlacement {
                 return;
             }
             throw e;
+        }
+
+        // Post-insert hook (e.g. an extractor binding to the resource under its footprint), still in
+        // the placement transaction.
+        if (this.definition.afterCreate !== null) {
+            this.definition.afterCreate(game, id, {x, y, direction});
         }
 
         game.end();

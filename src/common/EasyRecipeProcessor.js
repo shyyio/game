@@ -1,6 +1,5 @@
-import {SqlStatement, TickPhase} from "@/common/core.js";
-import {BUFFERED_EVENT_TYPE_EASY_OBJECT_UPDATE} from "@/common/constants.js";
-import {CHUNK_COORD_SQL} from "@/common/DatabaseSchema.js";
+import {SqlStatement} from "@/common/core.js";
+import {installProducer, PRODUCER_STATE_TAIL} from "@/common/EasyProducer.js";
 
 /**
  * The base-case machine behavior: implement one `verb` over the shared Recipes table. Each input port
@@ -43,8 +42,7 @@ export class EasyRecipeProcessor {
         definition.stateColumns = [
             ...inputPorts.map(port => `${slot(port)} INT`),
             ...inputPorts.map(port => `${processingInput(port)} INT`),
-            "processing_remaining INT",
-            "processing_output INT",
+            ...PRODUCER_STATE_TAIL,
         ];
 
         // The gathered slots in port order (input_N = Nth input port, 0 = unused slot), matching the
@@ -86,10 +84,6 @@ export class EasyRecipeProcessor {
                         (SELECT f.output_item FROM VerbFallback f WHERE f.verb = ${verb}))
                      ELSE NULL END`;
 
-        // Heartbeat/on-open snapshot columns and their SELECT values (both statements share these).
-        const inspectColumns = `(object_id,
-                    in_1_port, in_1_mem, in_2_port, in_2_mem, in_3_port, in_3_mem,
-                    processing_remaining, processing_total, output_item, recipe_output)`;
         const inspectValues = `machine.id,
                     ${inspectPorts[0]}, ${inspectMemory[0]}, ${inspectPorts[1]}, ${inspectMemory[1]}, ${inspectPorts[2]}, ${inspectMemory[2]},
                     machine.processing_remaining, ${processingTicks}, op.item, ${recipeOutput}`;
@@ -100,12 +94,8 @@ export class EasyRecipeProcessor {
         // the Sink (via the joined `op`) and the Fill (via a self-contained subquery) below.
         const outItem = `(SELECT po.item FROM Port po WHERE po.id = ${outPort})`;
 
-        definition.tickPhases = {
-            [TickPhase.SUBMIT_INTENTS]: [
-                new SqlStatement(
-                    `${table}Countdown`,
-                    `UPDATE ${table} SET processing_remaining = processing_remaining - 1 WHERE processing_remaining > 0;`
-                ),
+        installProducer(definition, {
+            resolveStatements: [
                 ...inputPorts.flatMap(port => [
                     new SqlStatement(
                         // Sink the resting input into an empty slot while gathering (idle, or producing in step).
@@ -142,58 +132,9 @@ export class EasyRecipeProcessor {
                         ${clearSlots}
                      WHERE processing_output IS NULL AND ${allFilled};`
                 ),
-                new SqlStatement(
-                    `${table}Create`,
-                    `INSERT INTO PortTransferIntent (source_id, destination_id, destination_is_empty, output_item, managed)
-                     SELECT NULL AS source_id, machine.${outPort}, (op.item IS NULL) AS destination_is_empty, machine.processing_output AS output_item, 1 AS managed
-                     FROM ${table} machine
-                        INNER JOIN Port op ON op.id = machine.${outPort}
-                     WHERE machine.processing_remaining = 0;`
-                ),
             ],
-            [TickPhase.POST_RESOLVE]: [
-                new SqlStatement(
-                    // A machine that just delivered produced last_output; broadcast it (BufferedEvent,
-                    // routed by chunk) when it changed. Runs before Finish clears processing_output.
-                    `${table}EmitOutput`,
-                    `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a)
-                     SELECT ${BUFFERED_EVENT_TYPE_EASY_OBJECT_UPDATE}, ${CHUNK_COORD_SQL("machine.x")}, ${CHUNK_COORD_SQL("machine.y")},
-                            machine.id, machine.processing_output
-                     FROM ${table} machine
-                     WHERE machine.${outPort} IN (SELECT destination_id FROM ResolvedPortTransfer)
-                       AND (machine.last_output IS NULL OR machine.last_output != machine.processing_output);`
-                ),
-                new SqlStatement(
-                    `${table}Finish`,
-                    `UPDATE ${table} SET last_output = processing_output, processing_output = NULL, processing_remaining = NULL, ${clearProcessingInputs}
-                     WHERE ${outPort} IN (SELECT destination_id FROM ResolvedPortTransfer);`
-                ),
-            ],
-            [TickPhase.EMIT_INSPECT]: [
-                new SqlStatement(
-                    // Snapshot every inspected machine (heartbeat), driven by the small SessionInspect
-                    // (distinct, so a machine two sessions inspect snapshots once) probing machines by PK.
-                    `${table}Inspect`,
-                    `WITH inspected AS (SELECT DISTINCT object_id FROM SessionInspect)
-                     INSERT INTO BufferedInspectHeartbeatEvent
-                        ${inspectColumns}
-                     SELECT ${inspectValues}
-                     FROM inspected
-                        INNER JOIN ${table} machine ON machine.id = inspected.object_id
-                        INNER JOIN Port op ON op.id = machine.${outPort};`
-                ),
-            ],
-        };
-
-        // One machine's snapshot by id (PK lookup), for the on-open sync — no session join.
-        definition.inspectOneStatement = new SqlStatement(
-            `${table}InspectOne`,
-            `INSERT INTO BufferedInspectHeartbeatEvent
-                ${inspectColumns}
-             SELECT ${inspectValues}
-             FROM ${table} machine
-                INNER JOIN Port op ON op.id = machine.${outPort}
-             WHERE machine.id = CAST(@object_id AS INT);`
-        );
+            inspectValues,
+            finishExtra: clearProcessingInputs,
+        });
     }
 }

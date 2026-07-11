@@ -8,6 +8,7 @@ import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {LogisticsClientMod} from "@/mods/Logistics/LogisticsClientMod.js";
 import {DemoClientMod} from "@/mods/DemoMod/DemoMod.js";
+import {ResourcesClientMod} from "@/mods/Resources/Resources.js";
 import {BaseTexturesMod} from "@/mods/BaseTextures/mod.js";
 import {DatabaseSchema} from "@/common/DatabaseSchema.js";
 import {BrowserDatabase} from "@/client/BrowserDatabase.js";
@@ -138,6 +139,7 @@ onMounted(async () => {
   modRegistry.loadMod(new BaseTexturesMod());
   modRegistry.loadMod(new LogisticsClientMod());
   modRegistry.loadMod(new DemoClientMod());
+  modRegistry.loadMod(new ResourcesClientMod());
 
   const schema = new DatabaseSchema(modRegistry);
   const db = new BrowserDatabase(schema);

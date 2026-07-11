@@ -69,7 +69,7 @@ export class TextureRegistry {
     get(name) {
         const texture = this.textures[name];
         if (texture === undefined) {
-            throw new Error(`No texture loaded: "${name}"`);
+            throw new Error(`Unknown texture: "${name}"`);
         }
         return texture;
     }
