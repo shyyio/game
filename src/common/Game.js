@@ -6,6 +6,9 @@ import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.
 import {PlayerSettingsSyncEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
 import {WireRegistry} from "@/common/wire.js";
+import {SqlSimEngine} from "@/common/sim/SqlSimEngine.js";
+import {SessionRegistry} from "@/common/SessionRegistry.js";
+import {chunkId} from "@/common/util.js";
 
 export class Game {
 
@@ -13,9 +16,21 @@ export class Game {
      * @param {ModRegistry} modRegistry
      * @param {AbstractDatabase} database
      */
-    constructor(modRegistry, database) {
+    /**
+     * @param {ModRegistry} modRegistry
+     * @param {AbstractDatabase} database
+     * @param {SimEngine} [simEngine] - the simulation engine; defaults to the SQL tick pipeline
+     */
+    constructor(modRegistry, database, simEngine) {
         this.db = database;
         this.modRegistry = modRegistry;
+
+        /**
+         * The simulation engine the tick pipeline runs through. Wraps the SQL pipeline by default; the
+         * seam a bitECS engine takes over behind.
+         * @type {SimEngine}
+         */
+        this.simEngine = simEngine === undefined ? new SqlSimEngine(database) : simEngine;
 
         /**
          * Protobuf wire codec registry, shared by sessions to encode/decode
@@ -28,6 +43,12 @@ export class Game {
          * @type {Object.<number, AbstractSession>}
          */
         this.sessions = {};
+
+        /**
+         * Engine-agnostic session/viewport index for event routing.
+         * @type {SessionRegistry}
+         */
+        this.sessionRegistry = new SessionRegistry();
     }
 
     async init() {
@@ -36,6 +57,7 @@ export class Game {
         });
 
         await this.db.init();
+        await this.simEngine.init();
     }
 
     // ---- AbstractDatabase delegation ----
@@ -77,6 +99,7 @@ export class Game {
         const sessionId = this.queryScalar("InsertSession", {player_id: session.playerId});
         session.setId(sessionId);
         this.sessions[sessionId] = session;
+        this.sessionRegistry.add(sessionId);
 
         this._syncPlayerSettings(session);
         this._syncGameSettings(session);
@@ -111,6 +134,7 @@ export class Game {
         this.exec("DeleteSessionViewport", {session_id: sessionId});
         this.exec("DeleteSessionInspect", {session_id: sessionId});
         delete this.sessions[sessionId];
+        this.sessionRegistry.remove(sessionId);
     }
 
     // ---- Messages ----
@@ -131,6 +155,11 @@ export class Game {
             return;
         }
 
+        // A bitECS engine handles sim messages directly; the SQL path defers to the mods.
+        if (this.simEngine.applyMessage(message)) {
+            return;
+        }
+
         this.modRegistry.dispatchMessage(message);
 
         // Close menus after the object is actually deleted, never before.
@@ -147,22 +176,16 @@ export class Game {
      * @param {string[]} chunks
      */
     _setSessionViewport(session, chunks) {
-        const requested = new Set(chunks);
-        const currentRows = this.query("GetSessionViewport", {session_id: session.id});
-        const current = new Set(currentRows.map(row => row.chunk));
+        // The registry owns the diff; the SQL SessionViewport rows are kept in step so the SQL tick's
+        // viewport-gated emit ops still read them.
+        const {added, removed} = this.sessionRegistry.setViewport(session.id, chunks);
 
-        current.forEach(chunk => {
-            if (requested.has(chunk)) {
-                return;
-            }
+        removed.forEach(chunk => {
             this.exec("DeleteSessionViewportChunk", {session_id: session.id, chunk});
             session.publishEvent(new ChunkUnsubscribeEvent(chunk));
         });
 
-        requested.forEach(chunk => {
-            if (current.has(chunk)) {
-                return;
-            }
+        added.forEach(chunk => {
             this.exec("InsertSessionViewport", {session_id: session.id, chunk});
             session.publishEvent(new ChunkSubscribeEvent(chunk));
 
@@ -170,6 +193,12 @@ export class Game {
             if (syncEvents.length > 0) {
                 session.publishEvent(new ChunkSyncEvent(chunk, syncEvents));
             }
+
+            // The bitECS engine recreates its objects/items in the chunk directly (a no-op for the SQL
+            // engine, whose objects come through the mods' chunkSyncEvents above).
+            this.simEngine.chunkSync(chunk).forEach(event => {
+                session.publishEvent(event);
+            });
         });
     }
 
@@ -240,14 +269,31 @@ export class Game {
      * @param {TickPhase} phase
      */
     tick(phase) {
-        this.db.schema.tickPhases[phase].forEach(stmt => {
-            this.exec(stmt.statementName);
-        });
+        this.simEngine.tick(phase);
     }
 
     postTick() {
         this._dispatchBufferedEvents();
         this._dispatchInspectEvents();
+        this._dispatchRenderEvents();
+    }
+
+    /**
+     * Drains the engine's render events (bitECS path) and routes each to the sessions whose viewport
+     * covers its tile. A no-op for the SQL engine, which emits through the BufferedEvent journal.
+     * @private
+     * @returns {void}
+     */
+    _dispatchRenderEvents() {
+        if (typeof this.simEngine.drainRenderEvents !== "function") {
+            return;
+        }
+        this.simEngine.drainRenderEvents().forEach(event => {
+            const chunk = chunkId(event.x, event.y);
+            this.sessionRegistry.sessionsForChunk(chunk).forEach(sessionId => {
+                this.sessions[sessionId].publishEvent(event);
+            });
+        });
     }
 
     // ---- Events ----
@@ -260,10 +306,8 @@ export class Game {
         if (!(event instanceof AbstractTilePositionedEvent) && !(event instanceof BufferedEvent)) {
             throw new Error(`publishEventNow requires a chunk-routable event, got ${event.constructor.name}`);
         }
-        const sessions = this.query("GetSessionsByChunk", {chunk: event.chunk});
-
-        sessions.forEach(row => {
-            this.sessions[row.session_id].publishEvent(event);
+        this.sessionRegistry.sessionsForChunk(event.chunk).forEach(sessionId => {
+            this.sessions[sessionId].publishEvent(event);
         });
     }
 

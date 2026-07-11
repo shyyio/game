@@ -17,6 +17,7 @@
   "dependencies": {
     "@mdi/font": "^7.4.47",
     "better-sqlite3": "^12.11.1",
+    "bitecs": "^0.4.0",
     "idb-keyval": "^6.2.2",
     "pixi-viewport": "^6.0.3",
     "pixi.js": "^8.19.0",
