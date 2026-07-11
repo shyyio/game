@@ -29,12 +29,12 @@ const BAR_FILL_INSET_RIGHT = 2;
 const BAR_FILL_INSET_TOP = 2;
 const BAR_FILL_INSET_BOTTOM = 4;
 
-const TX_BAR = "ui_flat/UI_Flat_Frame02a_inset4";
-export const TX_SLOT = "ui_flat/UI_Flat_Frame02a_inset4";
+const TX_BAR = "ui/Frame02a_inset4";
+export const TX_SLOT = "ui/Frame02a_inset4";
 
 // Total content height: inputs row, then a row sharing the progress bar and output slot.
 export const INSPECT_CONTENT_HEIGHT = SLOT_SIZE + SLOT_MARGIN_Y + SLOT_SIZE;
-const TX_BARFILL = "ui_flat/UI_Flat_barfill";
+const TX_BARFILL = "ui/barfill";
 
 /**
  * Builds the machine content (inputs row, progress bar, output slot) into a UIPanel.

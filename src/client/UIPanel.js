@@ -31,10 +31,10 @@ const SHADOW_OFFSET_X = -2;
 const SHADOW_OFFSET_Y = 2;
 const SHADOW_ALPHA = 0.20;
 
-const TX_FRAME = "ui_flat/UI_Flat_Frame02a";
-const TX_FRAME_INSET = "ui_flat/UI_Flat_Frame02a_inset2";
-const TX_CLOSE = "ui_flat/UI_Flat_IconCross01a";
-const TX_PATTERN = "ui_flat/UI_Flat_PlusPattern";
+const TX_FRAME = "ui/Frame02a";
+const TX_FRAME_INSET = "ui/Frame02a_inset2";
+const TX_CLOSE = "ui/IconCross01a";
+const TX_PATTERN = "ui/PlusPattern";
 
 /**
  * A framed HUD panel: raised outer frame + sunken inset body + draggable title bar with a close

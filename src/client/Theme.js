@@ -14,8 +14,8 @@ export const LABEL_EMPHASIS = 0xffd24a;
 
 export const TOOLBAR_TEXT = 0x000000;
 
-// ---- Inspect & toolbar panels (ui_flat frame chrome) ----
-export const PANEL_TINT = 0xeee6d8; // warm-gray tint over the ui_flat frame
+// ---- Inspect & toolbar panels (ui frame chrome) ----
+export const PANEL_TINT = 0xeee6d8; // warm-gray tint over the ui frame
 export const PANEL_TITLE_TEXT = 0xffffff;
 export const SLOT_HIGHLIGHT_COLOR = 0x9be89b; // active/hover slot highlight (green)
 export const CONNECTOR_COLOR = 0x000000; // machine<->panel connector curve
