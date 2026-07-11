@@ -86,18 +86,22 @@ export class ClientCache {
     /**
      * Registers a callback invoked with each entry as it's removed (for sprite cleanup).
      * @param {function(CacheEntry): void} listener
+     * @returns {function(): void} unsubscribe
      */
     onRemove(listener) {
         this._removeListeners.push(listener);
+        return () => this._removeListeners.splice(this._removeListeners.indexOf(listener), 1);
     }
 
     /**
      * Registers a callback invoked whenever an object is added or removed, for layers that
      * re-derive rendering from neighboring objects.
      * @param {function(): void} listener
+     * @returns {function(): void} unsubscribe
      */
     onStructuralChange(listener) {
         this._structuralListeners.push(listener);
+        return () => this._structuralListeners.splice(this._structuralListeners.indexOf(listener), 1);
     }
 
     /**

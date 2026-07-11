@@ -1,4 +1,4 @@
-import {Container, Sprite, Text, Rectangle} from "pixi.js";
+import {Container, Sprite, Text, Rectangle, isMobile} from "pixi.js";
 import Haptics from "@/client/Haptics.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {TOOLBAR_TEXT, PANEL_TINT} from "@/client/Theme.js";
@@ -11,7 +11,7 @@ import {debugOutlines, nineSlice} from "@/client/pixiUtils.js";
 const SLOT_SIZE = 56;
 // Inset of the icon sprite from the slot's edges.
 const ICON_PADDING = 7;
-const LABEL_GAP = 6;
+const LABEL_GAP = 0;
 const LABEL_SIZE = 15;
 // Number-key hotkeys cover the first this-many mod tools (keys 1-9).
 const TOOL_SHORTCUT_COUNT = 9;
@@ -181,7 +181,13 @@ export class ToolbarLayer extends Container {
         if (tool === this._activeTool) {
             return;
         }
+        if (this._activeTool !== null) {
+            this._activeTool.onDeactivate();
+        }
         this._activeTool = tool;
+        if (tool !== null) {
+            tool.onActivate();
+        }
         this._setDrawerOpen(false);
         this._refreshHighlights();
         if (this._onChange !== null) {
@@ -306,7 +312,8 @@ export class ToolbarLayer extends Container {
         addIcon(slot);
 
         // Badge sits above the icon; only read with the drawer open, so hidden on the resting top row.
-        if (shortcut !== null) {
+        // Mobile has no keyboard, so no shortcut badges there.
+        if (shortcut !== null && !isMobile.any) {
             const badge = new Text({
                 text: shortcut,
                 style: {fontFamily: GAME_FONT, fontSize: SLOT_SIZE - 3, fill: 0xffffff, stroke: {color: 0x000000, width: 1}},

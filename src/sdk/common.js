@@ -67,6 +67,7 @@ export {
     Direction,
     CHUNK_SIZE,
     OCCUPANCY_LAYER_SURFACE,
+    OCCUPANCY_LAYER_RESOURCE,
     BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
     BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
 } from "@/common/constants.js";
@@ -87,6 +88,14 @@ export {EasyObjectPlacement} from "@/common/EasyObjectPlacement.js";
 // port, match the set (fallback when none), then after a countdown create the output, all via transfer
 // intents. Build it, then `install(definition)` to set the definition's verb/tickPhases/stateColumns.
 export {EasyRecipeProcessor} from "@/common/EasyRecipeProcessor.js";
+
+// Sim-side place/remove/sync for a passive, portless resource an extractor draws from; wraps an
+// EasyObjectPlacement and contributes a ResourceCoverAt fragment mapping extraction tiles to a type.
+export {EasyResource} from "@/common/EasyResource.js";
+
+// Base-case extractor: a producer whose fixed input is the resource under it (bound at placement),
+// looked up in the verb's Recipes and produced on a countdown. Build it, then `install(definition)`.
+export {EasyExtractor} from "@/common/EasyExtractor.js";
 
 // Rotates a `{x, y}` offset (a port or size vector) by a placement direction, so a mod
 // can compute where an object's ports/geometry land from its ObjectDefinition.

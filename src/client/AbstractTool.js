@@ -91,6 +91,16 @@ export class AbstractTool {
     }
 
     /**
+     * Optional lifecycle hook: this tool became the active tool.
+     */
+    onActivate() {}
+
+    /**
+     * Optional lifecycle hook: this tool stopped being the active tool.
+     */
+    onDeactivate() {}
+
+    /**
      * Optional hover hook: the cursor entered a tile (desktop only), for a ghost preview.
      * @param {number} tileX
      * @param {number} tileY
