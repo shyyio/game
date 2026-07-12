@@ -1,7 +1,7 @@
 import {addEntity, addComponent} from "bitecs";
 import {TickPhase, Direction} from "@/sdk/common.js";
 import {chunkId} from "@/common/util.js";
-import {EMPTY} from "@/common/sim/EcsEngine.js";
+import {EMPTY, NO_EID} from "@/common/sim/EcsEngine.js";
 // Layering debt: the ECS content modules live in common/sim/ but emit mod-owned belt events. They
 // belong in mods/Logistics/ (see project_bitecs_migration memory); this import crosses the layer for now.
 import {
@@ -57,8 +57,38 @@ export class BeltModule {
         // Stable RLE run id, the client's item row_id for sprite continuity/glide.
         this._nextRunId = 1;
 
+        // Belt runtime state lives in the JS maps above (hot-path); for persistence it is materialized
+        // into these registered components at save (via the serialize hook) and read back at load (via
+        // the rebuild hook), so belts ride the same generic snapshot as every other object. Port
+        // references are eid columns, remapped with the shared Port entities on load.
+        this._pathDef = engine.defineComponent("BeltPath", [
+            {name: "inPort", kind: "eid", fill: NO_EID},
+            {name: "outPort", kind: "eid", fill: NO_EID},
+            {name: "headGap"},
+            {name: "length"},
+        ]);
+        this._beltDef = engine.defineComponent("Belt", [
+            {name: "path", kind: "eid", fill: NO_EID},
+            {name: "index"},
+            {name: "x"},
+            {name: "y"},
+            {name: "direction"},
+            {name: "type"},
+            {name: "objectId", fill: NO_EID},
+        ]);
+        this._runDef = engine.defineComponent("BeltPathItem", [
+            {name: "path", kind: "eid", fill: NO_EID},
+            {name: "order"},
+            {name: "length"},
+            {name: "type"},
+            {name: "runId", fill: NO_EID},
+        ]);
+        engine.globals.beltNextRunId = this._nextRunId;
+
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._move());
+        engine.registerSerializeHook(() => this._materialize());
+        engine.registerRebuildHook(() => this._reconstruct());
     }
 
     /**
@@ -1100,68 +1130,105 @@ export class BeltModule {
     }
 
     /**
-     * A serializable snapshot of all belt state: the tile registry, every path (belts, length,
-     * head_gap, RLE items), and the referenced ports (item + a serial index so a seam port shared by
-     * two paths restores as one port).
-     * @returns {object}
+     * Serialize hook: flushes the JS runtime (paths, belts, RLE runs) into the BeltPath/Belt/BeltPathItem
+     * components so the generic snapshot captures belts. Prior save entities are cleared first; the
+     * shared Port entities carry the port items, referenced here by eid.
+     * @private
+     * @returns {void}
      */
-    captureState() {
-        const portSerials = new Map();
-        const ports = [];
-        const serialFor = eid => {
-            if (!portSerials.has(eid)) {
-                portSerials.set(eid, ports.length);
-                ports.push({item: this.engine.portItem(eid)});
+    _materialize() {
+        [this._runDef, this._beltDef, this._pathDef].forEach(def => {
+            this.engine.entitiesWith(def).forEach(eid => this.engine.destroyEntity(eid));
+        });
+
+        const BP = this._pathDef.store;
+        const B = this._beltDef.store;
+        const R = this._runDef.store;
+        this.paths.forEach(path => {
+            // Synthetic belt-less paths (test-only addPath) have no belt tiles to model; skip them.
+            if (path.beltIds === undefined) {
+                return;
             }
-            return portSerials.get(eid);
-        };
-        const paths = this.paths.map(path => ({
-            belts: [...path.belts],
-            beltIds: [...path.beltIds],
-            length: path.length,
-            headGap: path.headGap,
-            items: path.items.map(run => ({id: run.id, length: run.length, type: run.type})),
-            inPort: serialFor(path.inPort),
-            outPort: serialFor(path.outPort),
-        }));
-        const belts = this._allBelts().map(belt => ({x: belt.x, y: belt.y, direction: belt.direction, type: belt.type, id: belt.id}));
-        return {ports, paths, belts, nextObjectId: this.engine._nextObjectId, nextRunId: this._nextRunId};
+            const pathEid = this.engine.createEntity(this._pathDef);
+            BP.inPort[pathEid] = path.inPort;
+            BP.outPort[pathEid] = path.outPort;
+            BP.headGap[pathEid] = path.headGap;
+            BP.length[pathEid] = path.length;
+
+            path.beltIds.forEach((beltId, index) => {
+                const belt = this.beltById(beltId);
+                const beltEid = this.engine.createEntity(this._beltDef);
+                B.path[beltEid] = pathEid;
+                B.index[beltEid] = index;
+                B.x[beltEid] = belt.x;
+                B.y[beltEid] = belt.y;
+                B.direction[beltEid] = belt.direction;
+                B.type[beltEid] = belt.type;
+                B.objectId[beltEid] = beltId;
+            });
+
+            path.items.forEach((run, order) => {
+                const runEid = this.engine.createEntity(this._runDef);
+                R.path[runEid] = pathEid;
+                R.order[runEid] = order;
+                R.length[runEid] = run.length;
+                R.type[runEid] = run.type;
+                R.runId[runEid] = run.id;
+            });
+        });
+
+        this.engine.globals.beltNextRunId = this._nextRunId;
     }
 
     /**
-     * Rebuilds this module's state from a {@link snapshot}, allocating fresh ports (seam sharing is
-     * preserved via the snapshot's serial indices).
-     * @param {object} snapshot
+     * Rebuild hook: reconstructs the JS runtime from the BeltPath/Belt/BeltPathItem components a load
+     * repopulated, re-linking each path's belts, items, and ports and re-registering its rendered
+     * out-port.
+     * @private
      * @returns {void}
      */
-    restore(snapshot) {
-        const portEids = snapshot.ports.map(port => {
-            const eid = this.engine.addPort();
-            this.engine.setPortItem(eid, port.item);
-            return eid;
-        });
-
-        this._belts = new Map();
-        snapshot.belts.forEach(belt => this._addBelt({x: belt.x, y: belt.y, direction: belt.direction, type: belt.type, id: belt.id}));
-        this.engine._nextObjectId = snapshot.nextObjectId;
-        this._nextRunId = snapshot.nextRunId;
+    _reconstruct() {
         this.paths = [];
         this._byInPort = new Map();
+        this._belts = new Map();
+        this._nextRunId = this.engine.globals.beltNextRunId;
 
-        snapshot.paths.forEach(saved => {
-            const inPort = portEids[saved.inPort];
-            const outPort = portEids[saved.outPort];
-            const eid = addEntity(this.engine.world);
-            addComponent(this.engine.world, eid, {});
+        const BP = this._pathDef.store;
+        const B = this._beltDef.store;
+        const R = this._runDef.store;
+
+        const beltsByPath = new Map();
+        this.engine.entitiesWith(this._beltDef).forEach(eid => {
+            const belt = {x: B.x[eid], y: B.y[eid], direction: B.direction[eid], type: B.type[eid], id: B.objectId[eid]};
+            this._addBelt(belt);
+            const pathEid = B.path[eid];
+            if (!beltsByPath.has(pathEid)) {
+                beltsByPath.set(pathEid, []);
+            }
+            beltsByPath.get(pathEid).push({index: B.index[eid], belt});
+        });
+
+        const runsByPath = new Map();
+        this.engine.entitiesWith(this._runDef).forEach(eid => {
+            const pathEid = R.path[eid];
+            if (!runsByPath.has(pathEid)) {
+                runsByPath.set(pathEid, []);
+            }
+            runsByPath.get(pathEid).push({order: R.order[eid], run: {id: R.runId[eid], length: R.length[eid], type: R.type[eid]}});
+        });
+
+        this.engine.entitiesWith(this._pathDef).forEach(pathEid => {
+            const belts = (beltsByPath.get(pathEid) || []).sort((a, b) => a.index - b.index).map(entry => entry.belt);
+            const items = (runsByPath.get(pathEid) || []).sort((a, b) => a.order - b.order).map(entry => entry.run);
             const path = {
-                id: eid,
-                belts: [...saved.belts],
-                beltIds: [...saved.beltIds],
-                inPort,
-                outPort,
-                length: saved.length,
-                headGap: saved.headGap,
-                items: saved.items.map(run => ({id: run.id, length: run.length, type: run.type})),
+                id: pathEid,
+                belts: belts.map(belt => tileKey(belt.x, belt.y)),
+                beltIds: belts.map(belt => belt.id),
+                inPort: BP.inPort[pathEid],
+                outPort: BP.outPort[pathEid],
+                length: BP.length[pathEid],
+                headGap: BP.headGap[pathEid],
+                items,
             };
             this._trackPath(path);
         });

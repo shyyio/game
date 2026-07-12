@@ -99,17 +99,23 @@ export class ResourcesMod extends AbstractMod {
      * @returns {void}
      */
     setupEcs(sim) {
-        sim.resources = new ResourceModule(sim.engine);
+        sim.resources = new ResourceModule(sim.engine, [
+            {name: "WaterResource", typeId: WaterResourceDefinition.typeId},
+            {name: "VolcanoResource", typeId: VolcanoResourceDefinition.typeId},
+        ]);
         sim.extractor = new ExtractorModule(sim.engine, {
             processingTicks: 4,
             recipes: [
                 {resource: RESOURCE_WATER, output: WATER_ITEM_TYPE},
                 {resource: RESOURCE_VOLCANO, output: SULFUR_ITEM_TYPE},
             ],
+            typeId: ExtractorDefinition.typeId,
         });
         sim.deepExtractor = new ExtractorModule(sim.engine, {
             processingTicks: 8,
             recipes: [{resource: RESOURCE_VOLCANO, output: BRINE_ITEM_TYPE}],
+            typeId: DeepExtractorDefinition.typeId,
+            name: "DeepExtractor",
         });
         sim.registerMessageHandler(message => this._ecsResourceMessage(sim, message));
         sim.registerChunkSync(chunk => sim.resources.chunkSync(chunk));
@@ -176,7 +182,7 @@ export class ResourcesMod extends AbstractMod {
             return;
         }
         const output = sim.portFor(definition.outputPorts[0], message.x, message.y, message.direction);
-        const clientId = module.placeExtractor(message.x, message.y, message.typeId, message.direction, resourceType, output.port, output.tile);
+        const clientId = module.placeExtractor(message.x, message.y, message.direction, resourceType, output.port, output.tile);
         sim.track(clientId, footprint);
     }
 }

@@ -233,15 +233,15 @@ export class LogisticsClientMod extends LogisticsMod {
         if (port === null) {
             return;
         }
-        this._itemLayer.moveItem(PORT_SPRITE_KEY(portId), port.tileX, port.tileY, true, port.sourceDir, type);
+        this._itemLayer.moveItem(PORT_SPRITE_KEY(portId), port.tileX, port.tileY, true, port.sourceDirection, type);
     }
 
     /**
      * The tile an out-port's item rests on: one downstream of the path's tail (output)
-     * belt, with sourceDir pointing back at the tail (the edge it popped off). Returns
+     * belt, with sourceDirection pointing back at the tail (the edge it popped off). Returns
      * null when the path or belt isn't cached yet.
      * @param {number} portId
-     * @returns {{tileX: number, tileY: number, sourceDir: Direction}|null}
+     * @returns {{tileX: number, tileY: number, sourceDirection: Direction}|null}
      * @private
      */
     _resolvePortBelt(portId) {
@@ -261,7 +261,7 @@ export class LogisticsClientMod extends LogisticsMod {
         return {
             tileX: tail.tileX + Direction.dx(direction),
             tileY: tail.tileY + Direction.dy(direction),
-            sourceDir: Direction.invert(direction),
+            sourceDirection: Direction.invert(direction),
         };
     }
 
@@ -400,7 +400,7 @@ export class LogisticsClientMod extends LogisticsMod {
             if (row.type !== ITEM_TYPE_GAP) {
                 const belt = this._resolveItemBelt(pathId, slot);
                 if (belt !== null) {
-                    this._itemLayer.moveItem(rowId, belt.tileX, belt.tileY, belt.halfTile, belt.sourceDir, row.type, snap, belt.hidden);
+                    this._itemLayer.moveItem(rowId, belt.tileX, belt.tileY, belt.halfTile, belt.sourceDirection, row.type, snap, belt.hidden);
                 }
             }
             slot += row.length;
@@ -427,11 +427,11 @@ export class LogisticsClientMod extends LogisticsMod {
      * Maps an item's path and slot to the belt it sits on. slot counts half-tiles
      * from the input (head); each belt past the head owns a full then a half slot, so
      * the belt is parts[(N-1) - floor((slot+1)/2)] and an odd slot is the half-tile
-     * straddle. sourceDir points at the belt feeding this one (the bend's input edge).
+     * straddle. sourceDirection points at the belt feeding this one (the bend's input edge).
      * Returns null when the path or belt isn't cached yet.
      * @param {number} pathId
      * @param {number} slot
-     * @returns {{tileX: number, tileY: number, sourceDir: Direction, halfTile: boolean, hidden: boolean}|null}
+     * @returns {{tileX: number, tileY: number, sourceDirection: Direction, halfTile: boolean, hidden: boolean}|null}
      * @private
      */
     _resolveItemBelt(pathId, slot) {
@@ -450,13 +450,13 @@ export class LogisticsClientMod extends LogisticsMod {
         const halfTile = slot % 2 === 1;
         // A non-head belt's feeder is the next part toward the input; only the head
         // (fed through its in-port by an unknown neighbor) needs cache inference.
-        const sourceDir = beltIndex + 1 < parts.length
+        const sourceDirection = beltIndex + 1 < parts.length
             ? this._pathSourceDirection(record, parts[beltIndex + 1])
             : this._sourceDirection(record);
         return {
             tileX: record.tileX,
             tileY: record.tileY,
-            sourceDir: sourceDir,
+            sourceDirection: sourceDirection,
             halfTile: halfTile,
             // Boundary half slots: a ramp-up's is still buried; the first buried tile's
             // renders, covered by the roof and threshold occluders.
@@ -563,9 +563,9 @@ export class LogisticsClientMod extends LogisticsMod {
         const step = tunnelStep(event.beltType, event.direction);
         // The band sits on the rect's up edge; rotating by the direction from the threshold
         // tile back toward the ramp lands it on the shared edge.
-        const edgeDir = Direction.fromDelta(-step.dx, -step.dy);
+        const edgeDirection = Direction.fromDelta(-step.dx, -step.dy);
         const threshold = new Rectangle(0, 0, TILE_SIZE, TILE_SIZE / 4);
-        this._itemLayer.addMask(`threshold:${event.id}`, event.x + step.dx, event.y + step.dy, threshold, edgeDir);
+        this._itemLayer.addMask(`threshold:${event.id}`, event.x + step.dx, event.y + step.dy, threshold, edgeDirection);
     }
 
     /**

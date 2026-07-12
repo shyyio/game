@@ -120,6 +120,7 @@ debug_test.js
 *.kra
 *.png~
 SCHEMA.sqlite3
+SAMPLE.sqlite3
 docs/
 .backup/
 

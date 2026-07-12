@@ -13,12 +13,12 @@ export class Game {
 
     /**
      * @param {ModRegistry} modRegistry
-     * @param {AbstractDatabase} [database] - SQL load/save codec; omitted in the browser (bitECS only)
      * @param {SimEngine} [simEngine] - the simulation engine; defaults to the bitECS engine
+     * @param {AbstractSaveStore} [saveStore] - persists/restores the world; omitted when saving is off
      */
-    constructor(modRegistry, database, simEngine) {
-        this.db = database;
+    constructor(modRegistry, simEngine, saveStore) {
         this.modRegistry = modRegistry;
+        this.saveStore = saveStore;
 
         /**
          * The bitECS simulation engine the tick pipeline runs through.
@@ -61,40 +61,30 @@ export class Game {
             mod.game = this;
         });
 
-        if (this.db !== undefined) {
-            await this.db.init();
-        }
         await this.simEngine.init();
     }
 
-    // ---- AbstractDatabase delegation ----
+    // ---- Persistence ----
 
-    exec(name, args) {
-        return this.db.exec(name, args);
+    /**
+     * Persists the whole world through the save store.
+     * @returns {Promise<void>}
+     */
+    async save() {
+        await this.saveStore.save(this.simEngine.serialize());
     }
 
-    query(name, args) {
-        return this.db.query(name, args);
-    }
-
-    querySingle(name, args) {
-        return this.db.querySingle(name, args);
-    }
-
-    queryScalar(name, args) {
-        return this.db.queryScalar(name, args);
-    }
-
-    begin() {
-        this.db.begin();
-    }
-
-    end() {
-        this.db.end();
-    }
-
-    rollback() {
-        this.db.rollback();
+    /**
+     * Restores the world from the save store, if a save exists.
+     * @returns {Promise<boolean>} whether a save was loaded
+     */
+    async load() {
+        const snapshot = await this.saveStore.load();
+        if (snapshot === null) {
+            return false;
+        }
+        this.simEngine.deserialize(snapshot);
+        return true;
     }
 
     // ---- Sessions ----

@@ -1,21 +1,23 @@
-import {addEntity, addComponent} from "bitecs";
 import {TickPhase} from "@/common/core.js";
 import {chunkId} from "@/common/util.js";
 import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
-import {EMPTY} from "@/common/sim/EcsEngine.js";
-
-// Initial Machine column length; grows by doubling when a machine eid exceeds it.
-const MACHINE_CAPACITY = 256;
+import {EMPTY, NO_EID} from "@/common/sim/EcsEngine.js";
 
 // Recipe input keys are always padded to three slots (matching the SQL Recipes table).
 const RECIPE_SLOTS = 3;
+
+// Per-slot column names, indexed 0..RECIPE_SLOTS-1.
+const IN_COLS = ["in0", "in1", "in2"];
+const SLOT_COLS = ["slot0", "slot1", "slot2"];
+const PROCESSING_COLS = ["processing0", "processing1", "processing2"];
 
 /**
  * The EasyRecipeProcessor machine on the bitECS engine: each input port gathers one item (consumed
  * via a managed sink), and once every port has contributed the gathered slots match the verb's
  * recipes (fallback when none), producing the output `processingTicks` later into the output port (a
- * managed source-less create). Mirrors the SQL producer + recipe-processor tick ops.
+ * managed source-less create). Mirrors the SQL producer + recipe-processor tick ops. All state lives
+ * in the registered Machine component, so it serializes with no bespoke save code.
  */
 export class MachineModule {
 
@@ -26,12 +28,15 @@ export class MachineModule {
      * @param {number} config.inputCount - number of active input ports (1..3)
      * @param {{inputs:number[], output:number}[]} config.recipes
      * @param {number} config.fallback - output when the gathered set matches no recipe
+     * @param {number} config.typeId - the object definition this module places (the table is that type)
+     * @param {string} [config.name] - component name (unique per module instance)
      */
-    constructor(engine, {processingTicks, inputCount, recipes, fallback}) {
+    constructor(engine, {processingTicks, inputCount, recipes, fallback, typeId, name="Machine"}) {
         this.engine = engine;
         this.processingTicks = processingTicks;
         this.inputCount = inputCount;
         this.fallback = fallback;
+        this.typeId = typeId;
 
         // Gathered-set key "i1,i2,i3" -> output.
         this.recipes = new Map();
@@ -39,25 +44,32 @@ export class MachineModule {
             this.recipes.set(this._recipeKey(recipe.inputs), recipe.output);
         });
 
-        this.Machine = {
-            out: new Int32Array(MACHINE_CAPACITY),
-            remaining: new Int32Array(MACHINE_CAPACITY).fill(EMPTY),
-            output: new Int32Array(MACHINE_CAPACITY).fill(EMPTY),
-            lastOutput: new Int32Array(MACHINE_CAPACITY).fill(EMPTY),
-            in: [0, 0, 0].map(() => new Int32Array(MACHINE_CAPACITY).fill(EMPTY)),
-            slot: [0, 0, 0].map(() => new Int32Array(MACHINE_CAPACITY).fill(EMPTY)),
-            // The consumed batch, kept through processing (cleared on finish) for the inspect menu.
-            batch: [0, 0, 0].map(() => new Int32Array(MACHINE_CAPACITY).fill(EMPTY)),
-        };
-        this._capacity = MACHINE_CAPACITY;
-        this.ids = [];
-        // eid -> {clientId, typeId, x, y, direction, outPort, outTile} for placed machines.
-        this._meta = new Map();
-        // clientId -> eid.
-        this._byClientId = new Map();
+        this.def = engine.defineComponent(name, [
+            {name: "out", kind: "eid", fill: NO_EID},
+            {name: "in0", kind: "eid", fill: NO_EID},
+            {name: "in1", kind: "eid", fill: NO_EID},
+            {name: "in2", kind: "eid", fill: NO_EID},
+            {name: "slot0", fill: EMPTY},
+            {name: "slot1", fill: EMPTY},
+            {name: "slot2", fill: EMPTY},
+            {name: "processing0", fill: EMPTY},
+            {name: "processing1", fill: EMPTY},
+            {name: "processing2", fill: EMPTY},
+            {name: "remaining", fill: EMPTY},
+            {name: "output", fill: EMPTY},
+            {name: "lastOutput", fill: EMPTY},
+            {name: "clientId", fill: NO_EID},
+            {name: "x"},
+            {name: "y"},
+            {name: "direction"},
+            {name: "outTileX"},
+            {name: "outTileY"},
+        ]);
+        this.Machine = this.def.store;
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._finish());
+        engine.registerRebuildHook(() => this._resync());
     }
 
     /**
@@ -74,31 +86,20 @@ export class MachineModule {
     }
 
     /**
-     * @private
-     * @param {number} eid
-     * @returns {void}
+     * The placed machine entities.
+     * @returns {number[]}
      */
-    _ensureCapacity(eid) {
-        if (eid < this._capacity) {
-            return;
-        }
-        let capacity = this._capacity;
-        while (capacity <= eid) {
-            capacity *= 2;
-        }
-        const grow = (array, fill) => {
-            const grown = new Int32Array(capacity).fill(fill);
-            grown.set(array);
-            return grown;
-        };
-        this.Machine.out = grow(this.Machine.out, 0);
-        this.Machine.remaining = grow(this.Machine.remaining, EMPTY);
-        this.Machine.output = grow(this.Machine.output, EMPTY);
-        this.Machine.lastOutput = grow(this.Machine.lastOutput, EMPTY);
-        this.Machine.in = this.Machine.in.map(array => grow(array, EMPTY));
-        this.Machine.slot = this.Machine.slot.map(array => grow(array, EMPTY));
-        this.Machine.batch = this.Machine.batch.map(array => grow(array, EMPTY));
-        this._capacity = capacity;
+    eids() {
+        return this.engine.entitiesWith(this.def);
+    }
+
+    /**
+     * The machine entity with client id `clientId`, or undefined.
+     * @param {number} clientId
+     * @returns {number|undefined}
+     */
+    eidByClientId(clientId) {
+        return this.eids().find(eid => this.Machine.clientId[eid] === clientId);
     }
 
     /**
@@ -115,15 +116,11 @@ export class MachineModule {
         }
         const out = wiring.out === undefined ? this.engine.addPort() : wiring.out;
 
-        const eid = addEntity(this.engine.world);
-        addComponent(this.engine.world, eid, this.Machine);
-        this._ensureCapacity(eid);
-
+        const eid = this.engine.createEntity(this.def);
         inputs.forEach((port, i) => {
-            this.Machine.in[i][eid] = port;
+            this.Machine[IN_COLS[i]][eid] = port;
         });
         this.Machine.out[eid] = out;
-        this.ids.push(eid);
 
         return {id: eid, inputs, out};
     }
@@ -134,21 +131,25 @@ export class MachineModule {
      * `outTile`.
      * @param {number} x
      * @param {number} y
-     * @param {number} typeId
      * @param {Direction} direction
      * @param {number[]} inputPorts
      * @param {number} outPort
      * @param {{x:number, y:number}} outTile
      * @returns {{id:number, inputs:number[], out:number}}
      */
-    placeMachine(x, y, typeId, direction, inputPorts, outPort, outTile) {
+    placeMachine(x, y, direction, inputPorts, outPort, outTile) {
         const handle = this.addMachine({inputs: inputPorts, out: outPort});
         const clientId = this.engine.allocateObjectId();
         handle.clientId = clientId;
-        this._meta.set(handle.id, {clientId, typeId, x, y, direction, outPort, outTile});
-        this._byClientId.set(clientId, handle.id);
+        const M = this.Machine;
+        M.clientId[handle.id] = clientId;
+        M.x[handle.id] = x;
+        M.y[handle.id] = y;
+        M.direction[handle.id] = direction;
+        M.outTileX[handle.id] = outTile.x;
+        M.outTileY[handle.id] = outTile.y;
         this.engine.registerRenderedPort(outPort, outTile.x, outTile.y);
-        this.engine.emitEvent(new EasyObjectInsertEvent(typeId, clientId, x, y, direction, [outPort], null));
+        this.engine.emitEvent(new EasyObjectInsertEvent(this.typeId, clientId, x, y, direction, [outPort], null));
         return handle;
     }
 
@@ -159,12 +160,13 @@ export class MachineModule {
      */
     chunkSync(chunk) {
         const events = [];
-        this._meta.forEach((meta, eid) => {
-            if (chunkId(meta.x, meta.y) === chunk) {
-                const last = this.Machine.lastOutput[eid];
+        const M = this.Machine;
+        this.eids().forEach(eid => {
+            if (chunkId(M.x[eid], M.y[eid]) === chunk) {
+                const last = M.lastOutput[eid];
                 events.push(new EasyObjectSyncEvent(
-                    meta.typeId, meta.clientId, meta.x, meta.y, meta.direction,
-                    [meta.outPort], last === EMPTY ? null : last,
+                    this.typeId, M.clientId[eid], M.x[eid], M.y[eid], M.direction[eid],
+                    [M.out[eid]], last === EMPTY ? null : last,
                 ));
             }
         });
@@ -177,17 +179,27 @@ export class MachineModule {
      * @returns {boolean}
      */
     removeMachineById(clientId) {
-        const eid = this._byClientId.get(clientId);
+        const eid = this.eidByClientId(clientId);
         if (eid === undefined) {
             return false;
         }
-        const meta = this._meta.get(eid);
-        this.ids = this.ids.filter(id => id !== eid);
-        this._meta.delete(eid);
-        this._byClientId.delete(clientId);
-        this.engine.unregisterRenderedPort(meta.outPort);
-        this.engine.emitEvent(new EasyObjectDeleteEvent(meta.typeId, clientId, meta.x, meta.y));
+        const M = this.Machine;
+        this.engine.unregisterRenderedPort(M.out[eid]);
+        this.engine.emitEvent(new EasyObjectDeleteEvent(this.typeId, clientId, M.x[eid], M.y[eid]));
+        this.engine.destroyEntity(eid);
         return true;
+    }
+
+    /**
+     * Re-registers every machine's rendered out-port after a load repopulates the world.
+     * @private
+     * @returns {void}
+     */
+    _resync() {
+        const M = this.Machine;
+        this.eids().forEach(eid => {
+            this.engine.registerRenderedPort(M.out[eid], M.outTileX[eid], M.outTileY[eid]);
+        });
     }
 
     /**
@@ -196,7 +208,7 @@ export class MachineModule {
      * @returns {InspectHeartbeatEvent|null}
      */
     inspect(clientId) {
-        const eid = this._byClientId.get(clientId);
+        const eid = this.eidByClientId(clientId);
         if (eid === undefined) {
             return null;
         }
@@ -205,11 +217,11 @@ export class MachineModule {
         const inputPorts = [];
         const inputMemory = [];
         for (let i = 0; i < this.inputCount; i += 1) {
-            const resting = P[M.in[i][eid]];
+            const resting = P[M[IN_COLS[i]][eid]];
             inputPorts.push(resting === EMPTY ? 0 : resting);
-            const slot = M.slot[i][eid];
-            const batch = M.batch[i][eid];
-            inputMemory.push(slot !== EMPTY ? slot : (batch !== EMPTY ? batch : 0));
+            const slot = M[SLOT_COLS[i]][eid];
+            const processing = M[PROCESSING_COLS[i]][eid];
+            inputMemory.push(slot !== EMPTY ? slot : (processing !== EMPTY ? processing : 0));
         }
         const remaining = M.remaining[eid] === EMPTY ? null : M.remaining[eid];
         const outItem = P[M.out[eid]];
@@ -250,7 +262,7 @@ export class MachineModule {
     _resolveRecipe(eid) {
         const key = [];
         for (let i = 0; i < RECIPE_SLOTS; i += 1) {
-            const slot = i < this.inputCount ? this.Machine.slot[i][eid] : EMPTY;
+            const slot = i < this.inputCount ? this.Machine[SLOT_COLS[i]][eid] : EMPTY;
             key.push(slot === EMPTY ? 0 : slot);
         }
         const output = this.recipes.get(key.join(","));
@@ -271,27 +283,27 @@ export class MachineModule {
     _submitIntents() {
         const P = this.engine.Port.item;
         const M = this.Machine;
-        this.ids.forEach(eid => {
+        this.eids().forEach(eid => {
             if (M.remaining[eid] > 0) {
                 M.remaining[eid] -= 1;
             }
 
-            // Gather while idle, or in step on the tick a free output lets the next batch load.
+            // Gather while idle, or in step on the tick a free output lets the next set load.
             const gathering = M.output[eid] === EMPTY || (M.remaining[eid] === 0 && P[M.out[eid]] === EMPTY);
             if (gathering) {
                 for (let i = 0; i < this.inputCount; i += 1) {
-                    const inPort = M.in[i][eid];
-                    if (M.slot[i][eid] === EMPTY && P[inPort] !== EMPTY) {
+                    const inPort = M[IN_COLS[i]][eid];
+                    if (M[SLOT_COLS[i]][eid] === EMPTY && P[inPort] !== EMPTY) {
                         this.engine.submitIntent({source: inPort, dest: EMPTY, managed: true});
-                        M.slot[i][eid] = P[inPort];
+                        M[SLOT_COLS[i]][eid] = P[inPort];
                     }
                 }
             }
 
-            // Every port contributed: match the recipe, start the countdown, clear the slots.
+            // Every port contributed: match the recipe, start the countdown, move slots into processing.
             let allFilled = M.output[eid] === EMPTY;
             for (let i = 0; i < this.inputCount; i += 1) {
-                if (M.slot[i][eid] === EMPTY) {
+                if (M[SLOT_COLS[i]][eid] === EMPTY) {
                     allFilled = false;
                 }
             }
@@ -299,8 +311,8 @@ export class MachineModule {
                 M.output[eid] = this._resolveRecipe(eid);
                 M.remaining[eid] = this.processingTicks;
                 for (let i = 0; i < this.inputCount; i += 1) {
-                    M.batch[i][eid] = M.slot[i][eid];
-                    M.slot[i][eid] = EMPTY;
+                    M[PROCESSING_COLS[i]][eid] = M[SLOT_COLS[i]][eid];
+                    M[SLOT_COLS[i]][eid] = EMPTY;
                 }
             }
 
@@ -323,13 +335,13 @@ export class MachineModule {
      */
     _finish() {
         const M = this.Machine;
-        this.ids.forEach(eid => {
+        this.eids().forEach(eid => {
             if (this.engine.wasResolvedDest(M.out[eid])) {
                 M.lastOutput[eid] = M.output[eid];
                 M.output[eid] = EMPTY;
                 M.remaining[eid] = EMPTY;
                 for (let i = 0; i < this.inputCount; i += 1) {
-                    M.batch[i][eid] = EMPTY;
+                    M[PROCESSING_COLS[i]][eid] = EMPTY;
                 }
             }
         });

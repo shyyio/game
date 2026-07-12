@@ -30,7 +30,7 @@ test("an object cannot be placed on an occupied tile", async () => {
     const engine = await makeEcsSimEngine();
 
     engine.applyMessage(new CreateObjectMessage(DemoMachineDefinition.typeId, 5, 5, Direction.UP));
-    assert.equal(engine.machine.ids.length, 1);
+    assert.equal(engine.machine.eids().length, 1);
     engine.applyMessage(new CreateObjectMessage(DemoMachineDefinition.typeId, 5, 5, Direction.UP));
-    assert.equal(engine.machine.ids.length, 1, "overlapping machine rejected");
+    assert.equal(engine.machine.eids().length, 1, "overlapping machine rejected");
 });

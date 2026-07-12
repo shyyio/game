@@ -94,4 +94,23 @@ export class SimEngine {
      */
     debugInsertItem() {
     }
+
+    /**
+     * A serializable snapshot of the whole simulation, for a save store to persist.
+     * @abstract
+     * @returns {object}
+     */
+    serialize() {
+        throw new NotImplementedError();
+    }
+
+    /**
+     * Rebuilds the simulation from a {@link serialize} snapshot.
+     * @abstract
+     * @param {object} snapshot
+     * @returns {void}
+     */
+    deserialize(snapshot) {
+        throw new NotImplementedError();
+    }
 }

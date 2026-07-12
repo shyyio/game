@@ -1,4 +1,4 @@
-import {createWorld, addEntity, addComponent} from "bitecs";
+import {createWorld, addEntity, addComponent, removeEntity, query} from "bitecs";
 import {SimEngine} from "@/common/sim/SimEngine.js";
 import {TickPhase} from "@/common/core.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
@@ -6,8 +6,15 @@ import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 // Port.item sentinel for an empty port (item types are >= 0, so -1 is unambiguous).
 export const EMPTY = -1;
 
-// Initial Port column length; grows by doubling when an eid exceeds it.
+// Field sentinel for an eid-reference field with no target (a fresh port, an absent seam).
+export const NO_EID = -1;
+
+// Initial column length for every component store; grows by doubling when an eid exceeds it.
 const PORT_CAPACITY = 1024;
+
+// Occupancy layer codec: the runtime keys cells by layer string, but the component stores an int.
+const LAYER_CODE = {S: 0, U0: 1, U1: 2};
+const LAYER_NAME = ["S", "U0", "U1"];
 
 /**
  * bitECS-backed simulation runtime. This slice implements the port-transfer core (the SQL
@@ -24,17 +31,47 @@ export class EcsEngine extends SimEngine {
          */
         this.world = null;
 
-        // Port component: item type per port eid, EMPTY when unoccupied. Backed by a typed array
-        // indexed directly by eid (bitECS recycles eids densely), grown by _ensurePortCapacity.
-        this.Port = {item: new Int32Array(PORT_CAPACITY).fill(EMPTY)};
-        this._portCapacity = PORT_CAPACITY;
-        // Shared ports by edge key "x,y,direction" (see portAt).
+        // Registered component stores, in definition order: {name, fields, store, capacity}. The generic
+        // serializer walks these, so any state kept here round-trips for free (see serialize).
+        this._components = [];
+        this._componentByName = new Map();
+
+        // Port component: item type per port eid (EMPTY when unoccupied) plus the shared edge it sits on
+        // (edgeDirection NO_EID when the port is not an edge port), so _portsByEdge rebuilds from the world.
+        this._portDef = this.defineComponent("Port", [
+            {name: "item", fill: EMPTY},
+            {name: "edgeX"},
+            {name: "edgeY"},
+            {name: "edgeDirection", fill: NO_EID},
+        ]);
+        this.Port = this._portDef.store;
+
+        // Occupancy component: one entity per occupied cell {x, y, layer} (layer "S" = surface, "U0"/"U1"
+        // = underground axis) tagged with its owner object id, so a delete releases all its cells by
+        // query. Objects on the same layer collide; different layers coexist.
+        this._occupancyDef = this.defineComponent("Occupancy", [
+            {name: "x"},
+            {name: "y"},
+            {name: "layer"},
+            {name: "owner", fill: NO_EID},
+        ]);
+
+        // Shared ports by edge key "x,y,direction" and occupied cells by "x,y,layer" — derived indexes
+        // over the two components above, rebuilt from the world on deserialize.
         this._portsByEdge = new Map();
+        this._cellByKey = new Map();
+
         // Global client-facing object id, shared across all object types so ids never collide.
         this._nextObjectId = 1;
-        // Occupied cells: "x,y,layer" (layer "S" = surface, "U0"/"U1" = underground axis). Objects on
-        // the same layer collide; different layers coexist (an underground crosses under a surface belt).
-        this._occupied = new Set();
+
+        // Flat global counters that survive a save (mods stash their own here, e.g. beltNextRunId).
+        this.globals = {};
+
+        // Hooks a module registers to rebuild its derived indexes after deserialize repopulates the world.
+        this._rebuildHooks = [];
+        // Hooks run at the start of serialize, letting a bespoke module (belts) flush JS-only runtime
+        // state into its registered components so the generic reflection captures it.
+        this._serializeHooks = [];
 
         // Per-phase system lists, run in order by tick(phase).
         this.systems = {
@@ -219,22 +256,66 @@ export class EcsEngine extends SimEngine {
     }
 
     /**
+     * Registers a component store: SoA Int32Array columns grown by doubling, tracked for generic
+     * serialization. `fields` are {name, kind?, fill?} — kind "eid" marks an entity-reference column
+     * remapped on deserialize (default "i32"); fill is the empty-slot value (default 0). Modules call
+     * this so their state round-trips with no bespoke save code.
+     * @param {string} name
+     * @param {{name:string, kind?:string, fill?:number}[]} fieldSpecs
+     * @returns {{name:string, fields:object[], store:object, capacity:number}}
+     */
+    defineComponent(name, fieldSpecs) {
+        const fields = fieldSpecs.map(spec => ({
+            name: spec.name,
+            kind: spec.kind === undefined ? "i32" : spec.kind,
+            fill: spec.fill === undefined ? 0 : spec.fill,
+        }));
+        const store = {};
+        fields.forEach(field => {
+            store[field.name] = new Int32Array(PORT_CAPACITY).fill(field.fill);
+        });
+        const def = {name, fields, store, capacity: PORT_CAPACITY};
+        this._components.push(def);
+        this._componentByName.set(name, def);
+        return def;
+    }
+
+    /**
+     * Grows a component's columns so `eid` is addressable.
      * @private
+     * @param {object} def
      * @param {number} eid
      * @returns {void}
      */
-    _ensurePortCapacity(eid) {
-        if (eid < this._portCapacity) {
+    _growComponent(def, eid) {
+        if (eid < def.capacity) {
             return;
         }
-        let capacity = this._portCapacity;
+        let capacity = def.capacity;
         while (capacity <= eid) {
             capacity *= 2;
         }
-        const grown = new Int32Array(capacity).fill(EMPTY);
-        grown.set(this.Port.item);
-        this.Port.item = grown;
-        this._portCapacity = capacity;
+        def.fields.forEach(field => {
+            const grown = new Int32Array(capacity).fill(field.fill);
+            grown.set(def.store[field.name]);
+            def.store[field.name] = grown;
+        });
+        def.capacity = capacity;
+        if (def === this._portDef) {
+            this.Port = def.store;
+        }
+    }
+
+    /**
+     * Attaches a component to `eid`, growing its columns first.
+     * @private
+     * @param {object} def
+     * @param {number} eid
+     * @returns {void}
+     */
+    _addComponent(def, eid) {
+        this._growComponent(def, eid);
+        addComponent(this.world, eid, def.store);
     }
 
     /**
@@ -244,8 +325,7 @@ export class EcsEngine extends SimEngine {
      */
     addPort(item=EMPTY) {
         const eid = addEntity(this.world);
-        addComponent(this.world, eid, this.Port);
-        this._ensurePortCapacity(eid);
+        this._addComponent(this._portDef, eid);
         this.Port.item[eid] = item;
         return eid;
     }
@@ -264,6 +344,9 @@ export class EcsEngine extends SimEngine {
         let eid = this._portsByEdge.get(key);
         if (eid === undefined) {
             eid = this.addPort();
+            this.Port.edgeX[eid] = x;
+            this.Port.edgeY[eid] = y;
+            this.Port.edgeDirection[eid] = direction;
             this._portsByEdge.set(key, eid);
         }
         return eid;
@@ -275,16 +358,31 @@ export class EcsEngine extends SimEngine {
      * @returns {boolean}
      */
     occupancyFree(cells) {
-        return cells.every(cell => !this._occupied.has(`${cell.x},${cell.y},${cell.layer}`));
+        return cells.every(cell => !this._cellByKey.has(`${cell.x},${cell.y},${cell.layer}`));
     }
 
     /**
-     * Marks each cell occupied.
+     * Marks each cell occupied, one Occupancy entity per newly taken cell, tagged with `owner` so
+     * {@link releaseOwner} can free them all on delete.
      * @param {{x:number, y:number, layer:string}[]} cells
+     * @param {number} [owner] - the owning object id
      * @returns {void}
      */
-    occupy(cells) {
-        cells.forEach(cell => this._occupied.add(`${cell.x},${cell.y},${cell.layer}`));
+    occupy(cells, owner=NO_EID) {
+        const store = this._occupancyDef.store;
+        cells.forEach(cell => {
+            const key = `${cell.x},${cell.y},${cell.layer}`;
+            if (this._cellByKey.has(key)) {
+                return;
+            }
+            const eid = addEntity(this.world);
+            this._addComponent(this._occupancyDef, eid);
+            store.x[eid] = cell.x;
+            store.y[eid] = cell.y;
+            store.layer[eid] = LAYER_CODE[cell.layer];
+            store.owner[eid] = owner;
+            this._cellByKey.set(key, eid);
+        });
     }
 
     /**
@@ -293,7 +391,58 @@ export class EcsEngine extends SimEngine {
      * @returns {void}
      */
     release(cells) {
-        cells.forEach(cell => this._occupied.delete(`${cell.x},${cell.y},${cell.layer}`));
+        cells.forEach(cell => {
+            const key = `${cell.x},${cell.y},${cell.layer}`;
+            const eid = this._cellByKey.get(key);
+            if (eid !== undefined) {
+                removeEntity(this.world, eid);
+                this._cellByKey.delete(key);
+            }
+        });
+    }
+
+    /**
+     * Frees every cell an object occupied, keyed by the owner id passed to {@link occupy}.
+     * @param {number} owner
+     * @returns {void}
+     */
+    releaseOwner(owner) {
+        const store = this._occupancyDef.store;
+        query(this.world, [store]).forEach(eid => {
+            if (store.owner[eid] === owner) {
+                this._cellByKey.delete(`${store.x[eid]},${store.y[eid]},${LAYER_NAME[store.layer[eid]]}`);
+                removeEntity(this.world, eid);
+            }
+        });
+    }
+
+    /**
+     * Creates an entity carrying `def`'s component.
+     * @param {object} def - a descriptor from {@link defineComponent}
+     * @returns {number} the entity id
+     */
+    createEntity(def) {
+        const eid = addEntity(this.world);
+        this._addComponent(def, eid);
+        return eid;
+    }
+
+    /**
+     * Removes an entity (and all its components) from the world.
+     * @param {number} eid
+     * @returns {void}
+     */
+    destroyEntity(eid) {
+        removeEntity(this.world, eid);
+    }
+
+    /**
+     * The entities currently carrying `def`'s component.
+     * @param {object} def - a descriptor from {@link defineComponent}
+     * @returns {number[]}
+     */
+    entitiesWith(def) {
+        return query(this.world, [def.store]);
     }
 
     /**
@@ -484,5 +633,130 @@ export class EcsEngine extends SimEngine {
             .sort((a, b) => a.source - b.source)
             .map(transfer => `${transfer.source}->${transfer.dest}`)
             .join(", ");
+    }
+
+    /**
+     * A module registers a hook run after {@link deserialize} repopulates the world, to rebuild its own
+     * derived indexes from the restored components. Receives the old-eid -> new-eid remap.
+     * @param {function(Map<number,number>): void} hook
+     * @returns {void}
+     */
+    registerRebuildHook(hook) {
+        this._rebuildHooks.push(hook);
+    }
+
+    /**
+     * A bespoke module registers a hook run at the start of {@link serialize}, to materialize any
+     * JS-only runtime state into its registered components before reflection reads them.
+     * @param {function(): void} hook
+     * @returns {void}
+     */
+    registerSerializeHook(hook) {
+        this._serializeHooks.push(hook);
+    }
+
+    /**
+     * A serializable snapshot of the whole world: every registered component as a table of rows (one
+     * per entity holding it), plus the global counters. Reflection over the component registry, so a
+     * module storing its state in components round-trips with no bespoke save code.
+     * @returns {{components:object[], globals:object}}
+     */
+    serialize() {
+        this._serializeHooks.forEach(hook => hook());
+        const components = this._components.map(def => {
+            const rows = [];
+            query(this.world, [def.store]).forEach(eid => {
+                const row = {eid: eid};
+                def.fields.forEach(field => {
+                    row[field.name] = def.store[field.name][eid];
+                });
+                rows.push(row);
+            });
+            return {
+                name: def.name,
+                fields: def.fields.map(field => ({name: field.name, kind: field.kind})),
+                rows: rows,
+            };
+        });
+        return {components: components, globals: {nextObjectId: this._nextObjectId, ...this.globals}};
+    }
+
+    /**
+     * Rebuilds the world from a {@link serialize} snapshot: fresh entities for every saved eid (eid
+     * columns remapped so references stay consistent), then the engine's derived indexes and each
+     * module's via its rebuild hook.
+     * @param {{components:object[], globals:object}} snapshot
+     * @returns {void}
+     */
+    deserialize(snapshot) {
+        this.world = createWorld();
+        this._components.forEach(def => {
+            def.fields.forEach(field => def.store[field.name].fill(field.fill));
+        });
+        this._portsByEdge = new Map();
+        this._cellByKey = new Map();
+
+        // Every eid that appears (as a row's own eid or an eid-field target) needs a fresh entity.
+        const referenced = new Set();
+        snapshot.components.forEach(component => {
+            component.rows.forEach(row => {
+                referenced.add(row.eid);
+                component.fields.forEach(field => {
+                    if (field.kind === "eid" && row[field.name] !== NO_EID) {
+                        referenced.add(row[field.name]);
+                    }
+                });
+            });
+        });
+        const remap = new Map();
+        [...referenced].sort((a, b) => a - b).forEach(old => remap.set(old, addEntity(this.world)));
+        const translate = value => (value === NO_EID ? NO_EID : remap.get(value));
+
+        snapshot.components.forEach(component => {
+            const def = this._componentByName.get(component.name);
+            component.rows.forEach(row => {
+                const eid = remap.get(row.eid);
+                this._addComponent(def, eid);
+                def.fields.forEach(field => {
+                    const raw = row[field.name];
+                    def.store[field.name][eid] = field.kind === "eid" ? translate(raw) : raw;
+                });
+            });
+        });
+
+        this._nextObjectId = snapshot.globals.nextObjectId;
+        Object.keys(this.globals).forEach(key => {
+            if (Object.prototype.hasOwnProperty.call(snapshot.globals, key)) {
+                this.globals[key] = snapshot.globals[key];
+            }
+        });
+
+        this._rebuildPortEdges();
+        this._rebuildOccupancy();
+        this._rebuildHooks.forEach(hook => hook(remap));
+    }
+
+    /**
+     * @private
+     * @returns {void}
+     */
+    _rebuildPortEdges() {
+        const store = this._portDef.store;
+        query(this.world, [store]).forEach(eid => {
+            if (store.edgeDirection[eid] !== NO_EID) {
+                this._portsByEdge.set(`${store.edgeX[eid]},${store.edgeY[eid]},${store.edgeDirection[eid]}`, eid);
+            }
+        });
+    }
+
+    /**
+     * @private
+     * @returns {void}
+     */
+    _rebuildOccupancy() {
+        const store = this._occupancyDef.store;
+        query(this.world, [store]).forEach(eid => {
+            this._cellByKey.set(`${store.x[eid]},${store.y[eid]},${LAYER_NAME[store.layer[eid]]}`, eid);
+        });
     }
 }

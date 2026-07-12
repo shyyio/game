@@ -1,8 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {ModRegistry} from "@/common/ModRegistry.js";
-import {DatabaseSchema} from "@/common/DatabaseSchema.js";
-import {NodeDatabase} from "@/server/NodeDatabase.js";
 import {Game} from "@/common/Game.js";
 import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
 import {Direction} from "@/common/constants.js";
@@ -33,8 +31,7 @@ async function setup() {
     const modRegistry = new ModRegistry();
     modRegistry.loadMod(new LogisticsMod());
     modRegistry.loadMod(new DemoMod());
-    const db = new NodeDatabase(new DatabaseSchema(modRegistry));
-    const game = new Game(modRegistry, db, new EcsSimEngine(modRegistry));
+    const game = new Game(modRegistry, new EcsSimEngine(modRegistry));
     await game.init();
     return game;
 }
@@ -43,9 +40,9 @@ async function setup() {
 function createMachine(game, x, y) {
     game.dispatchMessage(new CreateObjectMessage(DemoMachineDefinition.typeId, x, y, Direction.UP), null);
     const machineModule = game.simEngine.machine;
-    const clientId = [...machineModule._byClientId.keys()].pop();
-    const eid = machineModule._byClientId.get(clientId);
-    return {id: clientId, inPort: machineModule.Machine.in[0][eid]};
+    const eids = machineModule.eids();
+    const eid = eids[eids.length - 1];
+    return {id: machineModule.Machine.clientId[eid], inPort: machineModule.Machine.in0[eid]};
 }
 
 function heartbeats(session) {

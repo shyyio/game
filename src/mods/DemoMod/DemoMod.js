@@ -45,6 +45,7 @@ export class DemoMod extends AbstractMod {
             inputCount: 1,
             recipes: [{inputs: [DEMO_INPUT_ITEM_TYPE], output: DEMO_OUTPUT_ITEM_TYPE}],
             fallback: DEMO_JUNK_ITEM_TYPE,
+            typeId: DemoMachineDefinition.typeId,
         });
         sim.registerMessageHandler(message => this._ecsMachineMessage(sim, message));
         sim.registerChunkSync(chunk => sim.machine.chunkSync(chunk));
@@ -64,14 +65,14 @@ export class DemoMod extends AbstractMod {
         if (!(message instanceof CreateObjectMessage) || message.typeId !== DemoMachineDefinition.typeId) {
             return false;
         }
-        const d = message.direction;
-        const footprint = sim.footprint(DemoMachineDefinition, message.x, message.y, d);
+        const direction = message.direction;
+        const footprint = sim.footprint(DemoMachineDefinition, message.x, message.y, direction);
         if (!sim.occupancyFree(footprint)) {
             return true;
         }
-        const input = sim.portFor(DemoMachineDefinition.inputPorts[0], message.x, message.y, d);
-        const output = sim.portFor(DemoMachineDefinition.outputPorts[0], message.x, message.y, d);
-        const handle = sim.machine.placeMachine(message.x, message.y, message.typeId, d, [input.port], output.port, output.tile);
+        const input = sim.portFor(DemoMachineDefinition.inputPorts[0], message.x, message.y, direction);
+        const output = sim.portFor(DemoMachineDefinition.outputPorts[0], message.x, message.y, direction);
+        const handle = sim.machine.placeMachine(message.x, message.y, direction, [input.port], output.port, output.tile);
         sim.track(handle.clientId, footprint);
         return true;
     }

@@ -1,66 +1,66 @@
-import {addEntity, addComponent} from "bitecs";
 import {TickPhase} from "@/common/core.js";
 import {Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
-import {EMPTY} from "@/common/sim/EcsEngine.js";
-
-// Initial Splitter column length; grows by doubling when a splitter eid exceeds it.
-const SPLITTER_CAPACITY = 256;
-
-// The Splitter component's columns, all indexed by splitter eid.
-const SPLITTER_COLUMNS = ["in_a", "in_b", "out_a", "out_b", "int_a", "int_b", "state"];
+import {EMPTY, NO_EID} from "@/common/sim/EcsEngine.js";
 
 /**
  * The Splitter mod on the bitECS engine: a 1x2 router of two inputs and two outputs (ports shared
  * with adjacent belts) through two internal buffer ports. Each item flows in_X -> int_X -> out_Y,
  * resting a tick in int_X (belt speed). Submits managed=0 intents so the shared resolver only links
- * the chain; the POST_RESOLVE seam does the moves — mirroring the SQL Splitter tick ops.
+ * the chain; the POST_RESOLVE seam does the moves — mirroring the SQL Splitter tick ops. All state
+ * lives in the registered component, so it serializes with no bespoke save code.
  */
 export class SplitterModule {
 
     /**
      * @param {EcsEngine} engine
+     * @param {object} [config]
+     * @param {number} [config.typeId] - the object definition this module places (the table is that type)
      */
-    constructor(engine) {
+    constructor(engine, {typeId=null}={}) {
         this.engine = engine;
+        this.typeId = typeId;
 
-        this.Splitter = {};
-        SPLITTER_COLUMNS.forEach(column => {
-            this.Splitter[column] = new Int32Array(SPLITTER_CAPACITY);
-        });
-        this._capacity = SPLITTER_CAPACITY;
-
-        // Splitter eids, iterated each tick.
-        this.ids = [];
-        // eid -> {clientId, typeId, x, y, direction} for placed (client-visible) splitters.
-        this._meta = new Map();
-        // clientId -> eid.
-        this._byClientId = new Map();
+        this.def = engine.defineComponent("Splitter", [
+            {name: "in_a", kind: "eid", fill: NO_EID},
+            {name: "in_b", kind: "eid", fill: NO_EID},
+            {name: "out_a", kind: "eid", fill: NO_EID},
+            {name: "out_b", kind: "eid", fill: NO_EID},
+            {name: "int_a", kind: "eid", fill: NO_EID},
+            {name: "int_b", kind: "eid", fill: NO_EID},
+            {name: "state"},
+            {name: "clientId", fill: NO_EID},
+            {name: "x"},
+            {name: "y"},
+            {name: "direction"},
+            {name: "outATileX"},
+            {name: "outATileY"},
+            {name: "outBTileX"},
+            {name: "outBTileY"},
+        ]);
+        this.Splitter = this.def.store;
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._runSeam());
+        engine.registerRebuildHook(() => this._resync());
     }
 
     /**
-     * @private
-     * @param {number} eid
-     * @returns {void}
+     * The splitter entities.
+     * @returns {number[]}
      */
-    _ensureCapacity(eid) {
-        if (eid < this._capacity) {
-            return;
-        }
-        let capacity = this._capacity;
-        while (capacity <= eid) {
-            capacity *= 2;
-        }
-        SPLITTER_COLUMNS.forEach(column => {
-            const grown = new Int32Array(capacity);
-            grown.set(this.Splitter[column]);
-            this.Splitter[column] = grown;
-        });
-        this._capacity = capacity;
+    eids() {
+        return this.engine.entitiesWith(this.def);
+    }
+
+    /**
+     * The placed splitter entity with client id `clientId`, or undefined.
+     * @param {number} clientId
+     * @returns {number|undefined}
+     */
+    eidByClientId(clientId) {
+        return this.eids().find(eid => this.Splitter.clientId[eid] === clientId);
     }
 
     /**
@@ -79,10 +79,7 @@ export class SplitterModule {
         const int_a = this.engine.addPort();
         const int_b = this.engine.addPort();
 
-        const eid = addEntity(this.engine.world);
-        addComponent(this.engine.world, eid, this.Splitter);
-        this._ensureCapacity(eid);
-
+        const eid = this.engine.createEntity(this.def);
         const S = this.Splitter;
         S.in_a[eid] = in_a;
         S.in_b[eid] = in_b;
@@ -91,7 +88,6 @@ export class SplitterModule {
         S.int_a[eid] = int_a;
         S.int_b[eid] = int_b;
         S.state[eid] = 0;
-        this.ids.push(eid);
 
         return {id: eid, in_a, in_b, out_a, out_b, int_a, int_b};
     }
@@ -102,9 +98,11 @@ export class SplitterModule {
      * (x,y-1)/(x+1,y-1). Internal ports are private. Rotation for other directions is not done yet.
      * @param {number} x
      * @param {number} y
+     * @param {boolean} [client] - whether this is a client-visible splitter (allocates a client id +
+     *     emits placement); false for sim-only test splitters
      * @returns {{id:number, in_a:number, in_b:number, out_a:number, out_b:number, int_a:number, int_b:number}}
      */
-    placeSplitter(x, y, typeId=null, direction=Direction.UP, ports=null) {
+    placeSplitter(x, y, client=false, direction=Direction.UP, ports=null) {
         // Default UP geometry for sim-only placement (tests); a real message placement passes the
         // rotated ports + render tiles from the definition.
         const p = ports === null ? {
@@ -117,15 +115,22 @@ export class SplitterModule {
         } : ports;
 
         const handle = this.addSplitter({in_a: p.in_a, in_b: p.in_b, out_a: p.out_a, out_b: p.out_b});
-        if (typeId !== null) {
+        if (client) {
             const clientId = this.engine.allocateObjectId();
             handle.clientId = clientId;
-            this._meta.set(handle.id, {clientId, typeId, x, y, direction});
-            this._byClientId.set(clientId, handle.id);
+            const S = this.Splitter;
+            S.clientId[handle.id] = clientId;
+            S.x[handle.id] = x;
+            S.y[handle.id] = y;
+            S.direction[handle.id] = direction;
+            S.outATileX[handle.id] = p.outATile.x;
+            S.outATileY[handle.id] = p.outATile.y;
+            S.outBTileX[handle.id] = p.outBTile.x;
+            S.outBTileY[handle.id] = p.outBTile.y;
             this.engine.registerRenderedPort(handle.out_a, p.outATile.x, p.outATile.y);
             this.engine.registerRenderedPort(handle.out_b, p.outBTile.x, p.outBTile.y);
             this.engine.emitEvent(new EasyObjectInsertEvent(
-                typeId, clientId, x, y, direction, [handle.out_a, handle.out_b], null,
+                this.typeId, clientId, x, y, direction, [handle.out_a, handle.out_b], null,
             ));
         }
         return handle;
@@ -138,11 +143,12 @@ export class SplitterModule {
      */
     chunkSync(chunk) {
         const events = [];
-        this._meta.forEach((meta, eid) => {
-            if (chunkId(meta.x, meta.y) === chunk) {
+        const S = this.Splitter;
+        this.eids().forEach(eid => {
+            if (S.clientId[eid] !== NO_EID && chunkId(S.x[eid], S.y[eid]) === chunk) {
                 events.push(new EasyObjectSyncEvent(
-                    meta.typeId, meta.clientId, meta.x, meta.y, meta.direction,
-                    [this.Splitter.out_a[eid], this.Splitter.out_b[eid]], null,
+                    this.typeId, S.clientId[eid], S.x[eid], S.y[eid], S.direction[eid],
+                    [S.out_a[eid], S.out_b[eid]], null,
                 ));
             }
         });
@@ -155,18 +161,32 @@ export class SplitterModule {
      * @returns {boolean}
      */
     removeSplitterById(clientId) {
-        const eid = this._byClientId.get(clientId);
+        const eid = this.eidByClientId(clientId);
         if (eid === undefined) {
             return false;
         }
-        const meta = this._meta.get(eid);
-        this.ids = this.ids.filter(id => id !== eid);
-        this._meta.delete(eid);
-        this._byClientId.delete(clientId);
-        this.engine.unregisterRenderedPort(this.Splitter.out_a[eid]);
-        this.engine.unregisterRenderedPort(this.Splitter.out_b[eid]);
-        this.engine.emitEvent(new EasyObjectDeleteEvent(meta.typeId, clientId, meta.x, meta.y));
+        const S = this.Splitter;
+        this.engine.unregisterRenderedPort(S.out_a[eid]);
+        this.engine.unregisterRenderedPort(S.out_b[eid]);
+        this.engine.emitEvent(new EasyObjectDeleteEvent(this.typeId, clientId, S.x[eid], S.y[eid]));
+        this.engine.destroyEntity(eid);
         return true;
+    }
+
+    /**
+     * Re-registers every placed splitter's rendered out-ports after a load repopulates the world.
+     * @private
+     * @returns {void}
+     */
+    _resync() {
+        const S = this.Splitter;
+        this.eids().forEach(eid => {
+            if (S.clientId[eid] === NO_EID) {
+                return;
+            }
+            this.engine.registerRenderedPort(S.out_a[eid], S.outATileX[eid], S.outATileY[eid]);
+            this.engine.registerRenderedPort(S.out_b[eid], S.outBTileX[eid], S.outBTileY[eid]);
+        });
     }
 
     /**
@@ -187,7 +207,7 @@ export class SplitterModule {
     _submitIntents() {
         const item = this.engine.Port.item;
         const S = this.Splitter;
-        this.ids.forEach(eid => {
+        this.eids().forEach(eid => {
             if (item[S.in_a[eid]] !== EMPTY) {
                 this.engine.submitIntent({source: S.in_a[eid], dest: S.int_a[eid], destEmpty: item[S.int_a[eid]] === EMPTY, managed: false});
             }
@@ -221,7 +241,7 @@ export class SplitterModule {
         const stage1 = [];
         const stage2 = [];
 
-        this.ids.forEach(eid => {
+        this.eids().forEach(eid => {
             [S.int_a[eid], S.int_b[eid]].forEach(intPort => {
                 if (item[intPort] === EMPTY) {
                     return;
@@ -255,7 +275,7 @@ export class SplitterModule {
             item[record.outPort] = record.item;
         });
 
-        this.ids.forEach(eid => {
+        this.eids().forEach(eid => {
             if (this.engine.resolvedDestFor(S.int_a[eid]) !== EMPTY || this.engine.resolvedDestFor(S.int_b[eid]) !== EMPTY) {
                 S.state[eid] = 1 - S.state[eid];
             }

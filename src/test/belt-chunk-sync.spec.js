@@ -1,8 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {ModRegistry} from "@/common/ModRegistry.js";
-import {DatabaseSchema} from "@/common/DatabaseSchema.js";
-import {NodeDatabase} from "@/server/NodeDatabase.js";
 import {Game} from "@/common/Game.js";
 import {Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
@@ -35,9 +33,8 @@ class CapturingSession {
 test("a session subscribing to a chunk receives its existing belts and resting items from ECS", async () => {
     const modRegistry = new ModRegistry();
     modRegistry.loadMod(new LogisticsMod());
-    const db = new NodeDatabase(new DatabaseSchema(modRegistry));
     const engine = new EcsSimEngine(modRegistry);
-    const game = new Game(modRegistry, db, engine);
+    const game = new Game(modRegistry, engine);
     await game.init();
 
     // A placing session builds a belt line and lets an item rest at the out-port.

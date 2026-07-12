@@ -51,7 +51,7 @@ export class LogisticsMod extends AbstractMod {
      */
     setupEcs(sim) {
         // Splitter before belt so its POST_RESOLVE seam reads shared ports before the belt writes pops.
-        sim.splitter = new SplitterModule(sim.engine);
+        sim.splitter = new SplitterModule(sim.engine, {typeId: SplitterDefinition.typeId});
         sim.belts = new BeltModule(sim.engine);
         sim.registerMessageHandler(message => this._ecsBeltMessage(sim, message));
         sim.registerMessageHandler(message => this._ecsSplitterMessage(sim, message));
@@ -106,16 +106,16 @@ export class LogisticsMod extends AbstractMod {
         if (!(message instanceof CreateObjectMessage) || message.typeId !== SplitterDefinition.typeId) {
             return false;
         }
-        const d = message.direction;
-        const footprint = sim.footprint(SplitterDefinition, message.x, message.y, d);
+        const direction = message.direction;
+        const footprint = sim.footprint(SplitterDefinition, message.x, message.y, direction);
         if (!sim.occupancyFree(footprint)) {
             return true;
         }
-        const inA = sim.portFor(SplitterDefinition.inputPorts[0], message.x, message.y, d);
-        const inB = sim.portFor(SplitterDefinition.inputPorts[1], message.x, message.y, d);
-        const outA = sim.portFor(SplitterDefinition.outputPorts[0], message.x, message.y, d);
-        const outB = sim.portFor(SplitterDefinition.outputPorts[1], message.x, message.y, d);
-        const handle = sim.splitter.placeSplitter(message.x, message.y, message.typeId, d, {
+        const inA = sim.portFor(SplitterDefinition.inputPorts[0], message.x, message.y, direction);
+        const inB = sim.portFor(SplitterDefinition.inputPorts[1], message.x, message.y, direction);
+        const outA = sim.portFor(SplitterDefinition.outputPorts[0], message.x, message.y, direction);
+        const outB = sim.portFor(SplitterDefinition.outputPorts[1], message.x, message.y, direction);
+        const handle = sim.splitter.placeSplitter(message.x, message.y, true, direction, {
             in_a: inA.port, in_b: inB.port, out_a: outA.port, out_b: outB.port,
             outATile: outA.tile, outBTile: outB.tile,
         });
