@@ -2,6 +2,7 @@ import {addEntity, addComponent} from "bitecs";
 import {TickPhase} from "@/common/core.js";
 import {chunkId} from "@/common/util.js";
 import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
+import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {EMPTY} from "@/common/sim/EcsEngine.js";
 
 // Initial Machine column length; grows by doubling when a machine eid exceeds it.
@@ -45,6 +46,8 @@ export class MachineModule {
             lastOutput: new Int32Array(MACHINE_CAPACITY).fill(EMPTY),
             in: [0, 0, 0].map(() => new Int32Array(MACHINE_CAPACITY).fill(EMPTY)),
             slot: [0, 0, 0].map(() => new Int32Array(MACHINE_CAPACITY).fill(EMPTY)),
+            // The consumed batch, kept through processing (cleared on finish) for the inspect menu.
+            batch: [0, 0, 0].map(() => new Int32Array(MACHINE_CAPACITY).fill(EMPTY)),
         };
         this._capacity = MACHINE_CAPACITY;
         this.ids = [];
@@ -94,6 +97,7 @@ export class MachineModule {
         this.Machine.lastOutput = grow(this.Machine.lastOutput, EMPTY);
         this.Machine.in = this.Machine.in.map(array => grow(array, EMPTY));
         this.Machine.slot = this.Machine.slot.map(array => grow(array, EMPTY));
+        this.Machine.batch = this.Machine.batch.map(array => grow(array, EMPTY));
         this._capacity = capacity;
     }
 
@@ -187,6 +191,58 @@ export class MachineModule {
     }
 
     /**
+     * The machine's current inspect snapshot, or null if no machine has that client id.
+     * @param {BigInt} clientId
+     * @returns {InspectHeartbeatEvent|null}
+     */
+    inspect(clientId) {
+        const eid = this._byClientId.get(clientId);
+        if (eid === undefined) {
+            return null;
+        }
+        const P = this.engine.Port.item;
+        const M = this.Machine;
+        const inputPorts = [];
+        const inputMemory = [];
+        for (let i = 0; i < this.inputCount; i += 1) {
+            const resting = P[M.in[i][eid]];
+            inputPorts.push(resting === EMPTY ? 0 : resting);
+            const slot = M.slot[i][eid];
+            const batch = M.batch[i][eid];
+            inputMemory.push(slot !== EMPTY ? slot : (batch !== EMPTY ? batch : 0));
+        }
+        const remaining = M.remaining[eid] === EMPTY ? null : M.remaining[eid];
+        const outItem = P[M.out[eid]];
+        return new InspectHeartbeatEvent(
+            clientId,
+            inputPorts,
+            inputMemory,
+            remaining,
+            this.processingTicks,
+            outItem === EMPTY ? null : outItem,
+            this._inspectRecipeOutput(inputMemory),
+        );
+    }
+
+    /**
+     * The recipe product inferred from the gathered/consumed memory, or null when nothing is gathered.
+     * @private
+     * @param {number[]} inputMemory
+     * @returns {number|null}
+     */
+    _inspectRecipeOutput(inputMemory) {
+        if (!inputMemory.some(item => item > 0)) {
+            return null;
+        }
+        const key = [];
+        for (let i = 0; i < RECIPE_SLOTS; i += 1) {
+            key.push(i < inputMemory.length ? inputMemory[i] : 0);
+        }
+        const output = this.recipes.get(key.join(","));
+        return output === undefined ? this.fallback : output;
+    }
+
+    /**
      * @private
      * @param {number} eid
      * @returns {number} the produced output for the gathered slots, or the fallback
@@ -243,6 +299,7 @@ export class MachineModule {
                 M.output[eid] = this._resolveRecipe(eid);
                 M.remaining[eid] = this.processingTicks;
                 for (let i = 0; i < this.inputCount; i += 1) {
+                    M.batch[i][eid] = M.slot[i][eid];
                     M.slot[i][eid] = EMPTY;
                 }
             }
@@ -271,6 +328,9 @@ export class MachineModule {
                 M.lastOutput[eid] = M.output[eid];
                 M.output[eid] = EMPTY;
                 M.remaining[eid] = EMPTY;
+                for (let i = 0; i < this.inputCount; i += 1) {
+                    M.batch[i][eid] = EMPTY;
+                }
             }
         });
     }

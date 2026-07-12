@@ -80,6 +80,15 @@ export class SimEngine {
     }
 
     /**
+     * The current inspect snapshot for an object, or null if unknown. The bitECS engine overrides.
+     * @param {BigInt} objectId
+     * @returns {object|null}
+     */
+    inspectSnapshot(objectId) {
+        return null;
+    }
+
+    /**
      * Debug helper: drops an item onto the lowest belt path's in-port. No-op by default.
      * @returns {void}
      */

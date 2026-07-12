@@ -1,15 +1,10 @@
 // Resources + extractors: placeable resource bodies (a lake, a volcano) that an extractor sits on to
-// spawn items. Extraction is the shared Recipes table keyed on verb + resource type. All Easy*: a
-// resource is an EasyObjectPlacement wrapped by EasyResource; an extractor is ports + an EasyExtractor.
+// spawn items. The sim runs on the bitECS ResourceModule/ExtractorModule; extraction maps a resource
+// type to an item per extractor.
 import {
     AbstractMod,
-    EasyObjectPlacement,
-    EasyResource,
-    EasyExtractor,
     ObjectDefinition,
     PortDefinition,
-    RecipeDefinition,
-    SqlStatement,
     Direction,
     CreateObjectMessage,
     DeleteObjectMessage,
@@ -19,11 +14,7 @@ import {EasyObjectTool, EasyObjectGhostLayer, EasyObjectDrawLayer, InspectHighli
 import {ResourceModule} from "@/common/sim/ResourceSystems.js";
 import {ExtractorModule} from "@/common/sim/ExtractorSystems.js";
 
-// Extraction verbs (Recipes keyspace; distinct from machine verbs).
-const VERB_EXTRACT_PRIMARY = 10;
-const VERB_EXTRACT_SECONDARY = 11;
-
-// Resource types (recipe inputs) and the items extraction spawns.
+// Resource types and the items extraction spawns.
 export const RESOURCE_WATER = 200;
 export const RESOURCE_VOLCANO = 201;
 export const WATER_ITEM_TYPE = 210;
@@ -40,16 +31,8 @@ export const WaterResourceDefinition = new ObjectDefinition({
     geometry: "1x1",
     textureName: "resource/placeholder",
     label: "Water",
-});
-
-export const VolcanoResourceDefinition = new ObjectDefinition({
-    table: "VolcanoResource",
-    inputPorts: [],
-    outputPorts: [],
-    internalPorts: [],
-    geometry: "2x2",
-    textureName: "resource/placeholder-2x2",
-    label: "Volcano",
+    // An extractor sits directly on the water tile.
+    extractionTiles: [{x: 0, y: 0}],
 });
 
 // The volcano is solid: extractors sit on the ring of tiles orthogonally bordering its 2x2 body.
@@ -59,6 +42,17 @@ export const VOLCANO_EXTRACTION_TILES = [
     {x: -1, y: 0}, {x: -1, y: 1},
     {x: 2, y: 0}, {x: 2, y: 1},
 ];
+
+export const VolcanoResourceDefinition = new ObjectDefinition({
+    table: "VolcanoResource",
+    inputPorts: [],
+    outputPorts: [],
+    internalPorts: [],
+    geometry: "2x2",
+    textureName: "resource/placeholder-2x2",
+    label: "Volcano",
+    extractionTiles: VOLCANO_EXTRACTION_TILES,
+});
 
 // ---- Extractor definitions ----
 
@@ -87,42 +81,8 @@ export const DeepExtractorDefinition = new ObjectDefinition({
 const RESOURCE_DEFINITIONS = [WaterResourceDefinition, VolcanoResourceDefinition];
 const EXTRACTOR_DEFINITIONS = [ExtractorDefinition, DeepExtractorDefinition];
 const OBJECT_DEFINITIONS = [...RESOURCE_DEFINITIONS, ...EXTRACTOR_DEFINITIONS];
-const EXTRACTOR_TABLES = EXTRACTOR_DEFINITIONS.map(definition => definition.table);
 
 export class ResourcesMod extends AbstractMod {
-
-    constructor() {
-        super();
-        this._water = new EasyResource({
-            definition: WaterResourceDefinition,
-            resourceType: RESOURCE_WATER,
-        });
-        this._volcano = new EasyResource({
-            definition: VolcanoResourceDefinition,
-            resourceType: RESOURCE_VOLCANO,
-            extractionTiles: VOLCANO_EXTRACTION_TILES,
-            blocksSurface: true,
-        });
-        this._extractor = new EasyExtractor({verb: VERB_EXTRACT_PRIMARY, processingTicks: 4});
-        this._deepExtractor = new EasyExtractor({verb: VERB_EXTRACT_SECONDARY, processingTicks: 8});
-        this._extractor.install(ExtractorDefinition);
-        this._deepExtractor.install(DeepExtractorDefinition);
-        this._extractors = [this._extractor, this._deepExtractor];
-        this._extractorPlacement = new EasyObjectPlacement(ExtractorDefinition);
-        this._deepExtractorPlacement = new EasyObjectPlacement(DeepExtractorDefinition);
-        // Every placeable this mod owns, for schema/statements/message/sync fan-out.
-        this._placeables = [
-            this._water,
-            this._volcano,
-            this._extractorPlacement,
-            this._deepExtractorPlacement,
-        ];
-        this._resources = [this._water, this._volcano];
-    }
-
-    get schema() {
-        return this._placeables.map(placeable => placeable.schema).join("\n");
-    }
 
     get definitions() {
         return {
@@ -131,43 +91,6 @@ export class ResourcesMod extends AbstractMod {
             [ExtractorDefinition.table]: ExtractorDefinition,
             [DeepExtractorDefinition.table]: DeepExtractorDefinition,
         };
-    }
-
-    get recipes() {
-        return [
-            new RecipeDefinition(VERB_EXTRACT_PRIMARY, [RESOURCE_WATER], WATER_ITEM_TYPE),
-            new RecipeDefinition(VERB_EXTRACT_PRIMARY, [RESOURCE_VOLCANO], SULFUR_ITEM_TYPE),
-            new RecipeDefinition(VERB_EXTRACT_SECONDARY, [RESOURCE_VOLCANO], BRINE_ITEM_TYPE),
-        ];
-    }
-
-    get extraStatements() {
-        const coverAt = this._resources.map(resource => resource.coverSubquery("@x", "@y")).join(", ");
-        return [
-            ...this._placeables.flatMap(placeable => placeable.statements),
-            ...this._extractors.flatMap(extractor => extractor.statements),
-            // The resource_type an extractor at (@x, @y) would draw from (first cover wins, else NULL).
-            new SqlStatement("ResourceCoverAt", `SELECT COALESCE(${coverAt}) AS resource_type;`),
-            // Re-derive every extractor's bound resource from what covers it now (a removed resource
-            // unbinds its extractors, a re-added one rebinds them). Run on any resource change.
-            ...EXTRACTOR_TABLES.map(table => new SqlStatement(
-                `Rebind${table}`,
-                `UPDATE ${table} SET resource_type = COALESCE(${
-                    this._resources.map(resource => resource.coverSubquery(`${table}.x`, `${table}.y`)).join(", ")
-                });`
-            )),
-        ];
-    }
-
-    chunkSyncEvents(chunk) {
-        return this._placeables.flatMap(placeable => placeable.chunkSyncEvents(this.game, chunk));
-    }
-
-    onMessage(message) {
-        this._placeables.forEach(placeable => placeable.handleMessage(this.game, message));
-        if (this._changesResources(message)) {
-            EXTRACTOR_TABLES.forEach(table => this.game.exec(`Rebind${table}`));
-        }
     }
 
     /**
@@ -192,6 +115,8 @@ export class ResourcesMod extends AbstractMod {
         sim.registerChunkSync(chunk => sim.resources.chunkSync(chunk));
         sim.registerChunkSync(chunk => sim.extractor.chunkSync(chunk));
         sim.registerChunkSync(chunk => sim.deepExtractor.chunkSync(chunk));
+        sim.registerInspector(id => sim.extractor.inspect(id));
+        sim.registerInspector(id => sim.deepExtractor.inspect(id));
     }
 
     /**
@@ -253,20 +178,6 @@ export class ResourcesMod extends AbstractMod {
         const output = sim.portFor(definition.outputPorts[0], message.x, message.y, message.direction);
         const clientId = module.placeExtractor(message.x, message.y, message.typeId, message.direction, resourceType, output.port, output.tile);
         sim.track(clientId, footprint);
-    }
-
-    /**
-     * Whether a message may have placed or removed a resource (so extractor bindings need refreshing).
-     * A delete carries only an id, so any delete conservatively triggers a rebind.
-     * @private
-     * @returns {boolean}
-     */
-    _changesResources(message) {
-        if (message instanceof DeleteObjectMessage) {
-            return true;
-        }
-        return message instanceof CreateObjectMessage
-            && (message.typeId === WaterResourceDefinition.typeId || message.typeId === VolcanoResourceDefinition.typeId);
     }
 }
 

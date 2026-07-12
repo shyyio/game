@@ -16,20 +16,6 @@ export class ModRegistry {
     }
 
     /**
-     * @returns {string}
-     */
-    get initSchema() {
-        return this.mods.map(mod => mod.schema).join("\n");
-    }
-
-    /**
-     * @returns {string}
-     */
-    get tempSchema() {
-        return this.mods.map(mod => mod.tempSchema).join("\n");
-    }
-
-    /**
      * @returns {Object.<string, ObjectDefinition>}
      */
     get definitions() {
@@ -90,38 +76,12 @@ export class ModRegistry {
     }
 
     /**
-     * Gathers every mod's individual sync events for a newly-visible chunk.
-     * @param {number} chunk
-     * @returns {AbstractEvent[]}
-     */
-    chunkSyncEvents(chunk) {
-        return this.mods
-            .flatMap(mod => mod.chunkSyncEvents(chunk));
-    }
-
-    /**
      * @returns {Array}
      */
     get drawLayers() {
         return this.mods
             .filter(mod => mod.drawLayers != null)
             .flatMap(mod => mod.drawLayers);
-    }
-
-    /**
-     * Every mod's recipes, for seeding the shared Recipes table.
-     * @returns {RecipeDefinition[]}
-     */
-    get recipes() {
-        return this.mods.flatMap(mod => mod.recipes);
-    }
-
-    /**
-     * Every mod's per-verb fallback outputs, for seeding VerbFallback.
-     * @returns {{verb: number, output: number}[]}
-     */
-    get verbFallbacks() {
-        return this.mods.flatMap(mod => mod.verbFallbacks);
     }
 
     /**

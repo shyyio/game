@@ -29,6 +29,7 @@ export class EcsSimEngine extends SimEngine {
         // Registered by mods.
         this._messageHandlers = [];
         this._chunkSyncers = [];
+        this._inspectors = [];
         // Object client id (string) -> occupied surface cells, freed on delete.
         this._footprints = new Map();
     }
@@ -39,6 +40,8 @@ export class EcsSimEngine extends SimEngine {
     async init() {
         await this.engine.init();
         if (this.modRegistry !== null) {
+            // Assign each ObjectDefinition its typeId (registration order) before mods wire up.
+            this.modRegistry.definitions;
             this.modRegistry.mods.forEach(mod => mod.setupEcs(this));
         }
     }
@@ -59,6 +62,30 @@ export class EcsSimEngine extends SimEngine {
      */
     registerChunkSync(contributor) {
         this._chunkSyncers.push(contributor);
+    }
+
+    /**
+     * A mod registers an inspect snapshotter (object client id -> InspectHeartbeatEvent or null).
+     * @param {function(BigInt): (object|null)} inspector
+     * @returns {void}
+     */
+    registerInspector(inspector) {
+        this._inspectors.push(inspector);
+    }
+
+    /**
+     * The current inspect snapshot for an object, or null if no module owns that client id.
+     * @param {BigInt} objectId
+     * @returns {object|null}
+     */
+    inspectSnapshot(objectId) {
+        for (let i = 0; i < this._inspectors.length; i += 1) {
+            const snapshot = this._inspectors[i](objectId);
+            if (snapshot !== null) {
+                return snapshot;
+            }
+        }
+        return null;
     }
 
     /**

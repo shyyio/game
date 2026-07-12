@@ -19,28 +19,23 @@ export class InspectHeartbeatEvent extends AbstractEvent {
     };
 
     /**
-     * @param {object} row - a BufferedInspectHeartbeatEvent snapshot row
-     * @param {BigInt} row.object_id
-     * @param {number|null} row.in_1_port - port item, 0 = empty, null = no such port
-     * @param {number|null} row.in_1_mem - memory item, 0 = none, null = no such port
-     * @param {number|null} row.in_2_port
-     * @param {number|null} row.in_2_mem
-     * @param {number|null} row.in_3_port
-     * @param {number|null} row.in_3_mem
-     * @param {number|null} row.processing_remaining
-     * @param {number} row.processing_total
-     * @param {number|null} row.output_item
-     * @param {number|null} row.recipe_output
+     * @param {BigInt} objectId
+     * @param {number[]} inputPorts - per-port resting item (0 = empty)
+     * @param {number[]} inputMemory - per-port gathered/consumed item (0 = none)
+     * @param {number|null} processingRemaining - ticks left (null = idle)
+     * @param {number} processingTotal
+     * @param {number|null} outputItem
+     * @param {number|null} recipeOutput - inferred product (null = nothing gathered)
      */
-    constructor(row) {
+    constructor(objectId, inputPorts, inputMemory, processingRemaining, processingTotal, outputItem, recipeOutput) {
         super();
-        this.objectId = row.object_id;
-        this.inputPorts = [row.in_1_port, row.in_2_port, row.in_3_port].filter(item => item !== null);
-        this.inputMemory = [row.in_1_mem, row.in_2_mem, row.in_3_mem].filter(item => item !== null);
-        this.processingRemaining = row.processing_remaining;
-        this.processingTotal = row.processing_total;
-        this.outputItem = row.output_item;
-        this.recipeOutput = row.recipe_output;
+        this.objectId = objectId;
+        this.inputPorts = inputPorts;
+        this.inputMemory = inputMemory;
+        this.processingRemaining = processingRemaining;
+        this.processingTotal = processingTotal;
+        this.outputItem = outputItem;
+        this.recipeOutput = recipeOutput;
     }
 }
 

@@ -1,26 +1,8 @@
-import {SqlStatement, TickPhase} from "@/common/core.js";
-import {
-    CHUNK_SIZE,
-    REGION_SIZE,
-    GameSettingsKey,
-    Direction,
-    BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
-    BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
-} from "@/common/constants.js";
+import {SqlStatement} from "@/common/core.js";
+import {CHUNK_SIZE, GameSettingsKey} from "@/common/constants.js";
 
-const REGION_HALF = REGION_SIZE / 2;
-
-// Chunk coordinate of a tile column (floored division, matching JS Math.floor for negatives).
-export const CHUNK_COORD_SQL = (col) =>
-    `(CASE WHEN ${col} < 0 AND ${col} % ${CHUNK_SIZE} != 0 THEN ${col}/${CHUNK_SIZE} - 1 ELSE ${col}/${CHUNK_SIZE} END)`;
-
-// The ordinal chunk id (see chunkId) from chunk-coordinate expressions.
-const chunkIdSql = (chunkX, chunkY) =>
-    `(((${chunkY}) + ${REGION_HALF}) * ${REGION_SIZE} + ((${chunkX}) + ${REGION_HALF}))`;
-
-// The chunk id for a table's tile columns x, y.
-export const CHUNK_ID_SQL = chunkIdSql(CHUNK_COORD_SQL("x"), CHUNK_COORD_SQL("y"));
-
+// The simulation runs entirely on the bitECS engine; SQLite is kept only for session/settings infra
+// (and, later, persistence). No sim tables, tick pipeline, port graph, or per-object statements.
 const CoreStatements = [
     new SqlStatement("End", "END TRANSACTION"),
     new SqlStatement("Begin", "BEGIN TRANSACTION;"),
@@ -29,54 +11,6 @@ const CoreStatements = [
     new SqlStatement("InsertSession", "INSERT INTO Session (player_id) VALUES (@player_id) RETURNING id;"),
     new SqlStatement("GetPlayerSettings", `SELECT key, value FROM PlayerSettings WHERE player_id = @player_id;`),
     new SqlStatement("GetGameSettings", `SELECT key, value FROM GameSettings;`),
-
-    new SqlStatement("InsertPort", "INSERT INTO Port DEFAULT VALUES RETURNING id;"),
-
-    // Next global object id (ObjectIdSeq); mods insert with it instead of per-table autoincrement.
-    new SqlStatement("AllocateObjectId", "UPDATE ObjectIdSeq SET seq = seq + 1 RETURNING seq;"),
-
-    new SqlStatement("GetSessionEvents", `
-        SELECT ev.type, ev.id, ev.a, ev.b, ev.c,
-               sv.session_id
-        FROM BufferedEvent ev
-            INNER JOIN SessionViewport sv ON ev.chunk = sv.chunk
-        ORDER BY ev.rowid;
-    `),
-
-    new SqlStatement("TruncateBufferedEvent", `DELETE FROM BufferedEvent;`),
-
-    new SqlStatement("DeleteSessionViewport", `DELETE FROM SessionViewport WHERE session_id = @session_id RETURNING chunk;`),
-    new SqlStatement("GetSessionViewport", `SELECT chunk FROM SessionViewport WHERE session_id = @session_id;`),
-    new SqlStatement("InsertSessionViewport", `INSERT INTO SessionViewport (session_id, chunk) VALUES (@session_id, @chunk);`),
-    new SqlStatement("DeleteSessionViewportChunk", `DELETE FROM SessionViewport WHERE session_id = @session_id AND chunk = @chunk;`),
-    new SqlStatement("GetSessionsByChunk", `SELECT DISTINCT session_id FROM SessionViewport WHERE chunk = @chunk;`),
-
-    // Inspect subscriptions: the object ids a session has menus open for.
-    new SqlStatement("GetSessionInspect", `SELECT object_id FROM SessionInspect WHERE session_id = @session_id;`),
-    new SqlStatement("InsertSessionInspect", `INSERT INTO SessionInspect (session_id, object_id) VALUES (@session_id, @object_id);`),
-    new SqlStatement("DeleteSessionInspectObject", `DELETE FROM SessionInspect WHERE session_id = @session_id AND object_id = @object_id;`),
-    new SqlStatement("DeleteSessionInspect", `DELETE FROM SessionInspect WHERE session_id = @session_id;`),
-    new SqlStatement("GetSessionsInspectingObject", `SELECT session_id FROM SessionInspect WHERE object_id = @object_id;`),
-    new SqlStatement("DeleteInspectObject", `DELETE FROM SessionInspect WHERE object_id = @object_id;`),
-
-    // Drains this tick's machine snapshots to every subscribing session.
-    new SqlStatement("GetSessionInspectEvents", `
-        SELECT si.session_id,
-               snap.object_id,
-               snap.in_1_port, snap.in_1_mem, snap.in_2_port, snap.in_2_mem, snap.in_3_port, snap.in_3_mem,
-               snap.processing_remaining, snap.processing_total, snap.output_item, snap.recipe_output
-        FROM BufferedInspectHeartbeatEvent snap
-            INNER JOIN SessionInspect si ON si.object_id = snap.object_id;
-    `),
-    new SqlStatement("TruncateBufferedInspectHeartbeatEvent", `DELETE FROM BufferedInspectHeartbeatEvent;`),
-
-    // All snapshot rows, session-agnostic (read after an on-open sync).
-    new SqlStatement("GetInspectSnapshotRows", `
-        SELECT object_id,
-               in_1_port, in_1_mem, in_2_port, in_2_mem, in_3_port, in_3_mem,
-               processing_remaining, processing_total, output_item, recipe_output
-        FROM BufferedInspectHeartbeatEvent;
-    `),
 ];
 
 const CoreSchema = `
@@ -91,164 +25,16 @@ const CoreSchema = `
         key INTEGER PRIMARY KEY,
         value INT NOT NULL
     );
-
-    -- Global id sequence for every placeable object: ids unique across types, higher = placed
-    -- later — how connections resolve "most recently placed wins".
-    CREATE TABLE ObjectIdSeq (seq INTEGER NOT NULL);
-    INSERT INTO ObjectIdSeq (seq) VALUES (0);
-
-    CREATE TABLE Port (
-        id INTEGER PRIMARY KEY,
-        item INT,
-
-        -- Set by a mod for an object's input port, so it can partial-index filled input
-        -- ports (item IS NOT NULL AND is_input_port = 1) to find ports taking input.
-        is_input_port INT NOT NULL DEFAULT 0
-    );
-
-    -- Filled ports (resting rendered items). Sparse, so tiny; mods drive port-item emit off it.
-    CREATE INDEX Port_filled ON Port(id) WHERE item IS NOT NULL;
-
-    CREATE TABLE BufferedEvent (
-        type INT NOT NULL,
-
-        -- Chunk this event routes to (position never sent — client derives from the path);
-        -- the chunk id joins SessionViewport.
-        routing_chunk_x INT NOT NULL,
-        routing_chunk_y INT NOT NULL,
-        chunk INT GENERATED ALWAYS AS (${chunkIdSql("routing_chunk_x", "routing_chunk_y")}) VIRTUAL,
-
-        id INT NOT NULL,
-        a INT DEFAULT NULL,
-        b INT DEFAULT NULL,
-        c INT DEFAULT NULL
-    );
-    CREATE INDEX BufferedEvent_chunk ON BufferedEvent(chunk);
-
-    -- A verb's recipes: inputs in port order (input_N = Nth port's item, 0 = unused) → one output.
-    -- Shared by every machine implementing the verb; seeded from mods.
-    CREATE TABLE Recipes (
-        verb INT NOT NULL,
-        input_1 INT NOT NULL,
-        input_2 INT NOT NULL,
-        input_3 INT NOT NULL,
-        output_item INT NOT NULL,
-        PRIMARY KEY (verb, input_1, input_2, input_3)
-    );
-
-    -- The output a verb yields when a machine's gathered inputs match no recipe.
-    CREATE TABLE VerbFallback (
-        verb INTEGER PRIMARY KEY,
-        output_item INT NOT NULL
-    );
 `;
 
 const CoreTempSchema = `
-    CREATE TEMPORARY TABLE Numbers (
-        value INTEGER PRIMARY KEY NOT NULL
-    );
-
-    INSERT INTO Numbers
-    WITH RECURSIVE series (value) AS (
-        SELECT 0
-        UNION ALL
-        SELECT value + 1 FROM series WHERE value + 1 < ${CHUNK_SIZE**2}
-    )
-    SELECT value FROM series;
-
     INSERT INTO GameSettings (key, value) VALUES
         (${GameSettingsKey.CHUNK_SIZE}, ${CHUNK_SIZE})
         ON CONFLICT DO UPDATE SET value=${CHUNK_SIZE};
 
-    CREATE TEMPORARY TABLE PortTransferIntent (
-        source_id INT,
-
-        -- NULL destination marks a self-draining source, not a move: the owner empties source_id
-        -- internally this tick (e.g. a belt ingesting into head room without popping), so an
-        -- upstream transfer into it still resolves. Skips the per-destination dedup, never a real
-        -- move (which always names a destination).
-        destination_id INT,
-
-        destination_is_empty INT DEFAULT (0)
-            CHECK ( destination_is_empty=0 OR destination_is_empty=1 ),
-
-        managed INT DEFAULT (1) -- 0 = the owning mod does the transfer itself.
-            CHECK ( managed=0 OR managed=1 ),
-
-        -- Item the destination receives, overriding the source's (a machine's product, or a
-        -- creation when source is NULL); NULL moves it unchanged.
-        output_item INT,
-
-        -- NULL for a single-destination transfer. A fan-out source (competing intent per candidate,
-        -- e.g. a splitter) ranks them 1, 2, …: lowest wins both the per-destination dedup (which
-        -- source gets a contested destination) and the per-source pick (which destination a source
-        -- keeps). NOT NULL also opts a row into that per-source pick; single-destination sources skip it.
-        alternatives_rank INT,
-
-        PRIMARY KEY (source_id, destination_id)
-    );
-
-    CREATE TEMPORARY TABLE ResolvedPortTransfer (
-        source_id INT,
-        destination_id INTEGER PRIMARY KEY,
-        -- Item moved, or NULL for an unmanaged transfer (managed=0): the engine only resolved it;
-        -- the owning mod does the move.
-        item INT,
-        managed INT NOT NULL
-    );
-    CREATE UNIQUE INDEX ResolvedPortTransfer_source ON ResolvedPortTransfer (source_id);
-
-    -- Resolved sink sources (managed, destination-less): items the engine clears this tick.
-    -- Drained in COMMIT_TRANSFERS.
-    CREATE TEMPORARY TABLE ResolvedSink (
-        source_id INTEGER PRIMARY KEY
-    );
-
     CREATE TEMPORARY TABLE Session (
         id INTEGER PRIMARY KEY,
         player_id INT NOT NULL
-    );
-
-    CREATE TEMPORARY TABLE SessionViewport (
-        session_id INT REFERENCES Session,
-        chunk INT NOT NULL
-    );
-
-    -- Open machine menus: one row per inspected object (multiple per session).
-    CREATE TEMPORARY TABLE SessionInspect (
-        session_id INT REFERENCES Session,
-        object_id INT NOT NULL,
-        PRIMARY KEY (session_id, object_id)
-    );
-
-    -- This tick's inspected-machine snapshots (EMIT_INSPECT fills, postTick drains). Column semantics
-    -- documented on InspectHeartbeatEvent.
-    CREATE TEMPORARY TABLE BufferedInspectHeartbeatEvent (
-        object_id INTEGER PRIMARY KEY,
-        in_1_port INT, in_1_mem INT,
-        in_2_port INT, in_2_mem INT,
-        in_3_port INT, in_3_mem INT,
-        processing_remaining INT,
-        processing_total INT,
-        output_item INT,
-        recipe_output INT
-    );
-
-    -- This tick's watched filled out-ports (item + routing x/y), filled by mod capture in
-    -- COMMIT_TRANSFERS; EMIT_RENDER diffs it against PortItemShadow, then rebuilds the shadow.
-    CREATE TEMPORARY TABLE ViewedPortItem (
-        port_id INTEGER PRIMARY KEY,
-        item INT,
-        x INT,
-        y INT
-    );
-
-    -- Previous tick's ViewedPortItem; EMIT_RENDER emits only out-ports whose item changed (x/y routes clears).
-    CREATE TEMPORARY TABLE PortItemShadow (
-        port_id INTEGER PRIMARY KEY,
-        item INT,
-        x INT,
-        y INT
     );
 `;
 
@@ -260,388 +46,31 @@ const CorePragma = `
     PRAGMA optimize=0x10002;
 `;
 
-const CoreTickPhases = {
-    [TickPhase.RESOLVE_TRANSFERS]: [
-        new SqlStatement(
-                "ResolvePortTransfer",
-            `WITH RECURSIVE ranked_per_destination AS (
-                -- Rank contenders per destination (a port takes one): lowest alternatives_rank wins,
-                -- ties by source_id. NULL rank (single-destination) sorts first — harmless, they
-                -- share a partition only with each other.
-                SELECT
-                    source_id,
-                    destination_id,
-                    destination_is_empty,
-                    managed,
-                    alternatives_rank,
-                    output_item,
-                    ROW_NUMBER() OVER (PARTITION BY destination_id ORDER BY alternatives_rank ASC, source_id) AS dst_rank
-                FROM PortTransferIntent
-                WHERE destination_id IS NOT NULL
-            ),
-            one_per_destination AS (
-                SELECT source_id, destination_id, destination_is_empty, managed, alternatives_rank, output_item
-                FROM ranked_per_destination
-                WHERE dst_rank=1
-            ),
-            resolved AS (
-                -- A transfer resolves if its destination is empty...
-                SELECT source_id, destination_id, managed, alternatives_rank, output_item
-                FROM one_per_destination
-                WHERE destination_is_empty=TRUE
-
-                UNION
-
-                -- ...or its source drains this tick: a destination-less row for a port emptied without
-                -- a transfer — an unmanaged self-drain (belt into head room) or a managed sink (engine
-                -- clears in CONSUME_INPUTS before producers refill). Lets an upstream transfer into that
-                -- port resolve; only source_id matters, filtered out before the move.
-                SELECT source_id, NULL, NULL, NULL, NULL
-                FROM PortTransferIntent
-                WHERE destination_id IS NULL
-
-                UNION
-
-                -- ...or the transfer draining its destination resolves (a packed chain
-                -- shifts as one). UNION (not ALL) terminates cycles.
-                SELECT i.source_id, i.destination_id, i.managed, i.alternatives_rank, i.output_item
-                FROM resolved chain
-                    INNER JOIN one_per_destination i ON i.destination_id = chain.source_id
-            ),
-            one_per_source AS (
-                -- Single-destination sources (belts) pass through. A fan-out source keeps only its
-                -- best-ranked resolved destination — dedup over the tiny fan-out set, so belts pay no extra sort.
-                SELECT source_id, destination_id, managed, output_item
-                FROM resolved
-                WHERE alternatives_rank IS NULL AND destination_id IS NOT NULL
-
-                UNION ALL
-
-                SELECT source_id, destination_id, managed, output_item
-                FROM (
-                    SELECT source_id, destination_id, managed, output_item,
-                           ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY alternatives_rank ASC, destination_id) AS src_rank
-                    FROM resolved
-                    WHERE alternatives_rank IS NOT NULL
-                )
-                WHERE src_rank=1
-            )
-            -- Commit each resolved transfer. Managed: destination gets output_item if set
-            -- (translation, or creation when there is no source), else the source's item.
-            -- Unmanaged: NULL, the owning mod moves it.
-            INSERT INTO ResolvedPortTransfer (source_id, destination_id, item, managed)
-            SELECT ops.source_id,
-                   ops.destination_id,
-                   CASE WHEN ops.managed THEN COALESCE(ops.output_item, src.item) END AS item,
-                   ops.managed
-            FROM one_per_source ops
-                -- LEFT JOIN (not CROSS) so a source-less create still commits; drives from the small
-                -- transfer set via indexed rowid lookup, plan unchanged.
-                LEFT JOIN Port src ON src.id = ops.source_id;`
-
-        ),
-        new SqlStatement(
-            // Sinks (managed, destination-less) always resolve (no destination to gate on). Capture
-            // sources before intents truncate; CONSUME_INPUTS clears them.
-            "CaptureResolvedSinks",
-            `INSERT OR IGNORE INTO ResolvedSink (source_id)
-             SELECT source_id FROM PortTransferIntent WHERE destination_id IS NULL AND managed = 1;`
-        ),
-        new SqlStatement("TruncatePortTransferIntent", `DELETE FROM PortTransferIntent;`),
-    ],
-    [TickPhase.CONSUME_INPUTS]: [
-        new SqlStatement(
-            // Consume sunk items before producers refill ports in POST_RESOLVE, so an upstream item
-            // shifts into the freed port the same tick.
-            "FlushResolvedSink",
-            `UPDATE Port SET item=NULL WHERE id IN (SELECT source_id FROM ResolvedSink);`
-        ),
-    ],
-    [TickPhase.COMMIT_TRANSFERS]: [
-        new SqlStatement(
-            "FlushResolvedPortTransferSource",
-            `UPDATE Port SET item=NULL WHERE id IN (SELECT source_id FROM ResolvedPortTransfer WHERE managed=1);`
-        ),
-        new SqlStatement(
-            // Driven from ResolvedPortTransfer (destination_id PK), not UPDATE ... FROM (which scanned
-            // the whole Port table). Mirrors FlushResolvedPortTransferSource.
-            "FlushResolvedPortTransferDestination",
-            `UPDATE Port
-             SET item = (SELECT pt.item FROM ResolvedPortTransfer pt WHERE pt.destination_id = Port.id)
-             WHERE id IN (SELECT destination_id FROM ResolvedPortTransfer WHERE managed=1);`
-        ),
-        new SqlStatement("TruncateResolvedPortTransfer", `DELETE FROM ResolvedPortTransfer;`),
-        new SqlStatement("TruncateResolvedSink", `DELETE FROM ResolvedSink;`),
-        // Clear render staging before mods capture this tick's out-ports.
-        new SqlStatement("ClearViewedPortItem", `DELETE FROM ViewedPortItem;`),
-    ],
-    // Engine-only, after COMMIT_TRANSFERS: the render diff reads ViewedPortItem (filled by mod
-    // capture) against the shadow.
-    [TickPhase.EMIT_RENDER]: [
-        // One SET per out-port whose resting item changed (vs PortItemShadow). Carries port id +
-        // a=item type; client infers the render tile, x/y routes.
-        new SqlStatement(
-            "EmitPortItemSet",
-            `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
-             SELECT ${BUFFERED_EVENT_TYPE_PORT_ITEM_SET}, ${CHUNK_COORD_SQL("v.x")}, ${CHUNK_COORD_SQL("v.y")}, v.port_id, v.item, NULL, NULL
-             FROM ViewedPortItem v
-                LEFT JOIN PortItemShadow s ON s.port_id = v.port_id
-             WHERE s.port_id IS NULL OR s.item != v.item;`
-        ),
-        new SqlStatement(
-            "EmitPortItemClear",
-            `INSERT INTO BufferedEvent (type, routing_chunk_x, routing_chunk_y, id, a, b, c)
-             SELECT ${BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR}, ${CHUNK_COORD_SQL("s.x")}, ${CHUNK_COORD_SQL("s.y")}, s.port_id, NULL, NULL, NULL
-             FROM PortItemShadow s
-             WHERE s.port_id NOT IN (SELECT port_id FROM ViewedPortItem);`
-        ),
-        new SqlStatement("ClearPortItemShadow", `DELETE FROM PortItemShadow;`),
-        new SqlStatement(
-            "RebuildPortItemShadow",
-            `INSERT INTO PortItemShadow (port_id, item, x, y)
-             SELECT v.port_id, v.item, v.x, v.y
-             FROM ViewedPortItem v;`
-        ),
-    ],
-};
-
 export class DatabaseSchema {
 
     constructor(modRegistry) {
         this.modRegistry = modRegistry;
 
         this.preparedStatements = {};
+        // No SQL tick pipeline — Game ticks the bitECS engine. Kept empty for callers that read it.
         this.tickPhases = {};
 
-        this.initSchema = [CoreSchema, modRegistry.initSchema];
-        this.tempSchema = [CoreTempSchema, modRegistry.tempSchema, this._recipeSeed()];
+        this.initSchema = [CoreSchema];
+        this.tempSchema = [CoreTempSchema];
         this.pragma = [CorePragma];
 
         CoreStatements.forEach(statement => {
             this._prepare(statement.statementName, statement.sql);
         });
 
-        // Collect statements from all mods
-        modRegistry.mods.forEach(mod => {
-            mod.extraStatements.forEach(statement => {
-                this._prepare(statement.statementName, statement.sql);
-            });
-        });
-
-        // Core ops per phase first, then mod ops. The render diff runs in its own engine-only EMIT_RENDER phase.
-        this._registerCoreTickPhases(CoreTickPhases);
-
-        [
-            TickPhase.SUBMIT_INTENTS,
-            TickPhase.RESOLVE_TRANSFERS,
-            TickPhase.CONSUME_INPUTS,
-            TickPhase.POST_RESOLVE,
-            TickPhase.PRODUCE_OUTPUTS,
-            TickPhase.COMMIT_TRANSFERS,
-            TickPhase.EMIT_INSPECT
-        ].forEach(phase => {
-            this._prepareTick(this.modRegistry.definitions, phase);
-        });
-
-        this._prepareRenderCapture(this.modRegistry.definitions);
-        this._prepareInspectOne(this.modRegistry.definitions);
-
-        this._preparePortQueries(this.modRegistry.definitions);
-        this._prepareOccupancyQuery(this.modRegistry.definitions);
-        this._preparePortGCStatements(this.modRegistry.definitions);
-    }
-
-    /**
-     * The SQL seeding Recipes + VerbFallback from every mod's declarations.
-     * @returns {string}
-     */
-    _recipeSeed() {
-        const recipes = this.modRegistry.recipes;
-        const fallbacks = this.modRegistry.verbFallbacks;
-
-        const lines = [];
-        recipes.forEach(recipe => {
-            const [input1, input2, input3] = this._paddedInputs(recipe.inputs);
-            lines.push(`INSERT INTO Recipes (verb, input_1, input_2, input_3, output_item) VALUES (${recipe.verb}, ${input1}, ${input2}, ${input3}, ${recipe.output});`);
-        });
-        fallbacks.forEach(fallback => {
-            lines.push(`INSERT INTO VerbFallback (verb, output_item) VALUES (${fallback.verb}, ${fallback.output});`);
-        });
-        return lines.join("\n");
-    }
-
-    /**
-     * A recipe's inputs as a triple in port order, zero-padded at the high end (the form stored in
-     * Recipes and matched by EasyRecipeProcessor's slot keys).
-     * @param {number[]} inputs
-     * @returns {number[]}
-     */
-    _paddedInputs(inputs) {
-        const padded = [...inputs];
-        while (padded.length < 3) {
-            padded.push(0);
-        }
-        return padded;
-    }
-
-    /**
-     * Collects each definition's on-open inspect snapshot statement into `inspectStatements`.
-     * @param {Object<string, ObjectDefinition>} definitions
-     * @returns {void}
-     */
-    _prepareInspectOne(definitions) {
-        this.inspectStatements = [];
-        Object.values(definitions).forEach(definition => {
-            const stmt = definition.inspectOneStatement;
-            if (stmt === null) {
-                return;
-            }
-            this._prepare(stmt.statementName, stmt.sql);
-            this.inspectStatements.push(stmt.statementName);
-        });
-    }
-
-    /**
-     * @param phases {Object.<TickPhase, SqlStatement[]>}
-     * @returns {void}
-     */
-    _registerCoreTickPhases(phases) {
-        Object.entries(phases).forEach(([phase, stmts]) => {
-            this.tickPhases[phase] ||= [];
-            stmts.forEach(stmt => {
-                this._prepare(stmt.statementName, stmt.sql);
-                this.tickPhases[phase].push(stmt);
-            });
-        });
-    }
-
-    /**
-     * Generates the COMMIT_TRANSFERS capture op for each definition with render-flagged out-ports:
-     * gathers their watched filled ports into ViewedPortItem, routed by the object's own tile.
-     * @param {Object<string, ObjectDefinition>} definitions
-     * @returns {void}
-     */
-    _prepareRenderCapture(definitions) {
-        this.tickPhases[TickPhase.COMMIT_TRANSFERS] ||= [];
-        Object.entries(definitions).forEach(([table, definition]) => {
-            const renderedPorts = definition.outputPorts.filter(port => port.render);
-            if (renderedPorts.length === 0) {
-                return;
-            }
-            const branches = renderedPorts.map(port => `
-                SELECT p.id, p.item, o.x, o.y
-                FROM viewed_chunk vc
-                    CROSS JOIN ${table} o INDEXED BY ${table}_chunk ON o.chunk = vc.chunk
-                    CROSS JOIN Port p ON p.id = o.${port.column}
-                WHERE p.item IS NOT NULL`);
-            const stmt = new SqlStatement(
-                `Capture${table}PortItems`,
-                `WITH viewed_chunk AS (SELECT DISTINCT chunk FROM SessionViewport)
-                 INSERT INTO ViewedPortItem (port_id, item, x, y)
-                 ${branches.join("\nUNION ALL\n")};`
-            );
-            this._prepare(stmt.statementName, stmt.sql);
-            this.tickPhases[TickPhase.COMMIT_TRANSFERS].push(stmt);
-        });
-    }
-
-    /**
-     * Prepares the generic port GC statements mods call to drop a port (@port) once nothing
-     * references it: DeletePortIfUnreferenced (no reference of any kind) and
-     * DeletePortIfNotOutputReferenced (no object feeds it as an output). Each guard is the UNION
-     * of every definition's reference fragments, so a mod needs no per-table knowledge.
-     * @param {Object<string, ObjectDefinition>} definitions
-     */
-    _preparePortGCStatements(definitions) {
-        const referenced = [];
-        const outputReferenced = [];
-        Object.entries(definitions).forEach(([table, definition]) => {
-            referenced.push(...definition.portReferenceLookups(table));
-            outputReferenced.push(...definition.outputPortReferenceLookups(table));
-        });
-        const guard = (fragments) =>
-            `DELETE FROM Port WHERE id = CAST(@port AS INT) AND NOT EXISTS (${
-                fragments.length === 0 ? "SELECT 1 WHERE 0" : fragments.join("\nUNION ALL\n")
-            });`;
-        this._prepare("DeletePortIfUnreferenced", guard(referenced));
-        this._prepare("DeletePortIfNotOutputReferenced", guard(outputReferenced));
-    }
-
-    /**
-     * Prepares IsOccupied(@x, @y, @layer): the UNION of every ObjectDefinition's occupancy
-     * fragments, returning 1 if any object covers that tile on that layer. Placement checks
-     * each of a new object's geometry cells against it to reject overlaps (block + warn) —
-     * a backstop against malicious or desynced clients, not a hot path.
-     * @param {Object<string, ObjectDefinition>} definitions
-     */
-    _prepareOccupancyQuery(definitions) {
-        const clauses = [];
-        Object.entries(definitions).forEach(([table, definition]) => {
-            clauses.push(...definition.occupancyLookups(table));
-        });
-        const body = clauses.length === 0 ? "SELECT 1 WHERE 0" : clauses.join("\nUNION ALL\n");
-        this._prepare("IsOccupied", `${body}\nLIMIT 1;`);
-    }
-
-    /**
-     * Prepares the position-based port lookups (GetInPort{dir} / GetOutPort{dir}) for wiring
-     * a placed object to its neighbors: each UNIONs every ObjectDefinition's fragments, so a
-     * placement sees any object type's ports at a tile. Player-placement path only, not hot.
-     * @param {Object<string, ObjectDefinition>} definitions
-     */
-    _preparePortQueries(definitions) {
-        [Direction.UP, Direction.RIGHT, Direction.DOWN, Direction.LEFT].forEach(direction => {
-            const name = Direction.name(direction);
-            this._prepare(`GetInPort${name}`, this._portQuery(definitions, "inputPorts", direction));
-            this._prepare(`GetOutPort${name}`, this._portQuery(definitions, "outputPorts", direction));
-        });
-    }
-
-    /**
-     * @param {Object<string, ObjectDefinition>} definitions
-     * @param {("inputPorts"|"outputPorts")} portKind
-     * @param {Direction} direction
-     * @returns {string}
-     */
-    _portQuery(definitions, portKind, direction) {
-        const clauses = [];
-        Object.entries(definitions).forEach(([table, definition]) => {
-            clauses.push(...definition.portLookups(table, portKind, direction));
-        });
-        // No object has a port of this kind: match nothing.
-        if (clauses.length === 0) {
-            return "SELECT NULL AS id WHERE 0;";
-        }
-        return `${clauses.join("\nUNION ALL\n")};`;
-    }
-
-    /**
-     * @param definitions {Object<string, ObjectDefinition>}
-     * @param phase {TickPhase}
-     */
-    _prepareTick(definitions, phase) {
-
-        this.tickPhases[phase] ||= [];
-
-        Object.entries(definitions).forEach(([name, definition]) => {
-
-            if (definition.tickPhases[phase] === undefined) {
-                return;
-            }
-
-            definition.tickPhases[phase].forEach(stmt => {
-                this._prepare(stmt.statementName, stmt.sql);
-                this.tickPhases[phase].push(stmt);
-            });
-        });
+        // Assign each ObjectDefinition its typeId (registration order), which the bitECS engine uses.
+        this.modRegistry.definitions;
     }
 
     _prepare(name, statement) {
-
         if (name === undefined) {
             throw new Error(`Cannot prepare statement with no name: ${statement}`);
         }
-
         this.preparedStatements[name] = statement;
     }
 }
