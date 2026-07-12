@@ -13,7 +13,7 @@ export class Game {
 
     /**
      * @param {ModRegistry} modRegistry
-     * @param {AbstractDatabase} database
+     * @param {AbstractDatabase} [database] - SQL load/save codec; omitted in the browser (bitECS only)
      * @param {SimEngine} [simEngine] - the simulation engine; defaults to the bitECS engine
      */
     constructor(modRegistry, database, simEngine) {
@@ -61,7 +61,9 @@ export class Game {
             mod.game = this;
         });
 
-        await this.db.init();
+        if (this.db !== undefined) {
+            await this.db.init();
+        }
         await this.simEngine.init();
     }
 

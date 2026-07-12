@@ -10,8 +10,6 @@ import {LogisticsClientMod} from "@/mods/Logistics/LogisticsClientMod.js";
 import {DemoClientMod} from "@/mods/DemoMod/DemoMod.js";
 import {ResourcesClientMod} from "@/mods/Resources/Resources.js";
 import {BaseTexturesMod} from "@/mods/BaseTextures/mod.js";
-import {DatabaseSchema} from "@/common/DatabaseSchema.js";
-import {BrowserDatabase} from "@/client/BrowserDatabase.js";
 import {Game} from "@/common/Game.js";
 import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
 import {GameAPI} from "@/common/GameAPI.js";
@@ -142,12 +140,7 @@ onMounted(async () => {
   modRegistry.loadMod(new DemoClientMod());
   modRegistry.loadMod(new ResourcesClientMod());
 
-  const schema = new DatabaseSchema(modRegistry);
-  const db = new BrowserDatabase(schema);
-  // Toggle: run the simulation on the bitECS engine (normal belts only so far) instead of the SQL
-  // pipeline. Set to false to fall back to the fully-featured SQL engine.
-  const USE_ECS_ENGINE = true;
-  const game = new Game(modRegistry, db, USE_ECS_ENGINE ? new EcsSimEngine(modRegistry) : undefined);
+  const game = new Game(modRegistry, undefined, new EcsSimEngine(modRegistry));
   await game.init();
 
   const api = new GameAPI(game);
@@ -258,10 +251,6 @@ onMounted(async () => {
   Keyboard.on("d", () => {
     client.toggleDebugMode();
   });
-
-  window.dumpDatabase = () => {
-    return db.dump();
-  };
 });
 
 </script>

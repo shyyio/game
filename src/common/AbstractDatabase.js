@@ -68,7 +68,7 @@ export class AbstractDatabase {
     }
 
     /**
-     * Converts a plain args object into the @-prefixed format expected by sql.js.
+     * Converts a plain args object into the @-prefixed bind format expected by SQLite.
      * @param {object} args
      * @returns {object}
      */
