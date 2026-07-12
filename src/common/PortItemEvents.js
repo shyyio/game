@@ -18,7 +18,7 @@ export class PortItemSetEvent extends AbstractTilePositionedEvent {
     /**
      * @param {number} x
      * @param {number} y
-     * @param {BigInt} portId
+     * @param {number} portId
      * @param {number} itemType
      */
     constructor(x, y, portId, itemType) {
@@ -42,7 +42,7 @@ export class PortItemClearEvent extends AbstractTilePositionedEvent {
     /**
      * @param {number} x
      * @param {number} y
-     * @param {BigInt} portId
+     * @param {number} portId
      */
     constructor(x, y, portId) {
         super(x, y);

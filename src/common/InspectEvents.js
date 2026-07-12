@@ -19,7 +19,7 @@ export class InspectHeartbeatEvent extends AbstractEvent {
     };
 
     /**
-     * @param {BigInt} objectId
+     * @param {number} objectId
      * @param {number[]} inputPorts - per-port resting item (0 = empty)
      * @param {number[]} inputMemory - per-port gathered/consumed item (0 = none)
      * @param {number|null} processingRemaining - ticks left (null = idle)
@@ -49,7 +49,7 @@ export class InspectClosedEvent extends AbstractEvent {
     };
 
     /**
-     * @param {BigInt} objectId
+     * @param {number} objectId
      */
     constructor(objectId) {
         super();

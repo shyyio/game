@@ -1,5 +1,5 @@
 import initSqlJs from "sql.js";
-import {AbstractDatabase, formatRow} from "@/common/AbstractDatabase.js";
+import {AbstractDatabase} from "@/common/AbstractDatabase.js";
 import wasmFile from "@/assets/sql-wasm.wasm?url";
 
 export class BrowserDatabase extends AbstractDatabase {
@@ -20,7 +20,7 @@ export class BrowserDatabase extends AbstractDatabase {
             locateFile: file => wasmFile
         });
 
-        this.db = new SQL.Database({useBigInt: true});
+        this.db = new SQL.Database();
         this.schema.pragma.forEach(stmt => this.db.run(stmt));
         this.schema.initSchema.forEach(stmt => this.db.run(stmt));
 
@@ -62,7 +62,7 @@ export class BrowserDatabase extends AbstractDatabase {
         const result = [];
 
         while (stmt.step()) {
-            result.push(formatRow(stmt.getAsObject(null, {useBigInt: true})));
+            result.push(stmt.getAsObject());
         }
 
         return result;
@@ -98,9 +98,7 @@ export class BrowserDatabase extends AbstractDatabase {
             dump[name] = values.map(row => {
                 const obj = {};
                 columns.forEach((column, i) => {
-                    // BigInt ids aren't JSON-serializable; narrow them for the dump.
-                    const value = row[i];
-                    obj[column] = typeof value === "bigint" ? Number(value) : value;
+                    obj[column] = row[i];
                 });
                 return obj;
             });

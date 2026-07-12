@@ -162,7 +162,7 @@ export class EasyObjectTool extends AbstractTool {
      * Classifies each geometry cell: crossing the base chunk or holding a non-overwritable occupant
      * is blocked; holding an overwritable occupant is overwrite (collected for deletion); otherwise clear.
      * @private
-     * @returns {{blockedCells: {x: number, y: number}[], overwriteCells: {x: number, y: number}[], clearCells: {x: number, y: number}[], overwriteIds: BigInt[]}}
+     * @returns {{blockedCells: {x: number, y: number}[], overwriteCells: {x: number, y: number}[], clearCells: {x: number, y: number}[], overwriteIds: number[]}}
      */
     _evaluate(tileX, tileY, direction) {
         const base = chunkId(tileX, tileY);
@@ -236,7 +236,7 @@ export class EasyObjectTool extends AbstractTool {
      * The world tiles occupied per layer by every cached object (its full per-layer footprint), for
      * mirroring the server's IsOccupied. Objects the placement overwrites are excluded.
      * @private
-     * @param {Set<BigInt>} excludeIds
+     * @param {Set<number>} excludeIds
      * @returns {Map<number, Set<string>>}
      */
     _occupancyByLayer(excludeIds) {

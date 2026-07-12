@@ -16,8 +16,8 @@ export class CreateBeltMessage extends AbstractMessage {
      * @param {number} y
      * @param {Direction} direction
      * @param {number} [beltType]
-     * @param {BigInt} [rampParent]
-     * @param {BigInt} [disconnectRampChild]
+     * @param {number} [rampParent]
+     * @param {number} [disconnectRampChild]
      */
     constructor(x, y, direction, beltType, rampParent, disconnectRampChild) {
         super();

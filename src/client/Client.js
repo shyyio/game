@@ -94,7 +94,7 @@ export class Client {
         this._onMapModeChange = null;
         this._centerLock = false;
         this._debugMode = false;
-        // Machine ids (BigInt) with open menus; sent to the game as the inspect set.
+        // Machine ids (number) with open menus; sent to the game as the inspect set.
         this._inspectedObjects = new Set();
         // Object id (string) -> last produced item.
         this._lastProduced = new Map();
@@ -104,7 +104,7 @@ export class Client {
 
     /**
      * Opens a machine's menu: subscribes to its per-tick inspect snapshots.
-     * @param {BigInt} objectId
+     * @param {number} objectId
      * @returns {void}
      */
     inspectObject(objectId) {
@@ -114,7 +114,7 @@ export class Client {
 
     /**
      * Closes a machine's menu: drops its subscription and its panel.
-     * @param {BigInt} objectId
+     * @param {number} objectId
      * @returns {void}
      */
     unInspectObject(objectId) {

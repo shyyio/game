@@ -67,7 +67,7 @@ export class UndergroundBeltTool extends AbstractTool {
     /**
      * Any belt at a tile (surface or underground), or null — the pairing scan needs undergrounds too.
      * @private
-     * @returns {{id: BigInt, type: BeltType, direction: Direction}|null}
+     * @returns {{id: number, type: BeltType, direction: Direction}|null}
      */
     _beltAt(tileX, tileY) {
         const record = this._cache.getAtTile(tileX, tileY).find(other => other.data.definition === BeltDefinition);
@@ -80,7 +80,7 @@ export class UndergroundBeltTool extends AbstractTool {
     /**
      * The surface belt at the tile (with a `straight` flag), or null.
      * @private
-     * @returns {{id: BigInt, type: BeltType, direction: Direction, straight: boolean}|null}
+     * @returns {{id: number, type: BeltType, direction: Direction, straight: boolean}|null}
      */
     _surfaceBeltAt(tileX, tileY) {
         const surface = surfaceBeltAt(this._cache, tileX, tileY);
@@ -171,7 +171,7 @@ export class UndergroundBeltTool extends AbstractTool {
     /**
      * Decides what a tap places: a RAMP_DOWN into a downstream exit, a RAMP_UP back to an upstream entrance, or a lone entrance.
      * @private
-     * @returns {{type: BeltType, parentId: BigInt|null, childId: BigInt|null, direction: Direction}}
+     * @returns {{type: BeltType, parentId: number|null, childId: number|null, direction: Direction}}
      */
     _resolvePlacement(tileX, tileY, direction) {
         const downstreamExit = this._findRampParent(tileX, tileY, direction, BeltType.RAMP_DOWN);
@@ -191,7 +191,7 @@ export class UndergroundBeltTool extends AbstractTool {
      * at (tileX, tileY) would tunnel to, plus any same-type ramp already paired
      * with it that must be disconnected first.
      * @private
-     * @returns {{parentId: BigInt|null, childId: BigInt|null}}
+     * @returns {{parentId: number|null, childId: number|null}}
      */
     _findRampParent(tileX, tileY, direction, type) {
         // An exit (RAMP_UP) tunnels back toward its entrance, so it scans the

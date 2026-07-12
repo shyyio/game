@@ -148,7 +148,7 @@ export class MachineModule {
         this._meta.set(handle.id, {clientId, typeId, x, y, direction, outPort, outTile});
         this._byClientId.set(clientId, handle.id);
         this.engine.registerRenderedPort(outPort, outTile.x, outTile.y);
-        this.engine.emitEvent(new EasyObjectInsertEvent(typeId, clientId, x, y, direction, [BigInt(outPort)], null));
+        this.engine.emitEvent(new EasyObjectInsertEvent(typeId, clientId, x, y, direction, [outPort], null));
         return handle;
     }
 
@@ -164,7 +164,7 @@ export class MachineModule {
                 const last = this.Machine.lastOutput[eid];
                 events.push(new EasyObjectSyncEvent(
                     meta.typeId, meta.clientId, meta.x, meta.y, meta.direction,
-                    [BigInt(meta.outPort)], last === EMPTY ? null : last,
+                    [meta.outPort], last === EMPTY ? null : last,
                 ));
             }
         });
@@ -173,7 +173,7 @@ export class MachineModule {
 
     /**
      * Removes the machine with client id `clientId`, if any.
-     * @param {BigInt} clientId
+     * @param {number} clientId
      * @returns {boolean}
      */
     removeMachineById(clientId) {
@@ -192,7 +192,7 @@ export class MachineModule {
 
     /**
      * The machine's current inspect snapshot, or null if no machine has that client id.
-     * @param {BigInt} clientId
+     * @param {number} clientId
      * @returns {InspectHeartbeatEvent|null}
      */
     inspect(clientId) {

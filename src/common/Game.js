@@ -191,7 +191,7 @@ export class Game {
     /**
      * Diffs the session's inspected-object set against the requested ids.
      * @param {AbstractSession} session
-     * @param {BigInt[]} objectIds
+     * @param {number[]} objectIds
      * @returns {void}
      */
     _setSessionInspect(session, objectIds) {
@@ -203,7 +203,7 @@ export class Game {
     /**
      * Sends a session one object's current snapshot when its menu opens.
      * @param {AbstractSession} session
-     * @param {BigInt} objectId
+     * @param {number} objectId
      * @returns {void}
      */
     _syncInspect(session, objectId) {
@@ -215,7 +215,7 @@ export class Game {
 
     /**
      * Drops the deleted object's inspect subscriptions and closes its menu on those sessions.
-     * @param {BigInt} objectId
+     * @param {number} objectId
      * @returns {void}
      */
     _closeInspect(objectId) {

@@ -34,7 +34,7 @@ export function beltFrameBase(bend, type) {
 export class Belt {
 
     /**
-     * @param {BigInt} id
+     * @param {number} id
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
@@ -157,7 +157,7 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     /**
      * Renders a newly-placed or chunk-synced belt (undergrounds are buried and skipped). The
      * bend is added straight and re-derived from neighbors on the next structural cache change.
-     * @param {BigInt} id
+     * @param {number} id
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
@@ -196,7 +196,7 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {BigInt} id
+     * @param {number} id
      */
     removeBelt(id) {
         const belt = this._belts[id];
@@ -250,7 +250,7 @@ export class BeltDrawLayer extends AbstractDrawLayer {
 export class BeltSprite extends Sprite {
 
     /**
-     * @param {BigInt} id
+     * @param {number} id
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction

@@ -9,7 +9,7 @@ import {Direction} from "@/common/constants.js";
  * @param {string} objectType
  * @param {Vec} vec
  * @param {boolean} [createMissing]
- * @returns {Object.<string, BigInt>} map of this object's input port column -> shared Port id
+ * @returns {Object.<string, number>} map of this object's input port column -> shared Port id
  */
 export function upstreamPorts(game, objectType, vec, createMissing=false) {
     const ports = {};
@@ -41,7 +41,7 @@ export function upstreamPorts(game, objectType, vec, createMissing=false) {
  * @param {string} objectType
  * @param {Vec} vec
  * @param {boolean} [createMissing]
- * @returns {Object.<string, BigInt>} map of this object's output port column -> shared Port id
+ * @returns {Object.<string, number>} map of this object's output port column -> shared Port id
  */
 export function downstreamPorts(game, objectType, vec, createMissing=false) {
     const ports = {};

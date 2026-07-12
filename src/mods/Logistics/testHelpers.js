@@ -25,7 +25,7 @@ export const GameObject = {
  * as a client would.
  * @param {TestHarness} game
  * @param {number} beltType
- * @param {{x: number, y: number, direction: Direction, rampParent?: BigInt, disconnectRampChild?: BigInt}} options
+ * @param {{x: number, y: number, direction: Direction, rampParent?: number, disconnectRampChild?: number}} options
  */
 export function createBelt(game, beltType, options) {
     game.dispatchMessage(new CreateBeltMessage(
@@ -41,7 +41,7 @@ export function createBelt(game, beltType, options) {
 /**
  * Removes a belt by dispatching a DeleteObjectMessage.
  * @param {TestHarness} game
- * @param {BigInt} id
+ * @param {number} id
  */
 export function deleteBelt(game, id) {
     game.dispatchMessage(new DeleteObjectMessage(id));
@@ -64,7 +64,7 @@ export function createSplitter(game, options) {
 /**
  * Removes a splitter by dispatching a DeleteObjectMessage.
  * @param {TestHarness} game
- * @param {BigInt} id
+ * @param {number} id
  */
 export function deleteSplitter(game, id) {
     game.dispatchMessage(new DeleteObjectMessage(id));

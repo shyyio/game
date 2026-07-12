@@ -81,7 +81,7 @@ export class SimEngine {
 
     /**
      * The current inspect snapshot for an object, or null if unknown. The bitECS engine overrides.
-     * @param {BigInt} objectId
+     * @param {number} objectId
      * @returns {object|null}
      */
     inspectSnapshot(objectId) {

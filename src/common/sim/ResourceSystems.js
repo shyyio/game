@@ -31,7 +31,7 @@ export class ResourceModule {
      * @param {Direction} direction
      * @param {number} resourceType
      * @param {{x:number, y:number}[]} extractionOffsets
-     * @returns {BigInt} the client id
+     * @returns {number} the client id
      */
     placeResource(x, y, typeId, direction, resourceType, extractionOffsets) {
         const clientId = this.engine.allocateObjectId();
@@ -54,7 +54,7 @@ export class ResourceModule {
     }
 
     /**
-     * @param {BigInt} clientId
+     * @param {number} clientId
      * @returns {boolean}
      */
     removeResourceById(clientId) {

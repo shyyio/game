@@ -12,8 +12,8 @@ export class BeltPathRecalculateEvent extends AbstractTilePositionedEvent {
     /**
      * @param {number} x
      * @param {number} y
-     * @param {BigInt[]} parts - Belt IDs in path order, head last
-     * @param {BigInt|null} [outPortId] - the path's out-port id, so the client can map it to this path
+     * @param {number[]} parts - Belt IDs in path order, head last
+     * @param {number|null} [outPortId] - the path's out-port id, so the client can map it to this path
      */
     constructor(x, y, parts, outPortId=null) {
         super(x, y);
@@ -38,7 +38,7 @@ export class BeltInsertEvent extends AbstractTilePositionedEvent {
     /**
      * @param {number} x
      * @param {number} y
-     * @param {BigInt} id
+     * @param {number} id
      * @param {number} direction
      * @param {number} beltType
      */
@@ -66,7 +66,7 @@ export class BeltSyncEvent extends AbstractTilePositionedEvent {
     /**
      * @param {number} x
      * @param {number} y
-     * @param {BigInt} id
+     * @param {number} id
      * @param {number} direction
      * @param {number} beltType
      */
@@ -89,7 +89,7 @@ export class BeltDeleteEvent extends AbstractTilePositionedEvent {
     /**
      * @param {number} x
      * @param {number} y
-     * @param {BigInt} id
+     * @param {number} id
      */
     constructor(x, y, id) {
         super(x, y);
@@ -117,8 +117,8 @@ export class BeltItemUpsertEvent extends AbstractTilePositionedEvent {
     /**
      * @param {number} x
      * @param {number} y
-     * @param {BigInt} pathId
-     * @param {BigInt} rowId
+     * @param {number} pathId
+     * @param {number} rowId
      * @param {number} length
      * @param {number} itemType
      */
@@ -149,8 +149,8 @@ export class BeltItemSyncEvent extends AbstractTilePositionedEvent {
     /**
      * @param {number} x
      * @param {number} y
-     * @param {BigInt} pathId
-     * @param {BigInt} rowId
+     * @param {number} pathId
+     * @param {number} rowId
      * @param {number} length
      * @param {number} itemType
      */
@@ -178,8 +178,8 @@ export class BeltItemDeleteEvent extends AbstractTilePositionedEvent {
     /**
      * @param {number} x
      * @param {number} y
-     * @param {BigInt} pathId
-     * @param {BigInt} rowId
+     * @param {number} pathId
+     * @param {number} rowId
      */
     constructor(x, y, pathId, rowId) {
         super(x, y);
@@ -202,7 +202,7 @@ export class BeltItemResetEvent extends AbstractTilePositionedEvent {
     /**
      * @param {number} x
      * @param {number} y
-     * @param {BigInt} pathId
+     * @param {number} pathId
      */
     constructor(x, y, pathId) {
         super(x, y);

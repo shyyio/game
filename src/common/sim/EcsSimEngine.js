@@ -66,7 +66,7 @@ export class EcsSimEngine extends SimEngine {
 
     /**
      * A mod registers an inspect snapshotter (object client id -> InspectHeartbeatEvent or null).
-     * @param {function(BigInt): (object|null)} inspector
+     * @param {function(number): (object|null)} inspector
      * @returns {void}
      */
     registerInspector(inspector) {
@@ -75,7 +75,7 @@ export class EcsSimEngine extends SimEngine {
 
     /**
      * The current inspect snapshot for an object, or null if no module owns that client id.
-     * @param {BigInt} objectId
+     * @param {number} objectId
      * @returns {object|null}
      */
     inspectSnapshot(objectId) {
@@ -161,7 +161,7 @@ export class EcsSimEngine extends SimEngine {
 
     /**
      * Occupies a placed object's footprint, keyed by client id for release on delete.
-     * @param {BigInt} clientId
+     * @param {number} clientId
      * @param {{x:number, y:number, layer:string}[]} footprint
      * @returns {void}
      */
@@ -172,7 +172,7 @@ export class EcsSimEngine extends SimEngine {
 
     /**
      * Frees a deleted object's footprint.
-     * @param {BigInt} clientId
+     * @param {number} clientId
      * @returns {void}
      */
     untrack(clientId) {

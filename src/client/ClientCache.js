@@ -9,11 +9,11 @@ import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
 export class CacheEntry {
 
     /**
-     * @param {BigInt} id
+     * @param {number} id
      * @param {number} tileX
      * @param {number} tileY
      * @param {{x: number, y: number, layer: number}[]} cells
-     * @param {Object.<string, BigInt>} ports
+     * @param {Object.<string, number>} ports
      * @param {object} data
      */
     constructor(id, tileX, tileY, cells, ports, data) {
@@ -28,7 +28,7 @@ export class CacheEntry {
 
     /**
      * The PortDefinition name of one of this object's rendered out-port ids, or undefined.
-     * @param {BigInt} portId
+     * @param {number} portId
      * @returns {string|undefined}
      */
     portName(portId) {
@@ -45,7 +45,7 @@ export class ClientCache {
 
     constructor() {
         /**
-         * @type {Map<BigInt, object>}
+         * @type {Map<number, object>}
          * @private
          */
         this._byId = new Map();
@@ -55,7 +55,7 @@ export class ClientCache {
          */
         this._byTile = new Map();
         /**
-         * @type {Map<string, Set<BigInt>>}
+         * @type {Map<string, Set<number>>}
          * @private
          */
         this._byChunk = new Map();
@@ -67,7 +67,7 @@ export class ClientCache {
         /**
          * Rendered out-port id -> the owning CacheEntry, so the item layer resolves a port-item
          * event to its object and PortDefinition.
-         * @type {Map<BigInt, CacheEntry>}
+         * @type {Map<number, CacheEntry>}
          * @private
          */
         this._byPort = new Map();
@@ -136,11 +136,11 @@ export class ClientCache {
     /**
      * Registers (or replaces) an object: its primary tile, the cells it covers with their
      * layer, and a data payload.
-     * @param {BigInt} id
+     * @param {number} id
      * @param {number} tileX
      * @param {number} tileY
      * @param {{x: number, y: number, layer: number}[]} cells
-     * @param {Object.<string, BigInt>} [ports] - rendered out-ports, by PortDefinition name
+     * @param {Object.<string, number>} [ports] - rendered out-ports, by PortDefinition name
      * @param {object} [data]
      */
     set(id, tileX, tileY, cells, ports={}, data={}) {
@@ -176,7 +176,7 @@ export class ClientCache {
 
     /**
      * Merges `patch` into an entry's `data`; no-op for unknown ids.
-     * @param {BigInt} id
+     * @param {number} id
      * @param {object} patch
      */
     update(id, patch) {
@@ -188,7 +188,7 @@ export class ClientCache {
     }
 
     /**
-     * @param {BigInt} id
+     * @param {number} id
      * @returns {CacheEntry|null} the removed entry, or null if the id was unknown
      */
     remove(id) {
@@ -237,7 +237,7 @@ export class ClientCache {
 
     /**
      * The entry owning a rendered out-port id, or null.
-     * @param {BigInt} portId
+     * @param {number} portId
      * @returns {CacheEntry|null}
      */
     getByPort(portId) {
@@ -246,7 +246,7 @@ export class ClientCache {
     }
 
     /**
-     * @param {BigInt} id
+     * @param {number} id
      * @returns {CacheEntry|null}
      */
     get(id) {

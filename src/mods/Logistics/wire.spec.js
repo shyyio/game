@@ -38,32 +38,32 @@ function roundTrip(reg, instance, cls) {
     assert.deepStrictEqual(pick(decoded, cls), pick(instance, cls));
 }
 
-test("Round-trips belt messages, including null and BigInt fields", () => {
+test("Round-trips belt messages, including null and id fields", () => {
     const reg = registry();
-    roundTrip(reg, new CreateBeltMessage(1, 2, 3, 0, undefined, 123456789012345n), CreateBeltMessage);
-    roundTrip(reg, new DeleteObjectMessage(123456789012345n), DeleteObjectMessage);
+    roundTrip(reg, new CreateBeltMessage(1, 2, 3, 0, undefined, 123456789012345), CreateBeltMessage);
+    roundTrip(reg, new DeleteObjectMessage(123456789012345), DeleteObjectMessage);
 });
 
-test("Round-trips belt events, preserving exact BigInt ids", () => {
+test("Round-trips belt events, preserving exact ids", () => {
     const reg = registry();
-    roundTrip(reg, new BeltInsertEvent(1, 2, 99n, 3, 0), BeltInsertEvent);
-    roundTrip(reg, new BeltSyncEvent(4, 5, 100n, 1, 2), BeltSyncEvent);
-    roundTrip(reg, new BeltDeleteEvent(1, 2, 99n), BeltDeleteEvent);
-    roundTrip(reg, new BeltPathRecalculateEvent(1, 2, [1n, 2n, 9999999999999999n]), BeltPathRecalculateEvent);
+    roundTrip(reg, new BeltInsertEvent(1, 2, 99, 3, 0), BeltInsertEvent);
+    roundTrip(reg, new BeltSyncEvent(4, 5, 100, 1, 2), BeltSyncEvent);
+    roundTrip(reg, new BeltDeleteEvent(1, 2, 99), BeltDeleteEvent);
+    roundTrip(reg, new BeltPathRecalculateEvent(1, 2, [1, 2, 999999999999]), BeltPathRecalculateEvent);
 });
 
-test("Round-trips generic object events, preserving exact BigInt ids in the port-id array", () => {
+test("Round-trips generic object events, preserving exact ids in the port-id array", () => {
     const reg = registry();
-    roundTrip(reg, new EasyObjectInsertEvent(1, 99n, 5, 6, 1, [7n, 9999999999999999n], null), EasyObjectInsertEvent);
-    roundTrip(reg, new EasyObjectSyncEvent(2, 100n, 5, 6, 2, [9007199254740993n], 42), EasyObjectSyncEvent);
-    roundTrip(reg, new EasyObjectDeleteEvent(1, 99n, 5, 6), EasyObjectDeleteEvent);
+    roundTrip(reg, new EasyObjectInsertEvent(1, 99, 5, 6, 1, [7, 999999999999], null), EasyObjectInsertEvent);
+    roundTrip(reg, new EasyObjectSyncEvent(2, 100, 5, 6, 2, [123456789012], 42), EasyObjectSyncEvent);
+    roundTrip(reg, new EasyObjectDeleteEvent(1, 99, 5, 6), EasyObjectDeleteEvent);
     roundTrip(reg, new CreateObjectMessage(1, 5, 6, 1), CreateObjectMessage);
 });
 
-test("Decoded belt id is an exact, lossless BigInt", () => {
+test("Decoded belt id is a Number, round-tripped exactly", () => {
     const reg = registry();
-    const id = 9007199254740993n; // 2^53 + 1, beyond Number precision
+    const id = 123456789012345;
     const decoded = reg.decode(reg.encode(new DeleteObjectMessage(id)));
-    assert.strictEqual(typeof decoded.id, "bigint");
+    assert.strictEqual(typeof decoded.id, "number");
     assert.strictEqual(decoded.id, id);
 });

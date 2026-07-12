@@ -39,5 +39,5 @@ test("a belt item emits an upsert on ingest and a delete on pop", async () => {
     // The item run (type RED) is upserted, and every item event is keyed to the head belt's path id (3).
     assert.ok(upserts.some(event => event.itemType === RED), "the item run is upserted");
     assert.ok(deletes.length > 0, "runs are deleted as the item advances/pops");
-    assert.ok(items.every(event => event.pathId === 3n), "all item events carry the head belt path id");
+    assert.ok(items.every(event => event.pathId === 3), "all item events carry the head belt path id");
 });

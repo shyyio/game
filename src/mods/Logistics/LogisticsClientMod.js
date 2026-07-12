@@ -189,7 +189,7 @@ export class LogisticsClientMod extends LogisticsMod {
      * Records a recalculated path under its head id, dropping any head a merge absorbed.
      * Items aren't touched here: an edit re-rows them, but the swap is done atomically
      * by the RESET + re-emitted UPSERT rows (same drain) so they never blink out.
-     * @param {BigInt[]} parts - belt ids in path order, head last
+     * @param {number[]} parts - belt ids in path order, head last
      * @private
      */
     _updatePath(parts) {
@@ -224,7 +224,7 @@ export class LogisticsClientMod extends LogisticsMod {
     /**
      * Places a belt path out-port's item sprite at its output boundary: the tile downstream of
      * the tail, on the upstream edge where the item just popped off.
-     * @param {BigInt} portId
+     * @param {number} portId
      * @param {number} type - item type, selecting the sprite texture
      * @private
      */
@@ -240,7 +240,7 @@ export class LogisticsClientMod extends LogisticsMod {
      * The tile an out-port's item rests on: one downstream of the path's tail (output)
      * belt, with sourceDir pointing back at the tail (the edge it popped off). Returns
      * null when the path or belt isn't cached yet.
-     * @param {BigInt} portId
+     * @param {number} portId
      * @returns {{tileX: number, tileY: number, sourceDir: Direction}|null}
      * @private
      */
@@ -267,7 +267,7 @@ export class LogisticsClientMod extends LogisticsMod {
 
     /**
      * Drops out-port item sprites whose path head left the viewport.
-     * @param {Set<BigInt>} removedHeads
+     * @param {Set<number>} removedHeads
      * @private
      */
     _clearPortItems(removedHeads) {
@@ -286,7 +286,7 @@ export class LogisticsClientMod extends LogisticsMod {
      * clear the sprite now instead of waiting for the next tick's PORT_ITEM_CLEAR. Deleting
      * the input/head belt instead leaves the output item in place, so it is untouched.
      * Forgets the port mapping only when the head itself goes (the whole path is gone).
-     * @param {BigInt} deletedBelt
+     * @param {number} deletedBelt
      * @private
      */
     _clearOutPortItemAt(deletedBelt) {
@@ -342,8 +342,8 @@ export class LogisticsClientMod extends LogisticsMod {
      * glides the last stretch in — replacing the previous occupant, which the downstream
      * path's freshly-ingested item already covers — instead of vanishing while the
      * same-type (so un-refreshed) port sprite sits still. Anything else is just removed.
-     * @param {BigInt} pathId
-     * @param {BigInt} rowId
+     * @param {number} pathId
+     * @param {number} rowId
      * @param {{length: number, type: number}|undefined} row - the item's RLE row, if tracked
      * @private
      */
@@ -361,7 +361,7 @@ export class LogisticsClientMod extends LogisticsMod {
      * Clears the item sprites/rows of a path about to be re-synced, under every belt in
      * it — the head and any former heads a merge folded in — so no stale sprite survives
      * the re-keyed rebuild. The following re-emitted UPSERT rows (same drain) repopulate it.
-     * @param {BigInt} pathId
+     * @param {number} pathId
      * @private
      */
     _resetPathItems(pathId) {
@@ -378,7 +378,7 @@ export class LogisticsClientMod extends LogisticsMod {
      * ascending id order; walking input-to-output (descending id) and accumulating
      * lengths gives each row's slot = head_gap + lengths nearer the input, where
      * head_gap = path length − Σ row lengths.
-     * @param {BigInt} pathId
+     * @param {number} pathId
      * @param {boolean} [snap] - place sprites without animating (a re-sync, not a move)
      * @private
      */
@@ -409,7 +409,7 @@ export class LogisticsClientMod extends LogisticsMod {
 
     /**
      * Drops a path's item sprites and tracked rows (head removed, or about to be re-synced).
-     * @param {BigInt} pathId
+     * @param {number} pathId
      * @private
      */
     _clearPathItems(pathId) {
@@ -429,7 +429,7 @@ export class LogisticsClientMod extends LogisticsMod {
      * the belt is parts[(N-1) - floor((slot+1)/2)] and an odd slot is the half-tile
      * straddle. sourceDir points at the belt feeding this one (the bend's input edge).
      * Returns null when the path or belt isn't cached yet.
-     * @param {BigInt} pathId
+     * @param {number} pathId
      * @param {number} slot
      * @returns {{tileX: number, tileY: number, sourceDir: Direction, halfTile: boolean, hidden: boolean}|null}
      * @private
@@ -487,7 +487,7 @@ export class LogisticsClientMod extends LogisticsMod {
      * The direction toward the path belt feeding `record`; opposite the flow when the
      * feeder isn't cached.
      * @param {CacheEntry} record - belt cache entry
-     * @param {BigInt} feederId - the next part toward the input
+     * @param {number} feederId - the next part toward the input
      * @returns {Direction}
      * @private
      */
@@ -570,7 +570,7 @@ export class LogisticsClientMod extends LogisticsMod {
 
     /**
      * Removes a ramp's roof and threshold occluders.
-     * @param {BigInt} id - the ramp's belt id
+     * @param {number} id - the ramp's belt id
      * @private
      */
     _removeRampMasks(id) {

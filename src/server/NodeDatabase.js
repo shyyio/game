@@ -1,5 +1,5 @@
 import BetterSqlite3 from "better-sqlite3";
-import {AbstractDatabase, formatRow} from "@/common/AbstractDatabase.js";
+import {AbstractDatabase} from "@/common/AbstractDatabase.js";
 
 export class NodeDatabase extends AbstractDatabase {
 
@@ -10,7 +10,6 @@ export class NodeDatabase extends AbstractDatabase {
 
     async init() {
         this.db = new BetterSqlite3(":memory:");
-        this.db.defaultSafeIntegers(true);
         this.schema.pragma.forEach(sql => this.db.exec(sql));
         this.schema.initSchema.forEach(sql => this.db.exec(sql));
         this._postInit();
@@ -31,7 +30,7 @@ export class NodeDatabase extends AbstractDatabase {
         }
         const result = {};
         Object.entries(args).forEach(([key, value]) => {
-            result[key] = typeof value === "bigint" ? value.toString() : value;
+            result[key] = value;
         });
         return result;
     }
@@ -54,8 +53,7 @@ export class NodeDatabase extends AbstractDatabase {
      * @returns {*[]}
      */
     _query(stmt, args) {
-        const rows = stmt.all(this.formatArgs(args));
-        return rows.map(formatRow);
+        return stmt.all(this.formatArgs(args));
     }
 
     /**
@@ -77,11 +75,7 @@ export class NodeDatabase extends AbstractDatabase {
         if (row === undefined) {
             return undefined;
         }
-        const val = Object.values(row)[0];
-        if (typeof val === "bigint") {
-            return Number(val);
-        }
-        return val;
+        return Object.values(row)[0];
     }
 
     /**
