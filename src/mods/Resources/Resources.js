@@ -16,6 +16,8 @@ import {
     MiniMenuEntry,
 } from "@/sdk/common.js";
 import {EasyObjectTool, EasyObjectGhostLayer, EasyObjectDrawLayer, InspectHighlight} from "@/sdk/client.js";
+import {ResourceModule} from "@/common/sim/ResourceSystems.js";
+import {ExtractorModule} from "@/common/sim/ExtractorSystems.js";
 
 // Extraction verbs (Recipes keyspace; distinct from machine verbs).
 const VERB_EXTRACT_PRIMARY = 10;
@@ -51,7 +53,7 @@ export const VolcanoResourceDefinition = new ObjectDefinition({
 });
 
 // The volcano is solid: extractors sit on the ring of tiles orthogonally bordering its 2x2 body.
-const VOLCANO_EXTRACTION_TILES = [
+export const VOLCANO_EXTRACTION_TILES = [
     {x: 0, y: -1}, {x: 1, y: -1},
     {x: 0, y: 2}, {x: 1, y: 2},
     {x: -1, y: 0}, {x: -1, y: 1},
@@ -166,6 +168,91 @@ export class ResourcesMod extends AbstractMod {
         if (this._changesResources(message)) {
             EXTRACTOR_TABLES.forEach(table => this.game.exec(`Rebind${table}`));
         }
+    }
+
+    /**
+     * Registers the resource + extractor ECS modules and their handlers.
+     * @param {EcsSimEngine} sim
+     * @returns {void}
+     */
+    setupEcs(sim) {
+        sim.resources = new ResourceModule(sim.engine);
+        sim.extractor = new ExtractorModule(sim.engine, {
+            processingTicks: 4,
+            recipes: [
+                {resource: RESOURCE_WATER, output: WATER_ITEM_TYPE},
+                {resource: RESOURCE_VOLCANO, output: SULFUR_ITEM_TYPE},
+            ],
+        });
+        sim.deepExtractor = new ExtractorModule(sim.engine, {
+            processingTicks: 8,
+            recipes: [{resource: RESOURCE_VOLCANO, output: BRINE_ITEM_TYPE}],
+        });
+        sim.registerMessageHandler(message => this._ecsResourceMessage(sim, message));
+        sim.registerChunkSync(chunk => sim.resources.chunkSync(chunk));
+        sim.registerChunkSync(chunk => sim.extractor.chunkSync(chunk));
+        sim.registerChunkSync(chunk => sim.deepExtractor.chunkSync(chunk));
+    }
+
+    /**
+     * @private
+     * @param {EcsSimEngine} sim
+     * @param {AbstractMessage} message
+     * @returns {boolean}
+     */
+    _ecsResourceMessage(sim, message) {
+        if (message instanceof DeleteObjectMessage) {
+            return sim.extractor.removeExtractorById(message.id)
+                || sim.deepExtractor.removeExtractorById(message.id)
+                || sim.resources.removeResourceById(message.id);
+        }
+        if (!(message instanceof CreateObjectMessage)) {
+            return false;
+        }
+        if (message.typeId === WaterResourceDefinition.typeId) {
+            sim.resources.placeResource(message.x, message.y, message.typeId, message.direction, RESOURCE_WATER, [{x: 0, y: 0}]);
+            return true;
+        }
+        if (message.typeId === VolcanoResourceDefinition.typeId) {
+            const footprint = sim.footprint(VolcanoResourceDefinition, message.x, message.y, message.direction);
+            if (!sim.occupancyFree(footprint)) {
+                return true;
+            }
+            const clientId = sim.resources.placeResource(message.x, message.y, message.typeId, message.direction, RESOURCE_VOLCANO, VOLCANO_EXTRACTION_TILES);
+            sim.track(clientId, footprint);
+            return true;
+        }
+        if (message.typeId === ExtractorDefinition.typeId) {
+            this._ecsPlaceExtractor(sim, sim.extractor, ExtractorDefinition, message);
+            return true;
+        }
+        if (message.typeId === DeepExtractorDefinition.typeId) {
+            this._ecsPlaceExtractor(sim, sim.deepExtractor, DeepExtractorDefinition, message);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @private
+     * @param {EcsSimEngine} sim
+     * @param {ExtractorModule} module
+     * @param {ObjectDefinition} definition
+     * @param {CreateObjectMessage} message
+     * @returns {void}
+     */
+    _ecsPlaceExtractor(sim, module, definition, message) {
+        const resourceType = sim.resources.coverAt(message.x, message.y);
+        if (resourceType === null) {
+            return;
+        }
+        const footprint = sim.footprint(definition, message.x, message.y, message.direction);
+        if (!sim.occupancyFree(footprint)) {
+            return;
+        }
+        const output = sim.portFor(definition.outputPorts[0], message.x, message.y, message.direction);
+        const clientId = module.placeExtractor(message.x, message.y, message.typeId, message.direction, resourceType, output.port, output.tile);
+        sim.track(clientId, footprint);
     }
 
     /**

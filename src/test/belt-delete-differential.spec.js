@@ -5,7 +5,7 @@ import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
-import {BeltModule} from "@/common/sim/BeltSystems.js";
+import {BeltModule} from "@/mods/Logistics/BeltModule.js";
 import {SqlEngine} from "@/test/SqlEngine.js";
 import {LogisticsMod} from "@/mods/Logistics/mod.js";
 
@@ -24,7 +24,7 @@ async function ecsAdapter() {
     await engine.init();
     const belts = new BeltModule(engine);
     CELLS.forEach(cell => belts.placeBelt(cell.x, cell.y, Direction.UP));
-    belts.removeBelt(DELETE.x, DELETE.y);
+    belts.removeBelt(DELETE.x, DELETE.y, Direction.UP);
     return {
         pathCount: belts.paths.length,
         subPath: (tile) => belts.pathAt(tile.x, tile.y),

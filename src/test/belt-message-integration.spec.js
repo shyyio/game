@@ -5,6 +5,7 @@ import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {EMPTY} from "@/common/sim/EcsEngine.js";
 import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
+import {makeEcsSimEngine} from "@/test/ecsSim.js";
 import {SqlEngine} from "@/test/SqlEngine.js";
 import {LogisticsMod} from "@/mods/Logistics/mod.js";
 
@@ -15,8 +16,7 @@ const HEAD = {x: 0, y: 2};
 // Drive the bitECS SimEngine end-to-end through player messages: place a belt line, feed an item,
 // tick, read the output stream.
 async function ecsRun() {
-    const engine = new EcsSimEngine();
-    await engine.init();
+    const engine = await makeEcsSimEngine();
     CELLS.forEach(cell => engine.applyMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL)));
     const path = engine.belts.pathAt(HEAD.x, HEAD.y);
     const stream = [];

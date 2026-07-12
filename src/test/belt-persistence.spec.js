@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import BetterSqlite3 from "better-sqlite3";
 import {Direction} from "@/common/constants.js";
 import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
-import {BeltModule} from "@/common/sim/BeltSystems.js";
+import {BeltModule} from "@/mods/Logistics/BeltModule.js";
 
 const RED = 1;
 // A line straddling the y=64 chunk border -> two seam-connected paths.

@@ -31,4 +31,11 @@ export class SqlSimEngine extends SimEngine {
             this.db.exec(statement.statementName);
         });
     }
+
+    /**
+     * @returns {void}
+     */
+    debugInsertItem() {
+        this.db.rawExec("UPDATE Port SET item = 1 WHERE id = (SELECT in_port_id FROM BeltPath WHERE id = (SELECT MIN(id) FROM BeltPath))");
+    }
 }

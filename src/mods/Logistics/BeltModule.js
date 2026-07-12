@@ -2,6 +2,18 @@ import {addEntity, addComponent} from "bitecs";
 import {TickPhase, Direction} from "@/sdk/common.js";
 import {chunkId} from "@/common/util.js";
 import {EMPTY} from "@/common/sim/EcsEngine.js";
+// Layering debt: the ECS content modules live in common/sim/ but emit mod-owned belt events. They
+// belong in mods/Logistics/ (see project_bitecs_migration memory); this import crosses the layer for now.
+import {BeltInsertEvent, BeltSyncEvent, BeltDeleteEvent, BeltPathRecalculateEvent} from "./events.js";
+import {
+    BELT_NORMAL,
+    BELT_UNDERGROUND,
+    BUFFERED_EVENT_TYPE_ITEM_UPSERT,
+    BUFFERED_EVENT_TYPE_ITEM_DELETE,
+    BUFFERED_EVENT_TYPE_ITEM_RESET,
+} from "./constants.js";
+import {CHUNK_SIZE} from "@/common/constants.js";
+import {BufferedEvent} from "@/common/BufferedEvent.js";
 
 // A gap run in a path's RLE item list (empty half-tiles between items).
 const GAP = 0;
@@ -32,11 +44,91 @@ export class BeltModule {
         this.paths = [];
         // In-port -> path, so a path can find its downstream neighbor across a shared seam port.
         this._byInPort = new Map();
-        // Placed belts by tile key: {x, y, direction}. Only straight normal belts for now.
+        // Placed belts by tile key -> belt[] {x, y, direction, type, id}. A tile can hold several belts
+        // on different axes/layers (a surface belt and an underground crossing under it); the run at a
+        // tile is disambiguated by direction.
         this._belts = new Map();
+        // Stable RLE run id (BigInt), the client's item row_id for sprite continuity/glide.
+        this._nextRunId = 1n;
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._move());
+    }
+
+    /**
+     * @private
+     * @param {number} x
+     * @param {number} y
+     * @returns {object[]} the belts on tile (x, y)
+     */
+    _beltsAt(x, y) {
+        const belts = this._belts.get(tileKey(x, y));
+        return belts === undefined ? [] : belts;
+    }
+
+    /**
+     * The belt on tile (x, y) facing `direction`, or undefined. At most one exists (same-axis overlap
+     * is disallowed).
+     * @private
+     * @param {number} x
+     * @param {number} y
+     * @param {number} direction
+     * @returns {object|undefined}
+     */
+    _beltAt(x, y, direction) {
+        return this._beltsAt(x, y).find(belt => belt.direction === direction);
+    }
+
+    /**
+     * @private
+     * @param {object} belt
+     * @returns {void}
+     */
+    _addBelt(belt) {
+        const key = tileKey(belt.x, belt.y);
+        const belts = this._belts.get(key);
+        if (belts === undefined) {
+            this._belts.set(key, [belt]);
+        } else {
+            belts.push(belt);
+        }
+    }
+
+    /**
+     * The occupancy layer for a belt: surface for normal/ramp, the underground axis for undergrounds.
+     * @private
+     * @param {number} direction
+     * @param {number} type
+     * @returns {string}
+     */
+    _beltLayer(direction, type) {
+        return type === BELT_UNDERGROUND ? `U${direction % 2}` : "S";
+    }
+
+    /**
+     * @private
+     * @param {object} belt
+     * @returns {void}
+     */
+    _removeBeltObject(belt) {
+        const key = tileKey(belt.x, belt.y);
+        const remaining = this._beltsAt(belt.x, belt.y).filter(candidate => candidate !== belt);
+        if (remaining.length === 0) {
+            this._belts.delete(key);
+        } else {
+            this._belts.set(key, remaining);
+        }
+    }
+
+    /**
+     * Every placed belt across all tiles.
+     * @private
+     * @returns {object[]}
+     */
+    _allBelts() {
+        const all = [];
+        this._belts.forEach(belts => belts.forEach(belt => all.push(belt)));
+        return all;
     }
 
     /**
@@ -48,9 +140,18 @@ export class BeltModule {
      * @param {Direction} direction
      * @returns {{id:number, inPort:number, outPort:number, length:number}}
      */
-    placeBelt(x, y, direction) {
+    placeBelt(x, y, direction, type=BELT_NORMAL) {
+        // Surface belts (normal/ramp) share the surface layer; an underground occupies its axis layer,
+        // so it can cross under a surface belt. Reject if the layer's cell is taken.
+        const layer = this._beltLayer(direction, type);
+        if (!this.engine.occupancyFree([{x, y, layer}])) {
+            return null;
+        }
+        this.engine.occupy([{x, y, layer}]);
+
         const newKey = tileKey(x, y);
-        this._belts.set(newKey, {x, y, direction});
+        const placed = {x, y, direction, type, id: this.engine.allocateObjectId()};
+        this._addBelt(placed);
 
         const run = this._collectRun(x, y, direction);
         const segments = this._segmentByChunk(run);
@@ -58,47 +159,204 @@ export class BeltModule {
         // A run that stays inside one chunk (re)builds a single path, preserving in-flight items on an
         // end extension. A run spanning chunk borders becomes one path per chunk, seam-connected — the
         // hard constraint that paths never cross chunks. Cross-chunk edits rebuild empty for now.
-        if (segments.length === 1) {
-            return this._placeSingleChunk(run, newKey);
-        }
-        return this._buildEmptyChain(segments, run);
+        const result = segments.length === 1
+            ? this._placeSingleChunk(run, newKey, direction)
+            : this._buildEmptyChain(segments, run, direction);
+
+        this.engine.emitEvent(new BeltInsertEvent(x, y, placed.id, direction, placed.type));
+        this._emitPathRecalcs(run);
+        return result;
     }
 
     /**
-     * Removes the belt at (x, y), rebuilding the surviving runs on each side (the path splits, or
-     * shortens). Rebuilt empty for now — in-flight-item preservation across deletion is deferred.
-     * @param {number} x
-     * @param {number} y
+     * Emits a path-recalc event for every rebuilt path touching `run`, so the client re-links its belt
+     * geometry.
+     * @private
+     * @param {{x:number, y:number}[]} run
      * @returns {void}
      */
-    removeBelt(x, y) {
-        const key = tileKey(x, y);
-        const belt = this._belts.get(key);
+    _emitPathRecalcs(run) {
+        const runKeys = new Set(run.map(cell => tileKey(cell.x, cell.y)));
+        this.paths.forEach(path => {
+            if (path.belts.some(key => runKeys.has(key))) {
+                this.engine.emitEvent(this._pathRecalcEvent(path));
+            }
+        });
+    }
+
+    /**
+     * The path-recalc event for a path: its belt ids in path order (head last) and its out-port id,
+     * routed by the head tile.
+     * @private
+     * @param {object} path
+     * @returns {BeltPathRecalculateEvent}
+     */
+    _pathRecalcEvent(path) {
+        const parts = [...path.belts].reverse().map(key => {
+            const [kx, ky] = key.split(",").map(Number);
+            return this._beltAt(kx, ky, path.direction).id;
+        });
+        const [headX, headY] = path.belts[0].split(",").map(Number);
+        return new BeltPathRecalculateEvent(headX, headY, parts, BigInt(path.outPort));
+    }
+
+    /**
+     * The client path id (head belt id) and head-tile routing chunk, or null for a synthetic path
+     * without belts (test-only addPath), which emits no client events.
+     * @private
+     * @param {object} path
+     * @returns {{pathId: BigInt, chunkX: number, chunkY: number}|null}
+     */
+    _headInfo(path) {
+        if (path.belts === undefined) {
+            return null;
+        }
+        const [x, y] = path.belts[0].split(",").map(Number);
+        return {
+            pathId: this._beltAt(x, y, path.direction).id,
+            chunkX: Math.floor(x / CHUNK_SIZE),
+            chunkY: Math.floor(y / CHUNK_SIZE),
+        };
+    }
+
+    /**
+     * @private
+     * @param {object} path
+     * @param {{id:BigInt, length:number, type:number}} run
+     * @returns {void}
+     */
+    _emitItemUpsert(path, run) {
+        const event = this._itemUpsertEvent(path, run);
+        if (event !== null) {
+            this.engine.emitEvent(event);
+        }
+    }
+
+    /**
+     * @private
+     * @param {object} path
+     * @param {{id:BigInt, length:number, type:number}} run
+     * @returns {BufferedEvent|null}
+     */
+    _itemUpsertEvent(path, run) {
+        const head = this._headInfo(path);
+        if (head === null) {
+            return null;
+        }
+        return new BufferedEvent({
+            type: BUFFERED_EVENT_TYPE_ITEM_UPSERT,
+            routing_chunk_x: head.chunkX,
+            routing_chunk_y: head.chunkY,
+            id: head.pathId,
+            a: run.id,
+            b: run.length,
+            c: run.type,
+        });
+    }
+
+    /**
+     * @private
+     * @param {object} path
+     * @param {BigInt} runId
+     * @returns {void}
+     */
+    _emitItemDelete(path, runId) {
+        const head = this._headInfo(path);
+        if (head === null) {
+            return;
+        }
+        this.engine.emitEvent(new BufferedEvent({
+            type: BUFFERED_EVENT_TYPE_ITEM_DELETE,
+            routing_chunk_x: head.chunkX,
+            routing_chunk_y: head.chunkY,
+            id: head.pathId,
+            a: runId,
+        }));
+    }
+
+    /**
+     * @private
+     * @param {object} path
+     * @returns {void}
+     */
+    _emitItemReset(path) {
+        const head = this._headInfo(path);
+        if (head === null) {
+            return;
+        }
+        this.engine.emitEvent(new BufferedEvent({
+            type: BUFFERED_EVENT_TYPE_ITEM_RESET,
+            routing_chunk_x: head.chunkX,
+            routing_chunk_y: head.chunkY,
+            id: head.pathId,
+        }));
+    }
+
+    /**
+     * Removes the belt at (x, y) facing `direction`, rebuilding the surviving runs on each side (the
+     * path splits, or shortens). Rebuilt empty for now — in-flight-item preservation across deletion
+     * is deferred.
+     * @param {number} x
+     * @param {number} y
+     * @param {number} direction
+     * @returns {void}
+     */
+    removeBelt(x, y, direction) {
+        const belt = this._beltAt(x, y, direction);
         if (belt === undefined) {
             return;
         }
-        const direction = belt.direction;
-        this._belts.delete(key);
+        const key = tileKey(x, y);
+        const removedId = belt.id;
+        this.engine.release([{x, y, layer: this._beltLayer(direction, belt.type)}]);
 
-        // Drop the path that held it (and any seam-connected segments of that same run).
+        // Drop the same-direction path that held it (and any seam-connected segments of that run). The
+        // belt stays in the registry here so _forgetPath can still resolve the path's head belt.
         this.paths = this.paths.filter(path => {
-            if (path.belts.includes(key)) {
+            if (path.direction === direction && path.belts.includes(key)) {
                 this._forgetPath(path);
                 return false;
             }
             return true;
         });
+        this._removeBeltObject(belt);
 
-        // Rebuild the runs anchored by the two former neighbors.
+        // Rebuild the runs anchored by the two former same-direction neighbors.
         const fdx = Direction.dx(direction);
         const fdy = Direction.dy(direction);
         [[x - fdx, y - fdy], [x + fdx, y + fdy]].forEach(([nx, ny]) => {
-            const neighbor = this._belts.get(tileKey(nx, ny));
-            if (neighbor !== undefined && neighbor.direction === direction) {
+            if (this._beltAt(nx, ny, direction) !== undefined) {
                 const run = this._collectRun(nx, ny, direction);
-                this._buildEmptyChain(this._segmentByChunk(run), run);
+                this._buildEmptyChain(this._segmentByChunk(run), run, direction);
+                this._emitPathRecalcs(run);
             }
         });
+
+        this.engine.emitEvent(new BeltDeleteEvent(x, y, removedId));
+    }
+
+    /**
+     * Removes the belt with client-facing `id`, if it is one of this module's belts.
+     * @param {BigInt} id
+     * @returns {boolean} whether a belt was removed
+     */
+    removeBeltById(id) {
+        const target = this.beltById(id);
+        if (target === null) {
+            return false;
+        }
+        this.removeBelt(target.x, target.y, target.direction);
+        return true;
+    }
+
+    /**
+     * The placed belt with client-facing `id`, or null.
+     * @param {BigInt} id
+     * @returns {{x:number, y:number, direction:number, type:number, id:BigInt}|null}
+     */
+    beltById(id) {
+        const found = this._allBelts().find(belt => belt.id === id);
+        return found === undefined ? null : found;
     }
 
     /**
@@ -134,20 +392,19 @@ export class BeltModule {
      * @param {{x:number, y:number}[]} run
      * @returns {{id:number, inPort:number, outPort:number, segments:number[]}}
      */
-    _buildEmptyChain(segments, run) {
-        this._removePathsOverlapping(run);
+    _buildEmptyChain(segments, run, direction) {
+        this._removePathsOverlapping(run, direction);
 
-        let seamPort = null;
         const built = [];
         segments.forEach(segment => {
-            const inPort = seamPort === null ? this.engine.addPort() : seamPort;
-            const outPort = this.engine.addPort();
+            const {inPort, outPort} = this._pathPorts(segment, direction);
             const length = segment.length * 2 - 1;
             const eid = addEntity(this.engine.world);
             addComponent(this.engine.world, eid, {});
             const path = {
                 id: eid,
                 belts: segment.map(cell => tileKey(cell.x, cell.y)),
+                direction,
                 inPort,
                 outPort,
                 length,
@@ -156,7 +413,6 @@ export class BeltModule {
             };
             this._trackPath(path);
             built.push(path);
-            seamPort = outPort;
         });
 
         return {
@@ -168,6 +424,25 @@ export class BeltModule {
     }
 
     /**
+     * The shared in/out ports for a run (cells head -> tail): the in-port is the edge feeding the head
+     * tile; the out-port is the edge the tail feeds downstream — so seams and adjacent objects adopt
+     * the same ports via {@link EcsEngine#portAt}.
+     * @private
+     * @param {{x:number, y:number}[]} cells
+     * @returns {{inPort:number, outPort:number}}
+     */
+    _pathPorts(cells, direction) {
+        const head = cells[0];
+        const tail = cells[cells.length - 1];
+        const fdx = Direction.dx(direction);
+        const fdy = Direction.dy(direction);
+        return {
+            inPort: this.engine.portAt(head.x, head.y, direction),
+            outPort: this.engine.portAt(tail.x + fdx, tail.y + fdy, direction),
+        };
+    }
+
+    /**
      * (Re)builds the single-chunk run through the placed belt into one path, preserving in-flight
      * items when it is an end extension of one existing path.
      * @private
@@ -175,25 +450,21 @@ export class BeltModule {
      * @param {string} newKey
      * @returns {{id:number, inPort:number, outPort:number, length:number, segments:number[]}}
      */
-    _placeSingleChunk(run, newKey) {
+    _placeSingleChunk(run, newKey, direction) {
         const runKeys = run.map(cell => tileKey(cell.x, cell.y));
-        const overlapping = this.paths.filter(path => path.belts.some(key => runKeys.includes(key)));
+        const overlapping = this.paths.filter(path => path.direction === direction && path.belts.some(key => runKeys.includes(key)));
 
         // Extending one existing path at an end preserves its in-flight items; anything else (a fresh
         // isolated belt, or a merge of two item-carrying paths — not yet supported) rebuilds empty.
-        let inPort;
-        let outPort;
         let items;
         let headGap;
         const length = run.length * 2 - 1;
         if (overlapping.length === 1 && this._isEndExtension(runKeys, overlapping[0].belts, newKey)) {
             const old = overlapping[0];
-            inPort = old.inPort;
-            outPort = old.outPort;
             if (runKeys[0] === newKey) {
                 // Head (input-edge) extension: the new empty belt is head room; items keep their
-                // distance from the unchanged output edge.
-                items = old.items.map(run => ({length: run.length, type: run.type}));
+                // distance from the unchanged output edge (and their run ids).
+                items = old.items.map(run => ({id: run.id, length: run.length, type: run.type}));
                 headGap = old.headGap + 2;
             } else {
                 // Tail (output-edge) extension of an empty path merges into the same path (all added
@@ -204,17 +475,17 @@ export class BeltModule {
                 headGap = old.headGap + 2;
             }
         } else {
-            inPort = this.engine.addPort();
-            outPort = this.engine.addPort();
             items = [];
             headGap = length;
         }
 
-        this._removePathsOverlapping(run);
+        this._removePathsOverlapping(run, direction);
 
+        // Ports derive from the run's tiles, so extensions/seams/objects share the same edge ports.
+        const {inPort, outPort} = this._pathPorts(run, direction);
         const eid = addEntity(this.engine.world);
         addComponent(this.engine.world, eid, {});
-        const path = {id: eid, belts: runKeys, inPort, outPort, length, headGap, items};
+        const path = {id: eid, belts: runKeys, direction, inPort, outPort, length, headGap, items};
         this._trackPath(path);
 
         return {id: eid, inPort, outPort, length, segments: [eid]};
@@ -263,10 +534,7 @@ export class BeltModule {
     _collectRun(x, y, direction) {
         const fdx = Direction.dx(direction);
         const fdy = Direction.dy(direction);
-        const sameDirBelt = (cx, cy) => {
-            const belt = this._belts.get(tileKey(cx, cy));
-            return belt !== undefined && belt.direction === direction;
-        };
+        const sameDirBelt = (cx, cy) => this._beltAt(cx, cy, direction) !== undefined;
 
         // Walk upstream to the head (parent feeds from behind the forward vector).
         let hx = x;
@@ -294,10 +562,12 @@ export class BeltModule {
      * @param {{x:number, y:number}[]} run
      * @returns {void}
      */
-    _removePathsOverlapping(run) {
+    _removePathsOverlapping(run, direction) {
         const runKeys = new Set(run.map(cell => tileKey(cell.x, cell.y)));
         this.paths = this.paths.filter(path => {
-            const overlaps = path.belts.some(key => runKeys.has(key));
+            // Only same-direction paths share belts with the run — a crossing perpendicular path shares
+            // a tile but not a belt, so it must survive.
+            const overlaps = path.direction === direction && path.belts.some(key => runKeys.has(key));
             if (overlaps) {
                 this._forgetPath(path);
             }
@@ -316,6 +586,8 @@ export class BeltModule {
         this._byInPort.set(path.inPort, path);
         const [x, y] = path.belts[path.belts.length - 1].split(",").map(Number);
         this.engine.registerRenderedPort(path.outPort, x, y);
+        // Re-sync any preserved items under the (possibly new) path id.
+        path.items.forEach(run => this._emitItemUpsert(path, run));
     }
 
     /**
@@ -327,6 +599,8 @@ export class BeltModule {
     _forgetPath(path) {
         this._byInPort.delete(path.inPort);
         this.engine.unregisterRenderedPort(path.outPort);
+        // Clear the client's item sprites for this (soon-stale) path id.
+        this._emitItemReset(path);
     }
 
     /**
@@ -423,12 +697,17 @@ export class BeltModule {
             let popped = false;
             if (leadIsItem && canPop) {
                 pops.push({outPort: path.outPort, type: path.items[0].type});
+                this._emitItemDelete(path, path.items[0].id);
                 path.items.shift();
                 popped = true;
             } else if (hasGap && (firstGap < firstItem || firstItem === -1 || !canPop)) {
-                path.items[firstGap].length -= 1;
-                if (path.items[firstGap].length === 0) {
+                const gap = path.items[firstGap];
+                gap.length -= 1;
+                if (gap.length === 0) {
+                    this._emitItemDelete(path, gap.id);
                     path.items.splice(firstGap, 1);
+                } else {
+                    this._emitItemUpsert(path, gap);
                 }
             }
 
@@ -441,9 +720,15 @@ export class BeltModule {
         this.paths.forEach(path => {
             if (path.headGap > 0 && P[path.inPort] !== EMPTY) {
                 if (path.headGap > 1) {
-                    path.items.push({length: path.headGap - 1, type: GAP});
+                    const gap = {id: this._nextRunId, length: path.headGap - 1, type: GAP};
+                    this._nextRunId += 1n;
+                    path.items.push(gap);
+                    this._emitItemUpsert(path, gap);
                 }
-                path.items.push({length: 1, type: P[path.inPort]});
+                const item = {id: this._nextRunId, length: 1, type: P[path.inPort]};
+                this._nextRunId += 1n;
+                path.items.push(item);
+                this._emitItemUpsert(path, item);
                 path.headGap = 0;
                 P[path.inPort] = EMPTY;
             }
@@ -464,17 +749,16 @@ export class BeltModule {
      */
     chunkSync(chunk) {
         const events = [];
-        this._belts.forEach(belt => {
+        this._allBelts().forEach(belt => {
             if (chunkId(belt.x, belt.y) === chunk) {
-                events.push({kind: "belt", x: belt.x, y: belt.y, direction: belt.direction});
+                events.push(new BeltSyncEvent(belt.x, belt.y, belt.id, belt.direction, belt.type));
             }
         });
-        this.engine.renderedPorts.forEach((position, eid) => {
-            if (chunkId(position.x, position.y) === chunk) {
-                const item = this.engine.portItem(eid);
-                if (item !== EMPTY) {
-                    events.push({kind: "set", portId: eid, item: item, x: position.x, y: position.y});
-                }
+        this.paths.forEach(path => {
+            const [headX, headY] = path.belts[0].split(",").map(Number);
+            if (chunkId(headX, headY) === chunk) {
+                events.push(this._pathRecalcEvent(path));
+                path.items.forEach(run => events.push(this._itemUpsertEvent(path, run)));
             }
         });
         return events;
@@ -498,14 +782,15 @@ export class BeltModule {
         };
         const paths = this.paths.map(path => ({
             belts: [...path.belts],
+            direction: path.direction,
             length: path.length,
             headGap: path.headGap,
-            items: path.items.map(run => ({length: run.length, type: run.type})),
+            items: path.items.map(run => ({id: String(run.id), length: run.length, type: run.type})),
             inPort: serialFor(path.inPort),
             outPort: serialFor(path.outPort),
         }));
-        const belts = [...this._belts.entries()].map(([key, belt]) => ({key, x: belt.x, y: belt.y, direction: belt.direction}));
-        return {ports, paths, belts};
+        const belts = this._allBelts().map(belt => ({x: belt.x, y: belt.y, direction: belt.direction, type: belt.type, id: String(belt.id)}));
+        return {ports, paths, belts, nextObjectId: String(this.engine._nextObjectId), nextRunId: String(this._nextRunId)};
     }
 
     /**
@@ -521,7 +806,10 @@ export class BeltModule {
             return eid;
         });
 
-        this._belts = new Map(snapshot.belts.map(belt => [belt.key, {x: belt.x, y: belt.y, direction: belt.direction}]));
+        this._belts = new Map();
+        snapshot.belts.forEach(belt => this._addBelt({x: belt.x, y: belt.y, direction: belt.direction, type: belt.type, id: BigInt(belt.id)}));
+        this.engine._nextObjectId = BigInt(snapshot.nextObjectId);
+        this._nextRunId = BigInt(snapshot.nextRunId);
         this.paths = [];
         this._byInPort = new Map();
 
@@ -533,11 +821,12 @@ export class BeltModule {
             const path = {
                 id: eid,
                 belts: [...saved.belts],
+                direction: saved.direction,
                 inPort,
                 outPort,
                 length: saved.length,
                 headGap: saved.headGap,
-                items: saved.items.map(run => ({length: run.length, type: run.type})),
+                items: saved.items.map(run => ({id: BigInt(run.id), length: run.length, type: run.type})),
             };
             this._trackPath(path);
         });

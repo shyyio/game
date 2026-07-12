@@ -10,7 +10,10 @@ import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
+import {makeEcsSimEngine} from "@/test/ecsSim.js";
 import {TICK_PHASE_ORDER} from "@/common/sim/SimEngine.js";
+import {BufferedEvent} from "@/common/BufferedEvent.js";
+import {BUFFERED_EVENT_TYPE_PORT_ITEM_SET, BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR} from "@/common/constants.js";
 
 const RED = 1;
 const CELLS = [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}];
@@ -37,7 +40,7 @@ test("a Game on EcsSimEngine routes belt render events only to sessions watching
     const modRegistry = new ModRegistry();
     modRegistry.loadMod(new (await import("@/mods/Logistics/mod.js")).LogisticsMod());
     const db = new NodeDatabase(new DatabaseSchema(modRegistry));
-    const engine = new EcsSimEngine();
+    const engine = new EcsSimEngine(modRegistry);
     const game = new Game(modRegistry, db, engine);
     await game.init();
 
@@ -61,10 +64,11 @@ test("a Game on EcsSimEngine routes belt render events only to sessions watching
         game.postTick();
     }
 
-    const renderKinds = new Set(["set", "clear"]);
-    const watcherRenders = watcher.events.filter(event => renderKinds.has(event.kind));
-    const bystanderRenders = bystander.events.filter(event => renderKinds.has(event.kind));
+    const isPortItem = event => event instanceof BufferedEvent
+        && (event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_SET || event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR);
+    const watcherRenders = watcher.events.filter(isPortItem);
+    const bystanderRenders = bystander.events.filter(isPortItem);
 
-    assert.ok(watcherRenders.some(event => event.kind === "set" && event.item === RED), "watcher gets the item's render set");
+    assert.ok(watcherRenders.some(event => event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_SET && event.a === RED), "watcher gets the item's render set");
     assert.equal(bystanderRenders.length, 0, "the bystander (different chunk) gets no belt render events");
 });

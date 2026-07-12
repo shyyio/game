@@ -8,7 +8,6 @@ import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
 import {WireRegistry} from "@/common/wire.js";
 import {SqlSimEngine} from "@/common/sim/SqlSimEngine.js";
 import {SessionRegistry} from "@/common/SessionRegistry.js";
-import {chunkId} from "@/common/util.js";
 
 export class Game {
 
@@ -157,6 +156,7 @@ export class Game {
 
         // A bitECS engine handles sim messages directly; the SQL path defers to the mods.
         if (this.simEngine.applyMessage(message)) {
+            this._flushEngineEvents();
             return;
         }
 
@@ -275,22 +275,19 @@ export class Game {
     postTick() {
         this._dispatchBufferedEvents();
         this._dispatchInspectEvents();
-        this._dispatchRenderEvents();
+        this._flushEngineEvents();
     }
 
     /**
-     * Drains the engine's render events (bitECS path) and routes each to the sessions whose viewport
-     * covers its tile. A no-op for the SQL engine, which emits through the BufferedEvent journal.
+     * Broadcasts the engine's buffered domain events (bitECS placement/path/delete + port-item render
+     * deltas) to the sessions covering each event's chunk. A no-op for the SQL engine (it publishes
+     * through the mods and the BufferedEvent journal).
      * @private
      * @returns {void}
      */
-    _dispatchRenderEvents() {
-        if (typeof this.simEngine.drainRenderEvents !== "function") {
-            return;
-        }
-        this.simEngine.drainRenderEvents().forEach(event => {
-            const chunk = chunkId(event.x, event.y);
-            this.sessionRegistry.sessionsForChunk(chunk).forEach(sessionId => {
+    _flushEngineEvents() {
+        this.simEngine.drainEvents().forEach(event => {
+            this.sessionRegistry.sessionsForChunk(event.chunk).forEach(sessionId => {
                 this.sessions[sessionId].publishEvent(event);
             });
         });

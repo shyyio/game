@@ -23,7 +23,7 @@ async function ecsGameRun() {
     modRegistry.loadMod(new LogisticsMod());
     const schema = new DatabaseSchema(modRegistry);
     const db = new NodeDatabase(schema);
-    const engine = new EcsSimEngine();
+    const engine = new EcsSimEngine(modRegistry);
     const game = new Game(modRegistry, db, engine);
     await game.init();
 
