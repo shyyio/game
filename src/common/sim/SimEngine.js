@@ -69,4 +69,20 @@ export class SimEngine {
     chunkSync(chunk) {
         return [];
     }
+
+    /**
+     * Drains this engine's buffered domain events (placement/path/delete + render deltas), for the
+     * owner to broadcast by chunk. Empty for the SQL engine (it publishes through the mods and journal).
+     * @returns {AbstractEvent[]}
+     */
+    drainEvents() {
+        return [];
+    }
+
+    /**
+     * Debug helper: drops an item onto the lowest belt path's in-port. No-op by default.
+     * @returns {void}
+     */
+    debugInsertItem() {
+    }
 }

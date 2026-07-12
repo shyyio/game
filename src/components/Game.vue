@@ -13,6 +13,7 @@ import {BaseTexturesMod} from "@/mods/BaseTextures/mod.js";
 import {DatabaseSchema} from "@/common/DatabaseSchema.js";
 import {BrowserDatabase} from "@/client/BrowserDatabase.js";
 import {Game} from "@/common/Game.js";
+import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
 import {GameAPI} from "@/common/GameAPI.js";
 import {LocalSession} from "@/common/LocalSession.js";
 import {Client} from "@/client/Client.js";
@@ -143,7 +144,10 @@ onMounted(async () => {
 
   const schema = new DatabaseSchema(modRegistry);
   const db = new BrowserDatabase(schema);
-  const game = new Game(modRegistry, db);
+  // Toggle: run the simulation on the bitECS engine (normal belts only so far) instead of the SQL
+  // pipeline. Set to false to fall back to the fully-featured SQL engine.
+  const USE_ECS_ENGINE = true;
+  const game = new Game(modRegistry, db, USE_ECS_ENGINE ? new EcsSimEngine(modRegistry) : undefined);
   await game.init();
 
   const api = new GameAPI(game);
@@ -243,7 +247,7 @@ onMounted(async () => {
   // Debug keybindings (moved off the number keys, which now select tools).
   // Insert an item of value 1 onto the lowest-id belt path via its in-port.
   Keyboard.on("b", () => {
-    db.rawExec("UPDATE Port SET item = 1 WHERE id = (SELECT in_port_id FROM BeltPath WHERE id = (SELECT MIN(id) FROM BeltPath))");
+    game.simEngine.debugInsertItem();
   });
 
   Keyboard.on("t", () => {

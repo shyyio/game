@@ -4,7 +4,7 @@ import {Direction} from "@/common/constants.js";
 import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
-import {BeltModule} from "@/common/sim/BeltSystems.js";
+import {BeltModule} from "@/mods/Logistics/BeltModule.js";
 import {SqlEngine} from "@/test/SqlEngine.js";
 import {LogisticsMod} from "@/mods/Logistics/mod.js";
 

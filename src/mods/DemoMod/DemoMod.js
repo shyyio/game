@@ -9,9 +9,11 @@ import {
     RecipeDefinition,
     Direction,
     DeleteObjectMessage,
+    CreateObjectMessage,
     MiniMenuEntry,
 } from "@/sdk/common.js";
 import {EasyObjectTool, EasyObjectGhostLayer, EasyObjectDrawLayer, InspectHighlight} from "@/sdk/client.js";
+import {MachineModule} from "@/common/sim/MachineSystems.js";
 
 // The item the furnace cooks and the outputs (a real product + the fallback).
 export const DEMO_INPUT_ITEM_TYPE = 7;
@@ -73,6 +75,47 @@ export class DemoMod extends AbstractMod {
 
     onMessage(message) {
         this._placement.handleMessage(this.game, message);
+    }
+
+    /**
+     * Registers the DemoMachine ECS module + its message/chunk-sync handlers.
+     * @param {EcsSimEngine} sim
+     * @returns {void}
+     */
+    setupEcs(sim) {
+        sim.machine = new MachineModule(sim.engine, {
+            processingTicks: 2,
+            inputCount: 1,
+            recipes: [{inputs: [DEMO_INPUT_ITEM_TYPE], output: DEMO_OUTPUT_ITEM_TYPE}],
+            fallback: DEMO_JUNK_ITEM_TYPE,
+        });
+        sim.registerMessageHandler(message => this._ecsMachineMessage(sim, message));
+        sim.registerChunkSync(chunk => sim.machine.chunkSync(chunk));
+    }
+
+    /**
+     * @private
+     * @param {EcsSimEngine} sim
+     * @param {AbstractMessage} message
+     * @returns {boolean}
+     */
+    _ecsMachineMessage(sim, message) {
+        if (message instanceof DeleteObjectMessage) {
+            return sim.machine.removeMachineById(message.id);
+        }
+        if (!(message instanceof CreateObjectMessage) || message.typeId !== DemoMachineDefinition.typeId) {
+            return false;
+        }
+        const d = message.direction;
+        const footprint = sim.footprint(DemoMachineDefinition, message.x, message.y, d);
+        if (!sim.occupancyFree(footprint)) {
+            return true;
+        }
+        const input = sim.portFor(DemoMachineDefinition.inputPorts[0], message.x, message.y, d);
+        const output = sim.portFor(DemoMachineDefinition.outputPorts[0], message.x, message.y, d);
+        const handle = sim.machine.placeMachine(message.x, message.y, message.typeId, d, [input.port], output.port, output.tile);
+        sim.track(handle.clientId, footprint);
+        return true;
     }
 }
 

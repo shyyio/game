@@ -1,5 +1,7 @@
 import {addEntity, addComponent} from "bitecs";
 import {TickPhase} from "@/common/core.js";
+import {chunkId} from "@/common/util.js";
+import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
 import {EMPTY} from "@/common/sim/EcsEngine.js";
 
 // Initial Machine column length; grows by doubling when a machine eid exceeds it.
@@ -46,6 +48,10 @@ export class MachineModule {
         };
         this._capacity = MACHINE_CAPACITY;
         this.ids = [];
+        // eid -> {clientId, typeId, x, y, direction, outPort, outTile} for placed machines.
+        this._meta = new Map();
+        // clientId -> eid.
+        this._byClientId = new Map();
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._finish());
@@ -116,6 +122,68 @@ export class MachineModule {
         this.ids.push(eid);
 
         return {id: eid, inputs, out};
+    }
+
+    /**
+     * Places a client-visible machine at (x, y) wired to the given input/output ports (adopted from
+     * adjacent belts by the caller), emitting an EasyObjectInsertEvent and drawing its output item at
+     * `outTile`.
+     * @param {number} x
+     * @param {number} y
+     * @param {number} typeId
+     * @param {Direction} direction
+     * @param {number[]} inputPorts
+     * @param {number} outPort
+     * @param {{x:number, y:number}} outTile
+     * @returns {{id:number, inputs:number[], out:number}}
+     */
+    placeMachine(x, y, typeId, direction, inputPorts, outPort, outTile) {
+        const handle = this.addMachine({inputs: inputPorts, out: outPort});
+        const clientId = this.engine.allocateObjectId();
+        handle.clientId = clientId;
+        this._meta.set(handle.id, {clientId, typeId, x, y, direction, outPort, outTile});
+        this._byClientId.set(clientId, handle.id);
+        this.engine.registerRenderedPort(outPort, outTile.x, outTile.y);
+        this.engine.emitEvent(new EasyObjectInsertEvent(typeId, clientId, x, y, direction, [BigInt(outPort)], null));
+        return handle;
+    }
+
+    /**
+     * The EasyObjectSyncEvents recreating this module's machines in `chunk`.
+     * @param {number} chunk
+     * @returns {EasyObjectSyncEvent[]}
+     */
+    chunkSync(chunk) {
+        const events = [];
+        this._meta.forEach((meta, eid) => {
+            if (chunkId(meta.x, meta.y) === chunk) {
+                const last = this.Machine.lastOutput[eid];
+                events.push(new EasyObjectSyncEvent(
+                    meta.typeId, meta.clientId, meta.x, meta.y, meta.direction,
+                    [BigInt(meta.outPort)], last === EMPTY ? null : last,
+                ));
+            }
+        });
+        return events;
+    }
+
+    /**
+     * Removes the machine with client id `clientId`, if any.
+     * @param {BigInt} clientId
+     * @returns {boolean}
+     */
+    removeMachineById(clientId) {
+        const eid = this._byClientId.get(clientId);
+        if (eid === undefined) {
+            return false;
+        }
+        const meta = this._meta.get(eid);
+        this.ids = this.ids.filter(id => id !== eid);
+        this._meta.delete(eid);
+        this._byClientId.delete(clientId);
+        this.engine.unregisterRenderedPort(meta.outPort);
+        this.engine.emitEvent(new EasyObjectDeleteEvent(meta.typeId, clientId, meta.x, meta.y));
+        return true;
     }
 
     /**

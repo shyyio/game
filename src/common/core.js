@@ -403,6 +403,17 @@ export class AbstractMod {
     }
 
     /**
+     * Registers this mod's bitECS content (modules, message handlers, chunk-sync contributors) on the
+     * engine, mirroring what the SQL path gets from schema/statements/onMessage/collectChunkSync. The
+     * default registers nothing.
+     * @param {EcsSimEngine} sim
+     * @returns {void}
+     */
+    setupEcs(sim) {
+
+    }
+
+    /**
      * Client-side hook to handle an event, updating the mod's own state and draw layers.
      * @param {AbstractEvent} event
      * @param {Client} client

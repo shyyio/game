@@ -6,7 +6,7 @@ import {EasyObjectPlacement} from "@/common/EasyObjectPlacement.js";
 import {Direction} from "@/common/constants.js";
 import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
-import {BeltModule} from "@/common/sim/BeltSystems.js";
+import {BeltModule} from "@/mods/Logistics/BeltModule.js";
 import {MachineModule} from "@/common/sim/MachineSystems.js";
 import {SqlEngine} from "@/test/SqlEngine.js";
 import {LogisticsMod} from "@/mods/Logistics/mod.js";

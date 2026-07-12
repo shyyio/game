@@ -1,33 +1,36 @@
 import {SimEngine} from "@/common/sim/SimEngine.js";
 import {EcsEngine} from "@/common/sim/EcsEngine.js";
-import {BeltModule} from "@/common/sim/BeltSystems.js";
-import {SplitterModule} from "@/common/sim/SplitterSystems.js";
-import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
-import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
+import {rotate} from "@/common/util.js";
+import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 
 /**
- * The bitECS {@link SimEngine}: owns the world and the content modules, dispatches player messages to
- * them, and runs the tick systems. The seam Game will drive instead of {@link SqlSimEngine} once the
- * message/chunk-sync surface is complete. Belt-normal placement only so far.
- *
- * Module construction order matters: the splitter's POST_RESOLVE seam must read a shared port before
- * the belt writes this tick's pop into it, so SplitterModule is built before BeltModule.
+ * The bitECS {@link SimEngine}: owns the world, and lets each loaded mod register its ECS content
+ * (modules, message handlers, chunk-sync contributors) via {@link AbstractMod#setupEcs}. Generic —
+ * it knows no specific content, so it imports nothing from `mods/`.
  */
 export class EcsSimEngine extends SimEngine {
 
-    constructor() {
+    /**
+     * @param {ModRegistry} [modRegistry] - mods whose setupEcs registers content on init
+     */
+    constructor(modRegistry=null) {
         super();
         this.engine = new EcsEngine();
+        this.modRegistry = modRegistry;
 
-        /**
-         * @type {SplitterModule|null}
-         */
-        this.splitter = null;
-
-        /**
-         * @type {BeltModule|null}
-         */
+        // Named module refs, set by mods' setupEcs (used by tests + debugInsertItem).
         this.belts = null;
+        this.splitter = null;
+        this.machine = null;
+        this.resources = null;
+        this.extractor = null;
+        this.deepExtractor = null;
+
+        // Registered by mods.
+        this._messageHandlers = [];
+        this._chunkSyncers = [];
+        // Object client id (string) -> occupied surface cells, freed on delete.
+        this._footprints = new Map();
     }
 
     /**
@@ -35,24 +38,48 @@ export class EcsSimEngine extends SimEngine {
      */
     async init() {
         await this.engine.init();
-        this.splitter = new SplitterModule(this.engine);
-        this.belts = new BeltModule(this.engine);
+        if (this.modRegistry !== null) {
+            this.modRegistry.mods.forEach(mod => mod.setupEcs(this));
+        }
     }
 
     /**
-     * Routes a player message to the module that owns it.
+     * A mod registers a message handler (returns true if it handled the message).
+     * @param {function(AbstractMessage): boolean} handler
+     * @returns {void}
+     */
+    registerMessageHandler(handler) {
+        this._messageHandlers.push(handler);
+    }
+
+    /**
+     * A mod registers a chunk-sync contributor (chunk -> events).
+     * @param {function(number): object[]} contributor
+     * @returns {void}
+     */
+    registerChunkSync(contributor) {
+        this._chunkSyncers.push(contributor);
+    }
+
+    /**
      * @param {AbstractMessage} message
-     * @returns {boolean} whether the engine handled it
+     * @returns {boolean}
      */
     applyMessage(message) {
-        if (message instanceof CreateBeltMessage) {
-            const type = message.beltType === null || message.beltType === undefined ? BELT_NORMAL : message.beltType;
-            if (type === BELT_NORMAL) {
-                this.belts.placeBelt(message.x, message.y, message.direction);
-                return true;
-            }
+        if (message instanceof DeleteObjectMessage) {
+            this.untrack(message.id);
         }
-        return false;
+        return this._messageHandlers.some(handler => handler(message));
+    }
+
+    /**
+     * @param {number} chunk
+     * @returns {object[]}
+     */
+    chunkSync(chunk) {
+        const events = [];
+        this._chunkSyncers.forEach(contributor => contributor(chunk).forEach(event => events.push(event)));
+        return events;
     }
 
     /**
@@ -64,18 +91,78 @@ export class EcsSimEngine extends SimEngine {
     }
 
     /**
-     * Returns and clears this tick's render events (the owner dispatches them to sessions).
      * @returns {object[]}
      */
-    drainRenderEvents() {
-        return this.engine.drainRenderEvents();
+    drainEvents() {
+        return this.engine.drainEvents();
     }
 
     /**
-     * @param {number} chunk
-     * @returns {object[]}
+     * Resolves the shared edge port for a definition's PortDefinition on an object placed at (x, y)
+     * facing `direction` — offset and local direction rotated by the placement.
+     * @param {PortDefinition} portVec
+     * @param {number} x
+     * @param {number} y
+     * @param {Direction} direction
+     * @returns {{port:number, tile:{x:number, y:number}}}
      */
-    chunkSync(chunk) {
-        return this.belts.chunkSync(chunk);
+    portFor(portVec, x, y, direction) {
+        const r = rotate(portVec, direction);
+        const tile = {x: x + r.x, y: y + r.y};
+        return {port: this.engine.portAt(tile.x, tile.y, r.direction), tile};
+    }
+
+    /**
+     * The surface cells a definition occupies at (x, y) facing `direction`.
+     * @param {ObjectDefinition} definition
+     * @param {number} x
+     * @param {number} y
+     * @param {Direction} direction
+     * @returns {{x:number, y:number, layer:string}[]}
+     */
+    footprint(definition, x, y, direction) {
+        return definition.geometry.tiles(direction).map(cell => ({x: x + cell.x, y: y + cell.y, layer: "S"}));
+    }
+
+    /**
+     * @param {{x:number, y:number, layer:string}[]} footprint
+     * @returns {boolean}
+     */
+    occupancyFree(footprint) {
+        return this.engine.occupancyFree(footprint);
+    }
+
+    /**
+     * Occupies a placed object's footprint, keyed by client id for release on delete.
+     * @param {BigInt} clientId
+     * @param {{x:number, y:number, layer:string}[]} footprint
+     * @returns {void}
+     */
+    track(clientId, footprint) {
+        this.engine.occupy(footprint);
+        this._footprints.set(String(clientId), footprint);
+    }
+
+    /**
+     * Frees a deleted object's footprint.
+     * @param {BigInt} clientId
+     * @returns {void}
+     */
+    untrack(clientId) {
+        const footprint = this._footprints.get(String(clientId));
+        if (footprint !== undefined) {
+            this.engine.release(footprint);
+            this._footprints.delete(String(clientId));
+        }
+    }
+
+    /**
+     * Debug helper: drops an item onto the first belt path's in-port.
+     * @returns {void}
+     */
+    debugInsertItem() {
+        if (this.belts !== null && this.belts.paths.length > 0) {
+            this.engine.setPortItem(this.belts.paths[0].inPort, 1);
+        }
     }
 }

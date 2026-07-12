@@ -2,12 +2,14 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
 import {SplitterModule} from "@/common/sim/SplitterSystems.js";
+import {BufferedEvent} from "@/common/BufferedEvent.js";
+import {BUFFERED_EVENT_TYPE_PORT_ITEM_SET, BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR} from "@/common/constants.js";
 
 const ITEM = 7;
 
-// The bitECS engine emits a set event when a drawn out-port gains a resting item and a clear event
-// when it loses one (the semantic equivalent of the SQL PORT_ITEM_SET / PORT_ITEM_CLEAR deltas).
-test("rendered out-ports emit set/clear item deltas on change only", async () => {
+// A drawn out-port emits a BufferedEvent PORT_ITEM_SET when it gains a resting item and PORT_ITEM_CLEAR
+// when it loses one — the same wire events the SQL engine journals, so the client renders unchanged.
+test("rendered out-ports emit PORT_ITEM set/clear deltas on change only", async () => {
     const engine = new EcsEngine();
     await engine.init();
     const splitter = new SplitterModule(engine);
@@ -15,17 +17,22 @@ test("rendered out-ports emit set/clear item deltas on change only", async () =>
     engine.registerRenderedPort(s.out_a, 5, 4);
     engine.registerRenderedPort(s.out_b, 6, 4);
 
-    // Rest an item in out_a (no downstream, so it stays put).
     engine.setPortItem(s.out_a, ITEM);
     engine.tickAll();
-    assert.deepEqual(engine.drainRenderEvents(), [{kind: "set", portId: s.out_a, item: ITEM, x: 5, y: 4}]);
+    let events = engine.drainEvents();
+    assert.equal(events.length, 1);
+    assert.ok(events[0] instanceof BufferedEvent);
+    assert.equal(events[0].type, BUFFERED_EVENT_TYPE_PORT_ITEM_SET);
+    assert.equal(events[0].id, BigInt(s.out_a));
+    assert.equal(events[0].a, ITEM);
 
-    // No change next tick -> no event.
     engine.tickAll();
-    assert.deepEqual(engine.drainRenderEvents(), []);
+    assert.deepEqual(engine.drainEvents(), []);
 
-    // Item leaves -> a clear.
     engine.setPortItem(s.out_a, EMPTY);
     engine.tickAll();
-    assert.deepEqual(engine.drainRenderEvents(), [{kind: "clear", portId: s.out_a, x: 5, y: 4}]);
+    events = engine.drainEvents();
+    assert.equal(events.length, 1);
+    assert.equal(events[0].type, BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR);
+    assert.equal(events[0].id, BigInt(s.out_a));
 });

@@ -1,5 +1,8 @@
 import {addEntity, addComponent} from "bitecs";
 import {TickPhase} from "@/common/core.js";
+import {Direction} from "@/common/constants.js";
+import {chunkId} from "@/common/util.js";
+import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
 import {EMPTY} from "@/common/sim/EcsEngine.js";
 
 // Initial Splitter column length; grows by doubling when a splitter eid exceeds it.
@@ -30,6 +33,10 @@ export class SplitterModule {
 
         // Splitter eids, iterated each tick.
         this.ids = [];
+        // eid -> {clientId, typeId, x, y, direction} for placed (client-visible) splitters.
+        this._meta = new Map();
+        // clientId -> eid.
+        this._byClientId = new Map();
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._runSeam());
@@ -87,6 +94,79 @@ export class SplitterModule {
         this.ids.push(eid);
 
         return {id: eid, in_a, in_b, out_a, out_b, int_a, int_b};
+    }
+
+    /**
+     * Places an UP-facing 1x2 splitter at (x, y), adopting the shared edge ports of adjacent belts:
+     * in_a/in_b feed from below (the belts at (x,y)/(x+1,y)), out_a/out_b feed the belts above
+     * (x,y-1)/(x+1,y-1). Internal ports are private. Rotation for other directions is not done yet.
+     * @param {number} x
+     * @param {number} y
+     * @returns {{id:number, in_a:number, in_b:number, out_a:number, out_b:number, int_a:number, int_b:number}}
+     */
+    placeSplitter(x, y, typeId=null, direction=Direction.UP, ports=null) {
+        // Default UP geometry for sim-only placement (tests); a real message placement passes the
+        // rotated ports + render tiles from the definition.
+        const p = ports === null ? {
+            in_a: this.engine.portAt(x, y, Direction.UP),
+            in_b: this.engine.portAt(x + 1, y, Direction.UP),
+            out_a: this.engine.portAt(x, y - 1, Direction.UP),
+            out_b: this.engine.portAt(x + 1, y - 1, Direction.UP),
+            outATile: {x, y: y - 1},
+            outBTile: {x: x + 1, y: y - 1},
+        } : ports;
+
+        const handle = this.addSplitter({in_a: p.in_a, in_b: p.in_b, out_a: p.out_a, out_b: p.out_b});
+        if (typeId !== null) {
+            const clientId = this.engine.allocateObjectId();
+            handle.clientId = clientId;
+            this._meta.set(handle.id, {clientId, typeId, x, y, direction});
+            this._byClientId.set(clientId, handle.id);
+            this.engine.registerRenderedPort(handle.out_a, p.outATile.x, p.outATile.y);
+            this.engine.registerRenderedPort(handle.out_b, p.outBTile.x, p.outBTile.y);
+            this.engine.emitEvent(new EasyObjectInsertEvent(
+                typeId, clientId, x, y, direction, [BigInt(handle.out_a), BigInt(handle.out_b)], null,
+            ));
+        }
+        return handle;
+    }
+
+    /**
+     * The EasyObjectSyncEvents recreating this module's placed splitters in `chunk`.
+     * @param {number} chunk
+     * @returns {EasyObjectSyncEvent[]}
+     */
+    chunkSync(chunk) {
+        const events = [];
+        this._meta.forEach((meta, eid) => {
+            if (chunkId(meta.x, meta.y) === chunk) {
+                events.push(new EasyObjectSyncEvent(
+                    meta.typeId, meta.clientId, meta.x, meta.y, meta.direction,
+                    [BigInt(this.Splitter.out_a[eid]), BigInt(this.Splitter.out_b[eid])], null,
+                ));
+            }
+        });
+        return events;
+    }
+
+    /**
+     * Removes the placed splitter with client id `clientId`, if any.
+     * @param {BigInt} clientId
+     * @returns {boolean}
+     */
+    removeSplitterById(clientId) {
+        const eid = this._byClientId.get(clientId);
+        if (eid === undefined) {
+            return false;
+        }
+        const meta = this._meta.get(eid);
+        this.ids = this.ids.filter(id => id !== eid);
+        this._meta.delete(eid);
+        this._byClientId.delete(clientId);
+        this.engine.unregisterRenderedPort(this.Splitter.out_a[eid]);
+        this.engine.unregisterRenderedPort(this.Splitter.out_b[eid]);
+        this.engine.emitEvent(new EasyObjectDeleteEvent(meta.typeId, clientId, meta.x, meta.y));
+        return true;
     }
 
     /**

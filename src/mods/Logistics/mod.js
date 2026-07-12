@@ -9,9 +9,13 @@ import {
     PlacementRejected,
     BufferedEvent,
     DeleteObjectMessage,
+    CreateObjectMessage,
 } from "@/sdk/common.js";
 import {CreateBeltMessage} from "./messages.js";
+import {BeltModule} from "./BeltModule.js";
+import {SplitterModule} from "@/common/sim/SplitterSystems.js";
 import {
+    BELT_NORMAL,
     BELT_RAMP_DOWN,
     BELT_RAMP_UP,
     BELT_UNDERGROUND,
@@ -131,6 +135,77 @@ export class LogisticsMod extends AbstractMod {
         } else if (message instanceof DeleteObjectMessage) {
             this._deleteObject(message.id);
         }
+    }
+
+    /**
+     * Registers the belt + splitter ECS modules and their message/chunk-sync handlers.
+     * @param {EcsSimEngine} sim
+     * @returns {void}
+     */
+    setupEcs(sim) {
+        // Splitter before belt so its POST_RESOLVE seam reads shared ports before the belt writes pops.
+        sim.splitter = new SplitterModule(sim.engine);
+        sim.belts = new BeltModule(sim.engine);
+        sim.registerMessageHandler(message => this._ecsBeltMessage(sim, message));
+        sim.registerMessageHandler(message => this._ecsSplitterMessage(sim, message));
+        sim.registerChunkSync(chunk => sim.belts.chunkSync(chunk));
+        sim.registerChunkSync(chunk => sim.splitter.chunkSync(chunk));
+    }
+
+    /**
+     * @private
+     * @param {EcsSimEngine} sim
+     * @param {AbstractMessage} message
+     * @returns {boolean}
+     */
+    _ecsBeltMessage(sim, message) {
+        if (message instanceof CreateBeltMessage) {
+            const type = message.beltType === null || message.beltType === undefined ? BELT_NORMAL : message.beltType;
+            // A ramp-up paired to a ramp-down fills the span with undergrounds first, so the whole
+            // tunnel collects into one path.
+            if (type === BELT_RAMP_UP && message.rampParent !== null && message.rampParent !== undefined) {
+                const rampDown = sim.belts.beltById(message.rampParent);
+                if (rampDown !== null) {
+                    const span = getUndergroundBeltsToCreate(rampDown, {
+                        x: message.x, y: message.y, direction: message.direction, type: BELT_RAMP_UP,
+                    });
+                    span.forEach(cell => sim.belts.placeBelt(cell.x, cell.y, message.direction, BELT_UNDERGROUND));
+                }
+            }
+            sim.belts.placeBelt(message.x, message.y, message.direction, type);
+            return true;
+        }
+        if (message instanceof DeleteObjectMessage) {
+            return sim.belts.removeBeltById(message.id) || sim.splitter.removeSplitterById(message.id);
+        }
+        return false;
+    }
+
+    /**
+     * @private
+     * @param {EcsSimEngine} sim
+     * @param {AbstractMessage} message
+     * @returns {boolean}
+     */
+    _ecsSplitterMessage(sim, message) {
+        if (!(message instanceof CreateObjectMessage) || message.typeId !== SplitterDefinition.typeId) {
+            return false;
+        }
+        const d = message.direction;
+        const footprint = sim.footprint(SplitterDefinition, message.x, message.y, d);
+        if (!sim.occupancyFree(footprint)) {
+            return true;
+        }
+        const inA = sim.portFor(SplitterDefinition.inputPorts[0], message.x, message.y, d);
+        const inB = sim.portFor(SplitterDefinition.inputPorts[1], message.x, message.y, d);
+        const outA = sim.portFor(SplitterDefinition.outputPorts[0], message.x, message.y, d);
+        const outB = sim.portFor(SplitterDefinition.outputPorts[1], message.x, message.y, d);
+        const handle = sim.splitter.placeSplitter(message.x, message.y, message.typeId, d, {
+            in_a: inA.port, in_b: inB.port, out_a: outA.port, out_b: outB.port,
+            outATile: outA.tile, outBTile: outB.tile,
+        });
+        sim.track(handle.clientId, footprint);
+        return true;
     }
 
     /**

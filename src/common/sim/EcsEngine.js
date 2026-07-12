@@ -1,6 +1,8 @@
 import {createWorld, addEntity, addComponent} from "bitecs";
 import {SimEngine} from "@/common/sim/SimEngine.js";
 import {TickPhase} from "@/common/core.js";
+import {BufferedEvent} from "@/common/BufferedEvent.js";
+import {CHUNK_SIZE, BUFFERED_EVENT_TYPE_PORT_ITEM_SET, BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR} from "@/common/constants.js";
 
 // Port.item sentinel for an empty port (item types are >= 0, so -1 is unambiguous).
 export const EMPTY = -1;
@@ -27,6 +29,13 @@ export class EcsEngine extends SimEngine {
         // indexed directly by eid (bitECS recycles eids densely), grown by _ensurePortCapacity.
         this.Port = {item: new Int32Array(PORT_CAPACITY).fill(EMPTY)};
         this._portCapacity = PORT_CAPACITY;
+        // Shared ports by edge key "x,y,direction" (see portAt).
+        this._portsByEdge = new Map();
+        // Global client-facing object id (BigInt), shared across all object types so ids never collide.
+        this._nextObjectId = 1n;
+        // Occupied cells: "x,y,layer" (layer "S" = surface, "U0"/"U1" = underground axis). Objects on
+        // the same layer collide; different layers coexist (an underground crosses under a surface belt).
+        this._occupied = new Set();
 
         // Per-phase system lists, run in order by tick(phase).
         this.systems = {
@@ -45,10 +54,30 @@ export class EcsEngine extends SimEngine {
         this.renderedPorts = new Map();
         // Last emitted item per rendered port, so EMIT_RENDER emits only changes.
         this._portShadow = new Map();
-        // This tick's render events, drained by the owner after the tick.
-        this._renderEvents = [];
+        // Buffered domain events (placement/path/delete + port-item render deltas) awaiting broadcast by chunk.
+        this._events = [];
 
         this._resetTick();
+    }
+
+    /**
+     * Buffers a domain event (a real GameEvent) for the owner to broadcast to sessions covering its
+     * chunk.
+     * @param {AbstractTilePositionedEvent} event
+     * @returns {void}
+     */
+    emitEvent(event) {
+        this._events.push(event);
+    }
+
+    /**
+     * Returns and clears the buffered domain events.
+     * @returns {AbstractTilePositionedEvent[]}
+     */
+    drainEvents() {
+        const events = this._events;
+        this._events = [];
+        return events;
     }
 
     /**
@@ -86,24 +115,27 @@ export class EcsEngine extends SimEngine {
             if (item === previous) {
                 return;
             }
+            const chunkX = Math.floor(position.x / CHUNK_SIZE);
+            const chunkY = Math.floor(position.y / CHUNK_SIZE);
             if (item === EMPTY) {
-                this._renderEvents.push({kind: "clear", portId: eid, x: position.x, y: position.y});
+                this.emitEvent(new BufferedEvent({
+                    type: BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
+                    routing_chunk_x: chunkX,
+                    routing_chunk_y: chunkY,
+                    id: BigInt(eid),
+                }));
                 this._portShadow.delete(eid);
             } else {
-                this._renderEvents.push({kind: "set", portId: eid, item: item, x: position.x, y: position.y});
+                this.emitEvent(new BufferedEvent({
+                    type: BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
+                    routing_chunk_x: chunkX,
+                    routing_chunk_y: chunkY,
+                    id: BigInt(eid),
+                    a: item,
+                }));
                 this._portShadow.set(eid, item);
             }
         });
-    }
-
-    /**
-     * Returns and clears this tick's render events.
-     * @returns {{kind:string, portId:number, item?:number, x:number, y:number}[]}
-     */
-    drainRenderEvents() {
-        const events = this._renderEvents;
-        this._renderEvents = [];
-        return events;
     }
 
     /**
@@ -213,6 +245,62 @@ export class EcsEngine extends SimEngine {
         this._ensurePortCapacity(eid);
         this.Port.item[eid] = item;
         return eid;
+    }
+
+    /**
+     * The shared port on the edge "flow entering tile (x, y) going `direction`", created once and
+     * reused. Both the upstream producer (whose output lands here) and the downstream consumer (whose
+     * input is here) resolve the same port, so belts, chunk seams, and objects adopt each other's ports.
+     * @param {number} x
+     * @param {number} y
+     * @param {number} direction
+     * @returns {number} the port eid
+     */
+    portAt(x, y, direction) {
+        const key = `${x},${y},${direction}`;
+        let eid = this._portsByEdge.get(key);
+        if (eid === undefined) {
+            eid = this.addPort();
+            this._portsByEdge.set(key, eid);
+        }
+        return eid;
+    }
+
+    /**
+     * Whether every cell {x, y, layer} is free.
+     * @param {{x:number, y:number, layer:string}[]} cells
+     * @returns {boolean}
+     */
+    occupancyFree(cells) {
+        return cells.every(cell => !this._occupied.has(`${cell.x},${cell.y},${cell.layer}`));
+    }
+
+    /**
+     * Marks each cell occupied.
+     * @param {{x:number, y:number, layer:string}[]} cells
+     * @returns {void}
+     */
+    occupy(cells) {
+        cells.forEach(cell => this._occupied.add(`${cell.x},${cell.y},${cell.layer}`));
+    }
+
+    /**
+     * Frees each cell.
+     * @param {{x:number, y:number, layer:string}[]} cells
+     * @returns {void}
+     */
+    release(cells) {
+        cells.forEach(cell => this._occupied.delete(`${cell.x},${cell.y},${cell.layer}`));
+    }
+
+    /**
+     * Allocates the next global client-facing object id.
+     * @returns {BigInt}
+     */
+    allocateObjectId() {
+        const id = this._nextObjectId;
+        this._nextObjectId += 1n;
+        return id;
     }
 
     /**
