@@ -40,9 +40,9 @@ test("Round-trips a SetViewportMessage", () => {
     roundTrip(reg, new SetViewportMessage([0, 1, chunkId(-64, 128)]), SetViewportMessage);
 });
 
-test("Round-trips a PortItemSetEvent with a BigInt port id", () => {
+test("Round-trips a PortItemSetEvent with a port id", () => {
     const reg = registry();
-    roundTrip(reg, new PortItemSetEvent(12, -5, 9999999999999999n, 8), PortItemSetEvent);
+    roundTrip(reg, new PortItemSetEvent(12, -5, 999999999999, 8), PortItemSetEvent);
 });
 
 test("Round-trips chunk subscribe/unsubscribe events, recovering the chunk id", () => {
@@ -82,11 +82,11 @@ test("Round-trips player/game settings events", () => {
     roundTrip(reg, new GameSettingsUpdateEvent(7, 70), GameSettingsUpdateEvent);
 });
 
-test("Decoded BigInt id is an exact, lossless BigInt", () => {
+test("Decoded id is a Number, round-tripped exactly", () => {
     const reg = registry();
-    const id = 9007199254740993n; // 2^53 + 1, beyond Number precision
+    const id = 999999999999;
     const decoded = reg.decode(reg.encode(new PortItemSetEvent(0, 0, id, 1)));
-    assert.strictEqual(typeof decoded.portId, "bigint");
+    assert.strictEqual(typeof decoded.portId, "number");
     assert.strictEqual(decoded.portId, id);
 });
 

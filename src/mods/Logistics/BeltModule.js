@@ -54,8 +54,8 @@ export class BeltModule {
         // on different axes/layers (a surface belt and an underground crossing under it); the run at a
         // tile is disambiguated by direction.
         this._belts = new Map();
-        // Stable RLE run id (BigInt), the client's item row_id for sprite continuity/glide.
-        this._nextRunId = 1n;
+        // Stable RLE run id, the client's item row_id for sprite continuity/glide.
+        this._nextRunId = 1;
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._move());
@@ -319,7 +319,7 @@ export class BeltModule {
     _pathRecalcEvent(path) {
         const parts = [...path.beltIds].reverse();
         const [headX, headY] = path.belts[0].split(",").map(Number);
-        return new BeltPathRecalculateEvent(headX, headY, parts, BigInt(path.outPort));
+        return new BeltPathRecalculateEvent(headX, headY, parts, path.outPort);
     }
 
     /**
@@ -327,7 +327,7 @@ export class BeltModule {
      * (test-only addPath), which emits no client events.
      * @private
      * @param {object} path
-     * @returns {{pathId: BigInt, x: number, y: number}|null}
+     * @returns {{pathId: number, x: number, y: number}|null}
      */
     _headInfo(path) {
         if (path.belts === undefined) {
@@ -344,7 +344,7 @@ export class BeltModule {
     /**
      * @private
      * @param {object} path
-     * @param {{id:BigInt, length:number, type:number}} run
+     * @param {{id:number, length:number, type:number}} run
      * @returns {void}
      */
     _emitItemUpsert(path, run) {
@@ -357,7 +357,7 @@ export class BeltModule {
     /**
      * @private
      * @param {object} path
-     * @param {{id:BigInt, length:number, type:number}} run
+     * @param {{id:number, length:number, type:number}} run
      * @param {boolean} [sync] - emit a BeltItemSyncEvent (client snaps the sprite in place) rather
      *     than a BeltItemUpsertEvent (client glides it); used when re-syncing an edit that didn't move it
      * @returns {BeltItemUpsertEvent|BeltItemSyncEvent|null}
@@ -374,7 +374,7 @@ export class BeltModule {
     /**
      * @private
      * @param {object} path
-     * @param {BigInt} runId
+     * @param {number} runId
      * @returns {void}
      */
     _emitItemDelete(path, runId) {
@@ -476,7 +476,7 @@ export class BeltModule {
 
     /**
      * Removes the belt with client-facing `id`, if it is one of this module's belts.
-     * @param {BigInt} id
+     * @param {number} id
      * @returns {boolean} whether a belt was removed
      */
     removeBeltById(id) {
@@ -509,8 +509,8 @@ export class BeltModule {
 
     /**
      * The placed belt with client-facing `id`, or null.
-     * @param {BigInt} id
-     * @returns {{x:number, y:number, direction:number, type:number, id:BigInt}|null}
+     * @param {number} id
+     * @returns {{x:number, y:number, direction:number, type:number, id:number}|null}
      */
     beltById(id) {
         const found = this._allBelts().find(belt => belt.id === id);
@@ -588,7 +588,7 @@ export class BeltModule {
         // runs are input -> output; the RLE stores them output -> input.
         const items = runs.reverse().map(run => {
             const item = {id: this._nextRunId, length: run.length, type: run.type};
-            this._nextRunId += 1n;
+            this._nextRunId += 1;
             return item;
         });
         return {items, headGap};
@@ -773,10 +773,10 @@ export class BeltModule {
                     // gap carries it that last half-tile; it keeps its visual position.
                     items = [
                         {id: this._nextRunId, length: 1, type: GAP},
-                        {id: this._nextRunId + 1n, length: 1, type: resting},
+                        {id: this._nextRunId + 1, length: 1, type: resting},
                         ...carried,
                     ];
-                    this._nextRunId += 2n;
+                    this._nextRunId += 2;
                     headGap = old.headGap;
                     this.engine.Port.item[old.outPort] = EMPTY;
                 } else if (carried.length === 0) {
@@ -786,7 +786,7 @@ export class BeltModule {
                 } else {
                     // In-flight items: a leading output gap carries the lead item across the new belt.
                     items = [{id: this._nextRunId, length: 2, type: GAP}, ...carried];
-                    this._nextRunId += 1n;
+                    this._nextRunId += 1;
                     headGap = old.headGap;
                 }
             }
@@ -802,7 +802,7 @@ export class BeltModule {
         // (RESET + snap), so the old sprite ids need not be kept.
         items = items.map(run => {
             const renumbered = {id: this._nextRunId, length: run.length, type: run.type};
-            this._nextRunId += 1n;
+            this._nextRunId += 1;
             return renumbered;
         });
 
@@ -1056,12 +1056,12 @@ export class BeltModule {
             if (path.headGap > 0 && P[path.inPort] !== EMPTY) {
                 if (path.headGap > 1) {
                     const gap = {id: this._nextRunId, length: path.headGap - 1, type: GAP};
-                    this._nextRunId += 1n;
+                    this._nextRunId += 1;
                     path.items.push(gap);
                     this._emitItemUpsert(path, gap);
                 }
                 const item = {id: this._nextRunId, length: 1, type: P[path.inPort]};
-                this._nextRunId += 1n;
+                this._nextRunId += 1;
                 path.items.push(item);
                 this._emitItemUpsert(path, item);
                 path.headGap = 0;
@@ -1117,15 +1117,15 @@ export class BeltModule {
         };
         const paths = this.paths.map(path => ({
             belts: [...path.belts],
-            beltIds: path.beltIds.map(String),
+            beltIds: [...path.beltIds],
             length: path.length,
             headGap: path.headGap,
-            items: path.items.map(run => ({id: String(run.id), length: run.length, type: run.type})),
+            items: path.items.map(run => ({id: run.id, length: run.length, type: run.type})),
             inPort: serialFor(path.inPort),
             outPort: serialFor(path.outPort),
         }));
-        const belts = this._allBelts().map(belt => ({x: belt.x, y: belt.y, direction: belt.direction, type: belt.type, id: String(belt.id)}));
-        return {ports, paths, belts, nextObjectId: String(this.engine._nextObjectId), nextRunId: String(this._nextRunId)};
+        const belts = this._allBelts().map(belt => ({x: belt.x, y: belt.y, direction: belt.direction, type: belt.type, id: belt.id}));
+        return {ports, paths, belts, nextObjectId: this.engine._nextObjectId, nextRunId: this._nextRunId};
     }
 
     /**
@@ -1142,9 +1142,9 @@ export class BeltModule {
         });
 
         this._belts = new Map();
-        snapshot.belts.forEach(belt => this._addBelt({x: belt.x, y: belt.y, direction: belt.direction, type: belt.type, id: BigInt(belt.id)}));
-        this.engine._nextObjectId = BigInt(snapshot.nextObjectId);
-        this._nextRunId = BigInt(snapshot.nextRunId);
+        snapshot.belts.forEach(belt => this._addBelt({x: belt.x, y: belt.y, direction: belt.direction, type: belt.type, id: belt.id}));
+        this.engine._nextObjectId = snapshot.nextObjectId;
+        this._nextRunId = snapshot.nextRunId;
         this.paths = [];
         this._byInPort = new Map();
 
@@ -1156,12 +1156,12 @@ export class BeltModule {
             const path = {
                 id: eid,
                 belts: [...saved.belts],
-                beltIds: saved.beltIds.map(String).map(BigInt),
+                beltIds: [...saved.beltIds],
                 inPort,
                 outPort,
                 length: saved.length,
                 headGap: saved.headGap,
-                items: saved.items.map(run => ({id: BigInt(run.id), length: run.length, type: run.type})),
+                items: saved.items.map(run => ({id: run.id, length: run.length, type: run.type})),
             };
             this._trackPath(path);
         });

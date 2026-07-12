@@ -37,7 +37,7 @@ export class SetInspectedObjectsMessage extends AbstractMessage {
     };
 
     /**
-     * @param {BigInt[]} objectIds
+     * @param {number[]} objectIds
      */
     constructor(objectIds) {
         super();
@@ -66,7 +66,7 @@ export class DeleteObjectMessage extends AbstractMessage {
     };
 
     /**
-     * @param {BigInt} id
+     * @param {number} id
      */
     constructor(id) {
         super();

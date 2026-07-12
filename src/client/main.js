@@ -10,7 +10,7 @@ import * as directives from "vuetify/directives";
 import { aliases, mdi } from "vuetify/iconsets/mdi-svg";
 import "@mdi/font/css/materialdesignicons.css";
 
-BigInt.prototype.toJSON = function () {
+number.prototype.toJSON = function () {
   return this.toString() + "n";
 };
 

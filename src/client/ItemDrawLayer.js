@@ -30,7 +30,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     constructor(itemTextures) {
         super();
         /**
-         * Live sprites, keyed by sprite key — a BigInt row id for belt items, a
+         * Live sprites, keyed by sprite key — a number row id for belt items, a
          * namespaced string for items resting in out-ports.
          * @type {Object.<string, ItemSprite>}
          * @private
@@ -108,7 +108,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * The render tile for a port id, derived from its owning object's cached position/direction
      * and the matching output PortDefinition (offset + facing rotated by the object). Null when
      * the port isn't in the object index (another mod's port, or not yet cached).
-     * @param {BigInt} portId
+     * @param {number} portId
      * @returns {{tileX: number, tileY: number, sourceDir: Direction}|null}
      * @private
      */
@@ -149,7 +149,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     /**
      * Places or repositions a sprite at a belt tile and half-tile offset, with the texture for
      * its item type. A hidden item is still positioned, keeping its glide continuous.
-     * @param {BigInt|string} key - sprite key (row id for belt items, namespaced string for out-port items)
+     * @param {number|string} key - sprite key (row id for belt items, namespaced string for out-port items)
      * @param {number} tileX
      * @param {number} tileY
      * @param {boolean} halfTile
@@ -209,8 +209,8 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * keep gliding under a new identity — e.g. a belt item popping into an out-port.
      * Drops whatever sprite already held the new key (the previous occupant). No-op for an
      * unknown source key.
-     * @param {BigInt|string} oldKey
-     * @param {BigInt|string} newKey
+     * @param {number|string} oldKey
+     * @param {number|string} newKey
      */
     renameItem(oldKey, newKey) {
         const sprite = this._items[oldKey];
@@ -228,7 +228,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
 
     /**
      * Drops a sprite; a no-op for an unknown key.
-     * @param {BigInt|string} key
+     * @param {number|string} key
      */
     removeItem(key) {
         const sprite = this._items[key];

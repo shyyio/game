@@ -21,7 +21,7 @@ test("rendered out-ports emit port-item set/clear deltas on change only", async 
     let events = engine.drainEvents();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemSetEvent);
-    assert.equal(events[0].portId, BigInt(s.out_a));
+    assert.equal(events[0].portId, s.out_a);
     assert.equal(events[0].itemType, ITEM);
 
     engine.tickAll();
@@ -32,5 +32,5 @@ test("rendered out-ports emit port-item set/clear deltas on change only", async 
     events = engine.drainEvents();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemClearEvent);
-    assert.equal(events[0].portId, BigInt(s.out_a));
+    assert.equal(events[0].portId, s.out_a);
 });

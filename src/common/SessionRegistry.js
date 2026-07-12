@@ -9,7 +9,7 @@ export class SessionRegistry {
     constructor() {
         // sessionId -> Set<chunk>
         this._viewports = new Map();
-        // sessionId -> Set<BigInt> of inspected object ids
+        // sessionId -> Set<number> of inspected object ids
         this._inspects = new Map();
     }
 
@@ -90,8 +90,8 @@ export class SessionRegistry {
      * Replaces a session's inspected-object set with `objectIds`, returning the delta so the caller
      * seeds an immediate snapshot for the newly added objects.
      * @param {number} sessionId
-     * @param {BigInt[]} objectIds
-     * @returns {{added: BigInt[], removed: BigInt[]}}
+     * @param {number[]} objectIds
+     * @returns {{added: number[], removed: number[]}}
      */
     setInspects(sessionId, objectIds) {
         const current = this._inspects.get(sessionId) === undefined ? new Set() : this._inspects.get(sessionId);
@@ -126,7 +126,7 @@ export class SessionRegistry {
     /**
      * The object ids a session is inspecting.
      * @param {number} sessionId
-     * @returns {BigInt[]}
+     * @returns {number[]}
      */
     inspects(sessionId) {
         const inspects = this._inspects.get(sessionId);
@@ -136,7 +136,7 @@ export class SessionRegistry {
     /**
      * Stops a session inspecting one object.
      * @param {number} sessionId
-     * @param {BigInt} objectId
+     * @param {number} objectId
      * @returns {void}
      */
     removeInspect(sessionId, objectId) {
@@ -148,7 +148,7 @@ export class SessionRegistry {
 
     /**
      * The ids of the sessions inspecting `objectId`.
-     * @param {BigInt} objectId
+     * @param {number} objectId
      * @returns {number[]}
      */
     sessionsInspecting(objectId) {

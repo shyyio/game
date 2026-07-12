@@ -125,7 +125,7 @@ export class SplitterModule {
             this.engine.registerRenderedPort(handle.out_a, p.outATile.x, p.outATile.y);
             this.engine.registerRenderedPort(handle.out_b, p.outBTile.x, p.outBTile.y);
             this.engine.emitEvent(new EasyObjectInsertEvent(
-                typeId, clientId, x, y, direction, [BigInt(handle.out_a), BigInt(handle.out_b)], null,
+                typeId, clientId, x, y, direction, [handle.out_a, handle.out_b], null,
             ));
         }
         return handle;
@@ -142,7 +142,7 @@ export class SplitterModule {
             if (chunkId(meta.x, meta.y) === chunk) {
                 events.push(new EasyObjectSyncEvent(
                     meta.typeId, meta.clientId, meta.x, meta.y, meta.direction,
-                    [BigInt(this.Splitter.out_a[eid]), BigInt(this.Splitter.out_b[eid])], null,
+                    [this.Splitter.out_a[eid], this.Splitter.out_b[eid]], null,
                 ));
             }
         });
@@ -151,7 +151,7 @@ export class SplitterModule {
 
     /**
      * Removes the placed splitter with client id `clientId`, if any.
-     * @param {BigInt} clientId
+     * @param {number} clientId
      * @returns {boolean}
      */
     removeSplitterById(clientId) {

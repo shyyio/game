@@ -21,11 +21,11 @@ export class EasyObjectInsertEvent extends AbstractTilePositionedEvent {
 
     /**
      * @param {number} typeId
-     * @param {BigInt} id
+     * @param {number} id
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
-     * @param {BigInt[]} portIds
+     * @param {number[]} portIds
      * @param {number|null} lastOutput
      */
     constructor(typeId, id, x, y, direction, portIds, lastOutput) {
@@ -56,11 +56,11 @@ export class EasyObjectSyncEvent extends AbstractTilePositionedEvent {
 
     /**
      * @param {number} typeId
-     * @param {BigInt} id
+     * @param {number} id
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
-     * @param {BigInt[]} portIds
+     * @param {number[]} portIds
      * @param {number|null} lastOutput
      */
     constructor(typeId, id, x, y, direction, portIds, lastOutput) {
@@ -87,7 +87,7 @@ export class EasyObjectDeleteEvent extends AbstractTilePositionedEvent {
 
     /**
      * @param {number} typeId
-     * @param {BigInt} id
+     * @param {number} id
      * @param {number} x
      * @param {number} y
      */

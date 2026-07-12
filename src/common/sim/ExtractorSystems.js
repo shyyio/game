@@ -87,7 +87,7 @@ export class ExtractorModule {
         this._meta.set(eid, {clientId, typeId, x, y, direction, outPort, outTile});
         this._byClientId.set(clientId, eid);
         this.engine.registerRenderedPort(outPort, outTile.x, outTile.y);
-        this.engine.emitEvent(new EasyObjectInsertEvent(typeId, clientId, x, y, direction, [BigInt(outPort)], null));
+        this.engine.emitEvent(new EasyObjectInsertEvent(typeId, clientId, x, y, direction, [outPort], null));
         return clientId;
     }
 
@@ -139,7 +139,7 @@ export class ExtractorModule {
     /**
      * The extractor's current inspect snapshot, or null if no extractor has that client id. The bound
      * resource shows as the sole (memory) input; there are no real input ports.
-     * @param {BigInt} clientId
+     * @param {number} clientId
      * @returns {InspectHeartbeatEvent|null}
      */
     inspect(clientId) {
@@ -177,7 +177,7 @@ export class ExtractorModule {
                 const last = this.Extractor.lastOutput[eid];
                 events.push(new EasyObjectSyncEvent(
                     meta.typeId, meta.clientId, meta.x, meta.y, meta.direction,
-                    [BigInt(meta.outPort)], last === EMPTY ? null : last,
+                    [meta.outPort], last === EMPTY ? null : last,
                 ));
             }
         });
@@ -185,7 +185,7 @@ export class ExtractorModule {
     }
 
     /**
-     * @param {BigInt} clientId
+     * @param {number} clientId
      * @returns {boolean}
      */
     removeExtractorById(clientId) {

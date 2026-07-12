@@ -30,8 +30,8 @@ export class EcsEngine extends SimEngine {
         this._portCapacity = PORT_CAPACITY;
         // Shared ports by edge key "x,y,direction" (see portAt).
         this._portsByEdge = new Map();
-        // Global client-facing object id (BigInt), shared across all object types so ids never collide.
-        this._nextObjectId = 1n;
+        // Global client-facing object id, shared across all object types so ids never collide.
+        this._nextObjectId = 1;
         // Occupied cells: "x,y,layer" (layer "S" = surface, "U0"/"U1" = underground axis). Objects on
         // the same layer collide; different layers coexist (an underground crosses under a surface belt).
         this._occupied = new Set();
@@ -120,7 +120,7 @@ export class EcsEngine extends SimEngine {
      */
     _emitRender() {
         this._pendingClear.forEach((position, eid) => {
-            this.emitEvent(new PortItemClearEvent(position.x, position.y, BigInt(eid)));
+            this.emitEvent(new PortItemClearEvent(position.x, position.y, eid));
             this._portShadow.delete(eid);
         });
         this._pendingClear.clear();
@@ -132,10 +132,10 @@ export class EcsEngine extends SimEngine {
                 return;
             }
             if (item === EMPTY) {
-                this.emitEvent(new PortItemClearEvent(position.x, position.y, BigInt(eid)));
+                this.emitEvent(new PortItemClearEvent(position.x, position.y, eid));
                 this._portShadow.delete(eid);
             } else {
-                this.emitEvent(new PortItemSetEvent(position.x, position.y, BigInt(eid), item));
+                this.emitEvent(new PortItemSetEvent(position.x, position.y, eid, item));
                 this._portShadow.set(eid, item);
             }
         });
@@ -298,11 +298,11 @@ export class EcsEngine extends SimEngine {
 
     /**
      * Allocates the next global client-facing object id.
-     * @returns {BigInt}
+     * @returns {number}
      */
     allocateObjectId() {
         const id = this._nextObjectId;
-        this._nextObjectId += 1n;
+        this._nextObjectId += 1;
         return id;
     }
 

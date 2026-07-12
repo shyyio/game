@@ -8,48 +8,6 @@ import {DEV} from "@/common/env.js";
 const PROFILING_HISTORY = 10000;
 
 /**
- * Result columns whose values must stay BigInt (the rest are narrowed by {@link formatRow}).
- * @type {Set<string>}
- */
-export const BIGINT_COLS = new Set([
-    "id",
-    "object_id",
-    "parent_id",
-    "belt_id",
-    "path_id",
-    "head",
-    "tail_id",
-    // Port ids — BigInt to match the id carried by port events.
-    "in_port_id",
-    "out_port_id",
-    "in_id",
-    "out_id",
-    "out_a_id",
-    "out_b_id",
-    // Belt/path id aliases from GetBeltCreateContext; kept BigInt so id comparisons
-    // (e.g. child_id vs head, child_path vs child_id) don't mismatch BigInt vs Number.
-    "child_id",
-    "child_path",
-    "child_old_parent",
-    "old_parent_path_head",
-]);
-
-/**
- * Narrows BigInt values to Number for all columns not listed in {@link BIGINT_COLS},
- * mutating and returning the row.
- * @param {object} row
- * @returns {object}
- */
-export function formatRow(row) {
-    Object.entries(row).forEach(([key, value]) => {
-        if (!BIGINT_COLS.has(key) && typeof value === "bigint") {
-            row[key] = Number(value);
-        }
-    });
-    return row;
-}
-
-/**
  * @abstract
  */
 export class AbstractDatabase {
@@ -112,8 +70,7 @@ export class AbstractDatabase {
     }
 
     /**
-     * Converts a plain args object into the @-prefixed format expected by sql.js,
-     * serializing BigInt values to strings.
+     * Converts a plain args object into the @-prefixed format expected by sql.js.
      * @param {object} args
      * @returns {object}
      */
@@ -123,7 +80,7 @@ export class AbstractDatabase {
         }
         const result = {};
         Object.entries(args).forEach(([key, value]) => {
-            result[`@${key}`] = typeof value === "bigint" ? value.toString() : value;
+            result[`@${key}`] = value;
         });
         return result;
     }

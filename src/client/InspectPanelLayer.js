@@ -89,7 +89,7 @@ export class InspectPanelLayer extends Container {
 
     /**
      * Registers the callback invoked with an object id when a panel's close button is pressed.
-     * @param {function(BigInt): void} callback
+     * @param {function(number): void} callback
      */
     onClose(callback) {
         this._onClose = callback;
@@ -120,7 +120,7 @@ export class InspectPanelLayer extends Container {
 
     /**
      * Removes a machine's panel (its menu closed or the machine was deleted).
-     * @param {BigInt} objectId
+     * @param {number} objectId
      */
     remove(objectId) {
         const key = String(objectId);
@@ -133,7 +133,7 @@ export class InspectPanelLayer extends Container {
     }
 
     /**
-     * @param {BigInt} objectId
+     * @param {number} objectId
      * @returns {object} the panel record
      * @private
      */

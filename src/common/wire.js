@@ -138,7 +138,7 @@ export class WireRegistry {
     }
 
     /**
-     * Encodes a message/event instance to protobuf bytes (BigInt → int64).
+     * Encodes a message/event instance to protobuf bytes (Number → int64).
      * @param {object} obj
      * @returns {Uint8Array}
      */
@@ -179,7 +179,7 @@ export class WireRegistry {
     }
 
     /**
-     * Decodes protobuf bytes into a message/event instance (int64 → BigInt, absent scalars → null).
+     * Decodes protobuf bytes into a message/event instance (int64 → Number, absent scalars → null).
      * @param {Uint8Array} bytes
      * @returns {object}
      */
@@ -206,14 +206,14 @@ export class WireRegistry {
         Object.entries(codec.specs).forEach(([name, spec]) => {
             if (spec.kind === "repeated") {
                 const arr = raw[name] === undefined ? [] : raw[name];
-                fields[name] = spec.int64 ? arr.map(v => BigInt(v)) : arr;
+                fields[name] = spec.int64 ? arr.map(v => Number(v)) : arr;
             } else if (spec.kind === "messages") {
                 const arr = raw[name] === undefined ? [] : raw[name];
                 fields[name] = arr.map(sub => this._fromEnvelope(sub));
             } else if (spec.kind === "map") {
                 fields[name] = raw[name] === undefined ? {} : raw[name];
             } else if (name in raw) {
-                fields[name] = spec.int64 ? BigInt(raw[name]) : raw[name];
+                fields[name] = spec.int64 ? Number(raw[name]) : raw[name];
             } else {
                 fields[name] = null;
             }
@@ -224,7 +224,7 @@ export class WireRegistry {
 }
 
 /**
- * @param {BigInt|number} value
+ * @param {number} value
  * @returns {Long}
  */
 function toLong(value) {

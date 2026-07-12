@@ -9,7 +9,7 @@ import {Direction} from "@/common/constants.js";
 export class EasySprite extends Sprite {
 
     /**
-     * @param {BigInt} id
+     * @param {number} id
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction

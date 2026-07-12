@@ -30,6 +30,6 @@ test("a belt emits a port-item set when an item pops to its out-port", async () 
     }
 
     assert.equal(sets.length, 1);
-    assert.equal(sets[0].portId, BigInt(handle.outPort));
+    assert.equal(sets[0].portId, handle.outPort);
     assert.equal(sets[0].itemType, RED);
 });

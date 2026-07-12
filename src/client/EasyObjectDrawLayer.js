@@ -99,7 +99,7 @@ export class EasyObjectDrawLayer extends AbstractDrawLayer {
     /**
      * The cache entry + sprite for an insert/sync event of this layer's object type, or null.
      * @param {AbstractEvent} event
-     * @returns {{id: BigInt, tileX: number, tileY: number, cells: object[], ports: object, data: object, sprite: Sprite}|null}
+     * @returns {{id: number, tileX: number, tileY: number, cells: object[], ports: object, data: object, sprite: Sprite}|null}
      * @private
      */
     _objectFor(event) {
@@ -136,7 +136,7 @@ export class EasyObjectDrawLayer extends AbstractDrawLayer {
     /**
      * The object id of a delete event of this layer's object type, or null.
      * @param {AbstractEvent} event
-     * @returns {BigInt|null}
+     * @returns {number|null}
      * @private
      */
     _removedId(event) {
@@ -144,7 +144,7 @@ export class EasyObjectDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {BigInt} id
+     * @param {number} id
      * @param {Sprite} sprite
      */
     addObject(id, sprite) {
@@ -158,7 +158,7 @@ export class EasyObjectDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {BigInt} id
+     * @param {number} id
      */
     removeObject(id) {
         const sprite = this._objects[id];
