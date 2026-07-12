@@ -1,8 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {ModRegistry} from "@/common/ModRegistry.js";
-import {DatabaseSchema} from "@/common/DatabaseSchema.js";
-import {NodeDatabase} from "@/server/NodeDatabase.js";
 import {Game} from "@/common/Game.js";
 import {Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
@@ -38,9 +36,8 @@ class CapturingSession {
 test("a Game on EcsSimEngine routes belt render events only to sessions watching the chunk", async () => {
     const modRegistry = new ModRegistry();
     modRegistry.loadMod(new (await import("@/mods/Logistics/mod.js")).LogisticsMod());
-    const db = new NodeDatabase(new DatabaseSchema(modRegistry));
     const engine = new EcsSimEngine(modRegistry);
-    const game = new Game(modRegistry, db, engine);
+    const game = new Game(modRegistry, engine);
     await game.init();
 
     const watcher = new CapturingSession(1);

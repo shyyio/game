@@ -30,8 +30,6 @@ export class EcsSimEngine extends SimEngine {
         this._messageHandlers = [];
         this._chunkSyncers = [];
         this._inspectors = [];
-        // Object client id (string) -> occupied surface cells, freed on delete.
-        this._footprints = new Map();
     }
 
     /**
@@ -160,14 +158,13 @@ export class EcsSimEngine extends SimEngine {
     }
 
     /**
-     * Occupies a placed object's footprint, keyed by client id for release on delete.
+     * Occupies a placed object's footprint, tagged with its client id so a delete frees it.
      * @param {number} clientId
      * @param {{x:number, y:number, layer:string}[]} footprint
      * @returns {void}
      */
     track(clientId, footprint) {
-        this.engine.occupy(footprint);
-        this._footprints.set(String(clientId), footprint);
+        this.engine.occupy(footprint, clientId);
     }
 
     /**
@@ -176,11 +173,24 @@ export class EcsSimEngine extends SimEngine {
      * @returns {void}
      */
     untrack(clientId) {
-        const footprint = this._footprints.get(String(clientId));
-        if (footprint !== undefined) {
-            this.engine.release(footprint);
-            this._footprints.delete(String(clientId));
-        }
+        this.engine.releaseOwner(clientId);
+    }
+
+    /**
+     * A serializable snapshot of the whole world.
+     * @returns {object}
+     */
+    serialize() {
+        return this.engine.serialize();
+    }
+
+    /**
+     * Rebuilds the world from a {@link serialize} snapshot.
+     * @param {object} snapshot
+     * @returns {void}
+     */
+    deserialize(snapshot) {
+        this.engine.deserialize(snapshot);
     }
 
     /**

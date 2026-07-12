@@ -24,8 +24,8 @@ test("a volcano feeds a primary extractor (sulfur) and a deep extractor (brine) 
 
     engine.applyMessage(new CreateObjectMessage(ExtractorDefinition.typeId, 5, 4, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(DeepExtractorDefinition.typeId, 6, 4, Direction.UP));
-    assert.equal(engine.extractor.ids.length, 1);
-    assert.equal(engine.deepExtractor.ids.length, 1);
+    assert.equal(engine.extractor.eids().length, 1);
+    assert.equal(engine.deepExtractor.eids().length, 1);
 
     const sulfurOut = engine.engine.portAt(5, 3, Direction.UP);
     const brineOut = engine.engine.portAt(6, 3, Direction.UP);

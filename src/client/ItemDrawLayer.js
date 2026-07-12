@@ -98,7 +98,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
             return;
         }
         if (event instanceof PortItemSetEvent) {
-            this.moveItem(PORT_SPRITE_KEY(event.portId), placement.tileX, placement.tileY, true, placement.sourceDir, event.itemType);
+            this.moveItem(PORT_SPRITE_KEY(event.portId), placement.tileX, placement.tileY, true, placement.sourceDirection, event.itemType);
         } else {
             this.removeItem(PORT_SPRITE_KEY(event.portId));
         }
@@ -109,7 +109,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * and the matching output PortDefinition (offset + facing rotated by the object). Null when
      * the port isn't in the object index (another mod's port, or not yet cached).
      * @param {number} portId
-     * @returns {{tileX: number, tileY: number, sourceDir: Direction}|null}
+     * @returns {{tileX: number, tileY: number, sourceDirection: Direction}|null}
      * @private
      */
     _resolvePort(portId) {
@@ -122,7 +122,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         return {
             tileX: entry.tileX + world.x,
             tileY: entry.tileY + world.y,
-            sourceDir: Direction.invert(world.direction),
+            sourceDirection: Direction.invert(world.direction),
         };
     }
 
@@ -153,12 +153,12 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {number} tileX
      * @param {number} tileY
      * @param {boolean} halfTile
-     * @param {Direction} sourceDir - toward the belt feeding this one (the input/bend edge)
+     * @param {Direction} sourceDirection - toward the belt feeding this one (the input/bend edge)
      * @param {number} type - item type, selecting the sprite texture
      * @param {boolean} [snap] - place at the target without animating (a re-sync)
      * @param {boolean} [hidden] - the item is under cover (in a tunnel)
      */
-    moveItem(key, tileX, tileY, halfTile, sourceDir, type, snap=false, hidden=false) {
+    moveItem(key, tileX, tileY, halfTile, sourceDirection, type, snap=false, hidden=false) {
         const texture = this._textureForType(type);
         let sprite = this._items[key];
         if (sprite === undefined) {
@@ -171,7 +171,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         }
         sprite.hidden = hidden;
         this._applyItemVisibility(sprite);
-        sprite.moveTo(tileX, tileY, halfTile, sourceDir, snap);
+        sprite.moveTo(tileX, tileY, halfTile, sourceDirection, snap);
     }
 
     /**
@@ -335,20 +335,20 @@ class ItemSprite extends Sprite {
 
     /**
      * Aims the sprite at a belt tile. When straddling (half-tile) it sits a half-tile
-     * toward `sourceDir` — the belt feeding this one — so on a bend it lands on the
+     * toward `sourceDirection` — the belt feeding this one — so on a bend it lands on the
      * input edge, not simply opposite the flow. A new item glides in from a further
      * half-tile that way; later moves glide from the sprite's current position.
      * @param {number} tileX
      * @param {number} tileY
      * @param {boolean} halfTile
-     * @param {Direction} sourceDir - toward the source (parent) belt
+     * @param {Direction} sourceDirection - toward the source (parent) belt
      * @param {boolean} [snap] - jump straight to the target without gliding (a re-sync: the
      *     item was re-keyed in place, not moved, so animating it would look like motion)
      */
-    moveTo(tileX, tileY, halfTile, sourceDir, snap=false) {
+    moveTo(tileX, tileY, halfTile, sourceDirection, snap=false) {
         const half = TILE_SIZE / 2;
-        const sdx = Direction.dx(sourceDir);
-        const sdy = Direction.dy(sourceDir);
+        const sdx = Direction.dx(sourceDirection);
+        const sdy = Direction.dy(sourceDirection);
         const targetX = tileX * TILE_SIZE + half + (halfTile ? sdx * half : 0);
         const targetY = tileY * TILE_SIZE + half + (halfTile ? sdy * half : 0);
         if (snap) {

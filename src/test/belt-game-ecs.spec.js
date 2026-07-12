@@ -1,8 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {ModRegistry} from "@/common/ModRegistry.js";
-import {DatabaseSchema} from "@/common/DatabaseSchema.js";
-import {NodeDatabase} from "@/server/NodeDatabase.js";
 import {Game} from "@/common/Game.js";
 import {Direction} from "@/common/constants.js";
 import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
@@ -21,10 +19,8 @@ const EXPECTED = [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, RED, RED, EMPTY, EMPTY, EMP
 test("a Game on EcsSimEngine places and ticks belts via messages", async () => {
     const modRegistry = new ModRegistry();
     modRegistry.loadMod(new LogisticsMod());
-    const schema = new DatabaseSchema(modRegistry);
-    const db = new NodeDatabase(schema);
     const engine = new EcsSimEngine(modRegistry);
-    const game = new Game(modRegistry, db, engine);
+    const game = new Game(modRegistry, engine);
     await game.init();
 
     CELLS.forEach(cell => game.dispatchMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL), null));

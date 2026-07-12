@@ -12,6 +12,7 @@ import {ResourcesClientMod} from "@/mods/Resources/Resources.js";
 import {BaseTexturesMod} from "@/mods/BaseTextures/mod.js";
 import {Game} from "@/common/Game.js";
 import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
+import {ClientSaveStore} from "@/client/ClientSaveStore.js";
 import {GameAPI} from "@/common/GameAPI.js";
 import {LocalSession} from "@/common/LocalSession.js";
 import {Client} from "@/client/Client.js";
@@ -140,7 +141,7 @@ onMounted(async () => {
   modRegistry.loadMod(new DemoClientMod());
   modRegistry.loadMod(new ResourcesClientMod());
 
-  const game = new Game(modRegistry, undefined, new EcsSimEngine(modRegistry));
+  const game = new Game(modRegistry, new EcsSimEngine(modRegistry), new ClientSaveStore());
   await game.init();
 
   const api = new GameAPI(game);

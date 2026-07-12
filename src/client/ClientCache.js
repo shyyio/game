@@ -314,7 +314,7 @@ export class ClientCache {
 
     /**
      * The entry with an input port at (tileX, tileY) facing `direction`, or null. The consumer
-     * sits on its own input cell. Mirrors the server's GetInPort{dir}.
+     * sits on its own input cell. Mirrors the server's GetInPort{direction}.
      * @param {number} tileX
      * @param {number} tileY
      * @param {Direction} direction
@@ -330,7 +330,7 @@ export class ClientCache {
 
     /**
      * The entry with an output port reaching (tileX, tileY) facing `direction`, or null. The feeder
-     * sits one tile back (its output reaches forward). Mirrors the server's GetOutPort{dir}.
+     * sits one tile back (its output reaches forward). Mirrors the server's GetOutPort{direction}.
      * @param {number} tileX
      * @param {number} tileY
      * @param {Direction} direction

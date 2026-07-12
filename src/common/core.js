@@ -1,18 +1,6 @@
 import {OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
 import {ObjectGeometries} from "@/common/ObjectGeometry.js";
 
-export class SqlStatement {
-
-    /**
-     * @param [statementName] {string}
-     * @param [sql] {string}
-     */
-    constructor(statementName, sql) {
-        this.statementName = statementName;
-        this.sql = sql;
-    }
-}
-
 export class PortDefinition {
     /**
      * @param name {string}

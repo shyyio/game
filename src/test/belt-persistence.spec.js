@@ -1,9 +1,9 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import BetterSqlite3 from "better-sqlite3";
 import {Direction} from "@/common/constants.js";
 import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
 import {BeltModule} from "@/mods/Logistics/BeltModule.js";
+import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 
 const RED = 1;
 // A line straddling the y=64 chunk border -> two seam-connected paths.
@@ -25,7 +25,7 @@ async function newModule() {
     return {engine, belts: new BeltModule(engine)};
 }
 
-test("belt state survives a snapshot -> serialize -> restore round-trip mid-flight", async () => {
+test("belt state survives a serialize -> deserialize round-trip mid-flight", async () => {
     // Original: build the chunk-split line, feed an item, run a few ticks so it is mid-flight.
     const a = await newModule();
     CELLS.forEach(cell => a.belts.placeBelt(cell.x, cell.y, Direction.UP));
@@ -37,9 +37,9 @@ test("belt state survives a snapshot -> serialize -> restore round-trip mid-flig
     }
 
     // Snapshot through JSON (proves it is serializable), restore into a fresh engine.
-    const serialized = JSON.stringify(a.belts.captureState());
+    const serialized = JSON.parse(JSON.stringify(a.engine.serialize()));
     const b = await newModule();
-    b.belts.restore(JSON.parse(serialized));
+    b.engine.deserialize(serialized);
 
     // Structural check: same path count, item still in the system.
     assert.equal(b.belts.paths.length, a.belts.paths.length);
@@ -61,21 +61,19 @@ test("belt state survives a snapshot -> serialize -> restore round-trip mid-flig
     assert.ok(aStream.includes(RED), "the in-flight item eventually pops out");
 });
 
-test("belt state persists through a real SQLite database and reloads", async () => {
+test("belt state persists through a structured SQLite save store and reloads", async () => {
     const a = await newModule();
     CELLS.forEach(cell => a.belts.placeBelt(cell.x, cell.y, Direction.UP));
     const ports = networkPorts(a.belts);
     a.engine.setPortItem(ports.inPort, RED);
     a.engine.tickAll();
 
-    // Store the captured state in SQLite (the durable store), then reload it.
-    const db = new BetterSqlite3(":memory:");
-    db.exec("CREATE TABLE Save (id INTEGER PRIMARY KEY, state TEXT NOT NULL)");
-    db.prepare("INSERT INTO Save (state) VALUES (?)").run(JSON.stringify(a.belts.captureState()));
-    const loaded = JSON.parse(db.prepare("SELECT state FROM Save ORDER BY id DESC LIMIT 1").get().state);
+    const store = new NodeSaveStore(":memory:");
+    await store.save(a.engine.serialize());
+    const loaded = await store.load();
 
     const b = await newModule();
-    b.belts.restore(loaded);
+    b.engine.deserialize(loaded);
 
     assert.equal(b.belts.paths.length, a.belts.paths.length);
     const bPorts = networkPorts(b.belts);

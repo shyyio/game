@@ -24,7 +24,7 @@ test("an extractor on water produces the water item into its output port", async
     const engine = await setup();
     engine.applyMessage(new CreateObjectMessage(WaterResourceDefinition.typeId, 5, 5, Direction.UP));
     assert.equal(engine.applyMessage(new CreateObjectMessage(ExtractorDefinition.typeId, 5, 5, Direction.UP)), true);
-    assert.equal(engine.extractor.ids.length, 1, "extractor placed on the resource");
+    assert.equal(engine.extractor.eids().length, 1, "extractor placed on the resource");
 
     const outPort = engine.engine.portAt(5, 4, Direction.UP);
     let produced = false;
@@ -38,7 +38,7 @@ test("an extractor on water produces the water item into its output port", async
 test("an extractor cannot be placed off a resource", async () => {
     const engine = await setup();
     engine.applyMessage(new CreateObjectMessage(ExtractorDefinition.typeId, 10, 10, Direction.UP));
-    assert.equal(engine.extractor.ids.length, 0, "no extractor placed without a resource");
+    assert.equal(engine.extractor.eids().length, 0, "no extractor placed without a resource");
 });
 
 test("resource and extractor delete", async () => {
@@ -50,7 +50,7 @@ test("resource and extractor delete", async () => {
     const extractorId = inserts.find(e => e.typeId === ExtractorDefinition.typeId).id;
 
     assert.equal(engine.applyMessage(new DeleteObjectMessage(extractorId)), true);
-    assert.equal(engine.extractor.ids.length, 0);
+    assert.equal(engine.extractor.eids().length, 0);
     assert.equal(engine.applyMessage(new DeleteObjectMessage(resourceId)), true);
     assert.equal(engine.resources.coverAt(5, 5), null, "resource cover cleared");
 });

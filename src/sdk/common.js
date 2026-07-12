@@ -16,7 +16,6 @@ export {
     ObjectDefinition, // declares a placeable object: ports, geometry, per-tick ops
     PortDefinition,   // one input/output/internal port on an object (position + facing)
     RecipeDefinition, // one verb recipe: an input item set mapping to an output item
-    SqlStatement,           // a SQL statement run during one tick phase
     TickPhase,        // enum of the per-tick phases ops are scheduled into
     MiniMenuEntry,    // one entry in the right-click / long-press context menu
 } from "@/common/core.js";
@@ -69,13 +68,6 @@ export {
     OCCUPANCY_LAYER_SURFACE,
     OCCUPANCY_LAYER_RESOURCE,
 } from "@/common/constants.js";
-
-// ---- Port wiring ----
-// Helpers for connecting a freshly placed object to its neighbors. "Upstream"
-// = the neighbor OUTPUT ports that feed this object's inputs; "downstream" =
-// the neighbor INPUT ports this object's outputs feed. Both return a map of
-// { thisObjectsPortName -> sharedPortId }.
-export {upstreamPorts, downstreamPorts} from "@/common/portUtils.js";
 
 // Rotates a `{x, y}` offset (a port or size vector) by a placement direction, so a mod
 // can compute where an object's ports/geometry land from its ObjectDefinition.
