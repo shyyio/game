@@ -22,7 +22,6 @@ export class BrowserDatabase extends AbstractDatabase {
 
         this.db = new SQL.Database();
         this.schema.pragma.forEach(stmt => this.db.run(stmt));
-        this.schema.initSchema.forEach(stmt => this.db.run(stmt));
 
         this._postInit();
     }

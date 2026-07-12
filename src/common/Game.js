@@ -5,7 +5,9 @@ import {PlayerSettingsSyncEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
 import {WireRegistry} from "@/common/wire.js";
 import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
-import {SessionRegistry} from "@/common/SessionRegistry.js";
+import {SessionCache} from "@/common/SessionCache.js";
+import {SettingsCache, PlayerSettingsCache} from "@/common/SettingsCache.js";
+import {CHUNK_SIZE, GameSettingsKey} from "@/common/constants.js";
 
 export class Game {
 
@@ -37,10 +39,21 @@ export class Game {
         this.sessions = {};
 
         /**
-         * Engine-agnostic session/viewport index for event routing.
-         * @type {SessionRegistry}
+         * Engine-agnostic session/viewport cache for event routing.
+         * @type {SessionCache}
          */
-        this.sessionRegistry = new SessionRegistry();
+        this.sessionCache = new SessionCache();
+
+        /**
+         * @type {SettingsCache}
+         */
+        this.gameSettings = new SettingsCache();
+        this.gameSettings.set(GameSettingsKey.CHUNK_SIZE, CHUNK_SIZE);
+
+        /**
+         * @type {PlayerSettingsCache}
+         */
+        this.playerSettings = new PlayerSettingsCache();
     }
 
     async init() {
@@ -88,22 +101,16 @@ export class Game {
      * @param {AbstractSession} session
      */
     connect(session) {
-        const sessionId = this.queryScalar("InsertSession", {player_id: session.playerId});
+        const sessionId = this.sessionCache.add();
         session.setId(sessionId);
         this.sessions[sessionId] = session;
-        this.sessionRegistry.add(sessionId);
 
         this._syncPlayerSettings(session);
         this._syncGameSettings(session);
     }
 
     _syncGameSettings(session) {
-        const infoRows = this.query("GetGameSettings", {});
-        const infoValues = {};
-        infoRows.forEach(row => {
-            infoValues[row.key] = row.value;
-        });
-        session.publishEvent(new GameSettingsSyncEvent(infoValues));
+        session.publishEvent(new GameSettingsSyncEvent(this.gameSettings.snapshot()));
     }
 
     /**
@@ -111,12 +118,7 @@ export class Game {
      * @private
      */
     _syncPlayerSettings(session) {
-        const settingsRows = this.query("GetPlayerSettings", {player_id: session.playerId});
-        const settingsValues = {};
-        settingsRows.forEach(row => {
-            settingsValues[row.key] = row.value;
-        });
-        session.publishEvent(new PlayerSettingsSyncEvent(settingsValues));
+        session.publishEvent(new PlayerSettingsSyncEvent(this.playerSettings.snapshot(session.playerId)));
     }
 
     /**
@@ -124,7 +126,7 @@ export class Game {
      */
     disconnect(sessionId) {
         delete this.sessions[sessionId];
-        this.sessionRegistry.remove(sessionId);
+        this.sessionCache.remove(sessionId);
     }
 
     // ---- Messages ----
@@ -170,7 +172,7 @@ export class Game {
      * @param {string[]} chunks
      */
     _setSessionViewport(session, chunks) {
-        const {added, removed} = this.sessionRegistry.setViewport(session.id, chunks);
+        const {added, removed} = this.sessionCache.setViewport(session.id, chunks);
 
         removed.forEach(chunk => {
             session.publishEvent(new ChunkUnsubscribeEvent(chunk));
@@ -195,7 +197,7 @@ export class Game {
      * @returns {void}
      */
     _setSessionInspect(session, objectIds) {
-        const {added} = this.sessionRegistry.setInspects(session.id, objectIds);
+        const {added} = this.sessionCache.setInspects(session.id, objectIds);
         // Fill each new menu now, not on the next heartbeat.
         added.forEach(objectId => this._syncInspect(session, objectId));
     }
@@ -219,8 +221,8 @@ export class Game {
      * @returns {void}
      */
     _closeInspect(objectId) {
-        this.sessionRegistry.sessionsInspecting(objectId).forEach(sessionId => {
-            this.sessionRegistry.removeInspect(sessionId, objectId);
+        this.sessionCache.sessionsInspecting(objectId).forEach(sessionId => {
+            this.sessionCache.removeInspect(sessionId, objectId);
             this.sessions[sessionId].publishEvent(new InspectClosedEvent(objectId));
         });
     }
@@ -247,7 +249,7 @@ export class Game {
      */
     _flushEngineEvents() {
         this.simEngine.drainEvents().forEach(event => {
-            this.sessionRegistry.sessionsForChunk(event.chunk).forEach(sessionId => {
+            this.sessionCache.sessionsForChunk(event.chunk).forEach(sessionId => {
                 this.sessions[sessionId].publishEvent(event);
             });
         });
@@ -259,11 +261,11 @@ export class Game {
      * @private
      */
     _dispatchInspectEvents() {
-        this.sessionRegistry.forEachSession(sessionId => {
-            this.sessionRegistry.inspects(sessionId).forEach(objectId => {
+        this.sessionCache.forEachSession(sessionId => {
+            this.sessionCache.inspects(sessionId).forEach(objectId => {
                 const snapshot = this.simEngine.inspectSnapshot(objectId);
                 if (snapshot === null) {
-                    this.sessionRegistry.removeInspect(sessionId, objectId);
+                    this.sessionCache.removeInspect(sessionId, objectId);
                     this.sessions[sessionId].publishEvent(new InspectClosedEvent(objectId));
                     return;
                 }

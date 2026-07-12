@@ -1,26 +1,28 @@
 /**
- * The engine-agnostic session/viewport index: which chunks each session subscribes to, the diff when
+ * The engine-agnostic session/viewport cache: which chunks each session subscribes to, the diff when
  * a viewport changes, and which sessions cover a chunk (for routing events). Plain in-memory state,
- * independent of the simulation backend — replaces the SQL Session/SessionViewport tables and the
- * GetSessionsByChunk lookup.
+ * independent of the simulation backend. Also allocates session ids.
  */
-export class SessionRegistry {
+export class SessionCache {
 
     constructor() {
         // sessionId -> Set<chunk>
         this._viewports = new Map();
         // sessionId -> Set<number> of inspected object ids
         this._inspects = new Map();
+        this._nextId = 1;
     }
 
     /**
-     * Registers a session with an empty viewport and no inspected objects.
-     * @param {number} sessionId
-     * @returns {void}
+     * Allocates a session id and registers it with an empty viewport and no inspected objects.
+     * @returns {number} the new session id
      */
-    add(sessionId) {
+    add() {
+        const sessionId = this._nextId;
+        this._nextId += 1;
         this._viewports.set(sessionId, new Set());
         this._inspects.set(sessionId, new Set());
+        return sessionId;
     }
 
     /**

@@ -1,9 +1,9 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {SessionRegistry} from "@/common/SessionRegistry.js";
+import {SessionCache} from "@/common/SessionCache.js";
 
 test("setViewport reports the added/removed chunk delta", () => {
-    const registry = new SessionRegistry();
+    const registry = new SessionCache();
     registry.add(1);
 
     assert.deepEqual(registry.setViewport(1, [10, 11, 12]), {added: [10, 11, 12], removed: []});
@@ -14,7 +14,7 @@ test("setViewport reports the added/removed chunk delta", () => {
 });
 
 test("sessionsForChunk returns every session covering a chunk", () => {
-    const registry = new SessionRegistry();
+    const registry = new SessionCache();
     registry.add(1);
     registry.add(2);
     registry.setViewport(1, [10, 11]);
@@ -28,7 +28,7 @@ test("sessionsForChunk returns every session covering a chunk", () => {
 });
 
 test("remove drops a session from routing", () => {
-    const registry = new SessionRegistry();
+    const registry = new SessionCache();
     registry.add(1);
     registry.setViewport(1, [10]);
     registry.remove(1);

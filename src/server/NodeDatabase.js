@@ -11,7 +11,6 @@ export class NodeDatabase extends AbstractDatabase {
     async init() {
         this.db = new BetterSqlite3(":memory:");
         this.schema.pragma.forEach(sql => this.db.exec(sql));
-        this.schema.initSchema.forEach(sql => this.db.exec(sql));
         this._postInit();
     }
 
