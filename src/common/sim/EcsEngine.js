@@ -1,8 +1,7 @@
 import {createWorld, addEntity, addComponent} from "bitecs";
 import {SimEngine} from "@/common/sim/SimEngine.js";
 import {TickPhase} from "@/common/core.js";
-import {BufferedEvent} from "@/common/BufferedEvent.js";
-import {CHUNK_SIZE, BUFFERED_EVENT_TYPE_PORT_ITEM_SET, BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR} from "@/common/constants.js";
+import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
 // Port.item sentinel for an empty port (item types are >= 0, so -1 is unambiguous).
 export const EMPTY = -1;
@@ -121,12 +120,7 @@ export class EcsEngine extends SimEngine {
      */
     _emitRender() {
         this._pendingClear.forEach((position, eid) => {
-            this.emitEvent(new BufferedEvent({
-                type: BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
-                routing_chunk_x: Math.floor(position.x / CHUNK_SIZE),
-                routing_chunk_y: Math.floor(position.y / CHUNK_SIZE),
-                id: BigInt(eid),
-            }));
+            this.emitEvent(new PortItemClearEvent(position.x, position.y, BigInt(eid)));
             this._portShadow.delete(eid);
         });
         this._pendingClear.clear();
@@ -137,24 +131,11 @@ export class EcsEngine extends SimEngine {
             if (item === previous) {
                 return;
             }
-            const chunkX = Math.floor(position.x / CHUNK_SIZE);
-            const chunkY = Math.floor(position.y / CHUNK_SIZE);
             if (item === EMPTY) {
-                this.emitEvent(new BufferedEvent({
-                    type: BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
-                    routing_chunk_x: chunkX,
-                    routing_chunk_y: chunkY,
-                    id: BigInt(eid),
-                }));
+                this.emitEvent(new PortItemClearEvent(position.x, position.y, BigInt(eid)));
                 this._portShadow.delete(eid);
             } else {
-                this.emitEvent(new BufferedEvent({
-                    type: BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
-                    routing_chunk_x: chunkX,
-                    routing_chunk_y: chunkY,
-                    id: BigInt(eid),
-                    a: item,
-                }));
+                this.emitEvent(new PortItemSetEvent(position.x, position.y, BigInt(eid), item));
                 this._portShadow.set(eid, item);
             }
         });

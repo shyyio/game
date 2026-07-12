@@ -4,19 +4,22 @@ import {chunkId} from "@/common/util.js";
 import {EMPTY} from "@/common/sim/EcsEngine.js";
 // Layering debt: the ECS content modules live in common/sim/ but emit mod-owned belt events. They
 // belong in mods/Logistics/ (see project_bitecs_migration memory); this import crosses the layer for now.
-import {BeltInsertEvent, BeltSyncEvent, BeltDeleteEvent, BeltPathRecalculateEvent} from "./events.js";
+import {
+    BeltInsertEvent,
+    BeltSyncEvent,
+    BeltDeleteEvent,
+    BeltPathRecalculateEvent,
+    BeltItemUpsertEvent,
+    BeltItemSyncEvent,
+    BeltItemDeleteEvent,
+    BeltItemResetEvent,
+} from "./events.js";
 import {
     BELT_NORMAL,
     BELT_RAMP_DOWN,
     BELT_RAMP_UP,
     BELT_UNDERGROUND,
-    BUFFERED_EVENT_TYPE_ITEM_UPSERT,
-    BUFFERED_EVENT_TYPE_ITEM_SYNC,
-    BUFFERED_EVENT_TYPE_ITEM_DELETE,
-    BUFFERED_EVENT_TYPE_ITEM_RESET,
 } from "./constants.js";
-import {CHUNK_SIZE} from "@/common/constants.js";
-import {BufferedEvent} from "@/common/BufferedEvent.js";
 
 // A gap run in a path's RLE item list (empty half-tiles between items).
 const GAP = 0;
@@ -320,11 +323,11 @@ export class BeltModule {
     }
 
     /**
-     * The client path id (head belt id) and head-tile routing chunk, or null for a synthetic path
-     * without belts (test-only addPath), which emits no client events.
+     * The client path id (head belt id) and head tile, or null for a synthetic path without belts
+     * (test-only addPath), which emits no client events.
      * @private
      * @param {object} path
-     * @returns {{pathId: BigInt, chunkX: number, chunkY: number}|null}
+     * @returns {{pathId: BigInt, x: number, y: number}|null}
      */
     _headInfo(path) {
         if (path.belts === undefined) {
@@ -333,8 +336,8 @@ export class BeltModule {
         const [x, y] = path.belts[0].split(",").map(Number);
         return {
             pathId: path.beltIds[0],
-            chunkX: Math.floor(x / CHUNK_SIZE),
-            chunkY: Math.floor(y / CHUNK_SIZE),
+            x: x,
+            y: y,
         };
     }
 
@@ -355,24 +358,17 @@ export class BeltModule {
      * @private
      * @param {object} path
      * @param {{id:BigInt, length:number, type:number}} run
-     * @param {boolean} [sync] - emit an ITEM_SYNC (client snaps the sprite in place) rather than an
-     *     ITEM_UPSERT (client glides it); used when re-syncing an edit that didn't move the item
-     * @returns {BufferedEvent|null}
+     * @param {boolean} [sync] - emit a BeltItemSyncEvent (client snaps the sprite in place) rather
+     *     than a BeltItemUpsertEvent (client glides it); used when re-syncing an edit that didn't move it
+     * @returns {BeltItemUpsertEvent|BeltItemSyncEvent|null}
      */
     _itemUpsertEvent(path, run, sync=false) {
         const head = this._headInfo(path);
         if (head === null) {
             return null;
         }
-        return new BufferedEvent({
-            type: sync ? BUFFERED_EVENT_TYPE_ITEM_SYNC : BUFFERED_EVENT_TYPE_ITEM_UPSERT,
-            routing_chunk_x: head.chunkX,
-            routing_chunk_y: head.chunkY,
-            id: head.pathId,
-            a: run.id,
-            b: run.length,
-            c: run.type,
-        });
+        const EventClass = sync ? BeltItemSyncEvent : BeltItemUpsertEvent;
+        return new EventClass(head.x, head.y, head.pathId, run.id, run.length, run.type);
     }
 
     /**
@@ -386,13 +382,7 @@ export class BeltModule {
         if (head === null) {
             return;
         }
-        this.engine.emitEvent(new BufferedEvent({
-            type: BUFFERED_EVENT_TYPE_ITEM_DELETE,
-            routing_chunk_x: head.chunkX,
-            routing_chunk_y: head.chunkY,
-            id: head.pathId,
-            a: runId,
-        }));
+        this.engine.emitEvent(new BeltItemDeleteEvent(head.x, head.y, head.pathId, runId));
     }
 
     /**
@@ -405,12 +395,7 @@ export class BeltModule {
         if (head === null) {
             return;
         }
-        this.engine.emitEvent(new BufferedEvent({
-            type: BUFFERED_EVENT_TYPE_ITEM_RESET,
-            routing_chunk_x: head.chunkX,
-            routing_chunk_y: head.chunkY,
-            id: head.pathId,
-        }));
+        this.engine.emitEvent(new BeltItemResetEvent(head.x, head.y, head.pathId));
     }
 
     /**

@@ -71,8 +71,8 @@ export class SimEngine {
     }
 
     /**
-     * Drains this engine's buffered domain events (placement/path/delete + render deltas), for the
-     * owner to broadcast by chunk. Empty for the SQL engine (it publishes through the mods and journal).
+     * Drains this engine's domain events (placement/path/delete + render deltas), for the owner to
+     * broadcast by chunk.
      * @returns {AbstractEvent[]}
      */
     drainEvents() {

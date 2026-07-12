@@ -18,6 +18,10 @@ import {
     BeltInsertEvent,
     BeltDeleteEvent,
     BeltSyncEvent,
+    BeltItemUpsertEvent,
+    BeltItemSyncEvent,
+    BeltItemDeleteEvent,
+    BeltItemResetEvent,
 } from "./events.js";
 
 export class LogisticsMod extends AbstractMod {
@@ -29,6 +33,10 @@ export class LogisticsMod extends AbstractMod {
             BeltDeleteEvent,
             BeltPathRecalculateEvent,
             BeltSyncEvent,
+            BeltItemUpsertEvent,
+            BeltItemSyncEvent,
+            BeltItemDeleteEvent,
+            BeltItemResetEvent,
         ];
     }
 

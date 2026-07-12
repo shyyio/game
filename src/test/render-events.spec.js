@@ -2,14 +2,13 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
 import {SplitterModule} from "@/common/sim/SplitterSystems.js";
-import {BufferedEvent} from "@/common/BufferedEvent.js";
-import {BUFFERED_EVENT_TYPE_PORT_ITEM_SET, BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR} from "@/common/constants.js";
+import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
 const ITEM = 7;
 
-// A drawn out-port emits a BufferedEvent PORT_ITEM_SET when it gains a resting item and PORT_ITEM_CLEAR
-// when it loses one — the same wire events the SQL engine journals, so the client renders unchanged.
-test("rendered out-ports emit PORT_ITEM set/clear deltas on change only", async () => {
+// A drawn out-port emits a PortItemSetEvent when it gains a resting item and a PortItemClearEvent
+// when it loses one, on change only.
+test("rendered out-ports emit port-item set/clear deltas on change only", async () => {
     const engine = new EcsEngine();
     await engine.init();
     const splitter = new SplitterModule(engine);
@@ -21,10 +20,9 @@ test("rendered out-ports emit PORT_ITEM set/clear deltas on change only", async 
     engine.tickAll();
     let events = engine.drainEvents();
     assert.equal(events.length, 1);
-    assert.ok(events[0] instanceof BufferedEvent);
-    assert.equal(events[0].type, BUFFERED_EVENT_TYPE_PORT_ITEM_SET);
-    assert.equal(events[0].id, BigInt(s.out_a));
-    assert.equal(events[0].a, ITEM);
+    assert.ok(events[0] instanceof PortItemSetEvent);
+    assert.equal(events[0].portId, BigInt(s.out_a));
+    assert.equal(events[0].itemType, ITEM);
 
     engine.tickAll();
     assert.deepEqual(engine.drainEvents(), []);
@@ -33,6 +31,6 @@ test("rendered out-ports emit PORT_ITEM set/clear deltas on change only", async 
     engine.tickAll();
     events = engine.drainEvents();
     assert.equal(events.length, 1);
-    assert.equal(events[0].type, BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR);
-    assert.equal(events[0].id, BigInt(s.out_a));
+    assert.ok(events[0] instanceof PortItemClearEvent);
+    assert.equal(events[0].portId, BigInt(s.out_a));
 });

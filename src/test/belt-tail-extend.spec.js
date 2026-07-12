@@ -1,10 +1,10 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {Direction, BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR, BUFFERED_EVENT_TYPE_PORT_ITEM_SET} from "@/common/constants.js";
-import {BUFFERED_EVENT_TYPE_ITEM_SYNC} from "@/mods/Logistics/constants.js";
+import {Direction} from "@/common/constants.js";
+import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
 import {BeltModule} from "@/mods/Logistics/BeltModule.js";
-import {BeltPathRecalculateEvent} from "@/mods/Logistics/events.js";
+import {BeltPathRecalculateEvent, BeltItemSyncEvent} from "@/mods/Logistics/events.js";
 
 const RED = 1;
 
@@ -101,15 +101,15 @@ test("downstream extension emits recalc before item rows and clears the old out-
     const events = engine.drainEvents();
 
     const recalcAt = events.findIndex(event => event instanceof BeltPathRecalculateEvent);
-    // Re-synced items snap (ITEM_SYNC), not glide, since the edit didn't move them.
-    const firstItemAt = events.findIndex(event => event.type === BUFFERED_EVENT_TYPE_ITEM_SYNC);
+    // Re-synced items snap (BeltItemSyncEvent), not glide, since the edit didn't move them.
+    const firstItemAt = events.findIndex(event => event instanceof BeltItemSyncEvent);
     assert.ok(recalcAt >= 0 && firstItemAt >= 0, "both a path recalc and item rows are emitted");
     assert.ok(recalcAt < firstItemAt, "the path recalc precedes the item rows");
 
     // The tail moved, so the old out-port is gone for good — its clear flushes on the next render tick.
     engine.tickAll();
     const clearedOldOut = [...events, ...engine.drainEvents()].some(event =>
-        event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR && event.id === BigInt(oldOutPort));
+        event instanceof PortItemClearEvent && event.portId === BigInt(oldOutPort));
     assert.ok(clearedOldOut, "the old out-port's resting-item sprite is cleared");
 });
 
@@ -159,7 +159,7 @@ test("extending a path upstream leaves a resting out-port item static", async ()
 
     assert.equal(engine.portItem(outPort), RED, "the item is still in the out-port after the edit");
     const churned = [...editEvents, ...tickEvents].some(event =>
-        (event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR || event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_SET)
-        && event.id === BigInt(outPort));
+        (event instanceof PortItemClearEvent || event instanceof PortItemSetEvent)
+        && event.portId === BigInt(outPort));
     assert.ok(!churned, "the surviving out-port emits no clear/set, so its sprite stays static");
 });

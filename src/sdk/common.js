@@ -57,8 +57,8 @@ export {PlacementRejected} from "@/common/error.js";
 export {AbstractEvent} from "@/common/AbstractEvent.js";
 export {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
 
-// A drained BufferedEvent row; a mod's draw layer filters by `type` to react to tick events.
-export {BufferedEvent} from "@/common/BufferedEvent.js";
+// Engine render deltas for the item resting in a render-flagged out-port.
+export {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
 // ---- World geometry ----
 // `Direction` is the cardinal-direction enum (with rotate/dx/dy helpers).
@@ -68,8 +68,6 @@ export {
     CHUNK_SIZE,
     OCCUPANCY_LAYER_SURFACE,
     OCCUPANCY_LAYER_RESOURCE,
-    BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
-    BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
 } from "@/common/constants.js";
 
 // ---- Port wiring ----
