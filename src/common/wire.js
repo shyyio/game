@@ -1,7 +1,7 @@
 import protobuf from "protobufjs";
 
 import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
-import {BufferedEvent} from "@/common/BufferedEvent.js";
+import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
@@ -19,7 +19,8 @@ const INT64_TYPES = new Set(["int64", "uint64", "sint64", "fixed64", "sfixed64"]
  */
 const CORE_WIRE_CLASSES = [
     SetViewportMessage,
-    BufferedEvent,
+    PortItemSetEvent,
+    PortItemClearEvent,
     PlayerSettingsSyncEvent,
     PlayerSettingsUpdateEvent,
     GameSettingsSyncEvent,

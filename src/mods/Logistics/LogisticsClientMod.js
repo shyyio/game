@@ -12,23 +12,22 @@ import {
     BeltSyncEvent,
     BeltDeleteEvent,
     BeltPathRecalculateEvent,
+    BeltItemUpsertEvent,
+    BeltItemSyncEvent,
+    BeltItemDeleteEvent,
+    BeltItemResetEvent,
 } from "./events.js";
 import {
     BeltType,
     ITEM_TYPE_GAP,
-    BUFFERED_EVENT_TYPE_ITEM_UPSERT,
-    BUFFERED_EVENT_TYPE_ITEM_DELETE,
-    BUFFERED_EVENT_TYPE_ITEM_RESET,
-    BUFFERED_EVENT_TYPE_ITEM_SYNC,
 } from "./constants.js";
 import {surfaceBeltAt, walkTunnel, tunnelStep, isRamp, beltOccupancyLayer, inferBeltParent} from "./geometry.js";
 import {
     MiniMenuEntry,
     ChunkUnsubscribeEvent,
-    BufferedEvent,
+    PortItemSetEvent,
+    PortItemClearEvent,
     Direction,
-    BUFFERED_EVENT_TYPE_PORT_ITEM_SET,
-    BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
     DeleteObjectMessage,
     PORT_SPRITE_KEY,
     EasyObjectTool,
@@ -174,8 +173,15 @@ export class LogisticsClientMod extends LogisticsMod {
             this._pathDebugLayer.redraw();
             return;
         }
-        if (event instanceof BufferedEvent) {
-            this._handleBufferedEvent(event);
+        if (event instanceof PortItemSetEvent || event instanceof PortItemClearEvent) {
+            this._handlePortItemEvent(event);
+            return;
+        }
+        if (event instanceof BeltItemUpsertEvent
+            || event instanceof BeltItemSyncEvent
+            || event instanceof BeltItemDeleteEvent
+            || event instanceof BeltItemResetEvent) {
+            this._handleItemEvent(event);
         }
     }
 
@@ -197,36 +203,22 @@ export class LogisticsClientMod extends LogisticsMod {
     }
 
     /**
-     * Routes a buffered event to the belt-item or out-port-item handler by type.
-     * @param {BufferedEvent} event
-     * @private
-     */
-    _handleBufferedEvent(event) {
-        if (event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_SET
-            || event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR) {
-            this._handlePortItemEvent(event);
-            return;
-        }
-        this._handleItemEvent(event);
-    }
-
-    /**
      * Renders or removes an item resting in a belt path's out-port (the render tile is computed
      * from the path's tail belt). Splitter out-ports are static, so the engine renders those —
      * skip any port this mod doesn't own a path for.
-     * @param {BufferedEvent} event - id=out-port id, a=item type (SET only)
+     * @param {PortItemSetEvent|PortItemClearEvent} event
      * @private
      */
     _handlePortItemEvent(event) {
-        const portId = event.id;
+        const portId = event.portId;
         if (!this._outPortToPath.has(portId)) {
             return;
         }
-        if (event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR) {
+        if (event instanceof PortItemClearEvent) {
             this._itemLayer.removeItem(PORT_SPRITE_KEY(portId));
             return;
         }
-        this._renderPortItem(portId, Number(event.a));
+        this._renderPortItem(portId, event.itemType);
     }
 
     /**
@@ -312,19 +304,19 @@ export class LogisticsClientMod extends LogisticsMod {
     }
 
     /**
-     * Applies one item delta: UPSERT inserts-or-resizes a row, DELETE drops one. Either
-     * way the path's items are repositioned, since one row change shifts the whole path.
-     * @param {BufferedEvent} event - id=path, a=row id, b=length, c=type
+     * Applies one item delta: an upsert inserts-or-resizes a run, a delete drops one. Either way the
+     * path's items are repositioned, since one run change shifts the whole path.
+     * @param {BeltItemUpsertEvent|BeltItemSyncEvent|BeltItemDeleteEvent|BeltItemResetEvent} event
      * @private
      */
     _handleItemEvent(event) {
-        const pathId = event.id;
-        if (event.type === BUFFERED_EVENT_TYPE_ITEM_RESET) {
+        const pathId = event.pathId;
+        if (event instanceof BeltItemResetEvent) {
             this._resetPathItems(pathId);
             return;
         }
-        const rowId = event.a;
-        if (event.type === BUFFERED_EVENT_TYPE_ITEM_DELETE) {
+        const rowId = event.rowId;
+        if (event instanceof BeltItemDeleteEvent) {
             const rows = this._pathItems.get(pathId);
             const row = rows === undefined ? undefined : rows.get(rowId);
             this._dropDeletedItem(pathId, rowId, row);
@@ -334,18 +326,14 @@ export class LogisticsClientMod extends LogisticsMod {
             this._recomputePathItems(pathId);
             return;
         }
-        const sync = event.type === BUFFERED_EVENT_TYPE_ITEM_SYNC;
-        if (event.type !== BUFFERED_EVENT_TYPE_ITEM_UPSERT && !sync) {
-            return;
-        }
         let rows = this._pathItems.get(pathId);
         if (rows === undefined) {
             rows = new Map();
             this._pathItems.set(pathId, rows);
         }
-        rows.set(rowId, {length: Number(event.b), type: Number(event.c)});
-        // A SYNC row was only re-keyed, not moved, so place its sprite without animating.
-        this._recomputePathItems(pathId, sync);
+        rows.set(rowId, {length: event.length, type: event.itemType});
+        // A synced run was only re-keyed, not moved, so place its sprite without animating.
+        this._recomputePathItems(pathId, event instanceof BeltItemSyncEvent);
     }
 
     /**

@@ -3,13 +3,12 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {EcsEngine} from "@/common/sim/EcsEngine.js";
 import {BeltModule} from "@/mods/Logistics/BeltModule.js";
-import {BufferedEvent} from "@/common/BufferedEvent.js";
-import {BUFFERED_EVENT_TYPE_PORT_ITEM_SET} from "@/common/constants.js";
+import {PortItemSetEvent} from "@/common/PortItemEvents.js";
 
 const RED = 1;
 
-// A belt's out-port (drawn at the tail tile) emits a PORT_ITEM_SET when a popped item rests there.
-test("a belt emits a PORT_ITEM set when an item pops to its out-port", async () => {
+// A belt's out-port (drawn at the tail tile) emits a PortItemSetEvent when a popped item rests there.
+test("a belt emits a port-item set when an item pops to its out-port", async () => {
     const engine = new EcsEngine();
     await engine.init();
     const belts = new BeltModule(engine);
@@ -24,13 +23,13 @@ test("a belt emits a PORT_ITEM set when an item pops to its out-port", async () 
     for (let i = 0; i < 8; i += 1) {
         engine.tickAll();
         engine.drainEvents().forEach(event => {
-            if (event instanceof BufferedEvent && event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_SET) {
+            if (event instanceof PortItemSetEvent) {
                 sets.push(event);
             }
         });
     }
 
     assert.equal(sets.length, 1);
-    assert.equal(sets[0].id, BigInt(handle.outPort));
-    assert.equal(sets[0].a, RED);
+    assert.equal(sets[0].portId, BigInt(handle.outPort));
+    assert.equal(sets[0].itemType, RED);
 });

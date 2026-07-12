@@ -13,8 +13,6 @@ import {SetViewportMessage, SetInspectedObjectsMessage} from "@/common/CoreMessa
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
-import {BufferedEvent} from "@/common/BufferedEvent.js";
-import {BUFFERED_EVENT_TYPE_EASY_OBJECT_UPDATE} from "@/common/constants.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {TILE_SIZE, snapToChunk, MAP_MODE_SCALE_THRESHOLD, CHUNK_UNSUBSCRIBE_DELAY_MS} from "@/client/constants.js";
@@ -443,8 +441,6 @@ export class Client {
         } else if (event instanceof EasyObjectDeleteEvent) {
             this._objectPos.delete(String(event.id));
             this._lastProduced.delete(String(event.id));
-        } else if (event instanceof BufferedEvent && event.type === BUFFERED_EVENT_TYPE_EASY_OBJECT_UPDATE) {
-            this._lastProduced.set(String(event.id), Number(event.a));
         }
     }
 }

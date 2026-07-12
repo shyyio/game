@@ -3,18 +3,16 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {EcsEngine} from "@/common/sim/EcsEngine.js";
 import {BeltModule} from "@/mods/Logistics/BeltModule.js";
-import {BufferedEvent} from "@/common/BufferedEvent.js";
 import {
-    BUFFERED_EVENT_TYPE_ITEM_UPSERT,
-    BUFFERED_EVENT_TYPE_ITEM_DELETE,
-} from "@/mods/Logistics/constants.js";
+    BeltItemUpsertEvent,
+    BeltItemDeleteEvent,
+} from "@/mods/Logistics/events.js";
 
 const RED = 1;
-const ITEM_TYPES = new Set([BUFFERED_EVENT_TYPE_ITEM_UPSERT, BUFFERED_EVENT_TYPE_ITEM_DELETE]);
 
-// A moving belt item emits ITEM_UPSERT (ingest) and ITEM_DELETE (pop) keyed by path id + run id, so
-// the client renders and glides items along the belt body.
-test("a belt item emits ITEM_UPSERT on ingest and ITEM_DELETE on pop", async () => {
+// A moving belt item emits a BeltItemUpsertEvent (ingest) and BeltItemDeleteEvent (pop) keyed by
+// path id + run id, so the client renders and glides items along the belt body.
+test("a belt item emits an upsert on ingest and a delete on pop", async () => {
     const engine = new EcsEngine();
     await engine.init();
     const belts = new BeltModule(engine);
@@ -29,17 +27,17 @@ test("a belt item emits ITEM_UPSERT on ingest and ITEM_DELETE on pop", async () 
     for (let i = 0; i < 8; i += 1) {
         engine.tickAll();
         engine.drainEvents().forEach(event => {
-            if (event instanceof BufferedEvent && ITEM_TYPES.has(event.type)) {
+            if (event instanceof BeltItemUpsertEvent || event instanceof BeltItemDeleteEvent) {
                 items.push(event);
             }
         });
     }
 
-    const upserts = items.filter(event => event.type === BUFFERED_EVENT_TYPE_ITEM_UPSERT);
-    const deletes = items.filter(event => event.type === BUFFERED_EVENT_TYPE_ITEM_DELETE);
+    const upserts = items.filter(event => event instanceof BeltItemUpsertEvent);
+    const deletes = items.filter(event => event instanceof BeltItemDeleteEvent);
 
     // The item run (type RED) is upserted, and every item event is keyed to the head belt's path id (3).
-    assert.ok(upserts.some(event => event.c === RED), "the item run is upserted");
+    assert.ok(upserts.some(event => event.itemType === RED), "the item run is upserted");
     assert.ok(deletes.length > 0, "runs are deleted as the item advances/pops");
-    assert.ok(items.every(event => event.id === 3n), "all item events carry the head belt path id");
+    assert.ok(items.every(event => event.pathId === 3n), "all item events carry the head belt path id");
 });

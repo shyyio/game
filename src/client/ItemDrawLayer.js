@@ -1,9 +1,9 @@
 import {Container, Graphics, Sprite, Texture} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {TILE_SIZE} from "@/client/constants.js";
-import {Direction, BUFFERED_EVENT_TYPE_PORT_ITEM_SET, BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR} from "@/common/constants.js";
+import {Direction} from "@/common/constants.js";
 import {rotate} from "@/common/util.js";
-import {BufferedEvent} from "@/common/BufferedEvent.js";
+import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
 // Item sprites resting in out-ports share this layer with belt-path items; their keys are
 // namespaced from the path-item row-id keys so the two can't collide.
@@ -88,19 +88,19 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     onEvent(event) {
-        if (!(event instanceof BufferedEvent)) {
+        if (!(event instanceof PortItemSetEvent) && !(event instanceof PortItemClearEvent)) {
             return;
         }
         // A null placement means a port this layer doesn't own (a belt-path port, or a
-        // non-port event whose id isn't in the index) — leave it to the owning mod.
-        const placement = this._resolvePort(event.id);
+        // port whose id isn't in the index) — leave it to the owning mod.
+        const placement = this._resolvePort(event.portId);
         if (placement === null) {
             return;
         }
-        if (event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_SET) {
-            this.moveItem(PORT_SPRITE_KEY(event.id), placement.tileX, placement.tileY, true, placement.sourceDir, Number(event.a));
-        } else if (event.type === BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR) {
-            this.removeItem(PORT_SPRITE_KEY(event.id));
+        if (event instanceof PortItemSetEvent) {
+            this.moveItem(PORT_SPRITE_KEY(event.portId), placement.tileX, placement.tileY, true, placement.sourceDir, event.itemType);
+        } else {
+            this.removeItem(PORT_SPRITE_KEY(event.portId));
         }
     }
 

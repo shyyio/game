@@ -1,6 +1,4 @@
-import {BufferedEvent} from "@/common/BufferedEvent.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
-import {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
 import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent} from "@/common/PlayerSettingsEvents.js";
@@ -242,9 +240,8 @@ export class Game {
     }
 
     /**
-     * Broadcasts the engine's buffered domain events (bitECS placement/path/delete + port-item render
-     * deltas) to the sessions covering each event's chunk. A no-op for the SQL engine (it publishes
-     * through the mods and the BufferedEvent journal).
+     * Broadcasts the engine's domain events (placement/path/delete + port-item render deltas) to the
+     * sessions covering each event's chunk.
      * @private
      * @returns {void}
      */
@@ -253,21 +250,6 @@ export class Game {
             this.sessionRegistry.sessionsForChunk(event.chunk).forEach(sessionId => {
                 this.sessions[sessionId].publishEvent(event);
             });
-        });
-    }
-
-    // ---- Events ----
-
-    /**
-     * Dispatches a positioned event immediately to sessions covering its chunk, bypassing the BufferedEvent buffer.
-     * @param {AbstractTilePositionedEvent} event
-     */
-    publishEventNow(event) {
-        if (!(event instanceof AbstractTilePositionedEvent) && !(event instanceof BufferedEvent)) {
-            throw new Error(`publishEventNow requires a chunk-routable event, got ${event.constructor.name}`);
-        }
-        this.sessionRegistry.sessionsForChunk(event.chunk).forEach(sessionId => {
-            this.sessions[sessionId].publishEvent(event);
         });
     }
 

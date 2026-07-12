@@ -44,20 +44,3 @@ export const BeltBend = {
 
 // ---- Item types ----
 export const ITEM_TYPE_GAP = 0;
-
-// ---- Buffered event types ----
-// BufferedEvent `type` discriminators for the Logistics mod's item deltas. The flat type
-// space reserves 1-100 for the engine, so mod types start at 100. UPSERT inserts-or-
-// resizes a path's RLE row (id=path, a=row id, b=length, c=type); DELETE drops one
-// (a=row id). The client keeps each path's rows and derives item positions from them.
-export const BUFFERED_EVENT_TYPE_ITEM_UPSERT = 100;
-export const BUFFERED_EVENT_TYPE_ITEM_DELETE = 101;
-
-// A path's items were re-rowed (a belt edit, or a fresh viewer). RESET (id=path)
-// clears the client's old rows, then the path's rows are re-emitted as SYNCs in the
-// same drain — an atomic swap, no flicker.
-export const BUFFERED_EVENT_TYPE_ITEM_RESET = 102;
-
-// Like UPSERT (id=path, a=row id, b=length, c=type), but for a re-sync after RESET: the
-// row was only re-keyed, not moved, so the client places the sprite without animating it.
-export const BUFFERED_EVENT_TYPE_ITEM_SYNC = 103;

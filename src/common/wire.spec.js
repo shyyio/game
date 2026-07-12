@@ -5,7 +5,7 @@ import {ModRegistry} from "@/common/ModRegistry.js";
 import {WireRegistry} from "@/common/wire.js";
 
 import {SetViewportMessage} from "@/common/CoreMessages.js";
-import {BufferedEvent} from "@/common/BufferedEvent.js";
+import {PortItemSetEvent} from "@/common/PortItemEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
@@ -40,13 +40,9 @@ test("Round-trips a SetViewportMessage", () => {
     roundTrip(reg, new SetViewportMessage([0, 1, chunkId(-64, 128)]), SetViewportMessage);
 });
 
-test("Round-trips a fully-populated BufferedEvent with BigInt fields", () => {
+test("Round-trips a PortItemSetEvent with a BigInt port id", () => {
     const reg = registry();
-    const event = new BufferedEvent({
-        type: 3,
-        id: 9999999999999999n, a: 8n, b: 0n, c: null,
-    });
-    roundTrip(reg, event, BufferedEvent);
+    roundTrip(reg, new PortItemSetEvent(12, -5, 9999999999999999n, 8), PortItemSetEvent);
 });
 
 test("Round-trips chunk subscribe/unsubscribe events, recovering the chunk id", () => {
@@ -89,9 +85,9 @@ test("Round-trips player/game settings events", () => {
 test("Decoded BigInt id is an exact, lossless BigInt", () => {
     const reg = registry();
     const id = 9007199254740993n; // 2^53 + 1, beyond Number precision
-    const decoded = reg.decode(reg.encode(new BufferedEvent({type: 0, id})));
-    assert.strictEqual(typeof decoded.id, "bigint");
-    assert.strictEqual(decoded.id, id);
+    const decoded = reg.decode(reg.encode(new PortItemSetEvent(0, 0, id, 1)));
+    assert.strictEqual(typeof decoded.portId, "bigint");
+    assert.strictEqual(decoded.portId, id);
 });
 
 test("Throws on an unregistered class", () => {
