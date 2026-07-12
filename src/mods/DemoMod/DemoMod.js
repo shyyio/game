@@ -1,12 +1,9 @@
 // Reference mod: a 1x1 furnace that "cooks" one input item into an output (or Junk when the item has
-// no recipe), sharing its ports with adjacent belts. Just ports + an EasyRecipeProcessor; the rest is Easy*.
+// no recipe), sharing its ports with adjacent belts. The sim runs on the bitECS MachineModule.
 import {
     AbstractMod,
-    EasyObjectPlacement,
-    EasyRecipeProcessor,
     ObjectDefinition,
     PortDefinition,
-    RecipeDefinition,
     Direction,
     DeleteObjectMessage,
     CreateObjectMessage,
@@ -31,50 +28,10 @@ export const DemoMachineDefinition = new ObjectDefinition({
     label: "Machine",
 });
 
-const VERB_COOK = 1;
-
-// A Cook furnace: gathers its one input, produces the recipe's output 2 ticks later; install sets
-// verb + tickPhases + stateColumns.
-new EasyRecipeProcessor({verb: VERB_COOK, processingTicks: 2}).install(DemoMachineDefinition);
-
 export class DemoMod extends AbstractMod {
-
-    constructor() {
-        super();
-        // Generic place/remove/sync/schema/statements for the 1x1 port-sharing machine.
-        this._placement = new EasyObjectPlacement(DemoMachineDefinition);
-    }
-
-    get schema() {
-        return this._placement.schema;
-    }
 
     get definitions() {
         return {[DemoMachineDefinition.table]: DemoMachineDefinition};
-    }
-
-    get recipes() {
-        return [
-            new RecipeDefinition(VERB_COOK, [DEMO_INPUT_ITEM_TYPE], DEMO_OUTPUT_ITEM_TYPE)
-        ];
-    }
-
-    get verbFallbacks() {
-        return [
-            {verb: VERB_COOK, output: DEMO_JUNK_ITEM_TYPE}
-        ];
-    }
-
-    get extraStatements() {
-        return this._placement.statements;
-    }
-
-    chunkSyncEvents(chunk) {
-        return this._placement.chunkSyncEvents(this.game, chunk);
-    }
-
-    onMessage(message) {
-        this._placement.handleMessage(this.game, message);
     }
 
     /**
@@ -91,6 +48,7 @@ export class DemoMod extends AbstractMod {
         });
         sim.registerMessageHandler(message => this._ecsMachineMessage(sim, message));
         sim.registerChunkSync(chunk => sim.machine.chunkSync(chunk));
+        sim.registerInspector(id => sim.machine.inspect(id));
     }
 
     /**

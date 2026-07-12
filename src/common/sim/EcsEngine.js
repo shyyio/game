@@ -54,6 +54,10 @@ export class EcsEngine extends SimEngine {
         this.renderedPorts = new Map();
         // Last emitted item per rendered port, so EMIT_RENDER emits only changes.
         this._portShadow = new Map();
+        // Ports unregistered while holding a rendered item (eid -> {x, y}): a pending clear, cancelled if
+        // the port is re-registered in the same edit (so a churned-but-surviving port stays static, no
+        // clear+set glide). Flushed by the render diff.
+        this._pendingClear = new Map();
         // Buffered domain events (placement/path/delete + port-item render deltas) awaiting broadcast by chunk.
         this._events = [];
 
@@ -90,25 +94,43 @@ export class EcsEngine extends SimEngine {
      */
     registerRenderedPort(eid, x, y) {
         this.renderedPorts.set(eid, {x, y});
+        // A re-registered port survives the edit: cancel any pending clear so its sprite stays put
+        // (item unchanged -> the diff emits nothing) instead of a clear+set that glides in a new sprite.
+        this._pendingClear.delete(eid);
     }
 
     /**
-     * Stops drawing a port (its path was removed); a final clear is emitted next tick if it held an item.
+     * Stops drawing a port (its path was removed). If it held a rendered item, the clear is deferred to
+     * the next render diff so a same-edit re-registration can cancel it (keeping a surviving port static).
      * @param {number} eid
      * @returns {void}
      */
     unregisterRenderedPort(eid) {
+        const position = this.renderedPorts.get(eid);
+        if (this._portShadow.has(eid) && position !== undefined) {
+            this._pendingClear.set(eid, position);
+        }
         this.renderedPorts.delete(eid);
-        this._portShadow.delete(eid);
     }
 
     /**
-     * EMIT_RENDER: diff each rendered port's item against the shadow, buffering a set (item appeared or
-     * changed) or clear (item left) event, then update the shadow.
+     * EMIT_RENDER: flush deferred clears (ports unregistered for good), then diff each rendered port's
+     * item against the shadow, buffering a set (item appeared or changed) or clear (item left) event.
      * @private
      * @returns {void}
      */
     _emitRender() {
+        this._pendingClear.forEach((position, eid) => {
+            this.emitEvent(new BufferedEvent({
+                type: BUFFERED_EVENT_TYPE_PORT_ITEM_CLEAR,
+                routing_chunk_x: Math.floor(position.x / CHUNK_SIZE),
+                routing_chunk_y: Math.floor(position.y / CHUNK_SIZE),
+                id: BigInt(eid),
+            }));
+            this._portShadow.delete(eid);
+        });
+        this._pendingClear.clear();
+
         this.renderedPorts.forEach((position, eid) => {
             const item = this.Port.item[eid];
             const previous = this._portShadow.has(eid) ? this._portShadow.get(eid) : EMPTY;

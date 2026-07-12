@@ -2,6 +2,7 @@ import {addEntity, addComponent} from "bitecs";
 import {TickPhase} from "@/common/core.js";
 import {chunkId} from "@/common/util.js";
 import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
+import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {EMPTY} from "@/common/sim/EcsEngine.js";
 
 const EXTRACTOR_CAPACITY = 256;
@@ -133,6 +134,36 @@ export class ExtractorModule {
                 E.remaining[eid] = EMPTY;
             }
         });
+    }
+
+    /**
+     * The extractor's current inspect snapshot, or null if no extractor has that client id. The bound
+     * resource shows as the sole (memory) input; there are no real input ports.
+     * @param {BigInt} clientId
+     * @returns {InspectHeartbeatEvent|null}
+     */
+    inspect(clientId) {
+        const eid = this._byClientId.get(clientId);
+        if (eid === undefined) {
+            return null;
+        }
+        const E = this.Extractor;
+        const resource = E.resourceType[eid];
+        const remaining = E.remaining[eid] === EMPTY ? null : E.remaining[eid];
+        const outItem = this.engine.Port.item[E.out[eid]];
+        let recipeOutput = null;
+        if (resource !== EMPTY && this.recipes.has(resource)) {
+            recipeOutput = this.recipes.get(resource);
+        }
+        return new InspectHeartbeatEvent(
+            clientId,
+            [0],
+            [resource === EMPTY ? 0 : resource],
+            remaining,
+            this.processingTicks,
+            outItem === EMPTY ? null : outItem,
+            recipeOutput,
+        );
     }
 
     /**

@@ -1,5 +1,4 @@
-import {rotate} from "@/common/util.js";
-import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
+import {OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
 import {ObjectGeometries} from "@/common/ObjectGeometry.js";
 
 export class SqlStatement {
@@ -128,11 +127,12 @@ export class ObjectDefinition {
      * @param config.outputPorts {PortDefinition[]}
      * @param config.internalPorts {PortDefinition[]}
      * @param config.geometry {string} a named geometry (key of ObjectGeometries, e.g. "1x1", "1x2")
-     * @param [config.tickPhases] {Object.<TickPhase, SqlStatement[]>}
      * @param [config.renderConnections] {boolean} whether the shared ConnectionDrawLayer draws animated
      *     stubs at this object's connected ports (belts render their own bends instead)
      * @param [config.textureName] {string|null} the object sprite's texture, used by the EasyObject layers
      * @param [config.label] {string|null} the placement tool's label
+     * @param [config.extractionTiles] {{x:number, y:number}[]|null} relative tiles an extractor draws
+     *     this resource from (a resource's extraction set), used by the client placement tool
      */
     constructor({
         table,
@@ -140,10 +140,10 @@ export class ObjectDefinition {
         outputPorts,
         internalPorts,
         geometry,
-        tickPhases={},
         renderConnections=false,
         textureName=null,
         label=null,
+        extractionTiles=null,
     }) {
         if (ObjectGeometries[geometry] === undefined) {
             throw new Error(`Unknown object geometry "${geometry}"`);
@@ -154,31 +154,15 @@ export class ObjectDefinition {
         this.internalPorts = internalPorts;
         // The named geometry; the `geometry` getter resolves it to the ObjectGeometry.
         this.geometryName = geometry;
-        this.tickPhases = tickPhases;
         this.renderConnections = renderConnections;
         this.textureName = textureName;
         this.label = label;
-        // The occupancy layer this object sits on. Objects on different layers coexist on a
-        // tile; objects on the same layer collide. Multi-layer objects override occupancyLookups.
+        // The occupancy layer this object sits on. Objects on different layers coexist on a tile.
         this.occupancyLayer = OCCUPANCY_LAYER_SURFACE;
         // Stable numeric identity assigned by ModRegistry (registration order); the wire carries it
         // and the client cache keys off this definition. Null until the registry assigns it.
         this.typeId = null;
-        // Extra non-port columns for the table (e.g. a machine's slots/processing_remaining), appended by
-        // EasyObjectPlacement.
-        this.stateColumns = [];
-        // The verb this object implements over the shared Recipes table, or null. Set by EasyRecipeProcessor.
-        this.verb = null;
-        // The on-open inspect snapshot statement, or null. Set by EasyRecipeProcessor.
-        this.inspectOneStatement = null;
-        // Post-placement hook (game, id, {x, y, direction}), or null. Set by EasyExtractor.
-        this.afterCreate = null;
-        // Placement precondition (game, {x, y, direction}) => boolean, or null (always allowed). Set
-        // by EasyExtractor to require a resource under the footprint.
-        this.canPlace = null;
-        // Relative tiles an extractor draws this object from (a resource's extraction set), or null.
-        // Set by EasyResource.
-        this.extractionTiles = null;
+        this.extractionTiles = extractionTiles;
     }
 
     /**
@@ -203,32 +187,6 @@ export class ObjectDefinition {
     }
 
     /**
-     * SQL SELECT-1 fragments matching when this object covers tile (@x, @y) on layer @layer,
-     * UNIONed by the engine into IsOccupied for placement collision. The default checks the
-     * size-derived geometry in every orientation against this object's single layer; objects
-     * whose layer depends on row state override this.
-     * @param {string} table - this object's table name
-     * @returns {string[]}
-     */
-    occupancyLookups(table) {
-        // Gather this object's occupied cells per layer across all orientations, then one SELECT per layer.
-        const byLayer = new Map();
-        [Direction.UP, Direction.RIGHT, Direction.DOWN, Direction.LEFT].forEach(direction => {
-            this.occupancyLayerTiles(direction).forEach(({layer, cells}) => {
-                if (!byLayer.has(layer)) {
-                    byLayer.set(layer, []);
-                }
-                cells.forEach(cell => {
-                    byLayer.get(layer).push(`(${table}.direction = ${direction} AND ${table}.x = @x - ${cell.x} AND ${table}.y = @y - ${cell.y})`);
-                });
-            });
-        });
-        return [...byLayer].map(([layer, conditions]) =>
-            `SELECT 1 FROM ${table} WHERE @layer = ${layer} AND (${conditions.join(" OR ")})`
-        );
-    }
-
-    /**
      * The subset of this object's `portKind` ports exposed for a record in state `data`. The
      * default is all of them; objects that bury a port in some states (a belt ramp) override this.
      * @param {("inputPorts"|"outputPorts")} portKind
@@ -250,66 +208,6 @@ export class ObjectDefinition {
     surfacePorts(portKind, data) {
         return this.activePorts(portKind, data);
     }
-
-    /**
-     * SQL SELECT fragments (one per port) resolving the Port id at tile (@x, @y) for this
-     * object's input/output ports facing `direction`, UNIONed by the engine for a
-     * position-based port lookup. The default reads each port from its own column; objects
-     * whose ports live elsewhere override this.
-     * @param {string} table - this object's table name
-     * @param {("inputPorts"|"outputPorts")} portKind
-     * @param {Direction} direction
-     * @returns {string[]}
-     */
-    portLookups(table, portKind, direction) {
-        return this[portKind].map(port => {
-            const offset = rotate(port, direction);
-            return `
-                SELECT ${table}.${port.column} AS id
-                FROM ${table}
-                    INNER JOIN Port ON Port.id = ${table}.${port.column}
-                WHERE ${table}.direction = ${direction}
-                  AND ${table}.x = @x - ${offset.x}
-                  AND ${table}.y = @y - ${offset.y}`;
-        });
-    }
-
-    /**
-     * SQL SELECT-1 fragments matching when this object references the outer Port.id through a port
-     * column — UNIONed into the DeletePortIfUnreferenced GC guard. Override if ports live elsewhere.
-     * @param {string} table
-     * @returns {string[]}
-     */
-    portReferenceLookups(table) {
-        return this._portReferenceFragment(table, [
-            ...this.inputPorts,
-            ...this.outputPorts,
-            ...this.internalPorts,
-        ]);
-    }
-
-    /**
-     * As portReferenceLookups but for OUTPUT ports only — the DeletePortIfNotOutputReferenced guard.
-     * @param {string} table
-     * @returns {string[]}
-     */
-    outputPortReferenceLookups(table) {
-        return this._portReferenceFragment(table, this.outputPorts);
-    }
-
-    /**
-     * @private
-     * @param {string} table
-     * @param {PortDefinition[]} ports
-     * @returns {string[]}
-     */
-    _portReferenceFragment(table, ports) {
-        if (ports.length === 0) {
-            return [];
-        }
-        const conditions = ports.map(port => `${table}.${port.column} = Port.id`).join(" OR ");
-        return [`SELECT 1 FROM ${table} WHERE ${conditions}`];
-    }
 }
 
 export class AbstractMod {
@@ -326,27 +224,6 @@ export class AbstractMod {
      */
     get textureDefinitions() {
 
-    }
-
-    /**
-     * @returns {SqlStatement[]}
-     */
-    get extraStatements() {
-        return [];
-    }
-
-    /**
-     * @returns string
-     */
-    get schema() {
-        return "";
-    }
-
-    /**
-     * @returns string
-     */
-    get tempSchema() {
-        return "";
     }
 
     /**
@@ -377,22 +254,6 @@ export class AbstractMod {
      */
     get itemTextures() {
         return {};
-    }
-
-    /**
-     * Recipes this mod contributes to the shared Recipes table (any mod may extend any verb).
-     * @returns {RecipeDefinition[]}
-     */
-    get recipes() {
-        return [];
-    }
-
-    /**
-     * The fallback output per verb, produced when a machine's gathered inputs match no recipe.
-     * @returns {{verb: number, output: number}[]}
-     */
-    get verbFallbacks() {
-        return [];
     }
 
     /**
@@ -431,15 +292,6 @@ export class AbstractMod {
      * @returns {InspectHighlight[]}
      */
     onInspect(tileX, tileY, client) {
-        return [];
-    }
-
-    /**
-     * Server-side hook returning the per-object events that recreate this mod's objects in a chunk.
-     * @param {number} chunk - a chunk id that just entered a viewport
-     * @returns {AbstractEvent[]}
-     */
-    chunkSyncEvents(chunk) {
         return [];
     }
 

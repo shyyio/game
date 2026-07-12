@@ -79,35 +79,14 @@ export {
 // { thisObjectsPortName -> sharedPortId }.
 export {upstreamPorts, downstreamPorts} from "@/common/portUtils.js";
 
-// Sim-side create/remove/sync flow for a port-sharing object placed by a Create<T>Message; a mod
-// composes one per object type and delegates onMessage/chunkSyncEvents to it. "Easy" = the
-// base-case helper most mods build on (vs bespoke belt placement).
-export {EasyObjectPlacement} from "@/common/EasyObjectPlacement.js";
-
-// Base-case machine behavior: implement one verb over the shared Recipes table — gather one input per
-// port, match the set (fallback when none), then after a countdown create the output, all via transfer
-// intents. Build it, then `install(definition)` to set the definition's verb/tickPhases/stateColumns.
-export {EasyRecipeProcessor} from "@/common/EasyRecipeProcessor.js";
-
-// Sim-side place/remove/sync for a passive, portless resource an extractor draws from; wraps an
-// EasyObjectPlacement and contributes a ResourceCoverAt fragment mapping extraction tiles to a type.
-export {EasyResource} from "@/common/EasyResource.js";
-
-// Base-case extractor: a producer whose fixed input is the resource under it (bound at placement),
-// looked up in the verb's Recipes and produced on a countdown. Build it, then `install(definition)`.
-export {EasyExtractor} from "@/common/EasyExtractor.js";
-
 // Rotates a `{x, y}` offset (a port or size vector) by a placement direction, so a mod
 // can compute where an object's ports/geometry land from its ObjectDefinition.
 export {rotate} from "@/common/util.js";
 
 // ---- Chunk ids ----
-// A chunk is identified by an integer ordinal id (its index within the region).
-// `chunkId(tileX, tileY)` computes that id in JS; `CHUNK_ID_SQL` is the equivalent
-// SQL expression for use inside a mod's table schema (e.g. a generated `chunk`
-// column).
+// A chunk is identified by an integer ordinal id (its index within the region);
+// `chunkId(tileX, tileY)` computes that id in JS.
 export {chunkId} from "@/common/util.js";
-export {CHUNK_ID_SQL, CHUNK_COORD_SQL} from "@/common/DatabaseSchema.js";
 
 // ---- Textures ----
 // Describes a texture atlas (image + frame data) a mod contributes.

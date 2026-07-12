@@ -1,12 +1,12 @@
 import {BufferedEvent} from "@/common/BufferedEvent.js";
-import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
+import {ChunkSubscribeEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
 import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
+import {InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
 import {WireRegistry} from "@/common/wire.js";
-import {SqlSimEngine} from "@/common/sim/SqlSimEngine.js";
+import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
 import {SessionRegistry} from "@/common/SessionRegistry.js";
 
 export class Game {
@@ -14,22 +14,17 @@ export class Game {
     /**
      * @param {ModRegistry} modRegistry
      * @param {AbstractDatabase} database
-     */
-    /**
-     * @param {ModRegistry} modRegistry
-     * @param {AbstractDatabase} database
-     * @param {SimEngine} [simEngine] - the simulation engine; defaults to the SQL tick pipeline
+     * @param {SimEngine} [simEngine] - the simulation engine; defaults to the bitECS engine
      */
     constructor(modRegistry, database, simEngine) {
         this.db = database;
         this.modRegistry = modRegistry;
 
         /**
-         * The simulation engine the tick pipeline runs through. Wraps the SQL pipeline by default; the
-         * seam a bitECS engine takes over behind.
+         * The bitECS simulation engine the tick pipeline runs through.
          * @type {SimEngine}
          */
-        this.simEngine = simEngine === undefined ? new SqlSimEngine(database) : simEngine;
+        this.simEngine = simEngine === undefined ? new EcsSimEngine(modRegistry) : simEngine;
 
         /**
          * Protobuf wire codec registry, shared by sessions to encode/decode
@@ -130,8 +125,6 @@ export class Game {
      * @param {number} sessionId
      */
     disconnect(sessionId) {
-        this.exec("DeleteSessionViewport", {session_id: sessionId});
-        this.exec("DeleteSessionInspect", {session_id: sessionId});
         delete this.sessions[sessionId];
         this.sessionRegistry.remove(sessionId);
     }
@@ -156,13 +149,16 @@ export class Game {
 
         // A bitECS engine handles sim messages directly; the SQL path defers to the mods.
         if (this.simEngine.applyMessage(message)) {
+            // Close menus after the object is actually deleted, never before.
+            if (message instanceof DeleteObjectMessage) {
+                this._closeInspect(message.id);
+            }
             this._flushEngineEvents();
             return;
         }
 
         this.modRegistry.dispatchMessage(message);
 
-        // Close menus after the object is actually deleted, never before.
         if (message instanceof DeleteObjectMessage) {
             this._closeInspect(message.id);
         }
@@ -176,26 +172,16 @@ export class Game {
      * @param {string[]} chunks
      */
     _setSessionViewport(session, chunks) {
-        // The registry owns the diff; the SQL SessionViewport rows are kept in step so the SQL tick's
-        // viewport-gated emit ops still read them.
         const {added, removed} = this.sessionRegistry.setViewport(session.id, chunks);
 
         removed.forEach(chunk => {
-            this.exec("DeleteSessionViewportChunk", {session_id: session.id, chunk});
             session.publishEvent(new ChunkUnsubscribeEvent(chunk));
         });
 
         added.forEach(chunk => {
-            this.exec("InsertSessionViewport", {session_id: session.id, chunk});
             session.publishEvent(new ChunkSubscribeEvent(chunk));
 
-            const syncEvents = this.modRegistry.chunkSyncEvents(chunk);
-            if (syncEvents.length > 0) {
-                session.publishEvent(new ChunkSyncEvent(chunk, syncEvents));
-            }
-
-            // The bitECS engine recreates its objects/items in the chunk directly (a no-op for the SQL
-            // engine, whose objects come through the mods' chunkSyncEvents above).
+            // The bitECS engine recreates its objects/items in the newly visible chunk.
             this.simEngine.chunkSync(chunk).forEach(event => {
                 session.publishEvent(event);
             });
@@ -211,43 +197,22 @@ export class Game {
      * @returns {void}
      */
     _setSessionInspect(session, objectIds) {
-        // Keyed by string id (dedups the message) mapping to the BigInt to bind.
-        const requested = new Map(objectIds.map(id => [String(id), id]));
-        const currentRows = this.query("GetSessionInspect", {session_id: session.id});
-        const current = new Set(currentRows.map(row => String(row.object_id)));
-
-        current.forEach(objectId => {
-            if (requested.has(objectId)) {
-                return;
-            }
-            this.exec("DeleteSessionInspectObject", {session_id: session.id, object_id: objectId});
-        });
-
-        requested.forEach((objectId, key) => {
-            if (current.has(key)) {
-                return;
-            }
-            this.exec("InsertSessionInspect", {session_id: session.id, object_id: objectId});
-            // Fill the new menu now, not on the next heartbeat.
-            this._syncInspect(session, objectId);
-        });
+        const {added} = this.sessionRegistry.setInspects(session.id, objectIds);
+        // Fill each new menu now, not on the next heartbeat.
+        added.forEach(objectId => this._syncInspect(session, objectId));
     }
 
     /**
-     * Sends a session one machine's current snapshot when its menu opens.
+     * Sends a session one object's current snapshot when its menu opens.
      * @param {AbstractSession} session
      * @param {BigInt} objectId
      * @returns {void}
      */
     _syncInspect(session, objectId) {
-        this.db.schema.inspectStatements.forEach(name => {
-            this.exec(name, {object_id: objectId});
-        });
-        const rows = this.query("GetInspectSnapshotRows");
-        rows.forEach(row => {
-            session.publishEvent(new InspectHeartbeatEvent(row));
-        });
-        this.exec("TruncateBufferedInspectHeartbeatEvent");
+        const snapshot = this.simEngine.inspectSnapshot(objectId);
+        if (snapshot !== null) {
+            session.publishEvent(snapshot);
+        }
     }
 
     /**
@@ -256,10 +221,9 @@ export class Game {
      * @returns {void}
      */
     _closeInspect(objectId) {
-        const sessions = this.query("GetSessionsInspectingObject", {object_id: objectId});
-        this.exec("DeleteInspectObject", {object_id: objectId});
-        sessions.forEach(row => {
-            this.sessions[row.session_id].publishEvent(new InspectClosedEvent(objectId));
+        this.sessionRegistry.sessionsInspecting(objectId).forEach(sessionId => {
+            this.sessionRegistry.removeInspect(sessionId, objectId);
+            this.sessions[sessionId].publishEvent(new InspectClosedEvent(objectId));
         });
     }
 
@@ -273,7 +237,6 @@ export class Game {
     }
 
     postTick() {
-        this._dispatchBufferedEvents();
         this._dispatchInspectEvents();
         this._flushEngineEvents();
     }
@@ -309,28 +272,21 @@ export class Game {
     }
 
     /**
-     * Dispatches each session its viewport's buffered events, then clears the journal.
-     * @private
-     */
-    _dispatchBufferedEvents() {
-        const rows = this.query("GetSessionEvents");
-
-        rows.forEach(row => {
-            this.sessions[row.session_id].publishEvent(new BufferedEvent(row));
-        });
-        this.exec("TruncateBufferedEvent");
-    }
-
-    /**
-     * Sends this tick's machine snapshots to each subscribing session, then clears them.
+     * Sends each subscribing session this tick's snapshot of every object it inspects, closing menus
+     * for any object that has since been removed.
      * @private
      */
     _dispatchInspectEvents() {
-        const rows = this.query("GetSessionInspectEvents");
-
-        rows.forEach(row => {
-            this.sessions[row.session_id].publishEvent(new InspectHeartbeatEvent(row));
+        this.sessionRegistry.forEachSession(sessionId => {
+            this.sessionRegistry.inspects(sessionId).forEach(objectId => {
+                const snapshot = this.simEngine.inspectSnapshot(objectId);
+                if (snapshot === null) {
+                    this.sessionRegistry.removeInspect(sessionId, objectId);
+                    this.sessions[sessionId].publishEvent(new InspectClosedEvent(objectId));
+                    return;
+                }
+                this.sessions[sessionId].publishEvent(snapshot);
+            });
         });
-        this.exec("TruncateBufferedInspectHeartbeatEvent");
     }
 }
