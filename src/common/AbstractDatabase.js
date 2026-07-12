@@ -32,13 +32,11 @@ export class AbstractDatabase {
     }
 
     /**
-     * Runs each mod's temp schema then prepares every statement, seeding profiling.
+     * Prepares every statement, seeding profiling.
      * @protected
      * @returns {void}
      */
     _postInit() {
-        this.schema.tempSchema.forEach(sql => this.rawExec(sql));
-
         Object.entries(this.schema.preparedStatements).forEach(([name, sql]) => {
             try {
                 this.statements[name] = this._prepareStatement(sql);
