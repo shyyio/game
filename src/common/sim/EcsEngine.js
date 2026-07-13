@@ -1,4 +1,4 @@
-import {createWorld, addEntity, addComponent, removeEntity, query} from "bitecs";
+import {createWorld, addEntity, addComponent, removeEntity, entityExists, query} from "bitecs";
 import {TickPhase} from "@/common/core.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
@@ -75,6 +75,9 @@ export class EcsEngine {
         // Flat global counters that survive a save (mods stash their own here, e.g. beltNextRunId).
         this.globals = {};
 
+        // Hooks returning the port eids a module still references in JS-only runtime state (belt paths),
+        // so the port sweep keeps them alive — object ports are found by scanning component eid fields.
+        this._portPins = [];
         // Hooks a module registers to rebuild its derived indexes after deserialize repopulates the world.
         this._rebuildHooks = [];
         // Hooks run at the start of serialize, letting a bespoke module (belts) flush JS-only runtime
@@ -280,9 +283,12 @@ export class EcsEngine {
      * this so their state round-trips with no bespoke save code.
      * @param {string} name
      * @param {{name:string, kind?:string, fill?:number}[]} fieldSpecs
+     * @param {{snapshotOnly?:boolean}} [options] - snapshotOnly components hold state materialized at
+     *     save (belt paths), not kept in sync during play, so the port sweep ignores their eid fields
+     *     (the module's live pin hook is authoritative instead)
      * @returns {{name:string, fields:object[], store:object, capacity:number}}
      */
-    defineComponent(name, fieldSpecs) {
+    defineComponent(name, fieldSpecs, {snapshotOnly=false}={}) {
         const fields = fieldSpecs.map(spec => ({
             name: spec.name,
             kind: spec.kind === undefined ? "i32" : spec.kind,
@@ -292,7 +298,7 @@ export class EcsEngine {
         fields.forEach(field => {
             store[field.name] = new Int32Array(PORT_CAPACITY).fill(field.fill);
         });
-        const def = {name, fields, store, capacity: PORT_CAPACITY};
+        const def = {name, fields, store, capacity: PORT_CAPACITY, snapshotOnly};
         this._components.push(def);
         this._componentByName.set(name, def);
         return def;
@@ -341,7 +347,7 @@ export class EcsEngine {
      * @param {number} [item]
      * @returns {number} the port eid
      */
-    addPort(item=EMPTY) {
+    createPort(item=EMPTY) {
         const eid = addEntity(this.world);
         this._addComponent(this._portDef, eid);
         this.Port.item[eid] = item;
@@ -361,7 +367,7 @@ export class EcsEngine {
         const key = `${x},${y},${direction}`;
         let eid = this._portsByEdge.get(key);
         if (eid === undefined) {
-            eid = this.addPort();
+            eid = this.createPort();
             this.Port.edgeX[eid] = x;
             this.Port.edgeY[eid] = y;
             this.Port.edgeDirection[eid] = direction;
@@ -381,7 +387,7 @@ export class EcsEngine {
 
     /**
      * Marks each cell occupied, one Occupancy entity per newly taken cell, tagged with `owner` so
-     * {@link releaseOwner} can free them all on delete.
+     * {@link destroyOwnerCells} can destroy them all on delete.
      * @param {{x:number, y:number, layer:string}[]} cells
      * @param {number} [owner] - the owning object id
      * @returns {void}
@@ -404,11 +410,11 @@ export class EcsEngine {
     }
 
     /**
-     * Frees each cell.
+     * Destroys each cell.
      * @param {{x:number, y:number, layer:string}[]} cells
      * @returns {void}
      */
-    release(cells) {
+    destroyCells(cells) {
         cells.forEach(cell => {
             const key = `${cell.x},${cell.y},${cell.layer}`;
             const eid = this._cellByKey.get(key);
@@ -420,17 +426,71 @@ export class EcsEngine {
     }
 
     /**
-     * Frees every cell an object occupied, keyed by the owner id passed to {@link occupy}.
+     * Destroys every cell an object occupied, keyed by the owner id passed to {@link occupy}.
      * @param {number} owner
      * @returns {void}
      */
-    releaseOwner(owner) {
+    destroyOwnerCells(owner) {
         const store = this._occupancyDef.store;
         query(this.world, [store]).forEach(eid => {
             if (store.owner[eid] === owner) {
                 this._cellByKey.delete(`${store.x[eid]},${store.y[eid]},${LAYER_NAME[store.layer[eid]]}`);
                 removeEntity(this.world, eid);
             }
+        });
+    }
+
+    /**
+     * A module registers a hook returning the port eids its JS-only runtime state still references
+     * (belt paths hold their end ports outside any component), so {@link collectUnreferencedPorts}
+     * keeps them.
+     * @param {function(): Iterable<number>} hook
+     * @returns {void}
+     */
+    registerPortPin(hook) {
+        this._portPins.push(hook);
+    }
+
+    /**
+     * Destroys every port no live entity or module references: scans all component eid fields (object
+     * ports) plus the pin hooks (belt runtime ports), then removes any port outside that set — destroying
+     * the edges a deleted object or belt left behind.
+     * @returns {void}
+     */
+    collectUnreferencedPorts() {
+        const referenced = new Set();
+        this._components.forEach(def => {
+            if (def.snapshotOnly) {
+                return;
+            }
+            const eidFields = def.fields.filter(field => field.kind === "eid");
+            if (eidFields.length === 0) {
+                return;
+            }
+            query(this.world, [def.store]).forEach(eid => {
+                eidFields.forEach(field => {
+                    const target = def.store[field.name][eid];
+                    if (target !== NO_EID) {
+                        referenced.add(target);
+                    }
+                });
+            });
+        });
+        this._portPins.forEach(hook => {
+            Array.from(hook()).forEach(eid => referenced.add(eid));
+        });
+
+        query(this.world, [this._portDef.store]).forEach(eid => {
+            if (referenced.has(eid)) {
+                return;
+            }
+            if (this.Port.edgeDirection[eid] !== NO_EID) {
+                this._portsByEdge.delete(`${this.Port.edgeX[eid]},${this.Port.edgeY[eid]},${this.Port.edgeDirection[eid]}`);
+            }
+            this.renderedPorts.delete(eid);
+            this._portShadow.delete(eid);
+            this._pendingClear.delete(eid);
+            removeEntity(this.world, eid);
         });
     }
 
@@ -446,12 +506,14 @@ export class EcsEngine {
     }
 
     /**
-     * Removes an entity (and all its components) from the world.
+     * Removes an entity (and all its components) from the world; a no-op for an already-destroyed eid.
      * @param {number} eid
      * @returns {void}
      */
     destroyEntity(eid) {
-        removeEntity(this.world, eid);
+        if (entityExists(this.world, eid)) {
+            removeEntity(this.world, eid);
+        }
     }
 
     /**
@@ -464,10 +526,10 @@ export class EcsEngine {
     }
 
     /**
-     * Allocates the next global client-facing object id.
+     * Creates the next global client-facing object id.
      * @returns {number}
      */
-    allocateObjectId() {
+    createObjectId() {
         const id = this._nextObjectId;
         this._nextObjectId += 1;
         return id;
@@ -712,6 +774,12 @@ export class EcsEngine {
         });
         this._portsByEdge = new Map();
         this._cellByKey = new Map();
+        // Drop the prior world's render/tick state so its stale eids never leak into the new world.
+        this.renderedPorts = new Map();
+        this._portShadow = new Map();
+        this._pendingClear = new Map();
+        this._events = [];
+        this._resetTick();
 
         // Every eid that appears (as a row's own eid or an eid-field target) needs a fresh entity.
         const referenced = new Set();
@@ -742,8 +810,8 @@ export class EcsEngine {
         });
 
         this._nextObjectId = snapshot.globals.nextObjectId;
-        Object.keys(this.globals).forEach(key => {
-            if (Object.prototype.hasOwnProperty.call(snapshot.globals, key)) {
+        Object.keys(snapshot.globals).forEach(key => {
+            if (key !== "nextObjectId") {
                 this.globals[key] = snapshot.globals[key];
             }
         });

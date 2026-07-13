@@ -91,6 +91,10 @@ export class EcsSimEngine {
     applyMessage(message) {
         if (message instanceof DeleteObjectMessage) {
             this.untrack(message.id);
+            const handled = this._messageHandlers.some(handler => handler(message));
+            // A delete (and any belt relink it triggered) can strand ports; destroy them now.
+            this.engine.collectUnreferencedPorts();
+            return handled;
         }
         return this._messageHandlers.some(handler => handler(message));
     }
@@ -164,7 +168,7 @@ export class EcsSimEngine {
     }
 
     /**
-     * Occupies a placed object's footprint, tagged with its client id so a delete frees it.
+     * Occupies a placed object's footprint, tagged with its client id so a delete destroys it.
      * @param {number} clientId
      * @param {{x:number, y:number, layer:string}[]} footprint
      * @returns {void}
@@ -174,12 +178,12 @@ export class EcsSimEngine {
     }
 
     /**
-     * Frees a deleted object's footprint.
+     * Destroys a deleted object's footprint.
      * @param {number} clientId
      * @returns {void}
      */
     untrack(clientId) {
-        this.engine.releaseOwner(clientId);
+        this.engine.destroyOwnerCells(clientId);
     }
 
     /**

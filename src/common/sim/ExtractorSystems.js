@@ -80,7 +80,7 @@ export class ExtractorModule {
         E.out[eid] = outPort;
         E.resourceType[eid] = resourceType;
 
-        const clientId = this.engine.allocateObjectId();
+        const clientId = this.engine.createObjectId();
         E.clientId[eid] = clientId;
         E.x[eid] = x;
         E.y[eid] = y;

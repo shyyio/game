@@ -161,7 +161,7 @@ export class Game {
     /**
      * Diffs the session's viewport against the requested chunks so a pan only syncs the delta.
      * @param {AbstractSession} session
-     * @param {string[]} chunks
+     * @param {number[]} chunks
      */
     _setSessionViewport(session, chunks) {
         const {added, removed} = this.sessionCache.setViewport(session.id, chunks);
