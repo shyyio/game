@@ -1,7 +1,18 @@
 import {createWorld, addEntity, addComponent, removeEntity, query} from "bitecs";
-import {SimEngine} from "@/common/sim/SimEngine.js";
 import {TickPhase} from "@/common/core.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
+
+// The tick phases run in order each whole tick.
+export const TICK_PHASE_ORDER = [
+    TickPhase.SUBMIT_INTENTS,
+    TickPhase.RESOLVE_TRANSFERS,
+    TickPhase.CONSUME_INPUTS,
+    TickPhase.POST_RESOLVE,
+    TickPhase.PRODUCE_OUTPUTS,
+    TickPhase.COMMIT_TRANSFERS,
+    TickPhase.EMIT_RENDER,
+    TickPhase.EMIT_INSPECT,
+];
 
 // Port.item sentinel for an empty port (item types are >= 0, so -1 is unambiguous).
 export const EMPTY = -1;
@@ -17,15 +28,12 @@ const LAYER_CODE = {S: 0, U0: 1, U1: 2};
 const LAYER_NAME = ["S", "U0", "U1"];
 
 /**
- * bitECS-backed simulation runtime. This slice implements the port-transfer core (the SQL
- * ResolvePortTransfer pipeline) over typed-array component storage; mods are migrated onto it phase
- * by phase behind the shared {@link SimEngine} contract.
+ * bitECS-backed simulation world: the port-transfer core over typed-array component storage, plus the
+ * occupancy/port indexes and (de)serialization. Mods register their systems on it via {@link EcsSimEngine}.
  */
-export class EcsEngine extends SimEngine {
+export class EcsEngine {
 
     constructor() {
-        super();
-
         /**
          * @type {World|null}
          */
@@ -192,6 +200,16 @@ export class EcsEngine extends SimEngine {
     tick(phase) {
         this.systems[phase].forEach(system => {
             system();
+        });
+    }
+
+    /**
+     * Runs a whole tick (every phase in order).
+     * @returns {void}
+     */
+    tickAll() {
+        TICK_PHASE_ORDER.forEach(phase => {
+            this.tick(phase);
         });
     }
 
@@ -488,8 +506,8 @@ export class EcsEngine extends SimEngine {
     }
 
     /**
-     * Resolves this tick's intents into ResolvedPortTransfer rows, replacing the SQL recursive-CTE
-     * ResolvePortTransfer with a linear backward propagation over the functional transfer graph.
+     * Resolves this tick's intents into resolved transfers via a linear backward propagation over the
+     * functional transfer graph.
      * @returns {void}
      */
     resolvePortTransfer() {
@@ -595,7 +613,7 @@ export class EcsEngine extends SimEngine {
 
     /**
      * CONSUME_INPUTS: drains resolved managed sinks. Runs before POST_RESOLVE so a producer feeding
-     * the same port refills it the same tick (matches the SQL FlushResolvedSink placement).
+     * the same port refills it the same tick.
      * @returns {void}
      */
     flushSinks() {
@@ -623,8 +641,7 @@ export class EcsEngine extends SimEngine {
     }
 
     /**
-     * The resolved real transfers (both ends real ports) as "source->dest", ordered by source —
-     * mirrors the SQL portTransfer spec's ResolvedPortTransfer readout.
+     * The resolved real transfers (both ends real ports) as "source->dest", ordered by source.
      * @returns {string}
      */
     resolvedEdges() {

@@ -13,7 +13,7 @@ function cell(x, y, layer=0) {
 
 // A 1x1 object with one input on its tile and one output one tile ahead, both facing UP.
 const machineDefinition = new ObjectDefinition({
-    table: "Machine",
+    name: "Machine",
     inputPorts: [new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP})],
     outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
     internalPorts: [],

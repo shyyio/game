@@ -8,8 +8,7 @@ export const Direction = {
     LEFT: 3,
 
     /**
-     * A direction's capitalized name (Up, Right, Down, Left) — the suffix of the
-     * position-keyed port-lookup statements (GetInPortUp, ...).
+     * A direction's capitalized name (Up, Right, Down, Left).
      * @param {Direction} direction
      * @returns {string}
      */

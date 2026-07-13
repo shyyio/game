@@ -21,14 +21,6 @@ export class PortDefinition {
             this.direction = null;
         }
     }
-
-    /**
-     * The SQL column backing this port: its name with an `_id` suffix (it holds a Port id).
-     * @returns {string}
-     */
-    get column() {
-        return `${this.name}_id`;
-    }
 }
 /**
  * @enum
@@ -41,7 +33,7 @@ export const TickPhase = {
     SUBMIT_INTENTS: 1,
 
     /**
-     * (internal) Resolve initial transfer intents and save the result in a temp table
+     * (internal) Resolve the submitted transfer intents into this tick's moves
      */
     RESOLVE_TRANSFERS: 2,
 
@@ -61,7 +53,7 @@ export const TickPhase = {
     PRODUCE_OUTPUTS: 5,
 
     /**
-     * (internal) Flush transfers to Port
+     * (internal) Commit the resolved moves to the ports
      */
     COMMIT_TRANSFERS: 6,
 
@@ -72,8 +64,7 @@ export const TickPhase = {
     EMIT_RENDER: 7,
 
     /**
-     * Mods snapshot inspected machines (joined on SessionInspect) here; the engine drains them to
-     * sessions in postTick.
+     * Mods snapshot inspected machines here; the engine drains them to sessions in postTick.
      */
     EMIT_INSPECT: 8,
 }
@@ -110,7 +101,7 @@ export class ObjectDefinition {
 
     /**
      * @param config {object}
-     * @param config.table {string} the table instances of this type live in (also the definitions key)
+     * @param config.name {string} the object type name (also the definitions-map key)
      * @param config.inputPorts {PortDefinition[]}
      * @param config.outputPorts {PortDefinition[]}
      * @param config.internalPorts {PortDefinition[]}
@@ -123,7 +114,7 @@ export class ObjectDefinition {
      *     this resource from (a resource's extraction set), used by the client placement tool
      */
     constructor({
-        table,
+        name,
         inputPorts,
         outputPorts,
         internalPorts,
@@ -136,7 +127,7 @@ export class ObjectDefinition {
         if (ObjectGeometries[geometry] === undefined) {
             throw new Error(`Unknown object geometry "${geometry}"`);
         }
-        this.table = table;
+        this.name = name;
         this.inputPorts = inputPorts;
         this.outputPorts = outputPorts;
         this.internalPorts = internalPorts;
@@ -253,8 +244,7 @@ export class AbstractMod {
 
     /**
      * Registers this mod's bitECS content (modules, message handlers, chunk-sync contributors) on the
-     * engine, mirroring what the SQL path gets from schema/statements/onMessage/collectChunkSync. The
-     * default registers nothing.
+     * engine. The default registers nothing.
      * @param {EcsSimEngine} sim
      * @returns {void}
      */

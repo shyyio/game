@@ -10,7 +10,7 @@ const RED = 1;
 const CELLS = [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}];
 const HEAD = {x: 0, y: 2};
 
-// Drive the bitECS SimEngine end-to-end through player messages: place a belt line, feed two items,
+// Drive the bitECS engine end-to-end through player messages: place a belt line, feed two items,
 // tick, read the output stream. Two RED items enter and both exit at the tail out-port.
 const EXPECTED = [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, RED, RED, EMPTY, EMPTY, EMPTY];
 

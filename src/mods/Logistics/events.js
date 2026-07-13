@@ -97,7 +97,7 @@ export class BeltDeleteEvent extends AbstractTilePositionedEvent {
     }
 }
 
-// A path's items are sent as RLE runs: a run (rowId) of `length` tiles of `itemType`. The client
+// A path's items are sent as RLE runs: a run (runId) of `length` tiles of `itemType`. The client
 // keeps each path's runs and derives item positions from them; one run change shifts the whole path.
 
 /**
@@ -109,7 +109,7 @@ export class BeltItemUpsertEvent extends AbstractTilePositionedEvent {
         x: "int32",
         y: "int32",
         pathId: "int64",
-        rowId: "int64",
+        runId: "int64",
         length: "int32",
         itemType: "int32",
     };
@@ -118,14 +118,14 @@ export class BeltItemUpsertEvent extends AbstractTilePositionedEvent {
      * @param {number} x
      * @param {number} y
      * @param {number} pathId
-     * @param {number} rowId
+     * @param {number} runId
      * @param {number} length
      * @param {number} itemType
      */
-    constructor(x, y, pathId, rowId, length, itemType) {
+    constructor(x, y, pathId, runId, length, itemType) {
         super(x, y);
         this.pathId = pathId;
-        this.rowId = rowId;
+        this.runId = runId;
         this.length = length;
         this.itemType = itemType;
     }
@@ -141,7 +141,7 @@ export class BeltItemSyncEvent extends AbstractTilePositionedEvent {
         x: "int32",
         y: "int32",
         pathId: "int64",
-        rowId: "int64",
+        runId: "int64",
         length: "int32",
         itemType: "int32",
     };
@@ -150,14 +150,14 @@ export class BeltItemSyncEvent extends AbstractTilePositionedEvent {
      * @param {number} x
      * @param {number} y
      * @param {number} pathId
-     * @param {number} rowId
+     * @param {number} runId
      * @param {number} length
      * @param {number} itemType
      */
-    constructor(x, y, pathId, rowId, length, itemType) {
+    constructor(x, y, pathId, runId, length, itemType) {
         super(x, y);
         this.pathId = pathId;
-        this.rowId = rowId;
+        this.runId = runId;
         this.length = length;
         this.itemType = itemType;
     }
@@ -172,19 +172,19 @@ export class BeltItemDeleteEvent extends AbstractTilePositionedEvent {
         x: "int32",
         y: "int32",
         pathId: "int64",
-        rowId: "int64",
+        runId: "int64",
     };
 
     /**
      * @param {number} x
      * @param {number} y
      * @param {number} pathId
-     * @param {number} rowId
+     * @param {number} runId
      */
-    constructor(x, y, pathId, rowId) {
+    constructor(x, y, pathId, runId) {
         super(x, y);
         this.pathId = pathId;
-        this.rowId = rowId;
+        this.runId = runId;
     }
 }
 

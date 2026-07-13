@@ -11,7 +11,7 @@ import {LogisticsMod} from "@/mods/Logistics/mod.js";
 import {BeltSyncEvent} from "@/mods/Logistics/events.js";
 import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
 import {makeEcsSimEngine} from "@/test/ecsSim.js";
-import {TICK_PHASE_ORDER} from "@/common/sim/SimEngine.js";
+import {TICK_PHASE_ORDER} from "@/common/sim/EcsEngine.js";
 
 const RED = 1;
 const CELLS = [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}];

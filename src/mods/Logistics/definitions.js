@@ -44,7 +44,7 @@ class BeltObjectDefinition extends ObjectDefinition {
 }
 
 export const BeltDefinition = new BeltObjectDefinition({
-    table: "Belt",
+    name: "Belt",
     inputPorts: [
         new PortDefinition("virtual_left", {x: 0, y: 0, direction: Direction.RIGHT}),
         new PortDefinition("virtual_down", {x: 0, y: 0, direction: Direction.UP}),
@@ -61,7 +61,7 @@ export const BeltDefinition = new BeltObjectDefinition({
 // buffer ports; each item flows in_X -> int_X -> out_Y, resting a tick in int_X so it crosses at belt
 // speed. The routing runs on the bitECS engine (see SplitterModule).
 export const SplitterDefinition = new ObjectDefinition({
-    table: "Splitter",
+    name: "Splitter",
     inputPorts: [
         new PortDefinition("in_a", {x: 0, y: 0, direction: Direction.UP}),
         new PortDefinition("in_b", {x: 1, y: 0, direction: Direction.UP}),

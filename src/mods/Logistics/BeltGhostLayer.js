@@ -53,7 +53,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
     }
 
     onEvent(event) {
-        // No-op: the ghost reacts to tool hover, not to game journal events.
+        // No-op: the ghost reacts to tool hover, not to game events.
     }
 
     /**

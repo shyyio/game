@@ -8,7 +8,7 @@ import {LogisticsMod} from "@/mods/Logistics/mod.js";
 import {DemoMod, DemoMachineDefinition, DEMO_INPUT_ITEM_TYPE, DEMO_OUTPUT_ITEM_TYPE} from "@/mods/DemoMod/DemoMod.js";
 import {SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
-import {TICK_PHASE_ORDER} from "@/common/sim/SimEngine.js";
+import {TICK_PHASE_ORDER} from "@/common/sim/EcsEngine.js";
 
 class CapturingSession {
 

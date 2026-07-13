@@ -9,9 +9,9 @@ function tileKey(x, y) {
 /**
  * Placed resource bodies (water, volcano) on the bitECS engine. A resource has no ports and no tick —
  * it just marks its extraction tiles with a resource type (which an extractor reads at placement) and
- * renders as a sprite. Mirrors the SQL EasyResource placement. Each resource definition gets its own
- * body component (the table is the type, so no typeId column); the extraction tiles share one
- * ResourceCover component. `_covers` is a derived tile lookup rebuilt on load.
+ * renders as a sprite. Each resource definition gets its own body component (one component per type,
+ * so no typeId field); the extraction tiles share one ResourceCover component. `_covers` is a derived
+ * tile lookup rebuilt on load.
  */
 export class ResourceModule {
 

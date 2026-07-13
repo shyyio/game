@@ -9,7 +9,7 @@ import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
 import {makeEcsSimEngine} from "@/test/ecsSim.js";
-import {TICK_PHASE_ORDER} from "@/common/sim/SimEngine.js";
+import {TICK_PHASE_ORDER} from "@/common/sim/EcsEngine.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
 const RED = 1;

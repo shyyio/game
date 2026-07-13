@@ -1,6 +1,6 @@
 // Numeric constants and enums for the Logistics mod. These are shared across the
-// mod's SQL (schema, statements, tick ops), its events, and its imperative
-// logic, so they live in one place no other module redefines.
+// mod's ECS systems, its events, and its imperative logic, so they live in one
+// place no other module redefines.
 
 // Maximum number of tiles an underground belt may span.
 export const MAX_UNDERGROUND_LENGTH = 4;

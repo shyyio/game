@@ -4,7 +4,7 @@ import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from 
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {EMPTY, NO_EID} from "@/common/sim/EcsEngine.js";
 
-// Recipe input keys are always padded to three slots (matching the SQL Recipes table).
+// Recipe input keys are always padded to three slots.
 const RECIPE_SLOTS = 3;
 
 // Per-slot column names, indexed 0..RECIPE_SLOTS-1.
@@ -16,8 +16,8 @@ const PROCESSING_COLS = ["processing0", "processing1", "processing2"];
  * The EasyRecipeProcessor machine on the bitECS engine: each input port gathers one item (consumed
  * via a managed sink), and once every port has contributed the gathered slots match the verb's
  * recipes (fallback when none), producing the output `processingTicks` later into the output port (a
- * managed source-less create). Mirrors the SQL producer + recipe-processor tick ops. All state lives
- * in the registered Machine component, so it serializes with no bespoke save code.
+ * managed source-less create). All state lives in the registered Machine component, so it serializes
+ * with no bespoke save code.
  */
 export class MachineModule {
 
@@ -28,7 +28,7 @@ export class MachineModule {
      * @param {number} config.inputCount - number of active input ports (1..3)
      * @param {{inputs:number[], output:number}[]} config.recipes
      * @param {number} config.fallback - output when the gathered set matches no recipe
-     * @param {number} config.typeId - the object definition this module places (the table is that type)
+     * @param {number} config.typeId - the single object type this module places
      * @param {string} [config.name] - component name (unique per module instance)
      */
     constructor(engine, {processingTicks, inputCount, recipes, fallback, typeId, name="Machine"}) {
@@ -275,8 +275,7 @@ export class MachineModule {
     /**
      * SUBMIT_INTENTS: countdown, gather each idle port's resting input into its slot (managed sink),
      * resolve a full slot set into processing_output + countdown, then create the output when the
-     * countdown reaches zero. Per-machine order matches the set-based SQL statement sequence
-     * (machines never share ports).
+     * countdown reaches zero. Processed per machine (machines never share ports).
      * @private
      * @returns {void}
      */

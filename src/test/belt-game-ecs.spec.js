@@ -7,7 +7,7 @@ import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {EMPTY} from "@/common/sim/EcsEngine.js";
 import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
-import {TICK_PHASE_ORDER} from "@/common/sim/SimEngine.js";
+import {TICK_PHASE_ORDER} from "@/common/sim/EcsEngine.js";
 import {LogisticsMod} from "@/mods/Logistics/mod.js";
 
 const RED = 1;

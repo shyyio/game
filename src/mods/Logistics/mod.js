@@ -41,7 +41,7 @@ export class LogisticsMod extends AbstractMod {
     }
 
     get definitions() {
-        return {[BeltDefinition.table]: BeltDefinition, [SplitterDefinition.table]: SplitterDefinition};
+        return {[BeltDefinition.name]: BeltDefinition, [SplitterDefinition.name]: SplitterDefinition};
     }
 
     /**
