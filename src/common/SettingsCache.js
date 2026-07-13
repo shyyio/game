@@ -1,6 +1,5 @@
 /**
- * In-memory key→value settings, replacing the SQL GameSettings table. Plain state, independent of
- * the simulation backend.
+ * In-memory key→value game settings. Plain state, independent of the simulation backend.
  */
 export class SettingsCache {
 
@@ -38,7 +37,7 @@ export class SettingsCache {
 }
 
 /**
- * Per-player settings keyed by player id, replacing the SQL PlayerSettings table.
+ * Per-player settings keyed by player id.
  */
 export class PlayerSettingsCache {
 

@@ -45,7 +45,7 @@ test("inferBeltParent ignores a ramp entrance (it does not feed forward) and emp
 
 // A 1x1 machine facing UP: input on its tile, output one tile ahead.
 const machineDefinition = new ObjectDefinition({
-    table: "Machine",
+    name: "Machine",
     inputPorts: [new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP})],
     outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
     internalPorts: [],

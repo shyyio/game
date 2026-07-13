@@ -24,7 +24,7 @@ export const BRINE_ITEM_TYPE = 212;
 // ---- Resource definitions ----
 
 export const WaterResourceDefinition = new ObjectDefinition({
-    table: "WaterResource",
+    name: "WaterResource",
     inputPorts: [],
     outputPorts: [],
     internalPorts: [],
@@ -44,7 +44,7 @@ export const VOLCANO_EXTRACTION_TILES = [
 ];
 
 export const VolcanoResourceDefinition = new ObjectDefinition({
-    table: "VolcanoResource",
+    name: "VolcanoResource",
     inputPorts: [],
     outputPorts: [],
     internalPorts: [],
@@ -57,7 +57,7 @@ export const VolcanoResourceDefinition = new ObjectDefinition({
 // ---- Extractor definitions ----
 
 export const ExtractorDefinition = new ObjectDefinition({
-    table: "Extractor",
+    name: "Extractor",
     inputPorts: [],
     outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
     internalPorts: [],
@@ -68,7 +68,7 @@ export const ExtractorDefinition = new ObjectDefinition({
 });
 
 export const DeepExtractorDefinition = new ObjectDefinition({
-    table: "DeepExtractor",
+    name: "DeepExtractor",
     inputPorts: [],
     outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
     internalPorts: [],
@@ -86,10 +86,10 @@ export class ResourcesMod extends AbstractMod {
 
     get definitions() {
         return {
-            [WaterResourceDefinition.table]: WaterResourceDefinition,
-            [VolcanoResourceDefinition.table]: VolcanoResourceDefinition,
-            [ExtractorDefinition.table]: ExtractorDefinition,
-            [DeepExtractorDefinition.table]: DeepExtractorDefinition,
+            [WaterResourceDefinition.name]: WaterResourceDefinition,
+            [VolcanoResourceDefinition.name]: VolcanoResourceDefinition,
+            [ExtractorDefinition.name]: ExtractorDefinition,
+            [DeepExtractorDefinition.name]: DeepExtractorDefinition,
         };
     }
 

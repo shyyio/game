@@ -34,8 +34,7 @@ function tileKey(x, y) {
  * undergrounds, or cross-path shift chains yet. A path is a run of belts carrying RLE item rows
  * (ordered output-edge -> input-edge) plus a head_gap of empty half-tiles at the input edge. Each
  * tick the lead output-side gap shrinks (Case 1) or the lead item pops to the out-port (Case 2),
- * growing head_gap, then a resting in-port item is ingested at the input edge. Mirrors the SQL belt
- * movement ops.
+ * growing head_gap, then a resting in-port item is ingested at the input edge.
  *
  * Items are per-path arrays for now; the typed-array/SoA layout is a later optimization.
  */
@@ -54,7 +53,7 @@ export class BeltModule {
         // on different axes/layers (a surface belt and an underground crossing under it); the run at a
         // tile is disambiguated by direction.
         this._belts = new Map();
-        // Stable RLE run id, the client's item row_id for sprite continuity/glide.
+        // Stable RLE run id, the client's item runId for sprite continuity/glide.
         this._nextRunId = 1;
 
         // Belt runtime state lives in the JS maps above (hot-path); for persistence it is materialized
@@ -76,9 +75,9 @@ export class BeltModule {
             {name: "type"},
             {name: "objectId", fill: NO_EID},
         ]);
-        this._runDef = engine.defineComponent("BeltPathItem", [
+        this._runDef = engine.defineComponent("BeltRun", [
             {name: "path", kind: "eid", fill: NO_EID},
-            {name: "order"},
+            {name: "seq"},
             {name: "length"},
             {name: "type"},
             {name: "runId", fill: NO_EID},
@@ -1050,7 +1049,7 @@ export class BeltModule {
 
         // Phase 1: move each path one half-tile (pop the lead item or shrink the lead gap), buffering
         // pops. Out-port writes are deferred so a shared seam still holds last tick's value when the
-        // downstream ingests below (an item rests a tick in the seam, as the SQL FillOutPort order does).
+        // downstream ingests below (an item rests a tick in the seam).
         const pops = [];
         this.paths.forEach(path => {
             const firstGap = this._firstGap(path);
@@ -1130,7 +1129,7 @@ export class BeltModule {
     }
 
     /**
-     * Serialize hook: flushes the JS runtime (paths, belts, RLE runs) into the BeltPath/Belt/BeltPathItem
+     * Serialize hook: flushes the JS runtime (paths, belts, RLE runs) into the BeltPath/Belt/BeltRun
      * components so the generic snapshot captures belts. Prior save entities are cleared first; the
      * shared Port entities carry the port items, referenced here by eid.
      * @private
@@ -1167,10 +1166,10 @@ export class BeltModule {
                 B.objectId[beltEid] = beltId;
             });
 
-            path.items.forEach((run, order) => {
+            path.items.forEach((run, seq) => {
                 const runEid = this.engine.createEntity(this._runDef);
                 R.path[runEid] = pathEid;
-                R.order[runEid] = order;
+                R.seq[runEid] = seq;
                 R.length[runEid] = run.length;
                 R.type[runEid] = run.type;
                 R.runId[runEid] = run.id;
@@ -1181,7 +1180,7 @@ export class BeltModule {
     }
 
     /**
-     * Rebuild hook: reconstructs the JS runtime from the BeltPath/Belt/BeltPathItem components a load
+     * Rebuild hook: reconstructs the JS runtime from the BeltPath/Belt/BeltRun components a load
      * repopulated, re-linking each path's belts, items, and ports and re-registering its rendered
      * out-port.
      * @private
@@ -1214,12 +1213,12 @@ export class BeltModule {
             if (!runsByPath.has(pathEid)) {
                 runsByPath.set(pathEid, []);
             }
-            runsByPath.get(pathEid).push({order: R.order[eid], run: {id: R.runId[eid], length: R.length[eid], type: R.type[eid]}});
+            runsByPath.get(pathEid).push({seq: R.seq[eid], run: {id: R.runId[eid], length: R.length[eid], type: R.type[eid]}});
         });
 
         this.engine.entitiesWith(this._pathDef).forEach(pathEid => {
             const belts = (beltsByPath.get(pathEid) || []).sort((a, b) => a.index - b.index).map(entry => entry.belt);
-            const items = (runsByPath.get(pathEid) || []).sort((a, b) => a.order - b.order).map(entry => entry.run);
+            const items = (runsByPath.get(pathEid) || []).sort((a, b) => a.seq - b.seq).map(entry => entry.run);
             const path = {
                 id: pathEid,
                 belts: belts.map(belt => tileKey(belt.x, belt.y)),
@@ -1234,18 +1233,4 @@ export class BeltModule {
         });
     }
 
-    /**
-     * The path's RLE runs ordered output-edge -> input-edge, plus head_gap and out-port item, for
-     * differential comparison against the SQL BeltPathItem rows.
-     * @param {number} eid
-     * @returns {{items:{length:number,type:number}[], headGap:number, out:number}}
-     */
-    snapshot(eid) {
-        const path = this.paths.find(candidate => candidate.id === eid);
-        return {
-            items: path.items.map(run => ({length: run.length, type: run.type})),
-            headGap: path.headGap,
-            out: this.engine.portItem(path.outPort),
-        };
-    }
 }

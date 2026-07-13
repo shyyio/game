@@ -314,7 +314,7 @@ export class ClientCache {
 
     /**
      * The entry with an input port at (tileX, tileY) facing `direction`, or null. The consumer
-     * sits on its own input cell. Mirrors the server's GetInPort{direction}.
+     * sits on its own input cell. Mirrors the server's input-port lookup.
      * @param {number} tileX
      * @param {number} tileY
      * @param {Direction} direction

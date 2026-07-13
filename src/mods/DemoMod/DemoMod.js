@@ -18,7 +18,7 @@ export const DEMO_OUTPUT_ITEM_TYPE = 101;
 export const DEMO_JUNK_ITEM_TYPE = 102;
 
 export const DemoMachineDefinition = new ObjectDefinition({
-    table: "DemoMachine",
+    name: "DemoMachine",
     inputPorts: [new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP})],
     outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
     internalPorts: [],
@@ -31,7 +31,7 @@ export const DemoMachineDefinition = new ObjectDefinition({
 export class DemoMod extends AbstractMod {
 
     get definitions() {
-        return {[DemoMachineDefinition.table]: DemoMachineDefinition};
+        return {[DemoMachineDefinition.name]: DemoMachineDefinition};
     }
 
     /**

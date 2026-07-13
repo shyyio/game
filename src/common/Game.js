@@ -13,7 +13,7 @@ export class Game {
 
     /**
      * @param {ModRegistry} modRegistry
-     * @param {SimEngine} [simEngine] - the simulation engine; defaults to the bitECS engine
+     * @param {EcsSimEngine} [simEngine] - the simulation engine; defaults to the bitECS engine
      * @param {AbstractSaveStore} [saveStore] - persists/restores the world; omitted when saving is off
      */
     constructor(modRegistry, simEngine, saveStore) {
@@ -22,7 +22,7 @@ export class Game {
 
         /**
          * The bitECS simulation engine the tick pipeline runs through.
-         * @type {SimEngine}
+         * @type {EcsSimEngine}
          */
         this.simEngine = simEngine === undefined ? new EcsSimEngine(modRegistry) : simEngine;
 
@@ -139,7 +139,7 @@ export class Game {
             return;
         }
 
-        // A bitECS engine handles sim messages directly; the SQL path defers to the mods.
+        // The engine handles sim messages directly; anything it declines falls through to the mods.
         if (this.simEngine.applyMessage(message)) {
             // Close menus after the object is actually deleted, never before.
             if (message instanceof DeleteObjectMessage) {

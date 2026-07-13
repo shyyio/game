@@ -1,20 +1,18 @@
-import {SimEngine} from "@/common/sim/SimEngine.js";
 import {EcsEngine} from "@/common/sim/EcsEngine.js";
 import {rotate} from "@/common/util.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 
 /**
- * The bitECS {@link SimEngine}: owns the world, and lets each loaded mod register its ECS content
- * (modules, message handlers, chunk-sync contributors) via {@link AbstractMod#setupEcs}. Generic —
- * it knows no specific content, so it imports nothing from `mods/`.
+ * The simulation engine Game drives: owns the bitECS world, and lets each loaded mod register its ECS
+ * content (modules, message handlers, chunk-sync contributors) via {@link AbstractMod#setupEcs}.
+ * Generic — it knows no specific content, so it imports nothing from `mods/`.
  */
-export class EcsSimEngine extends SimEngine {
+export class EcsSimEngine {
 
     /**
      * @param {ModRegistry} [modRegistry] - mods whose setupEcs registers content on init
      */
     constructor(modRegistry=null) {
-        super();
         this.engine = new EcsEngine();
         this.modRegistry = modRegistry;
 
@@ -113,6 +111,14 @@ export class EcsSimEngine extends SimEngine {
      */
     tick(phase) {
         this.engine.tick(phase);
+    }
+
+    /**
+     * Runs a whole tick (every phase in order).
+     * @returns {void}
+     */
+    tickAll() {
+        this.engine.tickAll();
     }
 
     /**

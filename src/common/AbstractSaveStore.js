@@ -1,7 +1,7 @@
 import {NotImplementedError} from "@/common/error.js";
 
 /**
- * Persists and restores a world snapshot (the shape {@link SimEngine#serialize} produces): a list of
+ * Persists and restores a world snapshot (the shape {@link EcsSimEngine#serialize} produces): a list of
  * named components — each with typed field descriptors and one row per entity — plus a flat globals
  * map. Backends store this however suits their platform (SQLite tables on Node, a JSON blob in the
  * browser); both round-trip the identical snapshot object.

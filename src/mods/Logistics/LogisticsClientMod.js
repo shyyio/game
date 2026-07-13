@@ -57,7 +57,7 @@ export class LogisticsClientMod extends LogisticsMod {
         // Head id → belt ids in path order (head last); kept current by onClientEvent
         // and used to resolve an item's slot to a belt, plus drawn by the debug layer.
         this._pathParts = new Map();
-        // Head id → Map<row id, {length, type}>: each path's RLE rows, synced and kept
+        // Head id → Map<run id, {length, type}>: each path's RLE runs, synced and kept
         // current by item deltas. Item positions are derived from these, not sent.
         this._pathItems = new Map();
         // Out-port id → path head id, learned from path recalcs/chunk sync, so a
@@ -187,8 +187,8 @@ export class LogisticsClientMod extends LogisticsMod {
 
     /**
      * Records a recalculated path under its head id, dropping any head a merge absorbed.
-     * Items aren't touched here: an edit re-rows them, but the swap is done atomically
-     * by the RESET + re-emitted UPSERT rows (same drain) so they never blink out.
+     * Items aren't touched here: an edit re-keys them, but the swap is done atomically
+     * by the RESET + re-emitted UPSERT runs (same drain) so they never blink out.
      * @param {number[]} parts - belt ids in path order, head last
      * @private
      */
@@ -315,23 +315,23 @@ export class LogisticsClientMod extends LogisticsMod {
             this._resetPathItems(pathId);
             return;
         }
-        const rowId = event.rowId;
+        const runId = event.runId;
         if (event instanceof BeltItemDeleteEvent) {
-            const rows = this._pathItems.get(pathId);
-            const row = rows === undefined ? undefined : rows.get(rowId);
-            this._dropDeletedItem(pathId, rowId, row);
-            if (rows !== undefined) {
-                rows.delete(rowId);
+            const runs = this._pathItems.get(pathId);
+            const run = runs === undefined ? undefined : runs.get(runId);
+            this._dropDeletedItem(pathId, runId, run);
+            if (runs !== undefined) {
+                runs.delete(runId);
             }
             this._recomputePathItems(pathId);
             return;
         }
-        let rows = this._pathItems.get(pathId);
-        if (rows === undefined) {
-            rows = new Map();
-            this._pathItems.set(pathId, rows);
+        let runs = this._pathItems.get(pathId);
+        if (runs === undefined) {
+            runs = new Map();
+            this._pathItems.set(pathId, runs);
         }
-        rows.set(rowId, {length: event.length, type: event.itemType});
+        runs.set(runId, {length: event.length, type: event.itemType});
         // A synced run was only re-keyed, not moved, so place its sprite without animating.
         this._recomputePathItems(pathId, event instanceof BeltItemSyncEvent);
     }
@@ -343,24 +343,24 @@ export class LogisticsClientMod extends LogisticsMod {
      * path's freshly-ingested item already covers — instead of vanishing while the
      * same-type (so un-refreshed) port sprite sits still. Anything else is just removed.
      * @param {number} pathId
-     * @param {number} rowId
-     * @param {{length: number, type: number}|undefined} row - the item's RLE row, if tracked
+     * @param {number} runId
+     * @param {{length: number, type: number}|undefined} run - the item's RLE run, if tracked
      * @private
      */
-    _dropDeletedItem(pathId, rowId, row) {
+    _dropDeletedItem(pathId, runId, run) {
         const outPortId = this._pathToOutPort.get(pathId);
-        if (row === undefined || row.type === ITEM_TYPE_GAP || outPortId === undefined) {
-            this._itemLayer.removeItem(rowId);
+        if (run === undefined || run.type === ITEM_TYPE_GAP || outPortId === undefined) {
+            this._itemLayer.removeItem(runId);
             return;
         }
-        this._itemLayer.renameItem(rowId, PORT_SPRITE_KEY(outPortId));
-        this._renderPortItem(outPortId, row.type);
+        this._itemLayer.renameItem(runId, PORT_SPRITE_KEY(outPortId));
+        this._renderPortItem(outPortId, run.type);
     }
 
     /**
-     * Clears the item sprites/rows of a path about to be re-synced, under every belt in
+     * Clears the item sprites/runs of a path about to be re-synced, under every belt in
      * it — the head and any former heads a merge folded in — so no stale sprite survives
-     * the re-keyed rebuild. The following re-emitted UPSERT rows (same drain) repopulate it.
+     * the re-keyed rebuild. The following re-emitted UPSERT runs (same drain) repopulate it.
      * @param {number} pathId
      * @private
      */
@@ -374,51 +374,51 @@ export class LogisticsClientMod extends LogisticsMod {
     }
 
     /**
-     * Repositions every item on a path from its RLE rows. Rows lie output-to-input in
+     * Repositions every item on a path from its RLE runs. Runs lie output-to-input in
      * ascending id order; walking input-to-output (descending id) and accumulating
-     * lengths gives each row's slot = head_gap + lengths nearer the input, where
-     * head_gap = path length − Σ row lengths.
+     * lengths gives each run's slot = head_gap + lengths nearer the input, where
+     * head_gap = path length − Σ run lengths.
      * @param {number} pathId
      * @param {boolean} [snap] - place sprites without animating (a re-sync, not a move)
      * @private
      */
     _recomputePathItems(pathId, snap=false) {
         const parts = this._pathParts.get(pathId);
-        const rows = this._pathItems.get(pathId);
-        if (parts === undefined || rows === undefined) {
+        const runs = this._pathItems.get(pathId);
+        if (parts === undefined || runs === undefined) {
             return;
         }
         const pathLength = 2 * parts.length - 1;
         let total = 0;
-        rows.forEach(row => {
-            total += row.length;
+        runs.forEach(run => {
+            total += run.length;
         });
         let slot = pathLength - total;
-        const rowIds = Array.from(rows.keys()).sort((a, b) => (a < b ? 1 : -1));
-        rowIds.forEach(rowId => {
-            const row = rows.get(rowId);
-            if (row.type !== ITEM_TYPE_GAP) {
+        const runIds = Array.from(runs.keys()).sort((a, b) => (a < b ? 1 : -1));
+        runIds.forEach(runId => {
+            const run = runs.get(runId);
+            if (run.type !== ITEM_TYPE_GAP) {
                 const belt = this._resolveItemBelt(pathId, slot);
                 if (belt !== null) {
-                    this._itemLayer.moveItem(rowId, belt.tileX, belt.tileY, belt.halfTile, belt.sourceDirection, row.type, snap, belt.hidden);
+                    this._itemLayer.moveItem(runId, belt.tileX, belt.tileY, belt.halfTile, belt.sourceDirection, run.type, snap, belt.hidden);
                 }
             }
-            slot += row.length;
+            slot += run.length;
         });
     }
 
     /**
-     * Drops a path's item sprites and tracked rows (head removed, or about to be re-synced).
+     * Drops a path's item sprites and tracked runs (head removed, or about to be re-synced).
      * @param {number} pathId
      * @private
      */
     _clearPathItems(pathId) {
-        const rows = this._pathItems.get(pathId);
-        if (rows === undefined) {
+        const runs = this._pathItems.get(pathId);
+        if (runs === undefined) {
             return;
         }
-        rows.forEach((row, rowId) => {
-            this._itemLayer.removeItem(rowId);
+        runs.forEach((run, runId) => {
+            this._itemLayer.removeItem(runId);
         });
         this._pathItems.delete(pathId);
     }

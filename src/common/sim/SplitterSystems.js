@@ -8,15 +8,15 @@ import {EMPTY, NO_EID} from "@/common/sim/EcsEngine.js";
  * The Splitter mod on the bitECS engine: a 1x2 router of two inputs and two outputs (ports shared
  * with adjacent belts) through two internal buffer ports. Each item flows in_X -> int_X -> out_Y,
  * resting a tick in int_X (belt speed). Submits managed=0 intents so the shared resolver only links
- * the chain; the POST_RESOLVE seam does the moves — mirroring the SQL Splitter tick ops. All state
- * lives in the registered component, so it serializes with no bespoke save code.
+ * the chain; the POST_RESOLVE seam does the moves. All state lives in the registered component, so it
+ * serializes with no bespoke save code.
  */
 export class SplitterModule {
 
     /**
      * @param {EcsEngine} engine
      * @param {object} [config]
-     * @param {number} [config.typeId] - the object definition this module places (the table is that type)
+     * @param {number} [config.typeId] - the single object type this module places
      */
     constructor(engine, {typeId=null}={}) {
         this.engine = engine;
@@ -71,7 +71,7 @@ export class SplitterModule {
      */
     addSplitter(wiring={}) {
         const port = given => given === undefined ? this.engine.addPort() : given;
-        // Ports first so their eids stay contiguous from 1 (aligns with the SQL engine's port ids).
+        // Ports first so their eids stay contiguous from 1.
         const in_a = port(wiring.in_a);
         const in_b = port(wiring.in_b);
         const out_a = port(wiring.out_a);
@@ -229,9 +229,9 @@ export class SplitterModule {
 
     /**
      * The POST_RESOLVE seam: record each resolved int->out and in->int hop and its item, clear the
-     * drained sources, buffer inputs into internal ports, then write internal ports out — the same
-     * record/clear/fill ordering the SQL seam ops use so items cross at belt speed. Finally advance
-     * the round-robin state of every splitter that routed an item.
+     * drained sources, buffer inputs into internal ports, then write internal ports out — record,
+     * clear, fill in that order so items cross at belt speed. Finally advance the round-robin state of
+     * every splitter that routed an item.
      * @private
      * @returns {void}
      */

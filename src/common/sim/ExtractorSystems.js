@@ -8,8 +8,8 @@ import {EMPTY, NO_EID} from "@/common/sim/EcsEngine.js";
  * A resource extractor on the bitECS engine: a producer with no input port whose fixed input is the
  * `resourceType` of the resource under it (bound at placement). It looks that up in its recipes and
  * produces the output every `processingTicks` into its one output port (a managed source-less create,
- * same as a machine). Mirrors the SQL EasyExtractor. All state lives in the registered component, so
- * it serializes with no bespoke save code.
+ * same as a machine). All state lives in the registered component, so it serializes with no bespoke
+ * save code.
  */
 export class ExtractorModule {
 
@@ -18,7 +18,7 @@ export class ExtractorModule {
      * @param {object} config
      * @param {number} config.processingTicks
      * @param {{resource:number, output:number}[]} config.recipes - resource type -> produced item
-     * @param {number} config.typeId - the object definition this module places (the table is that type)
+     * @param {number} config.typeId - the single object type this module places
      * @param {string} [config.name] - component name (unique per module instance)
      */
     constructor(engine, {processingTicks, recipes, typeId, name="Extractor"}) {
