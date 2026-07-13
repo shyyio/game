@@ -112,9 +112,9 @@ export class MachineModule {
         const inputs = [];
         for (let i = 0; i < this.inputCount; i += 1) {
             const given = wiring.inputs === undefined ? undefined : wiring.inputs[i];
-            inputs.push(given === undefined ? this.engine.addPort() : given);
+            inputs.push(given === undefined ? this.engine.createPort() : given);
         }
-        const out = wiring.out === undefined ? this.engine.addPort() : wiring.out;
+        const out = wiring.out === undefined ? this.engine.createPort() : wiring.out;
 
         const eid = this.engine.createEntity(this.def);
         inputs.forEach((port, i) => {
@@ -139,7 +139,7 @@ export class MachineModule {
      */
     placeMachine(x, y, direction, inputPorts, outPort, outTile) {
         const handle = this.addMachine({inputs: inputPorts, out: outPort});
-        const clientId = this.engine.allocateObjectId();
+        const clientId = this.engine.createObjectId();
         handle.clientId = clientId;
         const M = this.Machine;
         M.clientId[handle.id] = clientId;

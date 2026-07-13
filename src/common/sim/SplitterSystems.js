@@ -70,14 +70,14 @@ export class SplitterModule {
      * @returns {{id:number, in_a:number, in_b:number, out_a:number, out_b:number, int_a:number, int_b:number}}
      */
     addSplitter(wiring={}) {
-        const port = given => given === undefined ? this.engine.addPort() : given;
+        const port = given => given === undefined ? this.engine.createPort() : given;
         // Ports first so their eids stay contiguous from 1.
         const in_a = port(wiring.in_a);
         const in_b = port(wiring.in_b);
         const out_a = port(wiring.out_a);
         const out_b = port(wiring.out_b);
-        const int_a = this.engine.addPort();
-        const int_b = this.engine.addPort();
+        const int_a = this.engine.createPort();
+        const int_b = this.engine.createPort();
 
         const eid = this.engine.createEntity(this.def);
         const S = this.Splitter;
@@ -98,7 +98,7 @@ export class SplitterModule {
      * (x,y-1)/(x+1,y-1). Internal ports are private. Rotation for other directions is not done yet.
      * @param {number} x
      * @param {number} y
-     * @param {boolean} [client] - whether this is a client-visible splitter (allocates a client id +
+     * @param {boolean} [client] - whether this is a client-visible splitter (creates a client id +
      *     emits placement); false for sim-only test splitters
      * @returns {{id:number, in_a:number, in_b:number, out_a:number, out_b:number, int_a:number, int_b:number}}
      */
@@ -116,7 +116,7 @@ export class SplitterModule {
 
         const handle = this.addSplitter({in_a: p.in_a, in_b: p.in_b, out_a: p.out_a, out_b: p.out_b});
         if (client) {
-            const clientId = this.engine.allocateObjectId();
+            const clientId = this.engine.createObjectId();
             handle.clientId = clientId;
             const S = this.Splitter;
             S.clientId[handle.id] = clientId;

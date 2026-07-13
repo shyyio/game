@@ -60,12 +60,14 @@ export class BeltModule {
         // into these registered components at save (via the serialize hook) and read back at load (via
         // the rebuild hook), so belts ride the same generic snapshot as every other object. Port
         // references are eid columns, remapped with the shared Port entities on load.
+        // Belt state lives in JS runtime; these three components mirror it only at save (materialize)
+        // and load (reconstruct), so they are snapshotOnly — the port sweep reads the live pin hook.
         this._pathDef = engine.defineComponent("BeltPath", [
             {name: "inPort", kind: "eid", fill: NO_EID},
             {name: "outPort", kind: "eid", fill: NO_EID},
             {name: "headGap"},
             {name: "length"},
-        ]);
+        ], {snapshotOnly: true});
         this._beltDef = engine.defineComponent("Belt", [
             {name: "path", kind: "eid", fill: NO_EID},
             {name: "index"},
@@ -74,20 +76,21 @@ export class BeltModule {
             {name: "direction"},
             {name: "type"},
             {name: "objectId", fill: NO_EID},
-        ]);
+        ], {snapshotOnly: true});
         this._runDef = engine.defineComponent("BeltRun", [
             {name: "path", kind: "eid", fill: NO_EID},
             {name: "seq"},
             {name: "length"},
             {name: "type"},
             {name: "runId", fill: NO_EID},
-        ]);
+        ], {snapshotOnly: true});
         engine.globals.beltNextRunId = this._nextRunId;
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._move());
         engine.registerSerializeHook(() => this._materialize());
         engine.registerRebuildHook(() => this._reconstruct());
+        engine.registerPortPin(() => this._pinnedPorts());
     }
 
     /**
@@ -238,7 +241,7 @@ export class BeltModule {
         }
         this.engine.occupy([{x, y, layer}]);
 
-        const placed = {x, y, direction, type, id: this.engine.allocateObjectId()};
+        const placed = {x, y, direction, type, id: this.engine.createObjectId()};
         this._addBelt(placed);
 
         // The run through the placed belt, following the flow across bends. Dropping the paths it
@@ -442,7 +445,7 @@ export class BeltModule {
             return;
         }
         const removedId = belt.id;
-        this.engine.release([{x, y, layer: this._beltLayer(direction, belt.type)}]);
+        this.engine.destroyCells([{x, y, layer: this._beltLayer(direction, belt.type)}]);
 
         // The belts this one linked to — the belt ahead and every belt that fed its tile — anchor the
         // surviving runs. Captured before removal, while the flow links are intact.
@@ -942,6 +945,20 @@ export class BeltModule {
     }
 
     /**
+     * The port eids the live paths still reference (each path's in/out edge port), so the engine's
+     * port sweep keeps them — belt paths hold these outside any component.
+     * @private
+     * @returns {number[]}
+     */
+    _pinnedPorts() {
+        const ports = [];
+        this.paths.forEach(path => {
+            ports.push(path.inPort, path.outPort);
+        });
+        return ports;
+    }
+
+    /**
      * Records a new path and registers its out-port for item rendering (drawn at the tail tile).
      * @private
      * @param {object} path
@@ -955,7 +972,7 @@ export class BeltModule {
     }
 
     /**
-     * Drops a path's indexes and render registration.
+     * Drops a path's indexes, render registration, and its entity.
      * @private
      * @param {object} path
      * @returns {void}
@@ -965,6 +982,7 @@ export class BeltModule {
         this.engine.unregisterRenderedPort(path.outPort);
         // Clear the client's item sprites for this (soon-stale) path id.
         this._emitItemReset(path);
+        this.engine.destroyEntity(path.id);
     }
 
     /**
@@ -975,8 +993,8 @@ export class BeltModule {
      * @returns {{id:number, inPort:number, outPort:number, length:number}}
      */
     addPath(beltCount, inPort) {
-        const resolvedInPort = inPort === undefined ? this.engine.addPort() : inPort;
-        const outPort = this.engine.addPort();
+        const resolvedInPort = inPort === undefined ? this.engine.createPort() : inPort;
+        const outPort = this.engine.createPort();
         const length = beltCount * 2 - 1;
 
         const eid = addEntity(this.engine.world);

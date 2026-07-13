@@ -337,7 +337,7 @@ export class LogisticsClientMod extends LogisticsMod {
     }
 
     /**
-     * Disposes a deleted item's sprite. A non-gap delete on a path with an out-port is a
+     * Destroys a deleted item's sprite. A non-gap delete on a path with an out-port is a
      * pop (edits re-sync via RESET, not DELETE): hand the sprite to the out-port so it
      * glides the last stretch in — replacing the previous occupant, which the downstream
      * path's freshly-ingested item already covers — instead of vanishing while the

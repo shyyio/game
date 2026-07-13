@@ -78,7 +78,7 @@ export class ResourceModule {
     placeResource(x, y, typeId, direction, resourceType, extractionOffsets) {
         const entry = this._bodyByType.get(typeId);
         const body = entry.def.store;
-        const clientId = this.engine.allocateObjectId();
+        const clientId = this.engine.createObjectId();
         const bodyEid = this.engine.createEntity(entry.def);
         body.clientId[bodyEid] = clientId;
         body.x[bodyEid] = x;
