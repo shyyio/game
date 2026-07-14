@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
 import {BeltModule} from "@/mods/Logistics/BeltModule.js";
-import {SplitterModule} from "@/common/sim/SplitterSystems.js";
+import {SplitterModule} from "@/mods/Logistics/SplitterModule.js";
 
 const RED = 1;
 

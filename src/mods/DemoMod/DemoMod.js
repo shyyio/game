@@ -1,16 +1,15 @@
 // Reference mod: a 1x1 furnace that "cooks" one input item into an output (or Junk when the item has
-// no recipe), sharing its ports with adjacent belts. The sim runs on the bitECS MachineModule.
+// no recipe), sharing its ports with adjacent belts. The sim runs on the bitECS EasyMachineModule.
 import {
     AbstractMod,
     ObjectDefinition,
     PortDefinition,
     Direction,
     DeleteObjectMessage,
-    CreateObjectMessage,
     MiniMenuEntry,
 } from "@/sdk/common.js";
 import {EasyObjectTool, EasyObjectGhostLayer, EasyObjectDrawLayer, InspectHighlight} from "@/sdk/client.js";
-import {MachineModule} from "@/common/sim/MachineSystems.js";
+import {EasyMachineModule} from "@/common/sim/EasyMachineModule.js";
 
 // The item the furnace cooks and the outputs (a real product + the fallback).
 export const DEMO_INPUT_ITEM_TYPE = 7;
@@ -40,41 +39,13 @@ export class DemoMod extends AbstractMod {
      * @returns {void}
      */
     setup(sim) {
-        sim.machine = new MachineModule(sim, {
+        sim.machine = new EasyMachineModule(sim, {
+            definition: DemoMachineDefinition,
             processingTicks: 2,
-            inputCount: 1,
             recipes: [{inputs: [DEMO_INPUT_ITEM_TYPE], output: DEMO_OUTPUT_ITEM_TYPE}],
             fallback: DEMO_JUNK_ITEM_TYPE,
-            typeId: DemoMachineDefinition.typeId,
         });
-        sim.registerMessageHandler(message => this._ecsMachineMessage(sim, message));
-        sim.registerChunkSync(chunk => sim.machine.chunkSync(chunk));
-        sim.registerInspector(id => sim.machine.inspect(id));
-    }
-
-    /**
-     * @private
-     * @param {GameEngine} sim
-     * @param {AbstractMessage} message
-     * @returns {boolean}
-     */
-    _ecsMachineMessage(sim, message) {
-        if (message instanceof DeleteObjectMessage) {
-            return sim.machine.removeMachineById(message.id);
-        }
-        if (!(message instanceof CreateObjectMessage) || message.typeId !== DemoMachineDefinition.typeId) {
-            return false;
-        }
-        const direction = message.direction;
-        const footprint = sim.footprint(DemoMachineDefinition, message.x, message.y, direction);
-        if (!sim.occupancyFree(footprint)) {
-            return true;
-        }
-        const input = sim.portFor(DemoMachineDefinition.inputPorts[0], message.x, message.y, direction);
-        const output = sim.portFor(DemoMachineDefinition.outputPorts[0], message.x, message.y, direction);
-        const handle = sim.machine.placeMachine(message.x, message.y, direction, [input.port], output.port, output.tile);
-        sim.track(handle.clientId, footprint);
-        return true;
+        sim.machine.install(sim);
     }
 }
 

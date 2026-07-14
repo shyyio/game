@@ -3,28 +3,36 @@ import {chunkId} from "@/common/util.js";
 import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {EMPTY, NO_EID} from "@/common/sim/GameEngine.js";
+import {AbstractEasyModule} from "@/common/sim/AbstractEasyModule.js";
 
 /**
- * A resource extractor on the bitECS engine: a producer with no input port whose fixed input is the
- * `resourceType` of the resource under it (bound at placement). It looks that up in its recipes and
- * produces the output every `processingTicks` into its one output port (a managed source-less create,
- * same as a machine). All state lives in the registered component, so it serializes with no bespoke
- * save code.
+ * A drop-in resource extractor for mods: give it an {@link ObjectDefinition}, a recipe table, and a
+ * `bindResource` hook and call {@link EasyExtractorModule#install}; it owns placement, deletion, chunk
+ * sync, and inspection with no bespoke mod code. A producer with no input port whose fixed input is
+ * the resource bound at placement (via `bindResource`, e.g. the resource cover under the tile); it
+ * looks that up in its recipes and produces the output every `processingTicks` into its one output
+ * port (a managed source-less create). All state lives in the registered component, so it serializes
+ * with no bespoke save code.
  */
-export class ExtractorModule {
+export class EasyExtractorModule extends AbstractEasyModule {
 
     /**
      * @param {GameEngine} engine
      * @param {object} config
+     * @param {ObjectDefinition} config.definition - the object type this module places (its typeId,
+     *     output port, and geometry drive placement)
      * @param {number} config.processingTicks
      * @param {{resource:number, output:number}[]} config.recipes - resource type -> produced item
-     * @param {number} config.typeId - the single object type this module places
+     * @param {function(GameEngine, CreateObjectMessage): (number|null)} config.bindResource - the
+     *     resource type an extractor placed by this message draws from, or null to reject the placement
      * @param {string} [config.name] - component name (unique per module instance)
      */
-    constructor(engine, {processingTicks, recipes, typeId, name="Extractor"}) {
-        this.engine = engine;
+    constructor(engine, {definition, processingTicks, recipes, bindResource, name="Extractor"}) {
+        super(engine);
+        this.definition = definition;
+        this.typeId = definition.typeId;
         this.processingTicks = processingTicks;
-        this.typeId = typeId;
+        this.bindResource = bindResource;
         this.recipes = new Map(recipes.map(recipe => [recipe.resource, recipe.output]));
 
         this.def = engine.defineComponent(name, [
@@ -45,6 +53,37 @@ export class ExtractorModule {
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._finish());
         engine.registerRebuildHook(() => this._resync());
+    }
+
+    /**
+     * @param {number} typeId
+     * @returns {boolean}
+     */
+    handles(typeId) {
+        return typeId === this.typeId;
+    }
+
+    /**
+     * Places this extractor from a CreateObjectMessage: binds the resource under the tile (via
+     * `bindResource`), then derives footprint/output port from the definition and marks the footprint
+     * occupied. A no-op (still handled) when no resource is bound or the footprint is blocked.
+     * @param {GameEngine} sim
+     * @param {CreateObjectMessage} message
+     * @returns {boolean}
+     */
+    place(sim, message) {
+        const resourceType = this.bindResource(sim, message);
+        if (resourceType === null) {
+            return true;
+        }
+        const footprint = sim.footprint(this.definition, message.x, message.y, message.direction);
+        if (!sim.occupancyFree(footprint)) {
+            return true;
+        }
+        const output = sim.portFor(this.definition.outputPorts[0], message.x, message.y, message.direction);
+        const clientId = this.placeExtractor(message.x, message.y, message.direction, resourceType, output.port, output.tile);
+        sim.track(clientId, footprint);
+        return true;
     }
 
     /**
@@ -202,7 +241,7 @@ export class ExtractorModule {
      * @param {number} clientId
      * @returns {boolean}
      */
-    removeExtractorById(clientId) {
+    remove(clientId) {
         const eid = this.eidByClientId(clientId);
         if (eid === undefined) {
             return false;

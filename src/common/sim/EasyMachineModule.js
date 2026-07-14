@@ -3,6 +3,7 @@ import {chunkId} from "@/common/util.js";
 import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {EMPTY, NO_EID} from "@/common/sim/GameEngine.js";
+import {AbstractEasyModule} from "@/common/sim/AbstractEasyModule.js";
 
 // Recipe input keys are always padded to three slots.
 const RECIPE_SLOTS = 3;
@@ -13,30 +14,32 @@ const SLOT_COLS = ["slot0", "slot1", "slot2"];
 const PROCESSING_COLS = ["processing0", "processing1", "processing2"];
 
 /**
- * The EasyRecipeProcessor machine on the bitECS engine: each input port gathers one item (consumed
- * via a managed sink), and once every port has contributed the gathered slots match the verb's
- * recipes (fallback when none), producing the output `processingTicks` later into the output port (a
- * managed source-less create). All state lives in the registered Machine component, so it serializes
- * with no bespoke save code.
+ * A drop-in recipe machine for mods: give it an {@link ObjectDefinition} and a recipe table and call
+ * {@link EasyMachineModule#install}; it owns placement, deletion, chunk sync, and inspection with no
+ * bespoke mod code. Each input port gathers one item (consumed via a managed sink), and once every
+ * port has contributed the gathered slots match a recipe (fallback when none), producing the output
+ * `processingTicks` later into the output port (a managed source-less create). All state lives in the
+ * registered component, so it serializes with no bespoke save code.
  */
-export class MachineModule {
+export class EasyMachineModule extends AbstractEasyModule {
 
     /**
      * @param {GameEngine} engine
      * @param {object} config
+     * @param {ObjectDefinition} config.definition - the object type this module places (its typeId,
+     *     ports, and geometry drive placement)
      * @param {number} config.processingTicks
-     * @param {number} config.inputCount - number of active input ports (1..3)
      * @param {{inputs:number[], output:number}[]} config.recipes
      * @param {number} config.fallback - output when the gathered set matches no recipe
-     * @param {number} config.typeId - the single object type this module places
      * @param {string} [config.name] - component name (unique per module instance)
      */
-    constructor(engine, {processingTicks, inputCount, recipes, fallback, typeId, name="Machine"}) {
-        this.engine = engine;
+    constructor(engine, {definition, processingTicks, recipes, fallback, name="Machine"}) {
+        super(engine);
+        this.definition = definition;
         this.processingTicks = processingTicks;
-        this.inputCount = inputCount;
+        this.inputCount = definition.inputPorts.length;
         this.fallback = fallback;
-        this.typeId = typeId;
+        this.typeId = definition.typeId;
 
         // Gathered-set key "i1,i2,i3" -> output.
         this.recipes = new Map();
@@ -70,6 +73,37 @@ export class MachineModule {
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._finish());
         engine.registerRebuildHook(() => this._resync());
+    }
+
+    /**
+     * @param {number} typeId
+     * @returns {boolean}
+     */
+    handles(typeId) {
+        return typeId === this.typeId;
+    }
+
+    /**
+     * Places this machine from a CreateObjectMessage: derives footprint/ports from the definition,
+     * adopts the shared edge ports (an adjacent belt's out-port becomes an input for free), and marks
+     * the footprint occupied. A no-op (still handled) when the footprint is blocked.
+     * @param {GameEngine} sim
+     * @param {CreateObjectMessage} message
+     * @returns {boolean}
+     */
+    place(sim, message) {
+        const definition = this.definition;
+        const footprint = sim.footprint(definition, message.x, message.y, message.direction);
+        if (!sim.occupancyFree(footprint)) {
+            return true;
+        }
+        const inputPorts = definition.inputPorts.map(port => {
+            return sim.portFor(port, message.x, message.y, message.direction).port;
+        });
+        const output = sim.portFor(definition.outputPorts[0], message.x, message.y, message.direction);
+        const handle = this.placeMachine(message.x, message.y, message.direction, inputPorts, output.port, output.tile);
+        sim.track(handle.clientId, footprint);
+        return true;
     }
 
     /**
@@ -178,7 +212,7 @@ export class MachineModule {
      * @param {number} clientId
      * @returns {boolean}
      */
-    removeMachineById(clientId) {
+    remove(clientId) {
         const eid = this.eidByClientId(clientId);
         if (eid === undefined) {
             return false;

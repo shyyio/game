@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
-import {SplitterModule} from "@/common/sim/SplitterSystems.js";
+import {SplitterModule} from "@/mods/Logistics/SplitterModule.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
 const ITEM = 7;
