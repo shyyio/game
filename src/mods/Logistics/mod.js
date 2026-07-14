@@ -5,7 +5,7 @@ import {
 } from "@/sdk/common.js";
 import {CreateBeltMessage} from "./messages.js";
 import {BeltModule} from "./BeltModule.js";
-import {SplitterModule} from "@/common/sim/SplitterSystems.js";
+import {SplitterModule} from "@/mods/Logistics/SplitterModule.js";
 import {
     BELT_NORMAL,
     BELT_RAMP_UP,

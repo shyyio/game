@@ -1,18 +1,17 @@
 // Resources + extractors: placeable resource bodies (a lake, a volcano) that an extractor sits on to
-// spawn items. The sim runs on the bitECS ResourceModule/ExtractorModule; extraction maps a resource
-// type to an item per extractor.
+// spawn items. The sim runs on the bitECS EasyResourceModule/EasyExtractorModule; extraction maps a
+// resource type to an item per extractor.
 import {
     AbstractMod,
     ObjectDefinition,
     PortDefinition,
     Direction,
-    CreateObjectMessage,
     DeleteObjectMessage,
     MiniMenuEntry,
 } from "@/sdk/common.js";
 import {EasyObjectTool, EasyObjectGhostLayer, EasyObjectDrawLayer, InspectHighlight} from "@/sdk/client.js";
-import {ResourceModule} from "@/common/sim/ResourceSystems.js";
-import {ExtractorModule} from "@/common/sim/ExtractorSystems.js";
+import {EasyResourceModule} from "@/common/sim/EasyResourceModule.js";
+import {EasyExtractorModule} from "@/common/sim/EasyExtractorModule.js";
 
 // Resource types and the items extraction spawns.
 export const RESOURCE_WATER = 200;
@@ -99,91 +98,32 @@ export class ResourcesMod extends AbstractMod {
      * @returns {void}
      */
     setup(sim) {
-        sim.resources = new ResourceModule(sim, [
-            {name: "WaterResource", typeId: WaterResourceDefinition.typeId},
-            {name: "VolcanoResource", typeId: VolcanoResourceDefinition.typeId},
+        sim.resources = new EasyResourceModule(sim, [
+            {definition: WaterResourceDefinition, resourceType: RESOURCE_WATER, solid: false},
+            {definition: VolcanoResourceDefinition, resourceType: RESOURCE_VOLCANO, solid: true},
         ]);
-        sim.extractor = new ExtractorModule(sim, {
+        sim.resources.install(sim);
+
+        const bindResource = (s, message) => s.resources.coverAt(message.x, message.y);
+        sim.extractor = new EasyExtractorModule(sim, {
+            definition: ExtractorDefinition,
             processingTicks: 4,
             recipes: [
                 {resource: RESOURCE_WATER, output: WATER_ITEM_TYPE},
                 {resource: RESOURCE_VOLCANO, output: SULFUR_ITEM_TYPE},
             ],
-            typeId: ExtractorDefinition.typeId,
+            bindResource,
         });
-        sim.deepExtractor = new ExtractorModule(sim, {
+        sim.extractor.install(sim);
+
+        sim.deepExtractor = new EasyExtractorModule(sim, {
+            definition: DeepExtractorDefinition,
             processingTicks: 8,
             recipes: [{resource: RESOURCE_VOLCANO, output: BRINE_ITEM_TYPE}],
-            typeId: DeepExtractorDefinition.typeId,
+            bindResource,
             name: "DeepExtractor",
         });
-        sim.registerMessageHandler(message => this._ecsResourceMessage(sim, message));
-        sim.registerChunkSync(chunk => sim.resources.chunkSync(chunk));
-        sim.registerChunkSync(chunk => sim.extractor.chunkSync(chunk));
-        sim.registerChunkSync(chunk => sim.deepExtractor.chunkSync(chunk));
-        sim.registerInspector(id => sim.extractor.inspect(id));
-        sim.registerInspector(id => sim.deepExtractor.inspect(id));
-    }
-
-    /**
-     * @private
-     * @param {GameEngine} sim
-     * @param {AbstractMessage} message
-     * @returns {boolean}
-     */
-    _ecsResourceMessage(sim, message) {
-        if (message instanceof DeleteObjectMessage) {
-            return sim.extractor.removeExtractorById(message.id)
-                || sim.deepExtractor.removeExtractorById(message.id)
-                || sim.resources.removeResourceById(message.id);
-        }
-        if (!(message instanceof CreateObjectMessage)) {
-            return false;
-        }
-        if (message.typeId === WaterResourceDefinition.typeId) {
-            sim.resources.placeResource(message.x, message.y, message.typeId, message.direction, RESOURCE_WATER, [{x: 0, y: 0}]);
-            return true;
-        }
-        if (message.typeId === VolcanoResourceDefinition.typeId) {
-            const footprint = sim.footprint(VolcanoResourceDefinition, message.x, message.y, message.direction);
-            if (!sim.occupancyFree(footprint)) {
-                return true;
-            }
-            const clientId = sim.resources.placeResource(message.x, message.y, message.typeId, message.direction, RESOURCE_VOLCANO, VOLCANO_EXTRACTION_TILES);
-            sim.track(clientId, footprint);
-            return true;
-        }
-        if (message.typeId === ExtractorDefinition.typeId) {
-            this._ecsPlaceExtractor(sim, sim.extractor, ExtractorDefinition, message);
-            return true;
-        }
-        if (message.typeId === DeepExtractorDefinition.typeId) {
-            this._ecsPlaceExtractor(sim, sim.deepExtractor, DeepExtractorDefinition, message);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * @private
-     * @param {GameEngine} sim
-     * @param {ExtractorModule} module
-     * @param {ObjectDefinition} definition
-     * @param {CreateObjectMessage} message
-     * @returns {void}
-     */
-    _ecsPlaceExtractor(sim, module, definition, message) {
-        const resourceType = sim.resources.coverAt(message.x, message.y);
-        if (resourceType === null) {
-            return;
-        }
-        const footprint = sim.footprint(definition, message.x, message.y, message.direction);
-        if (!sim.occupancyFree(footprint)) {
-            return;
-        }
-        const output = sim.portFor(definition.outputPorts[0], message.x, message.y, message.direction);
-        const clientId = module.placeExtractor(message.x, message.y, message.direction, resourceType, output.port, output.tile);
-        sim.track(clientId, footprint);
+        sim.deepExtractor.install(sim);
     }
 }
 
