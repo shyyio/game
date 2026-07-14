@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
-import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
+import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
 import {BeltModule} from "@/mods/Logistics/BeltModule.js";
 import {BeltPathRecalculateEvent, BeltItemSyncEvent} from "@/mods/Logistics/events.js";
 
@@ -11,7 +11,7 @@ const RED = 1;
 // Regression: extending a path at its output (downstream) edge while an item is in flight must not
 // drop the item — the new belt is empty space at the output edge, so the item keeps travelling.
 test("extending a belt path downstream preserves an in-flight item", async () => {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     const belts = new BeltModule(engine);
 
@@ -49,7 +49,7 @@ test("extending a belt path downstream preserves an in-flight item", async () =>
 // Regression: an item that has already popped and is resting in the out-port must not vanish when the
 // path is extended downstream — the moved out-port would otherwise strand it in a now-internal port.
 test("extending a belt path downstream preserves an item resting in the out-port", async () => {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     const belts = new BeltModule(engine);
 
@@ -83,7 +83,7 @@ test("extending a belt path downstream preserves an item resting in the out-port
 // port id, so on a downstream extension the path-recalc must precede the item rows and the old out-port
 // must be cleared — otherwise items land at a stale offset and the old sprite lingers.
 test("downstream extension emits recalc before item rows and clears the old out-port", async () => {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     const belts = new BeltModule(engine);
 
@@ -117,7 +117,7 @@ test("downstream extension emits recalc before item rows and clears the old out-
 // rebuilt run's ids must stay ascending in output->input order — otherwise a prepended output gap sorts
 // as input-most and the item renders a tile too far toward the output (a visual teleport).
 test("a tail extension keeps item-row ids ascending output-to-input", async () => {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     const belts = new BeltModule(engine);
 
@@ -138,7 +138,7 @@ test("a tail extension keeps item-row ids ascending output-to-input", async () =
 // survives the edit, so it must emit neither a clear nor a set (a clear+set would glide a fresh sprite
 // in; a lone clear would drop it). Its sprite is left untouched.
 test("extending a path upstream leaves a resting out-port item static", async () => {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     const belts = new BeltModule(engine);
 

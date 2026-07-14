@@ -7,8 +7,8 @@ import {EasyObjectInsertEvent} from "@/common/EasyObjectEvents.js";
 import {LogisticsMod} from "@/mods/Logistics/mod.js";
 import {DemoMod} from "@/mods/DemoMod/DemoMod.js";
 import {ResourcesMod, WaterResourceDefinition, ExtractorDefinition, WATER_ITEM_TYPE} from "@/mods/Resources/Resources.js";
-import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
-import {makeEcsSimEngine} from "@/test/ecsSim.js";
+import {GameEngine} from "@/common/sim/GameEngine.js";
+import {makeGameEngine} from "@/test/ecsSim.js";
 
 async function setup() {
     const mr = new ModRegistry();
@@ -16,7 +16,7 @@ async function setup() {
     mr.loadMod(new DemoMod());
     mr.loadMod(new ResourcesMod());
     mr.definitions;
-    const engine = await makeEcsSimEngine();
+    const engine = await makeGameEngine();
     return engine;
 }
 
@@ -26,11 +26,11 @@ test("an extractor on water produces the water item into its output port", async
     assert.equal(engine.applyMessage(new CreateObjectMessage(ExtractorDefinition.typeId, 5, 5, Direction.UP)), true);
     assert.equal(engine.extractor.eids().length, 1, "extractor placed on the resource");
 
-    const outPort = engine.engine.portAt(5, 4, Direction.UP);
+    const outPort = engine.portAt(5, 4, Direction.UP);
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
         engine.tickAll();
-        produced = engine.engine.portItem(outPort) === WATER_ITEM_TYPE;
+        produced = engine.portItem(outPort) === WATER_ITEM_TYPE;
     }
     assert.ok(produced, "the extractor produced a water item");
 });

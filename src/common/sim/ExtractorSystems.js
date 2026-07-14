@@ -2,7 +2,7 @@ import {TickPhase} from "@/common/core.js";
 import {chunkId} from "@/common/util.js";
 import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
-import {EMPTY, NO_EID} from "@/common/sim/EcsEngine.js";
+import {EMPTY, NO_EID} from "@/common/sim/GameEngine.js";
 
 /**
  * A resource extractor on the bitECS engine: a producer with no input port whose fixed input is the
@@ -14,7 +14,7 @@ import {EMPTY, NO_EID} from "@/common/sim/EcsEngine.js";
 export class ExtractorModule {
 
     /**
-     * @param {EcsEngine} engine
+     * @param {GameEngine} engine
      * @param {object} config
      * @param {number} config.processingTicks
      * @param {{resource:number, output:number}[]} config.recipes - resource type -> produced item

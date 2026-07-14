@@ -5,13 +5,12 @@ import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {LogisticsMod} from "@/mods/Logistics/mod.js";
 import {DemoMod, DemoMachineDefinition} from "@/mods/DemoMod/DemoMod.js";
-import {EcsEngine} from "@/common/sim/EcsEngine.js";
+import {GameEngine} from "@/common/sim/GameEngine.js";
 import {BeltModule} from "@/mods/Logistics/BeltModule.js";
-import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
-import {makeEcsSimEngine} from "@/test/ecsSim.js";
+import {makeGameEngine} from "@/test/ecsSim.js";
 
 test("a second surface belt cannot occupy the same tile, and delete frees it", async () => {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     const belts = new BeltModule(engine);
 
@@ -27,7 +26,7 @@ test("an object cannot be placed on an occupied tile", async () => {
     mr.loadMod(new LogisticsMod());
     mr.loadMod(new DemoMod());
     mr.definitions;
-    const engine = await makeEcsSimEngine();
+    const engine = await makeGameEngine();
 
     engine.applyMessage(new CreateObjectMessage(DemoMachineDefinition.typeId, 5, 5, Direction.UP));
     assert.equal(engine.machine.eids().length, 1);

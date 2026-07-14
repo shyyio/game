@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {EcsEngine} from "@/common/sim/EcsEngine.js";
+import {GameEngine} from "@/common/sim/GameEngine.js";
 import {BeltModule} from "@/mods/Logistics/BeltModule.js";
 import {
     BeltItemUpsertEvent,
@@ -13,7 +13,7 @@ const RED = 1;
 // A moving belt item emits a BeltItemUpsertEvent (ingest) and BeltItemDeleteEvent (pop) keyed by
 // path id + run id, so the client renders and glides items along the belt body.
 test("a belt item emits an upsert on ingest and a delete on pop", async () => {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     const belts = new BeltModule(engine);
     let handle = null;

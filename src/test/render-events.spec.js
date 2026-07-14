@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
+import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
 import {SplitterModule} from "@/common/sim/SplitterSystems.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
@@ -9,7 +9,7 @@ const ITEM = 7;
 // A drawn out-port emits a PortItemSetEvent when it gains a resting item and a PortItemClearEvent
 // when it loses one, on change only.
 test("rendered out-ports emit port-item set/clear deltas on change only", async () => {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     const splitter = new SplitterModule(engine);
     const s = splitter.addSplitter();

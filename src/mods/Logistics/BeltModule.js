@@ -1,7 +1,7 @@
 import {addEntity, addComponent} from "bitecs";
 import {TickPhase, Direction} from "@/sdk/common.js";
 import {chunkId} from "@/common/util.js";
-import {EMPTY, NO_EID} from "@/common/sim/EcsEngine.js";
+import {EMPTY, NO_EID} from "@/common/sim/GameEngine.js";
 // Layering debt: the ECS content modules live in common/sim/ but emit mod-owned belt events. They
 // belong in mods/Logistics/ (see project_bitecs_migration memory); this import crosses the layer for now.
 import {
@@ -41,7 +41,7 @@ function tileKey(x, y) {
 export class BeltModule {
 
     /**
-     * @param {EcsEngine} engine
+     * @param {GameEngine} engine
      */
     constructor(engine) {
         this.engine = engine;
@@ -748,7 +748,7 @@ export class BeltModule {
     /**
      * The shared in/out ports for a run (belts head -> tail): the in-port is the edge feeding the head
      * tile (head belt's facing); the out-port is the edge the tail feeds downstream (tail belt's
-     * facing) — so seams and adjacent objects adopt the same ports via {@link EcsEngine#portAt}.
+     * facing) — so seams and adjacent objects adopt the same ports via {@link GameEngine#portAt}.
      * @private
      * @param {object[]} runBelts - the run's belts, head -> tail
      * @returns {{inPort:number, outPort:number}}

@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
+import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
 import {BeltModule} from "@/mods/Logistics/BeltModule.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 
@@ -20,7 +20,7 @@ function networkPorts(belts) {
 }
 
 async function newModule() {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     return {engine, belts: new BeltModule(engine)};
 }

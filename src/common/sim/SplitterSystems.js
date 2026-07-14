@@ -2,7 +2,7 @@ import {TickPhase} from "@/common/core.js";
 import {Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
-import {EMPTY, NO_EID} from "@/common/sim/EcsEngine.js";
+import {EMPTY, NO_EID} from "@/common/sim/GameEngine.js";
 
 /**
  * The Splitter mod on the bitECS engine: a 1x2 router of two inputs and two outputs (ports shared
@@ -14,7 +14,7 @@ import {EMPTY, NO_EID} from "@/common/sim/EcsEngine.js";
 export class SplitterModule {
 
     /**
-     * @param {EcsEngine} engine
+     * @param {GameEngine} engine
      * @param {object} [config]
      * @param {number} [config.typeId] - the single object type this module places
      */

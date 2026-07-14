@@ -2,7 +2,7 @@ import {TickPhase} from "@/common/core.js";
 import {chunkId} from "@/common/util.js";
 import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
-import {EMPTY, NO_EID} from "@/common/sim/EcsEngine.js";
+import {EMPTY, NO_EID} from "@/common/sim/GameEngine.js";
 
 // Recipe input keys are always padded to three slots.
 const RECIPE_SLOTS = 3;
@@ -22,7 +22,7 @@ const PROCESSING_COLS = ["processing0", "processing1", "processing2"];
 export class MachineModule {
 
     /**
-     * @param {EcsEngine} engine
+     * @param {GameEngine} engine
      * @param {object} config
      * @param {number} config.processingTicks
      * @param {number} config.inputCount - number of active input ports (1..3)
