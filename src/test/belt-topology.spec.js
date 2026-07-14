@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
+import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
 import {BeltModule} from "@/mods/Logistics/BeltModule.js";
 import {BELT_RAMP_DOWN} from "@/mods/Logistics/constants.js";
 
@@ -16,7 +16,7 @@ function buildRing3x3(belts) {
 }
 
 async function module() {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     return {engine, belts: new BeltModule(engine)};
 }

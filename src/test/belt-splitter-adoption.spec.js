@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
+import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
 import {BeltModule} from "@/mods/Logistics/BeltModule.js";
 import {SplitterModule} from "@/common/sim/SplitterSystems.js";
 
@@ -10,7 +10,7 @@ const RED = 1;
 // Placing a splitter above a belt's output edge auto-adopts the shared port (no manual wiring), and
 // an item flows belt -> splitter.
 test("a splitter adopts an adjacent belt's port and receives its items", async () => {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     const splitter = new SplitterModule(engine); // before belt for POST_RESOLVE seam order
     const belts = new BeltModule(engine);

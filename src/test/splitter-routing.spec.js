@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
+import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
 import {SplitterModule} from "@/common/sim/SplitterSystems.js";
 
 const RED = 1;
@@ -8,7 +8,7 @@ const RED = 1;
 // A splitter fed a continuous stream on one input must balance it round-robin across both outputs,
 // not dump everything on one — the 2-out distribution logic the SQL splitter ops used to own.
 test("a splitter round-robins a single input stream across both outputs", async () => {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     const splitter = new SplitterModule(engine);
     const s = splitter.addSplitter();

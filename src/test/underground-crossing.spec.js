@@ -4,14 +4,14 @@ import {Direction} from "@/common/constants.js";
 import {BELT_NORMAL, BELT_RAMP_DOWN, BELT_RAMP_UP} from "@/mods/Logistics/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {BeltInsertEvent} from "@/mods/Logistics/events.js";
-import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
-import {makeEcsSimEngine} from "@/test/ecsSim.js";
+import {GameEngine} from "@/common/sim/GameEngine.js";
+import {makeGameEngine} from "@/test/ecsSim.js";
 
 const RED = 2;
 const BLUE = 3;
 
 test("a vertical tunnel and a horizontal belt cross on the same tile and flow independently", async () => {
-    const engine = await makeEcsSimEngine();
+    const engine = await makeGameEngine();
 
     // Vertical UP tunnel down column x=0: ramp-down (0,4), ramp-up (0,1) -> undergrounds (0,3),(0,2); feeder (0,5).
     engine.applyMessage(new CreateBeltMessage(0, 4, Direction.UP, BELT_RAMP_DOWN));
@@ -30,16 +30,16 @@ test("a vertical tunnel and a horizontal belt cross on the same tile and flow in
     assert.notEqual(tunnel.id, horizontal.id, "distinct paths");
 
     // Feed both; each output receives its own item, uncrossed.
-    engine.engine.setPortItem(tunnel.inPort, RED);
-    engine.engine.setPortItem(horizontal.inPort, BLUE);
+    engine.setPortItem(tunnel.inPort, RED);
+    engine.setPortItem(horizontal.inPort, BLUE);
     let tunnelOut = false;
     let horizOut = false;
     for (let i = 0; i < 20; i += 1) {
-        engine.engine.setPortItem(tunnel.outPort, -1);
-        engine.engine.setPortItem(horizontal.outPort, -1);
+        engine.setPortItem(tunnel.outPort, -1);
+        engine.setPortItem(horizontal.outPort, -1);
         engine.tickAll();
-        if (engine.engine.portItem(tunnel.outPort) === RED) tunnelOut = true;
-        if (engine.engine.portItem(horizontal.outPort) === BLUE) horizOut = true;
+        if (engine.portItem(tunnel.outPort) === RED) tunnelOut = true;
+        if (engine.portItem(horizontal.outPort) === BLUE) horizOut = true;
     }
     assert.ok(tunnelOut, "tunnel delivered its item");
     assert.ok(horizOut, "horizontal belt delivered its item");

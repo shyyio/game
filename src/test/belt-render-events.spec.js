@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {EcsEngine} from "@/common/sim/EcsEngine.js";
+import {GameEngine} from "@/common/sim/GameEngine.js";
 import {BeltModule} from "@/mods/Logistics/BeltModule.js";
 import {PortItemSetEvent} from "@/common/PortItemEvents.js";
 
@@ -9,7 +9,7 @@ const RED = 1;
 
 // A belt's out-port (drawn at the tail tile) emits a PortItemSetEvent when a popped item rests there.
 test("a belt emits a port-item set when an item pops to its out-port", async () => {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     const belts = new BeltModule(engine);
     let handle = null;

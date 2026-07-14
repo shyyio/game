@@ -6,13 +6,13 @@ import {DemoMachineDefinition} from "@/mods/DemoMod/DemoMod.js";
 import {WaterResourceDefinition, ExtractorDefinition} from "@/mods/Resources/Resources.js";
 import {SplitterDefinition} from "@/mods/Logistics/definitions.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
-import {makeEcsSimEngine} from "@/test/ecsSim.js";
+import {makeGameEngine} from "@/test/ecsSim.js";
 
 // Writes a NodeSaveStore SQLite save populated with one of every object type, for inspecting the
 // on-disk save format. Output path is argv[2] (default SAMPLE.sqlite3).
 const PATH = process.argv[2] === undefined ? "SAMPLE.sqlite3" : process.argv[2];
 
-const engine = await makeEcsSimEngine();
+const engine = await makeGameEngine();
 engine.applyMessage(new CreateObjectMessage(WaterResourceDefinition.typeId, 5, 5, Direction.UP));
 engine.applyMessage(new CreateObjectMessage(ExtractorDefinition.typeId, 5, 5, Direction.UP));
 engine.applyMessage(new CreateObjectMessage(DemoMachineDefinition.typeId, 10, 10, Direction.UP));

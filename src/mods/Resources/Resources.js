@@ -95,15 +95,15 @@ export class ResourcesMod extends AbstractMod {
 
     /**
      * Registers the resource + extractor ECS modules and their handlers.
-     * @param {EcsSimEngine} sim
+     * @param {GameEngine} sim
      * @returns {void}
      */
-    setupEcs(sim) {
-        sim.resources = new ResourceModule(sim.engine, [
+    setup(sim) {
+        sim.resources = new ResourceModule(sim, [
             {name: "WaterResource", typeId: WaterResourceDefinition.typeId},
             {name: "VolcanoResource", typeId: VolcanoResourceDefinition.typeId},
         ]);
-        sim.extractor = new ExtractorModule(sim.engine, {
+        sim.extractor = new ExtractorModule(sim, {
             processingTicks: 4,
             recipes: [
                 {resource: RESOURCE_WATER, output: WATER_ITEM_TYPE},
@@ -111,7 +111,7 @@ export class ResourcesMod extends AbstractMod {
             ],
             typeId: ExtractorDefinition.typeId,
         });
-        sim.deepExtractor = new ExtractorModule(sim.engine, {
+        sim.deepExtractor = new ExtractorModule(sim, {
             processingTicks: 8,
             recipes: [{resource: RESOURCE_VOLCANO, output: BRINE_ITEM_TYPE}],
             typeId: DeepExtractorDefinition.typeId,
@@ -127,7 +127,7 @@ export class ResourcesMod extends AbstractMod {
 
     /**
      * @private
-     * @param {EcsSimEngine} sim
+     * @param {GameEngine} sim
      * @param {AbstractMessage} message
      * @returns {boolean}
      */
@@ -166,7 +166,7 @@ export class ResourcesMod extends AbstractMod {
 
     /**
      * @private
-     * @param {EcsSimEngine} sim
+     * @param {GameEngine} sim
      * @param {ExtractorModule} module
      * @param {ObjectDefinition} definition
      * @param {CreateObjectMessage} message

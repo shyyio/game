@@ -5,14 +5,14 @@ import {BELT_RAMP_DOWN, BELT_RAMP_UP, MAX_UNDERGROUND_LENGTH} from "@/mods/Logis
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {BeltInsertEvent} from "@/mods/Logistics/events.js";
-import {makeEcsSimEngine} from "@/test/ecsSim.js";
+import {makeGameEngine} from "@/test/ecsSim.js";
 
 const RED = 1;
 
 // Places a ramp-down at (1,1) then a ramp-up `gap+1` tiles east, filling the buried span; returns the
 // engine and both ramp ids. A RIGHT tunnel.
 async function tunnel(gap) {
-    const engine = await makeEcsSimEngine();
+    const engine = await makeGameEngine();
     engine.applyMessage(new CreateBeltMessage(1, 1, Direction.RIGHT, BELT_RAMP_DOWN));
     const downId = engine.drainEvents().find(event => event instanceof BeltInsertEvent).id;
     const exitX = 1 + gap + 1;
@@ -50,7 +50,7 @@ test("ramps beyond the maximum tunnel length do not connect", async () => {
 });
 
 test("a reversed pair (ramp-up first, then ramp-down) connects", async () => {
-    const engine = await makeEcsSimEngine();
+    const engine = await makeGameEngine();
     engine.applyMessage(new CreateBeltMessage(3, 1, Direction.RIGHT, BELT_RAMP_UP));
     const upId = engine.drainEvents().find(event => event instanceof BeltInsertEvent).id;
     engine.applyMessage(new CreateBeltMessage(1, 1, Direction.RIGHT, BELT_RAMP_DOWN, upId));
@@ -80,7 +80,7 @@ test("deleting the down ramp collapses the tunnel, leaving the up ramp", async (
 test("a tunnel item is kept on the surviving ramp when a ramp is deleted", async () => {
     const {engine, upId} = await tunnel(1);
     const path = engine.belts.pathAt(1, 1);
-    engine.engine.setPortItem(path.inPort, RED);
+    engine.setPortItem(path.inPort, RED);
     engine.tickAll(); // ingest the item into the tunnel
     assert.equal(itemCells(engine), 1, "the item is in the tunnel");
 

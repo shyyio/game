@@ -1,5 +1,7 @@
 import {createWorld, addEntity, addComponent, removeEntity, entityExists, query} from "bitecs";
 import {TickPhase} from "@/common/core.js";
+import {rotate} from "@/common/util.js";
+import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
 // The tick phases run in order each whole tick.
@@ -28,12 +30,32 @@ const LAYER_CODE = {S: 0, U0: 1, U1: 2};
 const LAYER_NAME = ["S", "U0", "U1"];
 
 /**
- * bitECS-backed simulation world: the port-transfer core over typed-array component storage, plus the
- * occupancy/port indexes and (de)serialization. Mods register their systems on it via {@link EcsSimEngine}.
+ * bitECS-backed simulation engine Game drives: the port-transfer core over typed-array component
+ * storage, the occupancy/port indexes, (de)serialization, and the mod host — each loaded mod registers
+ * its ECS content (modules, message handlers, chunk-sync contributors) via {@link AbstractMod#setup}.
+ * Generic — it knows no specific content, so it imports nothing from `mods/`.
  */
-export class EcsEngine {
+export class GameEngine {
 
-    constructor() {
+    /**
+     * @param {ModRegistry} [modRegistry] - mods whose setup registers content on init
+     */
+    constructor(modRegistry=null) {
+        this.modRegistry = modRegistry;
+
+        // Named module refs, set by mods' setup (used by tests + debugInsertItem).
+        this.belts = null;
+        this.splitter = null;
+        this.machine = null;
+        this.resources = null;
+        this.extractor = null;
+        this.deepExtractor = null;
+
+        // Registered by mods.
+        this._messageHandlers = [];
+        this._chunkSyncers = [];
+        this._inspectors = [];
+
         /**
          * @type {World|null}
          */
@@ -194,6 +216,11 @@ export class EcsEngine {
      */
     async init() {
         this.world = createWorld();
+        if (this.modRegistry !== null) {
+            // Assign each ObjectDefinition its typeId (registration order) before mods wire up.
+            this.modRegistry.definitions;
+            this.modRegistry.mods.forEach(mod => mod.setup(this));
+        }
     }
 
     /**
@@ -843,5 +870,128 @@ export class EcsEngine {
         query(this.world, [store]).forEach(eid => {
             this._cellByKey.set(`${store.x[eid]},${store.y[eid]},${LAYER_NAME[store.layer[eid]]}`, eid);
         });
+    }
+
+    /**
+     * A mod registers a message handler (returns true if it handled the message).
+     * @param {function(AbstractMessage): boolean} handler
+     * @returns {void}
+     */
+    registerMessageHandler(handler) {
+        this._messageHandlers.push(handler);
+    }
+
+    /**
+     * A mod registers a chunk-sync contributor (chunk -> events).
+     * @param {function(number): object[]} contributor
+     * @returns {void}
+     */
+    registerChunkSync(contributor) {
+        this._chunkSyncers.push(contributor);
+    }
+
+    /**
+     * A mod registers an inspect snapshotter (object client id -> InspectHeartbeatEvent or null).
+     * @param {function(number): (object|null)} inspector
+     * @returns {void}
+     */
+    registerInspector(inspector) {
+        this._inspectors.push(inspector);
+    }
+
+    /**
+     * The current inspect snapshot for an object, or null if no module owns that client id.
+     * @param {number} objectId
+     * @returns {object|null}
+     */
+    inspectSnapshot(objectId) {
+        for (let i = 0; i < this._inspectors.length; i += 1) {
+            const snapshot = this._inspectors[i](objectId);
+            if (snapshot !== null) {
+                return snapshot;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param {AbstractMessage} message
+     * @returns {boolean}
+     */
+    applyMessage(message) {
+        if (message instanceof DeleteObjectMessage) {
+            this.untrack(message.id);
+            const handled = this._messageHandlers.some(handler => handler(message));
+            // A delete (and any belt relink it triggered) can strand ports; destroy them now.
+            this.collectUnreferencedPorts();
+            return handled;
+        }
+        return this._messageHandlers.some(handler => handler(message));
+    }
+
+    /**
+     * @param {number} chunk
+     * @returns {object[]}
+     */
+    chunkSync(chunk) {
+        const events = [];
+        this._chunkSyncers.forEach(contributor => contributor(chunk).forEach(event => events.push(event)));
+        return events;
+    }
+
+    /**
+     * Resolves the shared edge port for a definition's PortDefinition on an object placed at (x, y)
+     * facing `direction` — offset and local direction rotated by the placement.
+     * @param {PortDefinition} portVec
+     * @param {number} x
+     * @param {number} y
+     * @param {Direction} direction
+     * @returns {{port:number, tile:{x:number, y:number}}}
+     */
+    portFor(portVec, x, y, direction) {
+        const r = rotate(portVec, direction);
+        const tile = {x: x + r.x, y: y + r.y};
+        return {port: this.portAt(tile.x, tile.y, r.direction), tile};
+    }
+
+    /**
+     * The surface cells a definition occupies at (x, y) facing `direction`.
+     * @param {ObjectDefinition} definition
+     * @param {number} x
+     * @param {number} y
+     * @param {Direction} direction
+     * @returns {{x:number, y:number, layer:string}[]}
+     */
+    footprint(definition, x, y, direction) {
+        return definition.geometry.tiles(direction).map(cell => ({x: x + cell.x, y: y + cell.y, layer: "S"}));
+    }
+
+    /**
+     * Occupies a placed object's footprint, tagged with its client id so a delete destroys it.
+     * @param {number} clientId
+     * @param {{x:number, y:number, layer:string}[]} footprint
+     * @returns {void}
+     */
+    track(clientId, footprint) {
+        this.occupy(footprint, clientId);
+    }
+
+    /**
+     * Destroys a deleted object's footprint.
+     * @param {number} clientId
+     * @returns {void}
+     */
+    untrack(clientId) {
+        this.destroyOwnerCells(clientId);
+    }
+
+    /**
+     * Debug helper: drops an item onto the first belt path's in-port.
+     * @returns {void}
+     */
+    debugInsertItem() {
+        if (this.belts !== null && this.belts.paths.length > 0) {
+            this.setPortItem(this.belts.paths[0].inPort, 1);
+        }
     }
 }

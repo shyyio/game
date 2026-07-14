@@ -245,10 +245,10 @@ export class AbstractMod {
     /**
      * Registers this mod's bitECS content (modules, message handlers, chunk-sync contributors) on the
      * engine. The default registers nothing.
-     * @param {EcsSimEngine} sim
+     * @param {GameEngine} sim
      * @returns {void}
      */
-    setupEcs(sim) {
+    setup(sim) {
 
     }
 

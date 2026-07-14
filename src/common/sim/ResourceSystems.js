@@ -1,6 +1,6 @@
 import {chunkId} from "@/common/util.js";
 import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
-import {NO_EID} from "@/common/sim/EcsEngine.js";
+import {NO_EID} from "@/common/sim/GameEngine.js";
 
 function tileKey(x, y) {
     return `${x},${y}`;
@@ -16,7 +16,7 @@ function tileKey(x, y) {
 export class ResourceModule {
 
     /**
-     * @param {EcsEngine} engine
+     * @param {GameEngine} engine
      * @param {{name:string, typeId:number}[]} types - one body component per resource definition
      */
     constructor(engine, types) {

@@ -4,7 +4,7 @@ import {InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
 import {WireRegistry} from "@/common/wire.js";
-import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
+import {GameEngine} from "@/common/sim/GameEngine.js";
 import {SessionCache} from "@/common/SessionCache.js";
 import {SettingsCache, PlayerSettingsCache} from "@/common/SettingsCache.js";
 import {CHUNK_SIZE, GameSettingsKey} from "@/common/constants.js";
@@ -13,7 +13,7 @@ export class Game {
 
     /**
      * @param {ModRegistry} modRegistry
-     * @param {EcsSimEngine} [simEngine] - the simulation engine; defaults to the bitECS engine
+     * @param {GameEngine} [simEngine] - the simulation engine; defaults to the bitECS engine
      * @param {AbstractSaveStore} [saveStore] - persists/restores the world; omitted when saving is off
      */
     constructor(modRegistry, simEngine, saveStore) {
@@ -22,9 +22,9 @@ export class Game {
 
         /**
          * The bitECS simulation engine the tick pipeline runs through.
-         * @type {EcsSimEngine}
+         * @type {GameEngine}
          */
-        this.simEngine = simEngine === undefined ? new EcsSimEngine(modRegistry) : simEngine;
+        this.simEngine = simEngine === undefined ? new GameEngine(modRegistry) : simEngine;
 
         /**
          * Protobuf wire codec registry, shared by sessions to encode/decode

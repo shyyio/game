@@ -36,11 +36,11 @@ export class DemoMod extends AbstractMod {
 
     /**
      * Registers the DemoMachine ECS module + its message/chunk-sync handlers.
-     * @param {EcsSimEngine} sim
+     * @param {GameEngine} sim
      * @returns {void}
      */
-    setupEcs(sim) {
-        sim.machine = new MachineModule(sim.engine, {
+    setup(sim) {
+        sim.machine = new MachineModule(sim, {
             processingTicks: 2,
             inputCount: 1,
             recipes: [{inputs: [DEMO_INPUT_ITEM_TYPE], output: DEMO_OUTPUT_ITEM_TYPE}],
@@ -54,7 +54,7 @@ export class DemoMod extends AbstractMod {
 
     /**
      * @private
-     * @param {EcsSimEngine} sim
+     * @param {GameEngine} sim
      * @param {AbstractMessage} message
      * @returns {boolean}
      */

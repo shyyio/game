@@ -2,13 +2,12 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {Game} from "@/common/Game.js";
-import {EcsSimEngine} from "@/common/sim/EcsSimEngine.js";
 import {Direction} from "@/common/constants.js";
 import {LogisticsMod} from "@/mods/Logistics/mod.js";
 import {DemoMod, DemoMachineDefinition, DEMO_INPUT_ITEM_TYPE, DEMO_OUTPUT_ITEM_TYPE} from "@/mods/DemoMod/DemoMod.js";
 import {SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
-import {TICK_PHASE_ORDER} from "@/common/sim/EcsEngine.js";
+import {GameEngine, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
 
 class CapturingSession {
 
@@ -31,7 +30,7 @@ async function setup() {
     const modRegistry = new ModRegistry();
     modRegistry.loadMod(new LogisticsMod());
     modRegistry.loadMod(new DemoMod());
-    const game = new Game(modRegistry, new EcsSimEngine(modRegistry));
+    const game = new Game(modRegistry, new GameEngine(modRegistry));
     await game.init();
     return game;
 }
@@ -117,7 +116,7 @@ test("heartbeat tracks the processing countdown, consumed batch, and output", as
         return heartbeats(session)[0];
     };
 
-    game.simEngine.engine.setPortItem(machine.inPort, DEMO_INPUT_ITEM_TYPE);
+    game.simEngine.setPortItem(machine.inPort, DEMO_INPUT_ITEM_TYPE);
     const started = tick();
     assert.equal(started.processingRemaining, 2);
     assert.deepEqual(started.inputMemory, [DEMO_INPUT_ITEM_TYPE]);

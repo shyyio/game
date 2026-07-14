@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
+import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
 import {BeltModule} from "@/mods/Logistics/BeltModule.js";
 
 const RED = 1;
@@ -14,7 +14,7 @@ const CELLS = [
 // Hard constraint: a belt line never crosses a chunk boundary — it splits into per-chunk paths
 // joined at the seam. Items must still flow across the seam and all be delivered.
 test("a belt line splits at the chunk boundary and items flow across the seam", async () => {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     const belts = new BeltModule(engine);
     let handle = null;

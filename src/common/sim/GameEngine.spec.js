@@ -1,11 +1,11 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {EcsEngine, EMPTY} from "@/common/sim/EcsEngine.js";
+import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
 
 // Boots an engine with `count` ports; the eids in `filledIds` (1-based, matching creation order)
 // carry item type 1.
 async function setup(count, filledIds) {
-    const engine = new EcsEngine();
+    const engine = new GameEngine();
     await engine.init();
     const ports = [];
     for (let i = 0; i < count; i += 1) {
