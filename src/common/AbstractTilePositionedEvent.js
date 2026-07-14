@@ -1,4 +1,5 @@
 import {chunkId} from "@/common/util.js";
+import {chunkTopic} from "@/common/topics.js";
 import {AbstractEvent} from "@/common/AbstractEvent.js";
 
 /**
@@ -21,5 +22,12 @@ export class AbstractTilePositionedEvent extends AbstractEvent {
      */
     get chunk() {
         return chunkId(this.x, this.y);
+    }
+
+    /**
+     * @returns {string}
+     */
+    get topicKey() {
+        return chunkTopic(this.chunk);
     }
 }

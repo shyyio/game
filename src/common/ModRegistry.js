@@ -56,9 +56,9 @@ export class ModRegistry {
      * @param {AbstractEvent} event
      * @param {Client} client
      */
-    handleClientEvent(event, client) {
+    dispatchEvent(event, client) {
         this.mods.forEach(mod => {
-            mod.onClientEvent(event, client);
+            mod.onEvent(event, client);
         });
     }
 

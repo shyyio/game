@@ -5,7 +5,7 @@ import {PlayerSettingsSyncEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
 import {WireRegistry} from "@/common/wire.js";
 import {GameEngine} from "@/common/sim/GameEngine.js";
-import {SessionCache} from "@/common/SessionCache.js";
+import {EventBus} from "@/common/EventBus.js";
 import {SettingsCache, PlayerSettingsCache} from "@/common/SettingsCache.js";
 import {CHUNK_SIZE, GameSettingsKey} from "@/common/constants.js";
 
@@ -25,8 +25,8 @@ export class Game {
          * @type {GameEngine}
          */
         this.simEngine = simEngine === undefined ? new GameEngine(modRegistry) : simEngine;
-        // Broadcast each domain event synchronously to the sessions covering its chunk.
-        this.simEngine.setEventSink(event => this._broadcastEvent(event));
+        // Publish each domain event synchronously to the sessions subscribed to its chunk topic.
+        this.simEngine.setEventSink(event => this.bus.publish(event));
 
         /**
          * Protobuf wire codec registry, shared by sessions to encode/decode
@@ -36,15 +36,10 @@ export class Game {
         this.wire = new WireRegistry(modRegistry);
 
         /**
-         * @type {Object.<number, AbstractSession>}
+         * Topic pub/sub owning the session registry and event routing.
+         * @type {EventBus}
          */
-        this.sessions = {};
-
-        /**
-         * Engine-agnostic session/viewport cache for event routing.
-         * @type {SessionCache}
-         */
-        this.sessionCache = new SessionCache();
+        this.bus = new EventBus();
 
         /**
          * @type {SettingsCache}
@@ -91,16 +86,15 @@ export class Game {
      * @param {AbstractSession} session
      */
     connect(session) {
-        const sessionId = this.sessionCache.add();
+        const sessionId = this.bus.addSession(session);
         session.setId(sessionId);
-        this.sessions[sessionId] = session;
 
         this._syncPlayerSettings(session);
         this._syncGameSettings(session);
     }
 
     _syncGameSettings(session) {
-        session.publishEvent(new GameSettingsSyncEvent(this.gameSettings.snapshot()));
+        this.bus.publishTo(session.id, new GameSettingsSyncEvent(this.gameSettings.snapshot()));
     }
 
     /**
@@ -108,15 +102,14 @@ export class Game {
      * @private
      */
     _syncPlayerSettings(session) {
-        session.publishEvent(new PlayerSettingsSyncEvent(this.playerSettings.snapshot(session.playerId)));
+        this.bus.publishTo(session.id, new PlayerSettingsSyncEvent(this.playerSettings.snapshot(session.playerId)));
     }
 
     /**
      * @param {number} sessionId
      */
     disconnect(sessionId) {
-        delete this.sessions[sessionId];
-        this.sessionCache.remove(sessionId);
+        this.bus.removeSession(sessionId);
     }
 
     // ---- Messages ----
@@ -126,7 +119,7 @@ export class Game {
      * @param {AbstractSession} session
      */
     dispatchMessage(message, session) {
-        // Core Events are handled here, and other events are dispatched to mods
+        // Core messages are handled here; the rest fall through to the engine then mods.
         if (message instanceof SetViewportMessage) {
             this._setSessionViewport(session, message.chunks);
             return;
@@ -161,19 +154,19 @@ export class Game {
      * @param {number[]} chunks
      */
     _setSessionViewport(session, chunks) {
-        const {added, removed} = this.sessionCache.setViewport(session.id, chunks);
+        const {added, removed} = this.bus.setViewport(session.id, chunks);
 
         removed.forEach(chunk => {
-            session.publishEvent(new ChunkUnsubscribeEvent(chunk));
+            this.bus.publishTo(session.id, new ChunkUnsubscribeEvent(chunk));
         });
 
         added.forEach(chunk => {
-            session.publishEvent(new ChunkSubscribeEvent(chunk));
+            this.bus.publishTo(session.id, new ChunkSubscribeEvent(chunk));
 
             // Bundle the chunk's recreate events into one ChunkSyncEvent; the client unwraps it.
             const events = this.simEngine.chunkSync(chunk);
             if (events.length > 0) {
-                session.publishEvent(new ChunkSyncEvent(chunk, events));
+                this.bus.publishTo(session.id, new ChunkSyncEvent(chunk, events));
             }
         });
     }
@@ -187,7 +180,7 @@ export class Game {
      * @returns {void}
      */
     _setSessionInspect(session, objectIds) {
-        const {added} = this.sessionCache.setInspects(session.id, objectIds);
+        const {added} = this.bus.setInspects(session.id, objectIds);
         // Fill each new menu now, not on the next heartbeat.
         added.forEach(objectId => this._syncInspect(session, objectId));
     }
@@ -201,20 +194,18 @@ export class Game {
     _syncInspect(session, objectId) {
         const snapshot = this.simEngine.inspectSnapshot(objectId);
         if (snapshot !== null) {
-            session.publishEvent(snapshot);
+            this.bus.publishTo(session.id, snapshot);
         }
     }
 
     /**
-     * Drops the deleted object's inspect subscriptions and closes its menu on those sessions.
+     * Closes a deleted object's menu on every session inspecting it, then drops its subscriptions.
      * @param {number} objectId
      * @returns {void}
      */
     _closeInspect(objectId) {
-        this.sessionCache.sessionsInspecting(objectId).forEach(sessionId => {
-            this.sessionCache.removeInspect(sessionId, objectId);
-            this.sessions[sessionId].publishEvent(new InspectClosedEvent(objectId));
-        });
+        this.bus.publish(new InspectClosedEvent(objectId));
+        this.bus.clearObject(objectId);
     }
 
     // ---- Tick ----
@@ -231,34 +222,18 @@ export class Game {
     }
 
     /**
-     * Broadcasts one engine domain event (placement/path/delete + port-item render deltas) to the
-     * sessions covering its chunk.
-     * @private
-     * @param {AbstractTilePositionedEvent} event
-     * @returns {void}
-     */
-    _broadcastEvent(event) {
-        this.sessionCache.sessionsForChunk(event.chunk).forEach(sessionId => {
-            this.sessions[sessionId].publishEvent(event);
-        });
-    }
-
-    /**
-     * Sends each subscribing session this tick's snapshot of every object it inspects, closing menus
-     * for any object that has since been removed.
+     * Publishes this tick's snapshot of every inspected object to its topic (fanning to all sessions
+     * inspecting it), closing menus for any object that has since been removed.
      * @private
      */
     _dispatchInspectEvents() {
-        this.sessionCache.forEachSession(sessionId => {
-            this.sessionCache.inspects(sessionId).forEach(objectId => {
-                const snapshot = this.simEngine.inspectSnapshot(objectId);
-                if (snapshot === null) {
-                    this.sessionCache.removeInspect(sessionId, objectId);
-                    this.sessions[sessionId].publishEvent(new InspectClosedEvent(objectId));
-                    return;
-                }
-                this.sessions[sessionId].publishEvent(snapshot);
-            });
+        this.bus.subscribedObjects().forEach(objectId => {
+            const snapshot = this.simEngine.inspectSnapshot(objectId);
+            if (snapshot === null) {
+                this._closeInspect(objectId);
+                return;
+            }
+            this.bus.publish(snapshot);
         });
     }
 }

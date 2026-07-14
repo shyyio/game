@@ -48,13 +48,13 @@ export class LogisticsClientMod extends LogisticsMod {
         // The shared cross-mod object index, captured on the first client hook; the mod registers
         // its belts and splitters into it and queries it instead of the simulation DB.
         this._cache = null;
-        // Stable belt layer: onClientEvent drives it imperatively.
+        // Stable belt layer: onEvent drives it imperatively.
         this._beltLayer = new BeltDrawLayer();
         // The shared item layer, captured on the first client hook; belts drive their items imperatively.
         this._itemLayer = null;
         // Reveals buried tunnel belts under a hovered ramp; driven by onInspect.
         this._overlayLayer = new BeltOverlayDrawLayer();
-        // Head id → belt ids in path order (head last); kept current by onClientEvent
+        // Head id → belt ids in path order (head last); kept current by onEvent
         // and used to resolve an item's slot to a belt, plus drawn by the debug layer.
         this._pathParts = new Map();
         // Head id → Map<run id, {length, type}>: each path's RLE runs, synced and kept
@@ -117,7 +117,7 @@ export class LogisticsClientMod extends LogisticsMod {
      * @param {AbstractEvent} event
      * @param {Client} client
      */
-    onClientEvent(event, client) {
+    onEvent(event, client) {
         this._useClient(client);
         if (event instanceof BeltInsertEvent || event instanceof BeltSyncEvent) {
             this._addBelt(event);

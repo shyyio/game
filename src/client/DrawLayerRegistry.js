@@ -29,7 +29,7 @@ export class DrawLayerRegistry {
     /**
      * @param {AbstractEvent} event
      */
-    publishEvent(event) {
+    dispatchEvent(event) {
         this.layers.forEach(layer => {
             layer.onEvent(event);
         });

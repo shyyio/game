@@ -421,9 +421,17 @@ export class Client {
             this.unInspectObject(event.objectId);
             return;
         }
+        this.dispatchEvent(event);
+    }
+
+    /**
+     * Routes an event that landed off the wire to its in-process consumers.
+     * @param {AbstractEvent} event
+     */
+    dispatchEvent(event) {
         this._trackObjectState(event);
-        this.modRegistry.handleClientEvent(event, this);
-        this.drawLayerRegistry.publishEvent(event);
+        this.modRegistry.dispatchEvent(event, this);
+        this.drawLayerRegistry.dispatchEvent(event);
         // The status HUD isn't a viewport draw layer, so feed it chunk events directly.
         this.statusLayer.onEvent(event);
     }
