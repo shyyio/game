@@ -784,7 +784,15 @@ export class GameEngine {
                 rows: rows,
             };
         });
-        return {components: components, globals: {nextObjectId: this._nextObjectId, ...this.globals}};
+        // Component values are Int32Array-backed, so always safe; only the unbounded globals (id
+        // counters) can overflow past 2^53, where Number silently loses precision.
+        const globals = {nextObjectId: this._nextObjectId, ...this.globals};
+        Object.keys(globals).forEach(key => {
+            if (!Number.isSafeInteger(globals[key])) {
+                throw new RangeError(`GameEngine.serialize: global "${key}" is not a safe integer: ${globals[key]}`);
+            }
+        });
+        return {components: components, globals: globals};
     }
 
     /**
