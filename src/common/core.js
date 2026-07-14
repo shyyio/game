@@ -86,12 +86,12 @@ export class MiniMenuEntry {
 export class RecipeDefinition {
 
     /**
-     * @param {number} verb
-     * @param {number[]} inputs - one item per input port, in port order
+     * One recipe: a consumed input set mapping to an output item. A processor consumes one item type
+     * per input port; an extractor consumes exactly one resource type (its sole input).
+     * @param {number[]} inputs
      * @param {number} output
      */
-    constructor(verb, inputs, output) {
-        this.verb = verb;
+    constructor(inputs, output) {
         this.inputs = inputs;
         this.output = output;
     }
@@ -191,18 +191,11 @@ export class ObjectDefinition {
 
 export class AbstractMod {
 
-    constructor() {
-        /**
-         * @type {Game}
-         */
-        this.game = null;
-    }
-
     /**
      * @returns {TextureDefinition[]}
      */
     get textureDefinitions() {
-
+        return [];
     }
 
     /**
@@ -224,7 +217,7 @@ export class AbstractMod {
      * @returns {AbstractDrawLayer[]}
      */
     get drawLayers() {
-
+        return [];
     }
 
     /**

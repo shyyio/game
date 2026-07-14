@@ -583,7 +583,7 @@ export class LogisticsClientMod extends LogisticsMod {
      * @param {number|null} tileX
      * @param {number|null} tileY
      * @param {Client} client
-     * @returns {{x: number, y: number, alt?: boolean}[]}
+     * @returns {InspectHighlight[]}
      */
     onInspect(tileX, tileY, client) {
         if (tileX === null) {

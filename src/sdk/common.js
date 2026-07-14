@@ -15,8 +15,8 @@ export {
     AbstractMod,              // base class every mod extends
     ObjectDefinition, // declares a placeable object: ports, geometry, per-tick ops
     PortDefinition,   // one input/output/internal port on an object (position + facing)
-    RecipeDefinition, // one verb recipe: an input item set mapping to an output item
     TickPhase,        // enum of the per-tick phases ops are scheduled into
+    RecipeDefinition, // one recipe: a consumed input set mapping to an output item
     MiniMenuEntry,    // one entry in the right-click / long-press context menu
 } from "@/common/core.js";
 
@@ -58,6 +58,14 @@ export {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.
 
 // Engine render deltas for the item resting in a render-flagged out-port.
 export {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
+
+// ---- Sim modules ----
+// Base-case bitECS modules a mod composes in `setup(sim)` for a placeable object type: a recipe
+// processor, a resource body, and a resource extractor. Each takes an ObjectDefinition + config and
+// installs its own placement/tick/chunk-sync handling.
+export {EasyMachineModule} from "@/common/sim/EasyMachineModule.js";
+export {EasyResourceModule} from "@/common/sim/EasyResourceModule.js";
+export {EasyExtractorModule} from "@/common/sim/EasyExtractorModule.js";
 
 // ---- World geometry ----
 // `Direction` is the cardinal-direction enum (with rotate/dx/dy helpers).

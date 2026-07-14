@@ -57,10 +57,6 @@ export class Game {
     }
 
     async init() {
-        this.modRegistry.mods.forEach(mod => {
-            mod.game = this;
-        });
-
         await this.simEngine.init();
     }
 
