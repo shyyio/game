@@ -1,4 +1,4 @@
-import {ChunkSubscribeEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
+import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent} from "@/common/PlayerSettingsEvents.js";
@@ -169,10 +169,11 @@ export class Game {
         added.forEach(chunk => {
             session.publishEvent(new ChunkSubscribeEvent(chunk));
 
-            // The bitECS engine recreates its objects/items in the newly visible chunk.
-            this.simEngine.chunkSync(chunk).forEach(event => {
-                session.publishEvent(event);
-            });
+            // Bundle the chunk's recreate events into one ChunkSyncEvent; the client unwraps it.
+            const events = this.simEngine.chunkSync(chunk);
+            if (events.length > 0) {
+                session.publishEvent(new ChunkSyncEvent(chunk, events));
+            }
         });
     }
 

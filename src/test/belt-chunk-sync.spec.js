@@ -7,6 +7,7 @@ import {chunkId} from "@/common/util.js";
 import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
+import {ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {LogisticsMod} from "@/mods/Logistics/mod.js";
 import {BeltSyncEvent} from "@/mods/Logistics/events.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
@@ -52,7 +53,9 @@ test("a session subscribing to a chunk receives its existing belts and resting i
     game.connect(viewer);
     game.dispatchMessage(new SetViewportMessage([chunkId(0, 0)]), viewer);
 
-    const belts = viewer.events.filter(event => event instanceof BeltSyncEvent);
+    const bundle = viewer.events.find(event => event instanceof ChunkSyncEvent);
+    assert.ok(bundle, "a ChunkSyncEvent bundle for the subscribed chunk");
+    const belts = bundle.events.filter(event => event instanceof BeltSyncEvent);
 
     assert.equal(belts.length, CELLS.length, "one BeltSyncEvent per placed belt");
     assert.deepEqual(

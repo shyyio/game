@@ -37,7 +37,7 @@ export class ChunkUnsubscribeEvent extends AbstractEvent {
 }
 
 /**
- * Syncs a subscribed chunk by bundling the per-object events (from `AbstractMod.chunkSyncEvents`) that recreate it on the client.
+ * Syncs a subscribed chunk by bundling the per-object recreate events (from the engine's `chunkSync`).
  */
 export class ChunkSyncEvent extends AbstractEvent {
 
