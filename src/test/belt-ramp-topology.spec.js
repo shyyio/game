@@ -6,6 +6,7 @@ import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {BeltInsertEvent} from "@/mods/Logistics/events.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
+import {EventCollector} from "@/test/EventCollector.js";
 
 const RED = 1;
 
@@ -13,8 +14,9 @@ const RED = 1;
 // engine and both ramp ids. A RIGHT tunnel.
 async function tunnel(gap) {
     const engine = await makeGameEngine();
+    const collector = new EventCollector(engine);
     engine.applyMessage(new CreateBeltMessage(1, 1, Direction.RIGHT, BELT_RAMP_DOWN));
-    const downId = engine.drainEvents().find(event => event instanceof BeltInsertEvent).id;
+    const downId = collector.drain().find(event => event instanceof BeltInsertEvent).id;
     const exitX = 1 + gap + 1;
     engine.applyMessage(new CreateBeltMessage(exitX, 1, Direction.RIGHT, BELT_RAMP_UP, downId));
     const upId = engine.belts._beltAt(exitX, 1, Direction.RIGHT).id;
@@ -51,8 +53,9 @@ test("ramps beyond the maximum tunnel length do not connect", async () => {
 
 test("a reversed pair (ramp-up first, then ramp-down) connects", async () => {
     const engine = await makeGameEngine();
+    const collector = new EventCollector(engine);
     engine.applyMessage(new CreateBeltMessage(3, 1, Direction.RIGHT, BELT_RAMP_UP));
-    const upId = engine.drainEvents().find(event => event instanceof BeltInsertEvent).id;
+    const upId = collector.drain().find(event => event instanceof BeltInsertEvent).id;
     engine.applyMessage(new CreateBeltMessage(1, 1, Direction.RIGHT, BELT_RAMP_DOWN, upId));
 
     assert.ok(connected(engine, 1, 1, 3, 1), "the reversed pair forms one tunnel path");

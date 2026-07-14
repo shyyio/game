@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
+import {EventCollector} from "@/test/EventCollector.js";
 import {SplitterModule} from "@/mods/Logistics/SplitterModule.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
@@ -11,6 +12,7 @@ const ITEM = 7;
 test("rendered out-ports emit port-item set/clear deltas on change only", async () => {
     const engine = new GameEngine();
     await engine.init();
+    const collector = new EventCollector(engine);
     const splitter = new SplitterModule(engine);
     const s = splitter.addSplitter();
     engine.registerRenderedPort(s.out_a, 5, 4);
@@ -18,18 +20,18 @@ test("rendered out-ports emit port-item set/clear deltas on change only", async 
 
     engine.setPortItem(s.out_a, ITEM);
     engine.tickAll();
-    let events = engine.drainEvents();
+    let events = collector.drain();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemSetEvent);
     assert.equal(events[0].portId, s.out_a);
     assert.equal(events[0].itemType, ITEM);
 
     engine.tickAll();
-    assert.deepEqual(engine.drainEvents(), []);
+    assert.deepEqual(collector.drain(), []);
 
     engine.setPortItem(s.out_a, EMPTY);
     engine.tickAll();
-    events = engine.drainEvents();
+    events = collector.drain();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemClearEvent);
     assert.equal(events[0].portId, s.out_a);

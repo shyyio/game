@@ -25,6 +25,8 @@ export class Game {
          * @type {GameEngine}
          */
         this.simEngine = simEngine === undefined ? new GameEngine(modRegistry) : simEngine;
+        // Broadcast each domain event synchronously to the sessions covering its chunk.
+        this.simEngine.setEventSink(event => this._broadcastEvent(event));
 
         /**
          * Protobuf wire codec registry, shared by sessions to encode/decode
@@ -141,7 +143,6 @@ export class Game {
             if (message instanceof DeleteObjectMessage) {
                 this._closeInspect(message.id);
             }
-            this._flushEngineEvents();
             return;
         }
 
@@ -227,20 +228,18 @@ export class Game {
 
     postTick() {
         this._dispatchInspectEvents();
-        this._flushEngineEvents();
     }
 
     /**
-     * Broadcasts the engine's domain events (placement/path/delete + port-item render deltas) to the
-     * sessions covering each event's chunk.
+     * Broadcasts one engine domain event (placement/path/delete + port-item render deltas) to the
+     * sessions covering its chunk.
      * @private
+     * @param {AbstractTilePositionedEvent} event
      * @returns {void}
      */
-    _flushEngineEvents() {
-        this.simEngine.drainEvents().forEach(event => {
-            this.sessionCache.sessionsForChunk(event.chunk).forEach(sessionId => {
-                this.sessions[sessionId].publishEvent(event);
-            });
+    _broadcastEvent(event) {
+        this.sessionCache.sessionsForChunk(event.chunk).forEach(sessionId => {
+            this.sessions[sessionId].publishEvent(event);
         });
     }
 

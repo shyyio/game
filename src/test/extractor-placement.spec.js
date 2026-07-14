@@ -9,6 +9,7 @@ import {DemoMod} from "@/mods/DemoMod/DemoMod.js";
 import {ResourcesMod, WaterResourceDefinition, ExtractorDefinition, WATER_ITEM_TYPE} from "@/mods/Resources/Resources.js";
 import {GameEngine} from "@/common/sim/GameEngine.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
+import {EventCollector} from "@/test/EventCollector.js";
 
 async function setup() {
     const mr = new ModRegistry();
@@ -43,9 +44,10 @@ test("an extractor cannot be placed off a resource", async () => {
 
 test("resource and extractor delete", async () => {
     const engine = await setup();
+    const collector = new EventCollector(engine);
     engine.applyMessage(new CreateObjectMessage(WaterResourceDefinition.typeId, 5, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(ExtractorDefinition.typeId, 5, 5, Direction.UP));
-    const inserts = engine.drainEvents().filter(e => e instanceof EasyObjectInsertEvent);
+    const inserts = collector.drain().filter(e => e instanceof EasyObjectInsertEvent);
     const resourceId = inserts.find(e => e.typeId === WaterResourceDefinition.typeId).id;
     const extractorId = inserts.find(e => e.typeId === ExtractorDefinition.typeId).id;
 

@@ -6,15 +6,17 @@ import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {BeltInsertEvent} from "@/mods/Logistics/events.js";
 import {GameEngine} from "@/common/sim/GameEngine.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
+import {EventCollector} from "@/test/EventCollector.js";
 
 const RED = 1;
 
 test("an item tunnels through a ramp-down / underground / ramp-up run", async () => {
     const engine = await makeGameEngine();
+    const collector = new EventCollector(engine);
 
     // UP tunnel: ramp-down (0,4), ramp-up (0,1) fills undergrounds (0,3),(0,2); normal feeder (0,5).
     engine.applyMessage(new CreateBeltMessage(0, 4, Direction.UP, BELT_RAMP_DOWN));
-    const rampDownId = engine.drainEvents().find(e => e instanceof BeltInsertEvent).id;
+    const rampDownId = collector.drain().find(e => e instanceof BeltInsertEvent).id;
     engine.applyMessage(new CreateBeltMessage(0, 1, Direction.UP, BELT_RAMP_UP, rampDownId));
     engine.applyMessage(new CreateBeltMessage(0, 5, Direction.UP, BELT_NORMAL));
 

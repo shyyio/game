@@ -1,19 +1,9 @@
+import {AbstractWireObject} from "@/common/AbstractWireObject.js";
+
 /**
  * Base class for every message a session sends to the game.
  */
-export class AbstractMessage {
-
-    /**
-     * Maps each wire-serialized field name to its protobuf spec string; subclasses MUST override.
-     * @type {Object.<string, string>}
-     */
-    static wireFields;
-
-    constructor() {
-        if (this.constructor.wireFields === undefined) {
-            throw new Error(`${this.constructor.name} extends AbstractMessage but has no static wireFields`);
-        }
-    }
+export class AbstractMessage extends AbstractWireObject {
 
     /**
      * Returns whether to accept and dispatch this message; false silently drops it.
