@@ -96,9 +96,9 @@ export class Client {
         this._debugMode = false;
         // Machine ids (number) with open menus; sent to the game as the inspect set.
         this._inspectedObjects = new Set();
-        // Object id (string) -> last produced item.
+        // Object id -> last produced item.
         this._lastProduced = new Map();
-        // Object id (string) -> {x, y} tile position.
+        // Object id -> {x, y} tile position.
         this._objectPos = new Map();
     }
 
@@ -409,8 +409,11 @@ export class Client {
         if (event instanceof InspectHeartbeatEvent) {
             // Ignore a heartbeat in flight past a close, so it can't revive a shut panel.
             if (this._inspectedObjects.has(event.objectId)) {
-                const key = String(event.objectId);
-                this.inspectPanelLayer.update(event, this._lastProduced.get(key), this._objectPos.get(key));
+                this.inspectPanelLayer.update(
+                    event,
+                    this._lastProduced.get(event.objectId),
+                    this._objectPos.get(event.objectId),
+                );
             }
             return;
         }
@@ -434,13 +437,13 @@ export class Client {
      */
     _trackObjectState(event) {
         if (event instanceof EasyObjectSyncEvent || event instanceof EasyObjectInsertEvent) {
-            this._objectPos.set(String(event.id), {x: event.x, y: event.y});
+            this._objectPos.set(event.id, {x: event.x, y: event.y});
             if (event.lastOutput !== null) {
-                this._lastProduced.set(String(event.id), event.lastOutput);
+                this._lastProduced.set(event.id, event.lastOutput);
             }
         } else if (event instanceof EasyObjectDeleteEvent) {
-            this._objectPos.delete(String(event.id));
-            this._lastProduced.delete(String(event.id));
+            this._objectPos.delete(event.id);
+            this._lastProduced.delete(event.id);
         }
     }
 }

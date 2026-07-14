@@ -1,6 +1,6 @@
 import {DEV, BROWSER} from "@/common/env.js";
 import {AbstractSession} from "@/common/AbstractSession.js";
-import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
+import {ChunkSubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 
 // Browser-only: fake per-chunk load latency so the connecting/loading status is visible in
 // single-player, where chunk events would otherwise resolve synchronously. Off under Node
@@ -38,9 +38,9 @@ export class LocalSession extends AbstractSession {
             this.client.publishEvent(event);
             return;
         }
-        // Chunk lifecycle events drip through one ordered delay queue so the loading
-        // status is visible and subscribe/sync/unsubscribe stay ordered; everything
-        // else delivers immediately.
+        // A chunk's subscribe+sync drip through one ordered delay queue so the loading status
+        // is visible and the sync follows its subscribe; unsubscribe and everything else deliver
+        // immediately.
         if (SIMULATE_CHUNK_LATENCY && this._isChunkEvent(event)) {
             this._chunkQueue.push(event);
             this._drainChunkQueue();

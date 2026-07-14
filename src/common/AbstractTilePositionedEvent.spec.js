@@ -20,6 +20,6 @@ test("a AbstractTilePositionedEvent subclass without wireFields throws", () => {
     class MissingFields extends AbstractTilePositionedEvent {}
     assert.throws(
         () => new MissingFields(0, 0),
-        /MissingFields extends AbstractMessage but has no static wireFields/,
+        /MissingFields extends AbstractWireObject but has no static wireFields/,
     );
 });

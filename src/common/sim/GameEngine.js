@@ -122,30 +122,29 @@ export class GameEngine {
         // the port is re-registered in the same edit (so a churned-but-surviving port stays static, no
         // clear+set glide). Flushed by the render diff.
         this._pendingClear = new Map();
-        // Buffered domain events (placement/path/delete + port-item render deltas) awaiting broadcast by chunk.
-        this._events = [];
+        // Sink for domain events (placement/path/delete + port-item render deltas). Game broadcasts each
+        // synchronously by chunk; tests install an EventCollector. Defaults to dropping (no session).
+        this._eventSink = () => {};
 
         this._resetTick();
     }
 
     /**
-     * Buffers a domain event (a real GameEvent) for the owner to broadcast to sessions covering its
-     * chunk.
+     * Passes a domain event (a real GameEvent) to the event sink.
      * @param {AbstractTilePositionedEvent} event
      * @returns {void}
      */
     emitEvent(event) {
-        this._events.push(event);
+        this._eventSink(event);
     }
 
     /**
-     * Returns and clears the buffered domain events.
-     * @returns {AbstractTilePositionedEvent[]}
+     * Sets the sink each emitted event is delivered to.
+     * @param {function(AbstractTilePositionedEvent): void} sink
+     * @returns {void}
      */
-    drainEvents() {
-        const events = this._events;
-        this._events = [];
-        return events;
+    setEventSink(sink) {
+        this._eventSink = sink;
     }
 
     /**
@@ -808,7 +807,6 @@ export class GameEngine {
         this.renderedPorts = new Map();
         this._portShadow = new Map();
         this._pendingClear = new Map();
-        this._events = [];
         this._resetTick();
 
         // Every eid that appears (as a row's own eid or an eid-field target) needs a fresh entity.

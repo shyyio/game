@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
+import {EventCollector} from "@/test/EventCollector.js";
 import {BeltModule} from "@/mods/Logistics/BeltModule.js";
 import {BeltPathRecalculateEvent, BeltItemSyncEvent} from "@/mods/Logistics/events.js";
 
@@ -86,6 +87,7 @@ test("downstream extension emits recalc before item rows and clears the old out-
     const engine = new GameEngine();
     await engine.init();
     const belts = new BeltModule(engine);
+    const collector = new EventCollector(engine);
 
     [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}].forEach(cell => belts.placeBelt(cell.x, cell.y, Direction.UP));
     const path = belts.pathAt(0, 5);
@@ -95,10 +97,10 @@ test("downstream extension emits recalc before item rows and clears the old out-
     for (let i = 0; i < 10 && engine.portItem(path.outPort) !== RED; i += 1) {
         engine.tickAll();
     }
-    engine.drainEvents();
+    collector.drain();
 
     belts.placeBelt(0, 2, Direction.UP);
-    const events = engine.drainEvents();
+    const events = collector.drain();
 
     const recalcAt = events.findIndex(event => event instanceof BeltPathRecalculateEvent);
     // Re-synced items snap (BeltItemSyncEvent), not glide, since the edit didn't move them.
@@ -108,7 +110,7 @@ test("downstream extension emits recalc before item rows and clears the old out-
 
     // The tail moved, so the old out-port is gone for good — its clear flushes on the next render tick.
     engine.tickAll();
-    const clearedOldOut = [...events, ...engine.drainEvents()].some(event =>
+    const clearedOldOut = [...events, ...collector.drain()].some(event =>
         event instanceof PortItemClearEvent && event.portId === oldOutPort);
     assert.ok(clearedOldOut, "the old out-port's resting-item sprite is cleared");
 });
@@ -141,6 +143,7 @@ test("extending a path upstream leaves a resting out-port item static", async ()
     const engine = new GameEngine();
     await engine.init();
     const belts = new BeltModule(engine);
+    const collector = new EventCollector(engine);
 
     [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}].forEach(cell => belts.placeBelt(cell.x, cell.y, Direction.UP));
     const path = belts.pathAt(0, 5);
@@ -150,12 +153,12 @@ test("extending a path upstream leaves a resting out-port item static", async ()
         engine.tickAll();
     }
     assert.equal(engine.portItem(outPort), RED, "the item rests in the out-port");
-    engine.drainEvents();
+    collector.drain();
 
     belts.placeBelt(0, 6, Direction.UP); // prepend upstream (head extension), out-port unchanged
-    const editEvents = engine.drainEvents();
+    const editEvents = collector.drain();
     engine.tickAll();
-    const tickEvents = engine.drainEvents();
+    const tickEvents = collector.drain();
 
     assert.equal(engine.portItem(outPort), RED, "the item is still in the out-port after the edit");
     const churned = [...editEvents, ...tickEvents].some(event =>
