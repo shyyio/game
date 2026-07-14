@@ -5,13 +5,14 @@ import {
     AbstractMod,
     ObjectDefinition,
     PortDefinition,
+    RecipeDefinition,
     Direction,
     DeleteObjectMessage,
     MiniMenuEntry,
+    EasyResourceModule,
+    EasyExtractorModule,
 } from "@/sdk/common.js";
 import {EasyObjectTool, EasyObjectGhostLayer, EasyObjectDrawLayer, InspectHighlight} from "@/sdk/client.js";
-import {EasyResourceModule} from "@/common/sim/EasyResourceModule.js";
-import {EasyExtractorModule} from "@/common/sim/EasyExtractorModule.js";
 
 // Resource types and the items extraction spawns.
 export const RESOURCE_WATER = 200;
@@ -98,32 +99,29 @@ export class ResourcesMod extends AbstractMod {
      * @returns {void}
      */
     setup(sim) {
-        sim.resources = new EasyResourceModule(sim, [
+        sim.registerModule("resources", new EasyResourceModule(sim, [
             {definition: WaterResourceDefinition, resourceType: RESOURCE_WATER, solid: false},
             {definition: VolcanoResourceDefinition, resourceType: RESOURCE_VOLCANO, solid: true},
-        ]);
-        sim.resources.install(sim);
+        ]));
 
         const bindResource = (s, message) => s.resources.coverAt(message.x, message.y);
-        sim.extractor = new EasyExtractorModule(sim, {
+        sim.registerModule("extractor", new EasyExtractorModule(sim, {
             definition: ExtractorDefinition,
             processingTicks: 4,
             recipes: [
-                {resource: RESOURCE_WATER, output: WATER_ITEM_TYPE},
-                {resource: RESOURCE_VOLCANO, output: SULFUR_ITEM_TYPE},
+                new RecipeDefinition([RESOURCE_WATER], WATER_ITEM_TYPE),
+                new RecipeDefinition([RESOURCE_VOLCANO], SULFUR_ITEM_TYPE),
             ],
             bindResource,
-        });
-        sim.extractor.install(sim);
+        }));
 
-        sim.deepExtractor = new EasyExtractorModule(sim, {
+        sim.registerModule("deepExtractor", new EasyExtractorModule(sim, {
             definition: DeepExtractorDefinition,
             processingTicks: 8,
-            recipes: [{resource: RESOURCE_VOLCANO, output: BRINE_ITEM_TYPE}],
+            recipes: [new RecipeDefinition([RESOURCE_VOLCANO], BRINE_ITEM_TYPE)],
             bindResource,
             name: "DeepExtractor",
-        });
-        sim.deepExtractor.install(sim);
+        }));
     }
 }
 

@@ -22,7 +22,7 @@ export class EasyExtractorModule extends AbstractEasyModule {
      * @param {ObjectDefinition} config.definition - the object type this module places (its typeId,
      *     output port, and geometry drive placement)
      * @param {number} config.processingTicks
-     * @param {{resource:number, output:number}[]} config.recipes - resource type -> produced item
+     * @param {RecipeDefinition[]} config.recipes - resource type (inputs[0]) -> produced item
      * @param {function(GameEngine, CreateObjectMessage): (number|null)} config.bindResource - the
      *     resource type an extractor placed by this message draws from, or null to reject the placement
      * @param {string} [config.name] - component name (unique per module instance)
@@ -33,7 +33,7 @@ export class EasyExtractorModule extends AbstractEasyModule {
         this.typeId = definition.typeId;
         this.processingTicks = processingTicks;
         this.bindResource = bindResource;
-        this.recipes = new Map(recipes.map(recipe => [recipe.resource, recipe.output]));
+        this.recipes = new Map(recipes.map(recipe => [recipe.inputs[0], recipe.output]));
 
         this.def = engine.defineComponent(name, [
             {name: "out", kind: "eid", fill: NO_EID},

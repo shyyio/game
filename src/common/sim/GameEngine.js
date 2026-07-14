@@ -43,13 +43,8 @@ export class GameEngine {
     constructor(modRegistry=null) {
         this.modRegistry = modRegistry;
 
-        // Named module refs, set by mods' setup (used by tests + debugInsertItem).
-        this.belts = null;
-        this.splitter = null;
-        this.machine = null;
-        this.resources = null;
-        this.extractor = null;
-        this.deepExtractor = null;
+        // Registered sim modules by name; each is also exposed as sim.<name> (see registerModule).
+        this.modules = new Map();
 
         // Registered by mods.
         this._messageHandlers = [];
@@ -908,6 +903,25 @@ export class GameEngine {
     }
 
     /**
+     * Registers a sim module under `name`, exposed as `sim.<name>` for cross-module + test access.
+     * Auto-installs it if it exposes install().
+     * @param {string} name
+     * @param {object} module
+     * @returns {object} the module
+     */
+    registerModule(name, module) {
+        if (this.modules.has(name)) {
+            throw new Error(`Sim module "${name}" already registered`);
+        }
+        this.modules.set(name, module);
+        this[name] = module;
+        if (typeof module.install === "function") {
+            module.install(this);
+        }
+        return module;
+    }
+
+    /**
      * The current inspect snapshot for an object, or null if no module owns that client id.
      * @param {number} objectId
      * @returns {object|null}
@@ -998,7 +1012,7 @@ export class GameEngine {
      * @returns {void}
      */
     debugInsertItem() {
-        if (this.belts !== null && this.belts.paths.length > 0) {
+        if (this.belts && this.belts.paths.length > 0) {
             this.setPortItem(this.belts.paths[0].inPort, 1);
         }
     }

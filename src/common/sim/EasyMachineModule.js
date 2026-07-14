@@ -29,7 +29,7 @@ export class EasyMachineModule extends AbstractEasyModule {
      * @param {ObjectDefinition} config.definition - the object type this module places (its typeId,
      *     ports, and geometry drive placement)
      * @param {number} config.processingTicks
-     * @param {{inputs:number[], output:number}[]} config.recipes
+     * @param {RecipeDefinition[]} config.recipes
      * @param {number} config.fallback - output when the gathered set matches no recipe
      * @param {string} [config.name] - component name (unique per module instance)
      */

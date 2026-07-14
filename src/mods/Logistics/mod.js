@@ -51,8 +51,8 @@ export class LogisticsMod extends AbstractMod {
      */
     setup(sim) {
         // Splitter before belt so its POST_RESOLVE seam reads shared ports before the belt writes pops.
-        sim.splitter = new SplitterModule(sim, {typeId: SplitterDefinition.typeId});
-        sim.belts = new BeltModule(sim);
+        sim.registerModule("splitter", new SplitterModule(sim, {typeId: SplitterDefinition.typeId}));
+        sim.registerModule("belts", new BeltModule(sim));
         sim.registerMessageHandler(message => this._ecsBeltMessage(sim, message));
         sim.registerMessageHandler(message => this._ecsSplitterMessage(sim, message));
         sim.registerChunkSync(chunk => sim.belts.chunkSync(chunk));

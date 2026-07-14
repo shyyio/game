@@ -80,7 +80,6 @@ export class ModRegistry {
      */
     get drawLayers() {
         return this.mods
-            .filter(mod => mod.drawLayers != null)
             .flatMap(mod => mod.drawLayers);
     }
 

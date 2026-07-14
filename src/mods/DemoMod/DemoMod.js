@@ -4,12 +4,13 @@ import {
     AbstractMod,
     ObjectDefinition,
     PortDefinition,
+    RecipeDefinition,
     Direction,
     DeleteObjectMessage,
     MiniMenuEntry,
+    EasyMachineModule,
 } from "@/sdk/common.js";
 import {EasyObjectTool, EasyObjectGhostLayer, EasyObjectDrawLayer, InspectHighlight} from "@/sdk/client.js";
-import {EasyMachineModule} from "@/common/sim/EasyMachineModule.js";
 
 // The item the furnace cooks and the outputs (a real product + the fallback).
 export const DEMO_INPUT_ITEM_TYPE = 7;
@@ -39,13 +40,12 @@ export class DemoMod extends AbstractMod {
      * @returns {void}
      */
     setup(sim) {
-        sim.machine = new EasyMachineModule(sim, {
+        sim.registerModule("machine", new EasyMachineModule(sim, {
             definition: DemoMachineDefinition,
             processingTicks: 2,
-            recipes: [{inputs: [DEMO_INPUT_ITEM_TYPE], output: DEMO_OUTPUT_ITEM_TYPE}],
+            recipes: [new RecipeDefinition([DEMO_INPUT_ITEM_TYPE], DEMO_OUTPUT_ITEM_TYPE)],
             fallback: DEMO_JUNK_ITEM_TYPE,
-        });
-        sim.machine.install(sim);
+        }));
     }
 }
 
