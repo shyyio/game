@@ -250,7 +250,7 @@ export class AbstractMod {
      * @param {AbstractEvent} event
      * @param {Client} client
      */
-    onClientEvent(event, client) {
+    onEvent(event, client) {
 
     }
 

@@ -130,7 +130,7 @@ export class GameEngine {
     }
 
     /**
-     * Passes a domain event (a real GameEvent) to the event sink.
+     * Passes a domain event to the event sink.
      * @param {AbstractTilePositionedEvent} event
      * @returns {void}
      */

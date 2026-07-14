@@ -13,8 +13,8 @@ export class RemoteSessionServerHandle extends AbstractSession {
         // onmessage -> sendMessage()
     }
 
-    publishEvent(type, event) {
-        // wsServer.batchEvent(ctx, type, event)
+    publishEvent(event) {
+        // wsServer.batchEvent(ctx, event)
     }
 
     setId(sessionId) {
@@ -24,6 +24,6 @@ export class RemoteSessionServerHandle extends AbstractSession {
     }
 
     sendMessage(message) {
-        this.api.sendMessage(message);
+        this.api.sendMessage(message, this);
     }
 }
