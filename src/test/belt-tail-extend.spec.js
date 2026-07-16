@@ -4,7 +4,7 @@ import {Direction} from "@/common/constants.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
 import {EventCollector} from "@/test/EventCollector.js";
-import {BeltModule} from "@/mods/Logistics/BeltModule.js";
+import {Belts} from "@/mods/Logistics/Belts.js";
 import {BeltPathRecalculateEvent, BeltItemSyncEvent} from "@/mods/Logistics/events.js";
 
 const RED = 1;
@@ -14,7 +14,7 @@ const RED = 1;
 test("extending a belt path downstream preserves an in-flight item", async () => {
     const engine = new GameEngine();
     await engine.init();
-    const belts = new BeltModule(engine);
+    const belts = new Belts(engine);
 
     // Belts (0,5)->(0,4)->(0,3) facing UP: head (in-port) at (0,5), tail (out-port) at (0,3). Kept
     // clear of the y=0 chunk border so the extension stays a single-chunk path.
@@ -52,7 +52,7 @@ test("extending a belt path downstream preserves an in-flight item", async () =>
 test("extending a belt path downstream preserves an item resting in the out-port", async () => {
     const engine = new GameEngine();
     await engine.init();
-    const belts = new BeltModule(engine);
+    const belts = new Belts(engine);
 
     [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}].forEach(cell => belts.placeBelt(cell.x, cell.y, Direction.UP));
 
@@ -86,7 +86,7 @@ test("extending a belt path downstream preserves an item resting in the out-port
 test("downstream extension emits recalc before item rows and clears the old out-port", async () => {
     const engine = new GameEngine();
     await engine.init();
-    const belts = new BeltModule(engine);
+    const belts = new Belts(engine);
     const collector = new EventCollector(engine);
 
     [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}].forEach(cell => belts.placeBelt(cell.x, cell.y, Direction.UP));
@@ -121,7 +121,7 @@ test("downstream extension emits recalc before item rows and clears the old out-
 test("a tail extension keeps item-row ids ascending output-to-input", async () => {
     const engine = new GameEngine();
     await engine.init();
-    const belts = new BeltModule(engine);
+    const belts = new Belts(engine);
 
     [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}].forEach(cell => belts.placeBelt(cell.x, cell.y, Direction.UP));
     const path = belts.pathAt(0, 5);
@@ -142,7 +142,7 @@ test("a tail extension keeps item-row ids ascending output-to-input", async () =
 test("extending a path upstream leaves a resting out-port item static", async () => {
     const engine = new GameEngine();
     await engine.init();
-    const belts = new BeltModule(engine);
+    const belts = new Belts(engine);
     const collector = new EventCollector(engine);
 
     [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}].forEach(cell => belts.placeBelt(cell.x, cell.y, Direction.UP));

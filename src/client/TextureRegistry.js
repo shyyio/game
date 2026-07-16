@@ -15,25 +15,19 @@ export class TextureRegistry {
     }
 
     /**
-     * @param {ModRegistry} modRegistry
+     * @param {TextureDefinition[]} definitions
      * @returns {Promise<void>}
      */
-    async loadFromModRegistry(modRegistry) {
-        await Promise.all(modRegistry.mods.map(async mod => {
-            if (!mod.textureDefinitions) {
-                return;
-            }
+    async load(definitions) {
+        await Promise.all(definitions.map(async def => {
+            const texture = await Assets.load(def.imageUrl);
 
-            await Promise.all(mod.textureDefinitions.map(async def => {
-                const texture = await Assets.load(def.imageUrl);
-
-                texture.source.scaleMode = "nearest";
-                // TexturePacker sets scale=2 because source art was upscaled 2x; override so Pixi renders frames at actual pixel size.
-                const data = {...def.jsonUrl, meta: {...def.jsonUrl.meta, scale: "1"}};
-                const sheet = new Spritesheet(texture, data);
-                await sheet.parse();
-                Object.assign(this.textures, sheet.textures);
-            }));
+            texture.source.scaleMode = "nearest";
+            // TexturePacker sets scale=2 because source art was upscaled 2x; override so Pixi renders frames at actual pixel size.
+            const data = {...def.jsonUrl, meta: {...def.jsonUrl.meta, scale: "1"}};
+            const sheet = new Spritesheet(texture, data);
+            await sheet.parse();
+            Object.assign(this.textures, sheet.textures);
         }));
         this._buildAnimations();
     }

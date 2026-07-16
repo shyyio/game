@@ -117,7 +117,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         if (entry === null) {
             return null;
         }
-        const portDef = entry.data.definition.outputPorts.find(port => port.name === entry.portName(portId));
+        const portDef = entry.data.type.outputPorts.find(port => port.name === entry.portName(portId));
         const world = rotate(portDef, entry.data.direction);
         return {
             tileX: entry.tileX + world.x,

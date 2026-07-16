@@ -1,5 +1,5 @@
 import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/sdk/common.js";
-import {BeltDefinition} from "./definitions.js";
+import {BeltDefinition} from "./objectTypes.js";
 import {
     BeltType,
     BELT_RAMP_DOWN,
@@ -16,8 +16,8 @@ import {
  * @returns {boolean}
  */
 function feedsForward(data) {
-    if (data.definition === BeltDefinition) {
-        return data.type === BeltType.NORMAL || data.type === BeltType.RAMP_UP;
+    if (data.type === BeltDefinition) {
+        return data.beltType === BeltType.NORMAL || data.beltType === BeltType.RAMP_UP;
     }
     return true;
 }
@@ -33,7 +33,7 @@ function feedsForward(data) {
  * @returns {{parentX: number|null, parentY: number|null}}
  */
 export function inferBeltParent(cache, tileX, tileY, direction) {
-    const belt = {tileX, tileY, data: {definition: BeltDefinition, direction}};
+    const belt = {tileX, tileY, data: {type: BeltDefinition, direction}};
 
     let parent = null;
     cache.connectedPorts(belt).forEach(connection => {
@@ -76,7 +76,7 @@ export function beltOccupancyLayer(type, direction) {
 export function surfaceBeltAt(index, tileX, tileY) {
     const entries = index.getAtTile(tileX, tileY);
     const surface = entries.find(record =>
-        record.data.definition === BeltDefinition && record.data.type !== BELT_UNDERGROUND);
+        record.data.type === BeltDefinition && record.data.beltType !== BELT_UNDERGROUND);
     return surface === undefined ? null : surface;
 }
 
@@ -88,8 +88,8 @@ export function surfaceBeltAt(index, tileX, tileY) {
  * @returns {{tiles: {x: number, y: number}[], pair: CacheEntry|null}}
  */
 export function walkTunnel(index, ramp) {
-    const {dx, dy} = tunnelStep(ramp.data.type, ramp.data.direction);
-    const pairType = ramp.data.type === BELT_RAMP_UP ? BELT_RAMP_DOWN : BELT_RAMP_UP;
+    const {dx, dy} = tunnelStep(ramp.data.beltType, ramp.data.direction);
+    const pairType = ramp.data.beltType === BELT_RAMP_UP ? BELT_RAMP_DOWN : BELT_RAMP_UP;
 
     let x = ramp.tileX;
     let y = ramp.tileY;
@@ -101,14 +101,14 @@ export function walkTunnel(index, ramp) {
         // Match this tunnel's own underground, not a crossing one sharing the tile:
         // a tunnel's undergrounds face the same direction as its ramps.
         const underground = records.find(record =>
-            record.data.type === BELT_UNDERGROUND && record.data.direction === ramp.data.direction
+            record.data.beltType === BELT_UNDERGROUND && record.data.direction === ramp.data.direction
         );
         if (underground !== undefined) {
             tiles.push({x, y});
             continue;
         }
         const pair = records.find(record =>
-            record.data.type === pairType && record.data.direction === ramp.data.direction
+            record.data.beltType === pairType && record.data.direction === ramp.data.direction
         );
         return {tiles, pair: pair === undefined ? null : pair};
     }

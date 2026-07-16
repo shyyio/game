@@ -12,11 +12,9 @@ const CORE_TOOL_HOTKEYS = ["e"];
 export class InputHandler {
 
     /**
-     * @param {ModRegistry} modRegistry
      * @param {ToolbarLayer} toolbar - the pixi tool bar, owning the tool list and active selection
      */
-    constructor(modRegistry, toolbar) {
-        this.modRegistry = modRegistry;
+    constructor(toolbar) {
         this._toolbar = toolbar;
 
         this._onMiniMenuEntryClick = null;

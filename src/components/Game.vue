@@ -5,18 +5,15 @@ import {ClientViewport} from "@/client/ClientViewport.js";
 import Keyboard from "@/client/Keyboard.js";
 import Mouse from "@/client/Mouse.js";
 import {InputHandler} from "@/client/InputHandler.js";
-import {ModRegistry} from "@/common/ModRegistry.js";
-import {LogisticsClientMod} from "@/mods/Logistics/LogisticsClientMod.js";
-import {DemoClientMod} from "@/mods/DemoMod/DemoMod.js";
-import {ResourcesClientMod} from "@/mods/Resources/Resources.js";
-import {BaseTexturesMod} from "@/mods/BaseTextures/mod.js";
+import {ModRegistry} from "@/common/mod/ModRegistry.js";
+import {clientLoadout} from "@/mods/loadout.js";
+import {BeltService} from "@/mods/Logistics/services.js";
 import {Game} from "@/common/Game.js";
-import {GameEngine} from "@/common/sim/GameEngine.js";
+import {GameEngine, TickPhase} from "@/common/sim/GameEngine.js";
 import {ClientSaveStore} from "@/client/ClientSaveStore.js";
 import {GameAPI} from "@/common/GameAPI.js";
 import {LocalSession} from "@/common/LocalSession.js";
 import {Client} from "@/client/Client.js";
-import {TickPhase} from "@/common/core.js";
 import {GAME_FONT} from "@/client/constants.js";
 
 // Mobile mode (touch device): panning stays live while a tool is active so the
@@ -136,10 +133,8 @@ onMounted(async () => {
   document.getElementById("game").appendChild(app.canvas);
 
   const modRegistry = new ModRegistry();
-  modRegistry.loadMod(new BaseTexturesMod());
-  modRegistry.loadMod(new LogisticsClientMod());
-  modRegistry.loadMod(new DemoClientMod());
-  modRegistry.loadMod(new ResourcesClientMod());
+  clientLoadout().forEach(pkg => modRegistry.register(pkg));
+  modRegistry.freeze();
 
   const game = new Game(modRegistry, new GameEngine(modRegistry), new ClientSaveStore());
   await game.init();
@@ -154,13 +149,13 @@ onMounted(async () => {
 
   const toolbar = client.toolbarLayer;
 
-  const inputHandler = new InputHandler(modRegistry, toolbar);
+  const inputHandler = new InputHandler(toolbar);
   inputHandler.onMiniMenuEntryClick((tileX, tileY, screenX, screenY, onClose) => {
-    const entries = modRegistry.miniMenuEntries(tileX, tileY, session, client);
+    const entries = client.miniMenuEntries(tileX, tileY);
     client.miniMenuLayer.open(entries, screenX, screenY, onClose);
   });
   inputHandler.onInspect((tileX, tileY) => {
-    modRegistry.handleInspect(tileX, tileY, client);
+    client.handleInspect(tileX, tileY);
   });
   inputHandler.init();
 
@@ -215,7 +210,7 @@ onMounted(async () => {
   });
 
   const refreshTools = () => {
-    toolbar.setTools(client.coreTools(), modRegistry.tools(client));
+    toolbar.setTools(client.coreTools(), client.modTools());
   };
   client.playerSettings.onChange(refreshTools);
   refreshTools();
@@ -241,7 +236,7 @@ onMounted(async () => {
   // Debug keybindings (moved off the number keys, which now select tools).
   // Insert an item of value 1 onto the lowest-id belt path via its in-port.
   Keyboard.on("b", () => {
-    game.simEngine.debugInsertItem();
+    game.simEngine.resolve(BeltService).debugInsertItem();
   });
 
   Keyboard.on("t", () => {

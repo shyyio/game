@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
-import {BeltModule} from "@/mods/Logistics/BeltModule.js";
+import {Belts} from "@/mods/Logistics/Belts.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 
 const RED = 1;
@@ -22,7 +22,7 @@ function networkPorts(belts) {
 async function newModule() {
     const engine = new GameEngine();
     await engine.init();
-    return {engine, belts: new BeltModule(engine)};
+    return {engine, belts: new Belts(engine)};
 }
 
 test("belt state survives a serialize -> deserialize round-trip mid-flight", async () => {

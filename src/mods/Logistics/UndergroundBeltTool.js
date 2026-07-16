@@ -1,7 +1,7 @@
 import {AbstractTool, Direction, Haptics, OCCUPANCY_LAYER_SURFACE, DeleteObjectMessage} from "@/sdk/client.js";
 import {CreateBeltMessage} from "./messages.js";
 import {BeltType, BeltBend, MAX_UNDERGROUND_LENGTH} from "./constants.js";
-import {BeltDefinition} from "./definitions.js";
+import {BeltDefinition} from "./objectTypes.js";
 import {Belt} from "./BeltLayer.js";
 import {getUndergroundBeltsToCreate, surfaceBeltAt, tunnelStep, inferBeltParent} from "./geometry.js";
 
@@ -70,11 +70,11 @@ export class UndergroundBeltTool extends AbstractTool {
      * @returns {{id: number, type: BeltType, direction: Direction}|null}
      */
     _beltAt(tileX, tileY) {
-        const record = this._cache.getAtTile(tileX, tileY).find(other => other.data.definition === BeltDefinition);
+        const record = this._cache.getAtTile(tileX, tileY).find(other => other.data.type === BeltDefinition);
         if (record === undefined) {
             return null;
         }
-        return {id: record.id, type: record.data.type, direction: record.data.direction};
+        return {id: record.id, type: record.data.beltType, direction: record.data.direction};
     }
 
     /**
@@ -91,7 +91,7 @@ export class UndergroundBeltTool extends AbstractTool {
         const bend = Belt.getBend(surface.data.direction, surface.tileX, surface.tileY, parentX, parentY);
         return {
             id: surface.id,
-            type: surface.data.type,
+            type: surface.data.beltType,
             direction: surface.data.direction,
             straight: bend === BeltBend.STRAIGHT,
         };
@@ -119,7 +119,7 @@ export class UndergroundBeltTool extends AbstractTool {
     _blocked(tileX, tileY, direction) {
         // A non-belt surface object (e.g. a splitter) the ramp can't replace blocks outright.
         const occupant = this._cache.at(tileX, tileY, OCCUPANCY_LAYER_SURFACE);
-        if (occupant !== null && occupant.data.definition !== BeltDefinition) {
+        if (occupant !== null && occupant.data.type !== BeltDefinition) {
             return true;
         }
         const belt = this._surfaceBeltAt(tileX, tileY);
@@ -258,7 +258,7 @@ export class UndergroundBeltTool extends AbstractTool {
             return [];
         }
         return getUndergroundBeltsToCreate(
-            {x: parent.tileX, y: parent.tileY, type: parent.data.type, direction},
+            {x: parent.tileX, y: parent.tileY, type: parent.data.beltType, direction},
             {x: tileX, y: tileY, type, direction},
         );
     }

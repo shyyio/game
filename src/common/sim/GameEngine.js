@@ -1,8 +1,55 @@
 import {createWorld, addEntity, addComponent, removeEntity, entityExists, query} from "bitecs";
-import {TickPhase} from "@/common/core.js";
 import {rotate} from "@/common/util.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
+import {PlacedObjects} from "@/common/sim/PlacedObjects.js";
+
+/**
+ * @enum
+ */
+export const TickPhase = {
+
+    /**
+     * Submit port transfer intents
+     */
+    SUBMIT_INTENTS: 1,
+
+    /**
+     * (internal) Resolve the submitted transfer intents into this tick's moves
+     */
+    RESOLVE_TRANSFERS: 2,
+
+    /**
+     * Clear consumed source ports before the producers (belts) refill them in POST_RESOLVE.
+     */
+    CONSUME_INPUTS: 3,
+
+    /**
+     * Executed after transfer intents
+     */
+    POST_RESOLVE: 4,
+
+    /**
+     * Write resolved items into destination ports after the consumers ingested in POST_RESOLVE.
+     */
+    PRODUCE_OUTPUTS: 5,
+
+    /**
+     * (internal) Commit the resolved moves to the ports
+     */
+    COMMIT_TRANSFERS: 6,
+
+    /**
+     * (internal, engine-only) Diff/emit the out-port render events after mods have captured this
+     * tick's watched port items in COMMIT_TRANSFERS. Mods register no ops here.
+     */
+    EMIT_RENDER: 7,
+
+    /**
+     * Mods snapshot inspected machines here; the engine drains them to sessions in postTick.
+     */
+    EMIT_INSPECT: 8,
+}
 
 // The tick phases run in order each whole tick.
 export const TICK_PHASE_ORDER = [
@@ -31,9 +78,10 @@ const LAYER_NAME = ["S", "U0", "U1"];
 
 /**
  * bitECS-backed simulation engine Game drives: the port-transfer core over typed-array component
- * storage, the occupancy/port indexes, (de)serialization, and the mod host — each loaded mod registers
- * its ECS content (modules, message handlers, chunk-sync contributors) via {@link AbstractMod#setup}.
- * Generic — it knows no specific content, so it imports nothing from `mods/`.
+ * storage, the occupancy/port indexes, (de)serialization, and the mod host — each loaded sim mod
+ * registers its ECS content (components, systems, message handlers, chunk-sync contributors) via
+ * {@link AbstractSimMod#setup}. Generic — it knows no specific content, so it imports nothing from
+ * `mods/`.
  */
 export class GameEngine {
 
@@ -43,8 +91,14 @@ export class GameEngine {
     constructor(modRegistry=null) {
         this.modRegistry = modRegistry;
 
-        // Registered sim modules by name; each is also exposed as sim.<name> (see registerModule).
-        this.modules = new Map();
+        /**
+         * The generic entity host for derived object types; built in init when a registry is given.
+         * @type {PlacedObjects|null}
+         */
+        this.placed = null;
+
+        // Provided service instances by their exported marker class (see provide/resolve).
+        this._services = new Map();
 
         // Registered by mods.
         this._messageHandlers = [];
@@ -101,17 +155,17 @@ export class GameEngine {
         // state into its registered components so the generic reflection captures it.
         this._serializeHooks = [];
 
-        // Per-phase system lists, run in order by tick(phase).
-        this.systems = {
-            [TickPhase.SUBMIT_INTENTS]: [() => this._resetTick()],
-            [TickPhase.RESOLVE_TRANSFERS]: [() => this.resolvePortTransfer()],
-            [TickPhase.CONSUME_INPUTS]: [() => this.flushSinks()],
-            [TickPhase.POST_RESOLVE]: [],
-            [TickPhase.PRODUCE_OUTPUTS]: [],
-            [TickPhase.COMMIT_TRANSFERS]: [() => this.commitTransfers()],
-            [TickPhase.EMIT_RENDER]: [() => this._emitRender()],
-            [TickPhase.EMIT_INSPECT]: [],
-        };
+        // Per-phase system entries {order, seq, system}, kept sorted and run in order by tick(phase).
+        this._systemSeq = 0;
+        this.systems = {};
+        TICK_PHASE_ORDER.forEach(phase => {
+            this.systems[phase] = [];
+        });
+        this.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._resetTick());
+        this.registerSystem(TickPhase.RESOLVE_TRANSFERS, () => this.resolvePortTransfer());
+        this.registerSystem(TickPhase.CONSUME_INPUTS, () => this.flushSinks());
+        this.registerSystem(TickPhase.COMMIT_TRANSFERS, () => this.commitTransfers());
+        this.registerSystem(TickPhase.EMIT_RENDER, () => this._emitRender());
 
         // Out-ports whose resting item is drawn: eid -> {x, y}. Modules register theirs. Keyed so
         // re-registration is idempotent and a removed path's port can be unregistered (paths churn).
@@ -211,9 +265,11 @@ export class GameEngine {
     async init() {
         this.world = createWorld();
         if (this.modRegistry !== null) {
-            // Assign each ObjectDefinition its typeId (registration order) before mods wire up.
-            this.modRegistry.definitions;
-            this.modRegistry.mods.forEach(mod => mod.setup(this));
+            // The registry must be frozen (typeIds assigned) before content wires up; the accessors
+            // throw otherwise. The generic entity host installs every derived type's behavior first,
+            // then bespoke sim mods register theirs.
+            this.placed = new PlacedObjects(this, this.modRegistry);
+            this.modRegistry.simMods.forEach(mod => mod.setup(this));
         }
     }
 
@@ -222,8 +278,8 @@ export class GameEngine {
      * @returns {void}
      */
     tick(phase) {
-        this.systems[phase].forEach(system => {
-            system();
+        this.systems[phase].forEach(entry => {
+            entry.system();
         });
     }
 
@@ -238,14 +294,19 @@ export class GameEngine {
     }
 
     /**
-     * Appends a system to a phase, run after the ones already registered. Mods wire their behavior in
-     * this way.
+     * Registers a system on a phase. Systems run by ascending `order`, ties by registration order;
+     * a negative order runs before the phase's default-order systems (e.g. a seam that must read
+     * shared ports before the transport writes them).
      * @param {TickPhase} phase
      * @param {function(): void} system
+     * @param {number} [order]
      * @returns {void}
      */
-    registerSystem(phase, system) {
-        this.systems[phase].push(system);
+    registerSystem(phase, system, order=0) {
+        const entries = this.systems[phase];
+        entries.push({order, seq: this._systemSeq, system});
+        this._systemSeq += 1;
+        entries.sort((a, b) => a.order - b.order || a.seq - b.seq);
     }
 
     /**
@@ -361,6 +422,29 @@ export class GameEngine {
     _addComponent(def, eid) {
         this._growComponent(def, eid);
         addComponent(this.world, eid, def.store);
+    }
+
+    /**
+     * Attaches a component to an existing entity (a behavior wiring its columns onto a placed eid).
+     * @param {object} def - a descriptor from {@link defineComponent}
+     * @param {number} eid
+     * @returns {void}
+     */
+    attachComponent(def, eid) {
+        this._addComponent(def, eid);
+    }
+
+    /**
+     * The component descriptor registered under `name`; throws on an unknown name.
+     * @param {string} name
+     * @returns {{name:string, fields:object[], store:object, capacity:number}}
+     */
+    component(name) {
+        const def = this._componentByName.get(name);
+        if (def === undefined) {
+            throw new Error(`Unknown component "${name}"`);
+        }
+        return def;
     }
 
     /**
@@ -901,22 +985,30 @@ export class GameEngine {
     }
 
     /**
-     * Registers a sim module under `name`, exposed as `sim.<name>` for cross-module + test access.
-     * Auto-installs it if it exposes install().
-     * @param {string} name
-     * @param {object} module
-     * @returns {object} the module
+     * Provides a service instance under its exported marker class, for cross-mod + test access.
+     * @param {Function} key - the service's marker class
+     * @param {object} instance
+     * @returns {object} the instance
      */
-    registerModule(name, module) {
-        if (this.modules.has(name)) {
-            throw new Error(`Sim module "${name}" already registered`);
+    provide(key, instance) {
+        if (this._services.has(key)) {
+            throw new Error(`Service "${key.name}" already provided`);
         }
-        this.modules.set(name, module);
-        this[name] = module;
-        if (typeof module.install === "function") {
-            module.install(this);
+        this._services.set(key, instance);
+        return instance;
+    }
+
+    /**
+     * The service provided under `key`; throws when no provider registered it.
+     * @param {Function} key - the service's marker class
+     * @returns {object}
+     */
+    resolve(key) {
+        const instance = this._services.get(key);
+        if (instance === undefined) {
+            throw new Error(`No provider for service "${key.name}"`);
         }
-        return module;
+        return instance;
     }
 
     /**
@@ -976,7 +1068,7 @@ export class GameEngine {
 
     /**
      * The surface cells a definition occupies at (x, y) facing `direction`.
-     * @param {ObjectDefinition} definition
+     * @param {ObjectType} definition
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
@@ -1003,15 +1095,5 @@ export class GameEngine {
      */
     untrack(clientId) {
         this.destroyOwnerCells(clientId);
-    }
-
-    /**
-     * Debug helper: drops an item onto the first belt path's in-port.
-     * @returns {void}
-     */
-    debugInsertItem() {
-        if (this.belts && this.belts.paths.length > 0) {
-            this.setPortItem(this.belts.paths[0].inPort, 1);
-        }
     }
 }

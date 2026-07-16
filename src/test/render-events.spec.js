@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
 import {EventCollector} from "@/test/EventCollector.js";
-import {SplitterModule} from "@/mods/Logistics/SplitterModule.js";
+import {SplitterBehavior} from "@/mods/Logistics/SplitterBehavior.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
 const ITEM = 7;
@@ -13,8 +13,9 @@ test("rendered out-ports emit port-item set/clear deltas on change only", async 
     const engine = new GameEngine();
     await engine.init();
     const collector = new EventCollector(engine);
-    const splitter = new SplitterModule(engine);
-    const s = splitter.addSplitter();
+    const splitter = new SplitterBehavior();
+    splitter.install(engine);
+    const s = splitter.addSplitter(engine);
     engine.registerRenderedPort(s.out_a, 5, 4);
     engine.registerRenderedPort(s.out_b, 6, 4);
 

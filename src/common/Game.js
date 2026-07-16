@@ -119,7 +119,7 @@ export class Game {
      * @param {AbstractSession} session
      */
     dispatchMessage(message, session) {
-        // Core messages are handled here; the rest fall through to the engine then mods.
+        // Core messages are handled here; the rest go to the engine's registered handlers.
         if (message instanceof SetViewportMessage) {
             this._setSessionViewport(session, message.chunks);
             return;
@@ -130,17 +130,9 @@ export class Game {
             return;
         }
 
-        // The engine handles sim messages directly; anything it declines falls through to the mods.
-        if (this.simEngine.applyMessage(message)) {
-            // Close menus after the object is actually deleted, never before.
-            if (message instanceof DeleteObjectMessage) {
-                this._closeInspect(message.id);
-            }
-            return;
-        }
+        this.simEngine.applyMessage(message);
 
-        this.modRegistry.dispatchMessage(message);
-
+        // Close menus after the object is actually deleted, never before.
         if (message instanceof DeleteObjectMessage) {
             this._closeInspect(message.id);
         }

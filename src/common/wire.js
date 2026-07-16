@@ -6,7 +6,7 @@ import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/Playe
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
-import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
+import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
 
 const {Type, Field, MapField, Root} = protobuf;
 const Long = protobuf.util.Long;
@@ -30,9 +30,9 @@ const CORE_WIRE_CLASSES = [
     ChunkSyncEvent,
     DeleteObjectMessage,
     CreateObjectMessage,
-    EasyObjectInsertEvent,
-    EasyObjectSyncEvent,
-    EasyObjectDeleteEvent,
+    ObjectInsertEvent,
+    ObjectSyncEvent,
+    ObjectDeleteEvent,
     SetInspectedObjectsMessage,
     InspectHeartbeatEvent,
     InspectClosedEvent,

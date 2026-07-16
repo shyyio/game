@@ -7,6 +7,7 @@ import {BeltInsertEvent} from "@/mods/Logistics/events.js";
 import {GameEngine} from "@/common/sim/GameEngine.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector} from "@/test/EventCollector.js";
+import {beltsOf} from "@/mods/Logistics/testHelpers.js";
 
 const RED = 1;
 
@@ -21,11 +22,11 @@ test("an item tunnels through a ramp-down / underground / ramp-up run", async ()
     engine.applyMessage(new CreateBeltMessage(0, 5, Direction.UP, BELT_NORMAL));
 
     // Undergrounds were auto-created and the whole run is one path.
-    assert.equal(engine.belts.beltById(rampDownId).type, BELT_RAMP_DOWN);
-    assert.equal(engine.belts._beltAt(0, 3, Direction.UP).type, BELT_UNDERGROUND, "underground filled at (0,3)");
-    assert.equal(engine.belts._beltAt(0, 2, Direction.UP).type, BELT_UNDERGROUND, "underground filled at (0,2)");
-    const path = engine.belts.pathAt(0, 4);
-    assert.ok(engine.belts.pathAt(0, 5).id === path.id && engine.belts.pathAt(0, 1).id === path.id, "the whole tunnel is one path");
+    assert.equal(beltsOf(engine).beltById(rampDownId).type, BELT_RAMP_DOWN);
+    assert.equal(beltsOf(engine)._beltAt(0, 3, Direction.UP).type, BELT_UNDERGROUND, "underground filled at (0,3)");
+    assert.equal(beltsOf(engine)._beltAt(0, 2, Direction.UP).type, BELT_UNDERGROUND, "underground filled at (0,2)");
+    const path = beltsOf(engine).pathAt(0, 4);
+    assert.ok(beltsOf(engine).pathAt(0, 5).id === path.id && beltsOf(engine).pathAt(0, 1).id === path.id, "the whole tunnel is one path");
 
     // An item injected at the top flows through the tunnel to the output.
     engine.setPortItem(path.inPort, RED);

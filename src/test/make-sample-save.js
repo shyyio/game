@@ -2,9 +2,9 @@ import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
-import {DemoMachineDefinition} from "@/mods/DemoMod/DemoMod.js";
-import {WaterResourceDefinition, ExtractorDefinition} from "@/mods/Resources/Resources.js";
-import {SplitterDefinition} from "@/mods/Logistics/definitions.js";
+import {DemoMachineType} from "@/mods/Demo/declaration.js";
+import {WaterResourceType, ExtractorType} from "@/mods/Resources/declaration.js";
+import {SplitterDefinition} from "@/mods/Logistics/objectTypes.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 
@@ -13,10 +13,10 @@ import {makeGameEngine} from "@/test/ecsSim.js";
 const PATH = process.argv[2] === undefined ? "SAMPLE.sqlite3" : process.argv[2];
 
 const engine = await makeGameEngine();
-engine.applyMessage(new CreateObjectMessage(WaterResourceDefinition.typeId, 5, 5, Direction.UP));
-engine.applyMessage(new CreateObjectMessage(ExtractorDefinition.typeId, 5, 5, Direction.UP));
-engine.applyMessage(new CreateObjectMessage(DemoMachineDefinition.typeId, 10, 10, Direction.UP));
-engine.splitter.placeSplitter(3, 8, true);
+engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 5, 5, Direction.UP));
+engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 5, 5, Direction.UP));
+engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, 10, 10, Direction.UP));
+engine.applyMessage(new CreateObjectMessage(SplitterDefinition.typeId, 3, 8, Direction.UP));
 [{x: 20, y: 20}, {x: 20, y: 21}, {x: 20, y: 22}, {x: 20, y: 23}].forEach(cell =>
     engine.applyMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL)));
 for (let i = 0; i < 5; i += 1) {

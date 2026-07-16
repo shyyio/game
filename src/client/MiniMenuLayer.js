@@ -1,5 +1,5 @@
 import {Container, Graphics, Text} from "pixi.js";
-import {MiniMenuEntry} from "@/common/core.js";
+import {MiniMenuEntry} from "@/common/ObjectType.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_FILL, PANEL_FILL_ALPHA, PANEL_BORDER, PANEL_TEXT, PANEL_HOVER_FILL, LABEL_EMPHASIS} from "@/client/Theme.js";
 

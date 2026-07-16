@@ -3,8 +3,9 @@ import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
 
 /**
  * One placed object in the ClientCache: a primary tile (for by-tile / by-chunk lookups), the
- * cells it covers with their occupancy layer (for collision / connection lookups), a mod-defined
- * `data` payload (kind, direction, type, …), and its rendered out-ports by PortDefinition name.
+ * cells it covers with their occupancy layer (for collision / connection lookups), a `data` payload
+ * carrying at least the ObjectType (`data.type`) and direction, and its rendered out-ports by
+ * PortDefinition name.
  */
 export class CacheEntry {
 
@@ -75,12 +76,27 @@ export class ClientCache {
          * @type {function(CacheEntry): void[]}
          * @private
          */
+        this._setListeners = [];
+        /**
+         * @type {function(CacheEntry): void[]}
+         * @private
+         */
         this._removeListeners = [];
         /**
          * @type {function(): void[]}
          * @private
          */
         this._structuralListeners = [];
+    }
+
+    /**
+     * Registers a callback invoked with each entry as it's set (for sprite creation).
+     * @param {function(CacheEntry): void} listener
+     * @returns {function(): void} unsubscribe
+     */
+    onSet(listener) {
+        this._setListeners.push(listener);
+        return () => this._setListeners.splice(this._setListeners.indexOf(listener), 1);
     }
 
     /**
@@ -171,6 +187,7 @@ export class ClientCache {
             this._byCell.set(ClientCache._cellKey(cell.x, cell.y, cell.layer), entry);
         });
 
+        this._setListeners.forEach(listener => listener(entry));
         this._notifyStructural();
     }
 
@@ -278,15 +295,15 @@ export class ClientCache {
     }
 
     /**
-     * The object of `definition` occupying (tileX, tileY) on its occupancy layer, or null.
+     * The object of `type` occupying (tileX, tileY) on its occupancy layer, or null.
      * @param {number} tileX
      * @param {number} tileY
-     * @param {ObjectDefinition} definition
+     * @param {ObjectType} type
      * @returns {CacheEntry|null}
      */
-    objectAt(tileX, tileY, definition) {
-        const entry = this.at(tileX, tileY, definition.occupancyLayer);
-        return entry !== null && entry.data.definition === definition ? entry : null;
+    objectAt(tileX, tileY, type) {
+        const entry = this.at(tileX, tileY, type.occupancyLayer);
+        return entry !== null && entry.data.type.typeId === type.typeId ? entry : null;
     }
 
     /**
@@ -358,7 +375,7 @@ export class ClientCache {
      * @private
      */
     _portMatch(entry, portKind, portX, portY, facing) {
-        const port = entry.data.definition.surfacePorts(portKind, entry.data).find(candidate => {
+        const port = entry.data.type.surfacePorts(portKind, entry.data).find(candidate => {
             const rotated = rotate(candidate, entry.data.direction);
             return entry.tileX + rotated.x === portX
                 && entry.tileY + rotated.y === portY
@@ -372,15 +389,15 @@ export class ClientCache {
      * neighbor cell reached (neighborX/neighborY), and the neighbor entry. Two objects connect
      * where one's output port and the other's input port share a cell and facing — derived from
      * each definition's rotated ports (mod-agnostic).
-     * @param {CacheEntry|{tileX: number, tileY: number, data: object}} record - needs data.definition, data.direction
+     * @param {CacheEntry|{tileX: number, tileY: number, data: object}} record - needs data.type, data.direction
      * @returns {{key: string, isOutput: boolean, tileX: number, tileY: number, neighborX: number, neighborY: number, neighbor: CacheEntry}[]}
      */
     connectedPorts(record) {
-        const definition = record.data.definition;
+        const type = record.data.type;
         const direction = record.data.direction;
         const connections = [];
 
-        definition.surfacePorts("outputPorts", record.data).forEach(port => {
+        type.surfacePorts("outputPorts", record.data).forEach(port => {
             const rotated = rotate(port, direction);
             const portX = record.tileX + rotated.x;
             const portY = record.tileY + rotated.y;
@@ -398,7 +415,7 @@ export class ClientCache {
             }
         });
 
-        definition.surfacePorts("inputPorts", record.data).forEach(port => {
+        type.surfacePorts("inputPorts", record.data).forEach(port => {
             const rotated = rotate(port, direction);
             const portX = record.tileX + rotated.x;
             const portY = record.tileY + rotated.y;

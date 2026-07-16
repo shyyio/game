@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
-import {BeltModule} from "@/mods/Logistics/BeltModule.js";
+import {Belts} from "@/mods/Logistics/Belts.js";
 
 const RED = 1;
 
@@ -16,7 +16,7 @@ const CELLS = [
 test("a belt line splits at the chunk boundary and items flow across the seam", async () => {
     const engine = new GameEngine();
     await engine.init();
-    const belts = new BeltModule(engine);
+    const belts = new Belts(engine);
     let handle = null;
     CELLS.forEach(cell => {
         handle = belts.placeBelt(cell.x, cell.y, Direction.UP);

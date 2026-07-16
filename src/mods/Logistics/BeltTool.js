@@ -1,7 +1,7 @@
 import {AbstractTool, Direction, Haptics, OCCUPANCY_LAYER_SURFACE, DeleteObjectMessage} from "@/sdk/client.js";
 import {CreateBeltMessage} from "./messages.js";
 import {BeltType} from "@/mods/Logistics/constants.js";
-import {BeltDefinition} from "./definitions.js";
+import {BeltDefinition} from "./objectTypes.js";
 import {Belt} from "./BeltLayer.js";
 import {inferBeltParent} from "./geometry.js";
 
@@ -84,7 +84,7 @@ export class BeltTool extends AbstractTool {
      * @returns {boolean}
      */
     _overwritable(occupant) {
-        return occupant.data.definition === BeltDefinition && occupant.data.type === BeltType.NORMAL;
+        return occupant.data.type === BeltDefinition && occupant.data.beltType === BeltType.NORMAL;
     }
 
     /**

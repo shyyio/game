@@ -1,6 +1,5 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {ModRegistry} from "@/common/ModRegistry.js";
 import {Game} from "@/common/Game.js";
 import {Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
@@ -8,10 +7,10 @@ import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
-import {LogisticsMod} from "@/mods/Logistics/mod.js";
 import {BeltSyncEvent} from "@/mods/Logistics/events.js";
-import {makeGameEngine} from "@/test/ecsSim.js";
+import {makeGameEngine, ecsModRegistry} from "@/test/ecsSim.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
+import {beltsOf} from "@/mods/Logistics/testHelpers.js";
 
 const RED = 1;
 const CELLS = [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}];
@@ -31,8 +30,7 @@ class CapturingSession {
 }
 
 test("a session subscribing to a chunk receives its existing belts and resting items from ECS", async () => {
-    const modRegistry = new ModRegistry();
-    modRegistry.loadMod(new LogisticsMod());
+    const modRegistry = ecsModRegistry();
     const engine = new GameEngine(modRegistry);
     const game = new Game(modRegistry, engine);
     await game.init();
@@ -41,7 +39,7 @@ test("a session subscribing to a chunk receives its existing belts and resting i
     const builder = new CapturingSession(1);
     game.connect(builder);
     CELLS.forEach(cell => game.dispatchMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL), builder));
-    const path = engine.belts.pathAt(0, 2);
+    const path = beltsOf(engine).pathAt(0, 2);
     engine.setPortItem(path.inPort, RED);
     for (let i = 0; i < 8; i += 1) {
         TICK_PHASE_ORDER.forEach(phase => game.tick(phase));
