@@ -246,7 +246,7 @@ export class Belts {
         const run = this._collectRun(placed);
         const {removed, orphans} = this._removePathsOverlapping(run);
         const result = this._buildRun(run, placed, removed);
-        const rebuilt = this._rebuildOrphans(orphans, run);
+        const rebuilt = this._rebuildOrphans(orphans, run, removed);
 
         this.engine.emitEvent(new BeltInsertEvent(x, y, placed.id, direction, placed.type));
         // Recalc + item rows for every path that changed (the run and any split-off orphan), so the
@@ -275,14 +275,16 @@ export class Belts {
     }
 
     /**
-     * Rebuilds each orphaned belt (left pathless by a stolen junction) into its own path, skipping any
-     * already covered by the run or an earlier orphan's rebuild.
+     * Rebuilds each orphaned belt (left pathless by a stolen junction) into its own path, carrying the
+     * items that sat on its belts in the source path, and skipping any already covered by the run or an
+     * earlier orphan's rebuild.
      * @private
      * @param {object[]} orphans - belts dropped from removed paths, not in the run
      * @param {object[]} run - the run's belts (already rebuilt)
+     * @param {object[]} removed - the source paths the orphans were dropped from
      * @returns {object[]} the belts of the rebuilt orphan paths
      */
-    _rebuildOrphans(orphans, run) {
+    _rebuildOrphans(orphans, run, removed) {
         const covered = new Set(run.map(belt => belt.id));
         const rebuilt = [];
         orphans.forEach(orphan => {
@@ -290,13 +292,33 @@ export class Belts {
                 return;
             }
             const orphanRun = this._collectRun(orphan);
-            this._buildRun(orphanRun, orphan);
+            this._rebuildSubrun(orphanRun, removed);
             orphanRun.forEach(belt => {
                 covered.add(belt.id);
                 rebuilt.push(belt);
             });
         });
         return rebuilt;
+    }
+
+    /**
+     * Rebuilds a sub-run split off by an edit into its own path: a single-chunk sub-run keeps the items
+     * that sat on its belts in whichever source path fully contains it (empty if none does); a run
+     * spanning chunk borders rebuilds empty per-chunk (cross-chunk item preservation deferred).
+     * @private
+     * @param {object[]} run - the sub-run's belts, head -> tail
+     * @param {object[]} sourcePaths - the dropped paths to carry items from
+     * @returns {void}
+     */
+    _rebuildSubrun(run, sourcePaths) {
+        const segments = this._segmentByChunk(run);
+        if (segments.length === 1) {
+            const from = sourcePaths.find(path => run.every(runBelt => path.beltIds.includes(runBelt.id)));
+            const state = from === undefined ? {items: []} : this._carryItemsForSubrun(from, run);
+            this._trackPath(this._makePath(run, state));
+        } else {
+            this._buildEmptyChain(segments);
+        }
     }
 
     /**
@@ -479,22 +501,14 @@ export class Belts {
                 return;
             }
             const run = this._collectRun(neighbor);
-            const {orphans} = this._removePathsOverlapping(run);
-            const segments = this._segmentByChunk(run);
-            if (segments.length === 1) {
-                // A single-chunk sub-run keeps the items that sat on its belts in the removed path.
-                const from = source.find(path => run.every(runBelt => path.beltIds.includes(runBelt.id)));
-                const state = from === undefined ? {items: []} : this._carryItemsForSubrun(from, run);
-                this._trackPath(this._makePath(run, state));
-            } else {
-                // A run spanning chunk borders rebuilds empty per-chunk (cross-chunk item preservation deferred).
-                this._buildEmptyChain(segments);
-            }
+            const {removed, orphans} = this._removePathsOverlapping(run);
+            const sources = [...source, ...removed];
+            this._rebuildSubrun(run, sources);
             run.forEach(runBelt => {
                 covered.add(runBelt.id);
                 affected.push(tileKey(runBelt.x, runBelt.y));
             });
-            this._rebuildOrphans(orphans, run).forEach(runBelt => affected.push(tileKey(runBelt.x, runBelt.y)));
+            this._rebuildOrphans(orphans, run, sources).forEach(runBelt => affected.push(tileKey(runBelt.x, runBelt.y)));
         });
         this._emitPathRecalcs(affected);
         this._emitPathItems(affected);
