@@ -1,9 +1,5 @@
 import {addEntity, addComponent} from "bitecs";
-import {TickPhase, Direction} from "@/sdk/common.js";
-import {chunkId} from "@/common/util.js";
-import {EMPTY, NO_EID} from "@/common/sim/GameEngine.js";
-// Layering debt: the ECS content modules live in common/sim/ but emit mod-owned belt events. They
-// belong in mods/Logistics/ (see project_bitecs_migration memory); this import crosses the layer for now.
+import {TickPhase, Direction, EMPTY, NO_EID, chunkId} from "@/sdk/common.js";
 import {
     BeltInsertEvent,
     BeltSyncEvent,
@@ -38,7 +34,7 @@ function tileKey(x, y) {
  *
  * Items are per-path arrays for now; the typed-array/SoA layout is a later optimization.
  */
-export class BeltModule {
+export class Belts {
 
     /**
      * @param {GameEngine} engine
@@ -1251,4 +1247,14 @@ export class BeltModule {
         });
     }
 
+
+    /**
+     * Debug helper: drops an item onto the first belt path's in-port.
+     * @returns {void}
+     */
+    debugInsertItem() {
+        if (this.paths.length > 0) {
+            this.engine.setPortItem(this.paths[0].inPort, 1);
+        }
+    }
 }

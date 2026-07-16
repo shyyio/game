@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert";
 
-import {ModRegistry} from "@/common/ModRegistry.js";
+import {ModRegistry} from "@/common/mod/ModRegistry.js";
 import {WireRegistry} from "@/common/wire.js";
 
 import {SetViewportMessage} from "@/common/CoreMessages.js";
@@ -11,10 +11,12 @@ import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSetti
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {chunkId} from "@/common/util.js";
 
-// Core-only registry: common/ must not depend on mods/. AbstractMod wire classes are
+// Core-only registry: common/ must not depend on mods/. Mod wire classes are
 // covered by their own specs (e.g. src/mods/Logistics/wire.spec.js).
 function registry() {
-    return new WireRegistry(new ModRegistry());
+    const modRegistry = new ModRegistry();
+    modRegistry.freeze();
+    return new WireRegistry(modRegistry);
 }
 
 /**

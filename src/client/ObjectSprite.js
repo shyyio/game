@@ -3,10 +3,10 @@ import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
 
 /**
- * Static object sprite, centered on its definition's geometry and rotated to its facing. The
- * EasyObject layers build it from a definition + texture; animated/custom art (belts) is bespoke.
+ * Static object sprite, centered on its type's geometry and rotated to its facing. The derived
+ * Object layers build it from a type + texture; animated/custom art (belts) is bespoke.
  */
-export class EasySprite extends Sprite {
+export class ObjectSprite extends Sprite {
 
     /**
      * @param {number} id
@@ -14,9 +14,9 @@ export class EasySprite extends Sprite {
      * @param {number} y
      * @param {Direction} direction
      * @param {Texture} texture - already resolved
-     * @param {ObjectDefinition} definition - for the geometry the sprite centers on
+     * @param {ObjectType} type - for the geometry the sprite centers on
      */
-    constructor(id, x, y, direction, texture, definition) {
+    constructor(id, x, y, direction, texture, type) {
         super(texture);
 
         this.id = id;
@@ -27,7 +27,7 @@ export class EasySprite extends Sprite {
         this.angle = Direction.angle(direction);
 
         // Center on the geometry's centroid: a 1x1 sits on its tile, a 1x2 on its midpoint.
-        const cells = definition.geometry.tiles(direction);
+        const cells = type.geometry.tiles(direction);
         const sum = cells.reduce((acc, cell) => ({x: acc.x + cell.x, y: acc.y + cell.y}), {x: 0, y: 0});
         this.position.set(
             (x + sum.x / cells.length) * TILE_SIZE + TILE_SIZE / 2,

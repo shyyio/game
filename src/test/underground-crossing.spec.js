@@ -7,6 +7,7 @@ import {BeltInsertEvent} from "@/mods/Logistics/events.js";
 import {GameEngine} from "@/common/sim/GameEngine.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector} from "@/test/EventCollector.js";
+import {beltsOf} from "@/mods/Logistics/testHelpers.js";
 
 const RED = 2;
 const BLUE = 3;
@@ -25,10 +26,10 @@ test("a vertical tunnel and a horizontal belt cross on the same tile and flow in
     [-1, 0, 1, 2].forEach(x => engine.applyMessage(new CreateBeltMessage(x, 3, Direction.RIGHT, BELT_NORMAL)));
 
     // Tile (0,3) holds two belts on different axes.
-    assert.equal(engine.belts._beltsAt(0, 3).length, 2, "underground + surface belt coexist on (0,3)");
+    assert.equal(beltsOf(engine)._beltsAt(0, 3).length, 2, "underground + surface belt coexist on (0,3)");
 
-    const tunnel = engine.belts.pathAt(0, 4);       // vertical (only belt at (0,4))
-    const horizontal = engine.belts.pathAt(2, 3);   // horizontal (only belt at (2,3))
+    const tunnel = beltsOf(engine).pathAt(0, 4);       // vertical (only belt at (0,4))
+    const horizontal = beltsOf(engine).pathAt(2, 3);   // horizontal (only belt at (2,3))
     assert.notEqual(tunnel.id, horizontal.id, "distinct paths");
 
     // Feed both; each output receives its own item, uncrossed.

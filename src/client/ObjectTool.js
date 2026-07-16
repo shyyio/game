@@ -6,31 +6,26 @@ import Haptics from "@/client/Haptics.js";
 
 /**
  * Tap-to-place tool: drops one object over its geometry, overwriting an aligned conveyor lane (and
- * optionally its own type), with orientation + center-lock. Belt's drag-to-lay tools are bespoke.
+ * optionally its own type), with orientation + center-lock. Placement knobs come from the type's
+ * PlacementRule. Belt's drag-to-lay tools are bespoke.
  */
-export class EasyObjectTool extends AbstractTool {
+export class ObjectTool extends AbstractTool {
 
     /**
      * @param {Client} client
-     * @param {ObjectDefinition} definition - the object type placed (its typeId on the message, its
-     *     reference for the same-type overwrite check)
-     * @param {EasyObjectGhostLayer} ghostLayer
-     * @param {boolean} replaceSameKind - whether tapping replaces an existing object of this type
-     * @param {boolean} [advanceOnPlace] - whether a placement advances the center-lock crosshair one
-     *     tile (so consecutive taps lay a line); off for one-off objects
-     * @param {ObjectDefinition[]} [placeOnDefinitions] - object types this object must be placed on an
-     *     extraction tile of (e.g. an extractor requiring a resource); their tiles are highlighted blue
-     *     and placement off them is blocked
+     * @param {ObjectType} type - the object type placed (its typeId on the message, its placement
+     *     rule for the overwrite/advance/placeOn knobs)
+     * @param {ObjectGhostLayer} ghostLayer
      */
-    constructor(client, definition, ghostLayer, replaceSameKind, advanceOnPlace=true, placeOnDefinitions=[]) {
+    constructor(client, type, ghostLayer) {
         super(client.session);
         this._client = client;
         this._cache = client.cache;
-        this._definition = definition;
+        this._type = type;
         this._ghostLayer = ghostLayer;
-        this._replaceSameKind = replaceSameKind;
-        this._advanceOnPlace = advanceOnPlace;
-        this._placeOn = placeOnDefinitions;
+        this._replaceSameKind = type.placement.replaceSameKind;
+        this._advanceOnPlace = type.placement.advanceOnPlace;
+        this._placeOn = type.placement.placeOn;
         this._placementFeedbackLayer = client.placementFeedbackLayer;
         this._rotation = client.toolRotation;
         this._active = false;
@@ -41,11 +36,11 @@ export class EasyObjectTool extends AbstractTool {
     }
 
     get label() {
-        return this._definition.label;
+        return this._type.label;
     }
 
     get textureName() {
-        return this._definition.textureName;
+        return this._type.textureName;
     }
 
     onTap(tileX, tileY) {
@@ -61,7 +56,7 @@ export class EasyObjectTool extends AbstractTool {
             return;
         }
         result.overwriteIds.forEach(id => this.session.sendMessage(new DeleteObjectMessage(id)));
-        this.session.sendMessage(new CreateObjectMessage(this._definition.typeId, base.x, base.y, direction));
+        this.session.sendMessage(new CreateObjectMessage(this._type.typeId, base.x, base.y, direction));
         Haptics.tap();
         // Re-evaluate next frame so the just-placed tile now reads as occupied.
         this._ghostLayer.invalidateSnap();
@@ -134,10 +129,10 @@ export class EasyObjectTool extends AbstractTool {
     _targetTiles() {
         const tiles = [];
         this._cache.values().forEach(entry => {
-            if (!this._placeOn.includes(entry.data.definition)) {
+            if (!this._placeOn.includes(entry.data.type)) {
                 return;
             }
-            entry.data.definition.extractionTiles.forEach(tile => {
+            entry.data.type.extractionTiles.forEach(tile => {
                 const cell = rotate({x: tile.x, y: tile.y, direction: Direction.UP}, entry.data.direction);
                 tiles.push({x: entry.tileX + cell.x, y: entry.tileY + cell.y});
             });
@@ -155,7 +150,7 @@ export class EasyObjectTool extends AbstractTool {
      * @returns {{x: number, y: number}[]}
      */
     _geometryTiles(tileX, tileY, direction) {
-        return this._definition.geometry.tiles(direction).map(cell => ({x: tileX + cell.x, y: tileY + cell.y}));
+        return this._type.geometry.tiles(direction).map(cell => ({x: tileX + cell.x, y: tileY + cell.y}));
     }
 
     /**
@@ -183,7 +178,7 @@ export class EasyObjectTool extends AbstractTool {
                 bodyByKey.set(key, {cell, state: "blocked"});
                 return;
             }
-            const occupant = this._cache.at(cell.x, cell.y, this._definition.occupancyLayer);
+            const occupant = this._cache.at(cell.x, cell.y, this._type.occupancyLayer);
             if (occupant === null) {
                 bodyByKey.set(key, {cell, state: "clear"});
             } else if (this._overwritable(occupant, direction)) {
@@ -197,7 +192,7 @@ export class EasyObjectTool extends AbstractTool {
         // Mirror the server's per-layer occupancy: block any footprint cell landing on a same-layer
         // occupant (overwritten cells excluded).
         const occupancy = this._occupancyByLayer(overwriteIds);
-        this._definition.occupancyLayerTiles(direction).forEach(({layer, cells}) => {
+        this._type.occupancyLayerTiles(direction).forEach(({layer, cells}) => {
             const occupied = occupancy.get(layer);
             if (occupied === undefined) {
                 return;
@@ -245,7 +240,7 @@ export class EasyObjectTool extends AbstractTool {
             if (excludeIds.has(entry.id)) {
                 return;
             }
-            entry.data.definition.occupancyLayerTiles(entry.data.direction).forEach(({layer, cells}) => {
+            entry.data.type.occupancyLayerTiles(entry.data.direction).forEach(({layer, cells}) => {
                 if (!byLayer.has(layer)) {
                     byLayer.set(layer, new Set());
                 }
@@ -263,7 +258,7 @@ export class EasyObjectTool extends AbstractTool {
      * @returns {boolean}
      */
     _overwritable(occupant, direction) {
-        if (this._replaceSameKind && occupant.data.definition === this._definition) {
+        if (this._replaceSameKind && occupant.data.type.typeId === this._type.typeId) {
             return true;
         }
         return occupant.data.conveyor === true

@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert";
 
 import {ClientCache} from "@/client/ClientCache.js";
-import {ObjectDefinition, PortDefinition} from "@/common/core.js";
+import {ObjectType, PortDefinition} from "@/common/ObjectType.js";
 import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 
@@ -12,7 +12,7 @@ function cell(x, y, layer=0) {
 }
 
 // A 1x1 object with one input on its tile and one output one tile ahead, both facing UP.
-const machineDefinition = new ObjectDefinition({
+const machineDefinition = new ObjectType({
     name: "Machine",
     inputPorts: [new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP})],
     outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
@@ -21,7 +21,7 @@ const machineDefinition = new ObjectDefinition({
 });
 // Registers a surface machine facing `direction`.
 function machine(cache, id, x, y, direction) {
-    cache.set(id, x, y, [{x, y, layer: OCCUPANCY_LAYER_SURFACE}], {}, {definition: machineDefinition, direction});
+    cache.set(id, x, y, [{x, y, layer: OCCUPANCY_LAYER_SURFACE}], {}, {type: machineDefinition, direction});
 }
 
 test("set then get returns the record with derived chunk", () => {

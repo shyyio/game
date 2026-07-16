@@ -113,7 +113,7 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
     _desiredConnections() {
         const desired = new Map();
         this.cache.values().forEach(entry => {
-            if (!entry.data.definition.renderConnections) {
+            if (!entry.data.type.renderConnections) {
                 return;
             }
             const angle = Direction.angle(entry.data.direction);

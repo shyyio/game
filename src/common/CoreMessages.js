@@ -75,9 +75,9 @@ export class DeleteObjectMessage extends AbstractMessage {
 }
 
 /**
- * Places an object of `typeId` (an ObjectDefinition's engine-assigned type id) at a tile. Dispatched
- * to every mod; the mod whose EasyObjectPlacement owns that type places it, the rest ignore it — so a
- * tool places any simple object without a per-object message class.
+ * Places an object of `typeId` (an ObjectType's freeze-assigned type id) at a tile. The engine's
+ * PlacedObjects host spawns any derived type from it; bespoke handlers ignore ids they don't own —
+ * so a tool places any simple object without a per-object message class.
  */
 export class CreateObjectMessage extends AbstractMessage {
 

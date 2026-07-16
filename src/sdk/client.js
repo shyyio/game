@@ -4,31 +4,44 @@
 // browser-only pieces a client mod needs. Simulation-side mod files (the parts
 // that run on both client and server) import from `@/sdk/common.js`; files that
 // render or handle input import from here.
+//
+// A declaration-only mod needs nothing from this file: for every ObjectType with a behavior the
+// client derives a draw layer, placement ghost, and tool (overridable per piece via the type's
+// createDrawLayer/createGhostLayer/createTool hooks), keeps the shared cache in sync, and derives
+// inspect highlights and mini-menu entries from the type's menuVerbs. An AbstractClientMod is only
+// for bespoke rendering/input (belts); every hook receives the client for the shared surfaces
+// (client.cache, client.itemLayer, client.session, ...).
 
 // Everything from the engine-agnostic SDK is available here too.
 export * from "@/sdk/common.js";
 
+// ---- Mod framework ----
+// The optional client part of a ModPackage: draw layers, tools, and input hooks.
+export {AbstractClientMod} from "@/client/AbstractClientMod.js";
+
 // ---- Rendering ----
 // `AbstractDrawLayer` is the base class for a Pixi layer that reacts to game events;
-// `EasyObjectDrawLayer` is the base-case layer a mod composes to render a placed object type from
-// the generic object events (cache + sprite + chunk lifecycle, all handled).
+// `ObjectDrawLayer` is the derived-default renderer for a placed object type, driven purely by the
+// shared cache (ClientCacheSync owns the entries). A type swaps it via `createDrawLayer(client)`.
 export {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
-export {EasyObjectDrawLayer} from "@/client/EasyObjectDrawLayer.js";
-// The base-case object sprite (static, geometry-centered); EasyObject layers build it from a texture.
-export {EasySprite} from "@/client/EasySprite.js";
+export {ObjectDrawLayer} from "@/client/ObjectDrawLayer.js";
+// The `data` payload of a derived-type cache entry ({type, direction}).
+export {ObjectClientData} from "@/client/ClientCacheSync.js";
+// The base-case object sprite (static, geometry-centered); the derived layers build it from a texture.
+export {ObjectSprite} from "@/client/ObjectSprite.js";
 // The single shared item layer; mods that compute item positions (belts) drive it via
 // `client.itemLayer`. PORT_SPRITE_KEY namespaces resting out-port item sprites.
 export {ItemDrawLayer, PORT_SPRITE_KEY} from "@/client/ItemDrawLayer.js";
-// The single shared connection-stub layer; a mod opts in via ObjectDefinition.renderConnections.
+// The single shared connection-stub layer; a mod opts in via ObjectType.renderConnections.
 export {ConnectionDrawLayer} from "@/client/ConnectionDrawLayer.js";
-// The base-case placement-preview ghost (single sprite + center-lock); paired with EasyObjectTool.
-export {EasyObjectGhostLayer} from "@/client/EasyObjectGhostLayer.js";
+// The derived-default placement-preview ghost (single sprite + center-lock); paired with ObjectTool.
+export {ObjectGhostLayer} from "@/client/ObjectGhostLayer.js";
 
 // ---- Input ----
 // Base class for a placement/interaction tool shown in the toolbar.
 export {AbstractTool} from "@/client/AbstractTool.js";
-// The base-case tap-to-place tool (with center-lock); a mod composes it for a simple object.
-export {EasyObjectTool} from "@/client/EasyObjectTool.js";
+// The derived-default tap-to-place tool (with center-lock); knobs come from the type's PlacementRule.
+export {ObjectTool} from "@/client/ObjectTool.js";
 
 // ---- Feedback ----
 // Haptic (rumble) feedback for touch devices; a no-op where unavailable.

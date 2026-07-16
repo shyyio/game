@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
-import {SplitterModule} from "@/mods/Logistics/SplitterModule.js";
+import {SplitterBehavior} from "@/mods/Logistics/SplitterBehavior.js";
 
 const RED = 1;
 
@@ -10,8 +10,9 @@ const RED = 1;
 test("a splitter round-robins a single input stream across both outputs", async () => {
     const engine = new GameEngine();
     await engine.init();
-    const splitter = new SplitterModule(engine);
-    const s = splitter.addSplitter();
+    const splitter = new SplitterBehavior();
+    splitter.install(engine);
+    const s = splitter.addSplitter(engine);
 
     let toA = 0;
     let toB = 0;

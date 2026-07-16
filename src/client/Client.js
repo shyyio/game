@@ -12,7 +12,6 @@ import {EraserTool} from "@/client/EraserTool.js";
 import {SetViewportMessage, SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
-import {EasyObjectInsertEvent, EasyObjectSyncEvent, EasyObjectDeleteEvent} from "@/common/EasyObjectEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {TILE_SIZE, snapToChunk, MAP_MODE_SCALE_THRESHOLD, CHUNK_UNSUBSCRIBE_DELAY_MS} from "@/client/constants.js";
@@ -22,6 +21,12 @@ import {GridDrawLayer} from "@/client/GridDrawLayer.js";
 import {PlacementFeedbackLayer} from "@/client/PlacementFeedbackLayer.js";
 import {InspectLayer} from "@/client/InspectLayer.js";
 import {ClientCache} from "@/client/ClientCache.js";
+import {ClientCacheSync} from "@/client/ClientCacheSync.js";
+import {ObjectTypeClientBundle} from "@/client/ObjectTypeClientBundle.js";
+import {ObjectDrawLayer} from "@/client/ObjectDrawLayer.js";
+import {ObjectGhostLayer} from "@/client/ObjectGhostLayer.js";
+import {ObjectTool} from "@/client/ObjectTool.js";
+import {InspectHighlight} from "@/client/InspectHighlight.js";
 import {ItemDrawLayer} from "@/client/ItemDrawLayer.js";
 import {ConnectionDrawLayer} from "@/client/ConnectionDrawLayer.js";
 import {StatusMessageLayer} from "@/client/StatusMessageLayer.js";
@@ -48,7 +53,7 @@ export class Client {
         this.modRegistry = modRegistry;
 
         this.textureRegistry = new TextureRegistry();
-        this.drawLayerRegistry = new DrawLayerRegistry(modRegistry);
+        this.drawLayerRegistry = new DrawLayerRegistry();
         this.playerSettings = new PlayerSettings();
         this.gameSettings = new GameSettings();
         this.miniMenuLayer = new MiniMenuLayer(viewport);
@@ -64,9 +69,12 @@ export class Client {
         this.inspectLayer = new InspectLayer();
         // Shared placement facing, so orientation persists across tool switches.
         this.toolRotation = new ToolRotation();
-        // Shared cross-mod object index, fed by mods' insert/delete handling and queried by
-        // tools/layers for tile lookups, placement collision, and connection rendering.
+        // Shared cross-mod object index, written by ClientCacheSync (derived types) and bespoke
+        // mods (belts), queried by tools/layers for tile lookups, placement collision, and
+        // connection rendering.
         this.cache = new ClientCache();
+        // Sole cache writer for derived object types; first in the event dispatch chain.
+        this.cacheSync = new ClientCacheSync(modRegistry, this.cache);
         // The single shared item layer: belts drive their computed-position items imperatively;
         // resting out-port items render here automatically from the port-item events.
         this.itemLayer = new ItemDrawLayer(modRegistry.itemTextures);
@@ -79,6 +87,16 @@ export class Client {
         this.statusLayer = new StatusMessageLayer();
         this.statusLayer.setConnecting();
 
+        // The derived client surface (draw layer + ghost + tool) of every behavior-driven type;
+        // bespoke types (belt) bring their own through their client mod.
+        this.bundles = this._buildBundles();
+        this.bundles.forEach(bundle => {
+            this.drawLayerRegistry.add(bundle.drawLayer);
+            this.drawLayerRegistry.add(bundle.ghostLayer);
+        });
+        this.modRegistry.clientMods
+            .flatMap(mod => mod.drawLayers(this))
+            .forEach(layer => this.drawLayerRegistry.add(layer));
         this.drawLayerRegistry.add(new GridDrawLayer());
         this.drawLayerRegistry.add(this.placementFeedbackLayer);
         this.drawLayerRegistry.add(this.inspectLayer);
@@ -96,10 +114,6 @@ export class Client {
         this._debugMode = false;
         // Machine ids (number) with open menus; sent to the game as the inspect set.
         this._inspectedObjects = new Set();
-        // Object id -> last produced item.
-        this._lastProduced = new Map();
-        // Object id -> {x, y} tile position.
-        this._objectPos = new Map();
     }
 
     /**
@@ -159,7 +173,7 @@ export class Client {
      * @returns {Promise<void>}
      */
     async init() {
-        await this.textureRegistry.loadFromModRegistry(this.modRegistry);
+        await this.textureRegistry.load(this.modRegistry.textureDefinitions);
 
         this.drawLayerRegistry.layers.forEach(layer => {
             layer.textureRegistry = this.textureRegistry;
@@ -411,8 +425,8 @@ export class Client {
             if (this._inspectedObjects.has(event.objectId)) {
                 this.inspectPanelLayer.update(
                     event,
-                    this._lastProduced.get(event.objectId),
-                    this._objectPos.get(event.objectId),
+                    this.cacheSync.lastProducedOf(event.objectId),
+                    this.cacheSync.positionOf(event.objectId),
                 );
             }
             return;
@@ -429,29 +443,88 @@ export class Client {
      * @param {AbstractEvent} event
      */
     dispatchEvent(event) {
-        this._trackObjectState(event);
-        this.modRegistry.dispatchEvent(event, this);
+        this.cacheSync.onEvent(event);
+        this.modRegistry.clientMods.forEach(mod => mod.onEvent(event, this));
         this.drawLayerRegistry.dispatchEvent(event);
         // The status HUD isn't a viewport draw layer, so feed it chunk events directly.
         this.statusLayer.onEvent(event);
     }
 
     /**
-     * Tracks each object's tile position and last produced item from chunk sync / lifecycle events
-     * (position feeds the inspect panel's machine-to-panel connectors; last output the output slot).
-     * @param {AbstractEvent} event
-     * @returns {void}
+     * Builds the derived client bundle of every behavior-driven object type; each piece comes from
+     * the type's create* hook or the derived default.
      * @private
+     * @returns {ObjectTypeClientBundle[]}
      */
-    _trackObjectState(event) {
-        if (event instanceof EasyObjectSyncEvent || event instanceof EasyObjectInsertEvent) {
-            this._objectPos.set(event.id, {x: event.x, y: event.y});
-            if (event.lastOutput !== null) {
-                this._lastProduced.set(event.id, event.lastOutput);
-            }
-        } else if (event instanceof EasyObjectDeleteEvent) {
-            this._objectPos.delete(event.id);
-            this._lastProduced.delete(event.id);
-        }
+    _buildBundles() {
+        return this.modRegistry.objectTypes
+            .filter(type => type.behavior !== null)
+            .map(type => {
+                let drawLayer = type.createDrawLayer(this);
+                if (drawLayer === null) {
+                    drawLayer = new ObjectDrawLayer(type);
+                    drawLayer.bindCache(this.cache);
+                }
+                let ghostLayer = type.createGhostLayer(this);
+                if (ghostLayer === null) {
+                    ghostLayer = new ObjectGhostLayer(type);
+                }
+                let tool = type.createTool(this, ghostLayer);
+                if (tool === null) {
+                    tool = new ObjectTool(this, type, ghostLayer);
+                }
+                return new ObjectTypeClientBundle(type, drawLayer, ghostLayer, tool);
+            });
     }
+
+    /**
+     * Aggregates mini-menu entries from every client mod for the tile at (tileX, tileY).
+     * @param {number} tileX
+     * @param {number} tileY
+     * @returns {MiniMenuEntry[]}
+     */
+    miniMenuEntries(tileX, tileY) {
+        const derived = this.bundles.flatMap(bundle => {
+            const record = this.cache.objectAt(tileX, tileY, bundle.type);
+            if (record === null) {
+                return [];
+            }
+            return bundle.type.menuVerbs.map(verb => verb.entry(bundle.type, record, this.session, this));
+        });
+        const bespoke = this.modRegistry.clientMods
+            .flatMap(mod => mod.miniMenuEntries(tileX, tileY, this.session, this));
+        return derived.concat(bespoke).sort((a, b) => b.rank - a.rank);
+    }
+
+    /**
+     * Routes an inspect hover to every client mod and drives the inspect-highlight layer with the
+     * highlights they return (empty clears it).
+     * @param {number|null} tileX
+     * @param {number|null} tileY
+     * @returns {void}
+     */
+    handleInspect(tileX, tileY) {
+        const derived = [];
+        if (tileX !== null) {
+            this.bundles.forEach(bundle => {
+                const record = this.cache.objectAt(tileX, tileY, bundle.type);
+                if (record !== null) {
+                    derived.push(new InspectHighlight(record.tileX, record.tileY, record.data.direction, bundle.type));
+                }
+            });
+        }
+        const bespoke = this.modRegistry.clientMods
+            .flatMap(mod => mod.onInspect(tileX, tileY, this));
+        this.inspectLayer.show(derived.concat(bespoke));
+    }
+
+    /**
+     * Gathers the tools every client mod makes available.
+     * @returns {AbstractTool[]}
+     */
+    modTools() {
+        const bespoke = this.modRegistry.clientMods.flatMap(mod => mod.tools(this));
+        return bespoke.concat(this.bundles.map(bundle => bundle.tool));
+    }
+
 }

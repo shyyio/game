@@ -1,13 +1,12 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {ModRegistry} from "@/common/ModRegistry.js";
 import {Game} from "@/common/Game.js";
 import {Direction} from "@/common/constants.js";
-import {LogisticsMod} from "@/mods/Logistics/mod.js";
-import {DemoMod, DemoMachineDefinition, DEMO_INPUT_ITEM_TYPE, DEMO_OUTPUT_ITEM_TYPE} from "@/mods/DemoMod/DemoMod.js";
+import {DemoMachineType, DEMO_INPUT_ITEM_TYPE, DEMO_OUTPUT_ITEM_TYPE} from "@/mods/Demo/declaration.js";
 import {SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
+import {ecsModRegistry} from "@/test/ecsSim.js";
 
 class CapturingSession {
 
@@ -27,9 +26,7 @@ class CapturingSession {
 }
 
 async function setup() {
-    const modRegistry = new ModRegistry();
-    modRegistry.loadMod(new LogisticsMod());
-    modRegistry.loadMod(new DemoMod());
+    const modRegistry = ecsModRegistry();
     const game = new Game(modRegistry, new GameEngine(modRegistry));
     await game.init();
     return game;
@@ -37,11 +34,12 @@ async function setup() {
 
 // Places a DemoMachine and returns its client id (object id) plus its input port.
 function createMachine(game, x, y) {
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineDefinition.typeId, x, y, Direction.UP), null);
-    const machineModule = game.simEngine.machine;
-    const eids = machineModule.eids();
+    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, x, y, Direction.UP), null);
+    const placed = game.simEngine.placed;
+    const eids = placed.eidsOf(DemoMachineType.typeId);
     const eid = eids[eids.length - 1];
-    return {id: machineModule.Machine.clientId[eid], inPort: machineModule.Machine.in0[eid]};
+    const machine = game.simEngine.component("Machine").store;
+    return {id: placed.PlacedObject.clientId[eid], inPort: machine.in0[eid]};
 }
 
 function heartbeats(session) {

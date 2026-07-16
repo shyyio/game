@@ -2,7 +2,7 @@ import {rotate, chunkId} from "@/common/util.js";
 
 /**
  * The geometry for a named object size: a base (unrotated) extent vector plus the
- * direction-aware tile math derived from it. An ObjectDefinition exposes its one via `size`.
+ * direction-aware tile math derived from it. An ObjectType exposes its one via `size`.
  */
 export class ObjectGeometry {
 

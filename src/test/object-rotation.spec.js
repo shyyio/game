@@ -1,31 +1,24 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {ModRegistry} from "@/common/ModRegistry.js";
 import {Direction} from "@/common/constants.js";
 import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {LogisticsMod} from "@/mods/Logistics/mod.js";
-import {SplitterDefinition} from "@/mods/Logistics/definitions.js";
-import {DemoMod, DemoMachineDefinition, DEMO_INPUT_ITEM_TYPE, DEMO_OUTPUT_ITEM_TYPE} from "@/mods/DemoMod/DemoMod.js";
-import {GameEngine} from "@/common/sim/GameEngine.js";
+import {SplitterDefinition} from "@/mods/Logistics/objectTypes.js";
+import {DemoMachineType, DEMO_INPUT_ITEM_TYPE, DEMO_OUTPUT_ITEM_TYPE} from "@/mods/Demo/declaration.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
+import {beltsOf} from "@/mods/Logistics/testHelpers.js";
 
 async function setup() {
-    const mr = new ModRegistry();
-    mr.loadMod(new LogisticsMod());
-    mr.loadMod(new DemoMod());
-    mr.definitions;
-    const engine = await makeGameEngine();
-    return engine;
+    return makeGameEngine();
 }
 
 test("a RIGHT-facing machine adopts a RIGHT belt and cooks", async () => {
     const engine = await setup();
     // Belt (5,5) RIGHT feeds (6,5); machine at (6,5) facing RIGHT.
-    engine.applyMessage(new CreateObjectMessage(DemoMachineDefinition.typeId, 6, 5, Direction.RIGHT));
+    engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, 6, 5, Direction.RIGHT));
     engine.applyMessage(new CreateBeltMessage(5, 5, Direction.RIGHT, BELT_NORMAL));
-    const belt = engine.belts.pathAt(5, 5);
+    const belt = beltsOf(engine).pathAt(5, 5);
     assert.equal(belt.outPort, engine.portAt(6, 5, Direction.RIGHT), "belt out adopted as machine input");
 
     engine.setPortItem(belt.inPort, DEMO_INPUT_ITEM_TYPE);
@@ -43,7 +36,7 @@ test("a RIGHT-facing splitter adopts a RIGHT belt on its in_a", async () => {
     // Splitter at (6,5) facing RIGHT; in_a is its own tile edge. Belt (5,5) RIGHT feeds it.
     engine.applyMessage(new CreateObjectMessage(SplitterDefinition.typeId, 6, 5, Direction.RIGHT));
     engine.applyMessage(new CreateBeltMessage(5, 5, Direction.RIGHT, BELT_NORMAL));
-    const belt = engine.belts.pathAt(5, 5);
+    const belt = beltsOf(engine).pathAt(5, 5);
     assert.equal(belt.outPort, engine.portAt(6, 5, Direction.RIGHT), "belt out adopted as splitter in_a");
 
     engine.setPortItem(belt.inPort, 1);

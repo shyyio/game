@@ -1,24 +1,24 @@
 import {Container} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
-import {EasySprite} from "@/client/EasySprite.js";
+import {ObjectSprite} from "@/client/ObjectSprite.js";
 import Mouse from "@/client/Mouse.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
 import {GHOST_TINT, GHOST_ALPHA, GHOST_BLOCKED_TINT, GHOST_BLOCKED_ALPHA} from "@/client/Theme.js";
 
 /**
- * Placement-preview ghost: one tinted EasySprite at the hovered tile, pinned to screen center in
+ * Placement-preview ghost: one tinted ObjectSprite at the hovered tile, pinned to screen center in
  * center-lock. The per-tile geometry feedback (red/blue/green) is the PlacementFeedbackLayer's job.
- * Driven by EasyObjectTool; Belt's multi-sprite ghost is bespoke.
+ * Driven by ObjectTool; Belt's multi-sprite ghost is bespoke.
  */
-export class EasyObjectGhostLayer extends AbstractDrawLayer {
+export class ObjectGhostLayer extends AbstractDrawLayer {
 
     /**
-     * @param {ObjectDefinition} definition - the object type previewed (its geometry centers the sprite)
+     * @param {ObjectType} type - the object type previewed (its geometry centers the sprite)
      */
-    constructor(definition) {
+    constructor(type) {
         super();
-        this._definition = definition;
+        this._type = type;
         this._sprite = null;
         // Holds the sprite so center-lock can offset it to screen center.
         this._spriteContainer = new Container();
@@ -54,7 +54,7 @@ export class EasyObjectGhostLayer extends AbstractDrawLayer {
         this._anchorTileY = tileY;
         this._direction = direction;
         this._snapKey = null;
-        const sprite = new EasySprite(0, tileX, tileY, direction, this.textureRegistry.get(this._definition.textureName), this._definition);
+        const sprite = new ObjectSprite(0, tileX, tileY, direction, this.textureRegistry.get(this._type.textureName), this._type);
         sprite.setGhost(blocked ? GHOST_BLOCKED_TINT : GHOST_TINT, blocked ? GHOST_BLOCKED_ALPHA : GHOST_ALPHA);
         this._sprite = sprite;
         this._spriteContainer.addChild(sprite);
@@ -196,7 +196,7 @@ export class EasyObjectGhostLayer extends AbstractDrawLayer {
      */
     _centroidOffset(direction) {
         // The geometry is a filled rectangle from (0,0) to its corner, so its centroid is corner/2.
-        const corner = this._definition.geometry.corner(direction);
+        const corner = this._type.geometry.corner(direction);
         return {x: corner.x / 2, y: corner.y / 2};
     }
 }

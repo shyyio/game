@@ -1,31 +1,22 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {ModRegistry} from "@/common/ModRegistry.js";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {EasyObjectInsertEvent} from "@/common/EasyObjectEvents.js";
-import {LogisticsMod} from "@/mods/Logistics/mod.js";
-import {DemoMod} from "@/mods/DemoMod/DemoMod.js";
-import {ResourcesMod, WaterResourceDefinition, ExtractorDefinition, WATER_ITEM_TYPE} from "@/mods/Resources/Resources.js";
-import {GameEngine} from "@/common/sim/GameEngine.js";
+import {ObjectInsertEvent} from "@/common/ObjectEvents.js";
+import {WaterResourceType, ExtractorType, WATER_ITEM_TYPE} from "@/mods/Resources/declaration.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector} from "@/test/EventCollector.js";
+import {ResourceCoverService} from "@/common/sim/services.js";
 
 async function setup() {
-    const mr = new ModRegistry();
-    mr.loadMod(new LogisticsMod());
-    mr.loadMod(new DemoMod());
-    mr.loadMod(new ResourcesMod());
-    mr.definitions;
-    const engine = await makeGameEngine();
-    return engine;
+    return makeGameEngine();
 }
 
 test("an extractor on water produces the water item into its output port", async () => {
     const engine = await setup();
-    engine.applyMessage(new CreateObjectMessage(WaterResourceDefinition.typeId, 5, 5, Direction.UP));
-    assert.equal(engine.applyMessage(new CreateObjectMessage(ExtractorDefinition.typeId, 5, 5, Direction.UP)), true);
-    assert.equal(engine.extractor.eids().length, 1, "extractor placed on the resource");
+    engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 5, 5, Direction.UP));
+    assert.equal(engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 5, 5, Direction.UP)), true);
+    assert.equal(engine.placed.eidsOf(ExtractorType.typeId).length, 1, "extractor placed on the resource");
 
     const outPort = engine.portAt(5, 4, Direction.UP);
     let produced = false;
@@ -38,21 +29,21 @@ test("an extractor on water produces the water item into its output port", async
 
 test("an extractor cannot be placed off a resource", async () => {
     const engine = await setup();
-    engine.applyMessage(new CreateObjectMessage(ExtractorDefinition.typeId, 10, 10, Direction.UP));
-    assert.equal(engine.extractor.eids().length, 0, "no extractor placed without a resource");
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 10, 10, Direction.UP));
+    assert.equal(engine.placed.eidsOf(ExtractorType.typeId).length, 0, "no extractor placed without a resource");
 });
 
 test("resource and extractor delete", async () => {
     const engine = await setup();
     const collector = new EventCollector(engine);
-    engine.applyMessage(new CreateObjectMessage(WaterResourceDefinition.typeId, 5, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(ExtractorDefinition.typeId, 5, 5, Direction.UP));
-    const inserts = collector.drain().filter(e => e instanceof EasyObjectInsertEvent);
-    const resourceId = inserts.find(e => e.typeId === WaterResourceDefinition.typeId).id;
-    const extractorId = inserts.find(e => e.typeId === ExtractorDefinition.typeId).id;
+    engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 5, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 5, 5, Direction.UP));
+    const inserts = collector.drain().filter(e => e instanceof ObjectInsertEvent);
+    const resourceId = inserts.find(e => e.typeId === WaterResourceType.typeId).id;
+    const extractorId = inserts.find(e => e.typeId === ExtractorType.typeId).id;
 
     assert.equal(engine.applyMessage(new DeleteObjectMessage(extractorId)), true);
-    assert.equal(engine.extractor.eids().length, 0);
+    assert.equal(engine.placed.eidsOf(ExtractorType.typeId).length, 0);
     assert.equal(engine.applyMessage(new DeleteObjectMessage(resourceId)), true);
-    assert.equal(engine.resources.coverAt(5, 5), null, "resource cover cleared");
+    assert.equal(engine.resolve(ResourceCoverService).coverAt(5, 5), null, "resource cover cleared");
 });

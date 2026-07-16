@@ -1,17 +1,10 @@
 export class DrawLayerRegistry {
 
-    /**
-     * @param {ModRegistry} modRegistry
-     */
-    constructor(modRegistry) {
+    constructor() {
         /**
          * @type {AbstractDrawLayer[]}
          */
         this.layers = [];
-
-        modRegistry.drawLayers.forEach(layer => {
-            this.add(layer);
-        });
     }
 
     /**

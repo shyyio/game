@@ -1,5 +1,5 @@
 import {
-    ObjectDefinition,
+    ObjectType,
     PortDefinition,
     Direction,
 } from "@/sdk/common.js";
@@ -9,17 +9,18 @@ import {
     BELT_RAMP_UP,
     BELT_UNDERGROUND,
 } from "./constants.js";
+import {SplitterBehavior} from "./SplitterBehavior.js";
 
-// A belt's ports differ by belt type, so it overrides the client-facing port accessors. The sim runs
-// on the bitECS engine (see BeltModule); this definition only carries the ports/geometry the engine
-// and client read.
-class BeltObjectDefinition extends ObjectDefinition {
+// A belt's ports differ by belt type, so it overrides the client-facing port accessors. The sim is
+// bespoke (see Belts) — `behavior: null` opts it out of the derived entity host; this type only
+// carries the ports/geometry the engine and client read.
+class BeltObjectType extends ObjectType {
 
     // A ramp/underground never merges from the side: it exposes only its straight axis input
     // (local direction UP), so a belt path or shared port links along the tunnel axis alone. Its
     // outputs are unchanged (the single forward port), which the buried tunnel seam still needs.
     activePorts(portKind, data) {
-        if (portKind === "inputPorts" && data.type !== undefined && data.type !== BELT_NORMAL) {
+        if (portKind === "inputPorts" && data.beltType !== undefined && data.beltType !== BELT_NORMAL) {
             return this.inputPorts.filter(port => port.direction === Direction.UP);
         }
         return this[portKind];
@@ -30,20 +31,20 @@ class BeltObjectDefinition extends ObjectDefinition {
     // output, and an underground nothing (its whole run is buried). The client relies on this
     // because, unlike the server's BeltPath head/tail roles, it can't tell a buried end apart.
     surfacePorts(portKind, data) {
-        if (data.type === BELT_RAMP_DOWN) {
+        if (data.beltType === BELT_RAMP_DOWN) {
             return portKind === "inputPorts" ? this.activePorts(portKind, data) : [];
         }
-        if (data.type === BELT_RAMP_UP) {
+        if (data.beltType === BELT_RAMP_UP) {
             return portKind === "outputPorts" ? this.outputPorts : [];
         }
-        if (data.type === BELT_UNDERGROUND) {
+        if (data.beltType === BELT_UNDERGROUND) {
             return [];
         }
         return this.activePorts(portKind, data);
     }
 }
 
-export const BeltDefinition = new BeltObjectDefinition({
+export const BeltDefinition = new BeltObjectType({
     name: "Belt",
     inputPorts: [
         new PortDefinition("virtual_left", {x: 0, y: 0, direction: Direction.RIGHT}),
@@ -53,14 +54,14 @@ export const BeltDefinition = new BeltObjectDefinition({
     outputPorts: [
         new PortDefinition("virtual_up", {x: 0, y: -1, direction: Direction.UP}, false),
     ],
-    internalPorts: [],
     geometry: "1x1",
+    behavior: null,
 });
 
 // A 1x2 router with two inputs and two outputs (ports shared with adjacent belts) and two internal
 // buffer ports; each item flows in_X -> int_X -> out_Y, resting a tick in int_X so it crosses at belt
-// speed. The routing runs on the bitECS engine (see SplitterModule).
-export const SplitterDefinition = new ObjectDefinition({
+// speed. The routing runs in SplitterBehavior's seam systems.
+export const SplitterDefinition = new ObjectType({
     name: "Splitter",
     inputPorts: [
         new PortDefinition("in_a", {x: 0, y: 0, direction: Direction.UP}),
@@ -78,4 +79,5 @@ export const SplitterDefinition = new ObjectDefinition({
     renderConnections: true,
     textureName: "splitter/1",
     label: "Splitter",
+    behavior: new SplitterBehavior(),
 });
