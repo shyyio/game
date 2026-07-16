@@ -602,16 +602,23 @@ export class Belts {
         while (headGap < occ.length && occ[headGap] === GAP) {
             headGap += 1;
         }
+        // Gaps run-length-encode; items stay one run per half-tile (each item is its own sprite and
+        // pops individually), so an item run never carries length > 1.
         const runs = [];
         let i = headGap;
         while (i < occ.length) {
             const type = occ[i];
-            let length = 0;
-            while (i < occ.length && occ[i] === type) {
-                length += 1;
+            if (type === GAP) {
+                let length = 0;
+                while (i < occ.length && occ[i] === GAP) {
+                    length += 1;
+                    i += 1;
+                }
+                runs.push({type: GAP, length});
+            } else {
+                runs.push({type, length: 1});
                 i += 1;
             }
-            runs.push({type, length});
         }
         // runs are input -> output; the RLE stores them output -> input.
         const items = runs.reverse().map(run => {
