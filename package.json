@@ -16,7 +16,6 @@
     "bench:lines": "node --import ./src/test/test-loader.js src/test/production-line-benchmark.js"
   },
   "dependencies": {
-    "@mdi/font": "^7.4.47",
     "better-sqlite3": "^12.11.1",
     "bitecs": "^0.4.0",
     "idb-keyval": "^6.2.2",
