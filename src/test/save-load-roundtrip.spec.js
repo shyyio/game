@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {DemoMachineType} from "@/mods/Demo/declaration.js";
-import {WaterResourceType, ExtractorType, WATER_ITEM_TYPE} from "@/mods/Resources/declaration.js";
+import {WaterResourceType, ExtractorType, ITEM_TYPE_WATER} from "@/mods/Resources/declaration.js";
 import {SplitterDefinition} from "@/mods/Logistics/objectTypes.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
@@ -47,7 +47,7 @@ test("the whole world round-trips through the engine serializer", async () => {
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
         restored.tickAll();
-        produced = restored.portItem(outPort) === WATER_ITEM_TYPE;
+        produced = restored.portItem(outPort) === ITEM_TYPE_WATER;
     }
     assert.ok(produced, "restored extractor still produces");
 });

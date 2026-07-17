@@ -111,7 +111,7 @@ export const REGION_SIZE = 64;
 // The surface occupancy layer: the default ground layer (belts, splitters, machines). A tile holds
 // one object per layer, so objects on different layers coexist; each mod names its own further layers
 // (e.g. belt undergrounds per axis). Shared by the engine occupancy index and the client ClientCache.
-export const SURFACE_LAYER = "S";
+export const LAYER_SURFACE = "S";
 
 /**
  * Core game-setting keys (mods own keys for their own settings).

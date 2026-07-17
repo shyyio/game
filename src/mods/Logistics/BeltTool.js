@@ -1,4 +1,4 @@
-import {AbstractTool, Direction, Haptics, SURFACE_LAYER, DeleteObjectMessage} from "@/sdk/client.js";
+import {AbstractTool, Direction, Haptics, LAYER_SURFACE, DeleteObjectMessage} from "@/sdk/client.js";
 import {CreateBeltMessage} from "./messages.js";
 import {BeltType} from "@/mods/Logistics/constants.js";
 import {BeltDefinition} from "./objectTypes.js";
@@ -74,7 +74,7 @@ export class BeltTool extends AbstractTool {
      * @returns {boolean}
      */
     _blocked(tileX, tileY) {
-        const occupant = this._cache.at(tileX, tileY, SURFACE_LAYER);
+        const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
         return occupant !== null && !this._overwritable(occupant);
     }
 
@@ -104,7 +104,7 @@ export class BeltTool extends AbstractTool {
      * @private
      */
     _placeBelt(tileX, tileY, direction) {
-        const occupant = this._cache.at(tileX, tileY, SURFACE_LAYER);
+        const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
         if (occupant !== null) {
             if (!this._overwritable(occupant)) {
                 return;

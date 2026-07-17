@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
-import {DemoMachineType, DEMO_INPUT_ITEM_TYPE, DEMO_OUTPUT_ITEM_TYPE} from "@/mods/Demo/declaration.js";
+import {DemoMachineType, ITEM_TYPE_DEMO_INPUT, ITEM_TYPE_DEMO_OUTPUT} from "@/mods/Demo/declaration.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector} from "@/test/EventCollector.js";
 import {beltsOf} from "@/mods/Logistics/testHelpers.js";
@@ -20,12 +20,12 @@ test("a machine placed via message adopts a belt, cooks its input, and deletes",
 
     const belt = beltsOf(engine).placeBelt(5, 6, Direction.UP);
     // Feed the machine's recipe input; it should produce the cooked output.
-    engine.setPortItem(belt.inPort, DEMO_INPUT_ITEM_TYPE);
+    engine.setPortItem(belt.inPort, ITEM_TYPE_DEMO_INPUT);
     const outPort = engine.portAt(5, 4, Direction.UP);
     let cooked = false;
     for (let i = 0; i < 16 && !cooked; i += 1) {
         engine.tickAll();
-        cooked = engine.portItem(outPort) === DEMO_OUTPUT_ITEM_TYPE;
+        cooked = engine.portItem(outPort) === ITEM_TYPE_DEMO_OUTPUT;
     }
     assert.ok(cooked, "the belt-fed input was cooked to the machine's output");
 

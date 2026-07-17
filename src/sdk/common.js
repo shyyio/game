@@ -95,7 +95,7 @@ export {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 export {
     Direction,
     CHUNK_SIZE,
-    SURFACE_LAYER,
+    LAYER_SURFACE,
 } from "@/common/constants.js";
 
 // Rotates a `{x, y}` offset (a port or size vector) by a placement direction, so a mod

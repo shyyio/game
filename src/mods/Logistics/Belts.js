@@ -15,7 +15,7 @@ import {
     BELT_RAMP_DOWN,
     BELT_RAMP_UP,
     BELT_UNDERGROUND,
-    UNDERGROUND_AXIS_LAYERS,
+    LAYERS_UNDERGROUND_AXIS,
 } from "./constants.js";
 import {beltOccupancyLayer} from "./geometry.js";
 
@@ -87,7 +87,7 @@ export class Belts {
         engine.globals.beltNextRunId = this._nextRunId;
 
         // Underground axis layers, so crossing tunnels and a surface belt coexist on a tile.
-        UNDERGROUND_AXIS_LAYERS.forEach(layer => engine.registerOccupancyLayer(layer));
+        LAYERS_UNDERGROUND_AXIS.forEach(layer => engine.registerOccupancyLayer(layer));
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._move());
