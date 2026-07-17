@@ -54,7 +54,6 @@ export {
     ResourceBehavior,
 } from "@/common/sim/behaviors.js";
 export {TickPhase, EMPTY, NO_EID} from "@/common/sim/GameEngine.js";
-export {ResourceCoverService} from "@/common/sim/services.js";
 
 // ---- Engine events ----
 // Chunk subscribe/unsubscribe events, so a mod's client side can react to chunks

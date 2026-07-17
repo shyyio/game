@@ -4,15 +4,14 @@ import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {VolcanoResourceType, ExtractorType, DeepExtractorType, SULFUR_ITEM_TYPE, BRINE_ITEM_TYPE} from "@/mods/Resources/declaration.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {ResourceCoverService} from "@/common/sim/services.js";
 
 test("a volcano feeds a primary extractor (sulfur) and a deep extractor (brine) on its ring", async () => {
     const engine = await makeGameEngine();
 
     // Volcano 2x2 at (5,5); (5,4) and (6,4) are ring extraction tiles (offset {0,-1},{1,-1}).
     engine.applyMessage(new CreateObjectMessage(VolcanoResourceType.typeId, 5, 5, Direction.UP));
-    assert.equal(engine.resolve(ResourceCoverService).coverAt(5, 4), 201, "ring tile is covered by volcano");
-    assert.equal(engine.resolve(ResourceCoverService).coverAt(5, 5), null, "the 2x2 body is not an extraction tile");
+    assert.equal(engine.occupantValueAt(5, 4, "R"), 201, "ring tile is covered by volcano");
+    assert.equal(engine.occupantValueAt(5, 5, "R"), null, "the 2x2 body is not an extraction tile");
 
     engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 5, 4, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(DeepExtractorType.typeId, 6, 4, Direction.UP));

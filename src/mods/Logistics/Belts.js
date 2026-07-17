@@ -84,6 +84,10 @@ export class Belts {
         ], {snapshotOnly: true});
         engine.globals.beltNextRunId = this._nextRunId;
 
+        // Underground axis layers, so crossing tunnels and a surface belt coexist on a tile.
+        engine.registerOccupancyLayer("U0");
+        engine.registerOccupancyLayer("U1");
+
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._move());
         engine.registerSerializeHook(() => this._materialize());

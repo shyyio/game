@@ -10,7 +10,6 @@ import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {beltsOf} from "@/mods/Logistics/testHelpers.js";
-import {ResourceCoverService} from "@/common/sim/services.js";
 
 // Populates an engine with one of every migrated object type and ticks it a few times.
 async function populated() {
@@ -39,7 +38,7 @@ test("the whole world round-trips through the engine serializer", async () => {
     assert.equal(restored.placed.eidsOf(ExtractorType.typeId).length, 1, "extractor restored");
     assert.equal(restored.placed.eidsOf(DemoMachineType.typeId).length, 1, "machine restored");
     assert.equal(beltsOf(restored).paths.length, beltPaths, "belt paths restored");
-    assert.notEqual(restored.resolve(ResourceCoverService).coverAt(5, 5), null, "resource cover restored");
+    assert.notEqual(restored.occupantValueAt(5, 5, "R"), null, "resource cover restored");
     assert.notEqual(restored.placed.eidByClientId(splitterId), undefined, "splitter restored");
     assert.equal(restored.occupancyFree([{x: 10, y: 10, layer: "S"}]), false, "machine occupancy restored");
 
@@ -71,7 +70,7 @@ test("a snapshot round-trips through structured SQLite (the node save path)", as
 
     const loaded = await store.load();
     const names = loaded.components.map(component => component.name);
-    ["Port", "Occupancy", "PlacedObject", "Machine", "Extractor", "Splitter", "ResourceCover", "BeltPath", "Belt", "BeltRun"].forEach(name => {
+    ["Port", "Occupancy", "PlacedObject", "Machine", "Extractor", "Splitter", "BeltPath", "Belt", "BeltRun"].forEach(name => {
         assert.ok(names.includes(name), `${name} table present`);
     });
 
