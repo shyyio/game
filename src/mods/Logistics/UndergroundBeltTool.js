@@ -1,4 +1,4 @@
-import {AbstractTool, Direction, Haptics, OCCUPANCY_LAYER_SURFACE, DeleteObjectMessage} from "@/sdk/client.js";
+import {AbstractTool, Direction, Haptics, SURFACE_LAYER, DeleteObjectMessage} from "@/sdk/client.js";
 import {CreateBeltMessage} from "./messages.js";
 import {BeltType, BeltBend, MAX_UNDERGROUND_LENGTH} from "./constants.js";
 import {BeltDefinition} from "./objectTypes.js";
@@ -118,7 +118,7 @@ export class UndergroundBeltTool extends AbstractTool {
      */
     _blocked(tileX, tileY, direction) {
         // A non-belt surface object (e.g. a splitter) the ramp can't replace blocks outright.
-        const occupant = this._cache.at(tileX, tileY, OCCUPANCY_LAYER_SURFACE);
+        const occupant = this._cache.at(tileX, tileY, SURFACE_LAYER);
         if (occupant !== null && occupant.data.type !== BeltDefinition) {
             return true;
         }

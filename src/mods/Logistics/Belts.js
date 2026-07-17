@@ -15,7 +15,9 @@ import {
     BELT_RAMP_DOWN,
     BELT_RAMP_UP,
     BELT_UNDERGROUND,
+    UNDERGROUND_AXIS_LAYERS,
 } from "./constants.js";
+import {beltOccupancyLayer} from "./geometry.js";
 
 // A gap run in a path's RLE item list (empty half-tiles between items).
 const GAP = 0;
@@ -85,8 +87,7 @@ export class Belts {
         engine.globals.beltNextRunId = this._nextRunId;
 
         // Underground axis layers, so crossing tunnels and a surface belt coexist on a tile.
-        engine.registerOccupancyLayer("U0");
-        engine.registerOccupancyLayer("U1");
+        UNDERGROUND_AXIS_LAYERS.forEach(layer => engine.registerOccupancyLayer(layer));
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._move());
@@ -190,17 +191,6 @@ export class Belts {
     }
 
     /**
-     * The occupancy layer for a belt: surface for normal/ramp, the underground axis for undergrounds.
-     * @private
-     * @param {number} direction
-     * @param {number} type
-     * @returns {string}
-     */
-    _beltLayer(direction, type) {
-        return type === BELT_UNDERGROUND ? `U${direction % 2}` : "S";
-    }
-
-    /**
      * @private
      * @param {object} belt
      * @returns {void}
@@ -239,7 +229,7 @@ export class Belts {
     placeBelt(x, y, direction, type=BELT_NORMAL) {
         // Surface belts (normal/ramp) share the surface layer; an underground occupies its axis layer,
         // so it can cross under a surface belt. Reject if the layer's cell is taken.
-        const layer = this._beltLayer(direction, type);
+        const layer = beltOccupancyLayer(type, direction);
         if (!this.engine.occupancyFree([{x, y, layer}])) {
             return null;
         }
@@ -471,7 +461,7 @@ export class Belts {
             return;
         }
         const removedId = belt.id;
-        this.engine.destroyCells([{x, y, layer: this._beltLayer(direction, belt.type)}]);
+        this.engine.destroyCells([{x, y, layer: beltOccupancyLayer(belt.type, direction)}]);
 
         // The belts this one linked to — the belt ahead and every belt that fed its tile — anchor the
         // surviving runs. Captured before removal, while the flow links are intact.

@@ -1,4 +1,4 @@
-import {OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
+import {SURFACE_LAYER} from "@/common/constants.js";
 import {ObjectGeometries} from "@/common/ObjectGeometry.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {StaticBehavior} from "@/common/sim/behaviors.js";
@@ -192,7 +192,7 @@ export class ObjectType {
         this.textureName = textureName;
         this.label = label;
         // The occupancy layer this object sits on. Objects on different layers coexist on a tile.
-        this.occupancyLayer = OCCUPANCY_LAYER_SURFACE;
+        this.occupancyLayer = SURFACE_LAYER;
         this.extractionTiles = extractionTiles;
         this.behavior = behavior === undefined ? new StaticBehavior() : behavior;
         if (this.behavior !== null) {

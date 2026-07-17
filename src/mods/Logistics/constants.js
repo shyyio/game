@@ -29,9 +29,9 @@ export const BeltType = {
     UNDERGROUND: BELT_UNDERGROUND,
 };
 
-// Occupancy layers for underground belts: one per axis, above the shared SURFACE layer (0),
-// so a surface belt and two crossing tunnels coexist on a tile. Layer = BASE + (direction % 2).
-export const OCCUPANCY_LAYER_UNDERGROUND_BASE = 1;
+// Occupancy layers for underground belts: one per axis, alongside the shared surface layer, so a
+// surface belt and two crossing tunnels coexist on a tile. Layer = UNDERGROUND_AXIS_LAYERS[direction % 2].
+export const UNDERGROUND_AXIS_LAYERS = ["U0", "U1"];
 
 /**
  * @enum {number}

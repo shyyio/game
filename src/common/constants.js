@@ -108,15 +108,10 @@ export const CHUNK_SIZE = 64;
 // the top-left chunk (id 0).
 export const REGION_SIZE = 64;
 
-// Occupancy layers. A tile can hold one object per layer, so objects on different layers
-// coexist (e.g. a surface belt and two crossing underground tunnels). The keyspace is flat
-// and shared across mods by convention: SURFACE is the default ground layer (belts,
-// splitters, machines); a mod with stackable objects (e.g. belt undergrounds, per axis)
-// allocates its own further layers.
-export const OCCUPANCY_LAYER_SURFACE = 0;
-
-// Resource bodies (lakes, ore, volcanoes) sit here so a surface extractor coexists on top.
-export const OCCUPANCY_LAYER_RESOURCE = 1;
+// The surface occupancy layer: the default ground layer (belts, splitters, machines). A tile holds
+// one object per layer, so objects on different layers coexist; each mod names its own further layers
+// (e.g. belt undergrounds per axis). Shared by the engine occupancy index and the client ClientCache.
+export const SURFACE_LAYER = "S";
 
 /**
  * Core game-setting keys (mods own keys for their own settings).

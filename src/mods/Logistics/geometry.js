@@ -1,4 +1,4 @@
-import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/sdk/common.js";
+import {Direction, SURFACE_LAYER} from "@/sdk/common.js";
 import {BeltDefinition} from "./objectTypes.js";
 import {
     BeltType,
@@ -6,7 +6,7 @@ import {
     BELT_RAMP_UP,
     BELT_UNDERGROUND,
     MAX_UNDERGROUND_LENGTH,
-    OCCUPANCY_LAYER_UNDERGROUND_BASE,
+    UNDERGROUND_AXIS_LAYERS,
 } from "./constants.js";
 
 /**
@@ -56,13 +56,13 @@ export function inferBeltParent(cache, tileX, tileY, direction) {
  * layer per axis (so crossing tunnels and a surface belt coexist), everything else SURFACE.
  * @param {BeltType} type
  * @param {Direction} direction
- * @returns {number}
+ * @returns {string}
  */
 export function beltOccupancyLayer(type, direction) {
     if (type === BELT_UNDERGROUND) {
-        return OCCUPANCY_LAYER_UNDERGROUND_BASE + (direction % 2);
+        return UNDERGROUND_AXIS_LAYERS[direction % 2];
     }
-    return OCCUPANCY_LAYER_SURFACE;
+    return SURFACE_LAYER;
 }
 
 /**

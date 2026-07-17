@@ -3,7 +3,7 @@ import assert from "node:assert";
 
 import {ClientCache} from "@/client/ClientCache.js";
 import {ObjectType, PortDefinition} from "@/common/ObjectType.js";
-import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
+import {Direction, SURFACE_LAYER} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 
 // A single-cell object on layer 0 at its primary tile.
@@ -21,7 +21,7 @@ const machineDefinition = new ObjectType({
 });
 // Registers a surface machine facing `direction`.
 function machine(cache, id, x, y, direction) {
-    cache.set(id, x, y, [{x, y, layer: OCCUPANCY_LAYER_SURFACE}], {}, {type: machineDefinition, direction});
+    cache.set(id, x, y, [{x, y, layer: SURFACE_LAYER}], {}, {type: machineDefinition, direction});
 }
 
 test("set then get returns the record with derived chunk", () => {

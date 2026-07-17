@@ -1,5 +1,6 @@
 import {createWorld, addEntity, addComponent, removeEntity, entityExists, query} from "bitecs";
 import {rotate} from "@/common/util.js";
+import {SURFACE_LAYER} from "@/common/constants.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {PlacedObjects} from "@/common/sim/PlacedObjects.js";
@@ -63,7 +64,7 @@ export const TICK_PHASE_ORDER = [
     TickPhase.EMIT_INSPECT,
 ];
 
-// Port.item sentinel for an empty port (item types are >= 0, so -1 is unambiguous).
+// Port.item sentinel for an empty port
 export const EMPTY = -1;
 
 // Field sentinel for an eid-reference field with no target (a fresh port, an absent seam).
@@ -72,9 +73,6 @@ export const NO_EID = -1;
 // Initial column length for every component store; grows by doubling when an eid exceeds it.
 const PORT_CAPACITY = 1024;
 
-// The surface layer, present on every engine; other layers (belt axes, resource cover) are registered
-// by the mods that own them via registerOccupancyLayer.
-const SURFACE_LAYER = "S";
 
 /**
  * bitECS-backed simulation engine Game drives: the port-transfer core over typed-array component
@@ -1113,7 +1111,7 @@ export class GameEngine {
      * @returns {{x:number, y:number, layer:string}[]}
      */
     footprint(definition, x, y, direction) {
-        return definition.geometry.tiles(direction).map(cell => ({x: x + cell.x, y: y + cell.y, layer: "S"}));
+        return definition.geometry.tiles(direction).map(cell => ({x: x + cell.x, y: y + cell.y, layer: SURFACE_LAYER}));
     }
 
     /**
