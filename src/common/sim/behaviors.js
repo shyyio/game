@@ -3,7 +3,7 @@ import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {EMPTY, NO_EID, TickPhase} from "@/common/sim/GameEngine.js";
 
 // Occupancy layer for resource cover: an extraction tile stores its resource type as the cell value.
-const RESOURCE_LAYER = "R";
+const LAYER_RESOURCE = "R";
 
 // Recipe input keys are always padded to three slots.
 const RECIPE_SLOTS = 3;
@@ -426,7 +426,7 @@ export class ExtractorBehavior extends AbstractBehavior {
      * @returns {boolean}
      */
     canSpawn(engine, placed, type, message) {
-        return engine.occupantValueAt(message.x, message.y, RESOURCE_LAYER) !== null;
+        return engine.occupantValueAt(message.x, message.y, LAYER_RESOURCE) !== null;
     }
 
     onSpawn(engine, placed, eid, type, message) {
@@ -434,7 +434,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         const E = engine.component("Extractor").store;
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         E.out[eid] = output.port;
-        E.resourceType[eid] = engine.occupantValueAt(message.x, message.y, RESOURCE_LAYER);
+        E.resourceType[eid] = engine.occupantValueAt(message.x, message.y, LAYER_RESOURCE);
         E.outTileX[eid] = output.tile.x;
         E.outTileY[eid] = output.tile.y;
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
@@ -551,7 +551,7 @@ export class ResourceBehavior extends AbstractBehavior {
     }
 
     install(engine, placed) {
-        engine.registerOccupancyLayer(RESOURCE_LAYER);
+        engine.registerOccupancyLayer(LAYER_RESOURCE);
     }
 
     onSpawn(engine, placed, eid, type, message) {
@@ -559,7 +559,7 @@ export class ResourceBehavior extends AbstractBehavior {
         const cells = type.extractionTiles.map(offset => ({
             x: message.x + offset.x,
             y: message.y + offset.y,
-            layer: RESOURCE_LAYER,
+            layer: LAYER_RESOURCE,
         }));
         engine.occupy(cells, clientId, this.resourceType);
         return [];

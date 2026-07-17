@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Game} from "@/common/Game.js";
 import {Direction} from "@/common/constants.js";
-import {DemoMachineType, DEMO_INPUT_ITEM_TYPE, DEMO_OUTPUT_ITEM_TYPE} from "@/mods/Demo/declaration.js";
+import {DemoMachineType, ITEM_TYPE_DEMO_INPUT, ITEM_TYPE_DEMO_OUTPUT} from "@/mods/Demo/declaration.js";
 import {SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
@@ -114,20 +114,20 @@ test("heartbeat tracks the processing countdown, consumed batch, and output", as
         return heartbeats(session)[0];
     };
 
-    game.simEngine.setPortItem(machine.inPort, DEMO_INPUT_ITEM_TYPE);
+    game.simEngine.setPortItem(machine.inPort, ITEM_TYPE_DEMO_INPUT);
     const started = tick();
     assert.equal(started.processingRemaining, 2);
-    assert.deepEqual(started.inputMemory, [DEMO_INPUT_ITEM_TYPE]);
-    assert.equal(started.recipeOutput, DEMO_OUTPUT_ITEM_TYPE);
+    assert.deepEqual(started.inputMemory, [ITEM_TYPE_DEMO_INPUT]);
+    assert.equal(started.recipeOutput, ITEM_TYPE_DEMO_OUTPUT);
 
     const midway = tick();
     assert.equal(midway.processingRemaining, 1);
-    assert.deepEqual(midway.inputMemory, [DEMO_INPUT_ITEM_TYPE]);
+    assert.deepEqual(midway.inputMemory, [ITEM_TYPE_DEMO_INPUT]);
 
     const done = tick();
     assert.equal(done.processingRemaining, null);
     assert.deepEqual(done.inputMemory, [0]);
-    assert.equal(done.outputItem, DEMO_OUTPUT_ITEM_TYPE);
+    assert.equal(done.outputItem, ITEM_TYPE_DEMO_OUTPUT);
 });
 
 test("unsubscribing stops the heartbeats", async () => {

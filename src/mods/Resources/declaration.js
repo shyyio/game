@@ -15,9 +15,9 @@ import {
 // Resource types and the items extraction spawns.
 export const RESOURCE_WATER = 200;
 export const RESOURCE_VOLCANO = 201;
-export const WATER_ITEM_TYPE = 210;
-export const SULFUR_ITEM_TYPE = 211;
-export const BRINE_ITEM_TYPE = 212;
+export const ITEM_TYPE_WATER = 210;
+export const ITEM_TYPE_SULFUR = 211;
+export const ITEM_TYPE_BRINE = 212;
 
 // ---- Resource types ----
 
@@ -65,8 +65,8 @@ export const ExtractorType = new ObjectType({
     behavior: new ExtractorBehavior({
         processingTicks: 4,
         recipes: [
-            new RecipeDefinition([RESOURCE_WATER], WATER_ITEM_TYPE),
-            new RecipeDefinition([RESOURCE_VOLCANO], SULFUR_ITEM_TYPE),
+            new RecipeDefinition([RESOURCE_WATER], ITEM_TYPE_WATER),
+            new RecipeDefinition([RESOURCE_VOLCANO], ITEM_TYPE_SULFUR),
         ],
     }),
 });
@@ -82,7 +82,7 @@ export const DeepExtractorType = new ObjectType({
     placement: new PlacementRule({replaceSameKind: true, placeOn: RESOURCE_TYPES}),
     behavior: new ExtractorBehavior({
         processingTicks: 8,
-        recipes: [new RecipeDefinition([RESOURCE_VOLCANO], BRINE_ITEM_TYPE)],
+        recipes: [new RecipeDefinition([RESOURCE_VOLCANO], ITEM_TYPE_BRINE)],
     }),
 });
 
@@ -96,9 +96,9 @@ export class ResourcesDeclaration extends AbstractModDeclaration {
 
     get itemTextures() {
         return {
-            [WATER_ITEM_TYPE]: "items/1",
-            [SULFUR_ITEM_TYPE]: "items/2",
-            [BRINE_ITEM_TYPE]: "items/1",
+            [ITEM_TYPE_WATER]: "items/1",
+            [ITEM_TYPE_SULFUR]: "items/2",
+            [ITEM_TYPE_BRINE]: "items/1",
         };
     }
 }

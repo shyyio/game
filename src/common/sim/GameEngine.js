@@ -1,6 +1,6 @@
 import {createWorld, addEntity, addComponent, removeEntity, entityExists, query} from "bitecs";
 import {rotate} from "@/common/util.js";
-import {SURFACE_LAYER} from "@/common/constants.js";
+import {LAYER_SURFACE} from "@/common/constants.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {PlacedObjects} from "@/common/sim/PlacedObjects.js";
@@ -128,7 +128,7 @@ export class GameEngine {
         // across save/load.
         this._layerCodes = new Map();
         this._layerNames = [];
-        this.registerOccupancyLayer(SURFACE_LAYER);
+        this.registerOccupancyLayer(LAYER_SURFACE);
 
         // Occupancy component: one entity per occupied cell {x, y, layer}, tagged with its owner object id
         // (so a delete releases all its cells by query) and a per-cell value read via occupantValueAt
@@ -1111,7 +1111,7 @@ export class GameEngine {
      * @returns {{x:number, y:number, layer:string}[]}
      */
     footprint(definition, x, y, direction) {
-        return definition.geometry.tiles(direction).map(cell => ({x: x + cell.x, y: y + cell.y, layer: SURFACE_LAYER}));
+        return definition.geometry.tiles(direction).map(cell => ({x: x + cell.x, y: y + cell.y, layer: LAYER_SURFACE}));
     }
 
     /**

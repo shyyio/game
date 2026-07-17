@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {VolcanoResourceType, ExtractorType, DeepExtractorType, SULFUR_ITEM_TYPE, BRINE_ITEM_TYPE} from "@/mods/Resources/declaration.js";
+import {VolcanoResourceType, ExtractorType, DeepExtractorType, ITEM_TYPE_SULFUR, ITEM_TYPE_BRINE} from "@/mods/Resources/declaration.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 
 test("a volcano feeds a primary extractor (sulfur) and a deep extractor (brine) on its ring", async () => {
@@ -24,8 +24,8 @@ test("a volcano feeds a primary extractor (sulfur) and a deep extractor (brine) 
     let brine = false;
     for (let i = 0; i < 12; i += 1) {
         engine.tickAll();
-        if (engine.portItem(sulfurOut) === SULFUR_ITEM_TYPE) sulfur = true;
-        if (engine.portItem(brineOut) === BRINE_ITEM_TYPE) brine = true;
+        if (engine.portItem(sulfurOut) === ITEM_TYPE_SULFUR) sulfur = true;
+        if (engine.portItem(brineOut) === ITEM_TYPE_BRINE) brine = true;
     }
     assert.ok(sulfur, "primary extractor produced sulfur");
     assert.ok(brine, "deep extractor produced brine");
