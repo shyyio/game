@@ -49,6 +49,8 @@ export class Belts {
         // on different axes/layers (a surface belt and an underground crossing under it); the run at a
         // tile is disambiguated by direction.
         this._belts = new Map();
+        // Belt id -> belt, an index over the tile map for O(1) lookup by client id.
+        this._beltById = new Map();
         // Stable RLE run id, the client's item runId for sprite continuity/glide.
         this._nextRunId = 1;
 
@@ -180,6 +182,7 @@ export class Belts {
         } else {
             belts.push(belt);
         }
+        this._beltById.set(belt.id, belt);
     }
 
     /**
@@ -206,6 +209,7 @@ export class Belts {
         } else {
             this._belts.set(key, remaining);
         }
+        this._beltById.delete(belt.id);
     }
 
     /**
@@ -555,7 +559,7 @@ export class Belts {
      * @returns {{x:number, y:number, direction:number, type:number, id:number}|null}
      */
     beltById(id) {
-        const found = this._allBelts().find(belt => belt.id === id);
+        const found = this._beltById.get(id);
         return found === undefined ? null : found;
     }
 
@@ -807,7 +811,7 @@ export class Belts {
             const old = extension;
             if (runKeys[0] === newKey) {
                 // Head (input-edge) extension: the new empty belt is head room; items keep their
-                // distance from the unchanged output edge (and their run ids).
+                // distance from the unchanged output edge (run ids are reassigned below).
                 items = old.items.map(run => ({id: run.id, length: run.length, type: run.type}));
                 headGap = old.headGap + 2;
             } else {
@@ -1140,9 +1144,9 @@ export class Belts {
     }
 
     /**
-     * The events recreating this module's belts and their resting items in `chunk`, for a session that
-     * just subscribed: one "belt" event per belt tile, one "set" event per rendered out-port holding
-     * an item.
+     * The events recreating this module's belts and their in-flight items in `chunk`, for a session
+     * that just subscribed: one belt-sync event per belt tile, then per path a recalc plus one item
+     * upsert per RLE run. Resting out-port items ride the engine's shared rendered-port sync.
      * @param {number} chunk
      * @returns {object[]}
      */
@@ -1225,6 +1229,7 @@ export class Belts {
         this.paths = [];
         this._byInPort = new Map();
         this._belts = new Map();
+        this._beltById = new Map();
         this._nextRunId = this.engine.globals.beltNextRunId;
 
         const BP = this._pathDef.store;
