@@ -1,5 +1,5 @@
 import {chunkId, rotate} from "@/common/util.js";
-import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
+import {Direction, SURFACE_LAYER} from "@/common/constants.js";
 
 /**
  * One placed object in the ClientCache: a primary tile (for by-tile / by-chunk lookups), the
@@ -338,7 +338,7 @@ export class ClientCache {
      * @returns {{entry: CacheEntry, portName: string}|null}
      */
     inPortAt(tileX, tileY, direction) {
-        const entry = this.at(tileX, tileY, OCCUPANCY_LAYER_SURFACE);
+        const entry = this.at(tileX, tileY, SURFACE_LAYER);
         if (entry === null) {
             return null;
         }
@@ -356,7 +356,7 @@ export class ClientCache {
     outPortAt(tileX, tileY, direction) {
         const sourceX = tileX - Direction.dx(direction);
         const sourceY = tileY - Direction.dy(direction);
-        const entry = this.at(sourceX, sourceY, OCCUPANCY_LAYER_SURFACE);
+        const entry = this.at(sourceX, sourceY, SURFACE_LAYER);
         if (entry === null) {
             return null;
         }

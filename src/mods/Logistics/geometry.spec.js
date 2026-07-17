@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
+import {Direction, SURFACE_LAYER} from "@/common/constants.js";
 import {ObjectType, PortDefinition} from "@/common/ObjectType.js";
 import {ClientCache} from "@/client/ClientCache.js";
 import {BeltType} from "./constants.js";
@@ -9,15 +9,15 @@ import {BeltDefinition, SplitterDefinition} from "./objectTypes.js";
 
 // Register a single-tile surface object in the cache.
 function surface(cache, id, x, y, data) {
-    cache.set(id, x, y, [{x, y, layer: OCCUPANCY_LAYER_SURFACE}], {}, data);
+    cache.set(id, x, y, [{x, y, layer: SURFACE_LAYER}], {}, data);
 }
 
 test("inferBeltParent finds a splitter feeding a belt that bends out of it", () => {
     const cache = new ClientCache();
     // Splitter at (13,5) facing UP occupies (13,5) and (14,5).
     cache.set(1, 13, 5, [
-        {x: 13, y: 5, layer: OCCUPANCY_LAYER_SURFACE},
-        {x: 14, y: 5, layer: OCCUPANCY_LAYER_SURFACE},
+        {x: 13, y: 5, layer: SURFACE_LAYER},
+        {x: 14, y: 5, layer: SURFACE_LAYER},
     ], {}, {type: SplitterDefinition, direction: Direction.UP});
     // Belt above the far cell, bending right — fed by the splitter's out_b.
     surface(cache, 2, 14, 4, {type: BeltDefinition, direction: Direction.RIGHT, beltType: BeltType.NORMAL});

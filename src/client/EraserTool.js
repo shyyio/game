@@ -1,5 +1,5 @@
 import {AbstractTool} from "@/client/AbstractTool.js";
-import {Direction, OCCUPANCY_LAYER_SURFACE} from "@/common/constants.js";
+import {Direction, SURFACE_LAYER} from "@/common/constants.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import Haptics from "@/client/Haptics.js";
 
@@ -45,7 +45,7 @@ export class EraserTool extends AbstractTool {
     }
 
     onTileEnter(tileX, tileY) {
-        const occupied = this._cache.at(tileX, tileY, OCCUPANCY_LAYER_SURFACE) !== null;
+        const occupied = this._cache.at(tileX, tileY, SURFACE_LAYER) !== null;
         this._placementFeedbackLayer.show({blocked: occupied ? [{x: tileX, y: tileY}] : []});
     }
 
@@ -67,7 +67,7 @@ export class EraserTool extends AbstractTool {
      * @private
      */
     _erase(tileX, tileY) {
-        const target = this._cache.at(tileX, tileY, OCCUPANCY_LAYER_SURFACE);
+        const target = this._cache.at(tileX, tileY, SURFACE_LAYER);
         if (target === null) {
             return;
         }
