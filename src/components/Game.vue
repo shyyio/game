@@ -7,7 +7,7 @@ import Mouse from "@/client/Mouse.js";
 import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/mod/ModRegistry.js";
 import {clientLoadout} from "@/mods/loadout.js";
-import {BeltService} from "@/mods/Logistics/services.js";
+import {Belts} from "@/mods/Logistics/Belts.js";
 import {Game} from "@/common/Game.js";
 import {GameEngine, TickPhase} from "@/common/sim/GameEngine.js";
 import {ClientSaveStore} from "@/client/ClientSaveStore.js";
@@ -236,7 +236,7 @@ onMounted(async () => {
   // Debug keybindings (moved off the number keys, which now select tools).
   // Insert an item of value 1 onto the lowest-id belt path via its in-port.
   Keyboard.on("b", () => {
-    game.simEngine.resolve(BeltService).debugInsertItem();
+    game.simEngine.resolve(Belts).debugInsertItem();
   });
 
   Keyboard.on("t", () => {

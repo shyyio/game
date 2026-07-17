@@ -3,7 +3,6 @@ import {
     DeleteObjectMessage,
 } from "@/sdk/common.js";
 import {CreateBeltMessage} from "./messages.js";
-import {BeltService} from "./services.js";
 import {Belts} from "./Belts.js";
 import {
     BELT_NORMAL,
@@ -20,7 +19,7 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @returns {void}
      */
     setup(sim) {
-        const belts = sim.provide(BeltService, new Belts(sim));
+        const belts = sim.provide(Belts, new Belts(sim));
         sim.registerMessageHandler(message => this._ecsBeltMessage(belts, message));
         sim.registerChunkSync(chunk => belts.chunkSync(chunk));
     }

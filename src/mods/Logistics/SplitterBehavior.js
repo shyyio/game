@@ -1,5 +1,4 @@
 import {Direction, EMPTY, NO_EID, TickPhase, AbstractBehavior} from "@/sdk/common.js";
-import {SplitterService} from "./services.js";
 import {ORDER_BEFORE_TRANSPORT} from "./constants.js";
 
 /**
@@ -29,7 +28,6 @@ export class SplitterBehavior extends AbstractBehavior {
         // The seam must read shared ports before the belt transport writes pops, whatever the
         // registration sequence.
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._runSeam(engine), ORDER_BEFORE_TRANSPORT);
-        engine.provide(SplitterService, this);
     }
 
     onSpawn(engine, placed, eid, type, message) {
