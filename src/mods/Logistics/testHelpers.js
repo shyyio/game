@@ -4,7 +4,7 @@
 // they serve — the harness itself (`@/sdk/test.js`) stays content-agnostic.
 
 import {DeleteObjectMessage, CreateObjectMessage} from "@/sdk/common.js";
-import {BeltService} from "./services.js";
+import {Belts} from "./Belts.js";
 import {CreateBeltMessage} from "./messages.js";
 import {SplitterDefinition} from "./objectTypes.js";
 
@@ -72,10 +72,10 @@ export function deleteSplitter(game, id) {
 }
 
 /**
- * The engine's belt transport (the BeltService instance).
+ * The engine's belt transport.
  * @param {GameEngine} sim
  * @returns {Belts}
  */
 export function beltsOf(sim) {
-    return sim.resolve(BeltService);
+    return sim.resolve(Belts);
 }
