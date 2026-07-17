@@ -6,7 +6,6 @@ import {ObjectInsertEvent} from "@/common/ObjectEvents.js";
 import {WaterResourceType, ExtractorType, WATER_ITEM_TYPE} from "@/mods/Resources/declaration.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector} from "@/test/EventCollector.js";
-import {ResourceCoverService} from "@/common/sim/services.js";
 
 async function setup() {
     return makeGameEngine();
@@ -45,5 +44,5 @@ test("resource and extractor delete", async () => {
     assert.equal(engine.applyMessage(new DeleteObjectMessage(extractorId)), true);
     assert.equal(engine.placed.eidsOf(ExtractorType.typeId).length, 0);
     assert.equal(engine.applyMessage(new DeleteObjectMessage(resourceId)), true);
-    assert.equal(engine.resolve(ResourceCoverService).coverAt(5, 5), null, "resource cover cleared");
+    assert.equal(engine.occupantValueAt(5, 5, "R"), null, "resource cover cleared");
 });

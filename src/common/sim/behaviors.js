@@ -1,7 +1,9 @@
 import {chunkId} from "@/common/util.js";
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {EMPTY, NO_EID, TickPhase} from "@/common/sim/GameEngine.js";
-import {ResourceCoverService} from "@/common/sim/services.js";
+
+// Occupancy layer for resource cover: an extraction tile stores its resource type as the cell value.
+const RESOURCE_LAYER = "R";
 
 // Recipe input keys are always padded to three slots.
 const RECIPE_SLOTS = 3;
@@ -424,7 +426,7 @@ export class ExtractorBehavior extends AbstractBehavior {
      * @returns {boolean}
      */
     canSpawn(engine, placed, type, message) {
-        return engine.resolve(ResourceCoverService).coverAt(message.x, message.y) !== null;
+        return engine.occupantValueAt(message.x, message.y, RESOURCE_LAYER) !== null;
     }
 
     onSpawn(engine, placed, eid, type, message) {
@@ -432,7 +434,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         const E = engine.component("Extractor").store;
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         E.out[eid] = output.port;
-        E.resourceType[eid] = engine.resolve(ResourceCoverService).coverAt(message.x, message.y);
+        E.resourceType[eid] = engine.occupantValueAt(message.x, message.y, RESOURCE_LAYER);
         E.outTileX[eid] = output.tile.x;
         E.outTileY[eid] = output.tile.y;
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
@@ -533,8 +535,9 @@ export class ExtractorBehavior extends AbstractBehavior {
 }
 
 /**
- * A resource body: no components beyond PlacedObject and no tick — it spawns ResourceCover entities
- * on its extraction tiles (read by extractors at spawn) and renders as a sprite.
+ * A resource body: no components beyond PlacedObject and no tick — it occupies its extraction tiles
+ * on the resource layer, storing its resource type as the cell value (read by extractors at spawn),
+ * and renders as a sprite. The owner-keyed cells are freed generically on delete (untrack).
  */
 export class ResourceBehavior extends AbstractBehavior {
 
@@ -548,29 +551,17 @@ export class ResourceBehavior extends AbstractBehavior {
     }
 
     install(engine, placed) {
-        const def = engine.defineComponent("ResourceCover", [
-            {name: "x"},
-            {name: "y"},
-            {name: "resourceType"},
-            {name: "owner", fill: NO_EID},
-        ]);
-        engine.provide(ResourceCoverService, new ResourceCoverService(engine, def));
+        engine.registerOccupancyLayer(RESOURCE_LAYER);
     }
 
     onSpawn(engine, placed, eid, type, message) {
-        const covers = engine.resolve(ResourceCoverService);
         const clientId = placed.PlacedObject.clientId[eid];
-        type.extractionTiles.forEach(offset => {
-            covers.addCover(message.x + offset.x, message.y + offset.y, this.resourceType, clientId);
-        });
+        const cells = type.extractionTiles.map(offset => ({
+            x: message.x + offset.x,
+            y: message.y + offset.y,
+            layer: RESOURCE_LAYER,
+        }));
+        engine.occupy(cells, clientId, this.resourceType);
         return [];
-    }
-
-    onDespawn(engine, placed, eid) {
-        engine.resolve(ResourceCoverService).removeOwner(placed.PlacedObject.clientId[eid]);
-    }
-
-    onRebuild(engine, placed) {
-        engine.resolve(ResourceCoverService).rebuild();
     }
 }

@@ -72,9 +72,9 @@ export const NO_EID = -1;
 // Initial column length for every component store; grows by doubling when an eid exceeds it.
 const PORT_CAPACITY = 1024;
 
-// Occupancy layer codec: the runtime keys cells by layer string, but the component stores an int.
-const LAYER_CODE = {S: 0, U0: 1, U1: 2};
-const LAYER_NAME = ["S", "U0", "U1"];
+// The surface layer, present on every engine; other layers (belt axes, resource cover) are registered
+// by the mods that own them via registerOccupancyLayer.
+const SURFACE_LAYER = "S";
 
 /**
  * bitECS-backed simulation engine Game drives: the port-transfer core over typed-array component
@@ -125,14 +125,23 @@ export class GameEngine {
         ]);
         this.Port = this._portDef.store;
 
-        // Occupancy component: one entity per occupied cell {x, y, layer} (layer "S" = surface, "U0"/"U1"
-        // = underground axis) tagged with its owner object id, so a delete releases all its cells by
-        // query. Objects on the same layer collide; different layers coexist.
+        // Layer name <-> int code; the surface layer is code 0, mods register the rest (see
+        // registerOccupancyLayer). Registration order is deterministic per loadout, so codes are stable
+        // across save/load.
+        this._layerCodes = new Map();
+        this._layerNames = [];
+        this.registerOccupancyLayer(SURFACE_LAYER);
+
+        // Occupancy component: one entity per occupied cell {x, y, layer}, tagged with its owner object id
+        // (so a delete releases all its cells by query) and a per-cell value read via occupantValueAt
+        // (0 for plain footprints; e.g. resource cover stores its resource type). Objects on the same
+        // layer collide; different layers coexist.
         this._occupancyDef = this.defineComponent("Occupancy", [
             {name: "x"},
             {name: "y"},
             {name: "layer"},
             {name: "owner", fill: NO_EID},
+            {name: "value"},
         ]);
 
         // Shared ports by edge key "x,y,direction" and occupied cells by "x,y,layer" — derived indexes
@@ -482,6 +491,21 @@ export class GameEngine {
     }
 
     /**
+     * Registers an occupancy layer name, returning its stable int code (idempotent).
+     * @param {string} name
+     * @returns {number}
+     */
+    registerOccupancyLayer(name) {
+        let code = this._layerCodes.get(name);
+        if (code === undefined) {
+            code = this._layerNames.length;
+            this._layerCodes.set(name, code);
+            this._layerNames.push(name);
+        }
+        return code;
+    }
+
+    /**
      * Whether every cell {x, y, layer} is free.
      * @param {{x:number, y:number, layer:string}[]} cells
      * @returns {boolean}
@@ -491,13 +515,26 @@ export class GameEngine {
     }
 
     /**
+     * The value stored at cell {x, y, layer}, or null when the cell is free.
+     * @param {number} x
+     * @param {number} y
+     * @param {string} layer
+     * @returns {number|null}
+     */
+    occupantValueAt(x, y, layer) {
+        const eid = this._cellByKey.get(`${x},${y},${layer}`);
+        return eid === undefined ? null : this._occupancyDef.store.value[eid];
+    }
+
+    /**
      * Marks each cell occupied, one Occupancy entity per newly taken cell, tagged with `owner` so
      * {@link destroyOwnerCells} can destroy them all on delete.
      * @param {{x:number, y:number, layer:string}[]} cells
      * @param {number} [owner] - the owning object id
+     * @param {number} [value] - per-cell value read back via {@link occupantValueAt}
      * @returns {void}
      */
-    occupy(cells, owner=NO_EID) {
+    occupy(cells, owner=NO_EID, value=0) {
         const store = this._occupancyDef.store;
         cells.forEach(cell => {
             const key = `${cell.x},${cell.y},${cell.layer}`;
@@ -508,8 +545,9 @@ export class GameEngine {
             this._addComponent(this._occupancyDef, eid);
             store.x[eid] = cell.x;
             store.y[eid] = cell.y;
-            store.layer[eid] = LAYER_CODE[cell.layer];
+            store.layer[eid] = this._layerCodes.get(cell.layer);
             store.owner[eid] = owner;
+            store.value[eid] = value;
             this._cellByKey.set(key, eid);
         });
     }
@@ -539,7 +577,7 @@ export class GameEngine {
         const store = this._occupancyDef.store;
         query(this.world, [store]).forEach(eid => {
             if (store.owner[eid] === owner) {
-                this._cellByKey.delete(`${store.x[eid]},${store.y[eid]},${LAYER_NAME[store.layer[eid]]}`);
+                this._cellByKey.delete(`${store.x[eid]},${store.y[eid]},${this._layerNames[store.layer[eid]]}`);
                 removeEntity(this.world, eid);
             }
         });
@@ -953,7 +991,7 @@ export class GameEngine {
     _rebuildOccupancy() {
         const store = this._occupancyDef.store;
         query(this.world, [store]).forEach(eid => {
-            this._cellByKey.set(`${store.x[eid]},${store.y[eid]},${LAYER_NAME[store.layer[eid]]}`, eid);
+            this._cellByKey.set(`${store.x[eid]},${store.y[eid]},${this._layerNames[store.layer[eid]]}`, eid);
         });
     }
 
