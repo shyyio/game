@@ -15,6 +15,7 @@ import {GameAPI} from "@/common/GameAPI.js";
 import {LocalSession} from "@/common/LocalSession.js";
 import {Client} from "@/client/Client.js";
 import {GAME_FONT} from "@/client/constants.js";
+import {DEV} from "@/common/env.js";
 
 // Mobile mode (touch device): panning stays live while a tool is active so the
 // player can aim the screen-center crosshair, hover/placement lock to center, and
@@ -140,6 +141,14 @@ onMounted(async () => {
 
   const game = new Game(modRegistry, new GameEngine(modRegistry), new ClientSaveStore());
   await game.init();
+
+  // Dev scenarios populate the world before any session connects, so the objects reach the
+  // client through the normal chunk sync. DEV is a build-time literal, so the whole scenario
+  // tree drops out of production bundles.
+  if (DEV) {
+    const {applyScenarioFromLocation} = await import("@/test/scenarios/index.js");
+    await applyScenarioFromLocation(game);
+  }
 
   const api = new GameAPI(game);
   const session = new LocalSession(api);
