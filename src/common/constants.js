@@ -106,7 +106,7 @@ export const CHUNK_SIZE = 64;
 // coordinates run from -REGION_SIZE/2 to REGION_SIZE/2 - 1 on each axis. A chunk's
 // id is its ordinal within the region, counted left-to-right, top-to-bottom from
 // the top-left chunk (id 0).
-export const REGION_SIZE = 64;
+export const REGION_SIZE = 128;
 
 // The surface position layer: the default ground layer (belts, splitters, machines). A tile holds
 // one object per layer, so objects on different layers coexist; each mod names its own further layers
