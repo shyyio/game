@@ -114,12 +114,12 @@ export class PlacedObjects {
         }
         const eid = engine.createEntity(this.def);
         const clientId = engine.createObjectId();
-        const P = this.PlacedObject;
-        P.typeId[eid] = type.typeId;
-        P.clientId[eid] = clientId;
-        P.x[eid] = message.x;
-        P.y[eid] = message.y;
-        P.direction[eid] = message.direction;
+        const placedObject = this.PlacedObject;
+        placedObject.typeId[eid] = type.typeId;
+        placedObject.clientId[eid] = clientId;
+        placedObject.x[eid] = message.x;
+        placedObject.y[eid] = message.y;
+        placedObject.direction[eid] = message.direction;
         const portIds = type.behavior.onSpawn(engine, this, eid, type, message);
         if (type.placement.solid) {
             engine.track(clientId, footprint);
@@ -141,10 +141,10 @@ export class PlacedObjects {
             return false;
         }
         const engine = this.engine;
-        const P = this.PlacedObject;
-        const type = this._types.get(P.typeId[eid]);
+        const placedObject = this.PlacedObject;
+        const type = this._types.get(placedObject.typeId[eid]);
         type.behavior.onDespawn(engine, this, eid);
-        engine.emitEvent(new ObjectDeleteEvent(type.typeId, clientId, P.x[eid], P.y[eid]));
+        engine.emitEvent(new ObjectDeleteEvent(type.typeId, clientId, placedObject.x[eid], placedObject.y[eid]));
         engine.destroyEntity(eid);
         this._eidByClientId.delete(clientId);
         return true;
@@ -157,15 +157,15 @@ export class PlacedObjects {
      */
     _chunkSync(chunk) {
         const events = [];
-        const P = this.PlacedObject;
+        const placedObject = this.PlacedObject;
         this.engine.entitiesWith(this.def).forEach(eid => {
-            if (chunkId(P.x[eid], P.y[eid]) !== chunk) {
+            if (chunkId(placedObject.x[eid], placedObject.y[eid]) !== chunk) {
                 return;
             }
-            const type = this._types.get(P.typeId[eid]);
+            const type = this._types.get(placedObject.typeId[eid]);
             const sync = type.behavior.syncData(this.engine, this, eid);
             events.push(new ObjectSyncEvent(
-                type.typeId, P.clientId[eid], P.x[eid], P.y[eid], P.direction[eid],
+                type.typeId, placedObject.clientId[eid], placedObject.x[eid], placedObject.y[eid], placedObject.direction[eid],
                 sync.portIds, sync.lastOutput,
             ));
         });
@@ -197,10 +197,10 @@ export class PlacedObjects {
      */
     _rebuild() {
         this._eidByClientId = new Map();
-        const P = this.PlacedObject;
+        const placedObject = this.PlacedObject;
         this.engine.entitiesWith(this.def).forEach(eid => {
-            this._eidByClientId.set(P.clientId[eid], eid);
-            const type = this._types.get(P.typeId[eid]);
+            this._eidByClientId.set(placedObject.clientId[eid], eid);
+            const type = this._types.get(placedObject.typeId[eid]);
             type.behavior.resyncRenderedPorts(this.engine, this, eid);
         });
         const rebuilt = new Set();

@@ -210,32 +210,32 @@ export class MachineBehavior extends AbstractBehavior {
 
     onSpawn(engine, placed, eid, type, message) {
         engine.attachComponent(engine.component("Machine"), eid);
-        const M = engine.component("Machine").store;
+        const machine = engine.component("Machine").store;
         type.inputPorts.forEach((port, i) => {
-            M[IN_COLS[i]][eid] = engine.portFor(port, message.x, message.y, message.direction).port;
+            machine[IN_COLS[i]][eid] = engine.portFor(port, message.x, message.y, message.direction).port;
         });
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
-        M.out[eid] = output.port;
-        M.outTileX[eid] = output.tile.x;
-        M.outTileY[eid] = output.tile.y;
+        machine.out[eid] = output.port;
+        machine.outTileX[eid] = output.tile.x;
+        machine.outTileY[eid] = output.tile.y;
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
         return [output.port];
     }
 
     onDespawn(engine, placed, eid) {
-        const M = engine.component("Machine").store;
-        engine.unregisterRenderedPort(M.out[eid]);
+        const machine = engine.component("Machine").store;
+        engine.unregisterRenderedPort(machine.out[eid]);
     }
 
     syncData(engine, placed, eid) {
-        const M = engine.component("Machine").store;
-        const last = M.lastOutput[eid];
-        return {portIds: [M.out[eid]], lastOutput: last === EMPTY ? null : last};
+        const machine = engine.component("Machine").store;
+        const last = machine.lastOutput[eid];
+        return {portIds: [machine.out[eid]], lastOutput: last === EMPTY ? null : last};
     }
 
     resyncRenderedPorts(engine, placed, eid) {
-        const M = engine.component("Machine").store;
-        engine.registerRenderedPort(M.out[eid], M.outTileX[eid], M.outTileY[eid]);
+        const machine = engine.component("Machine").store;
+        engine.registerRenderedPort(machine.out[eid], machine.outTileX[eid], machine.outTileY[eid]);
     }
 
     /**
@@ -246,19 +246,19 @@ export class MachineBehavior extends AbstractBehavior {
      * @returns {InspectHeartbeatEvent}
      */
     inspect(engine, placed, eid, objectId) {
-        const P = engine.Port.item;
-        const M = engine.component("Machine").store;
+        const item = engine.Port.item;
+        const machine = engine.component("Machine").store;
         const inputPorts = [];
         const inputMemory = [];
         for (let i = 0; i < this.inputCount; i += 1) {
-            const resting = P[M[IN_COLS[i]][eid]];
+            const resting = item[machine[IN_COLS[i]][eid]];
             inputPorts.push(resting === EMPTY ? 0 : resting);
-            const slot = M[SLOT_COLS[i]][eid];
-            const processing = M[PROCESSING_COLS[i]][eid];
+            const slot = machine[SLOT_COLS[i]][eid];
+            const processing = machine[PROCESSING_COLS[i]][eid];
             inputMemory.push(slot !== EMPTY ? slot : (processing !== EMPTY ? processing : 0));
         }
-        const remaining = M.remaining[eid] === EMPTY ? null : M.remaining[eid];
-        const outItem = P[M.out[eid]];
+        const remaining = machine.remaining[eid] === EMPTY ? null : machine.remaining[eid];
+        const outItem = item[machine.out[eid]];
         return new InspectHeartbeatEvent(
             objectId,
             inputPorts,
@@ -290,14 +290,14 @@ export class MachineBehavior extends AbstractBehavior {
 
     /**
      * @private
-     * @param {object} M - the Machine store
+     * @param {object} machine - the Machine store
      * @param {number} eid
      * @returns {number} the produced output for the gathered slots, or the fallback
      */
-    _resolveRecipe(M, eid) {
+    _resolveRecipe(machine, eid) {
         const key = [];
         for (let i = 0; i < RECIPE_SLOTS; i += 1) {
-            const slot = i < this.inputCount ? M[SLOT_COLS[i]][eid] : EMPTY;
+            const slot = i < this.inputCount ? machine[SLOT_COLS[i]][eid] : EMPTY;
             key.push(slot === EMPTY ? 0 : slot);
         }
         const output = this.recipes.get(key.join(","));
@@ -317,49 +317,49 @@ export class MachineBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _submitIntents(engine, placed) {
-        const P = engine.Port.item;
+        const item = engine.Port.item;
         const def = engine.component("Machine");
-        const M = def.store;
+        const machine = def.store;
         engine.entitiesWith(def).forEach(eid => {
             const behavior = placed.behaviorFor(placed.PlacedObject.typeId[eid]);
-            if (M.remaining[eid] > 0) {
-                M.remaining[eid] -= 1;
+            if (machine.remaining[eid] > 0) {
+                machine.remaining[eid] -= 1;
             }
 
             // Gather while idle, or in step on the tick a free output lets the next set load.
-            const gathering = M.output[eid] === EMPTY || (M.remaining[eid] === 0 && P[M.out[eid]] === EMPTY);
+            const gathering = machine.output[eid] === EMPTY || (machine.remaining[eid] === 0 && item[machine.out[eid]] === EMPTY);
             if (gathering) {
                 for (let i = 0; i < behavior.inputCount; i += 1) {
-                    const inPort = M[IN_COLS[i]][eid];
-                    if (M[SLOT_COLS[i]][eid] === EMPTY && P[inPort] !== EMPTY) {
+                    const inPort = machine[IN_COLS[i]][eid];
+                    if (machine[SLOT_COLS[i]][eid] === EMPTY && item[inPort] !== EMPTY) {
                         engine.submitIntent({source: inPort, dest: EMPTY, managed: true});
-                        M[SLOT_COLS[i]][eid] = P[inPort];
+                        machine[SLOT_COLS[i]][eid] = item[inPort];
                     }
                 }
             }
 
             // Every port contributed: match the recipe, start the countdown, move slots into processing.
-            let allFilled = M.output[eid] === EMPTY;
+            let allFilled = machine.output[eid] === EMPTY;
             for (let i = 0; i < behavior.inputCount; i += 1) {
-                if (M[SLOT_COLS[i]][eid] === EMPTY) {
+                if (machine[SLOT_COLS[i]][eid] === EMPTY) {
                     allFilled = false;
                 }
             }
             if (allFilled) {
-                M.output[eid] = behavior._resolveRecipe(M, eid);
-                M.remaining[eid] = behavior.processingTicks;
+                machine.output[eid] = behavior._resolveRecipe(machine, eid);
+                machine.remaining[eid] = behavior.processingTicks;
                 for (let i = 0; i < behavior.inputCount; i += 1) {
-                    M[PROCESSING_COLS[i]][eid] = M[SLOT_COLS[i]][eid];
-                    M[SLOT_COLS[i]][eid] = EMPTY;
+                    machine[PROCESSING_COLS[i]][eid] = machine[SLOT_COLS[i]][eid];
+                    machine[SLOT_COLS[i]][eid] = EMPTY;
                 }
             }
 
-            if (M.remaining[eid] === 0) {
+            if (machine.remaining[eid] === 0) {
                 engine.submitIntent({
                     source: EMPTY,
-                    dest: M.out[eid],
-                    destEmpty: P[M.out[eid]] === EMPTY,
-                    outputItem: M.output[eid],
+                    dest: machine.out[eid],
+                    destEmpty: item[machine.out[eid]] === EMPTY,
+                    outputItem: machine.output[eid],
                     managed: true,
                 });
             }
@@ -375,14 +375,14 @@ export class MachineBehavior extends AbstractBehavior {
      */
     static _finish(engine, placed) {
         const def = engine.component("Machine");
-        const M = def.store;
+        const machine = def.store;
         engine.entitiesWith(def).forEach(eid => {
-            if (engine.wasResolvedDest(M.out[eid])) {
-                M.lastOutput[eid] = M.output[eid];
-                M.output[eid] = EMPTY;
-                M.remaining[eid] = EMPTY;
+            if (engine.wasResolvedDest(machine.out[eid])) {
+                machine.lastOutput[eid] = machine.output[eid];
+                machine.output[eid] = EMPTY;
+                machine.remaining[eid] = EMPTY;
                 for (let i = 0; i < RECIPE_SLOTS; i += 1) {
-                    M[PROCESSING_COLS[i]][eid] = EMPTY;
+                    machine[PROCESSING_COLS[i]][eid] = EMPTY;
                 }
             }
         });
@@ -431,30 +431,30 @@ export class ExtractorBehavior extends AbstractBehavior {
 
     onSpawn(engine, placed, eid, type, message) {
         engine.attachComponent(engine.component("Extractor"), eid);
-        const E = engine.component("Extractor").store;
+        const extractor = engine.component("Extractor").store;
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
-        E.out[eid] = output.port;
-        E.resourceType[eid] = engine.occupantValueAt(message.x, message.y, LAYER_RESOURCE);
-        E.outTileX[eid] = output.tile.x;
-        E.outTileY[eid] = output.tile.y;
+        extractor.out[eid] = output.port;
+        extractor.resourceType[eid] = engine.occupantValueAt(message.x, message.y, LAYER_RESOURCE);
+        extractor.outTileX[eid] = output.tile.x;
+        extractor.outTileY[eid] = output.tile.y;
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
         return [output.port];
     }
 
     onDespawn(engine, placed, eid) {
-        const E = engine.component("Extractor").store;
-        engine.unregisterRenderedPort(E.out[eid]);
+        const extractor = engine.component("Extractor").store;
+        engine.unregisterRenderedPort(extractor.out[eid]);
     }
 
     syncData(engine, placed, eid) {
-        const E = engine.component("Extractor").store;
-        const last = E.lastOutput[eid];
-        return {portIds: [E.out[eid]], lastOutput: last === EMPTY ? null : last};
+        const extractor = engine.component("Extractor").store;
+        const last = extractor.lastOutput[eid];
+        return {portIds: [extractor.out[eid]], lastOutput: last === EMPTY ? null : last};
     }
 
     resyncRenderedPorts(engine, placed, eid) {
-        const E = engine.component("Extractor").store;
-        engine.registerRenderedPort(E.out[eid], E.outTileX[eid], E.outTileY[eid]);
+        const extractor = engine.component("Extractor").store;
+        engine.registerRenderedPort(extractor.out[eid], extractor.outTileX[eid], extractor.outTileY[eid]);
     }
 
     /**
@@ -462,10 +462,10 @@ export class ExtractorBehavior extends AbstractBehavior {
      * @returns {InspectHeartbeatEvent}
      */
     inspect(engine, placed, eid, objectId) {
-        const E = engine.component("Extractor").store;
-        const resource = E.resourceType[eid];
-        const remaining = E.remaining[eid] === EMPTY ? null : E.remaining[eid];
-        const outItem = engine.Port.item[E.out[eid]];
+        const extractor = engine.component("Extractor").store;
+        const resource = extractor.resourceType[eid];
+        const remaining = extractor.remaining[eid] === EMPTY ? null : extractor.remaining[eid];
+        const outItem = engine.Port.item[extractor.out[eid]];
         let recipeOutput = null;
         if (resource !== EMPTY && this.recipes.has(resource)) {
             recipeOutput = this.recipes.get(resource);
@@ -490,24 +490,24 @@ export class ExtractorBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _submitIntents(engine, placed) {
-        const P = engine.Port.item;
+        const item = engine.Port.item;
         const def = engine.component("Extractor");
-        const E = def.store;
+        const extractor = def.store;
         engine.entitiesWith(def).forEach(eid => {
             const behavior = placed.behaviorFor(placed.PlacedObject.typeId[eid]);
-            if (E.remaining[eid] > 0) {
-                E.remaining[eid] -= 1;
+            if (extractor.remaining[eid] > 0) {
+                extractor.remaining[eid] -= 1;
             }
-            if (E.output[eid] === EMPTY && E.resourceType[eid] !== EMPTY && behavior.recipes.has(E.resourceType[eid])) {
-                E.output[eid] = behavior.recipes.get(E.resourceType[eid]);
-                E.remaining[eid] = behavior.processingTicks;
+            if (extractor.output[eid] === EMPTY && extractor.resourceType[eid] !== EMPTY && behavior.recipes.has(extractor.resourceType[eid])) {
+                extractor.output[eid] = behavior.recipes.get(extractor.resourceType[eid]);
+                extractor.remaining[eid] = behavior.processingTicks;
             }
-            if (E.remaining[eid] === 0) {
+            if (extractor.remaining[eid] === 0) {
                 engine.submitIntent({
                     source: EMPTY,
-                    dest: E.out[eid],
-                    destEmpty: P[E.out[eid]] === EMPTY,
-                    outputItem: E.output[eid],
+                    dest: extractor.out[eid],
+                    destEmpty: item[extractor.out[eid]] === EMPTY,
+                    outputItem: extractor.output[eid],
                     managed: true,
                 });
             }
@@ -523,12 +523,12 @@ export class ExtractorBehavior extends AbstractBehavior {
      */
     static _finish(engine, placed) {
         const def = engine.component("Extractor");
-        const E = def.store;
+        const extractor = def.store;
         engine.entitiesWith(def).forEach(eid => {
-            if (engine.wasResolvedDest(E.out[eid])) {
-                E.lastOutput[eid] = E.output[eid];
-                E.output[eid] = EMPTY;
-                E.remaining[eid] = EMPTY;
+            if (engine.wasResolvedDest(extractor.out[eid])) {
+                extractor.lastOutput[eid] = extractor.output[eid];
+                extractor.output[eid] = EMPTY;
+                extractor.remaining[eid] = EMPTY;
             }
         });
     }
