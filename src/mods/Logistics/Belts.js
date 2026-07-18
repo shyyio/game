@@ -22,6 +22,10 @@ import {beltPositionLayer} from "./geometry.js";
 // A gap run in a path's RLE item list (empty half-tiles between items).
 const GAP = 0;
 
+// Marks a live path entity. One shared object: bitECS keys components by identity, so a fresh literal
+// per path would register a new component type each time and make every removeEntity scan them all.
+const PATH_MARKER = {};
+
 // Tile key for the belt registry.
 function tileKey(x, y) {
     return `${x},${y}`;
@@ -47,6 +51,12 @@ export class Belts {
         this.paths = [];
         // In-port -> path, so a path can find its downstream neighbor across a shared seam port.
         this._byInPort = new Map();
+        // Tile key -> paths covering it, and belt id -> its one path. Edits touch only the tiles/belts
+        // of the run they rebuild, so these keep placement off a scan of every path in the world.
+        this._pathsByTile = new Map();
+        this._pathByBeltId = new Map();
+        // Path -> its slot in `paths`, so dropping one is a swap-pop instead of a rebuild of the array.
+        this._pathSlot = new Map();
         // Placed belts by tile key -> belt[] {x, y, direction, type, id}. A tile can hold several belts
         // on different axes/layers (a surface belt and an underground crossing under it); the run at a
         // tile is disambiguated by direction.
@@ -327,11 +337,8 @@ export class Belts {
      * @returns {void}
      */
     _emitPathRecalcs(tileKeys) {
-        const keys = new Set(tileKeys);
-        this.paths.forEach(path => {
-            if (path.belts.some(key => keys.has(key))) {
-                this.engine.emitEvent(this._pathRecalcEvent(path));
-            }
+        this._pathsCovering(tileKeys).forEach(path => {
+            this.engine.emitEvent(this._pathRecalcEvent(path));
         });
     }
 
@@ -343,17 +350,14 @@ export class Belts {
      * @returns {void}
      */
     _emitPathItems(tileKeys) {
-        const keys = new Set(tileKeys);
-        this.paths.forEach(path => {
-            if (path.belts.some(key => keys.has(key))) {
-                // Re-sync (snap), not upsert (glide): the edit re-rowed the items but didn't move them.
-                path.items.forEach(item => {
-                    const event = this._itemUpsertEvent(path, item, true);
-                    if (event !== null) {
-                        this.engine.emitEvent(event);
-                    }
-                });
-            }
+        this._pathsCovering(tileKeys).forEach(path => {
+            // Re-sync (snap), not upsert (glide): the edit re-rowed the items but didn't move them.
+            path.items.forEach(item => {
+                const event = this._itemUpsertEvent(path, item, true);
+                if (event !== null) {
+                    this.engine.emitEvent(event);
+                }
+            });
         });
     }
 
@@ -480,14 +484,11 @@ export class Belts {
 
         // Capture the paths holding this belt (with their item layout) before dropping them, so each
         // surviving sub-run keeps the items that were physically on its belts.
-        const source = this.paths.filter(path => path.beltIds.includes(removedId));
-        this.paths = this.paths.filter(path => {
-            if (path.beltIds.includes(removedId)) {
-                this._forgetPath(path);
-                return false;
-            }
-            return true;
-        });
+        const held = this._pathByBeltId.get(removedId);
+        const source = held === undefined ? [] : [held];
+        if (held !== undefined) {
+            this._forgetPath(held);
+        }
         this._removeBeltObject(belt);
 
         // Rebuild each surviving neighbor's run into its own path (split or shortened), carrying the
@@ -728,7 +729,7 @@ export class Belts {
         }
         const length = runBelts.length * 2 - 1;
         const eid = addEntity(this.engine.world);
-        addComponent(this.engine.world, eid, {});
+        addComponent(this.engine.world, eid, PATH_MARKER);
         return {
             id: eid,
             belts: runBelts.map(belt => tileKey(belt.x, belt.y)),
@@ -883,7 +884,8 @@ export class Belts {
      */
     pathAt(x, y) {
         const key = tileKey(x, y);
-        const path = this.paths.find(candidate => candidate.belts.includes(key));
+        const paths = this._pathsByTile.get(key);
+        const path = paths === undefined ? undefined : [...paths][0];
         if (path === undefined) {
             return null;
         }
@@ -937,13 +939,20 @@ export class Belts {
      */
     _removePathsOverlapping(run) {
         const runIds = new Set(run.map(belt => belt.id));
+        const overlapping = new Set();
+        run.forEach(belt => {
+            const path = this._pathByBeltId.get(belt.id);
+            if (path !== undefined) {
+                overlapping.add(path);
+            }
+        });
+        if (overlapping.size === 0) {
+            return {removed: [], orphans: []};
+        }
+
         const removed = [];
         const orphans = [];
-        this.paths = this.paths.filter(path => {
-            const overlaps = path.beltIds.some(id => runIds.has(id));
-            if (!overlaps) {
-                return true;
-            }
+        overlapping.forEach(path => {
             path.beltIds.forEach(id => {
                 if (!runIds.has(id)) {
                     const belt = this.beltById(id);
@@ -954,7 +963,6 @@ export class Belts {
             });
             this._forgetPath(path);
             removed.push(path);
-            return false;
         });
         return {removed, orphans};
     }
@@ -980,10 +988,105 @@ export class Belts {
      * @returns {void}
      */
     _trackPath(path) {
-        this.paths.push(path);
+        this._pushPath(path);
         this._byInPort.set(path.inPort, path);
+        this._indexPath(path);
         const [x, y] = path.belts[path.belts.length - 1].split(",").map(Number);
         this.engine.registerRenderedPort(path.outPort, x, y);
+    }
+
+    /**
+     * Appends a path to `paths`, recording its slot.
+     * @private
+     * @param {object} path
+     * @returns {void}
+     */
+    _pushPath(path) {
+        this._pathSlot.set(path, this.paths.length);
+        this.paths.push(path);
+    }
+
+    /**
+     * Drops a path from `paths` by moving the last entry into its slot.
+     * @private
+     * @param {object} path
+     * @returns {void}
+     */
+    _popPath(path) {
+        const slot = this._pathSlot.get(path);
+        if (slot === undefined) {
+            return;
+        }
+        const last = this.paths[this.paths.length - 1];
+        this.paths[slot] = last;
+        this._pathSlot.set(last, slot);
+        this.paths.pop();
+        this._pathSlot.delete(path);
+    }
+
+    /**
+     * Adds a path to the tile and belt-id indexes. A synthetic path without belts (test-only addPath)
+     * indexes nothing.
+     * @private
+     * @param {object} path
+     * @returns {void}
+     */
+    _indexPath(path) {
+        if (path.belts === undefined) {
+            return;
+        }
+        path.belts.forEach(key => {
+            const paths = this._pathsByTile.get(key);
+            if (paths === undefined) {
+                this._pathsByTile.set(key, new Set([path]));
+                return;
+            }
+            paths.add(path);
+        });
+        path.beltIds.forEach(id => this._pathByBeltId.set(id, path));
+    }
+
+    /**
+     * @private
+     * @param {object} path
+     * @returns {void}
+     */
+    _unindexPath(path) {
+        if (path.belts === undefined) {
+            return;
+        }
+        path.belts.forEach(key => {
+            const paths = this._pathsByTile.get(key);
+            if (paths === undefined) {
+                return;
+            }
+            paths.delete(path);
+            if (paths.size === 0) {
+                this._pathsByTile.delete(key);
+            }
+        });
+        path.beltIds.forEach(id => {
+            if (this._pathByBeltId.get(id) === path) {
+                this._pathByBeltId.delete(id);
+            }
+        });
+    }
+
+    /**
+     * The distinct paths covering any of `tileKeys`.
+     * @private
+     * @param {string[]} tileKeys
+     * @returns {object[]}
+     */
+    _pathsCovering(tileKeys) {
+        const covering = new Set();
+        new Set(tileKeys).forEach(key => {
+            const paths = this._pathsByTile.get(key);
+            if (paths !== undefined) {
+                paths.forEach(path => covering.add(path));
+            }
+        });
+        return [...covering];
     }
 
     /**
@@ -993,7 +1096,9 @@ export class Belts {
      * @returns {void}
      */
     _forgetPath(path) {
+        this._popPath(path);
         this._byInPort.delete(path.inPort);
+        this._unindexPath(path);
         this.engine.unregisterRenderedPort(path.outPort);
         // Clear the client's item sprites for this (soon-stale) path id.
         this._emitItemReset(path);
@@ -1014,8 +1119,8 @@ export class Belts {
 
         const eid = addEntity(this.engine.world);
         const path = {id: eid, inPort: resolvedInPort, outPort, length, headGap: length, items: []};
-        addComponent(this.engine.world, eid, {});
-        this.paths.push(path);
+        addComponent(this.engine.world, eid, PATH_MARKER);
+        this._pushPath(path);
         this._byInPort.set(resolvedInPort, path);
 
         return {id: eid, inPort: resolvedInPort, outPort, length};
@@ -1222,6 +1327,9 @@ export class Belts {
     _reconstruct() {
         this.paths = [];
         this._byInPort = new Map();
+        this._pathsByTile = new Map();
+        this._pathByBeltId = new Map();
+        this._pathSlot = new Map();
         this._belts = new Map();
         this._beltById = new Map();
         this._nextRunId = this.engine.globals.beltNextRunId;
