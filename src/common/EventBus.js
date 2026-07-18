@@ -1,19 +1,22 @@
-import {chunkTopic, objectTopic} from "@/common/topics.js";
-
 /**
  * Topic pub/sub for session event delivery. A session subscribes to the chunks it views and the
  * objects it inspects; every event is published to its topic's subscribers. This collapses the old
  * broadcast-then-publish split into one `publish`: it picks recipients from the event's own topic and
  * hands each the event, and whether a given session's delivery crosses the wire is that session's own
  * concern. Also allocates session ids and owns the session registry.
+ *
+ * Chunk and object topics live in separate maps keyed by the raw numeric id, so routing an event
+ * builds no string.
  */
 export class EventBus {
 
     constructor() {
         // sessionId -> session
         this._sessions = new Map();
-        // topicKey -> Set<sessionId>
-        this._subscribers = new Map();
+        // chunk -> Set<sessionId>
+        this._chunkSubscribers = new Map();
+        // objectId -> Set<sessionId>
+        this._objectSubscribers = new Map();
         // sessionId -> Set<chunk> (the diff/query source for viewport topics)
         this._viewports = new Map();
         // sessionId -> Set<objectId> (the diff/query source for inspect topics)
@@ -44,10 +47,10 @@ export class EventBus {
      */
     removeSession(sessionId) {
         for (const chunk of this._viewports.get(sessionId)) {
-            this._unsubscribe(chunkTopic(chunk), sessionId);
+            this._unsubscribe(this._chunkSubscribers, chunk, sessionId);
         }
         for (const objectId of this._inspects.get(sessionId)) {
-            this._unsubscribe(objectTopic(objectId), sessionId);
+            this._unsubscribe(this._objectSubscribers, objectId, sessionId);
         }
         this._viewports.delete(sessionId);
         this._inspects.delete(sessionId);
@@ -62,13 +65,32 @@ export class EventBus {
      * @returns {void}
      */
     publish(event) {
-        const subscribers = this._subscribers.get(event.topicKey);
+        const subscribers = event.subscribersIn(this);
         if (subscribers === undefined) {
             return;
         }
+        // Copied: a session's own dispatch may resubscribe while we fan out.
         for (const sessionId of [...subscribers]) {
             this._sessions.get(sessionId).publishEvent(event);
         }
+    }
+
+    /**
+     * The sessions viewing a chunk, or undefined when none.
+     * @param {number} chunk
+     * @returns {Set<number>|undefined}
+     */
+    chunkSubscribers(chunk) {
+        return this._chunkSubscribers.get(chunk);
+    }
+
+    /**
+     * The sessions inspecting an object, or undefined when none.
+     * @param {number} objectId
+     * @returns {Set<number>|undefined}
+     */
+    objectSubscribers(objectId) {
+        return this._objectSubscribers.get(objectId);
     }
 
     /**
@@ -78,7 +100,7 @@ export class EventBus {
      * @returns {boolean}
      */
     hasChunkSubscribers(chunk) {
-        return this._subscribers.has(chunkTopic(chunk));
+        return this._chunkSubscribers.has(chunk);
     }
 
     /**
@@ -111,14 +133,14 @@ export class EventBus {
         for (const chunk of requested) {
             if (!current.has(chunk)) {
                 added.push(chunk);
-                this._subscribe(chunkTopic(chunk), sessionId);
+                this._subscribe(this._chunkSubscribers, chunk, sessionId);
             }
         }
         const removed = [];
         for (const chunk of current) {
             if (!requested.has(chunk)) {
                 removed.push(chunk);
-                this._unsubscribe(chunkTopic(chunk), sessionId);
+                this._unsubscribe(this._chunkSubscribers, chunk, sessionId);
             }
         }
 
@@ -143,14 +165,14 @@ export class EventBus {
         for (const objectId of requested) {
             if (!current.has(objectId)) {
                 added.push(objectId);
-                this._subscribe(objectTopic(objectId), sessionId);
+                this._subscribe(this._objectSubscribers, objectId, sessionId);
             }
         }
         const removed = [];
         for (const objectId of current) {
             if (!requested.has(objectId)) {
                 removed.push(objectId);
-                this._unsubscribe(objectTopic(objectId), sessionId);
+                this._unsubscribe(this._objectSubscribers, objectId, sessionId);
             }
         }
 
@@ -178,47 +200,49 @@ export class EventBus {
      * @returns {void}
      */
     clearObject(objectId) {
-        const subscribers = this._subscribers.get(objectTopic(objectId));
+        const subscribers = this._objectSubscribers.get(objectId);
         if (subscribers === undefined) {
             return;
         }
         for (const sessionId of subscribers) {
             this._inspects.get(sessionId).delete(objectId);
         }
-        this._subscribers.delete(objectTopic(objectId));
+        this._objectSubscribers.delete(objectId);
     }
 
     // ---- Subscriptions ----
 
     /**
      * @private
-     * @param {string} topicKey
+     * @param {Map<number, Set<number>>} topics
+     * @param {number} key
      * @param {number} sessionId
      * @returns {void}
      */
-    _subscribe(topicKey, sessionId) {
-        let subscribers = this._subscribers.get(topicKey);
+    _subscribe(topics, key, sessionId) {
+        let subscribers = topics.get(key);
         if (subscribers === undefined) {
             subscribers = new Set();
-            this._subscribers.set(topicKey, subscribers);
+            topics.set(key, subscribers);
         }
         subscribers.add(sessionId);
     }
 
     /**
      * @private
-     * @param {string} topicKey
+     * @param {Map<number, Set<number>>} topics
+     * @param {number} key
      * @param {number} sessionId
      * @returns {void}
      */
-    _unsubscribe(topicKey, sessionId) {
-        const subscribers = this._subscribers.get(topicKey);
+    _unsubscribe(topics, key, sessionId) {
+        const subscribers = topics.get(key);
         if (subscribers === undefined) {
             return;
         }
         subscribers.delete(sessionId);
         if (subscribers.size === 0) {
-            this._subscribers.delete(topicKey);
+            topics.delete(key);
         }
     }
 }

@@ -200,20 +200,21 @@ export class WireRegistry {
             throw new Error(`No wire codec registered for wire id ${envelope.wireId}`);
         }
 
-        const raw = codec.type.toObject(codec.type.decode(envelope.payload), {longs: String});
+        // longs: Number decodes int64 straight to Number — ids are capped at 2^53 sim-wide, and a
+        // String round-trip would allocate per int64 field per message.
+        const raw = codec.type.toObject(codec.type.decode(envelope.payload), {longs: Number});
 
         const fields = {};
         for (const [name, spec] of Object.entries(codec.specs)) {
             if (spec.kind === "repeated") {
-                const arr = raw[name] === undefined ? [] : raw[name];
-                fields[name] = spec.int64 ? arr.map(v => Number(v)) : arr;
+                fields[name] = raw[name] === undefined ? [] : raw[name];
             } else if (spec.kind === "messages") {
                 const arr = raw[name] === undefined ? [] : raw[name];
                 fields[name] = arr.map(sub => this._fromEnvelope(sub));
             } else if (spec.kind === "map") {
                 fields[name] = raw[name] === undefined ? {} : raw[name];
             } else if (name in raw) {
-                fields[name] = spec.int64 ? Number(raw[name]) : raw[name];
+                fields[name] = raw[name];
             } else {
                 fields[name] = null;
             }
@@ -228,5 +229,5 @@ export class WireRegistry {
  * @returns {Long}
  */
 function toLong(value) {
-    return Long.fromString(value.toString());
+    return Long.fromNumber(value);
 }
