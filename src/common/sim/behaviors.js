@@ -220,36 +220,40 @@ export class MachineBehavior extends AbstractBehavior {
             {name: "remaining", fill: EMPTY},
             {name: "output", fill: EMPTY},
             {name: "lastOutput", fill: EMPTY},
-        ]);
+        ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => MachineBehavior._submitIntents(engine, placed));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => MachineBehavior._finish(engine, placed));
     }
 
     onSpawn(engine, placed, eid, type, message) {
-        engine.attachComponent(engine.component("Machine"), eid);
-        const machine = engine.component("Machine").store;
+        const def = engine.component("Machine");
+        engine.attachComponent(def, eid);
+        const machine = def.store;
+        const row = def.row(eid);
         for (const [i, port] of type.inputPorts.entries()) {
-            machine[IN_COLS[i]][eid] = engine.portFor(port, message.x, message.y, message.direction).port;
+            machine[IN_COLS[i]][row] = engine.portFor(port, message.x, message.y, message.direction).port;
         }
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
-        machine.out[eid] = output.port;
+        machine.out[row] = output.port;
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
         return [output.port];
     }
 
     onDespawn(engine, placed, eid) {
-        const machine = engine.component("Machine").store;
-        engine.unregisterRenderedPort(machine.out[eid]);
+        const def = engine.component("Machine");
+        engine.unregisterRenderedPort(def.store.out[def.row(eid)]);
     }
 
     syncData(engine, placed, eid) {
-        const machine = engine.component("Machine").store;
-        const last = machine.lastOutput[eid];
-        return {portIds: [machine.out[eid]], lastOutput: last === EMPTY ? null : last};
+        const def = engine.component("Machine");
+        const row = def.row(eid);
+        const last = def.store.lastOutput[row];
+        return {portIds: [def.store.out[row]], lastOutput: last === EMPTY ? null : last};
     }
 
     resyncRenderedPorts(engine, placed, eid) {
-        const out = engine.component("Machine").store.out[eid];
+        const def = engine.component("Machine");
+        const out = def.store.out[def.row(eid)];
         engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
 
@@ -262,21 +266,23 @@ export class MachineBehavior extends AbstractBehavior {
      */
     inspect(engine, placed, eid, objectId) {
         const item = engine.Port.item;
-        const machine = engine.component("Machine").store;
+        const def = engine.component("Machine");
+        const machine = def.store;
+        const row = def.row(eid);
         const inCols = columns(machine, IN_COLS);
         const slotCols = columns(machine, SLOT_COLS);
         const processingCols = columns(machine, PROCESSING_COLS);
         const inputPorts = [];
         const inputMemory = [];
         for (let i = 0; i < this.inputCount; i += 1) {
-            const resting = item[inCols[i][eid]];
+            const resting = item[inCols[i][row]];
             inputPorts.push(resting === EMPTY ? 0 : resting);
-            const slot = slotCols[i][eid];
-            const processing = processingCols[i][eid];
+            const slot = slotCols[i][row];
+            const processing = processingCols[i][row];
             inputMemory.push(slot !== EMPTY ? slot : (processing !== EMPTY ? processing : 0));
         }
-        const remaining = machine.remaining[eid] === EMPTY ? null : machine.remaining[eid];
-        const outItem = item[machine.out[eid]];
+        const remaining = machine.remaining[row] === EMPTY ? null : machine.remaining[row];
+        const outItem = item[machine.out[row]];
         return new InspectHeartbeatEvent(
             objectId,
             inputPorts,
@@ -305,13 +311,13 @@ export class MachineBehavior extends AbstractBehavior {
     /**
      * @private
      * @param {ArrayLike<number>[]} slotCols
-     * @param {number} eid
+     * @param {number} row
      * @returns {number} the produced output for the gathered slots, or the fallback
      */
-    _resolveRecipe(slotCols, eid) {
+    _resolveRecipe(slotCols, row) {
         let key = 0;
         for (let i = 0; i < RECIPE_SLOTS; i += 1) {
-            const slot = i < this.inputCount ? slotCols[i][eid] : EMPTY;
+            const slot = i < this.inputCount ? slotCols[i][row] : EMPTY;
             key = key * RECIPE_SLOT_LIMIT + (slot === EMPTY ? 0 : slot);
         }
         const output = this.recipes.get(key);
@@ -340,54 +346,55 @@ export class MachineBehavior extends AbstractBehavior {
         const remaining = machine.remaining;
         const output = machine.output;
         const out = machine.out;
-        for (const eid of engine.entitiesWith(def)) {
+        const eids = def.eids;
+        for (let row = 0; row < def.count; row += 1) {
             // Mid-craft with the product still held: the countdown is the only state that moves, so
             // skip the behavior lookup and the per-slot passes below, which would all no-op.
-            if (output[eid] !== EMPTY && remaining[eid] > 1) {
-                remaining[eid] -= 1;
+            if (output[row] !== EMPTY && remaining[row] > 1) {
+                remaining[row] -= 1;
                 continue;
             }
 
-            const behavior = placed.behaviorFor(placed.PlacedObject.typeId[eid]);
+            const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
             const inputCount = behavior.inputCount;
-            if (remaining[eid] > 0) {
-                remaining[eid] -= 1;
+            if (remaining[row] > 0) {
+                remaining[row] -= 1;
             }
 
             // Gather while idle, or in step on the tick a free output lets the next set load.
-            const gathering = output[eid] === EMPTY || (remaining[eid] === 0 && item[out[eid]] === EMPTY);
+            const gathering = output[row] === EMPTY || (remaining[row] === 0 && item[out[row]] === EMPTY);
             if (gathering) {
                 for (let i = 0; i < inputCount; i += 1) {
-                    const inPort = inCols[i][eid];
-                    if (slotCols[i][eid] === EMPTY && item[inPort] !== EMPTY) {
+                    const inPort = inCols[i][row];
+                    if (slotCols[i][row] === EMPTY && item[inPort] !== EMPTY) {
                         engine.submitDrain(inPort, true);
-                        slotCols[i][eid] = item[inPort];
+                        slotCols[i][row] = item[inPort];
                     }
                 }
             }
 
             // Every port contributed: match the recipe, start the countdown, move slots into processing.
             // A machine still holding a product cannot load the next set, so it skips the slot pass.
-            if (output[eid] === EMPTY) {
+            if (output[row] === EMPTY) {
                 let allFilled = true;
                 for (let i = 0; i < inputCount; i += 1) {
-                    if (slotCols[i][eid] === EMPTY) {
+                    if (slotCols[i][row] === EMPTY) {
                         allFilled = false;
                         break;
                     }
                 }
                 if (allFilled) {
-                    output[eid] = behavior._resolveRecipe(slotCols, eid);
-                    remaining[eid] = behavior.processingTicks;
+                    output[row] = behavior._resolveRecipe(slotCols, row);
+                    remaining[row] = behavior.processingTicks;
                     for (let i = 0; i < inputCount; i += 1) {
-                        processingCols[i][eid] = slotCols[i][eid];
-                        slotCols[i][eid] = EMPTY;
+                        processingCols[i][row] = slotCols[i][row];
+                        slotCols[i][row] = EMPTY;
                     }
                 }
             }
 
-            if (remaining[eid] === 0) {
-                engine.submitCreate(out[eid], output[eid], item[out[eid]] === EMPTY);
+            if (remaining[row] === 0) {
+                engine.submitCreate(out[row], output[row], item[out[row]] === EMPTY);
             }
         }
     }
@@ -403,13 +410,13 @@ export class MachineBehavior extends AbstractBehavior {
         const def = engine.component("Machine");
         const machine = def.store;
         const processingCols = columns(machine, PROCESSING_COLS);
-        for (const eid of engine.entitiesWith(def)) {
-            if (engine.wasResolvedDest(machine.out[eid])) {
-                machine.lastOutput[eid] = machine.output[eid];
-                machine.output[eid] = EMPTY;
-                machine.remaining[eid] = EMPTY;
+        for (let row = 0; row < def.count; row += 1) {
+            if (engine.wasResolvedDest(machine.out[row])) {
+                machine.lastOutput[row] = machine.output[row];
+                machine.output[row] = EMPTY;
+                machine.remaining[row] = EMPTY;
                 for (let i = 0; i < RECIPE_SLOTS; i += 1) {
-                    processingCols[i][eid] = EMPTY;
+                    processingCols[i][row] = EMPTY;
                 }
             }
         }
@@ -441,7 +448,7 @@ export class ExtractorBehavior extends AbstractBehavior {
             {name: "remaining", fill: EMPTY},
             {name: "output", fill: EMPTY},
             {name: "lastOutput", fill: EMPTY},
-        ]);
+        ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => ExtractorBehavior._submitIntents(engine, placed));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => ExtractorBehavior._finish(engine, placed));
     }
@@ -455,28 +462,32 @@ export class ExtractorBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, placed, eid, type, message) {
-        engine.attachComponent(engine.component("Extractor"), eid);
-        const extractor = engine.component("Extractor").store;
+        const def = engine.component("Extractor");
+        engine.attachComponent(def, eid);
+        const extractor = def.store;
+        const row = def.row(eid);
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
-        extractor.out[eid] = output.port;
-        extractor.resourceType[eid] = engine.occupantUserDataAt(message.x, message.y, LAYER_RESOURCE);
+        extractor.out[row] = output.port;
+        extractor.resourceType[row] = engine.occupantUserDataAt(message.x, message.y, LAYER_RESOURCE);
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
         return [output.port];
     }
 
     onDespawn(engine, placed, eid) {
-        const extractor = engine.component("Extractor").store;
-        engine.unregisterRenderedPort(extractor.out[eid]);
+        const def = engine.component("Extractor");
+        engine.unregisterRenderedPort(def.store.out[def.row(eid)]);
     }
 
     syncData(engine, placed, eid) {
-        const extractor = engine.component("Extractor").store;
-        const last = extractor.lastOutput[eid];
-        return {portIds: [extractor.out[eid]], lastOutput: last === EMPTY ? null : last};
+        const def = engine.component("Extractor");
+        const row = def.row(eid);
+        const last = def.store.lastOutput[row];
+        return {portIds: [def.store.out[row]], lastOutput: last === EMPTY ? null : last};
     }
 
     resyncRenderedPorts(engine, placed, eid) {
-        const out = engine.component("Extractor").store.out[eid];
+        const def = engine.component("Extractor");
+        const out = def.store.out[def.row(eid)];
         engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
 
@@ -485,10 +496,12 @@ export class ExtractorBehavior extends AbstractBehavior {
      * @returns {InspectHeartbeatEvent}
      */
     inspect(engine, placed, eid, objectId) {
-        const extractor = engine.component("Extractor").store;
-        const resource = extractor.resourceType[eid];
-        const remaining = extractor.remaining[eid] === EMPTY ? null : extractor.remaining[eid];
-        const outItem = engine.Port.item[extractor.out[eid]];
+        const def = engine.component("Extractor");
+        const extractor = def.store;
+        const row = def.row(eid);
+        const resource = extractor.resourceType[row];
+        const remaining = extractor.remaining[row] === EMPTY ? null : extractor.remaining[row];
+        const outItem = engine.Port.item[extractor.out[row]];
         let recipeOutput = null;
         if (resource !== EMPTY && this.recipes.has(resource)) {
             recipeOutput = this.recipes.get(resource);
@@ -516,17 +529,18 @@ export class ExtractorBehavior extends AbstractBehavior {
         const item = engine.Port.item;
         const def = engine.component("Extractor");
         const extractor = def.store;
-        for (const eid of engine.entitiesWith(def)) {
-            const behavior = placed.behaviorFor(placed.PlacedObject.typeId[eid]);
-            if (extractor.remaining[eid] > 0) {
-                extractor.remaining[eid] -= 1;
+        const eids = def.eids;
+        for (let row = 0; row < def.count; row += 1) {
+            const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
+            if (extractor.remaining[row] > 0) {
+                extractor.remaining[row] -= 1;
             }
-            if (extractor.output[eid] === EMPTY && extractor.resourceType[eid] !== EMPTY && behavior.recipes.has(extractor.resourceType[eid])) {
-                extractor.output[eid] = behavior.recipes.get(extractor.resourceType[eid]);
-                extractor.remaining[eid] = behavior.processingTicks;
+            if (extractor.output[row] === EMPTY && extractor.resourceType[row] !== EMPTY && behavior.recipes.has(extractor.resourceType[row])) {
+                extractor.output[row] = behavior.recipes.get(extractor.resourceType[row]);
+                extractor.remaining[row] = behavior.processingTicks;
             }
-            if (extractor.remaining[eid] === 0) {
-                engine.submitCreate(extractor.out[eid], extractor.output[eid], item[extractor.out[eid]] === EMPTY);
+            if (extractor.remaining[row] === 0) {
+                engine.submitCreate(extractor.out[row], extractor.output[row], item[extractor.out[row]] === EMPTY);
             }
         }
     }
@@ -541,11 +555,11 @@ export class ExtractorBehavior extends AbstractBehavior {
     static _finish(engine, placed) {
         const def = engine.component("Extractor");
         const extractor = def.store;
-        for (const eid of engine.entitiesWith(def)) {
-            if (engine.wasResolvedDest(extractor.out[eid])) {
-                extractor.lastOutput[eid] = extractor.output[eid];
-                extractor.output[eid] = EMPTY;
-                extractor.remaining[eid] = EMPTY;
+        for (let row = 0; row < def.count; row += 1) {
+            if (engine.wasResolvedDest(extractor.out[row])) {
+                extractor.lastOutput[row] = extractor.output[row];
+                extractor.output[row] = EMPTY;
+                extractor.remaining[row] = EMPTY;
             }
         }
     }
@@ -572,7 +586,7 @@ export class ResourceBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, placed, eid, type, message) {
-        const objectId = placed.PlacedObject.objectId[eid];
+        const objectId = placed.objectIdOf(eid);
         const cells = type.extractionTiles.map(offset => ({
             x: message.x + offset.x,
             y: message.y + offset.y,

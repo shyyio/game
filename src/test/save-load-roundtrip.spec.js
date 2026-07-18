@@ -19,7 +19,7 @@ async function populated() {
     engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, 10, 10, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(SplitterDefinition.typeId, 3, 8, Direction.UP));
     const splitterEid = engine.placed.eidsOf(SplitterDefinition.typeId)[0];
-    const splitterId = engine.placed.PlacedObject.objectId[splitterEid];
+    const splitterId = engine.placed.objectIdOf(splitterEid);
     for (const cell of [{x: 20, y: 20}, {x: 20, y: 21}, {x: 20, y: 22}]) {
         engine.applyMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL));
     }

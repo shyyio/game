@@ -73,6 +73,9 @@ export const NO_EID = -1;
 // Initial column length for every component store; grows by doubling when an eid exceeds it.
 const PORT_CAPACITY = 1024;
 
+// Column slot for a row a sparse component does not hold.
+const NO_ROW = -1;
+
 // Initial row count for the per-tick intent/resolved columns; grows by doubling.
 const INTENT_CAPACITY = 1024;
 
@@ -82,7 +85,93 @@ const INTENT_MANAGED = 2;
 
 
 /**
- * bitECS-backed simulation engine Game drives: the port-transfer core over typed-array component
+ * A registered component: its SoA Int32Array columns plus how they are indexed.
+ *
+ * A dense component's columns are indexed by eid and sized to the whole eid range — right for
+ * components nearly every entity carries (Position, Port). A sparse one's are indexed by a row
+ * number and sized to how many entities actually carry it, so a component held by a small slice of
+ * the world costs a small slice of the memory. Rows come from the world's membership set, and a
+ * removal swaps the last row down into the freed slot, so row numbers are stable only within a tick.
+ */
+class ComponentDef {
+
+    /**
+     * @param {string} name
+     * @param {{name:string, kind:string, fill:number}[]} fields
+     * @param {boolean} snapshotOnly
+     * @param {boolean} sparse
+     */
+    constructor(
+        name,
+        fields,
+        snapshotOnly,
+        sparse,
+    ) {
+        this.name = name;
+        this.fields = fields;
+        this.snapshotOnly = snapshotOnly;
+        this.sparse = sparse;
+        this.capacity = PORT_CAPACITY;
+        this.store = {};
+        for (const field of fields) {
+            this.store[field.name] = new Int32Array(PORT_CAPACITY).fill(field.fill);
+        }
+
+        /**
+         * The world's membership set, adopted as row numbering; null for a dense component.
+         * @type {?ComponentSet}
+         */
+        this.set = null;
+    }
+
+    /**
+     * How many entities carry this component; sparse components only.
+     * @returns {number}
+     */
+    get count() {
+        return this.set.count;
+    }
+
+    /**
+     * The eid of each live row, valid up to {@link count}; sparse components only.
+     * @returns {Int32Array}
+     */
+    get eids() {
+        return this.set.dense;
+    }
+
+    /**
+     * The column row holding `eid`'s values, or NO_ROW when it does not carry this component;
+     * sparse components only.
+     * @param {number} eid
+     * @returns {number}
+     */
+    row(eid) {
+        return eid < this.set.sparse.length ? this.set.sparse[eid] : NO_ROW;
+    }
+
+    /**
+     * The slot `eid`'s values live at: its row when sparse, the eid itself when dense.
+     * @param {number} eid
+     * @returns {number}
+     */
+    slot(eid) {
+        return this.sparse ? this.row(eid) : eid;
+    }
+
+    /**
+     * The entity whose values live at `slot`.
+     * @param {number} slot
+     * @returns {number}
+     */
+    eidAt(slot) {
+        return this.sparse ? this.set.dense[slot] : slot;
+    }
+}
+
+
+/**
+ * The simulation engine Game drives: the port-transfer core over typed-array component
  * storage, the position/port indexes, (de)serialization, and the mod host — each loaded sim mod
  * registers its ECS content (components, systems, message handlers, chunk-sync contributors) via
  * {@link AbstractSimMod#setup}. Generic — it knows no specific content, so it imports nothing from
@@ -115,8 +204,8 @@ export class GameEngine {
          */
         this.world = null;
 
-        // Registered component stores, in definition order: {name, fields, store, capacity}. The generic
-        // serializer walks these, so any state kept here round-trips for free (see serialize).
+        // Registered components in definition order. The generic serializer walks these, so any state
+        // kept here round-trips for free (see serialize).
         this._components = [];
         this._componentByName = new Map();
 
@@ -404,6 +493,9 @@ export class GameEngine {
      */
     async init() {
         this.world = new World();
+        for (const def of this._components) {
+            this._bindComponent(def);
+        }
         if (this.modRegistry !== null) {
             // The registry must be frozen (typeIds assigned) before content wires up; the accessors
             // throw otherwise. The generic entity host installs every derived type's behavior first,
@@ -623,40 +715,60 @@ export class GameEngine {
      * this so their state round-trips with no bespoke save code.
      * @param {string} name
      * @param {{name:string, kind?:string, fill?:number}[]} fieldSpecs
-     * @param {{snapshotOnly?:boolean}} [options] - snapshotOnly components hold state materialized at
-     *     save (belt paths), not kept in sync during play, so the port sweep ignores their eid fields
-     *     (the module's live pin hook is authoritative instead)
-     * @returns {{name:string, fields:object[], store:object, capacity:number}}
+     * @param {{snapshotOnly?:boolean, sparse?:boolean}} [options] - snapshotOnly components hold state
+     *     materialized at save (belt paths), not kept in sync during play, so the port sweep ignores
+     *     their eid fields (the module's live pin hook is authoritative instead); sparse components
+     *     index their columns by row instead of by eid, so a component only a slice of the world
+     *     carries is sized to that slice (see {@link ComponentDef})
+     * @returns {ComponentDef}
      */
-    defineComponent(name, fieldSpecs, {snapshotOnly=false}={}) {
+    defineComponent(name, fieldSpecs, {snapshotOnly=false, sparse=false}={}) {
         const fields = fieldSpecs.map(spec => ({
             name: spec.name,
             kind: spec.kind === undefined ? "i32" : spec.kind,
             fill: spec.fill === undefined ? 0 : spec.fill,
         }));
-        const store = {};
-        for (const field of fields) {
-            store[field.name] = new Int32Array(PORT_CAPACITY).fill(field.fill);
-        }
-        const def = {name, fields, store, capacity: PORT_CAPACITY, snapshotOnly};
+        const def = new ComponentDef(name, fields, snapshotOnly, sparse);
         this._components.push(def);
         this._componentByName.set(name, def);
+        if (this.world !== null) {
+            this._bindComponent(def);
+        }
         return def;
     }
 
     /**
-     * Grows a component's columns so `eid` is addressable.
+     * Adopts the world's membership set as a sparse component's row numbering. Called for every
+     * component whenever a world is created, since the components outlive it.
      * @private
-     * @param {object} def
-     * @param {number} eid
+     * @param {ComponentDef} def
      * @returns {void}
      */
-    _growComponent(def, eid) {
-        if (eid < def.capacity) {
+    _bindComponent(def) {
+        if (!def.sparse) {
+            return;
+        }
+        def.set = this.world.trackRows(def.store, (fromRow, toRow) => {
+            for (const field of def.fields) {
+                const column = def.store[field.name];
+                column[toRow] = column[fromRow];
+            }
+        });
+    }
+
+    /**
+     * Grows a component's columns so `slot` is addressable.
+     * @private
+     * @param {ComponentDef} def
+     * @param {number} slot - an eid when dense, a row when sparse
+     * @returns {void}
+     */
+    _growComponent(def, slot) {
+        if (slot < def.capacity) {
             return;
         }
         let capacity = def.capacity;
-        while (capacity <= eid) {
+        while (capacity <= slot) {
             capacity *= 2;
         }
         for (const field of def.fields) {
@@ -689,15 +801,25 @@ export class GameEngine {
     }
 
     /**
-     * Attaches a component to `eid`, growing its columns first.
+     * Attaches a component to `eid`, growing its columns first. A sparse component's new row is
+     * cleared, since a prior tenant's values may still sit there.
      * @private
-     * @param {object} def
+     * @param {ComponentDef} def
      * @param {number} eid
      * @returns {void}
      */
     _addComponent(def, eid) {
-        this._growComponent(def, eid);
+        if (!def.sparse) {
+            this._growComponent(def, eid);
+            this.world.addComponent(eid, def.store);
+            return;
+        }
         this.world.addComponent(eid, def.store);
+        const row = def.row(eid);
+        this._growComponent(def, row);
+        for (const field of def.fields) {
+            def.store[field.name][row] = field.fill;
+        }
     }
 
     /**
@@ -910,9 +1032,9 @@ export class GameEngine {
             if (eidFields.length === 0) {
                 continue;
             }
-            for (const eid of this.world.query([def.store])) {
+            for (const slot of this._slotsOf(def)) {
                 for (const field of eidFields) {
-                    const target = def.store[field.name][eid];
+                    const target = def.store[field.name][slot];
                     if (target !== NO_EID) {
                         referenced.add(target);
                     }
@@ -967,7 +1089,25 @@ export class GameEngine {
      * @returns {number[]}
      */
     entitiesWith(def) {
-        return this.world.query([def.store]);
+        return def.sparse ? def.eids.slice(0, def.count) : this.world.query([def.store]);
+    }
+
+    /**
+     * Every live slot of `def`'s columns: its rows when sparse, its entity ids when dense. Lets the
+     * generic passes (the port sweep, serialize) read any component without knowing which it is.
+     * @private
+     * @param {ComponentDef} def
+     * @returns {Int32Array}
+     */
+    _slotsOf(def) {
+        if (!def.sparse) {
+            return this.world.query([def.store]);
+        }
+        const slots = new Int32Array(def.count);
+        for (let row = 0; row < def.count; row += 1) {
+            slots[row] = row;
+        }
+        return slots;
     }
 
     /**
@@ -1324,13 +1464,16 @@ export class GameEngine {
         }
         const components = this._components.map(def => {
             const rows = [];
-            for (const eid of this.world.query([def.store])) {
-                const row = {eid: eid};
+            for (const slot of this._slotsOf(def)) {
+                const row = {eid: def.eidAt(slot)};
                 for (const field of def.fields) {
-                    row[field.name] = def.store[field.name][eid];
+                    row[field.name] = def.store[field.name][slot];
                 }
                 rows.push(row);
             }
+            // A sparse component's rows shuffle as entities come and go, so order them here: the same
+            // world then serializes to the same bytes however it was built.
+            rows.sort((a, b) => a.eid - b.eid);
             return {
                 name: def.name,
                 fields: def.fields.map(field => ({name: field.name, kind: field.kind})),
@@ -1357,6 +1500,9 @@ export class GameEngine {
      */
     deserialize(snapshot) {
         this.world = new World();
+        for (const def of this._components) {
+            this._bindComponent(def);
+        }
         for (const def of this._components) {
             for (const field of def.fields) {
                 def.store[field.name].fill(field.fill);
@@ -1395,9 +1541,10 @@ export class GameEngine {
             for (const row of component.rows) {
                 const eid = remap.get(row.eid);
                 this._addComponent(def, eid);
+                const slot = def.slot(eid);
                 for (const field of def.fields) {
                     const raw = row[field.name];
-                    def.store[field.name][eid] = field.kind === "eid" ? translate(raw) : raw;
+                    def.store[field.name][slot] = field.kind === "eid" ? translate(raw) : raw;
                 }
             }
         }
