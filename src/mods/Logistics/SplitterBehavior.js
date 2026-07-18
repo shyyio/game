@@ -36,31 +36,31 @@ export class SplitterBehavior extends AbstractBehavior {
         const outA = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         const outB = engine.portFor(type.outputPorts[1], message.x, message.y, message.direction);
         this._wire(engine, eid, {in_a: inA.port, in_b: inB.port, out_a: outA.port, out_b: outB.port});
-        const S = engine.component("Splitter").store;
-        S.outATileX[eid] = outA.tile.x;
-        S.outATileY[eid] = outA.tile.y;
-        S.outBTileX[eid] = outB.tile.x;
-        S.outBTileY[eid] = outB.tile.y;
+        const splitter = engine.component("Splitter").store;
+        splitter.outATileX[eid] = outA.tile.x;
+        splitter.outATileY[eid] = outA.tile.y;
+        splitter.outBTileX[eid] = outB.tile.x;
+        splitter.outBTileY[eid] = outB.tile.y;
         engine.registerRenderedPort(outA.port, outA.tile.x, outA.tile.y);
         engine.registerRenderedPort(outB.port, outB.tile.x, outB.tile.y);
         return [outA.port, outB.port];
     }
 
     onDespawn(engine, placed, eid) {
-        const S = engine.component("Splitter").store;
-        engine.unregisterRenderedPort(S.out_a[eid]);
-        engine.unregisterRenderedPort(S.out_b[eid]);
+        const splitter = engine.component("Splitter").store;
+        engine.unregisterRenderedPort(splitter.out_a[eid]);
+        engine.unregisterRenderedPort(splitter.out_b[eid]);
     }
 
     syncData(engine, placed, eid) {
-        const S = engine.component("Splitter").store;
-        return {portIds: [S.out_a[eid], S.out_b[eid]], lastOutput: null};
+        const splitter = engine.component("Splitter").store;
+        return {portIds: [splitter.out_a[eid], splitter.out_b[eid]], lastOutput: null};
     }
 
     resyncRenderedPorts(engine, placed, eid) {
-        const S = engine.component("Splitter").store;
-        engine.registerRenderedPort(S.out_a[eid], S.outATileX[eid], S.outATileY[eid]);
-        engine.registerRenderedPort(S.out_b[eid], S.outBTileX[eid], S.outBTileY[eid]);
+        const splitter = engine.component("Splitter").store;
+        engine.registerRenderedPort(splitter.out_a[eid], splitter.outATileX[eid], splitter.outATileY[eid]);
+        engine.registerRenderedPort(splitter.out_b[eid], splitter.outBTileX[eid], splitter.outBTileY[eid]);
     }
 
     /**
@@ -75,14 +75,14 @@ export class SplitterBehavior extends AbstractBehavior {
         const int_a = engine.createPort();
         const int_b = engine.createPort();
         engine.attachComponent(engine.component("Splitter"), eid);
-        const S = engine.component("Splitter").store;
-        S.in_a[eid] = ports.in_a;
-        S.in_b[eid] = ports.in_b;
-        S.out_a[eid] = ports.out_a;
-        S.out_b[eid] = ports.out_b;
-        S.int_a[eid] = int_a;
-        S.int_b[eid] = int_b;
-        S.state[eid] = 0;
+        const splitter = engine.component("Splitter").store;
+        splitter.in_a[eid] = ports.in_a;
+        splitter.in_b[eid] = ports.in_b;
+        splitter.out_a[eid] = ports.out_a;
+        splitter.out_b[eid] = ports.out_b;
+        splitter.int_a[eid] = int_a;
+        splitter.int_b[eid] = int_b;
+        splitter.state[eid] = 0;
         return {id: eid, in_a: ports.in_a, in_b: ports.in_b, out_a: ports.out_a, out_b: ports.out_b, int_a, int_b};
     }
 
@@ -135,23 +135,23 @@ export class SplitterBehavior extends AbstractBehavior {
     _submitIntents(engine) {
         const item = engine.Port.item;
         const def = engine.component("Splitter");
-        const S = def.store;
+        const splitter = def.store;
         engine.entitiesWith(def).forEach(eid => {
-            if (item[S.in_a[eid]] !== EMPTY) {
-                engine.submitIntent({source: S.in_a[eid], dest: S.int_a[eid], destEmpty: item[S.int_a[eid]] === EMPTY, managed: false});
+            if (item[splitter.in_a[eid]] !== EMPTY) {
+                engine.submitIntent({source: splitter.in_a[eid], dest: splitter.int_a[eid], destEmpty: item[splitter.int_a[eid]] === EMPTY, managed: false});
             }
-            if (item[S.in_b[eid]] !== EMPTY) {
-                engine.submitIntent({source: S.in_b[eid], dest: S.int_b[eid], destEmpty: item[S.int_b[eid]] === EMPTY, managed: false});
+            if (item[splitter.in_b[eid]] !== EMPTY) {
+                engine.submitIntent({source: splitter.in_b[eid], dest: splitter.int_b[eid], destEmpty: item[splitter.int_b[eid]] === EMPTY, managed: false});
             }
-            const preferA = S.state[eid] === 0 ? 1 : 2;
-            const preferB = S.state[eid] === 0 ? 2 : 1;
-            if (item[S.int_a[eid]] !== EMPTY) {
-                engine.submitIntent({source: S.int_a[eid], dest: S.out_a[eid], destEmpty: item[S.out_a[eid]] === EMPTY, managed: false, rank: preferA});
-                engine.submitIntent({source: S.int_a[eid], dest: S.out_b[eid], destEmpty: item[S.out_b[eid]] === EMPTY, managed: false, rank: preferB});
+            const preferA = splitter.state[eid] === 0 ? 1 : 2;
+            const preferB = splitter.state[eid] === 0 ? 2 : 1;
+            if (item[splitter.int_a[eid]] !== EMPTY) {
+                engine.submitIntent({source: splitter.int_a[eid], dest: splitter.out_a[eid], destEmpty: item[splitter.out_a[eid]] === EMPTY, managed: false, rank: preferA});
+                engine.submitIntent({source: splitter.int_a[eid], dest: splitter.out_b[eid], destEmpty: item[splitter.out_b[eid]] === EMPTY, managed: false, rank: preferB});
             }
-            if (item[S.int_b[eid]] !== EMPTY) {
-                engine.submitIntent({source: S.int_b[eid], dest: S.out_b[eid], destEmpty: item[S.out_b[eid]] === EMPTY, managed: false, rank: preferA});
-                engine.submitIntent({source: S.int_b[eid], dest: S.out_a[eid], destEmpty: item[S.out_a[eid]] === EMPTY, managed: false, rank: preferB});
+            if (item[splitter.int_b[eid]] !== EMPTY) {
+                engine.submitIntent({source: splitter.int_b[eid], dest: splitter.out_b[eid], destEmpty: item[splitter.out_b[eid]] === EMPTY, managed: false, rank: preferA});
+                engine.submitIntent({source: splitter.int_b[eid], dest: splitter.out_a[eid], destEmpty: item[splitter.out_a[eid]] === EMPTY, managed: false, rank: preferB});
             }
         });
     }
@@ -168,12 +168,12 @@ export class SplitterBehavior extends AbstractBehavior {
     _runSeam(engine) {
         const item = engine.Port.item;
         const def = engine.component("Splitter");
-        const S = def.store;
+        const splitter = def.store;
         const stage1 = [];
         const stage2 = [];
 
         engine.entitiesWith(def).forEach(eid => {
-            [S.int_a[eid], S.int_b[eid]].forEach(intPort => {
+            [splitter.int_a[eid], splitter.int_b[eid]].forEach(intPort => {
                 if (item[intPort] === EMPTY) {
                     return;
                 }
@@ -182,7 +182,7 @@ export class SplitterBehavior extends AbstractBehavior {
                     stage2.push({outPort: dest, item: item[intPort], intPort: intPort});
                 }
             });
-            [S.in_a[eid], S.in_b[eid]].forEach(inPort => {
+            [splitter.in_a[eid], splitter.in_b[eid]].forEach(inPort => {
                 if (item[inPort] === EMPTY) {
                     return;
                 }
@@ -207,8 +207,8 @@ export class SplitterBehavior extends AbstractBehavior {
         });
 
         engine.entitiesWith(def).forEach(eid => {
-            if (engine.resolvedDestFor(S.int_a[eid]) !== EMPTY || engine.resolvedDestFor(S.int_b[eid]) !== EMPTY) {
-                S.state[eid] = 1 - S.state[eid];
+            if (engine.resolvedDestFor(splitter.int_a[eid]) !== EMPTY || engine.resolvedDestFor(splitter.int_b[eid]) !== EMPTY) {
+                splitter.state[eid] = 1 - splitter.state[eid];
             }
         });
     }
