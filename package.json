@@ -11,7 +11,8 @@
     "build": "vite build",
     "test": "node --import ./src/test/test-loader.js --test 'src/**/*.spec.js'",
     "save:sample": "rm -f SAMPLE.sqlite3; node --import ./src/test/test-loader.js src/test/make-sample-save.js SAMPLE.sqlite3",
-    "bench:lines": "node --import ./src/test/test-loader.js src/test/production-line-benchmark.js"
+    "save:lines": "rm -f LINES.sqlite3; node --import ./src/test/test-loader.js src/test/make-lines-save.js LINES.sqlite3",
+    "bench:lines": "node --expose-gc --import ./src/test/test-loader.js src/test/production-line-benchmark.js"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",

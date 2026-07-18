@@ -120,6 +120,7 @@ debug_test.js
 *.kra
 *.png~
 SAMPLE.sqlite3
+LINES.sqlite3
 docs/
 .backup/
 
