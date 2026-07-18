@@ -8,6 +8,10 @@ const LAYER_RESOURCE = "R";
 // Recipe input keys are always padded to three slots.
 const RECIPE_SLOTS = 3;
 
+// A recipe key packs the slots into one integer (base RECIPE_SLOT_LIMIT), so matching a gathered set
+// costs no string per machine per tick.
+const RECIPE_SLOT_LIMIT = 1024;
+
 // Per-slot column names, indexed 0..RECIPE_SLOTS-1.
 const IN_COLS = ["in0", "in1", "in2"];
 const SLOT_COLS = ["slot0", "slot1", "slot2"];
@@ -159,7 +163,7 @@ export class MachineBehavior extends AbstractBehavior {
         this.processingTicks = processingTicks;
         this.fallback = fallback;
 
-        // Gathered-set key "i1,i2,i3" -> output.
+        // Packed gathered-set key -> output (see _recipeKey).
         this.recipes = new Map();
         for (const recipe of recipes) {
             this.recipes.set(this._recipeKey(recipe.inputs), recipe.output);
@@ -176,14 +180,18 @@ export class MachineBehavior extends AbstractBehavior {
     /**
      * @private
      * @param {number[]} inputs
-     * @returns {string}
+     * @returns {number}
      */
     _recipeKey(inputs) {
-        const padded = [...inputs];
-        while (padded.length < RECIPE_SLOTS) {
-            padded.push(0);
+        let key = 0;
+        for (let i = 0; i < RECIPE_SLOTS; i += 1) {
+            const slot = i < inputs.length ? inputs[i] : 0;
+            if (slot < 0 || slot >= RECIPE_SLOT_LIMIT) {
+                throw new Error(`Recipe input ${slot} does not fit a packed recipe key`);
+            }
+            key = key * RECIPE_SLOT_LIMIT + slot;
         }
-        return padded.join(",");
+        return key;
     }
 
     install(engine, placed) {
@@ -276,11 +284,7 @@ export class MachineBehavior extends AbstractBehavior {
         if (!inputMemory.some(item => item > 0)) {
             return null;
         }
-        const key = [];
-        for (let i = 0; i < RECIPE_SLOTS; i += 1) {
-            key.push(i < inputMemory.length ? inputMemory[i] : 0);
-        }
-        const output = this.recipes.get(key.join(","));
+        const output = this.recipes.get(this._recipeKey(inputMemory));
         return output === undefined ? this.fallback : output;
     }
 
@@ -291,12 +295,12 @@ export class MachineBehavior extends AbstractBehavior {
      * @returns {number} the produced output for the gathered slots, or the fallback
      */
     _resolveRecipe(machine, eid) {
-        const key = [];
+        let key = 0;
         for (let i = 0; i < RECIPE_SLOTS; i += 1) {
             const slot = i < this.inputCount ? machine[SLOT_COLS[i]][eid] : EMPTY;
-            key.push(slot === EMPTY ? 0 : slot);
+            key = key * RECIPE_SLOT_LIMIT + (slot === EMPTY ? 0 : slot);
         }
-        const output = this.recipes.get(key.join(","));
+        const output = this.recipes.get(key);
         if (output === undefined) {
             return this.fallback;
         }

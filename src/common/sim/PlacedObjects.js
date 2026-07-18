@@ -26,6 +26,9 @@ export class PlacedObjects {
 
         // typeId -> ObjectType, derived types only.
         this._types = new Map();
+        // typeId -> behavior, a dense array over the positional typeIds: the tick loops resolve a
+        // behavior per entity per tick, so this stays off a Map lookup.
+        this._behaviors = [];
         this._eidByObjectId = new Map();
 
         const installed = new Set();
@@ -34,6 +37,7 @@ export class PlacedObjects {
                 continue;
             }
             this._types.set(type.typeId, type);
+            this._behaviors[type.typeId] = type.behavior;
             if (!installed.has(type.behavior.constructor)) {
                 installed.add(type.behavior.constructor);
                 type.behavior.install(engine, this);
@@ -52,7 +56,7 @@ export class PlacedObjects {
      * @returns {AbstractBehavior}
      */
     behaviorFor(typeId) {
-        return this._types.get(typeId).behavior;
+        return this._behaviors[typeId];
     }
 
     /**
