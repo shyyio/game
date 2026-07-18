@@ -1,5 +1,5 @@
 import {createWorld, addEntity, addComponent, hasComponent, removeEntity, entityExists, query} from "bitecs";
-import {rotate} from "@/common/util.js";
+import {rotate, chunkId} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
@@ -121,6 +121,19 @@ export class GameEngine {
         ]);
         this.Port = this._portDef.store;
 
+        // Last emitted item per rendered port, so EMIT_RENDER emits only changes; EMPTY means nothing
+        // drawn. Sized with the Port columns (see _growComponent).
+        this._portShadow = new Int32Array(this._portDef.capacity).fill(EMPTY);
+        // Out-ports whose resting item is drawn, and the tile it is drawn at. Modules register theirs;
+        // re-registration is idempotent and a removed path's port can be unregistered (paths churn).
+        this._rendered = new Uint8Array(this._portDef.capacity);
+        this._renderX = new Int32Array(this._portDef.capacity);
+        this._renderY = new Int32Array(this._portDef.capacity);
+        // Ports written since the last render diff, and a per-eid flag so a port enters the list once.
+        // EMIT_RENDER walks this instead of every rendered port in the world.
+        this._dirtyPorts = [];
+        this._portDirty = new Uint8Array(this._portDef.capacity);
+
         // Layer name <-> int code; the surface layer is code 0, mods register the rest (see
         // registerPositionLayer). Registration order is deterministic per loadout, so codes are stable
         // across save/load.
@@ -181,18 +194,16 @@ export class GameEngine {
         this.registerSystem(TickPhase.COMMIT_TRANSFERS, () => this.commitTransfers());
         this.registerSystem(TickPhase.EMIT_RENDER, () => this._emitRender());
 
-        // Out-ports whose resting item is drawn: eid -> {x, y}. Modules register theirs. Keyed so
-        // re-registration is idempotent and a removed path's port can be unregistered (paths churn).
-        this.renderedPorts = new Map();
-        // Last emitted item per rendered port, so EMIT_RENDER emits only changes.
-        this._portShadow = new Map();
         // Ports unregistered while holding a rendered item (eid -> {x, y}): a pending clear, cancelled if
         // the port is re-registered in the same edit (so a churned-but-surviving port stays static, no
         // clear+set glide). Flushed by the render diff.
         this._pendingClear = new Map();
         // Sink for domain events (placement/path/delete + port-item render deltas). Game broadcasts each
-        // synchronously by chunk; tests install an EventCollector. Defaults to dropping (no session).
-        this._eventSink = () => {};
+        // synchronously by chunk; tests install an EventCollector. Null until one is installed.
+        this._eventSink = null;
+        // Whether any session is watching a chunk. Emitters skip building an event nobody receives; a
+        // session that subscribes later gets the state through chunkSync, not the missed deltas.
+        this._chunkObserved = () => false;
 
         this._resetTick();
     }
@@ -203,16 +214,31 @@ export class GameEngine {
      * @returns {void}
      */
     emitEvent(event) {
-        this._eventSink(event);
+        if (this._eventSink !== null) {
+            this._eventSink(event);
+        }
     }
 
     /**
-     * Sets the sink each emitted event is delivered to.
+     * Sets the sink each emitted event is delivered to, and optionally the predicate deciding whether
+     * a chunk has any watcher; without one every chunk counts as observed.
      * @param {function(AbstractTilePositionedEvent): void} sink
+     * @param {function(number): boolean} [chunkObserved]
      * @returns {void}
      */
-    setEventSink(sink) {
+    setEventSink(sink, chunkObserved) {
         this._eventSink = sink;
+        this._chunkObserved = chunkObserved === undefined ? () => true : chunkObserved;
+    }
+
+    /**
+     * Whether an event about tile (x, y) would reach anyone. Emitters check this before building one.
+     * @param {number} x
+     * @param {number} y
+     * @returns {boolean}
+     */
+    observesTile(x, y) {
+        return this._chunkObserved(chunkId(x, y));
     }
 
     /**
@@ -224,10 +250,40 @@ export class GameEngine {
      * @returns {void}
      */
     registerRenderedPort(eid, x, y) {
-        this.renderedPorts.set(eid, {x, y});
+        this._rendered[eid] = 1;
+        this._renderX[eid] = x;
+        this._renderY[eid] = y;
         // A re-registered port survives the edit: cancel any pending clear so its sprite stays put
         // (item unchanged -> the diff emits nothing) instead of a clear+set that glides in a new sprite.
         this._pendingClear.delete(eid);
+        this._markPortDirty(eid);
+    }
+
+    /**
+     * The tile a rendered port's resting item is drawn at, or null if the port is not rendered.
+     * @param {number} eid
+     * @returns {{x:number, y:number}|null}
+     */
+    renderedPortTile(eid) {
+        if (this._rendered[eid] === 0) {
+            return null;
+        }
+        return {x: this._renderX[eid], y: this._renderY[eid]};
+    }
+
+    /**
+     * Queues a port for the next render diff. The diff walks only these, so every write to Port.item
+     * must come through here (see setPortItem).
+     * @private
+     * @param {number} eid
+     * @returns {void}
+     */
+    _markPortDirty(eid) {
+        if (this._portDirty[eid] === 1) {
+            return;
+        }
+        this._portDirty[eid] = 1;
+        this._dirtyPorts.push(eid);
     }
 
     /**
@@ -237,40 +293,45 @@ export class GameEngine {
      * @returns {void}
      */
     unregisterRenderedPort(eid) {
-        const position = this.renderedPorts.get(eid);
-        if (this._portShadow.has(eid) && position !== undefined) {
-            this._pendingClear.set(eid, position);
+        if (this._portShadow[eid] !== EMPTY && this._rendered[eid] === 1) {
+            this._pendingClear.set(eid, {x: this._renderX[eid], y: this._renderY[eid]});
         }
-        this.renderedPorts.delete(eid);
+        this._rendered[eid] = 0;
     }
 
     /**
-     * EMIT_RENDER: flush deferred clears (ports unregistered for good), then diff each rendered port's
-     * item against the shadow, buffering a set (item appeared or changed) or clear (item left) event.
+     * EMIT_RENDER: flush deferred clears (ports unregistered for good), then diff each port written
+     * since the last render against the shadow, buffering a set (item appeared or changed) or clear
+     * (item left) event.
      * @private
      * @returns {void}
      */
     _emitRender() {
         for (const [eid, position] of this._pendingClear) {
             this.emitEvent(new PortItemClearEvent(position.x, position.y, eid));
-            this._portShadow.delete(eid);
+            this._portShadow[eid] = EMPTY;
         }
         this._pendingClear.clear();
 
-        for (const [eid, position] of this.renderedPorts) {
-            const item = this.Port.item[eid];
-            const previous = this._portShadow.has(eid) ? this._portShadow.get(eid) : EMPTY;
-            if (item === previous) {
+        const item = this.Port.item;
+        for (const eid of this._dirtyPorts) {
+            this._portDirty[eid] = 0;
+            if (this._rendered[eid] === 0 || item[eid] === this._portShadow[eid]) {
                 continue;
             }
-            if (item === EMPTY) {
-                this.emitEvent(new PortItemClearEvent(position.x, position.y, eid));
-                this._portShadow.delete(eid);
+            this._portShadow[eid] = item[eid];
+            const x = this._renderX[eid];
+            const y = this._renderY[eid];
+            if (!this.observesTile(x, y)) {
+                continue;
+            }
+            if (item[eid] === EMPTY) {
+                this.emitEvent(new PortItemClearEvent(x, y, eid));
             } else {
-                this.emitEvent(new PortItemSetEvent(position.x, position.y, eid, item));
-                this._portShadow.set(eid, item);
+                this.emitEvent(new PortItemSetEvent(x, y, eid, item[eid]));
             }
         }
+        this._dirtyPorts.length = 0;
     }
 
     /**
@@ -429,6 +490,16 @@ export class GameEngine {
         def.capacity = capacity;
         if (def === this._portDef) {
             this.Port = def.store;
+            for (const name of ["_portShadow", "_renderX", "_renderY"]) {
+                const grown = new Int32Array(capacity).fill(name === "_portShadow" ? EMPTY : 0);
+                grown.set(this[name]);
+                this[name] = grown;
+            }
+            for (const name of ["_portDirty", "_rendered"]) {
+                const grown = new Uint8Array(capacity);
+                grown.set(this[name]);
+                this[name] = grown;
+            }
         }
         if (def === this._positionDef) {
             this.Position = def.store;
@@ -478,7 +549,9 @@ export class GameEngine {
     createPort(item=EMPTY) {
         const eid = addEntity(this.world);
         this._addComponent(this._portDef, eid);
-        this.Port.item[eid] = item;
+        // bitECS recycles eids, so clear any shadow the previous tenant left behind.
+        this._portShadow[eid] = EMPTY;
+        this.setPortItem(eid, item);
         return eid;
     }
 
@@ -677,8 +750,8 @@ export class GameEngine {
             if (hasComponent(this.world, eid, this._positionDef.store)) {
                 this._portsByEdge.delete(this._edgeKey(eid));
             }
-            this.renderedPorts.delete(eid);
-            this._portShadow.delete(eid);
+            this._rendered[eid] = 0;
+            this._portShadow[eid] = EMPTY;
             this._pendingClear.delete(eid);
             removeEntity(this.world, eid);
         }
@@ -740,6 +813,7 @@ export class GameEngine {
      */
     setPortItem(eid, item) {
         this.Port.item[eid] = item;
+        this._markPortDirty(eid);
     }
 
     /**
@@ -801,8 +875,10 @@ export class GameEngine {
             }
         }
 
-        while (queue.length > 0) {
-            const port = queue.shift();
+        let head = 0;
+        while (head < queue.length) {
+            const port = queue[head];
+            head += 1;
             const intent = winnerByDest.get(port);
             if (intent === undefined || seen.has(intent)) {
                 continue;
@@ -879,6 +955,7 @@ export class GameEngine {
     flushSinks() {
         for (const source of this._sinks) {
             this.Port.item[source] = EMPTY;
+            this._markPortDirty(source);
         }
     }
 
@@ -891,11 +968,13 @@ export class GameEngine {
         for (const transfer of this._resolved) {
             if (transfer.managed && transfer.source !== EMPTY) {
                 this.Port.item[transfer.source] = EMPTY;
+                this._markPortDirty(transfer.source);
             }
         }
         for (const transfer of this._resolved) {
             if (transfer.managed && transfer.dest !== EMPTY) {
                 this.Port.item[transfer.dest] = transfer.item;
+                this._markPortDirty(transfer.dest);
             }
         }
     }
@@ -985,8 +1064,10 @@ export class GameEngine {
         this._portsByEdge = new Map();
         this._cellByKey = new Map();
         // Drop the prior world's render/tick state so its stale eids never leak into the new world.
-        this.renderedPorts = new Map();
-        this._portShadow = new Map();
+        this._rendered.fill(0);
+        this._portShadow.fill(EMPTY);
+        this._portDirty.fill(0);
+        this._dirtyPorts.length = 0;
         this._pendingClear = new Map();
         this._resetTick();
 

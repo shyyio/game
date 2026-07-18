@@ -45,10 +45,10 @@ test("the whole world round-trips through the engine serializer", async () => {
 
     // The extractor keeps producing water into its edge out-port after the load.
     const outPort = restored.portAt(5, 4, Direction.UP);
-    assert.deepEqual(restored.renderedPorts.get(outPort), {x: 5, y: 4}, "out-port re-registered at its own tile");
+    assert.deepEqual(restored.renderedPortTile(outPort), {x: 5, y: 4}, "out-port re-registered at its own tile");
     for (const tile of [{x: 3, y: 7}, {x: 4, y: 7}]) {
         const port = restored.portAt(tile.x, tile.y, Direction.UP);
-        assert.deepEqual(restored.renderedPorts.get(port), tile, "splitter out-port re-registered at its own tile");
+        assert.deepEqual(restored.renderedPortTile(port), tile, "splitter out-port re-registered at its own tile");
     }
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
