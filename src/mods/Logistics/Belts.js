@@ -73,6 +73,11 @@ export class Belts {
         this._colCount = new Int32Array(PATH_CAPACITY);
         this._colLeadGap = new Int32Array(PATH_CAPACITY);
         this._colFirstGap = new Int32Array(PATH_CAPACITY);
+        // Whether the path's chunk has a watcher, and the observation generation that answer was
+        // computed at (0 = never). Asking the engine costs a chunk hash and a call through the
+        // subscription predicate, which the move loop would otherwise pay per moving path per tick.
+        this._colObserved = new Uint8Array(PATH_CAPACITY);
+        this._colObservedGen = new Int32Array(PATH_CAPACITY);
         // Out-port writes _move defers to its last phase, reused tick to tick.
         this._popCapacity = PATH_CAPACITY;
         this._popPorts = new Int32Array(PATH_CAPACITY);
@@ -425,18 +430,19 @@ export class Belts {
     }
 
     /**
-     * Emits the upsert for item `index` of a moving path. Takes the ring rather than the item's fields
-     * so an unobserved path reads nothing.
+     * Emits the upsert for item `index` of a moving path. Takes the slot and the ring rather than the
+     * path and the item's fields, so an unobserved path reads neither.
      * @private
-     * @param {object} path
+     * @param {number} slot
      * @param {ItemRing} items
      * @param {number} index
      * @returns {void}
      */
-    _emitMovedItem(path, items, index) {
-        if (!this._observed(path)) {
+    _emitMovedItem(slot, items, index) {
+        if (!this._observedAt(slot)) {
             return;
         }
+        const path = this.paths[slot];
         const event = this._itemUpsertEvent(path, items.idAt(index), items.gapAt(index), items.typeAt(index));
         if (event !== null) {
             this.engine.emitEvent(event);
@@ -445,31 +451,40 @@ export class Belts {
 
     /**
      * @private
-     * @param {object} path
+     * @param {number} slot
      * @param {number} itemId
      * @param {number} gap
      * @param {number} type
      * @returns {void}
      */
-    _emitItemUpsert(path, itemId, gap, type) {
-        if (!this._observed(path)) {
+    _emitItemUpsert(slot, itemId, gap, type) {
+        if (!this._observedAt(slot)) {
             return;
         }
-        const event = this._itemUpsertEvent(path, itemId, gap, type);
+        const event = this._itemUpsertEvent(this.paths[slot], itemId, gap, type);
         if (event !== null) {
             this.engine.emitEvent(event);
         }
     }
 
     /**
-     * Whether a path's chunk has a watcher. The move loop checks this before building per-item events;
-     * a session subscribing later gets the path through chunkSync.
+     * Whether the path in `slot` has a watcher, cached until the engine's observation generation moves.
+     * The move loop checks this before building per-item events; a session subscribing later gets the
+     * path through chunkSync.
      * @private
-     * @param {object} path
+     * @param {number} slot
      * @returns {boolean}
      */
-    _observed(path) {
-        return path.belts !== undefined && this.engine.observesTile(path.headX, path.headY);
+    _observedAt(slot) {
+        const generation = this.engine.observerGeneration;
+        if (this._colObservedGen[slot] === generation) {
+            return this._colObserved[slot] === 1;
+        }
+        const path = this.paths[slot];
+        const observed = path.belts !== undefined && this.engine.observesTile(path.headX, path.headY);
+        this._colObservedGen[slot] = generation;
+        this._colObserved[slot] = observed ? 1 : 0;
+        return observed;
     }
 
     /**
@@ -492,23 +507,22 @@ export class Belts {
     }
 
     /**
-     * Emits the delete for the lead item a path is about to pop. Takes the ring rather than the id so
-     * an unobserved path reads nothing.
+     * Emits the delete for the lead item a path is about to pop. Takes the slot and the ring rather
+     * than the path and the id, so an unobserved path reads neither.
      * @private
-     * @param {object} path
+     * @param {number} slot
      * @param {ItemRing} items
      * @returns {void}
      */
-    _emitPoppedItem(path, items) {
-        if (!this._observed(path)) {
+    _emitPoppedItem(slot, items) {
+        if (!this._observedAt(slot)) {
             return;
         }
-        const head = this._headInfo(path);
+        const head = this._headInfo(this.paths[slot]);
         if (head === null) {
             return;
         }
-        const itemId = items.idAt(0);
-        this.engine.emitEvent(new BeltItemDeleteEvent(head.x, head.y, head.pathId, itemId));
+        this.engine.emitEvent(new BeltItemDeleteEvent(head.x, head.y, head.pathId, items.idAt(0)));
     }
 
     /**
@@ -1070,6 +1084,7 @@ export class Belts {
         this._colInPort[slot] = path.inPort;
         this._colOutPort[slot] = path.outPort;
         this._colHeadGap[slot] = path.initialHeadGap;
+        this._colObservedGen[slot] = 0;
         this._refreshColumns(slot, path);
     }
 
@@ -1087,11 +1102,14 @@ export class Belts {
         while (capacity <= slot) {
             capacity *= 2;
         }
-        for (const name of ["_colInPort", "_colOutPort", "_colHeadGap", "_colCount", "_colLeadGap", "_colFirstGap"]) {
+        for (const name of ["_colInPort", "_colOutPort", "_colHeadGap", "_colCount", "_colLeadGap", "_colFirstGap", "_colObservedGen"]) {
             const grown = new Int32Array(capacity);
             grown.set(this[name]);
             this[name] = grown;
         }
+        const grownObserved = new Uint8Array(capacity);
+        grownObserved.set(this._colObserved);
+        this._colObserved = grownObserved;
         this._pathCapacity = capacity;
     }
 
@@ -1131,6 +1149,8 @@ export class Belts {
         this._colInPort[slot] = this._colInPort[lastSlot];
         this._colOutPort[slot] = this._colOutPort[lastSlot];
         this._colHeadGap[slot] = this._colHeadGap[lastSlot];
+        this._colObserved[slot] = this._colObserved[lastSlot];
+        this._colObservedGen[slot] = this._colObservedGen[lastSlot];
         this._colCount[slot] = this._colCount[lastSlot];
         this._colLeadGap[slot] = this._colLeadGap[lastSlot];
         this._colFirstGap[slot] = this._colFirstGap[lastSlot];
@@ -1339,7 +1359,7 @@ export class Belts {
                 this._popPorts[popCount] = outPortCol[slot];
                 this._popTypes[popCount] = items.typeAt(0);
                 popCount += 1;
-                this._emitPoppedItem(path, items);
+                this._emitPoppedItem(slot, items);
                 // Gaps are distances to the item ahead, so dropping the lead advances the rest and
                 // the new lead's gap is already its distance to the output edge.
                 items.shift();
@@ -1351,7 +1371,7 @@ export class Belts {
                 // block ahead stays put.
                 const gap = items.gapAt(firstGap) - 1;
                 items.setGapAt(firstGap, gap);
-                this._emitMovedItem(path, items, firstGap);
+                this._emitMovedItem(slot, items, firstGap);
                 if (firstGap === 0) {
                     leadGapCol[slot] = gap;
                 }
@@ -1385,7 +1405,7 @@ export class Belts {
             if (items.count === 1) {
                 leadGapCol[slot] = gap;
             }
-            this._emitItemUpsert(path, id, gap, type);
+            this._emitItemUpsert(slot, id, gap, type);
             headGapCol[slot] = 0;
             engine.setPortItem(inPort, EMPTY);
         }

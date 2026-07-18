@@ -225,6 +225,10 @@ export class GameEngine {
         // Whether any session is watching a chunk. Emitters skip building an event nobody receives; a
         // session that subscribes later gets the state through chunkSync, not the missed deltas.
         this._chunkObserved = () => false;
+        // Bumped whenever the answer `_chunkObserved` gives could have changed, so a system caching
+        // "is this thing watched" per entity can revalidate on an integer compare instead of asking
+        // again every tick. Starts at 1, leaving 0 as "never computed" for those caches.
+        this._observerGeneration = 1;
 
         this._resetTick();
     }
@@ -250,6 +254,23 @@ export class GameEngine {
     setEventSink(sink, chunkObserved) {
         this._eventSink = sink;
         this._chunkObserved = chunkObserved === undefined ? () => true : chunkObserved;
+        this.invalidateObservers();
+    }
+
+    /**
+     * Marks every cached observation stale. The owner of the subscriptions calls this whenever a
+     * session's viewport changes, so the sim's per-entity caches recompute on their next check.
+     * @returns {void}
+     */
+    invalidateObservers() {
+        this._observerGeneration += 1;
+    }
+
+    /**
+     * @returns {number} the current observation generation; a cache stamped with it is still valid
+     */
+    get observerGeneration() {
+        return this._observerGeneration;
     }
 
     /**
