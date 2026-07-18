@@ -72,6 +72,16 @@ export class EventBus {
     }
 
     /**
+     * Whether any session is subscribed to a chunk's topic. The sim checks this before building a
+     * render event, so an unwatched chunk costs nothing.
+     * @param {number} chunk
+     * @returns {boolean}
+     */
+    hasChunkSubscribers(chunk) {
+        return this._subscribers.has(chunkTopic(chunk));
+    }
+
+    /**
      * Delivers an event to one session (a subscribe/sync or seed, targeted at that session alone).
      * @param {number} sessionId
      * @param {AbstractEvent} event

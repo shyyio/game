@@ -26,7 +26,10 @@ export class Game {
          */
         this.simEngine = simEngine === undefined ? new GameEngine(modRegistry) : simEngine;
         // Publish each domain event synchronously to the sessions subscribed to its chunk topic.
-        this.simEngine.setEventSink(event => this.bus.publish(event));
+        this.simEngine.setEventSink(
+            event => this.bus.publish(event),
+            chunk => this.bus.hasChunkSubscribers(chunk),
+        );
 
         /**
          * Protobuf wire codec registry, shared by sessions to encode/decode

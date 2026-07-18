@@ -376,8 +376,7 @@ export class Belts {
      */
     _pathRecalcEvent(path) {
         const parts = [...path.beltIds].reverse();
-        const [headX, headY] = path.belts[0].split(",").map(Number);
-        return new BeltPathRecalculateEvent(headX, headY, parts, path.outPort);
+        return new BeltPathRecalculateEvent(path.headX, path.headY, parts, path.outPort);
     }
 
     /**
@@ -391,11 +390,10 @@ export class Belts {
         if (path.belts === undefined) {
             return null;
         }
-        const [x, y] = path.belts[0].split(",").map(Number);
         return {
             pathId: path.beltIds[0],
-            x: x,
-            y: y,
+            x: path.headX,
+            y: path.headY,
         };
     }
 
@@ -406,10 +404,24 @@ export class Belts {
      * @returns {void}
      */
     _emitItemUpsert(path, run) {
+        if (!this._observed(path)) {
+            return;
+        }
         const event = this._itemUpsertEvent(path, run);
         if (event !== null) {
             this.engine.emitEvent(event);
         }
+    }
+
+    /**
+     * Whether a path's chunk has a watcher. The move loop checks this before building per-item events;
+     * a session subscribing later gets the path through chunkSync.
+     * @private
+     * @param {object} path
+     * @returns {boolean}
+     */
+    _observed(path) {
+        return path.belts !== undefined && this.engine.observesTile(path.headX, path.headY);
     }
 
     /**
@@ -436,6 +448,9 @@ export class Belts {
      * @returns {void}
      */
     _emitItemDelete(path, runId) {
+        if (!this._observed(path)) {
+            return;
+        }
         const head = this._headInfo(path);
         if (head === null) {
             return;
@@ -683,14 +698,14 @@ export class Belts {
             const tail = newIndex.get(path.beltIds[path.beltIds.length - 1]);
             if (outItem !== EMPTY && tail !== undefined && tail + 1 < run.length) {
                 occ[2 * (tail + 1) - 1] = outItem;
-                this.engine.Port.item[path.outPort] = EMPTY;
+                this.engine.setPortItem(path.outPort, EMPTY);
             }
             // A resting in-port item buried by the merge re-enters at the head belt's input half.
             const inItem = this.engine.Port.item[path.inPort];
             const head = newIndex.get(path.beltIds[0]);
             if (inItem !== EMPTY && head !== undefined && head > 0) {
                 occ[2 * head - 1] = inItem;
-                this.engine.Port.item[path.inPort] = EMPTY;
+                this.engine.setPortItem(path.inPort, EMPTY);
             }
         }
 
@@ -742,6 +757,10 @@ export class Belts {
             id: eid,
             belts: runBelts.map(belt => tileKey(belt.x, belt.y)),
             beltIds: runBelts.map(belt => belt.id),
+            headX: runBelts[0].x,
+            headY: runBelts[0].y,
+            tailX: runBelts[runBelts.length - 1].x,
+            tailY: runBelts[runBelts.length - 1].y,
             inPort,
             outPort,
             length,
@@ -836,7 +855,7 @@ export class Belts {
                     ];
                     this._nextRunId += 2;
                     headGap = old.headGap;
-                    this.engine.Port.item[old.outPort] = EMPTY;
+                    this.engine.setPortItem(old.outPort, EMPTY);
                 } else if (carried.length === 0) {
                     // Empty path: all the new space is head room.
                     items = [];
@@ -1001,8 +1020,7 @@ export class Belts {
         this._pushPath(path);
         this._byInPort.set(path.inPort, path);
         this._indexPath(path);
-        const [x, y] = path.belts[path.belts.length - 1].split(",").map(Number);
-        this.engine.registerRenderedPort(path.outPort, x, y);
+        this.engine.registerRenderedPort(path.outPort, path.tailX, path.tailY);
     }
 
     /**
@@ -1246,13 +1264,13 @@ export class Belts {
                 path.items.push(item);
                 this._emitItemUpsert(path, item);
                 path.headGap = 0;
-                P[path.inPort] = EMPTY;
+                this.engine.setPortItem(path.inPort, EMPTY);
             }
         }
 
         // Phase 3: write this tick's pops into their out-ports.
         for (const pop of pops) {
-            P[pop.outPort] = pop.type;
+            this.engine.setPortItem(pop.outPort, pop.type);
         }
     }
 
@@ -1271,8 +1289,7 @@ export class Belts {
             }
         }
         for (const path of this.paths) {
-            const [headX, headY] = path.belts[0].split(",").map(Number);
-            if (chunkId(headX, headY) === chunk) {
+            if (chunkId(path.headX, path.headY) === chunk) {
                 events.push(this._pathRecalcEvent(path));
                 for (const run of path.items) {
                     events.push(this._itemUpsertEvent(path, run));
@@ -1383,6 +1400,10 @@ export class Belts {
                 id: pathEid,
                 belts: belts.map(belt => tileKey(belt.x, belt.y)),
                 beltIds: belts.map(belt => belt.id),
+                headX: belts[0].x,
+                headY: belts[0].y,
+                tailX: belts[belts.length - 1].x,
+                tailY: belts[belts.length - 1].y,
                 inPort: BP.inPort[pathEid],
                 outPort: BP.outPort[pathEid],
                 length: BP.length[pathEid],
