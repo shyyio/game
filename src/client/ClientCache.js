@@ -3,7 +3,7 @@ import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 
 /**
  * One placed object in the ClientCache: a primary tile (for by-tile / by-chunk lookups), the
- * cells it covers with their occupancy layer (for collision / connection lookups), a `data` payload
+ * cells it covers with their position layer (for collision / connection lookups), a `data` payload
  * carrying at least the ObjectType (`data.type`) and direction, and its rendered out-ports by
  * PortDefinition name.
  */
@@ -295,14 +295,14 @@ export class ClientCache {
     }
 
     /**
-     * The object of `type` occupying (tileX, tileY) on its occupancy layer, or null.
+     * The object of `type` occupying (tileX, tileY) on its position layer, or null.
      * @param {number} tileX
      * @param {number} tileY
      * @param {ObjectType} type
      * @returns {CacheEntry|null}
      */
     objectAt(tileX, tileY, type) {
-        const entry = this.at(tileX, tileY, type.occupancyLayer);
+        const entry = this.at(tileX, tileY, type.positionLayer);
         return entry !== null && entry.data.type.typeId === type.typeId ? entry : null;
     }
 

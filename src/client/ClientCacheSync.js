@@ -94,7 +94,7 @@ export class ClientCacheSync {
         const cells = type.geometry.tiles(event.direction).map(cell => ({
             x: event.x + cell.x,
             y: event.y + cell.y,
-            layer: type.occupancyLayer,
+            layer: type.positionLayer,
         }));
         this._cache.set(event.id, event.x, event.y, cells, ports, new ObjectClientData(type, event.direction));
         if (event.lastOutput !== null) {

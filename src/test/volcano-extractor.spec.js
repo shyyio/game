@@ -10,8 +10,8 @@ test("a volcano feeds a primary extractor (sulfur) and a deep extractor (brine) 
 
     // Volcano 2x2 at (5,5); (5,4) and (6,4) are ring extraction tiles (offset {0,-1},{1,-1}).
     engine.applyMessage(new CreateObjectMessage(VolcanoResourceType.typeId, 5, 5, Direction.UP));
-    assert.equal(engine.occupantValueAt(5, 4, "R"), 201, "ring tile is covered by volcano");
-    assert.equal(engine.occupantValueAt(5, 5, "R"), null, "the 2x2 body is not an extraction tile");
+    assert.equal(engine.occupantUserDataAt(5, 4, "R"), 201, "ring tile is covered by volcano");
+    assert.equal(engine.occupantUserDataAt(5, 5, "R"), null, "the 2x2 body is not an extraction tile");
 
     engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 5, 4, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(DeepExtractorType.typeId, 6, 4, Direction.UP));

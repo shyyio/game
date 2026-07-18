@@ -52,13 +52,13 @@ export function inferBeltParent(cache, tileX, tileY, direction) {
 }
 
 /**
- * The occupancy layer a belt of `type` facing `direction` sits on: undergrounds get one
+ * The position layer a belt of `type` facing `direction` sits on: undergrounds get one
  * layer per axis (so crossing tunnels and a surface belt coexist), everything else SURFACE.
  * @param {BeltType} type
  * @param {Direction} direction
  * @returns {string}
  */
-export function beltOccupancyLayer(type, direction) {
+export function beltPositionLayer(type, direction) {
     if (type === BELT_UNDERGROUND) {
         return LAYERS_UNDERGROUND_AXIS[direction % 2];
     }

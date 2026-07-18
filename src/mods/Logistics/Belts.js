@@ -17,7 +17,7 @@ import {
     BELT_UNDERGROUND,
     LAYERS_UNDERGROUND_AXIS,
 } from "./constants.js";
-import {beltOccupancyLayer} from "./geometry.js";
+import {beltPositionLayer} from "./geometry.js";
 
 // A gap run in a path's RLE item list (empty half-tiles between items).
 const GAP = 0;
@@ -87,7 +87,7 @@ export class Belts {
         engine.globals.beltNextRunId = this._nextRunId;
 
         // Underground axis layers, so crossing tunnels and a surface belt coexist on a tile.
-        LAYERS_UNDERGROUND_AXIS.forEach(layer => engine.registerOccupancyLayer(layer));
+        LAYERS_UNDERGROUND_AXIS.forEach(layer => engine.registerPositionLayer(layer));
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._move());
@@ -229,8 +229,8 @@ export class Belts {
     placeBelt(x, y, direction, type=BELT_NORMAL) {
         // Surface belts (normal/ramp) share the surface layer; an underground occupies its axis layer,
         // so it can cross under a surface belt. Reject if the layer's cell is taken.
-        const layer = beltOccupancyLayer(type, direction);
-        if (!this.engine.occupancyFree([{x, y, layer}])) {
+        const layer = beltPositionLayer(type, direction);
+        if (!this.engine.cellsFree([{x, y, layer}])) {
             return null;
         }
         this.engine.occupy([{x, y, layer}]);
@@ -461,7 +461,7 @@ export class Belts {
             return;
         }
         const removedId = belt.id;
-        this.engine.destroyCells([{x, y, layer: beltOccupancyLayer(belt.type, direction)}]);
+        this.engine.destroyCells([{x, y, layer: beltPositionLayer(belt.type, direction)}]);
 
         // The belts this one linked to — the belt ahead and every belt that fed its tile — anchor the
         // surviving runs. Captured before removal, while the flow links are intact.

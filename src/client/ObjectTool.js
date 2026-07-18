@@ -178,7 +178,7 @@ export class ObjectTool extends AbstractTool {
                 bodyByKey.set(key, {cell, state: "blocked"});
                 return;
             }
-            const occupant = this._cache.at(cell.x, cell.y, this._type.occupancyLayer);
+            const occupant = this._cache.at(cell.x, cell.y, this._type.positionLayer);
             if (occupant === null) {
                 bodyByKey.set(key, {cell, state: "clear"});
             } else if (this._overwritable(occupant, direction)) {
@@ -189,11 +189,11 @@ export class ObjectTool extends AbstractTool {
             }
         });
 
-        // Mirror the server's per-layer occupancy: block any footprint cell landing on a same-layer
+        // Mirror the server's per-layer positions: block any footprint cell landing on a same-layer
         // occupant (overwritten cells excluded).
-        const occupancy = this._occupancyByLayer(overwriteIds);
-        this._type.occupancyLayerTiles(direction).forEach(({layer, cells}) => {
-            const occupied = occupancy.get(layer);
+        const positions = this._positionsByLayer(overwriteIds);
+        this._type.positionLayerTiles(direction).forEach(({layer, cells}) => {
+            const occupied = positions.get(layer);
             if (occupied === undefined) {
                 return;
             }
@@ -234,13 +234,13 @@ export class ObjectTool extends AbstractTool {
      * @param {Set<number>} excludeIds
      * @returns {Map<number, Set<string>>}
      */
-    _occupancyByLayer(excludeIds) {
+    _positionsByLayer(excludeIds) {
         const byLayer = new Map();
         this._cache.values().forEach(entry => {
             if (excludeIds.has(entry.id)) {
                 return;
             }
-            entry.data.type.occupancyLayerTiles(entry.data.direction).forEach(({layer, cells}) => {
+            entry.data.type.positionLayerTiles(entry.data.direction).forEach(({layer, cells}) => {
                 if (!byLayer.has(layer)) {
                     byLayer.set(layer, new Set());
                 }

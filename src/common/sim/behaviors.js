@@ -2,7 +2,7 @@ import {chunkId} from "@/common/util.js";
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {EMPTY, NO_EID, TickPhase} from "@/common/sim/GameEngine.js";
 
-// Occupancy layer for resource cover: an extraction tile stores its resource type as the cell value.
+// Position layer for resource cover: an extraction tile stores its resource type as the cell userData.
 const LAYER_RESOURCE = "R";
 
 // Recipe input keys are always padded to three slots.
@@ -426,7 +426,7 @@ export class ExtractorBehavior extends AbstractBehavior {
      * @returns {boolean}
      */
     canSpawn(engine, placed, type, message) {
-        return engine.occupantValueAt(message.x, message.y, LAYER_RESOURCE) !== null;
+        return engine.occupantUserDataAt(message.x, message.y, LAYER_RESOURCE) !== null;
     }
 
     onSpawn(engine, placed, eid, type, message) {
@@ -434,7 +434,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         const extractor = engine.component("Extractor").store;
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         extractor.out[eid] = output.port;
-        extractor.resourceType[eid] = engine.occupantValueAt(message.x, message.y, LAYER_RESOURCE);
+        extractor.resourceType[eid] = engine.occupantUserDataAt(message.x, message.y, LAYER_RESOURCE);
         extractor.outTileX[eid] = output.tile.x;
         extractor.outTileY[eid] = output.tile.y;
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
@@ -551,7 +551,7 @@ export class ResourceBehavior extends AbstractBehavior {
     }
 
     install(engine, placed) {
-        engine.registerOccupancyLayer(LAYER_RESOURCE);
+        engine.registerPositionLayer(LAYER_RESOURCE);
     }
 
     onSpawn(engine, placed, eid, type, message) {

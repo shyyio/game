@@ -76,7 +76,7 @@ const PORT_CAPACITY = 1024;
 
 /**
  * bitECS-backed simulation engine Game drives: the port-transfer core over typed-array component
- * storage, the occupancy/port indexes, (de)serialization, and the mod host — each loaded sim mod
+ * storage, the position/port indexes, (de)serialization, and the mod host — each loaded sim mod
  * registers its ECS content (components, systems, message handlers, chunk-sync contributors) via
  * {@link AbstractSimMod#setup}. Generic — it knows no specific content, so it imports nothing from
  * `mods/`.
@@ -124,22 +124,22 @@ export class GameEngine {
         this.Port = this._portDef.store;
 
         // Layer name <-> int code; the surface layer is code 0, mods register the rest (see
-        // registerOccupancyLayer). Registration order is deterministic per loadout, so codes are stable
+        // registerPositionLayer). Registration order is deterministic per loadout, so codes are stable
         // across save/load.
         this._layerCodes = new Map();
         this._layerNames = [];
-        this.registerOccupancyLayer(LAYER_SURFACE);
+        this.registerPositionLayer(LAYER_SURFACE);
 
-        // Occupancy component: one entity per occupied cell {x, y, layer}, tagged with its owner object id
-        // (so a delete releases all its cells by query) and a per-cell value read via occupantValueAt
+        // Position component: one entity per occupied cell {x, y, layer}, tagged with its owner object id
+        // (so a delete releases all its cells by query) and per-cell userData read via occupantUserDataAt
         // (0 for plain footprints; e.g. resource cover stores its resource type). Objects on the same
         // layer collide; different layers coexist.
-        this._occupancyDef = this.defineComponent("Occupancy", [
+        this._positionDef = this.defineComponent("Position", [
             {name: "x"},
             {name: "y"},
             {name: "layer"},
             {name: "owner", fill: NO_EID},
-            {name: "value"},
+            {name: "userData"},
         ]);
 
         // Shared ports by edge key "x,y,direction" and occupied cells by "x,y,layer" — derived indexes
@@ -489,11 +489,11 @@ export class GameEngine {
     }
 
     /**
-     * Registers an occupancy layer name, returning its stable int code (idempotent).
+     * Registers a position layer name, returning its stable int code (idempotent).
      * @param {string} name
      * @returns {number}
      */
-    registerOccupancyLayer(name) {
+    registerPositionLayer(name) {
         let code = this._layerCodes.get(name);
         if (code === undefined) {
             code = this._layerNames.length;
@@ -508,44 +508,44 @@ export class GameEngine {
      * @param {{x:number, y:number, layer:string}[]} cells
      * @returns {boolean}
      */
-    occupancyFree(cells) {
+    cellsFree(cells) {
         return cells.every(cell => !this._cellByKey.has(`${cell.x},${cell.y},${cell.layer}`));
     }
 
     /**
-     * The value stored at cell {x, y, layer}, or null when the cell is free.
+     * The userData stored at cell {x, y, layer}, or null when the cell is free.
      * @param {number} x
      * @param {number} y
      * @param {string} layer
      * @returns {number|null}
      */
-    occupantValueAt(x, y, layer) {
+    occupantUserDataAt(x, y, layer) {
         const eid = this._cellByKey.get(`${x},${y},${layer}`);
-        return eid === undefined ? null : this._occupancyDef.store.value[eid];
+        return eid === undefined ? null : this._positionDef.store.userData[eid];
     }
 
     /**
-     * Marks each cell occupied, one Occupancy entity per newly taken cell, tagged with `owner` so
+     * Marks each cell occupied, one Position entity per newly taken cell, tagged with `owner` so
      * {@link destroyOwnerCells} can destroy them all on delete.
      * @param {{x:number, y:number, layer:string}[]} cells
      * @param {number} [owner] - the owning object id
-     * @param {number} [value] - per-cell value read back via {@link occupantValueAt}
+     * @param {number} [userData] - per-cell value read back via {@link occupantUserDataAt}
      * @returns {void}
      */
-    occupy(cells, owner=NO_EID, value=0) {
-        const store = this._occupancyDef.store;
+    occupy(cells, owner=NO_EID, userData=0) {
+        const store = this._positionDef.store;
         cells.forEach(cell => {
             const key = `${cell.x},${cell.y},${cell.layer}`;
             if (this._cellByKey.has(key)) {
                 return;
             }
             const eid = addEntity(this.world);
-            this._addComponent(this._occupancyDef, eid);
+            this._addComponent(this._positionDef, eid);
             store.x[eid] = cell.x;
             store.y[eid] = cell.y;
             store.layer[eid] = this._layerCodes.get(cell.layer);
             store.owner[eid] = owner;
-            store.value[eid] = value;
+            store.userData[eid] = userData;
             this._cellByKey.set(key, eid);
         });
     }
@@ -572,7 +572,7 @@ export class GameEngine {
      * @returns {void}
      */
     destroyOwnerCells(owner) {
-        const store = this._occupancyDef.store;
+        const store = this._positionDef.store;
         query(this.world, [store]).forEach(eid => {
             if (store.owner[eid] === owner) {
                 this._cellByKey.delete(`${store.x[eid]},${store.y[eid]},${this._layerNames[store.layer[eid]]}`);
@@ -965,7 +965,7 @@ export class GameEngine {
         });
 
         this._rebuildPortEdges();
-        this._rebuildOccupancy();
+        this._rebuildPositions();
         this._rebuildHooks.forEach(hook => hook(remap));
     }
 
@@ -986,8 +986,8 @@ export class GameEngine {
      * @private
      * @returns {void}
      */
-    _rebuildOccupancy() {
-        const store = this._occupancyDef.store;
+    _rebuildPositions() {
+        const store = this._positionDef.store;
         query(this.world, [store]).forEach(eid => {
             this._cellByKey.set(`${store.x[eid]},${store.y[eid]},${this._layerNames[store.layer[eid]]}`, eid);
         });

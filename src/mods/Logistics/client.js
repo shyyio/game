@@ -20,7 +20,7 @@ import {
     BeltType,
     ITEM_TYPE_GAP,
 } from "./constants.js";
-import {surfaceBeltAt, walkTunnel, tunnelStep, isRamp, beltOccupancyLayer, inferBeltParent} from "./geometry.js";
+import {surfaceBeltAt, walkTunnel, tunnelStep, isRamp, beltPositionLayer, inferBeltParent} from "./geometry.js";
 import {
     AbstractClientMod,
     MiniMenuEntry,
@@ -510,7 +510,7 @@ export class LogisticsClientMod extends AbstractClientMod {
             event.id,
             event.x,
             event.y,
-            [{x: event.x, y: event.y, layer: beltOccupancyLayer(event.beltType, event.direction)}],
+            [{x: event.x, y: event.y, layer: beltPositionLayer(event.beltType, event.direction)}],
             {},
             // `conveyor` is a generic cache convention: a straight surface lane an aligned
             // placement (a splitter, a machine) may overwrite. Other mods read it without
