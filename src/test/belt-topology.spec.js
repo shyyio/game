@@ -136,7 +136,7 @@ test("a closed loop is one path sharing one port, and an item circulates", async
     for (let i = 0; i < 16; i += 1) {
         engine.tickAll();
         const inPort = engine.portItem(belts.paths[0].outPort) === RED ? 1 : 0;
-        const onBelt = belts.paths[0].items.filter(run => run.type !== 0).length;
+        const onBelt = belts.paths[0].items.count;
         assert.equal(inPort + onBelt, 1, "exactly one item exists at all times");
         rests += inPort;
     }
@@ -211,9 +211,9 @@ test("a higher-id ramp-down does not steal a surface junction", async () => {
 // shortens). (Belt.spec: "Stashes items when the tail belt is deleted" / "Splits the path and stashes
 // items when a middle belt is deleted" / "Keeps downstream items when the head belt is deleted".)
 
-// Count of real (non-gap) item cells across all paths.
+// Count of in-flight items across all paths.
 function itemCells(belts) {
-    return belts.paths.flatMap(path => path.items).filter(run => run.type !== 0).reduce((sum, run) => sum + run.length, 0);
+    return belts.paths.reduce((sum, path) => sum + path.items.count, 0);
 }
 
 test("an in-flight item survives deletion of a downstream belt and is still delivered", async () => {

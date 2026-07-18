@@ -28,8 +28,8 @@ test("extending a belt path downstream preserves an in-flight item", async () =>
     engine.tickAll();
     engine.tickAll();
 
-    // The item is now an in-flight RLE run, not yet popped.
-    const inFlight = belts.paths[0].items.filter(run => run.type === RED).length;
+    // The item is now in flight on the path, not yet popped.
+    const inFlight = belts.paths[0].items.toList().filter(item => item.type === RED).length;
     assert.equal(inFlight, 1, "the item is in flight on the path before the extension");
 
     // Extend the tail downstream (a new belt at (0,2)), mid-flight.
@@ -139,9 +139,9 @@ test("a tail extension keeps item-row ids ascending output-to-input", async () =
 
     belts.placeBelt(0, 2, Direction.UP);
 
-    const items = belts.paths[0].items;
-    const ascending = items.every((run, i) => i === 0 || items[i - 1].id < run.id);
-    assert.ok(ascending, `item ids must be ascending output->input, got ${items.map(run => String(run.id))}`);
+    const items = belts.paths[0].items.toList();
+    const ascending = items.every((item, i) => i === 0 || items[i - 1].id < item.id);
+    assert.ok(ascending, `item ids must be ascending output->input, got ${items.map(item => String(item.id))}`);
 });
 
 // A head (upstream) extension keeps the same out-port. An item resting there must stay put — the port

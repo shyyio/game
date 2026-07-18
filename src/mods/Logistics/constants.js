@@ -42,9 +42,6 @@ export const BeltBend = {
     RIGHT: 2,
 };
 
-// ---- Item types ----
-export const ITEM_TYPE_GAP = 0;
-
 // ---- System ordering ----
 // The splitter's POST_RESOLVE seam runs at this order so it reads shared ports before the belt
 // transport (default order 0) writes pops, whatever the registration sequence.
