@@ -18,6 +18,17 @@ const SLOT_COLS = ["slot0", "slot1", "slot2"];
 const PROCESSING_COLS = ["processing0", "processing1", "processing2"];
 
 /**
+ * Resolves per-slot column names to their arrays, so a hot loop indexes numerically instead of
+ * looking the column up by name per entity.
+ * @param {object} store
+ * @param {string[]} names
+ * @returns {ArrayLike<number>[]}
+ */
+function columns(store, names) {
+    return names.map(name => store[name]);
+}
+
+/**
  * A component+system bundle giving a placeable object type its sim behavior. PlacedObjects owns the
  * generic entity lifecycle (spawn/despawn/chunk-sync/inspect); a behavior supplies the type-specific
  * pieces: its components and systems ({@link install}, once per behavior class per engine — never
@@ -252,13 +263,16 @@ export class MachineBehavior extends AbstractBehavior {
     inspect(engine, placed, eid, objectId) {
         const item = engine.Port.item;
         const machine = engine.component("Machine").store;
+        const inCols = columns(machine, IN_COLS);
+        const slotCols = columns(machine, SLOT_COLS);
+        const processingCols = columns(machine, PROCESSING_COLS);
         const inputPorts = [];
         const inputMemory = [];
         for (let i = 0; i < this.inputCount; i += 1) {
-            const resting = item[machine[IN_COLS[i]][eid]];
+            const resting = item[inCols[i][eid]];
             inputPorts.push(resting === EMPTY ? 0 : resting);
-            const slot = machine[SLOT_COLS[i]][eid];
-            const processing = machine[PROCESSING_COLS[i]][eid];
+            const slot = slotCols[i][eid];
+            const processing = processingCols[i][eid];
             inputMemory.push(slot !== EMPTY ? slot : (processing !== EMPTY ? processing : 0));
         }
         const remaining = machine.remaining[eid] === EMPTY ? null : machine.remaining[eid];
@@ -290,14 +304,14 @@ export class MachineBehavior extends AbstractBehavior {
 
     /**
      * @private
-     * @param {object} machine - the Machine store
+     * @param {ArrayLike<number>[]} slotCols
      * @param {number} eid
      * @returns {number} the produced output for the gathered slots, or the fallback
      */
-    _resolveRecipe(machine, eid) {
+    _resolveRecipe(slotCols, eid) {
         let key = 0;
         for (let i = 0; i < RECIPE_SLOTS; i += 1) {
-            const slot = i < this.inputCount ? machine[SLOT_COLS[i]][eid] : EMPTY;
+            const slot = i < this.inputCount ? slotCols[i][eid] : EMPTY;
             key = key * RECIPE_SLOT_LIMIT + (slot === EMPTY ? 0 : slot);
         }
         const output = this.recipes.get(key);
@@ -320,42 +334,48 @@ export class MachineBehavior extends AbstractBehavior {
         const item = engine.Port.item;
         const def = engine.component("Machine");
         const machine = def.store;
+        const inCols = columns(machine, IN_COLS);
+        const slotCols = columns(machine, SLOT_COLS);
+        const processingCols = columns(machine, PROCESSING_COLS);
+        const remaining = machine.remaining;
+        const output = machine.output;
+        const out = machine.out;
         for (const eid of engine.entitiesWith(def)) {
             const behavior = placed.behaviorFor(placed.PlacedObject.typeId[eid]);
-            if (machine.remaining[eid] > 0) {
-                machine.remaining[eid] -= 1;
+            if (remaining[eid] > 0) {
+                remaining[eid] -= 1;
             }
 
             // Gather while idle, or in step on the tick a free output lets the next set load.
-            const gathering = machine.output[eid] === EMPTY || (machine.remaining[eid] === 0 && item[machine.out[eid]] === EMPTY);
+            const gathering = output[eid] === EMPTY || (remaining[eid] === 0 && item[out[eid]] === EMPTY);
             if (gathering) {
                 for (let i = 0; i < behavior.inputCount; i += 1) {
-                    const inPort = machine[IN_COLS[i]][eid];
-                    if (machine[SLOT_COLS[i]][eid] === EMPTY && item[inPort] !== EMPTY) {
+                    const inPort = inCols[i][eid];
+                    if (slotCols[i][eid] === EMPTY && item[inPort] !== EMPTY) {
                         engine.submitDrain(inPort, true);
-                        machine[SLOT_COLS[i]][eid] = item[inPort];
+                        slotCols[i][eid] = item[inPort];
                     }
                 }
             }
 
             // Every port contributed: match the recipe, start the countdown, move slots into processing.
-            let allFilled = machine.output[eid] === EMPTY;
+            let allFilled = output[eid] === EMPTY;
             for (let i = 0; i < behavior.inputCount; i += 1) {
-                if (machine[SLOT_COLS[i]][eid] === EMPTY) {
+                if (slotCols[i][eid] === EMPTY) {
                     allFilled = false;
                 }
             }
             if (allFilled) {
-                machine.output[eid] = behavior._resolveRecipe(machine, eid);
-                machine.remaining[eid] = behavior.processingTicks;
+                output[eid] = behavior._resolveRecipe(slotCols, eid);
+                remaining[eid] = behavior.processingTicks;
                 for (let i = 0; i < behavior.inputCount; i += 1) {
-                    machine[PROCESSING_COLS[i]][eid] = machine[SLOT_COLS[i]][eid];
-                    machine[SLOT_COLS[i]][eid] = EMPTY;
+                    processingCols[i][eid] = slotCols[i][eid];
+                    slotCols[i][eid] = EMPTY;
                 }
             }
 
-            if (machine.remaining[eid] === 0) {
-                engine.submitCreate(machine.out[eid], machine.output[eid], item[machine.out[eid]] === EMPTY);
+            if (remaining[eid] === 0) {
+                engine.submitCreate(out[eid], output[eid], item[out[eid]] === EMPTY);
             }
         }
     }
@@ -370,13 +390,14 @@ export class MachineBehavior extends AbstractBehavior {
     static _finish(engine, placed) {
         const def = engine.component("Machine");
         const machine = def.store;
+        const processingCols = columns(machine, PROCESSING_COLS);
         for (const eid of engine.entitiesWith(def)) {
             if (engine.wasResolvedDest(machine.out[eid])) {
                 machine.lastOutput[eid] = machine.output[eid];
                 machine.output[eid] = EMPTY;
                 machine.remaining[eid] = EMPTY;
                 for (let i = 0; i < RECIPE_SLOTS; i += 1) {
-                    machine[PROCESSING_COLS[i]][eid] = EMPTY;
+                    processingCols[i][eid] = EMPTY;
                 }
             }
         }

@@ -4,7 +4,7 @@ import assert from "node:assert";
 import {ModRegistry} from "@/common/mod/ModRegistry.js";
 import {WireRegistry} from "@/common/wire.js";
 
-import {SetViewportMessage} from "@/common/CoreMessages.js";
+import {SetViewportMessage, SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
 import {PortItemSetEvent} from "@/common/PortItemEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
@@ -90,6 +90,16 @@ test("Decoded id is a Number, round-tripped exactly", () => {
     const decoded = reg.decode(reg.encode(new PortItemSetEvent(0, 0, id, 1)));
     assert.strictEqual(typeof decoded.portId, "number");
     assert.strictEqual(decoded.portId, id);
+});
+
+test("Repeated int64 decodes to Numbers, exact up to the 2^53 cap", () => {
+    const reg = registry();
+    const ids = [1, 999999999999, Number.MAX_SAFE_INTEGER];
+    const decoded = reg.decode(reg.encode(new SetInspectedObjectsMessage(ids)));
+    for (const id of decoded.objectIds) {
+        assert.strictEqual(typeof id, "number");
+    }
+    assert.deepStrictEqual(decoded.objectIds, ids);
 });
 
 test("Throws on an unregistered class", () => {

@@ -1,5 +1,4 @@
 import {AbstractEvent} from "@/common/AbstractEvent.js";
-import {objectTopic} from "@/common/topics.js";
 
 /**
  * A machine's inspect snapshot (on-open and per-tick). Per input port: `inputPorts` = item resting in
@@ -40,10 +39,11 @@ export class InspectHeartbeatEvent extends AbstractEvent {
     }
 
     /**
-     * @returns {string}
+     * @param {EventBus} bus
+     * @returns {Set<number>|undefined}
      */
-    get topicKey() {
-        return objectTopic(this.objectId);
+    subscribersIn(bus) {
+        return bus.objectSubscribers(this.objectId);
     }
 }
 
@@ -65,9 +65,10 @@ export class InspectClosedEvent extends AbstractEvent {
     }
 
     /**
-     * @returns {string}
+     * @param {EventBus} bus
+     * @returns {Set<number>|undefined}
      */
-    get topicKey() {
-        return objectTopic(this.objectId);
+    subscribersIn(bus) {
+        return bus.objectSubscribers(this.objectId);
     }
 }

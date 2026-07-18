@@ -14,13 +14,13 @@ class CapturingSession {
     }
 }
 
-// Test events carrying a fixed topic key.
+// Test events routing through a fixed topic.
 function chunkEvent(chunk) {
-    return {topicKey: "c" + chunk, chunk};
+    return {chunk, subscribersIn: bus => bus.chunkSubscribers(chunk)};
 }
 
 function objectEvent(objectId) {
-    return {topicKey: "o" + objectId, objectId};
+    return {objectId, subscribersIn: bus => bus.objectSubscribers(objectId)};
 }
 
 test("addSession allocates ascending ids", () => {
