@@ -12,7 +12,6 @@
     "test": "node --import ./src/test/test-loader.js --test 'src/**/*.spec.js'",
     "schema": "rm SCHEMA.sqlite3; node --import ./src/test/test-loader.js src/test/dump-schema.js | sqlite3 SCHEMA.sqlite3",
     "save:sample": "rm -f SAMPLE.sqlite3; node --import ./src/test/test-loader.js src/test/make-sample-save.js SAMPLE.sqlite3",
-    "bench:tick": "node --import ./src/test/test-loader.js src/test/belt-tick-benchmark.js",
     "bench:lines": "node --import ./src/test/test-loader.js src/test/production-line-benchmark.js"
   },
   "dependencies": {
