@@ -5,7 +5,7 @@ import {NO_EID} from "@/common/sim/GameEngine.js";
 
 /**
  * The generic entity host for every derived (behavior-driven) object type: the shared PlacedObject
- * component, the clientId -> eid index, and the ONE spawn/despawn/chunk-sync/inspect path. Built by
+ * component, the objectId -> eid index, and the ONE spawn/despawn/chunk-sync/inspect path. Built by
  * the engine before sim mods wire up; installs each frozen type's behavior once per behavior class.
  * Types with `behavior: null` (belt) are ignored entirely — their bespoke sim mod owns them.
  */
@@ -20,13 +20,13 @@ export class PlacedObjects {
         // Where a placed object sits lives on the shared Position component, not here.
         this.def = engine.defineComponent("PlacedObject", [
             {name: "typeId"},
-            {name: "clientId", fill: NO_EID},
+            {name: "objectId", fill: NO_EID},
         ]);
         this.PlacedObject = this.def.store;
 
         // typeId -> ObjectType, derived types only.
         this._types = new Map();
-        this._eidByClientId = new Map();
+        this._eidByObjectId = new Map();
 
         const installed = new Set();
         registry.objectTypes.forEach(type => {
@@ -66,12 +66,12 @@ export class PlacedObjects {
     }
 
     /**
-     * The placed entity with client id `clientId`, or undefined.
-     * @param {number} clientId
+     * The placed entity with object id `objectId`, or undefined.
+     * @param {number} objectId
      * @returns {number|undefined}
      */
-    eidByClientId(clientId) {
-        return this._eidByClientId.get(clientId);
+    eidByObjectId(objectId) {
+        return this._eidByObjectId.get(objectId);
     }
 
     /**
@@ -111,28 +111,28 @@ export class PlacedObjects {
             return true;
         }
         const eid = engine.createEntity(this.def);
-        const clientId = engine.createObjectId();
+        const objectId = engine.createObjectId();
         const placedObject = this.PlacedObject;
         placedObject.typeId[eid] = type.typeId;
-        placedObject.clientId[eid] = clientId;
+        placedObject.objectId[eid] = objectId;
         engine.setPosition(eid, message.x, message.y, message.direction);
         const portIds = type.behavior.onSpawn(engine, this, eid, type, message);
         if (type.placement.solid) {
-            engine.track(clientId, footprint);
+            engine.track(objectId, footprint);
         }
-        this._eidByClientId.set(clientId, eid);
-        engine.emitEvent(new ObjectInsertEvent(type.typeId, clientId, message.x, message.y, message.direction, portIds, null));
+        this._eidByObjectId.set(objectId, eid);
+        engine.emitEvent(new ObjectInsertEvent(type.typeId, objectId, message.x, message.y, message.direction, portIds, null));
         return true;
     }
 
     /**
      * The generic despawn path; an index miss returns false (a bespoke type's delete falls through).
      * @private
-     * @param {number} clientId
+     * @param {number} objectId
      * @returns {boolean}
      */
-    _delete(clientId) {
-        const eid = this._eidByClientId.get(clientId);
+    _delete(objectId) {
+        const eid = this._eidByObjectId.get(objectId);
         if (eid === undefined) {
             return false;
         }
@@ -141,9 +141,9 @@ export class PlacedObjects {
         const position = engine.Position;
         const type = this._types.get(placedObject.typeId[eid]);
         type.behavior.onDespawn(engine, this, eid);
-        engine.emitEvent(new ObjectDeleteEvent(type.typeId, clientId, position.x[eid], position.y[eid]));
+        engine.emitEvent(new ObjectDeleteEvent(type.typeId, objectId, position.x[eid], position.y[eid]));
         engine.destroyEntity(eid);
-        this._eidByClientId.delete(clientId);
+        this._eidByObjectId.delete(objectId);
         return true;
     }
 
@@ -163,7 +163,7 @@ export class PlacedObjects {
             const type = this._types.get(placedObject.typeId[eid]);
             const sync = type.behavior.syncData(this.engine, this, eid);
             events.push(new ObjectSyncEvent(
-                type.typeId, placedObject.clientId[eid], position.x[eid], position.y[eid], position.direction[eid],
+                type.typeId, placedObject.objectId[eid], position.x[eid], position.y[eid], position.direction[eid],
                 sync.portIds, sync.lastOutput,
             ));
         });
@@ -176,7 +176,7 @@ export class PlacedObjects {
      * @returns {InspectHeartbeatEvent|null}
      */
     _inspect(objectId) {
-        const eid = this._eidByClientId.get(objectId);
+        const eid = this._eidByObjectId.get(objectId);
         if (eid === undefined) {
             return null;
         }
@@ -188,16 +188,16 @@ export class PlacedObjects {
     }
 
     /**
-     * Rebuilds the clientId index and every entity's rendered ports after a load, plus each behavior
+     * Rebuilds the objectId index and every entity's rendered ports after a load, plus each behavior
      * class's derived indexes.
      * @private
      * @returns {void}
      */
     _rebuild() {
-        this._eidByClientId = new Map();
+        this._eidByObjectId = new Map();
         const placedObject = this.PlacedObject;
         this.engine.entitiesWith(this.def).forEach(eid => {
-            this._eidByClientId.set(placedObject.clientId[eid], eid);
+            this._eidByObjectId.set(placedObject.objectId[eid], eid);
             const type = this._types.get(placedObject.typeId[eid]);
             type.behavior.resyncRenderedPorts(this.engine, this, eid);
         });
