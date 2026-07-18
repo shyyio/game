@@ -113,6 +113,7 @@ export class Game {
      */
     disconnect(sessionId) {
         this.bus.removeSession(sessionId);
+        this.simEngine.invalidateObservers();
     }
 
     // ---- Messages ----
@@ -150,6 +151,9 @@ export class Game {
      */
     _setSessionViewport(session, chunks) {
         const {added, removed} = this.bus.setViewport(session.id, chunks);
+        if (added.length > 0 || removed.length > 0) {
+            this.simEngine.invalidateObservers();
+        }
 
         for (const chunk of removed) {
             this.bus.publishTo(session.id, new ChunkUnsubscribeEvent(chunk));
