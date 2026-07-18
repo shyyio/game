@@ -49,9 +49,9 @@ export class GridDrawLayer extends AbstractDrawLayer {
 
     set mapMode(value) {
         this._mapMode = value;
-        this.children.forEach(grid => {
+        for (const grid of this.children) {
             grid.children[1].visible = !value;
-        });
+        }
     }
 
     onEvent(event) {

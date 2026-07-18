@@ -43,8 +43,12 @@ export class EventBus {
      * @returns {void}
      */
     removeSession(sessionId) {
-        this._viewports.get(sessionId).forEach(chunk => this._unsubscribe(chunkTopic(chunk), sessionId));
-        this._inspects.get(sessionId).forEach(objectId => this._unsubscribe(objectTopic(objectId), sessionId));
+        for (const chunk of this._viewports.get(sessionId)) {
+            this._unsubscribe(chunkTopic(chunk), sessionId);
+        }
+        for (const objectId of this._inspects.get(sessionId)) {
+            this._unsubscribe(objectTopic(objectId), sessionId);
+        }
         this._viewports.delete(sessionId);
         this._inspects.delete(sessionId);
         this._sessions.delete(sessionId);
@@ -62,9 +66,9 @@ export class EventBus {
         if (subscribers === undefined) {
             return;
         }
-        subscribers.forEach(sessionId => {
+        for (const sessionId of [...subscribers]) {
             this._sessions.get(sessionId).publishEvent(event);
-        });
+        }
     }
 
     /**
@@ -94,19 +98,19 @@ export class EventBus {
         const requested = new Set(chunks);
 
         const added = [];
-        requested.forEach(chunk => {
+        for (const chunk of requested) {
             if (!current.has(chunk)) {
                 added.push(chunk);
                 this._subscribe(chunkTopic(chunk), sessionId);
             }
-        });
+        }
         const removed = [];
-        current.forEach(chunk => {
+        for (const chunk of current) {
             if (!requested.has(chunk)) {
                 removed.push(chunk);
                 this._unsubscribe(chunkTopic(chunk), sessionId);
             }
-        });
+        }
 
         this._viewports.set(sessionId, requested);
         return {added, removed};
@@ -126,19 +130,19 @@ export class EventBus {
         const requested = new Set(objectIds);
 
         const added = [];
-        requested.forEach(objectId => {
+        for (const objectId of requested) {
             if (!current.has(objectId)) {
                 added.push(objectId);
                 this._subscribe(objectTopic(objectId), sessionId);
             }
-        });
+        }
         const removed = [];
-        current.forEach(objectId => {
+        for (const objectId of current) {
             if (!requested.has(objectId)) {
                 removed.push(objectId);
                 this._unsubscribe(objectTopic(objectId), sessionId);
             }
-        });
+        }
 
         this._inspects.set(sessionId, requested);
         return {added, removed};
@@ -150,7 +154,11 @@ export class EventBus {
      */
     subscribedObjects() {
         const objectIds = new Set();
-        this._inspects.forEach(inspects => inspects.forEach(objectId => objectIds.add(objectId)));
+        for (const inspects of this._inspects.values()) {
+            for (const objectId of inspects) {
+                objectIds.add(objectId);
+            }
+        }
         return [...objectIds];
     }
 
@@ -164,7 +172,9 @@ export class EventBus {
         if (subscribers === undefined) {
             return;
         }
-        subscribers.forEach(sessionId => this._inspects.get(sessionId).delete(objectId));
+        for (const sessionId of subscribers) {
+            this._inspects.get(sessionId).delete(objectId);
+        }
         this._subscribers.delete(objectTopic(objectId));
     }
 

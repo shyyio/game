@@ -41,7 +41,9 @@ export class LogisticsSimMod extends AbstractSimMod {
                     const span = getUndergroundBeltsToCreate(partner, {
                         x: message.x, y: message.y, direction: message.direction, type,
                     });
-                    span.forEach(cell => belts.placeBelt(cell.x, cell.y, message.direction, BELT_UNDERGROUND));
+                    for (const cell of span) {
+                        belts.placeBelt(cell.x, cell.y, message.direction, BELT_UNDERGROUND);
+                    }
                 }
             }
             belts.placeBelt(message.x, message.y, message.direction, type);
@@ -53,7 +55,9 @@ export class LogisticsSimMod extends AbstractSimMod {
                 // Deleting a ramp collapses its tunnel: remove the buried undergrounds with it (the paired
                 // ramp survives as a standalone). Undergrounds go first so the ramp's run is still intact
                 // to walk.
-                belts.tunnelUndergrounds(belt).forEach(underground => belts.removeBeltById(underground.id));
+                for (const underground of belts.tunnelUndergrounds(belt)) {
+                    belts.removeBeltById(underground.id);
+                }
                 return belts.removeBeltById(message.id);
             }
             return belts.removeBeltById(message.id);

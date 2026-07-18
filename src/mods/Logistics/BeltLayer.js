@@ -123,12 +123,12 @@ export class BeltDrawLayer extends AbstractDrawLayer {
      */
     set mapMode(value) {
         this._mapMode = value;
-        Object.values(this._belts).forEach(sprite => {
+        for (const sprite of Object.values(this._belts)) {
             sprite.visible = !value;
-        });
-        Object.values(this._mapModeBelts).forEach(sprite => {
+        }
+        for (const sprite of Object.values(this._mapModeBelts)) {
             sprite.visible = value;
-        });
+        }
     }
 
     /**
@@ -228,12 +228,12 @@ export class BeltDrawLayer extends AbstractDrawLayer {
         }
         const rebuildBends = this._bendsStale;
         this._bendsStale = false;
-        Object.values(this._belts).forEach(sprite => {
+        for (const sprite of Object.values(this._belts)) {
             if (rebuildBends && sprite.type === BeltType.NORMAL) {
                 this._applyBend(sprite);
             }
             sprite.setAnimationFrame(frame);
-        });
+        }
     }
 
     /**

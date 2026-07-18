@@ -51,11 +51,11 @@ export function buildInspectContent(panel, event, textureRegistry, itemTextures,
     const outputX = panel.contentWidth - SLOT_SIZE;
 
     // Inputs: the port item at full opacity (takes precedence), else the gathered/consumed item at half.
-    event.inputPorts.forEach((portItem, i) => {
+    for (const [i, portItem] of event.inputPorts.entries()) {
         const item = portItem !== 0 ? portItem : event.inputMemory[i];
         const alpha = portItem !== 0 ? 1 : HALF_ALPHA;
         addSlot(panel, item, alpha, i * (SLOT_SIZE + SLOT_MARGIN_X), y, textureRegistry, itemTextures);
-    });
+    }
     y += SLOT_SIZE + SLOT_MARGIN_Y;
 
     // Second row: progress bar on the left, output slot in its column on the right.

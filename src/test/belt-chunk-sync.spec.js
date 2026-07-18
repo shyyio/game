@@ -38,11 +38,15 @@ test("a session subscribing to a chunk receives its existing belts and resting i
     // A placing session builds a belt line and lets an item rest at the out-port.
     const builder = new CapturingSession(1);
     game.connect(builder);
-    CELLS.forEach(cell => game.dispatchMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL), builder));
+    for (const cell of CELLS) {
+        game.dispatchMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL), builder);
+    }
     const path = beltsOf(engine).pathAt(0, 2);
     engine.setPortItem(path.inPort, RED);
     for (let i = 0; i < 8; i += 1) {
-        TICK_PHASE_ORDER.forEach(phase => game.tick(phase));
+        for (const phase of TICK_PHASE_ORDER) {
+            game.tick(phase);
+        }
         game.postTick();
     }
 

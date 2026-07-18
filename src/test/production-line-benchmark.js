@@ -88,14 +88,14 @@ function printReport(phaseTotals, ticks) {
     const total = rows.reduce((sum, row) => sum + row.totalMs, 0);
 
     console.log("Phase                 total ms    ms/tick   share");
-    rows.forEach(row => {
+    for (const row of rows) {
         const perTick = (row.totalMs / ticks).toFixed(2);
         const share = ((row.totalMs / total) * 100).toFixed(1);
         console.log(
             `${row.name.padEnd(18)} ${row.totalMs.toFixed(1).padStart(10)} `
             + `${perTick.padStart(10)} ${`${share}%`.padStart(7)}`
         );
-    });
+    }
 }
 
 async function main() {
@@ -138,9 +138,9 @@ async function main() {
     );
 
     const phaseTotals = {};
-    TICK_PHASE_ORDER.forEach(phase => {
+    for (const phase of TICK_PHASE_ORDER) {
         phaseTotals[phase] = 0;
-    });
+    }
 
     if (profiling) {
         await profiler.start();
@@ -149,11 +149,11 @@ async function main() {
     console.log(`Running ${ticks.toLocaleString()} ticks...`);
     const runStart = performance.now();
     for (let i = 0; i < ticks; i += 1) {
-        TICK_PHASE_ORDER.forEach(phase => {
+        for (const phase of TICK_PHASE_ORDER) {
             const phaseStart = performance.now();
             engine.tick(phase);
             phaseTotals[phase] += performance.now() - phaseStart;
-        });
+        }
     }
     const runMs = performance.now() - runStart;
 

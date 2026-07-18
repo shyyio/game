@@ -97,7 +97,9 @@ export class Belts {
         engine.globals.beltNextRunId = this._nextRunId;
 
         // Underground axis layers, so crossing tunnels and a surface belt coexist on a tile.
-        LAYERS_UNDERGROUND_AXIS.forEach(layer => engine.registerPositionLayer(layer));
+        for (const layer of LAYERS_UNDERGROUND_AXIS) {
+            engine.registerPositionLayer(layer);
+        }
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._move());
@@ -172,15 +174,15 @@ export class Belts {
      */
     _chosenUpstream(belt) {
         let chosen;
-        [Direction.UP, Direction.RIGHT, Direction.DOWN, Direction.LEFT].forEach(direction => {
+        for (const direction of [Direction.UP, Direction.RIGHT, Direction.DOWN, Direction.LEFT]) {
             const fx = belt.x - Direction.dx(direction);
             const fy = belt.y - Direction.dy(direction);
-            this._beltsAt(fx, fy).forEach(feeder => {
+            for (const feeder of this._beltsAt(fx, fy)) {
                 if (this._flowInto(feeder) === belt && (chosen === undefined || feeder.id > chosen.id)) {
                     chosen = feeder;
                 }
-            });
-        });
+            }
+        }
         return chosen;
     }
 
@@ -223,7 +225,11 @@ export class Belts {
      */
     _allBelts() {
         const all = [];
-        this._belts.forEach(belts => belts.forEach(belt => all.push(belt)));
+        for (const belts of this._belts.values()) {
+            for (const belt of belts) {
+                all.push(belt);
+            }
+        }
         return all;
     }
 
@@ -295,17 +301,17 @@ export class Belts {
     _rebuildOrphans(orphans, run, removed) {
         const covered = new Set(run.map(belt => belt.id));
         const rebuilt = [];
-        orphans.forEach(orphan => {
+        for (const orphan of orphans) {
             if (covered.has(orphan.id)) {
-                return;
+                continue;
             }
             const orphanRun = this._collectRun(orphan);
             this._rebuildSubrun(orphanRun, removed);
-            orphanRun.forEach(belt => {
+            for (const belt of orphanRun) {
                 covered.add(belt.id);
                 rebuilt.push(belt);
-            });
-        });
+            }
+        }
         return rebuilt;
     }
 
@@ -337,9 +343,9 @@ export class Belts {
      * @returns {void}
      */
     _emitPathRecalcs(tileKeys) {
-        this._pathsCovering(tileKeys).forEach(path => {
+        for (const path of this._pathsCovering(tileKeys)) {
             this.engine.emitEvent(this._pathRecalcEvent(path));
-        });
+        }
     }
 
     /**
@@ -350,15 +356,15 @@ export class Belts {
      * @returns {void}
      */
     _emitPathItems(tileKeys) {
-        this._pathsCovering(tileKeys).forEach(path => {
+        for (const path of this._pathsCovering(tileKeys)) {
             // Re-sync (snap), not upsert (glide): the edit re-rowed the items but didn't move them.
-            path.items.forEach(item => {
+            for (const item of path.items) {
                 const event = this._itemUpsertEvent(path, item, true);
                 if (event !== null) {
                     this.engine.emitEvent(event);
                 }
-            });
-        });
+            }
+        }
     }
 
     /**
@@ -474,13 +480,13 @@ export class Belts {
         if (ahead !== undefined) {
             neighbors.push(ahead);
         }
-        [Direction.UP, Direction.RIGHT, Direction.DOWN, Direction.LEFT].forEach(d => {
-            this._beltsAt(x - Direction.dx(d), y - Direction.dy(d)).forEach(feeder => {
+        for (const d of [Direction.UP, Direction.RIGHT, Direction.DOWN, Direction.LEFT]) {
+            for (const feeder of this._beltsAt(x - Direction.dx(d), y - Direction.dy(d))) {
                 if (this._flowInto(feeder) === belt) {
                     neighbors.push(feeder);
                 }
-            });
-        });
+            }
+        }
 
         // Capture the paths holding this belt (with their item layout) before dropping them, so each
         // surviving sub-run keeps the items that were physically on its belts.
@@ -495,20 +501,22 @@ export class Belts {
         // items that sat on its belts in the removed path.
         const covered = new Set();
         const affected = [];
-        neighbors.forEach(neighbor => {
+        for (const neighbor of neighbors) {
             if (covered.has(neighbor.id) || this.beltById(neighbor.id) === null) {
-                return;
+                continue;
             }
             const run = this._collectRun(neighbor);
             const {removed, orphans} = this._removePathsOverlapping(run);
             const sources = [...source, ...removed];
             this._rebuildSubrun(run, sources);
-            run.forEach(runBelt => {
+            for (const runBelt of run) {
                 covered.add(runBelt.id);
                 affected.push(tileKey(runBelt.x, runBelt.y));
-            });
-            this._rebuildOrphans(orphans, run, sources).forEach(runBelt => affected.push(tileKey(runBelt.x, runBelt.y)));
-        });
+            }
+            for (const runBelt of this._rebuildOrphans(orphans, run, sources)) {
+                affected.push(tileKey(runBelt.x, runBelt.y));
+            }
+        }
         this._emitPathRecalcs(affected);
         this._emitPathItems(affected);
 
@@ -568,7 +576,7 @@ export class Belts {
         const segments = [];
         let current = [];
         let currentChunk = null;
-        run.forEach(cell => {
+        for (const cell of run) {
             const chunk = chunkId(cell.x, cell.y);
             if (chunk !== currentChunk && current.length > 0) {
                 segments.push(current);
@@ -576,7 +584,7 @@ export class Belts {
             }
             currentChunk = chunk;
             current.push(cell);
-        });
+        }
         if (current.length > 0) {
             segments.push(current);
         }
@@ -594,12 +602,12 @@ export class Belts {
         const occ = new Array(path.length).fill(GAP);
         // RLE runs are ordered output -> input, so fill from the output end inward.
         let pos = path.length - 1;
-        path.items.forEach(run => {
+        for (const run of path.items) {
             for (let k = 0; k < run.length; k += 1) {
                 occ[pos] = run.type;
                 pos -= 1;
             }
-        });
+        }
         return occ;
     }
 
@@ -655,12 +663,12 @@ export class Belts {
         const newIndex = new Map(run.map((belt, i) => [belt.id, i]));
         const occ = new Array(run.length * 2 - 1).fill(GAP);
 
-        removed.forEach(path => {
+        for (const path of removed) {
             const sourceOcc = this._occupancyFromInput(path);
-            path.beltIds.forEach((id, oldIdx) => {
+            for (const [oldIdx, id] of path.beltIds.entries()) {
                 const j = newIndex.get(id);
                 if (j === undefined) {
-                    return;
+                    continue;
                 }
                 // Each belt's output half carries its content; a belt that had an input half (non-head in
                 // the source) keeps it too when it still has one in the merged run.
@@ -668,7 +676,7 @@ export class Belts {
                 if (j > 0 && oldIdx > 0) {
                     occ[2 * j - 1] = sourceOcc[2 * oldIdx - 1];
                 }
-            });
+            }
 
             // A resting out-port item buried by the merge re-enters at the downstream belt's input half.
             const outItem = this.engine.Port.item[path.outPort];
@@ -684,7 +692,7 @@ export class Belts {
                 occ[2 * head - 1] = inItem;
                 this.engine.Port.item[path.inPort] = EMPTY;
             }
-        });
+        }
 
         return this._rleFromOccupancy(occ);
     }
@@ -751,7 +759,9 @@ export class Belts {
      */
     _buildEmptyChain(segments) {
         const built = segments.map(segment => this._makePath(segment, {items: []}));
-        built.forEach(path => this._trackPath(path));
+        for (const path of built) {
+            this._trackPath(path);
+        }
 
         return {
             id: built[0].id,
@@ -940,30 +950,30 @@ export class Belts {
     _removePathsOverlapping(run) {
         const runIds = new Set(run.map(belt => belt.id));
         const overlapping = new Set();
-        run.forEach(belt => {
+        for (const belt of run) {
             const path = this._pathByBeltId.get(belt.id);
             if (path !== undefined) {
                 overlapping.add(path);
             }
-        });
+        }
         if (overlapping.size === 0) {
             return {removed: [], orphans: []};
         }
 
         const removed = [];
         const orphans = [];
-        overlapping.forEach(path => {
-            path.beltIds.forEach(id => {
+        for (const path of overlapping) {
+            for (const id of path.beltIds) {
                 if (!runIds.has(id)) {
                     const belt = this.beltById(id);
                     if (belt !== null) {
                         orphans.push(belt);
                     }
                 }
-            });
+            }
             this._forgetPath(path);
             removed.push(path);
-        });
+        }
         return {removed, orphans};
     }
 
@@ -975,9 +985,9 @@ export class Belts {
      */
     _pinnedPorts() {
         const ports = [];
-        this.paths.forEach(path => {
+        for (const path of this.paths) {
             ports.push(path.inPort, path.outPort);
-        });
+        }
         return ports;
     }
 
@@ -1035,15 +1045,17 @@ export class Belts {
         if (path.belts === undefined) {
             return;
         }
-        path.belts.forEach(key => {
+        for (const key of path.belts) {
             const paths = this._pathsByTile.get(key);
             if (paths === undefined) {
                 this._pathsByTile.set(key, new Set([path]));
-                return;
+                continue;
             }
             paths.add(path);
-        });
-        path.beltIds.forEach(id => this._pathByBeltId.set(id, path));
+        }
+        for (const id of path.beltIds) {
+            this._pathByBeltId.set(id, path);
+        }
     }
 
     /**
@@ -1055,21 +1067,21 @@ export class Belts {
         if (path.belts === undefined) {
             return;
         }
-        path.belts.forEach(key => {
+        for (const key of path.belts) {
             const paths = this._pathsByTile.get(key);
             if (paths === undefined) {
-                return;
+                continue;
             }
             paths.delete(path);
             if (paths.size === 0) {
                 this._pathsByTile.delete(key);
             }
-        });
-        path.beltIds.forEach(id => {
+        }
+        for (const id of path.beltIds) {
             if (this._pathByBeltId.get(id) === path) {
                 this._pathByBeltId.delete(id);
             }
-        });
+        }
     }
 
     /**
@@ -1080,12 +1092,14 @@ export class Belts {
      */
     _pathsCovering(tileKeys) {
         const covering = new Set();
-        new Set(tileKeys).forEach(key => {
+        for (const key of new Set(tileKeys)) {
             const paths = this._pathsByTile.get(key);
             if (paths !== undefined) {
-                paths.forEach(path => covering.add(path));
+                for (const path of paths) {
+                    covering.add(path);
+                }
             }
-        });
+        }
         return [...covering];
     }
 
@@ -1153,7 +1167,7 @@ export class Belts {
      */
     _submitIntents() {
         const P = this.engine.Port.item;
-        this.paths.forEach(path => {
+        for (const path of this.paths) {
             const firstGap = this._firstGap(path);
             const firstItem = this._firstItem(path);
             const leadIsItem = firstItem !== -1 && (firstGap === -1 || firstItem < firstGap);
@@ -1173,7 +1187,7 @@ export class Belts {
             if (P[path.inPort] !== EMPTY && (path.headGap > 0 || firstGap !== -1)) {
                 this.engine.submitIntent({source: path.inPort, dest: EMPTY, managed: false});
             }
-        });
+        }
     }
 
     /**
@@ -1189,7 +1203,7 @@ export class Belts {
         // pops. Out-port writes are deferred so a shared seam still holds last tick's value when the
         // downstream ingests below (an item rests a tick in the seam).
         const pops = [];
-        this.paths.forEach(path => {
+        for (const path of this.paths) {
             const firstGap = this._firstGap(path);
             const firstItem = this._firstItem(path);
             const hasGap = firstGap !== -1;
@@ -1216,10 +1230,10 @@ export class Belts {
             if (hasGap || popped) {
                 path.headGap += 1;
             }
-        });
+        }
 
         // Phase 2: ingest each path's resting in-port item at the input edge, filling the head room.
-        this.paths.forEach(path => {
+        for (const path of this.paths) {
             if (path.headGap > 0 && P[path.inPort] !== EMPTY) {
                 if (path.headGap > 1) {
                     const gap = {id: this._nextRunId, length: path.headGap - 1, type: GAP};
@@ -1234,12 +1248,12 @@ export class Belts {
                 path.headGap = 0;
                 P[path.inPort] = EMPTY;
             }
-        });
+        }
 
         // Phase 3: write this tick's pops into their out-ports.
-        pops.forEach(pop => {
+        for (const pop of pops) {
             P[pop.outPort] = pop.type;
-        });
+        }
     }
 
     /**
@@ -1251,18 +1265,20 @@ export class Belts {
      */
     chunkSync(chunk) {
         const events = [];
-        this._allBelts().forEach(belt => {
+        for (const belt of this._allBelts()) {
             if (chunkId(belt.x, belt.y) === chunk) {
                 events.push(new BeltSyncEvent(belt.x, belt.y, belt.id, belt.direction, belt.type));
             }
-        });
-        this.paths.forEach(path => {
+        }
+        for (const path of this.paths) {
             const [headX, headY] = path.belts[0].split(",").map(Number);
             if (chunkId(headX, headY) === chunk) {
                 events.push(this._pathRecalcEvent(path));
-                path.items.forEach(run => events.push(this._itemUpsertEvent(path, run)));
+                for (const run of path.items) {
+                    events.push(this._itemUpsertEvent(path, run));
+                }
             }
-        });
+        }
         return events;
     }
 
@@ -1274,17 +1290,19 @@ export class Belts {
      * @returns {void}
      */
     _materialize() {
-        [this._runDef, this._beltDef, this._pathDef].forEach(def => {
-            this.engine.entitiesWith(def).forEach(eid => this.engine.destroyEntity(eid));
-        });
+        for (const def of [this._runDef, this._beltDef, this._pathDef]) {
+            for (const eid of this.engine.entitiesWith(def)) {
+                this.engine.destroyEntity(eid);
+            }
+        }
 
         const BP = this._pathDef.store;
         const B = this._beltDef.store;
         const R = this._runDef.store;
-        this.paths.forEach(path => {
+        for (const path of this.paths) {
             // Synthetic belt-less paths (test-only addPath) have no belt tiles to model; skip them.
             if (path.beltIds === undefined) {
-                return;
+                continue;
             }
             const pathEid = this.engine.createEntity(this._pathDef);
             BP.inPort[pathEid] = path.inPort;
@@ -1292,7 +1310,7 @@ export class Belts {
             BP.headGap[pathEid] = path.headGap;
             BP.length[pathEid] = path.length;
 
-            path.beltIds.forEach((beltId, index) => {
+            for (const [index, beltId] of path.beltIds.entries()) {
                 const belt = this.beltById(beltId);
                 const beltEid = this.engine.createEntity(this._beltDef);
                 B.path[beltEid] = pathEid;
@@ -1302,17 +1320,17 @@ export class Belts {
                 B.direction[beltEid] = belt.direction;
                 B.type[beltEid] = belt.type;
                 B.objectId[beltEid] = beltId;
-            });
+            }
 
-            path.items.forEach((run, seq) => {
+            for (const [seq, run] of path.items.entries()) {
                 const runEid = this.engine.createEntity(this._runDef);
                 R.path[runEid] = pathEid;
                 R.seq[runEid] = seq;
                 R.length[runEid] = run.length;
                 R.type[runEid] = run.type;
                 R.runId[runEid] = run.id;
-            });
-        });
+            }
+        }
 
         this.engine.globals.beltNextRunId = this._nextRunId;
     }
@@ -1339,7 +1357,7 @@ export class Belts {
         const R = this._runDef.store;
 
         const beltsByPath = new Map();
-        this.engine.entitiesWith(this._beltDef).forEach(eid => {
+        for (const eid of this.engine.entitiesWith(this._beltDef)) {
             const belt = {x: B.x[eid], y: B.y[eid], direction: B.direction[eid], type: B.type[eid], id: B.objectId[eid]};
             this._addBelt(belt);
             const pathEid = B.path[eid];
@@ -1347,18 +1365,18 @@ export class Belts {
                 beltsByPath.set(pathEid, []);
             }
             beltsByPath.get(pathEid).push({index: B.index[eid], belt});
-        });
+        }
 
         const runsByPath = new Map();
-        this.engine.entitiesWith(this._runDef).forEach(eid => {
+        for (const eid of this.engine.entitiesWith(this._runDef)) {
             const pathEid = R.path[eid];
             if (!runsByPath.has(pathEid)) {
                 runsByPath.set(pathEid, []);
             }
             runsByPath.get(pathEid).push({seq: R.seq[eid], run: {id: R.runId[eid], length: R.length[eid], type: R.type[eid]}});
-        });
+        }
 
-        this.engine.entitiesWith(this._pathDef).forEach(pathEid => {
+        for (const pathEid of this.engine.entitiesWith(this._pathDef)) {
             const belts = (beltsByPath.get(pathEid) || []).sort((a, b) => a.index - b.index).map(entry => entry.belt);
             const items = (runsByPath.get(pathEid) || []).sort((a, b) => a.seq - b.seq).map(entry => entry.run);
             const path = {
@@ -1372,7 +1390,7 @@ export class Belts {
                 items,
             };
             this._trackPath(path);
-        });
+        }
     }
 
 

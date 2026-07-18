@@ -84,7 +84,9 @@ export class InspectPanelLayer extends Container {
      */
     setDebug(on) {
         this.debug = on;
-        this._panels.forEach(record => record.panel.setDebug(on));
+        for (const record of this._panels.values()) {
+            record.panel.setDebug(on);
+        }
     }
 
     /**
@@ -194,9 +196,9 @@ export class InspectPanelLayer extends Container {
         if (this.viewport === null) {
             return;
         }
-        this._panels.forEach(record => {
+        for (const record of this._panels.values()) {
             if (record.position === undefined) {
-                return;
+                continue;
             }
             const panel = record.panel;
 
@@ -226,7 +228,7 @@ export class InspectPanelLayer extends Container {
             const tail = rectEdgePoint(panelCenterScreen, machineCenterScreen, panelRect);
 
             this._drawCurve(tail, head);
-        });
+        }
     }
 
     /**

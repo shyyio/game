@@ -31,7 +31,7 @@ export class BeltOverlayDrawLayer extends AbstractDrawLayer {
      */
     showUndergroundReveal(tiles, direction) {
         this.clearUndergroundReveal();
-        tiles.forEach(tile => {
+        for (const tile of tiles) {
             const frames = this.textureRegistry.getAnimation(beltFrameBase(BeltBend.STRAIGHT, BeltType.UNDERGROUND));
             const sprite = new BeltSprite(
                 0,
@@ -45,14 +45,14 @@ export class BeltOverlayDrawLayer extends AbstractDrawLayer {
             sprite.setAnimationFrame(currentAnimationFrame());
             this.addChild(sprite);
             this._revealSprites.push(sprite);
-        });
+        }
     }
 
     clearUndergroundReveal() {
-        this._revealSprites.forEach(sprite => {
+        for (const sprite of this._revealSprites) {
             sprite.destroy();
             this.removeChild(sprite);
-        });
+        }
         this._revealSprites.splice(0);
     }
 }

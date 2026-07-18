@@ -74,7 +74,9 @@ test("emits a heartbeat snapshot each tick to a subscribing session", async () =
 
     game.dispatchMessage(new SetInspectedObjectsMessage([machine.id]), session);
     session.events.length = 0;
-    TICK_PHASE_ORDER.forEach(phase => game.tick(phase));
+    for (const phase of TICK_PHASE_ORDER) {
+        game.tick(phase);
+    }
     game.postTick();
 
     assert.equal(heartbeats(session).length, 1);
@@ -93,7 +95,9 @@ test("each inspecting session gets its own heartbeat for a shared machine", asyn
     game.dispatchMessage(new SetInspectedObjectsMessage([machine.id]), b);
     a.events.length = 0;
     b.events.length = 0;
-    TICK_PHASE_ORDER.forEach(phase => game.tick(phase));
+    for (const phase of TICK_PHASE_ORDER) {
+        game.tick(phase);
+    }
     game.postTick();
 
     assert.equal(heartbeats(a).length, 1);
@@ -109,7 +113,9 @@ test("heartbeat tracks the processing countdown, consumed batch, and output", as
 
     const tick = () => {
         session.events.length = 0;
-        TICK_PHASE_ORDER.forEach(phase => game.tick(phase));
+        for (const phase of TICK_PHASE_ORDER) {
+            game.tick(phase);
+        }
         game.postTick();
         return heartbeats(session)[0];
     };
@@ -139,7 +145,9 @@ test("unsubscribing stops the heartbeats", async () => {
     game.dispatchMessage(new SetInspectedObjectsMessage([machine.id]), session);
     game.dispatchMessage(new SetInspectedObjectsMessage([]), session);
     session.events.length = 0;
-    TICK_PHASE_ORDER.forEach(phase => game.tick(phase));
+    for (const phase of TICK_PHASE_ORDER) {
+        game.tick(phase);
+    }
     game.postTick();
 
     assert.equal(heartbeats(session).length, 0);
@@ -172,7 +180,9 @@ test("deleting an inspected machine closes its menu and stops heartbeats", async
     assert.equal(closed[0].objectId, machine.id);
 
     session.events.length = 0;
-    TICK_PHASE_ORDER.forEach(phase => game.tick(phase));
+    for (const phase of TICK_PHASE_ORDER) {
+        game.tick(phase);
+    }
     game.postTick();
     assert.equal(heartbeats(session).length, 0);
 });

@@ -125,7 +125,9 @@ export class ClientCache {
      * @returns {void}
      */
     _notifyStructural() {
-        this._structuralListeners.forEach(listener => listener());
+        for (const listener of [...this._structuralListeners]) {
+            listener();
+        }
     }
 
     /**
@@ -164,9 +166,9 @@ export class ClientCache {
         const entry = new CacheEntry(id, tileX, tileY, cells, ports, data);
         this._byId.set(id, entry);
 
-        Object.values(ports).forEach(portId => {
+        for (const portId of Object.values(ports)) {
             this._byPort.set(portId, entry);
-        });
+        }
 
         const tileKey = ClientCache._tileKey(tileX, tileY);
         const tileEntries = this._byTile.get(tileKey);
@@ -183,11 +185,13 @@ export class ClientCache {
             chunkIds.add(id);
         }
 
-        cells.forEach(cell => {
+        for (const cell of cells) {
             this._byCell.set(ClientCache._cellKey(cell.x, cell.y, cell.layer), entry);
-        });
+        }
 
-        this._setListeners.forEach(listener => listener(entry));
+        for (const listener of [...this._setListeners]) {
+            listener(entry);
+        }
         this._notifyStructural();
     }
 
@@ -234,20 +238,22 @@ export class ClientCache {
             }
         }
 
-        entry.cells.forEach(cell => {
+        for (const cell of entry.cells) {
             const key = ClientCache._cellKey(cell.x, cell.y, cell.layer);
             if (this._byCell.get(key) === entry) {
                 this._byCell.delete(key);
             }
-        });
+        }
 
-        Object.values(entry.ports).forEach(portId => {
+        for (const portId of Object.values(entry.ports)) {
             if (this._byPort.get(portId) === entry) {
                 this._byPort.delete(portId);
             }
-        });
+        }
 
-        this._removeListeners.forEach(listener => listener(entry));
+        for (const listener of [...this._removeListeners]) {
+            listener(entry);
+        }
         this._notifyStructural();
         return entry;
     }
@@ -316,9 +322,9 @@ export class ClientCache {
             return [];
         }
         const entries = [];
-        chunkIds.forEach(id => {
+        for (const id of chunkIds) {
             entries.push(this._byId.get(id));
-        });
+        }
         return entries;
     }
 
@@ -397,7 +403,7 @@ export class ClientCache {
         const direction = record.data.direction;
         const connections = [];
 
-        type.surfacePorts("outputPorts", record.data).forEach(port => {
+        for (const port of type.surfacePorts("outputPorts", record.data)) {
             const rotated = rotate(port, direction);
             const portX = record.tileX + rotated.x;
             const portY = record.tileY + rotated.y;
@@ -413,9 +419,9 @@ export class ClientCache {
                     neighbor: consumer.entry,
                 });
             }
-        });
+        }
 
-        type.surfacePorts("inputPorts", record.data).forEach(port => {
+        for (const port of type.surfacePorts("inputPorts", record.data)) {
             const rotated = rotate(port, direction);
             const portX = record.tileX + rotated.x;
             const portY = record.tileY + rotated.y;
@@ -431,7 +437,7 @@ export class ClientCache {
                     neighbor: feeder.entry,
                 });
             }
-        });
+        }
 
         return connections;
     }

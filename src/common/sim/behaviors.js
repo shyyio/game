@@ -161,9 +161,9 @@ export class MachineBehavior extends AbstractBehavior {
 
         // Gathered-set key "i1,i2,i3" -> output.
         this.recipes = new Map();
-        recipes.forEach(recipe => {
+        for (const recipe of recipes) {
             this.recipes.set(this._recipeKey(recipe.inputs), recipe.output);
-        });
+        }
     }
 
     /**
@@ -209,9 +209,9 @@ export class MachineBehavior extends AbstractBehavior {
     onSpawn(engine, placed, eid, type, message) {
         engine.attachComponent(engine.component("Machine"), eid);
         const machine = engine.component("Machine").store;
-        type.inputPorts.forEach((port, i) => {
+        for (const [i, port] of type.inputPorts.entries()) {
             machine[IN_COLS[i]][eid] = engine.portFor(port, message.x, message.y, message.direction).port;
-        });
+        }
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         machine.out[eid] = output.port;
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
@@ -316,7 +316,7 @@ export class MachineBehavior extends AbstractBehavior {
         const item = engine.Port.item;
         const def = engine.component("Machine");
         const machine = def.store;
-        engine.entitiesWith(def).forEach(eid => {
+        for (const eid of engine.entitiesWith(def)) {
             const behavior = placed.behaviorFor(placed.PlacedObject.typeId[eid]);
             if (machine.remaining[eid] > 0) {
                 machine.remaining[eid] -= 1;
@@ -359,7 +359,7 @@ export class MachineBehavior extends AbstractBehavior {
                     managed: true,
                 });
             }
-        });
+        }
     }
 
     /**
@@ -372,7 +372,7 @@ export class MachineBehavior extends AbstractBehavior {
     static _finish(engine, placed) {
         const def = engine.component("Machine");
         const machine = def.store;
-        engine.entitiesWith(def).forEach(eid => {
+        for (const eid of engine.entitiesWith(def)) {
             if (engine.wasResolvedDest(machine.out[eid])) {
                 machine.lastOutput[eid] = machine.output[eid];
                 machine.output[eid] = EMPTY;
@@ -381,7 +381,7 @@ export class MachineBehavior extends AbstractBehavior {
                     machine[PROCESSING_COLS[i]][eid] = EMPTY;
                 }
             }
-        });
+        }
     }
 }
 
@@ -485,7 +485,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         const item = engine.Port.item;
         const def = engine.component("Extractor");
         const extractor = def.store;
-        engine.entitiesWith(def).forEach(eid => {
+        for (const eid of engine.entitiesWith(def)) {
             const behavior = placed.behaviorFor(placed.PlacedObject.typeId[eid]);
             if (extractor.remaining[eid] > 0) {
                 extractor.remaining[eid] -= 1;
@@ -503,7 +503,7 @@ export class ExtractorBehavior extends AbstractBehavior {
                     managed: true,
                 });
             }
-        });
+        }
     }
 
     /**
@@ -516,13 +516,13 @@ export class ExtractorBehavior extends AbstractBehavior {
     static _finish(engine, placed) {
         const def = engine.component("Extractor");
         const extractor = def.store;
-        engine.entitiesWith(def).forEach(eid => {
+        for (const eid of engine.entitiesWith(def)) {
             if (engine.wasResolvedDest(extractor.out[eid])) {
                 extractor.lastOutput[eid] = extractor.output[eid];
                 extractor.output[eid] = EMPTY;
                 extractor.remaining[eid] = EMPTY;
             }
-        });
+        }
     }
 }
 

@@ -19,20 +19,20 @@ test("a belt item emits an upsert on ingest and a delete on pop", async () => {
     const collector = new EventCollector(engine);
     const belts = new Belts(engine);
     let handle = null;
-    [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}].forEach(cell => {
+    for (const cell of [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}]) {
         handle = belts.placeBelt(cell.x, cell.y, Direction.UP);
-    });
+    }
     collector.drain(); // discard placement events
 
     engine.setPortItem(handle.inPort, RED);
     const items = [];
     for (let i = 0; i < 8; i += 1) {
         engine.tickAll();
-        collector.drain().forEach(event => {
+        for (const event of collector.drain()) {
             if (event instanceof BeltItemUpsertEvent || event instanceof BeltItemDeleteEvent) {
                 items.push(event);
             }
-        });
+        }
     }
 
     const upserts = items.filter(event => event instanceof BeltItemUpsertEvent);

@@ -231,11 +231,11 @@ export class ToolbarLayer extends Container {
         // Detach any click-off listener and snap to closed before the old slots are destroyed.
         this._setDrawerOpen(false);
         this._slide.reset(0);
-        [this._noneCell, ...this._cells].forEach(slot => {
+        for (const slot of [this._noneCell, ...this._cells]) {
             if (slot !== null) {
                 slot.destroy({children: true});
             }
-        });
+        }
 
         this._noneCell = this._createNoneCell();
         this._cells = this._tools.map(tool => this._createCell(tool));
@@ -244,11 +244,11 @@ export class ToolbarLayer extends Container {
         const slots = [this._noneCell, ...this._cells];
         this._columns = MAX_BAR_TOOLS + 1;
         this._rowCount = Math.ceil(slots.length / this._columns);
-        slots.forEach((slot, i) => {
+        for (const [i, slot] of slots.entries()) {
             slot.x = GRID_LEFT + (i % this._columns) * (SLOT_SIZE + CELL_GAP);
             slot.y = PANEL_PADDING + Math.floor(i / this._columns) * (CELL_HEIGHT + ROW_GAP);
             this._panel.addChild(slot);
-        });
+        }
 
         this._panelWidth = GRID_LEFT + this._columns * SLOT_SIZE + (this._columns - 1) * CELL_GAP + PANEL_PADDING;
         this._slideDistance = (this._rowCount - 1) * (CELL_HEIGHT + ROW_GAP);
@@ -494,11 +494,11 @@ export class ToolbarLayer extends Container {
      * @param {boolean} visible
      */
     _setBadgesVisible(visible) {
-        [this._noneCell, ...this._cells].forEach(slot => {
+        for (const slot of [this._noneCell, ...this._cells]) {
             if (slot !== null && slot._badge != null) {
                 slot._badge.visible = visible;
             }
-        });
+        }
     }
 
     /**
@@ -554,9 +554,9 @@ export class ToolbarLayer extends Container {
         if (this._noneCell !== null) {
             this._noneCell._highlight.setActive(this._activeTool === null);
         }
-        this._cells.forEach((cell, index) => {
+        for (const [index, cell] of this._cells.entries()) {
             cell._highlight.setActive(this._tools[index] === this._activeTool);
-        });
+        }
     }
 
     /**

@@ -50,9 +50,9 @@ export class SplitterBehavior extends AbstractBehavior {
 
     resyncRenderedPorts(engine, placed, eid) {
         const splitter = engine.component("Splitter").store;
-        [splitter.out_a[eid], splitter.out_b[eid]].forEach(out => {
+        for (const out of [splitter.out_a[eid], splitter.out_b[eid]]) {
             engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
-        });
+        }
     }
 
     /**
@@ -128,7 +128,7 @@ export class SplitterBehavior extends AbstractBehavior {
         const item = engine.Port.item;
         const def = engine.component("Splitter");
         const splitter = def.store;
-        engine.entitiesWith(def).forEach(eid => {
+        for (const eid of engine.entitiesWith(def)) {
             if (item[splitter.in_a[eid]] !== EMPTY) {
                 engine.submitIntent({source: splitter.in_a[eid], dest: splitter.int_a[eid], destEmpty: item[splitter.int_a[eid]] === EMPTY, managed: false});
             }
@@ -145,7 +145,7 @@ export class SplitterBehavior extends AbstractBehavior {
                 engine.submitIntent({source: splitter.int_b[eid], dest: splitter.out_b[eid], destEmpty: item[splitter.out_b[eid]] === EMPTY, managed: false, rank: preferA});
                 engine.submitIntent({source: splitter.int_b[eid], dest: splitter.out_a[eid], destEmpty: item[splitter.out_a[eid]] === EMPTY, managed: false, rank: preferB});
             }
-        });
+        }
     }
 
     /**
@@ -164,44 +164,44 @@ export class SplitterBehavior extends AbstractBehavior {
         const stage1 = [];
         const stage2 = [];
 
-        engine.entitiesWith(def).forEach(eid => {
-            [splitter.int_a[eid], splitter.int_b[eid]].forEach(intPort => {
+        for (const eid of engine.entitiesWith(def)) {
+            for (const intPort of [splitter.int_a[eid], splitter.int_b[eid]]) {
                 if (item[intPort] === EMPTY) {
-                    return;
+                    continue;
                 }
                 const dest = engine.resolvedDestFor(intPort);
                 if (dest !== EMPTY) {
                     stage2.push({outPort: dest, item: item[intPort], intPort: intPort});
                 }
-            });
-            [splitter.in_a[eid], splitter.in_b[eid]].forEach(inPort => {
+            }
+            for (const inPort of [splitter.in_a[eid], splitter.in_b[eid]]) {
                 if (item[inPort] === EMPTY) {
-                    return;
+                    continue;
                 }
                 const dest = engine.resolvedDestFor(inPort);
                 if (dest !== EMPTY) {
                     stage1.push({intPort: dest, item: item[inPort], inPort: inPort});
                 }
-            });
-        });
+            }
+        }
 
-        stage2.forEach(record => {
+        for (const record of stage2) {
             item[record.intPort] = EMPTY;
-        });
-        stage1.forEach(record => {
+        }
+        for (const record of stage1) {
             item[record.inPort] = EMPTY;
-        });
-        stage1.forEach(record => {
+        }
+        for (const record of stage1) {
             item[record.intPort] = record.item;
-        });
-        stage2.forEach(record => {
+        }
+        for (const record of stage2) {
             item[record.outPort] = record.item;
-        });
+        }
 
-        engine.entitiesWith(def).forEach(eid => {
+        for (const eid of engine.entitiesWith(def)) {
             if (engine.resolvedDestFor(splitter.int_a[eid]) !== EMPTY || engine.resolvedDestFor(splitter.int_b[eid]) !== EMPTY) {
                 splitter.state[eid] = 1 - splitter.state[eid];
             }
-        });
+        }
     }
 }

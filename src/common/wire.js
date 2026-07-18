@@ -76,7 +76,7 @@ function buildType(name, wireFields) {
     const type = new Type(name);
     const specs = {};
     let tag = 1;
-    Object.entries(wireFields).forEach(([fieldName, spec]) => {
+    for (const [fieldName, spec] of Object.entries(wireFields)) {
         const parsed = parseSpec(spec);
         specs[fieldName] = parsed;
         if (parsed.kind === "map") {
@@ -91,7 +91,7 @@ function buildType(name, wireFields) {
             type.add(new Field(fieldName, tag, parsed.type, "optional"));
         }
         tag += 1;
-    });
+    }
     return {type, specs};
 }
 
@@ -122,7 +122,7 @@ export class WireRegistry {
         this.root.add(this.envelope);
 
         const classes = CORE_WIRE_CLASSES.concat(modRegistry.wireClasses);
-        classes.forEach((cls, index) => {
+        for (const [index, cls] of classes.entries()) {
             if (cls.wireFields === undefined) {
                 throw new Error(`Class ${cls.name} is registered for the wire but has no static wireFields`);
             }
@@ -132,7 +132,7 @@ export class WireRegistry {
             const codec = {cls, wireId, type, specs};
             this.byClass.set(cls, codec);
             this.byId.set(wireId, codec);
-        });
+        }
 
         this.root.resolveAll();
     }
@@ -159,7 +159,7 @@ export class WireRegistry {
         }
 
         const payload = {};
-        Object.entries(codec.specs).forEach(([name, spec]) => {
+        for (const [name, spec] of Object.entries(codec.specs)) {
             const value = obj[name];
             if (spec.kind === "repeated") {
                 const arr = value == null ? [] : value;
@@ -172,7 +172,7 @@ export class WireRegistry {
             } else if (value != null) {
                 payload[name] = spec.int64 ? toLong(value) : value;
             }
-        });
+        }
 
         const body = codec.type.encode(codec.type.create(payload)).finish();
         return {wireId: codec.wireId, payload: body};
@@ -203,7 +203,7 @@ export class WireRegistry {
         const raw = codec.type.toObject(codec.type.decode(envelope.payload), {longs: String});
 
         const fields = {};
-        Object.entries(codec.specs).forEach(([name, spec]) => {
+        for (const [name, spec] of Object.entries(codec.specs)) {
             if (spec.kind === "repeated") {
                 const arr = raw[name] === undefined ? [] : raw[name];
                 fields[name] = spec.int64 ? arr.map(v => Number(v)) : arr;
@@ -217,7 +217,7 @@ export class WireRegistry {
             } else {
                 fields[name] = null;
             }
-        });
+        }
 
         return Object.assign(Object.create(codec.cls.prototype), fields);
     }

@@ -38,21 +38,21 @@ export class TextureRegistry {
      */
     _buildAnimations() {
         this.animations = {};
-        Object.keys(this.textures).forEach(name => {
+        for (const name of Object.keys(this.textures)) {
             const slash = name.lastIndexOf("/");
             if (slash === -1) {
-                return;
+                continue;
             }
             const index = Number(name.slice(slash + 1));
             if (!Number.isInteger(index)) {
-                return;
+                continue;
             }
             const base = name.slice(0, slash);
             if (this.animations[base] === undefined) {
                 this.animations[base] = [];
             }
             this.animations[base][index] = this.textures[name];
-        });
+        }
     }
 
     /**

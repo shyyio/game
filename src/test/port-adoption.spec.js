@@ -19,9 +19,9 @@ test("a belt's in/out ports are the shared edge ports an object would adopt", as
     await engine.init();
     const belts = new Belts(engine);
     let handle = null;
-    [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}].forEach(cell => {
+    for (const cell of [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}]) {
         handle = belts.placeBelt(cell.x, cell.y, Direction.UP);
-    });
+    }
 
     // Head = (0,2) (most upstream, UP); tail = (0,0), feeding (0,-1).
     assert.equal(handle.inPort, engine.portAt(0, 2, Direction.UP), "in-port = head-tile edge");

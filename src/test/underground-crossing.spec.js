@@ -23,7 +23,9 @@ test("a vertical tunnel and a horizontal belt cross on the same tile and flow in
     engine.applyMessage(new CreateBeltMessage(0, 5, Direction.UP, BELT_NORMAL));
 
     // Horizontal RIGHT belt across row y=3, passing over the underground at (0,3).
-    [-1, 0, 1, 2].forEach(x => engine.applyMessage(new CreateBeltMessage(x, 3, Direction.RIGHT, BELT_NORMAL)));
+    for (const x of [-1, 0, 1, 2]) {
+        engine.applyMessage(new CreateBeltMessage(x, 3, Direction.RIGHT, BELT_NORMAL));
+    }
 
     // Tile (0,3) holds two belts on different axes.
     assert.equal(beltsOf(engine)._beltsAt(0, 3).length, 2, "underground + surface belt coexist on (0,3)");

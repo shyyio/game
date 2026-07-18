@@ -81,14 +81,14 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
             return;
         }
         const desired = this._desiredConnections();
-        this._sprites.forEach((sprite, key) => {
+        for (const [key, sprite] of [...this._sprites]) {
             if (!desired.has(key)) {
                 sprite.destroy();
                 this.removeChild(sprite);
                 this._sprites.delete(key);
             }
-        });
-        desired.forEach((spec, key) => {
+        }
+        for (const [key, spec] of desired) {
             if (!this._sprites.has(key)) {
                 const sprite = new ConnectionSprite(
                     spec.tileX,
@@ -99,10 +99,10 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
                 this.addChild(sprite);
                 this._sprites.set(key, sprite);
             }
-        });
-        this._sprites.forEach(sprite => {
+        }
+        for (const sprite of this._sprites.values()) {
             sprite.setAnimationFrame(frame);
-        });
+        }
     }
 
     /**
@@ -112,20 +112,20 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
      */
     _desiredConnections() {
         const desired = new Map();
-        this.cache.values().forEach(entry => {
+        for (const entry of this.cache.values()) {
             if (!entry.data.type.renderConnections) {
-                return;
+                continue;
             }
             const angle = Direction.angle(entry.data.direction);
-            this.cache.connectedPorts(entry).forEach(connection => {
+            for (const connection of this.cache.connectedPorts(entry)) {
                 desired.set(`${entry.id}:${connection.key}`, {
                     base: connection.isOutput ? OUTPUT_CONNECTION : INPUT_CONNECTION,
                     tileX: connection.tileX,
                     tileY: connection.tileY,
                     angle,
                 });
-            });
-        });
+            }
+        }
         return desired;
     }
 }

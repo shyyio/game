@@ -123,7 +123,7 @@ export class LogisticsClientMod extends AbstractClientMod {
         if (event instanceof ChunkUnsubscribeEvent) {
             // Drop only this mod's own belts — ClientCacheSync drops the derived-type entries.
             const removedBelts = new Set();
-            client.cache.getByChunk(event.chunk).forEach(record => {
+            for (const record of client.cache.getByChunk(event.chunk)) {
                 if (record.data.type === BeltDefinition) {
                     removedBelts.add(record.id);
                     if (isRamp(record.data.beltType)) {
@@ -134,7 +134,7 @@ export class LogisticsClientMod extends AbstractClientMod {
                     this._pathParts.delete(record.id);
                     client.cache.remove(record.id);
                 }
-            });
+            }
             this._clearPortItems(client, removedBelts);
             this._pathDebugLayer.redraw();
             return;
@@ -160,11 +160,11 @@ export class LogisticsClientMod extends AbstractClientMod {
      */
     _updatePath(parts) {
         const head = parts[parts.length - 1];
-        parts.forEach(id => {
+        for (const id of parts) {
             if (id !== head) {
                 this._pathParts.delete(id);
             }
-        });
+        }
         this._pathParts.set(head, parts);
     }
 
@@ -241,13 +241,13 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @private
      */
     _clearPortItems(client, removedHeads) {
-        this._outPortToPath.forEach((head, portId) => {
+        for (const [portId, head] of this._outPortToPath) {
             if (removedHeads.has(head)) {
                 client.itemLayer.removeItem(PORT_SPRITE_KEY(portId));
                 this._outPortToPath.delete(portId);
                 this._pathToOutPort.delete(head);
             }
-        });
+        }
     }
 
     /**
@@ -261,17 +261,17 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @private
      */
     _clearOutPortItemAt(client, deletedBelt) {
-        this._pathToOutPort.forEach((portId, head) => {
+        for (const [head, portId] of this._pathToOutPort) {
             const parts = this._pathParts.get(head);
             if (parts === undefined || parts[0] !== deletedBelt) {
-                return;
+                continue;
             }
             client.itemLayer.removeItem(PORT_SPRITE_KEY(portId));
             if (head === deletedBelt) {
                 this._outPortToPath.delete(portId);
                 this._pathToOutPort.delete(head);
             }
-        });
+        }
     }
 
     /**
@@ -344,7 +344,9 @@ export class LogisticsClientMod extends AbstractClientMod {
             this._clearPathItems(client, pathId);
             return;
         }
-        parts.forEach(id => this._clearPathItems(client, id));
+        for (const id of parts) {
+            this._clearPathItems(client, id);
+        }
     }
 
     /**
@@ -365,12 +367,12 @@ export class LogisticsClientMod extends AbstractClientMod {
         }
         const pathLength = 2 * parts.length - 1;
         let total = 0;
-        runs.forEach(run => {
+        for (const run of runs.values()) {
             total += run.length;
-        });
+        }
         let slot = pathLength - total;
         const runIds = Array.from(runs.keys()).sort((a, b) => (a < b ? 1 : -1));
-        runIds.forEach(runId => {
+        for (const runId of runIds) {
             const run = runs.get(runId);
             if (run.type !== ITEM_TYPE_GAP) {
                 const belt = this._resolveItemBelt(client, pathId, slot);
@@ -379,7 +381,7 @@ export class LogisticsClientMod extends AbstractClientMod {
                 }
             }
             slot += run.length;
-        });
+        }
     }
 
     /**
@@ -393,9 +395,9 @@ export class LogisticsClientMod extends AbstractClientMod {
         if (runs === undefined) {
             return;
         }
-        runs.forEach((run, runId) => {
+        for (const runId of runs.keys()) {
             client.itemLayer.removeItem(runId);
-        });
+        }
         this._pathItems.delete(pathId);
     }
 

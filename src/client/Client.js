@@ -90,13 +90,13 @@ export class Client {
         // The derived client surface (draw layer + ghost + tool) of every behavior-driven type;
         // bespoke types (belt) bring their own through their client mod.
         this.bundles = this._buildBundles();
-        this.bundles.forEach(bundle => {
+        for (const bundle of this.bundles) {
             this.drawLayerRegistry.add(bundle.drawLayer);
             this.drawLayerRegistry.add(bundle.ghostLayer);
-        });
-        this.modRegistry.clientMods
-            .flatMap(mod => mod.drawLayers(this))
-            .forEach(layer => this.drawLayerRegistry.add(layer));
+        }
+        for (const layer of this.modRegistry.clientMods.flatMap(mod => mod.drawLayers(this))) {
+            this.drawLayerRegistry.add(layer);
+        }
         this.drawLayerRegistry.add(new GridDrawLayer());
         this.drawLayerRegistry.add(this.placementFeedbackLayer);
         this.drawLayerRegistry.add(this.inspectLayer);
@@ -175,12 +175,12 @@ export class Client {
     async init() {
         await this.textureRegistry.load(this.modRegistry.textureDefinitions);
 
-        this.drawLayerRegistry.layers.forEach(layer => {
+        for (const layer of this.drawLayerRegistry.layers) {
             layer.textureRegistry = this.textureRegistry;
             layer.viewport = this.viewport;
             layer.cache = this.cache;
             this.viewport.addChild(layer);
-        });
+        }
 
         this.toolbarLayer.textureRegistry = this.textureRegistry;
         this.inspectPanelLayer.textureRegistry = this.textureRegistry;
@@ -268,12 +268,12 @@ export class Client {
         // Subscribe to any newly visible chunks at once; chunks that left the viewport
         // stay requested until a throttled pass drops them.
         let added = false;
-        visible.forEach(chunk => {
+        for (const chunk of visible) {
             if (!this._requestedChunks.has(chunk)) {
                 this._requestedChunks.add(chunk);
                 added = true;
             }
-        });
+        }
         if (added) {
             this._sendViewport(true);
         }
@@ -317,12 +317,12 @@ export class Client {
     _pruneHiddenChunks() {
         const visible = new Set(this._visibleChunks());
         let removed = false;
-        this._requestedChunks.forEach(chunk => {
+        for (const chunk of [...this._requestedChunks]) {
             if (!visible.has(chunk)) {
                 this._requestedChunks.delete(chunk);
                 removed = true;
             }
-        });
+        }
         if (removed) {
             this._sendViewport(false);
         }
@@ -397,13 +397,15 @@ export class Client {
             // A chunk-sync bundle: replay each inner event through the normal path.
             // Sync events are distinct types (e.g. BeltSyncEvent vs BeltInsertEvent),
             // so handlers can already tell a load from a live change.
-            event.events.forEach(inner => this.publishEvent(inner));
+            for (const inner of event.events) {
+                this.publishEvent(inner);
+            }
             return;
         }
         if (event instanceof PlayerSettingsSyncEvent) {
-            Object.entries(event.values).forEach(([key, value]) => {
+            for (const [key, value] of Object.entries(event.values)) {
                 this.playerSettings.update(Number(key), value);
-            });
+            }
             return;
         }
         if (event instanceof PlayerSettingsUpdateEvent) {
@@ -411,9 +413,9 @@ export class Client {
             return;
         }
         if (event instanceof GameSettingsSyncEvent) {
-            Object.entries(event.values).forEach(([key, value]) => {
+            for (const [key, value] of Object.entries(event.values)) {
                 this.gameSettings.update(Number(key), value);
-            });
+            }
             return;
         }
         if (event instanceof GameSettingsUpdateEvent) {
@@ -444,7 +446,9 @@ export class Client {
      */
     dispatchEvent(event) {
         this.cacheSync.onEvent(event);
-        this.modRegistry.clientMods.forEach(mod => mod.onEvent(event, this));
+        for (const mod of [...this.modRegistry.clientMods]) {
+            mod.onEvent(event, this);
+        }
         this.drawLayerRegistry.dispatchEvent(event);
         // The status HUD isn't a viewport draw layer, so feed it chunk events directly.
         this.statusLayer.onEvent(event);
@@ -506,12 +510,12 @@ export class Client {
     handleInspect(tileX, tileY) {
         const derived = [];
         if (tileX !== null) {
-            this.bundles.forEach(bundle => {
+            for (const bundle of this.bundles) {
                 const record = this.cache.objectAt(tileX, tileY, bundle.type);
                 if (record !== null) {
                     derived.push(new InspectHighlight(record.tileX, record.tileY, record.data.direction, bundle.type));
                 }
-            });
+            }
         }
         const bespoke = this.modRegistry.clientMods
             .flatMap(mod => mod.onInspect(tileX, tileY, this));

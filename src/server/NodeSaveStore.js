@@ -30,7 +30,9 @@ export class NodeSaveStore extends AbstractSaveStore {
         const write = this.db.transaction(() => {
             this._reset();
             this._writeMeta(snapshot.components);
-            snapshot.components.forEach((component, index) => this._writeComponent(component, index));
+            for (const component of snapshot.components) {
+                this._writeComponent(component);
+            }
             this._writeGlobals(snapshot.globals);
         });
         write();
@@ -58,10 +60,12 @@ export class NodeSaveStore extends AbstractSaveStore {
      * @returns {void}
      */
     _reset() {
-        this.db
+        const tableRows = this.db
             .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
-            .all()
-            .forEach(row => this.db.exec(`DROP TABLE "${row.name}"`));
+            .all();
+        for (const row of tableRows) {
+            this.db.exec(`DROP TABLE "${row.name}"`);
+        }
     }
 
     /**
@@ -76,12 +80,12 @@ export class NodeSaveStore extends AbstractSaveStore {
 
         const componentInsert = this.db.prepare(`INSERT INTO "${COMPONENT_META}" (name, seq) VALUES (?, ?)`);
         const fieldInsert = this.db.prepare(`INSERT INTO "${FIELD_META}" (component, name, kind, seq) VALUES (?, ?, ?, ?)`);
-        components.forEach((component, index) => {
+        for (const [index, component] of components.entries()) {
             componentInsert.run(component.name, index);
-            component.fields.forEach((field, fieldIndex) => {
+            for (const [fieldIndex, field] of component.fields.entries()) {
                 fieldInsert.run(component.name, field.name, field.kind, fieldIndex);
-            });
-        });
+            }
+        }
     }
 
     /**
@@ -96,9 +100,9 @@ export class NodeSaveStore extends AbstractSaveStore {
 
         const placeholders = columns.map(() => "?").join(", ");
         const insert = this.db.prepare(`INSERT INTO "${component.name}" (${columns.map(name => `"${name}"`).join(", ")}) VALUES (${placeholders})`);
-        component.rows.forEach(row => {
+        for (const row of component.rows) {
             insert.run(columns.map(name => row[name]));
-        });
+        }
     }
 
     /**
@@ -108,7 +112,9 @@ export class NodeSaveStore extends AbstractSaveStore {
      */
     _writeGlobals(globals) {
         const insert = this.db.prepare(`INSERT INTO "${GLOBAL_TABLE}" (key, value) VALUES (?, ?)`);
-        Object.entries(globals).forEach(([key, value]) => insert.run(key, value));
+        for (const [key, value] of Object.entries(globals)) {
+            insert.run(key, value);
+        }
     }
 
     /**
@@ -136,9 +142,10 @@ export class NodeSaveStore extends AbstractSaveStore {
      */
     _readGlobals() {
         const globals = {};
-        this.db.prepare(`SELECT key, value FROM "${GLOBAL_TABLE}"`).all().forEach(row => {
+        const globalRows = this.db.prepare(`SELECT key, value FROM "${GLOBAL_TABLE}"`).all();
+        for (const row of globalRows) {
             globals[row.key] = row.value;
-        });
+        }
         return globals;
     }
 }

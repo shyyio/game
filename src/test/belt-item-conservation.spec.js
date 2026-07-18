@@ -18,9 +18,9 @@ test("packed same-type items survive a split and each still pops", async () => {
     // A straight UP path of four belts, fed continuously with its out-port blocked, so RED
     // items pile solid against the output end.
     let handle = null;
-    [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}, {x: 0, y: 3}].forEach(cell => {
+    for (const cell of [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}, {x: 0, y: 3}]) {
         handle = belts.placeBelt(cell.x, cell.y, Direction.UP);
-    });
+    }
     for (let i = 0; i < 12; i += 1) {
         engine.setPortItem(handle.inPort, RED);
         engine.tickAll();

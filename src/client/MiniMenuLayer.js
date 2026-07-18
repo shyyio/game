@@ -88,7 +88,7 @@ export class MiniMenuLayer extends Container {
             .stroke({color: PANEL_BORDER, width: 1});
         this._menu.addChild(bg);
 
-        allEntries.forEach((entry, i) => {
+        for (const [i, entry] of allEntries.entries()) {
             const item = new Container();
             item.y = PADDING + i * ITEM_HEIGHT;
             item.eventMode = "static";
@@ -129,7 +129,7 @@ export class MiniMenuLayer extends Container {
             });
 
             this._menu.addChild(item);
-        });
+        }
 
         this._menu.eventMode = "static";
         this._menu.on("pointerdown", (e) => e.nativeEvent.stopPropagation());

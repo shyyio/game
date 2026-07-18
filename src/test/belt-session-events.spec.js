@@ -48,13 +48,17 @@ test("a Game on GameEngine routes belt render events only to sessions watching t
     game.dispatchMessage(new SetViewportMessage([beltChunk]), watcher);
     game.dispatchMessage(new SetViewportMessage([elsewhere]), bystander);
 
-    CELLS.forEach(cell => game.dispatchMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL), watcher));
+    for (const cell of CELLS) {
+        game.dispatchMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL), watcher);
+    }
 
     // Feed an item; do not drain, so it pops and rests at the out-port (tail tile 0,0).
     const path = beltsOf(engine).pathAt(0, 2);
     engine.setPortItem(path.inPort, RED);
     for (let i = 0; i < 8; i += 1) {
-        TICK_PHASE_ORDER.forEach(phase => game.tick(phase));
+        for (const phase of TICK_PHASE_ORDER) {
+            game.tick(phase);
+        }
         game.postTick();
     }
 

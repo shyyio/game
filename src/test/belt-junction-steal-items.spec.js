@@ -18,9 +18,9 @@ test("items on belts orphaned by a junction steal survive the rebuild", async ()
     // A straight UP path of four belts (flowing toward -y), fed with its out-port blocked, so RED
     // items pile solid back through the upstream belts (5,7)+(5,6). All within one chunk.
     let handle = null;
-    [{x: 5, y: 7}, {x: 5, y: 6}, {x: 5, y: 5}, {x: 5, y: 4}].forEach(cell => {
+    for (const cell of [{x: 5, y: 7}, {x: 5, y: 6}, {x: 5, y: 5}, {x: 5, y: 4}]) {
         handle = belts.placeBelt(cell.x, cell.y, Direction.UP);
-    });
+    }
     for (let i = 0; i < 16; i += 1) {
         engine.setPortItem(handle.inPort, RED);
         engine.tickAll();
