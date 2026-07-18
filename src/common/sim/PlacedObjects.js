@@ -92,7 +92,7 @@ export class PlacedObjects {
     }
 
     /**
-     * The generic spawn path: footprint/occupancy check (honoring placement.solid), the PlacedObject
+     * The generic spawn path: footprint/position check (honoring placement.solid), the PlacedObject
      * columns, the behavior's wiring, and the insert event. Returns false for types the host doesn't
      * own (bespoke placement falls through to the mod's own handler).
      * @private
@@ -109,7 +109,7 @@ export class PlacedObjects {
             return true;
         }
         const footprint = engine.footprint(type, message.x, message.y, message.direction);
-        if (type.placement.solid && !engine.occupancyFree(footprint)) {
+        if (type.placement.solid && !engine.cellsFree(footprint)) {
             return true;
         }
         const eid = engine.createEntity(this.def);

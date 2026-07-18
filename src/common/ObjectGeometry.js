@@ -43,7 +43,7 @@ export class ObjectGeometry {
 
     /**
      * Whether this geometry at (tileX, tileY) facing `direction` crosses a chunk boundary; placement
-     * rejects it, so every object lives in exactly one chunk (chunk-keyed sync/occupancy assume that).
+     * rejects it, so every object lives in exactly one chunk (chunk-keyed sync/position assume that).
      * @param {number} tileX
      * @param {number} tileY
      * @param {Direction} direction

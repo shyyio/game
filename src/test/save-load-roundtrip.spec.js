@@ -38,9 +38,9 @@ test("the whole world round-trips through the engine serializer", async () => {
     assert.equal(restored.placed.eidsOf(ExtractorType.typeId).length, 1, "extractor restored");
     assert.equal(restored.placed.eidsOf(DemoMachineType.typeId).length, 1, "machine restored");
     assert.equal(beltsOf(restored).paths.length, beltPaths, "belt paths restored");
-    assert.notEqual(restored.occupantValueAt(5, 5, "R"), null, "resource cover restored");
+    assert.notEqual(restored.occupantUserDataAt(5, 5, "R"), null, "resource cover restored");
     assert.notEqual(restored.placed.eidByClientId(splitterId), undefined, "splitter restored");
-    assert.equal(restored.occupancyFree([{x: 10, y: 10, layer: "S"}]), false, "machine occupancy restored");
+    assert.equal(restored.cellsFree([{x: 10, y: 10, layer: "S"}]), false, "machine position restored");
 
     // The extractor keeps producing water into its edge out-port after the load.
     const outPort = restored.portAt(5, 4, Direction.UP);
@@ -70,7 +70,7 @@ test("a snapshot round-trips through structured SQLite (the node save path)", as
 
     const loaded = await store.load();
     const names = loaded.components.map(component => component.name);
-    ["Port", "Occupancy", "PlacedObject", "Machine", "Extractor", "Splitter", "BeltPath", "Belt", "BeltRun"].forEach(name => {
+    ["Port", "Position", "PlacedObject", "Machine", "Extractor", "Splitter", "BeltPath", "Belt", "BeltRun"].forEach(name => {
         assert.ok(names.includes(name), `${name} table present`);
     });
 

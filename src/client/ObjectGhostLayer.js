@@ -74,7 +74,7 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
 
     /**
      * Forces the next cursor-follow frame to re-evaluate placement even on the same tile (e.g. after a
-     * placement changed occupancy).
+     * placement changed positions).
      */
     invalidateSnap() {
         this._snapKey = null;

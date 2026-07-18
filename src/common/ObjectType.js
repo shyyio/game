@@ -191,8 +191,8 @@ export class ObjectType {
         this.renderConnections = renderConnections;
         this.textureName = textureName;
         this.label = label;
-        // The occupancy layer this object sits on. Objects on different layers coexist on a tile.
-        this.occupancyLayer = LAYER_SURFACE;
+        // The position layer this object sits on. Objects on different layers coexist on a tile.
+        this.positionLayer = LAYER_SURFACE;
         this.extractionTiles = extractionTiles;
         this.behavior = behavior === undefined ? new StaticBehavior() : behavior;
         if (this.behavior !== null) {
@@ -272,14 +272,14 @@ export class ObjectType {
     /**
      * The tiles this object occupies per layer facing `direction`: `{layer, cells}` records. The
      * default is its geometry body on its own layer; a resource overrides this (body + extraction on
-     * the resource layer, body on the surface block). Used by both occupancyLookups (existing
+     * the resource layer, body on the surface block). Used by both positionLayer lookups (existing
      * objects) and the placement overlap check (the new object), so placement is symmetric.
      * @param {Direction} direction
      * @returns {{layer: number, cells: {x: number, y: number}[]}[]}
      */
-    occupancyLayerTiles(direction) {
+    positionLayerTiles(direction) {
         const cells = this.geometry.tiles(direction);
-        return [{layer: this.occupancyLayer, cells}];
+        return [{layer: this.positionLayer, cells}];
     }
 
     /**

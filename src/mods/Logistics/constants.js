@@ -29,7 +29,7 @@ export const BeltType = {
     UNDERGROUND: BELT_UNDERGROUND,
 };
 
-// Occupancy layers for underground belts: one per axis, alongside the shared surface layer, so a
+// Position layers for underground belts: one per axis, alongside the shared surface layer, so a
 // surface belt and two crossing tunnels coexist on a tile. Layer = LAYERS_UNDERGROUND_AXIS[direction % 2].
 export const LAYERS_UNDERGROUND_AXIS = ["U0", "U1"];
 
