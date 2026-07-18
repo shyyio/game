@@ -220,6 +220,10 @@ export class MachineBehavior extends AbstractBehavior {
             {name: "remaining", fill: EMPTY},
             {name: "output", fill: EMPTY},
             {name: "lastOutput", fill: EMPTY},
+            // The two behavior constants the submit pass reads per machine per tick. Kept on the row so
+            // the pass never hops through PlacedObject to reach the behavior instance.
+            {name: "inputCount"},
+            {name: "processingTicks"},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => MachineBehavior._submitIntents(engine, placed));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => MachineBehavior._finish(engine, placed));
@@ -230,6 +234,8 @@ export class MachineBehavior extends AbstractBehavior {
         engine.attachComponent(def, eid);
         const machine = def.store;
         const row = def.row(eid);
+        machine.inputCount[row] = this.inputCount;
+        machine.processingTicks[row] = this.processingTicks;
         for (const [i, port] of type.inputPorts.entries()) {
             machine[IN_COLS[i]][row] = engine.portFor(port, message.x, message.y, message.direction).port;
         }
@@ -295,6 +301,24 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     /**
+     * Restores the denormalized behavior constants after a load, so a save written before a machine
+     * carried them (or by a build with different constants) still ticks correctly.
+     * @param {GameEngine} engine
+     * @param {PlacedObjects} placed
+     * @returns {void}
+     */
+    onRebuild(engine, placed) {
+        const def = engine.component("Machine");
+        const machine = def.store;
+        const eids = def.eids;
+        for (let row = 0; row < def.count; row += 1) {
+            const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
+            machine.inputCount[row] = behavior.inputCount;
+            machine.processingTicks[row] = behavior.processingTicks;
+        }
+    }
+
+    /**
      * The recipe product inferred from the gathered/consumed memory, or null when nothing is gathered.
      * @private
      * @param {number[]} inputMemory
@@ -346,8 +370,13 @@ export class MachineBehavior extends AbstractBehavior {
         const remaining = machine.remaining;
         const output = machine.output;
         const out = machine.out;
+        const inputCounts = machine.inputCount;
+        const processingTicks = machine.processingTicks;
+        // Hoisted: `count` and `eids` reach through the descriptor into the world's membership set, and
+        // this loop runs once per machine per tick.
         const eids = def.eids;
-        for (let row = 0; row < def.count; row += 1) {
+        const count = def.count;
+        for (let row = 0; row < count; row += 1) {
             // Mid-craft with the product still held: the countdown is the only state that moves, so
             // skip the behavior lookup and the per-slot passes below, which would all no-op.
             if (output[row] !== EMPTY && remaining[row] > 1) {
@@ -355,8 +384,7 @@ export class MachineBehavior extends AbstractBehavior {
                 continue;
             }
 
-            const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
-            const inputCount = behavior.inputCount;
+            const inputCount = inputCounts[row];
             if (remaining[row] > 0) {
                 remaining[row] -= 1;
             }
@@ -384,8 +412,10 @@ export class MachineBehavior extends AbstractBehavior {
                     }
                 }
                 if (allFilled) {
-                    output[row] = behavior._resolveRecipe(slotCols, row);
-                    remaining[row] = behavior.processingTicks;
+                    // Only the recipe match needs the behavior instance, and only on the tick a set
+                    // completes — rare next to the per-tick passes above.
+                    output[row] = placed.behaviorFor(placed.typeIdOf(eids[row]))._resolveRecipe(slotCols, row);
+                    remaining[row] = processingTicks[row];
                     for (let i = 0; i < inputCount; i += 1) {
                         processingCols[i][row] = slotCols[i][row];
                         slotCols[i][row] = EMPTY;
@@ -410,7 +440,8 @@ export class MachineBehavior extends AbstractBehavior {
         const def = engine.component("Machine");
         const machine = def.store;
         const processingCols = columns(machine, PROCESSING_COLS);
-        for (let row = 0; row < def.count; row += 1) {
+        const count = def.count;
+        for (let row = 0; row < count; row += 1) {
             if (engine.wasResolvedDest(machine.out[row])) {
                 machine.lastOutput[row] = machine.output[row];
                 machine.output[row] = EMPTY;
@@ -448,6 +479,9 @@ export class ExtractorBehavior extends AbstractBehavior {
             {name: "remaining", fill: EMPTY},
             {name: "output", fill: EMPTY},
             {name: "lastOutput", fill: EMPTY},
+            // The countdown length, kept on the row so the submit pass reaches no behavior instance
+            // while an extractor is merely counting down.
+            {name: "processingTicks"},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => ExtractorBehavior._submitIntents(engine, placed));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => ExtractorBehavior._finish(engine, placed));
@@ -468,6 +502,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         const row = def.row(eid);
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         extractor.out[row] = output.port;
+        extractor.processingTicks[row] = this.processingTicks;
         extractor.resourceType[row] = engine.occupantUserDataAt(message.x, message.y, LAYER_RESOURCE);
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
         return [output.port];
@@ -518,6 +553,21 @@ export class ExtractorBehavior extends AbstractBehavior {
     }
 
     /**
+     * Restores the denormalized countdown length after a load (see MachineBehavior#onRebuild).
+     * @param {GameEngine} engine
+     * @param {PlacedObjects} placed
+     * @returns {void}
+     */
+    onRebuild(engine, placed) {
+        const def = engine.component("Extractor");
+        const extractor = def.store;
+        const eids = def.eids;
+        for (let row = 0; row < def.count; row += 1) {
+            extractor.processingTicks[row] = placed.behaviorFor(placed.typeIdOf(eids[row])).processingTicks;
+        }
+    }
+
+    /**
      * SUBMIT_INTENTS: countdown; an idle extractor bound to a producing resource starts its countdown;
      * at zero it creates the output into its port.
      * @private
@@ -530,14 +580,19 @@ export class ExtractorBehavior extends AbstractBehavior {
         const def = engine.component("Extractor");
         const extractor = def.store;
         const eids = def.eids;
-        for (let row = 0; row < def.count; row += 1) {
-            const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
+        const count = def.count;
+        for (let row = 0; row < count; row += 1) {
             if (extractor.remaining[row] > 0) {
                 extractor.remaining[row] -= 1;
             }
-            if (extractor.output[row] === EMPTY && extractor.resourceType[row] !== EMPTY && behavior.recipes.has(extractor.resourceType[row])) {
-                extractor.output[row] = behavior.recipes.get(extractor.resourceType[row]);
-                extractor.remaining[row] = behavior.processingTicks;
+            // Only an idle extractor bound to a resource needs its recipe table, so the behavior hop
+            // stays off the countdown path.
+            if (extractor.output[row] === EMPTY && extractor.resourceType[row] !== EMPTY) {
+                const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
+                if (behavior.recipes.has(extractor.resourceType[row])) {
+                    extractor.output[row] = behavior.recipes.get(extractor.resourceType[row]);
+                    extractor.remaining[row] = extractor.processingTicks[row];
+                }
             }
             if (extractor.remaining[row] === 0) {
                 engine.submitCreate(extractor.out[row], extractor.output[row], item[extractor.out[row]] === EMPTY);
@@ -555,7 +610,8 @@ export class ExtractorBehavior extends AbstractBehavior {
     static _finish(engine, placed) {
         const def = engine.component("Extractor");
         const extractor = def.store;
-        for (let row = 0; row < def.count; row += 1) {
+        const count = def.count;
+        for (let row = 0; row < count; row += 1) {
             if (engine.wasResolvedDest(extractor.out[row])) {
                 extractor.lastOutput[row] = extractor.output[row];
                 extractor.output[row] = EMPTY;
