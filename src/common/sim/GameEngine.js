@@ -171,6 +171,42 @@ class ComponentDef {
 
 
 /**
+ * An Int32Array column indexed by port eid, owned by a module but grown by the engine with the Port
+ * component. The engine replaces {@link column} on growth, so a caller reads it fresh each pass
+ * (hoisting it for the body of one loop is fine).
+ */
+class PortColumn {
+
+    /**
+     * @param {number} capacity
+     * @param {number} fill - the value an unwritten port reads as
+     */
+    constructor(capacity, fill) {
+        this.fill = fill;
+        this.column = new Int32Array(capacity).fill(fill);
+    }
+
+    /**
+     * @param {number} capacity
+     * @returns {void}
+     */
+    grow(capacity) {
+        const grown = new Int32Array(capacity).fill(this.fill);
+        grown.set(this.column);
+        this.column = grown;
+    }
+
+    /**
+     * Resets every port to the column's fill.
+     * @returns {void}
+     */
+    clear() {
+        this.column.fill(this.fill);
+    }
+}
+
+
+/**
  * The simulation engine Game drives: the port-transfer core over typed-array component
  * storage, the position/port indexes, (de)serialization, and the mod host — each loaded sim mod
  * registers its ECS content (components, systems, message handlers, chunk-sync contributors) via
@@ -238,6 +274,9 @@ export class GameEngine {
         // Per-port scratch for resolvePortTransfer, indexed by port eid and sized with the Port columns.
         // The resolver clears only the slots it touched, so no pass costs the width of the world.
         // Persist through the tick (mods query them in POST_RESOLVE):
+        // Module-owned columns indexed by port eid; grown with the Port component (see _growComponent).
+        this._portColumns = [];
+
         this._destBySource = new Int32Array(this._portDef.capacity).fill(EMPTY);
         this._portResolved = new Uint8Array(this._portDef.capacity);
         this._portResolvedUnmanaged = new Uint8Array(this._portDef.capacity);
@@ -794,6 +833,9 @@ export class GameEngine {
                 grown.set(this[name]);
                 this[name] = grown;
             }
+            for (const portColumn of this._portColumns) {
+                portColumn.grow(capacity);
+            }
         }
         if (def === this._positionDef) {
             this.Position = def.store;
@@ -830,6 +872,18 @@ export class GameEngine {
      */
     attachComponent(def, eid) {
         this._addComponent(def, eid);
+    }
+
+    /**
+     * Registers a module column indexed by port eid, which the engine grows with the Port component.
+     * Lets a module index per-port state the way the engine does, instead of keying a Map on port eids.
+     * @param {number} [fill] - the value an unwritten port reads as
+     * @returns {PortColumn}
+     */
+    registerPortColumn(fill=0) {
+        const portColumn = new PortColumn(this._portDef.capacity, fill);
+        this._portColumns.push(portColumn);
+        return portColumn;
     }
 
     /**
