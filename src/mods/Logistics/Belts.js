@@ -1081,16 +1081,52 @@ export class Belts {
     }
 
     /**
-     * Recomputes a path's cached lead run indices. Called wherever `items` is mutated — the scan is
-     * free there because the array was just touched, and it keeps the tick phases off it entirely.
+     * Recomputes a path's cached lead run indices by scanning. Only for a path whose items were set
+     * wholesale (build, load, edit); the tick phases update the indices in place instead.
      * @private
      * @param {number} slot
      * @param {object} path
      * @returns {void}
      */
     _refreshRuns(slot, path) {
-        this._colFirstGap[slot] = this._firstGap(path);
-        this._colFirstItem[slot] = this._firstItem(path);
+        this._applyRuns(slot, path, this._firstGap(path));
+    }
+
+    /**
+     * Stores a path's lead run indices given its new first-gap index. `firstItem` needs no search:
+     * runs never place two gaps side by side and the input-edge run is always an item, so the first
+     * item is the run after a leading gap, or run 0.
+     * @private
+     * @param {number} slot
+     * @param {object} path
+     * @param {number} firstGap
+     * @returns {void}
+     */
+    _applyRuns(slot, path, firstGap) {
+        this._colFirstGap[slot] = firstGap;
+        if (path.items.length === 0) {
+            this._colFirstItem[slot] = -1;
+            return;
+        }
+        this._colFirstItem[slot] = firstGap === 0 ? 1 : 0;
+    }
+
+    /**
+     * The index of the first gap run at or after `from`, or -1. Used when a closing gap merges the
+     * item runs on either side of it, so the next gap is somewhere ahead of the one that went.
+     * @private
+     * @param {object} path
+     * @param {number} from
+     * @returns {number}
+     */
+    _nextGapFrom(path, from) {
+        const items = path.items;
+        for (let i = from; i < items.length; i += 1) {
+            if (items[i].type === GAP) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**
@@ -1252,15 +1288,6 @@ export class Belts {
     }
 
     /**
-     * @private
-     * @param {object} path
-     * @returns {number} index of the first item run, or -1
-     */
-    _firstItem(path) {
-        return path.items.findIndex(run => run.type !== GAP);
-    }
-
-    /**
      * SUBMIT_INTENTS: a path whose lead run is an item submits the virtual shift intent
      * (in-port -> out-port, managed=0) so the resolver frees the out-port; a path with head room or a
      * gap declares its in-port drainable (destination-less) so an upstream transfer can resolve.
@@ -1338,6 +1365,8 @@ export class Belts {
             // Only a moving path touches its record and RLE runs.
             const path = this.paths[slot];
             let popped = false;
+            // The lead indices move with the mutation, so neither phase rescans the run list.
+            let nextFirstGap;
             if (leadIsItem && canPop) {
                 this._growPops(popCount);
                 this._popPorts[popCount] = outPortCol[slot];
@@ -1346,21 +1375,26 @@ export class Belts {
                 this._emitItemDelete(path, path.items[0].id);
                 path.items.shift();
                 popped = true;
+                nextFirstGap = firstGap === -1 ? -1 : firstGap - 1;
             } else {
                 const gap = path.items[firstGap];
                 gap.length -= 1;
                 if (gap.length === 0) {
                     this._emitItemDelete(path, gap.id);
                     path.items.splice(firstGap, 1);
+                    // The item runs either side of the closed gap are now one block; the next gap is
+                    // ahead of where it stood.
+                    nextFirstGap = this._nextGapFrom(path, firstGap);
                 } else {
                     this._emitItemUpsert(path, gap);
+                    nextFirstGap = firstGap;
                 }
             }
 
             if (hasGap || popped) {
                 headGapCol[slot] += 1;
             }
-            this._refreshRuns(slot, path);
+            this._applyRuns(slot, path, nextFirstGap);
         }
 
         // Phase 2: ingest each path's resting in-port item at the input edge, filling the head room.
@@ -1370,9 +1404,15 @@ export class Belts {
                 continue;
             }
             const path = this.paths[slot];
+            // Both runs land at the input edge (the run list's tail), so they only become the first
+            // gap when the path held none.
+            let nextFirstGap = firstGapCol[slot];
             if (headGapCol[slot] > 1) {
                 const gap = {id: this._nextRunId, length: headGapCol[slot] - 1, type: GAP};
                 this._nextRunId += 1;
+                if (nextFirstGap === -1) {
+                    nextFirstGap = path.items.length;
+                }
                 path.items.push(gap);
                 this._emitItemUpsert(path, gap);
             }
@@ -1382,7 +1422,7 @@ export class Belts {
             this._emitItemUpsert(path, item);
             headGapCol[slot] = 0;
             engine.setPortItem(inPort, EMPTY);
-            this._refreshRuns(slot, path);
+            this._applyRuns(slot, path, nextFirstGap);
         }
 
         // Phase 3: write this tick's pops into their out-ports.
