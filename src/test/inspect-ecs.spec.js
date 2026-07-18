@@ -38,8 +38,8 @@ function createMachine(game, x, y) {
     const placed = game.simEngine.placed;
     const eids = placed.eidsOf(DemoMachineType.typeId);
     const eid = eids[eids.length - 1];
-    const machine = game.simEngine.component("Machine").store;
-    return {id: placed.PlacedObject.objectId[eid], inPort: machine.in0[eid]};
+    const machine = game.simEngine.component("Machine");
+    return {id: placed.objectIdOf(eid), inPort: machine.store.in0[machine.row(eid)]};
 }
 
 function heartbeats(session) {

@@ -21,8 +21,7 @@ export class PlacedObjects {
         this.def = engine.defineComponent("PlacedObject", [
             {name: "typeId"},
             {name: "objectId", fill: NO_EID},
-        ]);
-        this.PlacedObject = this.def.store;
+        ], {sparse: true});
 
         // typeId -> ObjectType, derived types only.
         this._types = new Map();
@@ -51,6 +50,24 @@ export class PlacedObjects {
     }
 
     /**
+     * The type of a placed entity.
+     * @param {number} eid
+     * @returns {number}
+     */
+    typeIdOf(eid) {
+        return this.def.store.typeId[this.def.row(eid)];
+    }
+
+    /**
+     * The client-facing object id of a placed entity.
+     * @param {number} eid
+     * @returns {number}
+     */
+    objectIdOf(eid) {
+        return this.def.store.objectId[this.def.row(eid)];
+    }
+
+    /**
      * The behavior instance owning `typeId`'s entities.
      * @param {number} typeId
      * @returns {AbstractBehavior}
@@ -65,8 +82,15 @@ export class PlacedObjects {
      * @returns {number[]}
      */
     eidsOf(typeId) {
-        return this.engine.entitiesWith(this.def)
-            .filter(eid => this.PlacedObject.typeId[eid] === typeId);
+        const column = this.def.store.typeId;
+        const eids = this.def.eids;
+        const matches = [];
+        for (let row = 0; row < this.def.count; row += 1) {
+            if (column[row] === typeId) {
+                matches.push(eids[row]);
+            }
+        }
+        return matches;
     }
 
     /**
@@ -116,9 +140,9 @@ export class PlacedObjects {
         }
         const eid = engine.createEntity(this.def);
         const objectId = engine.createObjectId();
-        const placedObject = this.PlacedObject;
-        placedObject.typeId[eid] = type.typeId;
-        placedObject.objectId[eid] = objectId;
+        const row = this.def.row(eid);
+        this.def.store.typeId[row] = type.typeId;
+        this.def.store.objectId[row] = objectId;
         engine.setPosition(eid, message.x, message.y, message.direction);
         const portIds = type.behavior.onSpawn(engine, this, eid, type, message);
         if (type.placement.solid) {
@@ -141,9 +165,8 @@ export class PlacedObjects {
             return false;
         }
         const engine = this.engine;
-        const placedObject = this.PlacedObject;
         const position = engine.Position;
-        const type = this._types.get(placedObject.typeId[eid]);
+        const type = this._types.get(this.typeIdOf(eid));
         type.behavior.onDespawn(engine, this, eid);
         engine.emitEvent(new ObjectDeleteEvent(type.typeId, objectId, position.x[eid], position.y[eid]));
         engine.destroyEntity(eid);
@@ -158,16 +181,18 @@ export class PlacedObjects {
      */
     _chunkSync(chunk) {
         const events = [];
-        const placedObject = this.PlacedObject;
+        const placedObject = this.def.store;
         const position = this.engine.Position;
-        for (const eid of this.engine.entitiesWith(this.def)) {
+        const eids = this.def.eids;
+        for (let row = 0; row < this.def.count; row += 1) {
+            const eid = eids[row];
             if (chunkId(position.x[eid], position.y[eid]) !== chunk) {
                 continue;
             }
-            const type = this._types.get(placedObject.typeId[eid]);
+            const type = this._types.get(placedObject.typeId[row]);
             const sync = type.behavior.syncData(this.engine, this, eid);
             events.push(new ObjectSyncEvent(
-                type.typeId, placedObject.objectId[eid], position.x[eid], position.y[eid], position.direction[eid],
+                type.typeId, placedObject.objectId[row], position.x[eid], position.y[eid], position.direction[eid],
                 sync.portIds, sync.lastOutput,
             ));
         }
@@ -184,7 +209,7 @@ export class PlacedObjects {
         if (eid === undefined) {
             return null;
         }
-        const type = this._types.get(this.PlacedObject.typeId[eid]);
+        const type = this._types.get(this.typeIdOf(eid));
         if (!type.inspectable) {
             return null;
         }
@@ -199,11 +224,12 @@ export class PlacedObjects {
      */
     _rebuild() {
         this._eidByObjectId = new Map();
-        const placedObject = this.PlacedObject;
-        for (const eid of this.engine.entitiesWith(this.def)) {
-            this._eidByObjectId.set(placedObject.objectId[eid], eid);
-            const type = this._types.get(placedObject.typeId[eid]);
-            type.behavior.resyncRenderedPorts(this.engine, this, eid);
+        const placedObject = this.def.store;
+        const eids = this.def.eids;
+        for (let row = 0; row < this.def.count; row += 1) {
+            this._eidByObjectId.set(placedObject.objectId[row], eids[row]);
+            const type = this._types.get(placedObject.typeId[row]);
+            type.behavior.resyncRenderedPorts(this.engine, this, eids[row]);
         }
         const rebuilt = new Set();
         for (const type of this._types.values()) {

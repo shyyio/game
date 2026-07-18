@@ -14,8 +14,9 @@ const NOT_IN_SET = -1;
 
 /**
  * A component's membership set: dense eids for iteration, sparse eid -> dense slot for O(1) removal.
+ * A data owner may adopt the dense slots as its own row numbers (see {@link World#trackRows}).
  */
-class ComponentSet {
+export class ComponentSet {
 
     /**
      * @param {number} capacity - eid capacity the sparse column must cover
@@ -24,6 +25,12 @@ class ComponentSet {
         this.dense = new Int32Array(INITIAL_CAPACITY);
         this.count = 0;
         this.sparse = new Int32Array(capacity).fill(NOT_IN_SET);
+
+        /**
+         * Fired when a removal swaps the last row down, so a row-indexed data owner can follow.
+         * @type {?function(number, number): void}
+         */
+        this.onMove = null;
     }
 
     /**
@@ -58,6 +65,9 @@ class ComponentSet {
         this.dense[slot] = moved;
         this.sparse[moved] = slot;
         this.sparse[eid] = NOT_IN_SET;
+        if (this.onMove !== null && moved !== eid) {
+            this.onMove(this.count, slot);
+        }
     }
 
     /**
@@ -213,6 +223,19 @@ export class World {
         }
         const generation = Math.floor(id / BITS_PER_MASK);
         return (this._masks[generation][eid] & (1 << (id % BITS_PER_MASK))) !== 0;
+    }
+
+    /**
+     * Adopts `component`'s membership set as row numbering for a data owner: the set is built now
+     * (rather than on first query) and `onMove` fires whenever a removal swaps a row down.
+     * @param {object} component
+     * @param {function(number, number): void} onMove - (fromRow, toRow)
+     * @returns {ComponentSet} live dense eids in `dense`, row count in `count`
+     */
+    trackRows(component, onMove) {
+        const set = this._componentSet(this._componentId(component));
+        set.onMove = onMove;
+        return set;
     }
 
     /**
