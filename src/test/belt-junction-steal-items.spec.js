@@ -31,9 +31,7 @@ test("items on belts orphaned by a junction steal survive the rebuild", async ()
     belts.placeBelt(4, 5, Direction.RIGHT);
     const orphan = belts.paths.find(path => path.belts.includes("5,7"));
     assert.ok(orphan !== undefined, "the orphaned upstream belts form their own path");
-    const expected = orphan.items
-        .filter(run => run.type === RED)
-        .reduce((sum, run) => sum + run.length, 0);
+    const expected = orphan.items.toList().filter(item => item.type === RED).length;
     assert.ok(expected >= 2, "the orphan path carries the packed items, not an empty rebuild");
 
     // Isolate the orphan (no more feed) and drain its dead-end out-port each tick, counting pops.

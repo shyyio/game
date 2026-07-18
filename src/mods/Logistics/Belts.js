@@ -18,8 +18,9 @@ import {
     LAYERS_UNDERGROUND_AXIS,
 } from "./constants.js";
 import {beltPositionLayer} from "./geometry.js";
+import {ItemRing} from "./ItemRing.js";
 
-// A gap run in a path's RLE item list (empty half-tiles between items).
+// An empty half-tile in a path's occupancy.
 const GAP = 0;
 
 // Initial slot count for the per-path hot columns; grows by doubling.
@@ -37,12 +38,11 @@ function tileKey(x, y) {
 
 /**
  * Belt path movement on the bitECS engine, isolated-single-path subset: no merge/split/relink,
- * undergrounds, or cross-path shift chains yet. A path is a run of belts carrying RLE item rows
- * (ordered output-edge -> input-edge) plus a head_gap of empty half-tiles at the input edge. Each
- * tick the lead output-side gap shrinks (Case 1) or the lead item pops to the out-port (Case 2),
- * growing head_gap, then a resting in-port item is ingested at the input edge.
- *
- * Items are per-path arrays for now; the typed-array/SoA layout is a later optimization.
+ * undergrounds, or cross-path shift chains yet. A path is a run of belts carrying an {@link ItemRing}
+ * (ordered output-edge -> input-edge, each item holding the empty half-tiles ahead of it) plus a
+ * head_gap of empty half-tiles at the input edge. Each tick the first positive gap shrinks (Case 1)
+ * or the lead item pops to the out-port (Case 2), growing head_gap, then a resting in-port item is
+ * ingested at the input edge — all in constant time whatever the path carries.
  */
 export class Belts {
 
@@ -51,7 +51,7 @@ export class Belts {
      */
     constructor(engine) {
         this.engine = engine;
-        // Path records keyed by head eid: {inPort, outPort, length, headGap, items:[{length,type}]}.
+        // Path records keyed by head eid: {inPort, outPort, length, headGap, items:ItemRing}.
         this.paths = [];
         // In-port -> path slot, so a path can find its downstream neighbor across a shared seam port.
         this._byInPort = new Map();
@@ -62,15 +62,17 @@ export class Belts {
         // Path -> its slot in `paths`, so dropping one is a swap-pop instead of a rebuild of the array.
         this._pathSlot = new Map();
         // Hot per-path state as typed columns indexed by slot. The tick phases read only these, so a
-        // pass over every path stays in sequential memory instead of chasing a path object, its items
-        // array, and a run object per path. `_colFirstGap`/`_colFirstItem` cache the lead run indices,
-        // recomputed at each items mutation (see _refreshRuns) where the array is already warm.
+        // pass over every path stays in sequential memory instead of chasing a path object and its
+        // ring. `_colLeadGap` is the lead item's gap (-1 when the path is empty) and `_colFirstGap`
+        // the index of the first item with room ahead of it; both are updated in place as the tick
+        // mutates the ring, so no phase rescans it.
         this._pathCapacity = PATH_CAPACITY;
         this._colInPort = new Int32Array(PATH_CAPACITY);
         this._colOutPort = new Int32Array(PATH_CAPACITY);
         this._colHeadGap = new Int32Array(PATH_CAPACITY);
+        this._colCount = new Int32Array(PATH_CAPACITY);
+        this._colLeadGap = new Int32Array(PATH_CAPACITY);
         this._colFirstGap = new Int32Array(PATH_CAPACITY);
-        this._colFirstItem = new Int32Array(PATH_CAPACITY);
         // Out-port writes _move defers to its last phase, reused tick to tick.
         this._popCapacity = PATH_CAPACITY;
         this._popPorts = new Int32Array(PATH_CAPACITY);
@@ -81,8 +83,8 @@ export class Belts {
         this._belts = new Map();
         // Belt id -> belt, an index over the tile map for O(1) lookup by client id.
         this._beltById = new Map();
-        // Stable RLE run id, the client's item runId for sprite continuity/glide.
-        this._nextRunId = 1;
+        // Stable item id, the client's sprite key for continuity/glide.
+        this._nextItemId = 1;
 
         // Belt runtime state lives in the JS maps above (hot-path); for persistence it is materialized
         // into these registered components at save (via the serialize hook) and read back at load (via
@@ -105,14 +107,14 @@ export class Belts {
             {name: "type"},
             {name: "objectId", fill: NO_EID},
         ], {snapshotOnly: true});
-        this._runDef = engine.defineComponent("BeltRun", [
+        this._itemDef = engine.defineComponent("BeltItem", [
             {name: "path", kind: "eid", fill: NO_EID},
             {name: "seq"},
-            {name: "length"},
+            {name: "gap"},
             {name: "type"},
-            {name: "runId", fill: NO_EID},
+            {name: "itemId", fill: NO_EID},
         ], {snapshotOnly: true});
-        engine.globals.beltNextRunId = this._nextRunId;
+        engine.globals.beltNextItemId = this._nextItemId;
 
         // Underground axis layers, so crossing tunnels and a surface belt coexist on a tile.
         for (const layer of LAYERS_UNDERGROUND_AXIS) {
@@ -376,8 +378,15 @@ export class Belts {
     _emitPathItems(tileKeys) {
         for (const path of this._pathsCovering(tileKeys)) {
             // Re-sync (snap), not upsert (glide): the edit re-rowed the items but didn't move them.
-            for (const item of path.items) {
-                const event = this._itemUpsertEvent(path, item, true);
+            const items = path.items;
+            for (let index = 0; index < items.count; index += 1) {
+                const event = this._itemUpsertEvent(
+                    path,
+                    items.idAt(index),
+                    items.gapAt(index),
+                    items.typeAt(index),
+                    true,
+                );
                 if (event !== null) {
                     this.engine.emitEvent(event);
                 }
@@ -416,16 +425,37 @@ export class Belts {
     }
 
     /**
+     * Emits the upsert for item `index` of a moving path. Takes the ring rather than the item's fields
+     * so an unobserved path reads nothing.
      * @private
      * @param {object} path
-     * @param {{id:number, length:number, type:number}} run
+     * @param {ItemRing} items
+     * @param {number} index
      * @returns {void}
      */
-    _emitItemUpsert(path, run) {
+    _emitMovedItem(path, items, index) {
         if (!this._observed(path)) {
             return;
         }
-        const event = this._itemUpsertEvent(path, run);
+        const event = this._itemUpsertEvent(path, items.idAt(index), items.gapAt(index), items.typeAt(index));
+        if (event !== null) {
+            this.engine.emitEvent(event);
+        }
+    }
+
+    /**
+     * @private
+     * @param {object} path
+     * @param {number} itemId
+     * @param {number} gap
+     * @param {number} type
+     * @returns {void}
+     */
+    _emitItemUpsert(path, itemId, gap, type) {
+        if (!this._observed(path)) {
+            return;
+        }
+        const event = this._itemUpsertEvent(path, itemId, gap, type);
         if (event !== null) {
             this.engine.emitEvent(event);
         }
@@ -445,27 +475,31 @@ export class Belts {
     /**
      * @private
      * @param {object} path
-     * @param {{id:number, length:number, type:number}} run
+     * @param {number} itemId
+     * @param {number} gap
+     * @param {number} type
      * @param {boolean} [sync] - emit a BeltItemSyncEvent (client snaps the sprite in place) rather
      *     than a BeltItemUpsertEvent (client glides it); used when re-syncing an edit that didn't move it
      * @returns {BeltItemUpsertEvent|BeltItemSyncEvent|null}
      */
-    _itemUpsertEvent(path, run, sync=false) {
+    _itemUpsertEvent(path, itemId, gap, type, sync=false) {
         const head = this._headInfo(path);
         if (head === null) {
             return null;
         }
         const EventClass = sync ? BeltItemSyncEvent : BeltItemUpsertEvent;
-        return new EventClass(head.x, head.y, head.pathId, run.id, run.length, run.type);
+        return new EventClass(head.x, head.y, head.pathId, itemId, gap, type);
     }
 
     /**
+     * Emits the delete for the lead item a path is about to pop. Takes the ring rather than the id so
+     * an unobserved path reads nothing.
      * @private
      * @param {object} path
-     * @param {number} runId
+     * @param {ItemRing} items
      * @returns {void}
      */
-    _emitItemDelete(path, runId) {
+    _emitPoppedItem(path, items) {
         if (!this._observed(path)) {
             return;
         }
@@ -473,7 +507,8 @@ export class Belts {
         if (head === null) {
             return;
         }
-        this.engine.emitEvent(new BeltItemDeleteEvent(head.x, head.y, head.pathId, runId));
+        const itemId = items.idAt(0);
+        this.engine.emitEvent(new BeltItemDeleteEvent(head.x, head.y, head.pathId, itemId));
     }
 
     /**
@@ -626,61 +661,45 @@ export class Belts {
 
     /**
      * The path's per-half-tile occupancy, indexed from the input (head) edge: `headGap` empty
-     * (GAP) cells, then the RLE items filled toward the output edge.
+     * (GAP) cells, then the items filled toward the output edge.
      * @private
      * @param {object} path
      * @returns {number[]}
      */
     _occupancyFromInput(path) {
         const occ = new Array(path.length).fill(GAP);
-        // RLE runs are ordered output -> input, so fill from the output end inward.
-        let pos = path.length - 1;
-        for (const run of path.items) {
-            for (let k = 0; k < run.length; k += 1) {
-                occ[pos] = run.type;
-                pos -= 1;
-            }
+        const items = path.items;
+        // Item gaps count from the output edge inward, so walk that way and mirror each index.
+        let pos = 0;
+        for (let index = 0; index < items.count; index += 1) {
+            pos += items.gapAt(index);
+            occ[path.length - 1 - pos] = items.typeAt(index);
+            pos += 1;
         }
         return occ;
     }
 
     /**
      * Rebuilds `{items, headGap}` from a per-half-tile occupancy slice (indexed from the input edge):
-     * the leading empty cells are the head-gap, the rest become RLE runs ordered output -> input.
+     * walking in from the output edge, each occupied cell becomes an item carrying the empty cells
+     * just passed, and whatever empties trail at the input edge are the head-gap.
      * @private
      * @param {number[]} occ
      * @returns {{items:object[], headGap:number}}
      */
-    _rleFromOccupancy(occ) {
-        let headGap = 0;
-        while (headGap < occ.length && occ[headGap] === GAP) {
-            headGap += 1;
-        }
-        // Gaps run-length-encode; items stay one run per half-tile (each item is its own sprite and
-        // pops individually), so an item run never carries length > 1.
-        const runs = [];
-        let i = headGap;
-        while (i < occ.length) {
-            const type = occ[i];
-            if (type === GAP) {
-                let length = 0;
-                while (i < occ.length && occ[i] === GAP) {
-                    length += 1;
-                    i += 1;
-                }
-                runs.push({type: GAP, length});
-            } else {
-                runs.push({type, length: 1});
-                i += 1;
+    _itemsFromOccupancy(occ) {
+        const items = [];
+        let gap = 0;
+        for (let i = occ.length - 1; i >= 0; i -= 1) {
+            if (occ[i] === GAP) {
+                gap += 1;
+                continue;
             }
+            items.push({id: this._nextItemId, type: occ[i], gap});
+            this._nextItemId += 1;
+            gap = 0;
         }
-        // runs are input -> output; the RLE stores them output -> input.
-        const items = runs.reverse().map(run => {
-            const item = {id: this._nextRunId, length: run.length, type: run.type};
-            this._nextRunId += 1;
-            return item;
-        });
-        return {items, headGap};
+        return {items, headGap: gap};
     }
 
     /**
@@ -727,12 +746,12 @@ export class Belts {
             }
         }
 
-        return this._rleFromOccupancy(occ);
+        return this._itemsFromOccupancy(occ);
     }
 
     /**
      * The items to carry onto a sub-run split off `sourcePath` by a deletion: the occupancy of the
-     * sub-run's belts in the source path, re-RLE'd. Empty unless the sub-run is a contiguous slice of
+     * sub-run's belts in the source path, re-derived. Empty unless the sub-run is a contiguous slice of
      * the source (a merge into another path can't map its slots).
      * @private
      * @param {object} sourcePath
@@ -748,7 +767,7 @@ export class Belts {
         }
         const occ = this._occupancyFromInput(sourcePath);
         const startSlot = a === 0 ? 0 : 2 * a;
-        return this._rleFromOccupancy(occ.slice(startSlot, 2 * b + 1));
+        return this._itemsFromOccupancy(occ.slice(startSlot, 2 * b + 1));
     }
 
     /**
@@ -756,7 +775,7 @@ export class Belts {
      * is the client path id; the tail's downstream edge is the out-port.
      * @private
      * @param {object[]} runBelts
-     * @param {{items:object[], headGap?:number}} state
+     * @param {{items:{id:number, type:number, gap:number}[], headGap?:number}} state
      * @returns {object}
      */
     _makePath(runBelts, {items, headGap}) {
@@ -783,7 +802,7 @@ export class Belts {
             outPort,
             length,
             initialHeadGap: headGap === undefined ? length : headGap,
-            items,
+            items: ItemRing.from(items),
         };
     }
 
@@ -853,25 +872,21 @@ export class Belts {
             const old = extension;
             if (runKeys[0] === newKey) {
                 // Head (input-edge) extension: the new empty belt is head room; items keep their
-                // distance from the unchanged output edge (run ids are reassigned below).
-                items = old.items.map(run => ({id: run.id, length: run.length, type: run.type}));
+                // distance from the unchanged output edge (item ids are reassigned below).
+                items = old.items.toList();
                 headGap = old.initialHeadGap + 2;
             } else {
                 // Tail (output-edge) extension: the new belt is empty space at the moved-forward output
                 // edge. In-flight items keep their distance from the input edge; a resting out-port item
                 // re-enters at the new belt's input edge and crosses it before reaching the new out-port.
-                const carried = old.items.map(run => ({id: run.id, length: run.length, type: run.type}));
+                const carried = old.items.toList();
                 const resting = this.engine.Port.item[old.outPort];
                 if (resting !== EMPTY) {
                     // The out-port item sat at the tail's output edge, so after the extension it rests at
-                    // the new belt's input edge — one half-tile from the moved out-port. A single output
-                    // gap carries it that last half-tile; it keeps its visual position.
-                    items = [
-                        {id: this._nextRunId, length: 1, type: GAP},
-                        {id: this._nextRunId + 1, length: 1, type: resting},
-                        ...carried,
-                    ];
-                    this._nextRunId += 2;
+                    // the new belt's input edge — one half-tile from the moved out-port. It leads the
+                    // path with that half-tile ahead of it, keeping its visual position.
+                    items = [{id: this._nextItemId, type: resting, gap: 1}, ...carried];
+                    this._nextItemId += 1;
                     headGap = old.initialHeadGap;
                     this.engine.setPortItem(old.outPort, EMPTY);
                 } else if (carried.length === 0) {
@@ -879,25 +894,25 @@ export class Belts {
                     items = [];
                     headGap = old.initialHeadGap + 2;
                 } else {
-                    // In-flight items: a leading output gap carries the lead item across the new belt.
-                    items = [{id: this._nextRunId, length: 2, type: GAP}, ...carried];
-                    this._nextRunId += 1;
+                    // In-flight items: the two new half-tiles widen the lead item's gap.
+                    carried[0].gap += 2;
+                    items = carried;
                     headGap = old.initialHeadGap;
                 }
             }
         } else if (removed.length > 0) {
             // A merge (or junction split) that folds one or more item-carrying paths into this run:
-            // reconstruct the RLE from each belt's half-tile content.
+            // reconstruct the items from each belt's half-tile content.
             ({items, headGap} = this._mergedItems(run, removed));
         }
 
-        // The client orders item rows by id (ascending = output -> input), so renumber the rebuilt run
-        // in array order to keep that invariant — a prepended output gap would otherwise sort as
-        // input-most and shift the items a tile toward the output. Safe because the edit re-syncs
-        // (RESET + snap), so the old sprite ids need not be kept.
-        items = items.map(run => {
-            const renumbered = {id: this._nextRunId, length: run.length, type: run.type};
-            this._nextRunId += 1;
+        // The client orders items by id (ascending = output -> input), so renumber the rebuilt run in
+        // array order to keep that invariant — a prepended lead item would otherwise sort as input-most
+        // and shift the items a tile toward the output. Safe because the edit re-syncs (RESET + snap),
+        // so the old sprite ids need not be kept.
+        items = items.map(item => {
+            const renumbered = {id: this._nextItemId, type: item.type, gap: item.gap};
+            this._nextItemId += 1;
             return renumbered;
         });
 
@@ -1055,7 +1070,7 @@ export class Belts {
         this._colInPort[slot] = path.inPort;
         this._colOutPort[slot] = path.outPort;
         this._colHeadGap[slot] = path.initialHeadGap;
-        this._refreshRuns(slot, path);
+        this._refreshColumns(slot, path);
     }
 
     /**
@@ -1072,7 +1087,7 @@ export class Belts {
         while (capacity <= slot) {
             capacity *= 2;
         }
-        for (const name of ["_colInPort", "_colOutPort", "_colHeadGap", "_colFirstGap", "_colFirstItem"]) {
+        for (const name of ["_colInPort", "_colOutPort", "_colHeadGap", "_colCount", "_colLeadGap", "_colFirstGap"]) {
             const grown = new Int32Array(capacity);
             grown.set(this[name]);
             this[name] = grown;
@@ -1081,52 +1096,18 @@ export class Belts {
     }
 
     /**
-     * Recomputes a path's cached lead run indices by scanning. Only for a path whose items were set
-     * wholesale (build, load, edit); the tick phases update the indices in place instead.
+     * Recomputes a path's cached ring state by scanning. Only for a path whose items were set
+     * wholesale (build, load, edit); the tick phases update the columns in place instead.
      * @private
      * @param {number} slot
      * @param {object} path
      * @returns {void}
      */
-    _refreshRuns(slot, path) {
-        this._applyRuns(slot, path, this._firstGap(path));
-    }
-
-    /**
-     * Stores a path's lead run indices given its new first-gap index. `firstItem` needs no search:
-     * runs never place two gaps side by side and the input-edge run is always an item, so the first
-     * item is the run after a leading gap, or run 0.
-     * @private
-     * @param {number} slot
-     * @param {object} path
-     * @param {number} firstGap
-     * @returns {void}
-     */
-    _applyRuns(slot, path, firstGap) {
-        this._colFirstGap[slot] = firstGap;
-        if (path.items.length === 0) {
-            this._colFirstItem[slot] = -1;
-            return;
-        }
-        this._colFirstItem[slot] = firstGap === 0 ? 1 : 0;
-    }
-
-    /**
-     * The index of the first gap run at or after `from`, or -1. Used when a closing gap merges the
-     * item runs on either side of it, so the next gap is somewhere ahead of the one that went.
-     * @private
-     * @param {object} path
-     * @param {number} from
-     * @returns {number}
-     */
-    _nextGapFrom(path, from) {
+    _refreshColumns(slot, path) {
         const items = path.items;
-        for (let i = from; i < items.length; i += 1) {
-            if (items[i].type === GAP) {
-                return i;
-            }
-        }
-        return -1;
+        this._colCount[slot] = items.count;
+        this._colLeadGap[slot] = items.count === 0 ? -1 : items.gapAt(0);
+        this._colFirstGap[slot] = items.firstPositiveGap();
     }
 
     /**
@@ -1150,8 +1131,9 @@ export class Belts {
         this._colInPort[slot] = this._colInPort[lastSlot];
         this._colOutPort[slot] = this._colOutPort[lastSlot];
         this._colHeadGap[slot] = this._colHeadGap[lastSlot];
+        this._colCount[slot] = this._colCount[lastSlot];
+        this._colLeadGap[slot] = this._colLeadGap[lastSlot];
         this._colFirstGap[slot] = this._colFirstGap[lastSlot];
-        this._colFirstItem[slot] = this._colFirstItem[lastSlot];
         // The moved path's in-port now maps to its new slot.
         this._byInPort.set(last.inPort, slot);
         this.paths.pop();
@@ -1270,7 +1252,7 @@ export class Belts {
             outPort,
             length,
             initialHeadGap: length,
-            items: [],
+            items: new ItemRing(),
         };
         this._pushPath(path);
         this._byInPort.set(resolvedInPort, this._pathSlot.get(path));
@@ -1279,16 +1261,7 @@ export class Belts {
     }
 
     /**
-     * @private
-     * @param {object} path
-     * @returns {number} index of the first gap run, or -1
-     */
-    _firstGap(path) {
-        return path.items.findIndex(run => run.type === GAP);
-    }
-
-    /**
-     * SUBMIT_INTENTS: a path whose lead run is an item submits the virtual shift intent
+     * SUBMIT_INTENTS: a path with an item resting on its output edge submits the virtual shift intent
      * (in-port -> out-port, managed=0) so the resolver frees the out-port; a path with head room or a
      * gap declares its in-port drainable (destination-less) so an upstream transfer can resolve.
      * @private
@@ -1301,15 +1274,14 @@ export class Belts {
         const outPortCol = this._colOutPort;
         const headGapCol = this._colHeadGap;
         const firstGapCol = this._colFirstGap;
-        const firstItemCol = this._colFirstItem;
+        const leadGapCol = this._colLeadGap;
         const byInPort = this._byInPort;
         const count = this.paths.length;
         for (let slot = 0; slot < count; slot += 1) {
             const firstGap = firstGapCol[slot];
-            const firstItem = firstItemCol[slot];
             const inPort = inPortCol[slot];
             const outPort = outPortCol[slot];
-            const leadIsItem = firstItem !== -1 && (firstGap === -1 || firstItem < firstGap);
+            const leadIsItem = leadGapCol[slot] === 0;
             if (leadIsItem) {
                 // The out-port is free if empty, or if the downstream path can ingest this tick (head
                 // room or a gap), letting the resolver's chain shift the whole packed run at once.
@@ -1330,71 +1302,66 @@ export class Belts {
     }
 
     /**
-     * POST_RESOLVE: move each path one half-tile (pop the lead item, or shrink the lead gap), grow
-     * head_gap accordingly, then ingest a resting in-port item at the input edge.
+     * POST_RESOLVE: move each path one half-tile (pop the lead item, or shrink the first gap with room
+     * in it), grow head_gap accordingly, then ingest a resting in-port item at the input edge.
      * @private
      * @returns {void}
      */
     _move() {
         const P = this.engine.Port.item;
 
-        // Phase 1: move each path one half-tile (pop the lead item or shrink the lead gap), buffering
-        // pops. Out-port writes are deferred so a shared seam still holds last tick's value when the
-        // downstream ingests below (an item rests a tick in the seam).
+        // Phase 1: move each path one half-tile, buffering pops. Out-port writes are deferred so a
+        // shared seam still holds last tick's value when the downstream ingests below (an item rests a
+        // tick in the seam).
         const engine = this.engine;
         const inPortCol = this._colInPort;
         const outPortCol = this._colOutPort;
         const headGapCol = this._colHeadGap;
+        const countCol = this._colCount;
+        const leadGapCol = this._colLeadGap;
         const firstGapCol = this._colFirstGap;
-        const firstItemCol = this._colFirstItem;
         const count = this.paths.length;
         // Reused across ticks: the deferred out-port writes, as parallel columns.
         let popCount = 0;
 
         for (let slot = 0; slot < count; slot += 1) {
             const firstGap = firstGapCol[slot];
-            const firstItem = firstItemCol[slot];
-            const hasGap = firstGap !== -1;
-            const leadIsItem = firstItem !== -1 && (firstGap === -1 || firstItem < firstGap);
-            const canPop = engine.resolvedUnmanagedDest(outPortCol[slot]);
-            const moving = (leadIsItem && canPop) || (hasGap && (firstGap < firstItem || firstItem === -1 || !canPop));
-            if (!moving) {
+            const canPop = leadGapCol[slot] === 0 && engine.resolvedUnmanagedDest(outPortCol[slot]);
+            if (!canPop && firstGap === -1) {
                 continue;
             }
 
-            // Only a moving path touches its record and RLE runs.
+            // Only a moving path touches its record and its ring.
             const path = this.paths[slot];
-            let popped = false;
-            // The lead indices move with the mutation, so neither phase rescans the run list.
-            let nextFirstGap;
-            if (leadIsItem && canPop) {
+            const items = path.items;
+            if (canPop) {
                 this._growPops(popCount);
                 this._popPorts[popCount] = outPortCol[slot];
-                this._popTypes[popCount] = path.items[0].type;
+                this._popTypes[popCount] = items.typeAt(0);
                 popCount += 1;
-                this._emitItemDelete(path, path.items[0].id);
-                path.items.shift();
-                popped = true;
-                nextFirstGap = firstGap === -1 ? -1 : firstGap - 1;
+                this._emitPoppedItem(path, items);
+                // Gaps are distances to the item ahead, so dropping the lead advances the rest and
+                // the new lead's gap is already its distance to the output edge.
+                items.shift();
+                countCol[slot] = items.count;
+                leadGapCol[slot] = items.count === 0 ? -1 : items.gapAt(0);
+                firstGapCol[slot] = firstGap === -1 ? -1 : firstGap - 1;
             } else {
-                const gap = path.items[firstGap];
-                gap.length -= 1;
-                if (gap.length === 0) {
-                    this._emitItemDelete(path, gap.id);
-                    path.items.splice(firstGap, 1);
-                    // The item runs either side of the closed gap are now one block; the next gap is
-                    // ahead of where it stood.
-                    nextFirstGap = this._nextGapFrom(path, firstGap);
-                } else {
-                    this._emitItemUpsert(path, gap);
-                    nextFirstGap = firstGap;
+                // One write advances the item holding this gap and everything behind it; the packed
+                // block ahead stays put.
+                const gap = items.gapAt(firstGap) - 1;
+                items.setGapAt(firstGap, gap);
+                this._emitMovedItem(path, items, firstGap);
+                if (firstGap === 0) {
+                    leadGapCol[slot] = gap;
+                }
+                // A closed gap stays closed until the block ahead pops, so this walk never revisits
+                // an item: amortized constant.
+                if (gap === 0) {
+                    firstGapCol[slot] = items.firstPositiveGap(firstGap + 1);
                 }
             }
-
-            if (hasGap || popped) {
-                headGapCol[slot] += 1;
-            }
-            this._applyRuns(slot, path, nextFirstGap);
+            headGapCol[slot] += 1;
         }
 
         // Phase 2: ingest each path's resting in-port item at the input edge, filling the head room.
@@ -1404,25 +1371,23 @@ export class Belts {
                 continue;
             }
             const path = this.paths[slot];
-            // Both runs land at the input edge (the run list's tail), so they only become the first
-            // gap when the path held none.
-            let nextFirstGap = firstGapCol[slot];
-            if (headGapCol[slot] > 1) {
-                const gap = {id: this._nextRunId, length: headGapCol[slot] - 1, type: GAP};
-                this._nextRunId += 1;
-                if (nextFirstGap === -1) {
-                    nextFirstGap = path.items.length;
-                }
-                path.items.push(gap);
-                this._emitItemUpsert(path, gap);
+            const items = path.items;
+            const type = P[inPort];
+            // The ingested item lands on the input edge, so it carries the head room ahead of it.
+            const gap = headGapCol[slot] - 1;
+            const id = this._nextItemId;
+            this._nextItemId += 1;
+            if (firstGapCol[slot] === -1 && gap > 0) {
+                firstGapCol[slot] = items.count;
             }
-            const item = {id: this._nextRunId, length: 1, type: P[inPort]};
-            this._nextRunId += 1;
-            path.items.push(item);
-            this._emitItemUpsert(path, item);
+            items.push(id, type, gap);
+            countCol[slot] = items.count;
+            if (items.count === 1) {
+                leadGapCol[slot] = gap;
+            }
+            this._emitItemUpsert(path, id, gap, type);
             headGapCol[slot] = 0;
             engine.setPortItem(inPort, EMPTY);
-            this._applyRuns(slot, path, nextFirstGap);
         }
 
         // Phase 3: write this tick's pops into their out-ports.
@@ -1455,8 +1420,8 @@ export class Belts {
 
     /**
      * The events recreating this module's belts and their in-flight items in `chunk`, for a session
-     * that just subscribed: one belt-sync event per belt tile, then per path a recalc plus one item
-     * upsert per RLE run. Resting out-port items ride the engine's shared rendered-port sync.
+     * that just subscribed: one belt-sync event per belt tile, then per path a recalc plus one upsert
+     * per in-flight item. Resting out-port items ride the engine's shared rendered-port sync.
      * @param {number} chunk
      * @returns {object[]}
      */
@@ -1470,8 +1435,14 @@ export class Belts {
         for (const path of this.paths) {
             if (chunkId(path.headX, path.headY) === chunk) {
                 events.push(this._pathRecalcEvent(path));
-                for (const run of path.items) {
-                    events.push(this._itemUpsertEvent(path, run));
+                const items = path.items;
+                for (let index = 0; index < items.count; index += 1) {
+                    events.push(this._itemUpsertEvent(
+                        path,
+                        items.idAt(index),
+                        items.gapAt(index),
+                        items.typeAt(index),
+                    ));
                 }
             }
         }
@@ -1479,14 +1450,14 @@ export class Belts {
     }
 
     /**
-     * Serialize hook: flushes the JS runtime (paths, belts, RLE runs) into the BeltPath/Belt/BeltRun
+     * Serialize hook: flushes the JS runtime (paths, belts, items) into the BeltPath/Belt/BeltItem
      * components so the generic snapshot captures belts. Prior save entities are cleared first; the
      * shared Port entities carry the port items, referenced here by eid.
      * @private
      * @returns {void}
      */
     _materialize() {
-        for (const def of [this._runDef, this._beltDef, this._pathDef]) {
+        for (const def of [this._itemDef, this._beltDef, this._pathDef]) {
             for (const eid of this.engine.entitiesWith(def)) {
                 this.engine.destroyEntity(eid);
             }
@@ -1494,7 +1465,7 @@ export class Belts {
 
         const BP = this._pathDef.store;
         const B = this._beltDef.store;
-        const R = this._runDef.store;
+        const I = this._itemDef.store;
         for (const path of this.paths) {
             // Synthetic belt-less paths (test-only addPath) have no belt tiles to model; skip them.
             if (path.beltIds === undefined) {
@@ -1518,21 +1489,22 @@ export class Belts {
                 B.objectId[beltEid] = beltId;
             }
 
-            for (const [seq, run] of path.items.entries()) {
-                const runEid = this.engine.createEntity(this._runDef);
-                R.path[runEid] = pathEid;
-                R.seq[runEid] = seq;
-                R.length[runEid] = run.length;
-                R.type[runEid] = run.type;
-                R.runId[runEid] = run.id;
+            const items = path.items;
+            for (let seq = 0; seq < items.count; seq += 1) {
+                const itemEid = this.engine.createEntity(this._itemDef);
+                I.path[itemEid] = pathEid;
+                I.seq[itemEid] = seq;
+                I.gap[itemEid] = items.gapAt(seq);
+                I.type[itemEid] = items.typeAt(seq);
+                I.itemId[itemEid] = items.idAt(seq);
             }
         }
 
-        this.engine.globals.beltNextRunId = this._nextRunId;
+        this.engine.globals.beltNextItemId = this._nextItemId;
     }
 
     /**
-     * Rebuild hook: reconstructs the JS runtime from the BeltPath/Belt/BeltRun components a load
+     * Rebuild hook: reconstructs the JS runtime from the BeltPath/Belt/BeltItem components a load
      * repopulated, re-linking each path's belts, items, and ports and re-registering its rendered
      * out-port.
      * @private
@@ -1546,11 +1518,11 @@ export class Belts {
         this._pathSlot = new Map();
         this._belts = new Map();
         this._beltById = new Map();
-        this._nextRunId = this.engine.globals.beltNextRunId;
+        this._nextItemId = this.engine.globals.beltNextItemId;
 
         const BP = this._pathDef.store;
         const B = this._beltDef.store;
-        const R = this._runDef.store;
+        const I = this._itemDef.store;
 
         const beltsByPath = new Map();
         for (const eid of this.engine.entitiesWith(this._beltDef)) {
@@ -1563,18 +1535,18 @@ export class Belts {
             beltsByPath.get(pathEid).push({index: B.index[eid], belt});
         }
 
-        const runsByPath = new Map();
-        for (const eid of this.engine.entitiesWith(this._runDef)) {
-            const pathEid = R.path[eid];
-            if (!runsByPath.has(pathEid)) {
-                runsByPath.set(pathEid, []);
+        const itemsByPath = new Map();
+        for (const eid of this.engine.entitiesWith(this._itemDef)) {
+            const pathEid = I.path[eid];
+            if (!itemsByPath.has(pathEid)) {
+                itemsByPath.set(pathEid, []);
             }
-            runsByPath.get(pathEid).push({seq: R.seq[eid], run: {id: R.runId[eid], length: R.length[eid], type: R.type[eid]}});
+            itemsByPath.get(pathEid).push({seq: I.seq[eid], item: {id: I.itemId[eid], type: I.type[eid], gap: I.gap[eid]}});
         }
 
         for (const pathEid of this.engine.entitiesWith(this._pathDef)) {
             const belts = (beltsByPath.get(pathEid) || []).sort((a, b) => a.index - b.index).map(entry => entry.belt);
-            const items = (runsByPath.get(pathEid) || []).sort((a, b) => a.seq - b.seq).map(entry => entry.run);
+            const items = (itemsByPath.get(pathEid) || []).sort((a, b) => a.seq - b.seq).map(entry => entry.item);
             const path = {
                 id: pathEid,
                 belts: belts.map(belt => tileKey(belt.x, belt.y)),
@@ -1587,7 +1559,7 @@ export class Belts {
                 outPort: BP.outPort[pathEid],
                 length: BP.length[pathEid],
                 initialHeadGap: BP.headGap[pathEid],
-                items,
+                items: ItemRing.from(items),
             };
             this._trackPath(path);
         }

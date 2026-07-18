@@ -31,7 +31,7 @@ function connected(engine, ax, ay, bx, by) {
 }
 
 function itemCells(engine) {
-    return beltsOf(engine).paths.flatMap(path => path.items).filter(run => run.type !== 0).reduce((sum, run) => sum + run.length, 0);
+    return beltsOf(engine).paths.reduce((sum, path) => sum + path.items.count, 0);
 }
 
 test("adjacent ramps connect into one tunnel path", async () => {

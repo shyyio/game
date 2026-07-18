@@ -76,7 +76,7 @@ test("a snapshot round-trips through structured SQLite (the node save path)", as
 
     const loaded = await store.load();
     const names = loaded.components.map(component => component.name);
-    for (const name of ["Port", "Position", "Occupancy", "PlacedObject", "Machine", "Extractor", "Splitter", "BeltPath", "Belt", "BeltRun"]) {
+    for (const name of ["Port", "Position", "Occupancy", "PlacedObject", "Machine", "Extractor", "Splitter", "BeltPath", "Belt", "BeltItem"]) {
         assert.ok(names.includes(name), `${name} table present`);
     }
 
