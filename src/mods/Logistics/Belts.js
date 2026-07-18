@@ -25,6 +25,9 @@ const GAP = 0;
 // Initial slot count for the per-path hot columns; grows by doubling.
 const PATH_CAPACITY = 1024;
 
+// Slot column value for a port that feeds no path.
+const NO_SLOT = -1;
+
 
 // Marks a live path entity. One shared object: the world keys components by identity, so a fresh
 // literal per path would register a new component each time and burn a mask bit on every path.
@@ -51,8 +54,9 @@ export class Belts {
         // snapshot after it is dropped (an edit still reads what a replaced path carried). A live
         // path's items sit in the shared store, addressed by its slot's columns.
         this.paths = [];
-        // In-port -> path slot, so a path can find its downstream neighbor across a shared seam port.
-        this._byInPort = new Map();
+        // Port eid -> the slot of the path fed by it, so a path finds its downstream neighbor across a
+        // shared seam port. A column rather than a Map: the submit pass reads it once per path per tick.
+        this._slotByInPort = this.engine.registerPortColumn(NO_SLOT);
         // Tile key -> paths covering it, and belt id -> its one path. Edits touch only the tiles/belts
         // of the run they rebuild, so these keep placement off a scan of every path in the world.
         this._pathsByTile = new Map();
@@ -1053,7 +1057,7 @@ export class Belts {
      */
     _trackPath(path) {
         this._pushPath(path);
-        this._byInPort.set(path.inPort, path.slot);
+        this._slotByInPort.column[path.inPort] = path.slot;
         this._indexPath(path);
         this.engine.registerRenderedPort(path.outPort, path.tailX, path.tailY);
     }
@@ -1264,7 +1268,7 @@ export class Belts {
         this._colItemSlab[slot] = this._colItemSlab[lastSlot];
         this._colItemHead[slot] = this._colItemHead[lastSlot];
         // The moved path's in-port now maps to its new slot.
-        this._byInPort.set(last.inPort, slot);
+        this._slotByInPort.column[last.inPort] = slot;
         this.paths.pop();
         // Last, so popping the tail (where the path is its own `last`) still leaves it slotless.
         path.slot = undefined;
@@ -1367,7 +1371,7 @@ export class Belts {
      */
     _forgetPath(path) {
         this._popPath(path);
-        this._byInPort.delete(path.inPort);
+        this._slotByInPort.column[path.inPort] = NO_SLOT;
         this._unindexPath(path);
         this.engine.unregisterRenderedPort(path.outPort);
         // Clear the client's item sprites for this (soon-stale) path id.
@@ -1405,7 +1409,7 @@ export class Belts {
             items: [],
         };
         this._pushPath(path);
-        this._byInPort.set(resolvedInPort, path.slot);
+        this._slotByInPort.column[resolvedInPort] = path.slot;
 
         return {id: eid, inPort: resolvedInPort, outPort, length};
     }
@@ -1425,7 +1429,7 @@ export class Belts {
         const headGapCol = this._colHeadGap;
         const firstGapCol = this._colFirstGap;
         const leadGapCol = this._colLeadGap;
-        const byInPort = this._byInPort;
+        const slotByInPort = this._slotByInPort.column;
         const count = this.paths.length;
         for (let slot = 0; slot < count; slot += 1) {
             const firstGap = firstGapCol[slot];
@@ -1435,8 +1439,8 @@ export class Belts {
             if (leadIsItem) {
                 // The out-port is free if empty, or if the downstream path can ingest this tick (head
                 // room or a gap), letting the resolver's chain shift the whole packed run at once.
-                const downstream = byInPort.get(outPort);
-                const downstreamCanIngest = downstream !== undefined
+                const downstream = slotByInPort[outPort];
+                const downstreamCanIngest = downstream !== NO_SLOT
                     && (headGapCol[downstream] > 0 || firstGapCol[downstream] !== -1);
                 engine.submitTransfer(
                     inPort,
@@ -1675,7 +1679,7 @@ export class Belts {
      */
     _reconstruct() {
         this.paths = [];
-        this._byInPort = new Map();
+        this._slotByInPort.clear();
         this._pathsByTile = new Map();
         this._pathByBeltId = new Map();
         this._belts = new Map();
