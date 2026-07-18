@@ -38,7 +38,15 @@ export class UndergroundBeltTool extends AbstractTool {
     onTileEnter(tileX, tileY) {
         const placement = this._resolvePlacement(tileX, tileY, this._rotation.direction);
         const blocked = this._blocked(tileX, tileY, placement.direction);
-        this._placementFeedbackLayer.show({blocked: blocked ? [{x: tileX, y: tileY}] : []});
+        // An overwritable same-axis belt is deleted before the ramp lands, so mark it as overwritten.
+        const overwrite = !blocked && this._surfaceBeltAt(tileX, tileY) !== null;
+        const tile = [{x: tileX, y: tileY}];
+        this._placementFeedbackLayer.show({
+            blocked: blocked ? tile : [],
+            overwrite: overwrite ? tile : [],
+            clear: blocked || overwrite ? [] : tile,
+            showTarget: true,
+        });
         if (blocked || placement.parentId === null) {
             this._ghostLayer.showGhost(tileX, tileY, placement.direction, placement.type, BeltBend.STRAIGHT, blocked);
             return;

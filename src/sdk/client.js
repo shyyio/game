@@ -42,6 +42,8 @@ export {ObjectGhostLayer} from "@/client/ObjectGhostLayer.js";
 export {AbstractTool} from "@/client/AbstractTool.js";
 // The derived-default tap-to-place tool (with center-lock); knobs come from the type's PlacementRule.
 export {ObjectTool} from "@/client/ObjectTool.js";
+// The shared pointer singleton; ghost layers read `currentX`/`currentY` (world coordinates) to float on the cursor.
+export {default as Mouse} from "@/client/Mouse.js";
 
 // ---- Feedback ----
 // Haptic (rumble) feedback for touch devices; a no-op where unavailable.

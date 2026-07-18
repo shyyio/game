@@ -1,51 +1,35 @@
-import {AbstractDrawLayer, currentAnimationFrame, Container, Graphics, TILE_SIZE} from "@/sdk/client.js";
+import {AbstractDrawLayer, currentAnimationFrame, Container, Mouse, TILE_SIZE} from "@/sdk/client.js";
 import {BeltBend, BeltType} from "./constants.js";
 import {BeltSprite, beltFrameBase} from "./BeltLayer.js";
 
 // Tints for tool preview ghosts.
 const GHOST_TINT = 0xFFFFFF; // normal placement preview: untinted (natural sprite color)
-const GHOST_ALPHA = 0.9; // ghosts are always semi-transparent so the world shows through
+const GHOST_ALPHA = 0.8; // ghosts are always semi-transparent so the world shows through
 const GHOST_AT_MAX_TINT = 0xF2A900; // tunnel preview at maximum length (amber)
 const GHOST_BLOCKED_TINT = 0xF23030; // placement blocked (red), matches PlacementFeedbackLayer
 const GHOST_BLOCKED_ALPHA = 0.8;
 
-// Green marker drawn on the locked placement target tile in center-lock mode: an
-// inset square with a semi-transparent fill and an opaque border.
-const TARGET_TILE_COLOR = 0x4CFF50;
-const TARGET_TILE_FILL_ALPHA = 0.22;
-const TARGET_TILE_BORDER_WIDTH = 3;
-
 /**
- * Renders a belt tool's hovering "ghost" preview, pinned to the screen center in center-lock mode.
+ * Renders a belt tool's hovering "ghost" preview, floating centered on the cursor (or on the screen
+ * center in center-lock). The per-tile feedback (red/green) is the PlacementFeedbackLayer's job.
  */
 export class BeltGhostLayer extends AbstractDrawLayer {
 
     constructor() {
         super();
         this._sprites = [];
-        // Ghost sprites live here so the whole set can be shifted to the screen
-        // center in center-lock mode without moving the target highlight.
-        this._spriteContainer = new Container();
+        // The placed tile's sprite lives here so it can float onto the cursor.
+        this._floatingContainer = new Container();
+        // A tunnel's buried belts connect to a ramp already on the grid, so they stay grid-aligned.
+        this._gridContainer = new Container();
 
-        // Grid-aligned green marker on the locked target tile (center-lock only).
-        this._targetGraphics = new Graphics();
-        this.addChild(this._targetGraphics);
-
-        this.addChild(this._spriteContainer);
+        this.addChild(this._gridContainer);
+        this.addChild(this._floatingContainer);
 
         this._centerLock = false;
-        // The primary tile of the current ghost (the belt/ramp tile), used as the
-        // pin anchor and the target-highlight tile.
+        // The primary tile of the current ghost (the belt/ramp tile), the float anchor.
         this._anchorTileX = null;
         this._anchorTileY = null;
-        // Whether the current ghost is pinned to the screen center in center-lock.
-        // A single-tile ghost is pinned (held fixed at center); a tunnel preview is
-        // not, so its line of buried belts stays aligned to the grid.
-        this._pinToCenter = true;
-        // Whether the current ghost sits on a blocked tile. The green target marker
-        // is suppressed when set, leaving the PlacementFeedbackLayer's red square to mark
-        // the tile (the two are mutually exclusive).
-        this._blocked = false;
     }
 
     get layerIndex() {
@@ -69,13 +53,10 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         this.clear();
         this._anchorTileX = tileX;
         this._anchorTileY = tileY;
-        this._pinToCenter = true;
-        this._blocked = blocked;
         const tint = blocked ? GHOST_BLOCKED_TINT : GHOST_TINT;
         const alpha = blocked ? GHOST_BLOCKED_ALPHA : GHOST_ALPHA;
-        this._addSprite(tileX, tileY, direction, beltType, tint, bend, alpha);
-        this._drawTarget();
-        this._updateCenterPin();
+        this._addSprite(this._floatingContainer, tileX, tileY, direction, beltType, tint, bend, alpha);
+        this._updatePin();
     }
 
     /**
@@ -94,22 +75,17 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         this.clear();
         this._anchorTileX = rampTileX;
         this._anchorTileY = rampTileY;
-        // A tunnel preview connects to a fixed pair ramp on the grid, so it follows
-        // the grid rather than being pinned to center.
-        this._pinToCenter = false;
-        // A tunnel preview is only shown for a valid (unblocked) placement.
-        this._blocked = false;
-        this._addSprite(rampTileX, rampTileY, direction, rampType, GHOST_TINT, BeltBend.STRAIGHT);
+        this._addSprite(this._floatingContainer, rampTileX, rampTileY, direction, rampType, GHOST_TINT, BeltBend.STRAIGHT);
         const undergroundTint = atMax ? GHOST_AT_MAX_TINT : GHOST_TINT;
         undergroundTiles.forEach(tile => {
-            this._addSprite(tile.x, tile.y, direction, BeltType.UNDERGROUND, undergroundTint, BeltBend.STRAIGHT);
+            this._addSprite(this._gridContainer, tile.x, tile.y, direction, BeltType.UNDERGROUND, undergroundTint, BeltBend.STRAIGHT);
         });
-        this._drawTarget();
-        this._updateCenterPin();
+        this._updatePin();
     }
 
     /**
-     * Builds one ghost sprite and adds it to the layer.
+     * Builds one ghost sprite and adds it to `container`.
+     * @param container {Container} floating (the placed tile) or grid-aligned (buried belts)
      * @param tileX {number}
      * @param tileY {number}
      * @param direction {Direction}
@@ -119,7 +95,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
      * @param {number} [alpha] sprite opacity
      * @private
      */
-    _addSprite(tileX, tileY, direction, beltType, tint, bend, alpha=GHOST_ALPHA) {
+    _addSprite(container, tileX, tileY, direction, beltType, tint, bend, alpha=GHOST_ALPHA) {
         const frames = this.textureRegistry.getAnimation(beltFrameBase(bend, beltType));
         const sprite = new BeltSprite(
             0,
@@ -134,86 +110,71 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         sprite.setGhost(tint, alpha);
 
         this._sprites.push(sprite);
-        this._spriteContainer.addChild(sprite);
+        container.addChild(sprite);
     }
 
     clear() {
         this._sprites.forEach(sprite => {
             sprite.destroy();
-            this._spriteContainer.removeChild(sprite);
+            this._floatingContainer.removeChild(sprite);
+            this._gridContainer.removeChild(sprite);
         });
         this._sprites.splice(0);
-        this._targetGraphics.clear();
         this._anchorTileX = null;
         this._anchorTileY = null;
-        this._blocked = false;
     }
 
     /**
-     * Toggles center-lock presentation: pin the ghost to screen center and mark the target tile.
+     * Toggles center-lock presentation: the ghost floats onto the screen center instead of the cursor.
      * @param {boolean} enabled
      */
     setCenterLock(enabled) {
         this._centerLock = enabled;
-        if (!enabled) {
-            this._spriteContainer.position.set(0, 0);
-            this._targetGraphics.clear();
-            return;
-        }
-        // A ghost may already be shown when the lock turns on; mark its target.
-        this._drawTarget();
+        this._updatePin();
     }
 
     /**
-     * Draws the green target-tile marker under the ghost; center-lock only.
-     * @private
-     */
-    _drawTarget() {
-        this._targetGraphics.clear();
-        if (!this._centerLock || !this._pinToCenter || this._anchorTileX === null || this._blocked) {
-            // No marker when the ghost already follows the grid (the tunnel preview)
-            // or sits on a blocked tile (the PlacementFeedbackLayer's red square marks it
-            // instead): the green target is mutually exclusive with both.
-            return;
-        }
-        this._targetGraphics
-            .rect(
-                this._anchorTileX * TILE_SIZE,
-                this._anchorTileY * TILE_SIZE,
-                TILE_SIZE,
-                TILE_SIZE,
-            )
-            .fill({color: TARGET_TILE_COLOR, alpha: TARGET_TILE_FILL_ALPHA})
-            .stroke({width: TARGET_TILE_BORDER_WIDTH, color: TARGET_TILE_COLOR});
-    }
-
-    /**
-     * Keeps the ghost preview on the shared animation frame, and (in center-lock)
-     * pins the ghost sprites to the screen center so they stay fixed while panning.
+     * Keeps the ghost preview on the shared animation frame and floating on its target.
      * @param {number} frame animation frame, in [0, 8)
      */
     tick(frame) {
         this._sprites.forEach(sprite => {
             sprite.setAnimationFrame(frame);
         });
-        this._updateCenterPin();
+        this._updatePin();
     }
 
     /**
-     * Offsets the sprite container each frame so the anchor tile renders at the screen center.
+     * Offsets the floating container each frame so the anchor tile's center lands on its target —
+     * the cursor, or the screen center in center-lock.
      * @private
      */
-    _updateCenterPin() {
-        if (!this._centerLock || !this._pinToCenter || this._anchorTileX === null || this.viewport === null) {
-            this._spriteContainer.position.set(0, 0);
+    _updatePin() {
+        const target = this._targetPoint();
+        if (this._anchorTileX === null || target === null) {
+            this._floatingContainer.position.set(0, 0);
             return;
         }
-        const center = this.viewport.toWorld(
-            this.viewport.screenWidth / 2,
-            this.viewport.screenHeight / 2,
-        );
         const anchorX = this._anchorTileX * TILE_SIZE + TILE_SIZE / 2;
         const anchorY = this._anchorTileY * TILE_SIZE + TILE_SIZE / 2;
-        this._spriteContainer.position.set(center.x - anchorX, center.y - anchorY);
+        this._floatingContainer.position.set(target.x - anchorX, target.y - anchorY);
+    }
+
+    /**
+     * The world point the ghost centers on: the screen center in center-lock, else the cursor.
+     * @private
+     * @returns {{x: number, y: number}|null}
+     */
+    _targetPoint() {
+        if (this.viewport === null) {
+            return null;
+        }
+        if (this._centerLock) {
+            return this.viewport.toWorld(this.viewport.screenWidth / 2, this.viewport.screenHeight / 2);
+        }
+        if (Mouse.currentX === null) {
+            return null;
+        }
+        return {x: Mouse.currentX, y: Mouse.currentY};
     }
 }

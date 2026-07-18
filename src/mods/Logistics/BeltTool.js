@@ -47,12 +47,21 @@ export class BeltTool extends AbstractTool {
     }
 
     /**
-     * Draws the placement ghost facing `direction`, bent from its inferred parent, marking the tile if blocked.
+     * Draws the placement ghost facing `direction`, bent from its inferred parent, marking the tile
+     * blocked (red), overwritten (blue), or clear (green target).
      * @private
      */
     _showGhost(tileX, tileY, direction) {
-        const blocked = this._blocked(tileX, tileY);
-        this._placementFeedbackLayer.show({blocked: blocked ? [{x: tileX, y: tileY}] : []});
+        const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
+        const blocked = occupant !== null && !this._overwritable(occupant);
+        const overwrite = occupant !== null && !blocked;
+        const tile = [{x: tileX, y: tileY}];
+        this._placementFeedbackLayer.show({
+            blocked: blocked ? tile : [],
+            overwrite: overwrite ? tile : [],
+            clear: blocked || overwrite ? [] : tile,
+            showTarget: true,
+        });
         const {parentX, parentY} = inferBeltParent(this._cache, tileX, tileY, direction);
         const bend = Belt.getBend(direction, tileX, tileY, parentX, parentY);
         this._ghostLayer.showGhost(tileX, tileY, direction, BeltType.NORMAL, bend, blocked);
