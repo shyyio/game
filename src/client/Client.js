@@ -11,6 +11,7 @@ import {ToolRotation} from "@/client/ToolRotation.js";
 import {EraserTool} from "@/client/EraserTool.js";
 import {SetViewportMessage, SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
+import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
@@ -391,14 +392,23 @@ export class Client {
     publishEvent(event, bytes=0) {
         if (DEV && BROWSER) {
             this._bytesReceived = (this._bytesReceived || 0) + bytes;
-            // this event's size, then the session total
-            console.log(`↓ [${formatBytes(bytes)} / ${formatBytes(this._bytesReceived)}]`, event.constructor.name, event);
+            if (bytes > 0) {
+                // this event's size, then the session total
+                console.log(`↓ [${formatBytes(bytes)} / ${formatBytes(this._bytesReceived)}]`, event.constructor.name, event);
+            }
         }
         if (event instanceof ChunkSyncEvent) {
             // A chunk-sync bundle: replay each inner event through the normal path.
             // Sync events are distinct types (e.g. BeltSyncEvent vs BeltInsertEvent),
             // so handlers can already tell a load from a live change.
             for (const inner of event.events) {
+                this.publishEvent(inner);
+            }
+            return;
+        }
+        if (event instanceof AbstractBatchEvent) {
+            // A chunk's packed deltas: replay each as the per-delta event handlers already expect.
+            for (const inner of event.explode()) {
                 this.publishEvent(inner);
             }
             return;

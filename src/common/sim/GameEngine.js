@@ -2,7 +2,7 @@ import {World} from "@/common/sim/World.js";
 import {rotate, chunkId, tileId, tileVariantId, TILE_VARIANT_LIMIT} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
+import {PortItemSetEvent, PortItemClearEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlacedObjects} from "@/common/sim/PlacedObjects.js";
 
 /**
@@ -500,8 +500,12 @@ export class GameEngine {
      * @returns {void}
      */
     _emitRender() {
+        // One batch per chunk, flushed at the end of the pass so the pass stays ordered against
+        // everything emitted outside it.
+        const batches = new Map();
+
         for (const [eid, position] of this._pendingClear) {
-            this.emitEvent(new PortItemClearEvent(position.x, position.y, eid));
+            this._portBatch(batches, position.x, position.y).addClear(eid);
             this._portShadow[eid] = EMPTY;
         }
         this._pendingClear.clear();
@@ -518,13 +522,37 @@ export class GameEngine {
             }
             const x = this._renderX[eid];
             const y = this._renderY[eid];
+            const batch = this._portBatch(batches, x, y);
             if (item[eid] === EMPTY) {
-                this.emitEvent(new PortItemClearEvent(x, y, eid));
+                batch.addClear(eid);
             } else {
-                this.emitEvent(new PortItemSetEvent(x, y, eid, item[eid]));
+                batch.addSet(eid, item[eid]);
             }
         }
         this._dirtyPorts.length = 0;
+
+        for (const batch of batches.values()) {
+            this.emitEvent(batch);
+        }
+    }
+
+    /**
+     * The batch collecting (x, y)'s chunk, created on first use.
+     * @private
+     * @param {Map<number, PortItemBatchEvent>} batches
+     * @param {number} x
+     * @param {number} y
+     * @returns {PortItemBatchEvent}
+     */
+    _portBatch(batches, x, y) {
+        const chunk = chunkId(x, y);
+        const existing = batches.get(chunk);
+        if (existing !== undefined) {
+            return existing;
+        }
+        const batch = new PortItemBatchEvent(x, y);
+        batches.set(chunk, batch);
+        return batch;
     }
 
     /**

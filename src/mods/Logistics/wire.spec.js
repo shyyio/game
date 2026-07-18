@@ -13,6 +13,7 @@ import {
     BeltSyncEvent,
     BeltDeleteEvent,
     BeltPathRecalculateEvent,
+    BeltItemBatchEvent,
 } from "./events.js";
 
 function registry() {
@@ -68,4 +69,13 @@ test("Decoded belt id is a Number, round-tripped exactly", () => {
     const decoded = reg.decode(reg.encode(new DeleteObjectMessage(id)));
     assert.strictEqual(typeof decoded.id, "number");
     assert.strictEqual(decoded.id, id);
+});
+
+test("Round-trips a BeltItemBatchEvent's packed columns", () => {
+    const reg = registry();
+    const batch = new BeltItemBatchEvent(12, -5);
+    batch.addDelete(999999999999, 41);
+    batch.addUpsert(7, 42, 0, 3);
+    batch.addUpsert(7, 43, 12, 3);
+    roundTrip(reg, batch, BeltItemBatchEvent);
 });
