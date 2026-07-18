@@ -44,6 +44,11 @@ test("the whole world round-trips through the engine serializer", async () => {
 
     // The extractor keeps producing water into its edge out-port after the load.
     const outPort = restored.portAt(5, 4, Direction.UP);
+    assert.deepEqual(restored.renderedPorts.get(outPort), {x: 5, y: 4}, "out-port re-registered at its own tile");
+    [{x: 3, y: 7}, {x: 4, y: 7}].forEach(tile => {
+        const port = restored.portAt(tile.x, tile.y, Direction.UP);
+        assert.deepEqual(restored.renderedPorts.get(port), tile, "splitter out-port re-registered at its own tile");
+    });
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
         restored.tickAll();
@@ -70,7 +75,7 @@ test("a snapshot round-trips through structured SQLite (the node save path)", as
 
     const loaded = await store.load();
     const names = loaded.components.map(component => component.name);
-    ["Port", "Position", "PlacedObject", "Machine", "Extractor", "Splitter", "BeltPath", "Belt", "BeltRun"].forEach(name => {
+    ["Port", "Position", "Occupancy", "PlacedObject", "Machine", "Extractor", "Splitter", "BeltPath", "Belt", "BeltRun"].forEach(name => {
         assert.ok(names.includes(name), `${name} table present`);
     });
 

@@ -201,8 +201,6 @@ export class MachineBehavior extends AbstractBehavior {
             {name: "remaining", fill: EMPTY},
             {name: "output", fill: EMPTY},
             {name: "lastOutput", fill: EMPTY},
-            {name: "outTileX"},
-            {name: "outTileY"},
         ]);
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => MachineBehavior._submitIntents(engine, placed));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => MachineBehavior._finish(engine, placed));
@@ -216,8 +214,6 @@ export class MachineBehavior extends AbstractBehavior {
         });
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         machine.out[eid] = output.port;
-        machine.outTileX[eid] = output.tile.x;
-        machine.outTileY[eid] = output.tile.y;
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
         return [output.port];
     }
@@ -234,8 +230,8 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     resyncRenderedPorts(engine, placed, eid) {
-        const machine = engine.component("Machine").store;
-        engine.registerRenderedPort(machine.out[eid], machine.outTileX[eid], machine.outTileY[eid]);
+        const out = engine.component("Machine").store.out[eid];
+        engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
 
     /**
@@ -414,8 +410,6 @@ export class ExtractorBehavior extends AbstractBehavior {
             {name: "remaining", fill: EMPTY},
             {name: "output", fill: EMPTY},
             {name: "lastOutput", fill: EMPTY},
-            {name: "outTileX"},
-            {name: "outTileY"},
         ]);
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => ExtractorBehavior._submitIntents(engine, placed));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => ExtractorBehavior._finish(engine, placed));
@@ -435,8 +429,6 @@ export class ExtractorBehavior extends AbstractBehavior {
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         extractor.out[eid] = output.port;
         extractor.resourceType[eid] = engine.occupantUserDataAt(message.x, message.y, LAYER_RESOURCE);
-        extractor.outTileX[eid] = output.tile.x;
-        extractor.outTileY[eid] = output.tile.y;
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
         return [output.port];
     }
@@ -453,8 +445,8 @@ export class ExtractorBehavior extends AbstractBehavior {
     }
 
     resyncRenderedPorts(engine, placed, eid) {
-        const extractor = engine.component("Extractor").store;
-        engine.registerRenderedPort(extractor.out[eid], extractor.outTileX[eid], extractor.outTileY[eid]);
+        const out = engine.component("Extractor").store.out[eid];
+        engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
 
     /**

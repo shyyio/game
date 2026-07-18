@@ -17,12 +17,10 @@ export class PlacedObjects {
      */
     constructor(engine, registry) {
         this.engine = engine;
+        // Where a placed object sits lives on the shared Position component, not here.
         this.def = engine.defineComponent("PlacedObject", [
             {name: "typeId"},
             {name: "clientId", fill: NO_EID},
-            {name: "x"},
-            {name: "y"},
-            {name: "direction"},
         ]);
         this.PlacedObject = this.def.store;
 
@@ -117,9 +115,7 @@ export class PlacedObjects {
         const placedObject = this.PlacedObject;
         placedObject.typeId[eid] = type.typeId;
         placedObject.clientId[eid] = clientId;
-        placedObject.x[eid] = message.x;
-        placedObject.y[eid] = message.y;
-        placedObject.direction[eid] = message.direction;
+        engine.setPosition(eid, message.x, message.y, message.direction);
         const portIds = type.behavior.onSpawn(engine, this, eid, type, message);
         if (type.placement.solid) {
             engine.track(clientId, footprint);
@@ -142,9 +138,10 @@ export class PlacedObjects {
         }
         const engine = this.engine;
         const placedObject = this.PlacedObject;
+        const position = engine.Position;
         const type = this._types.get(placedObject.typeId[eid]);
         type.behavior.onDespawn(engine, this, eid);
-        engine.emitEvent(new ObjectDeleteEvent(type.typeId, clientId, placedObject.x[eid], placedObject.y[eid]));
+        engine.emitEvent(new ObjectDeleteEvent(type.typeId, clientId, position.x[eid], position.y[eid]));
         engine.destroyEntity(eid);
         this._eidByClientId.delete(clientId);
         return true;
@@ -158,14 +155,15 @@ export class PlacedObjects {
     _chunkSync(chunk) {
         const events = [];
         const placedObject = this.PlacedObject;
+        const position = this.engine.Position;
         this.engine.entitiesWith(this.def).forEach(eid => {
-            if (chunkId(placedObject.x[eid], placedObject.y[eid]) !== chunk) {
+            if (chunkId(position.x[eid], position.y[eid]) !== chunk) {
                 return;
             }
             const type = this._types.get(placedObject.typeId[eid]);
             const sync = type.behavior.syncData(this.engine, this, eid);
             events.push(new ObjectSyncEvent(
-                type.typeId, placedObject.clientId[eid], placedObject.x[eid], placedObject.y[eid], placedObject.direction[eid],
+                type.typeId, placedObject.clientId[eid], position.x[eid], position.y[eid], position.direction[eid],
                 sync.portIds, sync.lastOutput,
             ));
         });
