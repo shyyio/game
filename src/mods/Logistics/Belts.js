@@ -22,6 +22,10 @@ import {beltPositionLayer} from "./geometry.js";
 // A gap run in a path's RLE item list (empty half-tiles between items).
 const GAP = 0;
 
+// Initial slot count for the per-path hot columns; grows by doubling.
+const PATH_CAPACITY = 1024;
+
+
 // Marks a live path entity. One shared object: bitECS keys components by identity, so a fresh literal
 // per path would register a new component type each time and make every removeEntity scan them all.
 const PATH_MARKER = {};
@@ -49,7 +53,7 @@ export class Belts {
         this.engine = engine;
         // Path records keyed by head eid: {inPort, outPort, length, headGap, items:[{length,type}]}.
         this.paths = [];
-        // In-port -> path, so a path can find its downstream neighbor across a shared seam port.
+        // In-port -> path slot, so a path can find its downstream neighbor across a shared seam port.
         this._byInPort = new Map();
         // Tile key -> paths covering it, and belt id -> its one path. Edits touch only the tiles/belts
         // of the run they rebuild, so these keep placement off a scan of every path in the world.
@@ -57,6 +61,20 @@ export class Belts {
         this._pathByBeltId = new Map();
         // Path -> its slot in `paths`, so dropping one is a swap-pop instead of a rebuild of the array.
         this._pathSlot = new Map();
+        // Hot per-path state as typed columns indexed by slot. The tick phases read only these, so a
+        // pass over every path stays in sequential memory instead of chasing a path object, its items
+        // array, and a run object per path. `_colFirstGap`/`_colFirstItem` cache the lead run indices,
+        // recomputed at each items mutation (see _refreshRuns) where the array is already warm.
+        this._pathCapacity = PATH_CAPACITY;
+        this._colInPort = new Int32Array(PATH_CAPACITY);
+        this._colOutPort = new Int32Array(PATH_CAPACITY);
+        this._colHeadGap = new Int32Array(PATH_CAPACITY);
+        this._colFirstGap = new Int32Array(PATH_CAPACITY);
+        this._colFirstItem = new Int32Array(PATH_CAPACITY);
+        // Out-port writes _move defers to its last phase, reused tick to tick.
+        this._popCapacity = PATH_CAPACITY;
+        this._popPorts = new Int32Array(PATH_CAPACITY);
+        this._popTypes = new Int32Array(PATH_CAPACITY);
         // Placed belts by tile key -> belt[] {x, y, direction, type, id}. A tile can hold several belts
         // on different axes/layers (a surface belt and an underground crossing under it); the run at a
         // tile is disambiguated by direction.
@@ -764,7 +782,7 @@ export class Belts {
             inPort,
             outPort,
             length,
-            headGap: headGap === undefined ? length : headGap,
+            initialHeadGap: headGap === undefined ? length : headGap,
             items,
         };
     }
@@ -837,7 +855,7 @@ export class Belts {
                 // Head (input-edge) extension: the new empty belt is head room; items keep their
                 // distance from the unchanged output edge (run ids are reassigned below).
                 items = old.items.map(run => ({id: run.id, length: run.length, type: run.type}));
-                headGap = old.headGap + 2;
+                headGap = old.initialHeadGap + 2;
             } else {
                 // Tail (output-edge) extension: the new belt is empty space at the moved-forward output
                 // edge. In-flight items keep their distance from the input edge; a resting out-port item
@@ -854,17 +872,17 @@ export class Belts {
                         ...carried,
                     ];
                     this._nextRunId += 2;
-                    headGap = old.headGap;
+                    headGap = old.initialHeadGap;
                     this.engine.setPortItem(old.outPort, EMPTY);
                 } else if (carried.length === 0) {
                     // Empty path: all the new space is head room.
                     items = [];
-                    headGap = old.headGap + 2;
+                    headGap = old.initialHeadGap + 2;
                 } else {
                     // In-flight items: a leading output gap carries the lead item across the new belt.
                     items = [{id: this._nextRunId, length: 2, type: GAP}, ...carried];
                     this._nextRunId += 1;
-                    headGap = old.headGap;
+                    headGap = old.initialHeadGap;
                 }
             }
         } else if (removed.length > 0) {
@@ -1018,7 +1036,7 @@ export class Belts {
      */
     _trackPath(path) {
         this._pushPath(path);
-        this._byInPort.set(path.inPort, path);
+        this._byInPort.set(path.inPort, this._pathSlot.get(path));
         this._indexPath(path);
         this.engine.registerRenderedPort(path.outPort, path.tailX, path.tailY);
     }
@@ -1030,8 +1048,49 @@ export class Belts {
      * @returns {void}
      */
     _pushPath(path) {
-        this._pathSlot.set(path, this.paths.length);
+        const slot = this.paths.length;
+        this._growColumns(slot);
+        this._pathSlot.set(path, slot);
         this.paths.push(path);
+        this._colInPort[slot] = path.inPort;
+        this._colOutPort[slot] = path.outPort;
+        this._colHeadGap[slot] = path.initialHeadGap;
+        this._refreshRuns(slot, path);
+    }
+
+    /**
+     * Grows the hot columns so `slot` is addressable.
+     * @private
+     * @param {number} slot
+     * @returns {void}
+     */
+    _growColumns(slot) {
+        if (slot < this._pathCapacity) {
+            return;
+        }
+        let capacity = this._pathCapacity;
+        while (capacity <= slot) {
+            capacity *= 2;
+        }
+        for (const name of ["_colInPort", "_colOutPort", "_colHeadGap", "_colFirstGap", "_colFirstItem"]) {
+            const grown = new Int32Array(capacity);
+            grown.set(this[name]);
+            this[name] = grown;
+        }
+        this._pathCapacity = capacity;
+    }
+
+    /**
+     * Recomputes a path's cached lead run indices. Called wherever `items` is mutated — the scan is
+     * free there because the array was just touched, and it keeps the tick phases off it entirely.
+     * @private
+     * @param {number} slot
+     * @param {object} path
+     * @returns {void}
+     */
+    _refreshRuns(slot, path) {
+        this._colFirstGap[slot] = this._firstGap(path);
+        this._colFirstItem[slot] = this._firstItem(path);
     }
 
     /**
@@ -1045,9 +1104,20 @@ export class Belts {
         if (slot === undefined) {
             return;
         }
-        const last = this.paths[this.paths.length - 1];
+        // Snapshot the live head-gap back onto the record: a dropped path is still read by the edit
+        // that replaced it (an end extension carries its head room forward).
+        path.initialHeadGap = this._colHeadGap[slot];
+        const lastSlot = this.paths.length - 1;
+        const last = this.paths[lastSlot];
         this.paths[slot] = last;
         this._pathSlot.set(last, slot);
+        this._colInPort[slot] = this._colInPort[lastSlot];
+        this._colOutPort[slot] = this._colOutPort[lastSlot];
+        this._colHeadGap[slot] = this._colHeadGap[lastSlot];
+        this._colFirstGap[slot] = this._colFirstGap[lastSlot];
+        this._colFirstItem[slot] = this._colFirstItem[lastSlot];
+        // The moved path's in-port now maps to its new slot.
+        this._byInPort.set(last.inPort, slot);
         this.paths.pop();
         this._pathSlot.delete(path);
     }
@@ -1150,10 +1220,24 @@ export class Belts {
         const length = beltCount * 2 - 1;
 
         const eid = addEntity(this.engine.world);
-        const path = {id: eid, inPort: resolvedInPort, outPort, length, headGap: length, items: []};
         addComponent(this.engine.world, eid, PATH_MARKER);
+        // Belt-less, so it carries no tiles: the fields the tile/render paths read stay undefined.
+        const path = {
+            id: eid,
+            belts: undefined,
+            beltIds: undefined,
+            headX: undefined,
+            headY: undefined,
+            tailX: undefined,
+            tailY: undefined,
+            inPort: resolvedInPort,
+            outPort,
+            length,
+            initialHeadGap: length,
+            items: [],
+        };
         this._pushPath(path);
-        this._byInPort.set(resolvedInPort, path);
+        this._byInPort.set(resolvedInPort, this._pathSlot.get(path));
 
         return {id: eid, inPort: resolvedInPort, outPort, length};
     }
@@ -1185,25 +1269,35 @@ export class Belts {
      */
     _submitIntents() {
         const P = this.engine.Port.item;
-        for (const path of this.paths) {
-            const firstGap = this._firstGap(path);
-            const firstItem = this._firstItem(path);
+        const engine = this.engine;
+        const inPortCol = this._colInPort;
+        const outPortCol = this._colOutPort;
+        const headGapCol = this._colHeadGap;
+        const firstGapCol = this._colFirstGap;
+        const firstItemCol = this._colFirstItem;
+        const byInPort = this._byInPort;
+        const count = this.paths.length;
+        for (let slot = 0; slot < count; slot += 1) {
+            const firstGap = firstGapCol[slot];
+            const firstItem = firstItemCol[slot];
+            const inPort = inPortCol[slot];
+            const outPort = outPortCol[slot];
             const leadIsItem = firstItem !== -1 && (firstGap === -1 || firstItem < firstGap);
             if (leadIsItem) {
                 // The out-port is free if empty, or if the downstream path can ingest this tick (head
                 // room or a gap), letting the resolver's chain shift the whole packed run at once.
-                const downstream = this._byInPort.get(path.outPort);
+                const downstream = byInPort.get(outPort);
                 const downstreamCanIngest = downstream !== undefined
-                    && (downstream.headGap > 0 || this._firstGap(downstream) !== -1);
-                this.engine.submitTransfer(
-                    path.inPort,
-                    path.outPort,
-                    P[path.outPort] === EMPTY || downstreamCanIngest,
+                    && (headGapCol[downstream] > 0 || firstGapCol[downstream] !== -1);
+                engine.submitTransfer(
+                    inPort,
+                    outPort,
+                    P[outPort] === EMPTY || downstreamCanIngest,
                     false,
                 );
             }
-            if (P[path.inPort] !== EMPTY && (path.headGap > 0 || firstGap !== -1)) {
-                this.engine.submitDrain(path.inPort, false);
+            if (P[inPort] !== EMPTY && (headGapCol[slot] > 0 || firstGap !== -1)) {
+                engine.submitDrain(inPort, false);
             }
         }
     }
@@ -1220,21 +1314,39 @@ export class Belts {
         // Phase 1: move each path one half-tile (pop the lead item or shrink the lead gap), buffering
         // pops. Out-port writes are deferred so a shared seam still holds last tick's value when the
         // downstream ingests below (an item rests a tick in the seam).
-        const pops = [];
-        for (const path of this.paths) {
-            const firstGap = this._firstGap(path);
-            const firstItem = this._firstItem(path);
-            const hasGap = firstGap !== -1;
-            const canPop = this.engine.resolvedUnmanagedDest(path.outPort);
-            const leadIsItem = firstItem !== -1 && (firstGap === -1 || firstItem < firstGap);
+        const engine = this.engine;
+        const inPortCol = this._colInPort;
+        const outPortCol = this._colOutPort;
+        const headGapCol = this._colHeadGap;
+        const firstGapCol = this._colFirstGap;
+        const firstItemCol = this._colFirstItem;
+        const count = this.paths.length;
+        // Reused across ticks: the deferred out-port writes, as parallel columns.
+        let popCount = 0;
 
+        for (let slot = 0; slot < count; slot += 1) {
+            const firstGap = firstGapCol[slot];
+            const firstItem = firstItemCol[slot];
+            const hasGap = firstGap !== -1;
+            const leadIsItem = firstItem !== -1 && (firstGap === -1 || firstItem < firstGap);
+            const canPop = engine.resolvedUnmanagedDest(outPortCol[slot]);
+            const moving = (leadIsItem && canPop) || (hasGap && (firstGap < firstItem || firstItem === -1 || !canPop));
+            if (!moving) {
+                continue;
+            }
+
+            // Only a moving path touches its record and RLE runs.
+            const path = this.paths[slot];
             let popped = false;
             if (leadIsItem && canPop) {
-                pops.push({outPort: path.outPort, type: path.items[0].type});
+                this._growPops(popCount);
+                this._popPorts[popCount] = outPortCol[slot];
+                this._popTypes[popCount] = path.items[0].type;
+                popCount += 1;
                 this._emitItemDelete(path, path.items[0].id);
                 path.items.shift();
                 popped = true;
-            } else if (hasGap && (firstGap < firstItem || firstItem === -1 || !canPop)) {
+            } else {
                 const gap = path.items[firstGap];
                 gap.length -= 1;
                 if (gap.length === 0) {
@@ -1246,32 +1358,59 @@ export class Belts {
             }
 
             if (hasGap || popped) {
-                path.headGap += 1;
+                headGapCol[slot] += 1;
             }
+            this._refreshRuns(slot, path);
         }
 
         // Phase 2: ingest each path's resting in-port item at the input edge, filling the head room.
-        for (const path of this.paths) {
-            if (path.headGap > 0 && P[path.inPort] !== EMPTY) {
-                if (path.headGap > 1) {
-                    const gap = {id: this._nextRunId, length: path.headGap - 1, type: GAP};
-                    this._nextRunId += 1;
-                    path.items.push(gap);
-                    this._emitItemUpsert(path, gap);
-                }
-                const item = {id: this._nextRunId, length: 1, type: P[path.inPort]};
-                this._nextRunId += 1;
-                path.items.push(item);
-                this._emitItemUpsert(path, item);
-                path.headGap = 0;
-                this.engine.setPortItem(path.inPort, EMPTY);
+        for (let slot = 0; slot < count; slot += 1) {
+            const inPort = inPortCol[slot];
+            if (headGapCol[slot] === 0 || P[inPort] === EMPTY) {
+                continue;
             }
+            const path = this.paths[slot];
+            if (headGapCol[slot] > 1) {
+                const gap = {id: this._nextRunId, length: headGapCol[slot] - 1, type: GAP};
+                this._nextRunId += 1;
+                path.items.push(gap);
+                this._emitItemUpsert(path, gap);
+            }
+            const item = {id: this._nextRunId, length: 1, type: P[inPort]};
+            this._nextRunId += 1;
+            path.items.push(item);
+            this._emitItemUpsert(path, item);
+            headGapCol[slot] = 0;
+            engine.setPortItem(inPort, EMPTY);
+            this._refreshRuns(slot, path);
         }
 
         // Phase 3: write this tick's pops into their out-ports.
-        for (const pop of pops) {
-            this.engine.setPortItem(pop.outPort, pop.type);
+        for (let i = 0; i < popCount; i += 1) {
+            engine.setPortItem(this._popPorts[i], this._popTypes[i]);
         }
+    }
+
+    /**
+     * Grows the deferred-pop columns so row `count` is addressable.
+     * @private
+     * @param {number} count
+     * @returns {void}
+     */
+    _growPops(count) {
+        if (count < this._popCapacity) {
+            return;
+        }
+        let capacity = this._popCapacity;
+        while (capacity <= count) {
+            capacity *= 2;
+        }
+        for (const name of ["_popPorts", "_popTypes"]) {
+            const grown = new Int32Array(capacity);
+            grown.set(this[name]);
+            this[name] = grown;
+        }
+        this._popCapacity = capacity;
     }
 
     /**
@@ -1324,7 +1463,7 @@ export class Belts {
             const pathEid = this.engine.createEntity(this._pathDef);
             BP.inPort[pathEid] = path.inPort;
             BP.outPort[pathEid] = path.outPort;
-            BP.headGap[pathEid] = path.headGap;
+            BP.headGap[pathEid] = this._colHeadGap[this._pathSlot.get(path)];
             BP.length[pathEid] = path.length;
 
             for (const [index, beltId] of path.beltIds.entries()) {
@@ -1407,7 +1546,7 @@ export class Belts {
                 inPort: BP.inPort[pathEid],
                 outPort: BP.outPort[pathEid],
                 length: BP.length[pathEid],
-                headGap: BP.headGap[pathEid],
+                initialHeadGap: BP.headGap[pathEid],
                 items,
             };
             this._trackPath(path);
