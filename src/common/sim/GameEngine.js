@@ -1171,20 +1171,20 @@ export class GameEngine {
 
     /**
      * Occupies a placed object's footprint, tagged with its client id so a delete destroys it.
-     * @param {number} clientId
+     * @param {number} objectId
      * @param {{x:number, y:number, layer:string}[]} footprint
      * @returns {void}
      */
-    track(clientId, footprint) {
-        this.occupy(footprint, clientId);
+    track(objectId, footprint) {
+        this.occupy(footprint, objectId);
     }
 
     /**
      * Destroys a deleted object's footprint.
-     * @param {number} clientId
+     * @param {number} objectId
      * @returns {void}
      */
-    untrack(clientId) {
-        this.destroyOwnerCells(clientId);
+    untrack(objectId) {
+        this.destroyOwnerCells(objectId);
     }
 }

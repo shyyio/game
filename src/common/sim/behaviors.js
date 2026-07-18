@@ -547,13 +547,13 @@ export class ResourceBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, placed, eid, type, message) {
-        const clientId = placed.PlacedObject.clientId[eid];
+        const objectId = placed.PlacedObject.objectId[eid];
         const cells = type.extractionTiles.map(offset => ({
             x: message.x + offset.x,
             y: message.y + offset.y,
             layer: LAYER_RESOURCE,
         }));
-        engine.occupy(cells, clientId, this.resourceType);
+        engine.occupy(cells, objectId, this.resourceType);
         return [];
     }
 }
