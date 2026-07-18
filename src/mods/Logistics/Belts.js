@@ -1,4 +1,3 @@
-import {addEntity, addComponent} from "bitecs";
 import {TickPhase, Direction, EMPTY, NO_EID, chunkId} from "@/sdk/common.js";
 import {
     BeltInsertEvent,
@@ -27,8 +26,8 @@ const GAP = 0;
 const PATH_CAPACITY = 1024;
 
 
-// Marks a live path entity. One shared object: bitECS keys components by identity, so a fresh literal
-// per path would register a new component type each time and make every removeEntity scan them all.
+// Marks a live path entity. One shared object: the world keys components by identity, so a fresh
+// literal per path would register a new component each time and burn a mask bit on every path.
 const PATH_MARKER = {};
 
 // Tile key for the belt registry.
@@ -791,8 +790,8 @@ export class Belts {
             inPort = outPort;
         }
         const length = runBelts.length * 2 - 1;
-        const eid = addEntity(this.engine.world);
-        addComponent(this.engine.world, eid, PATH_MARKER);
+        const eid = this.engine.world.addEntity();
+        this.engine.world.addComponent(eid, PATH_MARKER);
         return {
             id: eid,
             belts: runBelts.map(belt => tileKey(belt.x, belt.y)),
@@ -1367,8 +1366,8 @@ export class Belts {
         const outPort = this.engine.createPort();
         const length = beltCount * 2 - 1;
 
-        const eid = addEntity(this.engine.world);
-        addComponent(this.engine.world, eid, PATH_MARKER);
+        const eid = this.engine.world.addEntity();
+        this.engine.world.addComponent(eid, PATH_MARKER);
         // Belt-less, so it carries no tiles: the fields the tile/render paths read stay undefined.
         const path = {
             id: eid,

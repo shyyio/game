@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
-    "bitecs": "^0.4.0",
     "pixi-viewport": "^6.0.3",
     "pixi.js": "^8.19.0",
     "protobufjs": "^8.6.4",
