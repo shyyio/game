@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
+import {tileId} from "@/common/util.js";
 import {GameEngine} from "@/common/sim/GameEngine.js";
 import {Belts} from "@/mods/Logistics/Belts.js";
 
@@ -29,7 +30,7 @@ test("packed same-type items survive a split and each still pops", async () => {
     // Delete an upstream belt: the downstream belts (0,2)+(0,3) split into their own sub-run,
     // carrying the packed items re-rowed from occupancy.
     belts.removeBelt(0, 1, Direction.UP);
-    const sub = belts.paths.find(path => path.belts.includes("0,3"));
+    const sub = belts.paths.find(path => path.belts.includes(tileId(0, 3)));
     const expected = belts.itemsOf(sub).filter(item => item.type === RED).length;
     assert.ok(expected >= 2, "the split sub-run should carry at least two packed items");
 

@@ -1,5 +1,5 @@
 import {World} from "@/common/sim/World.js";
-import {rotate, chunkId} from "@/common/util.js";
+import {rotate, chunkId, tileId, tileVariantId, TILE_VARIANT_LIMIT} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
@@ -869,7 +869,7 @@ export class GameEngine {
      * @returns {number} the port eid
      */
     portAt(x, y, direction) {
-        const key = `${x},${y},${direction}`;
+        const key = tileVariantId(tileId(x, y), direction);
         let eid = this._portsByEdge.get(key);
         if (eid === undefined) {
             eid = this.createPort();
@@ -903,6 +903,9 @@ export class GameEngine {
         let code = this._layerCodes.get(name);
         if (code === undefined) {
             code = this._layerNames.length;
+            if (code >= TILE_VARIANT_LIMIT) {
+                throw new RangeError(`Position layer "${name}" exceeds the ${TILE_VARIANT_LIMIT} the cell index keys on`);
+            }
             this._layerCodes.set(name, code);
             this._layerNames.push(name);
         }
@@ -915,7 +918,7 @@ export class GameEngine {
      * @returns {boolean}
      */
     cellsFree(cells) {
-        return cells.every(cell => !this._cellByKey.has(`${cell.x},${cell.y},${cell.layer}`));
+        return cells.every(cell => !this._cellByKey.has(this._cellKeyAt(cell.x, cell.y, cell.layer)));
     }
 
     /**
@@ -926,7 +929,7 @@ export class GameEngine {
      * @returns {number|null}
      */
     occupantUserDataAt(x, y, layer) {
-        const eid = this._cellByKey.get(`${x},${y},${layer}`);
+        const eid = this._cellByKey.get(this._cellKeyAt(x, y, layer));
         return eid === undefined ? null : this._occupancyDef.store.userData[eid];
     }
 
@@ -941,7 +944,7 @@ export class GameEngine {
     occupy(cells, owner=NO_EID, userData=0) {
         const occupancy = this._occupancyDef.store;
         for (const cell of cells) {
-            const key = `${cell.x},${cell.y},${cell.layer}`;
+            const key = this._cellKeyAt(cell.x, cell.y, cell.layer);
             if (this._cellByKey.has(key)) {
                 continue;
             }
@@ -962,7 +965,7 @@ export class GameEngine {
      */
     destroyCells(cells) {
         for (const cell of cells) {
-            const key = `${cell.x},${cell.y},${cell.layer}`;
+            const key = this._cellKeyAt(cell.x, cell.y, cell.layer);
             const eid = this._cellByKey.get(key);
             if (eid !== undefined) {
                 this.world.removeEntity(eid);
@@ -998,11 +1001,22 @@ export class GameEngine {
     /**
      * @private
      * @param {number} eid - a cell entity
-     * @returns {string} its "x,y,layer" index key
+     * @returns {number} its index key
      */
     _cellKey(eid) {
-        const layer = this._layerNames[this._occupancyDef.store.layer[eid]];
-        return `${this.Position.x[eid]},${this.Position.y[eid]},${layer}`;
+        const tile = tileId(this.Position.x[eid], this.Position.y[eid]);
+        return tileVariantId(tile, this._occupancyDef.store.layer[eid]);
+    }
+
+    /**
+     * @private
+     * @param {number} x
+     * @param {number} y
+     * @param {string} layer
+     * @returns {number} the index key of cell {x, y, layer}
+     */
+    _cellKeyAt(x, y, layer) {
+        return tileVariantId(tileId(x, y), this._layerCodes.get(layer));
     }
 
     /**
@@ -1585,10 +1599,11 @@ export class GameEngine {
     /**
      * @private
      * @param {number} eid - an edge port
-     * @returns {string} its "x,y,direction" index key
+     * @returns {number} its index key
      */
     _edgeKey(eid) {
-        return `${this.Position.x[eid]},${this.Position.y[eid]},${this.Position.direction[eid]}`;
+        const tile = tileId(this.Position.x[eid], this.Position.y[eid]);
+        return tileVariantId(tile, this.Position.direction[eid]);
     }
 
     /**

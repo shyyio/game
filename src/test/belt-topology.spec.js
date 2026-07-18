@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
+import {tileId} from "@/common/util.js";
 import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
 import {Belts} from "@/mods/Logistics/Belts.js";
 import {BELT_RAMP_DOWN} from "@/mods/Logistics/constants.js";
@@ -26,7 +27,7 @@ async function module() {
 
 // The path whose belts include tile (x, y).
 function pathThrough(belts, x, y) {
-    return belts.paths.find(path => path.belts.includes(`${x},${y}`));
+    return belts.paths.find(path => path.belts.includes(tileId(x, y)));
 }
 
 // A straight run of same-direction belts builds one path of the right length; the head is the most
@@ -38,7 +39,7 @@ test("a straight run builds one path of the right length", async () => {
     belts.placeBelt(2, 0, Direction.RIGHT);
 
     assert.equal(belts.paths.length, 1);
-    assert.deepEqual(belts.paths[0].belts, ["0,0", "1,0", "2,0"]);
+    assert.deepEqual(belts.paths[0].belts, [tileId(0, 0), tileId(1, 0), tileId(2, 0)]);
     assert.equal(belts.paths[0].length, 3 * 2 - 1);
 });
 
@@ -55,11 +56,11 @@ test("a belt feeding a run's middle splits it and steals the downstream", async 
     belts.placeBelt(1, 1, Direction.UP);
 
     const stolen = pathThrough(belts, 2, 0);
-    assert.deepEqual(stolen.belts, ["1,2", "1,1", "1,0", "2,0"], "the new belt bends through the junction to the old tail");
+    assert.deepEqual(stolen.belts, [tileId(1, 2), tileId(1, 1), tileId(1, 0), tileId(2, 0)], "the new belt bends through the junction to the old tail");
     assert.equal(stolen.length, 4 * 2 - 1);
 
     const upstream = pathThrough(belts, 0, 0);
-    assert.deepEqual(upstream.belts, ["0,0"], "the upstream belt is left on its own shorter path");
+    assert.deepEqual(upstream.belts, [tileId(0, 0)], "the upstream belt is left on its own shorter path");
     assert.equal(upstream.length, 1);
 });
 
@@ -91,7 +92,7 @@ test("prepending an upstream belt keeps a resting out-port item", async () => {
     belts.placeBelt(0, 0, Direction.RIGHT);
 
     const path = pathThrough(belts, 1, 0);
-    assert.deepEqual(path.belts, ["0,0", "1,0"]);
+    assert.deepEqual(path.belts, [tileId(0, 0), tileId(1, 0)]);
     assert.equal(engine.portItem(path.outPort), RED, "the out-port item survives the prepend");
 });
 
@@ -102,7 +103,7 @@ test("an item flows around a bend to the out-port", async () => {
     belts.placeBelt(1, 0, Direction.RIGHT);
     belts.placeBelt(2, 0, Direction.UP);
     const path = pathThrough(belts, 0, 0);
-    assert.deepEqual(path.belts, ["0,0", "1,0", "2,0"], "the corner belt joins the same path");
+    assert.deepEqual(path.belts, [tileId(0, 0), tileId(1, 0), tileId(2, 0)], "the corner belt joins the same path");
 
     engine.setPortItem(path.inPort, RED);
     let delivered = 0;
@@ -170,7 +171,7 @@ test("deleting a junction feeder merges the orphaned run into its straight feede
     belts.removeBelt(13, 4, Direction.UP);
 
     assert.equal(belts.paths.length, 1);
-    assert.deepEqual(pathThrough(belts, 13, 3).belts, ["12,3", "13,3", "14,3"]);
+    assert.deepEqual(pathThrough(belts, 13, 3).belts, [tileId(12, 3), tileId(13, 3), tileId(14, 3)]);
 });
 
 // A path never spans a chunk border, so a cross-chunk feeder stays a separate port-linked path even
@@ -186,7 +187,7 @@ test("a cross-chunk feeder stays its own path when a deletion orphans its child"
 
     assert.equal(belts.paths.length, 2, "the cross-border feeder does not fold in");
     const covered = new Set(belts.paths.flatMap(path => path.belts));
-    for (const key of ["63,3", "64,3", "65,3"]) {
+    for (const key of [tileId(63, 3), tileId(64, 3), tileId(65, 3)]) {
         assert.ok(covered.has(key), `${key} still belongs to a path`);
     }
 });
