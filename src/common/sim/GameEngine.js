@@ -330,11 +330,11 @@ export class GameEngine {
      * @returns {number}
      */
     resolvedDestFor(source) {
-        const transfer = this._resolved.find(candidate => candidate.source === source);
-        if (transfer === undefined) {
+        const dest = this._destBySource.get(source);
+        if (dest === undefined) {
             return EMPTY;
         }
-        return transfer.dest;
+        return dest;
     }
 
     /**
@@ -344,7 +344,7 @@ export class GameEngine {
      * @returns {boolean}
      */
     wasResolvedDest(dest) {
-        return this._resolved.some(transfer => transfer.dest === dest);
+        return this._resolvedDests.has(dest);
     }
 
     /**
@@ -354,7 +354,7 @@ export class GameEngine {
      * @returns {boolean}
      */
     resolvedUnmanagedDest(dest) {
-        return this._resolved.some(transfer => transfer.dest === dest && transfer.managed === false);
+        return this._unmanagedResolvedDests.has(dest);
     }
 
     /**
@@ -368,6 +368,10 @@ export class GameEngine {
         this._intents = [];
         // Committed transfers: {source, dest, item, managed}.
         this._resolved = [];
+        // Lookup indices over _resolved, so per-entity queries stay O(1).
+        this._destBySource = new Map();
+        this._resolvedDests = new Set();
+        this._unmanagedResolvedDests = new Set();
         // Managed destination-less sources the engine drains this tick.
         this._sinks = [];
     }
@@ -853,6 +857,14 @@ export class GameEngine {
             item: item,
             managed: intent.managed,
         });
+        // First transfer wins, matching the find() this index replaced.
+        if (!this._destBySource.has(intent.source)) {
+            this._destBySource.set(intent.source, intent.dest);
+        }
+        this._resolvedDests.add(intent.dest);
+        if (!intent.managed) {
+            this._unmanagedResolvedDests.add(intent.dest);
+        }
     }
 
     /**
