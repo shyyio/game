@@ -5,11 +5,17 @@ const REGION_HALF = REGION_SIZE / 2;
 // How many variants a tile id may be qualified with (a position layer, a direction).
 export const TILE_VARIANT_LIMIT = 16;
 
-// The box the spatial indexes address, in tiles: coordinates fall in [-TILE_SPAN/2, TILE_SPAN/2).
-// Sized so a qualified tile id (TILE_SPAN^2 * TILE_VARIANT_LIMIT) still fits a small integer, which
-// is what keeps the Maps keyed by one hashing an unboxed number.
-const TILE_SPAN = 8192;
+// The box the spatial indexes address, in tiles: the whole region, so coordinates fall in
+// [-TILE_SPAN/2, TILE_SPAN/2).
+const TILE_SPAN = CHUNK_SIZE * REGION_SIZE;
 const TILE_HALF = TILE_SPAN / 2;
+
+// A qualified tile id must stay a small integer, or every Map keyed by one hashes a boxed number
+// instead. Growing the region past this needs the indexes rekeyed, not a wider id.
+const MAX_SMALL_INTEGER = 2 ** 31;
+if (TILE_SPAN * TILE_SPAN * TILE_VARIANT_LIMIT >= MAX_SMALL_INTEGER) {
+    throw new RangeError(`A ${TILE_SPAN}x${TILE_SPAN} tile box does not fit a small-integer tile id`);
+}
 
 export function fixNegativeZero(n) {
     return Object.is(n, -0) ? 0 : n;
