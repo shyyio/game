@@ -30,7 +30,7 @@ test("packed same-type items survive a split and each still pops", async () => {
     // carrying the packed items re-rowed from occupancy.
     belts.removeBelt(0, 1, Direction.UP);
     const sub = belts.paths.find(path => path.belts.includes("0,3"));
-    const expected = sub.items.toList().filter(item => item.type === RED).length;
+    const expected = belts.itemsOf(sub).filter(item => item.type === RED).length;
     assert.ok(expected >= 2, "the split sub-run should carry at least two packed items");
 
     // Isolate the sub-run (no more upstream feed) and drain its out-port each tick, counting the
