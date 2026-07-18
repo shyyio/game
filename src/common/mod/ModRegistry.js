@@ -46,8 +46,8 @@ export class ModRegistry {
         this._frozen = true;
 
         const typeNames = new Set();
-        this._packages.forEach(pkg => {
-            pkg.declaration.objectTypes.forEach(type => {
+        for (const pkg of this._packages) {
+            for (const type of pkg.declaration.objectTypes) {
                 if (typeNames.has(type.name)) {
                     throw new Error(`Duplicate object type "${type.name}"`);
                 }
@@ -55,32 +55,32 @@ export class ModRegistry {
                 type._assignTypeId(this._objectTypes.length);
                 this._typeById.set(this._objectTypes.length, type);
                 this._objectTypes.push(type);
-            });
-        });
+            }
+        }
 
         const wireClasses = new Set();
-        this._packages.forEach(pkg => {
-            pkg.declaration.wireClasses.forEach(cls => {
+        for (const pkg of this._packages) {
+            for (const cls of pkg.declaration.wireClasses) {
                 if (wireClasses.has(cls)) {
                     throw new Error(`Duplicate wire class "${cls.name}"`);
                 }
                 wireClasses.add(cls);
                 this._wireClasses.push(cls);
-            });
-        });
+            }
+        }
 
-        this._packages.forEach(pkg => {
+        for (const pkg of this._packages) {
             if (pkg.sim !== null) {
                 this._simMods.push(pkg.sim);
             }
             if (pkg.client !== null) {
                 this._clientMods.push(pkg.client);
             }
-            pkg.declaration.textureDefinitions.forEach(definition => {
+            for (const definition of pkg.declaration.textureDefinitions) {
                 this._textureDefinitions.push(definition);
-            });
+            }
             Object.assign(this._itemTextures, pkg.declaration.itemTextures);
-        });
+        }
     }
 
     /**

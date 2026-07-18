@@ -25,9 +25,9 @@ function registry() {
  */
 function pick(obj, cls) {
     const out = {};
-    Object.keys(cls.wireFields).forEach(key => {
+    for (const key of Object.keys(cls.wireFields)) {
         out[key] = obj[key] === undefined ? null : obj[key];
-    });
+    }
     return out;
 }
 

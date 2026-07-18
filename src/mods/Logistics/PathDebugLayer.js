@@ -80,9 +80,9 @@ export class PathDebugDrawLayer extends AbstractDrawLayer {
             return;
         }
         this._graphics.clear();
-        this._paths.forEach(parts => {
+        for (const parts of this._paths.values()) {
             this._drawPath(parts);
-        });
+        }
     }
 
     /**

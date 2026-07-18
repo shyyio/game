@@ -72,12 +72,12 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
      */
     set mapMode(value) {
         this._mapMode = value;
-        Object.values(this._objects).forEach(sprite => {
+        for (const sprite of Object.values(this._objects)) {
             sprite.visible = !value;
-        });
-        Object.values(this._mapModeObjects).forEach(sprite => {
+        }
+        for (const sprite of Object.values(this._mapModeObjects)) {
             sprite.visible = value;
-        });
+        }
     }
 
     /**
@@ -89,14 +89,14 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
      */
     _createMapModeObject(sprite) {
         const mapModeSprite = new Graphics();
-        this._type.geometry.tiles(sprite.direction).forEach(cell => {
+        for (const cell of this._type.geometry.tiles(sprite.direction)) {
             mapModeSprite.rect(
                 (sprite.tileX + cell.x) * TILE_SIZE,
                 (sprite.tileY + cell.y) * TILE_SIZE,
                 TILE_SIZE,
                 TILE_SIZE,
             );
-        });
+        }
         mapModeSprite.fill(MAP_TILE_COLOR);
         mapModeSprite.visible = this._mapMode;
         return mapModeSprite;
@@ -146,8 +146,8 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
         if (this._mapMode) {
             return;
         }
-        Object.values(this._objects).forEach(sprite => {
+        for (const sprite of Object.values(this._objects)) {
             sprite.tick(frame);
-        });
+        }
     }
 }

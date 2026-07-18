@@ -36,14 +36,14 @@ export function inferBeltParent(cache, tileX, tileY, direction) {
     const belt = {tileX, tileY, data: {type: BeltDefinition, direction}};
 
     let parent = null;
-    cache.connectedPorts(belt).forEach(connection => {
+    for (const connection of cache.connectedPorts(belt)) {
         if (connection.isOutput || !feedsForward(connection.neighbor.data)) {
-            return;
+            continue;
         }
         if (parent === null || connection.neighbor.id > parent.neighbor.id) {
             parent = connection;
         }
-    });
+    }
 
     if (parent === null) {
         return {parentX: null, parentY: null};

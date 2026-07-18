@@ -28,7 +28,9 @@ async function newModule() {
 test("belt state survives a serialize -> deserialize round-trip mid-flight", async () => {
     // Original: build the chunk-split line, feed an item, run a few ticks so it is mid-flight.
     const a = await newModule();
-    CELLS.forEach(cell => a.belts.placeBelt(cell.x, cell.y, Direction.UP));
+    for (const cell of CELLS) {
+        a.belts.placeBelt(cell.x, cell.y, Direction.UP);
+    }
     const aPorts = networkPorts(a.belts);
     a.engine.setPortItem(aPorts.inPort, RED);
     for (let i = 0; i < 4; i += 1) {
@@ -63,7 +65,9 @@ test("belt state survives a serialize -> deserialize round-trip mid-flight", asy
 
 test("belt state persists through a structured SQLite save store and reloads", async () => {
     const a = await newModule();
-    CELLS.forEach(cell => a.belts.placeBelt(cell.x, cell.y, Direction.UP));
+    for (const cell of CELLS) {
+        a.belts.placeBelt(cell.x, cell.y, Direction.UP);
+    }
     const ports = networkPorts(a.belts);
     a.engine.setPortItem(ports.inPort, RED);
     a.engine.tickAll();

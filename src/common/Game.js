@@ -148,11 +148,11 @@ export class Game {
     _setSessionViewport(session, chunks) {
         const {added, removed} = this.bus.setViewport(session.id, chunks);
 
-        removed.forEach(chunk => {
+        for (const chunk of removed) {
             this.bus.publishTo(session.id, new ChunkUnsubscribeEvent(chunk));
-        });
+        }
 
-        added.forEach(chunk => {
+        for (const chunk of added) {
             this.bus.publishTo(session.id, new ChunkSubscribeEvent(chunk));
 
             // Bundle the chunk's recreate events into one ChunkSyncEvent; the client unwraps it.
@@ -160,7 +160,7 @@ export class Game {
             if (events.length > 0) {
                 this.bus.publishTo(session.id, new ChunkSyncEvent(chunk, events));
             }
-        });
+        }
     }
 
     // ---- Inspect ----
@@ -174,7 +174,9 @@ export class Game {
     _setSessionInspect(session, objectIds) {
         const {added} = this.bus.setInspects(session.id, objectIds);
         // Fill each new menu now, not on the next heartbeat.
-        added.forEach(objectId => this._syncInspect(session, objectId));
+        for (const objectId of added) {
+            this._syncInspect(session, objectId);
+        }
     }
 
     /**
@@ -219,13 +221,13 @@ export class Game {
      * @private
      */
     _dispatchInspectEvents() {
-        this.bus.subscribedObjects().forEach(objectId => {
+        for (const objectId of this.bus.subscribedObjects()) {
             const snapshot = this.simEngine.inspectSnapshot(objectId);
             if (snapshot === null) {
                 this._closeInspect(objectId);
-                return;
+                continue;
             }
             this.bus.publish(snapshot);
-        });
+        }
     }
 }

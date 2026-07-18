@@ -9,10 +9,13 @@ const RED = 1;
 
 // A 3x3 ring of normal belts, clockwise from the top-left (matching the old Belt.spec buildRing3x3).
 function buildRing3x3(belts) {
-    [
+    const cells = [
         [0, 0, Direction.RIGHT], [1, 0, Direction.RIGHT], [2, 0, Direction.DOWN], [2, 1, Direction.DOWN],
         [2, 2, Direction.LEFT], [1, 2, Direction.LEFT], [0, 2, Direction.UP], [0, 1, Direction.UP],
-    ].forEach(([x, y, direction]) => belts.placeBelt(x, y, direction));
+    ];
+    for (const [x, y, direction] of cells) {
+        belts.placeBelt(x, y, direction);
+    }
 }
 
 async function module() {
@@ -183,7 +186,9 @@ test("a cross-chunk feeder stays its own path when a deletion orphans its child"
 
     assert.equal(belts.paths.length, 2, "the cross-border feeder does not fold in");
     const covered = new Set(belts.paths.flatMap(path => path.belts));
-    ["63,3", "64,3", "65,3"].forEach(key => assert.ok(covered.has(key), `${key} still belongs to a path`));
+    for (const key of ["63,3", "64,3", "65,3"]) {
+        assert.ok(covered.has(key), `${key} still belongs to a path`);
+    }
 });
 
 // A ramp-down's output is buried, so it is not a valid surface feeder even with a higher id: it can't
@@ -214,7 +219,9 @@ function itemCells(belts) {
 test("an in-flight item survives deletion of a downstream belt and is still delivered", async () => {
     const {engine, belts} = await module();
     // Belts (0,4)->..->(0,0) facing UP: head (0,4), tail (0,0).
-    [4, 3, 2, 1, 0].forEach(y => belts.placeBelt(0, y, Direction.UP));
+    for (const y of [4, 3, 2, 1, 0]) {
+        belts.placeBelt(0, y, Direction.UP);
+    }
     let path = belts.pathAt(0, 4);
     engine.setPortItem(path.inPort, RED);
     engine.tickAll();
@@ -239,7 +246,9 @@ test("an in-flight item survives deletion of a downstream belt and is still deli
 
 test("an in-flight item survives deletion of an upstream belt", async () => {
     const {engine, belts} = await module();
-    [4, 3, 2, 1, 0].forEach(y => belts.placeBelt(0, y, Direction.UP));
+    for (const y of [4, 3, 2, 1, 0]) {
+        belts.placeBelt(0, y, Direction.UP);
+    }
     const path = belts.pathAt(0, 4);
     engine.setPortItem(path.inPort, RED);
     // Move the item well downstream of the head before deleting the head.

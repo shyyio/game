@@ -32,7 +32,9 @@ export class AbstractValueStore {
         const prev = this._values.get(key);
         this._values.set(key, value);
         if (prev !== value) {
-            this._listeners.forEach(cb => cb(key, value));
+            for (const cb of [...this._listeners]) {
+                cb(key, value);
+            }
         }
     }
 }

@@ -66,12 +66,12 @@ export class StatusMessageLayer extends Container {
         if (this._pending.size === 0) {
             this._batch.clear();
         }
-        chunks.forEach(chunk => {
+        for (const chunk of chunks) {
             if (!this._subscribed.has(chunk) && !this._pending.has(chunk)) {
                 this._pending.add(chunk);
                 this._batch.add(chunk);
             }
-        });
+        }
         this._refresh();
     }
 

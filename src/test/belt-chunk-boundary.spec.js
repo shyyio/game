@@ -18,9 +18,9 @@ test("a belt line splits at the chunk boundary and items flow across the seam", 
     await engine.init();
     const belts = new Belts(engine);
     let handle = null;
-    CELLS.forEach(cell => {
+    for (const cell of CELLS) {
         handle = belts.placeBelt(cell.x, cell.y, Direction.UP);
-    });
+    }
 
     assert.equal(handle.segments.length, 2, "the line is two per-chunk paths, not one crossing the border");
 

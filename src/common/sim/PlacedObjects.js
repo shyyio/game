@@ -29,16 +29,16 @@ export class PlacedObjects {
         this._eidByObjectId = new Map();
 
         const installed = new Set();
-        registry.objectTypes.forEach(type => {
+        for (const type of registry.objectTypes) {
             if (type.behavior === null) {
-                return;
+                continue;
             }
             this._types.set(type.typeId, type);
             if (!installed.has(type.behavior.constructor)) {
                 installed.add(type.behavior.constructor);
                 type.behavior.install(engine, this);
             }
-        });
+        }
 
         engine.registerMessageHandler(message => this._message(message));
         engine.registerChunkSync(chunk => this._chunkSync(chunk));
@@ -156,9 +156,9 @@ export class PlacedObjects {
         const events = [];
         const placedObject = this.PlacedObject;
         const position = this.engine.Position;
-        this.engine.entitiesWith(this.def).forEach(eid => {
+        for (const eid of this.engine.entitiesWith(this.def)) {
             if (chunkId(position.x[eid], position.y[eid]) !== chunk) {
-                return;
+                continue;
             }
             const type = this._types.get(placedObject.typeId[eid]);
             const sync = type.behavior.syncData(this.engine, this, eid);
@@ -166,7 +166,7 @@ export class PlacedObjects {
                 type.typeId, placedObject.objectId[eid], position.x[eid], position.y[eid], position.direction[eid],
                 sync.portIds, sync.lastOutput,
             ));
-        });
+        }
         return events;
     }
 
@@ -196,17 +196,17 @@ export class PlacedObjects {
     _rebuild() {
         this._eidByObjectId = new Map();
         const placedObject = this.PlacedObject;
-        this.engine.entitiesWith(this.def).forEach(eid => {
+        for (const eid of this.engine.entitiesWith(this.def)) {
             this._eidByObjectId.set(placedObject.objectId[eid], eid);
             const type = this._types.get(placedObject.typeId[eid]);
             type.behavior.resyncRenderedPorts(this.engine, this, eid);
-        });
+        }
         const rebuilt = new Set();
-        this._types.forEach(type => {
+        for (const type of this._types.values()) {
             if (!rebuilt.has(type.behavior.constructor)) {
                 rebuilt.add(type.behavior.constructor);
                 type.behavior.onRebuild(this.engine, this);
             }
-        });
+        }
     }
 }

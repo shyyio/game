@@ -9,7 +9,9 @@ import {GameEngine} from "@/common/sim/GameEngine.js";
  */
 export function ecsModRegistry() {
     const modRegistry = new ModRegistry();
-    simLoadout().forEach(pkg => modRegistry.register(pkg));
+    for (const pkg of simLoadout()) {
+        modRegistry.register(pkg);
+    }
     modRegistry.freeze();
     return modRegistry;
 }

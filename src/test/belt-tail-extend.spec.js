@@ -18,7 +18,9 @@ test("extending a belt path downstream preserves an in-flight item", async () =>
 
     // Belts (0,5)->(0,4)->(0,3) facing UP: head (in-port) at (0,5), tail (out-port) at (0,3). Kept
     // clear of the y=0 chunk border so the extension stays a single-chunk path.
-    [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}].forEach(cell => belts.placeBelt(cell.x, cell.y, Direction.UP));
+    for (const cell of [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}]) {
+        belts.placeBelt(cell.x, cell.y, Direction.UP);
+    }
 
     let path = belts.pathAt(0, 5);
     // Feed one item and let it travel partway down the path.
@@ -54,7 +56,9 @@ test("extending a belt path downstream preserves an item resting in the out-port
     await engine.init();
     const belts = new Belts(engine);
 
-    [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}].forEach(cell => belts.placeBelt(cell.x, cell.y, Direction.UP));
+    for (const cell of [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}]) {
+        belts.placeBelt(cell.x, cell.y, Direction.UP);
+    }
 
     let path = belts.pathAt(0, 5);
     // Feed one item and let it travel all the way to rest in the out-port (never drained).
@@ -89,7 +93,9 @@ test("downstream extension emits recalc before item rows and clears the old out-
     const belts = new Belts(engine);
     const collector = new EventCollector(engine);
 
-    [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}].forEach(cell => belts.placeBelt(cell.x, cell.y, Direction.UP));
+    for (const cell of [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}]) {
+        belts.placeBelt(cell.x, cell.y, Direction.UP);
+    }
     const path = belts.pathAt(0, 5);
     const oldOutPort = path.outPort;
 
@@ -123,7 +129,9 @@ test("a tail extension keeps item-row ids ascending output-to-input", async () =
     await engine.init();
     const belts = new Belts(engine);
 
-    [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}].forEach(cell => belts.placeBelt(cell.x, cell.y, Direction.UP));
+    for (const cell of [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}]) {
+        belts.placeBelt(cell.x, cell.y, Direction.UP);
+    }
     const path = belts.pathAt(0, 5);
     engine.setPortItem(path.inPort, RED);
     engine.tickAll();
@@ -145,7 +153,9 @@ test("extending a path upstream leaves a resting out-port item static", async ()
     const belts = new Belts(engine);
     const collector = new EventCollector(engine);
 
-    [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}].forEach(cell => belts.placeBelt(cell.x, cell.y, Direction.UP));
+    for (const cell of [{x: 0, y: 3}, {x: 0, y: 4}, {x: 0, y: 5}]) {
+        belts.placeBelt(cell.x, cell.y, Direction.UP);
+    }
     const path = belts.pathAt(0, 5);
     const outPort = path.outPort;
     engine.setPortItem(path.inPort, RED);

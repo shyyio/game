@@ -69,12 +69,12 @@ export class ClientCacheSync {
         }
         if (event instanceof ChunkUnsubscribeEvent) {
             // Evict only derived-type entries; bespoke mods (belts) evict their own.
-            this._cache.getByChunk(event.chunk).forEach(entry => {
+            for (const entry of this._cache.getByChunk(event.chunk)) {
                 if (entry.data instanceof ObjectClientData) {
                     this._cache.remove(entry.id);
                     this._lastProduced.delete(entry.id);
                 }
-            });
+            }
         }
     }
 
@@ -86,11 +86,10 @@ export class ClientCacheSync {
     _set(event) {
         const type = this._registry.typeById(event.typeId);
         const ports = {};
-        type.outputPorts
-            .filter(port => port.render)
-            .forEach((port, i) => {
-                ports[port.name] = event.portIds[i];
-            });
+        const renderedPorts = type.outputPorts.filter(port => port.render);
+        for (const [i, port] of renderedPorts.entries()) {
+            ports[port.name] = event.portIds[i];
+        }
         const cells = type.geometry.tiles(event.direction).map(cell => ({
             x: event.x + cell.x,
             y: event.y + cell.y,

@@ -55,7 +55,9 @@ export class ObjectTool extends AbstractTool {
         if (result.blockedCells.length > 0) {
             return;
         }
-        result.overwriteIds.forEach(id => this.session.sendMessage(new DeleteObjectMessage(id)));
+        for (const id of result.overwriteIds) {
+            this.session.sendMessage(new DeleteObjectMessage(id));
+        }
         this.session.sendMessage(new CreateObjectMessage(this._type.typeId, base.x, base.y, direction));
         Haptics.tap();
         // Re-evaluate next frame so the just-placed tile now reads as occupied.
@@ -95,7 +97,9 @@ export class ObjectTool extends AbstractTool {
 
     onDeactivate() {
         this._active = false;
-        this._unsubscribes.forEach(unsubscribe => unsubscribe());
+        for (const unsubscribe of this._unsubscribes) {
+            unsubscribe();
+        }
         this._unsubscribes = [];
         this._placementFeedbackLayer.clearHighlight();
     }
@@ -128,15 +132,15 @@ export class ObjectTool extends AbstractTool {
      */
     _targetTiles() {
         const tiles = [];
-        this._cache.values().forEach(entry => {
+        for (const entry of this._cache.values()) {
             if (!this._placeOn.includes(entry.data.type)) {
-                return;
+                continue;
             }
-            entry.data.type.extractionTiles.forEach(tile => {
+            for (const tile of entry.data.type.extractionTiles) {
                 const cell = rotate({x: tile.x, y: tile.y, direction: Direction.UP}, entry.data.direction);
                 tiles.push({x: entry.tileX + cell.x, y: entry.tileY + cell.y});
-            });
-        });
+            }
+        }
         return tiles;
     }
 
@@ -172,11 +176,11 @@ export class ObjectTool extends AbstractTool {
         const overwriteCells = [];
         const clearCells = [];
         const overwriteIds = new Set();
-        this._geometryTiles(tileX, tileY, direction).forEach(cell => {
+        for (const cell of this._geometryTiles(tileX, tileY, direction)) {
             const key = `${cell.x},${cell.y}`;
             if (chunkId(cell.x, cell.y) !== base || (targetKeys !== null && !targetKeys.has(key))) {
                 bodyByKey.set(key, {cell, state: "blocked"});
-                return;
+                continue;
             }
             const occupant = this._cache.at(cell.x, cell.y, this._type.positionLayer);
             if (occupant === null) {
@@ -187,21 +191,21 @@ export class ObjectTool extends AbstractTool {
             } else {
                 bodyByKey.set(key, {cell, state: "blocked"});
             }
-        });
+        }
 
         // Mirror the server's per-layer positions: block any footprint cell landing on a same-layer
         // occupant (overwritten cells excluded).
         const positions = this._positionsByLayer(overwriteIds);
-        this._type.positionLayerTiles(direction).forEach(({layer, cells}) => {
+        for (const {layer, cells} of this._type.positionLayerTiles(direction)) {
             const occupied = positions.get(layer);
             if (occupied === undefined) {
-                return;
+                continue;
             }
-            cells.forEach(cell => {
+            for (const cell of cells) {
                 const world = {x: tileX + cell.x, y: tileY + cell.y};
                 const key = `${world.x},${world.y}`;
                 if (!occupied.has(key)) {
-                    return;
+                    continue;
                 }
                 const body = bodyByKey.get(key);
                 if (body !== undefined) {
@@ -210,10 +214,10 @@ export class ObjectTool extends AbstractTool {
                 } else if (!blockedCells.some(c => c.x === world.x && c.y === world.y)) {
                     blockedCells.push(world);
                 }
-            });
-        });
+            }
+        }
 
-        bodyByKey.forEach(entry => {
+        for (const entry of bodyByKey.values()) {
             if (entry.state === "blocked") {
                 blockedCells.push(entry.cell);
             } else if (entry.state === "overwrite") {
@@ -221,7 +225,7 @@ export class ObjectTool extends AbstractTool {
             } else {
                 clearCells.push(entry.cell);
             }
-        });
+        }
         // Overwrites survive only if no body cell got re-blocked above.
         const finalOverwriteIds = overwriteCells.map(cell => bodyByKey.get(`${cell.x},${cell.y}`).id);
         return {blockedCells, overwriteCells, clearCells, overwriteIds: finalOverwriteIds};
@@ -236,18 +240,20 @@ export class ObjectTool extends AbstractTool {
      */
     _positionsByLayer(excludeIds) {
         const byLayer = new Map();
-        this._cache.values().forEach(entry => {
+        for (const entry of this._cache.values()) {
             if (excludeIds.has(entry.id)) {
-                return;
+                continue;
             }
-            entry.data.type.positionLayerTiles(entry.data.direction).forEach(({layer, cells}) => {
+            for (const {layer, cells} of entry.data.type.positionLayerTiles(entry.data.direction)) {
                 if (!byLayer.has(layer)) {
                     byLayer.set(layer, new Set());
                 }
                 const set = byLayer.get(layer);
-                cells.forEach(cell => set.add(`${entry.tileX + cell.x},${entry.tileY + cell.y}`));
-            });
-        });
+                for (const cell of cells) {
+                    set.add(`${entry.tileX + cell.x},${entry.tileY + cell.y}`);
+                }
+            }
+        }
         return byLayer;
     }
 

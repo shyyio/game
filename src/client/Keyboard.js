@@ -34,7 +34,9 @@ class Keyboard {
 
         const listeners = this._listeners[event.key];
         if (listeners) {
-            listeners.forEach(cb => cb(event));
+            for (const cb of listeners) {
+                cb(event);
+            }
         }
     }
 

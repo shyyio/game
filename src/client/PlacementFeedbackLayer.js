@@ -112,7 +112,7 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
      * @private
      */
     _marker(tiles, color) {
-        tiles.forEach(tile => {
+        for (const tile of tiles) {
             this._graphics
                 .rect(
                     tile.x * TILE_SIZE + TILE_INSET,
@@ -122,7 +122,7 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
                 )
                 .fill({color, alpha: MARKER_FILL_ALPHA})
                 .stroke({width: MARKER_BORDER_WIDTH, color});
-        });
+        }
     }
 
     /**
@@ -130,7 +130,7 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
      * @private
      */
     _target(tiles, color=TARGET_TILE_COLOR) {
-        tiles.forEach(tile => {
+        for (const tile of tiles) {
             this._graphics
                 .rect(
                     tile.x * TILE_SIZE + TILE_INSET,
@@ -140,6 +140,6 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
                 )
                 .fill({color, alpha: TARGET_TILE_FILL_ALPHA})
                 .stroke({width: TARGET_TILE_BORDER_WIDTH, color});
-        });
+        }
     }
 }

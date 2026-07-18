@@ -77,9 +77,9 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         this._anchorTileY = rampTileY;
         this._addSprite(this._floatingContainer, rampTileX, rampTileY, direction, rampType, GHOST_TINT, BeltBend.STRAIGHT);
         const undergroundTint = atMax ? GHOST_AT_MAX_TINT : GHOST_TINT;
-        undergroundTiles.forEach(tile => {
+        for (const tile of undergroundTiles) {
             this._addSprite(this._gridContainer, tile.x, tile.y, direction, BeltType.UNDERGROUND, undergroundTint, BeltBend.STRAIGHT);
-        });
+        }
         this._updatePin();
     }
 
@@ -114,11 +114,11 @@ export class BeltGhostLayer extends AbstractDrawLayer {
     }
 
     clear() {
-        this._sprites.forEach(sprite => {
+        for (const sprite of this._sprites) {
             sprite.destroy();
             this._floatingContainer.removeChild(sprite);
             this._gridContainer.removeChild(sprite);
-        });
+        }
         this._sprites.splice(0);
         this._anchorTileX = null;
         this._anchorTileY = null;
@@ -138,9 +138,9 @@ export class BeltGhostLayer extends AbstractDrawLayer {
      * @param {number} frame animation frame, in [0, 8)
      */
     tick(frame) {
-        this._sprites.forEach(sprite => {
+        for (const sprite of this._sprites) {
             sprite.setAnimationFrame(frame);
-        });
+        }
         this._updatePin();
     }
 

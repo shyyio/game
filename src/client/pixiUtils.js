@@ -36,7 +36,9 @@ export function debugOutlines(roots, localTarget) {
     const outlines = new Container();
     const visit = (node) => {
         if (node.children !== undefined && node.children.length > 0) {
-            node.children.slice().forEach(visit);
+            for (const child of node.children.slice()) {
+                visit(child);
+            }
             return;
         }
         const bounds = node.getBounds();
@@ -47,7 +49,9 @@ export function debugOutlines(roots, localTarget) {
             .stroke({width: 1, color: DEBUG_OUTLINE_COLOR, alignment: 0});
         outlines.addChild(outline);
     };
-    roots.slice().forEach(visit);
+    for (const root of roots.slice()) {
+        visit(root);
+    }
     return outlines;
 }
 

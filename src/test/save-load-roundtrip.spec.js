@@ -20,8 +20,9 @@ async function populated() {
     engine.applyMessage(new CreateObjectMessage(SplitterDefinition.typeId, 3, 8, Direction.UP));
     const splitterEid = engine.placed.eidsOf(SplitterDefinition.typeId)[0];
     const splitterId = engine.placed.PlacedObject.objectId[splitterEid];
-    [{x: 20, y: 20}, {x: 20, y: 21}, {x: 20, y: 22}].forEach(cell =>
-        engine.applyMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL)));
+    for (const cell of [{x: 20, y: 20}, {x: 20, y: 21}, {x: 20, y: 22}]) {
+        engine.applyMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL));
+    }
     for (let i = 0; i < 3; i += 1) {
         engine.tickAll();
     }
@@ -45,10 +46,10 @@ test("the whole world round-trips through the engine serializer", async () => {
     // The extractor keeps producing water into its edge out-port after the load.
     const outPort = restored.portAt(5, 4, Direction.UP);
     assert.deepEqual(restored.renderedPorts.get(outPort), {x: 5, y: 4}, "out-port re-registered at its own tile");
-    [{x: 3, y: 7}, {x: 4, y: 7}].forEach(tile => {
+    for (const tile of [{x: 3, y: 7}, {x: 4, y: 7}]) {
         const port = restored.portAt(tile.x, tile.y, Direction.UP);
         assert.deepEqual(restored.renderedPorts.get(port), tile, "splitter out-port re-registered at its own tile");
-    });
+    }
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
         restored.tickAll();
@@ -75,9 +76,9 @@ test("a snapshot round-trips through structured SQLite (the node save path)", as
 
     const loaded = await store.load();
     const names = loaded.components.map(component => component.name);
-    ["Port", "Position", "Occupancy", "PlacedObject", "Machine", "Extractor", "Splitter", "BeltPath", "Belt", "BeltRun"].forEach(name => {
+    for (const name of ["Port", "Position", "Occupancy", "PlacedObject", "Machine", "Extractor", "Splitter", "BeltPath", "Belt", "BeltRun"]) {
         assert.ok(names.includes(name), `${name} table present`);
-    });
+    }
 
     const restored = await makeGameEngine();
     restored.deserialize(loaded);

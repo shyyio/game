@@ -20,7 +20,9 @@ test("a Game on GameEngine places and ticks belts via messages", async () => {
     const game = new Game(modRegistry, engine);
     await game.init();
 
-    CELLS.forEach(cell => game.dispatchMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL), null));
+    for (const cell of CELLS) {
+        game.dispatchMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL), null);
+    }
 
     const path = beltsOf(engine).pathAt(HEAD.x, HEAD.y);
     const stream = [];
@@ -29,7 +31,9 @@ test("a Game on GameEngine places and ticks belts via messages", async () => {
         if (i < 2) {
             engine.setPortItem(path.inPort, RED);
         }
-        TICK_PHASE_ORDER.forEach(phase => game.tick(phase));
+        for (const phase of TICK_PHASE_ORDER) {
+            game.tick(phase);
+        }
         stream.push(engine.portItem(path.outPort));
     }
     assert.deepEqual(stream, EXPECTED);

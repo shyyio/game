@@ -290,9 +290,9 @@ class Mouse {
             // Clear the hovered tile first so the active tool's ghost preview drops
             // while the context gesture is up, matching the long-press path.
             this._emitTileExit();
-            this._longPressCallbacks.forEach(cb => {
+            for (const cb of this._longPressCallbacks) {
                 cb(tileX, tileY, event.data.global.x, event.data.global.y);
-            });
+            }
             return;
         }
 
@@ -328,9 +328,9 @@ class Mouse {
             // The long-press opens the mini-menu; clear the hovered tile first so
             // the active tool's ghost preview drops while it is up.
             this._emitTileExit();
-            this._longPressCallbacks.forEach(cb => {
+            for (const cb of this._longPressCallbacks) {
                 cb(this._clickStartTileX, this._clickStartTileY, this._clickStartScreenX, this._clickStartScreenY);
-            });
+            }
         }, LONG_PRESS_MS);
     }
 
@@ -360,7 +360,9 @@ class Mouse {
             if (this._centerLock) {
                 ({tileX: tapTileX, tileY: tapTileY} = this._centerTile());
             }
-            this._tapCallbacks.forEach(cb => cb(tapTileX, tapTileY));
+            for (const cb of this._tapCallbacks) {
+                cb(tapTileX, tapTileY);
+            }
         }
 
         this._clickStartX = null;
@@ -456,7 +458,9 @@ class Mouse {
                 window.clearTimeout(this._longPressTimer);
                 this._longPressTimer = null;
             }
-            this._dragStartCallbacks.forEach(cb => cb(startXTile, startYTile));
+            for (const cb of this._dragStartCallbacks) {
+                cb(startXTile, startYTile);
+            }
         }
 
         const tiles = tilesInPath(this._clickStartX, this._clickStartY, endX, endY);
@@ -464,12 +468,14 @@ class Mouse {
         let x = startXTile;
         let y = startYTile;
 
-        tiles.slice(1).forEach(tile => {
+        for (const tile of tiles.slice(1)) {
             const direction = Direction.fromDelta(tile[0] - x, tile[1] - y);
-            this._tileDragCallbacks.forEach(cb => cb(tile[0], tile[1], direction));
+            for (const cb of this._tileDragCallbacks) {
+                cb(tile[0], tile[1], direction);
+            }
             x = tile[0];
             y = tile[1];
-        });
+        }
 
         // Advance the anchor to the projected endpoint, not the raw cursor, so an
         // unlock mid-drag continues from the straight line without a jump.
@@ -581,12 +587,16 @@ class Mouse {
         }
 
         if (this._hoverTileX != null) {
-            this._tileExitCallbacks.forEach(cb => cb(this._hoverTileX, this._hoverTileY));
+            for (const cb of this._tileExitCallbacks) {
+                cb(this._hoverTileX, this._hoverTileY);
+            }
         }
 
         this._hoverTileX = tileX;
         this._hoverTileY = tileY;
-        this._tileEnterCallbacks.forEach(cb => cb(tileX, tileY));
+        for (const cb of this._tileEnterCallbacks) {
+            cb(tileX, tileY);
+        }
     }
 
     /**
@@ -599,7 +609,9 @@ class Mouse {
             return;
         }
 
-        this._tileExitCallbacks.forEach(cb => cb(this._hoverTileX, this._hoverTileY));
+        for (const cb of this._tileExitCallbacks) {
+            cb(this._hoverTileX, this._hoverTileY);
+        }
         this._hoverTileX = null;
         this._hoverTileY = null;
     }

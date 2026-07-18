@@ -172,9 +172,9 @@ export class GameEngine {
         // Per-phase system entries {order, seq, system}, kept sorted and run in order by tick(phase).
         this._systemSeq = 0;
         this.systems = {};
-        TICK_PHASE_ORDER.forEach(phase => {
+        for (const phase of TICK_PHASE_ORDER) {
             this.systems[phase] = [];
-        });
+        }
         this.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._resetTick());
         this.registerSystem(TickPhase.RESOLVE_TRANSFERS, () => this.resolvePortTransfer());
         this.registerSystem(TickPhase.CONSUME_INPUTS, () => this.flushSinks());
@@ -251,17 +251,17 @@ export class GameEngine {
      * @returns {void}
      */
     _emitRender() {
-        this._pendingClear.forEach((position, eid) => {
+        for (const [eid, position] of this._pendingClear) {
             this.emitEvent(new PortItemClearEvent(position.x, position.y, eid));
             this._portShadow.delete(eid);
-        });
+        }
         this._pendingClear.clear();
 
-        this.renderedPorts.forEach((position, eid) => {
+        for (const [eid, position] of this.renderedPorts) {
             const item = this.Port.item[eid];
             const previous = this._portShadow.has(eid) ? this._portShadow.get(eid) : EMPTY;
             if (item === previous) {
-                return;
+                continue;
             }
             if (item === EMPTY) {
                 this.emitEvent(new PortItemClearEvent(position.x, position.y, eid));
@@ -270,7 +270,7 @@ export class GameEngine {
                 this.emitEvent(new PortItemSetEvent(position.x, position.y, eid, item));
                 this._portShadow.set(eid, item);
             }
-        });
+        }
     }
 
     /**
@@ -283,7 +283,9 @@ export class GameEngine {
             // throw otherwise. The generic entity host installs every derived type's behavior first,
             // then bespoke sim mods register theirs.
             this.placed = new PlacedObjects(this, this.modRegistry);
-            this.modRegistry.simMods.forEach(mod => mod.setup(this));
+            for (const mod of this.modRegistry.simMods) {
+                mod.setup(this);
+            }
         }
     }
 
@@ -292,9 +294,9 @@ export class GameEngine {
      * @returns {void}
      */
     tick(phase) {
-        this.systems[phase].forEach(entry => {
+        for (const entry of this.systems[phase]) {
             entry.system();
-        });
+        }
     }
 
     /**
@@ -302,9 +304,9 @@ export class GameEngine {
      * @returns {void}
      */
     tickAll() {
-        TICK_PHASE_ORDER.forEach(phase => {
+        for (const phase of TICK_PHASE_ORDER) {
             this.tick(phase);
-        });
+        }
     }
 
     /**
@@ -395,9 +397,9 @@ export class GameEngine {
             fill: spec.fill === undefined ? 0 : spec.fill,
         }));
         const store = {};
-        fields.forEach(field => {
+        for (const field of fields) {
             store[field.name] = new Int32Array(PORT_CAPACITY).fill(field.fill);
-        });
+        }
         const def = {name, fields, store, capacity: PORT_CAPACITY, snapshotOnly};
         this._components.push(def);
         this._componentByName.set(name, def);
@@ -419,11 +421,11 @@ export class GameEngine {
         while (capacity <= eid) {
             capacity *= 2;
         }
-        def.fields.forEach(field => {
+        for (const field of def.fields) {
             const grown = new Int32Array(capacity).fill(field.fill);
             grown.set(def.store[field.name]);
             def.store[field.name] = grown;
-        });
+        }
         def.capacity = capacity;
         if (def === this._portDef) {
             this.Port = def.store;
@@ -561,10 +563,10 @@ export class GameEngine {
      */
     occupy(cells, owner=NO_EID, userData=0) {
         const occupancy = this._occupancyDef.store;
-        cells.forEach(cell => {
+        for (const cell of cells) {
             const key = `${cell.x},${cell.y},${cell.layer}`;
             if (this._cellByKey.has(key)) {
-                return;
+                continue;
             }
             const eid = addEntity(this.world);
             this.setPosition(eid, cell.x, cell.y);
@@ -573,7 +575,7 @@ export class GameEngine {
             occupancy.owner[eid] = owner;
             occupancy.userData[eid] = userData;
             this._cellByKey.set(key, eid);
-        });
+        }
     }
 
     /**
@@ -582,14 +584,14 @@ export class GameEngine {
      * @returns {void}
      */
     destroyCells(cells) {
-        cells.forEach(cell => {
+        for (const cell of cells) {
             const key = `${cell.x},${cell.y},${cell.layer}`;
             const eid = this._cellByKey.get(key);
             if (eid !== undefined) {
                 removeEntity(this.world, eid);
                 this._cellByKey.delete(key);
             }
-        });
+        }
     }
 
     /**
@@ -599,12 +601,12 @@ export class GameEngine {
      */
     destroyOwnerCells(owner) {
         const occupancy = this._occupancyDef.store;
-        this._cellEids().forEach(eid => {
+        for (const eid of this._cellEids()) {
             if (occupancy.owner[eid] === owner) {
                 this._cellByKey.delete(this._cellKey(eid));
                 removeEntity(this.world, eid);
             }
-        });
+        }
     }
 
     /**
@@ -645,30 +647,32 @@ export class GameEngine {
      */
     collectUnreferencedPorts() {
         const referenced = new Set();
-        this._components.forEach(def => {
+        for (const def of this._components) {
             if (def.snapshotOnly) {
-                return;
+                continue;
             }
             const eidFields = def.fields.filter(field => field.kind === "eid");
             if (eidFields.length === 0) {
-                return;
+                continue;
             }
-            query(this.world, [def.store]).forEach(eid => {
-                eidFields.forEach(field => {
+            for (const eid of query(this.world, [def.store])) {
+                for (const field of eidFields) {
                     const target = def.store[field.name][eid];
                     if (target !== NO_EID) {
                         referenced.add(target);
                     }
-                });
-            });
-        });
-        this._portPins.forEach(hook => {
-            Array.from(hook()).forEach(eid => referenced.add(eid));
-        });
+                }
+            }
+        }
+        for (const hook of this._portPins) {
+            for (const eid of hook()) {
+                referenced.add(eid);
+            }
+        }
 
-        query(this.world, [this._portDef.store]).forEach(eid => {
+        for (const eid of query(this.world, [this._portDef.store])) {
             if (referenced.has(eid)) {
-                return;
+                continue;
             }
             if (hasComponent(this.world, eid, this._positionDef.store)) {
                 this._portsByEdge.delete(this._edgeKey(eid));
@@ -677,7 +681,7 @@ export class GameEngine {
             this._portShadow.delete(eid);
             this._pendingClear.delete(eid);
             removeEntity(this.world, eid);
-        });
+        }
     }
 
     /**
@@ -763,12 +767,12 @@ export class GameEngine {
         // source. Destination-less rows mark their source as draining this tick.
         const winnerByDest = new Map();
         const drains = new Set();
-        this._intents.forEach(intent => {
+        for (const intent of this._intents) {
             if (intent.dest === EMPTY) {
                 if (intent.source !== EMPTY) {
                     drains.add(intent.source);
                 }
-                return;
+                continue;
             }
             const current = winnerByDest.get(intent.dest);
             if (current === undefined
@@ -776,7 +780,7 @@ export class GameEngine {
                 || (intent.rank === current.rank && intent.source < current.source)) {
                 winnerByDest.set(intent.dest, intent);
             }
-        });
+        }
 
         // Pass 2: a transfer resolves if its destination empties this tick — the destination is
         // empty (destEmpty), or drains, or is itself a resolving source (packed chain shifts as one).
@@ -786,7 +790,7 @@ export class GameEngine {
         const seen = new Set();
         const queue = [...drains];
 
-        winnerByDest.forEach(intent => {
+        for (const intent of winnerByDest.values()) {
             if (intent.destEmpty) {
                 resolvedIntents.push(intent);
                 seen.add(intent);
@@ -795,7 +799,7 @@ export class GameEngine {
                     queue.push(intent.source);
                 }
             }
-        });
+        }
 
         while (queue.length > 0) {
             const port = queue.shift();
@@ -814,10 +818,10 @@ export class GameEngine {
         // Pass 3: per-source pick. Single-destination sources pass through; a fan-out source keeps
         // only its best-ranked resolved destination.
         const bestBySource = new Map();
-        resolvedIntents.forEach(intent => {
+        for (const intent of resolvedIntents) {
             if (intent.rank === EMPTY) {
                 this._commitResolved(intent);
-                return;
+                continue;
             }
             const current = bestBySource.get(intent.source);
             if (current === undefined
@@ -825,17 +829,17 @@ export class GameEngine {
                 || (intent.rank === current.rank && intent.dest < current.dest)) {
                 bestBySource.set(intent.source, intent);
             }
-        });
-        bestBySource.forEach(intent => {
+        }
+        for (const intent of bestBySource.values()) {
             this._commitResolved(intent);
-        });
+        }
 
         // Managed destination-less sinks always resolve; the engine drains them in commit.
-        this._intents.forEach(intent => {
+        for (const intent of this._intents) {
             if (intent.dest === EMPTY && intent.managed && intent.source !== EMPTY) {
                 this._sinks.push(intent.source);
             }
-        });
+        }
     }
 
     /**
@@ -873,9 +877,9 @@ export class GameEngine {
      * @returns {void}
      */
     flushSinks() {
-        this._sinks.forEach(source => {
+        for (const source of this._sinks) {
             this.Port.item[source] = EMPTY;
-        });
+        }
     }
 
     /**
@@ -884,16 +888,16 @@ export class GameEngine {
      * @returns {void}
      */
     commitTransfers() {
-        this._resolved.forEach(transfer => {
+        for (const transfer of this._resolved) {
             if (transfer.managed && transfer.source !== EMPTY) {
                 this.Port.item[transfer.source] = EMPTY;
             }
-        });
-        this._resolved.forEach(transfer => {
+        }
+        for (const transfer of this._resolved) {
             if (transfer.managed && transfer.dest !== EMPTY) {
                 this.Port.item[transfer.dest] = transfer.item;
             }
-        });
+        }
     }
 
     /**
@@ -935,16 +939,18 @@ export class GameEngine {
      * @returns {{components:object[], globals:object}}
      */
     serialize() {
-        this._serializeHooks.forEach(hook => hook());
+        for (const hook of this._serializeHooks) {
+            hook();
+        }
         const components = this._components.map(def => {
             const rows = [];
-            query(this.world, [def.store]).forEach(eid => {
+            for (const eid of query(this.world, [def.store])) {
                 const row = {eid: eid};
-                def.fields.forEach(field => {
+                for (const field of def.fields) {
                     row[field.name] = def.store[field.name][eid];
-                });
+                }
                 rows.push(row);
-            });
+            }
             return {
                 name: def.name,
                 fields: def.fields.map(field => ({name: field.name, kind: field.kind})),
@@ -954,11 +960,11 @@ export class GameEngine {
         // Component values are Int32Array-backed, so always safe; only the unbounded globals (id
         // counters) can overflow past 2^53, where Number silently loses precision.
         const globals = {nextObjectId: this._nextObjectId, ...this.globals};
-        Object.keys(globals).forEach(key => {
+        for (const key of Object.keys(globals)) {
             if (!Number.isSafeInteger(globals[key])) {
                 throw new RangeError(`GameEngine.serialize: global "${key}" is not a safe integer: ${globals[key]}`);
             }
-        });
+        }
         return {components: components, globals: globals};
     }
 
@@ -971,9 +977,11 @@ export class GameEngine {
      */
     deserialize(snapshot) {
         this.world = createWorld();
-        this._components.forEach(def => {
-            def.fields.forEach(field => def.store[field.name].fill(field.fill));
-        });
+        for (const def of this._components) {
+            for (const field of def.fields) {
+                def.store[field.name].fill(field.fill);
+            }
+        }
         this._portsByEdge = new Map();
         this._cellByKey = new Map();
         // Drop the prior world's render/tick state so its stale eids never leak into the new world.
@@ -984,42 +992,46 @@ export class GameEngine {
 
         // Every eid that appears (as a row's own eid or an eid-field target) needs a fresh entity.
         const referenced = new Set();
-        snapshot.components.forEach(component => {
-            component.rows.forEach(row => {
+        for (const component of snapshot.components) {
+            for (const row of component.rows) {
                 referenced.add(row.eid);
-                component.fields.forEach(field => {
+                for (const field of component.fields) {
                     if (field.kind === "eid" && row[field.name] !== NO_EID) {
                         referenced.add(row[field.name]);
                     }
-                });
-            });
-        });
+                }
+            }
+        }
         const remap = new Map();
-        [...referenced].sort((a, b) => a - b).forEach(old => remap.set(old, addEntity(this.world)));
+        for (const old of [...referenced].sort((a, b) => a - b)) {
+            remap.set(old, addEntity(this.world));
+        }
         const translate = value => (value === NO_EID ? NO_EID : remap.get(value));
 
-        snapshot.components.forEach(component => {
+        for (const component of snapshot.components) {
             const def = this._componentByName.get(component.name);
-            component.rows.forEach(row => {
+            for (const row of component.rows) {
                 const eid = remap.get(row.eid);
                 this._addComponent(def, eid);
-                def.fields.forEach(field => {
+                for (const field of def.fields) {
                     const raw = row[field.name];
                     def.store[field.name][eid] = field.kind === "eid" ? translate(raw) : raw;
-                });
-            });
-        });
+                }
+            }
+        }
 
         this._nextObjectId = snapshot.globals.nextObjectId;
-        Object.keys(snapshot.globals).forEach(key => {
+        for (const key of Object.keys(snapshot.globals)) {
             if (key !== "nextObjectId") {
                 this.globals[key] = snapshot.globals[key];
             }
-        });
+        }
 
         this._rebuildPortEdges();
         this._rebuildPositions();
-        this._rebuildHooks.forEach(hook => hook(remap));
+        for (const hook of this._rebuildHooks) {
+            hook(remap);
+        }
     }
 
     /**
@@ -1027,9 +1039,9 @@ export class GameEngine {
      * @returns {void}
      */
     _rebuildPortEdges() {
-        this._edgePortEids().forEach(eid => {
+        for (const eid of this._edgePortEids()) {
             this._portsByEdge.set(this._edgeKey(eid), eid);
-        });
+        }
     }
 
     /**
@@ -1055,9 +1067,9 @@ export class GameEngine {
      * @returns {void}
      */
     _rebuildPositions() {
-        this._cellEids().forEach(eid => {
+        for (const eid of this._cellEids()) {
             this._cellByKey.set(this._cellKey(eid), eid);
-        });
+        }
     }
 
     /**
@@ -1150,7 +1162,11 @@ export class GameEngine {
      */
     chunkSync(chunk) {
         const events = [];
-        this._chunkSyncers.forEach(contributor => contributor(chunk).forEach(event => events.push(event)));
+        for (const contributor of this._chunkSyncers) {
+            for (const event of contributor(chunk)) {
+                events.push(event);
+            }
+        }
         return events;
     }
 

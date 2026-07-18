@@ -90,18 +90,18 @@ export class InputHandler {
             this._toolbar.toggleDrawer();
         });
 
-        TOOL_HOTKEYS.forEach((key, index) => {
+        for (const [index, key] of TOOL_HOTKEYS.entries()) {
             Keyboard.on(key, () => {
                 this._selectTool(index);
             });
-        });
+        }
 
         // Core tools bind their declared letter hotkey (e.g. the eraser's "e").
-        CORE_TOOL_HOTKEYS.forEach(key => {
+        for (const key of CORE_TOOL_HOTKEYS) {
             Keyboard.on(key, () => {
                 this._selectCoreTool(key);
             });
-        });
+        }
     }
 
     /**

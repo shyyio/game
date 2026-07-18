@@ -254,7 +254,9 @@ export class UIPanel extends Container {
      * @returns {void}
      */
     clearContent() {
-        this.content.removeChildren().forEach(child => child.destroy({children: true}));
+        for (const child of this.content.removeChildren()) {
+            child.destroy({children: true});
+        }
     }
 
     /** @returns {number} width available to content inside the padded body */

@@ -23,9 +23,9 @@ export class DrawLayerRegistry {
      * @param {AbstractEvent} event
      */
     dispatchEvent(event) {
-        this.layers.forEach(layer => {
+        for (const layer of [...this.layers]) {
             layer.onEvent(event);
-        });
+        }
     }
 
     /**
@@ -33,9 +33,9 @@ export class DrawLayerRegistry {
      * @param {boolean} value
      */
     setMapMode(value) {
-        this.layers.forEach(layer => {
+        for (const layer of this.layers) {
             layer.mapMode = value;
-        });
+        }
     }
 
     /**
@@ -45,9 +45,9 @@ export class DrawLayerRegistry {
      * @param {number} deltaMS elapsed time since the previous tick, in ms
      */
     tick(frame, deltaMS) {
-        this.layers.forEach(layer => {
+        for (const layer of this.layers) {
             layer.tick(frame, deltaMS);
-        });
+        }
     }
 
     /**
@@ -55,9 +55,9 @@ export class DrawLayerRegistry {
      * @param {boolean} enabled
      */
     setCenterLock(enabled) {
-        this.layers.forEach(layer => {
+        for (const layer of this.layers) {
             layer.setCenterLock(enabled);
-        });
+        }
     }
 
     /**
@@ -65,8 +65,8 @@ export class DrawLayerRegistry {
      * @param {boolean} enabled
      */
     setDebugMode(enabled) {
-        this.layers.forEach(layer => {
+        for (const layer of this.layers) {
             layer.setDebugMode(enabled);
-        });
+        }
     }
 }

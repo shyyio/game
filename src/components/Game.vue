@@ -133,7 +133,9 @@ onMounted(async () => {
   document.getElementById("game").appendChild(app.canvas);
 
   const modRegistry = new ModRegistry();
-  clientLoadout().forEach(pkg => modRegistry.register(pkg));
+  for (const pkg of clientLoadout()) {
+    modRegistry.register(pkg);
+  }
   modRegistry.freeze();
 
   const game = new Game(modRegistry, new GameEngine(modRegistry), new ClientSaveStore());

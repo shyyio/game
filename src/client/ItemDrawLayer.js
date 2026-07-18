@@ -132,9 +132,9 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     dropPorts(entry) {
-        Object.values(entry.ports).forEach(portId => {
+        for (const portId of Object.values(entry.ports)) {
             this.removeItem(PORT_SPRITE_KEY(portId));
-        });
+        }
     }
 
     /**
@@ -143,7 +143,9 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {number} deltaMS elapsed time since the previous tick, in ms
      */
     tick(frame, deltaMS) {
-        Object.values(this._items).forEach(sprite => sprite.advance(deltaMS));
+        for (const sprite of Object.values(this._items)) {
+            sprite.advance(deltaMS);
+        }
     }
 
     /**
@@ -309,7 +311,9 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      */
     setDebugMode(enabled) {
         this._debugMasks = enabled;
-        Object.values(this._items).forEach(sprite => this._applyItemVisibility(sprite));
+        for (const sprite of Object.values(this._items)) {
+            this._applyItemVisibility(sprite);
+        }
         this._applyMask();
     }
 }

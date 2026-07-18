@@ -29,9 +29,9 @@ export class SettingsCache {
      */
     snapshot() {
         const out = {};
-        this._values.forEach((value, key) => {
+        for (const [key, value] of this._values) {
             out[key] = value;
-        });
+        }
         return out;
     }
 }
