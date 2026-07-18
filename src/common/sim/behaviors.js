@@ -181,11 +181,11 @@ export class MachineBehavior extends AbstractBehavior {
         }
     }
 
-    /**
-     * @returns {number}
-     */
-    get inputCount() {
-        return this.type.inputPorts.length;
+    _attachType(type) {
+        super._attachType(type);
+        // Cached off the type: the tick loop reads it per entity, and a getter chaining through
+        // type.inputPorts blocks that from folding away.
+        this.inputCount = type.inputPorts.length;
     }
 
     /**
@@ -341,7 +341,15 @@ export class MachineBehavior extends AbstractBehavior {
         const output = machine.output;
         const out = machine.out;
         for (const eid of engine.entitiesWith(def)) {
+            // Mid-craft with the product still held: the countdown is the only state that moves, so
+            // skip the behavior lookup and the per-slot passes below, which would all no-op.
+            if (output[eid] !== EMPTY && remaining[eid] > 1) {
+                remaining[eid] -= 1;
+                continue;
+            }
+
             const behavior = placed.behaviorFor(placed.PlacedObject.typeId[eid]);
+            const inputCount = behavior.inputCount;
             if (remaining[eid] > 0) {
                 remaining[eid] -= 1;
             }
@@ -349,7 +357,7 @@ export class MachineBehavior extends AbstractBehavior {
             // Gather while idle, or in step on the tick a free output lets the next set load.
             const gathering = output[eid] === EMPTY || (remaining[eid] === 0 && item[out[eid]] === EMPTY);
             if (gathering) {
-                for (let i = 0; i < behavior.inputCount; i += 1) {
+                for (let i = 0; i < inputCount; i += 1) {
                     const inPort = inCols[i][eid];
                     if (slotCols[i][eid] === EMPTY && item[inPort] !== EMPTY) {
                         engine.submitDrain(inPort, true);
@@ -360,7 +368,7 @@ export class MachineBehavior extends AbstractBehavior {
 
             // Every port contributed: match the recipe, start the countdown, move slots into processing.
             let allFilled = output[eid] === EMPTY;
-            for (let i = 0; i < behavior.inputCount; i += 1) {
+            for (let i = 0; i < inputCount; i += 1) {
                 if (slotCols[i][eid] === EMPTY) {
                     allFilled = false;
                 }
@@ -368,7 +376,7 @@ export class MachineBehavior extends AbstractBehavior {
             if (allFilled) {
                 output[eid] = behavior._resolveRecipe(slotCols, eid);
                 remaining[eid] = behavior.processingTicks;
-                for (let i = 0; i < behavior.inputCount; i += 1) {
+                for (let i = 0; i < inputCount; i += 1) {
                     processingCols[i][eid] = slotCols[i][eid];
                     slotCols[i][eid] = EMPTY;
                 }
