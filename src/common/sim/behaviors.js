@@ -390,36 +390,39 @@ export class MachineBehavior extends AbstractBehavior {
             }
 
             // Gather while idle, or in step on the tick a free output lets the next set load.
-            const gathering = output[row] === EMPTY || (remaining[row] === 0 && item[out[row]] === EMPTY);
-            if (gathering) {
-                for (let i = 0; i < inputCount; i += 1) {
+            const idle = output[row] === EMPTY;
+            const gathering = idle || (remaining[row] === 0 && item[out[row]] === EMPTY);
+
+            // One pass: fill each free slot from its resting input and count what the machine holds
+            // afterwards. Filling and counting separately walked the slot columns twice.
+            let filled = 0;
+            for (let i = 0; i < inputCount; i += 1) {
+                const slotCol = slotCols[i];
+                let slot = slotCol[row];
+                if (gathering && slot === EMPTY) {
                     const inPort = inCols[i][row];
-                    if (slotCols[i][row] === EMPTY && item[inPort] !== EMPTY) {
+                    const resting = item[inPort];
+                    if (resting !== EMPTY) {
                         engine.submitDrain(inPort, true);
-                        slotCols[i][row] = item[inPort];
+                        slot = resting;
+                        slotCol[row] = resting;
                     }
+                }
+                if (slot !== EMPTY) {
+                    filled += 1;
                 }
             }
 
             // Every port contributed: match the recipe, start the countdown, move slots into processing.
-            // A machine still holding a product cannot load the next set, so it skips the slot pass.
-            if (output[row] === EMPTY) {
-                let allFilled = true;
+            // A machine still holding a product cannot load the next set, so it skips the craft.
+            if (idle && filled === inputCount) {
+                // Only the recipe match needs the behavior instance, and only on the tick a set
+                // completes — rare next to the per-tick passes above.
+                output[row] = placed.behaviorFor(placed.typeIdOf(eids[row]))._resolveRecipe(slotCols, row);
+                remaining[row] = processingTicks[row];
                 for (let i = 0; i < inputCount; i += 1) {
-                    if (slotCols[i][row] === EMPTY) {
-                        allFilled = false;
-                        break;
-                    }
-                }
-                if (allFilled) {
-                    // Only the recipe match needs the behavior instance, and only on the tick a set
-                    // completes — rare next to the per-tick passes above.
-                    output[row] = placed.behaviorFor(placed.typeIdOf(eids[row]))._resolveRecipe(slotCols, row);
-                    remaining[row] = processingTicks[row];
-                    for (let i = 0; i < inputCount; i += 1) {
-                        processingCols[i][row] = slotCols[i][row];
-                        slotCols[i][row] = EMPTY;
-                    }
+                    processingCols[i][row] = slotCols[i][row];
+                    slotCols[i][row] = EMPTY;
                 }
             }
 
