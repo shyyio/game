@@ -233,9 +233,9 @@ export class Belts {
         if (!this.engine.cellsFree([{x, y, layer}])) {
             return null;
         }
-        this.engine.occupy([{x, y, layer}]);
-
         const placed = {x, y, direction, type, id: this.engine.createObjectId()};
+        this.engine.occupy([{x, y, layer}], placed.id);
+
         this._addBelt(placed);
 
         // The run through the placed belt, following the flow across bends. Dropping the paths it
