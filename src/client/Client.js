@@ -391,7 +391,8 @@ export class Client {
     publishEvent(event, bytes=0) {
         if (DEV && BROWSER) {
             this._bytesReceived = (this._bytesReceived || 0) + bytes;
-            console.log(`↓ [${formatBytes(this._bytesReceived)}]`, event.constructor.name, event);
+            // this event's size, then the session total
+            console.log(`↓ [${formatBytes(bytes)} / ${formatBytes(this._bytesReceived)}]`, event.constructor.name, event);
         }
         if (event instanceof ChunkSyncEvent) {
             // A chunk-sync bundle: replay each inner event through the normal path.
