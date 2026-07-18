@@ -5,7 +5,7 @@ import {ModRegistry} from "@/common/mod/ModRegistry.js";
 import {WireRegistry} from "@/common/wire.js";
 
 import {SetViewportMessage, SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
-import {PortItemSetEvent} from "@/common/PortItemEvents.js";
+import {PortItemSetEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
@@ -45,6 +45,15 @@ test("Round-trips a SetViewportMessage", () => {
 test("Round-trips a PortItemSetEvent with a port id", () => {
     const reg = registry();
     roundTrip(reg, new PortItemSetEvent(12, -5, 999999999999, 8), PortItemSetEvent);
+});
+
+test("Round-trips a PortItemBatchEvent's packed columns", () => {
+    const reg = registry();
+    const batch = new PortItemBatchEvent(12, -5);
+    batch.addClear(999999999999);
+    batch.addSet(41, 8);
+    batch.addSet(42, 0);
+    roundTrip(reg, batch, PortItemBatchEvent);
 });
 
 test("Round-trips chunk subscribe/unsubscribe events, recovering the chunk id", () => {

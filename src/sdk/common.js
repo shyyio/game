@@ -85,6 +85,7 @@ export {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/Ob
 // for one with no position.
 export {AbstractEvent} from "@/common/AbstractEvent.js";
 export {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
+export {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 
 // Engine render deltas for the item resting in a render-flagged out-port.
 export {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";

@@ -1,4 +1,4 @@
-import {AbstractTilePositionedEvent} from "@/sdk/common.js";
+import {AbstractTilePositionedEvent, AbstractBatchEvent} from "@/sdk/common.js";
 
 export class BeltPathRecalculateEvent extends AbstractTilePositionedEvent {
 
@@ -206,3 +206,81 @@ export class BeltItemResetEvent extends AbstractTilePositionedEvent {
     }
 }
 
+
+/**
+ * One chunk's item deltas for a move pass: each upsert is `upsertItemIds[i]` on path
+ * `upsertPathIds[i]` now holding `upsertGaps[i]` of type `upsertItemTypes[i]`, each delete is a
+ * (`deletePathIds[i]`, `deleteItemIds[i]`) pair.
+ */
+export class BeltItemBatchEvent extends AbstractBatchEvent {
+
+    static wireFields = {
+        upsertPathIds: "int64[]",
+        upsertItemIds: "int64[]",
+        upsertGaps: "int32[]",
+        upsertItemTypes: "int32[]",
+        deletePathIds: "int64[]",
+        deleteItemIds: "int64[]",
+    };
+
+    /**
+     * @param {number} x - a path head in the batched chunk, routing the batch to that topic
+     * @param {number} y
+     */
+    constructor(x, y) {
+        super(x, y);
+        this.upsertPathIds = [];
+        this.upsertItemIds = [];
+        this.upsertGaps = [];
+        this.upsertItemTypes = [];
+        this.deletePathIds = [];
+        this.deleteItemIds = [];
+    }
+
+    /**
+     * @param {number} pathId
+     * @param {number} itemId
+     * @param {number} gap
+     * @param {number} itemType
+     * @returns {void}
+     */
+    addUpsert(pathId, itemId, gap, itemType) {
+        this.upsertPathIds.push(pathId);
+        this.upsertItemIds.push(itemId);
+        this.upsertGaps.push(gap);
+        this.upsertItemTypes.push(itemType);
+    }
+
+    /**
+     * @param {number} pathId
+     * @param {number} itemId
+     * @returns {void}
+     */
+    addDelete(pathId, itemId) {
+        this.deletePathIds.push(pathId);
+        this.deleteItemIds.push(itemId);
+    }
+
+    /**
+     * Deletes come first: within a pass a path pops before it ingests, never the reverse, so this
+     * replays each path's deltas in emission order.
+     * @returns {(BeltItemUpsertEvent|BeltItemDeleteEvent)[]}
+     */
+    explode() {
+        const events = [];
+        for (let i = 0; i < this.deletePathIds.length; i += 1) {
+            events.push(new BeltItemDeleteEvent(this.x, this.y, this.deletePathIds[i], this.deleteItemIds[i]));
+        }
+        for (let i = 0; i < this.upsertPathIds.length; i += 1) {
+            events.push(new BeltItemUpsertEvent(
+                this.x,
+                this.y,
+                this.upsertPathIds[i],
+                this.upsertItemIds[i],
+                this.upsertGaps[i],
+                this.upsertItemTypes[i],
+            ));
+        }
+        return events;
+    }
+}

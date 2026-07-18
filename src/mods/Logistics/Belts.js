@@ -6,8 +6,8 @@ import {
     BeltPathRecalculateEvent,
     BeltItemUpsertEvent,
     BeltItemSyncEvent,
-    BeltItemDeleteEvent,
     BeltItemResetEvent,
+    BeltItemBatchEvent,
 } from "./events.js";
 import {
     BELT_NORMAL,
@@ -438,26 +438,46 @@ export class Belts {
     }
 
     /**
-     * Emits the upsert for the item in store cell `cell`, carried by the path in `slot`. Takes the
+     * Buffers the upsert for the item in store cell `cell`, carried by the path in `slot`. Takes the
      * cell rather than the item's fields so an unobserved path reads none of them.
      * @private
+     * @param {Map<number, BeltItemBatchEvent>} batches
      * @param {number} slot
      * @param {number} cell
      * @returns {void}
      */
-    _emitItemAt(slot, cell) {
+    _bufferItemAt(batches, slot, cell) {
         if (!this._observedAt(slot)) {
             return;
         }
-        const event = this._itemUpsertEvent(
-            this.paths[slot],
+        const head = this._headInfo(this.paths[slot]);
+        if (head === null) {
+            return;
+        }
+        this._itemBatch(batches, head).addUpsert(
+            head.pathId,
             this._items.ids[cell],
             this._items.gaps[cell],
             this._items.types[cell],
         );
-        if (event !== null) {
-            this.engine.emitEvent(event);
+    }
+
+    /**
+     * The batch collecting a path head's chunk, created on first use.
+     * @private
+     * @param {Map<number, BeltItemBatchEvent>} batches
+     * @param {{pathId: number, x: number, y: number}} head
+     * @returns {BeltItemBatchEvent}
+     */
+    _itemBatch(batches, head) {
+        const chunk = chunkId(head.x, head.y);
+        const existing = batches.get(chunk);
+        if (existing !== undefined) {
+            return existing;
         }
+        const batch = new BeltItemBatchEvent(head.x, head.y);
+        batches.set(chunk, batch);
+        return batch;
     }
 
 
@@ -501,14 +521,15 @@ export class Belts {
     }
 
     /**
-     * Emits the delete for the lead item a path is about to pop. Takes the store cell rather than the
-     * id so an unobserved path reads nothing.
+     * Buffers the delete for the lead item a path is about to pop. Takes the store cell rather than
+     * the id so an unobserved path reads nothing.
      * @private
+     * @param {Map<number, BeltItemBatchEvent>} batches
      * @param {number} slot
      * @param {number} cell
      * @returns {void}
      */
-    _emitPoppedItem(slot, cell) {
+    _bufferPoppedItem(batches, slot, cell) {
         if (!this._observedAt(slot)) {
             return;
         }
@@ -516,7 +537,7 @@ export class Belts {
         if (head === null) {
             return;
         }
-        this.engine.emitEvent(new BeltItemDeleteEvent(head.x, head.y, head.pathId, this._items.ids[cell]));
+        this._itemBatch(batches, head).addDelete(head.pathId, this._items.ids[cell]);
     }
 
     /**
@@ -1482,6 +1503,9 @@ export class Belts {
         const count = this.paths.length;
         // Reused across ticks: the deferred out-port writes, as parallel columns.
         let popCount = 0;
+        // One batch per chunk, flushed at the end of the pass so the pass stays ordered against
+        // everything emitted outside it.
+        const batches = new Map();
 
         for (let slot = 0; slot < count; slot += 1) {
             const firstGap = firstGapCol[slot];
@@ -1499,7 +1523,7 @@ export class Belts {
                 this._popPorts[popCount] = outPortCol[slot];
                 this._popTypes[popCount] = itemTypes[base + head];
                 popCount += 1;
-                this._emitPoppedItem(slot, base + head);
+                this._bufferPoppedItem(batches, slot, base + head);
                 // Gaps are distances to the item ahead, so dropping the lead advances the rest and
                 // the new lead's gap is already its distance to the output edge.
                 const nextHead = head + 1 === slab ? 0 : head + 1;
@@ -1517,7 +1541,7 @@ export class Belts {
                 }
                 const gap = itemGaps[base + at] - 1;
                 itemGaps[base + at] = gap;
-                this._emitItemAt(slot, base + at);
+                this._bufferItemAt(batches, slot, base + at);
                 if (firstGap === 0) {
                     leadGapCol[slot] = gap;
                 }
@@ -1559,7 +1583,7 @@ export class Belts {
             if (items === 0) {
                 leadGapCol[slot] = gap;
             }
-            this._emitItemAt(slot, cell);
+            this._bufferItemAt(batches, slot, cell);
             headGapCol[slot] = 0;
             engine.setPortItem(inPort, EMPTY);
         }
@@ -1567,6 +1591,10 @@ export class Belts {
         // Phase 3: write this tick's pops into their out-ports.
         for (let i = 0; i < popCount; i += 1) {
             engine.setPortItem(this._popPorts[i], this._popTypes[i]);
+        }
+
+        for (const batch of batches.values()) {
+            engine.emitEvent(batch);
         }
     }
 

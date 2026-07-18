@@ -1,12 +1,14 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {Direction} from "@/common/constants.js";
+import {Direction, CHUNK_SIZE} from "@/common/constants.js";
+import {chunkId} from "@/common/util.js";
 import {GameEngine} from "@/common/sim/GameEngine.js";
 import {EventCollector} from "@/test/EventCollector.js";
 import {Belts} from "@/mods/Logistics/Belts.js";
 import {
     BeltItemUpsertEvent,
     BeltItemDeleteEvent,
+    BeltItemBatchEvent,
 } from "@/mods/Logistics/events.js";
 
 const RED = 1;
@@ -42,4 +44,33 @@ test("a belt item emits an upsert on ingest and a delete on pop", async () => {
     assert.ok(upserts.some(event => event.itemType === RED), "the item run is upserted");
     assert.ok(deletes.length > 0, "runs are deleted as the item advances/pops");
     assert.ok(items.every(event => event.pathId === 3), "all item events carry the head belt path id");
+});
+
+// The move pass's deltas leave the engine as one batch per chunk, not one event per item.
+test("a move pass emits one belt item batch per chunk", async () => {
+    const engine = new GameEngine();
+    await engine.init();
+    const emitted = [];
+    const belts = new Belts(engine);
+    // Two paths in one chunk, a third far enough out to land in another.
+    const origins = [{x: 0, y: 0}, {x: 4, y: 0}, {x: CHUNK_SIZE, y: 0}];
+    const handles = origins.map(origin => {
+        let handle = null;
+        for (let i = 0; i < 3; i += 1) {
+            handle = belts.placeBelt(origin.x, origin.y + i, Direction.UP);
+        }
+        return handle;
+    });
+
+    engine.setEventSink(event => emitted.push(event));
+    for (const handle of handles) {
+        engine.setPortItem(handle.inPort, RED);
+    }
+    engine.tickAll();
+
+    const batches = emitted.filter(event => event instanceof BeltItemBatchEvent);
+    assert.equal(batches.length, 2, "one batch per chunk");
+    const near = batches.find(batch => batch.chunk === chunkId(0, 0));
+    assert.equal(near.upsertPathIds.length, 2, "both near paths ingested into one batch");
+    assert.deepEqual(near.upsertItemTypes, [RED, RED]);
 });

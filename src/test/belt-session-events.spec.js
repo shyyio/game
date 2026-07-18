@@ -8,7 +8,7 @@ import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {makeGameEngine, ecsModRegistry} from "@/test/ecsSim.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
-import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
+import {PortItemSetEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {beltsOf} from "@/mods/Logistics/testHelpers.js";
 
 const RED = 1;
@@ -62,9 +62,12 @@ test("a Game on GameEngine routes belt render events only to sessions watching t
         game.postTick();
     }
 
-    const isPortItem = event => event instanceof PortItemSetEvent || event instanceof PortItemClearEvent;
-    const watcherRenders = watcher.events.filter(isPortItem);
-    const bystanderRenders = bystander.events.filter(isPortItem);
+    // Port deltas arrive batched per chunk; unpack them the way a client does.
+    const portItems = events => events
+        .filter(event => event instanceof PortItemBatchEvent)
+        .flatMap(batch => batch.explode());
+    const watcherRenders = portItems(watcher.events);
+    const bystanderRenders = portItems(bystander.events);
 
     assert.ok(watcherRenders.some(event => event instanceof PortItemSetEvent && event.itemType === RED), "watcher gets the item's render set");
     assert.equal(bystanderRenders.length, 0, "the bystander (different chunk) gets no belt render events");
