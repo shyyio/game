@@ -73,6 +73,13 @@ export const NO_EID = -1;
 // Initial column length for every component store; grows by doubling when an eid exceeds it.
 const PORT_CAPACITY = 1024;
 
+// Initial row count for the per-tick intent/resolved columns; grows by doubling.
+const INTENT_CAPACITY = 1024;
+
+// Intent flag bits.
+const INTENT_DEST_EMPTY = 1;
+const INTENT_MANAGED = 2;
+
 
 /**
  * bitECS-backed simulation engine Game drives: the port-transfer core over typed-array component
@@ -133,6 +140,20 @@ export class GameEngine {
         // EMIT_RENDER walks this instead of every rendered port in the world.
         this._dirtyPorts = [];
         this._portDirty = new Uint8Array(this._portDef.capacity);
+
+        // Per-port scratch for resolvePortTransfer, indexed by port eid and sized with the Port columns.
+        // The resolver clears only the slots it touched, so no pass costs the width of the world.
+        // Persist through the tick (mods query them in POST_RESOLVE):
+        this._destBySource = new Int32Array(this._portDef.capacity).fill(EMPTY);
+        this._portResolved = new Uint8Array(this._portDef.capacity);
+        this._portResolvedUnmanaged = new Uint8Array(this._portDef.capacity);
+        // Transient within resolvePortTransfer: the winning/best intent row per port, and whether the
+        // port empties this tick.
+        this._winnerByDest = new Int32Array(this._portDef.capacity).fill(EMPTY);
+        this._bestBySource = new Int32Array(this._portDef.capacity).fill(EMPTY);
+        this._draining = new Uint8Array(this._portDef.capacity);
+
+        this._initIntentColumns();
 
         // Layer name <-> int code; the surface layer is code 0, mods register the rest (see
         // registerPositionLayer). Registration order is deterministic per loadout, so codes are stable
@@ -393,11 +414,7 @@ export class GameEngine {
      * @returns {number}
      */
     resolvedDestFor(source) {
-        const dest = this._destBySource.get(source);
-        if (dest === undefined) {
-            return EMPTY;
-        }
-        return dest;
+        return this._destBySource[source];
     }
 
     /**
@@ -407,7 +424,7 @@ export class GameEngine {
      * @returns {boolean}
      */
     wasResolvedDest(dest) {
-        return this._resolvedDests.has(dest);
+        return dest !== EMPTY && this._portResolved[dest] === 1;
     }
 
     /**
@@ -417,7 +434,7 @@ export class GameEngine {
      * @returns {boolean}
      */
     resolvedUnmanagedDest(dest) {
-        return this._unmanagedResolvedDests.has(dest);
+        return dest !== EMPTY && this._portResolvedUnmanaged[dest] === 1;
     }
 
     /**
@@ -426,17 +443,101 @@ export class GameEngine {
      * @returns {void}
      */
     _resetTick() {
-        // Submitted this tick: {source, dest, destEmpty, managed, outputItem, rank}. source/dest are
-        // port eids, or EMPTY for a source-less create / destination-less drain.
-        this._intents = [];
-        // Committed transfers: {source, dest, item, managed}.
-        this._resolved = [];
-        // Lookup indices over _resolved, so per-entity queries stay O(1).
-        this._destBySource = new Map();
-        this._resolvedDests = new Set();
-        this._unmanagedResolvedDests = new Set();
+        // Clear last tick's per-port resolution, walking only the ports it actually touched.
+        for (let row = 0; row < this._resolvedCount; row += 1) {
+            const source = this._resolvedSource[row];
+            if (source !== EMPTY) {
+                this._destBySource[source] = EMPTY;
+            }
+            const dest = this._resolvedDest[row];
+            if (dest !== EMPTY) {
+                this._portResolved[dest] = 0;
+                this._portResolvedUnmanaged[dest] = 0;
+            }
+        }
+        this._intentCount = 0;
+        this._resolvedCount = 0;
         // Managed destination-less sources the engine drains this tick.
         this._sinks = [];
+    }
+
+    /**
+     * Allocates the per-tick intent and resolved-transfer columns. Both are SoA: one row per submitted
+     * intent / committed transfer, so a tick's several hundred thousand rows cost no object headers.
+     * @private
+     * @returns {void}
+     */
+    _initIntentColumns() {
+        // Submitted this tick. source/dest are port eids, or EMPTY for a source-less create /
+        // destination-less drain; flags carry destEmpty and managed.
+        this._intentCapacity = INTENT_CAPACITY;
+        this._intentSource = new Int32Array(INTENT_CAPACITY);
+        this._intentDest = new Int32Array(INTENT_CAPACITY);
+        this._intentOutput = new Int32Array(INTENT_CAPACITY);
+        this._intentRank = new Int32Array(INTENT_CAPACITY);
+        this._intentFlags = new Uint8Array(INTENT_CAPACITY);
+        this._intentSeen = new Uint8Array(INTENT_CAPACITY);
+        this._intentCount = 0;
+
+        // Committed transfers.
+        this._resolvedCapacity = INTENT_CAPACITY;
+        this._resolvedSource = new Int32Array(INTENT_CAPACITY);
+        this._resolvedDest = new Int32Array(INTENT_CAPACITY);
+        this._resolvedItem = new Int32Array(INTENT_CAPACITY);
+        this._resolvedManaged = new Uint8Array(INTENT_CAPACITY);
+        this._resolvedCount = 0;
+    }
+
+    /**
+     * Grows the intent columns so row `count` is addressable.
+     * @private
+     * @param {number} count
+     * @returns {void}
+     */
+    _growIntents(count) {
+        if (count < this._intentCapacity) {
+            return;
+        }
+        let capacity = this._intentCapacity;
+        while (capacity <= count) {
+            capacity *= 2;
+        }
+        for (const name of ["_intentSource", "_intentDest", "_intentOutput", "_intentRank"]) {
+            const grown = new Int32Array(capacity);
+            grown.set(this[name]);
+            this[name] = grown;
+        }
+        for (const name of ["_intentFlags", "_intentSeen"]) {
+            const grown = new Uint8Array(capacity);
+            grown.set(this[name]);
+            this[name] = grown;
+        }
+        this._intentCapacity = capacity;
+    }
+
+    /**
+     * Grows the resolved-transfer columns so row `count` is addressable.
+     * @private
+     * @param {number} count
+     * @returns {void}
+     */
+    _growResolved(count) {
+        if (count < this._resolvedCapacity) {
+            return;
+        }
+        let capacity = this._resolvedCapacity;
+        while (capacity <= count) {
+            capacity *= 2;
+        }
+        for (const name of ["_resolvedSource", "_resolvedDest", "_resolvedItem"]) {
+            const grown = new Int32Array(capacity);
+            grown.set(this[name]);
+            this[name] = grown;
+        }
+        const managed = new Uint8Array(capacity);
+        managed.set(this._resolvedManaged);
+        this._resolvedManaged = managed;
+        this._resolvedCapacity = capacity;
     }
 
     /**
@@ -490,12 +591,17 @@ export class GameEngine {
         def.capacity = capacity;
         if (def === this._portDef) {
             this.Port = def.store;
-            for (const name of ["_portShadow", "_renderX", "_renderY"]) {
-                const grown = new Int32Array(capacity).fill(name === "_portShadow" ? EMPTY : 0);
+            for (const name of ["_renderX", "_renderY"]) {
+                const grown = new Int32Array(capacity);
                 grown.set(this[name]);
                 this[name] = grown;
             }
-            for (const name of ["_portDirty", "_rendered"]) {
+            for (const name of ["_portShadow", "_destBySource", "_winnerByDest", "_bestBySource"]) {
+                const grown = new Int32Array(capacity).fill(EMPTY);
+                grown.set(this[name]);
+                this[name] = grown;
+            }
+            for (const name of ["_portDirty", "_rendered", "_portResolved", "_portResolvedUnmanaged", "_draining"]) {
                 const grown = new Uint8Array(capacity);
                 grown.set(this[name]);
                 this[name] = grown;
@@ -817,18 +923,64 @@ export class GameEngine {
     }
 
     /**
-     * @param {{source:number, dest:number, destEmpty?:boolean, managed?:boolean, outputItem?:number, rank?:number}} intent
+     * Submits a move of one item from `source` to `dest`.
+     * @param {number} source - the port the item leaves
+     * @param {number} dest - the port it lands in
+     * @param {boolean} destEmpty - whether `dest` is free to take it right now
+     * @param {boolean} managed - whether the engine moves the item (false: the mod moves it itself and
+     *     only reads the resolution)
+     * @param {number} [rank] - preference among one source's several destinations; lowest wins
+     * @param {number} [outputItem] - what lands in `dest`, when the move translates the item type;
+     *     without it the source's own item moves across
      * @returns {void}
      */
-    submitIntent(intent) {
-        this._intents.push({
-            source: intent.source,
-            dest: intent.dest,
-            destEmpty: intent.destEmpty === true,
-            managed: intent.managed === undefined ? true : intent.managed,
-            outputItem: intent.outputItem === undefined ? EMPTY : intent.outputItem,
-            rank: intent.rank === undefined ? EMPTY : intent.rank,
-        });
+    submitTransfer(source, dest, destEmpty, managed, rank=EMPTY, outputItem=EMPTY) {
+        this._pushIntent(source, dest, destEmpty, managed, outputItem, rank);
+    }
+
+    /**
+     * Submits a producer's source-less create of `item` into `dest`.
+     * @param {number} dest
+     * @param {number} item
+     * @param {boolean} destEmpty
+     * @returns {void}
+     */
+    submitCreate(dest, item, destEmpty) {
+        this._pushIntent(EMPTY, dest, destEmpty, true, item, EMPTY);
+    }
+
+    /**
+     * Submits a destination-less drain: `source` empties this tick, so whatever feeds it can resolve.
+     * A managed drain is also cleared by the engine in CONSUME_INPUTS.
+     * @param {number} source
+     * @param {boolean} managed
+     * @returns {void}
+     */
+    submitDrain(source, managed) {
+        this._pushIntent(source, EMPTY, false, managed, EMPTY, EMPTY);
+    }
+
+    /**
+     * Appends one intent row.
+     * @private
+     * @param {number} source
+     * @param {number} dest
+     * @param {boolean} destEmpty
+     * @param {boolean} managed
+     * @param {number} outputItem
+     * @param {number} rank
+     * @returns {void}
+     */
+    _pushIntent(source, dest, destEmpty, managed, outputItem, rank) {
+        const row = this._intentCount;
+        this._growIntents(row);
+        this._intentSource[row] = source;
+        this._intentDest[row] = dest;
+        this._intentOutput[row] = outputItem;
+        this._intentRank[row] = rank;
+        this._intentFlags[row] = (destEmpty ? INTENT_DEST_EMPTY : 0) | (managed ? INTENT_MANAGED : 0);
+        this._intentSeen[row] = 0;
+        this._intentCount = row + 1;
     }
 
     /**
@@ -837,84 +989,108 @@ export class GameEngine {
      * @returns {void}
      */
     resolvePortTransfer() {
+        const count = this._intentCount;
+        const source = this._intentSource;
+        const dest = this._intentDest;
+        const rank = this._intentRank;
+        const flags = this._intentFlags;
+        const winner = this._winnerByDest;
+        const draining = this._draining;
+        // Ports whose transient scratch was touched, so the reset at the end walks only those.
+        const touchedDests = [];
+        const touchedSources = [];
+
         // Pass 1: dedup contenders per destination (a port takes one) — lowest rank wins, tie by
         // source. Destination-less rows mark their source as draining this tick.
-        const winnerByDest = new Map();
-        const drains = new Set();
-        for (const intent of this._intents) {
-            if (intent.dest === EMPTY) {
-                if (intent.source !== EMPTY) {
-                    drains.add(intent.source);
+        const queue = [];
+        for (let row = 0; row < count; row += 1) {
+            if (dest[row] === EMPTY) {
+                if (source[row] !== EMPTY && draining[source[row]] === 0) {
+                    draining[source[row]] = 1;
+                    queue.push(source[row]);
+                    touchedSources.push(source[row]);
                 }
                 continue;
             }
-            const current = winnerByDest.get(intent.dest);
-            if (current === undefined
-                || intent.rank < current.rank
-                || (intent.rank === current.rank && intent.source < current.source)) {
-                winnerByDest.set(intent.dest, intent);
+            const current = winner[dest[row]];
+            if (current === EMPTY) {
+                touchedDests.push(dest[row]);
+            }
+            if (current === EMPTY
+                || rank[row] < rank[current]
+                || (rank[row] === rank[current] && source[row] < source[current])) {
+                winner[dest[row]] = row;
             }
         }
 
         // Pass 2: a transfer resolves if its destination empties this tick — the destination is
         // empty (destEmpty), or drains, or is itself a resolving source (packed chain shifts as one).
         // Propagate backward: when a port joins the draining set, the transfer feeding it resolves.
-        const resolvedSource = new Set(drains);
-        const resolvedIntents = [];
-        const seen = new Set();
-        const queue = [...drains];
-
-        for (const intent of winnerByDest.values()) {
-            if (intent.destEmpty) {
-                resolvedIntents.push(intent);
-                seen.add(intent);
-                if (!resolvedSource.has(intent.source)) {
-                    resolvedSource.add(intent.source);
-                    queue.push(intent.source);
-                }
+        const resolvedRows = [];
+        for (const port of touchedDests) {
+            const row = winner[port];
+            if ((flags[row] & INTENT_DEST_EMPTY) === 0) {
+                continue;
+            }
+            resolvedRows.push(row);
+            this._intentSeen[row] = 1;
+            if (source[row] !== EMPTY && draining[source[row]] === 0) {
+                draining[source[row]] = 1;
+                queue.push(source[row]);
+                touchedSources.push(source[row]);
             }
         }
 
-        let head = 0;
-        while (head < queue.length) {
-            const port = queue[head];
-            head += 1;
-            const intent = winnerByDest.get(port);
-            if (intent === undefined || seen.has(intent)) {
+        for (let head = 0; head < queue.length; head += 1) {
+            const row = winner[queue[head]];
+            if (row === EMPTY || this._intentSeen[row] === 1) {
                 continue;
             }
-            resolvedIntents.push(intent);
-            seen.add(intent);
-            if (!resolvedSource.has(intent.source)) {
-                resolvedSource.add(intent.source);
-                queue.push(intent.source);
+            resolvedRows.push(row);
+            this._intentSeen[row] = 1;
+            if (source[row] !== EMPTY && draining[source[row]] === 0) {
+                draining[source[row]] = 1;
+                queue.push(source[row]);
+                touchedSources.push(source[row]);
             }
         }
 
         // Pass 3: per-source pick. Single-destination sources pass through; a fan-out source keeps
         // only its best-ranked resolved destination.
-        const bestBySource = new Map();
-        for (const intent of resolvedIntents) {
-            if (intent.rank === EMPTY) {
-                this._commitResolved(intent);
+        const best = this._bestBySource;
+        const ranked = [];
+        for (const row of resolvedRows) {
+            if (rank[row] === EMPTY) {
+                this._commitResolved(row);
                 continue;
             }
-            const current = bestBySource.get(intent.source);
-            if (current === undefined
-                || intent.rank < current.rank
-                || (intent.rank === current.rank && intent.dest < current.dest)) {
-                bestBySource.set(intent.source, intent);
+            const current = best[source[row]];
+            if (current === EMPTY) {
+                ranked.push(source[row]);
+            }
+            if (current === EMPTY
+                || rank[row] < rank[current]
+                || (rank[row] === rank[current] && dest[row] < dest[current])) {
+                best[source[row]] = row;
             }
         }
-        for (const intent of bestBySource.values()) {
-            this._commitResolved(intent);
+        for (const port of ranked) {
+            this._commitResolved(best[port]);
+            best[port] = EMPTY;
         }
 
         // Managed destination-less sinks always resolve; the engine drains them in commit.
-        for (const intent of this._intents) {
-            if (intent.dest === EMPTY && intent.managed && intent.source !== EMPTY) {
-                this._sinks.push(intent.source);
+        for (let row = 0; row < count; row += 1) {
+            if (dest[row] === EMPTY && (flags[row] & INTENT_MANAGED) !== 0 && source[row] !== EMPTY) {
+                this._sinks.push(source[row]);
             }
+        }
+
+        for (const port of touchedDests) {
+            winner[port] = EMPTY;
+        }
+        for (const port of touchedSources) {
+            draining[port] = 0;
         }
     }
 
@@ -923,27 +1099,32 @@ export class GameEngine {
      * Managed: the destination receives output_item if set, else the source's item. Unmanaged: the
      * owning mod moves it, so the engine records no item.
      * @private
-     * @param {object} intent
+     * @param {number} intentRow
      * @returns {void}
      */
-    _commitResolved(intent) {
-        const sourceItem = intent.source === EMPTY ? EMPTY : this.Port.item[intent.source];
-        const item = intent.managed
-            ? (intent.outputItem !== EMPTY ? intent.outputItem : sourceItem)
-            : EMPTY;
-        this._resolved.push({
-            source: intent.source,
-            dest: intent.dest,
-            item: item,
-            managed: intent.managed,
-        });
+    _commitResolved(intentRow) {
+        const source = this._intentSource[intentRow];
+        const dest = this._intentDest[intentRow];
+        const managed = (this._intentFlags[intentRow] & INTENT_MANAGED) !== 0;
+        const outputItem = this._intentOutput[intentRow];
+        const sourceItem = source === EMPTY ? EMPTY : this.Port.item[source];
+        const item = managed ? (outputItem !== EMPTY ? outputItem : sourceItem) : EMPTY;
+
+        const row = this._resolvedCount;
+        this._growResolved(row);
+        this._resolvedSource[row] = source;
+        this._resolvedDest[row] = dest;
+        this._resolvedItem[row] = item;
+        this._resolvedManaged[row] = managed ? 1 : 0;
+        this._resolvedCount = row + 1;
+
         // First transfer wins, matching the find() this index replaced.
-        if (!this._destBySource.has(intent.source)) {
-            this._destBySource.set(intent.source, intent.dest);
+        if (source !== EMPTY && this._destBySource[source] === EMPTY) {
+            this._destBySource[source] = dest;
         }
-        this._resolvedDests.add(intent.dest);
-        if (!intent.managed) {
-            this._unmanagedResolvedDests.add(intent.dest);
+        this._portResolved[dest] = 1;
+        if (!managed) {
+            this._portResolvedUnmanaged[dest] = 1;
         }
     }
 
@@ -965,16 +1146,18 @@ export class GameEngine {
      * @returns {void}
      */
     commitTransfers() {
-        for (const transfer of this._resolved) {
-            if (transfer.managed && transfer.source !== EMPTY) {
-                this.Port.item[transfer.source] = EMPTY;
-                this._markPortDirty(transfer.source);
+        for (let row = 0; row < this._resolvedCount; row += 1) {
+            const source = this._resolvedSource[row];
+            if (this._resolvedManaged[row] === 1 && source !== EMPTY) {
+                this.Port.item[source] = EMPTY;
+                this._markPortDirty(source);
             }
         }
-        for (const transfer of this._resolved) {
-            if (transfer.managed && transfer.dest !== EMPTY) {
-                this.Port.item[transfer.dest] = transfer.item;
-                this._markPortDirty(transfer.dest);
+        for (let row = 0; row < this._resolvedCount; row += 1) {
+            const dest = this._resolvedDest[row];
+            if (this._resolvedManaged[row] === 1 && dest !== EMPTY) {
+                this.Port.item[dest] = this._resolvedItem[row];
+                this._markPortDirty(dest);
             }
         }
     }
@@ -984,10 +1167,15 @@ export class GameEngine {
      * @returns {string}
      */
     resolvedEdges() {
-        return this._resolved
-            .filter(transfer => transfer.source !== EMPTY && transfer.dest !== EMPTY)
+        const edges = [];
+        for (let row = 0; row < this._resolvedCount; row += 1) {
+            if (this._resolvedSource[row] !== EMPTY && this._resolvedDest[row] !== EMPTY) {
+                edges.push({source: this._resolvedSource[row], dest: this._resolvedDest[row]});
+            }
+        }
+        return edges
             .sort((a, b) => a.source - b.source)
-            .map(transfer => `${transfer.source}->${transfer.dest}`)
+            .map(edge => `${edge.source}->${edge.dest}`)
             .join(", ");
     }
 

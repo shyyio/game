@@ -130,20 +130,20 @@ export class SplitterBehavior extends AbstractBehavior {
         const splitter = def.store;
         for (const eid of engine.entitiesWith(def)) {
             if (item[splitter.in_a[eid]] !== EMPTY) {
-                engine.submitIntent({source: splitter.in_a[eid], dest: splitter.int_a[eid], destEmpty: item[splitter.int_a[eid]] === EMPTY, managed: false});
+                engine.submitTransfer(splitter.in_a[eid], splitter.int_a[eid], item[splitter.int_a[eid]] === EMPTY, false);
             }
             if (item[splitter.in_b[eid]] !== EMPTY) {
-                engine.submitIntent({source: splitter.in_b[eid], dest: splitter.int_b[eid], destEmpty: item[splitter.int_b[eid]] === EMPTY, managed: false});
+                engine.submitTransfer(splitter.in_b[eid], splitter.int_b[eid], item[splitter.int_b[eid]] === EMPTY, false);
             }
             const preferA = splitter.state[eid] === 0 ? 1 : 2;
             const preferB = splitter.state[eid] === 0 ? 2 : 1;
             if (item[splitter.int_a[eid]] !== EMPTY) {
-                engine.submitIntent({source: splitter.int_a[eid], dest: splitter.out_a[eid], destEmpty: item[splitter.out_a[eid]] === EMPTY, managed: false, rank: preferA});
-                engine.submitIntent({source: splitter.int_a[eid], dest: splitter.out_b[eid], destEmpty: item[splitter.out_b[eid]] === EMPTY, managed: false, rank: preferB});
+                engine.submitTransfer(splitter.int_a[eid], splitter.out_a[eid], item[splitter.out_a[eid]] === EMPTY, false, preferA);
+                engine.submitTransfer(splitter.int_a[eid], splitter.out_b[eid], item[splitter.out_b[eid]] === EMPTY, false, preferB);
             }
             if (item[splitter.int_b[eid]] !== EMPTY) {
-                engine.submitIntent({source: splitter.int_b[eid], dest: splitter.out_b[eid], destEmpty: item[splitter.out_b[eid]] === EMPTY, managed: false, rank: preferA});
-                engine.submitIntent({source: splitter.int_b[eid], dest: splitter.out_a[eid], destEmpty: item[splitter.out_a[eid]] === EMPTY, managed: false, rank: preferB});
+                engine.submitTransfer(splitter.int_b[eid], splitter.out_b[eid], item[splitter.out_b[eid]] === EMPTY, false, preferA);
+                engine.submitTransfer(splitter.int_b[eid], splitter.out_a[eid], item[splitter.out_a[eid]] === EMPTY, false, preferB);
             }
         }
     }

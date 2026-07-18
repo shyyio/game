@@ -1195,15 +1195,15 @@ export class Belts {
                 const downstream = this._byInPort.get(path.outPort);
                 const downstreamCanIngest = downstream !== undefined
                     && (downstream.headGap > 0 || this._firstGap(downstream) !== -1);
-                this.engine.submitIntent({
-                    source: path.inPort,
-                    dest: path.outPort,
-                    destEmpty: P[path.outPort] === EMPTY || downstreamCanIngest,
-                    managed: false,
-                });
+                this.engine.submitTransfer(
+                    path.inPort,
+                    path.outPort,
+                    P[path.outPort] === EMPTY || downstreamCanIngest,
+                    false,
+                );
             }
             if (P[path.inPort] !== EMPTY && (path.headGap > 0 || firstGap !== -1)) {
-                this.engine.submitIntent({source: path.inPort, dest: EMPTY, managed: false});
+                this.engine.submitDrain(path.inPort, false);
             }
         }
     }
