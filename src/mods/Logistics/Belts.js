@@ -1,4 +1,4 @@
-import {TickPhase, Direction, EMPTY, NO_EID, chunkId} from "@/sdk/common.js";
+import {TickPhase, Direction, EMPTY, NO_EID, chunkId, tileId} from "@/sdk/common.js";
 import {
     BeltInsertEvent,
     BeltSyncEvent,
@@ -30,11 +30,6 @@ const PATH_CAPACITY = 1024;
 // literal per path would register a new component each time and burn a mask bit on every path.
 const PATH_MARKER = {};
 
-// Tile key for the belt registry.
-function tileKey(x, y) {
-    return `${x},${y}`;
-}
-
 /**
  * Belt path movement on the bitECS engine, isolated-single-path subset: no merge/split/relink,
  * undergrounds, or cross-path shift chains yet. A path is a run of belts carrying a slab of the
@@ -62,9 +57,8 @@ export class Belts {
         // of the run they rebuild, so these keep placement off a scan of every path in the world.
         this._pathsByTile = new Map();
         this._pathByBeltId = new Map();
-        // Path -> its slot in `paths`, so dropping one is a swap-pop instead of a rebuild of the array.
-        this._pathSlot = new Map();
-        // Hot per-path state as typed columns indexed by slot. The tick phases read only these, so a
+        // Hot per-path state as typed columns indexed by slot (a path record carries its own slot, so
+        // dropping one is a swap-pop instead of a rebuild of the array). The tick phases read only these, so a
         // pass over every path stays in sequential memory instead of chasing a path object and its
         // ring. `_colLeadGap` is the lead item's gap (-1 when the path is empty) and `_colFirstGap`
         // the index of the first item with room ahead of it; both are updated in place as the tick
@@ -150,8 +144,11 @@ export class Belts {
      * @returns {object[]} the belts on tile (x, y)
      */
     _beltsAt(x, y) {
-        const belts = this._belts.get(tileKey(x, y));
-        return belts === undefined ? [] : belts;
+        const held = this._belts.get(tileId(x, y));
+        if (held === undefined) {
+            return [];
+        }
+        return Array.isArray(held) ? held : [held];
     }
 
     /**
@@ -227,12 +224,14 @@ export class Belts {
      * @returns {void}
      */
     _addBelt(belt) {
-        const key = tileKey(belt.x, belt.y);
-        const belts = this._belts.get(key);
-        if (belts === undefined) {
-            this._belts.set(key, [belt]);
+        const key = tileId(belt.x, belt.y);
+        const held = this._belts.get(key);
+        if (held === undefined) {
+            this._belts.set(key, belt);
+        } else if (Array.isArray(held)) {
+            held.push(belt);
         } else {
-            belts.push(belt);
+            this._belts.set(key, [held, belt]);
         }
         this._beltById.set(belt.id, belt);
     }
@@ -243,12 +242,12 @@ export class Belts {
      * @returns {void}
      */
     _removeBeltObject(belt) {
-        const key = tileKey(belt.x, belt.y);
+        const key = tileId(belt.x, belt.y);
         const remaining = this._beltsAt(belt.x, belt.y).filter(candidate => candidate !== belt);
         if (remaining.length === 0) {
             this._belts.delete(key);
         } else {
-            this._belts.set(key, remaining);
+            this._belts.set(key, remaining.length === 1 ? remaining[0] : remaining);
         }
         this._beltById.delete(belt.id);
     }
@@ -260,9 +259,11 @@ export class Belts {
      */
     _allBelts() {
         const all = [];
-        for (const belts of this._belts.values()) {
-            for (const belt of belts) {
-                all.push(belt);
+        for (const held of this._belts.values()) {
+            if (Array.isArray(held)) {
+                all.push(...held);
+            } else {
+                all.push(held);
             }
         }
         return all;
@@ -300,7 +301,7 @@ export class Belts {
         this.engine.emitEvent(new BeltInsertEvent(x, y, placed.id, direction, placed.type));
         // Recalc + item rows for every path that changed (the run and any split-off orphan), so the
         // client re-links geometry and positions items against the rebuilt paths.
-        const affected = [...run, ...rebuilt].map(belt => tileKey(belt.x, belt.y));
+        const affected = [...run, ...rebuilt].map(belt => tileId(belt.x, belt.y));
         this._emitPathRecalcs(affected);
         this._emitPathItems(affected);
         return result;
@@ -374,7 +375,7 @@ export class Belts {
      * Emits a path-recalc event for every path covering one of `tileKeys`, so the client re-links its
      * belt geometry.
      * @private
-     * @param {string[]} tileKeys
+     * @param {number[]} tileKeys
      * @returns {void}
      */
     _emitPathRecalcs(tileKeys) {
@@ -387,13 +388,13 @@ export class Belts {
      * Re-emits the item rows of every path covering one of `tileKeys`, after the belt-insert +
      * path-recalc so the client positions them against the rebuilt path.
      * @private
-     * @param {string[]} tileKeys
+     * @param {number[]} tileKeys
      * @returns {void}
      */
     _emitPathItems(tileKeys) {
         for (const path of this._pathsCovering(tileKeys)) {
             // Re-sync (snap), not upsert (glide): the edit re-rowed the items but didn't move them.
-            for (const item of this._unloadItems(this._pathSlot.get(path))) {
+            for (const item of this._unloadItems(path.slot)) {
                 const event = this._itemUpsertEvent(path, item.id, item.gap, item.type, true);
                 if (event !== null) {
                     this.engine.emitEvent(event);
@@ -582,10 +583,10 @@ export class Belts {
             this._rebuildSubrun(run, sources);
             for (const runBelt of run) {
                 covered.add(runBelt.id);
-                affected.push(tileKey(runBelt.x, runBelt.y));
+                affected.push(tileId(runBelt.x, runBelt.y));
             }
             for (const runBelt of this._rebuildOrphans(orphans, run, sources)) {
-                affected.push(tileKey(runBelt.x, runBelt.y));
+                affected.push(tileId(runBelt.x, runBelt.y));
             }
         }
         this._emitPathRecalcs(affected);
@@ -794,7 +795,7 @@ export class Belts {
         this.engine.world.addComponent(eid, PATH_MARKER);
         return {
             id: eid,
-            belts: runBelts.map(belt => tileKey(belt.x, belt.y)),
+            belts: runBelts.map(belt => tileId(belt.x, belt.y)),
             beltIds: runBelts.map(belt => belt.id),
             headX: runBelts[0].x,
             headY: runBelts[0].y,
@@ -860,8 +861,8 @@ export class Belts {
      * @returns {{id:number, inPort:number, outPort:number, length:number, segments:number[]}}
      */
     _buildSingleChunk(run, placed, removed) {
-        const runKeys = run.map(belt => tileKey(belt.x, belt.y));
-        const newKey = tileKey(placed.x, placed.y);
+        const runKeys = run.map(belt => tileId(belt.x, belt.y));
+        const newKey = tileId(placed.x, placed.y);
 
         // Extending one existing path at an end preserves its in-flight items; anything else (a fresh
         // isolated belt, a junction split, or a merge of two item-carrying paths) rebuilds empty.
@@ -947,9 +948,8 @@ export class Belts {
      * @returns {{id:number, inPort:number, outPort:number}|null}
      */
     pathAt(x, y) {
-        const key = tileKey(x, y);
-        const paths = this._pathsByTile.get(key);
-        const path = paths === undefined ? undefined : [...paths][0];
+        const held = this._pathsByTile.get(tileId(x, y));
+        const path = Array.isArray(held) ? held[0] : held;
         if (path === undefined) {
             return null;
         }
@@ -1053,7 +1053,7 @@ export class Belts {
      */
     _trackPath(path) {
         this._pushPath(path);
-        this._byInPort.set(path.inPort, this._pathSlot.get(path));
+        this._byInPort.set(path.inPort, path.slot);
         this._indexPath(path);
         this.engine.registerRenderedPort(path.outPort, path.tailX, path.tailY);
     }
@@ -1067,7 +1067,7 @@ export class Belts {
     _pushPath(path) {
         const slot = this.paths.length;
         this._growColumns(slot);
-        this._pathSlot.set(path, slot);
+        path.slot = slot;
         this.paths.push(path);
         this._colInPort[slot] = path.inPort;
         this._colOutPort[slot] = path.outPort;
@@ -1136,7 +1136,7 @@ export class Belts {
      * @returns {{id:number, type:number, gap:number}[]} ordered output edge -> input edge
      */
     itemsOf(path) {
-        const slot = this._pathSlot.get(path);
+        const slot = path.slot;
         return slot === undefined ? path.items : this._unloadItems(slot);
     }
 
@@ -1145,7 +1145,7 @@ export class Belts {
      * @returns {number} how many items `path` carries
      */
     itemCountOf(path) {
-        const slot = this._pathSlot.get(path);
+        const slot = path.slot;
         return slot === undefined ? path.items.length : this._colCount[slot];
     }
 
@@ -1239,7 +1239,7 @@ export class Belts {
      * @returns {void}
      */
     _popPath(path) {
-        const slot = this._pathSlot.get(path);
+        const slot = path.slot;
         if (slot === undefined) {
             return;
         }
@@ -1251,7 +1251,7 @@ export class Belts {
         const lastSlot = this.paths.length - 1;
         const last = this.paths[lastSlot];
         this.paths[slot] = last;
-        this._pathSlot.set(last, slot);
+        last.slot = slot;
         this._colInPort[slot] = this._colInPort[lastSlot];
         this._colOutPort[slot] = this._colOutPort[lastSlot];
         this._colHeadGap[slot] = this._colHeadGap[lastSlot];
@@ -1266,7 +1266,8 @@ export class Belts {
         // The moved path's in-port now maps to its new slot.
         this._byInPort.set(last.inPort, slot);
         this.paths.pop();
-        this._pathSlot.delete(path);
+        // Last, so popping the tail (where the path is its own `last`) still leaves it slotless.
+        path.slot = undefined;
     }
 
     /**
@@ -1281,12 +1282,16 @@ export class Belts {
             return;
         }
         for (const key of path.belts) {
-            const paths = this._pathsByTile.get(key);
-            if (paths === undefined) {
-                this._pathsByTile.set(key, new Set([path]));
-                continue;
+            const covering = this._pathsByTile.get(key);
+            if (covering === undefined) {
+                this._pathsByTile.set(key, path);
+            } else if (Array.isArray(covering)) {
+                if (!covering.includes(path)) {
+                    covering.push(path);
+                }
+            } else if (covering !== path) {
+                this._pathsByTile.set(key, [covering, path]);
             }
-            paths.add(path);
         }
         for (const id of path.beltIds) {
             this._pathByBeltId.set(id, path);
@@ -1303,12 +1308,23 @@ export class Belts {
             return;
         }
         for (const key of path.belts) {
-            const paths = this._pathsByTile.get(key);
-            if (paths === undefined) {
+            const covering = this._pathsByTile.get(key);
+            if (covering === undefined) {
                 continue;
             }
-            paths.delete(path);
-            if (paths.size === 0) {
+            if (!Array.isArray(covering)) {
+                if (covering === path) {
+                    this._pathsByTile.delete(key);
+                }
+                continue;
+            }
+            const at = covering.indexOf(path);
+            if (at !== -1) {
+                covering.splice(at, 1);
+            }
+            if (covering.length === 1) {
+                this._pathsByTile.set(key, covering[0]);
+            } else if (covering.length === 0) {
                 this._pathsByTile.delete(key);
             }
         }
@@ -1322,17 +1338,22 @@ export class Belts {
     /**
      * The distinct paths covering any of `tileKeys`.
      * @private
-     * @param {string[]} tileKeys
+     * @param {number[]} tileKeys
      * @returns {object[]}
      */
     _pathsCovering(tileKeys) {
         const covering = new Set();
         for (const key of new Set(tileKeys)) {
-            const paths = this._pathsByTile.get(key);
-            if (paths !== undefined) {
-                for (const path of paths) {
+            const held = this._pathsByTile.get(key);
+            if (held === undefined) {
+                continue;
+            }
+            if (Array.isArray(held)) {
+                for (const path of held) {
                     covering.add(path);
                 }
+            } else {
+                covering.add(held);
             }
         }
         return [...covering];
@@ -1384,7 +1405,7 @@ export class Belts {
             items: [],
         };
         this._pushPath(path);
-        this._byInPort.set(resolvedInPort, this._pathSlot.get(path));
+        this._byInPort.set(resolvedInPort, path.slot);
 
         return {id: eid, inPort: resolvedInPort, outPort, length};
     }
@@ -1584,7 +1605,7 @@ export class Belts {
         for (const path of this.paths) {
             if (chunkId(path.headX, path.headY) === chunk) {
                 events.push(this._pathRecalcEvent(path));
-                for (const item of this._unloadItems(this._pathSlot.get(path))) {
+                for (const item of this._unloadItems(path.slot)) {
                     events.push(this._itemUpsertEvent(path, item.id, item.gap, item.type));
                 }
             }
@@ -1617,7 +1638,7 @@ export class Belts {
             const pathEid = this.engine.createEntity(this._pathDef);
             BP.inPort[pathEid] = path.inPort;
             BP.outPort[pathEid] = path.outPort;
-            BP.headGap[pathEid] = this._colHeadGap[this._pathSlot.get(path)];
+            BP.headGap[pathEid] = this._colHeadGap[path.slot];
             BP.length[pathEid] = path.length;
 
             for (const [index, beltId] of path.beltIds.entries()) {
@@ -1632,7 +1653,7 @@ export class Belts {
                 B.objectId[beltEid] = beltId;
             }
 
-            for (const [seq, item] of this._unloadItems(this._pathSlot.get(path)).entries()) {
+            for (const [seq, item] of this._unloadItems(path.slot).entries()) {
                 const itemEid = this.engine.createEntity(this._itemDef);
                 I.path[itemEid] = pathEid;
                 I.seq[itemEid] = seq;
@@ -1657,7 +1678,6 @@ export class Belts {
         this._byInPort = new Map();
         this._pathsByTile = new Map();
         this._pathByBeltId = new Map();
-        this._pathSlot = new Map();
         this._belts = new Map();
         this._beltById = new Map();
         this._nextItemId = this.engine.globals.beltNextItemId;
@@ -1691,7 +1711,7 @@ export class Belts {
             const items = (itemsByPath.get(pathEid) || []).sort((a, b) => a.seq - b.seq).map(entry => entry.item);
             const path = {
                 id: pathEid,
-                belts: belts.map(belt => tileKey(belt.x, belt.y)),
+                belts: belts.map(belt => tileId(belt.x, belt.y)),
                 beltIds: belts.map(belt => belt.id),
                 headX: belts[0].x,
                 headY: belts[0].y,

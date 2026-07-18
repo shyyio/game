@@ -107,6 +107,9 @@ export {rotate} from "@/common/util.js";
 // `chunkId(tileX, tileY)` computes that id in JS.
 export {chunkId} from "@/common/util.js";
 
+// The id of a tile, used as the key of every spatial index.
+export {tileId} from "@/common/util.js";
+
 // ---- Textures ----
 // Describes a texture atlas (image + frame data) a mod contributes.
 export {TextureDefinition} from "@/common/TextureDefinition.js";

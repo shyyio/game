@@ -2,6 +2,15 @@ import {CHUNK_SIZE, REGION_SIZE, Direction} from "@/common/constants.js";
 
 const REGION_HALF = REGION_SIZE / 2;
 
+// How many variants a tile id may be qualified with (a position layer, a direction).
+export const TILE_VARIANT_LIMIT = 16;
+
+// The box the spatial indexes address, in tiles: coordinates fall in [-TILE_SPAN/2, TILE_SPAN/2).
+// Sized so a qualified tile id (TILE_SPAN^2 * TILE_VARIANT_LIMIT) still fits a small integer, which
+// is what keeps the Maps keyed by one hashing an unboxed number.
+const TILE_SPAN = 8192;
+const TILE_HALF = TILE_SPAN / 2;
+
 export function fixNegativeZero(n) {
     return Object.is(n, -0) ? 0 : n;
 }
@@ -25,6 +34,32 @@ export function chunkOrdinal(chunkX, chunkY) {
  */
 export function chunkId(x, y) {
     return chunkOrdinal(Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE));
+}
+
+/**
+ * The id of tile (x, y): its index in the world grid, counted left-to-right, top-to-bottom. The
+ * spatial indexes key on this rather than on an "x,y" string — a tile lookup then costs no string
+ * to build and no string to keep.
+ * @param x {number} tile x
+ * @param y {number} tile y
+ * @returns {number}
+ */
+export function tileId(x, y) {
+    if (x < -TILE_HALF || x >= TILE_HALF || y < -TILE_HALF || y >= TILE_HALF) {
+        throw new RangeError(`Tile (${x}, ${y}) is outside the ${TILE_SPAN}x${TILE_SPAN} tile box`);
+    }
+    return (y + TILE_HALF) * TILE_SPAN + (x + TILE_HALF);
+}
+
+/**
+ * A tile id qualified by `variant` (a position layer, a direction), so one index can hold several
+ * entries per tile.
+ * @param tile {number} a {@link tileId}
+ * @param variant {number} below {@link TILE_VARIANT_LIMIT}
+ * @returns {number}
+ */
+export function tileVariantId(tile, variant) {
+    return tile * TILE_VARIANT_LIMIT + variant;
 }
 
 /**
