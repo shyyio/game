@@ -19,10 +19,6 @@ export class SplitterBehavior extends AbstractBehavior {
             {name: "int_a", kind: "eid", fill: NO_EID},
             {name: "int_b", kind: "eid", fill: NO_EID},
             {name: "state"},
-            {name: "outATileX"},
-            {name: "outATileY"},
-            {name: "outBTileX"},
-            {name: "outBTileY"},
         ]);
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents(engine));
         // The seam must read shared ports before the belt transport writes pops, whatever the
@@ -36,11 +32,6 @@ export class SplitterBehavior extends AbstractBehavior {
         const outA = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         const outB = engine.portFor(type.outputPorts[1], message.x, message.y, message.direction);
         this._wire(engine, eid, {in_a: inA.port, in_b: inB.port, out_a: outA.port, out_b: outB.port});
-        const splitter = engine.component("Splitter").store;
-        splitter.outATileX[eid] = outA.tile.x;
-        splitter.outATileY[eid] = outA.tile.y;
-        splitter.outBTileX[eid] = outB.tile.x;
-        splitter.outBTileY[eid] = outB.tile.y;
         engine.registerRenderedPort(outA.port, outA.tile.x, outA.tile.y);
         engine.registerRenderedPort(outB.port, outB.tile.x, outB.tile.y);
         return [outA.port, outB.port];
@@ -59,8 +50,9 @@ export class SplitterBehavior extends AbstractBehavior {
 
     resyncRenderedPorts(engine, placed, eid) {
         const splitter = engine.component("Splitter").store;
-        engine.registerRenderedPort(splitter.out_a[eid], splitter.outATileX[eid], splitter.outATileY[eid]);
-        engine.registerRenderedPort(splitter.out_b[eid], splitter.outBTileX[eid], splitter.outBTileY[eid]);
+        [splitter.out_a[eid], splitter.out_b[eid]].forEach(out => {
+            engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
+        });
     }
 
     /**
