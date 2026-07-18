@@ -24,9 +24,9 @@ function settle(engine) {
 
 test("Resolves a packed transfer chain as a single shift when the end drains", async () => {
     const {engine, ports} = await setup(4, [1, 2, 3]);
-    engine.submitIntent({source: ports[0], dest: ports[1], destEmpty: false});
-    engine.submitIntent({source: ports[1], dest: ports[2], destEmpty: false});
-    engine.submitIntent({source: ports[2], dest: ports[3], destEmpty: true});
+    engine.submitTransfer(ports[0], ports[1], false, true);
+    engine.submitTransfer(ports[1], ports[2], false, true);
+    engine.submitTransfer(ports[2], ports[3], true, true);
 
     engine.resolvePortTransfer();
 
@@ -35,9 +35,9 @@ test("Resolves a packed transfer chain as a single shift when the end drains", a
 
 test("Resolves no transfer when the chain's end is blocked", async () => {
     const {engine, ports} = await setup(4, [1, 2, 3, 4]);
-    engine.submitIntent({source: ports[0], dest: ports[1], destEmpty: false});
-    engine.submitIntent({source: ports[1], dest: ports[2], destEmpty: false});
-    engine.submitIntent({source: ports[2], dest: ports[3], destEmpty: false});
+    engine.submitTransfer(ports[0], ports[1], false, true);
+    engine.submitTransfer(ports[1], ports[2], false, true);
+    engine.submitTransfer(ports[2], ports[3], false, true);
 
     engine.resolvePortTransfer();
 
@@ -46,7 +46,7 @@ test("Resolves no transfer when the chain's end is blocked", async () => {
 
 test("Translates the item type on a managed transfer via output_item", async () => {
     const {engine, ports} = await setup(2, [1]);
-    engine.submitIntent({source: ports[0], dest: ports[1], destEmpty: true, managed: true, outputItem: 99});
+    engine.submitTransfer(ports[0], ports[1], true, true, EMPTY, 99);
 
     settle(engine);
 
@@ -56,7 +56,7 @@ test("Translates the item type on a managed transfer via output_item", async () 
 
 test("Creates a brand-new item with a source-less managed intent", async () => {
     const {engine, ports} = await setup(1, []);
-    engine.submitIntent({source: EMPTY, dest: ports[0], destEmpty: true, outputItem: 55, managed: true});
+    engine.submitCreate(ports[0], 55, true);
 
     settle(engine);
 
@@ -65,7 +65,7 @@ test("Creates a brand-new item with a source-less managed intent", async () => {
 
 test("Sinks (consumes) the source item on a managed destination-less intent", async () => {
     const {engine, ports} = await setup(1, [1]);
-    engine.submitIntent({source: ports[0], dest: EMPTY, managed: true});
+    engine.submitDrain(ports[0], true);
 
     settle(engine);
 
@@ -74,7 +74,7 @@ test("Sinks (consumes) the source item on a managed destination-less intent", as
 
 test("Leaves an unmanaged destination-less intent (self-drain) untouched", async () => {
     const {engine, ports} = await setup(1, [1]);
-    engine.submitIntent({source: ports[0], dest: EMPTY, managed: false});
+    engine.submitDrain(ports[0], false);
 
     settle(engine);
 

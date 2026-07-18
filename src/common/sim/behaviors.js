@@ -328,7 +328,7 @@ export class MachineBehavior extends AbstractBehavior {
                 for (let i = 0; i < behavior.inputCount; i += 1) {
                     const inPort = machine[IN_COLS[i]][eid];
                     if (machine[SLOT_COLS[i]][eid] === EMPTY && item[inPort] !== EMPTY) {
-                        engine.submitIntent({source: inPort, dest: EMPTY, managed: true});
+                        engine.submitDrain(inPort, true);
                         machine[SLOT_COLS[i]][eid] = item[inPort];
                     }
                 }
@@ -351,13 +351,7 @@ export class MachineBehavior extends AbstractBehavior {
             }
 
             if (machine.remaining[eid] === 0) {
-                engine.submitIntent({
-                    source: EMPTY,
-                    dest: machine.out[eid],
-                    destEmpty: item[machine.out[eid]] === EMPTY,
-                    outputItem: machine.output[eid],
-                    managed: true,
-                });
+                engine.submitCreate(machine.out[eid], machine.output[eid], item[machine.out[eid]] === EMPTY);
             }
         }
     }
@@ -495,13 +489,7 @@ export class ExtractorBehavior extends AbstractBehavior {
                 extractor.remaining[eid] = behavior.processingTicks;
             }
             if (extractor.remaining[eid] === 0) {
-                engine.submitIntent({
-                    source: EMPTY,
-                    dest: extractor.out[eid],
-                    destEmpty: item[extractor.out[eid]] === EMPTY,
-                    outputItem: extractor.output[eid],
-                    managed: true,
-                });
+                engine.submitCreate(extractor.out[eid], extractor.output[eid], item[extractor.out[eid]] === EMPTY);
             }
         }
     }
