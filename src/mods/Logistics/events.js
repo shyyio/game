@@ -99,6 +99,10 @@ export class BeltDeleteEvent extends AbstractTilePositionedEvent {
 
 // A path's items are sent one per item: an item (itemId) of `itemType` with `gap` empty half-tiles
 // ahead of it. Positions are relative, so one item's gap change shifts every item behind it.
+//
+// (x, y) is the path head, carried only to route the event to its chunk topic, so it stays off the
+// wire: the client places items from its own cached path, never from the event. `chunk` is therefore
+// meaningless on a decoded item event.
 
 /**
  * Inserts one of a path's items or restates its gap; the client glides the moved items.
@@ -106,8 +110,6 @@ export class BeltDeleteEvent extends AbstractTilePositionedEvent {
 export class BeltItemUpsertEvent extends AbstractTilePositionedEvent {
 
     static wireFields = {
-        x: "int32",
-        y: "int32",
         pathId: "int64",
         itemId: "int64",
         gap: "int32",
@@ -138,8 +140,6 @@ export class BeltItemUpsertEvent extends AbstractTilePositionedEvent {
 export class BeltItemSyncEvent extends AbstractTilePositionedEvent {
 
     static wireFields = {
-        x: "int32",
-        y: "int32",
         pathId: "int64",
         itemId: "int64",
         gap: "int32",
@@ -169,8 +169,6 @@ export class BeltItemSyncEvent extends AbstractTilePositionedEvent {
 export class BeltItemDeleteEvent extends AbstractTilePositionedEvent {
 
     static wireFields = {
-        x: "int32",
-        y: "int32",
         pathId: "int64",
         itemId: "int64",
     };
@@ -194,8 +192,6 @@ export class BeltItemDeleteEvent extends AbstractTilePositionedEvent {
 export class BeltItemResetEvent extends AbstractTilePositionedEvent {
 
     static wireFields = {
-        x: "int32",
-        y: "int32",
         pathId: "int64",
     };
 

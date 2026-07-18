@@ -1,7 +1,8 @@
 import {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
 
 // Render deltas for the resting item drawn in a render-flagged out-port; the render tile is derived
-// client-side from the port id, so (x, y) here is only the routing position.
+// client-side from the port id, so (x, y) only routes the event to its chunk topic and stays off the
+// wire. `chunk` is therefore meaningless on a decoded port-item event.
 
 /**
  * An item now rests in a render-flagged out-port.
@@ -9,8 +10,6 @@ import {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.
 export class PortItemSetEvent extends AbstractTilePositionedEvent {
 
     static wireFields = {
-        x: "int32",
-        y: "int32",
         portId: "int64",
         itemType: "int32",
     };
@@ -34,8 +33,6 @@ export class PortItemSetEvent extends AbstractTilePositionedEvent {
 export class PortItemClearEvent extends AbstractTilePositionedEvent {
 
     static wireFields = {
-        x: "int32",
-        y: "int32",
         portId: "int64",
     };
 
