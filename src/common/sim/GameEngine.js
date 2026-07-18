@@ -1,4 +1,4 @@
-import {createWorld, addEntity, addComponent, hasComponent, removeEntity, entityExists, query} from "bitecs";
+import {World} from "@/common/sim/World.js";
 import {rotate, chunkId} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
@@ -403,7 +403,7 @@ export class GameEngine {
      * @returns {Promise<void>}
      */
     async init() {
-        this.world = createWorld();
+        this.world = new World();
         if (this.modRegistry !== null) {
             // The registry must be frozen (typeIds assigned) before content wires up; the accessors
             // throw otherwise. The generic entity host installs every derived type's behavior first,
@@ -697,7 +697,7 @@ export class GameEngine {
      */
     _addComponent(def, eid) {
         this._growComponent(def, eid);
-        addComponent(this.world, eid, def.store);
+        this.world.addComponent(eid, def.store);
     }
 
     /**
@@ -729,7 +729,7 @@ export class GameEngine {
      * @returns {number} the port eid
      */
     createPort(item=EMPTY) {
-        const eid = addEntity(this.world);
+        const eid = this.world.addEntity();
         this._addComponent(this._portDef, eid);
         // bitECS recycles eids, so clear any shadow the previous tenant left behind.
         this._portShadow[eid] = EMPTY;
@@ -823,7 +823,7 @@ export class GameEngine {
             if (this._cellByKey.has(key)) {
                 continue;
             }
-            const eid = addEntity(this.world);
+            const eid = this.world.addEntity();
             this.setPosition(eid, cell.x, cell.y);
             this._addComponent(this._occupancyDef, eid);
             occupancy.layer[eid] = this._layerCodes.get(cell.layer);
@@ -843,7 +843,7 @@ export class GameEngine {
             const key = `${cell.x},${cell.y},${cell.layer}`;
             const eid = this._cellByKey.get(key);
             if (eid !== undefined) {
-                removeEntity(this.world, eid);
+                this.world.removeEntity(eid);
                 this._cellByKey.delete(key);
             }
         }
@@ -859,7 +859,7 @@ export class GameEngine {
         for (const eid of this._cellEids()) {
             if (occupancy.owner[eid] === owner) {
                 this._cellByKey.delete(this._cellKey(eid));
-                removeEntity(this.world, eid);
+                this.world.removeEntity(eid);
             }
         }
     }
@@ -870,7 +870,7 @@ export class GameEngine {
      * @returns {number[]}
      */
     _cellEids() {
-        return query(this.world, [this._positionDef.store, this._occupancyDef.store]);
+        return this.world.query([this._positionDef.store, this._occupancyDef.store]);
     }
 
     /**
@@ -910,7 +910,7 @@ export class GameEngine {
             if (eidFields.length === 0) {
                 continue;
             }
-            for (const eid of query(this.world, [def.store])) {
+            for (const eid of this.world.query([def.store])) {
                 for (const field of eidFields) {
                     const target = def.store[field.name][eid];
                     if (target !== NO_EID) {
@@ -925,17 +925,17 @@ export class GameEngine {
             }
         }
 
-        for (const eid of query(this.world, [this._portDef.store])) {
+        for (const eid of this.world.query([this._portDef.store])) {
             if (referenced.has(eid)) {
                 continue;
             }
-            if (hasComponent(this.world, eid, this._positionDef.store)) {
+            if (this.world.hasComponent(eid, this._positionDef.store)) {
                 this._portsByEdge.delete(this._edgeKey(eid));
             }
             this._rendered[eid] = 0;
             this._portShadow[eid] = EMPTY;
             this._pendingClear.delete(eid);
-            removeEntity(this.world, eid);
+            this.world.removeEntity(eid);
         }
     }
 
@@ -945,7 +945,7 @@ export class GameEngine {
      * @returns {number} the entity id
      */
     createEntity(def) {
-        const eid = addEntity(this.world);
+        const eid = this.world.addEntity();
         this._addComponent(def, eid);
         return eid;
     }
@@ -956,8 +956,8 @@ export class GameEngine {
      * @returns {void}
      */
     destroyEntity(eid) {
-        if (entityExists(this.world, eid)) {
-            removeEntity(this.world, eid);
+        if (this.world.entityExists(eid)) {
+            this.world.removeEntity(eid);
         }
     }
 
@@ -967,7 +967,7 @@ export class GameEngine {
      * @returns {number[]}
      */
     entitiesWith(def) {
-        return query(this.world, [def.store]);
+        return this.world.query([def.store]);
     }
 
     /**
@@ -1324,7 +1324,7 @@ export class GameEngine {
         }
         const components = this._components.map(def => {
             const rows = [];
-            for (const eid of query(this.world, [def.store])) {
+            for (const eid of this.world.query([def.store])) {
                 const row = {eid: eid};
                 for (const field of def.fields) {
                     row[field.name] = def.store[field.name][eid];
@@ -1356,7 +1356,7 @@ export class GameEngine {
      * @returns {void}
      */
     deserialize(snapshot) {
-        this.world = createWorld();
+        this.world = new World();
         for (const def of this._components) {
             for (const field of def.fields) {
                 def.store[field.name].fill(field.fill);
@@ -1386,7 +1386,7 @@ export class GameEngine {
         }
         const remap = new Map();
         for (const old of [...referenced].sort((a, b) => a - b)) {
-            remap.set(old, addEntity(this.world));
+            remap.set(old, this.world.addEntity());
         }
         const translate = value => (value === NO_EID ? NO_EID : remap.get(value));
 
@@ -1432,7 +1432,7 @@ export class GameEngine {
      * @returns {number[]}
      */
     _edgePortEids() {
-        return query(this.world, [this._portDef.store, this._positionDef.store]);
+        return this.world.query([this._portDef.store, this._positionDef.store]);
     }
 
     /**
