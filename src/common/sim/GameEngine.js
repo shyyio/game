@@ -140,6 +140,11 @@ export class GameEngine {
         // EMIT_RENDER walks this instead of every rendered port in the world.
         this._dirtyPorts = [];
         this._portDirty = new Uint8Array(this._portDef.capacity);
+        // Whether a rendered port's tile has a watcher, and the observation generation that answer was
+        // computed at (0 = never). The render diff would otherwise hash the chunk and call through the
+        // subscription predicate for every port written this tick.
+        this._portObserved = new Uint8Array(this._portDef.capacity);
+        this._portObservedGen = new Int32Array(this._portDef.capacity);
 
         // Per-port scratch for resolvePortTransfer, indexed by port eid and sized with the Port columns.
         // The resolver clears only the slots it touched, so no pass costs the width of the world.
@@ -293,6 +298,7 @@ export class GameEngine {
      */
     registerRenderedPort(eid, x, y) {
         this._rendered[eid] = 1;
+        this._portObservedGen[eid] = 0;
         this._renderX[eid] = x;
         this._renderY[eid] = y;
         // A re-registered port survives the edit: cancel any pending clear so its sprite stays put
@@ -342,6 +348,23 @@ export class GameEngine {
     }
 
     /**
+     * Whether the port's render tile has a watcher, cached until the observation generation moves.
+     * @private
+     * @param {number} eid
+     * @returns {boolean}
+     */
+    _portObservedAt(eid) {
+        const generation = this._observerGeneration;
+        if (this._portObservedGen[eid] === generation) {
+            return this._portObserved[eid] === 1;
+        }
+        const observed = this._chunkObserved(chunkId(this._renderX[eid], this._renderY[eid]));
+        this._portObservedGen[eid] = generation;
+        this._portObserved[eid] = observed ? 1 : 0;
+        return observed;
+    }
+
+    /**
      * EMIT_RENDER: flush deferred clears (ports unregistered for good), then diff each port written
      * since the last render against the shadow, buffering a set (item appeared or changed) or clear
      * (item left) event.
@@ -362,11 +385,11 @@ export class GameEngine {
                 continue;
             }
             this._portShadow[eid] = item[eid];
-            const x = this._renderX[eid];
-            const y = this._renderY[eid];
-            if (!this.observesTile(x, y)) {
+            if (!this._portObservedAt(eid)) {
                 continue;
             }
+            const x = this._renderX[eid];
+            const y = this._renderY[eid];
             if (item[eid] === EMPTY) {
                 this.emitEvent(new PortItemClearEvent(x, y, eid));
             } else {
@@ -644,7 +667,7 @@ export class GameEngine {
         def.capacity = capacity;
         if (def === this._portDef) {
             this.Port = def.store;
-            for (const name of ["_renderX", "_renderY"]) {
+            for (const name of ["_renderX", "_renderY", "_portObservedGen"]) {
                 const grown = new Int32Array(capacity);
                 grown.set(this[name]);
                 this[name] = grown;
@@ -654,7 +677,7 @@ export class GameEngine {
                 grown.set(this[name]);
                 this[name] = grown;
             }
-            for (const name of ["_portDirty", "_rendered", "_portResolved", "_portResolvedUnmanaged", "_draining"]) {
+            for (const name of ["_portDirty", "_rendered", "_portObserved", "_portResolved", "_portResolvedUnmanaged", "_draining"]) {
                 const grown = new Uint8Array(capacity);
                 grown.set(this[name]);
                 this[name] = grown;
