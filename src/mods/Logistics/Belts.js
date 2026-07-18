@@ -18,7 +18,7 @@ import {
     LAYERS_UNDERGROUND_AXIS,
 } from "./constants.js";
 import {beltPositionLayer} from "./geometry.js";
-import {ItemRing} from "./ItemRing.js";
+import {ItemStore} from "./ItemStore.js";
 
 // An empty half-tile in a path's occupancy.
 const GAP = 0;
@@ -38,8 +38,9 @@ function tileKey(x, y) {
 
 /**
  * Belt path movement on the bitECS engine, isolated-single-path subset: no merge/split/relink,
- * undergrounds, or cross-path shift chains yet. A path is a run of belts carrying an {@link ItemRing}
- * (ordered output-edge -> input-edge, each item holding the empty half-tiles ahead of it) plus a
+ * undergrounds, or cross-path shift chains yet. A path is a run of belts carrying a slab of the
+ * shared {@link ItemStore} (ordered output-edge -> input-edge, each item holding the empty half-tiles
+ * ahead of it) plus a
  * head_gap of empty half-tiles at the input edge. Each tick the first positive gap shrinks (Case 1)
  * or the lead item pops to the out-port (Case 2), growing head_gap, then a resting in-port item is
  * ingested at the input edge — all in constant time whatever the path carries.
@@ -51,7 +52,10 @@ export class Belts {
      */
     constructor(engine) {
         this.engine = engine;
-        // Path records keyed by head eid: {inPort, outPort, length, headGap, items:ItemRing}.
+        // Path records keyed by head eid: {inPort, outPort, length, headGap, items}. `items` holds the
+        // path's item list only while it is not live: as a seed before it is tracked, and as a
+        // snapshot after it is dropped (an edit still reads what a replaced path carried). A live
+        // path's items sit in the shared store, addressed by its slot's columns.
         this.paths = [];
         // In-port -> path slot, so a path can find its downstream neighbor across a shared seam port.
         this._byInPort = new Map();
@@ -78,6 +82,11 @@ export class Belts {
         // subscription predicate, which the move loop would otherwise pay per moving path per tick.
         this._colObserved = new Uint8Array(PATH_CAPACITY);
         this._colObservedGen = new Int32Array(PATH_CAPACITY);
+        // The path's slab in the shared item store: where it starts, how many slots it spans, and
+        // which slot currently holds the lead (output-edge) item.
+        this._colItemBase = new Int32Array(PATH_CAPACITY);
+        this._colItemSlab = new Int32Array(PATH_CAPACITY);
+        this._colItemHead = new Int32Array(PATH_CAPACITY);
         // Out-port writes _move defers to its last phase, reused tick to tick.
         this._popCapacity = PATH_CAPACITY;
         this._popPorts = new Int32Array(PATH_CAPACITY);
@@ -88,6 +97,8 @@ export class Belts {
         this._belts = new Map();
         // Belt id -> belt, an index over the tile map for O(1) lookup by client id.
         this._beltById = new Map();
+        // Every live path's items, in three shared columns.
+        this._items = new ItemStore();
         // Stable item id, the client's sprite key for continuity/glide.
         this._nextItemId = 1;
 
@@ -383,15 +394,8 @@ export class Belts {
     _emitPathItems(tileKeys) {
         for (const path of this._pathsCovering(tileKeys)) {
             // Re-sync (snap), not upsert (glide): the edit re-rowed the items but didn't move them.
-            const items = path.items;
-            for (let index = 0; index < items.count; index += 1) {
-                const event = this._itemUpsertEvent(
-                    path,
-                    items.idAt(index),
-                    items.gapAt(index),
-                    items.typeAt(index),
-                    true,
-                );
+            for (const item of this._unloadItems(this._pathSlot.get(path))) {
+                const event = this._itemUpsertEvent(path, item.id, item.gap, item.type, true);
                 if (event !== null) {
                     this.engine.emitEvent(event);
                 }
@@ -430,42 +434,28 @@ export class Belts {
     }
 
     /**
-     * Emits the upsert for item `index` of a moving path. Takes the slot and the ring rather than the
-     * path and the item's fields, so an unobserved path reads neither.
+     * Emits the upsert for the item in store cell `cell`, carried by the path in `slot`. Takes the
+     * cell rather than the item's fields so an unobserved path reads none of them.
      * @private
      * @param {number} slot
-     * @param {ItemRing} items
-     * @param {number} index
+     * @param {number} cell
      * @returns {void}
      */
-    _emitMovedItem(slot, items, index) {
+    _emitItemAt(slot, cell) {
         if (!this._observedAt(slot)) {
             return;
         }
-        const path = this.paths[slot];
-        const event = this._itemUpsertEvent(path, items.idAt(index), items.gapAt(index), items.typeAt(index));
+        const event = this._itemUpsertEvent(
+            this.paths[slot],
+            this._items.ids[cell],
+            this._items.gaps[cell],
+            this._items.types[cell],
+        );
         if (event !== null) {
             this.engine.emitEvent(event);
         }
     }
 
-    /**
-     * @private
-     * @param {number} slot
-     * @param {number} itemId
-     * @param {number} gap
-     * @param {number} type
-     * @returns {void}
-     */
-    _emitItemUpsert(slot, itemId, gap, type) {
-        if (!this._observedAt(slot)) {
-            return;
-        }
-        const event = this._itemUpsertEvent(this.paths[slot], itemId, gap, type);
-        if (event !== null) {
-            this.engine.emitEvent(event);
-        }
-    }
 
     /**
      * Whether the path in `slot` has a watcher, cached until the engine's observation generation moves.
@@ -507,14 +497,14 @@ export class Belts {
     }
 
     /**
-     * Emits the delete for the lead item a path is about to pop. Takes the slot and the ring rather
-     * than the path and the id, so an unobserved path reads neither.
+     * Emits the delete for the lead item a path is about to pop. Takes the store cell rather than the
+     * id so an unobserved path reads nothing.
      * @private
      * @param {number} slot
-     * @param {ItemRing} items
+     * @param {number} cell
      * @returns {void}
      */
-    _emitPoppedItem(slot, items) {
+    _emitPoppedItem(slot, cell) {
         if (!this._observedAt(slot)) {
             return;
         }
@@ -522,7 +512,7 @@ export class Belts {
         if (head === null) {
             return;
         }
-        this.engine.emitEvent(new BeltItemDeleteEvent(head.x, head.y, head.pathId, items.idAt(0)));
+        this.engine.emitEvent(new BeltItemDeleteEvent(head.x, head.y, head.pathId, this._items.ids[cell]));
     }
 
     /**
@@ -682,12 +672,11 @@ export class Belts {
      */
     _occupancyFromInput(path) {
         const occ = new Array(path.length).fill(GAP);
-        const items = path.items;
         // Item gaps count from the output edge inward, so walk that way and mirror each index.
         let pos = 0;
-        for (let index = 0; index < items.count; index += 1) {
-            pos += items.gapAt(index);
-            occ[path.length - 1 - pos] = items.typeAt(index);
+        for (const item of path.items) {
+            pos += item.gap;
+            occ[path.length - 1 - pos] = item.type;
             pos += 1;
         }
         return occ;
@@ -816,7 +805,7 @@ export class Belts {
             outPort,
             length,
             initialHeadGap: headGap === undefined ? length : headGap,
-            items: ItemRing.from(items),
+            items,
         };
     }
 
@@ -887,13 +876,13 @@ export class Belts {
             if (runKeys[0] === newKey) {
                 // Head (input-edge) extension: the new empty belt is head room; items keep their
                 // distance from the unchanged output edge (item ids are reassigned below).
-                items = old.items.toList();
+                items = old.items;
                 headGap = old.initialHeadGap + 2;
             } else {
                 // Tail (output-edge) extension: the new belt is empty space at the moved-forward output
                 // edge. In-flight items keep their distance from the input edge; a resting out-port item
                 // re-enters at the new belt's input edge and crosses it before reaching the new out-port.
-                const carried = old.items.toList();
+                const carried = old.items;
                 const resting = this.engine.Port.item[old.outPort];
                 if (resting !== EMPTY) {
                     // The out-port item sat at the tail's output edge, so after the extension it rests at
@@ -1085,7 +1074,80 @@ export class Belts {
         this._colOutPort[slot] = path.outPort;
         this._colHeadGap[slot] = path.initialHeadGap;
         this._colObservedGen[slot] = 0;
-        this._refreshColumns(slot, path);
+        this._loadItems(slot, path);
+    }
+
+    /**
+     * Moves a new path's seed items into the shared store: a slab as wide as the path (it can never
+     * hold more items than it has half-tiles), filled output edge -> input edge, then the derived lead
+     * columns. The record's list is dropped — from here the slot's columns own the items.
+     * @private
+     * @param {number} slot
+     * @param {object} path
+     * @returns {void}
+     */
+    _loadItems(slot, path) {
+        const seed = path.items;
+        const base = this._items.allocate(path.length);
+        this._colItemBase[slot] = base;
+        this._colItemSlab[slot] = path.length;
+        this._colItemHead[slot] = 0;
+        this._colCount[slot] = seed.length;
+        const ids = this._items.ids;
+        const types = this._items.types;
+        const gaps = this._items.gaps;
+        for (let index = 0; index < seed.length; index += 1) {
+            ids[base + index] = seed[index].id;
+            types[base + index] = seed[index].type;
+            gaps[base + index] = seed[index].gap;
+        }
+        path.items = null;
+        this._refreshLeadColumns(slot);
+    }
+
+    /**
+     * The path's items output edge -> input edge, read out of its slab.
+     * @private
+     * @param {number} slot
+     * @returns {{id:number, type:number, gap:number}[]}
+     */
+    _unloadItems(slot) {
+        const base = this._colItemBase[slot];
+        const slab = this._colItemSlab[slot];
+        const head = this._colItemHead[slot];
+        const count = this._colCount[slot];
+        const items = [];
+        for (let index = 0; index < count; index += 1) {
+            let at = head + index;
+            if (at >= slab) {
+                at -= slab;
+            }
+            items.push({
+                id: this._items.ids[base + at],
+                type: this._items.types[base + at],
+                gap: this._items.gaps[base + at],
+            });
+        }
+        return items;
+    }
+
+    /**
+     * The items of `path`, live or dropped.
+     * @param {object} path
+     * @returns {{id:number, type:number, gap:number}[]} ordered output edge -> input edge
+     */
+    itemsOf(path) {
+        const slot = this._pathSlot.get(path);
+        return slot === undefined ? path.items : this._unloadItems(slot);
+    }
+
+    /**
+     * @param {object} path
+     * @returns {number} how many items `path` carries
+     */
+    itemCountOf(path) {
+        const slot = this._pathSlot.get(path);
+        return slot === undefined ? path.items.length : this._colCount[slot];
     }
 
     /**
@@ -1102,7 +1164,7 @@ export class Belts {
         while (capacity <= slot) {
             capacity *= 2;
         }
-        for (const name of ["_colInPort", "_colOutPort", "_colHeadGap", "_colCount", "_colLeadGap", "_colFirstGap", "_colObservedGen"]) {
+        for (const name of ["_colInPort", "_colOutPort", "_colHeadGap", "_colCount", "_colLeadGap", "_colFirstGap", "_colObservedGen", "_colItemBase", "_colItemSlab", "_colItemHead"]) {
             const grown = new Int32Array(capacity);
             grown.set(this[name]);
             this[name] = grown;
@@ -1114,18 +1176,61 @@ export class Belts {
     }
 
     /**
-     * Recomputes a path's cached ring state by scanning. Only for a path whose items were set
+     * The index of the first item at or after `from` with empty space ahead of it, or -1. This is the
+     * gap a stalled path compresses into; it only ever walks forward, so the scan is amortized O(1).
+     * @private
+     * @param {number} slot
+     * @param {number} from
+     * @returns {number}
+     */
+    _nextPositiveGap(slot, from) {
+        const base = this._colItemBase[slot];
+        const slab = this._colItemSlab[slot];
+        const head = this._colItemHead[slot];
+        const count = this._colCount[slot];
+        const gaps = this._items.gaps;
+        for (let index = from; index < count; index += 1) {
+            let at = head + index;
+            if (at >= slab) {
+                at -= slab;
+            }
+            if (gaps[base + at] > 0) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Recomputes a path's lead columns by scanning its slab. Only for a path whose items were set
      * wholesale (build, load, edit); the tick phases update the columns in place instead.
      * @private
      * @param {number} slot
-     * @param {object} path
      * @returns {void}
      */
-    _refreshColumns(slot, path) {
-        const items = path.items;
-        this._colCount[slot] = items.count;
-        this._colLeadGap[slot] = items.count === 0 ? -1 : items.gapAt(0);
-        this._colFirstGap[slot] = items.firstPositiveGap();
+    _refreshLeadColumns(slot) {
+        const count = this._colCount[slot];
+        if (count === 0) {
+            this._colLeadGap[slot] = -1;
+            this._colFirstGap[slot] = -1;
+            return;
+        }
+        const base = this._colItemBase[slot];
+        const slab = this._colItemSlab[slot];
+        const head = this._colItemHead[slot];
+        const gaps = this._items.gaps;
+        this._colLeadGap[slot] = gaps[base + head];
+        this._colFirstGap[slot] = -1;
+        for (let index = 0; index < count; index += 1) {
+            let at = head + index;
+            if (at >= slab) {
+                at -= slab;
+            }
+            if (gaps[base + at] > 0) {
+                this._colFirstGap[slot] = index;
+                return;
+            }
+        }
     }
 
     /**
@@ -1139,9 +1244,11 @@ export class Belts {
         if (slot === undefined) {
             return;
         }
-        // Snapshot the live head-gap back onto the record: a dropped path is still read by the edit
-        // that replaced it (an end extension carries its head room forward).
+        // Snapshot the live head-gap and items back onto the record: a dropped path is still read by
+        // the edit that replaced it (an end extension carries its head room and load forward).
         path.initialHeadGap = this._colHeadGap[slot];
+        path.items = this._unloadItems(slot);
+        this._items.free(this._colItemBase[slot], this._colItemSlab[slot]);
         const lastSlot = this.paths.length - 1;
         const last = this.paths[lastSlot];
         this.paths[slot] = last;
@@ -1154,6 +1261,9 @@ export class Belts {
         this._colCount[slot] = this._colCount[lastSlot];
         this._colLeadGap[slot] = this._colLeadGap[lastSlot];
         this._colFirstGap[slot] = this._colFirstGap[lastSlot];
+        this._colItemBase[slot] = this._colItemBase[lastSlot];
+        this._colItemSlab[slot] = this._colItemSlab[lastSlot];
+        this._colItemHead[slot] = this._colItemHead[lastSlot];
         // The moved path's in-port now maps to its new slot.
         this._byInPort.set(last.inPort, slot);
         this.paths.pop();
@@ -1272,7 +1382,7 @@ export class Belts {
             outPort,
             length,
             initialHeadGap: length,
-            items: new ItemRing(),
+            items: [],
         };
         this._pushPath(path);
         this._byInPort.set(resolvedInPort, this._pathSlot.get(path));
@@ -1340,6 +1450,11 @@ export class Belts {
         const countCol = this._colCount;
         const leadGapCol = this._colLeadGap;
         const firstGapCol = this._colFirstGap;
+        const baseCol = this._colItemBase;
+        const slabCol = this._colItemSlab;
+        const headCol = this._colItemHead;
+        const itemTypes = this._items.types;
+        const itemGaps = this._items.gaps;
         const count = this.paths.length;
         // Reused across ticks: the deferred out-port writes, as parallel columns.
         let popCount = 0;
@@ -1351,61 +1466,76 @@ export class Belts {
                 continue;
             }
 
-            // Only a moving path touches its record and its ring.
-            const path = this.paths[slot];
-            const items = path.items;
+            // Only a moving path reaches into the item store; nothing here touches the path record.
+            const base = baseCol[slot];
+            const slab = slabCol[slot];
+            const head = headCol[slot];
             if (canPop) {
                 this._growPops(popCount);
                 this._popPorts[popCount] = outPortCol[slot];
-                this._popTypes[popCount] = items.typeAt(0);
+                this._popTypes[popCount] = itemTypes[base + head];
                 popCount += 1;
-                this._emitPoppedItem(slot, items);
+                this._emitPoppedItem(slot, base + head);
                 // Gaps are distances to the item ahead, so dropping the lead advances the rest and
                 // the new lead's gap is already its distance to the output edge.
-                items.shift();
-                countCol[slot] = items.count;
-                leadGapCol[slot] = items.count === 0 ? -1 : items.gapAt(0);
+                const nextHead = head + 1 === slab ? 0 : head + 1;
+                const remaining = countCol[slot] - 1;
+                headCol[slot] = nextHead;
+                countCol[slot] = remaining;
+                leadGapCol[slot] = remaining === 0 ? -1 : itemGaps[base + nextHead];
                 firstGapCol[slot] = firstGap === -1 ? -1 : firstGap - 1;
             } else {
                 // One write advances the item holding this gap and everything behind it; the packed
                 // block ahead stays put.
-                const gap = items.gapAt(firstGap) - 1;
-                items.setGapAt(firstGap, gap);
-                this._emitMovedItem(slot, items, firstGap);
+                let at = head + firstGap;
+                if (at >= slab) {
+                    at -= slab;
+                }
+                const gap = itemGaps[base + at] - 1;
+                itemGaps[base + at] = gap;
+                this._emitItemAt(slot, base + at);
                 if (firstGap === 0) {
                     leadGapCol[slot] = gap;
                 }
                 // A closed gap stays closed until the block ahead pops, so this walk never revisits
                 // an item: amortized constant.
                 if (gap === 0) {
-                    firstGapCol[slot] = items.firstPositiveGap(firstGap + 1);
+                    firstGapCol[slot] = this._nextPositiveGap(slot, firstGap + 1);
                 }
             }
             headGapCol[slot] += 1;
         }
 
         // Phase 2: ingest each path's resting in-port item at the input edge, filling the head room.
+        const itemIds = this._items.ids;
         for (let slot = 0; slot < count; slot += 1) {
             const inPort = inPortCol[slot];
             if (headGapCol[slot] === 0 || P[inPort] === EMPTY) {
                 continue;
             }
-            const path = this.paths[slot];
-            const items = path.items;
             const type = P[inPort];
             // The ingested item lands on the input edge, so it carries the head room ahead of it.
             const gap = headGapCol[slot] - 1;
             const id = this._nextItemId;
             this._nextItemId += 1;
+            const slab = slabCol[slot];
+            const items = countCol[slot];
             if (firstGapCol[slot] === -1 && gap > 0) {
-                firstGapCol[slot] = items.count;
+                firstGapCol[slot] = items;
             }
-            items.push(id, type, gap);
-            countCol[slot] = items.count;
-            if (items.count === 1) {
+            let at = headCol[slot] + items;
+            if (at >= slab) {
+                at -= slab;
+            }
+            const cell = baseCol[slot] + at;
+            itemIds[cell] = id;
+            itemTypes[cell] = type;
+            itemGaps[cell] = gap;
+            countCol[slot] = items + 1;
+            if (items === 0) {
                 leadGapCol[slot] = gap;
             }
-            this._emitItemUpsert(slot, id, gap, type);
+            this._emitItemAt(slot, cell);
             headGapCol[slot] = 0;
             engine.setPortItem(inPort, EMPTY);
         }
@@ -1455,14 +1585,8 @@ export class Belts {
         for (const path of this.paths) {
             if (chunkId(path.headX, path.headY) === chunk) {
                 events.push(this._pathRecalcEvent(path));
-                const items = path.items;
-                for (let index = 0; index < items.count; index += 1) {
-                    events.push(this._itemUpsertEvent(
-                        path,
-                        items.idAt(index),
-                        items.gapAt(index),
-                        items.typeAt(index),
-                    ));
+                for (const item of this._unloadItems(this._pathSlot.get(path))) {
+                    events.push(this._itemUpsertEvent(path, item.id, item.gap, item.type));
                 }
             }
         }
@@ -1509,14 +1633,13 @@ export class Belts {
                 B.objectId[beltEid] = beltId;
             }
 
-            const items = path.items;
-            for (let seq = 0; seq < items.count; seq += 1) {
+            for (const [seq, item] of this._unloadItems(this._pathSlot.get(path)).entries()) {
                 const itemEid = this.engine.createEntity(this._itemDef);
                 I.path[itemEid] = pathEid;
                 I.seq[itemEid] = seq;
-                I.gap[itemEid] = items.gapAt(seq);
-                I.type[itemEid] = items.typeAt(seq);
-                I.itemId[itemEid] = items.idAt(seq);
+                I.gap[itemEid] = item.gap;
+                I.type[itemEid] = item.type;
+                I.itemId[itemEid] = item.id;
             }
         }
 
@@ -1579,7 +1702,7 @@ export class Belts {
                 outPort: BP.outPort[pathEid],
                 length: BP.length[pathEid],
                 initialHeadGap: BP.headGap[pathEid],
-                items: ItemRing.from(items),
+                items,
             };
             this._trackPath(path);
         }
