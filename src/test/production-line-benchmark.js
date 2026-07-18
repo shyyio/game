@@ -3,18 +3,23 @@
 // Run through the test loader (the `@/` alias is resolved there):
 //
 //   node --import ./src/test/test-loader.js src/test/production-line-benchmark.js [lineCount] [ticks]
-//   npm run bench:lines -- [lineCount] [ticks] [--profile]
+//   npm run bench:lines -- [lineCount] [ticks] [--profile] [--jammed]
 //
 // With --profile it captures two separate V8 CPU profiles - one over the seed (world build), one
 // over the tick loop - as profiles/lines-<lines>x<ticks>-{seed,tick}.cpuprofile, for Chrome
 // DevTools / VS Code.
 //
 // Stamps out identical production lines - extractor on a water resource, a 4-belt path, a furnace,
-// a 1-belt path, then two chained furnaces - and reports which tick phase costs the most. Every
-// line is perpetually active, so this stresses the machine/extractor tick, not just belt movement.
+// a 1-belt path, then two chained furnaces - and reports which tick phase costs the most.
+//
+// Each line's last furnace has no consumer, so left alone every line backs up within ~150 ticks and
+// the world becomes a saturated deadlock: intents still submitted, none resolvable. That is a real
+// scenario but it is not throughput, so by default the run drains each line's final out-port every
+// tick and the lines flow. Pass --jammed for the deadlocked world instead. Either way the report
+// prints intents/resolved per tick, so a stalled run is visible rather than silent.
 
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {TickPhase, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
+import {TickPhase, TICK_PHASE_ORDER, EMPTY} from "@/common/sim/GameEngine.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {Direction} from "@/common/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
@@ -25,7 +30,9 @@ import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {CpuProfiler, printProfileSummary} from "@/test/profiler.js";
 
 const DEFAULT_LINE_COUNT = 5_000;
-const DEFAULT_TICKS = 50;
+// High enough that the measurement is not dominated by JIT warmup; below ~500 the phase split still
+// moves several percent run to run.
+const DEFAULT_TICKS = 1_000;
 const TOP_FUNCTIONS = 25;
 
 // One line spans 9 tiles in x (extractor at 0, belts 1..4, machines/belt 5..8) and one tile in y;
@@ -76,6 +83,18 @@ function buildLine(engine, ox, oy) {
 }
 
 /**
+ * The out-port a line's last machine feeds — the edge past the line's right end, where nothing
+ * consumes. Draining it each tick is what keeps the line flowing.
+ * @param {GameEngine} engine
+ * @param {number} ox
+ * @param {number} oy
+ * @returns {number} the port eid
+ */
+function lineSinkPort(engine, ox, oy) {
+    return engine.portAt(ox + LINE_WIDTH, oy, Direction.RIGHT);
+}
+
+/**
  * Prints per-phase tick cost, most expensive first.
  * @param {Object<number, number>} phaseTotals
  * @param {number} ticks
@@ -102,6 +121,7 @@ async function main() {
     const args = process.argv.slice(2);
     const positional = args.filter(arg => !arg.startsWith("--"));
     const profiling = args.includes("--profile");
+    const jammed = args.includes("--jammed");
     const lineCount = intArg(positional[0], DEFAULT_LINE_COUNT);
     const ticks = intArg(positional[1], DEFAULT_TICKS);
     const seedProfilePath = `profiles/lines-${lineCount}x${ticks}-seed.cpuprofile`;
@@ -118,10 +138,14 @@ async function main() {
         await profiler.start();
     }
     const buildStart = performance.now();
+    const sinkPorts = [];
     for (let k = 0; k < lineCount; k += 1) {
         const col = k % LINES_PER_BAND;
         const row = Math.floor(k / LINES_PER_BAND);
-        buildLine(engine, BASE_X + col * CELL_WIDTH, BASE_Y + row * ROW_STRIDE);
+        const ox = BASE_X + col * CELL_WIDTH;
+        const oy = BASE_Y + row * ROW_STRIDE;
+        buildLine(engine, ox, oy);
+        sinkPorts.push(lineSinkPort(engine, ox, oy));
     }
     const buildMs = performance.now() - buildStart;
 
@@ -146,13 +170,25 @@ async function main() {
         await profiler.start();
     }
 
-    console.log(`Running ${ticks.toLocaleString()} ticks...`);
+    console.log(`Running ${ticks.toLocaleString()} ticks${jammed ? " (jammed: no consumer)" : ""}...`);
+    let intents = 0;
+    let resolved = 0;
     const runStart = performance.now();
     for (let i = 0; i < ticks; i += 1) {
         for (const phase of TICK_PHASE_ORDER) {
             const phaseStart = performance.now();
             engine.tick(phase);
             phaseTotals[phase] += performance.now() - phaseStart;
+        }
+        intents += engine.intentCount;
+        resolved += engine.resolvedCount;
+        if (!jammed) {
+            // Consume each line's output, so the lines keep flowing instead of backing up.
+            for (const port of sinkPorts) {
+                if (engine.portItem(port) !== EMPTY) {
+                    engine.setPortItem(port, EMPTY);
+                }
+            }
         }
     }
     const runMs = performance.now() - runStart;
@@ -166,7 +202,12 @@ async function main() {
     console.log(
         `Measured: ${(runMs / MS_PER_SECOND).toFixed(2)}s over ${ticks} ticks `
         + `(${(runMs / ticks).toFixed(1)}ms/tick); `
-        + `${paths.toLocaleString()} belt paths on the last tick.\n`
+        + `${paths.toLocaleString()} belt paths on the last tick.`
+    );
+    const resolvedShare = intents === 0 ? 0 : (resolved / intents) * 100;
+    console.log(
+        `Flow: ${Math.round(intents / ticks).toLocaleString()} intents/tick, `
+        + `${Math.round(resolved / ticks).toLocaleString()} resolved (${resolvedShare.toFixed(1)}%).\n`
     );
 
     printReport(phaseTotals, ticks);
