@@ -367,18 +367,22 @@ export class MachineBehavior extends AbstractBehavior {
             }
 
             // Every port contributed: match the recipe, start the countdown, move slots into processing.
-            let allFilled = output[eid] === EMPTY;
-            for (let i = 0; i < inputCount; i += 1) {
-                if (slotCols[i][eid] === EMPTY) {
-                    allFilled = false;
-                }
-            }
-            if (allFilled) {
-                output[eid] = behavior._resolveRecipe(slotCols, eid);
-                remaining[eid] = behavior.processingTicks;
+            // A machine still holding a product cannot load the next set, so it skips the slot pass.
+            if (output[eid] === EMPTY) {
+                let allFilled = true;
                 for (let i = 0; i < inputCount; i += 1) {
-                    processingCols[i][eid] = slotCols[i][eid];
-                    slotCols[i][eid] = EMPTY;
+                    if (slotCols[i][eid] === EMPTY) {
+                        allFilled = false;
+                        break;
+                    }
+                }
+                if (allFilled) {
+                    output[eid] = behavior._resolveRecipe(slotCols, eid);
+                    remaining[eid] = behavior.processingTicks;
+                    for (let i = 0; i < inputCount; i += 1) {
+                        processingCols[i][eid] = slotCols[i][eid];
+                        slotCols[i][eid] = EMPTY;
+                    }
                 }
             }
 
