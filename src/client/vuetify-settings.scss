@@ -1,0 +1,4 @@
+// Drop the .bg-*/.text-* color utility pack; nothing in the app uses it.
+@use "vuetify/settings" with (
+    $color-pack: false
+);

@@ -8,7 +8,10 @@ import vuetify from "vite-plugin-vuetify";
 export default defineConfig(({mode}) => ({
     plugins: [
         vue(),
-        vuetify({autoImport: true}),
+        vuetify({
+            autoImport: true,
+            styles: {configFile: "src/client/vuetify-settings.scss"}
+        }),
         // vueDevTools(),
     ],
     // Inject __DEV__ as a real literal so `src/env.js` folds to a constant and
