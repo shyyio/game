@@ -139,6 +139,10 @@ export class PlacedObjects {
             message.direction = Direction.UP;
         }
         const engine = this.engine;
+        // Chunk-keyed sync and position indexing assume every object lives in exactly one chunk.
+        if (type.geometry.spansChunks(message.x, message.y, message.direction)) {
+            return true;
+        }
         if (!type.behavior.canSpawn(engine, this, type, message)) {
             return true;
         }
