@@ -478,12 +478,16 @@ export class Client {
             }
             return;
         }
-        if (event instanceof ChunkUnsubscribeEvent && this._queuedCountByChunk.has(event.chunk)) {
-            // The chunk left the viewport before its queued sync applied: the unsubscribe would
-            // wipe that state anyway, so drop the queue's share of it and unsubscribe now.
-            this._pendingEvents = this._pendingEvents.filter(pending => pending.chunk !== event.chunk);
-            this._queuedCountByChunk.delete(event.chunk);
-            this._applyEvent(event);
+        if (event instanceof ChunkUnsubscribeEvent) {
+            if (this._queuedCountByChunk.has(event.chunk)) {
+                // The chunk left the viewport before its queued sync applied: the unsubscribe
+                // wipes that state anyway, so drop the queue's share of it first.
+                this._pendingEvents = this._pendingEvents.filter(pending => pending.chunk !== event.chunk);
+                this._queuedCountByChunk.delete(event.chunk);
+            }
+            // Tearing down a chunk's entries and sprites is heavy too: a prune pass drops many
+            // chunks at once, so unsubscribes ride the budgeted drain, one chunk per event.
+            this._queueEvent(event);
             return;
         }
         if (event.chunk !== undefined && this._queuedCountByChunk.has(event.chunk)) {
