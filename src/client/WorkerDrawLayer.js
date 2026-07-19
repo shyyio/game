@@ -28,6 +28,13 @@ const LATERAL_RANGE = 7;
 // Route BFS runs per rebuilt machine each tick; capped so a loading burst can't stall the frame.
 const ROUTE_REBUILDS_PER_TICK = 50;
 
+// At most this many figures render, nearest the viewport center first; the rest freeze invisible
+// so the layer's per-frame repack stays bounded however many machines are manned.
+const WORKER_RENDER_CAP = 300;
+
+// How often the rendered set re-derives from the viewport center.
+const WORKER_CULL_INTERVAL_MS = 300;
+
 // 4-neighborhood shared with the sim's road flood fill.
 const NEIGHBOR_DELTAS = [
     {dx: 1, dy: 0},
@@ -67,6 +74,11 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
         // queues every assignment, the set drains ROUTE_REBUILDS_PER_TICK per tick.
         this._routesStale = false;
         this._dirtyMachines = new Set();
+        // Figures advance on alternate ticks, carrying the skipped tick's elapsed time.
+        this._skipTick = false;
+        this._pendingDeltaMS = 0;
+        // Counts down to the next cull pass.
+        this._cullCountdownMS = 0;
         /**
          * The walk-cycle textures, resolved from the registry on first use.
          * @type {Texture[]|null}
@@ -158,9 +170,51 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
             this._dirtyMachines.delete(machineId);
             this._rebuildRoute(machineId);
         }
+        this._cullCountdownMS -= deltaMS;
+        if (this._cullCountdownMS <= 0) {
+            this._cullCountdownMS = WORKER_CULL_INTERVAL_MS;
+            this._cull();
+        }
+        // Half rate: figures are cosmetic, so advancing them every other tick is invisible but
+        // halves this layer's per-frame batch repack.
+        this._pendingDeltaMS += deltaMS;
+        this._skipTick = !this._skipTick;
+        if (this._skipTick) {
+            return;
+        }
         for (const worker of this._workers.values()) {
-            worker.advance(deltaMS);
+            if (!worker.visible) {
+                continue;
+            }
+            worker.advance(this._pendingDeltaMS);
             worker.texture = this._walkFrames()[worker.moving ? frame : 0];
+        }
+        this._pendingDeltaMS = 0;
+    }
+
+    /**
+     * Shows the WORKER_RENDER_CAP figures nearest the viewport center and freezes the rest
+     * invisible until a later pass brings them back.
+     * @private
+     * @returns {void}
+     */
+    _cull() {
+        if (this._workers.size <= WORKER_RENDER_CAP) {
+            for (const worker of this._workers.values()) {
+                worker.visible = true;
+            }
+            return;
+        }
+        const center = this.viewport.center;
+        const ranked = [...this._workers.values()];
+        for (const worker of ranked) {
+            const dx = worker.x - center.x;
+            const dy = worker.y - center.y;
+            worker.cullDistance = dx * dx + dy * dy;
+        }
+        ranked.sort((a, b) => a.cullDistance - b.cullDistance);
+        for (let i = 0; i < ranked.length; i += 1) {
+            ranked[i].visible = i < WORKER_RENDER_CAP;
         }
     }
 
@@ -366,6 +420,8 @@ class WorkerSprite extends Sprite {
         this._pauseMS = 0;
         this._lateral = 0;
         this.moving = false;
+        // Squared distance to the viewport center, written by the layer's cull pass.
+        this.cullDistance = 0;
     }
 
     /**
