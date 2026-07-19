@@ -1,4 +1,4 @@
-import {Container, Graphics, Sprite, Texture} from "pixi.js";
+import {Container, Graphics, Particle, ParticleContainer} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
@@ -17,10 +17,14 @@ export const DEFAULT_ITEM_TEXTURE = "items/3";
 const MOVE_DURATION_MS = 190;
 
 /**
- * The single shared item layer. Renders item sprites keyed by id, with glide. Mods that
+ * The single shared item layer. Renders item particles keyed by id, with glide. Mods that
  * compute item positions (belts) drive it imperatively; resting items in render-flagged
  * out-ports are driven here from the PORT_ITEM_SET/CLEAR events, with the render tile derived
  * from the shared object index and the owning object's PortDefinition.
+ *
+ * Items render as a ParticleContainer: gliding positions ride the per-frame dynamic buffer,
+ * while texture/alpha changes and add/removes flag a static-buffer flush — so thousands of
+ * moving items never re-pack a batch the way Sprite children would.
  */
 export class ItemDrawLayer extends AbstractDrawLayer {
 
@@ -30,21 +34,28 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     constructor(itemTextures) {
         super();
         /**
-         * Live sprites, keyed by sprite key — a number row id for belt items, a
+         * The particle view holding every item; all item textures share the one atlas source.
+         * @type {ParticleContainer}
+         * @private
+         */
+        this._particles = new ParticleContainer();
+        this.addChild(this._particles);
+        /**
+         * Live particles, keyed by particle key — a number row id for belt items, a
          * namespaced string for items resting in out-ports.
-         * @type {Map<number|string, ItemSprite>}
+         * @type {Map<number|string, ItemParticle>}
          * @private
          */
         this._items = new Map();
         /**
-         * Sprites with a glide in flight; the only ones the per-frame tick advances.
-         * @type {Set<ItemSprite>}
+         * Particles with a glide in flight; the only ones the per-frame tick advances.
+         * @type {Set<ItemParticle>}
          * @private
          */
         this._gliding = new Set();
         /**
-         * Idle sprites awaiting reuse, kept as invisible children.
-         * @type {ItemSprite[]}
+         * Idle particles awaiting reuse, detached from the container.
+         * @type {ItemParticle[]}
          * @private
          */
         this._pool = [];
@@ -140,7 +151,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Drops the resting item sprites of a removed object (driven by the cache's removal hook).
+     * Drops the resting item particles of a removed object (driven by the cache's removal hook).
      * @param {CacheEntry} entry - the removed cache entry
      * @returns {void}
      */
@@ -156,67 +167,67 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {number} deltaMS elapsed time since the previous tick, in ms
      */
     tick(frame, deltaMS) {
-        for (const sprite of this._gliding) {
-            sprite.advance(deltaMS);
-            if (!sprite.gliding) {
-                this._gliding.delete(sprite);
+        for (const particle of this._gliding) {
+            particle.advance(deltaMS);
+            if (!particle.gliding) {
+                this._gliding.delete(particle);
             }
         }
     }
 
     /**
-     * Places or repositions a sprite at a belt tile and half-tile offset, with the texture for
+     * Places or repositions an item at a belt tile and half-tile offset, with the texture for
      * its item type. A hidden item is still positioned, keeping its glide continuous.
-     * @param {number|string} key - sprite key (row id for belt items, namespaced string for out-port items)
+     * @param {number|string} key - particle key (row id for belt items, namespaced string for out-port items)
      * @param {number} tileX
      * @param {number} tileY
      * @param {boolean} halfTile
      * @param {Direction} sourceDirection - toward the belt feeding this one (the input/bend edge)
-     * @param {number} type - item type, selecting the sprite texture
+     * @param {number} type - item type, selecting the texture
      * @param {boolean} [snap] - place at the target without animating (a re-sync)
      * @param {boolean} [hidden] - the item is under cover (in a tunnel)
      */
     moveItem(key, tileX, tileY, halfTile, sourceDirection, type, snap=false, hidden=false) {
         const texture = this._textureForType(type);
-        let sprite = this._items.get(key);
-        if (sprite === undefined) {
-            sprite = this._pool.pop();
-            if (sprite === undefined) {
-                sprite = new ItemSprite(texture);
-                this.addChild(sprite);
+        let particle = this._items.get(key);
+        if (particle === undefined) {
+            particle = this._pool.pop();
+            if (particle === undefined) {
+                particle = new ItemParticle(texture);
             } else {
-                sprite.texture = texture;
-                sprite.reset();
+                particle.texture = texture;
+                particle.reset();
             }
-            this._items.set(key, sprite);
-        } else if (sprite.texture !== texture) {
-            // The port now rests a different item type: swap the sprite's texture in place.
-            sprite.texture = texture;
+            this._particles.addParticle(particle);
+            this._items.set(key, particle);
+        } else if (particle.texture !== texture) {
+            // The port now rests a different item type: swap the texture in place (static uv,
+            // so flag a flush).
+            particle.texture = texture;
+            this._particles.update();
         }
-        sprite.hidden = hidden;
-        this._applyItemVisibility(sprite);
-        sprite.moveTo(tileX, tileY, halfTile, sourceDirection, snap);
-        if (sprite.gliding) {
-            this._gliding.add(sprite);
+        particle.hidden = hidden;
+        this._applyItemVisibility(particle);
+        particle.moveTo(tileX, tileY, halfTile, sourceDirection, snap);
+        if (particle.gliding) {
+            this._gliding.add(particle);
         }
     }
 
     /**
-     * Applies a sprite's hidden state: hidden items don't render, except at half alpha
-     * in debug mode.
-     * @param {ItemSprite} sprite
+     * Applies an item's hidden state: hidden items render at alpha 0, except at 0.7 in
+     * debug mode. Alpha is a static particle property, so a change flags a flush.
+     * @param {ItemParticle} particle
      * @private
      */
-    _applyItemVisibility(sprite) {
-        if (!sprite.hidden) {
-            sprite.visible = true;
-            sprite.alpha = 1;
-        } else if (this._debugMasks) {
-            sprite.visible = true;
-            sprite.alpha = 0.7;
-        } else {
-            sprite.visible = false;
-            sprite.alpha = 1;
+    _applyItemVisibility(particle) {
+        let alpha = 1;
+        if (particle.hidden) {
+            alpha = this._debugMasks ? 0.7 : 0;
+        }
+        if (particle.alpha !== alpha) {
+            particle.alpha = alpha;
+            this._particles.update();
         }
     }
 
@@ -232,48 +243,48 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Re-keys a live sprite, preserving it (and its in-flight glide) so a moved item can
+     * Re-keys a live particle, preserving it (and its in-flight glide) so a moved item can
      * keep gliding under a new identity — e.g. a belt item popping into an out-port.
-     * Drops whatever sprite already held the new key (the previous occupant). No-op for an
+     * Drops whatever particle already held the new key (the previous occupant). No-op for an
      * unknown source key.
      * @param {number|string} oldKey
      * @param {number|string} newKey
      */
     renameItem(oldKey, newKey) {
-        const sprite = this._items.get(oldKey);
-        if (sprite === undefined) {
+        const particle = this._items.get(oldKey);
+        if (particle === undefined) {
             return;
         }
         const existing = this._items.get(newKey);
-        if (existing !== undefined && existing !== sprite) {
-            this._releaseSprite(existing);
+        if (existing !== undefined && existing !== particle) {
+            this._releaseParticle(existing);
         }
         this._items.delete(oldKey);
-        this._items.set(newKey, sprite);
+        this._items.set(newKey, particle);
     }
 
     /**
-     * Drops a sprite; a no-op for an unknown key.
+     * Drops an item; a no-op for an unknown key.
      * @param {number|string} key
      */
     removeItem(key) {
-        const sprite = this._items.get(key);
-        if (sprite === undefined) {
+        const particle = this._items.get(key);
+        if (particle === undefined) {
             return;
         }
-        this._releaseSprite(sprite);
+        this._releaseParticle(particle);
         this._items.delete(key);
     }
 
     /**
-     * Parks a sprite in the pool, invisible, for reuse.
-     * @param {ItemSprite} sprite
+     * Detaches a particle from the container and parks it in the pool for reuse.
+     * @param {ItemParticle} particle
      * @private
      */
-    _releaseSprite(sprite) {
-        sprite.visible = false;
-        this._gliding.delete(sprite);
-        this._pool.push(sprite);
+    _releaseParticle(particle) {
+        this._particles.removeParticle(particle);
+        this._gliding.delete(particle);
+        this._pool.push(particle);
     }
 
     /**
@@ -345,22 +356,21 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      */
     setDebugMode(enabled) {
         this._debugMasks = enabled;
-        for (const sprite of this._items.values()) {
-            this._applyItemVisibility(sprite);
+        for (const particle of this._items.values()) {
+            this._applyItemVisibility(particle);
         }
         this._applyMask();
     }
 }
 
-class ItemSprite extends Sprite {
+class ItemParticle extends Particle {
 
     /**
      * @param {Texture} texture
      */
     constructor(texture) {
-        super(texture === undefined ? Texture.EMPTY : texture);
-        this.anchor = 0.5;
-        // Under cover (in a tunnel): positioned but not rendered outside debug mode.
+        super({texture, anchorX: 0.5, anchorY: 0.5});
+        // Under cover (in a tunnel): positioned but rendered at alpha 0 outside debug mode.
         this.hidden = false;
         // Glide state: start/target pixels and ms elapsed into the current move.
         // _startX is null when not gliding (freshly placed or arrived).
@@ -392,10 +402,10 @@ class ItemSprite extends Sprite {
     }
 
     /**
-     * Aims the sprite at a belt tile. When straddling (half-tile) it sits a half-tile
+     * Aims the item at a belt tile. When straddling (half-tile) it sits a half-tile
      * toward `sourceDirection` — the belt feeding this one — so on a bend it lands on the
      * input edge, not simply opposite the flow. A new item glides in from a further
-     * half-tile that way; later moves glide from the sprite's current position.
+     * half-tile that way; later moves glide from the item's current position.
      * @param {number} tileX
      * @param {number} tileY
      * @param {boolean} halfTile
@@ -426,7 +436,7 @@ class ItemSprite extends Sprite {
             this._startY = this.y;
             this._elapsed = 0;
         } else if (targetX !== this._targetX || targetY !== this._targetY) {
-            // New target: glide from wherever the sprite currently is (picking up any
+            // New target: glide from wherever the item currently is (picking up any
             // glide still in flight).
             this._startX = this.x;
             this._startY = this.y;
