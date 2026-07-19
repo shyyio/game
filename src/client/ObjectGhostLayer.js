@@ -38,6 +38,12 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
     }
 
     /**
+     * Stays visible in map mode: the active placement preview reads at any zoom.
+     * @param {boolean} value
+     */
+    set mapMode(value) {}
+
+    /**
      * Shows a single ghost at the tile facing `direction`, tinted red when blocked.
      * @param {number} tileX
      * @param {number} tileY

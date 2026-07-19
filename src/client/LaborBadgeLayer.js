@@ -1,7 +1,7 @@
 import {Container, Graphics, GraphicsContext} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {TILE_SIZE} from "@/client/constants.js";
-import {chunkId} from "@/common/util.js";
+import {chunkId, getOrCreate} from "@/common/util.js";
 import {LaborAssignmentEvent} from "@/common/LaborEvents.js";
 
 // Worker dot styling, in a row along the machine's top edge: every slot carries the same solid
@@ -14,6 +14,9 @@ const DOT_RADIUS = 4;
 const DOT_SPACING = 11;
 const DOT_EDGE_INSET = 8;
 const DOT_LEFT_INSET = DOT_EDGE_INSET + 3;
+
+// Idle badges kept per staffing state; overflow is destroyed instead of parked.
+const BADGE_POOL_LIMIT = 64;
 
 /**
  * At-a-glance staffing badges: a road-attached machine shows one dot slot per worker it needs (its
@@ -32,7 +35,7 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
         this._assignments = new Map();
         /**
          * Live badges keyed by machineId.
-         * @type {Map<number, Graphics>}
+         * @type {Map<number, Badge>}
          * @private
          */
         this._badges = new Map();
@@ -40,7 +43,7 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
          * Idle badges awaiting reuse, detached, pooled by staffing state: a badge keeps its
          * shared context for life, because every context (re)assignment registers/removes a
          * listener on the context's list — O(all badges) per swap on a shared context.
-         * @type {Map<string, Graphics[]>}
+         * @type {Map<string, Badge[]>}
          * @private
          */
         this._pools = new Map();
@@ -52,9 +55,8 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
          */
         this._contexts = new Map();
         /**
-         * Per-chunk badge containers, each its own render group so a loading chunk's badges
-         * repack only that chunk.
-         * @type {Map<number, Container>}
+         * Per-chunk badge containers.
+         * @type {Map<number, BadgeChunkContainer>}
          * @private
          */
         this._chunkContainers = new Map();
@@ -66,14 +68,6 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
     get layerIndex() {
         // Above the object sprites (20), so dots read over the machine art.
         return 21;
-    }
-
-    /**
-     * Hides badges in map mode.
-     * @param {boolean} value
-     */
-    set mapMode(value) {
-        this.visible = !value;
     }
 
     get eventClasses() {
@@ -95,21 +89,10 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Subscribes to the shared cache; the client calls this once when it builds the layer.
-     * @param {ClientCache} cache
-     * @returns {void}
-     */
-    bindCache(cache) {
-        cache.onSet(entry => this._onCacheChange(entry));
-        cache.onRemove(entry => this._onCacheChange(entry));
-    }
-
-    /**
-     * @private
      * @param {CacheEntry} entry
      * @returns {void}
      */
-    _onCacheChange(entry) {
+    onCacheChange(entry) {
         if (this._assignments.has(entry.id)) {
             this._dirtyMachines.add(entry.id);
         }
@@ -144,7 +127,7 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _placeBadge(machineId, entry, granted) {
-        const workers = entry.data.type.behavior.laborCost;
+        const workers = entry.behavior.laborCost;
         const stateKey = `${workers}:${granted}`;
         let badge = this._badges.get(machineId);
         if (badge !== undefined && badge.stateKey !== stateKey) {
@@ -177,7 +160,7 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
      * @param {string} stateKey
      * @param {number} workers
      * @param {number} granted
-     * @returns {Graphics}
+     * @returns {Badge}
      */
     _takeBadge(stateKey, workers, granted) {
         const pool = this._pools.get(stateKey);
@@ -185,9 +168,10 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
         if (pooled !== undefined) {
             return pooled;
         }
-        const badge = new Graphics(this._contextFor(stateKey, workers, granted));
-        badge.stateKey = stateKey;
-        return badge;
+        return new Badge(
+            this._contextFor(stateKey, workers, granted),
+            stateKey,
+        );
     }
 
     /**
@@ -199,36 +183,30 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
      * @returns {GraphicsContext}
      */
     _contextFor(stateKey, workers, granted) {
-        let context = this._contexts.get(stateKey);
-        if (context === undefined) {
-            context = new GraphicsContext();
+        return getOrCreate(this._contexts, stateKey, () => {
+            const context = new GraphicsContext();
             for (let i = 0; i < workers; i += 1) {
                 context
                     .circle(i * DOT_SPACING, 0, DOT_RADIUS)
                     .fill(i < granted ? DOT_GRANTED_COLOR : DOT_MISSING_COLOR)
                     .stroke({color: DOT_OUTLINE_COLOR, width: DOT_OUTLINE_WIDTH});
             }
-            this._contexts.set(stateKey, context);
-        }
-        return context;
+            return context;
+        });
     }
 
     /**
      * The badge container for a chunk, created on first use.
      * @private
      * @param {number} chunk
-     * @returns {Container}
+     * @returns {BadgeChunkContainer}
      */
     _containerFor(chunk) {
-        let container = this._chunkContainers.get(chunk);
-        if (container === undefined) {
-            container = new Container();
-            container.isRenderGroup = true;
-            container.badgeChunk = chunk;
-            this._chunkContainers.set(chunk, container);
+        return getOrCreate(this._chunkContainers, chunk, () => {
+            const container = new BadgeChunkContainer(chunk);
             this.addChild(container);
-        }
-        return container;
+            return container;
+        });
     }
 
     /**
@@ -246,16 +224,50 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
         const container = badge.parent;
         container.removeChild(badge);
         if (container.children.length === 0) {
-            this._chunkContainers.delete(container.badgeChunk);
+            this._chunkContainers.delete(container.chunk);
             this.removeChild(container);
             container.destroy();
         }
         this._badges.delete(machineId);
-        let pool = this._pools.get(badge.stateKey);
-        if (pool === undefined) {
-            pool = [];
-            this._pools.set(badge.stateKey, pool);
+        const pool = getOrCreate(this._pools, badge.stateKey, () => []);
+        if (pool.length < BADGE_POOL_LIMIT) {
+            pool.push(badge);
+        } else {
+            // destroy() leaves the shared context alone (the badge never owned it).
+            badge.destroy();
         }
-        pool.push(badge);
+    }
+}
+
+/**
+ * One machine's dot-row badge, drawing its staffing state's shared context.
+ */
+class Badge extends Graphics {
+
+    /**
+     * @param {GraphicsContext} context
+     * @param {string} stateKey
+     */
+    constructor(
+        context,
+        stateKey,
+    ) {
+        super(context);
+        this.stateKey = stateKey;
+    }
+}
+
+/**
+ * One chunk's badges, its own render group so a loading chunk's badges repack only that chunk.
+ */
+class BadgeChunkContainer extends Container {
+
+    /**
+     * @param {number} chunk
+     */
+    constructor(chunk) {
+        super();
+        this.isRenderGroup = true;
+        this.chunk = chunk;
     }
 }

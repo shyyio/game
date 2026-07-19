@@ -1,7 +1,6 @@
 import {Graphics} from "pixi.js";
-import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
-import {ChunkNode} from "@/client/ChunkNode.js";
-import {TILE_SIZE, sameChunks} from "@/client/constants.js";
+import {AbstractChunkedDrawLayer} from "@/client/AbstractChunkedDrawLayer.js";
+import {TILE_SIZE} from "@/client/constants.js";
 import {chunkId} from "@/common/util.js";
 import {MAP_TILE_COLOR} from "@/client/Theme.js";
 import {ObjectClientData} from "@/client/ClientCacheSync.js";
@@ -11,11 +10,8 @@ import {ObjectSprite} from "@/client/ObjectSprite.js";
  * Renders one object type's placed sprites off the shared cache: ClientCacheSync owns the entries,
  * this layer mirrors them (a pure renderer — it never writes the cache). Bespoke rendering (belts)
  * hand-rolls a layer instead.
- *
- * Children are grouped per chunk so mounting and unmounting cost one operation per chunk rather
- * than one per sprite — pixi's removeChild is a linear scan of the parent's children.
  */
-export class ObjectDrawLayer extends AbstractDrawLayer {
+export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
 
     /**
      * @param {ObjectType} type
@@ -24,12 +20,6 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
         super();
         this._type = type;
         this._objects = {};
-        this._chunks = new Map();
-        // The chunks whose roots are mounted, and those whose pooled geometry is stale.
-        this._mounted = new Set();
-        this._dirtyChunks = new Set();
-        this._visibleChunks = new Set();
-        this._mapMode = false;
     }
 
     get layerIndex() {
@@ -37,21 +27,11 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Subscribes to the shared cache; the client calls this once when it builds the type's bundle.
-     * @param {ClientCache} cache
-     * @returns {void}
-     */
-    bindCache(cache) {
-        cache.onSet(entry => this._onSet(entry));
-        cache.onRemove(entry => this.removeObject(entry.id));
-    }
-
-    /**
-     * @private
+     * Mirrors a set entry of this layer's type into a fresh sprite.
      * @param {CacheEntry} entry
      * @returns {void}
      */
-    _onSet(entry) {
+    onCacheSet(entry) {
         if (!(entry.data instanceof ObjectClientData) || entry.data.type.typeId !== this._type.typeId) {
             return;
         }
@@ -67,17 +47,11 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Swaps every mounted chunk between full sprites and pooled map geometry.
-     * @param {boolean} value
+     * @param {CacheEntry} entry
+     * @returns {void}
      */
-    set mapMode(value) {
-        if (value === this._mapMode) {
-            return;
-        }
-        this._mapMode = value;
-        for (const chunk of this._mounted) {
-            this._applyMode(chunk);
-        }
+    onCacheRemove(entry) {
+        this.removeObject(entry.id);
     }
 
     /**
@@ -114,10 +88,7 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
 
         const node = this._chunks.get(chunk);
         if (node !== undefined && node.isEmpty) {
-            this._unmountChunk(chunk);
-            node.destroy();
-            this._chunks.delete(chunk);
-            this._dirtyChunks.delete(chunk);
+            this._dropChunk(chunk);
         }
     }
 
@@ -139,107 +110,6 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
                 sprite.tick(frame);
             }
         }
-    }
-
-    /**
-     * Mounts the chunks that panned into view and unmounts those that panned out.
-     * @param {Set<number>} visible the chunks the viewport covers this frame
-     * @returns {void}
-     * @private
-     */
-    _reconcileViewport(visible) {
-        if (sameChunks(visible, this._visibleChunks)) {
-            return;
-        }
-
-        for (const chunk of this._visibleChunks) {
-            if (!visible.has(chunk)) {
-                this._unmountChunk(chunk);
-            }
-        }
-
-        for (const chunk of visible) {
-            if (!this._visibleChunks.has(chunk)) {
-                this._mountChunk(chunk);
-            }
-        }
-        this._visibleChunks = visible;
-    }
-
-    /**
-     * Rebuilds the pooled geometry of every mounted chunk an object change invalidated.
-     * @returns {void}
-     * @private
-     */
-    _flushDirtyChunks() {
-        if (this._dirtyChunks.size === 0) {
-            return;
-        }
-        for (const chunk of this._dirtyChunks) {
-            if (this._mounted.has(chunk)) {
-                this._buildChunkGeometry(chunk);
-            }
-        }
-        this._dirtyChunks.clear();
-    }
-
-    /**
-     * The chunk's node, created empty on first use.
-     * @param {number} chunk
-     * @returns {ChunkNode}
-     * @private
-     */
-    _node(chunk) {
-        let node = this._chunks.get(chunk);
-        if (node === undefined) {
-            node = new ChunkNode();
-            this._chunks.set(chunk, node);
-        }
-        return node;
-    }
-
-    /**
-     * @param {number} chunk
-     * @returns {void}
-     * @private
-     */
-    _mountChunk(chunk) {
-        const node = this._chunks.get(chunk);
-        if (node === undefined || this._mounted.has(chunk)) {
-            return;
-        }
-        this._mounted.add(chunk);
-        this._applyMode(chunk);
-        this.addChild(node.root);
-    }
-
-    /**
-     * @param {number} chunk
-     * @returns {void}
-     * @private
-     */
-    _unmountChunk(chunk) {
-        if (!this._mounted.has(chunk)) {
-            return;
-        }
-        this.removeChild(this._chunks.get(chunk).root);
-        this._mounted.delete(chunk);
-    }
-
-    /**
-     * Hangs the current mode's node under the chunk root, detaching the other one.
-     * @param {number} chunk
-     * @returns {void}
-     * @private
-     */
-    _applyMode(chunk) {
-        const node = this._chunks.get(chunk);
-
-        if (this._mapMode) {
-            node.showGraphics(this._buildChunkGeometry(chunk));
-            return;
-        }
-        node.showSprites();
     }
 
     /**

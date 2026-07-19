@@ -119,20 +119,14 @@ export class Client {
         // The single shared item layer: belts drive their computed-position items imperatively;
         // resting out-port items render here automatically from the port-item events.
         this.itemLayer = new ItemDrawLayer(modRegistry.itemTextures);
-        // A removed object's resting out-port item sprites go with it.
-        this.cache.onRemove(record => this.itemLayer.dropPorts(record));
         // The single shared connection-stub layer, derived from the cache as objects change.
         this.connectionLayer = new ConnectionDrawLayer();
-        this.connectionLayer.bindCache(this.cache);
         // Commuting worker figures for manned machines, routed over the cached road tiles.
         this.workerLayer = new WorkerDrawLayer();
-        this.workerLayer.bindCache(this.cache);
         // Debug overlay: road components, attachments, and assignments; hidden outside debug mode.
         this.laborDebugLayer = new LaborDebugLayer();
-        this.laborDebugLayer.bindCache(this.cache);
         // Staffing dots over manned machines (one per consumed worker).
         this.laborBadgeLayer = new LaborBadgeLayer();
-        this.laborBadgeLayer.bindCache(this.cache);
         // Top-left connection/chunk-loading status overlay. A static screen-space HUD on
         // app.stage (sibling of the viewport), so it never pans or zooms with the world.
         this.statusLayer = new StatusMessageLayer();
@@ -156,6 +150,12 @@ export class Client {
         this.drawLayerRegistry.add(this.workerLayer);
         this.drawLayerRegistry.add(this.laborDebugLayer);
         this.drawLayerRegistry.add(this.laborBadgeLayer);
+
+        // One bind per layer: sets the shared cache and registers whichever cache hooks the layer
+        // overrides — before init, since cache writes can arrive while textures load.
+        for (const layer of this.drawLayerRegistry.layers) {
+            layer.bindCache(this.cache);
+        }
 
         // The chunks currently requested from the server (subscribed): the visible chunks
         // plus any that recently panned out and are awaiting a throttled unsubscribe.
@@ -239,7 +239,6 @@ export class Client {
         for (const layer of this.drawLayerRegistry.layers) {
             layer.textureRegistry = this.textureRegistry;
             layer.viewport = this.viewport;
-            layer.cache = this.cache;
             this.viewport.addChild(layer);
         }
 
@@ -614,7 +613,6 @@ export class Client {
                 let drawLayer = type.createDrawLayer(this);
                 if (drawLayer === null) {
                     drawLayer = new ObjectDrawLayer(type);
-                    drawLayer.bindCache(this.cache);
                 }
                 let ghostLayer = type.createGhostLayer(this);
                 if (ghostLayer === null) {

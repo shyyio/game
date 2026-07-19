@@ -1,5 +1,6 @@
 import {Container, Graphics, Particle, ParticleContainer} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
+import {DisplayPool} from "@/client/DisplayPool.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
 import {rotate} from "@/common/util.js";
@@ -54,12 +55,28 @@ export class ItemDrawLayer extends AbstractDrawLayer {
          */
         this._gliding = new Set();
         /**
-         * Idle particles awaiting reuse, parked in the container at alpha 0: pixi's
-         * removeParticle is a linear scan per call, so unload bursts would go quadratic.
-         * @type {ItemParticle[]}
+         * Idle particles awaiting reuse, parked in the container at alpha 0 and kept at the
+         * high-water mark: pixi's removeParticle is a linear scan per call, so unload bursts
+         * would go quadratic.
+         * @type {DisplayPool}
          * @private
          */
-        this._pool = [];
+        this._pool = new DisplayPool(
+            texture => {
+                const particle = new ItemParticle(texture, this._particles);
+                this._particles.addParticle(particle);
+                return particle;
+            },
+            particle => {
+                particle.setAlpha(0);
+                this._gliding.delete(particle);
+            },
+            (particle, texture) => {
+                // Parked particles are still attached; re-light in place.
+                particle.setTexture(texture);
+                particle.reset();
+            },
+        );
         /**
          * Item type -> texture name, merged across mods.
          * @type {Object.<number, string>}
@@ -97,14 +114,6 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         return 15;
     }
 
-    /**
-     * Hides items in map mode.
-     * @param {boolean} value
-     */
-    set mapMode(value) {
-        this.visible = !value;
-    }
-
     get eventClasses() {
         return [PortItemSetEvent, PortItemClearEvent];
     }
@@ -123,7 +132,14 @@ export class ItemDrawLayer extends AbstractDrawLayer {
             return;
         }
         if (event instanceof PortItemSetEvent) {
-            this.moveItem(PORT_SPRITE_KEY(event.portId), placement.tileX, placement.tileY, true, placement.sourceDirection, event.itemType);
+            this.moveItem({
+                key: PORT_SPRITE_KEY(event.portId),
+                tileX: placement.tileX,
+                tileY: placement.tileY,
+                halfTile: true,
+                sourceDirection: placement.sourceDirection,
+                type: event.itemType,
+            });
         } else {
             this.removeItem(PORT_SPRITE_KEY(event.portId));
         }
@@ -152,11 +168,11 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Drops the resting item particles of a removed object (driven by the cache's removal hook).
-     * @param {CacheEntry} entry - the removed cache entry
+     * Drops a removed object's resting out-port item particles.
+     * @param {CacheEntry} entry
      * @returns {void}
      */
-    dropPorts(entry) {
+    onCacheRemove(entry) {
         for (const portId of Object.values(entry.ports)) {
             this.removeItem(PORT_SPRITE_KEY(portId));
         }
@@ -177,37 +193,26 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Places or repositions an item at a belt tile and half-tile offset, with the texture for
-     * its item type. A hidden item is still positioned, keeping its glide continuous.
-     * @param {number|string} key - particle key (row id for belt items, namespaced string for out-port items)
-     * @param {number} tileX
-     * @param {number} tileY
-     * @param {boolean} halfTile
-     * @param {Direction} sourceDirection - toward the belt feeding this one (the input/bend edge)
-     * @param {number} type - item type, selecting the texture
-     * @param {boolean} [snap] - place at the target without animating (a re-sync)
-     * @param {boolean} [hidden] - the item is under cover (in a tunnel)
+     * Places or repositions an item at a belt tile, with the texture for its item type. A hidden
+     * item is still positioned, keeping its glide continuous.
+     * @param {Object} move
+     * @param {number|string} move.key - particle key (row id for belt items, namespaced string for out-port items)
+     * @param {number} move.tileX
+     * @param {number} move.tileY
+     * @param {boolean} move.halfTile
+     * @param {Direction} move.sourceDirection - toward the belt feeding this one (the input/bend edge)
+     * @param {number} move.type - item type, selecting the texture
+     * @param {boolean} [move.snap] - place at the target without animating (a re-sync)
+     * @param {boolean} [move.hidden] - the item is under cover (in a tunnel)
      */
-    moveItem(key, tileX, tileY, halfTile, sourceDirection, type, snap=false, hidden=false) {
+    moveItem({key, tileX, tileY, halfTile, sourceDirection, type, snap=false, hidden=false}) {
         const texture = this._textureForType(type);
         let particle = this._items.get(key);
         if (particle === undefined) {
-            particle = this._pool.pop();
-            if (particle === undefined) {
-                particle = new ItemParticle(texture);
-                this._particles.addParticle(particle);
-            } else {
-                // Pooled particles are still attached (parked at alpha 0); re-light in place.
-                particle.texture = texture;
-                particle.reset();
-                this._particles.update();
-            }
+            particle = this._pool.take(texture);
             this._items.set(key, particle);
-        } else if (particle.texture !== texture) {
-            // The port now rests a different item type: swap the texture in place (static uv,
-            // so flag a flush).
-            particle.texture = texture;
-            this._particles.update();
+        } else {
+            particle.setTexture(texture);
         }
         particle.hidden = hidden;
         this._applyItemVisibility(particle);
@@ -218,8 +223,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Applies an item's hidden state: hidden items render at alpha 0, except at 0.7 in
-     * debug mode. Alpha is a static particle property, so a change flags a flush.
+     * Applies an item's hidden state: hidden items render at alpha 0, except at 0.7 in debug mode.
      * @param {ItemParticle} particle
      * @private
      */
@@ -228,10 +232,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         if (particle.hidden) {
             alpha = this._debugMasks ? 0.7 : 0;
         }
-        if (particle.alpha !== alpha) {
-            particle.alpha = alpha;
-            this._particles.update();
-        }
+        particle.setAlpha(alpha);
     }
 
     /**
@@ -260,7 +261,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         }
         const existing = this._items.get(newKey);
         if (existing !== undefined && existing !== particle) {
-            this._releaseParticle(existing);
+            this._pool.release(existing);
         }
         this._items.delete(oldKey);
         this._items.set(newKey, particle);
@@ -275,22 +276,8 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         if (particle === undefined) {
             return;
         }
-        this._releaseParticle(particle);
+        this._pool.release(particle);
         this._items.delete(key);
-    }
-
-    /**
-     * Parks a particle in the pool at alpha 0, still attached, for reuse.
-     * @param {ItemParticle} particle
-     * @private
-     */
-    _releaseParticle(particle) {
-        if (particle.alpha !== 0) {
-            particle.alpha = 0;
-            this._particles.update();
-        }
-        this._gliding.delete(particle);
-        this._pool.push(particle);
     }
 
     /**
@@ -373,9 +360,14 @@ class ItemParticle extends Particle {
 
     /**
      * @param {Texture} texture
+     * @param {ParticleContainer} container the container whose static buffer this particle rides
      */
-    constructor(texture) {
+    constructor(
+        texture,
+        container,
+    ) {
         super({texture, anchorX: 0.5, anchorY: 0.5});
+        this._container = container;
         // Under cover (in a tunnel): positioned but rendered at alpha 0 outside debug mode.
         this.hidden = false;
         // Glide state: start/target pixels and ms elapsed into the current move.
@@ -392,6 +384,32 @@ class ItemParticle extends Particle {
      */
     get gliding() {
         return this._startX !== null;
+    }
+
+    /**
+     * Swaps the texture; a static (uv) particle property, so a change flags the container flush.
+     * @param {Texture} texture
+     * @returns {void}
+     */
+    setTexture(texture) {
+        if (this.texture === texture) {
+            return;
+        }
+        this.texture = texture;
+        this._container.update();
+    }
+
+    /**
+     * Sets the alpha; a static particle property, so a change flags the container flush.
+     * @param {number} alpha
+     * @returns {void}
+     */
+    setAlpha(alpha) {
+        if (this.alpha === alpha) {
+            return;
+        }
+        this.alpha = alpha;
+        this._container.update();
     }
 
     /**

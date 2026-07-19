@@ -47,6 +47,12 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
     }
 
     /**
+     * Stays visible in map mode: placement feedback reads at any zoom.
+     * @param {boolean} value
+     */
+    set mapMode(value) {}
+
+    /**
      * Shows the current placement's geometry feedback, replacing any previous.
      * @param {{blocked?: {x: number, y: number}[], overwrite?: {x: number, y: number}[], clear?: {x: number, y: number}[], showTarget?: boolean}} feedback
      *     - blocked (red), overwrite (blue), clear (green target); showTarget draws the green target

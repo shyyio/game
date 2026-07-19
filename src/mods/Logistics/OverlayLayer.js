@@ -16,10 +16,6 @@ export class BeltOverlayDrawLayer extends AbstractDrawLayer {
         return 100;
     }
 
-    set mapMode(value) {
-        this.visible = !value;
-    }
-
     /**
      * Reveals the underground belts of a tunnel as a line of buried-belt sprites.
      * @param {{x: number, y: number}[]} tiles tunnel tiles, in order
