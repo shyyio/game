@@ -54,7 +54,8 @@ export class ItemDrawLayer extends AbstractDrawLayer {
          */
         this._gliding = new Set();
         /**
-         * Idle particles awaiting reuse, detached from the container.
+         * Idle particles awaiting reuse, parked in the container at alpha 0: pixi's
+         * removeParticle is a linear scan per call, so unload bursts would go quadratic.
          * @type {ItemParticle[]}
          * @private
          */
@@ -194,11 +195,13 @@ export class ItemDrawLayer extends AbstractDrawLayer {
             particle = this._pool.pop();
             if (particle === undefined) {
                 particle = new ItemParticle(texture);
+                this._particles.addParticle(particle);
             } else {
+                // Pooled particles are still attached (parked at alpha 0); re-light in place.
                 particle.texture = texture;
                 particle.reset();
+                this._particles.update();
             }
-            this._particles.addParticle(particle);
             this._items.set(key, particle);
         } else if (particle.texture !== texture) {
             // The port now rests a different item type: swap the texture in place (static uv,
@@ -277,12 +280,15 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Detaches a particle from the container and parks it in the pool for reuse.
+     * Parks a particle in the pool at alpha 0, still attached, for reuse.
      * @param {ItemParticle} particle
      * @private
      */
     _releaseParticle(particle) {
-        this._particles.removeParticle(particle);
+        if (particle.alpha !== 0) {
+            particle.alpha = 0;
+            this._particles.update();
+        }
         this._gliding.delete(particle);
         this._pool.push(particle);
     }

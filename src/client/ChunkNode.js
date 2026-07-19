@@ -12,6 +12,9 @@ export class ChunkNode {
 
     constructor() {
         this.root = new Container();
+        // Its own render group: a sprite added while a chunk loads repacks only this chunk's
+        // geometry, and sibling chunks keep their cached batches.
+        this.root.isRenderGroup = true;
         this.sprites = new Container();
         /**
          * @type {Graphics|null}
