@@ -9,27 +9,14 @@ import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {PortItemSetEvent} from "@/common/PortItemEvents.js";
 import {BeltSyncEvent} from "@/mods/Logistics/events.js";
-import {makeGameEngine, ecsModRegistry} from "@/test/ecsSim.js";
+import {ecsModRegistry} from "@/test/ecsSim.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
 import {beltsOf} from "@/mods/Logistics/testHelpers.js";
 import {flattenBatches} from "@/test/EventCollector.js";
+import {CapturingSession} from "@/test/CapturingSession.js";
 
 const RED = 1;
 const CELLS = [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}];
-
-class CapturingSession {
-    constructor(playerId) {
-        this.playerId = playerId;
-        this.id = null;
-        this.events = [];
-    }
-    setId(id) {
-        this.id = id;
-    }
-    publishEvent(event) {
-        this.events.push(event);
-    }
-}
 
 test("a session subscribing to a chunk receives its existing belts and resting items from ECS", async () => {
     const modRegistry = ecsModRegistry();

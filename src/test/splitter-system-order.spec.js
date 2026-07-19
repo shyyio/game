@@ -12,7 +12,7 @@ const RED = 1;
 async function streamWithRegistration(beltsFirst) {
     const engine = new GameEngine();
     await engine.init();
-    let belts = null;
+    let belts;
     const splitter = new SplitterBehavior();
     if (beltsFirst) {
         belts = new Belts(engine);

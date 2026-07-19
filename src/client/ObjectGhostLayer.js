@@ -114,8 +114,10 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
     /**
      * Re-pins the floating ghost to its target (cursor, or screen center in center-lock) each frame.
      * @param {number} frame animation frame, in [0, 8)
+     * @param {number} deltaMS
+     * @param {Set<number>} visibleChunks
      */
-    tick(frame) {
+    tick(frame, deltaMS, visibleChunks) {
         this._updateCenterPin();
     }
 
@@ -176,7 +178,7 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
         if (this._centerLock) {
             return this.viewport.toWorld(this.viewport.screenWidth / 2, this.viewport.screenHeight / 2);
         }
-        if (Mouse.currentX === null) {
+        if (Mouse.currentX === null || Mouse.currentY === null) {
             return null;
         }
         return {x: Mouse.currentX, y: Mouse.currentY};

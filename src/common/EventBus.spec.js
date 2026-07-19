@@ -1,18 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {EventBus} from "@/common/EventBus.js";
-
-// A session that records the events published to it.
-class CapturingSession {
-
-    constructor() {
-        this.events = [];
-    }
-
-    publishEvent(event) {
-        this.events.push(event);
-    }
-}
+import {CapturingSession} from "@/test/CapturingSession.js";
 
 // Test events routing through a fixed topic.
 function chunkEvent(chunk) {

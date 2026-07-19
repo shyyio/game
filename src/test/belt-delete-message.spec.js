@@ -5,7 +5,6 @@ import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {BeltInsertEvent, BeltDeleteEvent} from "@/mods/Logistics/events.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {GameEngine} from "@/common/sim/GameEngine.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector} from "@/test/EventCollector.js";
 import {beltsOf} from "@/mods/Logistics/testHelpers.js";

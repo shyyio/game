@@ -10,14 +10,6 @@ class Haptics {
     }
 
     /**
-     * Whether the Vibration API is available.
-     * @returns {boolean}
-     */
-    get supported() {
-        return this._supported;
-    }
-
-    /**
      * Short pulse for a discrete action.
      * @returns {void}
      */

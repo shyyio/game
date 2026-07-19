@@ -4,7 +4,6 @@ import {Direction} from "@/common/constants.js";
 import {BELT_NORMAL, BELT_RAMP_DOWN, BELT_RAMP_UP, BELT_UNDERGROUND} from "@/mods/Logistics/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {BeltInsertEvent} from "@/mods/Logistics/events.js";
-import {GameEngine} from "@/common/sim/GameEngine.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector} from "@/test/EventCollector.js";
 import {beltsOf} from "@/mods/Logistics/testHelpers.js";

@@ -102,9 +102,10 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
      * Rebuilds the dirty badges.
      * @param {number} frame
      * @param {number} deltaMS
+     * @param {Set<number>} visibleChunks
      * @returns {void}
      */
-    tick(frame, deltaMS) {
+    tick(frame, deltaMS, visibleChunks) {
         for (const machineId of this._dirtyMachines) {
             const granted = this._assignments.get(machineId);
             const entry = granted === undefined ? null : this.cache.get(machineId);

@@ -1,4 +1,4 @@
-import {Sprite} from "pixi.js";
+import {Sprite, Texture} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {DisplayPool} from "@/client/DisplayPool.js";
 import {TILE_SIZE} from "@/client/constants.js";
@@ -150,9 +150,10 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
      * Re-derives stale routes, then advances every figure's commute and walk frame.
      * @param {number} frame current animation frame, in [0, 8)
      * @param {number} deltaMS elapsed time since the previous tick, in ms
+     * @param {Set<number>} visibleChunks unused — figures cull by chunk mount
      * @returns {void}
      */
-    tick(frame, deltaMS) {
+    tick(frame, deltaMS, visibleChunks) {
         if (this._routesStale) {
             this._routesStale = false;
             for (const machineId of this._assignments.keys()) {
@@ -331,7 +332,7 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
         }
 
         let goal = null;
-        for (let head = 0; head < queue.length && goal === null; head += 1) {
+        for (let head = 0; head < queue.length; head += 1) {
             const current = queue[head];
             if (targets.has(current.tile)) {
                 goal = current;

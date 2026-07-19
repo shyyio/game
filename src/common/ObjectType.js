@@ -286,7 +286,7 @@ export class ObjectType {
      * the resource layer, body on the surface block). Used by both positionLayer lookups (existing
      * objects) and the placement overlap check (the new object), so placement is symmetric.
      * @param {Direction} direction
-     * @returns {{layer: number, cells: {x: number, y: number}[]}[]}
+     * @returns {{layer: string, cells: {x: number, y: number}[]}[]}
      */
     positionLayerTiles(direction) {
         const cells = this.geometry.tiles(direction);

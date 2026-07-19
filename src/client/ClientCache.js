@@ -14,7 +14,7 @@ export class CacheEntry {
      * @param {number} id
      * @param {number} tileX
      * @param {number} tileY
-     * @param {{x: number, y: number, layer: number}[]} cells
+     * @param {{x: number, y: number, layer: string}[]} cells
      * @param {Object.<string, number>} ports
      * @param {object} data
      */
@@ -59,12 +59,12 @@ export class ClientCache {
 
     constructor() {
         /**
-         * @type {Map<number, object>}
+         * @type {Map<number, CacheEntry>}
          * @private
          */
         this._byId = new Map();
         /**
-         * @type {Map<number, object[]>}
+         * @type {Map<number, CacheEntry[]>}
          * @private
          */
         this._byTile = new Map();
@@ -94,17 +94,17 @@ export class ClientCache {
          */
         this._byPort = new Map();
         /**
-         * @type {function(CacheEntry): void[]}
+         * @type {Array<function(CacheEntry): void>}
          * @private
          */
         this._setListeners = [];
         /**
-         * @type {function(CacheEntry): void[]}
+         * @type {Array<function(CacheEntry): void>}
          * @private
          */
         this._removeListeners = [];
         /**
-         * @type {function(): void[]}
+         * @type {Array<function(): void>}
          * @private
          */
         this._structuralListeners = [];
@@ -189,7 +189,7 @@ export class ClientCache {
      * @param {number} id
      * @param {number} tileX
      * @param {number} tileY
-     * @param {{x: number, y: number, layer: number}[]} cells
+     * @param {{x: number, y: number, layer: string}[]} cells
      * @param {Object.<string, number>} [ports] - rendered out-ports, by PortDefinition name
      * @param {object} [data]
      */

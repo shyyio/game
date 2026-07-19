@@ -215,13 +215,6 @@ export class UIPanel extends Container {
     }
 
     /**
-     * @returns {number} the title row's height (also the decorative strip's thickness)
-     */
-    static get TITLE_HEIGHT() {
-        return TITLE_ROW_HEIGHT;
-    }
-
-    /**
      * A standalone tiled decorative pattern rectangle, matching the title bar's strip (same texture,
      * scale, and alpha), for chrome that wants the pattern outside a full panel.
      * @param {TextureRegistry} textureRegistry
@@ -262,11 +255,6 @@ export class UIPanel extends Container {
     /** @returns {number} width available to content inside the padded body */
     get contentWidth() {
         return this._width - 2 * (BODY_MARGIN + PADDING);
-    }
-
-    /** @returns {number} height available to content inside the padded body */
-    get contentHeight() {
-        return this._height - TITLE_ROW_HEIGHT - BODY_MARGIN - 2 * PADDING;
     }
 
     /**

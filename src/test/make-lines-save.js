@@ -67,4 +67,4 @@ async function main() {
     console.log(`wrote lines save: ${path}`);
 }
 
-main();
+await main();

@@ -1,4 +1,4 @@
-import {Sprite} from "pixi.js";
+import {Sprite, Texture} from "pixi.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
 

@@ -1,4 +1,3 @@
-import {chunkId} from "@/common/util.js";
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {EMPTY, NO_EID, TickPhase} from "@/common/sim/GameEngine.js";
 
@@ -503,7 +502,7 @@ export class MachineBehavior extends AbstractBehavior {
             const gathering = idle || (remaining[row] === 0 && item[out[row]] === EMPTY);
 
             // One pass: fill each free slot from its resting input and count what the machine holds
-            // afterwards. Filling and counting separately walked the slot columns twice.
+            // afterward. Filling and counting separately walked the slot columns twice.
             let filled = 0;
             for (let i = 0; i < inputCount; i += 1) {
                 const slotCol = slotCols[i];

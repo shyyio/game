@@ -27,6 +27,9 @@ export class EventCollector {
      * @param {GameEngine} engine
      */
     constructor(engine) {
+        /**
+         * @type {AbstractEvent[]}
+         */
         this._events = [];
         engine.setEventSink(event => this._events.push(event));
     }
@@ -34,7 +37,7 @@ export class EventCollector {
     /**
      * Returns and clears the events collected since the last drain, batches unpacked into their
      * per-delta events the way a client replays them.
-     * @returns {AbstractChunkRoutedEvent[]}
+     * @returns {AbstractEvent[]}
      */
     drain() {
         const events = flattenBatches(this._events);

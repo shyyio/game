@@ -92,7 +92,10 @@ export class Belts {
         // on different axes/layers (a surface belt and an underground crossing under it); the run at a
         // tile is disambiguated by direction.
         this._belts = new Map();
-        // Belt id -> belt, an index over the tile map for O(1) lookup by client id.
+        /**
+         * Belt id -> belt, an index over the tile map for O(1) lookup by client id.
+         * @type {Map<number, {x:number, y:number, direction:number, type:number, id:number}>}
+         */
         this._beltById = new Map();
         // Chunk -> the belts and the paths (by head tile) it holds, so a subscribing session syncs a
         // chunk without a scan of every belt and path in the world. Paths never cross a chunk seam.
@@ -170,17 +173,6 @@ export class Belts {
      */
     _beltAt(x, y, direction) {
         return this._beltsAt(x, y).find(belt => belt.direction === direction);
-    }
-
-    /**
-     * The surface (non-underground) belt on tile (x, y), or undefined.
-     * @private
-     * @param {number} x
-     * @param {number} y
-     * @returns {object|undefined}
-     */
-    _surfaceBeltAt(x, y) {
-        return this._beltsAt(x, y).find(belt => belt.type !== BELT_UNDERGROUND);
     }
 
     /**
@@ -312,7 +304,9 @@ export class Belts {
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
-     * @returns {{id:number, inPort:number, outPort:number, length:number}}
+     * @param {BeltType} [type]
+     * @returns {{id:number, inPort:number, outPort:number, length:number, segments:number[]}|null} null
+     *     when the target cell is taken
      */
     placeBelt(x, y, direction, type=BELT_NORMAL) {
         // Surface belts (normal/ramp) share the surface layer; an underground occupies its axis layer,
@@ -431,10 +425,7 @@ export class Belts {
         for (const path of this._pathsCovering(tileKeys)) {
             // Re-sync (snap), not upsert (glide): the edit re-rowed the items but didn't move them.
             for (const item of this._unloadItems(path.slot)) {
-                const event = this._itemSyncEvent(path, item.id, item.gap, item.type);
-                if (event !== null) {
-                    this.engine.emitEvent(event);
-                }
+                this.engine.emitEvent(this._itemSyncEvent(path, item.id, item.gap, item.type));
             }
         }
     }
@@ -452,16 +443,12 @@ export class Belts {
     }
 
     /**
-     * The client path id (head belt id) and head tile, or null for a synthetic path without belts
-     * (test-only addPath), which emits no client events.
+     * The client path id (head belt id) and head tile.
      * @private
      * @param {object} path
-     * @returns {{pathId: number, x: number, y: number}|null}
+     * @returns {{pathId: number, x: number, y: number}}
      */
     _headInfo(path) {
-        if (path.belts === undefined) {
-            return null;
-        }
         return {
             pathId: path.beltIds[0],
             x: path.headX,
@@ -483,9 +470,6 @@ export class Belts {
             return;
         }
         const head = this._headInfo(this.paths[slot]);
-        if (head === null) {
-            return;
-        }
         this._itemBatch(batches, head).addUpsert(
             head.pathId,
             this._items.ids[cell],
@@ -541,13 +525,10 @@ export class Belts {
      * @param {number} itemId
      * @param {number} gap
      * @param {number} type
-     * @returns {BeltItemSyncEvent|null}
+     * @returns {BeltItemSyncEvent}
      */
     _itemSyncEvent(path, itemId, gap, type) {
         const head = this._headInfo(path);
-        if (head === null) {
-            return null;
-        }
         return new BeltItemSyncEvent(head.x, head.y, head.pathId, itemId, gap, type);
     }
 
@@ -565,9 +546,6 @@ export class Belts {
             return;
         }
         const head = this._headInfo(this.paths[slot]);
-        if (head === null) {
-            return;
-        }
         this._itemBatch(batches, head).addDelete(head.pathId, this._items.ids[cell]);
     }
 
@@ -578,9 +556,6 @@ export class Belts {
      */
     _emitItemReset(path) {
         const head = this._headInfo(path);
-        if (head === null) {
-            return;
-        }
         this.engine.emitEvent(new BeltItemResetEvent(head.x, head.y, head.pathId));
     }
 
@@ -870,7 +845,7 @@ export class Belts {
      * segment's in-port). Returns the whole chain's endpoints and segment path ids.
      * @private
      * @param {object[][]} segments - the run's belts split into per-chunk segments, head -> tail
-     * @returns {{id:number, inPort:number, outPort:number, segments:number[]}}
+     * @returns {{id:number, inPort:number, outPort:number, length:number, segments:number[]}}
      */
     _buildEmptyChain(segments) {
         const built = segments.map(segment => this._makePath(segment, {items: []}));
@@ -882,6 +857,7 @@ export class Belts {
             id: built[0].id,
             inPort: built[0].inPort,
             outPort: built[built.length - 1].outPort,
+            length: built.reduce((sum, path) => sum + path.length, 0),
             segments: built.map(path => path.id),
         };
     }
@@ -930,7 +906,7 @@ export class Belts {
         if (extension !== null) {
             const old = extension;
             if (runKeys[0] === newKey) {
-                // Head (input-edge) extension: the new empty belt is head room; items keep their
+                // Head (input-edge) extension: the new empty belt is headroom; items keep their
                 // distance from the unchanged output edge (item ids are reassigned below).
                 items = old.items;
                 headGap = old.initialHeadGap + 2;
@@ -949,7 +925,7 @@ export class Belts {
                     headGap = old.initialHeadGap;
                     this.engine.setPortItem(old.outPort, EMPTY);
                 } else if (carried.length === 0) {
-                    // Empty path: all the new space is head room.
+                    // Empty path: all the new space is headroom.
                     items = [];
                     headGap = old.initialHeadGap + 2;
                 } else {
@@ -984,9 +960,9 @@ export class Belts {
     /**
      * Whether `runKeys` is `oldBelts` plus `newKey` appended at one end (a pure extension).
      * @private
-     * @param {string[]} runKeys - the run ordered head -> tail
-     * @param {string[]} oldBelts
-     * @param {string} newKey
+     * @param {number[]} runKeys - the run ordered head -> tail
+     * @param {number[]} oldBelts
+     * @param {number} newKey
      * @returns {boolean}
      */
     _isEndExtension(runKeys, oldBelts, newKey) {
@@ -1300,7 +1276,7 @@ export class Belts {
             return;
         }
         // Snapshot the live head-gap and items back onto the record: a dropped path is still read by
-        // the edit that replaced it (an end extension carries its head room and load forward).
+        // the edit that replaced it (an end extension carries its headroom and load forward).
         path.initialHeadGap = this._colHeadGap[slot];
         path.items = this._unloadItems(slot);
         this._items.free(this._colItemBase[slot], this._colItemSlab[slot]);
@@ -1327,16 +1303,12 @@ export class Belts {
     }
 
     /**
-     * Adds a path to the tile and belt-id indexes. A synthetic path without belts (test-only addPath)
-     * indexes nothing.
+     * Adds a path to the tile and belt-id indexes.
      * @private
      * @param {object} path
      * @returns {void}
      */
     _indexPath(path) {
-        if (path.belts === undefined) {
-            return;
-        }
         for (const key of path.belts) {
             const covering = this._pathsByTile.get(key);
             if (covering === undefined) {
@@ -1361,9 +1333,6 @@ export class Belts {
      * @returns {void}
      */
     _unindexPath(path) {
-        if (path.belts === undefined) {
-            return;
-        }
         for (const key of path.belts) {
             const covering = this._pathsByTile.get(key);
             if (covering === undefined) {
@@ -1434,43 +1403,8 @@ export class Belts {
     }
 
     /**
-     * Creates an empty straight path of `beltCount` belts. Its out-port is fresh; its in-port is
-     * `inPort` when given (a shared seam with an upstream path's out-port) else a fresh input port.
-     * @param {number} beltCount
-     * @param {number} [inPort] - existing port to reuse as the in-port (seam)
-     * @returns {{id:number, inPort:number, outPort:number, length:number}}
-     */
-    addPath(beltCount, inPort) {
-        const resolvedInPort = inPort === undefined ? this.engine.createPort() : inPort;
-        const outPort = this.engine.createPort();
-        const length = beltCount * 2 - 1;
-
-        const eid = this.engine.world.addEntity();
-        this.engine.world.addComponent(eid, PATH_MARKER);
-        // Belt-less, so it carries no tiles: the fields the tile/render paths read stay undefined.
-        const path = {
-            id: eid,
-            belts: undefined,
-            beltIds: undefined,
-            headX: undefined,
-            headY: undefined,
-            tailX: undefined,
-            tailY: undefined,
-            inPort: resolvedInPort,
-            outPort,
-            length,
-            initialHeadGap: length,
-            items: [],
-        };
-        this._pushPath(path);
-        this._slotByInPort.column[resolvedInPort] = path.slot;
-
-        return {id: eid, inPort: resolvedInPort, outPort, length};
-    }
-
-    /**
      * SUBMIT_INTENTS: a path with an item resting on its output edge submits the virtual shift intent
-     * (in-port -> out-port, managed=0) so the resolver frees the out-port; a path with head room or a
+     * (in-port -> out-port, managed=0) so the resolver frees the out-port; a path with headroom or a
      * gap declares its in-port drainable (destination-less) so an upstream transfer can resolve.
      * @private
      * @returns {void}
@@ -1587,7 +1521,7 @@ export class Belts {
             headGapCol[slot] += 1;
         }
 
-        // Phase 2: ingest each path's resting in-port item at the input edge, filling the head room.
+        // Phase 2: ingest each path's resting in-port item at the input edge, filling the headroom.
         const itemIds = this._items.ids;
         for (let slot = 0; slot < count; slot += 1) {
             const inPort = inPortCol[slot];
@@ -1595,7 +1529,7 @@ export class Belts {
                 continue;
             }
             const type = P[inPort];
-            // The ingested item lands on the input edge, so it carries the head room ahead of it.
+            // The ingested item lands on the input edge, so it carries the headroom ahead of it.
             const gap = headGapCol[slot] - 1;
             const id = this._nextItemId;
             this._nextItemId += 1;
@@ -1675,9 +1609,6 @@ export class Belts {
         const chunkPaths = this._pathsByChunk.get(chunk);
         for (const path of chunkPaths === undefined ? [] : chunkPaths) {
             const head = this._headInfo(path);
-            if (head === null) {
-                continue;
-            }
             if (paths === null) {
                 paths = new BeltPathBatchEvent(origin.x, origin.y);
             }
@@ -1712,10 +1643,6 @@ export class Belts {
         const B = this._beltDef.store;
         const I = this._itemDef.store;
         for (const path of this.paths) {
-            // Synthetic belt-less paths (test-only addPath) have no belt tiles to model; skip them.
-            if (path.beltIds === undefined) {
-                continue;
-            }
             const pathEid = this.engine.createEntity(this._pathDef);
             BP.inPort[pathEid] = path.inPort;
             BP.outPort[pathEid] = path.outPort;

@@ -7,23 +7,7 @@ import {SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage} fr
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
-
-class CapturingSession {
-
-    constructor(playerId) {
-        this.playerId = playerId;
-        this.id = null;
-        this.events = [];
-    }
-
-    setId(id) {
-        this.id = id;
-    }
-
-    publishEvent(event) {
-        this.events.push(event);
-    }
-}
+import {CapturingSession} from "@/test/CapturingSession.js";
 
 async function setup() {
     const modRegistry = ecsModRegistry();
