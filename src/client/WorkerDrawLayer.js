@@ -70,10 +70,13 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
          * @private
          */
         this._pool = [];
-        // Routes re-derive after any labor-relevant cache change, spread over ticks: the flag
-        // queues every assignment, the set drains ROUTE_REBUILDS_PER_TICK per tick.
+        // Routes re-derive after any labor-relevant cache change, spread over ticks and drained
+        // ROUTE_REBUILDS_PER_TICK per tick: assignment events queue their machine as urgent; the
+        // flag requeues every assignment as background work, served only with leftover budget so
+        // a world-wide refresh never delays freshly visible machines.
         this._routesStale = false;
         this._dirtyMachines = new Set();
+        this._staleMachines = new Set();
         // Figures advance on alternate ticks, carrying the skipped tick's elapsed time.
         this._skipTick = false;
         this._pendingDeltaMS = 0;
@@ -123,6 +126,8 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
     onEvent(event) {
         if (event.housingId === NO_HOUSING) {
             this._assignments.delete(event.machineId);
+            this._dirtyMachines.delete(event.machineId);
+            this._staleMachines.delete(event.machineId);
             this._releaseWorker(event.machineId);
             return;
         }
@@ -158,7 +163,7 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
         if (this._routesStale) {
             this._routesStale = false;
             for (const machineId of this._assignments.keys()) {
-                this._dirtyMachines.add(machineId);
+                this._staleMachines.add(machineId);
             }
         }
         let budget = ROUTE_REBUILDS_PER_TICK;
@@ -168,6 +173,16 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
             }
             budget -= 1;
             this._dirtyMachines.delete(machineId);
+            // An urgent rebuild also satisfies a pending background one.
+            this._staleMachines.delete(machineId);
+            this._rebuildRoute(machineId);
+        }
+        for (const machineId of this._staleMachines) {
+            if (budget === 0) {
+                break;
+            }
+            budget -= 1;
+            this._staleMachines.delete(machineId);
             this._rebuildRoute(machineId);
         }
         this._cullCountdownMS -= deltaMS;
