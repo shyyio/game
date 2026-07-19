@@ -7,6 +7,7 @@ import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
+import {PortItemSetEvent} from "@/common/PortItemEvents.js";
 import {BeltSyncEvent} from "@/mods/Logistics/events.js";
 import {makeGameEngine, ecsModRegistry} from "@/test/ecsSim.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
@@ -66,5 +67,9 @@ test("a session subscribing to a chunk receives its existing belts and resting i
         belts.map(event => [event.x, event.y]).sort(),
         CELLS.map(cell => [cell.x, cell.y]).sort(),
     );
-    // (Resting-item sync on subscribe is deferred — items reappear via live render events.)
+
+    const portItems = synced.filter(event => event instanceof PortItemSetEvent);
+    assert.equal(portItems.length, 1, "the resting out-port item is synced");
+    assert.equal(portItems[0].portId, path.outPort);
+    assert.equal(portItems[0].itemType, RED);
 });

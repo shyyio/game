@@ -1793,7 +1793,39 @@ export class GameEngine {
                 events.push(event);
             }
         }
+        // After the contributors: the client resolves a port item against the object/path
+        // the contributors' events just recreated.
+        const portItems = this._portItemSync(chunk);
+        if (portItems !== null) {
+            events.push(portItems);
+        }
         return events;
+    }
+
+    /**
+     * The chunk's resting rendered-port items as one set-only batch, or null when it has none.
+     * @private
+     * @param {number} chunk
+     * @returns {PortItemBatchEvent|null}
+     */
+    _portItemSync(chunk) {
+        const item = this.Port.item;
+        let batch = null;
+        for (const eid of this.entitiesWith(this._portDef)) {
+            if (this._rendered[eid] === 0 || item[eid] === EMPTY) {
+                continue;
+            }
+            const x = this._renderX[eid];
+            const y = this._renderY[eid];
+            if (chunkId(x, y) !== chunk) {
+                continue;
+            }
+            if (batch === null) {
+                batch = new PortItemBatchEvent(x, y);
+            }
+            batch.addSet(eid, item[eid]);
+        }
+        return batch;
     }
 
     /**
