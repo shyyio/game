@@ -10,7 +10,7 @@ import {ToolbarLayer} from "@/client/ToolbarLayer.js";
 import {ToolRotation} from "@/client/ToolRotation.js";
 import {EraserTool} from "@/client/EraserTool.js";
 import {SetViewportMessage, SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
-import {ChunkSyncEvent} from "@/common/CoreEvents.js";
+import {ChunkSyncEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
@@ -43,8 +43,8 @@ import {StatusMessageLayer} from "@/client/StatusMessageLayer.js";
 import {advanceAnimationFrame} from "@/client/animation.js";
 import {DEV, BROWSER} from "@/common/env.js";
 
-// Queued per-delta events applied per ticker frame; the rest wait so arrival order holds.
-const SYNC_EVENTS_PER_FRAME = 100;
+// Frame time spent applying queued sync events; the rest wait for the next frame.
+const DRAIN_BUDGET_MS = 6;
 
 // Leading entries shown per column when logging a columnar batch event.
 const LOG_BATCH_ITEMS = 5;
@@ -161,9 +161,12 @@ export class Client {
         // plus any that recently panned out and are awaiting a throttled unsubscribe.
         this._requestedChunks = new Set();
         // Per-delta events awaiting the budgeted per-frame drain: a chunk-sync bundle explodes to
-        // hundreds of cache writes + sprite builds, and everything arriving behind one queues too
-        // so events apply in arrival order.
+        // hundreds of cache writes + sprite builds. Later events queue only when their own chunk
+        // still has queued sync (per-chunk order); everything else applies on arrival, so live
+        // tick traffic for already-synced chunks can never pile up behind a loading burst.
         this._pendingEvents = [];
+        // chunk -> its queued event count; a chunk with an entry gates its later events.
+        this._queuedCountByChunk = new Map();
         this._lastVisibleKey = null;
         this._unsubscribeTimer = null;
         this._mapMode = false;
@@ -463,41 +466,48 @@ export class Client {
                 console.log(`↓ [${formatBytes(bytes)} / ${formatBytes(this._bytesReceived)}]`, event.constructor.name, eventLogView(event));
             }
         }
-        if (event instanceof ChunkSyncEvent || this._pendingEvents.length > 0) {
-            this._enqueue(event);
+        if (event instanceof ChunkSyncEvent) {
+            // A chunk-sync bundle: queue each inner event, exploded to its per-delta events so
+            // the drain budget counts real applications, not envelopes. Sync events are distinct
+            // types (e.g. BeltSyncEvent vs BeltInsertEvent), so handlers can already tell a load
+            // from a live change.
+            for (const inner of event.events) {
+                for (const delta of inner instanceof AbstractBatchEvent ? inner.explode() : [inner]) {
+                    this._queueEvent(delta);
+                }
+            }
+            return;
+        }
+        if (event instanceof ChunkUnsubscribeEvent && this._queuedCountByChunk.has(event.chunk)) {
+            // The chunk left the viewport before its queued sync applied: the unsubscribe would
+            // wipe that state anyway, so drop the queue's share of it and unsubscribe now.
+            this._pendingEvents = this._pendingEvents.filter(pending => pending.chunk !== event.chunk);
+            this._queuedCountByChunk.delete(event.chunk);
+            this._applyEvent(event);
+            return;
+        }
+        if (event.chunk !== undefined && this._queuedCountByChunk.has(event.chunk)) {
+            // The event's chunk still has queued sync: apply behind it, keeping per-chunk order.
+            this._queueEvent(event);
             return;
         }
         this._applyEvent(event);
     }
 
     /**
-     * Queues an event for the budgeted drain, exploded to its per-delta events so the budget
-     * counts real applications, not envelopes.
+     * Queues one event for the budgeted drain, gating its chunk's later events behind it.
      * @private
      * @param {AbstractEvent} event
      * @returns {void}
      */
-    _enqueue(event) {
-        if (event instanceof ChunkSyncEvent) {
-            // A chunk-sync bundle: queue each inner event through the normal path.
-            // Sync events are distinct types (e.g. BeltSyncEvent vs BeltInsertEvent),
-            // so handlers can already tell a load from a live change.
-            for (const inner of event.events) {
-                this._enqueue(inner);
-            }
-            return;
-        }
-        if (event instanceof AbstractBatchEvent) {
-            for (const inner of event.explode()) {
-                this._pendingEvents.push(inner);
-            }
-            return;
-        }
+    _queueEvent(event) {
         this._pendingEvents.push(event);
+        const count = this._queuedCountByChunk.get(event.chunk);
+        this._queuedCountByChunk.set(event.chunk, count === undefined ? 1 : count + 1);
     }
 
     /**
-     * Applies queued events, at most {@link SYNC_EVENTS_PER_FRAME} per frame.
+     * Applies queued events for up to {@link DRAIN_BUDGET_MS} per frame.
      * @private
      * @returns {void}
      */
@@ -505,10 +515,20 @@ export class Client {
         if (this._pendingEvents.length === 0) {
             return;
         }
-        const batch = this._pendingEvents.splice(0, SYNC_EVENTS_PER_FRAME);
-        for (const event of batch) {
+        const started = performance.now();
+        let applied = 0;
+        while (applied < this._pendingEvents.length && performance.now() - started < DRAIN_BUDGET_MS) {
+            const event = this._pendingEvents[applied];
+            applied += 1;
+            const count = this._queuedCountByChunk.get(event.chunk);
+            if (count === 1) {
+                this._queuedCountByChunk.delete(event.chunk);
+            } else {
+                this._queuedCountByChunk.set(event.chunk, count - 1);
+            }
             this._applyEvent(event);
         }
+        this._pendingEvents.splice(0, applied);
     }
 
     /**
