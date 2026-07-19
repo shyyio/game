@@ -12,6 +12,9 @@ export class AbstractDrawLayer extends Container {
         // interactive control is a HUD Container on the stage. Without this, each pointermove
         // hit-tests every sprite in the layer.
         this.eventMode = "none";
+        // Each layer batches and uploads on its own: a change inside one layer (a gliding item,
+        // an animation frame) re-packs only that layer's geometry, not the whole scene's.
+        this.isRenderGroup = true;
         /**
          * @type {TextureRegistry|null}
          */
