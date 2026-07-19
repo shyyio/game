@@ -8,6 +8,10 @@ export class AbstractDrawLayer extends Container {
 
     constructor() {
         super();
+        // Nothing in the world is picked through pixi: tools work off Mouse tile math, and every
+        // interactive control is a HUD Container on the stage. Without this, each pointermove
+        // hit-tests every sprite in the layer.
+        this.eventMode = "none";
         /**
          * @type {TextureRegistry|null}
          */
@@ -49,13 +53,15 @@ export class AbstractDrawLayer extends Container {
     set mapMode(value) {}
 
     /**
-     * Optional hook: advances animated sprites to the synchronized frame, with the
-     * frame's elapsed ms for layers that interpolate continuous motion.
+     * Optional hook: advances animated sprites to the synchronized frame, with the frame's elapsed
+     * ms for layers that interpolate continuous motion and the chunks now on screen for layers that
+     * cull their children.
      * @param {number} frame current animation frame, in [0, 8)
      * @param {number} deltaMS elapsed time since the previous tick, in ms
+     * @param {Set<number>} visibleChunks the chunks the viewport covers this frame
      * @returns {void}
      */
-    tick(frame, deltaMS) {}
+    tick(frame, deltaMS, visibleChunks) {}
 
     /**
      * Optional hook: pin a placement preview to the screen center in center-lock (mobile) mode.

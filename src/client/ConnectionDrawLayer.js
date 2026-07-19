@@ -1,6 +1,7 @@
 import {Sprite, Texture} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
-import {TILE_SIZE, sameChunks, viewportChunks} from "@/client/constants.js";
+import {ChunkNode} from "@/client/ChunkNode.js";
+import {TILE_SIZE, sameChunks} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
 
 // Output (front) and input (back) connection stubs, rotated by the object's facing.
@@ -40,7 +41,7 @@ class ConnectionSprite extends Sprite {
 /**
  * The single shared connection layer: draws an animated stub at each connected port of every cached
  * object whose definition opts in (`renderConnections`). Connection geometry is re-derived only for
- * the objects a cache change touched, and sprites exist only for on-screen chunks.
+ * the objects a cache change touched, and only on-screen chunks are mounted.
  */
 export class ConnectionDrawLayer extends AbstractDrawLayer {
 
@@ -48,11 +49,14 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
         super();
         // Connection geometry per object id, re-derived only when the object or a neighbor changes.
         this._connections = new Map();
-        // Live sprites, per object id, for objects in a visible chunk.
+        // Live sprites per object id, and the chunk node each object's sprites hang under.
         this._sprites = new Map();
+        this._spriteChunks = new Map();
+        this._chunks = new Map();
         // Object ids whose connections need re-deriving on the next tick.
         this._dirty = new Set();
-        // Chunk ids the sprites currently cover.
+        // The chunks whose roots are mounted.
+        this._mounted = new Set();
         this._visibleChunks = new Set();
         this._mapMode = false;
     }
@@ -93,15 +97,17 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
      * Re-derives the connections a cache change invalidated, reconciles sprites against the
      * visible chunks, then advances every live stub to the shared animation frame.
      * @param {number} frame animation frame, in [0, 8)
+     * @param {number} deltaMS elapsed time since the previous tick, in ms
+     * @param {Set<number>} visibleChunks the chunks the viewport covers this frame
      */
-    tick(frame) {
+    tick(frame, deltaMS, visibleChunks) {
         if (this._mapMode || this.cache === null || this.textureRegistry === null) {
             return;
         }
-        this._reconcileViewport();
+        this._reconcileViewport(visibleChunks);
         this._flushDirty();
-        for (const sprites of this._sprites.values()) {
-            for (const sprite of sprites) {
+        for (const chunk of this._mounted) {
+            for (const sprite of this._chunks.get(chunk).spriteList) {
                 sprite.setAnimationFrame(frame);
             }
         }
@@ -174,17 +180,10 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
      * @private
      */
     _syncSprites(id) {
-        const existing = this._sprites.get(id);
-        if (existing !== undefined) {
-            for (const sprite of existing) {
-                sprite.destroy();
-                this.removeChild(sprite);
-            }
-            this._sprites.delete(id);
-        }
+        this._dropSprites(id);
 
         const entry = this.cache.get(id);
-        if (entry === null || !this._visibleChunks.has(entry.chunk)) {
+        if (entry === null) {
             return;
         }
 
@@ -193,6 +192,7 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
             return;
         }
 
+        const node = this._node(entry.chunk);
         const sprites = [];
         for (const connection of connections) {
             const sprite = new ConnectionSprite(
@@ -201,52 +201,110 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
                 connection.angle,
                 this.textureRegistry.getAnimation(connection.base),
             );
-            this.addChild(sprite);
+            node.sprites.addChild(sprite);
             sprites.push(sprite);
         }
         this._sprites.set(id, sprites);
+        this._spriteChunks.set(id, entry.chunk);
+
+        if (this._visibleChunks.has(entry.chunk)) {
+            this._mountChunk(entry.chunk);
+        }
     }
 
     /**
-     * Adds sprites for chunks that panned into view and drops those that panned out, so sprite
-     * count tracks the screen rather than the whole cache.
+     * Destroys one object's stubs, dropping its chunk node once nothing is left in it.
+     * @param {number} id
      * @returns {void}
      * @private
      */
-    _reconcileViewport() {
-        const visible = viewportChunks(this.viewport);
+    _dropSprites(id) {
+        const existing = this._sprites.get(id);
+        if (existing === undefined) {
+            return;
+        }
+        for (const sprite of existing) {
+            // Scans only its own chunk's children, and detaches from its parent.
+            sprite.destroy();
+        }
+        this._sprites.delete(id);
+
+        const chunk = this._spriteChunks.get(id);
+        this._spriteChunks.delete(id);
+
+        const node = this._chunks.get(chunk);
+        if (node !== undefined && node.isEmpty) {
+            this._unmountChunk(chunk);
+            node.destroy();
+            this._chunks.delete(chunk);
+        }
+    }
+
+    /**
+     * The chunk's node, created empty on first use.
+     * @param {number} chunk
+     * @returns {ChunkNode}
+     * @private
+     */
+    _node(chunk) {
+        let node = this._chunks.get(chunk);
+        if (node === undefined) {
+            node = new ChunkNode();
+            node.showSprites();
+            this._chunks.set(chunk, node);
+        }
+        return node;
+    }
+
+    /**
+     * @param {number} chunk
+     * @returns {void}
+     * @private
+     */
+    _mountChunk(chunk) {
+        const node = this._chunks.get(chunk);
+        if (node === undefined || this._mounted.has(chunk)) {
+            return;
+        }
+        this.addChild(node.root);
+        this._mounted.add(chunk);
+    }
+
+    /**
+     * @param {number} chunk
+     * @returns {void}
+     * @private
+     */
+    _unmountChunk(chunk) {
+        if (!this._mounted.has(chunk)) {
+            return;
+        }
+        this.removeChild(this._chunks.get(chunk).root);
+        this._mounted.delete(chunk);
+    }
+
+    /**
+     * Mounts the chunks that panned into view and unmounts those that panned out.
+     * @param {Set<number>} visible the chunks the viewport covers this frame
+     * @returns {void}
+     * @private
+     */
+    _reconcileViewport(visible) {
         if (sameChunks(visible, this._visibleChunks)) {
             return;
         }
 
         for (const chunk of this._visibleChunks) {
             if (!visible.has(chunk)) {
-                for (const entry of this.cache.getByChunk(chunk)) {
-                    this._dirty.add(entry.id);
-                }
+                this._unmountChunk(chunk);
             }
         }
 
-        const entered = [];
         for (const chunk of visible) {
             if (!this._visibleChunks.has(chunk)) {
-                entered.push(chunk);
+                this._mountChunk(chunk);
             }
         }
-
         this._visibleChunks = visible;
-
-        for (const chunk of entered) {
-            for (const entry of this.cache.getByChunk(chunk)) {
-                if (!entry.data.type.renderConnections) {
-                    continue;
-                }
-                if (!this._connections.has(entry.id)) {
-                    this._connections.set(entry.id, this._deriveConnections(entry));
-                }
-                this._dirty.add(entry.id);
-            }
-        }
     }
-
 }

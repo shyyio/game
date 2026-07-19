@@ -1,5 +1,6 @@
-import {chunkId, rotate} from "@/common/util.js";
+import {TILE_VARIANT_LIMIT, chunkId, rotate, tileId, tileVariantId} from "@/common/util.js";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
+import {DEV} from "@/common/env.js";
 
 /**
  * One placed object in the ClientCache: a primary tile (for by-tile / by-chunk lookups), the
@@ -51,20 +52,26 @@ export class ClientCache {
          */
         this._byId = new Map();
         /**
-         * @type {Map<string, object[]>}
+         * @type {Map<number, object[]>}
          * @private
          */
         this._byTile = new Map();
         /**
-         * @type {Map<string, Set<number>>}
+         * @type {Map<number, Set<number>>}
          * @private
          */
         this._byChunk = new Map();
         /**
-         * @type {Map<string, object>}
+         * @type {Map<number, object>}
          * @private
          */
         this._byCell = new Map();
+        /**
+         * Position layer name -> its ordinal in the cell key, assigned on first use.
+         * @type {Map<string, number>}
+         * @private
+         */
+        this._layerCodes = new Map();
         /**
          * Rendered out-port id -> the owning CacheEntry, so the item layer resolves a port-item
          * event to its object and PortDefinition.
@@ -133,22 +140,33 @@ export class ClientCache {
     /**
      * @param {number} tileX
      * @param {number} tileY
-     * @returns {string}
+     * @returns {number}
      * @private
      */
     static _tileKey(tileX, tileY) {
-        return tileX + "," + tileY;
+        return tileId(tileX, tileY);
     }
 
     /**
+     * The cell index key. Layers are named strings, so each gets an ordinal on first sight and the
+     * key stays a number — a lookup then allocates nothing, which matters because chunk sync calls
+     * this thousands of times per burst. Mirrors the engine's own layer codes.
      * @param {number} tileX
      * @param {number} tileY
-     * @param {number} layer
-     * @returns {string}
+     * @param {string} layer
+     * @returns {number}
      * @private
      */
-    static _cellKey(tileX, tileY, layer) {
-        return tileX + "," + tileY + "," + layer;
+    _cellKey(tileX, tileY, layer) {
+        let code = this._layerCodes.get(layer);
+        if (code === undefined) {
+            code = this._layerCodes.size;
+            if (DEV && code >= TILE_VARIANT_LIMIT) {
+                throw new RangeError(`Position layer "${layer}" exceeds the ${TILE_VARIANT_LIMIT} the cell index keys on`);
+            }
+            this._layerCodes.set(layer, code);
+        }
+        return tileVariantId(tileId(tileX, tileY), code);
     }
 
     /**
@@ -186,7 +204,7 @@ export class ClientCache {
         }
 
         for (const cell of cells) {
-            this._byCell.set(ClientCache._cellKey(cell.x, cell.y, cell.layer), entry);
+            this._byCell.set(this._cellKey(cell.x, cell.y, cell.layer), entry);
         }
 
         for (const listener of [...this._setListeners]) {
@@ -239,7 +257,7 @@ export class ClientCache {
         }
 
         for (const cell of entry.cells) {
-            const key = ClientCache._cellKey(cell.x, cell.y, cell.layer);
+            const key = this._cellKey(cell.x, cell.y, cell.layer);
             if (this._byCell.get(key) === entry) {
                 this._byCell.delete(key);
             }
@@ -292,11 +310,16 @@ export class ClientCache {
      * The object covering (tileX, tileY) on `layer`, or null.
      * @param {number} tileX
      * @param {number} tileY
-     * @param {number} layer
+     * @param {string} layer
      * @returns {CacheEntry|null}
      */
     at(tileX, tileY, layer) {
-        const entry = this._byCell.get(ClientCache._cellKey(tileX, tileY, layer));
+        // A layer nothing has ever been stored on holds nothing; reads never register one.
+        const code = this._layerCodes.get(layer);
+        if (code === undefined) {
+            return null;
+        }
+        const entry = this._byCell.get(tileVariantId(tileId(tileX, tileY), code));
         return entry === undefined ? null : entry;
     }
 

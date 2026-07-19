@@ -40,13 +40,14 @@ export class DrawLayerRegistry {
 
     /**
      * Advances every layer's animated sprites to the given frame, passing the frame's
-     * elapsed milliseconds for continuous (interpolated) motion.
+     * elapsed milliseconds for continuous (interpolated) motion and the chunks now on screen.
      * @param {number} frame current animation frame, in [0, 8)
      * @param {number} deltaMS elapsed time since the previous tick, in ms
+     * @param {Set<number>} visibleChunks the chunks the viewport covers this frame
      */
-    tick(frame, deltaMS) {
+    tick(frame, deltaMS, visibleChunks) {
         for (const layer of this.layers) {
-            layer.tick(frame, deltaMS);
+            layer.tick(frame, deltaMS, visibleChunks);
         }
     }
 

@@ -1,4 +1,5 @@
 import {CHUNK_SIZE, REGION_SIZE, Direction} from "@/common/constants.js";
+import {DEV} from "@/common/env.js";
 
 const REGION_HALF = REGION_SIZE / 2;
 
@@ -51,7 +52,9 @@ export function chunkId(x, y) {
  * @returns {number}
  */
 export function tileId(x, y) {
-    if (x < -TILE_HALF || x >= TILE_HALF || y < -TILE_HALF || y >= TILE_HALF) {
+    // Called per spatial lookup, so the bounds check is dev-only: out of the box it returns a
+    // colliding id rather than throwing.
+    if (DEV && (x < -TILE_HALF || x >= TILE_HALF || y < -TILE_HALF || y >= TILE_HALF)) {
         throw new RangeError(`Tile (${x}, ${y}) is outside the ${TILE_SPAN}x${TILE_SPAN} tile box`);
     }
     return (y + TILE_HALF) * TILE_SPAN + (x + TILE_HALF);
