@@ -130,3 +130,6 @@ docs/
 
 # Benchmark CPU profiles
 profiles/
+
+# DevTools performance traces
+Trace-*.json
