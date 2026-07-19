@@ -2,6 +2,7 @@ import {AbstractWireObject} from "@/common/AbstractWireObject.js";
 
 /**
  * Base class for every message a session sends to the game.
+ * @abstract
  */
 export class AbstractMessage extends AbstractWireObject {
 

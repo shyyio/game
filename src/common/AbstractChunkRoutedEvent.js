@@ -3,6 +3,7 @@ import {AbstractEvent} from "@/common/AbstractEvent.js";
 
 /**
  * An event routed to the chunk topic derived from its (x, y) tile position (`chunk` never wired).
+ * @abstract
  */
 export class AbstractChunkRoutedEvent extends AbstractEvent {
 

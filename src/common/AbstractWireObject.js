@@ -1,5 +1,6 @@
 /**
  * Base for everything on the wire (messages and events): carries the `wireFields` codec contract.
+ * @abstract
  */
 export class AbstractWireObject {
 

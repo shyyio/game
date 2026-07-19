@@ -6,6 +6,7 @@ import {NotImplementedError} from "@/common/error.js";
  * A chunked layer whose sprite mode draws each chunk as one {@link AnimatedTileMesh}: every chunk
  * shares the layer's frame table and shader, so the animation advances with a single uniform write
  * per frame.
+ * @abstract
  */
 export class AbstractTileMeshDrawLayer extends AbstractChunkedDrawLayer {
 

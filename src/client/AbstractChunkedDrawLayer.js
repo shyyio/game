@@ -9,6 +9,7 @@ import {getOrCreate} from "@/common/util.js";
  * A layer whose children group per chunk under {@link ChunkNode} roots: chunk roots mount and
  * unmount as the viewport moves, stale chunks rebuild in one pass per tick, and map mode swaps
  * each mounted chunk's sprites for pooled geometry.
+ * @abstract
  */
 export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
 
