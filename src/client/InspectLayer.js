@@ -16,10 +16,6 @@ export class InspectLayer extends AbstractDrawLayer {
         return 300;
     }
 
-    onEvent(event) {
-        // No-op: driven by hover, not game events.
-    }
-
     /**
      * Replaces the current highlights (empty clears).
      * @param {InspectHighlight[]} highlights

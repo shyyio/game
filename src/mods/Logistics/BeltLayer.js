@@ -256,12 +256,6 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * No-op: belt rendering is driven imperatively by LogisticsClientMod, not by events.
-     * @param {AbstractEvent} event
-     */
-    onEvent(event) {}
-
-    /**
      * Renders a newly-placed or chunk-synced belt (undergrounds are buried and skipped). The
      * bend is added straight and re-derived from neighbors on the next structural cache change.
      * @param {number} id

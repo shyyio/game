@@ -37,10 +37,6 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
         return 200;
     }
 
-    onEvent(event) {
-        // No-op: the ghost reacts to tool hover, not to game events.
-    }
-
     /**
      * Shows a single ghost at the tile facing `direction`, tinted red when blocked.
      * @param {number} tileX

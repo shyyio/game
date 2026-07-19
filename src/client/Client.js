@@ -470,7 +470,7 @@ export class Client {
      */
     dispatchEvent(event) {
         this.cacheSync.onEvent(event);
-        for (const mod of [...this.modRegistry.clientMods]) {
+        for (const mod of this.modRegistry.clientMods) {
             mod.onEvent(event, this);
         }
         this.drawLayerRegistry.dispatchEvent(event);

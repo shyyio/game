@@ -46,10 +46,6 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
         return 1000;
     }
 
-    onEvent(event) {
-        // No-op: feedback tiles are driven by tool placement, not by game events.
-    }
-
     /**
      * Shows the current placement's geometry feedback, replacing any previous.
      * @param {{blocked?: {x: number, y: number}[], overwrite?: {x: number, y: number}[], clear?: {x: number, y: number}[], showTarget?: boolean}} feedback

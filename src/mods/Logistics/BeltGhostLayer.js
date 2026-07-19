@@ -36,10 +36,6 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         return 200;
     }
 
-    onEvent(event) {
-        // No-op: the ghost reacts to tool hover, not to game events.
-    }
-
     /**
      * Shows a single ghost belt/ramp at the tile facing `direction` (ramps/undergrounds ignore `bend`).
      * @param {number} tileX

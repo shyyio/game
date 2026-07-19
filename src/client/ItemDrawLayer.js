@@ -87,6 +87,10 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         this.visible = !value;
     }
 
+    get eventClasses() {
+        return [PortItemSetEvent, PortItemClearEvent];
+    }
+
     /**
      * Renders or clears a resting out-port item, deriving its tile from the object index;
      * ignores ports not in the index (e.g. belt-path ports, which the Logistics mod drives).
@@ -94,9 +98,6 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     onEvent(event) {
-        if (!(event instanceof PortItemSetEvent) && !(event instanceof PortItemClearEvent)) {
-            return;
-        }
         // A null placement means a port this layer doesn't own (a belt-path port, or a
         // port whose id isn't in the index) — leave it to the owning mod.
         const placement = this._resolvePort(event.portId);

@@ -64,13 +64,6 @@ export class PathDebugDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * No-op: LogisticsClientMod drives this layer imperatively.
-     * @param {AbstractEvent} event
-     * @returns {void}
-     */
-    onEvent(event) {}
-
-    /**
      * Repaints every tracked path; skipped while hidden. Called when a path's belts
      * land in the cache, since a path recalc can arrive before its belt inserts.
      * @returns {void}

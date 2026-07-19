@@ -20,10 +20,6 @@ export class BeltOverlayDrawLayer extends AbstractDrawLayer {
         this.visible = !value;
     }
 
-    onEvent(event) {
-        // No-op: the tunnel reveal reacts to inspect hover, not to journal events.
-    }
-
     /**
      * Reveals the underground belts of a tunnel as a line of buried-belt sprites.
      * @param {{x: number, y: number}[]} tiles tunnel tiles, in order
