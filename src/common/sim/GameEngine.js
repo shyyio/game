@@ -1179,6 +1179,7 @@ export class GameEngine {
             }
         }
 
+        const batches = new Map();
         for (const eid of this.world.query([this._portDef.store])) {
             if (referenced.has(eid)) {
                 continue;
@@ -1186,10 +1187,18 @@ export class GameEngine {
             if (this.world.hasComponent(eid, this._positionDef.store)) {
                 this._portsByEdge.delete(this._edgeKey(eid));
             }
+            const pending = this._pendingClear.get(eid);
+            if (pending !== undefined) {
+                // The port dies for good: emit its deferred clear now, no later diff will.
+                this._portBatch(batches, pending.x, pending.y).addClear(eid);
+                this._pendingClear.delete(eid);
+            }
             this._rendered[eid] = 0;
             this._portShadow[eid] = EMPTY;
-            this._pendingClear.delete(eid);
             this.world.removeEntity(eid);
+        }
+        for (const batch of batches.values()) {
+            this.emitEvent(batch);
         }
     }
 
