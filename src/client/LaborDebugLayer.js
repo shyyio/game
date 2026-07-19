@@ -3,7 +3,7 @@ import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {TILE_SIZE, GAME_FONT} from "@/client/constants.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {tileId} from "@/common/util.js";
-import {RoadBehavior} from "@/common/sim/behaviors.js";
+import {RoadBehavior, isLaborBehavior} from "@/common/sim/behaviors.js";
 import {LaborAssignmentEvent, NO_HOUSING} from "@/common/LaborEvents.js";
 import {DEBUG_COLOR} from "@/client/Theme.js";
 import {drawLine, drawCircle, drawRect} from "@/client/pixiUtils.js";
@@ -74,27 +74,12 @@ export class LaborDebugLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Subscribes to the shared cache; the client calls this once when it builds the layer.
-     * @param {ClientCache} cache
-     * @returns {void}
-     */
-    bindCache(cache) {
-        cache.onSet(entry => this._onCacheChange(entry));
-        cache.onRemove(entry => this._onCacheChange(entry));
-    }
-
-    /**
-     * @private
      * @param {CacheEntry} entry
      * @returns {void}
      */
-    _onCacheChange(entry) {
-        const type = entry.data.type;
-        if (type === undefined || type.behavior === null) {
-            return;
-        }
-        const behavior = type.behavior;
-        if (behavior instanceof RoadBehavior || behavior.laborSupply > 0 || behavior.laborCost > 0) {
+    onCacheChange(entry) {
+        const behavior = entry.behavior;
+        if (behavior !== null && isLaborBehavior(behavior)) {
             this._stale = true;
         }
     }
@@ -154,8 +139,7 @@ export class LaborDebugLayer extends AbstractDrawLayer {
         // tileId -> road cell, over every cached road entry's cells.
         const roadTiles = new Map();
         for (const entry of this.cache.values()) {
-            const type = entry.data.type;
-            if (type !== undefined && type.behavior instanceof RoadBehavior) {
+            if (entry.behavior instanceof RoadBehavior) {
                 for (const cell of entry.cells) {
                     roadTiles.set(tileId(cell.x, cell.y), {x: cell.x, y: cell.y, entryId: entry.id});
                 }
@@ -226,12 +210,8 @@ export class LaborDebugLayer extends AbstractDrawLayer {
                 if (entry === null || attached.has(entry.id)) {
                     continue;
                 }
-                const type = entry.data.type;
-                if (type === undefined || type.behavior === null) {
-                    continue;
-                }
-                const behavior = type.behavior;
-                if (behavior.laborSupply === 0 && behavior.laborCost === 0) {
+                const behavior = entry.behavior;
+                if (behavior === null || (behavior.laborSupply === 0 && behavior.laborCost === 0)) {
                     continue;
                 }
                 attached.add(entry.id);

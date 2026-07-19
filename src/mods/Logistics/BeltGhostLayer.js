@@ -37,6 +37,12 @@ export class BeltGhostLayer extends AbstractDrawLayer {
     }
 
     /**
+     * Stays visible in map mode: the active placement preview reads at any zoom.
+     * @param {boolean} value
+     */
+    set mapMode(value) {}
+
+    /**
      * Shows a single ghost belt/ramp at the tile facing `direction` (ramps/undergrounds ignore `bend`).
      * @param {number} tileX
      * @param {number} tileY

@@ -1,9 +1,10 @@
 import {Sprite} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
+import {DisplayPool} from "@/client/DisplayPool.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {tileId} from "@/common/util.js";
-import {RoadBehavior} from "@/common/sim/behaviors.js";
+import {RoadBehavior, isLaborBehavior} from "@/common/sim/behaviors.js";
 import {LaborAssignmentEvent, NO_HOUSING} from "@/common/LaborEvents.js";
 
 // Spritesheet base of the 8-frame walk cycle.
@@ -66,11 +67,25 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
          */
         this._workers = new Map();
         /**
-         * Idle figures awaiting reuse, kept as invisible children.
-         * @type {WorkerSprite[]}
+         * Idle figures awaiting reuse, kept as invisible children; capped at the render cap,
+         * since no more could ever show at once.
+         * @type {DisplayPool}
          * @private
          */
-        this._pool = [];
+        this._pool = new DisplayPool(
+            () => {
+                const worker = new WorkerSprite(this._walkFrames()[0]);
+                this.addChild(worker);
+                return worker;
+            },
+            worker => {
+                worker.visible = false;
+            },
+            worker => {
+                worker.visible = true;
+            },
+            WORKER_RENDER_CAP,
+        );
         // Routes re-derive after any labor-relevant cache change, spread over ticks and drained
         // ROUTE_REBUILDS_PER_TICK per tick: assignment events queue their machine as urgent; the
         // flag requeues every assignment as background work, served only with leftover budget so
@@ -97,24 +112,6 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
         return 19;
     }
 
-    /**
-     * Hides workers in map mode.
-     * @param {boolean} value
-     */
-    set mapMode(value) {
-        this.visible = !value;
-    }
-
-    /**
-     * Subscribes to the shared cache; the client calls this once when it builds the layer.
-     * @param {ClientCache} cache
-     * @returns {void}
-     */
-    bindCache(cache) {
-        cache.onSet(entry => this._onCacheChange(entry));
-        cache.onRemove(entry => this._onCacheChange(entry));
-    }
-
     get eventClasses() {
         return [LaborAssignmentEvent];
     }
@@ -139,17 +136,12 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
     /**
      * Marks routes stale when a road/housing/labor-machine entry appears or disappears; other
      * cache traffic (belts, decorations) never reroutes a commute.
-     * @private
      * @param {CacheEntry} entry
      * @returns {void}
      */
-    _onCacheChange(entry) {
-        const type = entry.data.type;
-        if (type === undefined || type.behavior === null) {
-            return;
-        }
-        const behavior = type.behavior;
-        if (behavior instanceof RoadBehavior || behavior.laborSupply > 0 || behavior.laborCost > 0) {
+    onCacheChange(entry) {
+        const behavior = entry.behavior;
+        if (behavior !== null && isLaborBehavior(behavior)) {
             this._routesStale = true;
         }
     }
@@ -274,12 +266,7 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
         let worker = this._workers.get(machineId);
         const fresh = worker === undefined;
         if (fresh) {
-            worker = this._pool.pop();
-            if (worker === undefined) {
-                worker = new WorkerSprite(this._walkFrames()[0]);
-                this.addChild(worker);
-            }
-            worker.visible = true;
+            worker = this._pool.take();
             this._workers.set(machineId, worker);
         }
         worker.setRoute(waypoints);
@@ -297,10 +284,10 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
      */
     _roadAt(x, y) {
         const entry = this.cache.at(x, y, LAYER_SURFACE);
-        if (entry === null || entry.data.type === undefined || entry.data.type.behavior === null) {
+        if (entry === null || !(entry.behavior instanceof RoadBehavior)) {
             return null;
         }
-        return entry.data.type.behavior instanceof RoadBehavior ? entry : null;
+        return entry;
     }
 
     /**
@@ -407,9 +394,8 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
         if (worker === undefined) {
             return;
         }
-        worker.visible = false;
+        this._pool.release(worker);
         this._workers.delete(machineId);
-        this._pool.push(worker);
     }
 }
 

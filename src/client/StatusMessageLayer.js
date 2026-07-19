@@ -138,12 +138,24 @@ export class StatusMessageLayer extends Container {
             return;
         }
         this._applyMessage(message);
+        this._armTextTimer();
+    }
+
+    /**
+     * Gates the next Text write; a fired trailing write opens its own interval, so a sustained
+     * burst stays at one write per {@link TEXT_REFRESH_MS}.
+     * @private
+     * @returns {void}
+     */
+    _armTextTimer() {
         this._textTimer = setTimeout(() => {
             this._textTimer = null;
-            if (this._pendingMessage !== null && this._pendingMessage !== this._text.text) {
-                this._applyMessage(this._pendingMessage);
-            }
+            const pending = this._pendingMessage;
             this._pendingMessage = null;
+            if (pending !== null && pending !== this._text.text) {
+                this._applyMessage(pending);
+                this._armTextTimer();
+            }
         }, TEXT_REFRESH_MS);
     }
 

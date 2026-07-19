@@ -8,11 +8,9 @@ import {
     Texture,
     TILE_SIZE,
     Direction,
-    AbstractDrawLayer,
-    ChunkNode,
-    sameChunks,
+    AbstractChunkedDrawLayer,
 } from "@/sdk/client.js";
-import {chunkId} from "@/sdk/common.js";
+import {chunkId, getOrCreate} from "@/sdk/common.js";
 import {BeltBend, BeltType} from "./constants.js";
 import {inferBeltParent} from "./geometry.js";
 
@@ -105,25 +103,14 @@ export class Belt {
     }
 }
 
-export class BeltDrawLayer extends AbstractDrawLayer {
+export class BeltDrawLayer extends AbstractChunkedDrawLayer {
 
     constructor() {
         super();
-        // Mounting and unmounting chunk roots as the viewport moves is this layer's normal state.
-        // Its own render group keeps that churn from re-collecting the whole scene, and costs no
-        // batching: each chunk draws as one mesh either way.
-        this.enableRenderGroup();
-
         this._belts = {};
         // The belts each chunk holds, and the mesh drawing them.
         this._chunkBelts = new Map();
-        this._chunks = new Map();
         this._meshes = new Map();
-        // The chunks whose roots are mounted, and those whose mesh or map geometry is stale.
-        this._mounted = new Set();
-        this._dirtyChunks = new Set();
-        this._visibleChunks = new Set();
-        this._mapMode = false;
         // Bumped on every structural cache change; a belt whose bend was derived at an older
         // epoch re-derives when next ticked, so belts off-screen at the change still catch up.
         this._bendEpoch = 0;
@@ -172,20 +159,6 @@ export class BeltDrawLayer extends AbstractDrawLayer {
      */
     get cache() {
         return this._cache;
-    }
-
-    /**
-     * Swaps the mounted children between full sprites and pooled map geometry.
-     * @param {boolean} value
-     */
-    set mapMode(value) {
-        if (value === this._mapMode) {
-            return;
-        }
-        this._mapMode = value;
-        for (const chunk of this._mounted) {
-            this._applyMode(chunk);
-        }
     }
 
     /**
@@ -273,12 +246,7 @@ export class BeltDrawLayer extends AbstractDrawLayer {
 
         const chunk = chunkId(x, y);
         this._node(chunk);
-        let belts = this._chunkBelts.get(chunk);
-        if (belts === undefined) {
-            belts = new Set();
-            this._chunkBelts.set(chunk, belts);
-        }
-        belts.add(belt);
+        getOrCreate(this._chunkBelts, chunk, () => new Set()).add(belt);
         this._dirtyChunks.add(chunk);
 
         if (this._visibleChunks.has(chunk)) {
@@ -341,11 +309,15 @@ export class BeltDrawLayer extends AbstractDrawLayer {
             return;
         }
         this._chunkBelts.delete(chunk);
-        this._unmountChunk(chunk);
-        this._chunks.get(chunk).destroy();
-        this._chunks.delete(chunk);
+        this._dropChunk(chunk);
+    }
+
+    /**
+     * @param {number} chunk
+     * @returns {void}
+     */
+    _onChunkDropped(chunk) {
         this._meshes.delete(chunk);
-        this._dirtyChunks.delete(chunk);
     }
 
     /**
@@ -357,9 +329,6 @@ export class BeltDrawLayer extends AbstractDrawLayer {
      * @param {Set<number>} visibleChunks the chunks the viewport covers this frame
      */
     tick(frame, deltaMS, visibleChunks) {
-        if (this.cache === null) {
-            return;
-        }
         this._reconcileViewport(visibleChunks);
         if (this._mapMode) {
             this._flushDirtyChunks();
@@ -376,117 +345,38 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Mounts the chunks that panned into view and unmounts those that panned out.
-     * @param {Set<number>} visible the chunks the viewport covers this frame
-     * @returns {void}
-     * @private
-     */
-    _reconcileViewport(visible) {
-        if (sameChunks(visible, this._visibleChunks)) {
-            return;
-        }
-
-        for (const chunk of this._visibleChunks) {
-            if (!visible.has(chunk)) {
-                this._unmountChunk(chunk);
-            }
-        }
-
-        for (const chunk of visible) {
-            if (!this._visibleChunks.has(chunk)) {
-                this._mountChunk(chunk);
-            }
-        }
-        this._visibleChunks = visible;
-    }
-
-    /**
-     * Rebuilds the pooled geometry of every mounted chunk a belt change invalidated, and drops the
-     * geometry of chunks left empty.
-     * @returns {void}
-     * @private
-     */
-    _flushDirtyChunks() {
-        if (this._dirtyChunks.size === 0) {
-            return;
-        }
-        for (const chunk of this._dirtyChunks) {
-            if (!this._mounted.has(chunk)) {
-                continue;
-            }
-            if (this._mapMode) {
-                this._buildChunkGeometry(chunk);
-            } else {
-                this._buildChunkMesh(chunk);
-            }
-        }
-        this._dirtyChunks.clear();
-    }
-
-    /**
-     * The chunk's node, created empty on first use.
+     * Hangs the chunk's animated mesh under its fresh node.
+     * @param {ChunkNode} node
      * @param {number} chunk
-     * @returns {ChunkNode}
-     * @private
+     * @returns {void}
      */
-    _node(chunk) {
-        let node = this._chunks.get(chunk);
-        if (node === undefined) {
-            node = new ChunkNode();
-            const mesh = new AnimatedTileMesh(this._beltShader());
-            node.sprites.addChild(mesh);
-            this._meshes.set(chunk, mesh);
-            this._chunks.set(chunk, node);
-        }
-        return node;
+    _initChunkNode(node, chunk) {
+        const mesh = new AnimatedTileMesh(this._beltShader());
+        node.sprites.addChild(mesh);
+        this._meshes.set(chunk, mesh);
     }
 
     /**
      * @param {number} chunk
      * @returns {void}
-     * @private
      */
-    _mountChunk(chunk) {
-        const node = this._chunks.get(chunk);
-        if (node === undefined || this._mounted.has(chunk)) {
-            return;
-        }
-        this._mounted.add(chunk);
-        this._applyMode(chunk);
-        this.addChild(node.root);
-    }
-
-    /**
-     * @param {number} chunk
-     * @returns {void}
-     * @private
-     */
-    _unmountChunk(chunk) {
-        if (!this._mounted.has(chunk)) {
-            return;
-        }
-        this.removeChild(this._chunks.get(chunk).root);
-        this._mounted.delete(chunk);
-    }
-
-    /**
-     * Hangs the current mode's node under the chunk root, detaching the other one.
-     * @param {number} chunk
-     * @returns {void}
-     * @private
-     */
-    _applyMode(chunk) {
-        const node = this._chunks.get(chunk);
-
+    _rebuildChunk(chunk) {
         if (this._mapMode) {
-            node.showGraphics(this._buildChunkGeometry(chunk));
-            return;
+            this._buildChunkGeometry(chunk);
+        } else {
+            this._buildChunkMesh(chunk);
         }
-        // Bends first: the mesh bakes them in, and a chunk mounting for the first time has never
-        // derived them.
+    }
+
+    /**
+     * Bends first: the mesh bakes them in, and a chunk mounting for the first time has never
+     * derived them.
+     * @param {number} chunk
+     * @returns {void}
+     */
+    _prepareChunkSprites(chunk) {
         this._refreshBends(chunk);
         this._buildChunkMesh(chunk);
-        node.showSprites();
     }
 
 }

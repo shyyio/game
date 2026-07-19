@@ -96,6 +96,23 @@ export function chunkOrigin(chunk) {
 
 
 /**
+ * The map's value under a key, created and stored on first use.
+ * @param map {Map}
+ * @param key {*}
+ * @param create {function(): *}
+ * @returns {*}
+ */
+export function getOrCreate(map, key, create) {
+    let value = map.get(key);
+    if (value === undefined) {
+        value = create();
+        map.set(key, value);
+    }
+    return value;
+}
+
+
+/**
  * @typedef Vec {Object}
  * @property direction {Direction}
  * @property x {number}

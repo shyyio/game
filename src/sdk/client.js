@@ -24,6 +24,9 @@ export {AbstractClientMod} from "@/client/AbstractClientMod.js";
 // `ObjectDrawLayer` is the derived-default renderer for a placed object type, driven purely by the
 // shared cache (ClientCacheSync owns the entries). A type swaps it via `createDrawLayer(client)`.
 export {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
+// `AbstractChunkedDrawLayer` adds per-chunk grouping: ChunkNode roots mounted by viewport,
+// one-pass stale-chunk rebuilds, and the map-mode sprite/geometry swap.
+export {AbstractChunkedDrawLayer} from "@/client/AbstractChunkedDrawLayer.js";
 export {ObjectDrawLayer} from "@/client/ObjectDrawLayer.js";
 // The `data` payload of a derived-type cache entry ({type, direction}).
 export {ObjectClientData} from "@/client/ClientCacheSync.js";

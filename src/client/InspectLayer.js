@@ -17,6 +17,12 @@ export class InspectLayer extends AbstractDrawLayer {
     }
 
     /**
+     * Stays visible in map mode: the hover highlight reads at any zoom.
+     * @param {boolean} value
+     */
+    set mapMode(value) {}
+
+    /**
      * Replaces the current highlights (empty clears).
      * @param {InspectHighlight[]} highlights
      */

@@ -36,6 +36,18 @@ export class CacheEntry {
     portName(portId) {
         return Object.keys(this.ports).find(name => this.ports[name] === portId);
     }
+
+    /**
+     * The type's behavior, or null for typeless (bespoke) or behaviorless entries.
+     * @returns {AbstractBehavior|null}
+     */
+    get behavior() {
+        const type = this.data.type;
+        if (type === undefined || type.behavior === null) {
+            return null;
+        }
+        return type.behavior;
+    }
 }
 
 /**

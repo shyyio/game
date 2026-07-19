@@ -197,6 +197,15 @@ export class RoadBehavior extends AbstractBehavior {
 }
 
 /**
+ * Whether a behavior participates in labor routing (roads, housing supply, manned machines).
+ * @param {AbstractBehavior} behavior
+ * @returns {boolean}
+ */
+export function isLaborBehavior(behavior) {
+    return behavior instanceof RoadBehavior || behavior.laborSupply > 0 || behavior.laborCost > 0;
+}
+
+/**
  * A labor source: contributes laborSupply to the road component its footprint touches.
  */
 export class HousingBehavior extends AbstractBehavior {

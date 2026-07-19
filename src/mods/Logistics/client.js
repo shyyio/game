@@ -198,7 +198,14 @@ export class LogisticsClientMod extends AbstractClientMod {
         if (port === null) {
             return;
         }
-        client.itemLayer.moveItem(PORT_SPRITE_KEY(portId), port.tileX, port.tileY, true, port.sourceDirection, type);
+        client.itemLayer.moveItem({
+            key: PORT_SPRITE_KEY(portId),
+            tileX: port.tileX,
+            tileY: port.tileY,
+            halfTile: true,
+            sourceDirection: port.sourceDirection,
+            type,
+        });
     }
 
     /**
@@ -369,7 +376,16 @@ export class LogisticsClientMod extends AbstractClientMod {
             // `position` counts from the output edge; belt slots count from the input edge.
             const belt = this._resolveItemBelt(client, pathId, outputSlot - position);
             if (belt !== null) {
-                client.itemLayer.moveItem(itemId, belt.tileX, belt.tileY, belt.halfTile, belt.sourceDirection, item.type, snap, belt.hidden);
+                client.itemLayer.moveItem({
+                    key: itemId,
+                    tileX: belt.tileX,
+                    tileY: belt.tileY,
+                    halfTile: belt.halfTile,
+                    sourceDirection: belt.sourceDirection,
+                    type: item.type,
+                    snap,
+                    hidden: belt.hidden,
+                });
             }
             position += 1;
         }
