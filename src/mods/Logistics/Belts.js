@@ -94,6 +94,10 @@ export class Belts {
         this._belts = new Map();
         // Belt id -> belt, an index over the tile map for O(1) lookup by client id.
         this._beltById = new Map();
+        // Chunk -> the belts and the paths (by head tile) it holds, so a subscribing session syncs a
+        // chunk without a scan of every belt and path in the world. Paths never cross a chunk seam.
+        this._beltsByChunk = new Map();
+        this._pathsByChunk = new Map();
         // Every live path's items, in three shared columns.
         this._items = new ItemStore();
         // Stable item id, the client's sprite key for continuity/glide.
@@ -238,6 +242,43 @@ export class Belts {
             this._belts.set(key, [held, belt]);
         }
         this._beltById.set(belt.id, belt);
+        this._chunkAdd(this._beltsByChunk, chunkId(belt.x, belt.y), belt);
+    }
+
+    /**
+     * Adds a member to a chunk-keyed set index.
+     * @private
+     * @param {Map<number, Set>} index
+     * @param {number} chunk
+     * @param {object} member
+     * @returns {void}
+     */
+    _chunkAdd(index, chunk, member) {
+        const held = index.get(chunk);
+        if (held === undefined) {
+            index.set(chunk, new Set([member]));
+        } else {
+            held.add(member);
+        }
+    }
+
+    /**
+     * Drops a member from a chunk-keyed set index, dropping the chunk once it empties.
+     * @private
+     * @param {Map<number, Set>} index
+     * @param {number} chunk
+     * @param {object} member
+     * @returns {void}
+     */
+    _chunkRemove(index, chunk, member) {
+        const held = index.get(chunk);
+        if (held === undefined) {
+            return;
+        }
+        held.delete(member);
+        if (held.size === 0) {
+            index.delete(chunk);
+        }
     }
 
     /**
@@ -254,23 +295,14 @@ export class Belts {
             this._belts.set(key, remaining.length === 1 ? remaining[0] : remaining);
         }
         this._beltById.delete(belt.id);
+        this._chunkRemove(this._beltsByChunk, chunkId(belt.x, belt.y), belt);
     }
 
     /**
-     * Every placed belt across all tiles.
-     * @private
-     * @returns {object[]}
+     * @returns {number}
      */
-    _allBelts() {
-        const all = [];
-        for (const held of this._belts.values()) {
-            if (Array.isArray(held)) {
-                all.push(...held);
-            } else {
-                all.push(held);
-            }
-        }
-        return all;
+    get beltCount() {
+        return this._beltById.size;
     }
 
     /**
@@ -1320,6 +1352,7 @@ export class Belts {
         for (const id of path.beltIds) {
             this._pathByBeltId.set(id, path);
         }
+        this._chunkAdd(this._pathsByChunk, chunkId(path.headX, path.headY), path);
     }
 
     /**
@@ -1352,6 +1385,7 @@ export class Belts {
                 this._pathsByTile.delete(key);
             }
         }
+        this._chunkRemove(this._pathsByChunk, chunkId(path.headX, path.headY), path);
         for (const id of path.beltIds) {
             if (this._pathByBeltId.get(id) === path) {
                 this._pathByBeltId.delete(id);
@@ -1629,20 +1663,17 @@ export class Belts {
     chunkSync(chunk) {
         const origin = chunkOrigin(chunk);
         let belts = null;
-        for (const belt of this._allBelts()) {
-            if (chunkId(belt.x, belt.y) === chunk) {
-                if (belts === null) {
-                    belts = new BeltSyncBatchEvent(origin.x, origin.y);
-                }
+        const chunkBelts = this._beltsByChunk.get(chunk);
+        if (chunkBelts !== undefined) {
+            belts = new BeltSyncBatchEvent(origin.x, origin.y);
+            for (const belt of chunkBelts) {
                 belts.add(belt.id, belt.x, belt.y, belt.direction, belt.type);
             }
         }
         let paths = null;
         let items = null;
-        for (const path of this.paths) {
-            if (chunkId(path.headX, path.headY) !== chunk) {
-                continue;
-            }
+        const chunkPaths = this._pathsByChunk.get(chunk);
+        for (const path of chunkPaths === undefined ? [] : chunkPaths) {
             const head = this._headInfo(path);
             if (head === null) {
                 continue;
@@ -1730,6 +1761,8 @@ export class Belts {
         this._pathByBeltId = new Map();
         this._belts = new Map();
         this._beltById = new Map();
+        this._beltsByChunk = new Map();
+        this._pathsByChunk = new Map();
         this._nextItemId = this.engine.globals.beltNextItemId;
 
         const BP = this._pathDef.store;
