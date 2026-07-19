@@ -36,6 +36,8 @@ export class LaborNetworks {
         // road-attached machine, housingObjectId null while no workers are granted. supply/demand
         // are its component's totals.
         this._assignments = new Map();
+        // chunk -> machineObjectIds, so chunk sync walks only the chunk's assignments.
+        this._assignmentsByChunk = new Map();
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._ensureFresh(), ORDER_LABOR_RECOMPUTE);
         engine.registerChunkSync(chunk => this._chunkSync(chunk));
         engine.registerRebuildHook(() => this._rebuild());
@@ -122,6 +124,16 @@ export class LaborNetworks {
         this._applyGrants(previous, next);
         this._emitDeltas(previous, next);
         this._assignments = next;
+        this._assignmentsByChunk = new Map();
+        for (const [objectId, entry] of next) {
+            const chunk = chunkId(entry.x, entry.y);
+            let objectIds = this._assignmentsByChunk.get(chunk);
+            if (objectIds === undefined) {
+                objectIds = [];
+                this._assignmentsByChunk.set(chunk, objectIds);
+            }
+            objectIds.push(objectId);
+        }
     }
 
     /**
@@ -393,19 +405,18 @@ export class LaborNetworks {
      */
     _chunkSync(chunk) {
         this._ensureFresh();
-        let batch = null;
-        for (const [objectId, entry] of this._assignments) {
-            if (chunkId(entry.x, entry.y) !== chunk) {
-                continue;
-            }
-            if (batch === null) {
-                const origin = chunkOrigin(chunk);
-                batch = new LaborAssignmentBatchEvent(origin.x, origin.y);
-            }
+        const objectIds = this._assignmentsByChunk.get(chunk);
+        if (objectIds === undefined) {
+            return [];
+        }
+        const origin = chunkOrigin(chunk);
+        const batch = new LaborAssignmentBatchEvent(origin.x, origin.y);
+        for (const objectId of objectIds) {
+            const entry = this._assignments.get(objectId);
             const housingId = entry.housingObjectId === null ? NO_HOUSING : entry.housingObjectId;
             batch.add(objectId, housingId, entry.granted, entry.x, entry.y);
         }
-        return batch === null ? [] : [batch];
+        return [batch];
     }
 
     /**

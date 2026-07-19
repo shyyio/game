@@ -280,6 +280,8 @@ export class GameEngine {
         this._rendered = new Uint8Array(this._portDef.capacity);
         this._renderX = new Int32Array(this._portDef.capacity);
         this._renderY = new Int32Array(this._portDef.capacity);
+        // chunk -> Set of rendered port eids, so chunk sync walks only the chunk's ports.
+        this._renderedByChunk = new Map();
         // Ports written since the last render diff, and a per-eid flag so a port enters the list once.
         // EMIT_RENDER walks this instead of every rendered port in the world.
         this._dirtyPorts = [];
@@ -444,10 +446,15 @@ export class GameEngine {
      * @returns {void}
      */
     registerRenderedPort(eid, x, y) {
+        if (this._rendered[eid] === 1) {
+            // Re-registered at a possibly different tile: drop the old chunk-index slot first.
+            this._unindexRenderedPort(eid);
+        }
         this._rendered[eid] = 1;
         this._portObservedGen[eid] = 0;
         this._renderX[eid] = x;
         this._renderY[eid] = y;
+        this._indexRenderedPort(eid);
         // A re-registered port survives the edit: cancel any pending clear so its sprite stays put
         // (item unchanged -> the diff emits nothing) instead of a clear+set that glides in a new sprite.
         this._pendingClear.delete(eid);
@@ -488,10 +495,47 @@ export class GameEngine {
      * @returns {void}
      */
     unregisterRenderedPort(eid) {
-        if (this._portShadow[eid] !== EMPTY && this._rendered[eid] === 1) {
-            this._pendingClear.set(eid, {x: this._renderX[eid], y: this._renderY[eid]});
+        if (this._rendered[eid] === 1) {
+            if (this._portShadow[eid] !== EMPTY) {
+                this._pendingClear.set(eid, {x: this._renderX[eid], y: this._renderY[eid]});
+            }
+            this._unindexRenderedPort(eid);
         }
         this._rendered[eid] = 0;
+    }
+
+    /**
+     * Adds a rendered port to its tile's chunk index.
+     * @private
+     * @param {number} eid
+     * @returns {void}
+     */
+    _indexRenderedPort(eid) {
+        const chunk = chunkId(this._renderX[eid], this._renderY[eid]);
+        let eids = this._renderedByChunk.get(chunk);
+        if (eids === undefined) {
+            eids = new Set();
+            this._renderedByChunk.set(chunk, eids);
+        }
+        eids.add(eid);
+    }
+
+    /**
+     * Removes a rendered port from its tile's chunk index.
+     * @private
+     * @param {number} eid
+     * @returns {void}
+     */
+    _unindexRenderedPort(eid) {
+        const chunk = chunkId(this._renderX[eid], this._renderY[eid]);
+        const eids = this._renderedByChunk.get(chunk);
+        if (eids === undefined) {
+            return;
+        }
+        eids.delete(eid);
+        if (eids.size === 0) {
+            this._renderedByChunk.delete(chunk);
+        }
     }
 
     /**
@@ -1193,6 +1237,9 @@ export class GameEngine {
                 this._portBatch(batches, pending.x, pending.y).addClear(eid);
                 this._pendingClear.delete(eid);
             }
+            if (this._rendered[eid] === 1) {
+                this._unindexRenderedPort(eid);
+            }
             this._rendered[eid] = 0;
             this._portShadow[eid] = EMPTY;
             this.world.removeEntity(eid);
@@ -1653,6 +1700,7 @@ export class GameEngine {
         this._cellByKey = new Map();
         // Drop the prior world's render/tick state so its stale eids never leak into the new world.
         this._rendered.fill(0);
+        this._renderedByChunk = new Map();
         this._portShadow.fill(EMPTY);
         this._portDirty.fill(0);
         this._dirtyPorts.length = 0;
@@ -1854,19 +1902,18 @@ export class GameEngine {
      * @returns {PortItemBatchEvent|null}
      */
     _portItemSync(chunk) {
+        const eids = this._renderedByChunk.get(chunk);
+        if (eids === undefined) {
+            return null;
+        }
         const item = this.Port.item;
         let batch = null;
-        for (const eid of this.entitiesWith(this._portDef)) {
-            if (this._rendered[eid] === 0 || item[eid] === EMPTY) {
-                continue;
-            }
-            const x = this._renderX[eid];
-            const y = this._renderY[eid];
-            if (chunkId(x, y) !== chunk) {
+        for (const eid of eids) {
+            if (item[eid] === EMPTY) {
                 continue;
             }
             if (batch === null) {
-                batch = new PortItemBatchEvent(x, y);
+                batch = new PortItemBatchEvent(this._renderX[eid], this._renderY[eid]);
             }
             batch.addSet(eid, item[eid]);
         }
