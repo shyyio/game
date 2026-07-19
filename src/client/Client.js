@@ -43,8 +43,8 @@ import {StatusMessageLayer} from "@/client/StatusMessageLayer.js";
 import {advanceAnimationFrame} from "@/client/animation.js";
 import {DEV, BROWSER} from "@/common/env.js";
 
-// Chunk-sync bundles applied per ticker frame; the rest of the queue waits so arrival order holds.
-const SYNC_CHUNKS_PER_FRAME = 2;
+// Queued per-delta events applied per ticker frame; the rest wait so arrival order holds.
+const SYNC_EVENTS_PER_FRAME = 100;
 
 // Leading entries shown per column when logging a columnar batch event.
 const LOG_BATCH_ITEMS = 5;
@@ -160,9 +160,9 @@ export class Client {
         // The chunks currently requested from the server (subscribed): the visible chunks
         // plus any that recently panned out and are awaiting a throttled unsubscribe.
         this._requestedChunks = new Set();
-        // Events awaiting the budgeted per-frame drain: chunk-sync bundles are heavy (hundreds of
-        // cache writes + sprite builds each), and everything arriving behind one queues too so
-        // events apply in arrival order.
+        // Per-delta events awaiting the budgeted per-frame drain: a chunk-sync bundle explodes to
+        // hundreds of cache writes + sprite builds, and everything arriving behind one queues too
+        // so events apply in arrival order.
         this._pendingEvents = [];
         this._lastVisibleKey = null;
         this._unsubscribeTimer = null;
@@ -464,28 +464,49 @@ export class Client {
             }
         }
         if (event instanceof ChunkSyncEvent || this._pendingEvents.length > 0) {
-            this._pendingEvents.push(event);
+            this._enqueue(event);
             return;
         }
         this._applyEvent(event);
     }
 
     /**
-     * Applies queued events, at most {@link SYNC_CHUNKS_PER_FRAME} chunk-sync bundles per frame.
+     * Queues an event for the budgeted drain, exploded to its per-delta events so the budget
+     * counts real applications, not envelopes.
+     * @private
+     * @param {AbstractEvent} event
+     * @returns {void}
+     */
+    _enqueue(event) {
+        if (event instanceof ChunkSyncEvent) {
+            // A chunk-sync bundle: queue each inner event through the normal path.
+            // Sync events are distinct types (e.g. BeltSyncEvent vs BeltInsertEvent),
+            // so handlers can already tell a load from a live change.
+            for (const inner of event.events) {
+                this._enqueue(inner);
+            }
+            return;
+        }
+        if (event instanceof AbstractBatchEvent) {
+            for (const inner of event.explode()) {
+                this._pendingEvents.push(inner);
+            }
+            return;
+        }
+        this._pendingEvents.push(event);
+    }
+
+    /**
+     * Applies queued events, at most {@link SYNC_EVENTS_PER_FRAME} per frame.
      * @private
      * @returns {void}
      */
     _drainPendingEvents() {
-        let syncBudget = SYNC_CHUNKS_PER_FRAME;
-        while (this._pendingEvents.length > 0) {
-            const event = this._pendingEvents[0];
-            if (event instanceof ChunkSyncEvent) {
-                if (syncBudget === 0) {
-                    return;
-                }
-                syncBudget -= 1;
-            }
-            this._pendingEvents.shift();
+        if (this._pendingEvents.length === 0) {
+            return;
+        }
+        const batch = this._pendingEvents.splice(0, SYNC_EVENTS_PER_FRAME);
+        for (const event of batch) {
             this._applyEvent(event);
         }
     }
@@ -497,15 +518,6 @@ export class Client {
      * @returns {void}
      */
     _applyEvent(event) {
-        if (event instanceof ChunkSyncEvent) {
-            // A chunk-sync bundle: replay each inner event through the normal path.
-            // Sync events are distinct types (e.g. BeltSyncEvent vs BeltInsertEvent),
-            // so handlers can already tell a load from a live change.
-            for (const inner of event.events) {
-                this._applyEvent(inner);
-            }
-            return;
-        }
         if (event instanceof AbstractBatchEvent) {
             // A chunk's packed deltas: replay each as the per-delta event handlers already expect.
             for (const inner of event.explode()) {
