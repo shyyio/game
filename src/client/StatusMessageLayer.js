@@ -8,6 +8,10 @@ const MARGIN = 12;
 const PADDING_X = 12;
 const PADDING_Y = 8;
 
+// Loading counts can change several times a frame while syncs drain, and every Text write
+// re-rasterizes its canvas; message writes coalesce to one per interval.
+const TEXT_REFRESH_MS = 100;
+
 /**
  * Static top-left status overlay: a screen-space HUD sibling of the viewport (on app.stage),
  * not a viewport child, so it never pans or zooms. Shows "Connecting…" until the client
@@ -29,6 +33,10 @@ export class StatusMessageLayer extends Container {
         this._batch = new Set();
         // Batch chunks still awaiting a ChunkSubscribeEvent.
         this._pending = new Set();
+        // Message-write coalescing: the timer gating the next Text write, and the message to
+        // apply when it fires.
+        this._textTimer = null;
+        this._pendingMessage = null;
 
         this._panel = new Container();
         this._panel.x = MARGIN;
@@ -115,17 +123,41 @@ export class StatusMessageLayer extends Container {
     }
 
     /**
+     * Shows a message, coalescing rapid rewrites to one per {@link TEXT_REFRESH_MS}.
      * @private
      * @param {string} message
      * @returns {void}
      */
     _show(message) {
+        this.visible = true;
+        if (message === this._text.text) {
+            return;
+        }
+        if (this._textTimer !== null) {
+            this._pendingMessage = message;
+            return;
+        }
+        this._applyMessage(message);
+        this._textTimer = setTimeout(() => {
+            this._textTimer = null;
+            if (this._pendingMessage !== null && this._pendingMessage !== this._text.text) {
+                this._applyMessage(this._pendingMessage);
+            }
+            this._pendingMessage = null;
+        }, TEXT_REFRESH_MS);
+    }
+
+    /**
+     * @private
+     * @param {string} message
+     * @returns {void}
+     */
+    _applyMessage(message) {
         this._text.text = message;
         this._background
             .clear()
             .roundRect(0, 0, this._text.width + PADDING_X * 2, this._text.height + PADDING_Y * 2, 4)
             .fill({color: PANEL_FILL, alpha: PANEL_FILL_ALPHA})
             .stroke({color: PANEL_BORDER, width: 1});
-        this.visible = true;
     }
 }
