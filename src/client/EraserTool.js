@@ -4,7 +4,7 @@ import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import Haptics from "@/client/Haptics.js";
 
 /**
- * Paint-eraser: a tap or drag deletes the surface object on each tile touched, any type. Only
+ * Paint-eraser: a tap or drag deletes every surface object on each tile touched, any type. Only
  * surface objects, so buried undergrounds are untouched (their ramp is the deletable surface).
  */
 export class EraserTool extends AbstractTool {
@@ -63,15 +63,18 @@ export class EraserTool extends AbstractTool {
     }
 
     /**
-     * Deletes the surface object covering (tileX, tileY), if any.
+     * Deletes every surface object stacked on (tileX, tileY), if any (an extractor and the
+     * non-solid resource beneath it go together).
      * @private
      */
     _erase(tileX, tileY) {
-        const target = this._cache.at(tileX, tileY, LAYER_SURFACE);
-        if (target === null) {
+        const targets = this._cache.allAt(tileX, tileY, LAYER_SURFACE);
+        if (targets.length === 0) {
             return;
         }
-        this.session.sendMessage(new DeleteObjectMessage(target.id));
+        for (const target of targets) {
+            this.session.sendMessage(new DeleteObjectMessage(target.id));
+        }
         // Drop the highlight; the tile clears once the in-flight delete lands.
         this._placementFeedbackLayer.clear();
         Haptics.tap();

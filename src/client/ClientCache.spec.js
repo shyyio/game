@@ -57,6 +57,17 @@ test("at resolves an object by cell and layer; layers are independent", () => {
     assert.strictEqual(cache.at(5, 5, 2), null);
 });
 
+test("allAt returns the full stack on a cell, bottom-up", () => {
+    const cache = new ClientCache();
+    cache.set(1, 5, 5, cell(5, 5, 0), {}, {kind: 0});
+    cache.set(2, 5, 5, cell(5, 5, 0), {}, {kind: 9});
+
+    assert.deepStrictEqual(cache.allAt(5, 5, 0).map(record => record.id), [1, 2]);
+    assert.deepStrictEqual(cache.allAt(5, 5, 1), []);
+    cache.remove(2);
+    assert.deepStrictEqual(cache.allAt(5, 5, 0).map(record => record.id), [1]);
+});
+
 test("set with multiple cells indexes every covered cell", () => {
     const cache = new ClientCache();
     cache.set(1, 5, 5, [{x: 5, y: 5, layer: 0}, {x: 6, y: 5, layer: 0}], {}, {kind: 1});

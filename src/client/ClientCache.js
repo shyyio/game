@@ -340,6 +340,22 @@ export class ClientCache {
     }
 
     /**
+     * Every object covering (tileX, tileY) on `layer`, bottom-up (latest-set last).
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {string} layer
+     * @returns {CacheEntry[]}
+     */
+    allAt(tileX, tileY, layer) {
+        const code = this._layerCodes.get(layer);
+        if (code === undefined) {
+            return [];
+        }
+        const stacked = this._byCell.get(tileVariantId(tileId(tileX, tileY), code));
+        return stacked === undefined ? [] : [...stacked];
+    }
+
+    /**
      * The object of `type` occupying (tileX, tileY) on its position layer, or null.
      * @param {number} tileX
      * @param {number} tileY
