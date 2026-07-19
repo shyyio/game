@@ -1,11 +1,11 @@
 import {Sprite, Texture} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {DisplayPool} from "@/client/DisplayPool.js";
+import {KeyedDisplayPool} from "@/client/KeyedDisplayPool.js";
 import {TILE_SIZE} from "@/client/constants.js";
-import {LAYER_SURFACE} from "@/common/constants.js";
-import {tileId} from "@/common/util.js";
+import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
+import {cellNeighbors, tileId} from "@/common/util.js";
 import {RoadBehavior, isLaborBehavior} from "@/common/sim/behaviors.js";
-import {LaborAssignmentEvent, NO_HOUSING} from "@/common/LaborEvents.js";
 
 // Spritesheet base of the 8-frame walk cycle.
 const WORKER_ANIMATION = "worker-walk";
@@ -36,43 +36,32 @@ const WORKER_RENDER_CAP = 300;
 // How often the rendered set re-derives from the viewport center.
 const WORKER_CULL_INTERVAL_MS = 300;
 
-// 4-neighborhood shared with the sim's road flood fill.
-const NEIGHBOR_DELTAS = [
-    {dx: 1, dy: 0},
-    {dx: -1, dy: 0},
-    {dx: 0, dy: 1},
-    {dx: 0, dy: -1},
-];
-
 /**
  * Walking worker figures, one per manned machine, commuting along the cached road tiles between
- * the machine's housing and the machine. Purely cosmetic: driven by LaborAssignmentEvents; the
- * route is a client-side BFS over the road entries and re-derives whenever the cache changes.
+ * the machine's housing and the machine. Purely cosmetic: driven by the shared assignment index;
+ * the route is a client-side BFS over the road entries and re-derives whenever the cache changes.
  */
 export class WorkerDrawLayer extends AbstractDrawLayer {
 
-    constructor() {
+    /**
+     * @param {LaborAssignmentCache} assignments
+     */
+    constructor(assignments) {
         super();
         /**
-         * machineId -> housingId for every manned machine in watched chunks (grants are
-         * full-crew-or-nothing, so an assigned housing means a running machine).
-         * @type {Map<number, number>}
+         * The shared machine-staffing index; unmanned assignments carry no figure.
+         * @type {LaborAssignmentCache}
          * @private
          */
-        this._assignments = new Map();
+        this._assignments = assignments;
+        assignments.onChange(machineId => this._onAssignmentChange(machineId));
         /**
-         * Live figures keyed by machineId.
-         * @type {Map<number, WorkerSprite>}
+         * Live figures keyed by machineId. Idle figures await reuse as invisible children,
+         * capped at the render cap, since no more could ever show at once.
+         * @type {KeyedDisplayPool}
          * @private
          */
-        this._workers = new Map();
-        /**
-         * Idle figures awaiting reuse, kept as invisible children; capped at the render cap,
-         * since no more could ever show at once.
-         * @type {DisplayPool}
-         * @private
-         */
-        this._pool = new DisplayPool(
+        this._workers = new KeyedDisplayPool(new DisplayPool(
             () => {
                 const worker = new WorkerSprite(this._walkFrames()[0]);
                 this.addChild(worker);
@@ -85,9 +74,9 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
                 worker.visible = true;
             },
             WORKER_RENDER_CAP,
-        );
+        ));
         // Routes re-derive after any labor-relevant cache change, spread over ticks and drained
-        // ROUTE_REBUILDS_PER_TICK per tick: assignment events queue their machine as urgent; the
+        // ROUTE_REBUILDS_PER_TICK per tick: assignment changes queue their machine as urgent; the
         // flag requeues every assignment as background work, served only with leftover budget so
         // a world-wide refresh never delays freshly visible machines.
         this._routesStale = false;
@@ -112,25 +101,21 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
         return 19;
     }
 
-    get eventClasses() {
-        return [LaborAssignmentEvent];
-    }
-
     /**
      * Tracks an assignment change; the figure itself (re)builds on the next tick.
-     * @param {LaborAssignmentEvent} event
+     * @param {number} machineId
      * @returns {void}
+     * @private
      */
-    onEvent(event) {
-        if (event.housingId === NO_HOUSING) {
-            this._assignments.delete(event.machineId);
-            this._dirtyMachines.delete(event.machineId);
-            this._staleMachines.delete(event.machineId);
-            this._releaseWorker(event.machineId);
+    _onAssignmentChange(machineId) {
+        const assignment = this._assignments.get(machineId);
+        if (assignment === null || !assignment.manned) {
+            this._dirtyMachines.delete(machineId);
+            this._staleMachines.delete(machineId);
+            this._workers.release(machineId);
             return;
         }
-        this._assignments.set(event.machineId, event.housingId);
-        this._dirtyMachines.add(event.machineId);
+        this._dirtyMachines.add(machineId);
     }
 
     /**
@@ -150,14 +135,16 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
      * Re-derives stale routes, then advances every figure's commute and walk frame.
      * @param {number} frame current animation frame, in [0, 8)
      * @param {number} deltaMS elapsed time since the previous tick, in ms
-     * @param {Set<number>} visibleChunks unused — figures cull by chunk mount
+     * @param {Set<number>} visibleChunks unused — figures cull by viewport distance
      * @returns {void}
      */
     tick(frame, deltaMS, visibleChunks) {
         if (this._routesStale) {
             this._routesStale = false;
-            for (const machineId of this._assignments.keys()) {
-                this._staleMachines.add(machineId);
+            for (const assignment of this._assignments.values()) {
+                if (assignment.manned) {
+                    this._staleMachines.add(assignment.machineId);
+                }
             }
         }
         let budget = ROUTE_REBUILDS_PER_TICK;
@@ -250,26 +237,22 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _rebuildRoute(machineId) {
-        const housingId = this._assignments.get(machineId);
-        if (housingId === undefined) {
-            this._releaseWorker(machineId);
+        const assignment = this._assignments.get(machineId);
+        if (assignment === null || !assignment.manned) {
+            this._workers.release(machineId);
             return;
         }
         const machineEntry = this.cache.get(machineId);
-        const housingEntry = this.cache.get(housingId);
+        const housingEntry = this.cache.get(assignment.housingId);
         const waypoints = machineEntry === null || housingEntry === null
             ? null
             : this._findRoute(housingEntry, machineEntry);
         if (waypoints === null) {
-            this._releaseWorker(machineId);
+            this._workers.release(machineId);
             return;
         }
-        let worker = this._workers.get(machineId);
-        const fresh = worker === undefined;
-        if (fresh) {
-            worker = this._pool.take();
-            this._workers.set(machineId, worker);
-        }
+        const fresh = !this._workers.has(machineId);
+        const worker = this._workers.take(machineId);
         worker.setRoute(waypoints);
         if (fresh) {
             worker.scatter();
@@ -302,13 +285,9 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
      */
     _findRoute(housingEntry, machineEntry) {
         const targets = new Set();
-        for (const cell of machineEntry.cells) {
-            for (const delta of NEIGHBOR_DELTAS) {
-                const x = cell.x + delta.dx;
-                const y = cell.y + delta.dy;
-                if (this._roadAt(x, y) !== null) {
-                    targets.add(tileId(x, y));
-                }
+        for (const {x, y} of cellNeighbors(machineEntry.cells)) {
+            if (this._roadAt(x, y) !== null) {
+                targets.add(tileId(x, y));
             }
         }
         if (targets.size === 0) {
@@ -318,17 +297,13 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
         // parent: road tile -> the road tile it was reached from (null for a seed by the housing).
         const parents = new Map();
         const queue = [];
-        for (const cell of housingEntry.cells) {
-            for (const delta of NEIGHBOR_DELTAS) {
-                const x = cell.x + delta.dx;
-                const y = cell.y + delta.dy;
-                const tile = tileId(x, y);
-                if (parents.has(tile) || this._roadAt(x, y) === null) {
-                    continue;
-                }
-                parents.set(tile, null);
-                queue.push({x, y, tile});
+        for (const {x, y} of cellNeighbors(housingEntry.cells)) {
+            const tile = tileId(x, y);
+            if (parents.has(tile) || this._roadAt(x, y) === null) {
+                continue;
             }
+            parents.set(tile, null);
+            queue.push({x, y, tile});
         }
 
         let goal = null;
@@ -372,31 +347,11 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
      * @returns {{x: number, y: number}}
      */
     static _entryCenter(entry) {
-        let sumX = 0;
-        let sumY = 0;
-        for (const cell of entry.cells) {
-            sumX += cell.x;
-            sumY += cell.y;
-        }
+        const centroid = entry.tileCentroid;
         return {
-            x: (sumX / entry.cells.length) * TILE_SIZE + TILE_SIZE / 2,
-            y: (sumY / entry.cells.length) * TILE_SIZE + TILE_SIZE / 2,
+            x: centroid.tileX * TILE_SIZE + TILE_SIZE / 2,
+            y: centroid.tileY * TILE_SIZE + TILE_SIZE / 2,
         };
-    }
-
-    /**
-     * Parks a machine's figure back in the pool; a no-op when it has none.
-     * @private
-     * @param {number} machineId
-     * @returns {void}
-     */
-    _releaseWorker(machineId) {
-        const worker = this._workers.get(machineId);
-        if (worker === undefined) {
-            return;
-        }
-        this._pool.release(worker);
-        this._workers.delete(machineId);
     }
 }
 

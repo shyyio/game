@@ -38,6 +38,38 @@ export class CacheEntry {
     }
 
     /**
+     * The footprint bounding box over the cells, in tiles.
+     * @returns {{minTileX: number, minTileY: number, maxTileX: number, maxTileY: number}}
+     */
+    get tileBounds() {
+        let minTileX = this.cells[0].x;
+        let minTileY = this.cells[0].y;
+        let maxTileX = minTileX;
+        let maxTileY = minTileY;
+        for (const cell of this.cells) {
+            minTileX = Math.min(minTileX, cell.x);
+            minTileY = Math.min(minTileY, cell.y);
+            maxTileX = Math.max(maxTileX, cell.x);
+            maxTileY = Math.max(maxTileY, cell.y);
+        }
+        return {minTileX, minTileY, maxTileX, maxTileY};
+    }
+
+    /**
+     * The footprint centroid, in fractional tiles.
+     * @returns {{tileX: number, tileY: number}}
+     */
+    get tileCentroid() {
+        let sumX = 0;
+        let sumY = 0;
+        for (const cell of this.cells) {
+            sumX += cell.x;
+            sumY += cell.y;
+        }
+        return {tileX: sumX / this.cells.length, tileY: sumY / this.cells.length};
+    }
+
+    /**
      * The type's behavior, or null for typeless (bespoke) or behaviorless entries.
      * @returns {AbstractBehavior|null}
      */

@@ -1,4 +1,4 @@
-import {CHUNK_SIZE, REGION_SIZE, Direction} from "@/common/constants.js";
+import {CHUNK_SIZE, NEIGHBOR_DELTAS, REGION_SIZE, Direction} from "@/common/constants.js";
 import {DEV} from "@/common/env.js";
 
 const REGION_HALF = REGION_SIZE / 2;
@@ -109,6 +109,19 @@ export function getOrCreate(map, key, create) {
         map.set(key, value);
     }
     return value;
+}
+
+/**
+ * The 4-neighborhood tiles of every cell, with duplicates where neighborhoods overlap.
+ * @param {{x: number, y: number}[]} cells
+ * @returns {IterableIterator<{x: number, y: number}>}
+ */
+export function* cellNeighbors(cells) {
+    for (const cell of cells) {
+        for (const delta of NEIGHBOR_DELTAS) {
+            yield {x: cell.x + delta.dx, y: cell.y + delta.dy};
+        }
+    }
 }
 
 

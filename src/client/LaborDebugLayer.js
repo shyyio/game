@@ -1,10 +1,9 @@
 import {Container, Graphics, Text} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {TILE_SIZE, GAME_FONT} from "@/client/constants.js";
-import {LAYER_SURFACE} from "@/common/constants.js";
-import {tileId} from "@/common/util.js";
+import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
+import {cellNeighbors, tileId} from "@/common/util.js";
 import {RoadBehavior, isLaborBehavior} from "@/common/sim/behaviors.js";
-import {LaborAssignmentEvent, NO_HOUSING} from "@/common/LaborEvents.js";
 import {DEBUG_COLOR} from "@/client/Theme.js";
 import {drawLine, drawCircle, drawRect} from "@/client/pixiUtils.js";
 
@@ -12,14 +11,6 @@ const ROAD_FILL_ALPHA = 0.35;
 const LABEL_TEXT_SIZE = 15;
 // Radius of the circle marking an assignment's housing end.
 const HOUSING_MARKER_RADIUS = 8;
-
-// 4-neighborhood shared with the sim's road flood fill.
-const NEIGHBOR_DELTAS = [
-    {dx: 1, dy: 0},
-    {dx: -1, dy: 0},
-    {dx: 0, dy: 1},
-    {dx: 0, dy: -1},
-];
 
 /**
  * Debug overlay for labor networks, derived from the cached entries the way the sim derives them:
@@ -29,7 +20,10 @@ const NEIGHBOR_DELTAS = [
  */
 export class LaborDebugLayer extends AbstractDrawLayer {
 
-    constructor() {
+    /**
+     * @param {LaborAssignmentCache} assignments
+     */
+    constructor(assignments) {
         super();
         this.visible = false;
         this._debugMode = false;
@@ -38,11 +32,14 @@ export class LaborDebugLayer extends AbstractDrawLayer {
         // Repaint lazily on the next tick after a labor-relevant change.
         this._stale = true;
         /**
-         * machineId -> housingId for every manned machine in watched chunks.
-         * @type {Map<number, number>}
+         * The shared machine-staffing index, for the machine->housing lines.
+         * @type {LaborAssignmentCache}
          * @private
          */
-        this._assignments = new Map();
+        this._assignments = assignments;
+        assignments.onChange(() => {
+            this._stale = true;
+        });
         this._graphics = new Graphics();
         this.addChild(this._graphics);
         // Per-component labels, rebuilt on every repaint.
@@ -53,24 +50,6 @@ export class LaborDebugLayer extends AbstractDrawLayer {
     get layerIndex() {
         // Above the belt path overlay (100).
         return 101;
-    }
-
-    get eventClasses() {
-        return [LaborAssignmentEvent];
-    }
-
-    /**
-     * Tracks an assignment change for the machine->housing lines.
-     * @param {LaborAssignmentEvent} event
-     * @returns {void}
-     */
-    onEvent(event) {
-        if (event.housingId === NO_HOUSING) {
-            this._assignments.delete(event.machineId);
-        } else {
-            this._assignments.set(event.machineId, event.housingId);
-        }
-        this._stale = true;
     }
 
     /**
@@ -200,26 +179,22 @@ export class LaborDebugLayer extends AbstractDrawLayer {
         let supply = 0;
         let demand = 0;
         const attached = new Set();
-        for (const road of component) {
-            for (const delta of NEIGHBOR_DELTAS) {
-                const x = road.x + delta.dx;
-                const y = road.y + delta.dy;
-                if (roadTiles.has(tileId(x, y))) {
-                    continue;
-                }
-                const entry = this.cache.at(x, y, LAYER_SURFACE);
-                if (entry === null || attached.has(entry.id)) {
-                    continue;
-                }
-                const behavior = entry.behavior;
-                if (behavior === null || (behavior.laborSupply === 0 && behavior.laborCost === 0)) {
-                    continue;
-                }
-                attached.add(entry.id);
-                supply += behavior.laborSupply;
-                demand += behavior.laborCost;
-                this._outlineFootprint(entry, color);
+        for (const {x, y} of cellNeighbors(component)) {
+            if (roadTiles.has(tileId(x, y))) {
+                continue;
             }
+            const entry = this.cache.at(x, y, LAYER_SURFACE);
+            if (entry === null || attached.has(entry.id)) {
+                continue;
+            }
+            const behavior = entry.behavior;
+            if (behavior === null || (behavior.laborSupply === 0 && behavior.laborCost === 0)) {
+                continue;
+            }
+            attached.add(entry.id);
+            supply += behavior.laborSupply;
+            demand += behavior.laborCost;
+            this._outlineFootprint(entry, color);
         }
 
         // Demand/supply at the component's seed tile.
@@ -247,22 +222,13 @@ export class LaborDebugLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _outlineFootprint(entry, color) {
-        let minX = entry.cells[0].x;
-        let minY = entry.cells[0].y;
-        let maxX = minX;
-        let maxY = minY;
-        for (const cell of entry.cells) {
-            minX = Math.min(minX, cell.x);
-            minY = Math.min(minY, cell.y);
-            maxX = Math.max(maxX, cell.x);
-            maxY = Math.max(maxY, cell.y);
-        }
+        const bounds = entry.tileBounds;
         drawRect(
             this._graphics,
-            minX * TILE_SIZE,
-            minY * TILE_SIZE,
-            (maxX - minX + 1) * TILE_SIZE,
-            (maxY - minY + 1) * TILE_SIZE,
+            bounds.minTileX * TILE_SIZE,
+            bounds.minTileY * TILE_SIZE,
+            (bounds.maxTileX - bounds.minTileX + 1) * TILE_SIZE,
+            (bounds.maxTileY - bounds.minTileY + 1) * TILE_SIZE,
             color,
         );
     }
@@ -273,13 +239,16 @@ export class LaborDebugLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _drawAssignments() {
-        for (const [machineId, housingId] of this._assignments) {
-            const machineEntry = this.cache.get(machineId);
-            const housingEntry = this.cache.get(housingId);
+        for (const assignment of this._assignments.values()) {
+            if (!assignment.manned) {
+                continue;
+            }
+            const machineEntry = this.cache.get(assignment.machineId);
+            const housingEntry = this.cache.get(assignment.housingId);
             if (machineEntry === null || housingEntry === null) {
                 continue;
             }
-            const color = DEBUG_COLOR(housingId);
+            const color = DEBUG_COLOR(assignment.housingId);
             const machineX = machineEntry.tileX * TILE_SIZE + TILE_SIZE / 2;
             const machineY = machineEntry.tileY * TILE_SIZE + TILE_SIZE / 2;
             const housingX = housingEntry.tileX * TILE_SIZE + TILE_SIZE;

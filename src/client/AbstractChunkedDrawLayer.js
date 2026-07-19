@@ -1,3 +1,4 @@
+import {Graphics} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {ChunkNode} from "@/client/ChunkNode.js";
 import {sameChunks} from "@/client/constants.js";
@@ -48,6 +49,41 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
     }
 
     /**
+     * Reconciles mounted chunks against the viewport, flushes stale chunks, and runs the
+     * sprite-mode hook.
+     * @param {number} frame animation frame, in [0, 8)
+     * @param {number} deltaMS elapsed time since the previous tick, in ms
+     * @param {Set<number>} visibleChunks the chunks the viewport covers this frame
+     * @returns {void}
+     */
+    tick(frame, deltaMS, visibleChunks) {
+        this._reconcileViewport(visibleChunks);
+        if (this._mapMode) {
+            this._tickMapMode();
+            return;
+        }
+        this._updateSprites(frame, deltaMS);
+        this._flushDirtyChunks();
+    }
+
+    /**
+     * Optional hook: the map-mode tick; by default flushes stale map geometry.
+     * @returns {void}
+     */
+    _tickMapMode() {
+        this._flushDirtyChunks();
+    }
+
+    /**
+     * Optional hook: sprite-mode per-tick work, before stale chunks flush (advance sprites, stage
+     * rebuilds).
+     * @param {number} frame animation frame, in [0, 8)
+     * @param {number} deltaMS elapsed time since the previous tick, in ms
+     * @returns {void}
+     */
+    _updateSprites(frame, deltaMS) {}
+
+    /**
      * Mounts the chunks that panned into view and unmounts those that panned out.
      * @param {Set<number>} visible the chunks the viewport covers this frame
      * @returns {void}
@@ -91,6 +127,34 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _initChunkNode(node, chunk) {}
+
+    /**
+     * Marks a chunk stale after a member joined it, creating its node and mounting it when on
+     * screen. Call after indexing the member, so a mount sees it.
+     * @param {number} chunk
+     * @returns {void}
+     */
+    _memberAdded(chunk) {
+        this._node(chunk);
+        this._dirtyChunks.add(chunk);
+        if (this._visibleChunks.has(chunk)) {
+            this._mountChunk(chunk);
+        }
+    }
+
+    /**
+     * Marks a chunk stale after a member left it, dropping it once empty.
+     * @param {number} chunk
+     * @param {boolean} empty
+     * @returns {void}
+     */
+    _memberRemoved(chunk, empty) {
+        if (empty) {
+            this._dropChunk(chunk);
+            return;
+        }
+        this._dirtyChunks.add(chunk);
+    }
 
     /**
      * @param {number} chunk
@@ -168,14 +232,25 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Optional hook: rebuilds one stale chunk; by default redraws its map geometry (sprite-mode
-     * children keep themselves current).
+     * Rebuilds one stale chunk in the current mode.
      * @param {number} chunk
      * @returns {void}
      */
     _rebuildChunk(chunk) {
-        this._buildChunkGeometry(chunk);
+        if (this._mapMode) {
+            this._rebuildChunkGeometry(chunk);
+            return;
+        }
+        this._rebuildChunkSprites(chunk);
     }
+
+    /**
+     * Optional hook: rebuilds one stale chunk's sprite content; by default sprites keep themselves
+     * current.
+     * @param {number} chunk
+     * @returns {void}
+     */
+    _rebuildChunkSprites(chunk) {}
 
     /**
      * Hangs the current mode's content under the chunk root, detaching the other one.
@@ -185,7 +260,7 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
     _applyMode(chunk) {
         const node = this._chunks.get(chunk);
         if (this._mapMode) {
-            node.showGraphics(this._buildChunkGeometry(chunk));
+            node.showGraphics(this._rebuildChunkGeometry(chunk));
             return;
         }
         this._prepareChunkSprites(chunk);
@@ -200,12 +275,30 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
     _prepareChunkSprites(chunk) {}
 
     /**
-     * Redraws one chunk's pooled map-mode geometry.
-     * @abstract
+     * Redraws one chunk's pooled map-mode geometry into its cleared Graphics.
      * @param {number} chunk
      * @returns {Graphics}
      */
-    _buildChunkGeometry(chunk) {
+    _rebuildChunkGeometry(chunk) {
+        this._dirtyChunks.delete(chunk);
+        const node = this._chunks.get(chunk);
+        if (node.graphics === null) {
+            node.graphics = new Graphics();
+        } else {
+            node.graphics.clear();
+        }
+        this._drawChunkGeometry(chunk, node.graphics);
+        return node.graphics;
+    }
+
+    /**
+     * Draws one chunk's map-mode geometry into its cleared Graphics.
+     * @abstract
+     * @param {number} chunk
+     * @param {Graphics} graphics
+     * @returns {void}
+     */
+    _drawChunkGeometry(chunk, graphics) {
         throw new NotImplementedError();
     }
 }
