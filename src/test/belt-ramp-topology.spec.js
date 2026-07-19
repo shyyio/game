@@ -38,13 +38,13 @@ function itemCells(engine) {
 test("adjacent ramps connect into one tunnel path", async () => {
     const {engine, exitX} = await tunnel(0);
     assert.ok(connected(engine, 1, 1, exitX, 1), "the two ramps are one path");
-    assert.equal(beltsOf(engine)._allBelts().length, 2, "no undergrounds between adjacent ramps");
+    assert.equal(beltsOf(engine).beltCount, 2, "no undergrounds between adjacent ramps");
 });
 
 test("ramps connect at the maximum tunnel length", async () => {
     const {engine, exitX} = await tunnel(MAX_UNDERGROUND_LENGTH);
     assert.ok(connected(engine, 1, 1, exitX, 1), "ramps at max span still connect");
-    assert.equal(beltsOf(engine)._allBelts().length, MAX_UNDERGROUND_LENGTH + 2);
+    assert.equal(beltsOf(engine).beltCount, MAX_UNDERGROUND_LENGTH + 2);
 });
 
 test("ramps beyond the maximum tunnel length do not connect", async () => {
@@ -68,7 +68,7 @@ test("deleting the up ramp collapses the tunnel, leaving the down ramp", async (
     const {engine, upId} = await tunnel(1);
     engine.applyMessage(new DeleteObjectMessage(upId));
 
-    assert.equal(beltsOf(engine)._allBelts().length, 1, "the ramp-up and its undergrounds are gone");
+    assert.equal(beltsOf(engine).beltCount, 1, "the ramp-up and its undergrounds are gone");
     assert.equal(beltsOf(engine).paths.length, 1);
     assert.equal(beltsOf(engine).paths[0].length, 1, "the surviving ramp-down is a standalone belt");
 });
@@ -77,7 +77,7 @@ test("deleting the down ramp collapses the tunnel, leaving the up ramp", async (
     const {engine, downId} = await tunnel(1);
     engine.applyMessage(new DeleteObjectMessage(downId));
 
-    assert.equal(beltsOf(engine)._allBelts().length, 1, "the ramp-down and its undergrounds are gone");
+    assert.equal(beltsOf(engine).beltCount, 1, "the ramp-down and its undergrounds are gone");
     assert.equal(beltsOf(engine).paths.length, 1);
     assert.equal(beltsOf(engine).paths[0].length, 1);
 });

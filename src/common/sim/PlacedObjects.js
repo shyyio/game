@@ -29,6 +29,9 @@ export class PlacedObjects {
         // behavior per entity per tick, so this stays off a Map lookup.
         this._behaviors = [];
         this._eidByObjectId = new Map();
+        // Chunk -> the eids placed in it, so a subscribing session syncs a chunk without a scan of
+        // every placed object in the world.
+        this._eidsByChunk = new Map();
 
         const installed = new Set();
         for (const type of registry.objectTypes) {
@@ -149,6 +152,7 @@ export class PlacedObjects {
             engine.track(objectId, footprint);
         }
         this._eidByObjectId.set(objectId, eid);
+        this._indexChunk(eid, message.x, message.y);
         engine.emitEvent(new ObjectInsertEvent(type.typeId, objectId, message.x, message.y, message.direction, portIds, null));
         return true;
     }
@@ -168,10 +172,52 @@ export class PlacedObjects {
         const position = engine.Position;
         const type = this._types.get(this.typeIdOf(eid));
         type.behavior.onDespawn(engine, this, eid);
-        engine.emitEvent(new ObjectDeleteEvent(type.typeId, objectId, position.x[eid], position.y[eid]));
+        const x = position.x[eid];
+        const y = position.y[eid];
+        engine.emitEvent(new ObjectDeleteEvent(type.typeId, objectId, x, y));
+        // Before the destroy, which recycles the eid and may clear its position.
+        this._unindexChunk(eid, x, y);
         engine.destroyEntity(eid);
         this._eidByObjectId.delete(objectId);
         return true;
+    }
+
+    /**
+     * Records an eid under the chunk its position falls in.
+     * @private
+     * @param {number} eid
+     * @param {number} x
+     * @param {number} y
+     * @returns {void}
+     */
+    _indexChunk(eid, x, y) {
+        const chunk = chunkId(x, y);
+        const held = this._eidsByChunk.get(chunk);
+        if (held === undefined) {
+            this._eidsByChunk.set(chunk, new Set([eid]));
+        } else {
+            held.add(eid);
+        }
+    }
+
+    /**
+     * Drops an eid from its chunk, dropping the chunk once it empties.
+     * @private
+     * @param {number} eid
+     * @param {number} x
+     * @param {number} y
+     * @returns {void}
+     */
+    _unindexChunk(eid, x, y) {
+        const chunk = chunkId(x, y);
+        const held = this._eidsByChunk.get(chunk);
+        if (held === undefined) {
+            return;
+        }
+        held.delete(eid);
+        if (held.size === 0) {
+            this._eidsByChunk.delete(chunk);
+        }
     }
 
     /**
@@ -181,16 +227,16 @@ export class PlacedObjects {
      * @returns {ObjectSyncBatchEvent[]}
      */
     _chunkSync(chunk) {
+        const eids = this._eidsByChunk.get(chunk);
+        if (eids === undefined) {
+            return [];
+        }
         const origin = chunkOrigin(chunk);
         let batch = null;
         const placedObject = this.def.store;
         const position = this.engine.Position;
-        const eids = this.def.eids;
-        for (let row = 0; row < this.def.count; row += 1) {
-            const eid = eids[row];
-            if (chunkId(position.x[eid], position.y[eid]) !== chunk) {
-                continue;
-            }
+        for (const eid of eids) {
+            const row = this.def.row(eid);
             const type = this._types.get(placedObject.typeId[row]);
             const sync = type.behavior.syncData(this.engine, this, eid);
             if (batch === null) {
@@ -229,12 +275,16 @@ export class PlacedObjects {
      */
     _rebuild() {
         this._eidByObjectId = new Map();
+        this._eidsByChunk = new Map();
         const placedObject = this.def.store;
+        const position = this.engine.Position;
         const eids = this.def.eids;
         for (let row = 0; row < this.def.count; row += 1) {
-            this._eidByObjectId.set(placedObject.objectId[row], eids[row]);
+            const eid = eids[row];
+            this._eidByObjectId.set(placedObject.objectId[row], eid);
+            this._indexChunk(eid, position.x[eid], position.y[eid]);
             const type = this._types.get(placedObject.typeId[row]);
-            type.behavior.resyncRenderedPorts(this.engine, this, eids[row]);
+            type.behavior.resyncRenderedPorts(this.engine, this, eid);
         }
         const rebuilt = new Set();
         for (const type of this._types.values()) {
