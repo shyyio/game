@@ -368,7 +368,7 @@ export class GameEngine {
 
     /**
      * Passes a domain event to the event sink.
-     * @param {AbstractTilePositionedEvent} event
+     * @param {AbstractChunkRoutedEvent} event
      * @returns {void}
      */
     emitEvent(event) {
@@ -380,7 +380,7 @@ export class GameEngine {
     /**
      * Sets the sink each emitted event is delivered to, and optionally the predicate deciding whether
      * a chunk has any watcher; without one every chunk counts as observed.
-     * @param {function(AbstractTilePositionedEvent): void} sink
+     * @param {function(AbstractChunkRoutedEvent): void} sink
      * @param {function(number): boolean} [chunkObserved]
      * @returns {void}
      */
