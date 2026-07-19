@@ -15,7 +15,13 @@ import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
-import {TILE_SIZE, snapToChunk, MAP_MODE_SCALE_THRESHOLD, CHUNK_UNSUBSCRIBE_DELAY_MS} from "@/client/constants.js";
+import {
+    TILE_SIZE,
+    snapToChunk,
+    viewportChunks,
+    MAP_MODE_SCALE_THRESHOLD,
+    CHUNK_UNSUBSCRIBE_DELAY_MS,
+} from "@/client/constants.js";
 import {CHUNK_SIZE, Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {GridDrawLayer} from "@/client/GridDrawLayer.js";
@@ -218,7 +224,13 @@ export class Client {
      * @private
      */
     _tickAnimations() {
-        this.drawLayerRegistry.tick(advanceAnimationFrame(), this.app.ticker.deltaMS);
+        // Derived once here rather than per layer: every chunk-culled layer needs the same set, and
+        // rebuilding it per layer costs a chunkId per visible chunk each.
+        this.drawLayerRegistry.tick(
+            advanceAnimationFrame(),
+            this.app.ticker.deltaMS,
+            viewportChunks(this.viewport),
+        );
     }
 
     /**

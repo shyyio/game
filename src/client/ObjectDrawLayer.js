@@ -1,6 +1,7 @@
 import {Graphics} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
-import {TILE_SIZE, sameChunks, viewportChunks} from "@/client/constants.js";
+import {ChunkNode} from "@/client/ChunkNode.js";
+import {TILE_SIZE, sameChunks} from "@/client/constants.js";
 import {chunkId} from "@/common/util.js";
 import {MAP_TILE_COLOR} from "@/client/Theme.js";
 import {ObjectClientData} from "@/client/ClientCacheSync.js";
@@ -11,9 +12,8 @@ import {ObjectSprite} from "@/client/ObjectSprite.js";
  * this layer mirrors them (a pure renderer — it never writes the cache). Bespoke rendering (belts)
  * hand-rolls a layer instead.
  *
- * Only the current mode's children of on-screen chunks are mounted: pixi walks every child of a
- * container each frame and bills each Graphics as its own renderable, so map mode pools a whole
- * chunk's tiles into one Graphics rather than one per object.
+ * Children are grouped per chunk so mounting and unmounting cost one operation per chunk rather
+ * than one per sprite — pixi's removeChild is a linear scan of the parent's children.
  */
 export class ObjectDrawLayer extends AbstractDrawLayer {
 
@@ -24,13 +24,9 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
         super();
         this._type = type;
         this._objects = {};
-        // Object ids per chunk, and the ids whose sprites are mounted (sprite mode).
-        this._idsByChunk = new Map();
+        this._chunks = new Map();
+        // The chunks whose roots are mounted, and those whose pooled geometry is stale.
         this._mounted = new Set();
-        // The pooled map-mode geometry per chunk, and the chunks whose geometry is mounted.
-        this._mapChunks = new Map();
-        this._mountedChunks = new Set();
-        // Chunks whose pooled geometry no longer matches their objects.
         this._dirtyChunks = new Set();
         this._visibleChunks = new Set();
         this._mapMode = false;
@@ -79,17 +75,16 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Swaps the mounted children between full sprites and pooled map geometry.
+     * Swaps every mounted chunk between full sprites and pooled map geometry.
      * @param {boolean} value
      */
     set mapMode(value) {
         if (value === this._mapMode) {
             return;
         }
-        this._unmountAll();
         this._mapMode = value;
-        for (const chunk of this._visibleChunks) {
-            this._mountChunk(chunk);
+        for (const chunk of this._mounted) {
+            this._applyMode(chunk);
         }
     }
 
@@ -101,18 +96,12 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
         this._objects[id] = sprite;
 
         const chunk = chunkId(sprite.tileX, sprite.tileY);
-        const ids = this._idsByChunk.get(chunk);
-        if (ids === undefined) {
-            this._idsByChunk.set(chunk, new Set([id]));
-        } else {
-            ids.add(id);
-        }
+        this._node(chunk).sprites.addChild(sprite);
         this._dirtyChunks.add(chunk);
 
-        if (this._mapMode || !this._visibleChunks.has(chunk)) {
-            return;
+        if (this._visibleChunks.has(chunk)) {
+            this._mountChunk(chunk);
         }
-        this._mountSprite(id);
     }
 
     /**
@@ -125,45 +114,48 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
             return;
         }
 
-        this._unmountSprite(id);
-
         const chunk = chunkId(sprite.tileX, sprite.tileY);
-        const ids = this._idsByChunk.get(chunk);
-        if (ids !== undefined) {
-            ids.delete(id);
-            if (ids.size === 0) {
-                this._idsByChunk.delete(chunk);
-            }
-        }
-        this._dirtyChunks.add(chunk);
-
+        // Scans only its own chunk's children, and detaches from its parent.
         sprite.destroy();
         delete this._objects[id];
+        this._dirtyChunks.add(chunk);
+
+        const node = this._chunks.get(chunk);
+        if (node !== undefined && node.isEmpty) {
+            this._unmountChunk(chunk);
+            node.destroy();
+            this._chunks.delete(chunk);
+            this._dirtyChunks.delete(chunk);
+        }
     }
 
     /**
-     * Reconciles mounted children against the viewport and pending object changes, then advances
+     * Reconciles mounted chunks against the viewport and pending object changes, then advances
      * every on-screen sprite to the shared animation frame (map mode draws no sprites).
      * @param {number} frame animation frame, in [0, 8)
+     * @param {number} deltaMS elapsed time since the previous tick, in ms
+     * @param {Set<number>} visibleChunks the chunks the viewport covers this frame
      */
-    tick(frame) {
-        this._reconcileViewport();
+    tick(frame, deltaMS, visibleChunks) {
+        this._reconcileViewport(visibleChunks);
         if (this._mapMode) {
             this._flushDirtyChunks();
             return;
         }
-        for (const id of this._mounted) {
-            this._objects[id].tick(frame);
+        for (const chunk of this._mounted) {
+            for (const sprite of this._chunks.get(chunk).spriteList) {
+                sprite.tick(frame);
+            }
         }
     }
 
     /**
      * Mounts the chunks that panned into view and unmounts those that panned out.
+     * @param {Set<number>} visible the chunks the viewport covers this frame
      * @returns {void}
      * @private
      */
-    _reconcileViewport() {
-        const visible = viewportChunks(this.viewport);
+    _reconcileViewport(visible) {
         if (sameChunks(visible, this._visibleChunks)) {
             return;
         }
@@ -183,8 +175,7 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Rebuilds the pooled geometry of every mounted chunk an object change invalidated, and drops
-     * the geometry of chunks left empty.
+     * Rebuilds the pooled geometry of every mounted chunk an object change invalidated.
      * @returns {void}
      * @private
      */
@@ -193,102 +184,70 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
             return;
         }
         for (const chunk of this._dirtyChunks) {
-            if (!this._idsByChunk.has(chunk)) {
-                this._unmountChunk(chunk);
-                const graphics = this._mapChunks.get(chunk);
-                if (graphics !== undefined) {
-                    graphics.destroy();
-                    this._mapChunks.delete(chunk);
-                }
-            } else if (this._mountedChunks.has(chunk)) {
+            if (this._mounted.has(chunk)) {
                 this._buildChunkGeometry(chunk);
-            } else if (this._visibleChunks.has(chunk)) {
-                // Its first object: the chunk had nothing to pool when it scrolled in.
-                this._mountChunk(chunk);
             }
         }
         this._dirtyChunks.clear();
     }
 
     /**
-     * Adds one chunk's children for the current mode.
+     * The chunk's node, created empty on first use.
+     * @param {number} chunk
+     * @returns {ChunkNode}
+     * @private
+     */
+    _node(chunk) {
+        let node = this._chunks.get(chunk);
+        if (node === undefined) {
+            node = new ChunkNode();
+            this._chunks.set(chunk, node);
+        }
+        return node;
+    }
+
+    /**
      * @param {number} chunk
      * @returns {void}
      * @private
      */
     _mountChunk(chunk) {
-        if (!this._mapMode) {
-            for (const id of this._chunkIds(chunk)) {
-                this._mountSprite(id);
-            }
+        const node = this._chunks.get(chunk);
+        if (node === undefined || this._mounted.has(chunk)) {
             return;
         }
-
-        if (this._mountedChunks.has(chunk) || !this._idsByChunk.has(chunk)) {
-            return;
-        }
-        this.addChild(this._buildChunkGeometry(chunk));
-        this._mountedChunks.add(chunk);
+        this._mounted.add(chunk);
+        this._applyMode(chunk);
+        this.addChild(node.root);
     }
 
     /**
-     * Removes one chunk's children of either mode, keeping them for a later remount.
      * @param {number} chunk
      * @returns {void}
      * @private
      */
     _unmountChunk(chunk) {
-        for (const id of this._chunkIds(chunk)) {
-            this._unmountSprite(id);
-        }
-
-        if (!this._mountedChunks.has(chunk)) {
+        if (!this._mounted.has(chunk)) {
             return;
         }
-        this.removeChild(this._mapChunks.get(chunk));
-        this._mountedChunks.delete(chunk);
+        this.removeChild(this._chunks.get(chunk).root);
+        this._mounted.delete(chunk);
     }
 
     /**
+     * Hangs the current mode's node under the chunk root, detaching the other one.
+     * @param {number} chunk
      * @returns {void}
      * @private
      */
-    _unmountAll() {
-        for (const id of this._mounted) {
-            this.removeChild(this._objects[id]);
-        }
-        this._mounted.clear();
+    _applyMode(chunk) {
+        const node = this._chunks.get(chunk);
 
-        for (const chunk of this._mountedChunks) {
-            this.removeChild(this._mapChunks.get(chunk));
-        }
-        this._mountedChunks.clear();
-    }
-
-    /**
-     * @param {number} id
-     * @returns {void}
-     * @private
-     */
-    _mountSprite(id) {
-        if (this._mounted.has(id)) {
+        if (this._mapMode) {
+            node.showGraphics(this._buildChunkGeometry(chunk));
             return;
         }
-        this.addChild(this._objects[id]);
-        this._mounted.add(id);
-    }
-
-    /**
-     * @param {number} id
-     * @returns {void}
-     * @private
-     */
-    _unmountSprite(id) {
-        if (!this._mounted.has(id)) {
-            return;
-        }
-        this.removeChild(this._objects[id]);
-        this._mounted.delete(id);
+        node.showSprites();
     }
 
     /**
@@ -301,18 +260,16 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
     _buildChunkGeometry(chunk) {
         this._dirtyChunks.delete(chunk);
 
-        let graphics = this._mapChunks.get(chunk);
-        if (graphics === undefined) {
-            graphics = new Graphics();
-            this._mapChunks.set(chunk, graphics);
+        const node = this._chunks.get(chunk);
+        if (node.graphics === null) {
+            node.graphics = new Graphics();
         } else {
-            graphics.clear();
+            node.graphics.clear();
         }
 
-        for (const id of this._chunkIds(chunk)) {
-            const sprite = this._objects[id];
+        for (const sprite of node.spriteList) {
             for (const cell of this._type.geometry.tiles(sprite.direction)) {
-                graphics.rect(
+                node.graphics.rect(
                     (sprite.tileX + cell.x) * TILE_SIZE,
                     (sprite.tileY + cell.y) * TILE_SIZE,
                     TILE_SIZE,
@@ -320,17 +277,7 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
                 );
             }
         }
-        graphics.fill(MAP_TILE_COLOR);
-        return graphics;
-    }
-
-    /**
-     * @param {number} chunk
-     * @returns {Set<number>} the object ids in `chunk`
-     * @private
-     */
-    _chunkIds(chunk) {
-        const ids = this._idsByChunk.get(chunk);
-        return ids === undefined ? new Set() : ids;
+        node.graphics.fill(MAP_TILE_COLOR);
+        return node.graphics;
     }
 }
