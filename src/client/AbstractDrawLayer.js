@@ -90,8 +90,8 @@ export class AbstractDrawLayer extends Container {
     onCacheChange(entry) {}
 
     /**
-     * Handles an event whose class matches {@link eventClasses}; never called otherwise.
-     * @abstract
+     * Handles an event whose class matches {@link eventClasses}; never called otherwise, so only
+     * layers declaring eventClasses override it.
      * @param {AbstractEvent} event
      * @returns {void}
      */

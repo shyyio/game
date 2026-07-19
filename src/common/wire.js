@@ -197,7 +197,7 @@ export class WireRegistry {
     /**
      * Decodes protobuf bytes into a message/event instance (int64 → Number, absent scalars → null).
      * @param {Uint8Array} bytes
-     * @returns {object}
+     * @returns {AbstractWireObject}
      */
     decode(bytes) {
         const envelope = this.envelope.decode(bytes);
@@ -209,7 +209,7 @@ export class WireRegistry {
      * @private
      * @param {number} wireId
      * @param {Uint8Array} body
-     * @returns {object}
+     * @returns {AbstractWireObject}
      */
     _decodeBody(wireId, body) {
         const codec = this.byId.get(wireId);

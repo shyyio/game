@@ -60,8 +60,14 @@ export class InspectPanelLayer extends Container {
     constructor(app) {
         super();
         this._app = app;
+        /**
+         * @type {TextureRegistry|null}
+         */
         this.textureRegistry = null;
-        // Item type -> texture name, for drawing item icons.
+        /**
+         * Item type -> texture name, for drawing item icons.
+         * @type {Object<number, string>}
+         */
         this.itemTextures = {};
         this._onClose = null;
         // objectId string -> {panel, position}.

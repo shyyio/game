@@ -1,4 +1,4 @@
-import {Container, Graphics, Particle, ParticleContainer} from "pixi.js";
+import {Container, Graphics, Particle, ParticleContainer, Texture} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {DisplayPool} from "@/client/DisplayPool.js";
 import {TILE_SIZE} from "@/client/constants.js";
@@ -182,8 +182,9 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * Advances each item's glide toward its target by the frame's elapsed time.
      * @param {number} frame unused — items move, they don't cycle frames
      * @param {number} deltaMS elapsed time since the previous tick, in ms
+     * @param {Set<number>} visibleChunks unused — particles cull by chunk mount
      */
-    tick(frame, deltaMS) {
+    tick(frame, deltaMS, visibleChunks) {
         for (const particle of this._gliding) {
             particle.advance(deltaMS);
             if (!particle.gliding) {

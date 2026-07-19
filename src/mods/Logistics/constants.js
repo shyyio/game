@@ -5,14 +5,6 @@
 // Maximum number of tiles an underground belt may span.
 export const MAX_UNDERGROUND_LENGTH = 4;
 
-/**
- * Game-setting keys this mod owns
- * @enum
- */
-export const BeltGameSettingsKey = {
-    MAX_UNDERGROUND_LENGTH: 1,
-};
-
 // ---- Belt types ----
 export const BELT_NORMAL = 0;
 export const BELT_RAMP_DOWN = 1;
@@ -20,8 +12,10 @@ export const BELT_RAMP_UP = 2;
 export const BELT_UNDERGROUND = 3;
 
 /**
- * @enum {number}
+ * A belt kind ordinal.
+ * @typedef {number} BeltType
  */
+
 export const BeltType = {
     NORMAL: BELT_NORMAL,
     RAMP_DOWN: BELT_RAMP_DOWN,
@@ -34,8 +28,10 @@ export const BeltType = {
 export const LAYERS_UNDERGROUND_AXIS = ["U0", "U1"];
 
 /**
- * @enum {number}
+ * A belt bend ordinal.
+ * @typedef {number} BeltBend
  */
+
 export const BeltBend = {
     STRAIGHT: 0,
     LEFT: 1,

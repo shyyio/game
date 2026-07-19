@@ -1,6 +1,7 @@
 
 import Mouse from "@/client/Mouse.js";
 import Keyboard from "@/client/Keyboard.js";
+import {AbstractTool} from "@/client/AbstractTool.js";
 
 // Number keys 1-9 select the mod tool at that position (1 = first mod tool); core tools use
 // their own letter hotkeys instead.
@@ -29,6 +30,9 @@ export class InputHandler {
         this._mapMode = false;
     }
 
+    /**
+     * @returns {AbstractTool|null}
+     */
     get activeTool() {
         // In map mode the tool is deactivated without clearing the toolbar
         // selection, so the cursor acts as if nothing were selected: no placement,

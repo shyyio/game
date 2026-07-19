@@ -20,6 +20,9 @@ export class ModRegistry {
         this._simMods = [];
         this._clientMods = [];
         this._textureDefinitions = [];
+        /**
+         * @type {Object<number, string>}
+         */
         this._itemTextures = {};
     }
 
@@ -36,7 +39,7 @@ export class ModRegistry {
 
     /**
      * Assigns each object type its positional typeId (registration order across the loadout) and
-     * validates the loadout; the registry is immutable afterwards.
+     * validates the loadout; the registry is immutable afterward.
      * @returns {void}
      */
     freeze() {

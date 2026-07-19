@@ -1,4 +1,4 @@
-import {Container, Sprite, Text, Rectangle, isMobile} from "pixi.js";
+import {Container, Sprite, Text, Rectangle, isMobile, FederatedPointerEvent} from "pixi.js";
 import Haptics from "@/client/Haptics.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {TOOLBAR_TEXT, PANEL_TINT} from "@/client/Theme.js";

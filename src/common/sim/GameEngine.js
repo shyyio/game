@@ -2,7 +2,7 @@ import {World} from "@/common/sim/World.js";
 import {rotate, chunkId, tileId, tileVariantId, TILE_VARIANT_LIMIT} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {PortItemSetEvent, PortItemClearEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
+import {PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlacedObjects} from "@/common/sim/PlacedObjects.js";
 import {LaborNetworks} from "@/common/sim/LaborNetworks.js";
 
@@ -125,6 +125,10 @@ class ComponentDef {
         this.snapshotOnly = snapshotOnly;
         this.sparse = sparse;
         this.capacity = PORT_CAPACITY;
+        /**
+         * Column per field, indexed by {@link slot}.
+         * @type {Object<string, Int32Array|Float32Array>}
+         */
         this.store = {};
         for (const field of fields) {
             this.store[field.name] = columnFor(field.kind, PORT_CAPACITY, field.fill);
@@ -958,7 +962,7 @@ export class GameEngine {
 
     /**
      * Attaches a component to an existing entity (a behavior wiring its columns onto a placed eid).
-     * @param {object} def - a descriptor from {@link defineComponent}
+     * @param {ComponentDef} def
      * @param {number} eid
      * @returns {void}
      */
@@ -981,7 +985,7 @@ export class GameEngine {
     /**
      * The component descriptor registered under `name`; throws on an unknown name.
      * @param {string} name
-     * @returns {{name:string, fields:object[], store:object, capacity:number}}
+     * @returns {ComponentDef}
      */
     component(name) {
         const def = this._componentByName.get(name);
@@ -1154,7 +1158,7 @@ export class GameEngine {
     /**
      * The cell entities: those carrying both Position and Occupancy (an edge port has Position alone).
      * @private
-     * @returns {number[]}
+     * @returns {Int32Array}
      */
     _cellEids() {
         return this.world.query([this._positionDef.store, this._occupancyDef.store]);
@@ -1251,7 +1255,7 @@ export class GameEngine {
 
     /**
      * Creates an entity carrying `def`'s component.
-     * @param {object} def - a descriptor from {@link defineComponent}
+     * @param {ComponentDef} def
      * @returns {number} the entity id
      */
     createEntity(def) {
@@ -1273,8 +1277,8 @@ export class GameEngine {
 
     /**
      * The entities currently carrying `def`'s component.
-     * @param {object} def - a descriptor from {@link defineComponent}
-     * @returns {number[]}
+     * @param {ComponentDef} def
+     * @returns {Int32Array}
      */
     entitiesWith(def) {
         return def.sparse ? def.eids.slice(0, def.count) : this.world.query([def.store]);
@@ -1765,7 +1769,7 @@ export class GameEngine {
     /**
      * The edge ports: those carrying Position (a port with none sits on no edge).
      * @private
-     * @returns {number[]}
+     * @returns {Int32Array}
      */
     _edgePortEids() {
         return this.world.query([this._portDef.store, this._positionDef.store]);
@@ -1820,9 +1824,10 @@ export class GameEngine {
 
     /**
      * Provides a service instance under its exported marker class, for cross-mod + test access.
+     * @template T
      * @param {Function} key - the service's marker class
-     * @param {object} instance
-     * @returns {object} the instance
+     * @param {T} instance
+     * @returns {T} the instance
      */
     provide(key, instance) {
         if (this._services.has(key)) {
@@ -1834,8 +1839,9 @@ export class GameEngine {
 
     /**
      * The service provided under `key`; throws when no provider registered it.
-     * @param {Function} key - the service's marker class
-     * @returns {object}
+     * @template T
+     * @param {{new(...args: *): T}} key - the service's marker class
+     * @returns {T}
      */
     resolve(key) {
         const instance = this._services.get(key);
@@ -1848,7 +1854,7 @@ export class GameEngine {
     /**
      * The current inspect snapshot for an object, or null if no module owns that client id.
      * @param {number} objectId
-     * @returns {object|null}
+     * @returns {InspectHeartbeatEvent|null}
      */
     inspectSnapshot(objectId) {
         for (let i = 0; i < this._inspectors.length; i += 1) {

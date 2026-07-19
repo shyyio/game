@@ -116,9 +116,10 @@ export class LaborDebugLayer extends AbstractDrawLayer {
      * Repaints when shown and stale.
      * @param {number} frame
      * @param {number} deltaMS
+     * @param {Set<number>} visibleChunks
      * @returns {void}
      */
-    tick(frame, deltaMS) {
+    tick(frame, deltaMS, visibleChunks) {
         if (this.visible && this._stale) {
             this._stale = false;
             this._redraw();

@@ -6,31 +6,14 @@ import {chunkId} from "@/common/util.js";
 import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
-import {makeGameEngine, ecsModRegistry} from "@/test/ecsSim.js";
+import {ecsModRegistry} from "@/test/ecsSim.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
 import {PortItemSetEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {beltsOf} from "@/mods/Logistics/testHelpers.js";
+import {CapturingSession} from "@/test/CapturingSession.js";
 
 const RED = 1;
 const CELLS = [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}];
-
-// A minimal session that just records the events published to it.
-class CapturingSession {
-
-    constructor(playerId) {
-        this.playerId = playerId;
-        this.id = null;
-        this.events = [];
-    }
-
-    setId(id) {
-        this.id = id;
-    }
-
-    publishEvent(event) {
-        this.events.push(event);
-    }
-}
 
 test("a Game on GameEngine routes belt render events only to sessions watching the chunk", async () => {
     const modRegistry = ecsModRegistry();

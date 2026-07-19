@@ -138,8 +138,10 @@ export class BeltGhostLayer extends AbstractDrawLayer {
     /**
      * Keeps the ghost preview on the shared animation frame and floating on its target.
      * @param {number} frame animation frame, in [0, 8)
+     * @param {number} deltaMS
+     * @param {Set<number>} visibleChunks
      */
-    tick(frame) {
+    tick(frame, deltaMS, visibleChunks) {
         for (const sprite of this._sprites) {
             sprite.setAnimationFrame(frame);
         }
@@ -174,7 +176,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         if (this._centerLock) {
             return this.viewport.toWorld(this.viewport.screenWidth / 2, this.viewport.screenHeight / 2);
         }
-        if (Mouse.currentX === null) {
+        if (Mouse.currentX === null || Mouse.currentY === null) {
             return null;
         }
         return {x: Mouse.currentX, y: Mouse.currentY};

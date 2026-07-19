@@ -203,11 +203,10 @@ function runStanding(world) {
     // Producers that may move this tick: everything not parked. Kept as a dense list so a tick walks
     // only the live ones.
     let active = new Int32Array(PRODUCERS);
-    let activeCount = 0;
+    let activeCount = PRODUCERS;
     for (let producer = 0; producer < PRODUCERS; producer += 1) {
         active[producer] = producer;
     }
-    activeCount = PRODUCERS;
     let nextActive = new Int32Array(PRODUCERS);
 
     const queue = new Int32Array(PORTS);

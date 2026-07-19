@@ -1,6 +1,8 @@
 /**
- * @enum {number}
+ * A cardinal direction ordinal.
+ * @typedef {number} Direction
  */
+
 export const Direction = {
     UP: 0,
     RIGHT: 1,

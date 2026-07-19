@@ -1,3 +1,4 @@
+import {FederatedPointerEvent} from "pixi.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
 
@@ -87,7 +88,13 @@ class Mouse {
         this._lastMoveX = null;
         this._lastMoveY = null;
 
+        /**
+         * @type {number|null}
+         */
         this.currentX = null;
+        /**
+         * @type {number|null}
+         */
         this.currentY = null;
 
         this._hoverTileX = null;
@@ -119,7 +126,7 @@ class Mouse {
      * @returns {Point}
      */
     _worldFromEvent(event) {
-        return this._viewport.toWorld(event.data.global.x, event.data.global.y);
+        return this._viewport.toWorld(event.global.x, event.global.y);
     }
 
     /**
@@ -291,7 +298,7 @@ class Mouse {
             // while the context gesture is up, matching the long-press path.
             this._emitTileExit();
             for (const cb of this._longPressCallbacks) {
-                cb(tileX, tileY, event.data.global.x, event.data.global.y);
+                cb(tileX, tileY, event.global.x, event.global.y);
             }
             return;
         }
@@ -309,8 +316,8 @@ class Mouse {
         this._clickStartY = world.y;
         this._clickStartTileX = Math.floor(world.x / TILE_SIZE);
         this._clickStartTileY = Math.floor(world.y / TILE_SIZE);
-        this._clickStartScreenX = event.data.global.x;
-        this._clickStartScreenY = event.data.global.y;
+        this._clickStartScreenX = event.global.x;
+        this._clickStartScreenY = event.global.y;
         this._hasDragged = false;
         this._dragAxis = null;
         this._lastMoveTime = null;
@@ -345,8 +352,8 @@ class Mouse {
         }
 
         if (!this._hasDragged) {
-            const dx = event.data.global.x - this._clickStartScreenX;
-            const dy = event.data.global.y - this._clickStartScreenY;
+            const dx = event.global.x - this._clickStartScreenX;
+            const dy = event.global.y - this._clickStartScreenY;
             if (dx * dx + dy * dy > 64) {
                 this._hasDragged = true;
             }
