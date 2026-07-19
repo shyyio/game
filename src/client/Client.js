@@ -43,6 +43,9 @@ import {StatusMessageLayer} from "@/client/StatusMessageLayer.js";
 import {advanceAnimationFrame} from "@/client/animation.js";
 import {DEV, BROWSER} from "@/common/env.js";
 
+// Chunk-sync bundles applied per ticker frame; the rest of the queue waits so arrival order holds.
+const SYNC_CHUNKS_PER_FRAME = 2;
+
 function formatBytes(n) {
     const text = n > 1024 ? `${Math.round(n / 1024)}K` : `${n}B`;
     return text.padStart(5);
@@ -129,6 +132,10 @@ export class Client {
         // The chunks currently requested from the server (subscribed): the visible chunks
         // plus any that recently panned out and are awaiting a throttled unsubscribe.
         this._requestedChunks = new Set();
+        // Events awaiting the budgeted per-frame drain: chunk-sync bundles are heavy (hundreds of
+        // cache writes + sprite builds each), and everything arriving behind one queues too so
+        // events apply in arrival order.
+        this._pendingEvents = [];
         this._lastVisibleKey = null;
         this._unsubscribeTimer = null;
         this._mapMode = false;
@@ -239,6 +246,7 @@ export class Client {
      * @private
      */
     _tickAnimations() {
+        this._drainPendingEvents();
         // Derived once here rather than per layer: every chunk-culled layer needs the same set, and
         // rebuilding it per layer costs a chunkId per visible chunk each.
         this.drawLayerRegistry.tick(
@@ -425,19 +433,53 @@ export class Client {
                 console.log(`↓ [${formatBytes(bytes)} / ${formatBytes(this._bytesReceived)}]`, event.constructor.name, event);
             }
         }
+        if (event instanceof ChunkSyncEvent || this._pendingEvents.length > 0) {
+            this._pendingEvents.push(event);
+            return;
+        }
+        this._applyEvent(event);
+    }
+
+    /**
+     * Applies queued events, at most {@link SYNC_CHUNKS_PER_FRAME} chunk-sync bundles per frame.
+     * @private
+     * @returns {void}
+     */
+    _drainPendingEvents() {
+        let syncBudget = SYNC_CHUNKS_PER_FRAME;
+        while (this._pendingEvents.length > 0) {
+            const event = this._pendingEvents[0];
+            if (event instanceof ChunkSyncEvent) {
+                if (syncBudget === 0) {
+                    return;
+                }
+                syncBudget -= 1;
+            }
+            this._pendingEvents.shift();
+            this._applyEvent(event);
+        }
+    }
+
+    /**
+     * Applies one event to the client's consumers.
+     * @private
+     * @param {AbstractEvent} event
+     * @returns {void}
+     */
+    _applyEvent(event) {
         if (event instanceof ChunkSyncEvent) {
             // A chunk-sync bundle: replay each inner event through the normal path.
             // Sync events are distinct types (e.g. BeltSyncEvent vs BeltInsertEvent),
             // so handlers can already tell a load from a live change.
             for (const inner of event.events) {
-                this.publishEvent(inner);
+                this._applyEvent(inner);
             }
             return;
         }
         if (event instanceof AbstractBatchEvent) {
             // A chunk's packed deltas: replay each as the per-delta event handlers already expect.
             for (const inner of event.explode()) {
-                this.publishEvent(inner);
+                this._applyEvent(inner);
             }
             return;
         }
