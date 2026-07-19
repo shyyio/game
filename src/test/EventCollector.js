@@ -34,7 +34,7 @@ export class EventCollector {
     /**
      * Returns and clears the events collected since the last drain, batches unpacked into their
      * per-delta events the way a client replays them.
-     * @returns {AbstractTilePositionedEvent[]}
+     * @returns {AbstractChunkRoutedEvent[]}
      */
     drain() {
         const events = flattenBatches(this._events);

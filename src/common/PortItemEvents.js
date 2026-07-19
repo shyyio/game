@@ -1,4 +1,4 @@
-import {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
+import {AbstractChunkRoutedEvent} from "@/common/AbstractChunkRoutedEvent.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 
 // Render deltas for the resting item drawn in a render-flagged out-port; the render tile is derived
@@ -8,7 +8,7 @@ import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 /**
  * An item now rests in a render-flagged out-port.
  */
-export class PortItemSetEvent extends AbstractTilePositionedEvent {
+export class PortItemSetEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         portId: "int64",
@@ -31,7 +31,7 @@ export class PortItemSetEvent extends AbstractTilePositionedEvent {
 /**
  * A render-flagged out-port's resting item was removed.
  */
-export class PortItemClearEvent extends AbstractTilePositionedEvent {
+export class PortItemClearEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         portId: "int64",

@@ -1,4 +1,4 @@
-import {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
+import {AbstractChunkRoutedEvent} from "@/common/AbstractChunkRoutedEvent.js";
 import {NotImplementedError} from "@/common/error.js";
 
 /**
@@ -9,12 +9,12 @@ import {NotImplementedError} from "@/common/error.js";
  * (x, y) is any position in the batched chunk, carried to route the batch to that chunk's topic.
  * @abstract
  */
-export class AbstractBatchEvent extends AbstractTilePositionedEvent {
+export class AbstractBatchEvent extends AbstractChunkRoutedEvent {
 
     /**
      * The per-delta events this batch stands for, in the order they were emitted.
      * @abstract
-     * @returns {AbstractTilePositionedEvent[]}
+     * @returns {AbstractChunkRoutedEvent[]}
      */
     explode() {
         throw new NotImplementedError();

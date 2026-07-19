@@ -1,10 +1,10 @@
-import {AbstractTilePositionedEvent, AbstractBatchEvent} from "@/sdk/common.js";
+import {AbstractChunkRoutedEvent, AbstractBatchEvent} from "@/sdk/common.js";
 
 // Column sentinel for a path feeding nothing, so `outPortIds` stays a plain int column; port eids
 // start at 1, and the per-path events keep using null.
 const NO_OUT_PORT = 0;
 
-export class BeltPathRecalculateEvent extends AbstractTilePositionedEvent {
+export class BeltPathRecalculateEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         x: "sint32",
@@ -29,7 +29,7 @@ export class BeltPathRecalculateEvent extends AbstractTilePositionedEvent {
 /**
  * A belt the player just placed; same payload as BeltSyncEvent but a distinct type for live reactions.
  */
-export class BeltInsertEvent extends AbstractTilePositionedEvent {
+export class BeltInsertEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         x: "sint32",
@@ -57,7 +57,7 @@ export class BeltInsertEvent extends AbstractTilePositionedEvent {
 /**
  * A belt synced into a loaded chunk; same payload as BeltInsertEvent but a distinct type to skip placement feedback.
  */
-export class BeltSyncEvent extends AbstractTilePositionedEvent {
+export class BeltSyncEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         x: "sint32",
@@ -82,7 +82,7 @@ export class BeltSyncEvent extends AbstractTilePositionedEvent {
     }
 }
 
-export class BeltDeleteEvent extends AbstractTilePositionedEvent {
+export class BeltDeleteEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         x: "sint32",
@@ -111,7 +111,7 @@ export class BeltDeleteEvent extends AbstractTilePositionedEvent {
 /**
  * Inserts one of a path's items or restates its gap; the client glides the moved items.
  */
-export class BeltItemUpsertEvent extends AbstractTilePositionedEvent {
+export class BeltItemUpsertEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         pathId: "int64",
@@ -141,7 +141,7 @@ export class BeltItemUpsertEvent extends AbstractTilePositionedEvent {
  * Same payload as BeltItemUpsertEvent, but a re-key after a reset: the item didn't move, so the client
  * snaps the sprite in place rather than animating it.
  */
-export class BeltItemSyncEvent extends AbstractTilePositionedEvent {
+export class BeltItemSyncEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         pathId: "int64",
@@ -170,7 +170,7 @@ export class BeltItemSyncEvent extends AbstractTilePositionedEvent {
 /**
  * Drops one of a path's items.
  */
-export class BeltItemDeleteEvent extends AbstractTilePositionedEvent {
+export class BeltItemDeleteEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         pathId: "int64",
@@ -193,7 +193,7 @@ export class BeltItemDeleteEvent extends AbstractTilePositionedEvent {
 /**
  * Clears a path's items before an edit re-emits them as syncs (same drain) — an atomic swap.
  */
-export class BeltItemResetEvent extends AbstractTilePositionedEvent {
+export class BeltItemResetEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         pathId: "int64",

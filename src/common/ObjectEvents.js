@@ -1,4 +1,4 @@
-import {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
+import {AbstractChunkRoutedEvent} from "@/common/AbstractChunkRoutedEvent.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 
 // Column sentinel for an object that has produced nothing, so `lastOutputs` stays a plain int
@@ -13,7 +13,7 @@ const EMPTY_OUTPUT = 0;
 /**
  * An object the player just placed.
  */
-export class ObjectInsertEvent extends AbstractTilePositionedEvent {
+export class ObjectInsertEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         typeId: "int32",
@@ -48,7 +48,7 @@ export class ObjectInsertEvent extends AbstractTilePositionedEvent {
  * An object synced into a loaded chunk; same payload as the insert but a distinct type so the client
  * skips placement feedback.
  */
-export class ObjectSyncEvent extends AbstractTilePositionedEvent {
+export class ObjectSyncEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         typeId: "int32",
@@ -82,7 +82,7 @@ export class ObjectSyncEvent extends AbstractTilePositionedEvent {
 /**
  * An object the player just removed.
  */
-export class ObjectDeleteEvent extends AbstractTilePositionedEvent {
+export class ObjectDeleteEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         typeId: "int32",

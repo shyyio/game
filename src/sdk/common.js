@@ -80,11 +80,11 @@ export {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/Ob
 
 // ---- Events ----
 // Base classes for events a mod emits to connected clients (rendering, effects).
-// Subclasses must declare a static `wireFields` map. Extend `AbstractTilePositionedEvent`
+// Subclasses must declare a static `wireFields` map. Extend `AbstractChunkRoutedEvent`
 // for an event tied to a tile (adds x, y and a derived `chunk`); extend `AbstractEvent`
 // for one with no position.
 export {AbstractEvent} from "@/common/AbstractEvent.js";
-export {AbstractTilePositionedEvent} from "@/common/AbstractTilePositionedEvent.js";
+export {AbstractChunkRoutedEvent} from "@/common/AbstractChunkRoutedEvent.js";
 export {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 
 // Engine render deltas for the item resting in a render-flagged out-port.

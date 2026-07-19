@@ -2,9 +2,9 @@ import {chunkId} from "@/common/util.js";
 import {AbstractEvent} from "@/common/AbstractEvent.js";
 
 /**
- * An event tied to a tile position, adding (x, y) and a `chunk` derived from them (never wired).
+ * An event routed to the chunk topic derived from its (x, y) tile position (`chunk` never wired).
  */
-export class AbstractTilePositionedEvent extends AbstractEvent {
+export class AbstractChunkRoutedEvent extends AbstractEvent {
 
     /**
      * @param {number} x
