@@ -5,7 +5,7 @@ import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js
 import {ObjectInsertEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
 import {SplitterDefinition} from "@/mods/Logistics/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {EventCollector} from "@/test/EventCollector.js";
+import {EventCollector, flattenBatches} from "@/test/EventCollector.js";
 
 test("placing a splitter via CreateObjectMessage emits an ObjectInsertEvent; delete emits a delete", async () => {
     const engine = await makeGameEngine();
@@ -22,7 +22,7 @@ test("placing a splitter via CreateObjectMessage emits an ObjectInsertEvent; del
     assert.equal(insert.portIds.length, 2, "out_a and out_b port ids sent");
 
     // Chunk sync recreates it.
-    const sync = engine.chunkSync(insert.chunk);
+    const sync = flattenBatches(engine.chunkSync(insert.chunk));
     assert.ok(sync.some(event => event.id === insert.id), "splitter appears in chunk sync");
 
     // Delete removes it and emits a delete event.

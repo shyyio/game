@@ -80,6 +80,17 @@ export function chunkPosition(chunk) {
     };
 }
 
+/**
+ * The tile position of a chunk's top-left corner, the origin chunk-relative tile coordinates count
+ * from.
+ * @param chunk {number}
+ * @returns {{x: number, y: number}}
+ */
+export function chunkOrigin(chunk) {
+    const position = chunkPosition(chunk);
+    return {x: position.x * CHUNK_SIZE, y: position.y * CHUNK_SIZE};
+}
+
 
 /**
  * @typedef Vec {Object}

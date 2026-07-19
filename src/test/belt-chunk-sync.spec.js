@@ -11,6 +11,7 @@ import {BeltSyncEvent} from "@/mods/Logistics/events.js";
 import {makeGameEngine, ecsModRegistry} from "@/test/ecsSim.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
 import {beltsOf} from "@/mods/Logistics/testHelpers.js";
+import {flattenBatches} from "@/test/EventCollector.js";
 
 const RED = 1;
 const CELLS = [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}];
@@ -57,7 +58,8 @@ test("a session subscribing to a chunk receives its existing belts and resting i
 
     const bundle = viewer.events.find(event => event instanceof ChunkSyncEvent);
     assert.ok(bundle, "a ChunkSyncEvent bundle for the subscribed chunk");
-    const belts = bundle.events.filter(event => event instanceof BeltSyncEvent);
+    const synced = flattenBatches(bundle.events);
+    const belts = synced.filter(event => event instanceof BeltSyncEvent);
 
     assert.equal(belts.length, CELLS.length, "one BeltSyncEvent per placed belt");
     assert.deepEqual(

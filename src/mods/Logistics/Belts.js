@@ -1,10 +1,10 @@
-import {TickPhase, Direction, EMPTY, NO_EID, chunkId, tileId} from "@/sdk/common.js";
+import {TickPhase, Direction, EMPTY, NO_EID, chunkId, chunkOrigin, tileId} from "@/sdk/common.js";
 import {
     BeltInsertEvent,
-    BeltSyncEvent,
+    BeltSyncBatchEvent,
+    BeltPathBatchEvent,
     BeltDeleteEvent,
     BeltPathRecalculateEvent,
-    BeltItemUpsertEvent,
     BeltItemSyncEvent,
     BeltItemResetEvent,
     BeltItemBatchEvent,
@@ -399,7 +399,7 @@ export class Belts {
         for (const path of this._pathsCovering(tileKeys)) {
             // Re-sync (snap), not upsert (glide): the edit re-rowed the items but didn't move them.
             for (const item of this._unloadItems(path.slot)) {
-                const event = this._itemUpsertEvent(path, item.id, item.gap, item.type, true);
+                const event = this._itemSyncEvent(path, item.id, item.gap, item.type);
                 if (event !== null) {
                     this.engine.emitEvent(event);
                 }
@@ -502,22 +502,21 @@ export class Belts {
     }
 
     /**
+     * The re-sync for one of a path's items: a snap in place, since an edit re-rowed the item
+     * without moving it.
      * @private
      * @param {object} path
      * @param {number} itemId
      * @param {number} gap
      * @param {number} type
-     * @param {boolean} [sync] - emit a BeltItemSyncEvent (client snaps the sprite in place) rather
-     *     than a BeltItemUpsertEvent (client glides it); used when re-syncing an edit that didn't move it
-     * @returns {BeltItemUpsertEvent|BeltItemSyncEvent|null}
+     * @returns {BeltItemSyncEvent|null}
      */
-    _itemUpsertEvent(path, itemId, gap, type, sync=false) {
+    _itemSyncEvent(path, itemId, gap, type) {
         const head = this._headInfo(path);
         if (head === null) {
             return null;
         }
-        const EventClass = sync ? BeltItemSyncEvent : BeltItemUpsertEvent;
-        return new EventClass(head.x, head.y, head.pathId, itemId, gap, type);
+        return new BeltItemSyncEvent(head.x, head.y, head.pathId, itemId, gap, type);
     }
 
     /**
@@ -1628,21 +1627,40 @@ export class Belts {
      * @returns {object[]}
      */
     chunkSync(chunk) {
-        const events = [];
+        const origin = chunkOrigin(chunk);
+        let belts = null;
         for (const belt of this._allBelts()) {
             if (chunkId(belt.x, belt.y) === chunk) {
-                events.push(new BeltSyncEvent(belt.x, belt.y, belt.id, belt.direction, belt.type));
-            }
-        }
-        for (const path of this.paths) {
-            if (chunkId(path.headX, path.headY) === chunk) {
-                events.push(this._pathRecalcEvent(path));
-                for (const item of this._unloadItems(path.slot)) {
-                    events.push(this._itemUpsertEvent(path, item.id, item.gap, item.type));
+                if (belts === null) {
+                    belts = new BeltSyncBatchEvent(origin.x, origin.y);
                 }
+                belts.add(belt.id, belt.x, belt.y, belt.direction, belt.type);
             }
         }
-        return events;
+        let paths = null;
+        let items = null;
+        for (const path of this.paths) {
+            if (chunkId(path.headX, path.headY) !== chunk) {
+                continue;
+            }
+            const head = this._headInfo(path);
+            if (head === null) {
+                continue;
+            }
+            if (paths === null) {
+                paths = new BeltPathBatchEvent(origin.x, origin.y);
+            }
+            paths.add(path.headX, path.headY, [...path.beltIds].reverse(), path.outPort);
+            for (const item of this._unloadItems(path.slot)) {
+                if (items === null) {
+                    items = new BeltItemBatchEvent(head.x, head.y);
+                }
+                items.addUpsert(head.pathId, item.id, item.gap, item.type);
+            }
+        }
+        // Belts before paths before items: the client positions a path against its belts, and its
+        // items against the path.
+        return [belts, paths, items].filter(batch => batch !== null);
     }
 
     /**

@@ -106,7 +106,7 @@ export {rotate} from "@/common/util.js";
 // ---- Chunk ids ----
 // A chunk is identified by an integer ordinal id (its index within the region);
 // `chunkId(tileX, tileY)` computes that id in JS.
-export {chunkId} from "@/common/util.js";
+export {chunkId, chunkOrigin} from "@/common/util.js";
 
 // The id of a tile, used as the key of every spatial index.
 export {tileId} from "@/common/util.js";

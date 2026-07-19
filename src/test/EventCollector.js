@@ -1,6 +1,24 @@
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 
 /**
+ * Unpacks any batches in `events` into their per-delta events, the way a client replays them, so a
+ * spec asserts on the events handlers see rather than on the wire packing.
+ * @param {AbstractEvent[]} events
+ * @returns {AbstractEvent[]}
+ */
+export function flattenBatches(events) {
+    const flat = [];
+    for (const event of events) {
+        if (event instanceof AbstractBatchEvent) {
+            flat.push(...event.explode());
+            continue;
+        }
+        flat.push(event);
+    }
+    return flat;
+}
+
+/**
  * Test sink that buffers a GameEngine's emitted domain events for pull-style assertions.
  */
 export class EventCollector {
@@ -19,14 +37,7 @@ export class EventCollector {
      * @returns {AbstractTilePositionedEvent[]}
      */
     drain() {
-        const events = [];
-        for (const event of this._events) {
-            if (event instanceof AbstractBatchEvent) {
-                events.push(...event.explode());
-                continue;
-            }
-            events.push(event);
-        }
+        const events = flattenBatches(this._events);
         this._events = [];
         return events;
     }

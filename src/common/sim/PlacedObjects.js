@@ -1,6 +1,6 @@
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
-import {chunkId} from "@/common/util.js";
+import {ObjectInsertEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
+import {chunkId, chunkOrigin} from "@/common/util.js";
 import {NO_EID} from "@/common/sim/GameEngine.js";
 
 /**
@@ -175,12 +175,14 @@ export class PlacedObjects {
     }
 
     /**
+     * The chunk's objects as one packed batch, or nothing when it holds none.
      * @private
      * @param {number} chunk
-     * @returns {ObjectSyncEvent[]}
+     * @returns {ObjectSyncBatchEvent[]}
      */
     _chunkSync(chunk) {
-        const events = [];
+        const origin = chunkOrigin(chunk);
+        let batch = null;
         const placedObject = this.def.store;
         const position = this.engine.Position;
         const eids = this.def.eids;
@@ -191,12 +193,15 @@ export class PlacedObjects {
             }
             const type = this._types.get(placedObject.typeId[row]);
             const sync = type.behavior.syncData(this.engine, this, eid);
-            events.push(new ObjectSyncEvent(
+            if (batch === null) {
+                batch = new ObjectSyncBatchEvent(origin.x, origin.y);
+            }
+            batch.add(
                 type.typeId, placedObject.objectId[row], position.x[eid], position.y[eid], position.direction[eid],
                 sync.portIds, sync.lastOutput,
-            ));
+            );
         }
-        return events;
+        return batch === null ? [] : [batch];
     }
 
     /**
