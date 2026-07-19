@@ -4,6 +4,7 @@ import {LAYER_SURFACE} from "@/common/constants.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PortItemSetEvent, PortItemClearEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlacedObjects} from "@/common/sim/PlacedObjects.js";
+import {LaborNetworks} from "@/common/sim/LaborNetworks.js";
 
 /**
  * @enum
@@ -83,6 +84,18 @@ const INTENT_CAPACITY = 1024;
 const INTENT_DEST_EMPTY = 1;
 const INTENT_MANAGED = 2;
 
+/**
+ * A component column for a field kind: Float32Array for "f32", Int32Array otherwise ("i32"/"eid").
+ * @param {string} kind
+ * @param {number} capacity
+ * @param {number} fill
+ * @returns {Int32Array|Float32Array}
+ */
+function columnFor(kind, capacity, fill) {
+    const column = kind === "f32" ? new Float32Array(capacity) : new Int32Array(capacity);
+    return column.fill(fill);
+}
+
 
 /**
  * A registered component: its SoA Int32Array columns plus how they are indexed.
@@ -114,7 +127,7 @@ class ComponentDef {
         this.capacity = PORT_CAPACITY;
         this.store = {};
         for (const field of fields) {
-            this.store[field.name] = new Int32Array(PORT_CAPACITY).fill(field.fill);
+            this.store[field.name] = columnFor(field.kind, PORT_CAPACITY, field.fill);
         }
 
         /**
@@ -226,6 +239,12 @@ export class GameEngine {
          * @type {PlacedObjects|null}
          */
         this.placed = null;
+
+        /**
+         * Road-network labor allocation over the placed objects; built with the entity host.
+         * @type {LaborNetworks|null}
+         */
+        this.labor = null;
 
         // Provided service instances by their exported marker class (see provide/resolve).
         this._services = new Map();
@@ -568,6 +587,7 @@ export class GameEngine {
             // throw otherwise. The generic entity host installs every derived type's behavior first,
             // then bespoke sim mods register theirs.
             this.placed = new PlacedObjects(this, this.modRegistry);
+            this.labor = new LaborNetworks(this, this.placed);
             for (const mod of this.modRegistry.simMods) {
                 mod.setup(this);
             }
@@ -776,10 +796,10 @@ export class GameEngine {
     }
 
     /**
-     * Registers a component store: SoA Int32Array columns grown by doubling, tracked for generic
+     * Registers a component store: SoA typed-array columns grown by doubling, tracked for generic
      * serialization. `fields` are {name, kind?, fill?} — kind "eid" marks an entity-reference column
-     * remapped on deserialize (default "i32"); fill is the empty-slot value (default 0). Modules call
-     * this so their state round-trips with no bespoke save code.
+     * remapped on deserialize, "f32" a float column (default "i32"); fill is the empty-slot value
+     * (default 0). Modules call this so their state round-trips with no bespoke save code.
      * @param {string} name
      * @param {{name:string, kind?:string, fill?:number}[]} fieldSpecs
      * @param {{snapshotOnly?:boolean, sparse?:boolean}} [options] - snapshotOnly components hold state
@@ -839,7 +859,7 @@ export class GameEngine {
             capacity *= 2;
         }
         for (const field of def.fields) {
-            const grown = new Int32Array(capacity).fill(field.fill);
+            const grown = columnFor(field.kind, capacity, field.fill);
             grown.set(def.store[field.name]);
             def.store[field.name] = grown;
         }
@@ -1013,6 +1033,22 @@ export class GameEngine {
     occupantUserDataAt(x, y, layer) {
         const eid = this._cellByKey.get(this._cellKeyAt(x, y, layer));
         return eid === undefined ? null : this._occupancyDef.store.userData[eid];
+    }
+
+    /**
+     * The object id owning the cell at {x, y, layer}, or null when the cell is free or unowned.
+     * @param {number} x
+     * @param {number} y
+     * @param {string} layer
+     * @returns {number|null}
+     */
+    occupantOwnerAt(x, y, layer) {
+        const eid = this._cellByKey.get(this._cellKeyAt(x, y, layer));
+        if (eid === undefined) {
+            return null;
+        }
+        const owner = this._occupancyDef.store.owner[eid];
+        return owner === NO_EID ? null : owner;
     }
 
     /**

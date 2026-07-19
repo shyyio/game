@@ -42,6 +42,17 @@ export const BeltBend = {
     RIGHT: 2,
 };
 
+// ---- Labor ----
+// Labor one Housing contributes to its road network.
+export const HOUSING_LABOR_SUPPLY = 5;
+
+// Map-mode tile colors.
+export const MAP_COLOR_HOUSING = 0x55a355;
+export const MAP_COLOR_ROAD = 0xFFBF00;
+
+// Roads draw below the worker figures (19) and the default object sprites (20).
+export const DRAW_LAYER_ROAD = 18;
+
 // ---- System ordering ----
 // The splitter's POST_RESOLVE seam runs at this order so it reads shared ports before the belt
 // transport (default order 0) writes pops, whatever the registration sequence.

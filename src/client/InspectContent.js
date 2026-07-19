@@ -3,7 +3,13 @@
 import {Container, Sprite, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {DEFAULT_ITEM_TEXTURE} from "@/client/ItemDrawLayer.js";
-import {PANEL_TINT, PROGRESS_BAR_TINT, PROGRESS_TEXT_COLOR, PROGRESS_TEXT_STROKE} from "@/client/Theme.js";
+import {
+    PANEL_TINT,
+    PROGRESS_BAR_TINT,
+    PROGRESS_TEXT_COLOR,
+    PROGRESS_TEXT_STROKE,
+    GHOST_BLOCKED_TINT,
+} from "@/client/Theme.js";
 import {addSlotHighlight} from "@/client/slotHighlight.js";
 import {nineSlice} from "@/client/pixiUtils.js";
 
@@ -35,6 +41,20 @@ export const TX_SLOT = "ui/Frame02a_inset4";
 // Total content height: inputs row, then a row sharing the progress bar and output slot.
 export const INSPECT_CONTENT_HEIGHT = SLOT_SIZE + SLOT_MARGIN_Y + SLOT_SIZE;
 const TX_BARFILL = "ui/barfill";
+
+const LABOR_TEXT_SIZE = 15;
+const LABOR_ROW_HEIGHT = LABOR_TEXT_SIZE + SLOT_MARGIN_Y;
+const LABOR_MANNED_COLOR = PROGRESS_BAR_TINT;
+const LABOR_MISSING_COLOR = GHOST_BLOCKED_TINT;
+
+/**
+ * The body height for a machine's snapshot; labor-consuming machines get an extra status row.
+ * @param {InspectHeartbeatEvent} event
+ * @returns {number}
+ */
+export function inspectContentHeight(event) {
+    return INSPECT_CONTENT_HEIGHT + (event.laborCost !== null ? LABOR_ROW_HEIGHT : 0);
+}
 
 /**
  * Builds the machine content (inputs row, progress bar, output slot) into a UIPanel.
@@ -76,6 +96,44 @@ export function buildInspectContent(panel, event, textureRegistry, itemTextures,
         outputAlpha = HALF_ALPHA;
     }
     addSlot(panel, outputItem, outputAlpha, outputX, y, textureRegistry, itemTextures);
+
+    if (event.laborCost !== null) {
+        y += SLOT_SIZE + SLOT_MARGIN_Y;
+        addLaborRow(panel, event, y);
+    }
+}
+
+/**
+ * One status line for a labor-consuming machine: staffing state plus its road network's
+ * demand/supply, red while the machine runs unmanned.
+ * @param {UIPanel} panel
+ * @param {InspectHeartbeatEvent} event
+ * @param {number} y
+ * @returns {void}
+ */
+function addLaborRow(panel, event, y) {
+    const staffed = event.laborWorkers === event.laborCost;
+    let text;
+    if (event.laborSupply === null) {
+        text = `No road access · needs ${event.laborCost} labor`;
+    } else if (staffed) {
+        text = `Manned · ${event.laborCost} labor · network ${event.laborDemand}/${event.laborSupply}`;
+    } else {
+        text = `Staffed ${event.laborWorkers}/${event.laborCost} · network ${event.laborDemand}/${event.laborSupply}`;
+    }
+    const label = new Text({
+        text,
+        style: {
+            fontFamily: GAME_FONT,
+            fontSize: LABOR_TEXT_SIZE,
+            fill: staffed ? LABOR_MANNED_COLOR : LABOR_MISSING_COLOR,
+            fontWeight: "bold",
+            stroke: {color: PROGRESS_TEXT_STROKE, width: PROGRESS_TEXT_STROKE_WIDTH},
+        },
+    });
+    label.x = 0;
+    label.y = y;
+    panel.addContent(label);
 }
 
 function addSlot(panel, item, itemAlpha, x, y, textureRegistry, itemTextures) {

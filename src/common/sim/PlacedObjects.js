@@ -1,5 +1,6 @@
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
+import {Direction} from "@/common/constants.js";
 import {chunkId, chunkOrigin} from "@/common/util.js";
 import {NO_EID} from "@/common/sim/GameEngine.js";
 
@@ -132,6 +133,10 @@ export class PlacedObjects {
         const type = this._types.get(message.typeId);
         if (type === undefined) {
             return false;
+        }
+        if (!type.directional) {
+            // A non-directional type ignores the sender's facing.
+            message.direction = Direction.UP;
         }
         const engine = this.engine;
         if (!type.behavior.canSpawn(engine, this, type, message)) {

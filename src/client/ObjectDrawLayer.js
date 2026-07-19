@@ -33,7 +33,7 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
     }
 
     get layerIndex() {
-        return 20;
+        return this._type.drawLayerIndex;
     }
 
     /**
@@ -269,7 +269,7 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
                 );
             }
         }
-        node.graphics.fill(MAP_TILE_COLOR);
+        node.graphics.fill(this._type.mapColor !== null ? this._type.mapColor : MAP_TILE_COLOR);
         return node.graphics;
     }
 }

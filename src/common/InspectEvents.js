@@ -16,6 +16,10 @@ export class InspectHeartbeatEvent extends AbstractEvent {
         processingTotal: "int32",
         outputItem: "int32?",
         recipeOutput: "int32?",
+        laborCost: "int32?",
+        laborWorkers: "int32?",
+        laborSupply: "int32?",
+        laborDemand: "int32?",
     };
 
     /**
@@ -26,8 +30,24 @@ export class InspectHeartbeatEvent extends AbstractEvent {
      * @param {number} processingTotal
      * @param {number|null} outputItem
      * @param {number|null} recipeOutput - inferred product (null = nothing gathered)
+     * @param {number|null} [laborCost] - labor the machine consumes (null = labor-free type)
+     * @param {number|null} [laborWorkers] - workers granted, up to laborCost (null with laborCost)
+     * @param {number|null} [laborSupply] - the road component's total supply (null when road-less)
+     * @param {number|null} [laborDemand] - the road component's total demand (null when road-less)
      */
-    constructor(objectId, inputPorts, inputMemory, processingRemaining, processingTotal, outputItem, recipeOutput) {
+    constructor(
+        objectId,
+        inputPorts,
+        inputMemory,
+        processingRemaining,
+        processingTotal,
+        outputItem,
+        recipeOutput,
+        laborCost=null,
+        laborWorkers=null,
+        laborSupply=null,
+        laborDemand=null,
+    ) {
         super();
         this.objectId = objectId;
         this.inputPorts = inputPorts;
@@ -36,6 +56,10 @@ export class InspectHeartbeatEvent extends AbstractEvent {
         this.processingTotal = processingTotal;
         this.outputItem = outputItem;
         this.recipeOutput = recipeOutput;
+        this.laborCost = laborCost;
+        this.laborWorkers = laborWorkers;
+        this.laborSupply = laborSupply;
+        this.laborDemand = laborDemand;
     }
 
     /**

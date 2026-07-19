@@ -1,6 +1,6 @@
 import {AbstractModDeclaration} from "@/sdk/common.js";
 import {CreateBeltMessage} from "./messages.js";
-import {BeltDefinition, SplitterDefinition} from "./objectTypes.js";
+import {BeltDefinition, SplitterDefinition, RoadDefinition, HousingDefinition} from "./objectTypes.js";
 import {
     BeltPathRecalculateEvent,
     BeltInsertEvent,
@@ -18,7 +18,7 @@ import {
 export class LogisticsDeclaration extends AbstractModDeclaration {
 
     get objectTypes() {
-        return [BeltDefinition, SplitterDefinition];
+        return [BeltDefinition, SplitterDefinition, RoadDefinition, HousingDefinition];
     }
 
     get wireClasses() {

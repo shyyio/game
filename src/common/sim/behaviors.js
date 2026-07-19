@@ -12,6 +12,9 @@ const RECIPE_SLOTS = 3;
 // costs no string per machine per tick.
 const RECIPE_SLOT_LIMIT = 1024;
 
+// A manned machine's per-tick processing progress (an unmanned one advances 1).
+const MANNED_SPEED_MULTIPLIER = 1.3;
+
 // Per-slot column names, indexed 0..RECIPE_SLOTS-1.
 const IN_COLS = ["in0", "in1", "in2"];
 const SLOT_COLS = ["slot0", "slot1", "slot2"];
@@ -42,6 +45,10 @@ export class AbstractBehavior {
          * @type {ObjectType|null}
          */
         this.type = null;
+        // Labor interface, read by LaborNetworks: a positive laborSupply makes the type a source, a
+        // positive laborCost a consumer.
+        this.laborSupply = 0;
+        this.laborCost = 0;
     }
 
     /**
@@ -138,6 +145,18 @@ export class AbstractBehavior {
     }
 
     /**
+     * Applies the labor allocation to one entity: `granted` workers of its laborCost (0 = none).
+     * @param {GameEngine} engine
+     * @param {PlacedObjects} placed
+     * @param {number} eid
+     * @param {number} granted
+     * @returns {void}
+     */
+    setLabor(engine, placed, eid, granted) {
+
+    }
+
+    /**
      * Rebuilds class-level derived indexes after a load; called once per behavior class.
      * @param {GameEngine} engine
      * @param {PlacedObjects} placed
@@ -157,6 +176,51 @@ export class StaticBehavior extends AbstractBehavior {
 }
 
 /**
+ * A road cell: registers its footprint with the labor network; no ports, no tick.
+ */
+export class RoadBehavior extends AbstractBehavior {
+
+    onSpawn(engine, placed, eid, type, message) {
+        const objectId = placed.objectIdOf(eid);
+        for (const cell of engine.footprint(type, message.x, message.y, message.direction)) {
+            engine.labor.addRoad(cell.x, cell.y, objectId);
+        }
+        return [];
+    }
+
+    onDespawn(engine, placed, eid) {
+        const position = engine.Position;
+        for (const cell of engine.footprint(this.type, position.x[eid], position.y[eid], position.direction[eid])) {
+            engine.labor.removeRoad(cell.x, cell.y);
+        }
+    }
+}
+
+/**
+ * A labor source: contributes laborSupply to the road component its footprint touches.
+ */
+export class HousingBehavior extends AbstractBehavior {
+
+    /**
+     * @param {object} config
+     * @param {number} config.laborSupply
+     */
+    constructor({laborSupply}) {
+        super();
+        this.laborSupply = laborSupply;
+    }
+
+    onSpawn(engine, placed, eid, type, message) {
+        engine.labor.markDirty();
+        return [];
+    }
+
+    onDespawn(engine, placed, eid) {
+        engine.labor.markDirty();
+    }
+}
+
+/**
  * A recipe machine: each input port gathers one item (consumed via a managed sink), a full slot set
  * matches a recipe (fallback when none), and the output lands in the out-port `processingTicks`
  * later (a managed source-less create).
@@ -168,11 +232,13 @@ export class MachineBehavior extends AbstractBehavior {
      * @param {number} config.processingTicks
      * @param {RecipeDefinition[]} config.recipes
      * @param {number} config.fallback - output when the gathered set matches no recipe
+     * @param {number} [config.laborCost] - labor consumed when road-connected to housing (0 = never manned)
      */
-    constructor({processingTicks, recipes, fallback}) {
+    constructor({processingTicks, recipes, fallback, laborCost=0}) {
         super();
         this.processingTicks = processingTicks;
         this.fallback = fallback;
+        this.laborCost = laborCost;
 
         // Packed gathered-set key -> output (see _recipeKey).
         this.recipes = new Map();
@@ -217,13 +283,18 @@ export class MachineBehavior extends AbstractBehavior {
             {name: "processing0", fill: EMPTY},
             {name: "processing1", fill: EMPTY},
             {name: "processing2", fill: EMPTY},
-            {name: "remaining", fill: EMPTY},
+            {name: "remaining", kind: "f32", fill: EMPTY},
+            // Overshot progress banked past a finished craft; the next craft starts this far along.
+            {name: "carry", kind: "f32"},
             {name: "output", fill: EMPTY},
             {name: "lastOutput", fill: EMPTY},
             // The two behavior constants the submit pass reads per machine per tick. Kept on the row so
             // the pass never hops through PlacedObject to reach the behavior instance.
             {name: "inputCount"},
             {name: "processingTicks"},
+            // Per-tick processing progress (1 unstaffed, up to MANNED_SPEED_MULTIPLIER fully
+            // staffed, interpolated for partial grants); written by LaborNetworks via setLabor.
+            {name: "laborStep", kind: "f32", fill: 1},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => MachineBehavior._submitIntents(engine, placed));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => MachineBehavior._finish(engine, placed));
@@ -241,13 +312,26 @@ export class MachineBehavior extends AbstractBehavior {
         }
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         machine.out[row] = output.port;
+        // Explicit: a recycled row may hold a stale step from a previous occupant.
+        machine.laborStep[row] = 1;
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
+        if (this.laborCost > 0) {
+            engine.labor.markDirty();
+        }
         return [output.port];
     }
 
     onDespawn(engine, placed, eid) {
         const def = engine.component("Machine");
         engine.unregisterRenderedPort(def.store.out[def.row(eid)]);
+        if (this.laborCost > 0) {
+            engine.labor.markDirty();
+        }
+    }
+
+    setLabor(engine, placed, eid, granted) {
+        const def = engine.component("Machine");
+        def.store.laborStep[def.row(eid)] = 1 + (MANNED_SPEED_MULTIPLIER - 1) * (granted / this.laborCost);
     }
 
     syncData(engine, placed, eid) {
@@ -287,8 +371,10 @@ export class MachineBehavior extends AbstractBehavior {
             const processing = processingCols[i][row];
             inputMemory.push(slot !== EMPTY ? slot : (processing !== EMPTY ? processing : 0));
         }
-        const remaining = machine.remaining[row] === EMPTY ? null : machine.remaining[row];
+        // The wire carries whole ticks; the fractional countdown stays sim-side.
+        const remaining = machine.remaining[row] === EMPTY ? null : Math.ceil(machine.remaining[row]);
         const outItem = item[machine.out[row]];
+        const labor = this.laborCost > 0 ? engine.labor.inspectFor(objectId) : null;
         return new InspectHeartbeatEvent(
             objectId,
             inputPorts,
@@ -297,6 +383,10 @@ export class MachineBehavior extends AbstractBehavior {
             this.processingTicks,
             outItem === EMPTY ? null : outItem,
             this._inspectRecipeOutput(inputMemory),
+            this.laborCost > 0 ? this.laborCost : null,
+            this.laborCost > 0 ? (labor === null ? 0 : labor.granted) : null,
+            labor === null ? null : labor.supply,
+            labor === null ? null : labor.demand,
         );
     }
 
@@ -368,25 +458,35 @@ export class MachineBehavior extends AbstractBehavior {
         const slotCols = columns(machine, SLOT_COLS);
         const processingCols = columns(machine, PROCESSING_COLS);
         const remaining = machine.remaining;
+        const carry = machine.carry;
         const output = machine.output;
         const out = machine.out;
         const inputCounts = machine.inputCount;
         const processingTicks = machine.processingTicks;
+        const laborStep = machine.laborStep;
         // Hoisted: `count` and `eids` reach through the descriptor into the world's membership set, and
         // this loop runs once per machine per tick.
         const eids = def.eids;
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
+            const step = laborStep[row];
             // Mid-craft with the product still held: the countdown is the only state that moves, so
             // skip the behavior lookup and the per-slot passes below, which would all no-op.
-            if (output[row] !== EMPTY && remaining[row] > 1) {
-                remaining[row] -= 1;
+            if (output[row] !== EMPTY && remaining[row] > step) {
+                remaining[row] -= step;
                 continue;
             }
 
             const inputCount = inputCounts[row];
             if (remaining[row] > 0) {
-                remaining[row] -= 1;
+                const next = remaining[row] - step;
+                if (next > 0) {
+                    remaining[row] = next;
+                } else {
+                    // Bank the overshoot; the next craft starts that far along.
+                    carry[row] -= next;
+                    remaining[row] = 0;
+                }
             }
 
             // Gather while idle, or in step on the tick a free output lets the next set load.
@@ -419,7 +519,15 @@ export class MachineBehavior extends AbstractBehavior {
                 // Only the recipe match needs the behavior instance, and only on the tick a set
                 // completes — rare next to the per-tick passes above.
                 output[row] = placed.behaviorFor(placed.typeIdOf(eids[row]))._resolveRecipe(slotCols, row);
-                remaining[row] = processingTicks[row];
+                const start = processingTicks[row] - carry[row];
+                if (start > 0) {
+                    remaining[row] = start;
+                    carry[row] = 0;
+                } else {
+                    // Banked progress covers the whole craft; the surplus keeps carrying.
+                    remaining[row] = 0;
+                    carry[row] = -start;
+                }
                 for (let i = 0; i < inputCount; i += 1) {
                     processingCols[i][row] = slotCols[i][row];
                     slotCols[i][row] = EMPTY;
@@ -479,7 +587,9 @@ export class ExtractorBehavior extends AbstractBehavior {
         engine.defineComponent("Extractor", [
             {name: "out", kind: "eid", fill: NO_EID},
             {name: "resourceType", fill: EMPTY},
-            {name: "remaining", fill: EMPTY},
+            {name: "remaining", kind: "f32", fill: EMPTY},
+            // Overshot progress banked past a finished cycle; the next cycle starts this far along.
+            {name: "carry", kind: "f32"},
             {name: "output", fill: EMPTY},
             {name: "lastOutput", fill: EMPTY},
             // The countdown length, kept on the row so the submit pass reaches no behavior instance
@@ -538,7 +648,8 @@ export class ExtractorBehavior extends AbstractBehavior {
         const extractor = def.store;
         const row = def.row(eid);
         const resource = extractor.resourceType[row];
-        const remaining = extractor.remaining[row] === EMPTY ? null : extractor.remaining[row];
+        // The wire carries whole ticks; the fractional countdown stays sim-side.
+        const remaining = extractor.remaining[row] === EMPTY ? null : Math.ceil(extractor.remaining[row]);
         const outItem = engine.Port.item[extractor.out[row]];
         let recipeOutput = null;
         if (resource !== EMPTY && this.recipes.has(resource)) {
@@ -586,7 +697,14 @@ export class ExtractorBehavior extends AbstractBehavior {
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
             if (extractor.remaining[row] > 0) {
-                extractor.remaining[row] -= 1;
+                const next = extractor.remaining[row] - 1;
+                if (next > 0) {
+                    extractor.remaining[row] = next;
+                } else {
+                    // Bank the overshoot; the next cycle starts that far along.
+                    extractor.carry[row] -= next;
+                    extractor.remaining[row] = 0;
+                }
             }
             // Only an idle extractor bound to a resource needs its recipe table, so the behavior hop
             // stays off the countdown path.
@@ -594,7 +712,15 @@ export class ExtractorBehavior extends AbstractBehavior {
                 const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
                 if (behavior.recipes.has(extractor.resourceType[row])) {
                     extractor.output[row] = behavior.recipes.get(extractor.resourceType[row]);
-                    extractor.remaining[row] = extractor.processingTicks[row];
+                    const start = extractor.processingTicks[row] - extractor.carry[row];
+                    if (start > 0) {
+                        extractor.remaining[row] = start;
+                        extractor.carry[row] = 0;
+                    } else {
+                        // Banked progress covers the whole cycle; the surplus keeps carrying.
+                        extractor.remaining[row] = 0;
+                        extractor.carry[row] = -start;
+                    }
                 }
             }
             if (extractor.remaining[row] === 0) {
