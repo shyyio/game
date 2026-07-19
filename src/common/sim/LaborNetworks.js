@@ -17,7 +17,8 @@ const NEIGHBOR_DELTAS = [
 
 /**
  * Road-network labor: a housing's laborSupply feeds the connected road component, road-adjacent
- * machines consume laborCost by ascending (Manhattan distance to housing, objectId) and run manned.
+ * machines consume their full laborCost by ascending (Manhattan distance to housing, objectId) and
+ * run manned; a machine the remaining supply can't fully staff gets nothing.
  * Edits mark the allocation dirty; it recomputes lazily (tick, chunk sync, inspect).
  */
 export class LaborNetworks {
@@ -180,7 +181,7 @@ export class LaborNetworks {
 
     /**
      * Allocates one component: gathers attached housings/machines off the road tiles' neighbors,
-     * then grants laborCost by ascending (distance, objectId) while supply lasts.
+     * then grants each machine its full laborCost by ascending (distance, objectId) while supply lasts.
      * @private
      * @param {{minTile: number, tiles: {x: number, y: number, objectId: number}[]}} component
      * @param {Map<number, object>} next
@@ -234,8 +235,12 @@ export class LaborNetworks {
             if (supplyLeft === 0) {
                 break;
             }
-            // Partial grant: the machine takes whatever is left even short of its full cost.
-            const granted = machine.cost < supplyLeft ? machine.cost : supplyLeft;
+            if (machine.cost > supplyLeft) {
+                // Full crew or nothing: a machine the remaining supply can't fully staff stays
+                // unmanned; a cheaper machine further down may still fit.
+                continue;
+            }
+            const granted = machine.cost;
             supplyLeft -= granted;
             const entry = next.get(machine.objectId);
             entry.granted = granted;

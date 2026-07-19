@@ -53,7 +53,8 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
     constructor() {
         super();
         /**
-         * machineId -> housingId for every manned machine in watched chunks.
+         * machineId -> housingId for every manned machine in watched chunks (grants are
+         * full-crew-or-nothing, so an assigned housing means a running machine).
          * @type {Map<number, number>}
          * @private
          */

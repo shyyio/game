@@ -130,9 +130,9 @@ test("fractional progress banks past a craft and shortens the next", async () =>
 test("a labor shortage staffs the closest machines first", async () => {
     const engine = await makeGameEngine();
     placeObject(engine, HousingDefinition, 2, 4);
-    // Two machines past what the supply fully staffs: full grants nearest, then the remainder, then idle.
+    // Two machines past what the supply fully staffs: full crews nearest; a remainder short of a
+    // full crew staffs nobody.
     const fullGrants = Math.floor(HOUSING_LABOR_SUPPLY / DEMO_MACHINE_LABOR_COST);
-    const remainder = HOUSING_LABOR_SUPPLY % DEMO_MACHINE_LABOR_COST;
     const count = fullGrants + 2;
     for (let x = 4; x < 5 + count; x += 1) {
         placeObject(engine, RoadDefinition, x, 5);
@@ -142,12 +142,7 @@ test("a labor shortage staffs the closest machines first", async () => {
         machineIds.push(placeObject(engine, DemoMachineType, x, 4));
     }
     for (const [i, machineId] of machineIds.entries()) {
-        let expected = 0;
-        if (i < fullGrants) {
-            expected = DEMO_MACHINE_LABOR_COST;
-        } else if (i === fullGrants) {
-            expected = remainder;
-        }
+        const expected = i < fullGrants ? DEMO_MACHINE_LABOR_COST : 0;
         assert.equal(engine.inspectSnapshot(machineId).laborWorkers, expected, `machine at x=${5 + i}`);
     }
 });
@@ -155,10 +150,9 @@ test("a labor shortage staffs the closest machines first", async () => {
 test("a distance tie staffs the older machine (lower objectId)", async () => {
     const engine = await makeGameEngine();
     placeObject(engine, HousingDefinition, 2, 4);
-    // Closer machines drain the supply down to one last grant; it goes to one of two machines at
-    // equal distance, and placement order must break the tie.
-    const leadCount = Math.ceil(HOUSING_LABOR_SUPPLY / DEMO_MACHINE_LABOR_COST) - 1;
-    const leftover = HOUSING_LABOR_SUPPLY - leadCount * DEMO_MACHINE_LABOR_COST;
+    // Closer machines drain the supply down to one last full crew; it goes to one of two machines
+    // at equal distance, and placement order must break the tie.
+    const leadCount = Math.floor(HOUSING_LABOR_SUPPLY / DEMO_MACHINE_LABOR_COST) - 1;
     for (let x = 4; x <= 5 + leadCount; x += 1) {
         placeObject(engine, RoadDefinition, x, 5);
     }
@@ -167,7 +161,7 @@ test("a distance tie staffs the older machine (lower objectId)", async () => {
     }
     const olderId = placeObject(engine, DemoMachineType, 5 + leadCount, 4);
     const newerId = placeObject(engine, DemoMachineType, 4 + leadCount, 6);
-    assert.equal(engine.inspectSnapshot(olderId).laborWorkers, leftover);
+    assert.equal(engine.inspectSnapshot(olderId).laborWorkers, DEMO_MACHINE_LABOR_COST);
     assert.equal(engine.inspectSnapshot(newerId).laborWorkers, 0);
 });
 
