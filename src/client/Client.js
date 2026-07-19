@@ -46,9 +46,37 @@ import {DEV, BROWSER} from "@/common/env.js";
 // Chunk-sync bundles applied per ticker frame; the rest of the queue waits so arrival order holds.
 const SYNC_CHUNKS_PER_FRAME = 2;
 
+// Leading entries shown per column when logging a columnar batch event.
+const LOG_BATCH_ITEMS = 5;
+
 function formatBytes(n) {
     const text = n > 1024 ? `${Math.round(n / 1024)}K` : `${n}B`;
     return text.padStart(5);
+}
+
+/**
+ * A console view of an event: a batch event's columns cut to their first {@link LOG_BATCH_ITEMS}
+ * entries, a sync bundle's inner events mapped the same way; other events log as-is.
+ * @param {AbstractEvent} event
+ * @returns {object}
+ */
+function eventLogView(event) {
+    if (event instanceof ChunkSyncEvent) {
+        return {event: event.constructor.name, chunk: event.chunk, events: event.events.map(eventLogView)};
+    }
+    if (!(event instanceof AbstractBatchEvent)) {
+        return event;
+    }
+    const view = {event: event.constructor.name};
+    for (const [field, type] of Object.entries(event.constructor.wireFields)) {
+        const value = event[field];
+        if (type.endsWith("[]") && value.length > LOG_BATCH_ITEMS) {
+            view[field] = `[${value.slice(0, LOG_BATCH_ITEMS).join(", ")}, … ${value.length} total]`;
+        } else {
+            view[field] = value;
+        }
+    }
+    return view;
 }
 
 export class Client {
@@ -428,9 +456,11 @@ export class Client {
     publishEvent(event, bytes=0) {
         if (DEV && BROWSER) {
             this._bytesReceived = (this._bytesReceived || 0) + bytes;
-            if (bytes > 0) {
+            // Logging every event costs a DevTools stack capture each and retains the payloads;
+            // only in debug mode, and batch events cut to their leading column entries.
+            if (bytes > 0 && this._debugMode) {
                 // this event's size, then the session total
-                console.log(`↓ [${formatBytes(bytes)} / ${formatBytes(this._bytesReceived)}]`, event.constructor.name, event);
+                console.log(`↓ [${formatBytes(bytes)} / ${formatBytes(this._bytesReceived)}]`, event.constructor.name, eventLogView(event));
             }
         }
         if (event instanceof ChunkSyncEvent || this._pendingEvents.length > 0) {
