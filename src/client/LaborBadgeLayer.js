@@ -1,8 +1,8 @@
 import {Container, Graphics, GraphicsContext} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
+import {DisplayPool} from "@/client/DisplayPool.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {chunkId, getOrCreate} from "@/common/util.js";
-import {LaborAssignmentEvent} from "@/common/LaborEvents.js";
 
 // Worker dot styling, in a row along the machine's top edge: every slot carries the same solid
 // black ring; a granted worker fills it green, a missing one yellow.
@@ -25,14 +25,18 @@ const BADGE_POOL_LIMIT = 64;
  */
 export class LaborBadgeLayer extends AbstractDrawLayer {
 
-    constructor() {
+    /**
+     * @param {LaborAssignmentCache} assignments
+     */
+    constructor(assignments) {
         super();
         /**
-         * machineId -> granted workers for every road-attached machine in watched chunks.
-         * @type {Map<number, number>}
+         * The shared machine-staffing index.
+         * @type {LaborAssignmentCache}
          * @private
          */
-        this._assignments = new Map();
+        this._assignments = assignments;
+        assignments.onChange(machineId => this._onAssignmentChange(machineId));
         /**
          * Live badges keyed by machineId.
          * @type {Map<number, Badge>}
@@ -43,7 +47,7 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
          * Idle badges awaiting reuse, detached, pooled by staffing state: a badge keeps its
          * shared context for life, because every context (re)assignment registers/removes a
          * listener on the context's list — O(all badges) per swap on a shared context.
-         * @type {Map<string, Badge[]>}
+         * @type {Map<string, DisplayPool>}
          * @private
          */
         this._pools = new Map();
@@ -70,22 +74,18 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
         return 21;
     }
 
-    get eventClasses() {
-        return [LaborAssignmentEvent];
-    }
-
     /**
-     * @param {LaborAssignmentEvent} event
+     * @param {number} machineId
      * @returns {void}
+     * @private
      */
-    onEvent(event) {
-        if (event.attached === 0) {
-            this._assignments.delete(event.machineId);
-            this._releaseBadge(event.machineId);
+    _onAssignmentChange(machineId) {
+        if (this._assignments.get(machineId) === null) {
+            this._releaseBadge(machineId);
+            this._dirtyMachines.delete(machineId);
             return;
         }
-        this._assignments.set(event.machineId, event.workers);
-        this._dirtyMachines.add(event.machineId);
+        this._dirtyMachines.add(machineId);
     }
 
     /**
@@ -99,21 +99,24 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Rebuilds the dirty badges.
+     * Rebuilds the dirty badges; hidden (map mode), the backlog waits for the zoom back in.
      * @param {number} frame
      * @param {number} deltaMS
      * @param {Set<number>} visibleChunks
      * @returns {void}
      */
     tick(frame, deltaMS, visibleChunks) {
+        if (!this.visible) {
+            return;
+        }
         for (const machineId of this._dirtyMachines) {
-            const granted = this._assignments.get(machineId);
-            const entry = granted === undefined ? null : this.cache.get(machineId);
+            const assignment = this._assignments.get(machineId);
+            const entry = assignment === null ? null : this.cache.get(machineId);
             if (entry === null) {
                 this._releaseBadge(machineId);
                 continue;
             }
-            this._placeBadge(machineId, entry, granted);
+            this._placeBadge(machineId, entry, assignment.workers);
         }
         this._dirtyMachines.clear();
     }
@@ -137,42 +140,38 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
             badge = undefined;
         }
         if (badge === undefined) {
-            badge = this._takeBadge(stateKey, workers, granted);
+            badge = this._poolFor(stateKey).take(workers, granted);
             this._badges.set(machineId, badge);
         }
 
-        let minX = entry.cells[0].x;
-        let minY = entry.cells[0].y;
-        for (const cell of entry.cells) {
-            minX = Math.min(minX, cell.x);
-            minY = Math.min(minY, cell.y);
-        }
-        badge.position.set(minX * TILE_SIZE + DOT_LEFT_INSET, minY * TILE_SIZE + DOT_EDGE_INSET);
-        const container = this._containerFor(chunkId(minX, minY));
+        const bounds = entry.tileBounds;
+        badge.position.set(
+            bounds.minTileX * TILE_SIZE + DOT_LEFT_INSET,
+            bounds.minTileY * TILE_SIZE + DOT_EDGE_INSET,
+        );
+        const container = this._containerFor(chunkId(bounds.minTileX, bounds.minTileY));
         if (badge.parent !== container) {
             container.addChild(badge);
         }
     }
 
     /**
-     * A pooled badge for a staffing state, created against the state's shared context when the
-     * pool is dry.
+     * The badge pool for a staffing state, created on first use. Fresh badges build against the
+     * state's shared context; park/attach is the caller's, so park and revive are no-ops.
      * @private
      * @param {string} stateKey
-     * @param {number} workers
-     * @param {number} granted
-     * @returns {Badge}
+     * @returns {DisplayPool}
      */
-    _takeBadge(stateKey, workers, granted) {
-        const pool = this._pools.get(stateKey);
-        const pooled = pool === undefined ? undefined : pool.pop();
-        if (pooled !== undefined) {
-            return pooled;
-        }
-        return new Badge(
-            this._contextFor(stateKey, workers, granted),
-            stateKey,
-        );
+    _poolFor(stateKey) {
+        return getOrCreate(this._pools, stateKey, () => new DisplayPool(
+            (workers, granted) => new Badge(
+                this._contextFor(stateKey, workers, granted),
+                stateKey,
+            ),
+            badge => {},
+            badge => {},
+            BADGE_POOL_LIMIT,
+        ));
     }
 
     /**
@@ -211,8 +210,8 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Parks a machine's badge back in the pool, detached; a no-op when it has none. An emptied
-     * chunk container dies with its last badge.
+     * Parks a machine's badge back in its state's pool, detached; a no-op when it has none. An
+     * emptied chunk container dies with its last badge.
      * @private
      * @param {number} machineId
      * @returns {void}
@@ -230,13 +229,8 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
             container.destroy();
         }
         this._badges.delete(machineId);
-        const pool = getOrCreate(this._pools, badge.stateKey, () => []);
-        if (pool.length < BADGE_POOL_LIMIT) {
-            pool.push(badge);
-        } else {
-            // destroy() leaves the shared context alone (the badge never owned it).
-            badge.destroy();
-        }
+        // An overflow destroy() leaves the shared context alone (the badge never owned it).
+        this._poolFor(badge.stateKey).release(badge);
     }
 }
 

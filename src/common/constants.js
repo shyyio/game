@@ -102,6 +102,14 @@ export const Direction = {
     }
 };
 
+// The 4-neighborhood of a tile, where footprints touch (road attachment, route seeds).
+export const NEIGHBOR_DELTAS = [
+    {dx: 1, dy: 0},
+    {dx: -1, dy: 0},
+    {dx: 0, dy: 1},
+    {dx: 0, dy: -1},
+];
+
 export const CHUNK_SIZE = 64;
 
 // A region is REGION_SIZE x REGION_SIZE chunks, centered on the origin, so chunk

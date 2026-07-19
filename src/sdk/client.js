@@ -27,6 +27,8 @@ export {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 // `AbstractChunkedDrawLayer` adds per-chunk grouping: ChunkNode roots mounted by viewport,
 // one-pass stale-chunk rebuilds, and the map-mode sprite/geometry swap.
 export {AbstractChunkedDrawLayer} from "@/client/AbstractChunkedDrawLayer.js";
+// `AbstractTileMeshDrawLayer` draws each chunk as one AnimatedTileMesh off a shared shader.
+export {AbstractTileMeshDrawLayer} from "@/client/AbstractTileMeshDrawLayer.js";
 export {ObjectDrawLayer} from "@/client/ObjectDrawLayer.js";
 // The `data` payload of a derived-type cache entry ({type, direction}).
 export {ObjectClientData} from "@/client/ClientCacheSync.js";

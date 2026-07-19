@@ -9,7 +9,10 @@ export class GridDrawLayer extends AbstractDrawLayer {
 
     constructor() {
         super();
-        this._chunks = {};
+        /**
+         * @type {Map<number, GridChunk>}
+         */
+        this._chunks = new Map();
         this._mapMode = false;
         // Every chunk's grid is the same geometry: built once, shared by all chunk Graphics.
         this._majorContext = GridDrawLayer._buildMajorContext();
@@ -24,43 +27,40 @@ export class GridDrawLayer extends AbstractDrawLayer {
      * @param {number} chunk
      */
     addChunk(chunk) {
-        if (this._chunks[chunk] !== undefined) {
+        if (this._chunks.has(chunk)) {
             return;
         }
 
         const {x, y} = chunkPosition(chunk);
         const tileX = x * CHUNK_SIZE;
         const tileY = y * CHUNK_SIZE;
-        const container = new Container();
-        container.addChild(new Graphics(this._majorContext));
-        const minor = container.addChild(new Graphics(this._minorContext));
-        minor.visible = !this._mapMode;
-        container.position.set(tileX * TILE_SIZE, tileY * TILE_SIZE);
-        container.zIndex = tileX + tileY;
-        this._chunks[chunk] = container;
-        this.addChild(container);
+        const grid = new GridChunk(this._majorContext, this._minorContext);
+        grid.minor.visible = !this._mapMode;
+        grid.position.set(tileX * TILE_SIZE, tileY * TILE_SIZE);
+        grid.zIndex = tileX + tileY;
+        this._chunks.set(chunk, grid);
+        this.addChild(grid);
     }
 
     /**
      * @param {number} chunk
      */
     removeChunk(chunk) {
-        const sprite = this._chunks[chunk];
-
-        if (sprite === undefined) {
+        const grid = this._chunks.get(chunk);
+        if (grid === undefined) {
             return;
         }
 
-        this.removeChild(sprite);
+        this.removeChild(grid);
         // The Graphics views die with the container; the shared contexts live on.
-        sprite.destroy({children: true});
-        delete this._chunks[chunk];
+        grid.destroy({children: true});
+        this._chunks.delete(chunk);
     }
 
     set mapMode(value) {
         this._mapMode = value;
-        for (const grid of this.children) {
-            grid.children[1].visible = !value;
+        for (const grid of this._chunks.values()) {
+            grid.minor.visible = !value;
         }
     }
 
@@ -105,5 +105,24 @@ export class GridDrawLayer extends AbstractDrawLayer {
         }
         context.stroke({color: 0x000000, pixelLine: true, alpha: 0.1});
         return context;
+    }
+}
+
+/**
+ * One chunk's grid: the chunk outline plus its tile lines, which map mode hides.
+ */
+class GridChunk extends Container {
+
+    /**
+     * @param {GraphicsContext} majorContext
+     * @param {GraphicsContext} minorContext
+     */
+    constructor(
+        majorContext,
+        minorContext,
+    ) {
+        super();
+        this.addChild(new Graphics(majorContext));
+        this.minor = this.addChild(new Graphics(minorContext));
     }
 }

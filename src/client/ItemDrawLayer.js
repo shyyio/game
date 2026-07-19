@@ -1,6 +1,7 @@
 import {Container, Graphics, Particle, ParticleContainer, Texture} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {DisplayPool} from "@/client/DisplayPool.js";
+import {KeyedDisplayPool} from "@/client/KeyedDisplayPool.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
 import {rotate} from "@/common/util.js";
@@ -42,26 +43,20 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         this._particles = new ParticleContainer();
         this.addChild(this._particles);
         /**
-         * Live particles, keyed by particle key — a number row id for belt items, a
-         * namespaced string for items resting in out-ports.
-         * @type {Map<number|string, ItemParticle>}
-         * @private
-         */
-        this._items = new Map();
-        /**
          * Particles with a glide in flight; the only ones the per-frame tick advances.
          * @type {Set<ItemParticle>}
          * @private
          */
         this._gliding = new Set();
         /**
-         * Idle particles awaiting reuse, parked in the container at alpha 0 and kept at the
-         * high-water mark: pixi's removeParticle is a linear scan per call, so unload bursts
-         * would go quadratic.
-         * @type {DisplayPool}
+         * Live particles keyed by particle key — a number row id for belt items, a namespaced
+         * string for items resting in out-ports. Idle particles await reuse parked in the
+         * container at alpha 0 and kept at the high-water mark: pixi's removeParticle is a
+         * linear scan per call, so unload bursts would go quadratic.
+         * @type {KeyedDisplayPool}
          * @private
          */
-        this._pool = new DisplayPool(
+        this._items = new KeyedDisplayPool(new DisplayPool(
             texture => {
                 const particle = new ItemParticle(texture, this._particles);
                 this._particles.addParticle(particle);
@@ -76,7 +71,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
                 particle.setTexture(texture);
                 particle.reset();
             },
-        );
+        ));
         /**
          * Item type -> texture name, merged across mods.
          * @type {Object.<number, string>}
@@ -208,13 +203,8 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      */
     moveItem({key, tileX, tileY, halfTile, sourceDirection, type, snap=false, hidden=false}) {
         const texture = this._textureForType(type);
-        let particle = this._items.get(key);
-        if (particle === undefined) {
-            particle = this._pool.take(texture);
-            this._items.set(key, particle);
-        } else {
-            particle.setTexture(texture);
-        }
+        const particle = this._items.take(key, texture);
+        particle.setTexture(texture);
         particle.hidden = hidden;
         this._applyItemVisibility(particle);
         particle.moveTo(tileX, tileY, halfTile, sourceDirection, snap);
@@ -256,16 +246,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {number|string} newKey
      */
     renameItem(oldKey, newKey) {
-        const particle = this._items.get(oldKey);
-        if (particle === undefined) {
-            return;
-        }
-        const existing = this._items.get(newKey);
-        if (existing !== undefined && existing !== particle) {
-            this._pool.release(existing);
-        }
-        this._items.delete(oldKey);
-        this._items.set(newKey, particle);
+        this._items.rename(oldKey, newKey);
     }
 
     /**
@@ -273,12 +254,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {number|string} key
      */
     removeItem(key) {
-        const particle = this._items.get(key);
-        if (particle === undefined) {
-            return;
-        }
-        this._pool.release(particle);
-        this._items.delete(key);
+        this._items.release(key);
     }
 
     /**

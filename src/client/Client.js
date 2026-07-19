@@ -14,6 +14,8 @@ import {ChunkSyncEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
+import {LaborAssignmentEvent} from "@/common/LaborEvents.js";
+import {LaborAssignmentCache} from "@/client/LaborAssignmentCache.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {
     TILE_SIZE,
@@ -121,12 +123,14 @@ export class Client {
         this.itemLayer = new ItemDrawLayer(modRegistry.itemTextures);
         // The single shared connection-stub layer, derived from the cache as objects change.
         this.connectionLayer = new ConnectionDrawLayer();
+        // Machine staffing mirrored from the sim's assignment events, shared by the labor layers.
+        this.laborAssignments = new LaborAssignmentCache();
         // Commuting worker figures for manned machines, routed over the cached road tiles.
-        this.workerLayer = new WorkerDrawLayer();
+        this.workerLayer = new WorkerDrawLayer(this.laborAssignments);
         // Debug overlay: road components, attachments, and assignments; hidden outside debug mode.
-        this.laborDebugLayer = new LaborDebugLayer();
+        this.laborDebugLayer = new LaborDebugLayer(this.laborAssignments);
         // Staffing dots over manned machines (one per consumed worker).
-        this.laborBadgeLayer = new LaborBadgeLayer();
+        this.laborBadgeLayer = new LaborBadgeLayer(this.laborAssignments);
         // Top-left connection/chunk-loading status overlay. A static screen-space HUD on
         // app.stage (sibling of the viewport), so it never pans or zooms with the world.
         this.statusLayer = new StatusMessageLayer();
@@ -592,6 +596,9 @@ export class Client {
      */
     dispatchEvent(event) {
         this.cacheSync.onEvent(event);
+        if (event instanceof LaborAssignmentEvent) {
+            this.laborAssignments.onEvent(event);
+        }
         for (const mod of this.modRegistry.clientMods) {
             mod.onEvent(event, this);
         }

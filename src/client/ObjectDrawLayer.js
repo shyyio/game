@@ -1,4 +1,3 @@
-import {Graphics} from "pixi.js";
 import {AbstractChunkedDrawLayer} from "@/client/AbstractChunkedDrawLayer.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {chunkId} from "@/common/util.js";
@@ -19,7 +18,10 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
     constructor(type) {
         super();
         this._type = type;
-        this._objects = {};
+        /**
+         * @type {Map<number, ObjectSprite>}
+         */
+        this._objects = new Map();
     }
 
     get layerIndex() {
@@ -59,23 +61,17 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
      * @param {Sprite} sprite
      */
     addObject(id, sprite) {
-        this._objects[id] = sprite;
-
+        this._objects.set(id, sprite);
         const chunk = chunkId(sprite.tileX, sprite.tileY);
         this._node(chunk).sprites.addChild(sprite);
-        this._dirtyChunks.add(chunk);
-
-        if (this._visibleChunks.has(chunk)) {
-            this._mountChunk(chunk);
-        }
+        this._memberAdded(chunk);
     }
 
     /**
      * @param {number} id
      */
     removeObject(id) {
-        const sprite = this._objects[id];
-
+        const sprite = this._objects.get(id);
         if (sprite === undefined) {
             return;
         }
@@ -83,28 +79,19 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
         const chunk = chunkId(sprite.tileX, sprite.tileY);
         // Scans only its own chunk's children, and detaches from its parent.
         sprite.destroy();
-        delete this._objects[id];
-        this._dirtyChunks.add(chunk);
+        this._objects.delete(id);
 
         const node = this._chunks.get(chunk);
-        if (node !== undefined && node.isEmpty) {
-            this._dropChunk(chunk);
-        }
+        this._memberRemoved(chunk, node === undefined || node.isEmpty);
     }
 
     /**
-     * Reconciles mounted chunks against the viewport and pending object changes, then advances
-     * every on-screen sprite to the shared animation frame (map mode draws no sprites).
+     * Advances every on-screen sprite to the shared animation frame.
      * @param {number} frame animation frame, in [0, 8)
      * @param {number} deltaMS elapsed time since the previous tick, in ms
-     * @param {Set<number>} visibleChunks the chunks the viewport covers this frame
+     * @returns {void}
      */
-    tick(frame, deltaMS, visibleChunks) {
-        this._reconcileViewport(visibleChunks);
-        if (this._mapMode) {
-            this._flushDirtyChunks();
-            return;
-        }
+    _updateSprites(frame, deltaMS) {
         for (const chunk of this._mounted) {
             for (const sprite of this._chunks.get(chunk).spriteList) {
                 sprite.tick(frame);
@@ -113,25 +100,15 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
     }
 
     /**
-     * Redraws one chunk's map-mode geometry: every tile of every object in the chunk, pooled into
-     * the chunk's single Graphics.
+     * Draws every tile of every object in the chunk into its pooled Graphics.
      * @param {number} chunk
-     * @returns {Graphics}
-     * @private
+     * @param {Graphics} graphics
+     * @returns {void}
      */
-    _buildChunkGeometry(chunk) {
-        this._dirtyChunks.delete(chunk);
-
-        const node = this._chunks.get(chunk);
-        if (node.graphics === null) {
-            node.graphics = new Graphics();
-        } else {
-            node.graphics.clear();
-        }
-
-        for (const sprite of node.spriteList) {
+    _drawChunkGeometry(chunk, graphics) {
+        for (const sprite of this._chunks.get(chunk).spriteList) {
             for (const cell of this._type.geometry.tiles(sprite.direction)) {
-                node.graphics.rect(
+                graphics.rect(
                     (sprite.tileX + cell.x) * TILE_SIZE,
                     (sprite.tileY + cell.y) * TILE_SIZE,
                     TILE_SIZE,
@@ -139,7 +116,6 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
                 );
             }
         }
-        node.graphics.fill(this._type.mapColor !== null ? this._type.mapColor : MAP_TILE_COLOR);
-        return node.graphics;
+        graphics.fill(this._type.mapColor !== null ? this._type.mapColor : MAP_TILE_COLOR);
     }
 }

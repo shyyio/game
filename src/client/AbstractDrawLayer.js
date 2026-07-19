@@ -66,6 +66,9 @@ export class AbstractDrawLayer extends Container {
             cache.onSet(entry => this.onCacheChange(entry));
             cache.onRemove(entry => this.onCacheChange(entry));
         }
+        if (this.onCacheStructuralChange !== AbstractDrawLayer.prototype.onCacheStructuralChange) {
+            cache.onStructuralChange(() => this.onCacheStructuralChange());
+        }
     }
 
     /**
@@ -88,6 +91,13 @@ export class AbstractDrawLayer extends Container {
      * @returns {void}
      */
     onCacheChange(entry) {}
+
+    /**
+     * Optional hook: an object was added or removed anywhere, for layers that re-derive rendering
+     * from neighboring objects; registered only when overridden.
+     * @returns {void}
+     */
+    onCacheStructuralChange() {}
 
     /**
      * Handles an event whose class matches {@link eventClasses}; never called otherwise, so only

@@ -1,19 +1,11 @@
-import {tileId, chunkId, chunkOrigin} from "@/common/util.js";
-import {LAYER_SURFACE} from "@/common/constants.js";
+import {cellNeighbors, tileId, chunkId, chunkOrigin} from "@/common/util.js";
+import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
 import {TickPhase} from "@/common/sim/GameEngine.js";
 import {RoadBehavior} from "@/common/sim/behaviors.js";
 import {LaborAssignmentEvent, LaborAssignmentBatchEvent, NO_HOUSING} from "@/common/LaborEvents.js";
 
 // Labor recompute runs before any machine countdown reads the manned flags.
 const ORDER_LABOR_RECOMPUTE = -20;
-
-// 4-neighborhood of a road tile, where housings/machines attach.
-const NEIGHBOR_DELTAS = [
-    {dx: 1, dy: 0},
-    {dx: -1, dy: 0},
-    {dx: 0, dy: 1},
-    {dx: 0, dy: -1},
-];
 
 /**
  * Road-network labor: a housing's laborSupply feeds the connected road component, road-adjacent
@@ -190,15 +182,11 @@ export class LaborNetworks {
     _allocate(component, next) {
         const housings = new Map();
         const machines = new Map();
-        for (const road of component.tiles) {
-            for (const delta of NEIGHBOR_DELTAS) {
-                const x = road.x + delta.dx;
-                const y = road.y + delta.dy;
-                if (this._roadTiles.has(tileId(x, y))) {
-                    continue;
-                }
-                this._attach(x, y, housings, machines, next);
+        for (const {x, y} of cellNeighbors(component.tiles)) {
+            if (this._roadTiles.has(tileId(x, y))) {
+                continue;
             }
+            this._attach(x, y, housings, machines, next);
         }
         if (machines.size === 0) {
             return;

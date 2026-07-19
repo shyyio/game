@@ -44,7 +44,9 @@ export class ChunkNode {
         if (this.graphics !== null) {
             this.root.removeChild(this.graphics);
         }
-        this.root.addChild(this.sprites);
+        if (this.sprites.parent !== this.root) {
+            this.root.addChild(this.sprites);
+        }
     }
 
     /**

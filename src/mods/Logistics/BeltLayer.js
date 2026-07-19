@@ -1,14 +1,10 @@
 import {
     AnimatedTile,
-    AnimatedTileMesh,
-    AnimatedTileShader,
-    FrameTable,
-    Graphics,
     Sprite,
     Texture,
     TILE_SIZE,
     Direction,
-    AbstractChunkedDrawLayer,
+    AbstractTileMeshDrawLayer,
 } from "@/sdk/client.js";
 import {chunkId, getOrCreate} from "@/sdk/common.js";
 import {BeltBend, BeltType} from "./constants.js";
@@ -103,81 +99,45 @@ export class Belt {
     }
 }
 
-export class BeltDrawLayer extends AbstractChunkedDrawLayer {
+export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
 
     constructor() {
         super();
-        this._belts = {};
-        // The belts each chunk holds, and the mesh drawing them.
+        /**
+         * @type {Map<number, Belt>}
+         */
+        this._belts = new Map();
+        // The belts each chunk holds.
         this._chunkBelts = new Map();
-        this._meshes = new Map();
         // Bumped on every structural cache change; a belt whose bend was derived at an older
         // epoch re-derives when next ticked, so belts off-screen at the change still catch up.
         this._bendEpoch = 0;
-        // Built on first use, once the texture registry is injected.
-        this._frameTable = null;
-        this._shader = null;
-    }
-
-    /**
-     * The frame table and the shader every chunk mesh draws with, built on first use.
-     * @returns {AnimatedTileShader}
-     * @private
-     */
-    _beltShader() {
-        if (this._shader === null) {
-            if (this.textureRegistry === null) {
-                throw new Error("BeltDrawLayer needs a texture registry before it draws");
-            }
-            this._frameTable = new FrameTable(this.textureRegistry, BELT_SEQUENCES);
-            this._shader = new AnimatedTileShader(this._frameTable);
-        }
-        return this._shader;
     }
 
     get layerIndex() {
         return 10;
     }
 
-    /**
-     * Injected by Client.init; subscribing to structural cache changes flags bends for a
-     * one-pass rebuild on the next tick, since a belt's bend depends on neighboring objects
-     * of any mod (belts, splitters, machines feeding it from the side).
-     * @param {ClientCache|null} value
-     */
-    set cache(value) {
-        this._cache = value;
-        if (value !== null) {
-            value.onStructuralChange(() => {
-                this._bendEpoch += 1;
-            });
-        }
+    get meshSequences() {
+        return BELT_SEQUENCES;
     }
 
     /**
-     * @returns {ClientCache|null}
+     * A belt's bend depends on neighboring objects of any mod (belts, splitters, machines feeding
+     * it from the side), so any structural change flags every bend for a lazy re-derive.
+     * @returns {void}
      */
-    get cache() {
-        return this._cache;
+    onCacheStructuralChange() {
+        this._bendEpoch += 1;
     }
 
     /**
-     * Redraws one chunk's map-mode geometry: a tile per belt in the chunk, pooled into the chunk's
-     * single Graphics with one fill per belt color.
+     * Draws a tile per belt in the chunk into its pooled Graphics, one fill per belt color.
      * @param {number} chunk
-     * @returns {Graphics}
-     * @private
+     * @param {Graphics} graphics
+     * @returns {void}
      */
-    _buildChunkGeometry(chunk) {
-        this._dirtyChunks.delete(chunk);
-
-        const node = this._chunks.get(chunk);
-        if (node.graphics === null) {
-            node.graphics = new Graphics();
-        } else {
-            node.graphics.clear();
-        }
-
+    _drawChunkGeometry(chunk, graphics) {
         for (const color of [MAP_TILE_COLOR, MAP_RAMP_COLOR]) {
             let drew = false;
             for (const belt of this._beltsIn(chunk)) {
@@ -185,36 +145,32 @@ export class BeltDrawLayer extends AbstractChunkedDrawLayer {
                 if (beltColor !== color) {
                     continue;
                 }
-                node.graphics.rect(belt.x * TILE_SIZE, belt.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                graphics.rect(belt.x * TILE_SIZE, belt.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 drew = true;
             }
             if (drew) {
-                node.graphics.fill(color);
+                graphics.fill(color);
             }
         }
-        return node.graphics;
     }
 
     /**
-     * Rebuilds one chunk's mesh from the belts it holds. The quads carry each belt's tile, facing and
-     * sequence, so the animation itself never touches them again.
+     * The mesh tiles of a chunk's belts, each carrying its tile, facing and sequence, so the
+     * animation itself never touches them again.
      * @param {number} chunk
-     * @returns {void}
-     * @private
+     * @returns {AnimatedTile[]}
      */
-    _buildChunkMesh(chunk) {
-        this._dirtyChunks.delete(chunk);
-
+    _buildTiles(chunk) {
         const tiles = [];
         for (const belt of this._beltsIn(chunk)) {
             tiles.push(new AnimatedTile(
                 belt.x,
                 belt.y,
                 belt.direction,
-                this._frameTable.slotOf(beltFrameBase(belt.bend, belt.type)),
+                this._slotOf(beltFrameBase(belt.bend, belt.type)),
             ));
         }
-        this._meshes.get(chunk).setTiles(tiles);
+        return tiles;
     }
 
     /**
@@ -242,16 +198,11 @@ export class BeltDrawLayer extends AbstractChunkedDrawLayer {
             return;
         }
         const belt = new Belt(id, x, y, direction, BeltBend.STRAIGHT, type);
-        this._belts[id] = belt;
+        this._belts.set(id, belt);
 
         const chunk = chunkId(x, y);
-        this._node(chunk);
         getOrCreate(this._chunkBelts, chunk, () => new Set()).add(belt);
-        this._dirtyChunks.add(chunk);
-
-        if (this._visibleChunks.has(chunk)) {
-            this._mountChunk(chunk);
-        }
+        this._memberAdded(chunk);
     }
 
     /**
@@ -293,79 +244,33 @@ export class BeltDrawLayer extends AbstractChunkedDrawLayer {
      * @param {number} id
      */
     removeBelt(id) {
-        const belt = this._belts[id];
-
+        const belt = this._belts.get(id);
         if (belt === undefined) {
             return;
         }
 
         const chunk = chunkId(belt.x, belt.y);
-        delete this._belts[id];
-        this._dirtyChunks.add(chunk);
+        this._belts.delete(id);
 
         const belts = this._chunkBelts.get(chunk);
         belts.delete(belt);
-        if (belts.size > 0) {
-            return;
+        if (belts.size === 0) {
+            this._chunkBelts.delete(chunk);
         }
-        this._chunkBelts.delete(chunk);
-        this._dropChunk(chunk);
+        this._memberRemoved(chunk, belts.size === 0);
     }
 
     /**
-     * @param {number} chunk
-     * @returns {void}
-     */
-    _onChunkDropped(chunk) {
-        this._meshes.delete(chunk);
-    }
-
-    /**
-     * Reconciles mounted children against the viewport and pending belt changes, then re-derives
-     * stale bends and advances every on-screen belt to the shared animation frame (map mode draws
-     * no sprites).
+     * Re-derives stale bends, then advances every on-screen belt with the shared uniform write.
      * @param {number} frame animation frame, in [0, 8)
      * @param {number} deltaMS elapsed time since the previous tick, in ms
-     * @param {Set<number>} visibleChunks the chunks the viewport covers this frame
+     * @returns {void}
      */
-    tick(frame, deltaMS, visibleChunks) {
-        this._reconcileViewport(visibleChunks);
-        if (this._mapMode) {
-            this._flushDirtyChunks();
-            return;
-        }
+    _updateSprites(frame, deltaMS) {
         for (const chunk of this._mounted) {
             this._refreshBends(chunk);
         }
-        this._flushDirtyChunks();
-        if (this._shader !== null) {
-            // One write for every belt on screen: the meshes hold the animation frame as a uniform.
-            this._shader.frame = frame;
-        }
-    }
-
-    /**
-     * Hangs the chunk's animated mesh under its fresh node.
-     * @param {ChunkNode} node
-     * @param {number} chunk
-     * @returns {void}
-     */
-    _initChunkNode(node, chunk) {
-        const mesh = new AnimatedTileMesh(this._beltShader());
-        node.sprites.addChild(mesh);
-        this._meshes.set(chunk, mesh);
-    }
-
-    /**
-     * @param {number} chunk
-     * @returns {void}
-     */
-    _rebuildChunk(chunk) {
-        if (this._mapMode) {
-            this._buildChunkGeometry(chunk);
-        } else {
-            this._buildChunkMesh(chunk);
-        }
+        super._updateSprites(frame, deltaMS);
     }
 
     /**
@@ -376,9 +281,8 @@ export class BeltDrawLayer extends AbstractChunkedDrawLayer {
      */
     _prepareChunkSprites(chunk) {
         this._refreshBends(chunk);
-        this._buildChunkMesh(chunk);
+        this._rebuildChunkSprites(chunk);
     }
-
 }
 
 export class BeltSprite extends Sprite {
