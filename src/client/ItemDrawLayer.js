@@ -32,10 +32,16 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         /**
          * Live sprites, keyed by sprite key — a number row id for belt items, a
          * namespaced string for items resting in out-ports.
-         * @type {Object.<string, ItemSprite>}
+         * @type {Map<number|string, ItemSprite>}
          * @private
          */
-        this._items = {};
+        this._items = new Map();
+        /**
+         * Sprites with a glide in flight; the only ones the per-frame tick advances.
+         * @type {Set<ItemSprite>}
+         * @private
+         */
+        this._gliding = new Set();
         /**
          * Idle sprites awaiting reuse, kept as invisible children.
          * @type {ItemSprite[]}
@@ -150,8 +156,11 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {number} deltaMS elapsed time since the previous tick, in ms
      */
     tick(frame, deltaMS) {
-        for (const sprite of Object.values(this._items)) {
+        for (const sprite of this._gliding) {
             sprite.advance(deltaMS);
+            if (!sprite.gliding) {
+                this._gliding.delete(sprite);
+            }
         }
     }
 
@@ -169,7 +178,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      */
     moveItem(key, tileX, tileY, halfTile, sourceDirection, type, snap=false, hidden=false) {
         const texture = this._textureForType(type);
-        let sprite = this._items[key];
+        let sprite = this._items.get(key);
         if (sprite === undefined) {
             sprite = this._pool.pop();
             if (sprite === undefined) {
@@ -179,7 +188,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
                 sprite.texture = texture;
                 sprite.reset();
             }
-            this._items[key] = sprite;
+            this._items.set(key, sprite);
         } else if (sprite.texture !== texture) {
             // The port now rests a different item type: swap the sprite's texture in place.
             sprite.texture = texture;
@@ -187,6 +196,9 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         sprite.hidden = hidden;
         this._applyItemVisibility(sprite);
         sprite.moveTo(tileX, tileY, halfTile, sourceDirection, snap);
+        if (sprite.gliding) {
+            this._gliding.add(sprite);
+        }
     }
 
     /**
@@ -228,16 +240,16 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {number|string} newKey
      */
     renameItem(oldKey, newKey) {
-        const sprite = this._items[oldKey];
+        const sprite = this._items.get(oldKey);
         if (sprite === undefined) {
             return;
         }
-        const existing = this._items[newKey];
+        const existing = this._items.get(newKey);
         if (existing !== undefined && existing !== sprite) {
             this._releaseSprite(existing);
         }
-        delete this._items[oldKey];
-        this._items[newKey] = sprite;
+        this._items.delete(oldKey);
+        this._items.set(newKey, sprite);
     }
 
     /**
@@ -245,12 +257,12 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {number|string} key
      */
     removeItem(key) {
-        const sprite = this._items[key];
+        const sprite = this._items.get(key);
         if (sprite === undefined) {
             return;
         }
         this._releaseSprite(sprite);
-        delete this._items[key];
+        this._items.delete(key);
     }
 
     /**
@@ -260,6 +272,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      */
     _releaseSprite(sprite) {
         sprite.visible = false;
+        this._gliding.delete(sprite);
         this._pool.push(sprite);
     }
 
@@ -332,7 +345,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      */
     setDebugMode(enabled) {
         this._debugMasks = enabled;
-        for (const sprite of Object.values(this._items)) {
+        for (const sprite of this._items.values()) {
             this._applyItemVisibility(sprite);
         }
         this._applyMask();
@@ -356,6 +369,13 @@ class ItemSprite extends Sprite {
         this._targetX = null;
         this._targetY = null;
         this._elapsed = 0;
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    get gliding() {
+        return this._startX !== null;
     }
 
     /**
