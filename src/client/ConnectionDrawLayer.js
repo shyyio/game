@@ -136,12 +136,13 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
      * @private
      */
     _markDirty(entry) {
-        if (!entry.data.type.renderConnections) {
-            return;
+        if (entry.data.type.renderConnections) {
+            this._dirty.add(entry.id);
         }
-        this._dirty.add(entry.id);
         for (const connection of this.cache.connectedPorts(entry)) {
-            this._dirty.add(connection.neighbor.id);
+            if (connection.neighbor.data.type.renderConnections) {
+                this._dirty.add(connection.neighbor.id);
+            }
         }
     }
 
