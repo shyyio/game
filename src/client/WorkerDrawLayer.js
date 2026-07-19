@@ -25,6 +25,9 @@ const HOUSING_PAUSE_JITTER_MS = 1600;
 // How far a figure wanders off the path center, world px each side.
 const LATERAL_RANGE = 7;
 
+// Route BFS runs per rebuilt machine each tick; capped so a loading burst can't stall the frame.
+const ROUTE_REBUILDS_PER_TICK = 50;
+
 // 4-neighborhood shared with the sim's road flood fill.
 const NEIGHBOR_DELTAS = [
     {dx: 1, dy: 0},
@@ -60,8 +63,10 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
          * @private
          */
         this._pool = [];
-        // Routes re-derive on the next tick after any labor-relevant cache change.
+        // Routes re-derive after any labor-relevant cache change, spread over ticks: the flag
+        // queues every assignment, the set drains ROUTE_REBUILDS_PER_TICK per tick.
         this._routesStale = false;
+        this._dirtyMachines = new Set();
         /**
          * The walk-cycle textures, resolved from the registry on first use.
          * @type {Texture[]|null}
@@ -110,7 +115,7 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
             return;
         }
         this._assignments.set(event.machineId, event.housingId);
-        this._routesStale = true;
+        this._dirtyMachines.add(event.machineId);
     }
 
     /**
@@ -140,7 +145,18 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
     tick(frame, deltaMS) {
         if (this._routesStale) {
             this._routesStale = false;
-            this._rebuildRoutes();
+            for (const machineId of this._assignments.keys()) {
+                this._dirtyMachines.add(machineId);
+            }
+        }
+        let budget = ROUTE_REBUILDS_PER_TICK;
+        for (const machineId of this._dirtyMachines) {
+            if (budget === 0) {
+                break;
+            }
+            budget -= 1;
+            this._dirtyMachines.delete(machineId);
+            this._rebuildRoute(machineId);
         }
         for (const worker of this._workers.values()) {
             worker.advance(deltaMS);
@@ -164,37 +180,41 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Rebuilds every assignment's route off the current cache; assignments whose machine, housing,
-     * or road path is not (or no longer) cached lose their figure until the cache changes again.
+     * Rebuilds one assignment's route off the current cache; an assignment whose machine, housing,
+     * or road path is not (or no longer) cached loses its figure until the cache changes again.
      * @private
+     * @param {number} machineId
      * @returns {void}
      */
-    _rebuildRoutes() {
-        for (const [machineId, housingId] of this._assignments) {
-            const machineEntry = this.cache.get(machineId);
-            const housingEntry = this.cache.get(housingId);
-            const waypoints = machineEntry === null || housingEntry === null
-                ? null
-                : this._findRoute(housingEntry, machineEntry);
-            if (waypoints === null) {
-                this._releaseWorker(machineId);
-                continue;
+    _rebuildRoute(machineId) {
+        const housingId = this._assignments.get(machineId);
+        if (housingId === undefined) {
+            this._releaseWorker(machineId);
+            return;
+        }
+        const machineEntry = this.cache.get(machineId);
+        const housingEntry = this.cache.get(housingId);
+        const waypoints = machineEntry === null || housingEntry === null
+            ? null
+            : this._findRoute(housingEntry, machineEntry);
+        if (waypoints === null) {
+            this._releaseWorker(machineId);
+            return;
+        }
+        let worker = this._workers.get(machineId);
+        const fresh = worker === undefined;
+        if (fresh) {
+            worker = this._pool.pop();
+            if (worker === undefined) {
+                worker = new WorkerSprite(this._walkFrames()[0]);
+                this.addChild(worker);
             }
-            let worker = this._workers.get(machineId);
-            const fresh = worker === undefined;
-            if (fresh) {
-                worker = this._pool.pop();
-                if (worker === undefined) {
-                    worker = new WorkerSprite(this._walkFrames()[0]);
-                    this.addChild(worker);
-                }
-                worker.visible = true;
-                this._workers.set(machineId, worker);
-            }
-            worker.setRoute(waypoints);
-            if (fresh) {
-                worker.scatter();
-            }
+            worker.visible = true;
+            this._workers.set(machineId, worker);
+        }
+        worker.setRoute(waypoints);
+        if (fresh) {
+            worker.scatter();
         }
     }
 
