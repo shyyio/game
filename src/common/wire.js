@@ -46,9 +46,9 @@ const CORE_WIRE_CLASSES = [
  *   "int64?"           -> nullable scalar (cosmetic: all scalars are optional)
  *   "string[]"         -> repeated
  *   "map<int32,int32>" -> map
- *   "message[]"        -> a repeated, polymorphic list of wire objects, each a
- *                         nested Envelope message (lets one message/event bundle
- *                         others of any registered class)
+ *   "message[]"        -> a repeated, polymorphic list of wire objects, encoded
+ *                         as two columns — wire ids and encoded bodies (lets one
+ *                         message/event bundle others of any registered class)
  * @param {string} spec
  * @returns {{kind: string, type?: string, keyType?: string, int64?: boolean}}
  */
@@ -84,9 +84,10 @@ function buildType(name, wireFields) {
         if (parsed.kind === "map") {
             type.add(new MapField(fieldName, tag, parsed.keyType, parsed.type));
         } else if (parsed.kind === "messages") {
-            // A bundle of other wire objects, each a nested Envelope message so
-            // protobuf models the nesting natively (rather than opaque bytes).
-            type.add(new Field(fieldName, tag, "Envelope", "repeated"));
+            // Columnar: the bundled wire objects' ids and bodies as parallel columns.
+            type.add(new Field(`${fieldName}WireIds`, tag, "uint32", "repeated"));
+            tag += 1;
+            type.add(new Field(`${fieldName}Payloads`, tag, "bytes", "repeated"));
         } else if (parsed.kind === "repeated") {
             type.add(new Field(fieldName, tag, parsed.type, "repeated"));
         } else {
@@ -98,7 +99,7 @@ function buildType(name, wireFields) {
 }
 
 /**
- * @returns {protobuf.Type} a fresh Envelope type: a wire id plus the encoded body.
+ * @returns {protobuf.Type} a fresh Envelope type: the top-level wire id plus encoded body framing.
  */
 function buildEnvelope() {
     return new Type("Envelope")
@@ -117,8 +118,6 @@ export class WireRegistry {
         /** @type {Map<number, object>} */
         this.byId = new Map();
 
-        // Every type lives in one Root so a `message[]` field can resolve the
-        // Envelope message type by name and nest it directly.
         this.root = new Root();
         this.envelope = buildEnvelope();
         this.root.add(this.envelope);
@@ -145,16 +144,17 @@ export class WireRegistry {
      * @returns {Uint8Array}
      */
     encode(obj) {
-        return this.envelope.encode(this.envelope.create(this._toEnvelope(obj))).finish();
+        const {wireId, body} = this._encodeBody(obj);
+        return this.envelope.encode(this.envelope.create({wireId, payload: body})).finish();
     }
 
     /**
-     * Builds the `{wireId, payload}` envelope for an instance — its body tagged with its class's wire id.
+     * Encodes an instance's body with its class's codec.
      * @private
      * @param {object} obj
-     * @returns {{wireId: number, payload: Uint8Array}}
+     * @returns {{wireId: number, body: Uint8Array}}
      */
-    _toEnvelope(obj) {
+    _encodeBody(obj) {
         const codec = this.byClass.get(obj.constructor);
         if (codec === undefined) {
             throw new Error(`No wire codec registered for ${obj.constructor.name}`);
@@ -168,7 +168,15 @@ export class WireRegistry {
                 payload[name] = spec.int64 ? arr.map(toLong) : arr;
             } else if (spec.kind === "messages") {
                 const arr = value == null ? [] : value;
-                payload[name] = arr.map(message => this._toEnvelope(message));
+                const wireIds = [];
+                const bodies = [];
+                for (const message of arr) {
+                    const inner = this._encodeBody(message);
+                    wireIds.push(inner.wireId);
+                    bodies.push(inner.body);
+                }
+                payload[`${name}WireIds`] = wireIds;
+                payload[`${name}Payloads`] = bodies;
             } else if (spec.kind === "map") {
                 payload[name] = value == null ? {} : value;
             } else if (value != null) {
@@ -177,7 +185,7 @@ export class WireRegistry {
         }
 
         const body = codec.type.encode(codec.type.create(payload)).finish();
-        return {wireId: codec.wireId, payload: body};
+        return {wireId: codec.wireId, body};
     }
 
     /**
@@ -186,33 +194,35 @@ export class WireRegistry {
      * @returns {object}
      */
     decode(bytes) {
-        return this._fromEnvelope(this.envelope.decode(bytes));
+        const envelope = this.envelope.decode(bytes);
+        return this._decodeBody(envelope.wireId, envelope.payload);
     }
 
     /**
-     * Rebuilds an instance from a decoded envelope — a message or a plain
-     * `{wireId, payload}` object (as nested `message[]` elements arrive).
+     * Rebuilds an instance from its wire id and encoded body.
      * @private
-     * @param {{wireId: number, payload: Uint8Array}} envelope
+     * @param {number} wireId
+     * @param {Uint8Array} body
      * @returns {object}
      */
-    _fromEnvelope(envelope) {
-        const codec = this.byId.get(envelope.wireId);
+    _decodeBody(wireId, body) {
+        const codec = this.byId.get(wireId);
         if (codec === undefined) {
-            throw new Error(`No wire codec registered for wire id ${envelope.wireId}`);
+            throw new Error(`No wire codec registered for wire id ${wireId}`);
         }
 
         // longs: Number decodes int64 straight to Number — ids are capped at 2^53 sim-wide, and a
         // String round-trip would allocate per int64 field per message.
-        const raw = codec.type.toObject(codec.type.decode(envelope.payload), {longs: Number});
+        const raw = codec.type.toObject(codec.type.decode(body), {longs: Number});
 
         const fields = {};
         for (const [name, spec] of Object.entries(codec.specs)) {
             if (spec.kind === "repeated") {
                 fields[name] = raw[name] === undefined ? [] : raw[name];
             } else if (spec.kind === "messages") {
-                const arr = raw[name] === undefined ? [] : raw[name];
-                fields[name] = arr.map(sub => this._fromEnvelope(sub));
+                const wireIds = raw[`${name}WireIds`] === undefined ? [] : raw[`${name}WireIds`];
+                const bodies = raw[`${name}Payloads`] === undefined ? [] : raw[`${name}Payloads`];
+                fields[name] = wireIds.map((innerId, index) => this._decodeBody(innerId, bodies[index]));
             } else if (spec.kind === "map") {
                 fields[name] = raw[name] === undefined ? {} : raw[name];
             } else if (name in raw) {
