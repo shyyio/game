@@ -1,11 +1,10 @@
 import {Container, Graphics} from "pixi.js";
 import {UIPanel} from "@/client/UIPanel.js";
-import {buildInspectContent, INSPECT_CONTENT_HEIGHT} from "@/client/InspectContent.js";
+import {buildInspectContent, inspectContentHeight} from "@/client/InspectContent.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT, CONNECTOR_COLOR} from "@/client/Theme.js";
 import {TILE_SIZE} from "@/client/constants.js";
 
 const PANEL_WIDTH = 375;
-const PANEL_HEIGHT = UIPanel.heightForContent(INSPECT_CONTENT_HEIGHT);
 // Down-right cascade of each successive panel's default spawn position.
 const SPAWN_CASCADE = 32;
 // Keep a spawned panel at least this far inside the screen edges.
@@ -107,7 +106,9 @@ export class InspectPanelLayer extends Container {
         const key = String(event.objectId);
         let record = this._panels.get(key);
         if (record === undefined) {
-            record = this._createPanel(event.objectId);
+            // The panel's height comes from the first snapshot (a labor row never appears later:
+            // laborCost is a type constant).
+            record = this._createPanel(event.objectId, UIPanel.heightForContent(inspectContentHeight(event)));
             this._panels.set(key, record);
         }
         record.position = machineTile;
@@ -136,10 +137,11 @@ export class InspectPanelLayer extends Container {
 
     /**
      * @param {number} objectId
+     * @param {number} height - the panel's outer height for this machine's content
      * @returns {object} the panel record
      * @private
      */
-    _createPanel(objectId) {
+    _createPanel(objectId, height) {
         const index = this._panels.size;
         const panel = new UIPanel({
             app: this._app,
@@ -148,7 +150,7 @@ export class InspectPanelLayer extends Container {
             titleColor: PANEL_TITLE_TEXT,
             tint: PANEL_TINT,
             width: PANEL_WIDTH,
-            height: PANEL_HEIGHT,
+            height,
             onClose: () => {
                 if (this._onClose !== null) {
                     this._onClose(objectId);
@@ -161,11 +163,11 @@ export class InspectPanelLayer extends Container {
         // still separates panels when the other is too tight to cascade (e.g. narrow mobile).
         const screen = this._app.screen;
         const maxX = screen.width - PANEL_WIDTH - SPAWN_MARGIN;
-        const maxY = screen.height - PANEL_HEIGHT - SPAWN_MARGIN;
+        const maxY = screen.height - height - SPAWN_MARGIN;
         panel.x = this._cascadeAxis((screen.width - PANEL_WIDTH) / 2, maxX, index);
-        panel.y = this._cascadeAxis((screen.height - PANEL_HEIGHT) / 2, maxY, index);
+        panel.y = this._cascadeAxis((screen.height - height) / 2, maxY, index);
         this.addChild(panel);
-        return {panel};
+        return {panel, height};
     }
 
     /**
@@ -212,7 +214,7 @@ export class InspectPanelLayer extends Container {
                 maxY: ty + TILE_SIZE,
             };
             const machineCenterWorld = {x: tx + TILE_SIZE / 2, y: ty + TILE_SIZE / 2};
-            const panelCenterScreen = {x: panel.x + PANEL_WIDTH / 2, y: panel.y + PANEL_HEIGHT / 2};
+            const panelCenterScreen = {x: panel.x + PANEL_WIDTH / 2, y: panel.y + record.height / 2};
             const panelCenterWorld = this.viewport.toWorld(panelCenterScreen.x, panelCenterScreen.y);
             const machineEdge = rectEdgePoint(machineCenterWorld, panelCenterWorld, machineRect);
             const head = this.viewport.toScreen(machineEdge.x, machineEdge.y);
@@ -222,7 +224,7 @@ export class InspectPanelLayer extends Container {
                 minX: panel.x + CONNECTOR_PANEL_INSET,
                 minY: panel.y + CONNECTOR_PANEL_INSET,
                 maxX: panel.x + PANEL_WIDTH - CONNECTOR_PANEL_INSET,
-                maxY: panel.y + PANEL_HEIGHT - CONNECTOR_PANEL_INSET,
+                maxY: panel.y + record.height - CONNECTOR_PANEL_INSET,
             };
             const machineCenterScreen = this.viewport.toScreen(machineCenterWorld.x, machineCenterWorld.y);
             const tail = rectEdgePoint(panelCenterScreen, machineCenterScreen, panelRect);

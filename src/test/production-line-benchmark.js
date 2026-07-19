@@ -12,7 +12,8 @@
 // DevTools / VS Code.
 //
 // Stamps out identical production lines - extractor on a water resource, a 4-belt path, a furnace,
-// a 1-belt path, then two chained furnaces - and reports which tick phase costs the most.
+// a 1-belt path, then two chained furnaces, plus a road+housing labor network manning all three
+// furnaces - and reports which tick phase costs the most.
 //
 // Each line's last furnace has no consumer, so left alone every line backs up within ~150 ticks and
 // the world becomes a saturated deadlock: intents still submitted, none resolvable. That is a real

@@ -27,7 +27,9 @@ export class ObjectTool extends AbstractTool {
         this._advanceOnPlace = type.placement.advanceOnPlace;
         this._placeOn = type.placement.placeOn;
         this._placementFeedbackLayer = client.placementFeedbackLayer;
-        this._rotation = client.toolRotation;
+        // A non-directional type keeps _rotation null: rotate() no-ops, the rotate buttons hide
+        // (orientable), and placement always faces UP.
+        this._rotation = type.directional ? client.toolRotation : null;
         this._active = false;
         // Cache-listener unsubscribes, held only while active.
         this._unsubscribes = [];
@@ -44,7 +46,7 @@ export class ObjectTool extends AbstractTool {
     }
 
     onTap(tileX, tileY) {
-        const direction = this._rotation.direction;
+        const direction = this._placementDirection();
         // Snap and evaluate synchronously from the live cursor/rotation, so a tap never trusts a
         // ticker-stale preview.
         const base = this._ghostLayer.snapBase(direction);
@@ -105,7 +107,16 @@ export class ObjectTool extends AbstractTool {
     }
 
     onTileEnter(tileX, tileY) {
-        this._showGhost(tileX, tileY, this._rotation.direction);
+        this._showGhost(tileX, tileY, this._placementDirection());
+    }
+
+    /**
+     * The facing a placement uses: the shared rotation, or UP for a non-directional type.
+     * @private
+     * @returns {Direction}
+     */
+    _placementDirection() {
+        return this._rotation !== null ? this._rotation.direction : Direction.UP;
     }
 
     onTileExit(tileX, tileY) {

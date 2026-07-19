@@ -7,6 +7,7 @@ import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSetti
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
+import {LaborAssignmentEvent, LaborAssignmentBatchEvent} from "@/common/LaborEvents.js";
 
 const {Type, Field, MapField, Root} = protobuf;
 const Long = protobuf.util.Long;
@@ -38,6 +39,8 @@ const CORE_WIRE_CLASSES = [
     InspectClosedEvent,
     PortItemBatchEvent,
     ObjectSyncBatchEvent,
+    LaborAssignmentEvent,
+    LaborAssignmentBatchEvent,
 ];
 
 /**
@@ -89,7 +92,10 @@ function buildType(name, wireFields) {
             tag += 1;
             type.add(new Field(`${fieldName}Payloads`, tag, "bytes", "repeated"));
         } else if (parsed.kind === "repeated") {
-            type.add(new Field(fieldName, tag, parsed.type, "repeated"));
+            // Reflection-built fields default to proto2's expanded encoding (one tag byte per
+            // element); packed writes the tag once. Strings stay expanded (not packable).
+            const packable = parsed.type !== "string" && parsed.type !== "bytes";
+            type.add(new Field(fieldName, tag, parsed.type, "repeated", undefined, packable ? {packed: true} : undefined));
         } else {
             type.add(new Field(fieldName, tag, parsed.type, "optional"));
         }

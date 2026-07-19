@@ -155,6 +155,11 @@ export class ObjectType {
      * @param [config.renderConnections] {boolean} whether the shared ConnectionDrawLayer draws animated
      *     stubs at this object's connected ports (belts render their own bends instead)
      * @param [config.textureName] {string|null} the object sprite's texture, used by the derived layers
+     * @param [config.mapColor] {number|null} map-mode tile color; null uses the shared default
+     * @param [config.drawLayerIndex] {number} z-level of the type's derived draw layer (ground
+     *     cover like roads sits lower so figures walk over it)
+     * @param [config.directional] {boolean} whether placement facing matters; a non-directional
+     *     type always spawns facing UP and its tool ignores rotation
      * @param [config.label] {string|null} the placement tool's label
      * @param [config.extractionTiles] {{x:number, y:number}[]|null} relative tiles an extractor draws
      *     this resource from (a resource's extraction set), used by the client placement tool
@@ -172,6 +177,9 @@ export class ObjectType {
         geometry,
         renderConnections=false,
         textureName=null,
+        mapColor=null,
+        drawLayerIndex=20,
+        directional=true,
         label=null,
         extractionTiles=null,
         behavior=undefined,
@@ -190,6 +198,9 @@ export class ObjectType {
         this.geometryName = geometry;
         this.renderConnections = renderConnections;
         this.textureName = textureName;
+        this.mapColor = mapColor;
+        this.drawLayerIndex = drawLayerIndex;
+        this.directional = directional;
         this.label = label;
         // The position layer this object sits on. Objects on different layers coexist on a tile.
         this.positionLayer = LAYER_SURFACE;

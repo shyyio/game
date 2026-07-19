@@ -1,13 +1,20 @@
 import {
     ObjectType,
     PortDefinition,
+    PlacementRule,
     Direction,
+    RoadBehavior,
+    HousingBehavior,
 } from "@/sdk/common.js";
 import {
     BELT_NORMAL,
     BELT_RAMP_DOWN,
     BELT_RAMP_UP,
     BELT_UNDERGROUND,
+    HOUSING_LABOR_SUPPLY,
+    MAP_COLOR_HOUSING,
+    MAP_COLOR_ROAD,
+    DRAW_LAYER_ROAD,
 } from "./constants.js";
 import {SplitterBehavior} from "./SplitterBehavior.js";
 
@@ -80,4 +87,28 @@ export const SplitterDefinition = new ObjectType({
     textureName: "splitter/1",
     label: "Splitter",
     behavior: new SplitterBehavior(),
+});
+
+// A road cell of the labor network; workers walk it from Housing to the machines it serves.
+export const RoadDefinition = new ObjectType({
+    name: "Road",
+    geometry: "1x1",
+    textureName: "road/0",
+    mapColor: MAP_COLOR_ROAD,
+    drawLayerIndex: DRAW_LAYER_ROAD,
+    directional: false,
+    label: "Road",
+    behavior: new RoadBehavior(),
+    placement: new PlacementRule({replaceSameKind: true}),
+});
+
+export const HousingDefinition = new ObjectType({
+    name: "Housing",
+    geometry: "2x2",
+    textureName: "housing/0",
+    mapColor: MAP_COLOR_HOUSING,
+    directional: false,
+    label: "Housing",
+    behavior: new HousingBehavior({laborSupply: HOUSING_LABOR_SUPPLY}),
+    placement: new PlacementRule({advanceOnPlace: false}),
 });

@@ -52,6 +52,8 @@ export {
     MachineBehavior,
     ExtractorBehavior,
     ResourceBehavior,
+    RoadBehavior,
+    HousingBehavior,
 } from "@/common/sim/behaviors.js";
 export {TickPhase, EMPTY, NO_EID} from "@/common/sim/GameEngine.js";
 
@@ -89,6 +91,9 @@ export {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 
 // Engine render deltas for the item resting in a render-flagged out-port.
 export {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
+
+// Labor assignment deltas/sync the engine's LaborNetworks emits (NO_HOUSING = unmanned).
+export {LaborAssignmentEvent, LaborAssignmentBatchEvent, NO_HOUSING} from "@/common/LaborEvents.js";
 
 // ---- World geometry ----
 // `Direction` is the cardinal-direction enum (with rotate/dx/dy helpers).

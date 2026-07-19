@@ -95,7 +95,8 @@ export class NodeSaveStore extends AbstractSaveStore {
      */
     _writeComponent(component) {
         const columns = ["eid", ...component.fields.map(field => field.name)];
-        const columnDdl = columns.map(name => `"${name}" INTEGER`).join(", ");
+        const affinities = ["INTEGER", ...component.fields.map(field => field.kind === "f32" ? "REAL" : "INTEGER")];
+        const columnDdl = columns.map((name, i) => `"${name}" ${affinities[i]}`).join(", ");
         this.db.exec(`CREATE TABLE "${component.name}" (${columnDdl})`);
 
         const placeholders = columns.map(() => "?").join(", ");

@@ -259,6 +259,10 @@ onMounted(async () => {
     tick();
   });
 
+  window.setInterval(() => {
+    tick()
+  }, 600);
+
   // Toggle debug mode
   Keyboard.on("d", () => {
     client.toggleDebugMode();

@@ -36,6 +36,9 @@ import {ObjectTool} from "@/client/ObjectTool.js";
 import {InspectHighlight} from "@/client/InspectHighlight.js";
 import {ItemDrawLayer} from "@/client/ItemDrawLayer.js";
 import {ConnectionDrawLayer} from "@/client/ConnectionDrawLayer.js";
+import {WorkerDrawLayer} from "@/client/WorkerDrawLayer.js";
+import {LaborDebugLayer} from "@/client/LaborDebugLayer.js";
+import {LaborBadgeLayer} from "@/client/LaborBadgeLayer.js";
 import {StatusMessageLayer} from "@/client/StatusMessageLayer.js";
 import {advanceAnimationFrame} from "@/client/animation.js";
 import {DEV, BROWSER} from "@/common/env.js";
@@ -90,6 +93,15 @@ export class Client {
         // The single shared connection-stub layer, derived from the cache as objects change.
         this.connectionLayer = new ConnectionDrawLayer();
         this.connectionLayer.bindCache(this.cache);
+        // Commuting worker figures for manned machines, routed over the cached road tiles.
+        this.workerLayer = new WorkerDrawLayer();
+        this.workerLayer.bindCache(this.cache);
+        // Debug overlay: road components, attachments, and assignments; hidden outside debug mode.
+        this.laborDebugLayer = new LaborDebugLayer();
+        this.laborDebugLayer.bindCache(this.cache);
+        // Staffing dots over manned machines (one per consumed worker).
+        this.laborBadgeLayer = new LaborBadgeLayer();
+        this.laborBadgeLayer.bindCache(this.cache);
         // Top-left connection/chunk-loading status overlay. A static screen-space HUD on
         // app.stage (sibling of the viewport), so it never pans or zooms with the world.
         this.statusLayer = new StatusMessageLayer();
@@ -110,6 +122,9 @@ export class Client {
         this.drawLayerRegistry.add(this.inspectLayer);
         this.drawLayerRegistry.add(this.itemLayer);
         this.drawLayerRegistry.add(this.connectionLayer);
+        this.drawLayerRegistry.add(this.workerLayer);
+        this.drawLayerRegistry.add(this.laborDebugLayer);
+        this.drawLayerRegistry.add(this.laborBadgeLayer);
 
         // The chunks currently requested from the server (subscribed): the visible chunks
         // plus any that recently panned out and are awaiting a throttled unsubscribe.

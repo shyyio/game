@@ -6,16 +6,23 @@ import {Direction} from "@/common/constants.js";
 import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {WaterResourceType, ExtractorType} from "@/mods/Resources/declaration.js";
 import {DemoMachineType} from "@/mods/Demo/declaration.js";
+import {RoadDefinition, HousingDefinition} from "@/mods/Logistics/objectTypes.js";
 import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
 
-// One line spans 9 tiles in x (extractor at 0, belts 1..4, machines/belt 5..8) and one tile in y;
-// lines tile on a grid with a spare column/row between them so no two lines ever share a port.
+// One line spans 9 tiles in x (extractor at 0, belts 1..4, machines/belt 5..8) and three tiles in
+// y: the objects row, a road row beneath the machines, and the housing's bottom row. Each line's
+// road+housing is its own labor network (supply 10 > 3 machines x cost 2, fully manned); lines tile
+// on a grid with a spare column between them so no two lines ever share a port or road.
 export const LINE_WIDTH = 9;
 export const CELL_WIDTH = LINE_WIDTH + 1;
-export const ROW_STRIDE = 2;
+export const ROW_STRIDE = 3;
 export const LINES_PER_BAND = 64;
 export const BASE_X = 8;
 export const BASE_Y = 8;
+
+// The road row's column span (under the machines) and the housing anchor, line-relative.
+const ROAD_FIRST_X = 4;
+const HOUSING_X = 2;
 
 /**
  * Stamps one production line at (ox, oy) running rightward, exactly as a client would place it.
@@ -35,6 +42,11 @@ export function buildLine(engine, ox, oy) {
     engine.applyMessage(new CreateBeltMessage(ox + 6, oy, dir, BELT_NORMAL));
     engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, ox + 7, oy, dir));
     engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, ox + 8, oy, dir));
+    // The line's labor network: a road under the machines, fed by one housing off its left end.
+    for (let i = ROAD_FIRST_X; i <= 8; i += 1) {
+        engine.applyMessage(new CreateObjectMessage(RoadDefinition.typeId, ox + i, oy + 1, Direction.UP));
+    }
+    engine.applyMessage(new CreateObjectMessage(HousingDefinition.typeId, ox + HOUSING_X, oy + 1, Direction.UP));
 }
 
 /**
