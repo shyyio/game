@@ -1,4 +1,8 @@
 import {
+    AnimatedTile,
+    AnimatedTileMesh,
+    AnimatedTileShader,
+    FrameTable,
     Graphics,
     Sprite,
     Texture,
@@ -6,7 +10,6 @@ import {
     Direction,
     AbstractDrawLayer,
     ChunkNode,
-    currentAnimationFrame,
     sameChunks,
 } from "@/sdk/client.js";
 import {chunkId} from "@/sdk/common.js";
@@ -16,6 +19,16 @@ import {inferBeltParent} from "./geometry.js";
 // Map-mode tile fill colors, keyed by belt type.
 const MAP_TILE_COLOR = 0xf7df9e;
 const MAP_RAMP_COLOR = 0xc8a16e;
+
+// The sequences a drawn belt can animate through — every base {@link beltFrameBase} returns except
+// the buried underground, which is never drawn.
+const BELT_SEQUENCES = [
+    "belt-straight",
+    "belt-left",
+    "belt-right",
+    "belt-ramp-up",
+    "belt-ramp-down",
+];
 
 /**
  * The spritesheet base sequence name for a belt of the given bend and type (frames live under "<base>/0..7").
@@ -61,6 +74,8 @@ export class Belt {
         this.direction = direction;
         this.bend = bend;
         this.type = type;
+        // Behind any real epoch, so the first tick derives this belt's bend.
+        this.bendEpoch = -1;
     }
 
     static getBend(direction, x, y, parentX, parentY) {
@@ -96,15 +111,37 @@ export class BeltDrawLayer extends AbstractDrawLayer {
         super();
 
         this._belts = {};
+        // The belts each chunk holds, and the mesh drawing them.
+        this._chunkBelts = new Map();
         this._chunks = new Map();
-        // The chunks whose roots are mounted, and those whose pooled geometry is stale.
+        this._meshes = new Map();
+        // The chunks whose roots are mounted, and those whose mesh or map geometry is stale.
         this._mounted = new Set();
         this._dirtyChunks = new Set();
         this._visibleChunks = new Set();
         this._mapMode = false;
-        // Bumped on every structural cache change; a sprite whose bend was derived at an older
+        // Bumped on every structural cache change; a belt whose bend was derived at an older
         // epoch re-derives when next ticked, so belts off-screen at the change still catch up.
         this._bendEpoch = 0;
+        // Built on first use, once the texture registry is injected.
+        this._frameTable = null;
+        this._shader = null;
+    }
+
+    /**
+     * The frame table and the shader every chunk mesh draws with, built on first use.
+     * @returns {AnimatedTileShader}
+     * @private
+     */
+    _beltShader() {
+        if (this._shader === null) {
+            if (this.textureRegistry === null) {
+                throw new Error("BeltDrawLayer needs a texture registry before it draws");
+            }
+            this._frameTable = new FrameTable(this.textureRegistry, BELT_SEQUENCES);
+            this._shader = new AnimatedTileShader(this._frameTable);
+        }
+        return this._shader;
     }
 
     get layerIndex() {
@@ -166,12 +203,12 @@ export class BeltDrawLayer extends AbstractDrawLayer {
 
         for (const color of [MAP_TILE_COLOR, MAP_RAMP_COLOR]) {
             let drew = false;
-            for (const sprite of node.spriteList) {
-                const beltColor = sprite.type === BeltType.NORMAL ? MAP_TILE_COLOR : MAP_RAMP_COLOR;
+            for (const belt of this._beltsIn(chunk)) {
+                const beltColor = belt.type === BeltType.NORMAL ? MAP_TILE_COLOR : MAP_RAMP_COLOR;
                 if (beltColor !== color) {
                     continue;
                 }
-                node.graphics.rect(sprite.tileX * TILE_SIZE, sprite.tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                node.graphics.rect(belt.x * TILE_SIZE, belt.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 drew = true;
             }
             if (drew) {
@@ -179,6 +216,39 @@ export class BeltDrawLayer extends AbstractDrawLayer {
             }
         }
         return node.graphics;
+    }
+
+    /**
+     * Rebuilds one chunk's mesh from the belts it holds. The quads carry each belt's tile, facing and
+     * sequence, so the animation itself never touches them again.
+     * @param {number} chunk
+     * @returns {void}
+     * @private
+     */
+    _buildChunkMesh(chunk) {
+        this._dirtyChunks.delete(chunk);
+
+        const tiles = [];
+        for (const belt of this._beltsIn(chunk)) {
+            tiles.push(new AnimatedTile(
+                belt.x,
+                belt.y,
+                belt.direction,
+                this._frameTable.slotOf(beltFrameBase(belt.bend, belt.type)),
+            ));
+        }
+        this._meshes.get(chunk).setTiles(tiles);
+    }
+
+    /**
+     * The belts a chunk holds, empty when it holds none.
+     * @param {number} chunk
+     * @returns {Iterable<Belt>}
+     * @private
+     */
+    _beltsIn(chunk) {
+        const belts = this._chunkBelts.get(chunk);
+        return belts === undefined ? [] : belts;
     }
 
     /**
@@ -200,13 +270,17 @@ export class BeltDrawLayer extends AbstractDrawLayer {
         if (type === BeltType.UNDERGROUND) {
             return;
         }
-        const frames = this._getFrames(BeltBend.STRAIGHT, type);
-        const sprite = new BeltSprite(id, x, y, direction, BeltBend.STRAIGHT, type, frames);
-        sprite.setAnimationFrame(currentAnimationFrame());
-        this._belts[sprite.id] = sprite;
+        const belt = new Belt(id, x, y, direction, BeltBend.STRAIGHT, type);
+        this._belts[id] = belt;
 
         const chunk = chunkId(x, y);
-        this._node(chunk).sprites.addChild(sprite);
+        this._node(chunk);
+        let belts = this._chunkBelts.get(chunk);
+        if (belts === undefined) {
+            belts = new Set();
+            this._chunkBelts.set(chunk, belts);
+        }
+        belts.add(belt);
         this._dirtyChunks.add(chunk);
 
         if (this._visibleChunks.has(chunk)) {
@@ -215,34 +289,38 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Re-derives a belt's bend if a structural change landed since its last derivation.
-     * @param {BeltSprite} sprite
+     * Re-derives the bends of a chunk's belts that a structural change invalidated, marking the
+     * chunk for a mesh rebuild when any of them turned.
+     * @param {number} chunk
      * @returns {void}
      * @private
      */
-    _refreshBend(sprite) {
-        if (sprite.bendEpoch === this._bendEpoch) {
-            return;
-        }
-        sprite.bendEpoch = this._bendEpoch;
-        if (sprite.type === BeltType.NORMAL) {
-            this._applyBend(sprite);
+    _refreshBends(chunk) {
+        for (const belt of this._beltsIn(chunk)) {
+            if (belt.bendEpoch === this._bendEpoch) {
+                continue;
+            }
+            belt.bendEpoch = this._bendEpoch;
+            if (belt.type === BeltType.NORMAL && this._applyBend(belt)) {
+                this._dirtyChunks.add(chunk);
+            }
         }
     }
 
     /**
-     * Re-derives a normal belt's bend from its cached neighbors, re-rendering only on a change.
-     * @param {BeltSprite} sprite
+     * Re-derives a normal belt's bend from its cached neighbors.
+     * @param {Belt} belt
+     * @returns {boolean} whether the bend changed
      * @private
      */
-    _applyBend(sprite) {
-        const {parentX, parentY} = inferBeltParent(this.cache, sprite.tileX, sprite.tileY, sprite.direction);
-        const bend = Belt.getBend(sprite.direction, sprite.tileX, sprite.tileY, parentX, parentY);
-        if (bend === sprite.bend) {
-            return;
+    _applyBend(belt) {
+        const {parentX, parentY} = inferBeltParent(this.cache, belt.x, belt.y, belt.direction);
+        const bend = Belt.getBend(belt.direction, belt.x, belt.y, parentX, parentY);
+        if (bend === belt.bend) {
+            return false;
         }
-        sprite.frames = this._getFrames(bend, sprite.type);
-        sprite.update(sprite.tileX, sprite.tileY, sprite.direction, bend);
+        belt.bend = bend;
+        return true;
     }
 
     /**
@@ -255,19 +333,21 @@ export class BeltDrawLayer extends AbstractDrawLayer {
             return;
         }
 
-        const chunk = chunkId(belt.tileX, belt.tileY);
-        // Scans only its own chunk's children, and detaches from its parent.
-        belt.destroy();
+        const chunk = chunkId(belt.x, belt.y);
         delete this._belts[id];
         this._dirtyChunks.add(chunk);
 
-        const node = this._chunks.get(chunk);
-        if (node !== undefined && node.isEmpty) {
-            this._unmountChunk(chunk);
-            node.destroy();
-            this._chunks.delete(chunk);
-            this._dirtyChunks.delete(chunk);
+        const belts = this._chunkBelts.get(chunk);
+        belts.delete(belt);
+        if (belts.size > 0) {
+            return;
         }
+        this._chunkBelts.delete(chunk);
+        this._unmountChunk(chunk);
+        this._chunks.get(chunk).destroy();
+        this._chunks.delete(chunk);
+        this._meshes.delete(chunk);
+        this._dirtyChunks.delete(chunk);
     }
 
     /**
@@ -288,10 +368,12 @@ export class BeltDrawLayer extends AbstractDrawLayer {
             return;
         }
         for (const chunk of this._mounted) {
-            for (const sprite of this._chunks.get(chunk).spriteList) {
-                this._refreshBend(sprite);
-                sprite.setAnimationFrame(frame);
-            }
+            this._refreshBends(chunk);
+        }
+        this._flushDirtyChunks();
+        if (this._shader !== null) {
+            // One write for every belt on screen: the meshes hold the animation frame as a uniform.
+            this._shader.frame = frame;
         }
     }
 
@@ -331,8 +413,13 @@ export class BeltDrawLayer extends AbstractDrawLayer {
             return;
         }
         for (const chunk of this._dirtyChunks) {
-            if (this._mounted.has(chunk)) {
+            if (!this._mounted.has(chunk)) {
+                continue;
+            }
+            if (this._mapMode) {
                 this._buildChunkGeometry(chunk);
+            } else {
+                this._buildChunkMesh(chunk);
             }
         }
         this._dirtyChunks.clear();
@@ -348,6 +435,9 @@ export class BeltDrawLayer extends AbstractDrawLayer {
         let node = this._chunks.get(chunk);
         if (node === undefined) {
             node = new ChunkNode();
+            const mesh = new AnimatedTileMesh(this._beltShader());
+            node.sprites.addChild(mesh);
+            this._meshes.set(chunk, mesh);
             this._chunks.set(chunk, node);
         }
         return node;
@@ -394,18 +484,13 @@ export class BeltDrawLayer extends AbstractDrawLayer {
             node.showGraphics(this._buildChunkGeometry(chunk));
             return;
         }
+        // Bends first: the mesh bakes them in, and a chunk mounting for the first time has never
+        // derived them.
+        this._refreshBends(chunk);
+        this._buildChunkMesh(chunk);
         node.showSprites();
     }
 
-    /**
-     * The ordered frame textures for a belt of the given bend and type.
-     * @param {BeltBend} bend
-     * @param {BeltType} type
-     * @returns {Texture[]|undefined}
-     */
-    _getFrames(bend, type) {
-        return this.textureRegistry.getAnimation(beltFrameBase(bend, type));
-    }
 }
 
 export class BeltSprite extends Sprite {

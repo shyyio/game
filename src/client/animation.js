@@ -9,7 +9,7 @@
 // naming convention and reading currentAnimationFrame().
 
 // 8 frames per sequence.
-const ANIMATION_FRAME_COUNT = 8;
+export const ANIMATION_FRAME_COUNT = 8;
 
 /**
  * The current global animation frame.

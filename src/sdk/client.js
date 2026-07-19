@@ -98,6 +98,10 @@ export {
 // every sprite shows right now, keeping all mods in lockstep.
 export {currentAnimationFrame} from "@/client/animation.js";
 
+// Draws a group of animated tiles as one mesh whose vertices never change as the animation runs, so
+// the whole group advances a frame with a single uniform write instead of a texture swap per sprite.
+export {AnimatedTile, AnimatedTileMesh, AnimatedTileShader, FrameTable} from "@/client/AnimatedTileMesh.js";
+
 // ---- Pixi types ----
 // Passed through so mods share the engine's single Pixi instance rather than
 // bundling their own (multiple Pixi copies break rendering).
