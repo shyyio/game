@@ -67,6 +67,10 @@ export {ClientCache, CacheEntry} from "@/client/ClientCache.js";
 // it is measured in tiles, not pixels, so it is not re-exported here.)
 export {TILE_SIZE, snapToTile, snapToChunk} from "@/client/constants.js";
 
+// The chunks a viewport covers, and a set comparison for them: layers cull their children against
+// this, since pixi walks every child of a container each frame.
+export {viewportChunks, sameChunks} from "@/client/constants.js";
+
 // ---- Drawing helpers ----
 // Convenience wrappers for drawing onto a Pixi Graphics object.
 export {drawLine, drawRect, drawCircle} from "@/client/pixiUtils.js";
