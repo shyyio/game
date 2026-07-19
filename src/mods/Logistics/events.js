@@ -1,10 +1,14 @@
 import {AbstractTilePositionedEvent, AbstractBatchEvent} from "@/sdk/common.js";
 
+// Column sentinel for a path feeding nothing, so `outPortIds` stays a plain int column; port eids
+// start at 1, and the per-path events keep using null.
+const NO_OUT_PORT = 0;
+
 export class BeltPathRecalculateEvent extends AbstractTilePositionedEvent {
 
     static wireFields = {
-        x: "int32",
-        y: "int32",
+        x: "sint32",
+        y: "sint32",
         parts: "int64[]",
         outPortId: "int64?",
     };
@@ -28,8 +32,8 @@ export class BeltPathRecalculateEvent extends AbstractTilePositionedEvent {
 export class BeltInsertEvent extends AbstractTilePositionedEvent {
 
     static wireFields = {
-        x: "int32",
-        y: "int32",
+        x: "sint32",
+        y: "sint32",
         id: "int64",
         direction: "int32",
         beltType: "int32",
@@ -56,8 +60,8 @@ export class BeltInsertEvent extends AbstractTilePositionedEvent {
 export class BeltSyncEvent extends AbstractTilePositionedEvent {
 
     static wireFields = {
-        x: "int32",
-        y: "int32",
+        x: "sint32",
+        y: "sint32",
         id: "int64",
         direction: "int32",
         beltType: "int32",
@@ -81,8 +85,8 @@ export class BeltSyncEvent extends AbstractTilePositionedEvent {
 export class BeltDeleteEvent extends AbstractTilePositionedEvent {
 
     static wireFields = {
-        x: "int32",
-        y: "int32",
+        x: "sint32",
+        y: "sint32",
         id: "int64",
     };
 
@@ -279,6 +283,139 @@ export class BeltItemBatchEvent extends AbstractBatchEvent {
                 this.upsertItemIds[i],
                 this.upsertGaps[i],
                 this.upsertItemTypes[i],
+            ));
+        }
+        return events;
+    }
+}
+
+/**
+ * One chunk's belts for a sync, as packed columns: belt `i` is `ids[i]` at (`tileX[i]`, `tileY[i]`)
+ * facing `directions[i]` with type `beltTypes[i]`.
+ */
+export class BeltSyncBatchEvent extends AbstractBatchEvent {
+
+    static wireFields = {
+        originX: "sint32",
+        originY: "sint32",
+        ids: "int64[]",
+        tileX: "sint32[]",
+        tileY: "sint32[]",
+        directions: "int32[]",
+        beltTypes: "int32[]",
+    };
+
+    /**
+     * @param {number} originX - the batched chunk's origin tile, which also routes the batch
+     * @param {number} originY
+     */
+    constructor(originX, originY) {
+        super(originX, originY);
+        this.originX = originX;
+        this.originY = originY;
+        this.ids = [];
+        this.tileX = [];
+        this.tileY = [];
+        this.directions = [];
+        this.beltTypes = [];
+    }
+
+    /**
+     * @param {number} id
+     * @param {number} x
+     * @param {number} y
+     * @param {number} direction
+     * @param {number} beltType
+     * @returns {void}
+     */
+    add(id, x, y, direction, beltType) {
+        this.ids.push(id);
+        this.tileX.push(x - this.originX);
+        this.tileY.push(y - this.originY);
+        this.directions.push(direction);
+        this.beltTypes.push(beltType);
+    }
+
+    /**
+     * @returns {BeltSyncEvent[]}
+     */
+    explode() {
+        const events = [];
+        for (let i = 0; i < this.ids.length; i += 1) {
+            events.push(new BeltSyncEvent(
+                this.originX + this.tileX[i],
+                this.originY + this.tileY[i],
+                this.ids[i],
+                this.directions[i],
+                this.beltTypes[i],
+            ));
+        }
+        return events;
+    }
+}
+
+/**
+ * One chunk's path recalcs for a sync, as packed columns: path `i` heads at (`tileX[i]`, `tileY[i]`)
+ * and owns the next `partCounts[i]` entries of the flattened `parts`. `outPortIds` uses NO_OUT_PORT
+ * for a path feeding nothing.
+ */
+export class BeltPathBatchEvent extends AbstractBatchEvent {
+
+    static wireFields = {
+        originX: "sint32",
+        originY: "sint32",
+        tileX: "sint32[]",
+        tileY: "sint32[]",
+        partCounts: "int32[]",
+        parts: "int64[]",
+        outPortIds: "int64[]",
+    };
+
+    /**
+     * @param {number} originX - the batched chunk's origin tile, which also routes the batch
+     * @param {number} originY
+     */
+    constructor(originX, originY) {
+        super(originX, originY);
+        this.originX = originX;
+        this.originY = originY;
+        this.tileX = [];
+        this.tileY = [];
+        this.partCounts = [];
+        this.parts = [];
+        this.outPortIds = [];
+    }
+
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {number[]} parts - belt ids in path order, head last
+     * @param {number|null} outPortId
+     * @returns {void}
+     */
+    add(x, y, parts, outPortId) {
+        this.tileX.push(x - this.originX);
+        this.tileY.push(y - this.originY);
+        this.partCounts.push(parts.length);
+        this.parts.push(...parts);
+        this.outPortIds.push(outPortId === null ? NO_OUT_PORT : outPortId);
+    }
+
+    /**
+     * @returns {BeltPathRecalculateEvent[]}
+     */
+    explode() {
+        const events = [];
+        let partAt = 0;
+        for (let i = 0; i < this.tileX.length; i += 1) {
+            const parts = this.parts.slice(partAt, partAt + this.partCounts[i]);
+            partAt += this.partCounts[i];
+            const outPortId = this.outPortIds[i] === NO_OUT_PORT ? null : this.outPortIds[i];
+            events.push(new BeltPathRecalculateEvent(
+                this.originX + this.tileX[i],
+                this.originY + this.tileY[i],
+                parts,
+                outPortId,
             ));
         }
         return events;

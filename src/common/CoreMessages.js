@@ -83,8 +83,8 @@ export class CreateObjectMessage extends AbstractMessage {
 
     static wireFields = {
         typeId: "int32",
-        x: "int32",
-        y: "int32",
+        x: "sint32",
+        y: "sint32",
         direction: "int32",
     };
 

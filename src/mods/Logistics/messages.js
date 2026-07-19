@@ -3,8 +3,8 @@ import {AbstractMessage} from "@/sdk/common.js";
 export class CreateBeltMessage extends AbstractMessage {
 
     static wireFields = {
-        x: "int32",
-        y: "int32",
+        x: "sint32",
+        y: "sint32",
         direction: "int32",
         beltType: "int32?",
         rampParent: "int64?",
