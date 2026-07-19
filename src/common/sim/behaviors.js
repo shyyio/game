@@ -292,8 +292,8 @@ export class MachineBehavior extends AbstractBehavior {
             // the pass never hops through PlacedObject to reach the behavior instance.
             {name: "inputCount"},
             {name: "processingTicks"},
-            // Per-tick processing progress (1 unstaffed, up to MANNED_SPEED_MULTIPLIER fully
-            // staffed, interpolated for partial grants); written by LaborNetworks via setLabor.
+            // Per-tick processing progress (1 unstaffed, MANNED_SPEED_MULTIPLIER fully staffed;
+            // grants are full-crew-or-nothing); written by LaborNetworks via setLabor.
             {name: "laborStep", kind: "f32", fill: 1},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => MachineBehavior._submitIntents(engine, placed));
