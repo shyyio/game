@@ -127,7 +127,7 @@ onMounted(async () => {
       .wheel()
       .clampZoom({
         maxScale: 2,
-        minScale: 0.05
+        minScale: 0.10
       });
 
   if (isMobile.any) {
