@@ -81,8 +81,9 @@ export class Client {
         this.itemLayer = new ItemDrawLayer(modRegistry.itemTextures);
         // A removed object's resting out-port item sprites go with it.
         this.cache.onRemove(record => this.itemLayer.dropPorts(record));
-        // The single shared connection-stub layer, derived from the cache each frame.
+        // The single shared connection-stub layer, derived from the cache as objects change.
         this.connectionLayer = new ConnectionDrawLayer();
+        this.connectionLayer.bindCache(this.cache);
         // Top-left connection/chunk-loading status overlay. A static screen-space HUD on
         // app.stage (sibling of the viewport), so it never pans or zooms with the world.
         this.statusLayer = new StatusMessageLayer();

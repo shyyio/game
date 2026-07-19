@@ -1,4 +1,15 @@
-import {Graphics, Sprite, Texture, TILE_SIZE, Direction, AbstractDrawLayer, currentAnimationFrame} from "@/sdk/client.js";
+import {
+    Graphics,
+    Sprite,
+    Texture,
+    TILE_SIZE,
+    Direction,
+    AbstractDrawLayer,
+    currentAnimationFrame,
+    sameChunks,
+    viewportChunks,
+} from "@/sdk/client.js";
+import {chunkId} from "@/sdk/common.js";
 import {BeltBend, BeltType} from "./constants.js";
 import {inferBeltParent} from "./geometry.js";
 
@@ -85,9 +96,19 @@ export class BeltDrawLayer extends AbstractDrawLayer {
         super();
 
         this._belts = {};
-        this._mapModeBelts = {};
+        // Belt ids per chunk, and the ids whose sprites are mounted (sprite mode).
+        this._idsByChunk = new Map();
+        this._mounted = new Set();
+        // The pooled map-mode geometry per chunk, and the chunks whose geometry is mounted.
+        this._mapChunks = new Map();
+        this._mountedChunks = new Set();
+        // Chunks whose pooled geometry no longer matches their belts.
+        this._dirtyChunks = new Set();
+        this._visibleChunks = new Set();
         this._mapMode = false;
-        this._bendsStale = false;
+        // Bumped on every structural cache change; a sprite whose bend was derived at an older
+        // epoch re-derives when next ticked, so belts off-screen at the change still catch up.
+        this._bendEpoch = 0;
     }
 
     get layerIndex() {
@@ -104,7 +125,7 @@ export class BeltDrawLayer extends AbstractDrawLayer {
         this._cache = value;
         if (value !== null) {
             value.onStructuralChange(() => {
-                this._bendsStale = true;
+                this._bendEpoch += 1;
             });
         }
     }
@@ -117,35 +138,54 @@ export class BeltDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Toggles map mode by swapping each belt's full sprite for its persistent
-     * map-mode rectangle (both are kept loaded, so this is just a visibility flip).
+     * Swaps the mounted children between full sprites and pooled map geometry.
      * @param {boolean} value
      */
     set mapMode(value) {
-        this._mapMode = value;
-        for (const sprite of Object.values(this._belts)) {
-            sprite.visible = !value;
+        if (value === this._mapMode) {
+            return;
         }
-        for (const sprite of Object.values(this._mapModeBelts)) {
-            sprite.visible = value;
+        this._unmountAll();
+        this._mapMode = value;
+        for (const chunk of this._visibleChunks) {
+            this._mountChunk(chunk);
         }
     }
 
     /**
-     * Builds the persistent map-mode rectangle shown for a belt in map mode,
-     * colored by belt type and positioned over its tile.
-     * @param {BeltSprite} sprite
+     * Redraws one chunk's map-mode geometry: a tile per belt in the chunk, pooled into the chunk's
+     * single Graphics with one fill per belt color.
+     * @param {number} chunk
      * @returns {Graphics}
      * @private
      */
-    _createMapModeBelt(sprite) {
-        const color = sprite.type === BeltType.NORMAL ? MAP_TILE_COLOR : MAP_RAMP_COLOR;
-        const mapModeSprite = new Graphics();
-        mapModeSprite
-            .rect(sprite.tileX * TILE_SIZE, sprite.tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE)
-            .fill(color);
-        mapModeSprite.visible = this._mapMode;
-        return mapModeSprite;
+    _buildChunkGeometry(chunk) {
+        this._dirtyChunks.delete(chunk);
+
+        let graphics = this._mapChunks.get(chunk);
+        if (graphics === undefined) {
+            graphics = new Graphics();
+            this._mapChunks.set(chunk, graphics);
+        } else {
+            graphics.clear();
+        }
+
+        for (const color of [MAP_TILE_COLOR, MAP_RAMP_COLOR]) {
+            let drew = false;
+            for (const id of this._chunkIds(chunk)) {
+                const sprite = this._belts[id];
+                const beltColor = sprite.type === BeltType.NORMAL ? MAP_TILE_COLOR : MAP_RAMP_COLOR;
+                if (beltColor !== color) {
+                    continue;
+                }
+                graphics.rect(sprite.tileX * TILE_SIZE, sprite.tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                drew = true;
+            }
+            if (drew) {
+                graphics.fill(color);
+            }
+        }
+        return graphics;
     }
 
     /**
@@ -170,14 +210,37 @@ export class BeltDrawLayer extends AbstractDrawLayer {
         const frames = this._getFrames(BeltBend.STRAIGHT, type);
         const sprite = new BeltSprite(id, x, y, direction, BeltBend.STRAIGHT, type, frames);
         sprite.setAnimationFrame(currentAnimationFrame());
-        this.addChild(sprite);
-
         this._belts[sprite.id] = sprite;
-        sprite.visible = !this._mapMode;
 
-        const mapModeSprite = this._createMapModeBelt(sprite);
-        this._mapModeBelts[sprite.id] = mapModeSprite;
-        this.addChild(mapModeSprite);
+        const chunk = chunkId(x, y);
+        const ids = this._idsByChunk.get(chunk);
+        if (ids === undefined) {
+            this._idsByChunk.set(chunk, new Set([sprite.id]));
+        } else {
+            ids.add(sprite.id);
+        }
+        this._dirtyChunks.add(chunk);
+
+        if (this._mapMode || !this._visibleChunks.has(chunk)) {
+            return;
+        }
+        this._mountSprite(sprite.id);
+    }
+
+    /**
+     * Re-derives a belt's bend if a structural change landed since its last derivation.
+     * @param {BeltSprite} sprite
+     * @returns {void}
+     * @private
+     */
+    _refreshBend(sprite) {
+        if (sprite.bendEpoch === this._bendEpoch) {
+            return;
+        }
+        sprite.bendEpoch = this._bendEpoch;
+        if (sprite.type === BeltType.NORMAL) {
+            this._applyBend(sprite);
+        }
     }
 
     /**
@@ -205,35 +268,186 @@ export class BeltDrawLayer extends AbstractDrawLayer {
             return;
         }
 
-        belt.destroy();
-        this.removeChild(belt);
-        delete this._belts[id];
+        this._unmountSprite(id);
 
-        const mapModeBelt = this._mapModeBelts[id];
-        if (mapModeBelt !== undefined) {
-            mapModeBelt.destroy();
-            this.removeChild(mapModeBelt);
-            delete this._mapModeBelts[id];
+        const chunk = chunkId(belt.tileX, belt.tileY);
+        const ids = this._idsByChunk.get(chunk);
+        if (ids !== undefined) {
+            ids.delete(id);
+            if (ids.size === 0) {
+                this._idsByChunk.delete(chunk);
+            }
+        }
+        this._dirtyChunks.add(chunk);
+
+        belt.destroy();
+        delete this._belts[id];
+    }
+
+    /**
+     * Reconciles mounted children against the viewport and pending belt changes, then re-derives
+     * stale bends and advances every on-screen belt to the shared animation frame (map mode draws
+     * no sprites).
+     * @param {number} frame animation frame, in [0, 8)
+     */
+    tick(frame) {
+        if (this.cache === null) {
+            return;
+        }
+        this._reconcileViewport();
+        if (this._mapMode) {
+            this._flushDirtyChunks();
+            return;
+        }
+        for (const id of this._mounted) {
+            const sprite = this._belts[id];
+            this._refreshBend(sprite);
+            sprite.setAnimationFrame(frame);
         }
     }
 
     /**
-     * Advances every live belt sprite to the shared animation frame, re-deriving bends in a
-     * single pass when the cache changed structurally since the last tick (skipped in map mode).
-     * @param {number} frame animation frame, in [0, 8)
+     * Mounts the chunks that panned into view and unmounts those that panned out.
+     * @returns {void}
+     * @private
      */
-    tick(frame) {
-        if (this._mapMode || this.cache === null) {
+    _reconcileViewport() {
+        const visible = viewportChunks(this.viewport);
+        if (sameChunks(visible, this._visibleChunks)) {
             return;
         }
-        const rebuildBends = this._bendsStale;
-        this._bendsStale = false;
-        for (const sprite of Object.values(this._belts)) {
-            if (rebuildBends && sprite.type === BeltType.NORMAL) {
-                this._applyBend(sprite);
+
+        for (const chunk of this._visibleChunks) {
+            if (!visible.has(chunk)) {
+                this._unmountChunk(chunk);
             }
-            sprite.setAnimationFrame(frame);
         }
+
+        for (const chunk of visible) {
+            if (!this._visibleChunks.has(chunk)) {
+                this._mountChunk(chunk);
+            }
+        }
+        this._visibleChunks = visible;
+    }
+
+    /**
+     * Rebuilds the pooled geometry of every mounted chunk a belt change invalidated, and drops the
+     * geometry of chunks left empty.
+     * @returns {void}
+     * @private
+     */
+    _flushDirtyChunks() {
+        if (this._dirtyChunks.size === 0) {
+            return;
+        }
+        for (const chunk of this._dirtyChunks) {
+            if (!this._idsByChunk.has(chunk)) {
+                this._unmountChunk(chunk);
+                const graphics = this._mapChunks.get(chunk);
+                if (graphics !== undefined) {
+                    graphics.destroy();
+                    this._mapChunks.delete(chunk);
+                }
+            } else if (this._mountedChunks.has(chunk)) {
+                this._buildChunkGeometry(chunk);
+            } else if (this._visibleChunks.has(chunk)) {
+                // Its first belt: the chunk had nothing to pool when it scrolled in.
+                this._mountChunk(chunk);
+            }
+        }
+        this._dirtyChunks.clear();
+    }
+
+    /**
+     * Adds one chunk's children for the current mode.
+     * @param {number} chunk
+     * @returns {void}
+     * @private
+     */
+    _mountChunk(chunk) {
+        if (!this._mapMode) {
+            for (const id of this._chunkIds(chunk)) {
+                this._mountSprite(id);
+            }
+            return;
+        }
+
+        if (this._mountedChunks.has(chunk) || !this._idsByChunk.has(chunk)) {
+            return;
+        }
+        this.addChild(this._buildChunkGeometry(chunk));
+        this._mountedChunks.add(chunk);
+    }
+
+    /**
+     * Removes one chunk's children of either mode, keeping them for a later remount.
+     * @param {number} chunk
+     * @returns {void}
+     * @private
+     */
+    _unmountChunk(chunk) {
+        for (const id of this._chunkIds(chunk)) {
+            this._unmountSprite(id);
+        }
+
+        if (!this._mountedChunks.has(chunk)) {
+            return;
+        }
+        this.removeChild(this._mapChunks.get(chunk));
+        this._mountedChunks.delete(chunk);
+    }
+
+    /**
+     * @returns {void}
+     * @private
+     */
+    _unmountAll() {
+        for (const id of this._mounted) {
+            this.removeChild(this._belts[id]);
+        }
+        this._mounted.clear();
+
+        for (const chunk of this._mountedChunks) {
+            this.removeChild(this._mapChunks.get(chunk));
+        }
+        this._mountedChunks.clear();
+    }
+
+    /**
+     * @param {number} id
+     * @returns {void}
+     * @private
+     */
+    _mountSprite(id) {
+        if (this._mounted.has(id)) {
+            return;
+        }
+        this.addChild(this._belts[id]);
+        this._mounted.add(id);
+    }
+
+    /**
+     * @param {number} id
+     * @returns {void}
+     * @private
+     */
+    _unmountSprite(id) {
+        if (!this._mounted.has(id)) {
+            return;
+        }
+        this.removeChild(this._belts[id]);
+        this._mounted.delete(id);
+    }
+
+    /**
+     * @param {number} chunk
+     * @returns {Set<number>} the belt ids in `chunk`
+     * @private
+     */
+    _chunkIds(chunk) {
+        const ids = this._idsByChunk.get(chunk);
+        return ids === undefined ? new Set() : ids;
     }
 
     /**
@@ -270,6 +484,8 @@ export class BeltSprite extends Sprite {
         this.bend = bend;
         this.type = type;
         this.frames = frames;
+        // Behind any real epoch, so the first tick derives this belt's bend.
+        this.bendEpoch = -1;
 
         this.position.set(x * TILE_SIZE + 32, y * TILE_SIZE + 32);
     }
