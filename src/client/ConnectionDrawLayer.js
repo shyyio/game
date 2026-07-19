@@ -44,6 +44,11 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
 
     constructor() {
         super();
+        // Stubs are re-derived as objects change and chunks mount, so this layer's structure churns
+        // constantly. Its own render group contains that; each chunk is one mesh, so no batching is
+        // lost.
+        this.enableRenderGroup();
+
         // Connection geometry per object id, re-derived only when the object or a neighbor changes.
         this._connections = new Map();
         // The chunk each object's stubs hang under, and the objects each chunk holds.

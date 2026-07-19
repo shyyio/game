@@ -99,6 +99,11 @@ onMounted(async () => {
     threshold: 20,
   });
 
+  // The world's transform is the one thing that changes every pan and zoom frame. As a render
+  // group the viewport carries it as a group matrix applied on the GPU, instead of pixi walking
+  // every layer and sprite under it to re-derive world transforms.
+  viewport.enableRenderGroup();
+
   app.stage.addChild(viewport);
 
   let overlay = createShadowOverlay(gameWidth(), gameHeight());

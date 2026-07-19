@@ -109,6 +109,10 @@ export class BeltDrawLayer extends AbstractDrawLayer {
 
     constructor() {
         super();
+        // Mounting and unmounting chunk roots as the viewport moves is this layer's normal state.
+        // Its own render group keeps that churn from re-collecting the whole scene, and costs no
+        // batching: each chunk draws as one mesh either way.
+        this.enableRenderGroup();
 
         this._belts = {};
         // The belts each chunk holds, and the mesh drawing them.
