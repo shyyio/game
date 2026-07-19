@@ -62,7 +62,9 @@ export class ClientCache {
          */
         this._byChunk = new Map();
         /**
-         * @type {Map<number, object>}
+         * Cell key -> entries covering the cell, later-set last (overlaps stack, e.g. an extractor
+         * over a non-solid water body); removal uncovers what's beneath.
+         * @type {Map<number, CacheEntry[]>}
          * @private
          */
         this._byCell = new Map();
@@ -204,7 +206,13 @@ export class ClientCache {
         }
 
         for (const cell of cells) {
-            this._byCell.set(this._cellKey(cell.x, cell.y, cell.layer), entry);
+            const key = this._cellKey(cell.x, cell.y, cell.layer);
+            const stacked = this._byCell.get(key);
+            if (stacked === undefined) {
+                this._byCell.set(key, [entry]);
+            } else {
+                stacked.push(entry);
+            }
         }
 
         for (const listener of [...this._setListeners]) {
@@ -258,7 +266,15 @@ export class ClientCache {
 
         for (const cell of entry.cells) {
             const key = this._cellKey(cell.x, cell.y, cell.layer);
-            if (this._byCell.get(key) === entry) {
+            const stacked = this._byCell.get(key);
+            if (stacked === undefined) {
+                continue;
+            }
+            const index = stacked.indexOf(entry);
+            if (index !== -1) {
+                stacked.splice(index, 1);
+            }
+            if (stacked.length === 0) {
                 this._byCell.delete(key);
             }
         }
@@ -307,7 +323,7 @@ export class ClientCache {
     }
 
     /**
-     * The object covering (tileX, tileY) on `layer`, or null.
+     * The topmost (latest-set) object covering (tileX, tileY) on `layer`, or null.
      * @param {number} tileX
      * @param {number} tileY
      * @param {string} layer
@@ -319,8 +335,8 @@ export class ClientCache {
         if (code === undefined) {
             return null;
         }
-        const entry = this._byCell.get(tileVariantId(tileId(tileX, tileY), code));
-        return entry === undefined ? null : entry;
+        const stacked = this._byCell.get(tileVariantId(tileId(tileX, tileY), code));
+        return stacked === undefined ? null : stacked[stacked.length - 1];
     }
 
     /**
