@@ -87,12 +87,6 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * No-op: a pure renderer, driven by cache listeners.
-     * @param {AbstractEvent} event
-     */
-    onEvent(event) {}
-
-    /**
      * Hidden in map mode (the stubs are sprite-only detail).
      * @param {boolean} value
      */

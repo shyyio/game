@@ -54,6 +54,10 @@ export class GridDrawLayer extends AbstractDrawLayer {
         }
     }
 
+    get eventClasses() {
+        return [ChunkSubscribeEvent, ChunkUnsubscribeEvent];
+    }
+
     onEvent(event) {
         if (event instanceof ChunkSubscribeEvent) {
             this.addChunk(event.chunk);

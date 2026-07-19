@@ -47,14 +47,6 @@ export class ObjectDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {AbstractEvent} event
-     * @returns {void}
-     */
-    onEvent(event) {
-        // No-op: a pure renderer, driven by cache listeners.
-    }
-
-    /**
      * @private
      * @param {CacheEntry} entry
      * @returns {void}

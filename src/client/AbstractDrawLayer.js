@@ -38,6 +38,15 @@ export class AbstractDrawLayer extends Container {
     }
 
     /**
+     * Optional hook: the event classes this layer's onEvent handles (subclasses match too).
+     * @returns {Function[]}
+     */
+    get eventClasses() {
+        return [];
+    }
+
+    /**
+     * Handles an event whose class matches {@link eventClasses}; never called otherwise.
      * @abstract
      * @param {AbstractEvent} event
      * @returns {void}

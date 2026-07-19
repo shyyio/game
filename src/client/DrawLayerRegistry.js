@@ -1,3 +1,5 @@
+import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
+
 export class DrawLayerRegistry {
 
     constructor() {
@@ -5,6 +7,12 @@ export class DrawLayerRegistry {
          * @type {AbstractDrawLayer[]}
          */
         this.layers = [];
+        /**
+         * Event class -> layers whose eventClasses match it, filled lazily per class.
+         * @type {Map<Function, AbstractDrawLayer[]>}
+         * @private
+         */
+        this._subscribers = new Map();
     }
 
     /**
@@ -12,20 +20,42 @@ export class DrawLayerRegistry {
      * @param {AbstractDrawLayer} layer
      */
     add(layer) {
+        if (layer.onEvent !== AbstractDrawLayer.prototype.onEvent && layer.eventClasses.length === 0) {
+            throw new Error(`${layer.constructor.name} overrides onEvent but declares no eventClasses`);
+        }
         let i = this.layers.length;
         while (i > 0 && this.layers[i - 1].layerIndex > layer.layerIndex) {
             i -= 1;
         }
         this.layers.splice(i, 0, layer);
+        this._subscribers.clear();
     }
 
     /**
+     * Delivers an event to the layers subscribed to its class.
      * @param {AbstractEvent} event
      */
     dispatchEvent(event) {
-        for (const layer of [...this.layers]) {
+        for (const layer of this._subscribersFor(event.constructor)) {
             layer.onEvent(event);
         }
+    }
+
+    /**
+     * The layers subscribed to an event class: those declaring it or a superclass of it.
+     * @param {Function} eventClass
+     * @returns {AbstractDrawLayer[]}
+     * @private
+     */
+    _subscribersFor(eventClass) {
+        let subscribers = this._subscribers.get(eventClass);
+        if (subscribers === undefined) {
+            subscribers = this.layers.filter(layer => layer.eventClasses.some(
+                cls => cls === eventClass || cls.prototype.isPrototypeOf(eventClass.prototype),
+            ));
+            this._subscribers.set(eventClass, subscribers);
+        }
+        return subscribers;
     }
 
     /**
