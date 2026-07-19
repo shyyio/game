@@ -1,7 +1,6 @@
 import {Graphics} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {TILE_SIZE} from "@/client/constants.js";
-import {RoadBehavior} from "@/common/sim/behaviors.js";
 import {LaborAssignmentEvent} from "@/common/LaborEvents.js";
 
 // Worker dot styling, in a row along the machine's top edge: every slot carries the same solid
@@ -42,8 +41,9 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
          * @private
          */
         this._pool = [];
-        // Badges rebuild on the next tick after an assignment or labor-relevant cache change.
-        this._stale = false;
+        // Machines whose badge rebuilds on the next tick; a badge depends only on its machine's
+        // own entry and granted count, so road/housing churn never touches it.
+        this._dirtyMachines = new Set();
     }
 
     get layerIndex() {
@@ -74,7 +74,7 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
             return;
         }
         this._assignments.set(event.machineId, event.workers);
-        this._stale = true;
+        this._dirtyMachines.add(event.machineId);
     }
 
     /**
@@ -93,41 +93,28 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _onCacheChange(entry) {
-        const type = entry.data.type;
-        if (type === undefined || type.behavior === null) {
-            return;
-        }
-        const behavior = type.behavior;
-        if (behavior instanceof RoadBehavior || behavior.laborSupply > 0 || behavior.laborCost > 0) {
-            this._stale = true;
+        if (this._assignments.has(entry.id)) {
+            this._dirtyMachines.add(entry.id);
         }
     }
 
     /**
-     * Rebuilds stale badges.
+     * Rebuilds the dirty badges.
      * @param {number} frame
      * @param {number} deltaMS
      * @returns {void}
      */
     tick(frame, deltaMS) {
-        if (!this._stale) {
-            return;
-        }
-        this._stale = false;
-        for (const [machineId, granted] of this._assignments) {
-            const entry = this.cache.get(machineId);
+        for (const machineId of this._dirtyMachines) {
+            const granted = this._assignments.get(machineId);
+            const entry = granted === undefined ? null : this.cache.get(machineId);
             if (entry === null) {
                 this._releaseBadge(machineId);
                 continue;
             }
             this._placeBadge(machineId, entry, granted);
         }
-        // Badges whose machine lost its assignment entry entirely.
-        for (const machineId of this._badges.keys()) {
-            if (!this._assignments.has(machineId)) {
-                this._releaseBadge(machineId);
-            }
-        }
+        this._dirtyMachines.clear();
     }
 
     /**
