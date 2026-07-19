@@ -2,6 +2,7 @@
 /**
  * The optional client part of a mod: draw layers, tools, and input hooks. Every hook receives the
  * client, giving access to the shared surfaces (cache, itemLayer, session, ...).
+ * @abstract
  */
 export class AbstractClientMod {
 

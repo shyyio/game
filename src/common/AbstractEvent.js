@@ -3,6 +3,7 @@ import {NotImplementedError} from "@/common/error.js";
 
 /**
  * Position-less base for events the game emits to a session, reusing the `wireFields` contract.
+ * @abstract
  */
 export class AbstractEvent extends AbstractWireObject {
 
