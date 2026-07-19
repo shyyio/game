@@ -37,6 +37,12 @@ export class ItemDrawLayer extends AbstractDrawLayer {
          */
         this._items = {};
         /**
+         * Idle sprites awaiting reuse, kept as invisible children.
+         * @type {ItemSprite[]}
+         * @private
+         */
+        this._pool = [];
+        /**
          * Item type -> texture name, merged across mods.
          * @type {Object.<number, string>}
          * @private
@@ -164,8 +170,14 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         const texture = this._textureForType(type);
         let sprite = this._items[key];
         if (sprite === undefined) {
-            sprite = new ItemSprite(texture);
-            this.addChild(sprite);
+            sprite = this._pool.pop();
+            if (sprite === undefined) {
+                sprite = new ItemSprite(texture);
+                this.addChild(sprite);
+            } else {
+                sprite.texture = texture;
+                sprite.reset();
+            }
             this._items[key] = sprite;
         } else if (sprite.texture !== texture) {
             // The port now rests a different item type: swap the sprite's texture in place.
@@ -221,8 +233,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         }
         const existing = this._items[newKey];
         if (existing !== undefined && existing !== sprite) {
-            existing.destroy();
-            this.removeChild(existing);
+            this._releaseSprite(existing);
         }
         delete this._items[oldKey];
         this._items[newKey] = sprite;
@@ -237,9 +248,18 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         if (sprite === undefined) {
             return;
         }
-        sprite.destroy();
-        this.removeChild(sprite);
+        this._releaseSprite(sprite);
         delete this._items[key];
+    }
+
+    /**
+     * Parks a sprite in the pool, invisible, for reuse.
+     * @param {ItemSprite} sprite
+     * @private
+     */
+    _releaseSprite(sprite) {
+        sprite.visible = false;
+        this._pool.push(sprite);
     }
 
     /**
@@ -330,6 +350,19 @@ class ItemSprite extends Sprite {
         this.hidden = false;
         // Glide state: start/target pixels and ms elapsed into the current move.
         // _startX is null when not gliding (freshly placed or arrived).
+        this._startX = null;
+        this._startY = null;
+        this._targetX = null;
+        this._targetY = null;
+        this._elapsed = 0;
+    }
+
+    /**
+     * Clears glide and cover state for reuse from the pool.
+     * @returns {void}
+     */
+    reset() {
+        this.hidden = false;
         this._startX = null;
         this._startY = null;
         this._targetX = null;
