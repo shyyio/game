@@ -1,47 +1,44 @@
-import {Sprite, Texture} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
+import {AnimatedTile, AnimatedTileMesh, AnimatedTileShader, FrameTable} from "@/client/AnimatedTileMesh.js";
 import {ChunkNode} from "@/client/ChunkNode.js";
-import {TILE_SIZE, sameChunks} from "@/client/constants.js";
-import {Direction} from "@/common/constants.js";
+import {sameChunks} from "@/client/constants.js";
 
 // Output (front) and input (back) connection stubs, rotated by the object's facing.
 const OUTPUT_CONNECTION = "machine-connection-top-up";
 const INPUT_CONNECTION = "machine-connection-bottom-up";
 
-// An animated half-belt stub bridging a port to whatever it connects to.
-class ConnectionSprite extends Sprite {
+// The stub sequences, in frame table slot order.
+const CONNECTION_SEQUENCES = [OUTPUT_CONNECTION, INPUT_CONNECTION];
+
+/**
+ * One animated half-belt stub bridging a port to whatever it connects to.
+ */
+class Connection {
 
     /**
-     * @param {number} x - tile the stub draws on
-     * @param {number} y
-     * @param {number} angle - sprite rotation in degrees
-     * @param {Texture[]|undefined} frames - ordered animation frames
+     * @param {number} sequence - frame table slot
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {number} quarterTurns - clockwise 90-degree turns, from the object's facing
      */
-    constructor(x, y, angle, frames) {
-        super(Texture.EMPTY);
-        this.anchor = 0.5;
-        this.angle = angle;
-        this.frames = frames;
-        this.position.set(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
-    }
-
-    /**
-     * Shows the given frame, wrapping modulo the sequence length.
-     * @param {number} frame animation frame, in [0, 8)
-     */
-    setAnimationFrame(frame) {
-        if (this.frames === undefined || this.frames.length === 0) {
-            this.texture = Texture.EMPTY;
-            return;
-        }
-        this.texture = this.frames[frame % this.frames.length];
+    constructor(
+        sequence,
+        tileX,
+        tileY,
+        quarterTurns,
+    ) {
+        this.sequence = sequence;
+        this.tileX = tileX;
+        this.tileY = tileY;
+        this.quarterTurns = quarterTurns;
     }
 }
 
 /**
  * The single shared connection layer: draws an animated stub at each connected port of every cached
  * object whose definition opts in (`renderConnections`). Connection geometry is re-derived only for
- * the objects a cache change touched, and only on-screen chunks are mounted.
+ * the objects a cache change touched, and only on-screen chunks are mounted. A chunk's stubs draw as
+ * one mesh, so the animation advances with a single uniform write rather than a texture per stub.
  */
 export class ConnectionDrawLayer extends AbstractDrawLayer {
 
@@ -49,16 +46,22 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
         super();
         // Connection geometry per object id, re-derived only when the object or a neighbor changes.
         this._connections = new Map();
-        // Live sprites per object id, and the chunk node each object's sprites hang under.
-        this._sprites = new Map();
-        this._spriteChunks = new Map();
+        // The chunk each object's stubs hang under, and the objects each chunk holds.
+        this._objectChunks = new Map();
+        this._chunkObjects = new Map();
         this._chunks = new Map();
-        // Object ids whose connections need re-deriving on the next tick.
+        this._meshes = new Map();
+        // Object ids whose connections need re-deriving on the next tick, and the chunks whose
+        // meshes that invalidated.
         this._dirty = new Set();
+        this._dirtyChunks = new Set();
         // The chunks whose roots are mounted.
         this._mounted = new Set();
         this._visibleChunks = new Set();
         this._mapMode = false;
+        // Built on first use, once the texture registry is injected.
+        this._frameTable = null;
+        this._shader = null;
     }
 
     get layerIndex() {
@@ -94,8 +97,21 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Re-derives the connections a cache change invalidated, reconciles sprites against the
-     * visible chunks, then advances every live stub to the shared animation frame.
+     * The frame table and the shader every chunk mesh draws with, built on first use.
+     * @returns {AnimatedTileShader}
+     * @private
+     */
+    _connectionShader() {
+        if (this._shader === null) {
+            this._frameTable = new FrameTable(this.textureRegistry, CONNECTION_SEQUENCES);
+            this._shader = new AnimatedTileShader(this._frameTable);
+        }
+        return this._shader;
+    }
+
+    /**
+     * Re-derives the connections a cache change invalidated, reconciles against the visible chunks,
+     * then advances every live stub to the shared animation frame.
      * @param {number} frame animation frame, in [0, 8)
      * @param {number} deltaMS elapsed time since the previous tick, in ms
      * @param {Set<number>} visibleChunks the chunks the viewport covers this frame
@@ -106,10 +122,10 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
         }
         this._reconcileViewport(visibleChunks);
         this._flushDirty();
-        for (const chunk of this._mounted) {
-            for (const sprite of this._chunks.get(chunk).spriteList) {
-                sprite.setAnimationFrame(frame);
-            }
+        this._flushDirtyChunks();
+        if (this._shader !== null) {
+            // One write for every stub on screen: the meshes hold the animation frame as a uniform.
+            this._shader.frame = frame;
         }
     }
 
@@ -131,7 +147,7 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Re-derives every queued object's connections and resyncs its sprites.
+     * Re-derives every queued object's connections, marking the chunks whose meshes that changed.
      * @returns {void}
      * @private
      */
@@ -146,102 +162,138 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
             } else {
                 this._connections.set(id, this._deriveConnections(entry));
             }
-            this._syncSprites(id);
+            this._reindex(id, entry);
         }
         this._dirty.clear();
     }
 
     /**
+     * Moves an object between chunks as its stubs appear, move, or go away, dirtying whichever
+     * chunks that touched.
+     * @param {number} id
+     * @param {CacheEntry|null} entry
+     * @returns {void}
+     * @private
+     */
+    _reindex(id, entry) {
+        const connections = this._connections.get(id);
+        const drawn = entry !== null && connections !== undefined && connections.length > 0;
+        const chunk = drawn ? entry.chunk : undefined;
+        const previous = this._objectChunks.get(id);
+        if (previous === chunk) {
+            if (drawn) {
+                this._dirtyChunks.add(chunk);
+            }
+            return;
+        }
+
+        if (previous !== undefined) {
+            this._chunkObjects.get(previous).delete(id);
+            this._dirtyChunks.add(previous);
+            this._objectChunks.delete(id);
+        }
+        if (!drawn) {
+            return;
+        }
+
+        this._objectChunks.set(id, chunk);
+        let objects = this._chunkObjects.get(chunk);
+        if (objects === undefined) {
+            objects = new Set();
+            this._chunkObjects.set(chunk, objects);
+        }
+        objects.add(id);
+        this._node(chunk);
+        this._dirtyChunks.add(chunk);
+
+        if (this._visibleChunks.has(chunk)) {
+            this._mountChunk(chunk);
+        }
+    }
+
+    /**
+     * Rebuilds the mesh of every mounted chunk a change invalidated, dropping chunks left empty.
+     * @returns {void}
+     * @private
+     */
+    _flushDirtyChunks() {
+        if (this._dirtyChunks.size === 0) {
+            return;
+        }
+        for (const chunk of this._dirtyChunks) {
+            const objects = this._chunkObjects.get(chunk);
+            if (objects === undefined || objects.size === 0) {
+                this._dropChunk(chunk);
+            } else if (this._mounted.has(chunk)) {
+                this._buildChunkMesh(chunk);
+            }
+        }
+        this._dirtyChunks.clear();
+    }
+
+    /**
+     * Rebuilds one chunk's mesh from the stubs of every object it holds.
+     * @param {number} chunk
+     * @returns {void}
+     * @private
+     */
+    _buildChunkMesh(chunk) {
+        const tiles = [];
+        for (const id of this._chunkObjects.get(chunk)) {
+            for (const connection of this._connections.get(id)) {
+                tiles.push(new AnimatedTile(
+                    connection.tileX,
+                    connection.tileY,
+                    connection.quarterTurns,
+                    connection.sequence,
+                ));
+            }
+        }
+        this._meshes.get(chunk).setTiles(tiles);
+    }
+
+    /**
+     * @param {number} chunk
+     * @returns {void}
+     * @private
+     */
+    _dropChunk(chunk) {
+        const node = this._chunks.get(chunk);
+        if (node === undefined) {
+            return;
+        }
+        this._unmountChunk(chunk);
+        node.destroy();
+        this._chunks.delete(chunk);
+        this._meshes.delete(chunk);
+        this._chunkObjects.delete(chunk);
+    }
+
+    /**
      * The stubs `entry` should show: one per connected port, on the port's own side of the pair.
      * @param {CacheEntry} entry
-     * @returns {{base: string, tileX: number, tileY: number, angle: number}[]}
+     * @returns {Connection[]}
      * @private
      */
     _deriveConnections(entry) {
-        const angle = Direction.angle(entry.data.direction);
+        this._connectionShader();
+        const quarterTurns = entry.data.direction;
         const connections = [];
 
         for (const connection of this.cache.connectedPorts(entry)) {
-            connections.push({
-                base: connection.isOutput ? OUTPUT_CONNECTION : INPUT_CONNECTION,
-                tileX: connection.tileX,
-                tileY: connection.tileY,
-                angle,
-            });
+            const base = connection.isOutput ? OUTPUT_CONNECTION : INPUT_CONNECTION;
+            connections.push(new Connection(
+                this._frameTable.slotOf(base),
+                connection.tileX,
+                connection.tileY,
+                quarterTurns,
+            ));
         }
         return connections;
     }
 
     /**
-     * Rebuilds one object's sprites from its derived connections, dropping them when the object is
-     * gone or off-screen.
-     * @param {number} id
-     * @returns {void}
-     * @private
-     */
-    _syncSprites(id) {
-        this._dropSprites(id);
-
-        const entry = this.cache.get(id);
-        if (entry === null) {
-            return;
-        }
-
-        const connections = this._connections.get(id);
-        if (connections === undefined || connections.length === 0) {
-            return;
-        }
-
-        const node = this._node(entry.chunk);
-        const sprites = [];
-        for (const connection of connections) {
-            const sprite = new ConnectionSprite(
-                connection.tileX,
-                connection.tileY,
-                connection.angle,
-                this.textureRegistry.getAnimation(connection.base),
-            );
-            node.sprites.addChild(sprite);
-            sprites.push(sprite);
-        }
-        this._sprites.set(id, sprites);
-        this._spriteChunks.set(id, entry.chunk);
-
-        if (this._visibleChunks.has(entry.chunk)) {
-            this._mountChunk(entry.chunk);
-        }
-    }
-
-    /**
-     * Destroys one object's stubs, dropping its chunk node once nothing is left in it.
-     * @param {number} id
-     * @returns {void}
-     * @private
-     */
-    _dropSprites(id) {
-        const existing = this._sprites.get(id);
-        if (existing === undefined) {
-            return;
-        }
-        for (const sprite of existing) {
-            // Scans only its own chunk's children, and detaches from its parent.
-            sprite.destroy();
-        }
-        this._sprites.delete(id);
-
-        const chunk = this._spriteChunks.get(id);
-        this._spriteChunks.delete(id);
-
-        const node = this._chunks.get(chunk);
-        if (node !== undefined && node.isEmpty) {
-            this._unmountChunk(chunk);
-            node.destroy();
-            this._chunks.delete(chunk);
-        }
-    }
-
-    /**
-     * The chunk's node, created empty on first use.
+     * The chunk's node and mesh, created empty on first use.
      * @param {number} chunk
      * @returns {ChunkNode}
      * @private
@@ -250,7 +302,10 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
         let node = this._chunks.get(chunk);
         if (node === undefined) {
             node = new ChunkNode();
+            const mesh = new AnimatedTileMesh(this._connectionShader());
+            node.sprites.addChild(mesh);
             node.showSprites();
+            this._meshes.set(chunk, mesh);
             this._chunks.set(chunk, node);
         }
         return node;
@@ -268,6 +323,8 @@ export class ConnectionDrawLayer extends AbstractDrawLayer {
         }
         this.addChild(node.root);
         this._mounted.add(chunk);
+        // The mesh may have gone stale while the chunk was unmounted.
+        this._buildChunkMesh(chunk);
     }
 
     /**
