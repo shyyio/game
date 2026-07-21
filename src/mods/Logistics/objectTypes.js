@@ -99,7 +99,7 @@ export const RoadDefinition = new ObjectType({
     directional: false,
     label: "Road",
     behavior: new RoadBehavior(),
-    placement: new PlacementRule({replaceSameKind: true}),
+    placement: new PlacementRule({replaceSameKind: true, dragToPlace: true}),
 });
 
 export const HousingDefinition = new ObjectType({

@@ -117,10 +117,7 @@ class GridChunk extends Container {
      * @param {GraphicsContext} majorContext
      * @param {GraphicsContext} minorContext
      */
-    constructor(
-        majorContext,
-        minorContext,
-    ) {
+    constructor(majorContext, minorContext) {
         super();
         this.addChild(new Graphics(majorContext));
         this.minor = this.addChild(new Graphics(minorContext));
