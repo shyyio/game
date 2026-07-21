@@ -7,7 +7,8 @@ import Haptics from "@/client/Haptics.js";
 /**
  * Tap-to-place tool: drops one object over its geometry, overwriting an aligned conveyor lane (and
  * optionally its own type), with orientation + center-lock. Placement knobs come from the type's
- * PlacementRule. Belt's drag-to-lay tools are bespoke.
+ * PlacementRule; `dragToPlace` adds drag-to-lay, one placement per tile entered. Belt's drag-to-lay
+ * tools are bespoke.
  */
 export class ObjectTool extends AbstractTool {
 
@@ -26,6 +27,7 @@ export class ObjectTool extends AbstractTool {
         this._replaceSameKind = type.placement.replaceSameKind;
         this._advanceOnPlace = type.placement.advanceOnPlace;
         this._placeOn = type.placement.placeOn;
+        this._dragToPlace = type.placement.dragToPlace;
         this._placementFeedbackLayer = client.placementFeedbackLayer;
         // A non-directional type keeps _rotation null: rotate() no-ops, the rotate buttons hide
         // (orientable), and placement always faces UP.
@@ -53,21 +55,34 @@ export class ObjectTool extends AbstractTool {
         if (base === null) {
             return;
         }
-        const result = this._evaluate(base.x, base.y, direction);
-        if (result.blockedCells.length > 0) {
+        if (!this._placeAt(base.x, base.y, direction)) {
             return;
         }
-        for (const id of result.overwriteIds) {
-            this.session.sendMessage(new DeleteObjectMessage(id));
-        }
-        this.session.sendMessage(new CreateObjectMessage(this._type.typeId, base.x, base.y, direction));
-        Haptics.tap();
-        // Re-evaluate next frame so the just-placed tile now reads as occupied.
-        this._ghostLayer.invalidateSnap();
         if (this._client.centerLock && this._advanceOnPlace) {
             // Advances the center-lock crosshair one tile so consecutive taps lay a line.
             this._client.advanceCenterLock(tileX, tileY, direction);
         }
+    }
+
+    /**
+     * Places the object at the base tile facing `direction`, deleting its overwrites first. Returns
+     * whether it placed (false when any cell is blocked).
+     * @private
+     * @returns {boolean}
+     */
+    _placeAt(baseX, baseY, direction) {
+        const result = this._evaluate(baseX, baseY, direction);
+        if (result.blockedCells.length > 0) {
+            return false;
+        }
+        for (const id of result.overwriteIds) {
+            this.session.sendMessage(new DeleteObjectMessage(id));
+        }
+        this.session.sendMessage(new CreateObjectMessage(this._type.typeId, baseX, baseY, direction));
+        Haptics.tap();
+        // Re-evaluate next frame so the just-placed tile now reads as occupied.
+        this._ghostLayer.invalidateSnap();
+        return true;
     }
 
     /**
@@ -155,8 +170,31 @@ export class ObjectTool extends AbstractTool {
         return tiles;
     }
 
+    onDragStart(tileX, tileY) {
+        // The pressed tile gets its placement before the first step, so a dragged run starts under
+        // the press.
+        this._dragPlace(tileX, tileY);
+    }
+
     onDragTile(tileX, tileY, direction) {
-        // No-op: an easy object is placed one at a time via tap, never by dragging across tiles.
+        // The step direction is ignored: placement keeps the tool facing.
+        this._dragPlace(tileX, tileY);
+    }
+
+    /**
+     * Lays one placement at a dragged-over tile, when the type opts into drag-to-lay. A tile already
+     * holding this type is left untouched.
+     * @private
+     */
+    _dragPlace(tileX, tileY) {
+        if (!this._dragToPlace) {
+            return;
+        }
+        const occupant = this._cache.at(tileX, tileY, this._type.positionLayer);
+        if (occupant !== null && occupant.data.type === this._type) {
+            return;
+        }
+        this._placeAt(tileX, tileY, this._placementDirection());
     }
 
     /**

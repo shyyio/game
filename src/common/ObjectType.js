@@ -64,17 +64,20 @@ export class PlacementRule {
      *     off for one-off objects
      * @param {ObjectType[]} [config.placeOn] - restrict placement to these types' extraction tiles
      * @param {boolean} [config.solid] - whether the object occupies its footprint (blocks the tile)
+     * @param {boolean} [config.dragToPlace] - dragging lays one placement per tile entered
      */
     constructor({
         replaceSameKind=false,
         advanceOnPlace=true,
         placeOn=[],
         solid=true,
+        dragToPlace=false,
     }={}) {
         this.replaceSameKind = replaceSameKind;
         this.advanceOnPlace = advanceOnPlace;
         this.placeOn = placeOn;
         this.solid = solid;
+        this.dragToPlace = dragToPlace;
     }
 }
 
