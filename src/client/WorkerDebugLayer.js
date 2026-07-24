@@ -3,9 +3,10 @@ import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {TILE_SIZE, GAME_FONT} from "@/client/constants.js";
 import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
 import {cellNeighbors, tileId} from "@/common/util.js";
-import {RoadBehavior, isLaborBehavior} from "@/common/sim/behaviors.js";
+import {RoadBehavior, isWorkerBehavior} from "@/common/sim/behaviors.js";
 import {DEBUG_COLOR} from "@/client/Theme.js";
 import {drawLine, drawCircle, drawRect} from "@/client/pixiUtils.js";
+import {findCommuteRoute} from "@/client/workerRoute.js";
 
 const ROAD_FILL_ALPHA = 0.35;
 const LABEL_TEXT_SIZE = 15;
@@ -13,15 +14,15 @@ const LABEL_TEXT_SIZE = 15;
 const HOUSING_MARKER_RADIUS = 8;
 
 /**
- * Debug overlay for labor networks, derived from the cached entries the way the sim derives them:
- * each road component tinted its own color, attached housings/machines outlined in it, a
- * demand/supply label per component, and a line from each manned machine to its housing. Hidden
- * until debug mode is enabled.
+ * Debug overlay for worker networks, derived from the cached entries the way the sim derives them:
+ * each network (roads plus the housings bridging them) tinted its own color, its housings and
+ * attached machines outlined, a demand/supply label per network, and a line from each manned
+ * machine to its housing. Hidden until debug mode is enabled.
  */
-export class LaborDebugLayer extends AbstractDrawLayer {
+export class WorkerDebugLayer extends AbstractDrawLayer {
 
     /**
-     * @param {LaborAssignmentCache} assignments
+     * @param {WorkerAssignmentCache} assignments
      */
     constructor(assignments) {
         super();
@@ -29,11 +30,11 @@ export class LaborDebugLayer extends AbstractDrawLayer {
         this._debugMode = false;
         // Map mode (zoomed far out) is too coarse for the overlay; it hides regardless of debug mode.
         this._mapMode = false;
-        // Repaint lazily on the next tick after a labor-relevant change.
+        // Repaint lazily on the next tick after a worker-relevant change.
         this._stale = true;
         /**
          * The shared machine-staffing index, for the machine->housing lines.
-         * @type {LaborAssignmentCache}
+         * @type {WorkerAssignmentCache}
          * @private
          */
         this._assignments = assignments;
@@ -58,7 +59,7 @@ export class LaborDebugLayer extends AbstractDrawLayer {
      */
     onCacheChange(entry) {
         const behavior = entry.behavior;
-        if (behavior !== null && isLaborBehavior(behavior)) {
+        if (behavior !== null && isWorkerBehavior(behavior)) {
             this._stale = true;
         }
     }
@@ -127,40 +128,68 @@ export class LaborDebugLayer extends AbstractDrawLayer {
         }
 
         const seen = new Set();
+        const seenHousings = new Set();
         for (const [tile, road] of roadTiles) {
             if (seen.has(tile)) {
                 continue;
             }
             seen.add(tile);
             const component = [road];
-            const queue = [road];
-            while (queue.length > 0) {
-                const current = queue.pop();
-                for (const delta of NEIGHBOR_DELTAS) {
-                    const neighborTile = tileId(current.x + delta.dx, current.y + delta.dy);
-                    if (seen.has(neighborTile) || !roadTiles.has(neighborTile)) {
-                        continue;
+            const housings = [];
+            const roadQueue = [road];
+            const housingQueue = [];
+            const visit = (x, y) => {
+                const neighborTile = tileId(x, y);
+                const neighbor = roadTiles.get(neighborTile);
+                if (neighbor !== undefined) {
+                    if (seen.has(neighborTile)) {
+                        return;
                     }
                     seen.add(neighborTile);
-                    const neighbor = roadTiles.get(neighborTile);
                     component.push(neighbor);
-                    queue.push(neighbor);
+                    roadQueue.push(neighbor);
+                    return;
+                }
+                const entry = this.cache.at(x, y, LAYER_SURFACE);
+                if (entry === null || seenHousings.has(entry.id)) {
+                    return;
+                }
+                const behavior = entry.behavior;
+                if (behavior === null || behavior.workerSupply <= 0) {
+                    return;
+                }
+                seenHousings.add(entry.id);
+                housings.push(entry);
+                housingQueue.push(entry);
+            };
+            while (roadQueue.length > 0 || housingQueue.length > 0) {
+                if (roadQueue.length > 0) {
+                    const current = roadQueue.pop();
+                    for (const delta of NEIGHBOR_DELTAS) {
+                        visit(current.x + delta.dx, current.y + delta.dy);
+                    }
+                } else {
+                    const housing = housingQueue.pop();
+                    for (const {x, y} of cellNeighbors(housing.cells)) {
+                        visit(x, y);
+                    }
                 }
             }
-            this._drawComponent(component, roadTiles);
+            this._drawComponent(component, housings, roadTiles);
         }
 
         this._drawAssignments();
     }
 
     /**
-     * One component: tinted road tiles, outlined attachments, and a demand/supply label.
+     * One network: tinted road tiles, outlined housings and machines, and a demand/supply label.
      * @private
      * @param {{x: number, y: number, entryId: number}[]} component
+     * @param {CacheEntry[]} housings - the network's housings, gathered by the fill
      * @param {Map<number, object>} roadTiles
      * @returns {void}
      */
-    _drawComponent(component, roadTiles) {
+    _drawComponent(component, housings, roadTiles) {
         let colorSeed = component[0].entryId;
         for (const road of component) {
             if (road.entryId < colorSeed) {
@@ -175,8 +204,13 @@ export class LaborDebugLayer extends AbstractDrawLayer {
                 .fill({color, alpha: ROAD_FILL_ALPHA});
         }
 
-        // Attachments off the road tiles' neighbors, deduplicated by entry.
         let supply = 0;
+        for (const housing of housings) {
+            supply += housing.behavior.workerSupply;
+            this._outlineFootprint(housing, color);
+        }
+
+        // Machines off the road tiles' neighbors, deduplicated by entry.
         let demand = 0;
         const attached = new Set();
         for (const {x, y} of cellNeighbors(component)) {
@@ -188,12 +222,11 @@ export class LaborDebugLayer extends AbstractDrawLayer {
                 continue;
             }
             const behavior = entry.behavior;
-            if (behavior === null || (behavior.laborSupply === 0 && behavior.laborCost === 0)) {
+            if (behavior === null || behavior.workerCost === 0) {
                 continue;
             }
             attached.add(entry.id);
-            supply += behavior.laborSupply;
-            demand += behavior.laborCost;
+            demand += behavior.workerCost;
             this._outlineFootprint(entry, color);
         }
 
@@ -234,7 +267,9 @@ export class LaborDebugLayer extends AbstractDrawLayer {
     }
 
     /**
-     * A line from each manned machine to its housing, with a circle on the housing end.
+     * Each manned machine's commute route to its nearest housing (the one the figures walk), with
+     * a circle on the housing end; a straight line to the sim-assigned housing when no route
+     * exists (e.g. partly uncached).
      * @private
      * @returns {void}
      */
@@ -244,11 +279,24 @@ export class LaborDebugLayer extends AbstractDrawLayer {
                 continue;
             }
             const machineEntry = this.cache.get(assignment.machineId);
-            const housingEntry = this.cache.get(assignment.housingId);
-            if (machineEntry === null || housingEntry === null) {
+            if (machineEntry === null) {
                 continue;
             }
             const color = DEBUG_COLOR(assignment.housingId);
+            const route = findCommuteRoute(this.cache, machineEntry);
+            if (route !== null) {
+                this._graphics.moveTo(route[0].x, route[0].y);
+                for (let i = 1; i < route.length; i += 1) {
+                    this._graphics.lineTo(route[i].x, route[i].y);
+                }
+                this._graphics.stroke({color, width: 2});
+                drawCircle(this._graphics, route[0].x, route[0].y, HOUSING_MARKER_RADIUS, color);
+                continue;
+            }
+            const housingEntry = this.cache.get(assignment.housingId);
+            if (housingEntry === null) {
+                continue;
+            }
             const machineX = machineEntry.tileX * TILE_SIZE + TILE_SIZE / 2;
             const machineY = machineEntry.tileY * TILE_SIZE + TILE_SIZE / 2;
             const housingX = housingEntry.tileX * TILE_SIZE + TILE_SIZE;

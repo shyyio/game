@@ -92,8 +92,8 @@ export {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 // Engine render deltas for the item resting in a render-flagged out-port.
 export {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
-// Labor assignment deltas/sync the engine's LaborNetworks emits (NO_HOUSING = unmanned).
-export {LaborAssignmentEvent, LaborAssignmentBatchEvent, NO_HOUSING} from "@/common/LaborEvents.js";
+// Worker assignment deltas/sync the engine's WorkerNetworks emits (NO_HOUSING = unmanned).
+export {WorkerAssignmentEvent, WorkerAssignmentSyncEvent, WorkerAssignmentBatchEvent, NO_HOUSING} from "@/common/WorkerEvents.js";
 
 // ---- World geometry ----
 // `Direction` is the cardinal-direction enum (with rotate/dx/dy helpers).

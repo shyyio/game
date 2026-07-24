@@ -38,9 +38,9 @@ export const BeltBend = {
     RIGHT: 2,
 };
 
-// ---- Labor ----
-// Labor one Housing contributes to its road network.
-export const HOUSING_LABOR_SUPPLY = 5;
+// ---- Workers ----
+// Workers one Housing contributes to its road network.
+export const HOUSING_WORKER_SUPPLY = 5;
 
 // Map-mode tile colors.
 export const MAP_COLOR_HOUSING = 0x55a355;

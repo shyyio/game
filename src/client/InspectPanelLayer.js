@@ -112,8 +112,8 @@ export class InspectPanelLayer extends Container {
         const key = String(event.objectId);
         let record = this._panels.get(key);
         if (record === undefined) {
-            // The panel's height comes from the first snapshot (a labor row never appears later:
-            // laborCost is a type constant).
+            // The panel's height comes from the first snapshot (a worker row never appears later:
+            // workerCost is a type constant).
             record = this._createPanel(event.objectId, UIPanel.heightForContent(inspectContentHeight(event)));
             this._panels.set(key, record);
         }

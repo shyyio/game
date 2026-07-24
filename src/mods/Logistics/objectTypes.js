@@ -11,7 +11,7 @@ import {
     BELT_RAMP_DOWN,
     BELT_RAMP_UP,
     BELT_UNDERGROUND,
-    HOUSING_LABOR_SUPPLY,
+    HOUSING_WORKER_SUPPLY,
     MAP_COLOR_HOUSING,
     MAP_COLOR_ROAD,
     DRAW_LAYER_ROAD,
@@ -89,7 +89,7 @@ export const SplitterDefinition = new ObjectType({
     behavior: new SplitterBehavior(),
 });
 
-// A road cell of the labor network; workers walk it from Housing to the machines it serves.
+// A road cell of the worker network; workers walk it from Housing to the machines it serves.
 export const RoadDefinition = new ObjectType({
     name: "Road",
     geometry: "1x1",
@@ -109,6 +109,6 @@ export const HousingDefinition = new ObjectType({
     mapColor: MAP_COLOR_HOUSING,
     directional: false,
     label: "Housing",
-    behavior: new HousingBehavior({laborSupply: HOUSING_LABOR_SUPPLY}),
+    behavior: new HousingBehavior({workerSupply: HOUSING_WORKER_SUPPLY}),
     placement: new PlacementRule({advanceOnPlace: false}),
 });
