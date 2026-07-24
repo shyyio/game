@@ -4,7 +4,7 @@ import {LAYER_SURFACE} from "@/common/constants.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlacedObjects} from "@/common/sim/PlacedObjects.js";
-import {LaborNetworks} from "@/common/sim/LaborNetworks.js";
+import {WorkerNetworks} from "@/common/sim/WorkerNetworks.js";
 
 /**
  * @enum
@@ -245,10 +245,10 @@ export class GameEngine {
         this.placed = null;
 
         /**
-         * Road-network labor allocation over the placed objects; built with the entity host.
-         * @type {LaborNetworks|null}
+         * Road-network worker allocation over the placed objects; built with the entity host.
+         * @type {WorkerNetworks|null}
          */
-        this.labor = null;
+        this.workers = null;
 
         // Provided service instances by their exported marker class (see provide/resolve).
         this._services = new Map();
@@ -635,7 +635,7 @@ export class GameEngine {
             // throw otherwise. The generic entity host installs every derived type's behavior first,
             // then bespoke sim mods register theirs.
             this.placed = new PlacedObjects(this, this.modRegistry);
-            this.labor = new LaborNetworks(this, this.placed);
+            this.workers = new WorkerNetworks(this, this.placed);
             for (const mod of this.modRegistry.simMods) {
                 mod.setup(this);
             }
@@ -1871,14 +1871,19 @@ export class GameEngine {
      * @returns {boolean}
      */
     applyMessage(message) {
+        let handled;
         if (message instanceof DeleteObjectMessage) {
             this.untrack(message.id);
-            const handled = this._messageHandlers.some(handler => handler(message));
+            handled = this._messageHandlers.some(handler => handler(message));
             // A delete (and any belt relink it triggered) can strand ports; destroy them now.
             this.collectUnreferencedPorts();
-            return handled;
+        } else {
+            handled = this._messageHandlers.some(handler => handler(message));
         }
-        return this._messageHandlers.some(handler => handler(message));
+        if (this.workers !== null) {
+            this.workers.ensureFresh();
+        }
+        return handled;
     }
 
     /**

@@ -44,10 +44,10 @@ export class AbstractBehavior {
          * @type {ObjectType|null}
          */
         this.type = null;
-        // Labor interface, read by LaborNetworks: a positive laborSupply makes the type a source, a
-        // positive laborCost a consumer.
-        this.laborSupply = 0;
-        this.laborCost = 0;
+        // Worker interface, read by WorkerNetworks: a positive workerSupply makes the type a source, a
+        // positive workerCost a consumer.
+        this.workerSupply = 0;
+        this.workerCost = 0;
     }
 
     /**
@@ -144,14 +144,14 @@ export class AbstractBehavior {
     }
 
     /**
-     * Applies the labor allocation to one entity: `granted` workers of its laborCost (0 = none).
+     * Applies the worker allocation to one entity: `granted` workers of its workerCost (0 = none).
      * @param {GameEngine} engine
      * @param {PlacedObjects} placed
      * @param {number} eid
      * @param {number} granted
      * @returns {void}
      */
-    setLabor(engine, placed, eid, granted) {
+    setWorkers(engine, placed, eid, granted) {
 
     }
 
@@ -175,14 +175,14 @@ export class StaticBehavior extends AbstractBehavior {
 }
 
 /**
- * A road cell: registers its footprint with the labor network; no ports, no tick.
+ * A road cell: registers its footprint with the worker network; no ports, no tick.
  */
 export class RoadBehavior extends AbstractBehavior {
 
     onSpawn(engine, placed, eid, type, message) {
         const objectId = placed.objectIdOf(eid);
         for (const cell of engine.footprint(type, message.x, message.y, message.direction)) {
-            engine.labor.addRoad(cell.x, cell.y, objectId);
+            engine.workers.addRoad(cell.x, cell.y, objectId);
         }
         return [];
     }
@@ -190,41 +190,42 @@ export class RoadBehavior extends AbstractBehavior {
     onDespawn(engine, placed, eid) {
         const position = engine.Position;
         for (const cell of engine.footprint(this.type, position.x[eid], position.y[eid], position.direction[eid])) {
-            engine.labor.removeRoad(cell.x, cell.y);
+            engine.workers.removeRoad(cell.x, cell.y);
         }
     }
 }
 
 /**
- * Whether a behavior participates in labor routing (roads, housing supply, manned machines).
+ * Whether a behavior participates in worker routing (roads, housing supply, manned machines).
  * @param {AbstractBehavior} behavior
  * @returns {boolean}
  */
-export function isLaborBehavior(behavior) {
-    return behavior instanceof RoadBehavior || behavior.laborSupply > 0 || behavior.laborCost > 0;
+export function isWorkerBehavior(behavior) {
+    return behavior instanceof RoadBehavior || behavior.workerSupply > 0 || behavior.workerCost > 0;
 }
 
 /**
- * A labor source: contributes laborSupply to the road component its footprint touches.
+ * A worker source: contributes workerSupply to the road component its footprint touches.
  */
 export class HousingBehavior extends AbstractBehavior {
 
     /**
      * @param {object} config
-     * @param {number} config.laborSupply
+     * @param {number} config.workerSupply
      */
-    constructor({laborSupply}) {
+    constructor({workerSupply}) {
         super();
-        this.laborSupply = laborSupply;
+        this.workerSupply = workerSupply;
     }
 
     onSpawn(engine, placed, eid, type, message) {
-        engine.labor.markDirty();
+        engine.workers.markDirty(engine.footprint(type, message.x, message.y, message.direction));
         return [];
     }
 
     onDespawn(engine, placed, eid) {
-        engine.labor.markDirty();
+        const position = engine.Position;
+        engine.workers.markDirty(engine.footprint(this.type, position.x[eid], position.y[eid], position.direction[eid]));
     }
 }
 
@@ -240,13 +241,13 @@ export class MachineBehavior extends AbstractBehavior {
      * @param {number} config.processingTicks
      * @param {RecipeDefinition[]} config.recipes
      * @param {number} config.fallback - output when the gathered set matches no recipe
-     * @param {number} [config.laborCost] - labor consumed when road-connected to housing (0 = never manned)
+     * @param {number} [config.workerCost] - workers consumed when road-connected to housing (0 = never manned)
      */
-    constructor({processingTicks, recipes, fallback, laborCost=0}) {
+    constructor({processingTicks, recipes, fallback, workerCost=0}) {
         super();
         this.processingTicks = processingTicks;
         this.fallback = fallback;
-        this.laborCost = laborCost;
+        this.workerCost = workerCost;
 
         // Packed gathered-set key -> output (see _recipeKey).
         this.recipes = new Map();
@@ -301,8 +302,8 @@ export class MachineBehavior extends AbstractBehavior {
             {name: "inputCount"},
             {name: "processingTicks"},
             // Per-tick processing progress (1 unstaffed, MANNED_SPEED_MULTIPLIER fully staffed;
-            // grants are full-crew-or-nothing); written by LaborNetworks via setLabor.
-            {name: "laborStep", kind: "f32", fill: 1},
+            // grants are full-crew-or-nothing); written by WorkerNetworks via setWorkers.
+            {name: "workerStep", kind: "f32", fill: 1},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => MachineBehavior._submitIntents(engine, placed));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => MachineBehavior._finish(engine, placed));
@@ -321,10 +322,10 @@ export class MachineBehavior extends AbstractBehavior {
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         machine.out[row] = output.port;
         // Explicit: a recycled row may hold a stale step from a previous occupant.
-        machine.laborStep[row] = 1;
+        machine.workerStep[row] = 1;
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
-        if (this.laborCost > 0) {
-            engine.labor.markDirty();
+        if (this.workerCost > 0) {
+            engine.workers.markDirty(engine.footprint(type, message.x, message.y, message.direction));
         }
         return [output.port];
     }
@@ -332,14 +333,15 @@ export class MachineBehavior extends AbstractBehavior {
     onDespawn(engine, placed, eid) {
         const def = engine.component("Machine");
         engine.unregisterRenderedPort(def.store.out[def.row(eid)]);
-        if (this.laborCost > 0) {
-            engine.labor.markDirty();
+        if (this.workerCost > 0) {
+            const position = engine.Position;
+            engine.workers.markDirty(engine.footprint(this.type, position.x[eid], position.y[eid], position.direction[eid]));
         }
     }
 
-    setLabor(engine, placed, eid, granted) {
+    setWorkers(engine, placed, eid, granted) {
         const def = engine.component("Machine");
-        def.store.laborStep[def.row(eid)] = 1 + (MANNED_SPEED_MULTIPLIER - 1) * (granted / this.laborCost);
+        def.store.workerStep[def.row(eid)] = 1 + (MANNED_SPEED_MULTIPLIER - 1) * (granted / this.workerCost);
     }
 
     syncData(engine, placed, eid) {
@@ -382,7 +384,7 @@ export class MachineBehavior extends AbstractBehavior {
         // The wire carries whole ticks; the fractional countdown stays sim-side.
         const remaining = machine.remaining[row] === EMPTY ? null : Math.ceil(machine.remaining[row]);
         const outItem = item[machine.out[row]];
-        const labor = this.laborCost > 0 ? engine.labor.inspectFor(objectId) : null;
+        const workerStats = this.workerCost > 0 ? engine.workers.inspectFor(objectId) : null;
         return new InspectHeartbeatEvent(
             objectId,
             inputPorts,
@@ -391,10 +393,10 @@ export class MachineBehavior extends AbstractBehavior {
             this.processingTicks,
             outItem === EMPTY ? null : outItem,
             this._inspectRecipeOutput(inputMemory),
-            this.laborCost > 0 ? this.laborCost : null,
-            this.laborCost > 0 ? (labor === null ? 0 : labor.granted) : null,
-            labor === null ? null : labor.supply,
-            labor === null ? null : labor.demand,
+            this.workerCost > 0 ? this.workerCost : null,
+            this.workerCost > 0 ? (workerStats === null ? 0 : workerStats.granted) : null,
+            workerStats === null ? null : workerStats.supply,
+            workerStats === null ? null : workerStats.demand,
         );
     }
 
@@ -471,13 +473,13 @@ export class MachineBehavior extends AbstractBehavior {
         const out = machine.out;
         const inputCounts = machine.inputCount;
         const processingTicks = machine.processingTicks;
-        const laborStep = machine.laborStep;
+        const workerStep = machine.workerStep;
         // Hoisted: `count` and `eids` reach through the descriptor into the world's membership set, and
         // this loop runs once per machine per tick.
         const eids = def.eids;
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
-            const step = laborStep[row];
+            const step = workerStep[row];
             // Mid-craft with the product still held: the countdown is the only state that moves, so
             // skip the behavior lookup and the per-slot passes below, which would all no-op.
             if (output[row] !== EMPTY && remaining[row] > step) {

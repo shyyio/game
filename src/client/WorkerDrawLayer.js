@@ -2,10 +2,8 @@ import {Sprite, Texture} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {DisplayPool} from "@/client/DisplayPool.js";
 import {KeyedDisplayPool} from "@/client/KeyedDisplayPool.js";
-import {TILE_SIZE} from "@/client/constants.js";
-import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
-import {cellNeighbors, tileId} from "@/common/util.js";
-import {RoadBehavior, isLaborBehavior} from "@/common/sim/behaviors.js";
+import {isWorkerBehavior} from "@/common/sim/behaviors.js";
+import {findCommuteRoute} from "@/client/workerRoute.js";
 
 // Spritesheet base of the 8-frame walk cycle.
 const WORKER_ANIMATION = "worker-walk";
@@ -37,24 +35,24 @@ const WORKER_RENDER_CAP = 300;
 const WORKER_CULL_INTERVAL_MS = 300;
 
 /**
- * Walking worker figures, one per manned machine, commuting along the cached road tiles between
- * the machine's housing and the machine. Purely cosmetic: driven by the shared assignment index;
- * the route is a client-side BFS over the road entries and re-derives whenever the cache changes.
+ * Walking worker figures, one per manned machine, commuting between the machine and the nearest
+ * housing of its network. Purely cosmetic: driven by the shared assignment index; the route is a
+ * client-side BFS over the road/housing entries and re-derives whenever the cache changes.
  */
 export class WorkerDrawLayer extends AbstractDrawLayer {
 
     /**
-     * @param {LaborAssignmentCache} assignments
+     * @param {WorkerAssignmentCache} assignments
      */
     constructor(assignments) {
         super();
         /**
          * The shared machine-staffing index; unmanned assignments carry no figure.
-         * @type {LaborAssignmentCache}
+         * @type {WorkerAssignmentCache}
          * @private
          */
         this._assignments = assignments;
-        assignments.onChange(machineId => this._onAssignmentChange(machineId));
+        assignments.onChange((machineId, synced) => this._onAssignmentChange(machineId, synced));
         /**
          * Live figures keyed by machineId. Idle figures await reuse as invisible children,
          * capped at the render cap, since no more could ever show at once.
@@ -75,13 +73,16 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
             },
             WORKER_RENDER_CAP,
         ));
-        // Routes re-derive after any labor-relevant cache change, spread over ticks and drained
+        // Routes re-derive after any worker-relevant cache change, spread over ticks and drained
         // ROUTE_REBUILDS_PER_TICK per tick: assignment changes queue their machine as urgent; the
         // flag requeues every assignment as background work, served only with leftover budget so
         // a world-wide refresh never delays freshly visible machines.
         this._routesStale = false;
         this._dirtyMachines = new Set();
         this._staleMachines = new Set();
+        // Machines whose assignment arrived via chunk sync: their fresh figure scatters
+        // mid-commute; a live-manned machine's figure departs from its housing instead.
+        this._scatterMachines = new Set();
         // Figures advance on alternate ticks, carrying the skipped tick's elapsed time.
         this._skipTick = false;
         this._pendingDeltaMS = 0;
@@ -104,29 +105,34 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
     /**
      * Tracks an assignment change; the figure itself (re)builds on the next tick.
      * @param {number} machineId
+     * @param {boolean} synced whether the change arrived via a chunk sync
      * @returns {void}
      * @private
      */
-    _onAssignmentChange(machineId) {
+    _onAssignmentChange(machineId, synced) {
         const assignment = this._assignments.get(machineId);
         if (assignment === null || !assignment.manned) {
             this._dirtyMachines.delete(machineId);
             this._staleMachines.delete(machineId);
+            this._scatterMachines.delete(machineId);
             this._workers.release(machineId);
             return;
+        }
+        if (synced) {
+            this._scatterMachines.add(machineId);
         }
         this._dirtyMachines.add(machineId);
     }
 
     /**
-     * Marks routes stale when a road/housing/labor-machine entry appears or disappears; other
+     * Marks routes stale when a road/housing/staffed-machine entry appears or disappears; other
      * cache traffic (belts, decorations) never reroutes a commute.
      * @param {CacheEntry} entry
      * @returns {void}
      */
     onCacheChange(entry) {
         const behavior = entry.behavior;
-        if (behavior !== null && isLaborBehavior(behavior)) {
+        if (behavior !== null && isWorkerBehavior(behavior)) {
             this._routesStale = true;
         }
     }
@@ -230,8 +236,8 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Rebuilds one assignment's route off the current cache; an assignment whose machine, housing,
-     * or road path is not (or no longer) cached loses its figure until the cache changes again.
+     * Rebuilds one assignment's route off the current cache; an assignment whose machine or route
+     * to a housing is not (or no longer) cached loses its figure until the cache changes again.
      * @private
      * @param {number} machineId
      * @returns {void}
@@ -243,116 +249,26 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
             return;
         }
         const machineEntry = this.cache.get(machineId);
-        const housingEntry = this.cache.get(assignment.housingId);
-        const waypoints = machineEntry === null || housingEntry === null
+        const waypoints = machineEntry === null
             ? null
-            : this._findRoute(housingEntry, machineEntry);
+            : findCommuteRoute(this.cache, machineEntry);
         if (waypoints === null) {
             this._workers.release(machineId);
             return;
         }
         const fresh = !this._workers.has(machineId);
+        const scatter = this._scatterMachines.delete(machineId);
         const worker = this._workers.take(machineId);
         worker.setRoute(waypoints);
         if (fresh) {
-            worker.scatter();
+            if (scatter) {
+                worker.scatter();
+            } else {
+                worker.depart();
+            }
         }
     }
 
-    /**
-     * The road entry covering a tile, or null when the tile holds none.
-     * @private
-     * @param {number} x
-     * @param {number} y
-     * @returns {CacheEntry|null}
-     */
-    _roadAt(x, y) {
-        const entry = this.cache.at(x, y, LAYER_SURFACE);
-        if (entry === null || !(entry.behavior instanceof RoadBehavior)) {
-            return null;
-        }
-        return entry;
-    }
-
-    /**
-     * BFS over the cached road tiles from the housing's edge to the machine's edge; the shortest
-     * route as world-px waypoints (housing center, road tile centers, machine center), or null
-     * when no cached road connects them.
-     * @private
-     * @param {CacheEntry} housingEntry
-     * @param {CacheEntry} machineEntry
-     * @returns {{x: number, y: number}[]|null}
-     */
-    _findRoute(housingEntry, machineEntry) {
-        const targets = new Set();
-        for (const {x, y} of cellNeighbors(machineEntry.cells)) {
-            if (this._roadAt(x, y) !== null) {
-                targets.add(tileId(x, y));
-            }
-        }
-        if (targets.size === 0) {
-            return null;
-        }
-
-        // parent: road tile -> the road tile it was reached from (null for a seed by the housing).
-        const parents = new Map();
-        const queue = [];
-        for (const {x, y} of cellNeighbors(housingEntry.cells)) {
-            const tile = tileId(x, y);
-            if (parents.has(tile) || this._roadAt(x, y) === null) {
-                continue;
-            }
-            parents.set(tile, null);
-            queue.push({x, y, tile});
-        }
-
-        let goal = null;
-        for (let head = 0; head < queue.length; head += 1) {
-            const current = queue[head];
-            if (targets.has(current.tile)) {
-                goal = current;
-                break;
-            }
-            for (const delta of NEIGHBOR_DELTAS) {
-                const x = current.x + delta.dx;
-                const y = current.y + delta.dy;
-                const tile = tileId(x, y);
-                if (parents.has(tile) || this._roadAt(x, y) === null) {
-                    continue;
-                }
-                parents.set(tile, current);
-                queue.push({x, y, tile});
-            }
-        }
-        if (goal === null) {
-            return null;
-        }
-
-        const waypoints = [WorkerDrawLayer._entryCenter(machineEntry)];
-        for (let node = goal; node !== null; node = parents.get(node.tile)) {
-            waypoints.push({
-                x: node.x * TILE_SIZE + TILE_SIZE / 2,
-                y: node.y * TILE_SIZE + TILE_SIZE / 2,
-            });
-        }
-        waypoints.push(WorkerDrawLayer._entryCenter(housingEntry));
-        waypoints.reverse();
-        return waypoints;
-    }
-
-    /**
-     * The world-px center of an entry's footprint.
-     * @private
-     * @param {CacheEntry} entry
-     * @returns {{x: number, y: number}}
-     */
-    static _entryCenter(entry) {
-        const centroid = entry.tileCentroid;
-        return {
-            x: centroid.tileX * TILE_SIZE + TILE_SIZE / 2,
-            y: centroid.tileY * TILE_SIZE + TILE_SIZE / 2,
-        };
-    }
 }
 
 /**
@@ -391,6 +307,19 @@ class WorkerSprite extends Sprite {
     scatter() {
         this._walked = Math.random() * this._totalLength;
         this._forward = Math.random() < 0.5 ? 1 : -1;
+        this._pauseMS = Math.random() * HOUSING_PAUSE_JITTER_MS;
+        this._rollLateral();
+        this._place();
+    }
+
+    /**
+     * Starts a fresh figure at its housing, about to walk out for its first shift. Call after
+     * {@link setRoute}.
+     * @returns {void}
+     */
+    depart() {
+        this._walked = 0;
+        this._forward = 1;
         this._pauseMS = Math.random() * HOUSING_PAUSE_JITTER_MS;
         this._rollLateral();
         this._place();

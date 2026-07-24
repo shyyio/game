@@ -260,7 +260,7 @@ onMounted(async () => {
   });
 
   window.setInterval(() => {
-    tick()
+    // tick()
   }, 600);
 
   // Toggle debug mode

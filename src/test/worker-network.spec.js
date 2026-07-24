@@ -4,15 +4,15 @@ import {Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent} from "@/common/ObjectEvents.js";
-import {LaborAssignmentEvent, NO_HOUSING} from "@/common/LaborEvents.js";
+import {WorkerAssignmentEvent, NO_HOUSING} from "@/common/WorkerEvents.js";
 import {
     DemoMachineType,
     ITEM_TYPE_DEMO_INPUT,
     ITEM_TYPE_DEMO_OUTPUT,
-    DEMO_MACHINE_LABOR_COST,
+    DEMO_MACHINE_WORKER_COST,
 } from "@/mods/Demo/declaration.js";
 import {RoadDefinition, HousingDefinition} from "@/mods/Logistics/objectTypes.js";
-import {HOUSING_LABOR_SUPPLY} from "@/mods/Logistics/constants.js";
+import {HOUSING_WORKER_SUPPLY} from "@/mods/Logistics/constants.js";
 import {EMPTY} from "@/common/sim/GameEngine.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
@@ -86,14 +86,14 @@ test("a machine road-connected to housing is manned and sustains a faster rate",
     const controlId = placeObject(engine, DemoMachineType, 30, 10);
 
     const manned = engine.inspectSnapshot(nearId);
-    assert.equal(manned.laborCost, DEMO_MACHINE_LABOR_COST);
-    assert.equal(manned.laborWorkers, DEMO_MACHINE_LABOR_COST);
-    assert.equal(manned.laborSupply, HOUSING_LABOR_SUPPLY);
-    assert.equal(manned.laborDemand, 2 * DEMO_MACHINE_LABOR_COST);
+    assert.equal(manned.workerCost, DEMO_MACHINE_WORKER_COST);
+    assert.equal(manned.workers, DEMO_MACHINE_WORKER_COST);
+    assert.equal(manned.workerSupply, HOUSING_WORKER_SUPPLY);
+    assert.equal(manned.workerDemand, 2 * DEMO_MACHINE_WORKER_COST);
 
     const control = engine.inspectSnapshot(controlId);
-    assert.equal(control.laborWorkers, 0);
-    assert.equal(control.laborSupply, null, "road-less machine has no network stats");
+    assert.equal(control.workers, 0);
+    assert.equal(control.workerSupply, null, "road-less machine has no network stats");
 
     // The 1.3x multiplier shows up as sustained throughput (fractional progress carries over).
     const TICKS = 60;
@@ -127,12 +127,12 @@ test("fractional progress banks past a craft and shortens the next", async () =>
     assert.ok(Math.abs(remaining - 1.4) < 1e-3, `remaining ${remaining}`);
 });
 
-test("a labor shortage staffs the closest machines first", async () => {
+test("a worker shortage staffs the closest machines first", async () => {
     const engine = await makeGameEngine();
     placeObject(engine, HousingDefinition, 2, 4);
     // Two machines past what the supply fully staffs: full crews nearest; a remainder short of a
     // full crew staffs nobody.
-    const fullGrants = Math.floor(HOUSING_LABOR_SUPPLY / DEMO_MACHINE_LABOR_COST);
+    const fullGrants = Math.floor(HOUSING_WORKER_SUPPLY / DEMO_MACHINE_WORKER_COST);
     const count = fullGrants + 2;
     for (let x = 4; x < 5 + count; x += 1) {
         placeObject(engine, RoadDefinition, x, 5);
@@ -142,8 +142,8 @@ test("a labor shortage staffs the closest machines first", async () => {
         machineIds.push(placeObject(engine, DemoMachineType, x, 4));
     }
     for (const [i, machineId] of machineIds.entries()) {
-        const expected = i < fullGrants ? DEMO_MACHINE_LABOR_COST : 0;
-        assert.equal(engine.inspectSnapshot(machineId).laborWorkers, expected, `machine at x=${5 + i}`);
+        const expected = i < fullGrants ? DEMO_MACHINE_WORKER_COST : 0;
+        assert.equal(engine.inspectSnapshot(machineId).workers, expected, `machine at x=${5 + i}`);
     }
 });
 
@@ -152,7 +152,7 @@ test("a distance tie staffs the older machine (lower objectId)", async () => {
     placeObject(engine, HousingDefinition, 2, 4);
     // Closer machines drain the supply down to one last full crew; it goes to one of two machines
     // at equal distance, and placement order must break the tie.
-    const leadCount = Math.floor(HOUSING_LABOR_SUPPLY / DEMO_MACHINE_LABOR_COST) - 1;
+    const leadCount = Math.floor(HOUSING_WORKER_SUPPLY / DEMO_MACHINE_WORKER_COST) - 1;
     for (let x = 4; x <= 5 + leadCount; x += 1) {
         placeObject(engine, RoadDefinition, x, 5);
     }
@@ -161,23 +161,23 @@ test("a distance tie staffs the older machine (lower objectId)", async () => {
     }
     const olderId = placeObject(engine, DemoMachineType, 5 + leadCount, 4);
     const newerId = placeObject(engine, DemoMachineType, 4 + leadCount, 6);
-    assert.equal(engine.inspectSnapshot(olderId).laborWorkers, DEMO_MACHINE_LABOR_COST);
-    assert.equal(engine.inspectSnapshot(newerId).laborWorkers, 0);
+    assert.equal(engine.inspectSnapshot(olderId).workers, DEMO_MACHINE_WORKER_COST);
+    assert.equal(engine.inspectSnapshot(newerId).workers, 0);
 });
 
 test("cutting the road unmans the disconnected machine and emits the delta", async () => {
     const {engine, roadIds, nearId, farId} = await mannedSetup();
     const collector = new EventCollector(engine);
-    assert.equal(engine.inspectSnapshot(farId).laborWorkers, DEMO_MACHINE_LABOR_COST);
+    assert.equal(engine.inspectSnapshot(farId).workers, DEMO_MACHINE_WORKER_COST);
     collector.drain();
 
     assert.equal(engine.applyMessage(new DeleteObjectMessage(roadIds.get(6))), true);
     engine.tickAll();
 
-    assert.equal(engine.inspectSnapshot(nearId).laborWorkers, DEMO_MACHINE_LABOR_COST, "housing-side machine stays manned");
-    assert.equal(engine.inspectSnapshot(farId).laborWorkers, 0, "cut-off machine loses its labor");
+    assert.equal(engine.inspectSnapshot(nearId).workers, DEMO_MACHINE_WORKER_COST, "housing-side machine stays manned");
+    assert.equal(engine.inspectSnapshot(farId).workers, 0, "cut-off machine loses its workers");
     const delta = collector.drain().find(event =>
-        event instanceof LaborAssignmentEvent && event.machineId === farId);
+        event instanceof WorkerAssignmentEvent && event.machineId === farId);
     assert.ok(delta, "assignment delta emitted");
     assert.equal(delta.housingId, NO_HOUSING);
 });
@@ -185,15 +185,86 @@ test("cutting the road unmans the disconnected machine and emits the delta", asy
 test("deleting the housing unmans every machine", async () => {
     const {engine, housingId, nearId, farId} = await mannedSetup();
     assert.equal(engine.applyMessage(new DeleteObjectMessage(housingId)), true);
-    assert.equal(engine.inspectSnapshot(nearId).laborWorkers, 0);
-    assert.equal(engine.inspectSnapshot(farId).laborWorkers, 0);
+    assert.equal(engine.inspectSnapshot(nearId).workers, 0);
+    assert.equal(engine.inspectSnapshot(farId).workers, 0);
+});
+
+test("a housing bridges two road stretches into one network with pooled supply", async () => {
+    const engine = await makeGameEngine();
+    // housing (2,4) - road (4,5) - housing (5,4) - road (7,5): one network through the housings.
+    placeObject(engine, HousingDefinition, 2, 4);
+    placeObject(engine, RoadDefinition, 4, 5);
+    placeObject(engine, HousingDefinition, 5, 4);
+    placeObject(engine, RoadDefinition, 7, 5);
+    const nearId = placeObject(engine, DemoMachineType, 4, 4);
+    const farId = placeObject(engine, DemoMachineType, 7, 4);
+
+    for (const machineId of [nearId, farId]) {
+        const snapshot = engine.inspectSnapshot(machineId);
+        assert.equal(snapshot.workerSupply, 2 * HOUSING_WORKER_SUPPLY, "both housings, counted once each");
+        assert.equal(snapshot.workerDemand, 2 * DEMO_MACHINE_WORKER_COST, "both machines share the network");
+        assert.equal(snapshot.workers, DEMO_MACHINE_WORKER_COST);
+    }
+});
+
+test("directly adjacent housings pool their supply into one network", async () => {
+    const engine = await makeGameEngine();
+    placeObject(engine, HousingDefinition, 2, 4);
+    // Stacked on top of the first, touching no road itself.
+    placeObject(engine, HousingDefinition, 2, 2);
+    placeObject(engine, RoadDefinition, 4, 5);
+    const machineId = placeObject(engine, DemoMachineType, 4, 4);
+
+    const snapshot = engine.inspectSnapshot(machineId);
+    assert.equal(snapshot.workerSupply, 2 * HOUSING_WORKER_SUPPLY);
+    assert.equal(snapshot.workers, DEMO_MACHINE_WORKER_COST);
+});
+
+test("a new smaller-id component takes a machine from its old network", async () => {
+    const engine = await makeGameEngine();
+    // Right network first: the machine's only road neighbor, so it staffs the machine.
+    placeObject(engine, RoadDefinition, 7, 4);
+    placeObject(engine, HousingDefinition, 8, 3);
+    const machineId = placeObject(engine, DemoMachineType, 6, 4);
+    assert.equal(engine.inspectSnapshot(machineId).workers, DEMO_MACHINE_WORKER_COST);
+
+    // Left network: its road tile has the smaller tileId, so it outranks the right one.
+    const collector = new EventCollector(engine);
+    placeObject(engine, RoadDefinition, 5, 4);
+    const leftHousingId = placeObject(engine, HousingDefinition, 3, 3);
+
+    const deltas = collector.drain().filter(event =>
+        event instanceof WorkerAssignmentEvent && event.machineId === machineId);
+    assert.ok(deltas.length > 0, "reassignment delta emitted");
+    assert.equal(deltas[deltas.length - 1].housingId, leftHousingId);
+    const snapshot = engine.inspectSnapshot(machineId);
+    assert.equal(snapshot.workers, DEMO_MACHINE_WORKER_COST);
+    assert.equal(snapshot.workerDemand, DEMO_MACHINE_WORKER_COST, "left network's demand, not the right's");
+});
+
+test("a machine stays with its smaller-id network when a new one appears beside it", async () => {
+    const engine = await makeGameEngine();
+    placeObject(engine, RoadDefinition, 5, 4);
+    placeObject(engine, HousingDefinition, 3, 3);
+    const machineId = placeObject(engine, DemoMachineType, 6, 4);
+
+    const collector = new EventCollector(engine);
+    placeObject(engine, RoadDefinition, 7, 4);
+    placeObject(engine, HousingDefinition, 8, 3);
+
+    const deltas = collector.drain().filter(event =>
+        event instanceof WorkerAssignmentEvent && event.machineId === machineId);
+    assert.equal(deltas.length, 0, "no reassignment flicker");
+    const snapshot = engine.inspectSnapshot(machineId);
+    assert.equal(snapshot.workers, DEMO_MACHINE_WORKER_COST);
+    assert.equal(snapshot.workerSupply, HOUSING_WORKER_SUPPLY, "still only the left housing's supply");
 });
 
 test("chunk sync carries the manned assignments", async () => {
     const {engine, housingId, nearId, farId} = await mannedSetup();
     engine.tickAll();
     const events = flattenBatches(engine.chunkSync(chunkId(5, 4)));
-    const assignments = events.filter(event => event instanceof LaborAssignmentEvent);
+    const assignments = events.filter(event => event instanceof WorkerAssignmentEvent);
     const byMachine = new Map(assignments.map(event => [event.machineId, event.housingId]));
     assert.equal(byMachine.get(nearId), housingId);
     assert.equal(byMachine.get(farId), housingId);
@@ -207,7 +278,7 @@ test("a non-directional type spawns facing UP whatever the message says", async 
     assert.equal(insert.direction, Direction.UP);
 });
 
-test("labor assignments and banked progress survive a save/load", async () => {
+test("worker assignments and banked progress survive a save/load", async () => {
     const {engine, nearId} = await mannedSetup();
     // Craft once (a single fed input) so the machine banks fractional progress, then idles.
     engine.setPortItem(engine.portAt(5, 4, Direction.UP), ITEM_TYPE_DEMO_INPUT);
@@ -228,7 +299,7 @@ test("labor assignments and banked progress survive a save/load", async () => {
     const restored = await makeGameEngine();
     restored.deserialize(snapshot);
 
-    assert.equal(restored.labor.roadAt(5, 5), true, "road tiles rebuilt");
-    assert.equal(restored.inspectSnapshot(nearId).laborWorkers, DEMO_MACHINE_LABOR_COST, "allocation recomputed after load");
+    assert.equal(restored.workers.roadAt(5, 5), true, "road tiles rebuilt");
+    assert.equal(restored.inspectSnapshot(nearId).workers, DEMO_MACHINE_WORKER_COST, "allocation recomputed after load");
     assert.equal(carryOf(restored, nearId), carryBefore, "banked fractional progress restored");
 });

@@ -15,8 +15,8 @@ export const ITEM_TYPE_DEMO_INPUT = 7;
 export const ITEM_TYPE_DEMO_OUTPUT = 101;
 export const ITEM_TYPE_DEMO_JUNK = 102;
 
-// Labor the furnace consumes when road-connected to housing.
-export const DEMO_MACHINE_LABOR_COST = 2;
+// Workers the furnace consumes when road-connected to housing.
+export const DEMO_MACHINE_WORKER_COST = 2;
 
 export const DemoMachineType = new ObjectType({
     name: "DemoMachine",
@@ -32,7 +32,7 @@ export const DemoMachineType = new ObjectType({
         processingTicks: 2,
         recipes: [new RecipeDefinition([ITEM_TYPE_DEMO_INPUT], ITEM_TYPE_DEMO_OUTPUT)],
         fallback: ITEM_TYPE_DEMO_JUNK,
-        laborCost: DEMO_MACHINE_LABOR_COST,
+        workerCost: DEMO_MACHINE_WORKER_COST,
     }),
 });
 

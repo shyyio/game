@@ -7,7 +7,7 @@ import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSetti
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
-import {LaborAssignmentEvent, LaborAssignmentBatchEvent} from "@/common/LaborEvents.js";
+import {WorkerAssignmentEvent, WorkerAssignmentBatchEvent} from "@/common/WorkerEvents.js";
 
 const {Type, Field, MapField, Root} = protobuf;
 const Long = protobuf.util.Long;
@@ -39,8 +39,8 @@ const CORE_WIRE_CLASSES = [
     InspectClosedEvent,
     PortItemBatchEvent,
     ObjectSyncBatchEvent,
-    LaborAssignmentEvent,
-    LaborAssignmentBatchEvent,
+    WorkerAssignmentEvent,
+    WorkerAssignmentBatchEvent,
 ];
 
 /**

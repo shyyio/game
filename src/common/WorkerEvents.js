@@ -5,10 +5,10 @@ import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 export const NO_HOUSING = 0;
 
 /**
- * A road-attached machine's labor state changed: `workers` granted (0 = unstaffed) from `housingId`
+ * A road-attached machine's worker state changed: `workers` granted (0 = unstaffed) from `housingId`
  * (NO_HOUSING when none). `attached` 0 means the machine left the road network entirely.
  */
-export class LaborAssignmentEvent extends AbstractChunkRoutedEvent {
+export class WorkerAssignmentEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         x: "sint32",
@@ -37,10 +37,17 @@ export class LaborAssignmentEvent extends AbstractChunkRoutedEvent {
 }
 
 /**
+ * An assignment synced into a loaded chunk; same payload as the live event but a distinct type so
+ * handlers can tell a load from a live change.
+ */
+export class WorkerAssignmentSyncEvent extends WorkerAssignmentEvent {
+}
+
+/**
  * One chunk's road-attached machines for a sync: machine `machineIds[i]` at chunk-relative
  * (`tileX[i]`, `tileY[i]`) holds `workers[i]` granted workers from `housingIds[i]`.
  */
-export class LaborAssignmentBatchEvent extends AbstractBatchEvent {
+export class WorkerAssignmentBatchEvent extends AbstractBatchEvent {
 
     static wireFields = {
         originX: "sint32",
@@ -84,12 +91,12 @@ export class LaborAssignmentBatchEvent extends AbstractBatchEvent {
     }
 
     /**
-     * @returns {LaborAssignmentEvent[]}
+     * @returns {WorkerAssignmentSyncEvent[]}
      */
     explode() {
         const events = [];
         for (let i = 0; i < this.machineIds.length; i += 1) {
-            events.push(new LaborAssignmentEvent(
+            events.push(new WorkerAssignmentSyncEvent(
                 this.originX + this.tileX[i],
                 this.originY + this.tileY[i],
                 this.machineIds[i],

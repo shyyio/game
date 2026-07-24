@@ -42,18 +42,18 @@ export const TX_SLOT = "ui/Frame02a_inset4";
 export const INSPECT_CONTENT_HEIGHT = SLOT_SIZE + SLOT_MARGIN_Y + SLOT_SIZE;
 const TX_BARFILL = "ui/barfill";
 
-const LABOR_TEXT_SIZE = 15;
-const LABOR_ROW_HEIGHT = LABOR_TEXT_SIZE + SLOT_MARGIN_Y;
-const LABOR_MANNED_COLOR = PROGRESS_BAR_TINT;
-const LABOR_MISSING_COLOR = GHOST_BLOCKED_TINT;
+const WORKER_TEXT_SIZE = 15;
+const WORKER_ROW_HEIGHT = WORKER_TEXT_SIZE + SLOT_MARGIN_Y;
+const WORKER_MANNED_COLOR = PROGRESS_BAR_TINT;
+const WORKER_MISSING_COLOR = GHOST_BLOCKED_TINT;
 
 /**
- * The body height for a machine's snapshot; labor-consuming machines get an extra status row.
+ * The body height for a machine's snapshot; worker-consuming machines get an extra status row.
  * @param {InspectHeartbeatEvent} event
  * @returns {number}
  */
 export function inspectContentHeight(event) {
-    return INSPECT_CONTENT_HEIGHT + (event.laborCost !== null ? LABOR_ROW_HEIGHT : 0);
+    return INSPECT_CONTENT_HEIGHT + (event.workerCost !== null ? WORKER_ROW_HEIGHT : 0);
 }
 
 /**
@@ -97,36 +97,36 @@ export function buildInspectContent(panel, event, textureRegistry, itemTextures,
     }
     addSlot(panel, outputItem, outputAlpha, outputX, y, textureRegistry, itemTextures);
 
-    if (event.laborCost !== null) {
+    if (event.workerCost !== null) {
         y += SLOT_SIZE + SLOT_MARGIN_Y;
-        addLaborRow(panel, event, y);
+        addWorkerRow(panel, event, y);
     }
 }
 
 /**
- * One status line for a labor-consuming machine: staffing state plus its road network's
+ * One status line for a worker-consuming machine: staffing state plus its road network's
  * demand/supply, red while the machine runs unmanned.
  * @param {UIPanel} panel
  * @param {InspectHeartbeatEvent} event
  * @param {number} y
  * @returns {void}
  */
-function addLaborRow(panel, event, y) {
-    const staffed = event.laborWorkers === event.laborCost;
+function addWorkerRow(panel, event, y) {
+    const staffed = event.workers === event.workerCost;
     let text;
-    if (event.laborSupply === null) {
-        text = `No road access · needs ${event.laborCost} labor`;
+    if (event.workerSupply === null) {
+        text = `No road access · needs ${event.workerCost} workers`;
     } else if (staffed) {
-        text = `Manned · ${event.laborCost} labor · network ${event.laborDemand}/${event.laborSupply}`;
+        text = `Manned · ${event.workerCost} workers · network ${event.workerDemand}/${event.workerSupply}`;
     } else {
-        text = `Staffed ${event.laborWorkers}/${event.laborCost} · network ${event.laborDemand}/${event.laborSupply}`;
+        text = `Staffed ${event.workers}/${event.workerCost} · network ${event.workerDemand}/${event.workerSupply}`;
     }
     const label = new Text({
         text,
         style: {
             fontFamily: GAME_FONT,
-            fontSize: LABOR_TEXT_SIZE,
-            fill: staffed ? LABOR_MANNED_COLOR : LABOR_MISSING_COLOR,
+            fontSize: WORKER_TEXT_SIZE,
+            fill: staffed ? WORKER_MANNED_COLOR : WORKER_MISSING_COLOR,
             fontWeight: "bold",
             stroke: {color: PROGRESS_TEXT_STROKE, width: PROGRESS_TEXT_STROKE_WIDTH},
         },

@@ -14,8 +14,8 @@ import {ChunkSyncEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
-import {LaborAssignmentEvent} from "@/common/LaborEvents.js";
-import {LaborAssignmentCache} from "@/client/LaborAssignmentCache.js";
+import {WorkerAssignmentEvent} from "@/common/WorkerEvents.js";
+import {WorkerAssignmentCache} from "@/client/WorkerAssignmentCache.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {
     TILE_SIZE,
@@ -39,8 +39,8 @@ import {InspectHighlight} from "@/client/InspectHighlight.js";
 import {ItemDrawLayer} from "@/client/ItemDrawLayer.js";
 import {ConnectionDrawLayer} from "@/client/ConnectionDrawLayer.js";
 import {WorkerDrawLayer} from "@/client/WorkerDrawLayer.js";
-import {LaborDebugLayer} from "@/client/LaborDebugLayer.js";
-import {LaborBadgeLayer} from "@/client/LaborBadgeLayer.js";
+import {WorkerDebugLayer} from "@/client/WorkerDebugLayer.js";
+import {WorkerBadgeLayer} from "@/client/WorkerBadgeLayer.js";
 import {StatusMessageLayer} from "@/client/StatusMessageLayer.js";
 import {advanceAnimationFrame} from "@/client/animation.js";
 import {DEV, BROWSER} from "@/common/env.js";
@@ -123,14 +123,14 @@ export class Client {
         this.itemLayer = new ItemDrawLayer(modRegistry.itemTextures);
         // The single shared connection-stub layer, derived from the cache as objects change.
         this.connectionLayer = new ConnectionDrawLayer();
-        // Machine staffing mirrored from the sim's assignment events, shared by the labor layers.
-        this.laborAssignments = new LaborAssignmentCache();
+        // Machine staffing mirrored from the sim's assignment events, shared by the worker layers.
+        this.workerAssignments = new WorkerAssignmentCache();
         // Commuting worker figures for manned machines, routed over the cached road tiles.
-        this.workerLayer = new WorkerDrawLayer(this.laborAssignments);
+        this.workerLayer = new WorkerDrawLayer(this.workerAssignments);
         // Debug overlay: road components, attachments, and assignments; hidden outside debug mode.
-        this.laborDebugLayer = new LaborDebugLayer(this.laborAssignments);
+        this.workerDebugLayer = new WorkerDebugLayer(this.workerAssignments);
         // Staffing dots over manned machines (one per consumed worker).
-        this.laborBadgeLayer = new LaborBadgeLayer(this.laborAssignments);
+        this.workerBadgeLayer = new WorkerBadgeLayer(this.workerAssignments);
         // Top-left connection/chunk-loading status overlay. A static screen-space HUD on
         // app.stage (sibling of the viewport), so it never pans or zooms with the world.
         this.statusLayer = new StatusMessageLayer();
@@ -152,8 +152,8 @@ export class Client {
         this.drawLayerRegistry.add(this.itemLayer);
         this.drawLayerRegistry.add(this.connectionLayer);
         this.drawLayerRegistry.add(this.workerLayer);
-        this.drawLayerRegistry.add(this.laborDebugLayer);
-        this.drawLayerRegistry.add(this.laborBadgeLayer);
+        this.drawLayerRegistry.add(this.workerDebugLayer);
+        this.drawLayerRegistry.add(this.workerBadgeLayer);
 
         // One bind per layer: sets the shared cache and registers whichever cache hooks the layer
         // overrides — before init, since cache writes can arrive while textures load.
@@ -596,8 +596,8 @@ export class Client {
      */
     dispatchEvent(event) {
         this.cacheSync.onEvent(event);
-        if (event instanceof LaborAssignmentEvent) {
-            this.laborAssignments.onEvent(event);
+        if (event instanceof WorkerAssignmentEvent) {
+            this.workerAssignments.onEvent(event);
         }
         for (const mod of this.modRegistry.clientMods) {
             mod.onEvent(event, this);

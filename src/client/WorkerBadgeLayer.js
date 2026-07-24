@@ -20,19 +20,19 @@ const BADGE_POOL_LIMIT = 64;
 
 /**
  * At-a-glance staffing badges: a road-attached machine shows one dot slot per worker it needs (its
- * laborCost), filled green per worker granted and yellow for the shortfall.
+ * workerCost), filled green per worker granted and yellow for the shortfall.
  * Machines with no road attachment show nothing.
  */
-export class LaborBadgeLayer extends AbstractDrawLayer {
+export class WorkerBadgeLayer extends AbstractDrawLayer {
 
     /**
-     * @param {LaborAssignmentCache} assignments
+     * @param {WorkerAssignmentCache} assignments
      */
     constructor(assignments) {
         super();
         /**
          * The shared machine-staffing index.
-         * @type {LaborAssignmentCache}
+         * @type {WorkerAssignmentCache}
          * @private
          */
         this._assignments = assignments;
@@ -131,7 +131,7 @@ export class LaborBadgeLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _placeBadge(machineId, entry, granted) {
-        const workers = entry.behavior.laborCost;
+        const workers = entry.behavior.workerCost;
         const stateKey = `${workers}:${granted}`;
         let badge = this._badges.get(machineId);
         if (badge !== undefined && badge.stateKey !== stateKey) {

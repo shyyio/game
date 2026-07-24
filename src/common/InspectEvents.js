@@ -16,10 +16,10 @@ export class InspectHeartbeatEvent extends AbstractEvent {
         processingTotal: "int32",
         outputItem: "int32?",
         recipeOutput: "int32?",
-        laborCost: "int32?",
-        laborWorkers: "int32?",
-        laborSupply: "int32?",
-        laborDemand: "int32?",
+        workerCost: "int32?",
+        workers: "int32?",
+        workerSupply: "int32?",
+        workerDemand: "int32?",
     };
 
     /**
@@ -30,10 +30,10 @@ export class InspectHeartbeatEvent extends AbstractEvent {
      * @param {number} processingTotal
      * @param {number|null} outputItem
      * @param {number|null} recipeOutput - inferred product (null = nothing gathered)
-     * @param {number|null} [laborCost] - labor the machine consumes (null = labor-free type)
-     * @param {number|null} [laborWorkers] - workers granted, up to laborCost (null with laborCost)
-     * @param {number|null} [laborSupply] - the road component's total supply (null when road-less)
-     * @param {number|null} [laborDemand] - the road component's total demand (null when road-less)
+     * @param {number|null} [workerCost] - workers the machine consumes (null = worker-free type)
+     * @param {number|null} [workers] - workers granted, up to workerCost (null with workerCost)
+     * @param {number|null} [workerSupply] - the road component's total supply (null when road-less)
+     * @param {number|null} [workerDemand] - the road component's total demand (null when road-less)
      */
     constructor(
         objectId,
@@ -43,10 +43,10 @@ export class InspectHeartbeatEvent extends AbstractEvent {
         processingTotal,
         outputItem,
         recipeOutput,
-        laborCost=null,
-        laborWorkers=null,
-        laborSupply=null,
-        laborDemand=null,
+        workerCost=null,
+        workers=null,
+        workerSupply=null,
+        workerDemand=null,
     ) {
         super();
         this.objectId = objectId;
@@ -56,10 +56,10 @@ export class InspectHeartbeatEvent extends AbstractEvent {
         this.processingTotal = processingTotal;
         this.outputItem = outputItem;
         this.recipeOutput = recipeOutput;
-        this.laborCost = laborCost;
-        this.laborWorkers = laborWorkers;
-        this.laborSupply = laborSupply;
-        this.laborDemand = laborDemand;
+        this.workerCost = workerCost;
+        this.workers = workers;
+        this.workerSupply = workerSupply;
+        this.workerDemand = workerDemand;
     }
 
     /**
