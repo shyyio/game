@@ -1,10 +1,10 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {Game} from "@/common/Game.js";
+import {Game} from "@/sim/Game.js";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
-import {GameEngine, EMPTY, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
+import {GameEngine, EMPTY, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 

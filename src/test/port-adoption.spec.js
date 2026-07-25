@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {GameEngine} from "@/common/sim/GameEngine.js";
+import {GameEngine} from "@/sim/GameEngine.js";
 import {Belts} from "@/mods/Logistics/sim/Belts.js";
 
 // portAt returns one shared port per edge, so an object's port and the adjacent belt's port coincide.

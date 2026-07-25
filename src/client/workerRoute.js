@@ -1,7 +1,7 @@
 import {TILE_SIZE} from "@/client/constants.js";
 import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
 import {cellNeighbors, tileId} from "@/common/util.js";
-import {RoadBehavior} from "@/common/sim/behaviors.js";
+import {RoadBehavior} from "@/sim/behaviors.js";
 
 /**
  * The walkable entry covering a tile — a road or a housing (commutes cross the housings that

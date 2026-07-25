@@ -2,7 +2,7 @@ import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js
 import {ObjectInsertEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
 import {Direction} from "@/common/constants.js";
 import {chunkId, chunkOrigin} from "@/common/util.js";
-import {NO_EID} from "@/common/sim/GameEngine.js";
+import {NO_EID} from "@/sim/GameEngine.js";
 
 /**
  * The generic entity host for every derived (behavior-driven) object type: the shared PlacedObject

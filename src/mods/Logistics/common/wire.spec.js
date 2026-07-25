@@ -1,8 +1,8 @@
 import {test} from "node:test";
 import assert from "node:assert";
 
-import {ModRegistry} from "@/common/mod/ModRegistry.js";
-import {ModPackage} from "@/common/mod/ModPackage.js";
+import {ModRegistry} from "@/common/ModRegistry.js";
+import {ModPackage} from "@/common/ModPackage.js";
 import {WireRegistry} from "@/common/wire.js";
 import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";

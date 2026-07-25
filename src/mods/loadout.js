@@ -1,4 +1,4 @@
-import {ModPackage} from "@/common/mod/ModPackage.js";
+import {ModPackage} from "@/common/ModPackage.js";
 import {BaseTexturesDeclaration} from "@/mods/BaseTextures/declaration.js";
 import {LogisticsDeclaration} from "@/mods/Logistics/declaration.js";
 import {LogisticsClientMod} from "@/mods/Logistics/client.js";

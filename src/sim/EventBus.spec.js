@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {EventBus} from "@/common/EventBus.js";
+import {EventBus} from "@/sim/EventBus.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 
 // Test events routing through a fixed topic.

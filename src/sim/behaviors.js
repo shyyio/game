@@ -1,5 +1,5 @@
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
-import {EMPTY, NO_EID, TickPhase} from "@/common/sim/GameEngine.js";
+import {EMPTY, NO_EID, TickPhase} from "@/sim/GameEngine.js";
 
 // Position layer for resource cover: an extraction tile stores its resource type as the cell userData.
 const LAYER_RESOURCE = "R";

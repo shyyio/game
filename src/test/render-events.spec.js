@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
+import {GameEngine, EMPTY} from "@/sim/GameEngine.js";
 import {EventCollector} from "@/test/EventCollector.js";
 import {SplitterBehavior} from "@/mods/Logistics/sim/SplitterBehavior.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";

@@ -1,6 +1,6 @@
-import {ModRegistry} from "@/common/mod/ModRegistry.js";
+import {ModRegistry} from "@/common/ModRegistry.js";
 import {simLoadout} from "@/mods/loadout.js";
-import {GameEngine} from "@/common/sim/GameEngine.js";
+import {GameEngine} from "@/sim/GameEngine.js";
 
 /**
  * A frozen ModRegistry with the standard sim loadout (typeIds assigned), for tests that need the

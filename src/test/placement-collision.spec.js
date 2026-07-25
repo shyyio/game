@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {DemoMachineType} from "@/mods/Demo/declaration.js";
-import {GameEngine} from "@/common/sim/GameEngine.js";
+import {GameEngine} from "@/sim/GameEngine.js";
 import {Belts} from "@/mods/Logistics/sim/Belts.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 

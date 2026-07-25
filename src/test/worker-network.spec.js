@@ -13,7 +13,7 @@ import {
 } from "@/mods/Demo/declaration.js";
 import {RoadDefinition, HousingDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {HOUSING_WORKER_SUPPLY} from "@/mods/Logistics/common/constants.js";
-import {EMPTY} from "@/common/sim/GameEngine.js";
+import {EMPTY} from "@/sim/GameEngine.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector, flattenBatches} from "@/test/EventCollector.js";

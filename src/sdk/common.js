@@ -35,10 +35,10 @@
 // ---- Mod framework ----
 // A mod is a ModPackage: a pure-data declaration (object types, wire classes, textures) plus an
 // optional sim part and an optional client part, registered into a ModRegistry and frozen once.
-export {AbstractModDeclaration} from "@/common/mod/AbstractModDeclaration.js";
-export {ModPackage} from "@/common/mod/ModPackage.js";
-export {ModRegistry} from "@/common/mod/ModRegistry.js";
-export {AbstractSimMod} from "@/common/sim/AbstractSimMod.js";
+export {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
+export {ModPackage} from "@/common/ModPackage.js";
+export {ModRegistry} from "@/common/ModRegistry.js";
+export {AbstractSimMod} from "@/sim/AbstractSimMod.js";
 export {
     ObjectType,       // the entity blueprint for a placeable: ports, geometry, behavior, rules
     PortDefinition,   // one input/output/internal port on an object (position + facing)
@@ -62,8 +62,8 @@ export {
     ResourceBehavior,
     RoadBehavior,
     HousingBehavior,
-} from "@/common/sim/behaviors.js";
-export {TickPhase, EMPTY, NO_EID} from "@/common/sim/GameEngine.js";
+} from "@/sim/behaviors.js";
+export {TickPhase, EMPTY, NO_EID} from "@/sim/GameEngine.js";
 
 // ---- Engine events ----
 // Chunk subscribe/unsubscribe events, so a mod's client side can react to chunks

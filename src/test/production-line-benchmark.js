@@ -22,7 +22,7 @@
 // prints intents/resolved per tick, so a stalled run is visible rather than silent.
 
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {TickPhase, TICK_PHASE_ORDER, EMPTY} from "@/common/sim/GameEngine.js";
+import {TickPhase, TICK_PHASE_ORDER, EMPTY} from "@/sim/GameEngine.js";
 import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 import {ExtractorType} from "@/mods/Resources/declaration.js";
 import {DemoMachineType} from "@/mods/Demo/declaration.js";
