@@ -94,7 +94,7 @@ export class Belts {
         // Path membership only; a belt's position/direction/kind ride the PlacedObject snapshot.
         this._beltDef = engine.defineComponent("BeltPathMember", [
             {name: "path", kind: "eid", fill: NO_EID},
-            {name: "index"},
+            {name: "seq"},
             {name: "objectId", fill: NO_EID},
         ], {snapshotOnly: true});
         this._itemDef = engine.defineComponent("BeltItem", [
@@ -1561,7 +1561,7 @@ export class Belts {
             for (const [index, beltId] of path.beltIds.entries()) {
                 const memberEid = this.engine.createEntity(this._beltDef);
                 B.path[memberEid] = pathEid;
-                B.index[memberEid] = index;
+                B.seq[memberEid] = index;
                 B.objectId[memberEid] = beltId;
             }
 
@@ -1620,7 +1620,7 @@ export class Belts {
             if (!beltsByPath.has(pathEid)) {
                 beltsByPath.set(pathEid, []);
             }
-            beltsByPath.get(pathEid).push({index: B.index[eid], belt});
+            beltsByPath.get(pathEid).push({seq: B.seq[eid], belt});
         }
 
         const itemsByPath = new Map();
@@ -1633,7 +1633,7 @@ export class Belts {
         }
 
         for (const pathEid of this.engine.entitiesWith(this._pathDef)) {
-            const belts = (beltsByPath.get(pathEid) || []).sort((a, b) => a.index - b.index).map(entry => entry.belt);
+            const belts = (beltsByPath.get(pathEid) || []).sort((a, b) => a.seq - b.seq).map(entry => entry.belt);
             const items = (itemsByPath.get(pathEid) || []).sort((a, b) => a.seq - b.seq).map(entry => entry.item);
             const path = {
                 id: pathEid,
