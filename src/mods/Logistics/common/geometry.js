@@ -61,7 +61,10 @@ export function surfaceBeltAt(index, tileX, tileY) {
     const entries = index.getAtTile(tileX, tileY);
     const surface = entries.find(record =>
         isBeltType(record.data.type) && record.data.type.beltKind !== BELT_UNDERGROUND);
-    return surface === undefined ? null : surface;
+    if (surface === undefined) {
+        return null;
+    }
+    return surface;
 }
 
 /**
@@ -92,7 +95,10 @@ export function walkTunnel(index, ramp) {
         const pair = records.find(record =>
             record.data.type.beltKind === pairType && record.data.direction === ramp.data.direction
         );
-        return {tiles, pair: pair === undefined ? null : pair};
+        if (pair === undefined) {
+            return {tiles, pair: null};
+        }
+        return {tiles, pair};
     }
     return {tiles, pair: null};
 }
@@ -156,8 +162,22 @@ export function getUndergroundBeltsToCreate(rampParent, options) {
     let x2 = rampParent.type === BELT_RAMP_UP ? rampParent.x : options.x;
     let y2 = rampParent.type === BELT_RAMP_UP ? rampParent.y : options.y;
 
-    const dx = x2 === x1 ? 0 : x2 < x1 ? -1 : 1;
-    const dy = y2 === y1 ? 0 : y2 < y1 ? -1 : 1;
+    let dx = 0;
+    if (x2 !== x1) {
+        if (x2 < x1) {
+            dx = -1;
+        } else {
+            dx = 1;
+        }
+    }
+    let dy = 0;
+    if (y2 !== y1) {
+        if (y2 < y1) {
+            dy = -1;
+        } else {
+            dy = 1;
+        }
+    }
 
     x2 -= dx;
     y2 -= dy;

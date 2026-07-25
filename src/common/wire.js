@@ -95,7 +95,13 @@ function buildType(name, wireFields) {
             // Reflection-built fields default to proto2's expanded encoding (one tag byte per
             // element); packed writes the tag once. Strings stay expanded (not packable).
             const packable = parsed.type !== "string" && parsed.type !== "bytes";
-            type.add(new Field(fieldName, tag, parsed.type, "repeated", undefined, packable ? {packed: true} : undefined));
+            let options;
+            if (packable) {
+                options = {packed: true};
+            } else {
+                options = undefined;
+            }
+            type.add(new Field(fieldName, tag, parsed.type, "repeated", undefined, options));
         } else {
             type.add(new Field(fieldName, tag, parsed.type, "optional"));
         }

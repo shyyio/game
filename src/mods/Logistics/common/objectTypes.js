@@ -65,10 +65,16 @@ class BeltObjectType extends ObjectType {
     // its input, RAMP_UP only its output, and an underground nothing (fully buried).
     surfacePorts(portKind) {
         if (this.beltKind === BELT_RAMP_DOWN) {
-            return portKind === "inputPorts" ? this.activePorts(portKind) : [];
+            if (portKind === "inputPorts") {
+                return this.activePorts(portKind);
+            }
+            return [];
         }
         if (this.beltKind === BELT_RAMP_UP) {
-            return portKind === "outputPorts" ? this.outputPorts : [];
+            if (portKind === "outputPorts") {
+                return this.outputPorts;
+            }
+            return [];
         }
         if (this.beltKind === BELT_UNDERGROUND) {
             return [];

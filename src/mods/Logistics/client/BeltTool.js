@@ -53,10 +53,22 @@ export class BeltTool extends AbstractTool {
         const blocked = occupant !== null && !this._overwritable(occupant);
         const overwrite = occupant !== null && !blocked;
         const tile = [{x: tileX, y: tileY}];
+        let blockedTiles = [];
+        if (blocked) {
+            blockedTiles = tile;
+        }
+        let overwriteTiles = [];
+        if (overwrite) {
+            overwriteTiles = tile;
+        }
+        let clearTiles = tile;
+        if (blocked || overwrite) {
+            clearTiles = [];
+        }
         this._placementFeedbackLayer.show({
-            blocked: blocked ? tile : [],
-            overwrite: overwrite ? tile : [],
-            clear: blocked || overwrite ? [] : tile,
+            blocked: blockedTiles,
+            overwrite: overwriteTiles,
+            clear: clearTiles,
             showTarget: true,
         });
         const {parentX, parentY} = inferBeltParent(this._cache, tileX, tileY, direction);

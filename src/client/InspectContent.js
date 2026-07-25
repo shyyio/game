@@ -53,7 +53,11 @@ const WORKER_MISSING_COLOR = GHOST_BLOCKED_TINT;
  * @returns {number}
  */
 export function inspectContentHeight(event) {
-    return INSPECT_CONTENT_HEIGHT + (event.workerCost !== null ? WORKER_ROW_HEIGHT : 0);
+    let workerRow = 0;
+    if (event.workerCost !== null) {
+        workerRow = WORKER_ROW_HEIGHT;
+    }
+    return INSPECT_CONTENT_HEIGHT + workerRow;
 }
 
 /**
@@ -121,12 +125,18 @@ function addWorkerRow(panel, event, y) {
     } else {
         text = `Staffed ${event.workers}/${event.workerCost} · network ${event.workerDemand}/${event.workerSupply}`;
     }
+    let workerRowColor;
+    if (staffed) {
+        workerRowColor = WORKER_MANNED_COLOR;
+    } else {
+        workerRowColor = WORKER_MISSING_COLOR;
+    }
     const label = new Text({
         text,
         style: {
             fontFamily: GAME_FONT,
             fontSize: WORKER_TEXT_SIZE,
-            fill: staffed ? WORKER_MANNED_COLOR : WORKER_MISSING_COLOR,
+            fill: workerRowColor,
             fontWeight: "bold",
             stroke: {color: PROGRESS_TEXT_STROKE, width: PROGRESS_TEXT_STROKE_WIDTH},
         },

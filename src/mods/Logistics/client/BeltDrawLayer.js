@@ -177,7 +177,10 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
      */
     _beltsIn(chunk) {
         const belts = this._chunkBelts.get(chunk);
-        return belts === undefined ? [] : belts;
+        if (belts === undefined) {
+            return [];
+        }
+        return belts;
     }
 
     /**

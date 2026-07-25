@@ -161,7 +161,11 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
         this.directions.push(direction);
         this.portCounts.push(portIds.length);
         this.portIds.push(...portIds);
-        this.lastOutputs.push(lastOutput === null ? EMPTY_OUTPUT : lastOutput);
+        if (lastOutput === null) {
+            this.lastOutputs.push(EMPTY_OUTPUT);
+        } else {
+            this.lastOutputs.push(lastOutput);
+        }
     }
 
     /**

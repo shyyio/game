@@ -16,7 +16,10 @@ const CORNERS = [[0, 0], [1, 0], [1, 1], [0, 1]];
  */
 export function rotatedCorner(corner, quarterTurns) {
     const turned = (corner - quarterTurns) % CORNERS.length;
-    return turned < 0 ? turned + CORNERS.length : turned;
+    if (turned < 0) {
+        return turned + CORNERS.length;
+    }
+    return turned;
 }
 
 /**

@@ -57,7 +57,16 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
         this._direction = direction;
         this._snapKey = null;
         const sprite = new ObjectSprite(0, tileX, tileY, direction, this.textureRegistry.get(this._type.textureName), this._type);
-        sprite.setGhost(blocked ? GHOST_BLOCKED_TINT : GHOST_TINT, blocked ? GHOST_BLOCKED_ALPHA : GHOST_ALPHA);
+        let ghostTint;
+        let ghostAlpha;
+        if (blocked) {
+            ghostTint = GHOST_BLOCKED_TINT;
+            ghostAlpha = GHOST_BLOCKED_ALPHA;
+        } else {
+            ghostTint = GHOST_TINT;
+            ghostAlpha = GHOST_ALPHA;
+        }
+        sprite.setGhost(ghostTint, ghostAlpha);
         this._sprite = sprite;
         this._spriteContainer.addChild(sprite);
         this._updateCenterPin();
@@ -88,7 +97,16 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
      * @private
      */
     _tint(blocked) {
-        this._sprite.setGhost(blocked ? GHOST_BLOCKED_TINT : GHOST_TINT, blocked ? GHOST_BLOCKED_ALPHA : GHOST_ALPHA);
+        let ghostTint;
+        let ghostAlpha;
+        if (blocked) {
+            ghostTint = GHOST_BLOCKED_TINT;
+            ghostAlpha = GHOST_BLOCKED_ALPHA;
+        } else {
+            ghostTint = GHOST_TINT;
+            ghostAlpha = GHOST_ALPHA;
+        }
+        this._sprite.setGhost(ghostTint, ghostAlpha);
     }
 
     clear() {

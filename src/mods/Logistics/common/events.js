@@ -249,7 +249,11 @@ export class BeltPathBatchEvent extends AbstractBatchEvent {
         this.tileY.push(y - this.originY);
         this.partCounts.push(parts.length);
         this.parts.push(...parts);
-        this.outPortIds.push(outPortId === null ? NO_OUT_PORT : outPortId);
+        let wiredOutPortId = outPortId;
+        if (outPortId === null) {
+            wiredOutPortId = NO_OUT_PORT;
+        }
+        this.outPortIds.push(wiredOutPortId);
     }
 
     /**

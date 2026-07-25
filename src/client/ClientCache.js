@@ -340,7 +340,10 @@ export class ClientCache {
      */
     getByPort(portId) {
         const entry = this._byPort.get(portId);
-        return entry === undefined ? null : entry;
+        if (entry === undefined) {
+            return null;
+        }
+        return entry;
     }
 
     /**
@@ -349,7 +352,10 @@ export class ClientCache {
      */
     get(id) {
         const entry = this._byId.get(id);
-        return entry === undefined ? null : entry;
+        if (entry === undefined) {
+            return null;
+        }
+        return entry;
     }
 
     /**
@@ -360,7 +366,10 @@ export class ClientCache {
      */
     getAtTile(tileX, tileY) {
         const entries = this._byTile.get(ClientCache._tileKey(tileX, tileY));
-        return entries === undefined ? [] : entries;
+        if (entries === undefined) {
+            return [];
+        }
+        return entries;
     }
 
     /**
@@ -377,7 +386,10 @@ export class ClientCache {
             return null;
         }
         const stacked = this._byCell.get(tileVariantId(tileId(tileX, tileY), code));
-        return stacked === undefined ? null : stacked[stacked.length - 1];
+        if (stacked === undefined) {
+            return null;
+        }
+        return stacked[stacked.length - 1];
     }
 
     /**
@@ -393,7 +405,10 @@ export class ClientCache {
             return [];
         }
         const stacked = this._byCell.get(tileVariantId(tileId(tileX, tileY), code));
-        return stacked === undefined ? [] : [...stacked];
+        if (stacked === undefined) {
+            return [];
+        }
+        return [...stacked];
     }
 
     /**
@@ -405,7 +420,10 @@ export class ClientCache {
      */
     objectAt(tileX, tileY, type) {
         const entry = this.at(tileX, tileY, type.positionLayer);
-        return entry !== null && entry.data.type.typeId === type.typeId ? entry : null;
+        if (entry !== null && entry.data.type.typeId === type.typeId) {
+            return entry;
+        }
+        return null;
     }
 
     /**
@@ -483,7 +501,10 @@ export class ClientCache {
                 && entry.tileY + rotated.y === portY
                 && rotated.direction === facing;
         });
-        return port === undefined ? null : {entry, portName: port.name};
+        if (port === undefined) {
+            return null;
+        }
+        return {entry, portName: port.name};
     }
 
     /**

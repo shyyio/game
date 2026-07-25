@@ -348,7 +348,11 @@ export class MachineBehavior extends AbstractBehavior {
         const def = engine.component("Machine");
         const row = def.row(eid);
         const last = def.store.lastOutput[row];
-        return {portIds: [def.store.out[row]], lastOutput: last === EMPTY ? null : last};
+        let lastOutput = last;
+        if (last === EMPTY) {
+            lastOutput = null;
+        }
+        return {portIds: [def.store.out[row]], lastOutput};
     }
 
     resyncRenderedPorts(engine, placed, eid) {
@@ -376,27 +380,67 @@ export class MachineBehavior extends AbstractBehavior {
         const inputMemory = [];
         for (let i = 0; i < this.inputCount; i += 1) {
             const resting = item[inCols[i][row]];
-            inputPorts.push(resting === EMPTY ? 0 : resting);
+            let restingPort = resting;
+            if (resting === EMPTY) {
+                restingPort = 0;
+            }
+            inputPorts.push(restingPort);
             const slot = slotCols[i][row];
             const processing = processingCols[i][row];
-            inputMemory.push(slot !== EMPTY ? slot : (processing !== EMPTY ? processing : 0));
+            let memory = 0;
+            if (slot !== EMPTY) {
+                memory = slot;
+            } else if (processing !== EMPTY) {
+                memory = processing;
+            }
+            inputMemory.push(memory);
         }
         // The wire carries whole ticks; the fractional countdown stays sim-side.
-        const remaining = machine.remaining[row] === EMPTY ? null : Math.ceil(machine.remaining[row]);
+        let remaining = null;
+        if (machine.remaining[row] !== EMPTY) {
+            remaining = Math.ceil(machine.remaining[row]);
+        }
         const outItem = item[machine.out[row]];
-        const workerStats = this.workerCost > 0 ? engine.workers.inspectFor(objectId) : null;
+        let displayOutItem = outItem;
+        if (outItem === EMPTY) {
+            displayOutItem = null;
+        }
+        let workerStats = null;
+        if (this.workerCost > 0) {
+            workerStats = engine.workers.inspectFor(objectId);
+        }
+        let workerCost = null;
+        if (this.workerCost > 0) {
+            workerCost = this.workerCost;
+        }
+        let workerGranted = null;
+        if (this.workerCost > 0) {
+            if (workerStats === null) {
+                workerGranted = 0;
+            } else {
+                workerGranted = workerStats.granted;
+            }
+        }
+        let workerSupply = null;
+        if (workerStats !== null) {
+            workerSupply = workerStats.supply;
+        }
+        let workerDemand = null;
+        if (workerStats !== null) {
+            workerDemand = workerStats.demand;
+        }
         return new InspectHeartbeatEvent(
             objectId,
             inputPorts,
             inputMemory,
             remaining,
             this.processingTicks,
-            outItem === EMPTY ? null : outItem,
+            displayOutItem,
             this._inspectRecipeOutput(inputMemory),
-            this.workerCost > 0 ? this.workerCost : null,
-            this.workerCost > 0 ? (workerStats === null ? 0 : workerStats.granted) : null,
-            workerStats === null ? null : workerStats.supply,
-            workerStats === null ? null : workerStats.demand,
+            workerCost,
+            workerGranted,
+            workerSupply,
+            workerDemand,
         );
     }
 
@@ -429,7 +473,10 @@ export class MachineBehavior extends AbstractBehavior {
             return null;
         }
         const output = this.recipes.get(this._recipeKey(inputMemory));
-        return output === undefined ? this.fallback : output;
+        if (output === undefined) {
+            return this.fallback;
+        }
+        return output;
     }
 
     /**
@@ -442,7 +489,11 @@ export class MachineBehavior extends AbstractBehavior {
         let key = 0;
         for (let i = 0; i < RECIPE_SLOTS; i += 1) {
             const slot = i < this.inputCount ? slotCols[i][row] : EMPTY;
-            key = key * RECIPE_SLOT_LIMIT + (slot === EMPTY ? 0 : slot);
+            let packed = slot;
+            if (slot === EMPTY) {
+                packed = 0;
+            }
+            key = key * RECIPE_SLOT_LIMIT + packed;
         }
         const output = this.recipes.get(key);
         if (output === undefined) {
@@ -640,7 +691,11 @@ export class ExtractorBehavior extends AbstractBehavior {
         const def = engine.component("Extractor");
         const row = def.row(eid);
         const last = def.store.lastOutput[row];
-        return {portIds: [def.store.out[row]], lastOutput: last === EMPTY ? null : last};
+        let lastOutput = last;
+        if (last === EMPTY) {
+            lastOutput = null;
+        }
+        return {portIds: [def.store.out[row]], lastOutput};
     }
 
     resyncRenderedPorts(engine, placed, eid) {
@@ -659,19 +714,30 @@ export class ExtractorBehavior extends AbstractBehavior {
         const row = def.row(eid);
         const resource = extractor.resourceType[row];
         // The wire carries whole ticks; the fractional countdown stays sim-side.
-        const remaining = extractor.remaining[row] === EMPTY ? null : Math.ceil(extractor.remaining[row]);
+        let remaining = null;
+        if (extractor.remaining[row] !== EMPTY) {
+            remaining = Math.ceil(extractor.remaining[row]);
+        }
         const outItem = engine.Port.item[extractor.out[row]];
         let recipeOutput = null;
         if (resource !== EMPTY && this.recipes.has(resource)) {
             recipeOutput = this.recipes.get(resource);
         }
+        let resourceMemory = resource;
+        if (resource === EMPTY) {
+            resourceMemory = 0;
+        }
+        let displayOutItem = outItem;
+        if (outItem === EMPTY) {
+            displayOutItem = null;
+        }
         return new InspectHeartbeatEvent(
             objectId,
             [0],
-            [resource === EMPTY ? 0 : resource],
+            [resourceMemory],
             remaining,
             this.processingTicks,
-            outItem === EMPTY ? null : outItem,
+            displayOutItem,
             recipeOutput,
         );
     }

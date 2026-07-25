@@ -127,7 +127,11 @@ async function main() {
         await profiler.start();
     }
 
-    console.log(`Running ${ticks.toLocaleString()} ticks${jammed ? " (jammed: no consumer)" : ""}...`);
+    let jammedSuffix = "";
+    if (jammed) {
+        jammedSuffix = " (jammed: no consumer)";
+    }
+    console.log(`Running ${ticks.toLocaleString()} ticks${jammedSuffix}...`);
     let intents = 0;
     let resolved = 0;
     const runStart = performance.now();

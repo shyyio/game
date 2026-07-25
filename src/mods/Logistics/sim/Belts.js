@@ -129,7 +129,10 @@ export class Belts {
         if (held === undefined) {
             return [];
         }
-        return Array.isArray(held) ? held : [held];
+        if (Array.isArray(held)) {
+            return held;
+        }
+        return [held];
     }
 
     /**
@@ -211,8 +214,10 @@ export class Belts {
         const remaining = this._beltsAt(belt.x, belt.y).filter(candidate => candidate !== belt);
         if (remaining.length === 0) {
             this._belts.delete(key);
+        } else if (remaining.length === 1) {
+            this._belts.set(key, remaining[0]);
         } else {
-            this._belts.set(key, remaining.length === 1 ? remaining[0] : remaining);
+            this._belts.set(key, remaining);
         }
         this._beltById.delete(belt.id);
     }
@@ -582,7 +587,10 @@ export class Belts {
      */
     beltById(id) {
         const found = this._beltById.get(id);
-        return found === undefined ? null : found;
+        if (found === undefined) {
+            return null;
+        }
+        return found;
     }
 
     /**
@@ -668,7 +676,15 @@ export class Belts {
                     continue;
                 }
                 // Output half carries the content; an input half carries over only when both runs have one.
-                occ[j === 0 ? 0 : 2 * j] = sourceOcc[oldIdx === 0 ? 0 : 2 * oldIdx];
+                let newSlot = 2 * j;
+                if (j === 0) {
+                    newSlot = 0;
+                }
+                let oldSlot = 2 * oldIdx;
+                if (oldIdx === 0) {
+                    oldSlot = 0;
+                }
+                occ[newSlot] = sourceOcc[oldSlot];
                 if (j > 0 && oldIdx > 0) {
                     occ[2 * j - 1] = sourceOcc[2 * oldIdx - 1];
                 }
@@ -728,6 +744,10 @@ export class Belts {
             inPort = outPort;
         }
         const length = runBelts.length * 2 - 1;
+        let initialHeadGap = headGap;
+        if (headGap === undefined) {
+            initialHeadGap = length;
+        }
         const eid = this.engine.world.addEntity();
         this.engine.world.addComponent(eid, PATH_MARKER);
         return {
@@ -741,7 +761,7 @@ export class Belts {
             inPort,
             outPort,
             length,
-            initialHeadGap: headGap === undefined ? length : headGap,
+            initialHeadGap,
             items,
         };
     }
@@ -1469,8 +1489,11 @@ export class Belts {
         const origin = chunkOrigin(chunk);
         let paths = null;
         let items = null;
-        const chunkPaths = this._pathsByChunk.get(chunk);
-        for (const path of chunkPaths === undefined ? [] : chunkPaths) {
+        let chunkPaths = this._pathsByChunk.get(chunk);
+        if (chunkPaths === undefined) {
+            chunkPaths = [];
+        }
+        for (const path of chunkPaths) {
             const head = this._headInfo(path);
             if (paths === null) {
                 paths = new BeltPathBatchEvent(origin.x, origin.y);

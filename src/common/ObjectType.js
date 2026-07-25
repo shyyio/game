@@ -220,11 +220,13 @@ export class ObjectType {
         this.placement = placement === undefined ? new PlacementRule() : placement;
         this.bespokeClient = bespokeClient;
         this.inspectable = inspectable;
-        this.menuVerbs = menuVerbs !== null ? menuVerbs : (
-            inspectable
-                ? [new InspectVerb(INSPECT_RANK), new DeleteVerb(DELETE_RANK)]
-                : [new DeleteVerb(DELETE_RANK)]
-        );
+        if (menuVerbs !== null) {
+            this.menuVerbs = menuVerbs;
+        } else if (inspectable) {
+            this.menuVerbs = [new InspectVerb(INSPECT_RANK), new DeleteVerb(DELETE_RANK)];
+        } else {
+            this.menuVerbs = [new DeleteVerb(DELETE_RANK)];
+        }
         // Stable numeric identity assigned at ModRegistry.freeze() (registration order); the wire
         // carries it and the client cache keys off this type.
         this._typeId = null;

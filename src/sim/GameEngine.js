@@ -164,7 +164,10 @@ class ComponentDef {
      * @returns {number}
      */
     row(eid) {
-        return eid < this.set.sparse.length ? this.set.sparse[eid] : NO_ROW;
+        if (eid < this.set.sparse.length) {
+            return this.set.sparse[eid];
+        }
+        return NO_ROW;
     }
 
     /**
@@ -173,7 +176,10 @@ class ComponentDef {
      * @returns {number}
      */
     slot(eid) {
-        return this.sparse ? this.row(eid) : eid;
+        if (this.sparse) {
+            return this.row(eid);
+        }
+        return eid;
     }
 
     /**
@@ -182,7 +188,10 @@ class ComponentDef {
      * @returns {number}
      */
     eidAt(slot) {
-        return this.sparse ? this.set.dense[slot] : slot;
+        if (this.sparse) {
+            return this.set.dense[slot];
+        }
+        return slot;
     }
 }
 
@@ -858,11 +867,17 @@ export class GameEngine {
      * @returns {ComponentDef}
      */
     defineComponent(name, fieldSpecs, {snapshotOnly=false, sparse=false}={}) {
-        const fields = fieldSpecs.map(spec => ({
-            name: spec.name,
-            kind: spec.kind === undefined ? "i32" : spec.kind,
-            fill: spec.fill === undefined ? 0 : spec.fill,
-        }));
+        const fields = fieldSpecs.map(spec => {
+            let kind = spec.kind;
+            if (kind === undefined) {
+                kind = "i32";
+            }
+            let fill = spec.fill;
+            if (fill === undefined) {
+                fill = 0;
+            }
+            return {name: spec.name, kind, fill};
+        });
         const def = new ComponentDef(name, fields, snapshotOnly, sparse);
         this._components.push(def);
         this._componentByName.set(name, def);
@@ -1080,7 +1095,10 @@ export class GameEngine {
      */
     occupantUserDataAt(x, y, layer) {
         const eid = this._cellByKey.get(this._cellKeyAt(x, y, layer));
-        return eid === undefined ? null : this._occupancyDef.store.userData[eid];
+        if (eid === undefined) {
+            return null;
+        }
+        return this._occupancyDef.store.userData[eid];
     }
 
     /**
@@ -1096,7 +1114,10 @@ export class GameEngine {
             return null;
         }
         const owner = this._occupancyDef.store.owner[eid];
-        return owner === NO_EID ? null : owner;
+        if (owner === NO_EID) {
+            return null;
+        }
+        return owner;
     }
 
     /**
@@ -1281,7 +1302,10 @@ export class GameEngine {
      * @returns {Int32Array}
      */
     entitiesWith(def) {
-        return def.sparse ? def.eids.slice(0, def.count) : this.world.query([def.store]);
+        if (def.sparse) {
+            return def.eids.slice(0, def.count);
+        }
+        return this.world.query([def.store]);
     }
 
     /**
@@ -1400,7 +1424,14 @@ export class GameEngine {
         this._intentDest[row] = dest;
         this._intentOutput[row] = outputItem;
         this._intentRank[row] = rank;
-        this._intentFlags[row] = (destEmpty ? INTENT_DEST_EMPTY : 0) | (managed ? INTENT_MANAGED : 0);
+        let flags = 0;
+        if (destEmpty) {
+            flags |= INTENT_DEST_EMPTY;
+        }
+        if (managed) {
+            flags |= INTENT_MANAGED;
+        }
+        this._intentFlags[row] = flags;
         this._intentSeen[row] = 0;
         this._intentCount = row + 1;
     }
@@ -1552,7 +1583,14 @@ export class GameEngine {
         const managed = (this._intentFlags[intentRow] & INTENT_MANAGED) !== 0;
         const outputItem = this._intentOutput[intentRow];
         const sourceItem = source === EMPTY ? EMPTY : this.Port.item[source];
-        const item = managed ? (outputItem !== EMPTY ? outputItem : sourceItem) : EMPTY;
+        let item = EMPTY;
+        if (managed) {
+            if (outputItem !== EMPTY) {
+                item = outputItem;
+            } else {
+                item = sourceItem;
+            }
+        }
 
         const row = this._resolvedCount;
         this._growResolved(row);

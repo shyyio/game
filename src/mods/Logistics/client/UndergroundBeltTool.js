@@ -40,10 +40,22 @@ export class UndergroundBeltTool extends AbstractTool {
         // An overwritable same-axis belt is deleted before the ramp lands.
         const overwrite = !blocked && this._surfaceBeltAt(tileX, tileY) !== null;
         const tile = [{x: tileX, y: tileY}];
+        let blockedTiles = [];
+        if (blocked) {
+            blockedTiles = tile;
+        }
+        let overwriteTiles = [];
+        if (overwrite) {
+            overwriteTiles = tile;
+        }
+        let clearTiles = tile;
+        if (blocked || overwrite) {
+            clearTiles = [];
+        }
         this._placementFeedbackLayer.show({
-            blocked: blocked ? tile : [],
-            overwrite: overwrite ? tile : [],
-            clear: blocked || overwrite ? [] : tile,
+            blocked: blockedTiles,
+            overwrite: overwriteTiles,
+            clear: clearTiles,
             showTarget: true,
         });
         if (blocked || placement.parentId === null) {

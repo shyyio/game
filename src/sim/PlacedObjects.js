@@ -254,7 +254,10 @@ export class PlacedObjects {
                 sync.portIds, sync.lastOutput,
             );
         }
-        return batch === null ? [] : [batch];
+        if (batch === null) {
+            return [];
+        }
+        return [batch];
     }
 
     /**

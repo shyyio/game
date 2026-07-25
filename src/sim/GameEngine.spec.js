@@ -10,7 +10,11 @@ async function setup(count, filledIds) {
     await engine.init();
     const ports = [];
     for (let i = 0; i < count; i += 1) {
-        ports.push(engine.createPort(filledIds.includes(i + 1) ? 1 : EMPTY));
+        let item = EMPTY;
+        if (filledIds.includes(i + 1)) {
+            item = 1;
+        }
+        ports.push(engine.createPort(item));
     }
     return {engine, ports};
 }
