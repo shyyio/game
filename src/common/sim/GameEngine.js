@@ -1947,7 +1947,8 @@ export class GameEngine {
     }
 
     /**
-     * The surface cells a definition occupies at (x, y) facing `direction`.
+     * The cells a definition occupies at (x, y) facing `direction`, on the layers its type
+     * declares (surface by default; a belt kind may sit on an underground axis layer).
      * @param {ObjectType} definition
      * @param {number} x
      * @param {number} y
@@ -1955,7 +1956,8 @@ export class GameEngine {
      * @returns {{x:number, y:number, layer:string}[]}
      */
     footprint(definition, x, y, direction) {
-        return definition.geometry.tiles(direction).map(cell => ({x: x + cell.x, y: y + cell.y, layer: LAYER_SURFACE}));
+        return definition.positionLayerTiles(direction).flatMap(group =>
+            group.cells.map(cell => ({x: x + cell.x, y: y + cell.y, layer: group.layer})));
     }
 
     /**

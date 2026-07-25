@@ -8,7 +8,6 @@ import {NO_EID} from "@/common/sim/GameEngine.js";
  * The generic entity host for every derived (behavior-driven) object type: the shared PlacedObject
  * component, the objectId -> eid index, and the ONE spawn/despawn/chunk-sync/inspect path. Built by
  * the engine before sim mods wire up; installs each frozen type's behavior once per behavior class.
- * Types with `behavior: null` (belt) are ignored entirely — their bespoke sim mod owns them.
  */
 export class PlacedObjects {
 
@@ -34,11 +33,15 @@ export class PlacedObjects {
         // every placed object in the world.
         this._eidsByChunk = new Map();
 
+        // Before the behavior installs, so anything a behavior registers (a belt path sync) runs
+        // after the host's — the client rebuilds objects first, then what references them.
+        engine.registerMessageHandler(message => this._message(message));
+        engine.registerChunkSync(chunk => this._chunkSync(chunk));
+        engine.registerInspector(objectId => this._inspect(objectId));
+        engine.registerRebuildHook(() => this._rebuild());
+
         const installed = new Set();
         for (const type of registry.objectTypes) {
-            if (type.behavior === null) {
-                continue;
-            }
             this._types.set(type.typeId, type);
             this._behaviors[type.typeId] = type.behavior;
             if (!installed.has(type.behavior.constructor)) {
@@ -46,11 +49,6 @@ export class PlacedObjects {
                 type.behavior.install(engine, this);
             }
         }
-
-        engine.registerMessageHandler(message => this._message(message));
-        engine.registerChunkSync(chunk => this._chunkSync(chunk));
-        engine.registerInspector(objectId => this._inspect(objectId));
-        engine.registerRebuildHook(() => this._rebuild());
     }
 
     /**

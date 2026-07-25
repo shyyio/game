@@ -1,24 +1,22 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {BELT_NORMAL, BELT_RAMP_DOWN, BELT_RAMP_UP, BELT_UNDERGROUND} from "@/mods/Logistics/constants.js";
-import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
-import {BeltInsertEvent} from "@/mods/Logistics/events.js";
+import {BELT_RAMP_DOWN, BELT_UNDERGROUND} from "@/mods/Logistics/common/constants.js";
+import {CreateObjectMessage} from "@/common/CoreMessages.js";
+import {BeltDefinition, BeltRampDownDefinition, BeltRampUpDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {EventCollector} from "@/test/EventCollector.js";
-import {beltsOf} from "@/mods/Logistics/testHelpers.js";
+import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 
 const RED = 1;
 
 test("an item tunnels through a ramp-down / underground / ramp-up run", async () => {
     const engine = await makeGameEngine();
-    const collector = new EventCollector(engine);
 
     // UP tunnel: ramp-down (0,4), ramp-up (0,1) fills undergrounds (0,3),(0,2); normal feeder (0,5).
-    engine.applyMessage(new CreateBeltMessage(0, 4, Direction.UP, BELT_RAMP_DOWN));
-    const rampDownId = collector.drain().find(e => e instanceof BeltInsertEvent).id;
-    engine.applyMessage(new CreateBeltMessage(0, 1, Direction.UP, BELT_RAMP_UP, rampDownId));
-    engine.applyMessage(new CreateBeltMessage(0, 5, Direction.UP, BELT_NORMAL));
+    engine.applyMessage(new CreateObjectMessage(BeltRampDownDefinition.typeId, 0, 4, Direction.UP));
+    const rampDownId = beltsOf(engine)._beltAt(0, 4, Direction.UP).id;
+    engine.applyMessage(new CreateObjectMessage(BeltRampUpDefinition.typeId, 0, 1, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, 0, 5, Direction.UP));
 
     // Undergrounds were auto-created and the whole run is one path.
     assert.equal(beltsOf(engine).beltById(rampDownId).type, BELT_RAMP_DOWN);

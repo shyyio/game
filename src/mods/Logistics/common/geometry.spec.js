@@ -3,9 +3,8 @@ import assert from "node:assert/strict";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {ObjectType, PortDefinition} from "@/common/ObjectType.js";
 import {ClientCache} from "@/client/ClientCache.js";
-import {BeltType} from "./constants.js";
 import {inferBeltParent} from "./geometry.js";
-import {BeltDefinition, SplitterDefinition} from "./objectTypes.js";
+import {BeltDefinition, BeltRampDownDefinition, BeltRampUpDefinition, SplitterDefinition} from "./objectTypes.js";
 
 // Register a single-tile surface object in the cache.
 function surface(cache, id, x, y, data) {
@@ -20,7 +19,7 @@ test("inferBeltParent finds a splitter feeding a belt that bends out of it", () 
         {x: 14, y: 5, layer: LAYER_SURFACE},
     ], {}, {type: SplitterDefinition, direction: Direction.UP});
     // Belt above the far cell, bending right — fed by the splitter's out_b.
-    surface(cache, 2, 14, 4, {type: BeltDefinition, direction: Direction.RIGHT, beltType: BeltType.NORMAL});
+    surface(cache, 2, 14, 4, {type: BeltDefinition, direction: Direction.RIGHT});
 
     const parent = inferBeltParent(cache, 14, 4, Direction.RIGHT);
     assert.deepEqual([parent.parentX, parent.parentY], [14, 5]);
@@ -28,7 +27,7 @@ test("inferBeltParent finds a splitter feeding a belt that bends out of it", () 
 
 test("inferBeltParent picks a straight upstream belt feeder", () => {
     const cache = new ClientCache();
-    surface(cache, 5, 5, 6, {type: BeltDefinition, direction: Direction.UP, beltType: BeltType.NORMAL});
+    surface(cache, 5, 5, 6, {type: BeltDefinition, direction: Direction.UP});
 
     const parent = inferBeltParent(cache, 5, 5, Direction.UP);
     assert.deepEqual([parent.parentX, parent.parentY], [5, 6]);
@@ -37,7 +36,7 @@ test("inferBeltParent picks a straight upstream belt feeder", () => {
 test("inferBeltParent ignores a ramp entrance (it does not feed forward) and empty tiles", () => {
     const cache = new ClientCache();
     // A ramp-down behind faces UP but buries the flow, so it is not a feeder.
-    surface(cache, 7, 5, 6, {type: BeltDefinition, direction: Direction.UP, beltType: BeltType.RAMP_DOWN});
+    surface(cache, 7, 5, 6, {type: BeltRampDownDefinition, direction: Direction.UP});
 
     const parent = inferBeltParent(cache, 5, 5, Direction.UP);
     assert.deepEqual([parent.parentX, parent.parentY], [null, null]);
@@ -56,8 +55,8 @@ test("a machine between a tunnel's ramps connects to neither buried end", () => 
     const cache = new ClientCache();
     // A vertical tunnel: RAMP_DOWN entrance below, RAMP_UP exit above, both facing UP. The
     // machine sits between them; the ramps' surface ports face away from it (both buried).
-    surface(cache, 1, 14, 8, {type: BeltDefinition, direction: Direction.UP, beltType: BeltType.RAMP_DOWN});
-    surface(cache, 3, 14, 6, {type: BeltDefinition, direction: Direction.UP, beltType: BeltType.RAMP_UP});
+    surface(cache, 1, 14, 8, {type: BeltRampDownDefinition, direction: Direction.UP});
+    surface(cache, 3, 14, 6, {type: BeltRampUpDefinition, direction: Direction.UP});
     surface(cache, 4, 14, 7, {type: machineDefinition, direction: Direction.UP});
 
     assert.deepEqual(cache.connectedPorts(cache.get(4)), []);
@@ -66,10 +65,10 @@ test("a machine between a tunnel's ramps connects to neither buried end", () => 
 test("a machine connects to a ramp's exposed surface ports along its axis", () => {
     const cache = new ClientCache();
     // RAMP_DOWN entrance takes a straight feed from behind (its output is buried, not its input).
-    surface(cache, 1, 5, 4, {type: BeltDefinition, direction: Direction.UP, beltType: BeltType.RAMP_DOWN});
+    surface(cache, 1, 5, 4, {type: BeltRampDownDefinition, direction: Direction.UP});
     surface(cache, 2, 5, 5, {type: machineDefinition, direction: Direction.UP});
     // RAMP_UP exit emits forward onto the surface (its input is buried, not its output).
-    surface(cache, 3, 5, 6, {type: BeltDefinition, direction: Direction.UP, beltType: BeltType.RAMP_UP});
+    surface(cache, 3, 5, 6, {type: BeltRampUpDefinition, direction: Direction.UP});
 
     const connections = cache.connectedPorts(cache.get(2));
     assert.deepEqual(connections.map(connection => connection.neighbor.id).sort(), [1, 3]);
@@ -79,7 +78,7 @@ test("a machine beside a ramp does not connect from the side", () => {
     const cache = new ClientCache();
     // RAMP_DOWN entrance facing UP; a machine to its left points right into the ramp's tile.
     // A normal belt would merge in from the side, but a ramp only takes a straight feed.
-    surface(cache, 1, 5, 5, {type: BeltDefinition, direction: Direction.UP, beltType: BeltType.RAMP_DOWN});
+    surface(cache, 1, 5, 5, {type: BeltRampDownDefinition, direction: Direction.UP});
     surface(cache, 2, 4, 5, {type: machineDefinition, direction: Direction.RIGHT});
 
     assert.deepEqual(cache.connectedPorts(cache.get(2)), []);

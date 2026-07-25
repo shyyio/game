@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {tileId} from "@/common/util.js";
 import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
-import {Belts} from "@/mods/Logistics/Belts.js";
-import {BELT_RAMP_DOWN} from "@/mods/Logistics/constants.js";
+import {Belts} from "@/mods/Logistics/sim/Belts.js";
+import {BELT_RAMP_DOWN} from "@/mods/Logistics/common/constants.js";
 
 const RED = 1;
 

@@ -4,8 +4,8 @@ import {Direction} from "@/common/constants.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
 import {EventCollector} from "@/test/EventCollector.js";
-import {Belts} from "@/mods/Logistics/Belts.js";
-import {BeltPathRecalculateEvent, BeltItemSyncEvent} from "@/mods/Logistics/events.js";
+import {Belts} from "@/mods/Logistics/sim/Belts.js";
+import {BeltPathRecalculateEvent, BeltItemSyncEvent} from "@/mods/Logistics/common/events.js";
 
 const RED = 1;
 

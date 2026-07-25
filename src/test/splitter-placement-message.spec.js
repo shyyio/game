@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
-import {SplitterDefinition} from "@/mods/Logistics/objectTypes.js";
+import {SplitterDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector, flattenBatches} from "@/test/EventCollector.js";
 

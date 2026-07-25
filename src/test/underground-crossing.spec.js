@@ -1,29 +1,25 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {BELT_NORMAL, BELT_RAMP_DOWN, BELT_RAMP_UP} from "@/mods/Logistics/constants.js";
-import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
-import {BeltInsertEvent} from "@/mods/Logistics/events.js";
+import {CreateObjectMessage} from "@/common/CoreMessages.js";
+import {BeltDefinition, BeltRampDownDefinition, BeltRampUpDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {EventCollector} from "@/test/EventCollector.js";
-import {beltsOf} from "@/mods/Logistics/testHelpers.js";
+import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 
 const RED = 2;
 const BLUE = 3;
 
 test("a vertical tunnel and a horizontal belt cross on the same tile and flow independently", async () => {
     const engine = await makeGameEngine();
-    const collector = new EventCollector(engine);
 
     // Vertical UP tunnel down column x=0: ramp-down (0,4), ramp-up (0,1) -> undergrounds (0,3),(0,2); feeder (0,5).
-    engine.applyMessage(new CreateBeltMessage(0, 4, Direction.UP, BELT_RAMP_DOWN));
-    const rampDownId = collector.drain().find(e => e instanceof BeltInsertEvent).id;
-    engine.applyMessage(new CreateBeltMessage(0, 1, Direction.UP, BELT_RAMP_UP, rampDownId));
-    engine.applyMessage(new CreateBeltMessage(0, 5, Direction.UP, BELT_NORMAL));
+    engine.applyMessage(new CreateObjectMessage(BeltRampDownDefinition.typeId, 0, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltRampUpDefinition.typeId, 0, 1, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, 0, 5, Direction.UP));
 
     // Horizontal RIGHT belt across row y=3, passing over the underground at (0,3).
     for (const x of [-1, 0, 1, 2]) {
-        engine.applyMessage(new CreateBeltMessage(x, 3, Direction.RIGHT, BELT_NORMAL));
+        engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, x, 3, Direction.RIGHT));
     }
 
     // Tile (0,3) holds two belts on different axes.

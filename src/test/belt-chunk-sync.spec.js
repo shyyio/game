@@ -3,15 +3,14 @@ import assert from "node:assert/strict";
 import {Game} from "@/common/Game.js";
 import {Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
-import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
-import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
-import {SetViewportMessage} from "@/common/CoreMessages.js";
+import {CreateObjectMessage, SetViewportMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {PortItemSetEvent} from "@/common/PortItemEvents.js";
-import {BeltSyncEvent} from "@/mods/Logistics/events.js";
+import {ObjectSyncEvent} from "@/common/ObjectEvents.js";
+import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
-import {beltsOf} from "@/mods/Logistics/testHelpers.js";
+import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 import {flattenBatches} from "@/test/EventCollector.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 
@@ -28,7 +27,7 @@ test("a session subscribing to a chunk receives its existing belts and resting i
     const builder = new CapturingSession(1);
     game.connect(builder);
     for (const cell of CELLS) {
-        game.dispatchMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL), builder);
+        game.dispatchMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP), builder);
     }
     const path = beltsOf(engine).pathAt(0, 2);
     engine.setPortItem(path.inPort, RED);
@@ -47,9 +46,9 @@ test("a session subscribing to a chunk receives its existing belts and resting i
     const bundle = viewer.events.find(event => event instanceof ChunkSyncEvent);
     assert.ok(bundle, "a ChunkSyncEvent bundle for the subscribed chunk");
     const synced = flattenBatches(bundle.events);
-    const belts = synced.filter(event => event instanceof BeltSyncEvent);
+    const belts = synced.filter(event => event instanceof ObjectSyncEvent && event.typeId === BeltDefinition.typeId);
 
-    assert.equal(belts.length, CELLS.length, "one BeltSyncEvent per placed belt");
+    assert.equal(belts.length, CELLS.length, "one ObjectSyncEvent per placed belt");
     assert.deepEqual(
         belts.map(event => [event.x, event.y]).sort(),
         CELLS.map(cell => [cell.x, cell.y]).sort(),

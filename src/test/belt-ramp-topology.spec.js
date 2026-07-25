@@ -1,13 +1,11 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {BELT_RAMP_DOWN, BELT_RAMP_UP, MAX_UNDERGROUND_LENGTH} from "@/mods/Logistics/constants.js";
-import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
-import {DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {BeltInsertEvent} from "@/mods/Logistics/events.js";
+import {MAX_UNDERGROUND_LENGTH} from "@/mods/Logistics/common/constants.js";
+import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
+import {BeltRampDownDefinition, BeltRampUpDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {EventCollector} from "@/test/EventCollector.js";
-import {beltsOf} from "@/mods/Logistics/testHelpers.js";
+import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 
 const RED = 1;
 
@@ -15,11 +13,10 @@ const RED = 1;
 // engine and both ramp ids. A RIGHT tunnel.
 async function tunnel(gap) {
     const engine = await makeGameEngine();
-    const collector = new EventCollector(engine);
-    engine.applyMessage(new CreateBeltMessage(1, 1, Direction.RIGHT, BELT_RAMP_DOWN));
-    const downId = collector.drain().find(event => event instanceof BeltInsertEvent).id;
+    engine.applyMessage(new CreateObjectMessage(BeltRampDownDefinition.typeId, 1, 1, Direction.RIGHT));
+    const downId = beltsOf(engine)._beltAt(1, 1, Direction.RIGHT).id;
     const exitX = 1 + gap + 1;
-    engine.applyMessage(new CreateBeltMessage(exitX, 1, Direction.RIGHT, BELT_RAMP_UP, downId));
+    engine.applyMessage(new CreateObjectMessage(BeltRampUpDefinition.typeId, exitX, 1, Direction.RIGHT));
     const upId = beltsOf(engine)._beltAt(exitX, 1, Direction.RIGHT).id;
     return {engine, downId, upId, exitX};
 }
@@ -55,10 +52,8 @@ test("ramps beyond the maximum tunnel length do not connect", async () => {
 
 test("a reversed pair (ramp-up first, then ramp-down) connects", async () => {
     const engine = await makeGameEngine();
-    const collector = new EventCollector(engine);
-    engine.applyMessage(new CreateBeltMessage(3, 1, Direction.RIGHT, BELT_RAMP_UP));
-    const upId = collector.drain().find(event => event instanceof BeltInsertEvent).id;
-    engine.applyMessage(new CreateBeltMessage(1, 1, Direction.RIGHT, BELT_RAMP_DOWN, upId));
+    engine.applyMessage(new CreateObjectMessage(BeltRampUpDefinition.typeId, 3, 1, Direction.RIGHT));
+    engine.applyMessage(new CreateObjectMessage(BeltRampDownDefinition.typeId, 1, 1, Direction.RIGHT));
 
     assert.ok(connected(engine, 1, 1, 3, 1), "the reversed pair forms one tunnel path");
     assert.equal(beltsOf(engine).paths.length, 1);

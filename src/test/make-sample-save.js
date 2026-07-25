@@ -1,10 +1,8 @@
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
-import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
+import {BeltDefinition, SplitterDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {DemoMachineType} from "@/mods/Demo/declaration.js";
 import {WaterResourceType, ExtractorType} from "@/mods/Resources/declaration.js";
-import {SplitterDefinition} from "@/mods/Logistics/objectTypes.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 
@@ -18,7 +16,7 @@ engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 5, 5, Directio
 engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, 10, 10, Direction.UP));
 engine.applyMessage(new CreateObjectMessage(SplitterDefinition.typeId, 3, 8, Direction.UP));
 for (const cell of [{x: 20, y: 20}, {x: 20, y: 21}, {x: 20, y: 22}, {x: 20, y: 23}]) {
-    engine.applyMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL));
+    engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP));
 }
 for (let i = 0; i < 5; i += 1) {
     engine.tickAll();

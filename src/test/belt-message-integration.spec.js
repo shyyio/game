@@ -1,11 +1,11 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
-import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
+import {CreateObjectMessage} from "@/common/CoreMessages.js";
+import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {EMPTY} from "@/common/sim/GameEngine.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {beltsOf} from "@/mods/Logistics/testHelpers.js";
+import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 
 const RED = 1;
 const CELLS = [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}];
@@ -18,7 +18,7 @@ const EXPECTED = [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, RED, RED, EMPTY, EMPTY, EMP
 test("a belt line placed and ticked via messages on GameEngine flows two items to the tail", async () => {
     const engine = await makeGameEngine();
     for (const cell of CELLS) {
-        engine.applyMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL));
+        engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP));
     }
     const path = beltsOf(engine).pathAt(HEAD.x, HEAD.y);
     const stream = [];

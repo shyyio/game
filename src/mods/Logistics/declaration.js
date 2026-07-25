@@ -1,39 +1,46 @@
 import {AbstractModDeclaration} from "@/sdk/common.js";
-import {CreateBeltMessage} from "./messages.js";
-import {BeltDefinition, SplitterDefinition, RoadDefinition, HousingDefinition} from "./objectTypes.js";
+import {
+    BeltDefinition,
+    BeltRampDownDefinition,
+    BeltRampUpDefinition,
+    BeltUndergroundDefinition,
+    SplitterDefinition,
+    RoadDefinition,
+    HousingDefinition,
+} from "./common/objectTypes.js";
 import {
     BeltPathRecalculateEvent,
-    BeltInsertEvent,
-    BeltDeleteEvent,
-    BeltSyncEvent,
     BeltItemUpsertEvent,
     BeltItemSyncEvent,
     BeltItemDeleteEvent,
     BeltItemResetEvent,
     BeltItemBatchEvent,
-    BeltSyncBatchEvent,
     BeltPathBatchEvent,
-} from "./events.js";
+} from "./common/events.js";
 
 export class LogisticsDeclaration extends AbstractModDeclaration {
 
     get objectTypes() {
-        return [BeltDefinition, SplitterDefinition, RoadDefinition, HousingDefinition];
+        // The ramp/underground kinds append after the originals, keeping prior typeIds stable.
+        return [
+            BeltDefinition,
+            SplitterDefinition,
+            RoadDefinition,
+            HousingDefinition,
+            BeltRampDownDefinition,
+            BeltRampUpDefinition,
+            BeltUndergroundDefinition,
+        ];
     }
 
     get wireClasses() {
         return [
-            CreateBeltMessage,
-            BeltInsertEvent,
-            BeltDeleteEvent,
             BeltPathRecalculateEvent,
-            BeltSyncEvent,
             BeltItemUpsertEvent,
             BeltItemSyncEvent,
             BeltItemDeleteEvent,
             BeltItemResetEvent,
             BeltItemBatchEvent,
-            BeltSyncBatchEvent,
             BeltPathBatchEvent,
         ];
     }

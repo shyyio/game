@@ -1,27 +1,24 @@
 
-import {BeltDrawLayer} from "./BeltLayer.js";
-import {BeltOverlayDrawLayer} from "./OverlayLayer.js";
-import {BeltGhostLayer} from "./BeltGhostLayer.js";
-import {PathDebugDrawLayer} from "./PathDebugLayer.js";
-import {BeltTool} from "./BeltTool.js";
-import {UndergroundBeltTool} from "./UndergroundBeltTool.js";
-import {BeltDefinition} from "./objectTypes.js";
+import {BeltDrawLayer} from "./client/BeltDrawLayer.js";
+import {BeltOverlayDrawLayer} from "./client/BeltOverlayDrawLayer.js";
+import {BeltGhostLayer} from "./client/BeltGhostLayer.js";
+import {PathDebugDrawLayer} from "./client/PathDebugDrawLayer.js";
+import {BeltTool} from "./client/BeltTool.js";
+import {UndergroundBeltTool} from "./client/UndergroundBeltTool.js";
+import {isBeltType} from "./common/objectTypes.js";
 import {
-    BeltInsertEvent,
-    BeltSyncEvent,
-    BeltDeleteEvent,
     BeltPathRecalculateEvent,
     BeltItemUpsertEvent,
     BeltItemSyncEvent,
     BeltItemDeleteEvent,
     BeltItemResetEvent,
-} from "./events.js";
-import {BeltType} from "./constants.js";
-import {surfaceBeltAt, walkTunnel, tunnelStep, isRamp, beltPositionLayer, inferBeltParent} from "./geometry.js";
+} from "./common/events.js";
+import {tunnelStep, BELT_RAMP_DOWN, BELT_RAMP_UP, BELT_UNDERGROUND} from "./common/constants.js";
+import {surfaceBeltAt, walkTunnel, isRamp, inferBeltParent} from "./common/geometry.js";
 import {
     AbstractClientMod,
     MiniMenuEntry,
-    ChunkUnsubscribeEvent,
+    ObjectInsertEvent,
     PortItemSetEvent,
     PortItemClearEvent,
     Direction,
@@ -36,27 +33,21 @@ export class LogisticsClientMod extends AbstractClientMod {
 
     constructor() {
         super();
-        // One stable instance shared between drawLayers (which renders it) and
-        // tools (which drive it via showGhost/clear).
+        // Shared between drawLayers (renders it) and tools (drive it).
         this._ghostLayer = new BeltGhostLayer();
-        // Stable belt layer: onEvent drives it imperatively.
+        // Driven imperatively by onEvent.
         this._beltLayer = new BeltDrawLayer();
-        // Reveals buried tunnel belts under a hovered ramp; driven by onInspect.
+        // Reveals buried tunnel belts under a hovered ramp.
         this._overlayLayer = new BeltOverlayDrawLayer();
-        // Head id → belt ids in path order (head last); kept current by onEvent
-        // and used to resolve an item's slot to a belt, plus drawn by the debug layer.
+        // Head id → belt ids in path order (head last).
         this._pathParts = new Map();
-        // Head id → Map<item id, {gap, type}>: each path's in-flight items output-to-input,
-        // synced and kept current by item deltas. Positions are derived from the gaps, not sent.
+        // Head id → Map<item id, {gap, type}>, output-to-input; positions derived from gaps.
         this._pathItems = new Map();
-        // Out-port id → path head id, learned from path recalcs/chunk sync, so a
-        // port-item event (which carries only the port id) resolves to a path and tile.
+        // Out-port id → path head id, so a port-item event (port id only) resolves to a path.
         this._outPortToPath = new Map();
-        // The inverse, path head id → out-port id, so a lead item's DELETE (a pop) can
-        // hand its sprite to the out-port it popped into.
+        // Inverse map, so a lead item's DELETE (a pop) hands its sprite to the out-port.
         this._pathToOutPort = new Map();
-        // Debug overlay of belt paths, shown only in debug mode; reads the shared
-        // path map and the object index (injected).
+        // Debug overlay of belt paths.
         this._pathDebugLayer = new PathDebugDrawLayer(this._pathParts);
     }
 
@@ -78,19 +69,32 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Single client-side hub for belt events, keeping the belt cache and belt layer in lockstep.
+     * Registers cache listeners keeping belt rendering in lockstep with every belt entry.
+     * @param {Client} client
+     * @returns {void}
+     */
+    setup(client) {
+        client.cache.onSet(entry => {
+            if (isBeltType(entry.data.type)) {
+                this._onBeltSet(client, entry);
+            }
+        });
+        client.cache.onRemove(entry => {
+            if (isBeltType(entry.data.type)) {
+                this._onBeltRemoved(client, entry);
+            }
+        });
+    }
+
+    /**
+     * Single client-side hub for the belt path/item events.
      * @param {AbstractEvent} event
      * @param {Client} client
      */
     onEvent(event, client) {
-        if (event instanceof BeltInsertEvent || event instanceof BeltSyncEvent) {
-            this._addBelt(client, event);
-            // A live insert's path recalc is published before the belt itself, so the
-            // overlay must repaint once the new belt is in the cache. Chunk syncs
-            // already arrive before their recalcs, so they need no extra repaint.
-            if (event instanceof BeltInsertEvent) {
-                this._pathDebugLayer.redraw();
-            }
+        if (event instanceof ObjectInsertEvent && isBeltType(client.modRegistry.typeById(event.typeId))) {
+            // A live insert's recalc precedes the belt, so repaint once it is cached.
+            this._pathDebugLayer.redraw();
             return;
         }
         if (event instanceof BeltPathRecalculateEvent) {
@@ -100,39 +104,6 @@ export class LogisticsClientMod extends AbstractClientMod {
                 this._outPortToPath.set(event.outPortId, head);
                 this._pathToOutPort.set(head, event.outPortId);
             }
-            this._pathDebugLayer.redraw();
-            return;
-        }
-        if (event instanceof BeltDeleteEvent) {
-            const record = client.cache.get(event.id);
-            if (record !== null && isRamp(record.data.beltType)) {
-                this._removeRampMasks(client, event.id);
-            }
-            client.cache.remove(event.id);
-            this._beltLayer.removeBelt(event.id);
-            this._clearPathItems(client, event.id);
-            this._clearOutPortItemAt(client, event.id);
-            if (this._pathParts.delete(event.id)) {
-                this._pathDebugLayer.redraw();
-            }
-            return;
-        }
-        if (event instanceof ChunkUnsubscribeEvent) {
-            // Drop only this mod's own belts — ObjectCacheWriter drops the derived-type entries.
-            const removedBelts = new Set();
-            for (const record of client.cache.getByChunk(event.chunk)) {
-                if (record.data.type === BeltDefinition) {
-                    removedBelts.add(record.id);
-                    if (isRamp(record.data.beltType)) {
-                        this._removeRampMasks(client, record.id);
-                    }
-                    this._beltLayer.removeBelt(record.id);
-                    this._clearPathItems(client, record.id);
-                    this._pathParts.delete(record.id);
-                    client.cache.remove(record.id);
-                }
-            }
-            this._clearPortItems(client, removedBelts);
             this._pathDebugLayer.redraw();
             return;
         }
@@ -150,8 +121,6 @@ export class LogisticsClientMod extends AbstractClientMod {
 
     /**
      * Records a recalculated path under its head id, dropping any head a merge absorbed.
-     * Items aren't touched here: an edit re-keys them, but the swap is done atomically
-     * by the RESET + re-emitted UPSERT items (same drain) so they never blink out.
      * @param {number[]} parts - belt ids in path order, head last
      * @private
      */
@@ -166,9 +135,7 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Renders or removes an item resting in a belt path's out-port (the render tile is computed
-     * from the path's tail belt). Splitter out-ports are static, so the engine renders those —
-     * skip any port this mod doesn't own a path for.
+     * Renders or removes an item resting in a path's out-port; untracked ports are engine-rendered splitters.
      * @param {Client} client
      * @param {PortItemSetEvent|PortItemClearEvent} event
      * @private
@@ -186,11 +153,10 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Places a belt path out-port's item sprite at its output boundary: the tile downstream of
-     * the tail, on the upstream edge where the item just popped off.
+     * Places an out-port's item sprite one tile downstream of the tail, on the upstream edge.
      * @param {Client} client
      * @param {number} portId
-     * @param {number} type - item type, selecting the sprite texture
+     * @param {number} type - item type
      * @private
      */
     _renderPortItem(client, portId, type) {
@@ -209,9 +175,7 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * The tile an out-port's item rests on: one downstream of the path's tail (output)
-     * belt, with sourceDirection pointing back at the tail (the edge it popped off). Returns
-     * null when the path or belt isn't cached yet.
+     * The tile an out-port's item rests on: one downstream of the tail, facing back at it; null when uncached.
      * @param {Client} client
      * @param {number} portId
      * @returns {{tileX: number, tileY: number, sourceDirection: Direction}|null}
@@ -239,48 +203,7 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Drops out-port item sprites whose path head left the viewport.
-     * @param {Client} client
-     * @param {Set<number>} removedHeads
-     * @private
-     */
-    _clearPortItems(client, removedHeads) {
-        for (const [portId, head] of this._outPortToPath) {
-            if (removedHeads.has(head)) {
-                client.itemLayer.removeItem(PORT_SPRITE_KEY(portId));
-                this._outPortToPath.delete(portId);
-                this._pathToOutPort.delete(head);
-            }
-        }
-    }
-
-    /**
-     * Drops the resting out-port item when the path's output belt (parts[0], where that
-     * item renders) is the one being deleted: its port item is destroyed server-side, so
-     * clear the sprite now instead of waiting for the next tick's PORT_ITEM_CLEAR. Deleting
-     * the input/head belt instead leaves the output item in place, so it is untouched.
-     * Forgets the port mapping only when the head itself goes (the whole path is gone).
-     * @param {Client} client
-     * @param {number} deletedBelt
-     * @private
-     */
-    _clearOutPortItemAt(client, deletedBelt) {
-        for (const [head, portId] of this._pathToOutPort) {
-            const parts = this._pathParts.get(head);
-            if (parts === undefined || parts[0] !== deletedBelt) {
-                continue;
-            }
-            client.itemLayer.removeItem(PORT_SPRITE_KEY(portId));
-            if (head === deletedBelt) {
-                this._outPortToPath.delete(portId);
-                this._pathToOutPort.delete(head);
-            }
-        }
-    }
-
-    /**
-     * Applies one item delta: an upsert inserts an item or restates its gap, a delete drops one. Either
-     * way the path's items are repositioned, since gaps are relative and one change shifts the rest.
+     * Applies one item delta and repositions the path's items — gaps are relative, so one change shifts the rest.
      * @param {Client} client
      * @param {BeltItemUpsertEvent|BeltItemSyncEvent|BeltItemDeleteEvent|BeltItemResetEvent} event
      * @private
@@ -313,11 +236,7 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Destroys a deleted item's sprite. A delete on a path with an out-port is a pop (edits
-     * re-sync via RESET, not DELETE): hand the sprite to the out-port so it glides the last
-     * stretch in — replacing the previous occupant, which the downstream path's freshly-ingested
-     * item already covers — instead of vanishing while the same-type (so un-refreshed) port
-     * sprite sits still. Anything else is just removed.
+     * Destroys a deleted item's sprite; a delete on an out-port path is a pop, so the sprite glides into the port.
      * @param {Client} client
      * @param {number} pathId
      * @param {number} itemId
@@ -335,9 +254,7 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Clears the item sprites of a path about to be re-synced, under every belt in it — the
-     * head and any former heads a merge folded in — so no stale sprite survives the re-keyed
-     * rebuild. The following re-emitted UPSERT items (same drain) repopulate it.
+     * Clears a re-syncing path's sprites under head and merged-in former heads; re-emitted UPSERTs repopulate.
      * @param {Client} client
      * @param {number} pathId
      * @private
@@ -354,13 +271,10 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Repositions every item on a path from its gaps. Items lie output-to-input, each carrying the
-     * empty half-tiles ahead of it, so walking from the output edge and accumulating gap + 1 gives
-     * every slot. The map is already in that order: ingested items arrive input-most last, an upsert
-     * of a tracked item keeps its place, and a re-sync re-emits the path output-to-input.
+     * Repositions a path's items: they lie output-to-input, each gap counting the empty half-tiles ahead of it.
      * @param {Client} client
      * @param {number} pathId
-     * @param {boolean} [snap] - place sprites without animating (a re-sync, not a move)
+     * @param {boolean} [snap] - place sprites without animating
      * @private
      */
     _recomputePathItems(client, pathId, snap=false) {
@@ -392,7 +306,7 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Drops a path's item sprites and tracked items (head removed, or about to be re-synced).
+     * Drops a path's item sprites and tracked items.
      * @param {Client} client
      * @param {number} pathId
      * @private
@@ -409,11 +323,8 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Maps an item's path and slot to the belt it sits on. slot counts half-tiles
-     * from the input (head); each belt past the head owns a full then a half slot, so
-     * the belt is parts[(N-1) - floor((slot+1)/2)] and an odd slot is the half-tile
-     * straddle. sourceDirection points at the belt feeding this one (the bend's input edge).
-     * Returns null when the path or belt isn't cached yet.
+     * Maps an item's slot to its belt: slot counts half-tiles from the input, so the belt is
+     * parts[(N-1) - floor((slot+1)/2)] and an odd slot is the half-tile straddle.
      * @param {Client} client
      * @param {number} pathId
      * @param {number} slot
@@ -434,8 +345,7 @@ export class LogisticsClientMod extends AbstractClientMod {
             return null;
         }
         const halfTile = slot % 2 === 1;
-        // A non-head belt's feeder is the next part toward the input; only the head
-        // (fed through its in-port by an unknown neighbor) needs cache inference.
+        // Only the head (fed by an unknown neighbor) needs cache inference.
         const sourceDirection = beltIndex + 1 < parts.length
             ? this._pathSourceDirection(client, record, parts[beltIndex + 1])
             : this._sourceDirection(client, record);
@@ -444,17 +354,15 @@ export class LogisticsClientMod extends AbstractClientMod {
             tileY: record.tileY,
             sourceDirection: sourceDirection,
             halfTile: halfTile,
-            // Boundary half slots: a ramp-up's is still buried; the first buried tile's
-            // renders, covered by the roof and threshold occluders.
-            hidden: (record.data.beltType === BeltType.UNDERGROUND
+            // Boundary half slots: a ramp-up's is still buried; the first buried tile's renders under the occluders.
+            hidden: (record.data.type.beltKind === BELT_UNDERGROUND
                     && !(halfTile && this._rampDownBehind(client, record)))
-                || (record.data.beltType === BeltType.RAMP_UP && halfTile),
+                || (record.data.type.beltKind === BELT_RAMP_UP && halfTile),
         };
     }
 
     /**
-     * Whether the tile behind a buried belt (toward its source) holds the tunnel's
-     * entrance ramp — marking it as the first buried tile.
+     * Whether the tile behind a buried belt holds the tunnel's entrance ramp (first buried tile).
      * @param {Client} client
      * @param {CacheEntry} record - underground belt cache entry
      * @returns {boolean}
@@ -467,12 +375,11 @@ export class LogisticsClientMod extends AbstractClientMod {
             record.tileY - Direction.dy(direction),
         );
         return behind.some(neighbor =>
-            neighbor.data.beltType === BeltType.RAMP_DOWN && neighbor.data.direction === direction);
+            neighbor.data.type.beltKind === BELT_RAMP_DOWN && neighbor.data.direction === direction);
     }
 
     /**
-     * The direction toward the path belt feeding `record`; opposite the flow when the
-     * feeder isn't cached.
+     * The direction toward the path belt feeding `record`; opposite the flow when uncached.
      * @param {Client} client
      * @param {CacheEntry} record - belt cache entry
      * @param {number} feederId - the next part toward the input
@@ -491,9 +398,7 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * The direction toward the object feeding a head belt through its in-port — the side
-     * an item enters from, inferred from the cache. Falls back to opposite the flow when
-     * no feeder is cached.
+     * The direction an item enters a head belt from; opposite the flow when no feeder is cached.
      * @param {Client} client
      * @param {CacheEntry} record - belt cache entry
      * @returns {Direction}
@@ -508,55 +413,68 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Adds a belt to the viewport cache and the draw layer (shared by inserts and syncs).
-     * A ramp also masks the item layer with its roof, so items seem to pass beneath it.
+     * Adds a cached belt entry to the draw layer; a ramp also masks the item layer with its roof.
      * @param {Client} client
-     * @param {BeltInsertEvent|BeltSyncEvent} event
+     * @param {CacheEntry} entry
      * @private
      */
-    _addBelt(client, event) {
-        client.cache.set(
-            event.id,
-            event.x,
-            event.y,
-            [{x: event.x, y: event.y, layer: beltPositionLayer(event.beltType, event.direction)}],
-            {},
-            // `conveyor` is a generic cache convention: a straight surface lane an aligned
-            // placement (a splitter, a machine) may overwrite. Other mods read it without
-            // knowing belt types.
-            {
-                type: BeltDefinition,
-                beltType: event.beltType,
-                direction: event.direction,
-                conveyor: event.beltType === BeltType.NORMAL,
-            },
-        );
-        // Bend is derived from neighbors by the belt layer on structural cache changes; added straight.
-        this._beltLayer.addBelt(event.id, event.x, event.y, event.direction, event.beltType);
-        if (isRamp(event.beltType)) {
-            this._addRampMasks(client, event);
+    _onBeltSet(client, entry) {
+        const kind = entry.data.type.beltKind;
+        // Added straight; the belt layer re-derives the bend on structural cache changes.
+        this._beltLayer.addBelt(entry.id, entry.tileX, entry.tileY, entry.data.direction, kind);
+        if (isRamp(kind)) {
+            this._addRampMasks(client, entry);
         }
     }
 
     /**
-     * Adds a ramp's two item occluders: a roof over its own tile and a threshold strip on the
-     * buried neighbor.
+     * Clears everything hanging off a removed belt entry.
      * @param {Client} client
-     * @param {BeltInsertEvent|BeltSyncEvent} event
+     * @param {CacheEntry} entry
      * @private
      */
-    _addRampMasks(client, event) {
-        // A RAMP_DOWN's roof sits on its up edge (the tunnel mouth it faces into), a RAMP_UP's
-        // on its down edge (where items surface); the facing rotation orients both.
-        const roofY = event.beltType === BeltType.RAMP_UP ? TILE_SIZE - 36 : 0;
+    _onBeltRemoved(client, entry) {
+        const id = entry.id;
+        this._beltLayer.removeBelt(id);
+        if (isRamp(entry.data.type.beltKind)) {
+            this._removeRampMasks(client, id);
+        }
+        this._clearPathItems(client, id);
+        // Sprite goes when the removed belt renders the port item or heads the path; mapping goes only with the head.
+        for (const [head, portId] of this._pathToOutPort) {
+            const parts = this._pathParts.get(head);
+            const rendersHere = parts !== undefined && parts[0] === id;
+            if (rendersHere || head === id) {
+                client.itemLayer.removeItem(PORT_SPRITE_KEY(portId));
+            }
+            if (head === id) {
+                this._outPortToPath.delete(portId);
+                this._pathToOutPort.delete(head);
+            }
+        }
+        if (this._pathParts.delete(id)) {
+            this._pathDebugLayer.redraw();
+        }
+    }
+
+    /**
+     * Adds a ramp's item occluders: a roof on its own tile and a threshold strip on the buried neighbor.
+     * @param {Client} client
+     * @param {CacheEntry} entry
+     * @private
+     */
+    _addRampMasks(client, entry) {
+        const kind = entry.data.type.beltKind;
+        const direction = entry.data.direction;
+        // RAMP_DOWN roofs its up edge (tunnel mouth), RAMP_UP its down edge (where items surface).
+        const roofY = kind === BELT_RAMP_UP ? TILE_SIZE - 36 : 0;
         const roof = new Rectangle(0, roofY, TILE_SIZE, 36);
-        client.itemLayer.addMask(`roof:${event.id}`, event.x, event.y, roof, event.direction);
-        const step = tunnelStep(event.beltType, event.direction);
-        // The band sits on the rect's up edge; rotating by the direction from the threshold
-        // tile back toward the ramp lands it on the shared edge.
+        client.itemLayer.addMask(`roof:${entry.id}`, entry.tileX, entry.tileY, roof, direction);
+        const step = tunnelStep(kind, direction);
+        // Rotating by the direction back toward the ramp lands the band on the shared edge.
         const edgeDirection = Direction.fromDelta(-step.dx, -step.dy);
         const threshold = new Rectangle(0, 0, TILE_SIZE, TILE_SIZE / 4);
-        client.itemLayer.addMask(`threshold:${event.id}`, event.x + step.dx, event.y + step.dy, threshold, edgeDirection);
+        client.itemLayer.addMask(`threshold:${entry.id}`, entry.tileX + step.dx, entry.tileY + step.dy, threshold, edgeDirection);
     }
 
     /**
@@ -584,11 +502,10 @@ export class LogisticsClientMod extends AbstractClientMod {
         }
         const records = client.cache.getAtTile(tileX, tileY);
         const surface = surfaceBeltAt(client.cache, tileX, tileY);
-        const ramp = records.find(record => isRamp(record.data.beltType));
+        const ramp = records.find(record => isBeltType(record.data.type) && isRamp(record.data.type.beltKind));
         const tunnel = ramp === undefined ? null : walkTunnel(client.cache, ramp);
 
-        // Highlight the hovered surface belt/ramp (buried undergrounds aren't drawn),
-        // plus the ramp it tunnels to (if any) with the alternate highlight.
+        // Highlight the hovered surface belt/ramp, plus the tunneled-to ramp (alternate highlight).
         const highlights = [];
         if (surface !== null) {
             highlights.push(new InspectHighlight(tileX, tileY, surface.data.direction, surface.data.type));

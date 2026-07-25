@@ -7,15 +7,14 @@ import {
     AbstractTileMeshDrawLayer,
 } from "@/sdk/client.js";
 import {chunkId, getOrCreate} from "@/sdk/common.js";
-import {BeltBend, BeltType} from "./constants.js";
-import {inferBeltParent} from "./geometry.js";
+import {BeltBend, BELT_NORMAL, BELT_RAMP_DOWN, BELT_RAMP_UP, BELT_UNDERGROUND} from "../common/constants.js";
+import {inferBeltParent} from "../common/geometry.js";
 
-// Map-mode tile fill colors, keyed by belt type.
+// Map-mode tile fill colors.
 const MAP_TILE_COLOR = 0xf7df9e;
 const MAP_RAMP_COLOR = 0xc8a16e;
 
-// The sequences a drawn belt can animate through — every base {@link beltFrameBase} returns except
-// the buried underground, which is never drawn.
+// Every beltFrameBase result except the never-drawn buried underground.
 const BELT_SEQUENCES = [
     "belt-straight",
     "belt-left",
@@ -25,19 +24,19 @@ const BELT_SEQUENCES = [
 ];
 
 /**
- * The spritesheet base sequence name for a belt of the given bend and type (frames live under "<base>/0..7").
+ * The spritesheet base sequence for a belt's bend and type (frames under "<base>/0..7").
  * @param {BeltBend} bend
  * @param {BeltType} type
  * @returns {string}
  */
 export function beltFrameBase(bend, type) {
-    if (type === BeltType.UNDERGROUND) {
+    if (type === BELT_UNDERGROUND) {
         return "belt-underground";
     }
-    if (type === BeltType.RAMP_UP) {
+    if (type === BELT_RAMP_UP) {
         return "belt-ramp-up";
     }
-    if (type === BeltType.RAMP_DOWN) {
+    if (type === BELT_RAMP_DOWN) {
         return "belt-ramp-down";
     }
     if (bend === BeltBend.LEFT) {
@@ -109,8 +108,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
         this._belts = new Map();
         // The belts each chunk holds.
         this._chunkBelts = new Map();
-        // Bumped on every structural cache change; a belt whose bend was derived at an older
-        // epoch re-derives when next ticked, so belts off-screen at the change still catch up.
+        // Bumped on structural cache changes; a belt with an older bendEpoch re-derives when next ticked.
         this._bendEpoch = 0;
     }
 
@@ -123,8 +121,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     }
 
     /**
-     * A belt's bend depends on neighboring objects of any mod (belts, splitters, machines feeding
-     * it from the side), so any structural change flags every bend for a lazy re-derive.
+     * A bend depends on neighbors of any mod, so any structural change flags every bend for a lazy re-derive.
      * @returns {void}
      */
     onCacheStructuralChange() {
@@ -132,7 +129,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     }
 
     /**
-     * Draws a tile per belt in the chunk into its pooled Graphics, one fill per belt color.
+     * Draws a tile per belt into the chunk's pooled Graphics, one fill per color.
      * @param {number} chunk
      * @param {Graphics} graphics
      * @returns {void}
@@ -141,7 +138,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
         for (const color of [MAP_TILE_COLOR, MAP_RAMP_COLOR]) {
             let drew = false;
             for (const belt of this._beltsIn(chunk)) {
-                const beltColor = belt.type === BeltType.NORMAL ? MAP_TILE_COLOR : MAP_RAMP_COLOR;
+                const beltColor = belt.type === BELT_NORMAL ? MAP_TILE_COLOR : MAP_RAMP_COLOR;
                 if (beltColor !== color) {
                     continue;
                 }
@@ -155,8 +152,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     }
 
     /**
-     * The mesh tiles of a chunk's belts, each carrying its tile, facing and sequence, so the
-     * animation itself never touches them again.
+     * The mesh tiles of a chunk's belts.
      * @param {number} chunk
      * @returns {AnimatedTile[]}
      */
@@ -174,7 +170,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     }
 
     /**
-     * The belts a chunk holds, empty when it holds none.
+     * The belts a chunk holds.
      * @param {number} chunk
      * @returns {Iterable<Belt>}
      * @private
@@ -185,8 +181,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     }
 
     /**
-     * Renders a newly-placed or chunk-synced belt (undergrounds are buried and skipped). The
-     * bend is added straight and re-derived from neighbors on the next structural cache change.
+     * Renders a belt (buried undergrounds skipped); bend added straight, re-derived on the next structural change.
      * @param {number} id
      * @param {number} x
      * @param {number} y
@@ -194,7 +189,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
      * @param {BeltType} type
      */
     addBelt(id, x, y, direction, type) {
-        if (type === BeltType.UNDERGROUND) {
+        if (type === BELT_UNDERGROUND) {
             return;
         }
         const belt = new Belt(id, x, y, direction, BeltBend.STRAIGHT, type);
@@ -206,8 +201,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     }
 
     /**
-     * Re-derives the bends of a chunk's belts that a structural change invalidated, marking the
-     * chunk for a mesh rebuild when any of them turned.
+     * Re-derives invalidated bends, marking the chunk for a mesh rebuild when any turned.
      * @param {number} chunk
      * @returns {void}
      * @private
@@ -218,7 +212,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
                 continue;
             }
             belt.bendEpoch = this._bendEpoch;
-            if (belt.type === BeltType.NORMAL && this._applyBend(belt)) {
+            if (belt.type === BELT_NORMAL && this._applyBend(belt)) {
                 this._dirtyChunks.add(chunk);
             }
         }
@@ -261,9 +255,9 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     }
 
     /**
-     * Re-derives stale bends, then advances every on-screen belt with the shared uniform write.
+     * Re-derives stale bends, then advances every on-screen belt.
      * @param {number} frame animation frame, in [0, 8)
-     * @param {number} deltaMS elapsed time since the previous tick, in ms
+     * @param {number} deltaMS elapsed ms since the previous tick
      * @returns {void}
      */
     _updateSprites(frame, deltaMS) {
@@ -274,8 +268,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     }
 
     /**
-     * Bends first: the mesh bakes them in, and a chunk mounting for the first time has never
-     * derived them.
+     * Bends first: the mesh bakes them in, and a first-mount chunk has never derived them.
      * @param {number} chunk
      * @returns {void}
      */
@@ -294,7 +287,7 @@ export class BeltSprite extends Sprite {
      * @param {Direction} direction
      * @param {BeltBend} bend
      * @param {BeltType} type
-     * @param {Texture[]|undefined} frames ordered animation frames for this bend/type
+     * @param {Texture[]|undefined} frames ordered animation frames
      */
     constructor(id, x, y, direction, bend, type, frames) {
         super(Texture.EMPTY);
@@ -325,7 +318,7 @@ export class BeltSprite extends Sprite {
     }
 
     /**
-     * Shows the given frame by array index, wrapping modulo the sequence length so single-frame sprites stay put.
+     * Shows a frame by index, wrapping modulo the sequence length.
      * @param {number} frame animation frame, in [0, 8)
      */
     setAnimationFrame(frame) {

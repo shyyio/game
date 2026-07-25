@@ -1,12 +1,9 @@
 import {Direction, EMPTY, NO_EID, TickPhase, AbstractBehavior} from "@/sdk/common.js";
-import {ORDER_BEFORE_TRANSPORT} from "./constants.js";
+import {ORDER_BEFORE_TRANSPORT} from "../common/constants.js";
 
 /**
- * The splitter's sim behavior: a 1x2 router of two inputs and two outputs (ports shared with
- * adjacent belts) through two internal buffer ports. Each item flows in_X -> int_X -> out_Y, resting
- * a tick in int_X (belt speed). Submits managed=0 intents so the shared resolver only links the
- * chain; the POST_RESOLVE seam does the moves. All state lives in the registered component, so it
- * serializes with no bespoke save code.
+ * 1x2 splitter routing in_X -> int_X -> out_Y through internal buffer ports at belt speed,
+ * submitting managed=0 intents so the resolver only links and the POST_RESOLVE seam does the moves.
  */
 export class SplitterBehavior extends AbstractBehavior {
 
@@ -21,8 +18,7 @@ export class SplitterBehavior extends AbstractBehavior {
             {name: "state"},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents(engine));
-        // The seam must read shared ports before the belt transport writes pops, whatever the
-        // registration sequence.
+        // Seam must read shared ports before the belt transport writes pops.
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._runSeam(engine), ORDER_BEFORE_TRANSPORT);
     }
 
@@ -84,8 +80,7 @@ export class SplitterBehavior extends AbstractBehavior {
     }
 
     /**
-     * Creates a sim-only splitter (no PlacedObject entity), state 0. Ports are fresh unless given in
-     * `wiring` (e.g. an upstream belt's out-port reused as in_a). For specs and debugging.
+     * Creates a sim-only splitter for specs and debugging; ports fresh unless given in `wiring`.
      * @param {GameEngine} engine
      * @param {{in_a?:number, in_b?:number, out_a?:number, out_b?:number}} [wiring]
      * @returns {{id:number, in_a:number, in_b:number, out_a:number, out_b:number, int_a:number, int_b:number}}
@@ -104,9 +99,7 @@ export class SplitterBehavior extends AbstractBehavior {
     }
 
     /**
-     * Places a sim-only UP-facing 1x2 splitter at (x, y), adopting the shared edge ports of adjacent
-     * belts: in_a/in_b feed from below (the belts at (x,y)/(x+1,y)), out_a/out_b feed the belts above
-     * (x,y-1)/(x+1,y-1). Internal ports are private. For specs and debugging.
+     * Places a sim-only UP-facing splitter at (x, y) adopting adjacent belts' edge ports; for specs and debugging.
      * @param {GameEngine} engine
      * @param {number} x
      * @param {number} y
@@ -122,9 +115,8 @@ export class SplitterBehavior extends AbstractBehavior {
     }
 
     /**
-     * Stage 1: buffer each loaded input into its internal port (single destination). Stage 2: route
-     * each loaded internal port to both outputs as competing fan-out intents, ranked by the
-     * round-robin state. All managed=0 — the seam does the moves.
+     * Submits managed=0 intents: each loaded input to its internal port, each loaded internal port
+     * fanned out to both outputs ranked by the round-robin state.
      * @private
      * @param {GameEngine} engine
      * @returns {void}
@@ -154,10 +146,8 @@ export class SplitterBehavior extends AbstractBehavior {
     }
 
     /**
-     * The POST_RESOLVE seam: record each resolved int->out and in->int hop and its item, clear the
-     * drained sources, buffer inputs into internal ports, then write internal ports out — record,
-     * clear, fill in that order so items cross at belt speed. Finally advance the round-robin state of
-     * every splitter that routed an item.
+     * POST_RESOLVE seam: record resolved hops, clear drained sources, then fill destinations — in
+     * that order so items cross at belt speed — and advance routed splitters' round-robin state.
      * @private
      * @param {GameEngine} engine
      * @returns {void}

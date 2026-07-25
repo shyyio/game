@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import {Game} from "@/common/Game.js";
 import {Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
-import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
-import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
+import {CreateObjectMessage} from "@/common/CoreMessages.js";
+import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
 import {PortItemSetEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
-import {beltsOf} from "@/mods/Logistics/testHelpers.js";
+import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 
 const RED = 1;
@@ -32,7 +32,7 @@ test("a Game on GameEngine routes belt render events only to sessions watching t
     game.dispatchMessage(new SetViewportMessage([elsewhere]), bystander);
 
     for (const cell of CELLS) {
-        game.dispatchMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL), watcher);
+        game.dispatchMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP), watcher);
     }
 
     // Feed an item; do not drain, so it pops and rests at the out-port (tail tile 0,0).

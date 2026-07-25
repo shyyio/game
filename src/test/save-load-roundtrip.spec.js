@@ -4,12 +4,10 @@ import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {DemoMachineType} from "@/mods/Demo/declaration.js";
 import {WaterResourceType, ExtractorType, ITEM_TYPE_WATER} from "@/mods/Resources/declaration.js";
-import {SplitterDefinition} from "@/mods/Logistics/objectTypes.js";
-import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
-import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
+import {SplitterDefinition, BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {beltsOf} from "@/mods/Logistics/testHelpers.js";
+import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 
 // Populates an engine with one of every migrated object type and ticks it a few times.
 async function populated() {
@@ -21,7 +19,7 @@ async function populated() {
     const splitterEid = engine.placed.eidsOf(SplitterDefinition.typeId)[0];
     const splitterId = engine.placed.objectIdOf(splitterEid);
     for (const cell of [{x: 20, y: 20}, {x: 20, y: 21}, {x: 20, y: 22}]) {
-        engine.applyMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL));
+        engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP));
     }
     for (let i = 0; i < 3; i += 1) {
         engine.tickAll();
@@ -76,7 +74,7 @@ test("a snapshot round-trips through structured SQLite (the node save path)", as
 
     const loaded = await store.load();
     const names = loaded.components.map(component => component.name);
-    for (const name of ["Port", "Position", "Occupancy", "PlacedObject", "Machine", "Extractor", "Splitter", "BeltPath", "Belt", "BeltItem"]) {
+    for (const name of ["Port", "Position", "Occupancy", "PlacedObject", "Machine", "Extractor", "Splitter", "BeltPath", "BeltPathMember", "BeltItem"]) {
         assert.ok(names.includes(name), `${name} table present`);
     }
 

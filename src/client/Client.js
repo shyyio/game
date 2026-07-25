@@ -112,11 +112,10 @@ export class Client {
         this.inspectLayer = new InspectLayer();
         // Shared placement facing, so orientation persists across tool switches.
         this.toolRotation = new ToolRotation();
-        // Shared cross-mod object index, written by ObjectCacheWriter (derived types) and bespoke
-        // mods (belts), queried by tools/layers for tile lookups, placement collision, and
-        // connection rendering.
+        // Shared cross-mod object index, written by ObjectCacheWriter, queried by tools/layers
+        // for tile lookups, placement collision, and connection rendering.
         this.cache = new ClientCache();
-        // Sole cache writer for derived object types; first in the event dispatch chain.
+        // Sole cache writer; first in the event dispatch chain.
         this.objectWriter = new ObjectCacheWriter(modRegistry, this.cache);
         // The single shared item layer: belts drive their computed-position items imperatively;
         // resting out-port items render here automatically from the port-item events.
@@ -137,11 +136,14 @@ export class Client {
         this.statusLayer.setConnecting();
 
         // The derived client surface (draw layer + ghost + tool) of every behavior-driven type;
-        // bespoke types (belt) bring their own through their client mod.
+        // bespokeClient types (belts) bring their own through their client mod.
         this.bundles = this._buildBundles();
         for (const bundle of this.bundles) {
             this.drawLayerRegistry.add(bundle.drawLayer);
             this.drawLayerRegistry.add(bundle.ghostLayer);
+        }
+        for (const mod of this.modRegistry.clientMods) {
+            mod.setup(this);
         }
         for (const layer of this.modRegistry.clientMods.flatMap(mod => mod.drawLayers(this))) {
             this.drawLayerRegistry.add(layer);
@@ -472,7 +474,7 @@ export class Client {
         if (event instanceof ChunkSyncEvent) {
             // A chunk-sync bundle: queue each inner event, exploded to its per-delta events so
             // the drain budget counts real applications, not envelopes. Sync events are distinct
-            // types (e.g. BeltSyncEvent vs BeltInsertEvent), so handlers can already tell a load
+            // types (e.g. ObjectSyncEvent vs ObjectInsertEvent), so handlers can already tell a load
             // from a live change.
             for (const inner of event.events) {
                 for (const delta of inner instanceof AbstractBatchEvent ? inner.explode() : [inner]) {
@@ -615,7 +617,7 @@ export class Client {
      */
     _buildBundles() {
         return this.modRegistry.objectTypes
-            .filter(type => type.behavior !== null)
+            .filter(type => !type.bespokeClient)
             .map(type => {
                 let drawLayer = type.createDrawLayer(this);
                 if (drawLayer === null) {

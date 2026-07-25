@@ -15,6 +15,14 @@
 //       via sim.provide(ServiceKey, instance) / sim.resolve(ServiceKey).
 //   client.js (optional) — an AbstractClientMod for bespoke rendering/input (see @/sdk/client.js).
 //
+// Mod directory layout — the entry files above sit at the mod root; everything else mirrors the
+// repo's layering (see mods/Logistics for the full shape):
+//   common/ — modules both sides import: object types, constants, wire events, geometry.
+//   sim/    — behaviors and sim engines (imported by common/ types and the sim entry).
+//   client/ — draw layers and tools (imported only by client.js).
+// Files are named after the class they export (BeltDrawLayer.js exports BeltDrawLayer); specs sit
+// beside the module they test.
+//
 // Lifecycle: register the loadout's packages into a ModRegistry, freeze() it once (assigning every
 // ObjectType its positional typeId and every wire class its wireId), then build the GameEngine /
 // Client on the frozen registry. Both build sites share `src/mods/loadout.js`, so the positional
@@ -70,9 +78,8 @@ export {
 // it, declare a static `wireFields` map, and optionally override `validate`.
 export {AbstractMessage} from "@/common/AbstractMessage.js";
 
-// Generic "delete the object with this id" message; the engine's PlacedObjects host despawns any
-// derived entity, and bespoke handlers (belts) take the ids they own. Lets a tool remove any
-// object without knowing which mod owns it.
+// Generic "delete the object with this id" message; the engine's PlacedObjects host despawns the
+// entity. Lets a tool remove any object without knowing which mod owns it.
 export {DeleteObjectMessage} from "@/common/CoreMessages.js";
 
 // Generic object-placement message (tagged with an ObjectType's typeId) and the generic object

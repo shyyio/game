@@ -2,11 +2,11 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Game} from "@/common/Game.js";
 import {Direction} from "@/common/constants.js";
-import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
-import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
+import {CreateObjectMessage} from "@/common/CoreMessages.js";
+import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {GameEngine, EMPTY, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
-import {beltsOf} from "@/mods/Logistics/testHelpers.js";
+import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 
 const RED = 1;
 const CELLS = [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}];
@@ -21,7 +21,7 @@ test("a Game on GameEngine places and ticks belts via messages", async () => {
     await game.init();
 
     for (const cell of CELLS) {
-        game.dispatchMessage(new CreateBeltMessage(cell.x, cell.y, Direction.UP, BELT_NORMAL), null);
+        game.dispatchMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP), null);
     }
 
     const path = beltsOf(engine).pathAt(HEAD.x, HEAD.y);

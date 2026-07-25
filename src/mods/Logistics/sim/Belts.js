@@ -1,22 +1,21 @@
 import {TickPhase, Direction, EMPTY, NO_EID, chunkId, chunkOrigin, tileId} from "@/sdk/common.js";
 import {
-    BeltInsertEvent,
-    BeltSyncBatchEvent,
     BeltPathBatchEvent,
-    BeltDeleteEvent,
     BeltPathRecalculateEvent,
     BeltItemSyncEvent,
     BeltItemResetEvent,
     BeltItemBatchEvent,
-} from "./events.js";
+} from "../common/events.js";
 import {
     BELT_NORMAL,
     BELT_RAMP_DOWN,
     BELT_RAMP_UP,
     BELT_UNDERGROUND,
     LAYERS_UNDERGROUND_AXIS,
-} from "./constants.js";
-import {beltPositionLayer} from "./geometry.js";
+    MAX_UNDERGROUND_LENGTH,
+    beltPositionLayer,
+    tunnelStep,
+} from "../common/constants.js";
 import {ItemStore} from "./ItemStore.js";
 
 // An empty half-tile in a path's occupancy.
@@ -29,18 +28,12 @@ const PATH_CAPACITY = 1024;
 const NO_SLOT = -1;
 
 
-// Marks a live path entity. One shared object: the world keys components by identity, so a fresh
-// literal per path would register a new component each time and burn a mask bit on every path.
+// Marks a live path entity; one shared object, since the world keys components by identity.
 const PATH_MARKER = {};
 
 /**
- * Belt path movement on the bitECS engine, isolated-single-path subset: no merge/split/relink,
- * undergrounds, or cross-path shift chains yet. A path is a run of belts carrying a slab of the
- * shared {@link ItemStore} (ordered output-edge -> input-edge, each item holding the empty half-tiles
- * ahead of it) plus a
- * head_gap of empty half-tiles at the input edge. Each tick the first positive gap shrinks (Case 1)
- * or the lead item pops to the out-port (Case 2), growing head_gap, then a resting in-port item is
- * ingested at the input edge — all in constant time whatever the path carries.
+ * Belt path movement on the bitECS engine; a path carries a slab of the shared {@link ItemStore},
+ * ordered output-edge -> input-edge, each item holding the empty half-tiles ahead of it.
  */
 export class Belts {
 
@@ -49,24 +42,16 @@ export class Belts {
      */
     constructor(engine) {
         this.engine = engine;
-        // Path records keyed by head eid: {inPort, outPort, length, headGap, items}. `items` holds the
-        // path's item list only while it is not live: as a seed before it is tracked, and as a
-        // snapshot after it is dropped (an edit still reads what a replaced path carried). A live
-        // path's items sit in the shared store, addressed by its slot's columns.
+        // Path records; `items` is held only while a path is not live (seed before tracking, snapshot after drop).
         this.paths = [];
-        // Port eid -> the slot of the path fed by it, so a path finds its downstream neighbor across a
-        // shared seam port. A column rather than a Map: the submit pass reads it once per path per tick.
+        // Port eid -> slot of the path it feeds, so a path finds its downstream across a shared seam port.
         this._slotByInPort = this.engine.registerPortColumn(NO_SLOT);
-        // Tile key -> paths covering it, and belt id -> its one path. Edits touch only the tiles/belts
-        // of the run they rebuild, so these keep placement off a scan of every path in the world.
+        // Tile key -> covering paths, and belt id -> its path; keeps edits off a scan of every path.
         this._pathsByTile = new Map();
         this._pathByBeltId = new Map();
-        // Hot per-path state as typed columns indexed by slot (a path record carries its own slot, so
-        // dropping one is a swap-pop instead of a rebuild of the array). The tick phases read only these, so a
-        // pass over every path stays in sequential memory instead of chasing a path object and its
-        // ring. `_colLeadGap` is the lead item's gap (-1 when the path is empty) and `_colFirstGap`
-        // the index of the first item with room ahead of it; both are updated in place as the tick
-        // mutates the ring, so no phase rescans it.
+        // Hot per-path columns indexed by slot (records carry their slot, so a drop is a swap-pop).
+        // `_colLeadGap` is the lead item's gap (-1 when empty), `_colFirstGap` the first item with
+        // room ahead; both updated in place by the tick phases.
         this._pathCapacity = PATH_CAPACITY;
         this._colInPort = new Int32Array(PATH_CAPACITY);
         this._colOutPort = new Int32Array(PATH_CAPACITY);
@@ -74,13 +59,10 @@ export class Belts {
         this._colCount = new Int32Array(PATH_CAPACITY);
         this._colLeadGap = new Int32Array(PATH_CAPACITY);
         this._colFirstGap = new Int32Array(PATH_CAPACITY);
-        // Whether the path's chunk has a watcher, and the observation generation that answer was
-        // computed at (0 = never). Asking the engine costs a chunk hash and a call through the
-        // subscription predicate, which the move loop would otherwise pay per moving path per tick.
+        // Whether the path's chunk has a watcher, cached at an observation generation (0 = never).
         this._colObserved = new Uint8Array(PATH_CAPACITY);
         this._colObservedGen = new Int32Array(PATH_CAPACITY);
-        // The path's slab in the shared item store: where it starts, how many slots it spans, and
-        // which slot currently holds the lead (output-edge) item.
+        // The path's slab in the shared item store: base, span, and the slot holding the lead item.
         this._colItemBase = new Int32Array(PATH_CAPACITY);
         this._colItemSlab = new Int32Array(PATH_CAPACITY);
         this._colItemHead = new Int32Array(PATH_CAPACITY);
@@ -88,43 +70,31 @@ export class Belts {
         this._popCapacity = PATH_CAPACITY;
         this._popPorts = new Int32Array(PATH_CAPACITY);
         this._popTypes = new Int32Array(PATH_CAPACITY);
-        // Placed belts by tile key -> belt[] {x, y, direction, type, id}. A tile can hold several belts
-        // on different axes/layers (a surface belt and an underground crossing under it); the run at a
-        // tile is disambiguated by direction.
+        // Placed belts by tile key; a tile can hold belts on different axes/layers, disambiguated by direction.
         this._belts = new Map();
         /**
-         * Belt id -> belt, an index over the tile map for O(1) lookup by client id.
+         * Belt id -> belt.
          * @type {Map<number, {x:number, y:number, direction:number, type:number, id:number}>}
          */
         this._beltById = new Map();
-        // Chunk -> the belts and the paths (by head tile) it holds, so a subscribing session syncs a
-        // chunk without a scan of every belt and path in the world. Paths never cross a chunk seam.
-        this._beltsByChunk = new Map();
+        // Chunk -> the paths (by head tile) it holds; paths never cross a chunk seam.
         this._pathsByChunk = new Map();
         // Every live path's items, in three shared columns.
         this._items = new ItemStore();
         // Stable item id, the client's sprite key for continuity/glide.
         this._nextItemId = 1;
 
-        // Belt runtime state lives in the JS maps above (hot-path); for persistence it is materialized
-        // into these registered components at save (via the serialize hook) and read back at load (via
-        // the rebuild hook), so belts ride the same generic snapshot as every other object. Port
-        // references are eid columns, remapped with the shared Port entities on load.
-        // Belt state lives in JS runtime; these three components mirror it only at save (materialize)
-        // and load (reconstruct), so they are snapshotOnly — the port sweep reads the live pin hook.
+        // Runtime state lives in the JS maps above; these snapshotOnly components mirror it only at save/load.
         this._pathDef = engine.defineComponent("BeltPath", [
             {name: "inPort", kind: "eid", fill: NO_EID},
             {name: "outPort", kind: "eid", fill: NO_EID},
             {name: "headGap"},
             {name: "length"},
         ], {snapshotOnly: true});
-        this._beltDef = engine.defineComponent("Belt", [
+        // Path membership only; a belt's position/direction/kind ride the PlacedObject snapshot.
+        this._beltDef = engine.defineComponent("BeltPathMember", [
             {name: "path", kind: "eid", fill: NO_EID},
             {name: "index"},
-            {name: "x"},
-            {name: "y"},
-            {name: "direction"},
-            {name: "type"},
             {name: "objectId", fill: NO_EID},
         ], {snapshotOnly: true});
         this._itemDef = engine.defineComponent("BeltItem", [
@@ -146,6 +116,7 @@ export class Belts {
         engine.registerSerializeHook(() => this._materialize());
         engine.registerRebuildHook(() => this._reconstruct());
         engine.registerPortPin(() => this._pinnedPorts());
+        engine.registerChunkSync(chunk => this.chunkSync(chunk));
     }
 
     /**
@@ -163,8 +134,7 @@ export class Belts {
     }
 
     /**
-     * The belt on tile (x, y) facing `direction`, or undefined. At most one exists (same-axis overlap
-     * is disallowed).
+     * The belt on tile (x, y) facing `direction`, or undefined (same-axis overlap is disallowed).
      * @private
      * @param {number} x
      * @param {number} y
@@ -176,9 +146,7 @@ export class Belts {
     }
 
     /**
-     * The belt `belt` flows into: the belt on the tile ahead that continues the flow. A surface belt
-     * flows into the surface belt ahead (any facing — a bend); an underground continues the buried run
-     * on its own axis (another underground or a ramp).
+     * The belt `belt` flows into: the one continuing the flow on the tile ahead.
      * @private
      * @param {object} belt
      * @returns {object|undefined}
@@ -187,8 +155,7 @@ export class Belts {
         const ax = belt.x + Direction.dx(belt.direction);
         const ay = belt.y + Direction.dy(belt.direction);
         const ahead = this._beltsAt(ax, ay);
-        // An underground or a ramp-down feeds a buried output: the tunnel continues on the same axis
-        // into another underground or the ramp-up exit. Everything else feeds a surface belt.
+        // A tunnel continues on its own axis into an underground or ramp-up; everything else feeds a surface belt.
         if (belt.type === BELT_UNDERGROUND || belt.type === BELT_RAMP_DOWN) {
             return ahead.find(candidate =>
                 (candidate.type === BELT_UNDERGROUND || candidate.type === BELT_RAMP_UP)
@@ -198,8 +165,7 @@ export class Belts {
     }
 
     /**
-     * The belt feeding `belt` on its path: of the belts flowing into its tile, the most recently placed
-     * (highest id) wins the slot, so a newly placed belt steals a junction from an older feeder.
+     * The belt feeding `belt`: the highest-id feeder wins, so a new belt steals a junction.
      * @private
      * @param {object} belt
      * @returns {object|undefined}
@@ -234,7 +200,6 @@ export class Belts {
             this._belts.set(key, [held, belt]);
         }
         this._beltById.set(belt.id, belt);
-        this._chunkAdd(this._beltsByChunk, chunkId(belt.x, belt.y), belt);
     }
 
     /**
@@ -287,7 +252,6 @@ export class Belts {
             this._belts.set(key, remaining.length === 1 ? remaining[0] : remaining);
         }
         this._beltById.delete(belt.id);
-        this._chunkRemove(this._beltsByChunk, chunkId(belt.x, belt.y), belt);
     }
 
     /**
@@ -298,39 +262,33 @@ export class Belts {
     }
 
     /**
-     * Places a straight normal belt at (x, y) facing `direction`, (re)building the maximal in-line run
-     * it belongs to into one empty path. Path-construction subset: straight connections only, and
-     * built empty (no in-flight-item stash/unstash across merges yet).
+     * Registers a placed belt, (re)building the maximal in-line run it belongs to into one path.
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
      * @param {BeltType} [type]
+     * @param {number} [id] - the belt's object id, allocated by the generic spawn path
      * @returns {{id:number, inPort:number, outPort:number, length:number, segments:number[]}|null} null
      *     when the target cell is taken
      */
-    placeBelt(x, y, direction, type=BELT_NORMAL) {
-        // Surface belts (normal/ramp) share the surface layer; an underground occupies its axis layer,
-        // so it can cross under a surface belt. Reject if the layer's cell is taken.
+    placeBelt(x, y, direction, type=BELT_NORMAL, id=undefined) {
+        // An underground occupies its axis layer, so it can cross under a surface belt.
         const layer = beltPositionLayer(type, direction);
         if (!this.engine.cellsFree([{x, y, layer}])) {
             return null;
         }
-        const placed = {x, y, direction, type, id: this.engine.createObjectId()};
+        const placed = {x, y, direction, type, id: id === undefined ? this.engine.createObjectId() : id};
         this.engine.occupy([{x, y, layer}], placed.id);
 
         this._addBelt(placed);
 
-        // The run through the placed belt, following the flow across bends. Dropping the paths it
-        // overlaps can orphan belts that were in one of those paths but not in this run (a junction the
-        // new belt stole the downstream from) — each orphan rebuilds into its own path.
+        // Dropped overlapped paths can orphan belts outside this run; each rebuilds into its own path.
         const run = this._collectRun(placed);
         const {removed, orphans} = this._removePathsOverlapping(run);
         const result = this._buildRun(run, placed, removed);
         const rebuilt = this._rebuildOrphans(orphans, run, removed);
 
-        this.engine.emitEvent(new BeltInsertEvent(x, y, placed.id, direction, placed.type));
-        // Recalc + item rows for every path that changed (the run and any split-off orphan), so the
-        // client re-links geometry and positions items against the rebuilt paths.
+        // Recalc + item rows for every changed path (the run and any split-off orphan).
         const affected = [...run, ...rebuilt].map(belt => tileId(belt.x, belt.y));
         this._emitPathRecalcs(affected);
         this._emitPathItems(affected);
@@ -338,12 +296,39 @@ export class Belts {
     }
 
     /**
-     * Builds the run into paths: one path if it stays in a chunk (preserving in-flight items on an end
-     * extension), else one seam-connected empty path per chunk (paths never cross a chunk border).
+     * The ramp this placement would tunnel to; a same-kind ramp in between blocks the pairing.
+     * @param {number} x
+     * @param {number} y
+     * @param {Direction} direction
+     * @param {BeltType} kind - BELT_RAMP_DOWN or BELT_RAMP_UP
+     * @returns {{x:number, y:number, direction:number, type:number}|null}
+     */
+    rampPartner(x, y, direction, kind) {
+        const {dx, dy} = tunnelStep(kind, direction);
+        const partnerKind = kind === BELT_RAMP_UP ? BELT_RAMP_DOWN : BELT_RAMP_UP;
+        let cx = x;
+        let cy = y;
+        for (let i = 1; i < MAX_UNDERGROUND_LENGTH + 2; i += 1) {
+            cx += dx;
+            cy += dy;
+            for (const belt of this._beltsAt(cx, cy)) {
+                if (belt.type === kind) {
+                    return null;
+                }
+                if (belt.type === partnerKind && belt.direction === direction) {
+                    return {x: belt.x, y: belt.y, direction: belt.direction, type: belt.type};
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Builds the run into one path, or empty seam-connected per-chunk paths (paths never cross a chunk border).
      * @private
      * @param {object[]} run - the run's belts, head -> tail
      * @param {object} placed - the belt just placed
-     * @param {object[]} [removed] - the paths just dropped, for end-extension item preservation
+     * @param {object[]} [removed] - the paths just dropped
      * @returns {{id:number, inPort:number, outPort:number, length:number, segments:number[]}}
      */
     _buildRun(run, placed, removed=[]) {
@@ -355,13 +340,11 @@ export class Belts {
     }
 
     /**
-     * Rebuilds each orphaned belt (left pathless by a stolen junction) into its own path, carrying the
-     * items that sat on its belts in the source path, and skipping any already covered by the run or an
-     * earlier orphan's rebuild.
+     * Rebuilds each uncovered orphaned belt into its own path, carrying the items that sat on its belts.
      * @private
      * @param {object[]} orphans - belts dropped from removed paths, not in the run
      * @param {object[]} run - the run's belts (already rebuilt)
-     * @param {object[]} removed - the source paths the orphans were dropped from
+     * @param {object[]} removed - the source paths
      * @returns {object[]} the belts of the rebuilt orphan paths
      */
     _rebuildOrphans(orphans, run, removed) {
@@ -382,9 +365,7 @@ export class Belts {
     }
 
     /**
-     * Rebuilds a sub-run split off by an edit into its own path: a single-chunk sub-run keeps the items
-     * that sat on its belts in whichever source path fully contains it (empty if none does); a run
-     * spanning chunk borders rebuilds empty per-chunk (cross-chunk item preservation deferred).
+     * Rebuilds a split-off sub-run, keeping items only when single-chunk and fully contained by one source path.
      * @private
      * @param {object[]} run - the sub-run's belts, head -> tail
      * @param {object[]} sourcePaths - the dropped paths to carry items from
@@ -402,8 +383,7 @@ export class Belts {
     }
 
     /**
-     * Emits a path-recalc event for every path covering one of `tileKeys`, so the client re-links its
-     * belt geometry.
+     * Emits a path-recalc event for every path covering one of `tileKeys`.
      * @private
      * @param {number[]} tileKeys
      * @returns {void}
@@ -415,8 +395,7 @@ export class Belts {
     }
 
     /**
-     * Re-emits the item rows of every path covering one of `tileKeys`, after the belt-insert +
-     * path-recalc so the client positions them against the rebuilt path.
+     * Re-emits the item rows of every path covering one of `tileKeys`, after the path-recalc.
      * @private
      * @param {number[]} tileKeys
      * @returns {void}
@@ -431,8 +410,7 @@ export class Belts {
     }
 
     /**
-     * The path-recalc event for a path: its belt ids in path order (head last) and its out-port id,
-     * routed by the head tile.
+     * The path-recalc event: belt ids in path order (head last) and out-port id, routed by the head tile.
      * @private
      * @param {object} path
      * @returns {BeltPathRecalculateEvent}
@@ -457,8 +435,7 @@ export class Belts {
     }
 
     /**
-     * Buffers the upsert for the item in store cell `cell`, carried by the path in `slot`. Takes the
-     * cell rather than the item's fields so an unobserved path reads none of them.
+     * Buffers the upsert for the item in store cell `cell`; an unobserved path reads none of its fields.
      * @private
      * @param {Map<number, BeltItemBatchEvent>} batches
      * @param {number} slot
@@ -498,9 +475,7 @@ export class Belts {
 
 
     /**
-     * Whether the path in `slot` has a watcher, cached until the engine's observation generation moves.
-     * The move loop checks this before building per-item events; a session subscribing later gets the
-     * path through chunkSync.
+     * Whether the path in `slot` has a watcher, cached per observation generation.
      * @private
      * @param {number} slot
      * @returns {boolean}
@@ -518,8 +493,7 @@ export class Belts {
     }
 
     /**
-     * The re-sync for one of a path's items: a snap in place, since an edit re-rowed the item
-     * without moving it.
+     * The re-sync for one of a path's items: a snap in place.
      * @private
      * @param {object} path
      * @param {number} itemId
@@ -533,8 +507,7 @@ export class Belts {
     }
 
     /**
-     * Buffers the delete for the lead item a path is about to pop. Takes the store cell rather than
-     * the id so an unobserved path reads nothing.
+     * Buffers the delete for the popping lead item; an unobserved path reads nothing.
      * @private
      * @param {Map<number, BeltItemBatchEvent>} batches
      * @param {number} slot
@@ -560,9 +533,7 @@ export class Belts {
     }
 
     /**
-     * Removes the belt at (x, y) facing `direction`, rebuilding the surviving runs on each side (the
-     * path splits, or shortens). Rebuilt empty for now — in-flight-item preservation across deletion
-     * is deferred.
+     * Removes the belt at (x, y) facing `direction`, rebuilding the surviving runs on each side.
      * @param {number} x
      * @param {number} y
      * @param {number} direction
@@ -576,8 +547,7 @@ export class Belts {
         const removedId = belt.id;
         this.engine.destroyCells([{x, y, layer: beltPositionLayer(belt.type, direction)}]);
 
-        // The belts this one linked to — the belt ahead and every belt that fed its tile — anchor the
-        // surviving runs. Captured before removal, while the flow links are intact.
+        // Anchors for the surviving runs, captured while the flow links are intact.
         const neighbors = [];
         const ahead = this._flowInto(belt);
         if (ahead !== undefined) {
@@ -591,8 +561,7 @@ export class Belts {
             }
         }
 
-        // Capture the paths holding this belt (with their item layout) before dropping them, so each
-        // surviving sub-run keeps the items that were physically on its belts.
+        // Capture the holding path before dropping it, so each sub-run keeps the items on its belts.
         const held = this._pathByBeltId.get(removedId);
         const source = held === undefined ? [] : [held];
         if (held !== undefined) {
@@ -600,8 +569,7 @@ export class Belts {
         }
         this._removeBeltObject(belt);
 
-        // Rebuild each surviving neighbor's run into its own path (split or shortened), carrying the
-        // items that sat on its belts in the removed path.
+        // Rebuild each surviving neighbor's run into its own path, carrying its items.
         const covered = new Set();
         const affected = [];
         for (const neighbor of neighbors) {
@@ -622,8 +590,6 @@ export class Belts {
         }
         this._emitPathRecalcs(affected);
         this._emitPathItems(affected);
-
-        this.engine.emitEvent(new BeltDeleteEvent(x, y, removedId));
     }
 
     /**
@@ -641,8 +607,7 @@ export class Belts {
     }
 
     /**
-     * The undergrounds buried in `ramp`'s tunnel (not the paired ramp): walking the buried run from a
-     * ramp-down downstream, or from a ramp-up upstream, while the belts are undergrounds.
+     * The undergrounds buried in `ramp`'s tunnel (not the paired ramp).
      * @param {object} ramp
      * @returns {object[]}
      */
@@ -695,8 +660,7 @@ export class Belts {
     }
 
     /**
-     * The path's per-half-tile occupancy, indexed from the input (head) edge: `headGap` empty
-     * (GAP) cells, then the items filled toward the output edge.
+     * The path's per-half-tile occupancy, indexed from the input edge.
      * @private
      * @param {object} path
      * @returns {number[]}
@@ -714,9 +678,7 @@ export class Belts {
     }
 
     /**
-     * Rebuilds `{items, headGap}` from a per-half-tile occupancy slice (indexed from the input edge):
-     * walking in from the output edge, each occupied cell becomes an item carrying the empty cells
-     * just passed, and whatever empties trail at the input edge are the head-gap.
+     * Rebuilds `{items, headGap}` from an input-indexed occupancy slice, walking in from the output edge.
      * @private
      * @param {number[]} occ
      * @returns {{items:object[], headGap:number}}
@@ -737,9 +699,7 @@ export class Belts {
     }
 
     /**
-     * The items for a run that merges several removed paths (folding them into one): each belt keeps
-     * its own half-tile content, the newly placed belt is empty, and a resting port item that a merge
-     * buries (a source's out-port, or a sink's in-port) re-enters at that internal boundary.
+     * The items for a run merging removed paths; a buried resting port item re-enters at its internal boundary.
      * @private
      * @param {object[]} run - the merged run's belts, head -> tail
      * @param {object[]} removed - the paths folded into it
@@ -756,8 +716,7 @@ export class Belts {
                 if (j === undefined) {
                     continue;
                 }
-                // Each belt's output half carries its content; a belt that had an input half (non-head in
-                // the source) keeps it too when it still has one in the merged run.
+                // Output half carries the content; an input half carries over only when both runs have one.
                 occ[j === 0 ? 0 : 2 * j] = sourceOcc[oldIdx === 0 ? 0 : 2 * oldIdx];
                 if (j > 0 && oldIdx > 0) {
                     occ[2 * j - 1] = sourceOcc[2 * oldIdx - 1];
@@ -784,9 +743,7 @@ export class Belts {
     }
 
     /**
-     * The items to carry onto a sub-run split off `sourcePath` by a deletion: the occupancy of the
-     * sub-run's belts in the source path, re-derived. Empty unless the sub-run is a contiguous slice of
-     * the source (a merge into another path can't map its slots).
+     * The items carried onto a sub-run split off `sourcePath`; empty unless a contiguous slice of the source.
      * @private
      * @param {object} sourcePath
      * @param {object[]} subRunBelts
@@ -805,8 +762,7 @@ export class Belts {
     }
 
     /**
-     * A new path record over `runBelts` (head -> tail) with the given items/head-gap. The head belt id
-     * is the client path id; the tail's downstream edge is the out-port.
+     * A new path record over `runBelts` (head -> tail) with the given items/head-gap.
      * @private
      * @param {object[]} runBelts
      * @param {{items:{id:number, type:number, gap:number}[], headGap?:number}} state
@@ -816,8 +772,7 @@ export class Belts {
         const ports = this._pathPorts(runBelts);
         let inPort = ports.inPort;
         const outPort = ports.outPort;
-        // A closed loop (the tail flows back into the head) shares one port for both ends, so the popped
-        // lead item re-ingests and items circulate instead of piling at a dead out-port.
+        // A closed loop shares one port for both ends, so the popped lead re-ingests and items circulate.
         if (runBelts.length > 1 && this._flowInto(runBelts[runBelts.length - 1]) === runBelts[0]) {
             inPort = outPort;
         }
@@ -841,8 +796,7 @@ export class Belts {
     }
 
     /**
-     * Builds a per-chunk chain of empty seam-connected paths (each segment's out-port is the next
-     * segment's in-port). Returns the whole chain's endpoints and segment path ids.
+     * Builds a per-chunk chain of empty seam-connected paths (each segment's out-port is the next's in-port).
      * @private
      * @param {object[][]} segments - the run's belts split into per-chunk segments, head -> tail
      * @returns {{id:number, inPort:number, outPort:number, length:number, segments:number[]}}
@@ -863,9 +817,7 @@ export class Belts {
     }
 
     /**
-     * The shared in/out ports for a run (belts head -> tail): the in-port is the edge feeding the head
-     * tile (head belt's facing); the out-port is the edge the tail feeds downstream (tail belt's
-     * facing) — so seams and adjacent objects adopt the same ports via {@link GameEngine#portAt}.
+     * The run's in/out edge ports via {@link GameEngine#portAt}, so seams and adjacent objects adopt them.
      * @private
      * @param {object[]} runBelts - the run's belts, head -> tail
      * @returns {{inPort:number, outPort:number}}
@@ -884,20 +836,18 @@ export class Belts {
     }
 
     /**
-     * Builds the single-chunk run through the placed belt into one path, preserving in-flight items
-     * when it end-extends one just-removed path.
+     * Builds the single-chunk run into one path, preserving items when it end-extends one removed path.
      * @private
      * @param {object[]} run - the run's belts, head -> tail
      * @param {object} placed - the belt just placed
-     * @param {object[]} removed - the paths just dropped by this placement
+     * @param {object[]} removed - the paths just dropped
      * @returns {{id:number, inPort:number, outPort:number, length:number, segments:number[]}}
      */
     _buildSingleChunk(run, placed, removed) {
         const runKeys = run.map(belt => tileId(belt.x, belt.y));
         const newKey = tileId(placed.x, placed.y);
 
-        // Extending one existing path at an end preserves its in-flight items; anything else (a fresh
-        // isolated belt, a junction split, or a merge of two item-carrying paths) rebuilds empty.
+        // Only extending one path at an end preserves its in-flight items; anything else rebuilds empty.
         let items = [];
         let headGap = run.length * 2 - 1;
         const extension = removed.length === 1 && this._isEndExtension(runKeys, removed[0].belts, newKey)
@@ -906,20 +856,15 @@ export class Belts {
         if (extension !== null) {
             const old = extension;
             if (runKeys[0] === newKey) {
-                // Head (input-edge) extension: the new empty belt is headroom; items keep their
-                // distance from the unchanged output edge (item ids are reassigned below).
+                // Head extension: the new belt is headroom; items keep their distance from the output edge.
                 items = old.items;
                 headGap = old.initialHeadGap + 2;
             } else {
-                // Tail (output-edge) extension: the new belt is empty space at the moved-forward output
-                // edge. In-flight items keep their distance from the input edge; a resting out-port item
-                // re-enters at the new belt's input edge and crosses it before reaching the new out-port.
+                // Tail extension: items keep their distance from the input edge.
                 const carried = old.items;
                 const resting = this.engine.Port.item[old.outPort];
                 if (resting !== EMPTY) {
-                    // The out-port item sat at the tail's output edge, so after the extension it rests at
-                    // the new belt's input edge — one half-tile from the moved out-port. It leads the
-                    // path with that half-tile ahead of it, keeping its visual position.
+                    // A resting out-port item re-enters one half-tile from the moved out-port, keeping its position.
                     items = [{id: this._nextItemId, type: resting, gap: 1}, ...carried];
                     this._nextItemId += 1;
                     headGap = old.initialHeadGap;
@@ -936,15 +881,11 @@ export class Belts {
                 }
             }
         } else if (removed.length > 0) {
-            // A merge (or junction split) that folds one or more item-carrying paths into this run:
-            // reconstruct the items from each belt's half-tile content.
+            // A merge: reconstruct the items from each belt's half-tile content.
             ({items, headGap} = this._mergedItems(run, removed));
         }
 
-        // The client orders items by id (ascending = output -> input), so renumber the rebuilt run in
-        // array order to keep that invariant — a prepended lead item would otherwise sort as input-most
-        // and shift the items a tile toward the output. Safe because the edit re-syncs (RESET + snap),
-        // so the old sprite ids need not be kept.
+        // Renumber in array order: the client sorts items by id, ascending = output -> input.
         items = items.map(item => {
             const renumbered = {id: this._nextItemId, type: item.type, gap: item.gap};
             this._nextItemId += 1;
@@ -989,15 +930,13 @@ export class Belts {
     }
 
     /**
-     * The path run through `belt`, ordered head (most upstream, in-port) -> tail (most downstream,
-     * out-port), following the flow across bends. Each step links only when the downstream belt's
-     * chosen upstream is this one, so a junction ends the run there (the other branch is its own path).
+     * The run through `belt`, head -> tail; a junction ends the run where the downstream's chosen upstream diverges.
      * @private
      * @param {object} belt
      * @returns {object[]} the run's belts, head -> tail
      */
     _collectRun(belt) {
-        // Walk upstream to the head, stopping at a loop or a belt whose chosen upstream diverges.
+        // Walk upstream to the head, stopping at a loop or a diverging chosen upstream.
         let head = belt;
         const upstream = new Set([head.id]);
         for (;;) {
@@ -1009,7 +948,7 @@ export class Belts {
             head = up;
         }
 
-        // Collect downstream from the head, stopping where the flow leaves a belt this run owns.
+        // Collect downstream from the head, stopping where the flow leaves the run.
         const run = [];
         const seen = new Set();
         let current = head;
@@ -1026,9 +965,7 @@ export class Belts {
     }
 
     /**
-     * Drops any path sharing a belt with `run` (matched by belt id, so a crossing perpendicular path —
-     * a different belt on the same tile — survives). Returns the dropped paths and the belts they held
-     * that the run doesn't (orphaned by a stolen junction, to be rebuilt into their own paths).
+     * Drops any path sharing a belt id with `run` (a crossing perpendicular path survives).
      * @private
      * @param {object[]} run - the run's belts
      * @returns {{removed: object[], orphans: object[]}}
@@ -1064,8 +1001,7 @@ export class Belts {
     }
 
     /**
-     * The port eids the live paths still reference (each path's in/out edge port), so the engine's
-     * port sweep keeps them — belt paths hold these outside any component.
+     * The port eids the live paths still reference, so the engine's port sweep keeps them.
      * @private
      * @returns {number[]}
      */
@@ -1109,9 +1045,7 @@ export class Belts {
     }
 
     /**
-     * Moves a new path's seed items into the shared store: a slab as wide as the path (it can never
-     * hold more items than it has half-tiles), filled output edge -> input edge, then the derived lead
-     * columns. The record's list is dropped — from here the slot's columns own the items.
+     * Moves seed items into a slab as wide as the path (it can never hold more items than half-tiles).
      * @private
      * @param {number} slot
      * @param {object} path
@@ -1207,8 +1141,7 @@ export class Belts {
     }
 
     /**
-     * The index of the first item at or after `from` with empty space ahead of it, or -1. This is the
-     * gap a stalled path compresses into; it only ever walks forward, so the scan is amortized O(1).
+     * The first item at or after `from` with room ahead, or -1; it only walks forward, so amortized O(1).
      * @private
      * @param {number} slot
      * @param {number} from
@@ -1233,8 +1166,7 @@ export class Belts {
     }
 
     /**
-     * Recomputes a path's lead columns by scanning its slab. Only for a path whose items were set
-     * wholesale (build, load, edit); the tick phases update the columns in place instead.
+     * Recomputes lead columns by scanning the slab; only for wholesale item sets, the tick updates in place.
      * @private
      * @param {number} slot
      * @returns {void}
@@ -1275,8 +1207,7 @@ export class Belts {
         if (slot === undefined) {
             return;
         }
-        // Snapshot the live head-gap and items back onto the record: a dropped path is still read by
-        // the edit that replaced it (an end extension carries its headroom and load forward).
+        // Snapshot live head-gap and items onto the record; the replacing edit still reads a dropped path.
         path.initialHeadGap = this._colHeadGap[slot];
         path.items = this._unloadItems(slot);
         this._items.free(this._colItemBase[slot], this._colItemSlab[slot]);
@@ -1397,15 +1328,13 @@ export class Belts {
         this._slotByInPort.column[path.inPort] = NO_SLOT;
         this._unindexPath(path);
         this.engine.unregisterRenderedPort(path.outPort);
-        // Clear the client's item sprites for this (soon-stale) path id.
+        // Clear the client's item sprites for the stale path id.
         this._emitItemReset(path);
         this.engine.destroyEntity(path.id);
     }
 
     /**
-     * SUBMIT_INTENTS: a path with an item resting on its output edge submits the virtual shift intent
-     * (in-port -> out-port, managed=0) so the resolver frees the out-port; a path with headroom or a
-     * gap declares its in-port drainable (destination-less) so an upstream transfer can resolve.
+     * SUBMIT_INTENTS: a lead item submits its out-port shift; a path with room declares its in-port drainable.
      * @private
      * @returns {void}
      */
@@ -1425,8 +1354,7 @@ export class Belts {
             const outPort = outPortCol[slot];
             const leadIsItem = leadGapCol[slot] === 0;
             if (leadIsItem) {
-                // The out-port is free if empty, or if the downstream path can ingest this tick (head
-                // room or a gap), letting the resolver's chain shift the whole packed run at once.
+                // Free if empty or the downstream can ingest, so the resolver's chain shifts a packed run at once.
                 const downstream = slotByInPort[outPort];
                 const downstreamCanIngest = downstream !== NO_SLOT
                     && (headGapCol[downstream] > 0 || firstGapCol[downstream] !== -1);
@@ -1444,17 +1372,15 @@ export class Belts {
     }
 
     /**
-     * POST_RESOLVE: move each path one half-tile (pop the lead item, or shrink the first gap with room
-     * in it), grow head_gap accordingly, then ingest a resting in-port item at the input edge.
+     * POST_RESOLVE: move each path one half-tile, then ingest a resting in-port item at the input edge.
      * @private
      * @returns {void}
      */
     _move() {
         const P = this.engine.Port.item;
 
-        // Phase 1: move each path one half-tile, buffering pops. Out-port writes are deferred so a
-        // shared seam still holds last tick's value when the downstream ingests below (an item rests a
-        // tick in the seam).
+        // Phase 1: move each path one half-tile; out-port writes deferred so a shared seam still
+        // holds last tick's value.
         const engine = this.engine;
         const inPortCol = this._colInPort;
         const outPortCol = this._colOutPort;
@@ -1468,10 +1394,9 @@ export class Belts {
         const itemTypes = this._items.types;
         const itemGaps = this._items.gaps;
         const count = this.paths.length;
-        // Reused across ticks: the deferred out-port writes, as parallel columns.
+        // Deferred out-port writes, reused across ticks.
         let popCount = 0;
-        // One batch per chunk, flushed at the end of the pass so the pass stays ordered against
-        // everything emitted outside it.
+        // One batch per chunk, flushed at the end so the pass stays ordered against outside emits.
         const batches = new Map();
 
         for (let slot = 0; slot < count; slot += 1) {
@@ -1481,7 +1406,7 @@ export class Belts {
                 continue;
             }
 
-            // Only a moving path reaches into the item store; nothing here touches the path record.
+            // Only a moving path reaches into the item store.
             const base = baseCol[slot];
             const slab = slabCol[slot];
             const head = headCol[slot];
@@ -1491,8 +1416,7 @@ export class Belts {
                 this._popTypes[popCount] = itemTypes[base + head];
                 popCount += 1;
                 this._bufferPoppedItem(batches, slot, base + head);
-                // Gaps are distances to the item ahead, so dropping the lead advances the rest and
-                // the new lead's gap is already its distance to the output edge.
+                // Gaps are relative: dropping the lead advances everything behind it.
                 const nextHead = head + 1 === slab ? 0 : head + 1;
                 const remaining = countCol[slot] - 1;
                 headCol[slot] = nextHead;
@@ -1500,8 +1424,7 @@ export class Belts {
                 leadGapCol[slot] = remaining === 0 ? -1 : itemGaps[base + nextHead];
                 firstGapCol[slot] = firstGap === -1 ? -1 : firstGap - 1;
             } else {
-                // One write advances the item holding this gap and everything behind it; the packed
-                // block ahead stays put.
+                // Gaps are relative: one write advances this item and everything behind it.
                 let at = head + firstGap;
                 if (at >= slab) {
                     at -= slab;
@@ -1512,8 +1435,7 @@ export class Belts {
                 if (firstGap === 0) {
                     leadGapCol[slot] = gap;
                 }
-                // A closed gap stays closed until the block ahead pops, so this walk never revisits
-                // an item: amortized constant.
+                // Amortized O(1): the walk never revisits an item.
                 if (gap === 0) {
                     firstGapCol[slot] = this._nextPositiveGap(slot, firstGap + 1);
                 }
@@ -1521,7 +1443,7 @@ export class Belts {
             headGapCol[slot] += 1;
         }
 
-        // Phase 2: ingest each path's resting in-port item at the input edge, filling the headroom.
+        // Phase 2: ingest each path's resting in-port item at the input edge.
         const itemIds = this._items.ids;
         for (let slot = 0; slot < count; slot += 1) {
             const inPort = inPortCol[slot];
@@ -1529,7 +1451,7 @@ export class Belts {
                 continue;
             }
             const type = P[inPort];
-            // The ingested item lands on the input edge, so it carries the headroom ahead of it.
+            // The item lands on the input edge, carrying the headroom ahead of it.
             const gap = headGapCol[slot] - 1;
             const id = this._nextItemId;
             this._nextItemId += 1;
@@ -1588,22 +1510,12 @@ export class Belts {
     }
 
     /**
-     * The events recreating this module's belts and their in-flight items in `chunk`, for a session
-     * that just subscribed: one belt-sync event per belt tile, then per path a recalc plus one upsert
-     * per in-flight item. Resting out-port items ride the engine's shared rendered-port sync.
+     * The events recreating `chunk`'s paths and in-flight items for a just-subscribed session.
      * @param {number} chunk
      * @returns {object[]}
      */
     chunkSync(chunk) {
         const origin = chunkOrigin(chunk);
-        let belts = null;
-        const chunkBelts = this._beltsByChunk.get(chunk);
-        if (chunkBelts !== undefined) {
-            belts = new BeltSyncBatchEvent(origin.x, origin.y);
-            for (const belt of chunkBelts) {
-                belts.add(belt.id, belt.x, belt.y, belt.direction, belt.type);
-            }
-        }
         let paths = null;
         let items = null;
         const chunkPaths = this._pathsByChunk.get(chunk);
@@ -1620,15 +1532,12 @@ export class Belts {
                 items.addUpsert(head.pathId, item.id, item.gap, item.type);
             }
         }
-        // Belts before paths before items: the client positions a path against its belts, and its
-        // items against the path.
-        return [belts, paths, items].filter(batch => batch !== null);
+        // Paths before items: the client positions a path's items against the path.
+        return [paths, items].filter(batch => batch !== null);
     }
 
     /**
-     * Serialize hook: flushes the JS runtime (paths, belts, items) into the BeltPath/Belt/BeltItem
-     * components so the generic snapshot captures belts. Prior save entities are cleared first; the
-     * shared Port entities carry the port items, referenced here by eid.
+     * Serialize hook: flushes the JS path runtime into the snapshot components, clearing prior save entities.
      * @private
      * @returns {void}
      */
@@ -1650,15 +1559,10 @@ export class Belts {
             BP.length[pathEid] = path.length;
 
             for (const [index, beltId] of path.beltIds.entries()) {
-                const belt = this.beltById(beltId);
-                const beltEid = this.engine.createEntity(this._beltDef);
-                B.path[beltEid] = pathEid;
-                B.index[beltEid] = index;
-                B.x[beltEid] = belt.x;
-                B.y[beltEid] = belt.y;
-                B.direction[beltEid] = belt.direction;
-                B.type[beltEid] = belt.type;
-                B.objectId[beltEid] = beltId;
+                const memberEid = this.engine.createEntity(this._beltDef);
+                B.path[memberEid] = pathEid;
+                B.index[memberEid] = index;
+                B.objectId[memberEid] = beltId;
             }
 
             for (const [seq, item] of this._unloadItems(path.slot).entries()) {
@@ -1675,9 +1579,25 @@ export class Belts {
     }
 
     /**
-     * Rebuild hook: reconstructs the JS runtime from the BeltPath/Belt/BeltItem components a load
-     * repopulated, re-linking each path's belts, items, and ports and re-registering its rendered
-     * out-port.
+     * Clears the belt indexes ahead of a rebuild; belts re-register before the path hook re-links.
+     * @returns {void}
+     */
+    resetBelts() {
+        this._belts = new Map();
+        this._beltById = new Map();
+    }
+
+    /**
+     * Re-registers one placed belt after a load.
+     * @param {{x:number, y:number, direction:number, type:number, id:number}} belt
+     * @returns {void}
+     */
+    registerBelt(belt) {
+        this._addBelt(belt);
+    }
+
+    /**
+     * Rebuild hook: re-links each path from the snapshot components over the re-registered belts.
      * @private
      * @returns {void}
      */
@@ -1686,9 +1606,6 @@ export class Belts {
         this._slotByInPort.clear();
         this._pathsByTile = new Map();
         this._pathByBeltId = new Map();
-        this._belts = new Map();
-        this._beltById = new Map();
-        this._beltsByChunk = new Map();
         this._pathsByChunk = new Map();
         this._nextItemId = this.engine.globals.beltNextItemId;
 
@@ -1698,8 +1615,7 @@ export class Belts {
 
         const beltsByPath = new Map();
         for (const eid of this.engine.entitiesWith(this._beltDef)) {
-            const belt = {x: B.x[eid], y: B.y[eid], direction: B.direction[eid], type: B.type[eid], id: B.objectId[eid]};
-            this._addBelt(belt);
+            const belt = this.beltById(B.objectId[eid]);
             const pathEid = B.path[eid];
             if (!beltsByPath.has(pathEid)) {
                 beltsByPath.set(pathEid, []);

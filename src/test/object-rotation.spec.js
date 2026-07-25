@@ -1,13 +1,11 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
-import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {SplitterDefinition} from "@/mods/Logistics/objectTypes.js";
+import {BeltDefinition, SplitterDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {DemoMachineType, ITEM_TYPE_DEMO_INPUT, ITEM_TYPE_DEMO_OUTPUT} from "@/mods/Demo/declaration.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {beltsOf} from "@/mods/Logistics/testHelpers.js";
+import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 
 async function setup() {
     return makeGameEngine();
@@ -17,7 +15,7 @@ test("a RIGHT-facing machine adopts a RIGHT belt and cooks", async () => {
     const engine = await setup();
     // Belt (5,5) RIGHT feeds (6,5); machine at (6,5) facing RIGHT.
     engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, 6, 5, Direction.RIGHT));
-    engine.applyMessage(new CreateBeltMessage(5, 5, Direction.RIGHT, BELT_NORMAL));
+    engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, 5, 5, Direction.RIGHT));
     const belt = beltsOf(engine).pathAt(5, 5);
     assert.equal(belt.outPort, engine.portAt(6, 5, Direction.RIGHT), "belt out adopted as machine input");
 
@@ -35,7 +33,7 @@ test("a RIGHT-facing splitter adopts a RIGHT belt on its in_a", async () => {
     const engine = await setup();
     // Splitter at (6,5) facing RIGHT; in_a is its own tile edge. Belt (5,5) RIGHT feeds it.
     engine.applyMessage(new CreateObjectMessage(SplitterDefinition.typeId, 6, 5, Direction.RIGHT));
-    engine.applyMessage(new CreateBeltMessage(5, 5, Direction.RIGHT, BELT_NORMAL));
+    engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, 5, 5, Direction.RIGHT));
     const belt = beltsOf(engine).pathAt(5, 5);
     assert.equal(belt.outPort, engine.portAt(6, 5, Direction.RIGHT), "belt out adopted as splitter in_a");
 
