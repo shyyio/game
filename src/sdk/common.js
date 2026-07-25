@@ -126,6 +126,9 @@ export {tileId} from "@/common/util.js";
 // The map value under a key, created on first use.
 export {getOrCreate} from "@/common/util.js";
 
+// Drops a member from a Map<*, Set>, deleting the key once its set empties.
+export {removeFromGroup} from "@/common/util.js";
+
 // ---- Textures ----
 // Describes a texture atlas (image + frame data) a mod contributes.
 export {TextureDefinition} from "@/common/TextureDefinition.js";

@@ -6,7 +6,7 @@ import {
     Direction,
     AbstractTileMeshDrawLayer,
 } from "@/sdk/client.js";
-import {chunkId, getOrCreate} from "@/sdk/common.js";
+import {chunkId, getOrCreate, removeFromGroup} from "@/sdk/common.js";
 import {BeltBend, BELT_NORMAL, BELT_RAMP_DOWN, BELT_RAMP_UP, BELT_UNDERGROUND} from "../common/constants.js";
 import {inferBeltParent} from "../common/geometry.js";
 
@@ -246,12 +246,8 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
         const chunk = chunkId(belt.x, belt.y);
         this._belts.delete(id);
 
-        const belts = this._chunkBelts.get(chunk);
-        belts.delete(belt);
-        if (belts.size === 0) {
-            this._chunkBelts.delete(chunk);
-        }
-        this._memberRemoved(chunk, belts.size === 0);
+        removeFromGroup(this._chunkBelts, chunk, belt);
+        this._memberRemoved(chunk, !this._chunkBelts.has(chunk));
     }
 
     /**
