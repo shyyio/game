@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
+import {GameEngine, EMPTY} from "@/sim/GameEngine.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 
 // Boots an engine with `count` ports; the eids in `filledIds` (1-based, matching creation order)

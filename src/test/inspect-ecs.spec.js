@@ -1,11 +1,11 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {Game} from "@/common/Game.js";
+import {Game} from "@/sim/Game.js";
 import {Direction} from "@/common/constants.js";
 import {DemoMachineType, ITEM_TYPE_DEMO_INPUT, ITEM_TYPE_DEMO_OUTPUT} from "@/mods/Demo/declaration.js";
 import {SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
-import {GameEngine, TICK_PHASE_ORDER} from "@/common/sim/GameEngine.js";
+import {GameEngine, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 

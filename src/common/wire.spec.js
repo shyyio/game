@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert";
 
-import {ModRegistry} from "@/common/mod/ModRegistry.js";
+import {ModRegistry} from "@/common/ModRegistry.js";
 import {WireRegistry} from "@/common/wire.js";
 
 import {SetViewportMessage, SetInspectedObjectsMessage} from "@/common/CoreMessages.js";

@@ -1,7 +1,7 @@
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {ObjectGeometries} from "@/common/ObjectGeometry.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {StaticBehavior} from "@/common/sim/behaviors.js";
+import {StaticBehavior} from "@/sim/behaviors.js";
 import {NotImplementedError} from "@/common/error.js";
 
 export class PortDefinition {

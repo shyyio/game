@@ -4,8 +4,8 @@ import {InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
 import {WireRegistry} from "@/common/wire.js";
-import {GameEngine} from "@/common/sim/GameEngine.js";
-import {EventBus} from "@/common/EventBus.js";
+import {GameEngine} from "@/sim/GameEngine.js";
+import {EventBus} from "@/sim/EventBus.js";
 import {SettingsCache, PlayerSettingsCache} from "@/common/SettingsCache.js";
 import {CHUNK_SIZE, GameSettingsKey} from "@/common/constants.js";
 

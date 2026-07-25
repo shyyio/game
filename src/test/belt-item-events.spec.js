@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction, CHUNK_SIZE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
-import {GameEngine} from "@/common/sim/GameEngine.js";
+import {GameEngine} from "@/sim/GameEngine.js";
 import {EventCollector} from "@/test/EventCollector.js";
 import {Belts} from "@/mods/Logistics/sim/Belts.js";
 import {

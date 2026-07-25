@@ -3,7 +3,7 @@ import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {TILE_SIZE, GAME_FONT} from "@/client/constants.js";
 import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
 import {cellNeighbors, tileId} from "@/common/util.js";
-import {RoadBehavior, isWorkerBehavior} from "@/common/sim/behaviors.js";
+import {RoadBehavior, isWorkerBehavior} from "@/sim/behaviors.js";
 import {DEBUG_COLOR} from "@/client/Theme.js";
 import {drawLine, drawCircle, drawRect} from "@/client/pixiUtils.js";
 import {findCommuteRoute} from "@/client/workerRoute.js";

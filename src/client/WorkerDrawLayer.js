@@ -2,7 +2,7 @@ import {Sprite, Texture} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {DisplayPool} from "@/client/DisplayPool.js";
 import {KeyedDisplayPool} from "@/client/KeyedDisplayPool.js";
-import {isWorkerBehavior} from "@/common/sim/behaviors.js";
+import {isWorkerBehavior} from "@/sim/behaviors.js";
 import {findCommuteRoute} from "@/client/workerRoute.js";
 
 // Spritesheet base of the 8-frame walk cycle.

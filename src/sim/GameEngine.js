@@ -1,10 +1,10 @@
-import {World} from "@/common/sim/World.js";
+import {World} from "@/sim/World.js";
 import {rotate, chunkId, tileId, tileVariantId, TILE_VARIANT_LIMIT} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PortItemBatchEvent} from "@/common/PortItemEvents.js";
-import {PlacedObjects} from "@/common/sim/PlacedObjects.js";
-import {WorkerNetworks} from "@/common/sim/WorkerNetworks.js";
+import {PlacedObjects} from "@/sim/PlacedObjects.js";
+import {WorkerNetworks} from "@/sim/WorkerNetworks.js";
 
 /**
  * @enum
