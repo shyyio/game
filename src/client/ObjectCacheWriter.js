@@ -22,7 +22,7 @@ export class ObjectClientData {
  * keep writing their own entries from their own events) and tracks each object's position and last
  * produced item for the inspect panels.
  */
-export class ClientCacheSync {
+export class ObjectCacheWriter {
 
     /**
      * @param {ModRegistry} registry

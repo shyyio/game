@@ -30,7 +30,7 @@ import {GridDrawLayer} from "@/client/GridDrawLayer.js";
 import {PlacementFeedbackLayer} from "@/client/PlacementFeedbackLayer.js";
 import {InspectLayer} from "@/client/InspectLayer.js";
 import {ClientCache} from "@/client/ClientCache.js";
-import {ClientCacheSync} from "@/client/ClientCacheSync.js";
+import {ObjectCacheWriter} from "@/client/ObjectCacheWriter.js";
 import {ObjectTypeClientBundle} from "@/client/ObjectTypeClientBundle.js";
 import {ObjectDrawLayer} from "@/client/ObjectDrawLayer.js";
 import {ObjectGhostLayer} from "@/client/ObjectGhostLayer.js";
@@ -112,12 +112,12 @@ export class Client {
         this.inspectLayer = new InspectLayer();
         // Shared placement facing, so orientation persists across tool switches.
         this.toolRotation = new ToolRotation();
-        // Shared cross-mod object index, written by ClientCacheSync (derived types) and bespoke
+        // Shared cross-mod object index, written by ObjectCacheWriter (derived types) and bespoke
         // mods (belts), queried by tools/layers for tile lookups, placement collision, and
         // connection rendering.
         this.cache = new ClientCache();
         // Sole cache writer for derived object types; first in the event dispatch chain.
-        this.cacheSync = new ClientCacheSync(modRegistry, this.cache);
+        this.objectWriter = new ObjectCacheWriter(modRegistry, this.cache);
         // The single shared item layer: belts drive their computed-position items imperatively;
         // resting out-port items render here automatically from the port-item events.
         this.itemLayer = new ItemDrawLayer(modRegistry.itemTextures);
@@ -577,8 +577,8 @@ export class Client {
             if (this._inspectedObjects.has(event.objectId)) {
                 this.inspectPanelLayer.update(
                     event,
-                    this.cacheSync.lastProducedOf(event.objectId),
-                    this.cacheSync.positionOf(event.objectId),
+                    this.objectWriter.lastProducedOf(event.objectId),
+                    this.objectWriter.positionOf(event.objectId),
                 );
             }
             return;
@@ -595,7 +595,7 @@ export class Client {
      * @param {AbstractEvent} event
      */
     dispatchEvent(event) {
-        this.cacheSync.onEvent(event);
+        this.objectWriter.onEvent(event);
         if (event instanceof WorkerAssignmentEvent) {
             this.workerAssignments.onEvent(event);
         }

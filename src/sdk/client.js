@@ -22,7 +22,7 @@ export {AbstractClientMod} from "@/client/AbstractClientMod.js";
 // ---- Rendering ----
 // `AbstractDrawLayer` is the base class for a Pixi layer that reacts to game events;
 // `ObjectDrawLayer` is the derived-default renderer for a placed object type, driven purely by the
-// shared cache (ClientCacheSync owns the entries). A type swaps it via `createDrawLayer(client)`.
+// shared cache (ObjectCacheWriter owns the entries). A type swaps it via `createDrawLayer(client)`.
 export {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 // `AbstractChunkedDrawLayer` adds per-chunk grouping: ChunkNode roots mounted by viewport,
 // one-pass stale-chunk rebuilds, and the map-mode sprite/geometry swap.
@@ -31,7 +31,7 @@ export {AbstractChunkedDrawLayer} from "@/client/AbstractChunkedDrawLayer.js";
 export {AbstractTileMeshDrawLayer} from "@/client/AbstractTileMeshDrawLayer.js";
 export {ObjectDrawLayer} from "@/client/ObjectDrawLayer.js";
 // The `data` payload of a derived-type cache entry ({type, direction}).
-export {ObjectClientData} from "@/client/ClientCacheSync.js";
+export {ObjectClientData} from "@/client/ObjectCacheWriter.js";
 // The base-case object sprite (static, geometry-centered); the derived layers build it from a texture.
 export {ObjectSprite} from "@/client/ObjectSprite.js";
 // The single shared item layer; mods that compute item positions (belts) drive it via

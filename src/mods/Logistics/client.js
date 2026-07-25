@@ -118,7 +118,7 @@ export class LogisticsClientMod extends AbstractClientMod {
             return;
         }
         if (event instanceof ChunkUnsubscribeEvent) {
-            // Drop only this mod's own belts — ClientCacheSync drops the derived-type entries.
+            // Drop only this mod's own belts — ObjectCacheWriter drops the derived-type entries.
             const removedBelts = new Set();
             for (const record of client.cache.getByChunk(event.chunk)) {
                 if (record.data.type === BeltDefinition) {
