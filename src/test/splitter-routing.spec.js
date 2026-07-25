@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
-import {SplitterBehavior} from "@/mods/Logistics/SplitterBehavior.js";
+import {SplitterBehavior} from "@/mods/Logistics/sim/SplitterBehavior.js";
 
 const RED = 1;
 

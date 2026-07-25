@@ -3,17 +3,11 @@ const ARENA_CAPACITY = 4096;
 
 
 /**
- * The in-flight items of every belt path, in three shared columns.
- *
- * Each path owns a fixed slab of `length` slots (a path can never hold more items than it has
- * half-tiles), used as a ring. The columns are public: the move loop indexes them directly, since
- * going through the path object and a per-path items object costs a dependent cache miss per path
- * per tick, which is what the per-path typed columns exist to avoid.
- *
- * An item's `gap` is the empty half-tiles ahead of it (for the lead item, its distance from the
- * output edge). Positions are therefore relative: decrementing one item's gap advances it and
- * everything behind it by a half-tile, and popping the lead item leaves the next one's stored gap
- * already correct. So a tick moves a path with two integer writes whatever it carries.
+ * The in-flight items of every belt path, in three shared public columns the move loop indexes
+ * directly (avoiding a dependent cache miss per path per tick); each path owns a fixed
+ * `length`-slot slab used as a ring. An item's `gap` is the empty half-tiles ahead of it (the lead
+ * item's distance from the output edge): decrementing one gap advances it and everything behind
+ * it, and popping the lead leaves the next one's stored gap already correct.
  */
 export class ItemStore {
 
@@ -22,8 +16,7 @@ export class ItemStore {
         this.ids = new Float64Array(ARENA_CAPACITY);
         this.types = new Int32Array(ARENA_CAPACITY);
         this.gaps = new Int32Array(ARENA_CAPACITY);
-        // Bump pointer for never-yet-allocated space, and freed slabs keyed by their exact size. Path
-        // lengths repeat heavily, so exact-size reuse keeps the arena from growing on every edit.
+        // Bump pointer plus freed slabs keyed by exact size; path lengths repeat, so exact-size reuse curbs arena growth.
         this._used = 0;
         this._freeBySlots = new Map();
     }
@@ -45,8 +38,7 @@ export class ItemStore {
     }
 
     /**
-     * Returns a slab for reuse. Its contents are left as they are; whoever takes it next overwrites
-     * the slots it fills.
+     * Returns a slab for reuse; contents are left for the next taker to overwrite.
      * @param {number} base
      * @param {number} slots
      * @returns {void}

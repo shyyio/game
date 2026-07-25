@@ -1,31 +1,29 @@
-import {Direction, LAYER_SURFACE} from "@/sdk/common.js";
-import {BeltDefinition} from "./objectTypes.js";
+import {Direction} from "@/sdk/common.js";
+import {BeltDefinition, isBeltType} from "./objectTypes.js";
 import {
-    BeltType,
-    BELT_RAMP_DOWN,
+    BELT_NORMAL,
     BELT_RAMP_UP,
+    BELT_RAMP_DOWN,
     BELT_UNDERGROUND,
     MAX_UNDERGROUND_LENGTH,
-    LAYERS_UNDERGROUND_AXIS,
+    tunnelStep,
 } from "./constants.js";
 
 /**
- * Whether a feeder feeds forward on the surface: ramp entrances/undergrounds share the belt's
- * forward output port but bury the flow, so exclude them; any non-belt object feeds forward.
+ * Whether a feeder feeds forward on the surface: ramp entrances/undergrounds bury the flow, any non-belt feeds forward.
  * @param {object} data - a feeder record's data
  * @returns {boolean}
  */
 function feedsForward(data) {
-    if (data.type === BeltDefinition) {
-        return data.beltType === BeltType.NORMAL || data.beltType === BeltType.RAMP_UP;
+    if (isBeltType(data.type)) {
+        return data.type.beltKind === BELT_NORMAL || data.type.beltKind === BELT_RAMP_UP;
     }
     return true;
 }
 
 /**
- * The tile a belt at (tileX, tileY) facing `direction` is fed from (via the cache's port-connection
- * query, so any object's output landing here counts), or {parentX: null, parentY: null}. The
- * highest-id feeder that feeds forward wins, mirroring the server's upstreamParentSql.
+ * The tile a belt at (tileX, tileY) facing `direction` is fed from, or nulls; the highest-id
+ * forward feeder wins, mirroring the server's upstreamParentSql.
  * @param {ClientCache} cache
  * @param {number} tileX
  * @param {number} tileY
@@ -33,6 +31,7 @@ function feedsForward(data) {
  * @returns {{parentX: number|null, parentY: number|null}}
  */
 export function inferBeltParent(cache, tileX, tileY, direction) {
+    // Stand-in record with a normal belt's ports for the port-connection query.
     const belt = {tileX, tileY, data: {type: BeltDefinition, direction}};
 
     let parent = null;
@@ -52,22 +51,7 @@ export function inferBeltParent(cache, tileX, tileY, direction) {
 }
 
 /**
- * The position layer a belt of `type` facing `direction` sits on: undergrounds get one
- * layer per axis (so crossing tunnels and a surface belt coexist), everything else SURFACE.
- * @param {BeltType} type
- * @param {Direction} direction
- * @returns {string}
- */
-export function beltPositionLayer(type, direction) {
-    if (type === BELT_UNDERGROUND) {
-        return LAYERS_UNDERGROUND_AXIS[direction % 2];
-    }
-    return LAYER_SURFACE;
-}
-
-/**
- * The surface (non-underground) belt entry at a tile, or null. Other object kinds (splitters)
- * sharing the index are ignored.
+ * The surface (non-underground) belt entry at a tile, or null.
  * @param {ClientCache} index
  * @param {number} tileX
  * @param {number} tileY
@@ -76,20 +60,19 @@ export function beltPositionLayer(type, direction) {
 export function surfaceBeltAt(index, tileX, tileY) {
     const entries = index.getAtTile(tileX, tileY);
     const surface = entries.find(record =>
-        record.data.type === BeltDefinition && record.data.beltType !== BELT_UNDERGROUND);
+        isBeltType(record.data.type) && record.data.type.beltKind !== BELT_UNDERGROUND);
     return surface === undefined ? null : surface;
 }
 
 /**
- * Walks `ramp`'s tunnel along its axis, returning the buried tiles passed and the
- * paired opposite ramp entry (or null for a lone ramp).
+ * Walks `ramp`'s tunnel along its axis, returning the buried tiles and the paired opposite ramp (or null).
  * @param {ClientCache} index
  * @param {CacheEntry} ramp
  * @returns {{tiles: {x: number, y: number}[], pair: CacheEntry|null}}
  */
 export function walkTunnel(index, ramp) {
-    const {dx, dy} = tunnelStep(ramp.data.beltType, ramp.data.direction);
-    const pairType = ramp.data.beltType === BELT_RAMP_UP ? BELT_RAMP_DOWN : BELT_RAMP_UP;
+    const {dx, dy} = tunnelStep(ramp.data.type.beltKind, ramp.data.direction);
+    const pairType = ramp.data.type.beltKind === BELT_RAMP_UP ? BELT_RAMP_DOWN : BELT_RAMP_UP;
 
     let x = ramp.tileX;
     let y = ramp.tileY;
@@ -98,17 +81,16 @@ export function walkTunnel(index, ramp) {
         x += dx;
         y += dy;
         const records = index.getAtTile(x, y);
-        // Match this tunnel's own underground, not a crossing one sharing the tile:
-        // a tunnel's undergrounds face the same direction as its ramps.
+        // A tunnel's undergrounds face its ramps' direction, so skip a crossing tunnel's.
         const underground = records.find(record =>
-            record.data.beltType === BELT_UNDERGROUND && record.data.direction === ramp.data.direction
+            record.data.type.beltKind === BELT_UNDERGROUND && record.data.direction === ramp.data.direction
         );
         if (underground !== undefined) {
             tiles.push({x, y});
             continue;
         }
         const pair = records.find(record =>
-            record.data.beltType === pairType && record.data.direction === ramp.data.direction
+            record.data.type.beltKind === pairType && record.data.direction === ramp.data.direction
         );
         return {tiles, pair: pair === undefined ? null : pair};
     }
@@ -124,17 +106,6 @@ export function walkTunnel(index, ramp) {
  */
 export function isRamp(type) {
     return type === BELT_RAMP_UP || type === BELT_RAMP_DOWN;
-}
-
-/**
- * The per-step (dx, dy) for walking a ramp's tunnel (a RAMP_UP steps against its facing, a RAMP_DOWN along it).
- * @param {number} rampType BELT_RAMP_UP or BELT_RAMP_DOWN
- * @param {Direction} direction the ramp's facing
- * @returns {{dx: number, dy: number}}
- */
-export function tunnelStep(rampType, direction) {
-    const sign = rampType === BELT_RAMP_UP ? -1 : 1;
-    return {dx: sign * Direction.dx(direction), dy: sign * Direction.dy(direction)};
 }
 
 /**

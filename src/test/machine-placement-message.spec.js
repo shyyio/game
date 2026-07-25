@@ -6,7 +6,7 @@ import {ObjectInsertEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
 import {DemoMachineType, ITEM_TYPE_DEMO_INPUT, ITEM_TYPE_DEMO_OUTPUT} from "@/mods/Demo/declaration.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector} from "@/test/EventCollector.js";
-import {beltsOf} from "@/mods/Logistics/testHelpers.js";
+import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 
 test("a machine placed via message adopts a belt, cooks its input, and deletes", async () => {
     const engine = await makeGameEngine();

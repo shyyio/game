@@ -11,8 +11,7 @@ import {
 const END_MARKER_RADIUS = 10;
 
 /**
- * Debug overlay drawing each belt path as a colored line (keyed by its head belt
- * id) with a circle on the head and tail. Hidden until debug mode is enabled.
+ * Debug overlay drawing each belt path as a colored line (keyed by head belt id) with end markers.
  */
 export class PathDebugDrawLayer extends AbstractDrawLayer {
 
@@ -23,8 +22,7 @@ export class PathDebugDrawLayer extends AbstractDrawLayer {
         super();
         this.visible = false;
         this._debugMode = false;
-        // Map mode (zoomed far out) swaps sprites for simplified geometry; the overlay
-        // is too fine to read there, so it hides regardless of debug mode.
+        // Too fine to read in map mode, so it hides there regardless of debug mode.
         this._mapMode = false;
         this._paths = paths;
         this._graphics = new Graphics();
@@ -64,8 +62,7 @@ export class PathDebugDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Repaints every tracked path; skipped while hidden. Called when a path's belts
-     * land in the cache, since a path recalc can arrive before its belt inserts.
+     * Repaints every tracked path; skipped while hidden.
      * @returns {void}
      */
     redraw() {

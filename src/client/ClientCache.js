@@ -70,15 +70,12 @@ export class CacheEntry {
     }
 
     /**
-     * The type's behavior, or null for typeless (bespoke) or behaviorless entries.
+     * The type's behavior, or null for a typeless (test-built) entry.
      * @returns {AbstractBehavior|null}
      */
     get behavior() {
         const type = this.data.type;
-        if (type === undefined || type.behavior === null) {
-            return null;
-        }
-        return type.behavior;
+        return type === undefined ? null : type.behavior;
     }
 }
 
@@ -480,7 +477,7 @@ export class ClientCache {
      * @private
      */
     _portMatch(entry, portKind, portX, portY, facing) {
-        const port = entry.data.type.surfacePorts(portKind, entry.data).find(candidate => {
+        const port = entry.data.type.surfacePorts(portKind).find(candidate => {
             const rotated = rotate(candidate, entry.data.direction);
             return entry.tileX + rotated.x === portX
                 && entry.tileY + rotated.y === portY
@@ -502,7 +499,7 @@ export class ClientCache {
         const direction = record.data.direction;
         const connections = [];
 
-        for (const port of type.surfacePorts("outputPorts", record.data)) {
+        for (const port of type.surfacePorts("outputPorts")) {
             const rotated = rotate(port, direction);
             const portX = record.tileX + rotated.x;
             const portY = record.tileY + rotated.y;
@@ -520,7 +517,7 @@ export class ClientCache {
             }
         }
 
-        for (const port of type.surfacePorts("inputPorts", record.data)) {
+        for (const port of type.surfacePorts("inputPorts")) {
             const rotated = rotate(port, direction);
             const portX = record.tileX + rotated.x;
             const portY = record.tileY + rotated.y;

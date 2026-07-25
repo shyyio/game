@@ -3,11 +3,9 @@
 
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {Direction} from "@/common/constants.js";
-import {CreateBeltMessage} from "@/mods/Logistics/messages.js";
 import {WaterResourceType, ExtractorType} from "@/mods/Resources/declaration.js";
 import {DemoMachineType} from "@/mods/Demo/declaration.js";
-import {RoadDefinition, HousingDefinition} from "@/mods/Logistics/objectTypes.js";
-import {BELT_NORMAL} from "@/mods/Logistics/constants.js";
+import {BeltDefinition, RoadDefinition, HousingDefinition} from "@/mods/Logistics/common/objectTypes.js";
 
 // One line spans 9 tiles in x (extractor at 0, belts 1..4, machines/belt 5..8) and three tiles in
 // y: the objects row, a road row beneath the machines, and the housing's bottom row. Each line's
@@ -36,10 +34,10 @@ export function buildLine(engine, ox, oy) {
     engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, ox, oy, dir));
     engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, ox, oy, dir));
     for (let i = 1; i <= 4; i += 1) {
-        engine.applyMessage(new CreateBeltMessage(ox + i, oy, dir, BELT_NORMAL));
+        engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, ox + i, oy, dir));
     }
     engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, ox + 5, oy, dir));
-    engine.applyMessage(new CreateBeltMessage(ox + 6, oy, dir, BELT_NORMAL));
+    engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, ox + 6, oy, dir));
     engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, ox + 7, oy, dir));
     engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, ox + 8, oy, dir));
     // The line's worker network: a road under the machines, fed by one housing off its left end.

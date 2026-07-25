@@ -1,7 +1,6 @@
 import {ModPackage} from "@/common/mod/ModPackage.js";
 import {BaseTexturesDeclaration} from "@/mods/BaseTextures/declaration.js";
 import {LogisticsDeclaration} from "@/mods/Logistics/declaration.js";
-import {LogisticsSimMod} from "@/mods/Logistics/sim.js";
 import {LogisticsClientMod} from "@/mods/Logistics/client.js";
 import {DemoDeclaration} from "@/mods/Demo/declaration.js";
 import {ResourcesDeclaration} from "@/mods/Resources/declaration.js";
@@ -16,7 +15,7 @@ import {ResourcesDeclaration} from "@/mods/Resources/declaration.js";
 export function simLoadout() {
     return [
         new ModPackage(new BaseTexturesDeclaration()),
-        new ModPackage(new LogisticsDeclaration(), {sim: new LogisticsSimMod()}),
+        new ModPackage(new LogisticsDeclaration()),
         new ModPackage(new DemoDeclaration()),
         new ModPackage(new ResourcesDeclaration()),
     ];
@@ -29,7 +28,7 @@ export function simLoadout() {
 export function clientLoadout() {
     return [
         new ModPackage(new BaseTexturesDeclaration()),
-        new ModPackage(new LogisticsDeclaration(), {sim: new LogisticsSimMod(), client: new LogisticsClientMod()}),
+        new ModPackage(new LogisticsDeclaration(), {client: new LogisticsClientMod()}),
         new ModPackage(new DemoDeclaration()),
         new ModPackage(new ResourcesDeclaration()),
     ];

@@ -23,7 +23,7 @@
 
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {TickPhase, TICK_PHASE_ORDER, EMPTY} from "@/common/sim/GameEngine.js";
-import {beltsOf} from "@/mods/Logistics/testHelpers.js";
+import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 import {ExtractorType} from "@/mods/Resources/declaration.js";
 import {DemoMachineType} from "@/mods/Demo/declaration.js";
 import {buildLine, lineOrigin, lineSinkPort} from "@/test/productionLine.js";

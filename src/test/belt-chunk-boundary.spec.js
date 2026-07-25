@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {GameEngine, EMPTY} from "@/common/sim/GameEngine.js";
-import {Belts} from "@/mods/Logistics/Belts.js";
+import {Belts} from "@/mods/Logistics/sim/Belts.js";
 
 const RED = 1;
 

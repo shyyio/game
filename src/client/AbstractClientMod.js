@@ -7,6 +7,16 @@
 export class AbstractClientMod {
 
     /**
+     * One-time wiring against the shared client surfaces (cache listeners, layer references),
+     * called before the mod's draw layers are collected.
+     * @param {Client} client
+     * @returns {void}
+     */
+    setup(client) {
+
+    }
+
+    /**
      * The draw layers this mod contributes, bound to the shared client surfaces.
      * @param {Client} client
      * @returns {AbstractDrawLayer[]}

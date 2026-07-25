@@ -17,9 +17,8 @@ export class ObjectClientData {
 }
 
 /**
- * The sole ClientCache writer for derived object types: first in the client's event dispatch, it
- * builds/removes cache entries from the generic object lifecycle events (bespoke types — belts —
- * keep writing their own entries from their own events) and tracks each object's position and last
+ * The sole ClientCache writer: first in the client's event dispatch, it builds/removes cache
+ * entries from the generic object lifecycle events and tracks each object's position and last
  * produced item for the inspect panels.
  */
 export class ObjectCacheWriter {
@@ -68,12 +67,9 @@ export class ObjectCacheWriter {
             return;
         }
         if (event instanceof ChunkUnsubscribeEvent) {
-            // Evict only derived-type entries; bespoke mods (belts) evict their own.
             for (const entry of this._cache.getByChunk(event.chunk)) {
-                if (entry.data instanceof ObjectClientData) {
-                    this._cache.remove(entry.id);
-                    this._lastProduced.delete(entry.id);
-                }
+                this._cache.remove(entry.id);
+                this._lastProduced.delete(entry.id);
             }
         }
     }
@@ -90,11 +86,12 @@ export class ObjectCacheWriter {
         for (const [i, port] of renderedPorts.entries()) {
             ports[port.name] = event.portIds[i];
         }
-        const cells = type.geometry.tiles(event.direction).map(cell => ({
-            x: event.x + cell.x,
-            y: event.y + cell.y,
-            layer: type.positionLayer,
-        }));
+        const cells = type.positionLayerTiles(event.direction).flatMap(group =>
+            group.cells.map(cell => ({
+                x: event.x + cell.x,
+                y: event.y + cell.y,
+                layer: group.layer,
+            })));
         this._cache.set(event.id, event.x, event.y, cells, ports, new ObjectClientData(type, event.direction));
         if (event.lastOutput !== null) {
             this._lastProduced.set(event.id, event.lastOutput);

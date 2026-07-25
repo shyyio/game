@@ -4,7 +4,7 @@ import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {DemoMachineType} from "@/mods/Demo/declaration.js";
 import {GameEngine} from "@/common/sim/GameEngine.js";
-import {Belts} from "@/mods/Logistics/Belts.js";
+import {Belts} from "@/mods/Logistics/sim/Belts.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 
 test("a second surface belt cannot occupy the same tile, and delete frees it", async () => {

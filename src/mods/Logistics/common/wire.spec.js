@@ -6,12 +6,8 @@ import {ModPackage} from "@/common/mod/ModPackage.js";
 import {WireRegistry} from "@/common/wire.js";
 import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
-import {LogisticsDeclaration} from "./declaration.js";
-import {CreateBeltMessage} from "./messages.js";
+import {LogisticsDeclaration} from "../declaration.js";
 import {
-    BeltInsertEvent,
-    BeltSyncEvent,
-    BeltDeleteEvent,
     BeltPathRecalculateEvent,
     BeltItemBatchEvent,
 } from "./events.js";
@@ -43,15 +39,11 @@ function roundTrip(reg, instance, cls) {
 
 test("Round-trips belt messages, including null and id fields", () => {
     const reg = registry();
-    roundTrip(reg, new CreateBeltMessage(1, 2, 3, 0, undefined, 123456789012345), CreateBeltMessage);
     roundTrip(reg, new DeleteObjectMessage(123456789012345), DeleteObjectMessage);
 });
 
 test("Round-trips belt events, preserving exact ids", () => {
     const reg = registry();
-    roundTrip(reg, new BeltInsertEvent(1, 2, 99, 3, 0), BeltInsertEvent);
-    roundTrip(reg, new BeltSyncEvent(4, 5, 100, 1, 2), BeltSyncEvent);
-    roundTrip(reg, new BeltDeleteEvent(1, 2, 99), BeltDeleteEvent);
     roundTrip(reg, new BeltPathRecalculateEvent(1, 2, [1, 2, 999999999999]), BeltPathRecalculateEvent);
 });
 

@@ -307,8 +307,8 @@ export class ObjectTool extends AbstractTool {
     }
 
     /**
-     * Whether a surface occupant may be deleted to lay this object over it: an aligned conveyor lane
-     * (read via the generic `conveyor` cache flag) or, when enabled, another object of this type.
+     * Whether a surface occupant may be deleted to lay this object over it: an aligned conveyor
+     * lane (the type's placement.conveyor) or, when enabled, another object of this type.
      * @private
      * @returns {boolean}
      */
@@ -316,7 +316,7 @@ export class ObjectTool extends AbstractTool {
         if (this._replaceSameKind && occupant.data.type.typeId === this._type.typeId) {
             return true;
         }
-        return occupant.data.conveyor === true
+        return occupant.data.type.placement.conveyor
             && Direction.axis(occupant.data.direction) === Direction.axis(direction);
     }
 

@@ -7,7 +7,7 @@ import Mouse from "@/client/Mouse.js";
 import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/mod/ModRegistry.js";
 import {clientLoadout} from "@/mods/loadout.js";
-import {Belts} from "@/mods/Logistics/Belts.js";
+import {Belts} from "@/mods/Logistics/sim/Belts.js";
 import {Game} from "@/common/Game.js";
 import {GameEngine, TickPhase} from "@/common/sim/GameEngine.js";
 import {ClientSaveStore} from "@/client/ClientSaveStore.js";

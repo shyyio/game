@@ -65,6 +65,8 @@ export class PlacementRule {
      * @param {ObjectType[]} [config.placeOn] - restrict placement to these types' extraction tiles
      * @param {boolean} [config.solid] - whether the object occupies its footprint (blocks the tile)
      * @param {boolean} [config.dragToPlace] - dragging lays one placement per tile entered
+     * @param {boolean} [config.conveyor] - the type is a straight surface lane an aligned
+     *     placement may overwrite
      */
     constructor({
         replaceSameKind=false,
@@ -72,12 +74,14 @@ export class PlacementRule {
         placeOn=[],
         solid=true,
         dragToPlace=false,
+        conveyor=false,
     }={}) {
         this.replaceSameKind = replaceSameKind;
         this.advanceOnPlace = advanceOnPlace;
         this.placeOn = placeOn;
         this.solid = solid;
         this.dragToPlace = dragToPlace;
+        this.conveyor = conveyor;
     }
 }
 
@@ -166,11 +170,13 @@ export class ObjectType {
      * @param [config.label] {string|null} the placement tool's label
      * @param [config.extractionTiles] {{x:number, y:number}[]|null} relative tiles an extractor draws
      *     this resource from (a resource's extraction set), used by the client placement tool
-     * @param [config.behavior] {AbstractBehavior|null} the sim behavior; defaults to StaticBehavior
-     *     (a bare spawn-managed entity), null opts the type out of the derived sim entirely (belt)
+     * @param [config.behavior] {AbstractBehavior} the sim behavior; defaults to StaticBehavior
+     *     (a bare spawn-managed entity)
      * @param [config.placement] {PlacementRule}
      * @param [config.inspectable] {boolean} wires the sim inspect path + client Inspect verb
      * @param [config.menuVerbs] {MenuVerb[]|null} derived from `inspectable` when null
+     * @param [config.bespokeClient] {boolean} the type's client mod brings its own layers/tools,
+     *     so no derived client bundle is built
      */
     constructor({
         name,
@@ -189,6 +195,7 @@ export class ObjectType {
         placement=undefined,
         inspectable=false,
         menuVerbs=null,
+        bespokeClient=false,
     }) {
         if (ObjectGeometries[geometry] === undefined) {
             throw new Error(`Unknown object geometry "${geometry}"`);
@@ -209,10 +216,9 @@ export class ObjectType {
         this.positionLayer = LAYER_SURFACE;
         this.extractionTiles = extractionTiles;
         this.behavior = behavior === undefined ? new StaticBehavior() : behavior;
-        if (this.behavior !== null) {
-            this.behavior._attachType(this);
-        }
+        this.behavior._attachType(this);
         this.placement = placement === undefined ? new PlacementRule() : placement;
+        this.bespokeClient = bespokeClient;
         this.inspectable = inspectable;
         this.menuVerbs = menuVerbs !== null ? menuVerbs : (
             inspectable
@@ -297,25 +303,23 @@ export class ObjectType {
     }
 
     /**
-     * The subset of this object's `portKind` ports exposed for a record in state `data`. The
-     * default is all of them; objects that bury a port in some states (a belt ramp) override this.
+     * The subset of this object's `portKind` ports the sim links. The default is all of them;
+     * objects that bury a port (a belt ramp) override this.
      * @param {("inputPorts"|"outputPorts")} portKind
-     * @param {object} data - the record's data (type, direction, ...)
      * @returns {PortDefinition[]}
      */
-    activePorts(portKind, data) {
+    activePorts(portKind) {
         return this[portKind];
     }
 
     /**
      * The subset of activePorts a surface neighbor can connect to (for the client's connection
-     * rendering / adjacency). The default is all active ports; objects that bury a port in some
-     * states override this.
+     * rendering / adjacency). The default is all active ports; objects that bury a port
+     * override this.
      * @param {("inputPorts"|"outputPorts")} portKind
-     * @param {object} data - the record's data (type, direction, ...)
      * @returns {PortDefinition[]}
      */
-    surfacePorts(portKind, data) {
-        return this.activePorts(portKind, data);
+    surfacePorts(portKind) {
+        return this.activePorts(portKind);
     }
 }

@@ -1,7 +1,6 @@
 import {AbstractChunkRoutedEvent, AbstractBatchEvent} from "@/sdk/common.js";
 
-// Column sentinel for a path feeding nothing, so `outPortIds` stays a plain int column; port eids
-// start at 1, and the per-path events keep using null.
+// Sentinel for a path feeding nothing, keeping `outPortIds` a plain int column; per-path events use null.
 const NO_OUT_PORT = 0;
 
 export class BeltPathRecalculateEvent extends AbstractChunkRoutedEvent {
@@ -16,8 +15,8 @@ export class BeltPathRecalculateEvent extends AbstractChunkRoutedEvent {
     /**
      * @param {number} x
      * @param {number} y
-     * @param {number[]} parts - Belt IDs in path order, head last
-     * @param {number|null} [outPortId] - the path's out-port id, so the client can map it to this path
+     * @param {number[]} parts - belt ids in path order, head last
+     * @param {number|null} [outPortId] - the path's out-port id
      */
     constructor(x, y, parts, outPortId=null) {
         super(x, y);
@@ -26,87 +25,9 @@ export class BeltPathRecalculateEvent extends AbstractChunkRoutedEvent {
     }
 }
 
-/**
- * A belt the player just placed; same payload as BeltSyncEvent but a distinct type for live reactions.
- */
-export class BeltInsertEvent extends AbstractChunkRoutedEvent {
-
-    static wireFields = {
-        x: "sint32",
-        y: "sint32",
-        id: "int64",
-        direction: "int32",
-        beltType: "int32",
-    };
-
-    /**
-     * @param {number} x
-     * @param {number} y
-     * @param {number} id
-     * @param {number} direction
-     * @param {number} beltType
-     */
-    constructor(x, y, id, direction, beltType) {
-        super(x, y);
-        this.id = id;
-        this.direction = direction;
-        this.beltType = beltType;
-    }
-}
-
-/**
- * A belt synced into a loaded chunk; same payload as BeltInsertEvent but a distinct type to skip placement feedback.
- */
-export class BeltSyncEvent extends AbstractChunkRoutedEvent {
-
-    static wireFields = {
-        x: "sint32",
-        y: "sint32",
-        id: "int64",
-        direction: "int32",
-        beltType: "int32",
-    };
-
-    /**
-     * @param {number} x
-     * @param {number} y
-     * @param {number} id
-     * @param {number} direction
-     * @param {number} beltType
-     */
-    constructor(x, y, id, direction, beltType) {
-        super(x, y);
-        this.id = id;
-        this.direction = direction;
-        this.beltType = beltType;
-    }
-}
-
-export class BeltDeleteEvent extends AbstractChunkRoutedEvent {
-
-    static wireFields = {
-        x: "sint32",
-        y: "sint32",
-        id: "int64",
-    };
-
-    /**
-     * @param {number} x
-     * @param {number} y
-     * @param {number} id
-     */
-    constructor(x, y, id) {
-        super(x, y);
-        this.id = id;
-    }
-}
-
-// A path's items are sent one per item: an item (itemId) of `itemType` with `gap` empty half-tiles
-// ahead of it. Positions are relative, so one item's gap change shifts every item behind it.
-//
-// (x, y) is the path head, carried only to route the event to its chunk topic, so it stays off the
-// wire: the client places items from its own cached path, never from the event. `chunk` is therefore
-// meaningless on a decoded item event.
+// Item events: `gap` = empty half-tiles ahead of the item; positions are relative, so one gap
+// change shifts every item behind it. (x, y) is the path head, routes the event to its chunk
+// topic only and stays off the wire — `chunk` is meaningless on a decoded item event.
 
 /**
  * Inserts one of a path's items or restates its gap; the client glides the moved items.
@@ -138,8 +59,7 @@ export class BeltItemUpsertEvent extends AbstractChunkRoutedEvent {
 }
 
 /**
- * Same payload as BeltItemUpsertEvent, but a re-key after a reset: the item didn't move, so the client
- * snaps the sprite in place rather than animating it.
+ * BeltItemUpsertEvent payload as a re-key after a reset; the client snaps in place, not animates.
  */
 export class BeltItemSyncEvent extends AbstractChunkRoutedEvent {
 
@@ -191,7 +111,7 @@ export class BeltItemDeleteEvent extends AbstractChunkRoutedEvent {
 }
 
 /**
- * Clears a path's items before an edit re-emits them as syncs (same drain) — an atomic swap.
+ * Clears a path's items before an edit re-emits them as syncs.
  */
 export class BeltItemResetEvent extends AbstractChunkRoutedEvent {
 
@@ -212,9 +132,7 @@ export class BeltItemResetEvent extends AbstractChunkRoutedEvent {
 
 
 /**
- * One chunk's item deltas for a move pass: each upsert is `upsertItemIds[i]` on path
- * `upsertPathIds[i]` now holding `upsertGaps[i]` of type `upsertItemTypes[i]`, each delete is a
- * (`deletePathIds[i]`, `deleteItemIds[i]`) pair.
+ * One chunk's item deltas for a move pass, as parallel upsert/delete columns.
  */
 export class BeltItemBatchEvent extends AbstractBatchEvent {
 
@@ -228,7 +146,7 @@ export class BeltItemBatchEvent extends AbstractBatchEvent {
     };
 
     /**
-     * @param {number} x - a path head in the batched chunk, routing the batch to that topic
+     * @param {number} x - a path head in the batched chunk, routes the batch to that topic
      * @param {number} y
      */
     constructor(x, y) {
@@ -266,8 +184,7 @@ export class BeltItemBatchEvent extends AbstractBatchEvent {
     }
 
     /**
-     * Deletes come first: within a pass a path pops before it ingests, never the reverse, so this
-     * replays each path's deltas in emission order.
+     * Deletes come first: a path pops before it ingests, so this replays deltas in emission order.
      * @returns {(BeltItemUpsertEvent|BeltItemDeleteEvent)[]}
      */
     explode() {
@@ -290,74 +207,8 @@ export class BeltItemBatchEvent extends AbstractBatchEvent {
 }
 
 /**
- * One chunk's belts for a sync, as packed columns: belt `i` is `ids[i]` at (`tileX[i]`, `tileY[i]`)
- * facing `directions[i]` with type `beltTypes[i]`.
- */
-export class BeltSyncBatchEvent extends AbstractBatchEvent {
-
-    static wireFields = {
-        originX: "sint32",
-        originY: "sint32",
-        ids: "int64[]",
-        tileX: "sint32[]",
-        tileY: "sint32[]",
-        directions: "int32[]",
-        beltTypes: "int32[]",
-    };
-
-    /**
-     * @param {number} originX - the batched chunk's origin tile, which also routes the batch
-     * @param {number} originY
-     */
-    constructor(originX, originY) {
-        super(originX, originY);
-        this.originX = originX;
-        this.originY = originY;
-        this.ids = [];
-        this.tileX = [];
-        this.tileY = [];
-        this.directions = [];
-        this.beltTypes = [];
-    }
-
-    /**
-     * @param {number} id
-     * @param {number} x
-     * @param {number} y
-     * @param {number} direction
-     * @param {number} beltType
-     * @returns {void}
-     */
-    add(id, x, y, direction, beltType) {
-        this.ids.push(id);
-        this.tileX.push(x - this.originX);
-        this.tileY.push(y - this.originY);
-        this.directions.push(direction);
-        this.beltTypes.push(beltType);
-    }
-
-    /**
-     * @returns {BeltSyncEvent[]}
-     */
-    explode() {
-        const events = [];
-        for (let i = 0; i < this.ids.length; i += 1) {
-            events.push(new BeltSyncEvent(
-                this.originX + this.tileX[i],
-                this.originY + this.tileY[i],
-                this.ids[i],
-                this.directions[i],
-                this.beltTypes[i],
-            ));
-        }
-        return events;
-    }
-}
-
-/**
- * One chunk's path recalcs for a sync, as packed columns: path `i` heads at (`tileX[i]`, `tileY[i]`)
- * and owns the next `partCounts[i]` entries of the flattened `parts`. `outPortIds` uses NO_OUT_PORT
- * for a path feeding nothing.
+ * One chunk's path recalcs as packed columns: path `i` heads at (`tileX[i]`, `tileY[i]`) and owns
+ * the next `partCounts[i]` entries of `parts`; NO_OUT_PORT marks a path feeding nothing.
  */
 export class BeltPathBatchEvent extends AbstractBatchEvent {
 
@@ -372,7 +223,7 @@ export class BeltPathBatchEvent extends AbstractBatchEvent {
     };
 
     /**
-     * @param {number} originX - the batched chunk's origin tile, which also routes the batch
+     * @param {number} originX - the batched chunk's origin tile, also routes the batch
      * @param {number} originY
      */
     constructor(originX, originY) {
