@@ -112,6 +112,25 @@ export function getOrCreate(map, key, create) {
 }
 
 /**
+ * Drops `member` from the Set at `key`, deleting the key once its set empties; pairs with
+ * `getOrCreate(map, key, () => new Set())` for the add side.
+ * @param map {Map<*, Set>}
+ * @param key {*}
+ * @param member {*}
+ * @returns {void}
+ */
+export function removeFromGroup(map, key, member) {
+    const group = map.get(key);
+    if (group === undefined) {
+        return;
+    }
+    group.delete(member);
+    if (group.size === 0) {
+        map.delete(key);
+    }
+}
+
+/**
  * The 4-neighborhood tiles of every cell, with duplicates where neighborhoods overlap.
  * @param {{x: number, y: number}[]} cells
  * @returns {IterableIterator<{x: number, y: number}>}

@@ -23,7 +23,7 @@ function feedsForward(data) {
 
 /**
  * The tile a belt at (tileX, tileY) facing `direction` is fed from, or nulls; the highest-id
- * forward feeder wins, mirroring the server's upstreamParentSql.
+ * forward feeder wins, mirroring Belts._chosenUpstream.
  * @param {ClientCache} cache
  * @param {number} tileX
  * @param {number} tileY
@@ -106,6 +106,37 @@ export function walkTunnel(index, ramp) {
  */
 export function isRamp(type) {
     return type === BELT_RAMP_UP || type === BELT_RAMP_DOWN;
+}
+
+/**
+ * Scans from (x, y) along a `kind` ramp's tunnel axis for its partner ramp; a same-kind ramp in
+ * between blocks the pairing. Shared by the sim (`Belts.rampPartner`) and the client tool
+ * (`UndergroundBeltTool`), each supplying its own belt lookup.
+ * @param {number} x
+ * @param {number} y
+ * @param {Direction} direction
+ * @param {BeltType} kind - BELT_RAMP_DOWN or BELT_RAMP_UP
+ * @param {function(number, number): {type: BeltType, direction: Direction}[]} beltsAt - candidates on a tile
+ * @returns {object|null} the matched partner-kind belt (whatever shape `beltsAt` returns), or null
+ */
+export function findRampPartner(x, y, direction, kind, beltsAt) {
+    const {dx, dy} = tunnelStep(kind, direction);
+    const partnerKind = kind === BELT_RAMP_UP ? BELT_RAMP_DOWN : BELT_RAMP_UP;
+    let cx = x;
+    let cy = y;
+    for (let i = 1; i < MAX_UNDERGROUND_LENGTH + 2; i += 1) {
+        cx += dx;
+        cy += dy;
+        for (const belt of beltsAt(cx, cy)) {
+            if (belt.type === kind) {
+                return null;
+            }
+            if (belt.type === partnerKind && belt.direction === direction) {
+                return belt;
+            }
+        }
+    }
+    return null;
 }
 
 /**

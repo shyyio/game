@@ -1,8 +1,8 @@
 import {AbstractTool, Direction, Haptics, LAYER_SURFACE, CreateObjectMessage, DeleteObjectMessage} from "@/sdk/client.js";
-import {BeltBend, MAX_UNDERGROUND_LENGTH, tunnelStep, BELT_NORMAL, BELT_RAMP_DOWN, BELT_RAMP_UP} from "../common/constants.js";
+import {BeltBend, MAX_UNDERGROUND_LENGTH, BELT_NORMAL, BELT_RAMP_DOWN, BELT_RAMP_UP} from "../common/constants.js";
 import {BeltDefinition, BeltRampDownDefinition, BeltRampUpDefinition, isBeltType} from "../common/objectTypes.js";
 import {Belt} from "./BeltDrawLayer.js";
-import {getUndergroundBeltsToCreate, surfaceBeltAt, inferBeltParent} from "../common/geometry.js";
+import {getUndergroundBeltsToCreate, surfaceBeltAt, inferBeltParent, findRampPartner} from "../common/geometry.js";
 
 /**
  * Rotatable single-ramp tool that drops one ramp per tap, pairing it with the ramp it tunnels to.
@@ -71,16 +71,14 @@ export class UndergroundBeltTool extends AbstractTool {
     }
 
     /**
-     * Any belt at a tile (surface or underground), or null.
+     * Every belt at a tile (surface or underground), as ramp-partner-scan candidates.
      * @private
-     * @returns {{id: number, type: BeltType, direction: Direction}|null}
+     * @returns {{id: number, type: BeltType, direction: Direction}[]}
      */
-    _beltAt(tileX, tileY) {
-        const record = this._cache.getAtTile(tileX, tileY).find(other => isBeltType(other.data.type));
-        if (record === undefined) {
-            return null;
-        }
-        return {id: record.id, type: record.data.type.beltKind, direction: record.data.direction};
+    _beltCandidatesAt(tileX, tileY) {
+        return this._cache.getAtTile(tileX, tileY)
+            .filter(record => isBeltType(record.data.type))
+            .map(record => ({id: record.id, type: record.data.type.beltKind, direction: record.data.direction}));
     }
 
     /**
@@ -193,27 +191,11 @@ export class UndergroundBeltTool extends AbstractTool {
      * @returns {number|null} the paired ramp's id
      */
     _findRampParent(tileX, tileY, direction, type) {
-        // A RAMP_UP scans against its facing, back toward its entrance.
-        const {dx, dy} = tunnelStep(type, direction);
-        const parentType = type === BELT_RAMP_UP ? BELT_RAMP_DOWN : BELT_RAMP_UP;
-        const childType = type === BELT_RAMP_UP ? BELT_RAMP_UP : BELT_RAMP_DOWN;
-
-        let x = tileX;
-        let y = tileY;
-        for (let i = 1; i < MAX_UNDERGROUND_LENGTH + 2; i += 1) {
-            x += dx;
-            y += dy;
-            const belt = this._beltAt(x, y);
-            if (belt !== null && belt.type === childType) {
-                // A same-type ramp blocks the way: no valid pairing.
-                return null;
-            }
-            // Both ramps must face the same way; scan past a misfacing parent-type ramp.
-            if (belt !== null && belt.type === parentType && belt.direction === direction) {
-                return belt.id;
-            }
+        const belt = findRampPartner(tileX, tileY, direction, type, (x, y) => this._beltCandidatesAt(x, y));
+        if (belt === null) {
+            return null;
         }
-        return null;
+        return belt.id;
     }
 
     /**

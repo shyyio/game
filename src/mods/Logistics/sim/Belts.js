@@ -1,4 +1,5 @@
-import {TickPhase, Direction, EMPTY, NO_EID, chunkId, chunkOrigin, tileId} from "@/sdk/common.js";
+import {TickPhase, Direction, EMPTY, NO_EID, chunkId, chunkOrigin, tileId, getOrCreate, removeFromGroup} from "@/sdk/common.js";
+import {findRampPartner} from "../common/geometry.js";
 import {
     BeltPathBatchEvent,
     BeltPathRecalculateEvent,
@@ -12,9 +13,7 @@ import {
     BELT_RAMP_UP,
     BELT_UNDERGROUND,
     LAYERS_UNDERGROUND_AXIS,
-    MAX_UNDERGROUND_LENGTH,
     beltPositionLayer,
-    tunnelStep,
 } from "../common/constants.js";
 import {ItemStore} from "./ItemStore.js";
 
@@ -203,42 +202,6 @@ export class Belts {
     }
 
     /**
-     * Adds a member to a chunk-keyed set index.
-     * @private
-     * @param {Map<number, Set>} index
-     * @param {number} chunk
-     * @param {object} member
-     * @returns {void}
-     */
-    _chunkAdd(index, chunk, member) {
-        const held = index.get(chunk);
-        if (held === undefined) {
-            index.set(chunk, new Set([member]));
-        } else {
-            held.add(member);
-        }
-    }
-
-    /**
-     * Drops a member from a chunk-keyed set index, dropping the chunk once it empties.
-     * @private
-     * @param {Map<number, Set>} index
-     * @param {number} chunk
-     * @param {object} member
-     * @returns {void}
-     */
-    _chunkRemove(index, chunk, member) {
-        const held = index.get(chunk);
-        if (held === undefined) {
-            return;
-        }
-        held.delete(member);
-        if (held.size === 0) {
-            index.delete(chunk);
-        }
-    }
-
-    /**
      * @private
      * @param {object} belt
      * @returns {void}
@@ -304,23 +267,11 @@ export class Belts {
      * @returns {{x:number, y:number, direction:number, type:number}|null}
      */
     rampPartner(x, y, direction, kind) {
-        const {dx, dy} = tunnelStep(kind, direction);
-        const partnerKind = kind === BELT_RAMP_UP ? BELT_RAMP_DOWN : BELT_RAMP_UP;
-        let cx = x;
-        let cy = y;
-        for (let i = 1; i < MAX_UNDERGROUND_LENGTH + 2; i += 1) {
-            cx += dx;
-            cy += dy;
-            for (const belt of this._beltsAt(cx, cy)) {
-                if (belt.type === kind) {
-                    return null;
-                }
-                if (belt.type === partnerKind && belt.direction === direction) {
-                    return {x: belt.x, y: belt.y, direction: belt.direction, type: belt.type};
-                }
-            }
+        const belt = findRampPartner(x, y, direction, kind, (cx, cy) => this._beltsAt(cx, cy));
+        if (belt === null) {
+            return null;
         }
-        return null;
+        return {x: belt.x, y: belt.y, direction: belt.direction, type: belt.type};
     }
 
     /**
@@ -1255,7 +1206,7 @@ export class Belts {
         for (const id of path.beltIds) {
             this._pathByBeltId.set(id, path);
         }
-        this._chunkAdd(this._pathsByChunk, chunkId(path.headX, path.headY), path);
+        getOrCreate(this._pathsByChunk, chunkId(path.headX, path.headY), () => new Set()).add(path);
     }
 
     /**
@@ -1285,7 +1236,7 @@ export class Belts {
                 this._pathsByTile.delete(key);
             }
         }
-        this._chunkRemove(this._pathsByChunk, chunkId(path.headX, path.headY), path);
+        removeFromGroup(this._pathsByChunk, chunkId(path.headX, path.headY), path);
         for (const id of path.beltIds) {
             if (this._pathByBeltId.get(id) === path) {
                 this._pathByBeltId.delete(id);
