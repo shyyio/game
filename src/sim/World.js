@@ -270,7 +270,10 @@ export class World {
                 found += 1;
             }
         }
-        return found === result.length ? result : result.subarray(0, found);
+        if (found === result.length) {
+            return result;
+        }
+        return result.subarray(0, found);
     }
 
     /**

@@ -477,7 +477,13 @@ export class Client {
             // types (e.g. ObjectSyncEvent vs ObjectInsertEvent), so handlers can already tell a load
             // from a live change.
             for (const inner of event.events) {
-                for (const delta of inner instanceof AbstractBatchEvent ? inner.explode() : [inner]) {
+                let deltas;
+                if (inner instanceof AbstractBatchEvent) {
+                    deltas = inner.explode();
+                } else {
+                    deltas = [inner];
+                }
+                for (const delta of deltas) {
                     this._queueEvent(delta);
                 }
             }
@@ -512,7 +518,13 @@ export class Client {
     _queueEvent(event) {
         this._pendingEvents.push(event);
         const count = this._queuedCountByChunk.get(event.chunk);
-        this._queuedCountByChunk.set(event.chunk, count === undefined ? 1 : count + 1);
+        let nextCount;
+        if (count === undefined) {
+            nextCount = 1;
+        } else {
+            nextCount = count + 1;
+        }
+        this._queuedCountByChunk.set(event.chunk, nextCount);
     }
 
     /**

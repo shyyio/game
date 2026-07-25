@@ -116,6 +116,12 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
                 );
             }
         }
-        graphics.fill(this._type.mapColor !== null ? this._type.mapColor : MAP_TILE_COLOR);
+        let fillColor;
+        if (this._type.mapColor !== null) {
+            fillColor = this._type.mapColor;
+        } else {
+            fillColor = MAP_TILE_COLOR;
+        }
+        graphics.fill(fillColor);
     }
 }

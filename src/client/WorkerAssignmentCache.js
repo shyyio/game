@@ -92,7 +92,10 @@ export class WorkerAssignmentCache {
      */
     get(machineId) {
         const assignment = this._assignments.get(machineId);
-        return assignment === undefined ? null : assignment;
+        if (assignment === undefined) {
+            return null;
+        }
+        return assignment;
     }
 
     /**

@@ -418,8 +418,14 @@ class ItemParticle extends Particle {
         const half = TILE_SIZE / 2;
         const sdx = Direction.dx(sourceDirection);
         const sdy = Direction.dy(sourceDirection);
-        const targetX = tileX * TILE_SIZE + half + (halfTile ? sdx * half : 0);
-        const targetY = tileY * TILE_SIZE + half + (halfTile ? sdy * half : 0);
+        let offsetX = 0;
+        let offsetY = 0;
+        if (halfTile) {
+            offsetX = sdx * half;
+            offsetY = sdy * half;
+        }
+        const targetX = tileX * TILE_SIZE + half + offsetX;
+        const targetY = tileY * TILE_SIZE + half + offsetY;
         if (snap) {
             this.x = targetX;
             this.y = targetY;

@@ -41,7 +41,10 @@ export class ObjectCacheWriter {
      */
     positionOf(objectId) {
         const entry = this._cache.get(objectId);
-        return entry === null ? undefined : {x: entry.tileX, y: entry.tileY};
+        if (entry === null) {
+            return undefined;
+        }
+        return {x: entry.tileX, y: entry.tileY};
     }
 
     /**

@@ -131,7 +131,10 @@ export class ObjectTool extends AbstractTool {
      * @returns {Direction}
      */
     _placementDirection() {
-        return this._rotation !== null ? this._rotation.direction : Direction.UP;
+        if (this._rotation !== null) {
+            return this._rotation.direction;
+        }
+        return Direction.UP;
     }
 
     onTileExit(tileX, tileY) {

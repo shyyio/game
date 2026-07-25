@@ -186,9 +186,15 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
         return getOrCreate(this._contexts, stateKey, () => {
             const context = new GraphicsContext();
             for (let i = 0; i < workers; i += 1) {
+                let dotColor;
+                if (i < granted) {
+                    dotColor = DOT_GRANTED_COLOR;
+                } else {
+                    dotColor = DOT_MISSING_COLOR;
+                }
                 context
                     .circle(i * DOT_SPACING, 0, DOT_RADIUS)
-                    .fill(i < granted ? DOT_GRANTED_COLOR : DOT_MISSING_COLOR)
+                    .fill(dotColor)
                     .stroke({color: DOT_OUTLINE_COLOR, width: DOT_OUTLINE_WIDTH});
             }
             return context;

@@ -67,6 +67,9 @@ export class PlayerSettingsCache {
      */
     snapshot(playerId) {
         const settings = this._byPlayer.get(playerId);
-        return settings === undefined ? {} : settings.snapshot();
+        if (settings === undefined) {
+            return {};
+        }
+        return settings.snapshot();
     }
 }

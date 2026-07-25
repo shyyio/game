@@ -638,11 +638,15 @@ export class WorkerNetworks {
                 && before.granted === entry.granted) {
                 continue;
             }
+            let housingId = entry.housingObjectId;
+            if (housingId === null) {
+                housingId = NO_HOUSING;
+            }
             this.engine.emitEvent(new WorkerAssignmentEvent(
                 entry.x,
                 entry.y,
                 objectId,
-                entry.housingObjectId === null ? NO_HOUSING : entry.housingObjectId,
+                housingId,
                 entry.granted,
                 1,
             ));

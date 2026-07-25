@@ -189,7 +189,13 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
                 continue;
             }
             worker.advance(this._pendingDeltaMS);
-            worker.texture = this._walkFrames()[worker.moving ? frame : 0];
+            let walkFrame;
+            if (worker.moving) {
+                walkFrame = frame;
+            } else {
+                walkFrame = 0;
+            }
+            worker.texture = this._walkFrames()[walkFrame];
         }
         this._pendingDeltaMS = 0;
     }

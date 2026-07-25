@@ -19,7 +19,10 @@ if (TILE_SPAN * TILE_SPAN * TILE_VARIANT_LIMIT >= MAX_SMALL_INTEGER) {
 }
 
 export function fixNegativeZero(n) {
-    return Object.is(n, -0) ? 0 : n;
+    if (Object.is(n, -0)) {
+        return 0;
+    }
+    return n;
 }
 
 /**

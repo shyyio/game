@@ -375,7 +375,13 @@ export class ToolbarLayer extends Container {
             tool.label,
             this._shortcutFor(tool),
             (slot) => this._addSprite(slot, tool.textureName),
-            () => this.setActiveTool(tool === this._activeTool ? null : tool),
+            () => {
+                if (tool === this._activeTool) {
+                    this.setActiveTool(null);
+                } else {
+                    this.setActiveTool(tool);
+                }
+            },
         );
     }
 
@@ -478,7 +484,16 @@ export class ToolbarLayer extends Container {
     _setDrawerOpen(open) {
         this._drawerOpen = open;
         this._setBadgesVisible(open);
-        this._slide.to(open ? this._slideDistance : 0, open ? easeOutBack : easeInCubic);
+        let slideTarget;
+        let slideEase;
+        if (open) {
+            slideTarget = this._slideDistance;
+            slideEase = easeOutBack;
+        } else {
+            slideTarget = 0;
+            slideEase = easeInCubic;
+        }
+        this._slide.to(slideTarget, slideEase);
         if (open && this._clickOffListener === null) {
             this._clickOffListener = () => this._setDrawerOpen(false);
             window.addEventListener("pointerdown", this._clickOffListener);

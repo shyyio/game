@@ -46,7 +46,13 @@ export class EraserTool extends AbstractTool {
 
     onTileEnter(tileX, tileY) {
         const occupied = this._cache.at(tileX, tileY, LAYER_SURFACE) !== null;
-        this._placementFeedbackLayer.show({blocked: occupied ? [{x: tileX, y: tileY}] : []});
+        let blocked;
+        if (occupied) {
+            blocked = [{x: tileX, y: tileY}];
+        } else {
+            blocked = [];
+        }
+        this._placementFeedbackLayer.show({blocked});
     }
 
     onTileExit(tileX, tileY) {
