@@ -27,6 +27,9 @@ export {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 // `AbstractChunkedDrawLayer` adds per-chunk grouping: ChunkNode roots mounted by viewport,
 // one-pass stale-chunk rebuilds, and the map-mode sprite/geometry swap.
 export {AbstractChunkedDrawLayer} from "@/client/AbstractChunkedDrawLayer.js";
+
+// Debug overlays: visible only in debug mode, repainted lazily via markStale.
+export {AbstractDebugDrawLayer} from "@/client/AbstractDebugDrawLayer.js";
 // `AbstractTileMeshDrawLayer` draws each chunk as one AnimatedTileMesh off a shared shader.
 export {AbstractTileMeshDrawLayer} from "@/client/AbstractTileMeshDrawLayer.js";
 export {ObjectDrawLayer} from "@/client/ObjectDrawLayer.js";
@@ -72,6 +75,9 @@ export {ClientCache, CacheEntry} from "@/client/ClientCache.js";
 // it is measured in tiles, not pixels, so it is not re-exported here.)
 export {TILE_SIZE, snapToTile, snapToChunk} from "@/client/constants.js";
 
+// The shared UI font, for debug/overlay labels.
+export {GAME_FONT} from "@/client/constants.js";
+
 // Compares a layer's mounted chunks against the visible set handed to `tick`, for layers that cull
 // their children — pixi walks every child of a container each frame.
 export {sameChunks} from "@/client/constants.js";
@@ -110,4 +116,4 @@ export {AnimatedTile, AnimatedTileMesh, AnimatedTileShader, FrameTable} from "@/
 // ---- Pixi types ----
 // Passed through so mods share the engine's single Pixi instance rather than
 // bundling their own (multiple Pixi copies break rendering).
-export {Graphics, Rectangle, Sprite, Texture, Container} from "pixi.js";
+export {Graphics, Rectangle, Sprite, Text, Texture, Container} from "pixi.js";

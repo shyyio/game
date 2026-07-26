@@ -13,9 +13,15 @@ async function setup() {
 
 test("an extractor on water produces the water item into its output port", async () => {
     const engine = await setup();
+    const collector = new EventCollector(engine);
     engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 5, 5, Direction.UP));
     assert.equal(engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 5, 5, Direction.UP)), true);
     assert.equal(engine.placed.eidsOf(ExtractorType.typeId).length, 1, "extractor placed on the resource");
+
+    // The product is fixed by the resource, so the insert already carries it.
+    const insert = collector.drain().find(event =>
+        event instanceof ObjectInsertEvent && event.typeId === ExtractorType.typeId);
+    assert.equal(insert.lastOutput, ITEM_TYPE_WATER, "lastOutput seeded at placement");
 
     const outPort = engine.portAt(5, 4, Direction.UP);
     let produced = false;

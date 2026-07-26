@@ -4,7 +4,7 @@ import {GameEngine} from "@/sim/GameEngine.js";
 
 /**
  * A frozen ModRegistry with the standard sim loadout (typeIds assigned), for tests that need the
- * bitECS engine or the definitions' typeIds.
+ * ECS engine or the definitions' typeIds.
  * @returns {ModRegistry}
  */
 export function ecsModRegistry() {

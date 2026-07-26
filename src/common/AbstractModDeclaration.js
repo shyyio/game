@@ -37,4 +37,12 @@ export class AbstractModDeclaration {
     get itemTextures() {
         return {};
     }
+
+    /**
+     * Payload numbers that are fluids: a fluid resting in a rendered port draws no item sprite.
+     * @returns {number[]}
+     */
+    get fluidTypes() {
+        return [];
+    }
 }

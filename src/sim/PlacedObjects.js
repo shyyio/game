@@ -154,13 +154,15 @@ export class PlacedObjects {
         this.def.store.typeId[row] = type.typeId;
         this.def.store.objectId[row] = objectId;
         engine.setPosition(eid, message.x, message.y, message.direction);
-        const portIds = type.behavior.onSpawn(engine, this, eid, type, message);
+        type.behavior.onSpawn(engine, this, eid, type, message);
         if (type.placement.solid) {
             engine.track(objectId, footprint);
         }
         this._eidByObjectId.set(objectId, eid);
         this._indexChunk(eid, message.x, message.y);
-        engine.emitEvent(new ObjectInsertEvent(type.typeId, objectId, message.x, message.y, message.direction, portIds, null));
+        // One source for the insert payload: the behavior's sync record (ports + seeded lastOutput).
+        const sync = type.behavior.syncData(engine, this, eid);
+        engine.emitEvent(new ObjectInsertEvent(type.typeId, objectId, message.x, message.y, message.direction, sync.portIds, sync.lastOutput));
         return true;
     }
 

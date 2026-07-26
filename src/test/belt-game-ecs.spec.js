@@ -13,7 +13,7 @@ const CELLS = [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}];
 const HEAD = {x: 0, y: 2};
 const EXPECTED = [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, RED, RED, EMPTY, EMPTY, EMPTY];
 
-// Drive a real Game built on the bitECS engine: dispatch belt-placement messages, tick, read output.
+// Drive a real Game built on the ECS engine: dispatch belt-placement messages, tick, read output.
 test("a Game on GameEngine places and ticks belts via messages", async () => {
     const modRegistry = ecsModRegistry();
     const engine = new GameEngine(modRegistry);

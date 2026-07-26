@@ -262,6 +262,10 @@ export class GameEngine {
         // Provided service instances by their exported marker class (see provide/resolve).
         this._services = new Map();
 
+        // Fluid payload numbers (drawn as fill levels, never as item sprites); filled from the
+        // registry at init.
+        this._fluidTypes = new Set();
+
         // Registered by mods.
         this._messageHandlers = [];
         this._chunkSyncers = [];
@@ -288,6 +292,14 @@ export class GameEngine {
         // Last emitted item per rendered port, so EMIT_RENDER emits only changes; EMPTY means nothing
         // drawn. Sized with the Port columns (see _growComponent).
         this._portShadow = new Int32Array(this._portDef.capacity).fill(EMPTY);
+        // Ports belonging to fluid machinery (pipe network and tank edges); belts refuse to link
+        // with one. Marked by the owning module, re-marked on rebuild.
+        this._portFluid = new Uint8Array(this._portDef.capacity);
+        // The fluid type a producer emits into a port (EMPTY for none/solid), so a pipe network
+        // adopting the edge binds its type before the first payload. The generation bumps on every
+        // write, so an idle consumer re-scans its sources only when one could have changed.
+        this._portFluidSource = new Int32Array(this._portDef.capacity).fill(EMPTY);
+        this._fluidSourceGeneration = 1;
         // Out-ports whose resting item is drawn, and the tile it is drawn at. Modules register theirs;
         // re-registration is idempotent and a removed path's port can be unregistered (paths churn).
         this._rendered = new Uint8Array(this._portDef.capacity);
@@ -589,20 +601,28 @@ export class GameEngine {
         const item = this.Port.item;
         for (const eid of this._dirtyPorts) {
             this._portDirty[eid] = 0;
-            if (this._rendered[eid] === 0 || item[eid] === this._portShadow[eid]) {
+            if (this._rendered[eid] === 0) {
                 continue;
             }
-            this._portShadow[eid] = item[eid];
+            // A fluid payload draws no item sprite, so it diffs as an empty port.
+            let displayed = item[eid];
+            if (this.isFluid(displayed)) {
+                displayed = EMPTY;
+            }
+            if (displayed === this._portShadow[eid]) {
+                continue;
+            }
+            this._portShadow[eid] = displayed;
             if (!this._portObservedAt(eid)) {
                 continue;
             }
             const x = this._renderX[eid];
             const y = this._renderY[eid];
             const batch = this._portBatch(batches, x, y);
-            if (item[eid] === EMPTY) {
+            if (displayed === EMPTY) {
                 batch.addClear(eid);
             } else {
-                batch.addSet(eid, item[eid]);
+                batch.addSet(eid, displayed);
             }
         }
         this._dirtyPorts.length = 0;
@@ -643,6 +663,7 @@ export class GameEngine {
             // The registry must be frozen (typeIds assigned) before content wires up; the accessors
             // throw otherwise. The generic entity host installs every derived type's behavior first,
             // then bespoke sim mods register theirs.
+            this._fluidTypes = this.modRegistry.fluidTypes;
             this.placed = new PlacedObjects(this, this.modRegistry);
             this.workers = new WorkerNetworks(this, this.placed);
             for (const mod of this.modRegistry.simMods) {
@@ -934,12 +955,12 @@ export class GameEngine {
                 grown.set(this[name]);
                 this[name] = grown;
             }
-            for (const name of ["_portShadow", "_destBySource", "_winnerByDest", "_bestBySource"]) {
+            for (const name of ["_portShadow", "_destBySource", "_winnerByDest", "_bestBySource", "_portFluidSource"]) {
                 const grown = new Int32Array(capacity).fill(EMPTY);
                 grown.set(this[name]);
                 this[name] = grown;
             }
-            for (const name of ["_portDirty", "_rendered", "_portObserved", "_portResolved", "_portResolvedUnmanaged", "_draining"]) {
+            for (const name of ["_portDirty", "_rendered", "_portFluid", "_portObserved", "_portResolved", "_portResolvedUnmanaged", "_draining"]) {
                 const grown = new Uint8Array(capacity);
                 grown.set(this[name]);
                 this[name] = grown;
@@ -1018,10 +1039,74 @@ export class GameEngine {
     createPort(item=EMPTY) {
         const eid = this.world.addEntity();
         this._addComponent(this._portDef, eid);
-        // bitECS recycles eids, so clear any shadow the previous tenant left behind.
+        // The world recycles eids, so clear any shadow/flag the previous tenant left behind.
         this._portShadow[eid] = EMPTY;
+        this._portFluid[eid] = 0;
+        this._portFluidSource[eid] = EMPTY;
         this.setPortItem(eid, item);
         return eid;
+    }
+
+    /**
+     * Declares the fluid type a producer emits into `eid` (EMPTY to clear).
+     * @param {number} eid
+     * @param {number} fluidType
+     * @returns {void}
+     */
+    setPortFluidSource(eid, fluidType) {
+        this._portFluidSource[eid] = fluidType;
+        this._fluidSourceGeneration += 1;
+    }
+
+    /**
+     * @returns {number} the current fluid-source generation; a cache stamped with it is still valid
+     */
+    get fluidSourceGeneration() {
+        return this._fluidSourceGeneration;
+    }
+
+    /**
+     * @param {number} eid
+     * @returns {number} the fluid type produced into the port, or EMPTY
+     */
+    portFluidSource(eid) {
+        return this._portFluidSource[eid];
+    }
+
+    /**
+     * Claims a port for fluid machinery (a pipe network edge or tank port); a port may be claimed
+     * by more than one owner when a pipe and a tank share an edge, so {@link isFluidPort} only
+     * clears once every owner has called {@link unmarkFluidPort}.
+     * @param {number} eid
+     * @returns {void}
+     */
+    markFluidPort(eid) {
+        this._portFluid[eid] += 1;
+    }
+
+    /**
+     * Releases one fluid-machinery claim taken by {@link markFluidPort}.
+     * @param {number} eid
+     * @returns {void}
+     */
+    unmarkFluidPort(eid) {
+        this._portFluid[eid] -= 1;
+    }
+
+    /**
+     * @param {number} eid
+     * @returns {boolean} whether the port is claimed by any fluid machinery
+     */
+    isFluidPort(eid) {
+        return this._portFluid[eid] > 0;
+    }
+
+    /**
+     * @param {number} item
+     * @returns {boolean} whether `item` is a declared fluid payload
+     */
+    isFluid(item) {
+        return this._fluidTypes.has(item);
     }
 
     /**
@@ -1040,6 +1125,23 @@ export class GameEngine {
             eid = this.createPort();
             this.setPosition(eid, x, y, direction);
             this._portsByEdge.set(key, eid);
+        }
+        return eid;
+    }
+
+    /**
+     * The existing port on the edge "flow entering tile (x, y) going `direction`", or null —
+     * {@link portAt} without the create, for an emitter that must not strand a payload in a port
+     * nothing consumes.
+     * @param {number} x
+     * @param {number} y
+     * @param {number} direction
+     * @returns {number|null} the port eid
+     */
+    peekPortAt(x, y, direction) {
+        const eid = this._portsByEdge.get(tileVariantId(tileId(x, y), direction));
+        if (eid === undefined) {
+            return null;
         }
         return eid;
     }
@@ -1742,6 +1844,8 @@ export class GameEngine {
         this._cellByKey = new Map();
         // Drop the prior world's render/tick state so its stale eids never leak into the new world.
         this._rendered.fill(0);
+        this._portFluid.fill(0);
+        this._portFluidSource.fill(EMPTY);
         this._renderedByChunk = new Map();
         this._portShadow.fill(EMPTY);
         this._portDirty.fill(0);
@@ -1958,7 +2062,7 @@ export class GameEngine {
         const item = this.Port.item;
         let batch = null;
         for (const eid of eids) {
-            if (item[eid] === EMPTY) {
+            if (item[eid] === EMPTY || this.isFluid(item[eid])) {
                 continue;
             }
             if (batch === null) {

@@ -25,6 +25,7 @@ export const WaterResourceType = new ObjectType({
     name: "WaterResource",
     geometry: "1x1",
     textureName: "resource/placeholder",
+    directional: false,
     label: "Water",
     // An extractor sits directly on the water tile, so the body never blocks it.
     extractionTiles: [{x: 0, y: 0}],
@@ -40,10 +41,12 @@ export const VOLCANO_EXTRACTION_TILES = [
     {x: 2, y: 0}, {x: 2, y: 1},
 ];
 
+// Non-directional: extraction cover is laid unrotated, so the body must never rotate either.
 export const VolcanoResourceType = new ObjectType({
     name: "VolcanoResource",
     geometry: "2x2",
     textureName: "resource/placeholder-2x2",
+    directional: false,
     label: "Volcano",
     extractionTiles: VOLCANO_EXTRACTION_TILES,
     behavior: new ResourceBehavior({resourceType: RESOURCE_VOLCANO}),
@@ -100,5 +103,10 @@ export class ResourcesDeclaration extends AbstractModDeclaration {
             [ITEM_TYPE_SULFUR]: "items/2",
             [ITEM_TYPE_BRINE]: "items/1",
         };
+    }
+
+    // Extracted water and brine are fluids: they fill pipes and never rest as port item sprites.
+    get fluidTypes() {
+        return [ITEM_TYPE_WATER, ITEM_TYPE_BRINE];
     }
 }

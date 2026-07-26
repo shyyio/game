@@ -86,16 +86,16 @@ export class AbstractBehavior {
 
     /**
      * Wires the freshly spawned entity: attaches behavior components, resolves ports, registers
-     * rendered ports.
+     * rendered ports. The insert event's port ids come from {@link syncData}.
      * @param {GameEngine} engine
      * @param {PlacedObjects} placed
      * @param {number} eid
      * @param {ObjectType} type
      * @param {CreateObjectMessage} message
-     * @returns {number[]} the rendered out-port ids, in wire order
+     * @returns {void}
      */
     onSpawn(engine, placed, eid, type, message) {
-        return [];
+
     }
 
     /**
@@ -184,7 +184,6 @@ export class RoadBehavior extends AbstractBehavior {
         for (const cell of engine.footprint(type, message.x, message.y, message.direction)) {
             engine.workers.addRoad(cell.x, cell.y, objectId);
         }
-        return [];
     }
 
     onDespawn(engine, placed, eid) {
@@ -220,7 +219,6 @@ export class HousingBehavior extends AbstractBehavior {
 
     onSpawn(engine, placed, eid, type, message) {
         engine.workers.markDirty(engine.footprint(type, message.x, message.y, message.direction));
-        return [];
     }
 
     onDespawn(engine, placed, eid) {
@@ -327,7 +325,6 @@ export class MachineBehavior extends AbstractBehavior {
         if (this.workerCost > 0) {
             engine.workers.markDirty(engine.footprint(type, message.x, message.y, message.direction));
         }
-        return [output.port];
     }
 
     onDespawn(engine, placed, eid) {
@@ -677,14 +674,28 @@ export class ExtractorBehavior extends AbstractBehavior {
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         extractor.out[row] = output.port;
         extractor.processingTicks[row] = this.processingTicks;
-        extractor.resourceType[row] = engine.occupantUserDataAt(message.x, message.y, LAYER_RESOURCE);
-        engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
-        return [output.port];
+        const resource = engine.occupantUserDataAt(message.x, message.y, LAYER_RESOURCE);
+        extractor.resourceType[row] = resource;
+        // The product is fixed by the bound resource, so show it before the first cycle delivers;
+        // a fluid product also types the out-port so an adopting pipe network binds immediately.
+        const product = this.recipes.get(resource);
+        if (product !== undefined) {
+            extractor.lastOutput[row] = product;
+            if (engine.isFluid(product)) {
+                engine.setPortFluidSource(output.port, product);
+            }
+        }
+        if (type.outputPorts[0].render) {
+            engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
+        }
     }
 
     onDespawn(engine, placed, eid) {
         const def = engine.component("Extractor");
-        engine.unregisterRenderedPort(def.store.out[def.row(eid)]);
+        const out = def.store.out[def.row(eid)];
+        engine.unregisterRenderedPort(out);
+        // The port may outlive the extractor (an adjacent pipe pins it); it no longer produces.
+        engine.setPortFluidSource(out, EMPTY);
     }
 
     syncData(engine, placed, eid) {
@@ -695,10 +706,17 @@ export class ExtractorBehavior extends AbstractBehavior {
         if (last === EMPTY) {
             lastOutput = null;
         }
-        return {portIds: [def.store.out[row]], lastOutput};
+        let portIds = [];
+        if (this.type.outputPorts[0].render) {
+            portIds = [def.store.out[row]];
+        }
+        return {portIds, lastOutput};
     }
 
     resyncRenderedPorts(engine, placed, eid) {
+        if (!this.type.outputPorts[0].render) {
+            return;
+        }
         const def = engine.component("Extractor");
         const out = def.store.out[def.row(eid)];
         engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
@@ -753,7 +771,12 @@ export class ExtractorBehavior extends AbstractBehavior {
         const extractor = def.store;
         const eids = def.eids;
         for (let row = 0; row < def.count; row += 1) {
-            extractor.processingTicks[row] = placed.behaviorFor(placed.typeIdOf(eids[row])).processingTicks;
+            const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
+            extractor.processingTicks[row] = behavior.processingTicks;
+            const product = behavior.recipes.get(extractor.resourceType[row]);
+            if (product !== undefined && engine.isFluid(product)) {
+                engine.setPortFluidSource(extractor.out[row], product);
+            }
         }
     }
 
@@ -854,6 +877,5 @@ export class ResourceBehavior extends AbstractBehavior {
             layer: LAYER_RESOURCE,
         }));
         engine.occupy(cells, objectId, this.resourceType);
-        return [];
     }
 }

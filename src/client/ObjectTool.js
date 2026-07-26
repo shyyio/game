@@ -234,7 +234,7 @@ export class ObjectTool extends AbstractTool {
                 bodyByKey.set(key, {cell, state: "blocked"});
                 continue;
             }
-            const occupant = this._cache.at(cell.x, cell.y, this._type.positionLayer);
+            const occupant = this._solidOccupantAt(cell.x, cell.y);
             if (occupant === null) {
                 bodyByKey.set(key, {cell, state: "clear"});
             } else if (this._overwritable(occupant, direction)) {
@@ -278,14 +278,42 @@ export class ObjectTool extends AbstractTool {
                 clearCells.push(entry.cell);
             }
         }
+
+        // A mod veto (the sim would reject the spawn) blocks the whole placement.
+        const vetoed = this._client.modRegistry.clientMods
+            .some(mod => !mod.canPlace(this._type, tileX, tileY, direction, this._client));
+        if (vetoed) {
+            blockedCells.push(...overwriteCells, ...clearCells);
+            return {blockedCells, overwriteCells: [], clearCells: [], overwriteIds: []};
+        }
+
         // Overwrites survive only if no body cell got re-blocked above.
         const finalOverwriteIds = overwriteCells.map(cell => bodyByKey.get(`${cell.x},${cell.y}`).id);
         return {blockedCells, overwriteCells, clearCells, overwriteIds: finalOverwriteIds};
     }
 
     /**
-     * The world tiles occupied per layer by every cached object (its full per-layer footprint), for
-     * mirroring the server's IsOccupied. Objects the placement overwrites are excluded.
+     * The topmost solid object covering (tileX, tileY) on this type's layer, or null. Mirrors the
+     * server: a non-solid object (a water body) occupies nothing.
+     * @private
+     * @param {number} tileX
+     * @param {number} tileY
+     * @returns {CacheEntry|null}
+     */
+    _solidOccupantAt(tileX, tileY) {
+        const stacked = this._cache.allAt(tileX, tileY, this._type.positionLayer);
+        for (let i = stacked.length - 1; i >= 0; i -= 1) {
+            if (stacked[i].data.type.placement.solid) {
+                return stacked[i];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The world tiles occupied per layer by every cached solid object (its full per-layer
+     * footprint), for mirroring the server's IsOccupied. Objects the placement overwrites are
+     * excluded.
      * @private
      * @param {Set<number>} excludeIds
      * @returns {Map<number, Set<string>>}
@@ -293,7 +321,7 @@ export class ObjectTool extends AbstractTool {
     _positionsByLayer(excludeIds) {
         const byLayer = new Map();
         for (const entry of this._cache.values()) {
-            if (excludeIds.has(entry.id)) {
+            if (excludeIds.has(entry.id) || !entry.data.type.placement.solid) {
                 continue;
             }
             for (const {layer, cells} of entry.data.type.positionLayerTiles(entry.data.direction)) {

@@ -94,7 +94,7 @@ export class LogisticsClientMod extends AbstractClientMod {
     onEvent(event, client) {
         if (event instanceof ObjectInsertEvent && isBeltType(client.modRegistry.typeById(event.typeId))) {
             // A live insert's recalc precedes the belt, so repaint once it is cached.
-            this._pathDebugLayer.redraw();
+            this._pathDebugLayer.markStale();
             return;
         }
         if (event instanceof BeltPathRecalculateEvent) {
@@ -104,7 +104,7 @@ export class LogisticsClientMod extends AbstractClientMod {
                 this._outPortToPath.set(event.outPortId, head);
                 this._pathToOutPort.set(head, event.outPortId);
             }
-            this._pathDebugLayer.redraw();
+            this._pathDebugLayer.markStale();
             return;
         }
         if (event instanceof PortItemSetEvent || event instanceof PortItemClearEvent) {
@@ -453,7 +453,7 @@ export class LogisticsClientMod extends AbstractClientMod {
             }
         }
         if (this._pathParts.delete(id)) {
-            this._pathDebugLayer.redraw();
+            this._pathDebugLayer.markStale();
         }
     }
 
