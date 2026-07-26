@@ -15,9 +15,9 @@ const LABEL_GAP = 0;
 const LABEL_SIZE = 15;
 // Number-key hotkeys cover the first this-many mod tools (keys 1-9).
 const TOOL_SHORTCUT_COUNT = 9;
-// Reserved height for the label under each slot, so cells align regardless of text.
-const LABEL_HEIGHT = 16;
-const CELL_GAP = 12;
+// Reserved height for the label under each slot (up to 2 wrapped lines), so cells align regardless of text.
+const LABEL_HEIGHT = 34;
+const CELL_GAP = 20;
 const ROW_GAP = 12;
 const MARGIN_BOTTOM = 6;
 // Tools shown on the visible top row; the rest overflow into the drawer rows below.
@@ -330,9 +330,17 @@ export class ToolbarLayer extends Container {
         if (label !== null) {
             const text = new Text({
                 text: label,
-                style: {fontFamily: GAME_FONT, fontSize: LABEL_SIZE, fill: TOOLBAR_TEXT},
+                style: {
+                    fontFamily: GAME_FONT,
+                    fontSize: LABEL_SIZE,
+                    fill: TOOLBAR_TEXT,
+                    align: "center",
+                    wordWrap: true,
+                    wordWrapWidth: SLOT_SIZE + CELL_GAP,
+                },
             });
-            text.x = (SLOT_SIZE - text.width) / 2;
+            text.anchor.x = 0.5;
+            text.x = SLOT_SIZE / 2;
             text.y = SLOT_SIZE + LABEL_GAP;
             slot.addChild(text);
         }
