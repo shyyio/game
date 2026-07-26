@@ -1,5 +1,5 @@
 import {Container, Graphics, Text} from "pixi.js";
-import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
+import {AbstractDebugDrawLayer} from "@/client/AbstractDebugDrawLayer.js";
 import {TILE_SIZE, GAME_FONT} from "@/client/constants.js";
 import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
 import {cellNeighbors, tileId} from "@/common/util.js";
@@ -19,28 +19,20 @@ const HOUSING_MARKER_RADIUS = 8;
  * attached machines outlined, a demand/supply label per network, and a line from each manned
  * machine to its housing. Hidden until debug mode is enabled.
  */
-export class WorkerDebugLayer extends AbstractDrawLayer {
+export class WorkerDebugLayer extends AbstractDebugDrawLayer {
 
     /**
      * @param {WorkerAssignmentCache} assignments
      */
     constructor(assignments) {
         super();
-        this.visible = false;
-        this._debugMode = false;
-        // Map mode (zoomed far out) is too coarse for the overlay; it hides regardless of debug mode.
-        this._mapMode = false;
-        // Repaint lazily on the next tick after a worker-relevant change.
-        this._stale = true;
         /**
          * The shared machine-staffing index, for the machine->housing lines.
          * @type {WorkerAssignmentCache}
          * @private
          */
         this._assignments = assignments;
-        assignments.onChange(() => {
-            this._stale = true;
-        });
+        assignments.onChange(() => this.markStale());
         this._graphics = new Graphics();
         this.addChild(this._graphics);
         // Per-component labels, rebuilt on every repaint.
@@ -60,49 +52,7 @@ export class WorkerDebugLayer extends AbstractDrawLayer {
     onCacheChange(entry) {
         const behavior = entry.behavior;
         if (behavior !== null && isWorkerBehavior(behavior)) {
-            this._stale = true;
-        }
-    }
-
-    /**
-     * Shows the overlay in debug mode; hides it otherwise.
-     * @param {boolean} enabled
-     * @returns {void}
-     */
-    setDebugMode(enabled) {
-        this._debugMode = enabled;
-        this._updateVisibility();
-    }
-
-    /**
-     * Hides the overlay in map mode, restoring it on zoom-in if debug mode is on.
-     * @param {boolean} value
-     */
-    set mapMode(value) {
-        this._mapMode = value;
-        this._updateVisibility();
-    }
-
-    /**
-     * @private
-     * @returns {void}
-     */
-    _updateVisibility() {
-        this.visible = this._debugMode && !this._mapMode;
-        this._stale = true;
-    }
-
-    /**
-     * Repaints when shown and stale.
-     * @param {number} frame
-     * @param {number} deltaMS
-     * @param {Set<number>} visibleChunks
-     * @returns {void}
-     */
-    tick(frame, deltaMS, visibleChunks) {
-        if (this.visible && this._stale) {
-            this._stale = false;
-            this._redraw();
+            this.markStale();
         }
     }
 
@@ -111,7 +61,7 @@ export class WorkerDebugLayer extends AbstractDrawLayer {
      * @private
      * @returns {void}
      */
-    _redraw() {
+    _repaint() {
         this._graphics.clear();
         for (const label of this._labels.removeChildren()) {
             label.destroy();

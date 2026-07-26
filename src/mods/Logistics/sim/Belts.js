@@ -31,7 +31,7 @@ const NO_SLOT = -1;
 const PATH_MARKER = {};
 
 /**
- * Belt path movement on the bitECS engine; a path carries a slab of the shared {@link ItemStore},
+ * Belt path movement on the ECS engine; a path carries a slab of the shared {@link ItemStore},
  * ordered output-edge -> input-edge, each item holding the empty half-tiles ahead of it.
  */
 export class Belts {
@@ -1324,7 +1324,8 @@ export class Belts {
             const inPort = inPortCol[slot];
             const outPort = outPortCol[slot];
             const leadIsItem = leadGapCol[slot] === 0;
-            if (leadIsItem) {
+            // A fluid port ahead never links: the path holds its lead instead of stranding an item there.
+            if (leadIsItem && !engine.isFluidPort(outPort)) {
                 // Free if empty or the downstream can ingest, so the resolver's chain shifts a packed run at once.
                 const downstream = slotByInPort[outPort];
                 const downstreamCanIngest = downstream !== NO_SLOT
@@ -1336,7 +1337,8 @@ export class Belts {
                     false,
                 );
             }
-            if (P[inPort] !== EMPTY && (headGapCol[slot] > 0 || firstGap !== -1)) {
+            // A resting fluid payload is refused, so its producer backs up.
+            if (P[inPort] !== EMPTY && !engine.isFluid(P[inPort]) && (headGapCol[slot] > 0 || firstGap !== -1)) {
                 engine.submitDrain(inPort, false);
             }
         }
@@ -1414,11 +1416,11 @@ export class Belts {
             headGapCol[slot] += 1;
         }
 
-        // Phase 2: ingest each path's resting in-port item at the input edge.
+        // Phase 2: ingest each path's resting in-port item at the input edge; fluids are refused.
         const itemIds = this._items.ids;
         for (let slot = 0; slot < count; slot += 1) {
             const inPort = inPortCol[slot];
-            if (headGapCol[slot] === 0 || P[inPort] === EMPTY) {
+            if (headGapCol[slot] === 0 || P[inPort] === EMPTY || engine.isFluid(P[inPort])) {
                 continue;
             }
             const type = P[inPort];

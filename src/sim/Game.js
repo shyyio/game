@@ -13,7 +13,7 @@ export class Game {
 
     /**
      * @param {ModRegistry} modRegistry
-     * @param {GameEngine} [simEngine] - the simulation engine; defaults to the bitECS engine
+     * @param {GameEngine} [simEngine] - the simulation engine; defaults to a fresh GameEngine
      * @param {AbstractSaveStore} [saveStore] - persists/restores the world; omitted when saving is off
      */
     constructor(modRegistry, simEngine, saveStore) {
@@ -21,7 +21,7 @@ export class Game {
         this.saveStore = saveStore;
 
         /**
-         * The bitECS simulation engine the tick pipeline runs through.
+         * The simulation engine the tick pipeline runs through.
          * @type {GameEngine}
          */
         this.simEngine = simEngine === undefined ? new GameEngine(modRegistry) : simEngine;

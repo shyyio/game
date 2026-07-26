@@ -30,7 +30,6 @@ export class SplitterBehavior extends AbstractBehavior {
         this._wire(engine, eid, {in_a: inA.port, in_b: inB.port, out_a: outA.port, out_b: outB.port});
         engine.registerRenderedPort(outA.port, outA.tile.x, outA.tile.y);
         engine.registerRenderedPort(outB.port, outB.tile.x, outB.tile.y);
-        return [outA.port, outB.port];
     }
 
     onDespawn(engine, placed, eid) {

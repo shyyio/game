@@ -4,6 +4,8 @@ import {LogisticsDeclaration} from "@/mods/Logistics/declaration.js";
 import {LogisticsClientMod} from "@/mods/Logistics/client.js";
 import {DemoDeclaration} from "@/mods/Demo/declaration.js";
 import {ResourcesDeclaration} from "@/mods/Resources/declaration.js";
+import {FluidsDeclaration} from "@/mods/Fluids/declaration.js";
+import {FluidsClientMod} from "@/mods/Fluids/client.js";
 
 // The canonical mod loadout. Both build sites register the same declarations in the same order, so
 // the positional typeIds/wireIds assigned at freeze() match between sim and client.
@@ -18,6 +20,7 @@ export function simLoadout() {
         new ModPackage(new LogisticsDeclaration()),
         new ModPackage(new DemoDeclaration()),
         new ModPackage(new ResourcesDeclaration()),
+        new ModPackage(new FluidsDeclaration()),
     ];
 }
 
@@ -31,5 +34,6 @@ export function clientLoadout() {
         new ModPackage(new LogisticsDeclaration(), {client: new LogisticsClientMod()}),
         new ModPackage(new DemoDeclaration()),
         new ModPackage(new ResourcesDeclaration()),
+        new ModPackage(new FluidsDeclaration(), {client: new FluidsClientMod()}),
     ];
 }

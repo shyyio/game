@@ -5,6 +5,9 @@ import {DemoMachineType} from "@/mods/Demo/declaration.js";
 import {WaterResourceType, ExtractorType} from "@/mods/Resources/declaration.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
+import {PipeDefinition, TankDefinition} from "@/mods/Fluids/common/objectTypes.js";
+import {FLUID_TYPE_WATER} from "@/mods/Fluids/common/constants.js";
+import {Pipes} from "@/mods/Fluids/sim/Pipes.js";
 
 // Writes a NodeSaveStore SQLite save populated with one of every object type, for inspecting the
 // on-disk save format. Output path is argv[2] (default SAMPLE.sqlite3).
@@ -18,6 +21,11 @@ engine.applyMessage(new CreateObjectMessage(SplitterDefinition.typeId, 3, 8, Dir
 for (const cell of [{x: 20, y: 20}, {x: 20, y: 21}, {x: 20, y: 22}, {x: 20, y: 23}]) {
     engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP));
 }
+// A pipe run feeding a tank at (30, 30), 2x2 covering (30..31, 30..31).
+engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 30, 32, Direction.UP));
+engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 30, 33, Direction.UP));
+engine.applyMessage(new CreateObjectMessage(TankDefinition.typeId, 30, 30, Direction.UP));
+engine.resolve(Pipes).addFluid(30, 32, FLUID_TYPE_WATER, 50);
 for (let i = 0; i < 5; i += 1) {
     engine.tickAll();
 }

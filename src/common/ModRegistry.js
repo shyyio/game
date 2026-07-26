@@ -24,6 +24,10 @@ export class ModRegistry {
          * @type {Object<number, string>}
          */
         this._itemTextures = {};
+        /**
+         * @type {Set<number>}
+         */
+        this._fluidTypes = new Set();
     }
 
     /**
@@ -83,6 +87,9 @@ export class ModRegistry {
                 this._textureDefinitions.push(definition);
             }
             Object.assign(this._itemTextures, pkg.declaration.itemTextures);
+            for (const fluidType of pkg.declaration.fluidTypes) {
+                this._fluidTypes.add(fluidType);
+            }
         }
     }
 
@@ -159,5 +166,14 @@ export class ModRegistry {
     get itemTextures() {
         this._assertFrozen();
         return this._itemTextures;
+    }
+
+    /**
+     * Fluid payload numbers, merged across all mods.
+     * @returns {Set<number>}
+     */
+    get fluidTypes() {
+        this._assertFrozen();
+        return this._fluidTypes;
     }
 }

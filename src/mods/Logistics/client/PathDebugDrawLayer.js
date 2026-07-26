@@ -1,5 +1,5 @@
 import {
-    AbstractDrawLayer,
+    AbstractDebugDrawLayer,
     Graphics,
     TILE_SIZE,
     DEBUG_COLOR,
@@ -13,17 +13,13 @@ const END_MARKER_RADIUS = 10;
 /**
  * Debug overlay drawing each belt path as a colored line (keyed by head belt id) with end markers.
  */
-export class PathDebugDrawLayer extends AbstractDrawLayer {
+export class PathDebugDrawLayer extends AbstractDebugDrawLayer {
 
     /**
      * @param {Map<number, number[]>} paths - shared head id → ordered belt ids (head last), owned by LogisticsClientMod
      */
     constructor(paths) {
         super();
-        this.visible = false;
-        this._debugMode = false;
-        // Too fine to read in map mode, so it hides there regardless of debug mode.
-        this._mapMode = false;
         this._paths = paths;
         this._graphics = new Graphics();
         this.addChild(this._graphics);
@@ -34,41 +30,11 @@ export class PathDebugDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Shows the overlay in debug mode; hides it otherwise.
-     * @param {boolean} enabled
-     * @returns {void}
-     */
-    setDebugMode(enabled) {
-        this._debugMode = enabled;
-        this._updateVisibility();
-    }
-
-    /**
-     * Hides the overlay in map mode, restoring it on zoom-in if debug mode is on.
-     * @param {boolean} value
-     */
-    set mapMode(value) {
-        this._mapMode = value;
-        this._updateVisibility();
-    }
-
-    /**
-     * Visible only in debug mode and out of map mode; repaints when shown.
+     * Repaints every tracked path.
      * @private
-     */
-    _updateVisibility() {
-        this.visible = this._debugMode && !this._mapMode;
-        this.redraw();
-    }
-
-    /**
-     * Repaints every tracked path; skipped while hidden.
      * @returns {void}
      */
-    redraw() {
-        if (!this.visible) {
-            return;
-        }
+    _repaint() {
         this._graphics.clear();
         for (const parts of this._paths.values()) {
             this._drawPath(parts);

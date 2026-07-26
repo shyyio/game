@@ -45,6 +45,20 @@ export class AbstractClientMod {
     }
 
     /**
+     * Client-side mirror of a sim placement rule the derived ObjectTool cannot know (a pipe
+     * bridging fluid types); false marks the whole placement blocked in the feedback.
+     * @param {ObjectType} type
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Direction} direction
+     * @param {Client} client
+     * @returns {boolean}
+     */
+    canPlace(type, tileX, tileY, direction, client) {
+        return true;
+    }
+
+    /**
      * Inspect hook (null coords = cleared); returns the objects to highlight and may update the
      * mod's own draw layers.
      * @param {number|null} tileX

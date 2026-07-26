@@ -28,7 +28,6 @@ export class BeltBehavior extends AbstractBehavior {
             this._fillTunnel(engine, belts, message);
         }
         belts.placeBelt(message.x, message.y, message.direction, this.beltKind, placed.objectIdOf(eid));
-        return [];
     }
 
     onDespawn(engine, placed, eid) {
