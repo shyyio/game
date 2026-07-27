@@ -4,7 +4,8 @@ import assert from "node:assert";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {WireRegistry} from "@/common/wire.js";
 
-import {SetViewportMessage, SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
+import {SetViewportMessage, SetInspectedObjectsMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
+import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {PortItemSetEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
@@ -115,4 +116,17 @@ test("Throws on an unregistered class", () => {
     const reg = registry();
     class Bogus {}
     assert.throws(() => reg.encode(new Bogus()), /No wire codec/);
+});
+
+test("Round-trips an OverworldRequestMessage", () => {
+    const reg = registry();
+    roundTrip(reg, new OverworldRequestMessage(-3, 7, 4, 4), OverworldRequestMessage);
+});
+
+test("Round-trips an OverworldSnapshotEvent's flattened run columns", () => {
+    const reg = registry();
+    const event = new OverworldSnapshotEvent(-2, -2, 4, 4);
+    event.addChunk(8128, [131, 650], [1, 2], [4, 9]);
+    event.addChunk(8129, [0], [64], [4]);
+    roundTrip(reg, event, OverworldSnapshotEvent);
 });

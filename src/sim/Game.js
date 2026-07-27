@@ -1,5 +1,5 @@
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
-import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
+import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
 import {InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
@@ -134,6 +134,11 @@ export class Game {
             return;
         }
 
+        if (message instanceof OverworldRequestMessage) {
+            this._sendOverworldSnapshot(session, message);
+            return;
+        }
+
         this.simEngine.applyMessage(message);
 
         // Close menus after the object is actually deleted, never before.
@@ -168,6 +173,24 @@ export class Game {
                 this.bus.publishTo(session.id, new ChunkSyncEvent(chunk, events));
             }
         }
+    }
+
+    // ---- Overworld ----
+
+    /**
+     * Answers an overworld request from the hot bake, straight to the asking session.
+     * @param {AbstractSession} session
+     * @param {OverworldRequestMessage} message
+     * @returns {void}
+     */
+    _sendOverworldSnapshot(session, message) {
+        const snapshot = this.simEngine.overworldBake.snapshot(
+            message.chunkX,
+            message.chunkY,
+            message.chunkWidth,
+            message.chunkHeight,
+        );
+        this.bus.publishTo(session.id, snapshot);
     }
 
     // ---- Inspect ----

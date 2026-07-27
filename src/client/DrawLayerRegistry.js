@@ -59,12 +59,12 @@ export class DrawLayerRegistry {
     }
 
     /**
-     * Toggles map mode across every layer (simplified geometry instead of sprites).
-     * @param {boolean} value
+     * Applies the view mode across every layer (sprites, map geometry, or overworld).
+     * @param {ViewMode} mode
      */
-    setMapMode(value) {
+    setViewMode(mode) {
         for (const layer of this.layers) {
-            layer.mapMode = value;
+            layer.setViewMode(mode);
         }
     }
 

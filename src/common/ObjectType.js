@@ -163,6 +163,8 @@ export class ObjectType {
      *     stubs at this object's connected ports (belts render their own bends instead)
      * @param [config.textureName] {string|null} the object sprite's texture, used by the derived layers
      * @param [config.mapColor] {number|null} map-mode tile color; null uses the shared default
+     * @param [config.overworldVisible] {boolean} whether the overworld bake includes this type's
+     *     tiles; off for buried objects
      * @param [config.drawLayerIndex] {number} z-level of the type's derived draw layer (ground
      *     cover like roads sits lower so figures walk over it)
      * @param [config.directional] {boolean} whether placement facing matters; a non-directional
@@ -187,6 +189,7 @@ export class ObjectType {
         renderConnections=false,
         textureName=null,
         mapColor=null,
+        overworldVisible=true,
         drawLayerIndex=20,
         directional=true,
         label=null,
@@ -209,6 +212,7 @@ export class ObjectType {
         this.renderConnections = renderConnections;
         this.textureName = textureName;
         this.mapColor = mapColor;
+        this.overworldVisible = overworldVisible;
         this.drawLayerIndex = drawLayerIndex;
         this.directional = directional;
         this.label = label;

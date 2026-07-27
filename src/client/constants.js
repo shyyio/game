@@ -1,4 +1,4 @@
-import {CHUNK_SIZE} from "@/common/constants.js";
+import {CHUNK_SIZE, REGION_SIZE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 
 export const TILE_SIZE = 64;
@@ -6,10 +6,25 @@ export const TILE_SIZE = 64;
 // Font for all in-canvas (pixi) game text; loaded via the Lexend stylesheet in index.html.
 export const GAME_FONT = "Lexend";
 
+// The client's zoom-driven view mode: sprites, map geometry, or the baked overworld.
+export const ViewMode = {WORLD: 0, MAP: 1, OVERWORLD: 2};
+
 // Viewport scale below which the client switches to map mode: objects render as
-// plain geometry instead of sprites and tile hover is disabled. Sits between the
-// viewport's minScale (0.05) and maxScale (2).
+// plain geometry instead of sprites and tile hover is disabled.
 export const MAP_MODE_SCALE_THRESHOLD = 0.25;
+
+// Viewport scale below which the client switches to overworld mode: chunk subscriptions
+// drop and the baked overworld snapshots render instead.
+export const OVERWORLD_SCALE_THRESHOLD = 0.10;
+
+// The zoom floor: the whole region fits a ~1024px screen.
+export const MIN_VIEWPORT_SCALE = 1024 / (REGION_SIZE * CHUNK_SIZE * TILE_SIZE);
+
+// A cached overworld chunk older than this refetches when it is next visible.
+export const OVERWORLD_CHUNK_TTL_MS = 30_000;
+
+// At most one overworld request per this window while panning.
+export const OVERWORLD_REFRESH_THROTTLE_MS = 500;
 
 // Chunks that pan out of the viewport are kept subscribed for this long before being
 // unsubscribed, so a quick pan back doesn't re-sync them; new chunks still subscribe at once.

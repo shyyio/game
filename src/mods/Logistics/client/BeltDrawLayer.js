@@ -7,12 +7,16 @@ import {
     AbstractTileMeshDrawLayer,
 } from "@/sdk/client.js";
 import {chunkId, getOrCreate, removeFromGroup} from "@/sdk/common.js";
-import {BeltBend, BELT_NORMAL, BELT_RAMP_DOWN, BELT_RAMP_UP, BELT_UNDERGROUND} from "../common/constants.js";
+import {
+    BeltBend,
+    BELT_NORMAL,
+    BELT_RAMP_DOWN,
+    BELT_RAMP_UP,
+    BELT_UNDERGROUND,
+    MAP_COLOR_BELT,
+    MAP_COLOR_BELT_RAMP,
+} from "../common/constants.js";
 import {inferBeltParent} from "../common/geometry.js";
-
-// Map-mode tile fill colors.
-const MAP_TILE_COLOR = 0xf7df9e;
-const MAP_RAMP_COLOR = 0xc8a16e;
 
 // Every beltFrameBase result except the never-drawn buried underground.
 const BELT_SEQUENCES = [
@@ -135,10 +139,10 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
      * @returns {void}
      */
     _drawChunkGeometry(chunk, graphics) {
-        for (const color of [MAP_TILE_COLOR, MAP_RAMP_COLOR]) {
+        for (const color of [MAP_COLOR_BELT, MAP_COLOR_BELT_RAMP]) {
             let drew = false;
             for (const belt of this._beltsIn(chunk)) {
-                const beltColor = belt.type === BELT_NORMAL ? MAP_TILE_COLOR : MAP_RAMP_COLOR;
+                const beltColor = belt.type === BELT_NORMAL ? MAP_COLOR_BELT : MAP_COLOR_BELT_RAMP;
                 if (beltColor !== color) {
                     continue;
                 }
