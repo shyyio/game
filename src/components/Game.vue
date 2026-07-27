@@ -14,7 +14,7 @@ import {ClientSaveStore} from "@/client/ClientSaveStore.js";
 import {GameAPI} from "@/sim/GameAPI.js";
 import {LocalSession} from "@/sim/LocalSession.js";
 import {Client} from "@/client/Client.js";
-import {GAME_FONT} from "@/client/constants.js";
+import {GAME_FONT, ViewMode, MIN_VIEWPORT_SCALE} from "@/client/constants.js";
 import {DEV} from "@/common/env.js";
 
 // Mobile mode (touch device): panning stays live while a tool is active so the
@@ -127,7 +127,7 @@ onMounted(async () => {
       .wheel()
       .clampZoom({
         maxScale: 2,
-        minScale: 0.10
+        minScale: MIN_VIEWPORT_SCALE
       });
 
   if (isMobile.any) {
@@ -177,9 +177,9 @@ onMounted(async () => {
 
   client.rotateButtonsLayer.onRotate(() => inputHandler.rotateRight());
 
-  // Map mode (zoomed far out) deactivates the active tool without clearing the toolbar
-  // selection, so the cursor acts as if nothing were selected and the tool resumes on
-  // zoom-in. The effective tool (null in map mode) drives the side effects below.
+  // Map and overworld mode (zoomed far out) deactivate the active tool without clearing the
+  // toolbar selection, so the cursor acts as if nothing were selected and the tool resumes on
+  // zoom-in. The effective tool (null when zoomed out) drives the side effects below.
   let mapMode = false;
 
   // Applies the effective-tool side effects on both tool changes and map-mode toggles:
@@ -231,9 +231,10 @@ onMounted(async () => {
   client.playerSettings.onChange(refreshTools);
   refreshTools();
 
-  client.onMapModeChange((mode) => {
-    inputHandler.setMapMode(mode);
-    mapMode = mode;
+  client.onViewModeChange((mode) => {
+    const zoomedOut = mode !== ViewMode.WORLD;
+    inputHandler.setMapMode(zoomedOut);
+    mapMode = zoomedOut;
     applyEffectiveTool();
   });
 

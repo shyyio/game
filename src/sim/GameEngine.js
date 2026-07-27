@@ -4,6 +4,7 @@ import {LAYER_SURFACE} from "@/common/constants.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlacedObjects} from "@/sim/PlacedObjects.js";
+import {OverworldBake} from "@/sim/OverworldBake.js";
 import {WorkerNetworks} from "@/sim/WorkerNetworks.js";
 
 /**
@@ -252,6 +253,12 @@ export class GameEngine {
          * @type {PlacedObjects|null}
          */
         this.placed = null;
+
+        /**
+         * The hot-read overworld tile bake over the placed objects; built with the entity host.
+         * @type {OverworldBake|null}
+         */
+        this.overworldBake = null;
 
         /**
          * Road-network worker allocation over the placed objects; built with the entity host.
@@ -665,6 +672,7 @@ export class GameEngine {
             // then bespoke sim mods register theirs.
             this._fluidTypes = this.modRegistry.fluidTypes;
             this.placed = new PlacedObjects(this, this.modRegistry);
+            this.overworldBake = new OverworldBake(this, this.placed);
             this.workers = new WorkerNetworks(this, this.placed);
             for (const mod of this.modRegistry.simMods) {
                 mod.setup(this);

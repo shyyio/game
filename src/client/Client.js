@@ -9,8 +9,9 @@ import {RotateButtonsLayer} from "@/client/RotateButtonsLayer.js";
 import {ToolbarLayer} from "@/client/ToolbarLayer.js";
 import {ToolRotation} from "@/client/ToolRotation.js";
 import {EraserTool} from "@/client/EraserTool.js";
-import {SetViewportMessage, SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
+import {SetViewportMessage, SetInspectedObjectsMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
+import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
@@ -21,11 +22,17 @@ import {
     TILE_SIZE,
     snapToChunk,
     viewportChunks,
+    ViewMode,
     MAP_MODE_SCALE_THRESHOLD,
+    OVERWORLD_SCALE_THRESHOLD,
+    OVERWORLD_CHUNK_TTL_MS,
+    OVERWORLD_REFRESH_THROTTLE_MS,
     CHUNK_UNSUBSCRIBE_DELAY_MS,
 } from "@/client/constants.js";
-import {CHUNK_SIZE, Direction} from "@/common/constants.js";
+import {CHUNK_SIZE, REGION_SIZE, Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
+import {OverworldCache, OverworldRect} from "@/client/OverworldCache.js";
+import {OverworldDrawLayer} from "@/client/OverworldDrawLayer.js";
 import {GridDrawLayer} from "@/client/GridDrawLayer.js";
 import {PlacementFeedbackLayer} from "@/client/PlacementFeedbackLayer.js";
 import {InspectLayer} from "@/client/InspectLayer.js";
@@ -47,6 +54,12 @@ import {DEV, BROWSER} from "@/common/env.js";
 
 // Frame time spent applying queued sync events; the rest wait for the next frame.
 const DRAIN_BUDGET_MS = 6;
+
+// Handed to the layer tick in overworld mode, where no chunks are mounted: building the real
+// visible-chunk set at overworld scale would enumerate thousands of chunks per frame.
+const NO_VISIBLE_CHUNKS = new Set();
+
+const REGION_HALF = REGION_SIZE / 2;
 
 // Leading entries shown per column when logging a columnar batch event.
 const LOG_BATCH_ITEMS = 5;
@@ -148,6 +161,10 @@ export class Client {
         for (const layer of this.modRegistry.clientMods.flatMap(mod => mod.drawLayers(this))) {
             this.drawLayerRegistry.add(layer);
         }
+        // The overworld snapshot store and its renderer, active below the overworld zoom threshold.
+        this.overworldCache = new OverworldCache();
+        this.overworldLayer = new OverworldDrawLayer(modRegistry, this.overworldCache);
+        this.drawLayerRegistry.add(this.overworldLayer);
         this.drawLayerRegistry.add(new GridDrawLayer());
         this.drawLayerRegistry.add(this.placementFeedbackLayer);
         this.drawLayerRegistry.add(this.inspectLayer);
@@ -175,8 +192,9 @@ export class Client {
         this._queuedCountByChunk = new Map();
         this._lastVisibleKey = null;
         this._unsubscribeTimer = null;
-        this._mapMode = false;
-        this._onMapModeChange = null;
+        this._viewMode = ViewMode.WORLD;
+        this._onViewModeChange = null;
+        this._lastOverworldRefreshMs = 0;
         this._centerLock = false;
         this._debugMode = false;
         // Machine ids (number) with open menus; sent to the game as the inspect set.
@@ -229,11 +247,11 @@ export class Client {
     }
 
     /**
-     * Registers the handler invoked when the client enters or leaves map mode.
-     * @param {function(mapMode: boolean)} callback
+     * Registers the handler invoked when the zoom-driven view mode changes.
+     * @param {function(mode: ViewMode)} callback
      */
-    onMapModeChange(callback) {
-        this._onMapModeChange = callback;
+    onViewModeChange(callback) {
+        this._onViewModeChange = callback;
     }
 
     /**
@@ -260,20 +278,20 @@ export class Client {
         // Panels sit above every other HUD layer.
         this.app.stage.addChild(this.inspectPanelLayer);
 
-        this.viewport.on("moved", () => this._updateViewportChunks());
+        this.viewport.on("moved", () => this._onViewportMoved());
         // "zoomed" fires mid-wheel with the over-zoomed scale, before clampZoom restores it;
         // reading the viewport here would briefly see an expanded area and subscribe chunks
         // that aren't really on screen. The chunk update rides "moved", which fires after the
-        // clamp with the settled scale, so only map mode (threshold well inside the zoom
+        // clamp with the settled scale, so only the view mode (thresholds well inside the zoom
         // limits, never mid-clamp) keys off "zoomed".
-        this.viewport.on("zoomed", () => this._updateMapMode());
+        this.viewport.on("zoomed", () => this._updateViewMode());
         // While a pan is in progress, drop the rotate buttons out of hit-testing so
         // a finger that crosses one keeps panning instead of being captured by it.
         this.viewport.on("drag-start", () => this.rotateButtonsLayer.setInteractive(false));
         this.viewport.on("drag-end", () => this.rotateButtonsLayer.setInteractive(true));
         this.app.ticker.add(() => this._tickAnimations());
         this._updateViewportChunks();
-        this._updateMapMode();
+        this._updateViewMode();
     }
 
     /**
@@ -285,28 +303,125 @@ export class Client {
         this._drainPendingEvents();
         // Derived once here rather than per layer: every chunk-culled layer needs the same set, and
         // rebuilding it per layer costs a chunkId per visible chunk each.
+        let visibleChunks;
+        if (this._viewMode === ViewMode.OVERWORLD) {
+            visibleChunks = NO_VISIBLE_CHUNKS;
+        } else {
+            visibleChunks = viewportChunks(this.viewport);
+        }
         this.drawLayerRegistry.tick(
             advanceAnimationFrame(),
             this.app.ticker.deltaMS,
-            viewportChunks(this.viewport),
+            visibleChunks,
         );
     }
 
     /**
-     * Switches between sprite and map (geometry) rendering when the viewport
-     * scale crosses {@link MAP_MODE_SCALE_THRESHOLD}.
+     * Routes viewport movement to the mode's data feed: chunk subscriptions, or overworld
+     * snapshot refreshes when zoomed past the map band.
      * @private
      */
-    _updateMapMode() {
-        const mapMode = this.viewport.scale.x < MAP_MODE_SCALE_THRESHOLD;
-        if (mapMode === this._mapMode) {
+    _onViewportMoved() {
+        if (this._viewMode === ViewMode.OVERWORLD) {
+            this._refreshOverworld(false);
+        } else {
+            this._updateViewportChunks();
+        }
+    }
+
+    /**
+     * Switches the view mode when the viewport scale crosses {@link MAP_MODE_SCALE_THRESHOLD}
+     * or {@link OVERWORLD_SCALE_THRESHOLD}, transitioning the data feeds with it.
+     * @private
+     */
+    _updateViewMode() {
+        const scale = this.viewport.scale.x;
+        let mode;
+        if (scale < OVERWORLD_SCALE_THRESHOLD) {
+            mode = ViewMode.OVERWORLD;
+        } else if (scale < MAP_MODE_SCALE_THRESHOLD) {
+            mode = ViewMode.MAP;
+        } else {
+            mode = ViewMode.WORLD;
+        }
+        if (mode === this._viewMode) {
             return;
         }
-        this._mapMode = mapMode;
-        this.drawLayerRegistry.setMapMode(mapMode);
-        if (this._onMapModeChange != null) {
-            this._onMapModeChange(mapMode);
+        const previous = this._viewMode;
+        this._viewMode = mode;
+        this.drawLayerRegistry.setViewMode(mode);
+        if (this._onViewModeChange != null) {
+            this._onViewModeChange(mode);
         }
+        if (mode === ViewMode.OVERWORLD) {
+            this._enterOverworld();
+        } else if (previous === ViewMode.OVERWORLD) {
+            this._leaveOverworld();
+        }
+    }
+
+    /**
+     * Drops every chunk subscription at once (the teardown is invisible behind the overworld
+     * layer) and requests the first snapshot.
+     * @private
+     */
+    _enterOverworld() {
+        if (this._unsubscribeTimer != null) {
+            clearTimeout(this._unsubscribeTimer);
+            this._unsubscribeTimer = null;
+        }
+        this._requestedChunks.clear();
+        this._sendViewport(false);
+        this._lastVisibleKey = null;
+        this._refreshOverworld(true);
+    }
+
+    /**
+     * Resubscribes the visible chunks through the normal viewport path.
+     * @private
+     */
+    _leaveOverworld() {
+        this._lastVisibleKey = null;
+        this._updateViewportChunks();
+    }
+
+    /**
+     * Requests the visible overworld rect when any of its chunks is missing or stale, then
+     * evicts stale entries outside it. Throttled while panning; `force` bypasses.
+     * @private
+     * @param {boolean} force
+     */
+    _refreshOverworld(force) {
+        const now = Date.now();
+        if (!force && now - this._lastOverworldRefreshMs < OVERWORLD_REFRESH_THROTTLE_MS) {
+            return;
+        }
+        this._lastOverworldRefreshMs = now;
+        const rect = this._visibleOverworldRect();
+        if (rect === null) {
+            return;
+        }
+        if (this.overworldCache.needsFetch(rect, now, OVERWORLD_CHUNK_TTL_MS)) {
+            this.sendMessage(new OverworldRequestMessage(rect.chunkX, rect.chunkY, rect.chunkWidth, rect.chunkHeight));
+        }
+        this.overworldCache.evictOutside(rect, now, OVERWORLD_CHUNK_TTL_MS);
+    }
+
+    /**
+     * The viewport's chunk rect clamped to the region, or null when fully outside it.
+     * @private
+     * @returns {OverworldRect|null}
+     */
+    _visibleOverworldRect() {
+        const chunkPx = CHUNK_SIZE * TILE_SIZE;
+        const left = Math.max(Math.floor(this.viewport.left / chunkPx), -REGION_HALF);
+        const top = Math.max(Math.floor(this.viewport.top / chunkPx), -REGION_HALF);
+        const right = Math.min(Math.floor(this.viewport.right / chunkPx), REGION_HALF - 1);
+        const bottom = Math.min(Math.floor(this.viewport.bottom / chunkPx), REGION_HALF - 1);
+        if (right < left || bottom < top) {
+            return null;
+        }
+        return new OverworldRect(left, top, right - left + 1, bottom - top + 1);
     }
 
     /**
@@ -331,6 +446,11 @@ export class Client {
      * @private
      */
     _updateViewportChunks() {
+        if (this._viewMode === ViewMode.OVERWORLD) {
+            // No chunk subscriptions in overworld; enumerating the visible chunks at overworld
+            // scale would also walk thousands of ids.
+            return;
+        }
         const visible = this._visibleChunks();
         const visibleKey = visible.slice().sort().join(";");
         if (visibleKey === this._lastVisibleKey) {
@@ -599,6 +719,10 @@ export class Client {
         }
         if (event instanceof InspectClosedEvent) {
             this.unInspectObject(event.objectId);
+            return;
+        }
+        if (event instanceof OverworldSnapshotEvent) {
+            this.overworldCache.write(event, Date.now());
             return;
         }
         this.dispatchEvent(event);

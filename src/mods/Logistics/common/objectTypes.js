@@ -15,6 +15,8 @@ import {
     HOUSING_WORKER_SUPPLY,
     MAP_COLOR_HOUSING,
     MAP_COLOR_ROAD,
+    MAP_COLOR_BELT,
+    MAP_COLOR_BELT_RAMP,
     DRAW_LAYER_ROAD,
 } from "./constants.js";
 import {SplitterBehavior} from "../sim/SplitterBehavior.js";
@@ -95,21 +97,25 @@ export function isBeltType(type) {
 export const BeltDefinition = new BeltObjectType({
     name: "Belt",
     beltKind: BELT_NORMAL,
+    mapColor: MAP_COLOR_BELT,
 });
 
 export const BeltRampDownDefinition = new BeltObjectType({
     name: "BeltRampDown",
     beltKind: BELT_RAMP_DOWN,
+    mapColor: MAP_COLOR_BELT_RAMP,
 });
 
 export const BeltRampUpDefinition = new BeltObjectType({
     name: "BeltRampUp",
     beltKind: BELT_RAMP_UP,
+    mapColor: MAP_COLOR_BELT_RAMP,
 });
 
 export const BeltUndergroundDefinition = new BeltObjectType({
     name: "BeltUnderground",
     beltKind: BELT_UNDERGROUND,
+    overworldVisible: false,
 });
 
 // A 1x2 router; each item flows in_X -> int_X -> out_Y, resting a tick in int_X so it crosses at

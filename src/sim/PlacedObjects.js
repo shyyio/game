@@ -4,6 +4,8 @@ import {Direction} from "@/common/constants.js";
 import {chunkId, chunkOrigin} from "@/common/util.js";
 import {NO_EID} from "@/sim/GameEngine.js";
 
+const EMPTY_EIDS = new Set();
+
 /**
  * The generic entity host for every derived (behavior-driven) object type: the shared PlacedObject
  * component, the objectId -> eid index, and the ONE spawn/despawn/chunk-sync/inspect path. Built by
@@ -32,6 +34,8 @@ export class PlacedObjects {
         // Chunk -> the eids placed in it, so a subscribing session syncs a chunk without a scan of
         // every placed object in the world.
         this._eidsByChunk = new Map();
+        // Called with a chunk ordinal after any spawn/despawn in it (the overworld bake repaints).
+        this._chunkObservers = [];
 
         // Before the behavior installs, so anything a behavior registers (a belt path sync) runs
         // after the host's — the client rebuilds objects first, then what references them.
@@ -79,6 +83,15 @@ export class PlacedObjects {
     }
 
     /**
+     * The ObjectType with `typeId`, derived types only.
+     * @param {number} typeId
+     * @returns {ObjectType|undefined}
+     */
+    typeFor(typeId) {
+        return this._types.get(typeId);
+    }
+
+    /**
      * The placed entities of one type.
      * @param {number} typeId
      * @returns {number[]}
@@ -102,6 +115,39 @@ export class PlacedObjects {
      */
     eidByObjectId(objectId) {
         return this._eidByObjectId.get(objectId);
+    }
+
+    /**
+     * The eids placed in a chunk.
+     * @param {number} chunk
+     * @returns {Set<number>}
+     */
+    eidsInChunk(chunk) {
+        const held = this._eidsByChunk.get(chunk);
+        if (held === undefined) {
+            return EMPTY_EIDS;
+        }
+        return held;
+    }
+
+    /**
+     * Registers an observer called with a chunk ordinal after any spawn/despawn in it.
+     * @param {function(number): void} observer
+     * @returns {void}
+     */
+    registerChunkObserver(observer) {
+        this._chunkObservers.push(observer);
+    }
+
+    /**
+     * @private
+     * @param {number} chunk
+     * @returns {void}
+     */
+    _notifyChunkChanged(chunk) {
+        for (const observer of this._chunkObservers) {
+            observer(chunk);
+        }
     }
 
     /**
@@ -160,6 +206,7 @@ export class PlacedObjects {
         }
         this._eidByObjectId.set(objectId, eid);
         this._indexChunk(eid, message.x, message.y);
+        this._notifyChunkChanged(chunkId(message.x, message.y));
         // One source for the insert payload: the behavior's sync record (ports + seeded lastOutput).
         const sync = type.behavior.syncData(engine, this, eid);
         engine.emitEvent(new ObjectInsertEvent(type.typeId, objectId, message.x, message.y, message.direction, sync.portIds, sync.lastOutput));
@@ -188,6 +235,7 @@ export class PlacedObjects {
         this._unindexChunk(eid, x, y);
         engine.destroyEntity(eid);
         this._eidByObjectId.delete(objectId);
+        this._notifyChunkChanged(chunkId(x, y));
         return true;
     }
 

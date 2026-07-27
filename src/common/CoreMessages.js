@@ -1,7 +1,9 @@
 import {AbstractMessage} from "@/common/AbstractMessage.js";
+import {REGION_SIZE} from "@/common/constants.js";
 
 const MAX_VIEWPORT_CHUNKS = 256;
 const MAX_INSPECTED_OBJECTS = 32;
+const MAX_OVERWORLD_REQUEST_AREA = REGION_SIZE * REGION_SIZE;
 
 export class SetViewportMessage extends AbstractMessage {
 
@@ -71,6 +73,43 @@ export class DeleteObjectMessage extends AbstractMessage {
     constructor(id) {
         super();
         this.id = id;
+    }
+}
+
+/**
+ * Requests the overworld bake for a rect of chunks (chunk coordinates, not ordinals).
+ */
+export class OverworldRequestMessage extends AbstractMessage {
+
+    static wireFields = {
+        chunkX: "sint32",
+        chunkY: "sint32",
+        chunkWidth: "int32",
+        chunkHeight: "int32",
+    };
+
+    /**
+     * @param {number} chunkX
+     * @param {number} chunkY
+     * @param {number} chunkWidth
+     * @param {number} chunkHeight
+     */
+    constructor(chunkX, chunkY, chunkWidth, chunkHeight) {
+        super();
+        this.chunkX = chunkX;
+        this.chunkY = chunkY;
+        this.chunkWidth = chunkWidth;
+        this.chunkHeight = chunkHeight;
+    }
+
+    /**
+     * @param {GameAPI} api
+     * @param {AbstractSession} session
+     * @returns {boolean}
+     */
+    validate(api, session) {
+        return this.chunkWidth > 0 && this.chunkHeight > 0
+            && this.chunkWidth * this.chunkHeight <= MAX_OVERWORLD_REQUEST_AREA;
     }
 }
 

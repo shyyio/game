@@ -1,5 +1,6 @@
 import {Container} from "pixi.js";
 import {NotImplementedError} from "@/common/error.js";
+import {ViewMode} from "@/client/constants.js";
 
 /**
  * @abstract
@@ -116,6 +117,22 @@ export class AbstractDrawLayer extends Container {
      */
     set mapMode(value) {
         this.visible = !value;
+    }
+
+    /**
+     * Applies a view mode: overworld hides the layer outright; otherwise visibility is restored
+     * first so each layer's own mapMode setter decides its presentation.
+     * @param {ViewMode} mode
+     * @returns {void}
+     */
+    setViewMode(mode) {
+        if (mode === ViewMode.OVERWORLD) {
+            this.mapMode = true;
+            this.visible = false;
+            return;
+        }
+        this.visible = true;
+        this.mapMode = mode === ViewMode.MAP;
     }
 
     /**

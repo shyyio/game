@@ -1,6 +1,7 @@
 import protobuf from "protobufjs";
 
-import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
+import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
+import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {PortItemSetEvent, PortItemClearEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
@@ -41,6 +42,8 @@ const CORE_WIRE_CLASSES = [
     ObjectSyncBatchEvent,
     WorkerAssignmentEvent,
     WorkerAssignmentBatchEvent,
+    OverworldRequestMessage,
+    OverworldSnapshotEvent,
 ];
 
 /**

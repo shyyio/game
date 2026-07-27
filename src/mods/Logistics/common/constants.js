@@ -62,6 +62,8 @@ export const HOUSING_WORKER_SUPPLY = 5;
 // Map-mode tile colors.
 export const MAP_COLOR_HOUSING = 0x55a355;
 export const MAP_COLOR_ROAD = 0xFFBF00;
+export const MAP_COLOR_BELT = 0xf7df9e;
+export const MAP_COLOR_BELT_RAMP = 0xc8a16e;
 
 // Roads draw below the worker figures (19) and the default object sprites (20).
 export const DRAW_LAYER_ROAD = 18;
