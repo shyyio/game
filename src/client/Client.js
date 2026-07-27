@@ -19,7 +19,7 @@ import {WorkerAssignmentEvent} from "@/common/WorkerEvents.js";
 import {WorkerAssignmentCache} from "@/client/WorkerAssignmentCache.js";
 import {ClaimResultEvent} from "@/common/ClaimEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
-import {AddFriendMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
+import {AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
 import {ChunkClaimsCache} from "@/client/ChunkClaimsCache.js";
 import {ChunkClaimsDrawLayer} from "@/client/ChunkClaimsDrawLayer.js";
 import {MiniMenuEntry} from "@/common/ObjectType.js";
@@ -147,6 +147,12 @@ export class Client {
         this.statusLayer = new StatusMessageLayer();
         this.statusLayer.setConnecting();
 
+        // Chunk ownership mirror and its border renderer (map/overworld mode). Before the mod
+        // setups: mods lean on it for player identity and username lookups.
+        this.chunkClaimsCache = new ChunkClaimsCache();
+        this.chunkClaimsLayer = new ChunkClaimsDrawLayer(this.chunkClaimsCache);
+        this.drawLayerRegistry.add(this.chunkClaimsLayer);
+
         // The derived client surface (draw layer + ghost + tool) of every behavior-driven type;
         // bespokeClient types (belts) bring their own through their client mod.
         this.bundles = this._buildBundles();
@@ -164,10 +170,6 @@ export class Client {
         this.overworldCache = new OverworldCache();
         this.overworldLayer = new OverworldDrawLayer(modRegistry, this.overworldCache);
         this.drawLayerRegistry.add(this.overworldLayer);
-        // Chunk ownership mirror and its border renderer (map/overworld mode).
-        this.chunkClaimsCache = new ChunkClaimsCache();
-        this.chunkClaimsLayer = new ChunkClaimsDrawLayer(this.chunkClaimsCache);
-        this.drawLayerRegistry.add(this.chunkClaimsLayer);
         // Claim/unclaim outcome callback, fed by ClaimResultEvents (the host shows a notice).
         this._onClaimResult = null;
         this.drawLayerRegistry.add(new GridDrawLayer());
@@ -297,6 +299,9 @@ export class Client {
         this.app.ticker.add(() => this._tickAnimations());
         this._updateViewportChunks();
         this._updateViewMode();
+        for (const mod of this.modRegistry.clientMods) {
+            mod.onReady(this);
+        }
     }
 
     /**
@@ -355,6 +360,9 @@ export class Client {
         const previous = this._viewMode;
         this._viewMode = mode;
         this.drawLayerRegistry.setViewMode(mode);
+        for (const mod of this.modRegistry.clientMods) {
+            mod.setViewMode(mode, this);
+        }
         if (this._onViewModeChange != null) {
             this._onViewModeChange(mode);
         }
@@ -579,6 +587,21 @@ export class Client {
      */
     sendMessage(message) {
         this.session.sendMessage(message);
+    }
+
+    /**
+     * Writes a player setting: optimistic local update plus the server write, so the echoed
+     * update is a no-op. Skips when the value is already current.
+     * @param {number} key
+     * @param {number} value
+     * @returns {void}
+     */
+    updatePlayerSetting(key, value) {
+        if (this.playerSettings.get(key) === value) {
+            return;
+        }
+        this.playerSettings.update(key, value);
+        this.sendMessage(new SetPlayerSettingMessage(key, value));
     }
 
     /**

@@ -53,6 +53,9 @@ export {ObjectTool} from "@/client/ObjectTool.js";
 // The shared pointer singleton; ghost layers read `currentX`/`currentY` (world coordinates) to float on the cursor.
 export {default as Mouse} from "@/client/Mouse.js";
 
+// Singleton tracking window focus + tab visibility as one `focused` boolean.
+export {default as WindowFocus} from "@/client/WindowFocus.js";
+
 // ---- Feedback ----
 // Haptic (rumble) feedback for touch devices; a no-op where unavailable.
 export {default as Haptics} from "@/client/Haptics.js";
@@ -75,6 +78,9 @@ export {ClientCache, CacheEntry} from "@/client/ClientCache.js";
 // it is measured in tiles, not pixels, so it is not re-exported here.)
 export {TILE_SIZE, snapToTile, snapToChunk} from "@/client/constants.js";
 
+// The zoom-driven view mode (world sprites / map geometry / baked overworld).
+export {ViewMode} from "@/client/constants.js";
+
 // The shared UI font, for debug/overlay labels.
 export {GAME_FONT} from "@/client/constants.js";
 
@@ -93,6 +99,9 @@ export {drawLine, drawRect, drawCircle} from "@/client/pixiUtils.js";
 // `DEBUG_COLOR(n)` maps a numeric id to a stable color from a fixed debug palette.
 export {DEBUG_COLOR} from "@/client/Theme.js";
 
+// Stable per-player accent color (also used for claim borders).
+export {claimColor} from "@/client/Theme.js";
+
 // Shared placement-ghost palette + center-lock target-tile marker, for tool ghost layers.
 export {
     GHOST_TINT,
@@ -108,6 +117,11 @@ export {
 // "<base>/0".."<base>/7", and currentAnimationFrame() returns the single frame
 // every sprite shows right now, keeping all mods in lockstep.
 export {currentAnimationFrame} from "@/client/animation.js";
+
+// Scalar tween + easing curves, and display-object pooling for layers that churn sprites.
+export {Tween, linear, easeOutBack, easeInCubic} from "@/client/Tween.js";
+export {DisplayPool} from "@/client/DisplayPool.js";
+export {KeyedDisplayPool} from "@/client/KeyedDisplayPool.js";
 
 // Draws a group of animated tiles as one mesh whose vertices never change as the animation runs, so
 // the whole group advances a frame with a single uniform write instead of a texture swap per sprite.

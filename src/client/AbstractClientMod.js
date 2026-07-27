@@ -45,6 +45,26 @@ export class AbstractClientMod {
     }
 
     /**
+     * Optional hook: the zoom-driven view mode changed (draw layers get it separately).
+     * @param {ViewMode} mode
+     * @param {Client} client
+     * @returns {void}
+     */
+    setViewMode(mode, client) {
+
+    }
+
+    /**
+     * Optional hook: the client finished init (textures loaded, layers mounted, session live);
+     * the place to start timers.
+     * @param {Client} client
+     * @returns {void}
+     */
+    onReady(client) {
+
+    }
+
+    /**
      * Client-side mirror of a sim placement rule the derived ObjectTool cannot know (a pipe
      * bridging fluid types); false marks the whole placement blocked in the feedback.
      * @param {ObjectType} type

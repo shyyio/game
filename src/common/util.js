@@ -9,7 +9,7 @@ export const TILE_VARIANT_LIMIT = 16;
 // The box the spatial indexes address, in tiles: the whole region, so coordinates fall in
 // [-TILE_SPAN/2, TILE_SPAN/2).
 const TILE_SPAN = CHUNK_SIZE * REGION_SIZE;
-const TILE_HALF = TILE_SPAN / 2;
+export const TILE_HALF = TILE_SPAN / 2;
 
 // A qualified tile id must stay a small integer, or every Map keyed by one hashes a boxed number
 // instead. Growing the region past this needs the indexes rekeyed, not a wider id.

@@ -14,7 +14,7 @@ export class Tween {
         this._to = value;
         // Elapsed ms into the current tween; at the duration the tween has settled.
         this._elapsed = durationMs;
-        this._ease = (t) => t;
+        this._ease = linear;
     }
 
     /**
@@ -64,6 +64,15 @@ export class Tween {
 }
 
 // Easing functions over the normalized interval [0, 1].
+
+/**
+ * The identity ease: constant speed.
+ * @param {number} t
+ * @returns {number}
+ */
+export function linear(t) {
+    return t;
+}
 
 /**
  * Ease-out-back: decelerates past the target and settles back, overshooting more with a larger `c1`

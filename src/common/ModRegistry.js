@@ -1,3 +1,4 @@
+import {CORE_PLAYER_SETTING_ENTRIES} from "@/common/PlayerSettingEntry.js";
 
 /**
  * The declarative register of loaded mods. Mods are registered as ModPackages, then freeze()
@@ -28,6 +29,10 @@ export class ModRegistry {
          * @type {Set<number>}
          */
         this._fluidTypes = new Set();
+        /**
+         * @type {Map<number, PlayerSettingEntry>}
+         */
+        this._playerSettingEntries = new Map();
     }
 
     /**
@@ -89,6 +94,18 @@ export class ModRegistry {
             Object.assign(this._itemTextures, pkg.declaration.itemTextures);
             for (const fluidType of pkg.declaration.fluidTypes) {
                 this._fluidTypes.add(fluidType);
+            }
+        }
+
+        for (const entry of CORE_PLAYER_SETTING_ENTRIES) {
+            this._playerSettingEntries.set(entry.key, entry);
+        }
+        for (const pkg of this._packages) {
+            for (const entry of pkg.declaration.playerSettingEntries) {
+                if (this._playerSettingEntries.has(entry.key)) {
+                    throw new Error(`Duplicate player setting key ${entry.key}`);
+                }
+                this._playerSettingEntries.set(entry.key, entry);
             }
         }
     }
@@ -184,5 +201,16 @@ export class ModRegistry {
     get fluidTypes() {
         this._assertFrozen();
         return this._fluidTypes;
+    }
+
+    /**
+     * The player-setting entry for a key, or undefined for an unregistered key (a client write
+     * to one is dropped).
+     * @param {number} key
+     * @returns {PlayerSettingEntry|undefined}
+     */
+    playerSettingEntry(key) {
+        this._assertFrozen();
+        return this._playerSettingEntries.get(key);
     }
 }
