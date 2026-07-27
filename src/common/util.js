@@ -1,7 +1,7 @@
 import {CHUNK_SIZE, NEIGHBOR_DELTAS, REGION_SIZE, Direction} from "@/common/constants.js";
 import {DEV} from "@/common/env.js";
 
-const REGION_HALF = REGION_SIZE / 2;
+export const REGION_HALF = REGION_SIZE / 2;
 
 // How many variants a tile id may be qualified with (a position layer, a direction).
 export const TILE_VARIANT_LIMIT = 16;
@@ -97,6 +97,31 @@ export function chunkOrigin(chunk) {
     return {x: position.x * CHUNK_SIZE, y: position.y * CHUNK_SIZE};
 }
 
+
+/**
+ * The fallback display name for a player id with no registered username; the sim's ensure() and
+ * the client's directory fallback share it so they never drift.
+ * @param {number} playerId
+ * @returns {string}
+ */
+export function syntheticUsername(playerId) {
+    return `player${playerId}`;
+}
+
+/**
+ * A byte count as short human-readable text (472B, 12KB, 1.3MB).
+ * @param {number} n
+ * @returns {string}
+ */
+export function formatBytes(n) {
+    if (n >= 1024 * 1024) {
+        return `${(n / (1024 * 1024)).toFixed(1)}MB`;
+    }
+    if (n >= 1024) {
+        return `${Math.round(n / 1024)}KB`;
+    }
+    return `${n}B`;
+}
 
 /**
  * The map's value under a key, created and stored on first use.

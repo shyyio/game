@@ -20,6 +20,13 @@ import {
 
 export class LogisticsDeclaration extends AbstractModDeclaration {
 
+    /**
+     * @returns {string}
+     */
+    get name() {
+        return "Logistics";
+    }
+
     get objectTypes() {
         // The ramp/underground kinds append after the originals, keeping prior typeIds stable.
         return [

@@ -6,6 +6,13 @@ import mainJsonUrl from "./main.json";
 
 export class BaseTexturesDeclaration extends AbstractModDeclaration {
 
+    /**
+     * @returns {string}
+     */
+    get name() {
+        return "BaseTextures";
+    }
+
     get textureDefinitions() {
         return [
             new TextureDefinition(animatedImageUrl, animatedJsonUrl),

@@ -1,3 +1,5 @@
+import {Color} from "pixi.js";
+
 // Central color palette for all client-side (pixi) rendering. Mods keep their own
 // domain palettes; this holds shared HUD/chrome colors and engine render colors.
 
@@ -44,6 +46,22 @@ export const TARGET_TILE_BORDER_WIDTH = 3;
 
 // Map-mode tint for generic objects.
 export const MAP_TILE_COLOR = 0x888888;
+
+// ---- Chunk-claim borders (map/overworld mode) ----
+export const OWN_CLAIM_COLOR = 0x2f80ed; // the player's own territory (blue)
+export const OWN_CLAIM_FILL_ALPHA = 0.10;
+export const CLAIM_BORDER_ALPHA = 0.9;
+
+/**
+ * A stable, distinct border color per foreign player: golden-angle hue steps keep neighboring ids
+ * far apart on the wheel.
+ * @param {number} playerId
+ * @returns {number}
+ */
+export function claimColor(playerId) {
+    const hue = (playerId * 137.508) % 360;
+    return new Color({h: hue, s: 70, l: 45}).toNumber();
+}
 
 // Saturated, distinct hues chosen to stay legible over belts on the white
 // background; pale tints and bright yellows wash out, so they are avoided.

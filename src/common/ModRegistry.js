@@ -104,6 +104,15 @@ export class ModRegistry {
     }
 
     /**
+     * The loaded mods' display names, in registration order.
+     * @returns {string[]}
+     */
+    get modNames() {
+        this._assertFrozen();
+        return this._packages.map(pkg => pkg.declaration.name);
+    }
+
+    /**
      * Every object type across the loadout, in typeId order.
      * @returns {ObjectType[]}
      */

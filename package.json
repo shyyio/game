@@ -1,5 +1,5 @@
 {
-  "name": "pipesjs",
+  "name": "shys-power-up-factory",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:server": "vite build --config vite.server.config.js",
+    "serve": "node --import ./src/server/loader.js src/server/main.js",
     "test": "node --import ./src/test/test-loader.js --test 'src/**/*.spec.js'",
     "save:sample": "rm -f SAMPLE.sqlite3; node --import ./src/test/test-loader.js src/test/make-sample-save.js SAMPLE.sqlite3",
     "save:lines": "rm -f LINES.sqlite3; node --import ./src/test/test-loader.js src/test/make-lines-save.js LINES.sqlite3",
@@ -20,6 +22,7 @@
     "pixi.js": "^8.19.0",
     "protobufjs": "^8.6.4",
     "underscore": "^1.13.7",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.52.0",
     "vue": "^3.5.18",
     "vuetify": "^3.9.5"
   },

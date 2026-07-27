@@ -76,6 +76,14 @@ export class EventBus {
     }
 
     /**
+     * Every connected session's id (broadcast events route through this).
+     * @returns {Iterable<number>}
+     */
+    allSessionIds() {
+        return this._sessions.keys();
+    }
+
+    /**
      * The sessions viewing a chunk, or undefined when none.
      * @param {number} chunk
      * @returns {Set<number>|undefined}

@@ -19,6 +19,18 @@ export class AbstractSession {
          * @type {Client|null}
          */
         this.client = null;
+
+        /**
+         * Wire bytes sent to this session; stays 0 for in-process sessions.
+         * @type {number}
+         */
+        this.txBytes = 0;
+
+        /**
+         * Wire bytes received from this session; stays 0 for in-process sessions.
+         * @type {number}
+         */
+        this.rxBytes = 0;
     }
 
     /**
@@ -32,12 +44,11 @@ export class AbstractSession {
     }
 
     /**
-     * @abstract
      * @param sessionId {number}
      * @returns {void}
      */
     setId(sessionId) {
-        throw new NotImplementedError();
+        this.id = sessionId;
     }
 
     /**

@@ -38,6 +38,13 @@ export const DemoMachineType = new ObjectType({
 
 export class DemoDeclaration extends AbstractModDeclaration {
 
+    /**
+     * @returns {string}
+     */
+    get name() {
+        return "Demo";
+    }
+
     get objectTypes() {
         return [DemoMachineType];
     }

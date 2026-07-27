@@ -1,3 +1,4 @@
+import {NotImplementedError} from "@/common/error.js";
 
 /**
  * The pure-data part of a mod, shared by sim and client: the object types it adds, the classes it
@@ -5,6 +6,15 @@
  * part (AbstractSimMod) and client part (AbstractClientMod), bundled by a ModPackage.
  */
 export class AbstractModDeclaration {
+
+    /**
+     * The mod's display name.
+     * @abstract
+     * @returns {string}
+     */
+    get name() {
+        throw new NotImplementedError();
+    }
 
     /**
      * The placeable object types this mod adds; registration order across the loadout assigns

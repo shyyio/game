@@ -1,7 +1,7 @@
 import {World} from "@/sim/World.js";
 import {rotate, chunkId, tileId, tileVariantId, TILE_VARIANT_LIMIT} from "@/common/util.js";
-import {LAYER_SURFACE} from "@/common/constants.js";
-import {DeleteObjectMessage} from "@/common/CoreMessages.js";
+import {LAYER_SURFACE, PLAYER_ID_NONE} from "@/common/constants.js";
+import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlacedObjects} from "@/sim/PlacedObjects.js";
 import {OverworldBake} from "@/sim/OverworldBake.js";
@@ -278,6 +278,9 @@ export class GameEngine {
         this._chunkSyncers = [];
         this._inspectors = [];
 
+        // Decides whether a player may modify a chunk; without one every change is allowed.
+        this._placementGate = null;
+
         /**
          * @type {World|null}
          */
@@ -441,6 +444,29 @@ export class GameEngine {
         this._eventSink = sink;
         this._chunkObserved = chunkObserved === undefined ? () => true : chunkObserved;
         this.invalidateObservers();
+    }
+
+    /**
+     * Sets the predicate deciding whether a player may modify a chunk.
+     * @param {function(number, number): boolean} gate - (playerId, chunk) -> allowed
+     * @returns {void}
+     */
+    setPlacementGate(gate) {
+        this._placementGate = gate;
+    }
+
+    /**
+     * Whether `playerId` may modify `chunk`. Engine-originated messages (PLAYER_ID_NONE) are
+     * trusted: their parent message already passed the gate.
+     * @param {number} playerId
+     * @param {number} chunk
+     * @returns {boolean}
+     */
+    placementAllowed(playerId, chunk) {
+        if (playerId === PLAYER_ID_NONE || this._placementGate === null) {
+            return true;
+        }
+        return this._placementGate(playerId, chunk);
     }
 
     /**
@@ -2018,11 +2044,21 @@ export class GameEngine {
 
     /**
      * @param {AbstractMessage} message
+     * @param {number} [playerId] - the acting player; PLAYER_ID_NONE for engine-originated messages
      * @returns {boolean}
      */
-    applyMessage(message) {
+    applyMessage(message, playerId = PLAYER_ID_NONE) {
+        // Both ownership gates live here, above every create/delete handler (bespoke ones too).
+        if (message instanceof CreateObjectMessage
+            && !this.placementAllowed(playerId, chunkId(message.x, message.y))) {
+            return true;
+        }
         let handled;
         if (message instanceof DeleteObjectMessage) {
+            // Gate before untrack: a rejection after it would leave the object half-deleted.
+            if (!this._deleteAllowed(message.id, playerId)) {
+                return true;
+            }
             this.untrack(message.id);
             handled = this._messageHandlers.some(handler => handler(message));
             // A delete (and any belt relink it triggered) can strand ports; destroy them now.
@@ -2034,6 +2070,24 @@ export class GameEngine {
             this.workers.ensureFresh();
         }
         return handled;
+    }
+
+    /**
+     * Whether `playerId` may delete the object; unknown ids pass through to the handlers.
+     * @private
+     * @param {number} objectId
+     * @param {number} playerId
+     * @returns {boolean}
+     */
+    _deleteAllowed(objectId, playerId) {
+        if (this.placed === null) {
+            return true;
+        }
+        const eid = this.placed.eidByObjectId(objectId);
+        if (eid === undefined) {
+            return true;
+        }
+        return this.placementAllowed(playerId, chunkId(this.Position.x[eid], this.Position.y[eid]));
     }
 
     /**

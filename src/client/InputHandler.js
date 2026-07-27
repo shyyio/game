@@ -19,6 +19,7 @@ export class InputHandler {
         this._toolbar = toolbar;
 
         this._onMiniMenuEntryClick = null;
+        this._onMapMenuEntryClick = null;
         this._onInspect = null;
 
         // The tool that last received onTileEnter, so its ghost preview can be
@@ -116,6 +117,14 @@ export class InputHandler {
     }
 
     /**
+     * Registers the map-mode context-gesture handler (the chunk claim menu).
+     * @param {function(tileX: number, tileY: number, screenX: number, screenY: number, onClose: function(): void)} callback
+     */
+    onMapMenuEntryClick(callback) {
+        this._onMapMenuEntryClick = callback;
+    }
+
+    /**
      * Registers the inspect-hover handler (entered tile while tool-less, or null on clear).
      * @param {function(tileX: number|null, tileY: number|null)} callback
      */
@@ -189,12 +198,13 @@ export class InputHandler {
     }
 
     /**
-     * The context gesture (long-press or right-click), suppressed in map mode: with a tool active it
-     * deselects the tool, otherwise it opens the mini-menu.
+     * The context gesture (long-press or right-click): in map mode it opens the chunk claim menu;
+     * with a tool active it deselects the tool; otherwise it opens the mini-menu.
      * @private
      */
     _handleContextGesture(tileX, tileY, screenX, screenY) {
         if (this._mapMode) {
+            this._openMapMenu(tileX, tileY, screenX, screenY);
             return;
         }
         if (this.activeTool != null) {
@@ -202,6 +212,17 @@ export class InputHandler {
             return;
         }
         this._openMiniMenu(tileX, tileY, screenX, screenY);
+    }
+
+    /**
+     * Hover is already off in map mode, so no freeze/resume bookkeeping applies here.
+     * @private
+     */
+    _openMapMenu(tileX, tileY, screenX, screenY) {
+        if (this._onMapMenuEntryClick == null) {
+            return;
+        }
+        this._onMapMenuEntryClick(tileX, tileY, screenX, screenY, () => {});
     }
 
     /**
