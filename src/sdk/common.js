@@ -111,6 +111,12 @@ export {
     LAYER_SURFACE,
 } from "@/common/constants.js";
 
+// ---- Player settings ----
+// Per-key player-setting config a declaration contributes (playerSettingEntries); only
+// clientWritable keys accept a SetPlayerSettingMessage. Toggle values: 0/absent = on.
+export {PlayerSettingEntry} from "@/common/PlayerSettingEntry.js";
+export {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
+
 // Rotates a `{x, y}` offset (a port or size vector) by a placement direction, so a mod
 // can compute where an object's ports/geometry land from its ObjectType.
 export {rotate} from "@/common/util.js";
@@ -122,6 +128,9 @@ export {chunkId, chunkOrigin} from "@/common/util.js";
 
 // The id of a tile, used as the key of every spatial index.
 export {tileId} from "@/common/util.js";
+
+// Half the region's tile span; the world's half-open coordinate box is [-TILE_HALF, TILE_HALF).
+export {TILE_HALF} from "@/common/util.js";
 
 // The map value under a key, created on first use.
 export {getOrCreate} from "@/common/util.js";

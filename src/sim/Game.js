@@ -1,9 +1,9 @@
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
 import {InspectClosedEvent} from "@/common/InspectEvents.js";
-import {PlayerSettingsSyncEvent} from "@/common/PlayerSettingsEvents.js";
+import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
-import {AddFriendMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
+import {AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
 import {WelcomeEvent, PlayerDirectoryEvent, FriendListEvent} from "@/common/PlayerEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
 import {ChunkClaimSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult} from "@/common/ClaimEvents.js";
@@ -170,6 +170,10 @@ export class Game {
      */
     disconnect(sessionId) {
         this.bus.removeSession(sessionId);
+        // After the removal, so mod farewells fan out to the remaining sessions alone.
+        for (const mod of this.modRegistry.simMods) {
+            mod.onSessionDisconnect(sessionId, this);
+        }
         this.simEngine.invalidateObservers();
     }
 
@@ -180,7 +184,8 @@ export class Game {
      * @param {AbstractSession} session
      */
     dispatchMessage(message, session) {
-        // Core messages are handled here; the rest go to the engine's registered handlers.
+        // Core messages are handled here; the rest go to the mods' session handlers, then the
+        // engine's registered handlers.
         if (message instanceof SetViewportMessage) {
             this._setSessionViewport(session, message.chunks);
             return;
@@ -215,6 +220,27 @@ export class Game {
             this.players.removeFriend(session.playerId, message.playerId);
             this._syncFriendList(session);
             return;
+        }
+
+        if (message instanceof SetPlayerSettingMessage) {
+            const entry = this.modRegistry.playerSettingEntry(message.key);
+            // Unknown keys and server-authoritative keys (progress, unlocks) are never
+            // client-writable; hostile input drops silently, like a failed validate.
+            if (entry === undefined || !entry.clientWritable) {
+                return;
+            }
+            this.playerSettings.set(session.playerId, message.key, message.value);
+            this.bus.publishTo(session.id, new PlayerSettingsUpdateEvent(message.key, message.value));
+            for (const mod of this.modRegistry.simMods) {
+                mod.onPlayerSettingWritten(session, message.key, message.value, this);
+            }
+            return;
+        }
+
+        for (const mod of this.modRegistry.simMods) {
+            if (mod.onSessionMessage(message, session, this)) {
+                return;
+            }
         }
 
         this.simEngine.applyMessage(message, session.playerId);

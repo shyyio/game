@@ -10,7 +10,7 @@ import {PortItemSetEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
-import {SignInMessage, AddFriendMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
+import {SignInMessage, AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
 import {WelcomeEvent, PlayerDirectoryEvent, FriendListEvent} from "@/common/PlayerEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
 import {ChunkClaimSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent} from "@/common/ClaimEvents.js";
@@ -168,4 +168,9 @@ test("Sign-in validation gates version and username", () => {
     assert.strictEqual(new SignInMessage(PROTOCOL_VERSION + 1, "alice").validate(null, null), false);
     assert.strictEqual(new SignInMessage(PROTOCOL_VERSION, "no spaces").validate(null, null), false);
     assert.strictEqual(new SignInMessage(PROTOCOL_VERSION, null).validate(null, null), false);
+});
+
+test("Round-trips a SetPlayerSettingMessage", () => {
+    const reg = registry();
+    roundTrip(reg, new SetPlayerSettingMessage(1, 1), SetPlayerSettingMessage);
 });

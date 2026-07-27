@@ -1,9 +1,10 @@
 <script setup>
-import {onMounted, ref} from "vue";
+import {onMounted, ref, watch} from "vue";
 import {Application, Graphics, Container, FillGradient, isMobile} from "pixi.js";
 import {ClientViewport} from "@/client/ClientViewport.js";
 import Keyboard from "@/client/Keyboard.js";
 import Mouse from "@/client/Mouse.js";
+import WindowFocus from "@/client/WindowFocus.js";
 import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {clientLoadout} from "@/mods/clientLoadout.js";
@@ -17,6 +18,8 @@ import {RemoteSession} from "@/client/RemoteSession.js";
 import {WireRegistry} from "@/common/wire.js";
 import {Client} from "@/client/Client.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
+import {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
+import {CURSOR_SETTING_SHARE, CURSOR_SETTING_SHOW} from "@/mods/CursorSync/common/constants.js";
 import {GAME_FONT, ViewMode, MIN_VIEWPORT_SCALE} from "@/client/constants.js";
 import {DEV} from "@/common/env.js";
 
@@ -29,6 +32,10 @@ const props = defineProps({
 // Feeds the v-snackbar (claim rejections, disconnects).
 const noticeText = ref("");
 const noticeOpen = ref(false);
+
+// Cursor-sharing toggles, mirrored to the player settings.
+const shareCursor = ref(true);
+const showCursors = ref(true);
 
 // Rejection notices per ClaimResult; OK stays silent (the border appearing is the feedback).
 const CLAIM_RESULT_NOTICES = {
@@ -162,6 +169,7 @@ onMounted(async () => {
   }
 
   Mouse.init(app, viewport);
+  WindowFocus.init();
 
   document.getElementById("game").appendChild(app.canvas);
 
@@ -280,6 +288,22 @@ onMounted(async () => {
   client.playerSettings.onChange(refreshTools);
   refreshTools();
 
+  const bindCursorSetting = (toggle, key) => {
+    watch(toggle, on => {
+      client.updatePlayerSetting(key, on ? SETTING_ON : SETTING_OFF);
+    });
+  };
+  bindCursorSetting(shareCursor, CURSOR_SETTING_SHARE);
+  bindCursorSetting(showCursors, CURSOR_SETTING_SHOW);
+  client.playerSettings.onChange((key, value) => {
+    if (key === CURSOR_SETTING_SHARE) {
+      shareCursor.value = value !== SETTING_OFF;
+    }
+    if (key === CURSOR_SETTING_SHOW) {
+      showCursors.value = value !== SETTING_OFF;
+    }
+  });
+
   client.onViewModeChange((mode) => {
     const zoomedOut = mode !== ViewMode.WORLD;
     inputHandler.setMapMode(zoomedOut);
@@ -324,6 +348,17 @@ export default defineComponent({
 <template>
   <div id="game">
   </div>
+  <v-menu :close-on-content-click="false" location="bottom end">
+    <template #activator="{ props: menuProps }">
+      <v-btn v-bind="menuProps" class="settings-button" size="small" variant="elevated">Settings</v-btn>
+    </template>
+    <v-card min-width="260">
+      <v-card-text>
+        <v-switch v-model="shareCursor" label="Share my cursor" density="compact" hide-details />
+        <v-switch v-model="showCursors" label="Show player cursors" density="compact" hide-details />
+      </v-card-text>
+    </v-card>
+  </v-menu>
   <v-snackbar v-model="noticeOpen" timeout="3000">{{ noticeText }}</v-snackbar>
 </template>
 
@@ -331,5 +366,12 @@ export default defineComponent({
 #game {
   position: absolute;
   overflow: hidden;
+}
+
+.settings-button {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
 }
 </style>

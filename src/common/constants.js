@@ -131,6 +131,10 @@ export const GameSettingsKey = {
     CHUNK_SIZE: 0,
 };
 
+// Toggle setting values; an absent key reads as on, so toggles default on.
+export const SETTING_ON = 0;
+export const SETTING_OFF = 1;
+
 // The null player: unclaimed chunks, engine-originated messages. Real player ids start at 1.
 export const PLAYER_ID_NONE = 0;
 
@@ -140,4 +144,4 @@ export const DEFAULT_MAX_CHUNKS = 9;
 export const USERNAME_PATTERN = /^[A-Za-z0-9_]{3,20}$/;
 
 // Bumped on any wire-incompatible change; the server rejects a mismatched sign-in.
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;

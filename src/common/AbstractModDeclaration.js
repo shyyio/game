@@ -55,4 +55,12 @@ export class AbstractModDeclaration {
     get fluidTypes() {
         return [];
     }
+
+    /**
+     * Per-key player-setting configs this mod adds; keys must be unique across the loadout.
+     * @returns {PlayerSettingEntry[]}
+     */
+    get playerSettingEntries() {
+        return [];
+    }
 }

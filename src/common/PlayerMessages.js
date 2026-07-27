@@ -74,3 +74,33 @@ export class RemoveFriendMessage extends AbstractMessage {
         this.playerId = playerId;
     }
 }
+
+/**
+ * Writes one of the sender's player settings.
+ */
+export class SetPlayerSettingMessage extends AbstractMessage {
+
+    static wireFields = {
+        key: "int32",
+        value: "int32",
+    };
+
+    /**
+     * @param {number} key
+     * @param {number} value
+     */
+    constructor(key, value) {
+        super();
+        this.key = key;
+        this.value = value;
+    }
+
+    /**
+     * @param {GameAPI} api
+     * @param {AbstractSession} session
+     * @returns {boolean}
+     */
+    validate(api, session) {
+        return Number.isInteger(this.key) && Number.isInteger(this.value);
+    }
+}

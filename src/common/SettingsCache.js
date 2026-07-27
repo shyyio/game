@@ -63,6 +63,19 @@ export class PlayerSettingsCache {
 
     /**
      * @param {number} playerId
+     * @param {number} key
+     * @returns {number|undefined}
+     */
+    get(playerId, key) {
+        const settings = this._byPlayer.get(playerId);
+        if (settings === undefined) {
+            return undefined;
+        }
+        return settings.get(key);
+    }
+
+    /**
+     * @param {number} playerId
      * @returns {Object.<number, number>} a plain key→value snapshot for wire sync
      */
     snapshot(playerId) {

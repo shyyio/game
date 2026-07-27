@@ -15,4 +15,34 @@ export class AbstractSimMod {
     setup(sim) {
         throw new NotImplementedError();
     }
+
+    /**
+     * Optional hook: handles a session-level message (one needing the session/bus, not the ECS),
+     * after the core handlers and before the engine's message handlers.
+     * @param {AbstractMessage} message
+     * @param {AbstractSession} session
+     * @param {Game} game
+     * @returns {boolean} whether the message was consumed
+     */
+    onSessionMessage(message, session, game) {
+        return false;
+    }
+
+    /**
+     * Optional hook: a session left; its bus subscriptions are already gone.
+     * @param {number} sessionId
+     * @param {Game} game
+     * @returns {void}
+     */
+    onSessionDisconnect(sessionId, game) {}
+
+    /**
+     * Optional hook: a client wrote one of its player settings (already stored and echoed).
+     * @param {AbstractSession} session
+     * @param {number} key
+     * @param {number} value
+     * @param {Game} game
+     * @returns {void}
+     */
+    onPlayerSettingWritten(session, key, value, game) {}
 }
