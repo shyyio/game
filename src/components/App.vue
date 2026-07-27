@@ -1,12 +1,16 @@
-<script>
-import {defineComponent} from "vue";
+<script setup>
+import {ref} from "vue";
 import Game from "@/components/Game.vue";
+import SignIn from "@/components/SignIn.vue";
 
-export default defineComponent({
-  components: {Game},
-})
+const start = ref(null);
+
+function onStart(options) {
+  start.value = options;
+}
 </script>
 
 <template>
-  <Game/>
+  <SignIn v-if="start === null" @start="onStart"/>
+  <Game v-else :mode="start.mode" :username="start.username" :server-url="start.serverUrl"/>
 </template>

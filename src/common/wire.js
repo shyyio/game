@@ -9,6 +9,10 @@ import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/comm
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
 import {WorkerAssignmentEvent, WorkerAssignmentBatchEvent} from "@/common/WorkerEvents.js";
+import {SignInMessage, AddFriendMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
+import {WelcomeEvent, PlayerDirectoryEvent, FriendListEvent} from "@/common/PlayerEvents.js";
+import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
+import {ChunkClaimSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent} from "@/common/ClaimEvents.js";
 
 const {Type, Field, MapField, Root} = protobuf;
 const Long = protobuf.util.Long;
@@ -44,6 +48,17 @@ const CORE_WIRE_CLASSES = [
     WorkerAssignmentBatchEvent,
     OverworldRequestMessage,
     OverworldSnapshotEvent,
+    SignInMessage,
+    AddFriendMessage,
+    RemoveFriendMessage,
+    WelcomeEvent,
+    PlayerDirectoryEvent,
+    FriendListEvent,
+    ClaimChunkMessage,
+    UnclaimChunkMessage,
+    ChunkClaimSyncEvent,
+    ChunkClaimUpdateEvent,
+    ClaimResultEvent,
 ];
 
 /**
@@ -137,6 +152,10 @@ export class WireRegistry {
         this.envelope = buildEnvelope();
         this.root.add(this.envelope);
 
+        // One event object fans out to every subscribed session; encode it once, not per session.
+        // Safe because wire objects are never mutated after publish.
+        this._encoded = new WeakMap();
+
         const classes = CORE_WIRE_CLASSES.concat(modRegistry.wireClasses);
         for (const [index, cls] of classes.entries()) {
             if (cls.wireFields === undefined) {
@@ -159,8 +178,14 @@ export class WireRegistry {
      * @returns {Uint8Array}
      */
     encode(obj) {
+        const memo = this._encoded.get(obj);
+        if (memo !== undefined) {
+            return memo;
+        }
         const {wireId, body} = this._encodeBody(obj);
-        return this.envelope.encode(this.envelope.create({wireId, payload: body})).finish();
+        const bytes = this.envelope.encode(this.envelope.create({wireId, payload: body})).finish();
+        this._encoded.set(obj, bytes);
+        return bytes;
     }
 
     /**

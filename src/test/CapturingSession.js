@@ -17,14 +17,6 @@ export class CapturingSession extends AbstractSession {
     }
 
     /**
-     * @param {number} sessionId
-     * @returns {void}
-     */
-    setId(sessionId) {
-        this.id = sessionId;
-    }
-
-    /**
      * @returns {number}
      */
     get playerId() {

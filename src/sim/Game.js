@@ -3,11 +3,17 @@ import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, Ove
 import {InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
+import {AddFriendMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
+import {WelcomeEvent, PlayerDirectoryEvent, FriendListEvent} from "@/common/PlayerEvents.js";
+import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
+import {ChunkClaimSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult} from "@/common/ClaimEvents.js";
 import {WireRegistry} from "@/common/wire.js";
-import {GameEngine} from "@/sim/GameEngine.js";
+import {GameEngine, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
 import {EventBus} from "@/sim/EventBus.js";
 import {SettingsCache, PlayerSettingsCache} from "@/common/SettingsCache.js";
-import {CHUNK_SIZE, GameSettingsKey} from "@/common/constants.js";
+import {ChunkClaims, CHUNK_CLAIM_RECORD} from "@/sim/ChunkClaims.js";
+import {PlayerRegistry, PLAYER_RECORD, FRIEND_RECORD} from "@/sim/PlayerRegistry.js";
+import {CHUNK_SIZE, GameSettingsKey, PLAYER_ID_NONE} from "@/common/constants.js";
 
 export class Game {
 
@@ -54,6 +60,32 @@ export class Game {
          * @type {PlayerSettingsCache}
          */
         this.playerSettings = new PlayerSettingsCache();
+
+        /**
+         * @type {PlayerRegistry}
+         */
+        this.players = new PlayerRegistry();
+
+        /**
+         * @type {ChunkClaims}
+         */
+        this.claims = new ChunkClaims();
+        this.simEngine.setPlacementGate((playerId, chunk) => this._canBuildIn(playerId, chunk));
+    }
+
+    /**
+     * Whether a player may modify a chunk: it is unclaimed, their own, or a friend's.
+     * @param {number} playerId
+     * @param {number} chunk
+     * @returns {boolean}
+     * @private
+     */
+    _canBuildIn(playerId, chunk) {
+        const owner = this.claims.ownerOf(chunk);
+        if (owner === PLAYER_ID_NONE || owner === playerId) {
+            return true;
+        }
+        return this.players.isFriend(owner, playerId);
     }
 
     async init() {
@@ -67,7 +99,9 @@ export class Game {
      * @returns {Promise<void>}
      */
     async save() {
-        await this.saveStore.save(this.simEngine.serialize());
+        const snapshot = this.simEngine.serialize();
+        snapshot.records = [...this.players.serializeRecords(), this.claims.serializeRecords()];
+        await this.saveStore.save(snapshot);
     }
 
     /**
@@ -80,6 +114,10 @@ export class Game {
             return false;
         }
         this.simEngine.deserialize(snapshot);
+        const records = snapshot.records === undefined ? [] : snapshot.records;
+        const byName = new Map(records.map(table => [table.name, table]));
+        this.players.deserializeRecords(byName.get(PLAYER_RECORD), byName.get(FRIEND_RECORD));
+        this.claims.deserializeRecords(byName.get(CHUNK_CLAIM_RECORD));
         return true;
     }
 
@@ -91,9 +129,28 @@ export class Game {
     connect(session) {
         const sessionId = this.bus.addSession(session);
         session.setId(sessionId);
+        // Local and test sessions carry ids the registry has never seen; the server registers its
+        // players before connecting them, so this is a no-op there.
+        this.players.ensure(session.playerId);
 
         this._syncPlayerSettings(session);
         this._syncGameSettings(session);
+        this._syncPlayerState(session);
+    }
+
+    /**
+     * Sends a fresh session its identity, the player directory, the claim map, and its friends.
+     * @param {AbstractSession} session
+     * @private
+     */
+    _syncPlayerState(session) {
+        const record = this.players.byId(session.playerId);
+        this.bus.publishTo(session.id, new WelcomeEvent(record.playerId, record.maxChunks));
+        const directory = this.players.directory();
+        this.bus.publishTo(session.id, new PlayerDirectoryEvent(directory.playerIds, directory.usernames));
+        const claims = this.claims.snapshot();
+        this.bus.publishTo(session.id, new ChunkClaimSyncEvent(claims.chunks, claims.playerIds));
+        this.bus.publishTo(session.id, new FriendListEvent([...record.friends]));
     }
 
     _syncGameSettings(session) {
@@ -139,12 +196,84 @@ export class Game {
             return;
         }
 
-        this.simEngine.applyMessage(message);
+        if (message instanceof ClaimChunkMessage) {
+            this._handleClaim(session, message.chunk);
+            return;
+        }
+
+        if (message instanceof UnclaimChunkMessage) {
+            this._handleUnclaim(session, message.chunk);
+            return;
+        }
+
+        if (message instanceof AddFriendMessage) {
+            this._handleAddFriend(session, message.username);
+            return;
+        }
+
+        if (message instanceof RemoveFriendMessage) {
+            this.players.removeFriend(session.playerId, message.playerId);
+            this._syncFriendList(session);
+            return;
+        }
+
+        this.simEngine.applyMessage(message, session.playerId);
 
         // Close menus after the object is actually deleted, never before.
         if (message instanceof DeleteObjectMessage) {
             this._closeInspect(message.id);
         }
+    }
+
+    // ---- Claims and friends ----
+
+    /**
+     * @param {AbstractSession} session
+     * @param {number} chunk
+     * @private
+     */
+    _handleClaim(session, chunk) {
+        const record = this.players.byId(session.playerId);
+        const result = this.claims.claim(session.playerId, chunk, record.maxChunks);
+        if (result === ClaimResult.CLAIM_RESULT_OK) {
+            this.bus.publish(new ChunkClaimUpdateEvent(chunk, session.playerId));
+        }
+        this.bus.publishTo(session.id, new ClaimResultEvent(chunk, result));
+    }
+
+    /**
+     * @param {AbstractSession} session
+     * @param {number} chunk
+     * @private
+     */
+    _handleUnclaim(session, chunk) {
+        const result = this.claims.unclaim(session.playerId, chunk);
+        if (result === ClaimResult.CLAIM_RESULT_OK) {
+            this.bus.publish(new ChunkClaimUpdateEvent(chunk, PLAYER_ID_NONE));
+        }
+        this.bus.publishTo(session.id, new ClaimResultEvent(chunk, result));
+    }
+
+    /**
+     * Befriends by username; an unknown name just re-sends the unchanged list.
+     * @param {AbstractSession} session
+     * @param {string} username
+     * @private
+     */
+    _handleAddFriend(session, username) {
+        const friend = this.players.findByUsername(username);
+        if (friend !== null && friend.playerId !== session.playerId) {
+            this.players.addFriend(session.playerId, friend.playerId);
+        }
+        this._syncFriendList(session);
+    }
+
+    /**
+     * @param {AbstractSession} session
+     * @private
+     */
+    _syncFriendList(session) {
+        this.bus.publishTo(session.id, new FriendListEvent([...this.players.byId(session.playerId).friends]));
     }
 
     // ---- Viewport ----
@@ -239,6 +368,17 @@ export class Game {
      */
     tick(phase) {
         this.simEngine.tick(phase);
+    }
+
+    /**
+     * Runs one whole tick: every phase in order, then the post-tick drains.
+     * @returns {void}
+     */
+    runTick() {
+        for (const phase of TICK_PHASE_ORDER) {
+            this.simEngine.tick(phase);
+        }
+        this.postTick();
     }
 
     postTick() {

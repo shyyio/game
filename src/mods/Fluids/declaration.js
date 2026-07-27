@@ -11,6 +11,13 @@ import {
 
 export class FluidsDeclaration extends AbstractModDeclaration {
 
+    /**
+     * @returns {string}
+     */
+    get name() {
+        return "Fluids";
+    }
+
     get objectTypes() {
         return [
             PipeDefinition,

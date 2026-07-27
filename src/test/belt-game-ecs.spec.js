@@ -7,6 +7,7 @@ import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {GameEngine, EMPTY, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
+import {CapturingSession} from "@/test/CapturingSession.js";
 
 const RED = 1;
 const CELLS = [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}];
@@ -20,8 +21,9 @@ test("a Game on GameEngine places and ticks belts via messages", async () => {
     const game = new Game(modRegistry, engine);
     await game.init();
 
+    const session = new CapturingSession();
     for (const cell of CELLS) {
-        game.dispatchMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP), null);
+        game.dispatchMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP), session);
     }
 
     const path = beltsOf(engine).pathAt(HEAD.x, HEAD.y);

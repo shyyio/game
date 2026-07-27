@@ -1,19 +1,26 @@
 import {Direction} from "@/common/constants.js";
+import {chunkId} from "@/common/util.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {BeltDefinition, SplitterDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {DemoMachineType} from "@/mods/Demo/declaration.js";
 import {WaterResourceType, ExtractorType} from "@/mods/Resources/declaration.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
-import {makeGameEngine} from "@/test/ecsSim.js";
+import {Game} from "@/sim/Game.js";
+import {GameEngine} from "@/sim/GameEngine.js";
+import {ecsModRegistry} from "@/test/ecsSim.js";
 import {PipeDefinition, TankDefinition} from "@/mods/Fluids/common/objectTypes.js";
 import {FLUID_TYPE_WATER} from "@/mods/Fluids/common/constants.js";
 import {Pipes} from "@/mods/Fluids/sim/Pipes.js";
 
-// Writes a NodeSaveStore SQLite save populated with one of every object type, for inspecting the
-// on-disk save format. Output path is argv[2] (default SAMPLE.sqlite3).
+// Writes a NodeSaveStore SQLite save populated with one of every object type, plus players, a
+// friendship, and a chunk claim, for inspecting the on-disk save format. Output path is argv[2]
+// (default SAMPLE.sqlite3).
 const PATH = process.argv[2] === undefined ? "SAMPLE.sqlite3" : process.argv[2];
 
-const engine = await makeGameEngine();
+const modRegistry = ecsModRegistry();
+const engine = new GameEngine(modRegistry);
+const game = new Game(modRegistry, engine, new NodeSaveStore(PATH));
+await game.init();
 engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 5, 5, Direction.UP));
 engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 5, 5, Direction.UP));
 engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, 10, 10, Direction.UP));
@@ -30,6 +37,11 @@ for (let i = 0; i < 5; i += 1) {
     engine.tickAll();
 }
 
-const store = new NodeSaveStore(PATH);
-await store.save(engine.serialize());
+// Two players, a one-way friendship, and a claim on the extractor's chunk.
+const alice = game.players.getOrCreate("alice");
+const bob = game.players.getOrCreate("bob");
+game.players.addFriend(alice.playerId, bob.playerId);
+game.claims.claim(alice.playerId, chunkId(5, 5), alice.maxChunks);
+
+await game.save();
 console.log(`wrote sample save: ${PATH}`);

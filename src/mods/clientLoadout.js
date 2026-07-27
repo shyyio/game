@@ -1,25 +1,23 @@
 import {ModPackage} from "@/common/ModPackage.js";
 import {BaseTexturesDeclaration} from "@/mods/BaseTextures/declaration.js";
 import {LogisticsDeclaration} from "@/mods/Logistics/declaration.js";
+import {LogisticsClientMod} from "@/mods/Logistics/client.js";
 import {DemoDeclaration} from "@/mods/Demo/declaration.js";
 import {ResourcesDeclaration} from "@/mods/Resources/declaration.js";
 import {FluidsDeclaration} from "@/mods/Fluids/declaration.js";
-
-// The canonical mod loadout. Both build sites register the same declarations in the same order, so
-// the positional typeIds/wireIds assigned at freeze() match between sim and client. The client
-// loadout lives in clientLoadout.js — importing the client mods here would drag pixi into the
-// server bundle.
+import {FluidsClientMod} from "@/mods/Fluids/client.js";
 
 /**
- * The loadout for a headless simulation (server, tests): declarations + sim parts only.
+ * The loadout for a browser client (which also runs the local sim): declarations + client parts,
+ * registered in the same order as loadout.js's simLoadout so positional ids match.
  * @returns {ModPackage[]}
  */
-export function simLoadout() {
+export function clientLoadout() {
     return [
         new ModPackage(new BaseTexturesDeclaration()),
-        new ModPackage(new LogisticsDeclaration()),
+        new ModPackage(new LogisticsDeclaration(), {client: new LogisticsClientMod()}),
         new ModPackage(new DemoDeclaration()),
         new ModPackage(new ResourcesDeclaration()),
-        new ModPackage(new FluidsDeclaration()),
+        new ModPackage(new FluidsDeclaration(), {client: new FluidsClientMod()}),
     ];
 }

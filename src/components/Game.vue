@@ -1,21 +1,48 @@
 <script setup>
-import {onMounted} from "vue";
+import {onMounted, ref} from "vue";
 import {Application, Graphics, Container, FillGradient, isMobile} from "pixi.js";
 import {ClientViewport} from "@/client/ClientViewport.js";
 import Keyboard from "@/client/Keyboard.js";
 import Mouse from "@/client/Mouse.js";
 import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
-import {clientLoadout} from "@/mods/loadout.js";
+import {clientLoadout} from "@/mods/clientLoadout.js";
 import {Belts} from "@/mods/Logistics/sim/Belts.js";
 import {Game} from "@/sim/Game.js";
-import {GameEngine, TickPhase} from "@/sim/GameEngine.js";
+import {GameEngine} from "@/sim/GameEngine.js";
 import {ClientSaveStore} from "@/client/ClientSaveStore.js";
 import {GameAPI} from "@/sim/GameAPI.js";
 import {LocalSession} from "@/sim/LocalSession.js";
+import {RemoteSession} from "@/client/RemoteSession.js";
+import {WireRegistry} from "@/common/wire.js";
 import {Client} from "@/client/Client.js";
+import {ClaimResult} from "@/common/ClaimEvents.js";
 import {GAME_FONT, ViewMode, MIN_VIEWPORT_SCALE} from "@/client/constants.js";
 import {DEV} from "@/common/env.js";
+
+const props = defineProps({
+  mode: {type: String, default: "local"},
+  username: {type: String, default: ""},
+  serverUrl: {type: String, default: ""},
+});
+
+// Feeds the v-snackbar (claim rejections, disconnects).
+const noticeText = ref("");
+const noticeOpen = ref(false);
+
+// Rejection notices per ClaimResult; OK stays silent (the border appearing is the feedback).
+const CLAIM_RESULT_NOTICES = {
+  [ClaimResult.CLAIM_RESULT_OWNED]: "That chunk is already claimed",
+  [ClaimResult.CLAIM_RESULT_LIMIT]: "Chunk limit reached",
+  [ClaimResult.CLAIM_RESULT_NOT_ADJACENT]: "New chunks must touch your territory",
+  [ClaimResult.CLAIM_RESULT_NOT_OWNER]: "Not your chunk",
+  [ClaimResult.CLAIM_RESULT_WOULD_SPLIT]: "Unclaiming this would split your territory",
+};
+
+function notify(text) {
+  noticeText.value = text;
+  noticeOpen.value = true;
+}
 
 // Mobile mode (touch device): panning stays live while a tool is active so the
 // player can aim the screen-center crosshair, hover/placement lock to center, and
@@ -144,31 +171,53 @@ onMounted(async () => {
   }
   modRegistry.freeze();
 
-  const game = new Game(modRegistry, new GameEngine(modRegistry), new ClientSaveStore());
-  await game.init();
+  // Local mode hosts the sim in-process; remote mode has no Game at all — the server owns it.
+  let game = null;
+  let session;
+  if (props.mode === "remote") {
+    session = new RemoteSession(new WireRegistry(modRegistry), props.serverUrl, props.username);
+    session.onClose(code => {
+      notify(`Disconnected from server (${code})`);
+    });
+  } else {
+    game = new Game(modRegistry, new GameEngine(modRegistry), new ClientSaveStore());
+    await game.init();
 
-  // Dev scenarios populate the world before any session connects, so the objects reach the
-  // client through the normal chunk sync. DEV is a build-time literal, so the whole scenario
-  // tree drops out of production bundles.
-  if (DEV) {
-    const {applyScenarioFromLocation} = await import("@/test/scenarios/index.js");
-    await applyScenarioFromLocation(game);
+    // Dev scenarios populate the world before any session connects, so the objects reach the
+    // client through the normal chunk sync. DEV is a build-time literal, so the whole scenario
+    // tree drops out of production bundles.
+    if (DEV) {
+      const {applyScenarioFromLocation} = await import("@/test/scenarios/index.js");
+      await applyScenarioFromLocation(game);
+    }
+
+    session = new LocalSession(new GameAPI(game));
   }
-
-  const api = new GameAPI(game);
-  const session = new LocalSession(api);
 
   const client = new Client(app, viewport, session, modRegistry);
   session.client = client;
-  game.connect(session);
+  if (game === null) {
+    session.connect();
+  } else {
+    game.connect(session);
+  }
   await client.init();
 
   const toolbar = client.toolbarLayer;
 
   const inputHandler = new InputHandler(toolbar);
-  inputHandler.onMiniMenuEntryClick((tileX, tileY, screenX, screenY, onClose) => {
+  // One entries source: client.miniMenuEntries switches to the chunk claim menu in map mode.
+  const openMenu = (tileX, tileY, screenX, screenY, onClose) => {
     const entries = client.miniMenuEntries(tileX, tileY);
     client.miniMenuLayer.open(entries, screenX, screenY, onClose);
+  };
+  inputHandler.onMiniMenuEntryClick(openMenu);
+  inputHandler.onMapMenuEntryClick(openMenu);
+  client.onClaimResult((chunk, result) => {
+    const notice = CLAIM_RESULT_NOTICES[result];
+    if (notice !== undefined) {
+      notify(notice);
+    }
   });
   inputHandler.onInspect((tileX, tileY) => {
     client.handleInspect(tileX, tileY);
@@ -238,31 +287,22 @@ onMounted(async () => {
     applyEffectiveTool();
   });
 
-  function tick() {
-    game.tick(TickPhase.SUBMIT_INTENTS);
-    game.tick(TickPhase.RESOLVE_TRANSFERS);
-    game.tick(TickPhase.CONSUME_INPUTS);
-    game.tick(TickPhase.POST_RESOLVE);
-    game.tick(TickPhase.PRODUCE_OUTPUTS);
-    game.tick(TickPhase.COMMIT_TRANSFERS);
-    game.tick(TickPhase.EMIT_RENDER);
-    game.tick(TickPhase.EMIT_INSPECT);
-    game.postTick();
+  // The local sim ticks by key; the server drives its own tick loop in remote mode.
+  if (game !== null) {
+    // Debug keybindings (moved off the number keys, which now select tools).
+    // Insert an item of value 1 onto the lowest-id belt path via its in-port.
+    Keyboard.on("b", () => {
+      game.simEngine.resolve(Belts).debugInsertItem();
+    });
+
+    Keyboard.on("t", () => {
+      game.runTick();
+    });
+
+    window.setInterval(() => {
+      // game.runTick()
+    }, 600);
   }
-
-  // Debug keybindings (moved off the number keys, which now select tools).
-  // Insert an item of value 1 onto the lowest-id belt path via its in-port.
-  Keyboard.on("b", () => {
-    game.simEngine.resolve(Belts).debugInsertItem();
-  });
-
-  Keyboard.on("t", () => {
-    tick();
-  });
-
-  window.setInterval(() => {
-    // tick()
-  }, 600);
 
   // Toggle debug mode
   Keyboard.on("d", () => {
@@ -284,6 +324,7 @@ export default defineComponent({
 <template>
   <div id="game">
   </div>
+  <v-snackbar v-model="noticeOpen" timeout="3000">{{ noticeText }}</v-snackbar>
 </template>
 
 <style scoped>

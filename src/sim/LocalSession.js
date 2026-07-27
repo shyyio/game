@@ -3,10 +3,6 @@ import {AbstractSession} from "@/common/AbstractSession.js";
 
 export class LocalSession extends AbstractSession {
 
-    setId(sessionId) {
-        this.id = sessionId;
-    }
-
     sendMessage(message) {
         if (DEV) {
             // Test wire encoding/decoding
@@ -30,6 +26,7 @@ export class LocalSession extends AbstractSession {
     }
 
     get playerId() {
-        return 0;
+        // A real player id (PLAYER_ID_NONE would bypass the placement gate), stable per local world.
+        return 1;
     }
 }

@@ -10,6 +10,12 @@ import {PortItemSetEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
+import {SignInMessage, AddFriendMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
+import {WelcomeEvent, PlayerDirectoryEvent, FriendListEvent} from "@/common/PlayerEvents.js";
+import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
+import {ChunkClaimSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent} from "@/common/ClaimEvents.js";
+import {ClaimResult} from "@/common/ClaimEvents.js";
+import {PROTOCOL_VERSION, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 
 // Core-only registry: common/ must not depend on mods/. Mod wire classes are
@@ -129,4 +135,37 @@ test("Round-trips an OverworldSnapshotEvent's flattened run columns", () => {
     event.addChunk(8128, [131, 650], [1, 2], [4, 9]);
     event.addChunk(8129, [0], [64], [4]);
     roundTrip(reg, event, OverworldSnapshotEvent);
+});
+
+test("Round-trips the player messages", () => {
+    const reg = registry();
+    roundTrip(reg, new SignInMessage(PROTOCOL_VERSION, "alice_01"), SignInMessage);
+    roundTrip(reg, new AddFriendMessage("bob"), AddFriendMessage);
+    roundTrip(reg, new RemoveFriendMessage(999999999999), RemoveFriendMessage);
+});
+
+test("Round-trips the player events", () => {
+    const reg = registry();
+    roundTrip(reg, new WelcomeEvent(7, 9), WelcomeEvent);
+    roundTrip(reg, new PlayerDirectoryEvent([1, 2], ["alice", "bob"]), PlayerDirectoryEvent);
+    roundTrip(reg, new PlayerDirectoryEvent([], []), PlayerDirectoryEvent);
+    roundTrip(reg, new FriendListEvent([]), FriendListEvent);
+    roundTrip(reg, new FriendListEvent([3, 4, 5]), FriendListEvent);
+});
+
+test("Round-trips the claim messages and events", () => {
+    const reg = registry();
+    roundTrip(reg, new ClaimChunkMessage(0), ClaimChunkMessage);
+    roundTrip(reg, new UnclaimChunkMessage(8256), UnclaimChunkMessage);
+    roundTrip(reg, new ChunkClaimSyncEvent([], []), ChunkClaimSyncEvent);
+    roundTrip(reg, new ChunkClaimSyncEvent([8256, 8257], [1, 2]), ChunkClaimSyncEvent);
+    roundTrip(reg, new ChunkClaimUpdateEvent(8256, PLAYER_ID_NONE), ChunkClaimUpdateEvent);
+    roundTrip(reg, new ClaimResultEvent(8256, ClaimResult.CLAIM_RESULT_WOULD_SPLIT), ClaimResultEvent);
+});
+
+test("Sign-in validation gates version and username", () => {
+    assert.strictEqual(new SignInMessage(PROTOCOL_VERSION, "alice").validate(null, null), true);
+    assert.strictEqual(new SignInMessage(PROTOCOL_VERSION + 1, "alice").validate(null, null), false);
+    assert.strictEqual(new SignInMessage(PROTOCOL_VERSION, "no spaces").validate(null, null), false);
+    assert.strictEqual(new SignInMessage(PROTOCOL_VERSION, null).validate(null, null), false);
 });

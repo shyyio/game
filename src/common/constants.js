@@ -130,3 +130,14 @@ export const LAYER_SURFACE = "S";
 export const GameSettingsKey = {
     CHUNK_SIZE: 0,
 };
+
+// The null player: unclaimed chunks, engine-originated messages. Real player ids start at 1.
+export const PLAYER_ID_NONE = 0;
+
+// Chunks a player may claim before any bonus grants.
+export const DEFAULT_MAX_CHUNKS = 9;
+
+export const USERNAME_PATTERN = /^[A-Za-z0-9_]{3,20}$/;
+
+// Bumped on any wire-incompatible change; the server rejects a mismatched sign-in.
+export const PROTOCOL_VERSION = 1;

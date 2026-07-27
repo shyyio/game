@@ -93,6 +93,13 @@ export const EXTRACTOR_TYPES = [ExtractorType, DeepExtractorType];
 
 export class ResourcesDeclaration extends AbstractModDeclaration {
 
+    /**
+     * @returns {string}
+     */
+    get name() {
+        return "Resources";
+    }
+
     get objectTypes() {
         return [...RESOURCE_TYPES, ...EXTRACTOR_TYPES];
     }

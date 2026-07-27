@@ -17,6 +17,12 @@ import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {WorkerAssignmentEvent} from "@/common/WorkerEvents.js";
 import {WorkerAssignmentCache} from "@/client/WorkerAssignmentCache.js";
+import {ClaimResultEvent} from "@/common/ClaimEvents.js";
+import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
+import {AddFriendMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
+import {ChunkClaimsCache} from "@/client/ChunkClaimsCache.js";
+import {ChunkClaimsDrawLayer} from "@/client/ChunkClaimsDrawLayer.js";
+import {MiniMenuEntry} from "@/common/ObjectType.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {
     TILE_SIZE,
@@ -29,8 +35,8 @@ import {
     OVERWORLD_REFRESH_THROTTLE_MS,
     CHUNK_UNSUBSCRIBE_DELAY_MS,
 } from "@/client/constants.js";
-import {CHUNK_SIZE, REGION_SIZE, Direction} from "@/common/constants.js";
-import {chunkId} from "@/common/util.js";
+import {CHUNK_SIZE, REGION_SIZE, Direction, PLAYER_ID_NONE} from "@/common/constants.js";
+import {chunkId, formatBytes, REGION_HALF} from "@/common/util.js";
 import {OverworldCache, OverworldRect} from "@/client/OverworldCache.js";
 import {OverworldDrawLayer} from "@/client/OverworldDrawLayer.js";
 import {GridDrawLayer} from "@/client/GridDrawLayer.js";
@@ -59,15 +65,8 @@ const DRAIN_BUDGET_MS = 6;
 // visible-chunk set at overworld scale would enumerate thousands of chunks per frame.
 const NO_VISIBLE_CHUNKS = new Set();
 
-const REGION_HALF = REGION_SIZE / 2;
-
 // Leading entries shown per column when logging a columnar batch event.
 const LOG_BATCH_ITEMS = 5;
-
-function formatBytes(n) {
-    const text = n > 1024 ? `${Math.round(n / 1024)}K` : `${n}B`;
-    return text.padStart(5);
-}
 
 /**
  * A console view of an event: a batch event's columns cut to their first {@link LOG_BATCH_ITEMS}
@@ -165,6 +164,12 @@ export class Client {
         this.overworldCache = new OverworldCache();
         this.overworldLayer = new OverworldDrawLayer(modRegistry, this.overworldCache);
         this.drawLayerRegistry.add(this.overworldLayer);
+        // Chunk ownership mirror and its border renderer (map/overworld mode).
+        this.chunkClaimsCache = new ChunkClaimsCache();
+        this.chunkClaimsLayer = new ChunkClaimsDrawLayer(this.chunkClaimsCache);
+        this.drawLayerRegistry.add(this.chunkClaimsLayer);
+        // Claim/unclaim outcome callback, fed by ClaimResultEvents (the host shows a notice).
+        this._onClaimResult = null;
         this.drawLayerRegistry.add(new GridDrawLayer());
         this.drawLayerRegistry.add(this.placementFeedbackLayer);
         this.drawLayerRegistry.add(this.inspectLayer);
@@ -588,7 +593,7 @@ export class Client {
             // only in debug mode, and batch events cut to their leading column entries.
             if (bytes > 0 && this._debugMode) {
                 // this event's size, then the session total
-                console.log(`↓ [${formatBytes(bytes)} / ${formatBytes(this._bytesReceived)}]`, event.constructor.name, eventLogView(event));
+                console.log(`↓ [${formatBytes(bytes).padStart(6)} / ${formatBytes(this._bytesReceived).padStart(6)}]`, event.constructor.name, eventLogView(event));
             }
         }
         if (event instanceof ChunkSyncEvent) {
@@ -725,6 +730,15 @@ export class Client {
             this.overworldCache.write(event, Date.now());
             return;
         }
+        if (this.chunkClaimsCache.onEvent(event)) {
+            return;
+        }
+        if (event instanceof ClaimResultEvent) {
+            if (this._onClaimResult !== null) {
+                this._onClaimResult(event.chunk, event.result);
+            }
+            return;
+        }
         this.dispatchEvent(event);
     }
 
@@ -772,12 +786,16 @@ export class Client {
     }
 
     /**
-     * Aggregates mini-menu entries from every client mod for the tile at (tileX, tileY).
+     * Aggregates mini-menu entries for the tile at (tileX, tileY): the chunk claim menu when zoomed
+     * out to map/overworld mode, every client mod's object entries otherwise.
      * @param {number} tileX
      * @param {number} tileY
      * @returns {MiniMenuEntry[]}
      */
     miniMenuEntries(tileX, tileY) {
+        if (this._viewMode !== ViewMode.WORLD) {
+            return this._mapMenuEntries(tileX, tileY);
+        }
         const derived = this.bundles.flatMap(bundle => {
             const record = this.cache.objectAt(tileX, tileY, bundle.type);
             if (record === null) {
@@ -788,6 +806,44 @@ export class Client {
         const bespoke = this.modRegistry.clientMods
             .flatMap(mod => mod.miniMenuEntries(tileX, tileY, this.session, this));
         return derived.concat(bespoke).sort((a, b) => b.rank - a.rank);
+    }
+
+    /**
+     * Registers the claim/unclaim outcome callback ((chunk, ClaimResult) -> void).
+     * @param {function(number, number): void} callback
+     * @returns {void}
+     */
+    onClaimResult(callback) {
+        this._onClaimResult = callback;
+    }
+
+    /**
+     * The map-mode context menu for the chunk under (tileX, tileY): claim, unclaim, or friend the
+     * owner — by tap alone, no text entry.
+     * @private
+     * @param {number} tileX
+     * @param {number} tileY
+     * @returns {MiniMenuEntry[]}
+     */
+    _mapMenuEntries(tileX, tileY) {
+        const chunk = chunkId(tileX, tileY);
+        const cache = this.chunkClaimsCache;
+        const owner = cache.ownerOf(chunk);
+        if (owner === PLAYER_ID_NONE) {
+            const label = `Claim chunk (${cache.ownCount()}/${cache.maxChunks})`;
+            return [new MiniMenuEntry(label, 10, () => this.sendMessage(new ClaimChunkMessage(chunk)))];
+        }
+        if (owner === cache.ownPlayerId) {
+            return [new MiniMenuEntry("Unclaim chunk", 10, () => this.sendMessage(new UnclaimChunkMessage(chunk)))];
+        }
+        const name = cache.usernameOf(owner);
+        const entries = [new MiniMenuEntry(`Owned by ${name}`, 20, () => {})];
+        if (cache.isFriend(owner)) {
+            entries.push(new MiniMenuEntry(`Unfriend ${name}`, 10, () => this.sendMessage(new RemoveFriendMessage(owner))));
+        } else {
+            entries.push(new MiniMenuEntry(`Add friend ${name}`, 10, () => this.sendMessage(new AddFriendMessage(name))));
+        }
+        return entries;
     }
 
     /**

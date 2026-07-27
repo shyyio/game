@@ -18,7 +18,7 @@ async function setup() {
 
 // Places a DemoMachine and returns its client id (object id) plus its input port.
 function createMachine(game, x, y) {
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, x, y, Direction.UP), null);
+    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, x, y, Direction.UP), new CapturingSession());
     const placed = game.simEngine.placed;
     const eids = placed.eidsOf(DemoMachineType.typeId);
     const eid = eids[eids.length - 1];
