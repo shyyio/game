@@ -26,17 +26,17 @@ const BADGE_POOL_LIMIT = 64;
 export class WorkerBadgeLayer extends AbstractDrawLayer {
 
     /**
-     * @param {WorkerAssignmentCache} assignments
+     * @param {ClientCache} state
      */
-    constructor(assignments) {
+    constructor(state) {
         super();
         /**
-         * The shared machine-staffing index.
-         * @type {WorkerAssignmentCache}
+         * The shared machine-staffing view.
+         * @type {WorkerAssignmentsView}
          * @private
          */
-        this._assignments = assignments;
-        assignments.onChange(machineId => this._onAssignmentChange(machineId));
+        this._assignments = state.view("workerAssignments");
+        state.subscribe("workerAssignments.byMachine", machineId => this._onAssignmentChange(machineId));
         /**
          * Live badges keyed by machineId.
          * @type {Map<number, Badge>}
@@ -80,7 +80,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
      * @private
      */
     _onAssignmentChange(machineId) {
-        if (this._assignments.get(machineId) === null) {
+        if (this._assignments.get(machineId) === undefined) {
             this._releaseBadge(machineId);
             this._dirtyMachines.delete(machineId);
             return;
@@ -93,7 +93,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     onCacheChange(entry) {
-        if (this._assignments.has(entry.id)) {
+        if (this._assignments.get(entry.id) !== undefined) {
             this._dirtyMachines.add(entry.id);
         }
     }
@@ -111,7 +111,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
         }
         for (const machineId of this._dirtyMachines) {
             const assignment = this._assignments.get(machineId);
-            const entry = assignment === null ? null : this.cache.get(machineId);
+            const entry = assignment === undefined ? null : this.cache.get(machineId);
             if (entry === null) {
                 this._releaseBadge(machineId);
                 continue;

@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {CursorPublisher} from "./CursorPublisher.js";
 import {CursorMoveMessage, CursorHideMessage} from "../common/messages.js";
 import {CURSOR_SETTING_SHARE} from "../common/constants.js";
-import {PlayerSettings} from "@/client/PlayerSettings.js";
+import {ClientCache} from "@/client/ClientCache.js";
+import {PLAYER_SETTINGS_SCHEMA, PlayerSettingsWriter, PlayerSettingsView} from "@/client/SettingsState.js";
 import {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
 import {TILE_SIZE, ViewMode} from "@/client/constants.js";
 
@@ -30,9 +31,10 @@ function publisher() {
     const sent = [];
     const session = {sendMessage: message => sent.push(message)};
     const mouse = {currentX: null, currentY: null};
-    const settings = new PlayerSettings();
+    const state = new ClientCache();
+    state.register("playerSettings", PLAYER_SETTINGS_SCHEMA, new PlayerSettingsWriter(state), new PlayerSettingsView());
     const focus = new FakeWindowFocus();
-    return {sent, mouse, settings, focus, publisher: new CursorPublisher(session, mouse, settings, focus)};
+    return {sent, mouse, state, focus, publisher: new CursorPublisher(session, mouse, state, focus)};
 }
 
 test("sends a heartbeat only while the cursor moves", () => {
@@ -94,15 +96,15 @@ test("leaving world mode hides; a hide before any heartbeat sends nothing", () =
 });
 
 test("share-off gates heartbeats without a wire hide; share-on resumes", () => {
-    const {sent, mouse, settings, publisher: pub} = publisher();
+    const {sent, mouse, state, publisher: pub} = publisher();
     mouse.currentX = 0;
     mouse.currentY = 0;
     pub.tick();
-    settings.update(CURSOR_SETTING_SHARE, SETTING_OFF);
+    state.mapSet("playerSettings.values", CURSOR_SETTING_SHARE, SETTING_OFF);
     pub.tick();
     assert.equal(sent.length, 1, "the server erases on the setting write; no client hide");
 
-    settings.update(CURSOR_SETTING_SHARE, SETTING_ON);
+    state.mapSet("playerSettings.values", CURSOR_SETTING_SHARE, SETTING_ON);
     pub.tick();
     assert.equal(sent.length, 2);
     assert.ok(sent[1] instanceof CursorMoveMessage);

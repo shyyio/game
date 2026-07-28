@@ -28,7 +28,7 @@ export class FluidsClientMod extends AbstractClientMod {
     }
 
     setup(client) {
-        client.cache.onRemove(entry => {
+        client.objects.onRemove(entry => {
             if (isPipeType(entry.data.type)) {
                 this._onPipeRemoved(entry.id);
             }
@@ -79,12 +79,12 @@ export class FluidsClientMod extends AbstractClientMod {
             const ny = tileY + Direction.dy(neighborDirection);
             const candidates = [];
             if (chunkId(nx, ny) === chunk) {
-                const pipe = client.cache.objectAt(nx, ny, PipeDefinition);
+                const pipe = client.objects.objectAt(nx, ny, PipeDefinition);
                 if (pipe !== null) {
                     candidates.push(this._networkFluidType(pipe.id));
                 }
             }
-            const feeder = client.cache.outPortAt(tileX, tileY, Direction.invert(neighborDirection));
+            const feeder = client.objects.outPortAt(tileX, tileY, Direction.invert(neighborDirection));
             if (feeder !== null) {
                 candidates.push(this._producedFluidType(client, feeder.entry.id));
             }
@@ -122,7 +122,7 @@ export class FluidsClientMod extends AbstractClientMod {
         if (tankFluid !== undefined) {
             return tankFluid;
         }
-        const product = client.objectWriter.lastProducedOf(objectId);
+        const product = client.objects.lastProducedOf(objectId);
         if (product === undefined || !client.modRegistry.fluidTypes.has(product)) {
             return EMPTY;
         }

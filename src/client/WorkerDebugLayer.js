@@ -7,6 +7,7 @@ import {RoadBehavior, isWorkerBehavior} from "@/sim/behaviors.js";
 import {DEBUG_COLOR} from "@/client/Theme.js";
 import {drawLine, drawCircle, drawRect} from "@/client/pixiUtils.js";
 import {findCommuteRoute} from "@/client/workerRoute.js";
+import {WorkerAssignmentsView} from "@/client/WorkerAssignmentsState.js";
 
 const ROAD_FILL_ALPHA = 0.35;
 const LABEL_TEXT_SIZE = 15;
@@ -22,17 +23,17 @@ const HOUSING_MARKER_RADIUS = 8;
 export class WorkerDebugLayer extends AbstractDebugDrawLayer {
 
     /**
-     * @param {WorkerAssignmentCache} assignments
+     * @param {ClientCache} state
      */
-    constructor(assignments) {
+    constructor(state) {
         super();
         /**
-         * The shared machine-staffing index, for the machine->housing lines.
-         * @type {WorkerAssignmentCache}
+         * The shared machine-staffing view, for the machine->housing lines.
+         * @type {WorkerAssignmentsView}
          * @private
          */
-        this._assignments = assignments;
-        assignments.onChange(() => this.markStale());
+        this._assignments = state.view("workerAssignments");
+        state.subscribe("workerAssignments.byMachine", () => this.markStale());
         this._graphics = new Graphics();
         this.addChild(this._graphics);
         // Per-component labels, rebuilt on every repaint.
@@ -224,8 +225,8 @@ export class WorkerDebugLayer extends AbstractDebugDrawLayer {
      * @returns {void}
      */
     _drawAssignments() {
-        for (const assignment of this._assignments.values()) {
-            if (!assignment.manned) {
+        for (const [, assignment] of this._assignments.entries()) {
+            if (!WorkerAssignmentsView.manned(assignment)) {
                 continue;
             }
             const machineEntry = this.cache.get(assignment.machineId);

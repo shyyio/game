@@ -120,7 +120,7 @@ export const REGION_SIZE = 128;
 
 // The surface position layer: the default ground layer (belts, splitters, machines). A tile holds
 // one object per layer, so objects on different layers coexist; each mod names its own further layers
-// (e.g. belt undergrounds per axis). Shared by the engine position index and the client ClientCache.
+// (e.g. belt undergrounds per axis). Shared by the engine position index and the client ObjectsView.
 export const LAYER_SURFACE = "S";
 
 /**

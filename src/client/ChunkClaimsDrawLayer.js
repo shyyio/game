@@ -1,7 +1,7 @@
 import {Graphics} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 import {TILE_SIZE, ViewMode} from "@/client/constants.js";
-import {CHUNK_SIZE, PLAYER_ID_NONE} from "@/common/constants.js";
+import {CHUNK_SIZE} from "@/common/constants.js";
 import {chunkOrigin, getOrCreate} from "@/common/util.js";
 import {claimColor, OWN_CLAIM_COLOR, OWN_CLAIM_FILL_ALPHA, CLAIM_BORDER_ALPHA} from "@/client/Theme.js";
 
@@ -13,20 +13,26 @@ const OWN_BORDER_WIDTH = TILE_SIZE * 1.5;
 
 /**
  * Colored ownership borders around claimed chunks, shown in map and overworld mode. Not
- * chunk-mounted: claims are few and global, drawn straight from the ChunkClaimsCache.
+ * chunk-mounted: claims are few and global, drawn straight from the claims state.
  */
 export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
 
     /**
-     * @param {ChunkClaimsCache} claimsCache
+     * @param {ClientCache} state
      */
-    constructor(claimsCache) {
+    constructor(state) {
         super();
-        this.claimsCache = claimsCache;
+        this._claims = state.view("chunkClaims");
         // Chunk ordinal -> its border Graphics.
         this._graphics = new Map();
         this.visible = false;
-        claimsCache.onUpdate(chunks => this._redrawChunks(chunks));
+        state.subscribe("chunkClaims.ownerByChunk", (chunk, owner) => {
+            if (owner === undefined) {
+                this._dropChunk(chunk);
+            } else {
+                this._drawChunk(chunk, owner);
+            }
+        });
     }
 
     get layerIndex() {
@@ -40,22 +46,6 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
      */
     setViewMode(mode) {
         this.visible = mode !== ViewMode.WORLD;
-    }
-
-    /**
-     * @private
-     * @param {number[]} chunks
-     * @returns {void}
-     */
-    _redrawChunks(chunks) {
-        for (const chunk of chunks) {
-            const owner = this.claimsCache.ownerOf(chunk);
-            if (owner === PLAYER_ID_NONE) {
-                this._dropChunk(chunk);
-            } else {
-                this._drawChunk(chunk, owner);
-            }
-        }
     }
 
     /**
@@ -91,7 +81,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
         graphics.clear();
         let color;
         let width;
-        if (owner === this.claimsCache.ownPlayerId) {
+        if (owner === this._claims.ownPlayerId) {
             color = OWN_CLAIM_COLOR;
             width = OWN_BORDER_WIDTH;
             graphics

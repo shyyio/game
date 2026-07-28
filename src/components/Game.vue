@@ -17,7 +17,7 @@ import {LocalSession} from "@/sim/LocalSession.js";
 import {RemoteSession} from "@/client/RemoteSession.js";
 import {WireRegistry} from "@/common/wire.js";
 import {Client} from "@/client/Client.js";
-import {ClaimResult} from "@/common/ClaimEvents.js";
+import {ClaimResult, ClaimResultEvent} from "@/common/ClaimEvents.js";
 import {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
 import {CURSOR_SETTING_SHARE, CURSOR_SETTING_SHOW} from "@/mods/CursorSync/common/constants.js";
 import {GAME_FONT, ViewMode, MIN_VIEWPORT_SCALE} from "@/client/constants.js";
@@ -221,8 +221,11 @@ onMounted(async () => {
   };
   inputHandler.onMiniMenuEntryClick(openMenu);
   inputHandler.onMapMenuEntryClick(openMenu);
-  client.onClaimResult((chunk, result) => {
-    const notice = CLAIM_RESULT_NOTICES[result];
+  client.onEvent((event) => {
+    if (!(event instanceof ClaimResultEvent)) {
+      return;
+    }
+    const notice = CLAIM_RESULT_NOTICES[event.result];
     if (notice !== undefined) {
       notify(notice);
     }
@@ -285,7 +288,7 @@ onMounted(async () => {
   const refreshTools = () => {
     toolbar.setTools(client.coreTools(), client.modTools());
   };
-  client.playerSettings.onChange(refreshTools);
+  client.cache.subscribe("playerSettings.values", refreshTools);
   refreshTools();
 
   const bindCursorSetting = (toggle, key) => {
@@ -295,7 +298,7 @@ onMounted(async () => {
   };
   bindCursorSetting(shareCursor, CURSOR_SETTING_SHARE);
   bindCursorSetting(showCursors, CURSOR_SETTING_SHOW);
-  client.playerSettings.onChange((key, value) => {
+  client.cache.subscribe("playerSettings.values", (key, value) => {
     if (key === CURSOR_SETTING_SHARE) {
       shareCursor.value = value !== SETTING_OFF;
     }

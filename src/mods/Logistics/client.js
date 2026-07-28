@@ -61,7 +61,7 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     tools(client) {
-        // TODO: Filter to the tools available for the player (client.playerSettings).
+        // TODO: Filter to the tools available for the player (playerSettings state).
         return [
             new BeltTool(client, this._ghostLayer),
             new UndergroundBeltTool(client, this._ghostLayer),
@@ -74,12 +74,12 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @returns {void}
      */
     setup(client) {
-        client.cache.onSet(entry => {
+        client.objects.onSet(entry => {
             if (isBeltType(entry.data.type)) {
                 this._onBeltSet(client, entry);
             }
         });
-        client.cache.onRemove(entry => {
+        client.objects.onRemove(entry => {
             if (isBeltType(entry.data.type)) {
                 this._onBeltRemoved(client, entry);
             }
@@ -190,7 +190,7 @@ export class LogisticsClientMod extends AbstractClientMod {
         if (parts === undefined) {
             return null;
         }
-        const tail = client.cache.get(parts[0]);
+        const tail = client.objects.get(parts[0]);
         if (tail === null) {
             return null;
         }
@@ -340,7 +340,7 @@ export class LogisticsClientMod extends AbstractClientMod {
         if (beltIndex < 0 || beltIndex >= parts.length) {
             return null;
         }
-        const record = client.cache.get(parts[beltIndex]);
+        const record = client.objects.get(parts[beltIndex]);
         if (record === null) {
             return null;
         }
@@ -370,7 +370,7 @@ export class LogisticsClientMod extends AbstractClientMod {
      */
     _rampDownBehind(client, record) {
         const direction = record.data.direction;
-        const behind = client.cache.getAtTile(
+        const behind = client.objects.getAtTile(
             record.tileX - Direction.dx(direction),
             record.tileY - Direction.dy(direction),
         );
@@ -387,7 +387,7 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @private
      */
     _pathSourceDirection(client, record, feederId) {
-        const feeder = client.cache.get(feederId);
+        const feeder = client.objects.get(feederId);
         if (feeder === null) {
             return Direction.invert(record.data.direction);
         }
@@ -405,7 +405,7 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @private
      */
     _sourceDirection(client, record) {
-        const {parentX, parentY} = inferBeltParent(client.cache, record.tileX, record.tileY, record.data.direction);
+        const {parentX, parentY} = inferBeltParent(client.objects, record.tileX, record.tileY, record.data.direction);
         if (parentX !== null && parentY !== null) {
             return Direction.fromDelta(Math.sign(parentX - record.tileX), Math.sign(parentY - record.tileY));
         }
@@ -500,10 +500,10 @@ export class LogisticsClientMod extends AbstractClientMod {
             this._overlayLayer.clearUndergroundReveal();
             return [];
         }
-        const records = client.cache.getAtTile(tileX, tileY);
-        const surface = surfaceBeltAt(client.cache, tileX, tileY);
+        const records = client.objects.getAtTile(tileX, tileY);
+        const surface = surfaceBeltAt(client.objects, tileX, tileY);
         const ramp = records.find(record => isBeltType(record.data.type) && isRamp(record.data.type.beltKind));
-        const tunnel = ramp === undefined ? null : walkTunnel(client.cache, ramp);
+        const tunnel = ramp === undefined ? null : walkTunnel(client.objects, ramp);
 
         // Highlight the hovered surface belt/ramp, plus the tunneled-to ramp (alternate highlight).
         const highlights = [];
@@ -524,7 +524,7 @@ export class LogisticsClientMod extends AbstractClientMod {
 
     miniMenuEntries(tileX, tileY, session, client) {
         const entries = [];
-        const surface = surfaceBeltAt(client.cache, tileX, tileY);
+        const surface = surfaceBeltAt(client.objects, tileX, tileY);
         if (surface !== null) {
             entries.push(new MiniMenuEntry(
                 "Delete Belt",

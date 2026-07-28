@@ -123,18 +123,17 @@ class RemoteCursorDisplay extends Container {
 }
 
 /**
- * Other players' live cursors, drawn from the RemoteCursorsCache. Not chunk-mounted: cursors are
+ * Other players' live cursors, drawn from the remoteCursors state. Not chunk-mounted: cursors are
  * few and cross chunks freely. Hidden outside world mode.
  */
 export class RemoteCursorsDrawLayer extends AbstractDrawLayer {
 
     /**
-     * @param {RemoteCursorsCache} cursorsCache
-     * @param {ChunkClaimsCache} claimsCache username lookups
+     * @param {ClientCache} state cursor feed and username lookups
      */
-    constructor(cursorsCache, claimsCache) {
+    constructor(state) {
         super();
-        this._claimsCache = claimsCache;
+        this._claims = state.view("chunkClaims");
         const pool = new DisplayPool(
             () => {
                 const display = new RemoteCursorDisplay();
@@ -150,8 +149,13 @@ export class RemoteCursorsDrawLayer extends AbstractDrawLayer {
             CURSOR_POOL_CAPACITY,
         );
         this._displays = new KeyedDisplayPool(pool);
-        cursorsCache.onUpsert(cursor => this._onUpsert(cursor));
-        cursorsCache.onRemove(playerId => this._displays.release(playerId));
+        state.subscribe("remoteCursors.byPlayer", (playerId, cursor) => {
+            if (cursor === undefined) {
+                this._displays.release(playerId);
+            } else {
+                this._onUpsert(cursor);
+            }
+        });
     }
 
     get layerIndex() {
@@ -160,7 +164,7 @@ export class RemoteCursorsDrawLayer extends AbstractDrawLayer {
 
     /**
      * @private
-     * @param {RemoteCursor} cursor
+     * @param {RemoteCursorState} cursor
      * @returns {void}
      */
     _onUpsert(cursor) {
@@ -169,7 +173,7 @@ export class RemoteCursorsDrawLayer extends AbstractDrawLayer {
         let display = this._displays.get(cursor.playerId);
         if (display === undefined) {
             display = this._displays.take(cursor.playerId);
-            display.show(this._claimsCache.usernameOf(cursor.playerId), claimColor(cursor.playerId));
+            display.show(this._claims.usernameOf(cursor.playerId), claimColor(cursor.playerId));
             display.snap(x, y);
         } else {
             display.retarget(x, y);

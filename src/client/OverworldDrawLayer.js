@@ -11,24 +11,29 @@ const REGION_HALF_PX = (REGION_SIZE / 2) * CHUNK_PX;
 /**
  * Renders the baked overworld: a region-wide backdrop matching the map-mode grid look, plus one
  * Graphics of colored tile runs per cached chunk. Not chunk-mounted — overworld mode has no chunk
- * subscriptions; content comes straight from the OverworldCache.
+ * subscriptions; content comes straight from the overworld state.
  */
 export class OverworldDrawLayer extends AbstractDrawLayer {
 
     /**
      * @param {ModRegistry} modRegistry
-     * @param {OverworldCache} overworldCache
+     * @param {ClientCache} state
      */
-    constructor(modRegistry, overworldCache) {
+    constructor(modRegistry, state) {
         super();
         this.modRegistry = modRegistry;
-        this.overworldCache = overworldCache;
         // Chunk ordinal -> its runs Graphics.
         this._graphics = new Map();
         this._background = null;
         this._lastCullKey = null;
         this.visible = false;
-        overworldCache.onUpdate(chunks => this._redrawChunks(chunks));
+        state.subscribe("overworld.byChunk", (chunk, entry) => {
+            if (entry === undefined || entry.runStarts.length === 0) {
+                this._dropChunk(chunk);
+            } else {
+                this._drawChunk(entry);
+            }
+        });
     }
 
     get layerIndex() {
@@ -80,23 +85,6 @@ export class OverworldDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Redraws the touched chunks from the cache; an absent or empty entry drops the chunk.
-     * @private
-     * @param {number[]} chunks
-     * @returns {void}
-     */
-    _redrawChunks(chunks) {
-        for (const chunk of chunks) {
-            const entry = this.overworldCache.entry(chunk);
-            if (entry === undefined || entry.runStarts.length === 0) {
-                this._dropChunk(chunk);
-            } else {
-                this._drawChunk(entry);
-            }
-        }
-    }
-
-    /**
      * @private
      * @param {number} chunk
      * @returns {void}
@@ -114,7 +102,7 @@ export class OverworldDrawLayer extends AbstractDrawLayer {
     /**
      * Draws one chunk's runs, one rect per run, batched into one fill per color.
      * @private
-     * @param {OverworldChunkEntry} entry
+     * @param {OverworldChunkState} entry
      * @returns {void}
      */
     _drawChunk(entry) {

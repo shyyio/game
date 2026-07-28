@@ -6,7 +6,7 @@ import {RoadBehavior} from "@/sim/behaviors.js";
 /**
  * The walkable entry covering a tile — a road or a housing (commutes cross the housings that
  * bridge road stretches) — or null when the tile holds neither.
- * @param {ClientCache} cache
+ * @param {ObjectsView} cache
  * @param {number} x
  * @param {number} y
  * @returns {CacheEntry|null}
@@ -41,7 +41,7 @@ function entryCenter(entry) {
  * reached is the nearest one in the machine's network, and the shortest route to it comes back as
  * world-px waypoints (housing center first, walked tile centers, machine center last), or null
  * when no cached road/housing chain reaches a housing.
- * @param {ClientCache} cache
+ * @param {ObjectsView} cache
  * @param {CacheEntry} machineEntry
  * @returns {{x: number, y: number}[]|null}
  */

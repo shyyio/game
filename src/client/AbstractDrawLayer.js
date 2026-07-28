@@ -28,7 +28,7 @@ export class AbstractDrawLayer extends Container {
         /**
          * The shared cross-mod object index, bound once by Client via {@link bindCache}, for
          * layers that derive rendering from neighboring objects.
-         * @type {ClientCache|null}
+         * @type {ObjectsView|null}
          */
         this.cache = null;
     }
@@ -52,7 +52,7 @@ export class AbstractDrawLayer extends Container {
     /**
      * Binds the shared cache: sets {@link cache} and registers whichever cache hooks the layer
      * overrides. Called once per layer, before init — cache writes can arrive while textures load.
-     * @param {ClientCache} cache
+     * @param {ObjectsView} cache
      * @returns {void}
      */
     bindCache(cache) {
