@@ -35,6 +35,16 @@ export class AbstractClientMod {
     }
 
     /**
+     * The settings-menu controls this mod contributes; every key must be a registered
+     * client-writable player setting.
+     * @param {Client} client
+     * @returns {AbstractPlayerSettingControl[]}
+     */
+    settingsControls(client) {
+        return [];
+    }
+
+    /**
      * Handles a client-delivered event, updating the mod's own state and draw layers.
      * @param {AbstractEvent} event
      * @param {Client} client

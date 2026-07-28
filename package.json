@@ -11,6 +11,7 @@
     "build": "vite build",
     "build:server": "vite build --config vite.server.config.js",
     "serve": "node --import ./src/server/loader.js src/server/main.js",
+    "serve:watch": "node --watch --import ./src/server/loader.js src/server/main.js",
     "test": "node --import ./src/test/test-loader.js --test 'src/**/*.spec.js'",
     "save:sample": "rm -f SAMPLE.sqlite3; node --import ./src/test/test-loader.js src/test/make-sample-save.js SAMPLE.sqlite3",
     "save:lines": "rm -f LINES.sqlite3; node --import ./src/test/test-loader.js src/test/make-lines-save.js LINES.sqlite3",

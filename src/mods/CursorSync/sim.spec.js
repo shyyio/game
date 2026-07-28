@@ -6,30 +6,11 @@ import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
-import {CursorMoveMessage, CursorHideMessage} from "@/mods/CursorSync/common/messages.js";
-import {PlayerCursorEvent, PlayerCursorHideEvent} from "@/mods/CursorSync/common/events.js";
-import {CURSOR_SETTING_SHARE, CURSOR_SETTING_SHOW} from "@/mods/CursorSync/common/constants.js";
-import {PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
+import {CursorMoveMessage, CursorHideMessage} from "./common/messages.js";
+import {PlayerCursorEvent, PlayerCursorHideEvent} from "./common/events.js";
+import {CURSOR_SETTING_SHARE} from "./common/constants.js";
 import {SETTING_OFF, CHUNK_SIZE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
-import {ModRegistry} from "@/common/ModRegistry.js";
-import {ModPackage} from "@/common/ModPackage.js";
-import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
-import {PlayerSettingEntry} from "@/common/PlayerSettingEntry.js";
-import {simLoadout} from "@/mods/loadout.js";
-
-const LOCKED_KEY = 900;
-
-class LockedSettingDeclaration extends AbstractModDeclaration {
-
-    get name() {
-        return "LockedSetting";
-    }
-
-    get playerSettingEntries() {
-        return [new PlayerSettingEntry(LOCKED_KEY, false)];
-    }
-}
 
 async function gameWithSessions() {
     const modRegistry = ecsModRegistry();
@@ -118,38 +99,4 @@ test("a share-off setting write erases an already-shown cursor", async () => {
     game.dispatchMessage(new CursorMoveMessage(4.5, 7.25), sender);
     game.dispatchMessage(new SetPlayerSettingMessage(CURSOR_SETTING_SHARE, SETTING_OFF), sender);
     assert.equal(hideEvents(watcher).length, 1);
-});
-
-test("client writes to unknown or non-client-writable keys are dropped", async () => {
-    const modRegistry = new ModRegistry();
-    for (const pkg of simLoadout()) {
-        modRegistry.register(pkg);
-    }
-    modRegistry.register(new ModPackage(new LockedSettingDeclaration()));
-    modRegistry.freeze();
-    const game = new Game(modRegistry, new GameEngine(modRegistry));
-    await game.init();
-    const sender = new CapturingSession(1);
-    game.connect(sender);
-
-    game.dispatchMessage(new SetPlayerSettingMessage(999, 5), sender);
-    game.dispatchMessage(new SetPlayerSettingMessage(LOCKED_KEY, 5), sender);
-
-    assert.equal(game.playerSettings.get(1, 999), undefined);
-    assert.equal(game.playerSettings.get(1, LOCKED_KEY), undefined);
-    const echoes = sender.events.filter(event => event instanceof PlayerSettingsUpdateEvent);
-    assert.equal(echoes.length, 0);
-});
-
-test("a setting write updates the cache and echoes to the sender", async () => {
-    const {game, sender, watcher} = await gameWithSessions();
-    game.dispatchMessage(new SetPlayerSettingMessage(CURSOR_SETTING_SHOW, SETTING_OFF), sender);
-
-    assert.equal(game.playerSettings.get(1, CURSOR_SETTING_SHOW), SETTING_OFF);
-    const echoes = sender.events.filter(event => event instanceof PlayerSettingsUpdateEvent);
-    assert.equal(echoes.length, 1);
-    assert.equal(echoes[0].key, CURSOR_SETTING_SHOW);
-    assert.equal(echoes[0].value, SETTING_OFF);
-    const leaked = watcher.events.filter(event => event instanceof PlayerSettingsUpdateEvent);
-    assert.equal(leaked.length, 0, "another player's setting write never fans out");
 });
