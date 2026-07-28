@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, ref, watch} from "vue";
+import {onMounted, reactive, ref, watch} from "vue";
 import {Application, Graphics, Container, FillGradient, isMobile} from "pixi.js";
 import {ClientViewport} from "@/client/ClientViewport.js";
 import Keyboard from "@/client/Keyboard.js";
@@ -19,7 +19,6 @@ import {WireRegistry} from "@/common/wire.js";
 import {Client} from "@/client/Client.js";
 import {ClaimResult, ClaimResultEvent} from "@/common/ClaimEvents.js";
 import {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
-import {CURSOR_SETTING_SHARE, CURSOR_SETTING_SHOW} from "@/mods/CursorSync/common/constants.js";
 import {GAME_FONT, ViewMode, MIN_VIEWPORT_SCALE} from "@/client/constants.js";
 import {DEV} from "@/common/env.js";
 
@@ -33,9 +32,9 @@ const props = defineProps({
 const noticeText = ref("");
 const noticeOpen = ref(false);
 
-// Cursor-sharing toggles, mirrored to the player settings.
-const shareCursor = ref(true);
-const showCursors = ref(true);
+// Mod-contributed settings-menu controls, each mirrored to its player setting by key.
+const settingsControls = ref([]);
+const settingValues = reactive({});
 
 // Rejection notices per ClaimResult; OK stays silent (the border appearing is the feedback).
 const CLAIM_RESULT_NOTICES = {
@@ -291,21 +290,21 @@ onMounted(async () => {
   client.cache.subscribe("playerSettings.values", refreshTools);
   refreshTools();
 
-  const bindCursorSetting = (toggle, key) => {
-    watch(toggle, on => {
-      client.updatePlayerSetting(key, on ? SETTING_ON : SETTING_OFF);
-    });
-  };
-  bindCursorSetting(shareCursor, CURSOR_SETTING_SHARE);
-  bindCursorSetting(showCursors, CURSOR_SETTING_SHOW);
+  const controls = client.settingsControls();
   client.cache.subscribe("playerSettings.values", (key, value) => {
-    if (key === CURSOR_SETTING_SHARE) {
-      shareCursor.value = value !== SETTING_OFF;
-    }
-    if (key === CURSOR_SETTING_SHOW) {
-      showCursors.value = value !== SETTING_OFF;
+    if (key in settingValues) {
+      settingValues[key] = value !== SETTING_OFF;
     }
   });
+  const playerSettings = client.cache.view("playerSettings");
+  for (const control of controls) {
+    // Seed from the cache: the settings sync may have landed during client init (absent = on).
+    settingValues[control.key] = playerSettings.get(control.key) !== SETTING_OFF;
+    watch(() => settingValues[control.key], on => {
+      client.updatePlayerSetting(control.key, on ? SETTING_ON : SETTING_OFF);
+    });
+  }
+  settingsControls.value = controls;
 
   client.onViewModeChange((mode) => {
     const zoomedOut = mode !== ViewMode.WORLD;
@@ -357,8 +356,14 @@ export default defineComponent({
     </template>
     <v-card min-width="260">
       <v-card-text>
-        <v-switch v-model="shareCursor" label="Share my cursor" density="compact" hide-details />
-        <v-switch v-model="showCursors" label="Show player cursors" density="compact" hide-details />
+        <v-switch
+            v-for="control in settingsControls"
+            :key="control.key"
+            v-model="settingValues[control.key]"
+            :label="control.label"
+            density="compact"
+            hide-details
+        />
       </v-card-text>
     </v-card>
   </v-menu>

@@ -10,7 +10,7 @@ import {ChunkClaimSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResul
 import {WireRegistry} from "@/common/wire.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
 import {EventBus} from "@/sim/EventBus.js";
-import {SettingsCache, PlayerSettingsCache} from "@/common/SettingsCache.js";
+import {SettingsCache, PlayerSettingsCache, PLAYER_SETTING_RECORD} from "@/common/SettingsCache.js";
 import {ChunkClaims, CHUNK_CLAIM_RECORD} from "@/sim/ChunkClaims.js";
 import {PlayerRegistry, PLAYER_RECORD, FRIEND_RECORD} from "@/sim/PlayerRegistry.js";
 import {CHUNK_SIZE, GameSettingsKey, PLAYER_ID_NONE} from "@/common/constants.js";
@@ -100,7 +100,11 @@ export class Game {
      */
     async save() {
         const snapshot = this.simEngine.serialize();
-        snapshot.records = [...this.players.serializeRecords(), this.claims.serializeRecords()];
+        snapshot.records = [
+            ...this.players.serializeRecords(),
+            this.claims.serializeRecords(),
+            this.playerSettings.serializeRecords(),
+        ];
         await this.saveStore.save(snapshot);
     }
 
@@ -118,6 +122,7 @@ export class Game {
         const byName = new Map(records.map(table => [table.name, table]));
         this.players.deserializeRecords(byName.get(PLAYER_RECORD), byName.get(FRIEND_RECORD));
         this.claims.deserializeRecords(byName.get(CHUNK_CLAIM_RECORD));
+        this.playerSettings.deserializeRecords(byName.get(PLAYER_SETTING_RECORD));
         return true;
     }
 

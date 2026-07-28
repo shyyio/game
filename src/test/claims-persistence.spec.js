@@ -41,6 +41,24 @@ test("players, friends, and claims survive a save/load", async () => {
     assert.equal(restored.players.getOrCreate("carol").playerId, 3);
 });
 
+test("player settings survive a save/load", async () => {
+    const store = new NodeSaveStore(":memory:");
+    const game = await makeGame(store);
+    const alice = game.players.getOrCreate("alice");
+    const bob = game.players.getOrCreate("bob");
+    game.playerSettings.set(alice.playerId, 1, 1);
+    game.playerSettings.set(alice.playerId, 2, 0);
+    game.playerSettings.set(bob.playerId, 1, 0);
+    await game.save();
+
+    const restored = await makeGame(store);
+    assert.equal(await restored.load(), true);
+    assert.equal(restored.playerSettings.get(alice.playerId, 1), 1);
+    assert.equal(restored.playerSettings.get(alice.playerId, 2), 0);
+    assert.equal(restored.playerSettings.get(bob.playerId, 1), 0);
+    assert.equal(restored.playerSettings.get(bob.playerId, 2), undefined);
+});
+
 test("a snapshot without tables loads with empty registries", async () => {
     const store = new NodeSaveStore(":memory:");
     const seed = await makeGame(store);

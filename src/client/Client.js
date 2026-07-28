@@ -830,6 +830,25 @@ export class Client {
     }
 
     /**
+     * Gathers the settings-menu controls every client mod contributes, validating each key
+     * against the player-setting registry.
+     * @returns {AbstractPlayerSettingControl[]}
+     */
+    settingsControls() {
+        const controls = this.modRegistry.clientMods.flatMap(mod => mod.settingsControls(this));
+        for (const control of controls) {
+            const entry = this.modRegistry.playerSettingEntry(control.key);
+            if (entry === undefined) {
+                throw new Error(`Settings control "${control.label}" targets unregistered player setting key ${control.key}`);
+            }
+            if (!entry.clientWritable) {
+                throw new Error(`Settings control "${control.label}" targets server-authoritative player setting key ${control.key}`);
+            }
+        }
+        return controls;
+    }
+
+    /**
      * Gathers the tools every client mod makes available.
      * @returns {AbstractTool[]}
      */

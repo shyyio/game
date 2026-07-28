@@ -45,6 +45,12 @@ export {ConnectionDrawLayer} from "@/client/ConnectionDrawLayer.js";
 // The derived-default placement-preview ghost (single sprite + center-lock); paired with ObjectTool.
 export {ObjectGhostLayer} from "@/client/ObjectGhostLayer.js";
 
+// ---- Settings menu ----
+// Declarative settings-menu controls, returned from a client mod's settingsControls hook and
+// rendered generically by Game.vue; each binds a widget to a client-writable player setting.
+export {AbstractPlayerSettingControl} from "@/client/AbstractPlayerSettingControl.js";
+export {PlayerSettingToggle} from "@/client/PlayerSettingToggle.js";
+
 // ---- Input ----
 // Base class for a placement/interaction tool shown in the toolbar.
 export {AbstractTool} from "@/client/AbstractTool.js";
