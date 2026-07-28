@@ -1,4 +1,5 @@
 import {NotImplementedError} from "@/common/error.js";
+import {ListenerList} from "@/common/ListenerList.js";
 
 // Leaf kinds a namespace schema can declare.
 export const STATE_KIND_SCALAR = "scalar";
@@ -17,7 +18,7 @@ class StateEntry {
     constructor(kind, value) {
         this.kind = kind;
         this.value = value;
-        this.listeners = [];
+        this.listeners = new ListenerList();
     }
 }
 
@@ -206,14 +207,7 @@ export class ClientCache {
      * @returns {function(): void} unsubscribe
      */
     subscribe(path, listener) {
-        const entry = this._entry(path);
-        entry.listeners.push(listener);
-        return () => {
-            const index = entry.listeners.indexOf(listener);
-            if (index !== -1) {
-                entry.listeners.splice(index, 1);
-            }
-        };
+        return this._entry(path).listeners.add(listener);
     }
 
     /**
@@ -236,9 +230,7 @@ export class ClientCache {
             return;
         }
         entry.value = value;
-        for (const listener of [...entry.listeners]) {
-            listener(value);
-        }
+        entry.listeners.notify(value);
     }
 
     /**
@@ -263,9 +255,7 @@ export class ClientCache {
             return;
         }
         entry.value.set(id, value);
-        for (const listener of [...entry.listeners]) {
-            listener(id, value);
-        }
+        entry.listeners.notify(id, value);
     }
 
     /**
@@ -279,9 +269,7 @@ export class ClientCache {
         if (!entry.value.delete(id)) {
             return;
         }
-        for (const listener of [...entry.listeners]) {
-            listener(id, undefined);
-        }
+        entry.listeners.notify(id, undefined);
     }
 
     /**
@@ -340,9 +328,7 @@ export class ClientCache {
             return;
         }
         entry.value.add(id);
-        for (const listener of [...entry.listeners]) {
-            listener(id, true);
-        }
+        entry.listeners.notify(id, true);
     }
 
     /**
@@ -356,9 +342,7 @@ export class ClientCache {
         if (!entry.value.delete(id)) {
             return;
         }
-        for (const listener of [...entry.listeners]) {
-            listener(id, false);
-        }
+        entry.listeners.notify(id, false);
     }
 
     /**
@@ -373,16 +357,12 @@ export class ClientCache {
         entry.value = new Set(ids);
         for (const id of previous) {
             if (!entry.value.has(id)) {
-                for (const listener of [...entry.listeners]) {
-                    listener(id, false);
-                }
+                entry.listeners.notify(id, false);
             }
         }
         for (const id of entry.value) {
             if (!previous.has(id)) {
-                for (const listener of [...entry.listeners]) {
-                    listener(id, true);
-                }
+                entry.listeners.notify(id, true);
             }
         }
     }

@@ -4,6 +4,7 @@ import {TILE_VARIANT_LIMIT, chunkId, rotate, tileId, tileVariantId} from "@/comm
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {DEV} from "@/common/env.js";
 import {AbstractCacheWriter, AbstractCacheView, schemaMap} from "@/client/ClientCache.js";
+import {ListenerList} from "@/common/ListenerList.js";
 
 export const OBJECTS_SCHEMA = {
     byId: schemaMap(),
@@ -233,20 +234,20 @@ export class ObjectsView extends AbstractCacheView {
          */
         this._byPort = new Map();
         /**
-         * @type {Array<function(CacheEntry): void>}
+         * @type {ListenerList}
          * @private
          */
-        this._setListeners = [];
+        this._setListeners = new ListenerList();
         /**
-         * @type {Array<function(CacheEntry): void>}
+         * @type {ListenerList}
          * @private
          */
-        this._removeListeners = [];
+        this._removeListeners = new ListenerList();
         /**
-         * @type {Array<function(): void>}
+         * @type {ListenerList}
          * @private
          */
-        this._structuralListeners = [];
+        this._structuralListeners = new ListenerList();
     }
 
     /**
@@ -277,13 +278,7 @@ export class ObjectsView extends AbstractCacheView {
      * @returns {function(): void} unsubscribe
      */
     onSet(listener) {
-        this._setListeners.push(listener);
-        return () => {
-            const index = this._setListeners.indexOf(listener);
-            if (index !== -1) {
-                this._setListeners.splice(index, 1);
-            }
-        };
+        return this._setListeners.add(listener);
     }
 
     /**
@@ -292,13 +287,7 @@ export class ObjectsView extends AbstractCacheView {
      * @returns {function(): void} unsubscribe
      */
     onRemove(listener) {
-        this._removeListeners.push(listener);
-        return () => {
-            const index = this._removeListeners.indexOf(listener);
-            if (index !== -1) {
-                this._removeListeners.splice(index, 1);
-            }
-        };
+        return this._removeListeners.add(listener);
     }
 
     /**
@@ -308,23 +297,7 @@ export class ObjectsView extends AbstractCacheView {
      * @returns {function(): void} unsubscribe
      */
     onStructuralChange(listener) {
-        this._structuralListeners.push(listener);
-        return () => {
-            const index = this._structuralListeners.indexOf(listener);
-            if (index !== -1) {
-                this._structuralListeners.splice(index, 1);
-            }
-        };
-    }
-
-    /**
-     * @private
-     * @returns {void}
-     */
-    _notifyStructural() {
-        for (const listener of [...this._structuralListeners]) {
-            listener();
-        }
+        return this._structuralListeners.add(listener);
     }
 
     /**
@@ -403,10 +376,8 @@ export class ObjectsView extends AbstractCacheView {
             }
         }
 
-        for (const listener of [...this._setListeners]) {
-            listener(entry);
-        }
-        this._notifyStructural();
+        this._setListeners.notify(entry);
+        this._structuralListeners.notify();
     }
 
     /**
@@ -473,24 +444,9 @@ export class ObjectsView extends AbstractCacheView {
             }
         }
 
-        for (const listener of [...this._removeListeners]) {
-            listener(entry);
-        }
-        this._notifyStructural();
+        this._removeListeners.notify(entry);
+        this._structuralListeners.notify();
         return entry;
-    }
-
-    /**
-     * The object's tile position, for the inspect panel's connectors.
-     * @param {number} objectId
-     * @returns {{x: number, y: number}|undefined}
-     */
-    positionOf(objectId) {
-        const entry = this.get(objectId);
-        if (entry === null) {
-            return undefined;
-        }
-        return {x: entry.tileX, y: entry.tileY};
     }
 
     /**

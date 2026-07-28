@@ -1,3 +1,5 @@
+import {ListenerList} from "@/common/ListenerList.js";
+
 /**
  * @callback windowFocusCallback
  * @param {boolean} focused
@@ -11,7 +13,7 @@ class WindowFocus {
 
     constructor() {
         this._focused = true;
-        this._listeners = [];
+        this._listeners = new ListenerList();
         this._initialized = false;
     }
 
@@ -24,10 +26,10 @@ class WindowFocus {
 
     /**
      * @param {windowFocusCallback} callback
-     * @returns {void}
+     * @returns {function(): void} unsubscribe
      */
     onChange(callback) {
-        this._listeners.push(callback);
+        return this._listeners.add(callback);
     }
 
     /**
@@ -55,9 +57,7 @@ class WindowFocus {
             return;
         }
         this._focused = focused;
-        for (const callback of [...this._listeners]) {
-            callback(focused);
-        }
+        this._listeners.notify(focused);
     }
 }
 
