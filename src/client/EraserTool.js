@@ -14,7 +14,7 @@ export class EraserTool extends AbstractTool {
      */
     constructor(client) {
         super(client.session);
-        this._cache = client.cache;
+        this._cache = client.objects;
         this._placementFeedbackLayer = client.placementFeedbackLayer;
         this._firstDragStep = false;
     }

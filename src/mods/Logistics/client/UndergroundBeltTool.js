@@ -16,7 +16,7 @@ export class UndergroundBeltTool extends AbstractTool {
     constructor(client, ghostLayer) {
         super(client.session);
         this._client = client;
-        this._cache = client.cache;
+        this._cache = client.objects;
         this._ghostLayer = ghostLayer;
         this._placementFeedbackLayer = client.placementFeedbackLayer;
         this._rotation = client.toolRotation;

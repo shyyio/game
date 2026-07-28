@@ -56,10 +56,19 @@ export class InspectPanelLayer extends Container {
 
     /**
      * @param {Application} app
+     * @param {ClientCache} cache
      */
-    constructor(app) {
+    constructor(app, cache) {
         super();
         this._app = app;
+        const objects = cache.view("objects");
+        cache.subscribe("inspect.heartbeatByObject", (objectId, heartbeat) => {
+            if (heartbeat === undefined) {
+                this.remove(objectId);
+            } else {
+                this.update(heartbeat, objects.lastProducedOf(objectId), objects.positionOf(objectId));
+            }
+        });
         /**
          * @type {TextureRegistry|null}
          */
@@ -104,7 +113,7 @@ export class InspectPanelLayer extends Container {
 
     /**
      * Opens the panel for a machine (once); later heartbeats keep it alive.
-     * @param {InspectHeartbeatEvent} event
+     * @param {InspectHeartbeatState} event
      * @param {number|undefined} lastProduced - the machine's last produced item, for the output fallback
      * @param {{x: number, y: number}|undefined} machineTile - the machine's tile position, for the connectors
      */

@@ -4,6 +4,7 @@ import {DisplayPool} from "@/client/DisplayPool.js";
 import {KeyedDisplayPool} from "@/client/KeyedDisplayPool.js";
 import {isWorkerBehavior} from "@/sim/behaviors.js";
 import {findCommuteRoute} from "@/client/workerRoute.js";
+import {WorkerAssignmentsView} from "@/client/WorkerAssignmentsState.js";
 
 // Spritesheet base of the 8-frame walk cycle.
 const WORKER_ANIMATION = "worker-walk";
@@ -42,17 +43,17 @@ const WORKER_CULL_INTERVAL_MS = 300;
 export class WorkerDrawLayer extends AbstractDrawLayer {
 
     /**
-     * @param {WorkerAssignmentCache} assignments
+     * @param {ClientCache} state
      */
-    constructor(assignments) {
+    constructor(state) {
         super();
         /**
-         * The shared machine-staffing index; unmanned assignments carry no figure.
-         * @type {WorkerAssignmentCache}
+         * The shared machine-staffing view; unmanned assignments carry no figure.
+         * @type {WorkerAssignmentsView}
          * @private
          */
-        this._assignments = assignments;
-        assignments.onChange((machineId, synced) => this._onAssignmentChange(machineId, synced));
+        this._assignments = state.view("workerAssignments");
+        state.subscribe("workerAssignments.byMachine", machineId => this._onAssignmentChange(machineId));
         /**
          * Live figures keyed by machineId. Idle figures await reuse as invisible children,
          * capped at the render cap, since no more could ever show at once.
@@ -105,20 +106,19 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
     /**
      * Tracks an assignment change; the figure itself (re)builds on the next tick.
      * @param {number} machineId
-     * @param {boolean} synced whether the change arrived via a chunk sync
      * @returns {void}
      * @private
      */
-    _onAssignmentChange(machineId, synced) {
+    _onAssignmentChange(machineId) {
         const assignment = this._assignments.get(machineId);
-        if (assignment === null || !assignment.manned) {
+        if (assignment === undefined || !WorkerAssignmentsView.manned(assignment)) {
             this._dirtyMachines.delete(machineId);
             this._staleMachines.delete(machineId);
             this._scatterMachines.delete(machineId);
             this._workers.release(machineId);
             return;
         }
-        if (synced) {
+        if (assignment.synced) {
             this._scatterMachines.add(machineId);
         }
         this._dirtyMachines.add(machineId);
@@ -147,8 +147,8 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
     tick(frame, deltaMS, visibleChunks) {
         if (this._routesStale) {
             this._routesStale = false;
-            for (const assignment of this._assignments.values()) {
-                if (assignment.manned) {
+            for (const [, assignment] of this._assignments.entries()) {
+                if (WorkerAssignmentsView.manned(assignment)) {
                     this._staleMachines.add(assignment.machineId);
                 }
             }
@@ -250,7 +250,7 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
      */
     _rebuildRoute(machineId) {
         const assignment = this._assignments.get(machineId);
-        if (assignment === null || !assignment.manned) {
+        if (assignment === undefined || !WorkerAssignmentsView.manned(assignment)) {
             this._workers.release(machineId);
             return;
         }

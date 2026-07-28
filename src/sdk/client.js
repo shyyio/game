@@ -10,7 +10,7 @@
 // createDrawLayer/createGhostLayer/createTool hooks), keeps the shared cache in sync, and derives
 // inspect highlights and mini-menu entries from the type's menuVerbs. An AbstractClientMod is only
 // for bespoke rendering/input (belts); every hook receives the client for the shared surfaces
-// (client.cache, client.itemLayer, client.session, ...).
+// (client.cache, client.objects, client.itemLayer, client.session, ...).
 
 // Everything from the engine-agnostic SDK is available here too.
 export * from "@/sdk/common.js";
@@ -22,7 +22,7 @@ export {AbstractClientMod} from "@/client/AbstractClientMod.js";
 // ---- Rendering ----
 // `AbstractDrawLayer` is the base class for a Pixi layer that reacts to game events;
 // `ObjectDrawLayer` is the derived-default renderer for a placed object type, driven purely by the
-// shared cache (ObjectCacheWriter owns the entries). A type swaps it via `createDrawLayer(client)`.
+// shared cache (the objects state owns the entries). A type swaps it via `createDrawLayer(client)`.
 export {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 // `AbstractChunkedDrawLayer` adds per-chunk grouping: ChunkNode roots mounted by viewport,
 // one-pass stale-chunk rebuilds, and the map-mode sprite/geometry swap.
@@ -34,7 +34,7 @@ export {AbstractDebugDrawLayer} from "@/client/AbstractDebugDrawLayer.js";
 export {AbstractTileMeshDrawLayer} from "@/client/AbstractTileMeshDrawLayer.js";
 export {ObjectDrawLayer} from "@/client/ObjectDrawLayer.js";
 // The `data` payload of a derived-type cache entry ({type, direction}).
-export {ObjectClientData} from "@/client/ObjectCacheWriter.js";
+export {ObjectClientData} from "@/client/ObjectsState.js";
 // The base-case object sprite (static, geometry-centered); the derived layers build it from a texture.
 export {ObjectSprite} from "@/client/ObjectSprite.js";
 // The single shared item layer; mods that compute item positions (belts) drive it via
@@ -64,12 +64,27 @@ export {default as Haptics} from "@/client/Haptics.js";
 export {InspectHighlight} from "@/client/InspectHighlight.js";
 
 // ---- Client world state ----
-// The shared cross-mod index of placed objects (a CacheEntry each, by id, primary tile,
-// chunk, tile+layer cell, and rendered out-port id), reached via `client.cache` and injected
-// into draw layers as `this.cache`. Mods feed it from their insert/delete handling; client
-// code queries it instead of the simulation DB (tile lookups, placement collision, connection).
-// Holds a `CacheEntry` per object, also indexed by rendered out-port id.
-export {ClientCache, CacheEntry} from "@/client/ClientCache.js";
+// The shared plain-data state tree (`client.cache`). Each namespace registers three parts via
+// `client.cache.register(name, schema, writer, view)` in a mod's setup: a schema
+// (schemaScalar/schemaMap/schemaSet leaves), a writer (the only code that writes — from events
+// via onEvent, or its own local write methods, reached via `cache.writer(name)`), and an
+// optional view (derived reads, reached via `cache.view(name)`). Raw paths stay readable
+// (get/mapGet/setHas), observable via subscribe, and reflectable via dump() (contents) and
+// schema() (declared shapes); the engine and base mods read through views only, but the raw
+// path API is open to mods preferring it.
+export {ClientCache, AbstractCacheWriter, AbstractCacheView, schemaScalar, schemaMap, schemaSet} from "@/client/ClientCache.js";
+// The core namespaces' views, for typing and the static helpers.
+export {ChunkClaimsView} from "@/client/ChunkClaimsState.js";
+export {PlayerSettingsView, GameSettingsView} from "@/client/SettingsState.js";
+export {WorkerAssignmentsView} from "@/client/WorkerAssignmentsState.js";
+export {OverworldView} from "@/client/OverworldState.js";
+
+// The objects namespace's view doubles as the shared cross-mod spatial index (a CacheEntry
+// each, by id, primary tile, chunk, tile+layer cell, and rendered out-port id), reached via
+// `client.objects` (also `cache.view("objects")`) and injected into draw layers as `this.cache`.
+// Client code queries it instead of the simulation DB (tile lookups, placement collision,
+// connection).
+export {ObjectsView, CacheEntry} from "@/client/ObjectsState.js";
 
 
 // ---- Pixel-space geometry ----

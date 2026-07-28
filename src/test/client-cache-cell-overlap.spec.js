@@ -1,13 +1,13 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {LAYER_SURFACE} from "@/common/constants.js";
-import {ClientCache} from "@/client/ClientCache.js";
+import {ObjectsView} from "@/client/ObjectsState.js";
 
 const WATER_ID = 1;
 const EXTRACTOR_ID = 2;
 
 function cacheWithWater() {
-    const cache = new ClientCache();
+    const cache = new ObjectsView(null);
     cache.set(WATER_ID, 5, 5, [{x: 5, y: 5, layer: LAYER_SURFACE}]);
     return cache;
 }

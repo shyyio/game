@@ -1,8 +1,6 @@
 import Mouse from "@/client/Mouse.js";
 import {TextureRegistry} from "@/client/TextureRegistry.js";
 import {DrawLayerRegistry} from "@/client/DrawLayerRegistry.js";
-import {PlayerSettings} from "@/client/PlayerSettings.js";
-import {GameSettings} from "@/client/GameSettings.js";
 import {MiniMenuLayer} from "@/client/MiniMenuLayer.js";
 import {InspectPanelLayer} from "@/client/InspectPanelLayer.js";
 import {RotateButtonsLayer} from "@/client/RotateButtonsLayer.js";
@@ -11,19 +9,17 @@ import {ToolRotation} from "@/client/ToolRotation.js";
 import {EraserTool} from "@/client/EraserTool.js";
 import {SetViewportMessage, SetInspectedObjectsMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
-import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
-import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
-import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
-import {WorkerAssignmentEvent} from "@/common/WorkerEvents.js";
-import {WorkerAssignmentCache} from "@/client/WorkerAssignmentCache.js";
-import {ClaimResultEvent} from "@/common/ClaimEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
 import {AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
-import {ChunkClaimsCache} from "@/client/ChunkClaimsCache.js";
 import {ChunkClaimsDrawLayer} from "@/client/ChunkClaimsDrawLayer.js";
+import {ClientCache} from "@/client/ClientCache.js";
+import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/ChunkClaimsState.js";
+import {PLAYER_SETTINGS_SCHEMA, GAME_SETTINGS_SCHEMA, PlayerSettingsWriter, GameSettingsWriter, PlayerSettingsView, GameSettingsView} from "@/client/SettingsState.js";
+import {WORKER_ASSIGNMENTS_SCHEMA, WorkerAssignmentsWriter, WorkerAssignmentsView} from "@/client/WorkerAssignmentsState.js";
+import {OBJECTS_SCHEMA, ObjectsWriter} from "@/client/ObjectsState.js";
+import {INSPECT_SCHEMA, InspectWriter, InspectView} from "@/client/InspectState.js";
 import {MiniMenuEntry} from "@/common/ObjectType.js";
-import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {
     TILE_SIZE,
     snapToChunk,
@@ -37,13 +33,12 @@ import {
 } from "@/client/constants.js";
 import {CHUNK_SIZE, REGION_SIZE, Direction, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkId, formatBytes, REGION_HALF} from "@/common/util.js";
-import {OverworldCache, OverworldRect} from "@/client/OverworldCache.js";
+import {OVERWORLD_SCHEMA, OverworldRect, OverworldWriter, OverworldView} from "@/client/OverworldState.js";
 import {OverworldDrawLayer} from "@/client/OverworldDrawLayer.js";
 import {GridDrawLayer} from "@/client/GridDrawLayer.js";
 import {PlacementFeedbackLayer} from "@/client/PlacementFeedbackLayer.js";
 import {InspectLayer} from "@/client/InspectLayer.js";
-import {ClientCache} from "@/client/ClientCache.js";
-import {ObjectCacheWriter} from "@/client/ObjectCacheWriter.js";
+import {ObjectsView} from "@/client/ObjectsState.js";
 import {ObjectTypeClientBundle} from "@/client/ObjectTypeClientBundle.js";
 import {ObjectDrawLayer} from "@/client/ObjectDrawLayer.js";
 import {ObjectGhostLayer} from "@/client/ObjectGhostLayer.js";
@@ -109,11 +104,26 @@ export class Client {
 
         this.textureRegistry = new TextureRegistry();
         this.drawLayerRegistry = new DrawLayerRegistry();
-        this.playerSettings = new PlayerSettings();
-        this.gameSettings = new GameSettings();
+        // The shared plain-data state tree: every namespace registers schema + writer + view,
+        // every event fans out to every writer, and readers subscribe by path or query the views.
+        // The objects writer registers first so object state lands before any reader; mods
+        // register their namespaces in setup. The objects view doubles as the shared cross-mod
+        // spatial index (`client.objects`), queried by tools/layers for tile lookups, placement
+        // collision, and connection rendering.
+        this.cache = new ClientCache();
+        this.objects = new ObjectsView(modRegistry);
+        this.cache.register("objects", OBJECTS_SCHEMA, new ObjectsWriter(modRegistry, this.cache), this.objects);
+        this.cache.register("chunkClaims", CHUNK_CLAIMS_SCHEMA, new ChunkClaimsWriter(this.cache), new ChunkClaimsView());
+        this.cache.register("gameSettings", GAME_SETTINGS_SCHEMA, new GameSettingsWriter(this.cache), new GameSettingsView());
+        this.cache.register("playerSettings", PLAYER_SETTINGS_SCHEMA, new PlayerSettingsWriter(this.cache), new PlayerSettingsView());
+        this.cache.register("workerAssignments", WORKER_ASSIGNMENTS_SCHEMA, new WorkerAssignmentsWriter(this.cache), new WorkerAssignmentsView());
+        this.cache.register("overworld", OVERWORLD_SCHEMA, new OverworldWriter(this.cache), new OverworldView());
+        this.cache.register("inspect", INSPECT_SCHEMA, new InspectWriter(this.cache), new InspectView());
+        // The open-menu set rides to the sim as the inspect subscription, whoever changes it.
+        this.cache.subscribe("inspect.openObjects", () => this._sendInspectedObjects());
         this.miniMenuLayer = new MiniMenuLayer(viewport);
-        // Screen-space panels for open machine menus; fed by InspectHeartbeatEvents.
-        this.inspectPanelLayer = new InspectPanelLayer(app);
+        // Screen-space panels for open machine menus; fed by the inspect heartbeat state.
+        this.inspectPanelLayer = new InspectPanelLayer(app, this.cache);
         // Rotate controls, toggled with the active tool by the host.
         this.rotateButtonsLayer = new RotateButtonsLayer(app, viewport);
         // Bottom-center tool bar; the host feeds it the tool list and reacts to selection.
@@ -124,33 +134,24 @@ export class Client {
         this.inspectLayer = new InspectLayer();
         // Shared placement facing, so orientation persists across tool switches.
         this.toolRotation = new ToolRotation();
-        // Shared cross-mod object index, written by ObjectCacheWriter, queried by tools/layers
-        // for tile lookups, placement collision, and connection rendering.
-        this.cache = new ClientCache();
-        // Sole cache writer; first in the event dispatch chain.
-        this.objectWriter = new ObjectCacheWriter(modRegistry, this.cache);
         // The single shared item layer: belts drive their computed-position items imperatively;
         // resting out-port items render here automatically from the port-item events.
         this.itemLayer = new ItemDrawLayer(modRegistry.itemTextures);
         // The single shared connection-stub layer, derived from the cache as objects change.
         this.connectionLayer = new ConnectionDrawLayer();
-        // Machine staffing mirrored from the sim's assignment events, shared by the worker layers.
-        this.workerAssignments = new WorkerAssignmentCache();
         // Commuting worker figures for manned machines, routed over the cached road tiles.
-        this.workerLayer = new WorkerDrawLayer(this.workerAssignments);
+        this.workerLayer = new WorkerDrawLayer(this.cache);
         // Debug overlay: road components, attachments, and assignments; hidden outside debug mode.
-        this.workerDebugLayer = new WorkerDebugLayer(this.workerAssignments);
+        this.workerDebugLayer = new WorkerDebugLayer(this.cache);
         // Staffing dots over manned machines (one per consumed worker).
-        this.workerBadgeLayer = new WorkerBadgeLayer(this.workerAssignments);
+        this.workerBadgeLayer = new WorkerBadgeLayer(this.cache);
         // Top-left connection/chunk-loading status overlay. A static screen-space HUD on
         // app.stage (sibling of the viewport), so it never pans or zooms with the world.
         this.statusLayer = new StatusMessageLayer();
         this.statusLayer.setConnecting();
 
-        // Chunk ownership mirror and its border renderer (map/overworld mode). Before the mod
-        // setups: mods lean on it for player identity and username lookups.
-        this.chunkClaimsCache = new ChunkClaimsCache();
-        this.chunkClaimsLayer = new ChunkClaimsDrawLayer(this.chunkClaimsCache);
+        // Ownership borders for claimed chunks (map/overworld mode).
+        this.chunkClaimsLayer = new ChunkClaimsDrawLayer(this.cache);
         this.drawLayerRegistry.add(this.chunkClaimsLayer);
 
         // The derived client surface (draw layer + ghost + tool) of every behavior-driven type;
@@ -166,12 +167,9 @@ export class Client {
         for (const layer of this.modRegistry.clientMods.flatMap(mod => mod.drawLayers(this))) {
             this.drawLayerRegistry.add(layer);
         }
-        // The overworld snapshot store and its renderer, active below the overworld zoom threshold.
-        this.overworldCache = new OverworldCache();
-        this.overworldLayer = new OverworldDrawLayer(modRegistry, this.overworldCache);
+        // The overworld renderer, active below the overworld zoom threshold.
+        this.overworldLayer = new OverworldDrawLayer(modRegistry, this.cache);
         this.drawLayerRegistry.add(this.overworldLayer);
-        // Claim/unclaim outcome callback, fed by ClaimResultEvents (the host shows a notice).
-        this._onClaimResult = null;
         this.drawLayerRegistry.add(new GridDrawLayer());
         this.drawLayerRegistry.add(this.placementFeedbackLayer);
         this.drawLayerRegistry.add(this.inspectLayer);
@@ -184,7 +182,7 @@ export class Client {
         // One bind per layer: sets the shared cache and registers whichever cache hooks the layer
         // overrides — before init, since cache writes can arrive while textures load.
         for (const layer of this.drawLayerRegistry.layers) {
-            layer.bindCache(this.cache);
+            layer.bindCache(this.objects);
         }
 
         // The chunks currently requested from the server (subscribed): the visible chunks
@@ -204,8 +202,8 @@ export class Client {
         this._lastOverworldRefreshMs = 0;
         this._centerLock = false;
         this._debugMode = false;
-        // Machine ids (number) with open menus; sent to the game as the inspect set.
-        this._inspectedObjects = new Set();
+        // Host event listeners, the last stop of the event fan-out.
+        this._eventListeners = [];
     }
 
     /**
@@ -214,8 +212,7 @@ export class Client {
      * @returns {void}
      */
     inspectObject(objectId) {
-        this._inspectedObjects.add(objectId);
-        this._sendInspectedObjects();
+        this.cache.writer("inspect").open(objectId);
     }
 
     /**
@@ -224,15 +221,11 @@ export class Client {
      * @returns {void}
      */
     unInspectObject(objectId) {
-        if (!this._inspectedObjects.delete(objectId)) {
-            return;
-        }
-        this.inspectPanelLayer.remove(objectId);
-        this._sendInspectedObjects();
+        this.cache.writer("inspect").close(objectId);
     }
 
     _sendInspectedObjects() {
-        this.sendMessage(new SetInspectedObjectsMessage([...this._inspectedObjects]));
+        this.sendMessage(new SetInspectedObjectsMessage(this.cache.view("inspect").openIds()));
     }
 
     /**
@@ -414,10 +407,10 @@ export class Client {
         if (rect === null) {
             return;
         }
-        if (this.overworldCache.needsFetch(rect, now, OVERWORLD_CHUNK_TTL_MS)) {
+        if (this.cache.view("overworld").needsFetch(rect, now, OVERWORLD_CHUNK_TTL_MS)) {
             this.sendMessage(new OverworldRequestMessage(rect.chunkX, rect.chunkY, rect.chunkWidth, rect.chunkHeight));
         }
-        this.overworldCache.evictOutside(rect, now, OVERWORLD_CHUNK_TTL_MS);
+        this.cache.writer("overworld").evictOutside(rect, now, OVERWORLD_CHUNK_TTL_MS);
     }
 
     /**
@@ -597,10 +590,10 @@ export class Client {
      * @returns {void}
      */
     updatePlayerSetting(key, value) {
-        if (this.playerSettings.get(key) === value) {
+        if (this.cache.view("playerSettings").get(key) === value) {
             return;
         }
-        this.playerSettings.update(key, value);
+        this.cache.writer("playerSettings").set(key, value);
         this.sendMessage(new SetPlayerSettingMessage(key, value));
     }
 
@@ -701,7 +694,8 @@ export class Client {
     }
 
     /**
-     * Applies one event to the client's consumers.
+     * Fans one event out to every client consumer: the cache writers first (readers see settled
+     * state), then the mods, layers, and host listeners. State reactions ride cache subscriptions.
      * @private
      * @param {AbstractEvent} event
      * @returns {void}
@@ -714,72 +708,26 @@ export class Client {
             }
             return;
         }
-        if (event instanceof PlayerSettingsSyncEvent) {
-            for (const [key, value] of Object.entries(event.values)) {
-                this.playerSettings.update(Number(key), value);
-            }
-            return;
-        }
-        if (event instanceof PlayerSettingsUpdateEvent) {
-            this.playerSettings.update(event.key, event.value);
-            return;
-        }
-        if (event instanceof GameSettingsSyncEvent) {
-            for (const [key, value] of Object.entries(event.values)) {
-                this.gameSettings.update(Number(key), value);
-            }
-            return;
-        }
-        if (event instanceof GameSettingsUpdateEvent) {
-            this.gameSettings.update(event.key, event.value);
-            return;
-        }
-        if (event instanceof InspectHeartbeatEvent) {
-            // Ignore a heartbeat in flight past a close, so it can't revive a shut panel.
-            if (this._inspectedObjects.has(event.objectId)) {
-                this.inspectPanelLayer.update(
-                    event,
-                    this.objectWriter.lastProducedOf(event.objectId),
-                    this.objectWriter.positionOf(event.objectId),
-                );
-            }
-            return;
-        }
-        if (event instanceof InspectClosedEvent) {
-            this.unInspectObject(event.objectId);
-            return;
-        }
-        if (event instanceof OverworldSnapshotEvent) {
-            this.overworldCache.write(event, Date.now());
-            return;
-        }
-        if (this.chunkClaimsCache.onEvent(event)) {
-            return;
-        }
-        if (event instanceof ClaimResultEvent) {
-            if (this._onClaimResult !== null) {
-                this._onClaimResult(event.chunk, event.result);
-            }
-            return;
-        }
-        this.dispatchEvent(event);
-    }
-
-    /**
-     * Routes an event that landed off the wire to its in-process consumers.
-     * @param {AbstractEvent} event
-     */
-    dispatchEvent(event) {
-        this.objectWriter.onEvent(event);
-        if (event instanceof WorkerAssignmentEvent) {
-            this.workerAssignments.onEvent(event);
-        }
+        this.cache.onEvent(event);
         for (const mod of this.modRegistry.clientMods) {
             mod.onEvent(event, this);
         }
         this.drawLayerRegistry.dispatchEvent(event);
         // The status HUD isn't a viewport draw layer, so feed it chunk events directly.
         this.statusLayer.onEvent(event);
+        for (const listener of [...this._eventListeners]) {
+            listener(event);
+        }
+    }
+
+    /**
+     * Registers a host event listener, called with every applied event; the listener filters by
+     * instanceof (transient outcomes like ClaimResultEvent never enter the state tree).
+     * @param {function(AbstractEvent): void} listener
+     * @returns {void}
+     */
+    onEvent(listener) {
+        this._eventListeners.push(listener);
     }
 
     /**
@@ -820,7 +768,7 @@ export class Client {
             return this._mapMenuEntries(tileX, tileY);
         }
         const derived = this.bundles.flatMap(bundle => {
-            const record = this.cache.objectAt(tileX, tileY, bundle.type);
+            const record = this.objects.objectAt(tileX, tileY, bundle.type);
             if (record === null) {
                 return [];
             }
@@ -829,15 +777,6 @@ export class Client {
         const bespoke = this.modRegistry.clientMods
             .flatMap(mod => mod.miniMenuEntries(tileX, tileY, this.session, this));
         return derived.concat(bespoke).sort((a, b) => b.rank - a.rank);
-    }
-
-    /**
-     * Registers the claim/unclaim outcome callback ((chunk, ClaimResult) -> void).
-     * @param {function(number, number): void} callback
-     * @returns {void}
-     */
-    onClaimResult(callback) {
-        this._onClaimResult = callback;
     }
 
     /**
@@ -850,18 +789,18 @@ export class Client {
      */
     _mapMenuEntries(tileX, tileY) {
         const chunk = chunkId(tileX, tileY);
-        const cache = this.chunkClaimsCache;
-        const owner = cache.ownerOf(chunk);
+        const claims = this.cache.view("chunkClaims");
+        const owner = claims.ownerOf(chunk);
         if (owner === PLAYER_ID_NONE) {
-            const label = `Claim chunk (${cache.ownCount()}/${cache.maxChunks})`;
+            const label = `Claim chunk (${claims.ownCount()}/${claims.maxChunks})`;
             return [new MiniMenuEntry(label, 10, () => this.sendMessage(new ClaimChunkMessage(chunk)))];
         }
-        if (owner === cache.ownPlayerId) {
+        if (owner === claims.ownPlayerId) {
             return [new MiniMenuEntry("Unclaim chunk", 10, () => this.sendMessage(new UnclaimChunkMessage(chunk)))];
         }
-        const name = cache.usernameOf(owner);
+        const name = claims.usernameOf(owner);
         const entries = [new MiniMenuEntry(`Owned by ${name}`, 20, () => {})];
-        if (cache.isFriend(owner)) {
+        if (claims.isFriend(owner)) {
             entries.push(new MiniMenuEntry(`Unfriend ${name}`, 10, () => this.sendMessage(new RemoveFriendMessage(owner))));
         } else {
             entries.push(new MiniMenuEntry(`Add friend ${name}`, 10, () => this.sendMessage(new AddFriendMessage(name))));
@@ -880,7 +819,7 @@ export class Client {
         const derived = [];
         if (tileX !== null) {
             for (const bundle of this.bundles) {
-                const record = this.cache.objectAt(tileX, tileY, bundle.type);
+                const record = this.objects.objectAt(tileX, tileY, bundle.type);
                 if (record !== null) {
                     derived.push(new InspectHighlight(record.tileX, record.tileY, record.data.direction, bundle.type));
                 }

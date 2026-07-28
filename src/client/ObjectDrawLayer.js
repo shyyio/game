@@ -2,13 +2,13 @@ import {AbstractChunkedDrawLayer} from "@/client/AbstractChunkedDrawLayer.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {chunkId} from "@/common/util.js";
 import {MAP_TILE_COLOR} from "@/client/Theme.js";
-import {ObjectClientData} from "@/client/ObjectCacheWriter.js";
+import {ObjectClientData} from "@/client/ObjectsState.js";
 import {ObjectSprite} from "@/client/ObjectSprite.js";
 
 /**
- * Renders one object type's placed sprites off the shared cache: ObjectCacheWriter owns the entries,
- * this layer mirrors them (a pure renderer — it never writes the cache). Bespoke rendering (belts)
- * hand-rolls a layer instead.
+ * Renders one object type's placed sprites off the shared cache: the objects state owns the
+ * entries, this layer mirrors them (a pure renderer — it never writes the cache). Bespoke
+ * rendering (belts) hand-rolls a layer instead.
  */
 export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
 

@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {ObjectType, PortDefinition} from "@/common/ObjectType.js";
-import {ClientCache} from "@/client/ClientCache.js";
+import {ObjectsView} from "@/client/ObjectsState.js";
 import {inferBeltParent} from "./geometry.js";
 import {BeltDefinition, BeltRampDownDefinition, BeltRampUpDefinition, SplitterDefinition} from "./objectTypes.js";
 
@@ -12,7 +12,7 @@ function surface(cache, id, x, y, data) {
 }
 
 test("inferBeltParent finds a splitter feeding a belt that bends out of it", () => {
-    const cache = new ClientCache();
+    const cache = new ObjectsView(null);
     // Splitter at (13,5) facing UP occupies (13,5) and (14,5).
     cache.set(1, 13, 5, [
         {x: 13, y: 5, layer: LAYER_SURFACE},
@@ -26,7 +26,7 @@ test("inferBeltParent finds a splitter feeding a belt that bends out of it", () 
 });
 
 test("inferBeltParent picks a straight upstream belt feeder", () => {
-    const cache = new ClientCache();
+    const cache = new ObjectsView(null);
     surface(cache, 5, 5, 6, {type: BeltDefinition, direction: Direction.UP});
 
     const parent = inferBeltParent(cache, 5, 5, Direction.UP);
@@ -34,7 +34,7 @@ test("inferBeltParent picks a straight upstream belt feeder", () => {
 });
 
 test("inferBeltParent ignores a ramp entrance (it does not feed forward) and empty tiles", () => {
-    const cache = new ClientCache();
+    const cache = new ObjectsView(null);
     // A ramp-down behind faces UP but buries the flow, so it is not a feeder.
     surface(cache, 7, 5, 6, {type: BeltRampDownDefinition, direction: Direction.UP});
 
@@ -52,7 +52,7 @@ const machineDefinition = new ObjectType({
 });
 
 test("a machine between a tunnel's ramps connects to neither buried end", () => {
-    const cache = new ClientCache();
+    const cache = new ObjectsView(null);
     // A vertical tunnel: RAMP_DOWN entrance below, RAMP_UP exit above, both facing UP. The
     // machine sits between them; the ramps' surface ports face away from it (both buried).
     surface(cache, 1, 14, 8, {type: BeltRampDownDefinition, direction: Direction.UP});
@@ -63,7 +63,7 @@ test("a machine between a tunnel's ramps connects to neither buried end", () => 
 });
 
 test("a machine connects to a ramp's exposed surface ports along its axis", () => {
-    const cache = new ClientCache();
+    const cache = new ObjectsView(null);
     // RAMP_DOWN entrance takes a straight feed from behind (its output is buried, not its input).
     surface(cache, 1, 5, 4, {type: BeltRampDownDefinition, direction: Direction.UP});
     surface(cache, 2, 5, 5, {type: machineDefinition, direction: Direction.UP});
@@ -75,7 +75,7 @@ test("a machine connects to a ramp's exposed surface ports along its axis", () =
 });
 
 test("a machine beside a ramp does not connect from the side", () => {
-    const cache = new ClientCache();
+    const cache = new ObjectsView(null);
     // RAMP_DOWN entrance facing UP; a machine to its left points right into the ramp's tile.
     // A normal belt would merge in from the side, but a ramp only takes a straight feed.
     surface(cache, 1, 5, 5, {type: BeltRampDownDefinition, direction: Direction.UP});
@@ -86,7 +86,7 @@ test("a machine beside a ramp does not connect from the side", () => {
 
 test("inferBeltParent recognizes a non-belt object (a machine) feeding a belt", () => {
     // The belt must bend toward the machine without any belt-side knowledge of the machine's type.
-    const cache = new ClientCache();
+    const cache = new ObjectsView(null);
     // Machine to the left of the belt, facing right — feeds the belt from the side (a bend).
     surface(cache, 9, 4, 5, {type: machineDefinition, direction: Direction.RIGHT});
 

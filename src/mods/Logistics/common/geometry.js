@@ -24,7 +24,7 @@ function feedsForward(data) {
 /**
  * The tile a belt at (tileX, tileY) facing `direction` is fed from, or nulls; the highest-id
  * forward feeder wins, mirroring Belts._chosenUpstream.
- * @param {ClientCache} cache
+ * @param {ObjectsView} cache
  * @param {number} tileX
  * @param {number} tileY
  * @param {Direction} direction
@@ -52,7 +52,7 @@ export function inferBeltParent(cache, tileX, tileY, direction) {
 
 /**
  * The surface (non-underground) belt entry at a tile, or null.
- * @param {ClientCache} index
+ * @param {ObjectsView} index
  * @param {number} tileX
  * @param {number} tileY
  * @returns {CacheEntry|null}
@@ -69,7 +69,7 @@ export function surfaceBeltAt(index, tileX, tileY) {
 
 /**
  * Walks `ramp`'s tunnel along its axis, returning the buried tiles and the paired opposite ramp (or null).
- * @param {ClientCache} index
+ * @param {ObjectsView} index
  * @param {CacheEntry} ramp
  * @returns {{tiles: {x: number, y: number}[], pair: CacheEntry|null}}
  */

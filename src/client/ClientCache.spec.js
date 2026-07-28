@@ -1,171 +1,173 @@
 import {test} from "node:test";
-import assert from "node:assert";
+import assert from "node:assert/strict";
+import {
+    AbstractCacheView,
+    AbstractCacheWriter,
+    ClientCache,
+    schemaScalar,
+    schemaMap,
+    schemaSet,
+} from "@/client/ClientCache.js";
 
-import {ClientCache} from "@/client/ClientCache.js";
-import {ObjectType, PortDefinition} from "@/common/ObjectType.js";
-import {Direction, LAYER_SURFACE} from "@/common/constants.js";
-import {chunkId} from "@/common/util.js";
+class RecordingWriter extends AbstractCacheWriter {
 
-// A single-cell object on layer 0 at its primary tile.
-function cell(x, y, layer=0) {
-    return [{x, y, layer}];
+    constructor(log, label) {
+        super(null);
+        this._log = log;
+        this._label = label;
+    }
+
+    onEvent(event) {
+        this._log.push([this._label, event]);
+    }
 }
 
-// A 1x1 object with one input on its tile and one output one tile ahead, both facing UP.
-const machineDefinition = new ObjectType({
-    name: "Machine",
-    inputPorts: [new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP})],
-    outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
-    internalPorts: [],
-    geometry: "1x1",
-});
-// Registers a surface machine facing `direction`.
-function machine(cache, id, x, y, direction) {
-    cache.set(id, x, y, [{x, y, layer: LAYER_SURFACE}], {}, {type: machineDefinition, direction});
+class NoopWriter extends AbstractCacheWriter {
+
+    onEvent(event) {
+
+    }
 }
 
-test("set then get returns the record with derived chunk", () => {
-    const cache = new ClientCache();
-    cache.set(1, 3, 4, cell(3, 4), {}, {type: 0});
+const NOOP_WRITER = new NoopWriter(null);
 
-    const record = cache.get(1);
-    assert.strictEqual(record.id, 1);
-    assert.strictEqual(record.tileX, 3);
-    assert.strictEqual(record.tileY, 4);
-    assert.strictEqual(record.chunk, chunkId(3, 4));
-    assert.deepStrictEqual(record.data, {type: 0});
+function registered() {
+    const state = new ClientCache();
+    state.register("demo", {
+        counter: schemaScalar(0),
+        byId: schemaMap(),
+        members: schemaSet(),
+    }, NOOP_WRITER);
+    return state;
+}
+
+test("scalars read their initial, write, and notify only on change", () => {
+    const state = registered();
+    assert.equal(state.get("demo.counter"), 0);
+    const seen = [];
+    state.subscribe("demo.counter", value => seen.push(value));
+    state.set("demo.counter", 5);
+    state.set("demo.counter", 5);
+    assert.equal(state.get("demo.counter"), 5);
+    assert.deepEqual(seen, [5]);
 });
 
-test("getAtTile returns every object on a primary tile", () => {
-    const cache = new ClientCache();
-    cache.set(1, 5, 5, cell(5, 5, 0), {}, {type: 0});
-    cache.set(2, 5, 5, cell(5, 5, 1), {}, {type: 3});
-
-    const records = cache.getAtTile(5, 5);
-    assert.strictEqual(records.length, 2);
-    assert.deepStrictEqual(records.map(record => record.id).sort(), [1, 2]);
-    assert.deepStrictEqual(cache.getAtTile(9, 9), []);
+test("map writes and deletes notify with (id, value); deletes pass undefined", () => {
+    const state = registered();
+    const seen = [];
+    state.subscribe("demo.byId", (id, value) => seen.push([id, value]));
+    state.mapSet("demo.byId", 7, "a");
+    state.mapSet("demo.byId", 7, "a");
+    state.mapDelete("demo.byId", 7);
+    state.mapDelete("demo.byId", 7);
+    assert.deepEqual(seen, [[7, "a"], [7, undefined]]);
+    assert.equal(state.mapGet("demo.byId", 7), undefined);
 });
 
-test("at resolves an object by cell and layer; layers are independent", () => {
-    const cache = new ClientCache();
-    cache.set(1, 5, 5, cell(5, 5, 0), {}, {kind: 0});
-    cache.set(2, 5, 5, cell(5, 5, 1), {}, {kind: 9});
-
-    assert.strictEqual(cache.at(5, 5, 0).id, 1);
-    assert.strictEqual(cache.at(5, 5, 1).id, 2);
-    assert.strictEqual(cache.at(5, 5, 2), null);
+test("mapDeleteWhere drops matching values, notifying per id", () => {
+    const state = registered();
+    state.mapSet("demo.byId", 1, "a");
+    state.mapSet("demo.byId", 2, "b");
+    state.mapSet("demo.byId", 3, "a");
+    const seen = [];
+    state.subscribe("demo.byId", (id, value) => seen.push([id, value]));
+    state.mapDeleteWhere("demo.byId", value => value === "a");
+    assert.deepEqual(seen, [[1, undefined], [3, undefined]]);
+    assert.equal(state.mapGet("demo.byId", 2), "b");
 });
 
-test("allAt returns the full stack on a cell, bottom-up", () => {
-    const cache = new ClientCache();
-    cache.set(1, 5, 5, cell(5, 5, 0), {}, {kind: 0});
-    cache.set(2, 5, 5, cell(5, 5, 0), {}, {kind: 9});
-
-    assert.deepStrictEqual(cache.allAt(5, 5, 0).map(record => record.id), [1, 2]);
-    assert.deepStrictEqual(cache.allAt(5, 5, 1), []);
-    cache.remove(2);
-    assert.deepStrictEqual(cache.allAt(5, 5, 0).map(record => record.id), [1]);
+test("set add/delete notify with (id, present); repeats notify nobody", () => {
+    const state = registered();
+    const seen = [];
+    state.subscribe("demo.members", (id, present) => seen.push([id, present]));
+    state.setAdd("demo.members", 1);
+    state.setAdd("demo.members", 1);
+    assert.equal(state.setHas("demo.members", 1), true);
+    state.setDelete("demo.members", 1);
+    state.setDelete("demo.members", 1);
+    assert.deepEqual(seen, [[1, true], [1, false]]);
 });
 
-test("set with multiple cells indexes every covered cell", () => {
-    const cache = new ClientCache();
-    cache.set(1, 5, 5, [{x: 5, y: 5, layer: 0}, {x: 6, y: 5, layer: 0}], {}, {kind: 1});
-
-    assert.strictEqual(cache.at(5, 5, 0).id, 1);
-    assert.strictEqual(cache.at(6, 5, 0).id, 1);
+test("set replace swaps members wholesale and notifies each delta", () => {
+    const state = registered();
+    state.setReplace("demo.members", [1, 2]);
+    const seen = [];
+    state.subscribe("demo.members", (id, present) => seen.push([id, present]));
+    state.setReplace("demo.members", [2, 3]);
+    assert.equal(state.setHas("demo.members", 1), false);
+    assert.equal(state.setHas("demo.members", 3), true);
+    assert.deepEqual([...state.setValues("demo.members")], [2, 3]);
+    assert.deepEqual(seen, [[1, false], [3, true]]);
 });
 
-test("update merges into a record's data", () => {
-    const cache = new ClientCache();
-    cache.set(1, 0, 0, cell(0, 0), {}, {a: 1});
-    cache.update(1, {b: 2});
-
-    assert.deepStrictEqual(cache.get(1).data, {a: 1, b: 2});
-    cache.update(99, {b: 3});
-    assert.strictEqual(cache.get(99), null);
+test("undeclared paths, kind mismatches, and duplicate namespaces throw", () => {
+    const state = registered();
+    assert.throws(() => state.get("demo.missing"), /Undeclared state path/);
+    assert.throws(() => state.get("nope.counter"), /Undeclared state path/);
+    assert.throws(() => state.mapSet("demo.counter", 1, "a"), /is scalar, not map/);
+    assert.throws(() => state.register("demo", {}, NOOP_WRITER), /already registered/);
+    assert.throws(() => state.register("bad", {}, {onEvent() {}}), /must extend AbstractCacheWriter/);
+    assert.throws(() => state.register("worse", {}, NOOP_WRITER, {}), /must extend AbstractCacheView/);
+    assert.throws(
+        () => state.register("typo", {counter: {kind: "scaler", initial: 5}}, NOOP_WRITER),
+        /Unknown schema kind for typo.counter: scaler/,
+    );
 });
 
-test("remove clears all indexes and returns the record", () => {
-    const cache = new ClientCache();
-    cache.set(1, 7, 8, cell(7, 8), {}, {type: 0});
-
-    const removed = cache.remove(1);
-    assert.strictEqual(removed.id, 1);
-    assert.strictEqual(cache.get(1), null);
-    assert.deepStrictEqual(cache.getAtTile(7, 8), []);
-    assert.strictEqual(cache.at(7, 8, 0), null);
-    assert.deepStrictEqual(cache.getByChunk(chunkId(7, 8)), []);
-    assert.strictEqual(cache.remove(1), null);
+test("view and writer accessors return the registered parts or throw", () => {
+    const state = new ClientCache();
+    const view = new AbstractCacheView();
+    state.register("demo", {}, NOOP_WRITER, view);
+    assert.equal(state.view("demo"), view);
+    assert.equal(state.writer("demo"), NOOP_WRITER);
+    state.register("viewless", {}, new NoopWriter(state));
+    assert.throws(() => state.view("viewless"), /No view for namespace/);
+    assert.throws(() => state.writer("nope"), /No writer for namespace/);
 });
 
-test("set replaces a prior registration's cells", () => {
-    const cache = new ClientCache();
-    cache.set(1, 5, 5, cell(5, 5, 0), {}, {kind: 0});
-    cache.set(1, 5, 5, cell(5, 5, 1), {}, {kind: 0});
-
-    assert.strictEqual(cache.at(5, 5, 0), null);
-    assert.strictEqual(cache.at(5, 5, 1).id, 1);
+test("events fan out to every writer in registration order", () => {
+    const state = new ClientCache();
+    const log = [];
+    state.register("a", {}, new RecordingWriter(log, "a"));
+    state.register("b", {}, new RecordingWriter(log, "b"));
+    const event = {name: "event"};
+    state.onEvent(event);
+    assert.deepEqual(log, [["a", event], ["b", event]]);
 });
 
-test("getByChunk returns objects grouped by chunk", () => {
-    const cache = new ClientCache();
-    cache.set(1, 1, 1, cell(1, 1), {}, {type: 0});
-    cache.set(2, 2, 2, cell(2, 2), {}, {type: 0});
-    cache.set(3, 200, 200, cell(200, 200), {}, {type: 0});
-
-    const near = cache.getByChunk(chunkId(1, 1));
-    assert.strictEqual(near.length, 2);
-    assert.deepStrictEqual(near.map(record => record.id).sort(), [1, 2]);
-    assert.strictEqual(cache.getByChunk(chunkId(200, 200)).length, 1);
+test("unsubscribe stops notifications; a repeated call never touches other listeners", () => {
+    const state = registered();
+    const seen = [];
+    const surviving = [];
+    const unsubscribe = state.subscribe("demo.counter", value => seen.push(value));
+    state.subscribe("demo.counter", value => surviving.push(value));
+    state.set("demo.counter", 1);
+    unsubscribe();
+    unsubscribe();
+    state.set("demo.counter", 2);
+    assert.deepEqual(seen, [1]);
+    assert.deepEqual(surviving, [1, 2]);
 });
 
-test("getByPort resolves a rendered out-port to its entry and port name", () => {
-    const cache = new ClientCache();
-    cache.set(1, 5, 5, cell(5, 5), {out_port_id: 42}, {type: 0});
-
-    const entry = cache.getByPort(42);
-    assert.strictEqual(entry.id, 1);
-    assert.strictEqual(entry.portName(42), "out_port_id");
-    assert.strictEqual(cache.getByPort(99), null);
-
-    cache.remove(1);
-    assert.strictEqual(cache.getByPort(42), null);
+test("schema returns every namespace's declared shape", () => {
+    const state = registered();
+    state.register("other", {flag: schemaScalar(0)}, new NoopWriter(state));
+    assert.deepEqual(state.schema(), {
+        demo: {counter: "scalar", byId: "map", members: "set"},
+        other: {flag: "scalar"},
+    });
 });
 
-test("inPortAt / outPortAt resolve a feeder-consumer pair facing each other", () => {
-    const cache = new ClientCache();
-    // Feeder at (5,6) outputs up into (5,5); consumer at (5,5) takes input there.
-    machine(cache, 1, 5, 6, Direction.UP);
-    machine(cache, 2, 5, 5, Direction.UP);
-
-    const consumer = cache.inPortAt(5, 5, Direction.UP);
-    assert.strictEqual(consumer.entry.id, 2);
-    assert.strictEqual(consumer.portName, "in");
-
-    const feeder = cache.outPortAt(5, 5, Direction.UP);
-    assert.strictEqual(feeder.entry.id, 1);
-    assert.strictEqual(feeder.portName, "out");
-
-    // Wrong facing and an empty tile resolve to nothing.
-    assert.strictEqual(cache.inPortAt(5, 5, Direction.DOWN), null);
-    assert.strictEqual(cache.inPortAt(9, 9, Direction.UP), null);
-});
-
-test("connectedPorts reports a record's live output connection", () => {
-    const cache = new ClientCache();
-    machine(cache, 1, 5, 6, Direction.UP);
-    machine(cache, 2, 5, 5, Direction.UP);
-
-    const connections = cache.connectedPorts(cache.get(1));
-    assert.strictEqual(connections.length, 1);
-    assert.strictEqual(connections[0].key, "out");
-    assert.strictEqual(connections[0].isOutput, true);
-    assert.strictEqual(connections[0].neighbor.id, 2);
-
-    // The lone consumer has only its incoming connection.
-    const incoming = cache.connectedPorts(cache.get(2));
-    assert.strictEqual(incoming.length, 1);
-    assert.strictEqual(incoming[0].isOutput, false);
-    assert.strictEqual(incoming[0].neighbor.id, 1);
+test("dump snapshots the tree as plain JSON", () => {
+    const state = registered();
+    state.set("demo.counter", 3);
+    state.mapSet("demo.byId", 7, {x: 1});
+    state.setReplace("demo.members", [2, 4]);
+    assert.deepEqual(state.dump(), {
+        demo: {
+            counter: 3,
+            byId: {7: {x: 1}},
+            members: [2, 4],
+        },
+    });
 });

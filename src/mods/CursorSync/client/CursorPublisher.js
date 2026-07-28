@@ -12,25 +12,25 @@ export class CursorPublisher {
     /**
      * @param {AbstractSession} session
      * @param {Mouse} mouse
-     * @param {PlayerSettings} playerSettings
+     * @param {ClientCache} state
      * @param {WindowFocus} windowFocus
      */
     constructor(
         session,
         mouse,
-        playerSettings,
+        state,
         windowFocus,
     ) {
         this._session = session;
         this._mouse = mouse;
-        this._playerSettings = playerSettings;
+        this._playerSettings = state.view("playerSettings");
         this._windowFocus = windowFocus;
         this._viewMode = ViewMode.WORLD;
         // Whether the cursor is currently shown remotely (a hide is owed when sending stops).
         this._shown = false;
         this._lastSentX = null;
         this._lastSentY = null;
-        playerSettings.onChange((key, value) => {
+        state.subscribe("playerSettings.values", (key, value) => {
             // No wire hide: the server erases the cursor on the share-off setting write itself.
             if (key === CURSOR_SETTING_SHARE && value === SETTING_OFF) {
                 this._reset();

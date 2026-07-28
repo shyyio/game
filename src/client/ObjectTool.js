@@ -21,7 +21,7 @@ export class ObjectTool extends AbstractTool {
     constructor(client, type, ghostLayer) {
         super(client.session);
         this._client = client;
-        this._cache = client.cache;
+        this._cache = client.objects;
         this._type = type;
         this._ghostLayer = ghostLayer;
         this._replaceSameKind = type.placement.replaceSameKind;
