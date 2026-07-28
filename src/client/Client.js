@@ -52,6 +52,7 @@ import {WorkerBadgeLayer} from "@/client/WorkerBadgeLayer.js";
 import {StatusMessageLayer} from "@/client/StatusMessageLayer.js";
 import {advanceAnimationFrame} from "@/client/animation.js";
 import {DEV, BROWSER} from "@/common/env.js";
+import {ListenerList} from "@/common/ListenerList.js";
 
 // Frame time spent applying queued sync events; the rest wait for the next frame.
 const DRAIN_BUDGET_MS = 6;
@@ -203,7 +204,7 @@ export class Client {
         this._centerLock = false;
         this._debugMode = false;
         // Host event listeners, the last stop of the event fan-out.
-        this._eventListeners = [];
+        this._eventListeners = new ListenerList();
     }
 
     /**
@@ -715,19 +716,17 @@ export class Client {
         this.drawLayerRegistry.dispatchEvent(event);
         // The status HUD isn't a viewport draw layer, so feed it chunk events directly.
         this.statusLayer.onEvent(event);
-        for (const listener of [...this._eventListeners]) {
-            listener(event);
-        }
+        this._eventListeners.notify(event);
     }
 
     /**
      * Registers a host event listener, called with every applied event; the listener filters by
      * instanceof (transient outcomes like ClaimResultEvent never enter the state tree).
      * @param {function(AbstractEvent): void} listener
-     * @returns {void}
+     * @returns {function(): void} unsubscribe
      */
     onEvent(listener) {
-        this._eventListeners.push(listener);
+        return this._eventListeners.add(listener);
     }
 
     /**

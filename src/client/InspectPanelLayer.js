@@ -66,7 +66,9 @@ export class InspectPanelLayer extends Container {
             if (heartbeat === undefined) {
                 this.remove(objectId);
             } else {
-                this.update(heartbeat, objects.lastProducedOf(objectId), objects.positionOf(objectId));
+                const entry = objects.get(objectId);
+                const machineTile = entry === null ? undefined : {x: entry.tileX, y: entry.tileY};
+                this.update(heartbeat, objects.lastProducedOf(objectId), machineTile);
             }
         });
         /**
