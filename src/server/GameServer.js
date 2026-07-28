@@ -14,6 +14,7 @@ const CLOSE_CODE_SUPERSEDED = 4003;
 const MAX_PAYLOAD_BYTES = 64 * 1024;
 const MAX_BACKPRESSURE_BYTES = 1024 * 1024;
 const IDLE_TIMEOUT_S = 120;
+const MINUTES_PER_DAY = 24 * 60;
 
 /**
  * The uWebSockets.js front end: accepts connections, authenticates the sign-in frame, and pumps
@@ -97,7 +98,7 @@ export class GameServer {
      * @returns {string}
      */
     _infoScreen(host) {
-        const uptimeMinutes = Math.floor((Date.now() - this._startedAtMs) / 60_000);
+        const uptime = this._formatUptime();
         const registered = this._game.players.directory().playerIds.length;
         return [
             "+==============================================+",
@@ -110,8 +111,25 @@ export class GameServer {
             `  mods       : ${this._game.modRegistry.modNames.join(", ")}`,
             `  websocket  : ws://${host}`,
             `  players    : ${this._sessionsByPlayer.size} online, ${registered} registered`,
-            `  uptime     : ${uptimeMinutes} min`,
+            `  uptime     : ${uptime}`,
         ].join("\n");
+    }
+
+    /**
+     * Uptime as "1day, 23h45m", day part omitted under one day.
+     * @private
+     * @returns {string}
+     */
+    _formatUptime() {
+        const totalMinutes = Math.floor((Date.now() - this._startedAtMs) / 60_000);
+        const days = Math.floor(totalMinutes / MINUTES_PER_DAY);
+        const hours = Math.floor((totalMinutes % MINUTES_PER_DAY) / 60);
+        const minutes = totalMinutes % 60;
+        const clock = `${hours}h${String(minutes).padStart(2, "0")}m`;
+        if (days === 0) {
+            return clock;
+        }
+        return `${days}day, ${clock}`;
     }
 
     /**
