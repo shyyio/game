@@ -64,8 +64,10 @@ function connect() {
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  /* top-third keeps card above mobile keyboard */
+  padding-top: 12vh;
   background: #f5f0e6;
 }
 
