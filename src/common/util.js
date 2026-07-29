@@ -75,6 +75,34 @@ export function tileVariantId(tile, variant) {
 }
 
 /**
+ * Whether chunk coordinate (chunkX, chunkY) lies inside the region.
+ * @param chunkX {number}
+ * @param chunkY {number}
+ * @returns {boolean}
+ */
+export function inRegion(chunkX, chunkY) {
+    return chunkX >= -REGION_HALF && chunkX < REGION_HALF && chunkY >= -REGION_HALF && chunkY < REGION_HALF;
+}
+
+/**
+ * The chunk's edge neighbors, clipped to the region.
+ * @param chunk {number}
+ * @returns {number[]}
+ */
+export function chunkNeighbors(chunk) {
+    const position = chunkPosition(chunk);
+    const neighbors = [];
+    for (const delta of NEIGHBOR_DELTAS) {
+        const x = position.x + delta.dx;
+        const y = position.y + delta.dy;
+        if (inRegion(x, y)) {
+            neighbors.push(chunkOrdinal(x, y));
+        }
+    }
+    return neighbors;
+}
+
+/**
  * Inverse of {@link chunkId}: the chunk coordinate (chunkX, chunkY) of a chunk id.
  * @param chunk {number}
  * @returns {{x: number, y: number}}
@@ -95,6 +123,16 @@ export function chunkPosition(chunk) {
 export function chunkOrigin(chunk) {
     const position = chunkPosition(chunk);
     return {x: position.x * CHUNK_SIZE, y: position.y * CHUNK_SIZE};
+}
+
+/**
+ * The tile position of a chunk's center.
+ * @param chunk {number}
+ * @returns {{x: number, y: number}}
+ */
+export function chunkCenter(chunk) {
+    const origin = chunkOrigin(chunk);
+    return {x: origin.x + CHUNK_SIZE / 2, y: origin.y + CHUNK_SIZE / 2};
 }
 
 

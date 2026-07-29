@@ -4,6 +4,7 @@ import {Game} from "@/sim/Game.js";
 import {Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {CreateObjectMessage, SetViewportMessage} from "@/common/CoreMessages.js";
+import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {PortItemSetEvent} from "@/common/PortItemEvents.js";
 import {ObjectSyncEvent} from "@/common/ObjectEvents.js";
@@ -26,6 +27,7 @@ test("a session subscribing to a chunk receives its existing belts and resting i
     // A placing session builds a belt line and lets an item rest at the out-port.
     const builder = new CapturingSession(1);
     game.connect(builder);
+    game.dispatchMessage(new ClaimChunkMessage(chunkId(0, 0)), builder);
     for (const cell of CELLS) {
         game.dispatchMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP), builder);
     }

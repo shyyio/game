@@ -138,6 +138,22 @@ export class PlayerRegistry {
     }
 
     /**
+     * The players whose friend lists contain `playerId` (who granted them build rights).
+     * Derived by scanning the roster: friendships change at user rate on a small map.
+     * @param {number} playerId
+     * @returns {number[]}
+     */
+    grantedBy(playerId) {
+        const granters = [];
+        for (const record of this._byId.values()) {
+            if (record.friends.has(playerId)) {
+                granters.push(record.playerId);
+            }
+        }
+        return granters;
+    }
+
+    /**
      * Whether `otherId` is on `ownerId`'s friend list.
      * @param {number} ownerId
      * @param {number} otherId

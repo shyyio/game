@@ -126,11 +126,15 @@ export class UndergroundBeltTool extends AbstractTool {
     }
 
     /**
-     * Whether a surface belt blocks a ramp facing `direction` (unless it's an overwritable same-axis belt).
+     * Whether the tile sits outside buildable chunks, or a surface belt blocks a ramp facing
+     * `direction` (unless it's an overwritable same-axis belt).
      * @private
      * @returns {boolean}
      */
     _blocked(tileX, tileY, direction) {
+        if (!this._client.canBuildAt(tileX, tileY)) {
+            return true;
+        }
         // A non-belt surface object blocks outright.
         const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
         if (occupant !== null && !isBeltType(occupant.data.type)) {
@@ -145,6 +149,10 @@ export class UndergroundBeltTool extends AbstractTool {
      * @private
      */
     _placeRamp(tileX, tileY, direction) {
+        // The server would drop an ungated placement anyway.
+        if (!this._client.canBuildAt(tileX, tileY)) {
+            return;
+        }
         const placement = this._resolvePlacement(tileX, tileY, direction);
 
         const existing = this._surfaceBeltAt(tileX, tileY);

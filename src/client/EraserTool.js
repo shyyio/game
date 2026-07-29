@@ -14,6 +14,7 @@ export class EraserTool extends AbstractTool {
      */
     constructor(client) {
         super(client.session);
+        this._client = client;
         this._cache = client.objects;
         this._placementFeedbackLayer = client.placementFeedbackLayer;
         this._firstDragStep = false;
@@ -45,9 +46,11 @@ export class EraserTool extends AbstractTool {
     }
 
     onTileEnter(tileX, tileY) {
-        const occupied = this._cache.at(tileX, tileY, LAYER_SURFACE) !== null;
+        // Mirrors the sim's delete gate: no erasing outside buildable chunks.
+        const erasable = this._client.canBuildAt(tileX, tileY)
+            && this._cache.at(tileX, tileY, LAYER_SURFACE) !== null;
         let blocked;
-        if (occupied) {
+        if (erasable) {
             blocked = [{x: tileX, y: tileY}];
         } else {
             blocked = [];
@@ -74,6 +77,9 @@ export class EraserTool extends AbstractTool {
      * @private
      */
     _erase(tileX, tileY) {
+        if (!this._client.canBuildAt(tileX, tileY)) {
+            return;
+        }
         const targets = this._cache.allAt(tileX, tileY, LAYER_SURFACE);
         if (targets.length === 0) {
             return;

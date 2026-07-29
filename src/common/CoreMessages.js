@@ -103,13 +103,17 @@ export class OverworldRequestMessage extends AbstractMessage {
     }
 
     /**
+     * The rect must sit fully inside the region; the overworld bake throws on anything else.
      * @param {GameAPI} api
      * @param {AbstractSession} session
      * @returns {boolean}
      */
     validate(api, session) {
+        const half = REGION_SIZE / 2;
         return this.chunkWidth > 0 && this.chunkHeight > 0
-            && this.chunkWidth * this.chunkHeight <= MAX_OVERWORLD_REQUEST_AREA;
+            && this.chunkWidth * this.chunkHeight <= MAX_OVERWORLD_REQUEST_AREA
+            && this.chunkX >= -half && this.chunkX + this.chunkWidth <= half
+            && this.chunkY >= -half && this.chunkY + this.chunkHeight <= half;
     }
 }
 

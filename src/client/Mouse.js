@@ -99,6 +99,7 @@ class Mouse {
 
         this._hoverTileX = null;
         this._hoverTileY = null;
+        // Hard-off while the mini-menu is open (see freezeHover/resumeHoverOnMove).
         this._hoverEnabled = true;
         // After the mini-menu closes, hover is held until the cursor next moves at all
         // (any pixel), so selecting an entry doesn't re-inspect under a stationary cursor.
@@ -114,6 +115,7 @@ class Mouse {
         this._app = null;
 
         this._tapCallbacks = [];
+        this._pressCallbacks = [];
         this._dragStartCallbacks = [];
         this._tileDragCallbacks = [];
         this._longPressCallbacks = [];
@@ -145,6 +147,8 @@ class Mouse {
 
         this._viewport.on("pointerdown", event => this._handlePointerDown(event));
         this._viewport.on("pointerup",   event => this._handlePointerUp(event));
+        // A release over a HUD element (or off the canvas) must still end the gesture.
+        this._viewport.on("pointerupoutside", event => this._handlePointerUp(event));
 
         this._app.ticker.add(() => this._updateCurrentMousePos());
     }
@@ -157,6 +161,15 @@ class Mouse {
      */
     onTap(callback) {
         this._tapCallbacks.push(callback);
+    }
+
+    /**
+     * Every primary press on the world with the tile under it, before any drag starts
+     * (the center tile under center-lock).
+     * @param {function(tileX: number, tileY: number)} callback
+     */
+    onPress(callback) {
+        this._pressCallbacks.push(callback);
     }
 
     /**
@@ -207,11 +220,10 @@ class Mouse {
     }
 
     /**
-     * Toggles tile enter/exit hover events, off in map mode.
-     * @param {boolean} enabled
+     * Turns tile enter/exit hover events hard off, while the mini-menu is open.
      */
-    setHoverEnabled(enabled) {
-        this._hoverEnabled = enabled;
+    freezeHover() {
+        this._hoverEnabled = false;
     }
 
     /**
@@ -322,6 +334,15 @@ class Mouse {
         this._dragAxis = null;
         this._lastMoveTime = null;
 
+        let pressTileX = this._clickStartTileX;
+        let pressTileY = this._clickStartTileY;
+        if (this._centerLock) {
+            ({tileX: pressTileX, tileY: pressTileY} = this._centerTile());
+        }
+        for (const cb of this._pressCallbacks) {
+            cb(pressTileX, pressTileY);
+        }
+
         // Center-lock (mobile, tool active) has no context gesture — orientation is
         // set by the rotate buttons and a tap places — so the long-press timer is
         // only armed for the mini-menu when the cursor isn't locked to center.
@@ -411,11 +432,11 @@ class Mouse {
         this.currentX = world.x;
         this.currentY = world.y;
 
-        // Center-lock pins the ghost to the screen center, so a finger resting on the toolbar (HUD)
-        // must not suppress it; otherwise skip the hover ghost while the pointer sits over a panel.
+        // Center-lock ignores HUD hover; otherwise skip the hover ghost over a panel
+        // unless a press is in flight (a drag crossing the HUD keeps its hover).
         if (this._centerLock) {
             this._updateHoverTile();
-        } else if (this._pointerOverHud()) {
+        } else if (this._clickStartX == null && this._pointerOverHud()) {
             this._emitTileExit();
         } else {
             this._resumeHoverIfMoved();

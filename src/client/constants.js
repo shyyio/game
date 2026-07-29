@@ -15,20 +15,19 @@ export const MAP_MODE_SCALE_THRESHOLD = 0.25;
 
 // Viewport scale below which the client switches to overworld mode: chunk subscriptions
 // drop and the baked overworld snapshots render instead.
-export const OVERWORLD_SCALE_THRESHOLD = 0.10;
+export const OVERWORLD_SCALE_THRESHOLD = 0.03;
 
 // The zoom floor: the whole region fits a ~1024px screen.
 export const MIN_VIEWPORT_SCALE = 1024 / (REGION_SIZE * CHUNK_SIZE * TILE_SIZE);
+
+// Screen-pixel gap between bottom-anchored HUD elements and the screen bottom, clearing the toolbar.
+export const HUD_BOTTOM_OFFSET = 160;
 
 // A cached overworld chunk older than this refetches when it is next visible.
 export const OVERWORLD_CHUNK_TTL_MS = 30_000;
 
 // At most one overworld request per this window while panning.
 export const OVERWORLD_REFRESH_THROTTLE_MS = 500;
-
-// Chunks that pan out of the viewport are kept subscribed for this long before being
-// unsubscribed, so a quick pan back doesn't re-sync them; new chunks still subscribe at once.
-export const CHUNK_UNSUBSCRIBE_DELAY_MS = 10_000;
 
 export function snapToTile(n) {
     return Math.floor(n / TILE_SIZE) * TILE_SIZE;

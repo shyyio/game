@@ -1,3 +1,5 @@
+import packageJson from "../../package.json" with {type: "json"};
+
 /**
  * A cardinal direction ordinal.
  * @typedef {number} Direction
@@ -143,5 +145,6 @@ export const DEFAULT_MAX_CHUNKS = 9;
 
 export const USERNAME_PATTERN = /^[A-Za-z0-9_]{3,20}$/;
 
-// Bumped on any wire-incompatible change; the server rejects a mismatched sign-in.
-export const PROTOCOL_VERSION = 2;
+// Sign-in with a differing version is rejected; bump package.json's version on any
+// wire- or rule-incompatible change.
+export const GAME_VERSION = packageJson.version;

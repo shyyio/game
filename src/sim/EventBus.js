@@ -84,6 +84,21 @@ export class EventBus {
     }
 
     /**
+     * The connected sessions of one player (targeted per-player resyncs route through this).
+     * @param {number} playerId
+     * @returns {number[]}
+     */
+    sessionIdsOf(playerId) {
+        const ids = [];
+        for (const [sessionId, session] of this._sessions) {
+            if (session.playerId === playerId) {
+                ids.push(sessionId);
+            }
+        }
+        return ids;
+    }
+
+    /**
      * The sessions viewing a chunk, or undefined when none.
      * @param {number} chunk
      * @returns {Set<number>|undefined}

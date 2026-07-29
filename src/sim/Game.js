@@ -1,6 +1,8 @@
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
 import {InspectClosedEvent} from "@/common/InspectEvents.js";
+import {ObjectSyncEvent} from "@/common/ObjectEvents.js";
+import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
 import {AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
@@ -74,7 +76,7 @@ export class Game {
     }
 
     /**
-     * Whether a player may modify a chunk: it is unclaimed, their own, or a friend's.
+     * Whether a player may modify a chunk: their own or a friend's; unclaimed is off limits.
      * @param {number} playerId
      * @param {number} chunk
      * @returns {boolean}
@@ -82,7 +84,10 @@ export class Game {
      */
     _canBuildIn(playerId, chunk) {
         const owner = this.claims.ownerOf(chunk);
-        if (owner === PLAYER_ID_NONE || owner === playerId) {
+        if (owner === PLAYER_ID_NONE) {
+            return false;
+        }
+        if (owner === playerId) {
             return true;
         }
         return this.players.isFriend(owner, playerId);
@@ -155,7 +160,7 @@ export class Game {
         this.bus.publishTo(session.id, new PlayerDirectoryEvent(directory.playerIds, directory.usernames));
         const claims = this.claims.snapshot();
         this.bus.publishTo(session.id, new ChunkClaimSyncEvent(claims.chunks, claims.playerIds));
-        this.bus.publishTo(session.id, new FriendListEvent([...record.friends]));
+        this.bus.publishTo(session.id, this._friendListEvent(session.playerId));
     }
 
     _syncGameSettings(session) {
@@ -212,18 +217,18 @@ export class Game {
         }
 
         if (message instanceof UnclaimChunkMessage) {
-            this._handleUnclaim(session, message.chunk);
+            this._handleUnclaim(session, message.chunk, message.clear === 1);
             return;
         }
 
         if (message instanceof AddFriendMessage) {
-            this._handleAddFriend(session, message.username);
+            this._handleAddFriend(session, message.playerId);
             return;
         }
 
         if (message instanceof RemoveFriendMessage) {
             this.players.removeFriend(session.playerId, message.playerId);
-            this._syncFriendList(session);
+            this._syncFriendLists(session, message.playerId);
             return;
         }
 
@@ -277,34 +282,90 @@ export class Game {
      * @param {number} chunk
      * @private
      */
-    _handleUnclaim(session, chunk) {
+    _handleUnclaim(session, chunk, clear) {
+        const solidIds = this._solidObjectIdsIn(chunk);
+        // An unclaim must empty the chunk; without the clear confirmation it is rejected.
+        if (this.claims.ownerOf(chunk) === session.playerId && solidIds.length > 0 && !clear) {
+            this.bus.publishTo(session.id, new ClaimResultEvent(chunk, ClaimResult.CLAIM_RESULT_NOT_EMPTY));
+            return;
+        }
         const result = this.claims.unclaim(session.playerId, chunk);
         if (result === ClaimResult.CLAIM_RESULT_OK) {
+            // Engine-originated deletes bypass the placement gate the now-unclaimed chunk holds.
+            for (const objectId of solidIds) {
+                this.simEngine.applyMessage(new DeleteObjectMessage(objectId), PLAYER_ID_NONE);
+            }
             this.bus.publish(new ChunkClaimUpdateEvent(chunk, PLAYER_ID_NONE));
         }
         this.bus.publishTo(session.id, new ClaimResultEvent(chunk, result));
     }
 
     /**
-     * Befriends by username; an unknown name just re-sends the unchanged list.
-     * @param {AbstractSession} session
-     * @param {string} username
+     * The object ids of every solid object in a chunk; non-solid ground cover
+     * (resources, water) stays out.
      * @private
+     * @param {number} chunk
+     * @returns {number[]}
      */
-    _handleAddFriend(session, username) {
-        const friend = this.players.findByUsername(username);
-        if (friend !== null && friend.playerId !== session.playerId) {
-            this.players.addFriend(session.playerId, friend.playerId);
+    _solidObjectIdsIn(chunk) {
+        const ids = [];
+        for (const event of this.simEngine.chunkSync(chunk)) {
+            let inner = [event];
+            if (event instanceof AbstractBatchEvent) {
+                inner = event.explode();
+            }
+            for (const single of inner) {
+                if (!(single instanceof ObjectSyncEvent)) {
+                    continue;
+                }
+                const type = this.modRegistry.typeById(single.typeId);
+                if (type.placement.solid) {
+                    ids.push(single.id);
+                }
+            }
         }
-        this._syncFriendList(session);
+        return ids;
     }
 
     /**
+     * Befriends by playerId; an unknown id or self just re-sends the unchanged list.
      * @param {AbstractSession} session
+     * @param {number} playerId
      * @private
      */
-    _syncFriendList(session) {
-        this.bus.publishTo(session.id, new FriendListEvent([...this.players.byId(session.playerId).friends]));
+    _handleAddFriend(session, playerId) {
+        if (this.players.has(playerId) && playerId !== session.playerId) {
+            this.players.addFriend(session.playerId, playerId);
+            this._syncFriendLists(session, playerId);
+            return;
+        }
+        this.bus.publishTo(session.id, this._friendListEvent(session.playerId));
+    }
+
+    /**
+     * Resyncs both sides of a friendship change: the acting session, and every connected
+     * session of the (un)friended player, whose build rights just changed.
+     * @param {AbstractSession} session
+     * @param {number} friendId
+     * @private
+     */
+    _syncFriendLists(session, friendId) {
+        this.bus.publishTo(session.id, this._friendListEvent(session.playerId));
+        for (const sessionId of this.bus.sessionIdsOf(friendId)) {
+            this.bus.publishTo(sessionId, this._friendListEvent(friendId));
+        }
+    }
+
+    /**
+     * @param {number} playerId
+     * @returns {FriendListEvent}
+     * @private
+     */
+    _friendListEvent(playerId) {
+        return new FriendListEvent(
+            [...this.players.byId(playerId).friends],
+            this.players.grantedBy(playerId),
+        );
     }
 
     // ---- Viewport ----

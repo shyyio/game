@@ -1,7 +1,7 @@
 import {AbstractSession} from "@/common/AbstractSession.js";
 import {SignInMessage} from "@/common/PlayerMessages.js";
 import {WelcomeEvent} from "@/common/PlayerEvents.js";
-import {PROTOCOL_VERSION} from "@/common/constants.js";
+import {GAME_VERSION} from "@/common/constants.js";
 
 /**
  * The browser side of a server connection: messages encode onto a WebSocket, decoded events feed
@@ -32,7 +32,7 @@ export class RemoteSession extends AbstractSession {
         const ws = new WebSocket(this._url);
         ws.binaryType = "arraybuffer";
         ws.onopen = () => {
-            const bytes = this._wire.encode(new SignInMessage(PROTOCOL_VERSION, this._username));
+            const bytes = this._wire.encode(new SignInMessage(GAME_VERSION, this._username));
             this.txBytes += bytes.length;
             ws.send(bytes);
         };

@@ -4,6 +4,7 @@ import {Application, Graphics, Container, FillGradient, isMobile} from "pixi.js"
 import {ClientViewport} from "@/client/ClientViewport.js";
 import Keyboard from "@/client/Keyboard.js";
 import Mouse from "@/client/Mouse.js";
+import {MobileTouchInput} from "@/client/MobileTouchInput.js";
 import WindowFocus from "@/client/WindowFocus.js";
 import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
@@ -18,6 +19,7 @@ import {RemoteSession} from "@/client/RemoteSession.js";
 import {WireRegistry} from "@/common/wire.js";
 import {Client} from "@/client/Client.js";
 import {ClaimResult, ClaimResultEvent} from "@/common/ClaimEvents.js";
+import {UnclaimChunkMessage} from "@/common/ClaimMessages.js";
 import {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
 import {GAME_FONT, ViewMode, MIN_VIEWPORT_SCALE} from "@/client/constants.js";
 import {DEV} from "@/common/env.js";
@@ -32,6 +34,10 @@ const props = defineProps({
 const noticeText = ref("");
 const noticeOpen = ref(false);
 
+// The chunk awaiting the destructive unclaim confirmation, or null (dialog closed).
+const unclaimChunk = ref(null);
+let confirmUnclaim = null;
+
 // Mod-contributed settings-menu controls, each mirrored to its player setting by key.
 const settingsControls = ref([]);
 const settingValues = reactive({});
@@ -40,9 +46,9 @@ const settingValues = reactive({});
 const CLAIM_RESULT_NOTICES = {
   [ClaimResult.CLAIM_RESULT_OWNED]: "That chunk is already claimed",
   [ClaimResult.CLAIM_RESULT_LIMIT]: "Chunk limit reached",
-  [ClaimResult.CLAIM_RESULT_NOT_ADJACENT]: "New chunks must touch your territory",
+  [ClaimResult.CLAIM_RESULT_NOT_ADJACENT]: "New chunks must touch one of your claimed chunks",
   [ClaimResult.CLAIM_RESULT_NOT_OWNER]: "Not your chunk",
-  [ClaimResult.CLAIM_RESULT_WOULD_SPLIT]: "Unclaiming this would split your territory",
+  [ClaimResult.CLAIM_RESULT_WOULD_SPLIT]: "Unclaiming this would split your claimed chunks",
 };
 
 function notify(text) {
@@ -60,13 +66,14 @@ const mobile = isMobile.any;
 // just past the map-mode threshold (0.25) so a tool is usable without leaving map mode far.
 const TOOL_SELECT_ZOOM_MOBILE = 0.7;
 const TOOL_SELECT_ZOOM_DESKTOP = 0.4;
-const TOOL_SELECT_ZOOM_MS = 650;
 
 const gameWidth = () => window.innerWidth;
 const gameHeight = () => window.innerHeight + 64;
 
 function createShadowOverlay(width, height) {
   const container = new Container();
+  // Decorative only; an "auto" full-screen overlay would swallow viewport hits.
+  container.eventMode = "none";
 
   const leftGradient = new FillGradient({
     type: "linear",
@@ -130,6 +137,8 @@ onMounted(async () => {
     worldHeight: gameHeight(),
     events: app.renderer.events,
     threshold: 20,
+    // Drags ride globalpointermove: crossing the HUD or leaving the canvas keeps the pan alive.
+    allowPreserveDragOutside: true,
   });
 
   // The world's transform is the one thing that changes every pan and zoom frame. As a render
@@ -154,6 +163,14 @@ onMounted(async () => {
   window.addEventListener("resize", () => {
     handleResize();
   });
+  // Window resize fires before fullscreen dimensions are real; the visual-viewport resize
+  // re-runs the sizing afterward.
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", () => {
+      app.resize();
+      handleResize();
+    });
+  }
 
   viewport
       .drag()
@@ -165,6 +182,7 @@ onMounted(async () => {
 
   if (isMobile.any) {
     viewport.pinch();
+    new MobileTouchInput(app, viewport).install();
   }
 
   Mouse.init(app, viewport);
@@ -213,15 +231,17 @@ onMounted(async () => {
   const toolbar = client.toolbarLayer;
 
   const inputHandler = new InputHandler(toolbar);
-  // One entries source: client.miniMenuEntries switches to the chunk claim menu in map mode.
-  const openMenu = (tileX, tileY, screenX, screenY, onClose) => {
+  inputHandler.onMiniMenuEntryClick((tileX, tileY, screenX, screenY, onClose) => {
     const entries = client.miniMenuEntries(tileX, tileY);
     client.miniMenuLayer.open(entries, screenX, screenY, onClose);
-  };
-  inputHandler.onMiniMenuEntryClick(openMenu);
-  inputHandler.onMapMenuEntryClick(openMenu);
+  });
   client.onEvent((event) => {
     if (!(event instanceof ClaimResultEvent)) {
+      return;
+    }
+    // A non-empty unclaim asks for the destructive confirmation instead of a notice.
+    if (event.result === ClaimResult.CLAIM_RESULT_NOT_EMPTY) {
+      unclaimChunk.value = event.chunk;
       return;
     }
     const notice = CLAIM_RESULT_NOTICES[event.result];
@@ -229,8 +249,18 @@ onMounted(async () => {
       notify(notice);
     }
   });
+  confirmUnclaim = () => {
+    client.sendMessage(new UnclaimChunkMessage(unclaimChunk.value, true));
+    unclaimChunk.value = null;
+  };
   inputHandler.onInspect((tileX, tileY) => {
     client.handleInspect(tileX, tileY);
+  });
+  inputHandler.onMapHover((tileX, tileY) => {
+    client.claimSelection.handleHover(tileX, tileY);
+  });
+  inputHandler.onMapTap((tileX, tileY) => {
+    client.claimSelection.handleSelect(tileX, tileY);
   });
   inputHandler.init();
 
@@ -251,7 +281,8 @@ onMounted(async () => {
     inputHandler.refreshHover();
     client.rotateButtonsLayer.setVisible(tool != null && tool.orientable);
     if (mobile) {
-      client.setCenterLock(tool != null && tool.usesCenterLock);
+      // Map mode locks the "cursor" to the screen center too.
+      client.setCenterLock(mapMode || (tool != null && tool.usesCenterLock));
       return;
     }
     if (tool != null) {
@@ -268,20 +299,16 @@ onMounted(async () => {
     if (toolbar.activeTool == null || viewport.scale.x >= target) {
       return;
     }
-    const options = {
-      scale: target,
-      time: TOOL_SELECT_ZOOM_MS,
-      ease: "easeOutCubic",
-      removeOnInterrupt: true
-    };
     if (!mobile && Mouse.currentX != null) {
       const ratio = viewport.scale.x / target;
-      options.position = {
+      viewport.glideTo({
         x: Mouse.currentX - (Mouse.currentX - viewport.center.x) * ratio,
         y: Mouse.currentY - (Mouse.currentY - viewport.center.y) * ratio,
-      };
+        scale: target,
+      });
+      return;
     }
-    viewport.animate(options);
+    viewport.glideTo({scale: target});
   });
 
   const refreshTools = () => {
@@ -311,6 +338,20 @@ onMounted(async () => {
     inputHandler.setMapMode(zoomedOut);
     mapMode = zoomedOut;
     applyEffectiveTool();
+  });
+
+  // "c" toggles claim selection; "Escape"/"q" exit any input mode; "h" glides home.
+  Keyboard.on("c", () => {
+    client.claimSelection.toggle();
+  });
+  for (const key of ["Escape", "q"]) {
+    Keyboard.on(key, () => {
+      toolbar.setActiveTool(null);
+      client.claimSelection.set(false);
+    });
+  }
+  Keyboard.on("h", () => {
+    client.glideHome();
   });
 
   // The local sim ticks by key; the server drives its own tick loop in remote mode.
@@ -368,6 +409,18 @@ export default defineComponent({
     </v-card>
   </v-menu>
   <v-snackbar v-model="noticeOpen" timeout="3000">{{ noticeText }}</v-snackbar>
+  <v-dialog :model-value="unclaimChunk !== null" max-width="420" @update:model-value="unclaimChunk = null">
+    <v-card title="Unclaim chunk?">
+      <v-card-text>
+        This chunk still contains buildings. Unclaiming will permanently delete everything in it.
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn @click="unclaimChunk = null">Cancel</v-btn>
+        <v-btn color="error" @click="confirmUnclaim()">Delete and unclaim</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <style scoped>
@@ -378,8 +431,8 @@ export default defineComponent({
 
 .settings-button {
   position: fixed;
-  top: 12px;
-  right: 12px;
+  top: max(env(safe-area-inset-top, 0px), 12px);
+  right: max(env(safe-area-inset-right, 0px), 12px);
   z-index: 10;
 }
 </style>

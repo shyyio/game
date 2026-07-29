@@ -34,5 +34,22 @@ class AbstractChunkMessage extends AbstractMessage {
 export class ClaimChunkMessage extends AbstractChunkMessage {
 }
 
+/**
+ * Releases a claimed chunk; `clear` (0/1) confirms deleting every solid object still in it.
+ */
 export class UnclaimChunkMessage extends AbstractChunkMessage {
+
+    static wireFields = {
+        chunk: "int32",
+        clear: "int32",
+    };
+
+    /**
+     * @param {number} chunk
+     * @param {boolean} [clear]
+     */
+    constructor(chunk, clear = false) {
+        super(chunk);
+        this.clear = clear ? 1 : 0;
+    }
 }
