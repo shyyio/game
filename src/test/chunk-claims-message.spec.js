@@ -154,6 +154,22 @@ test("unclaiming a non-empty chunk needs the clear confirmation, which deletes t
     assert.equal(machineCount(game), 0, "the confirmation cleared the chunk");
 });
 
+test("a splitting unclaim rejects with WOULD_SPLIT before the non-empty confirmation", async () => {
+    const {game, alice} = await setup();
+    const middle = chunkId(69, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
+    game.dispatchMessage(new ClaimChunkMessage(middle), alice);
+    game.dispatchMessage(new ClaimChunkMessage(chunkId(133, 5)), alice);
+    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 69, 5, Direction.UP), alice);
+    alice.events.length = 0;
+
+    game.dispatchMessage(new UnclaimChunkMessage(middle), alice);
+    const rejected = alice.events.find(event => event instanceof ClaimResultEvent);
+    assert.equal(rejected.result, ClaimResult.CLAIM_RESULT_WOULD_SPLIT);
+    assert.equal(game.claims.ownerOf(middle), ALICE, "still claimed");
+    assert.equal(machineCount(game), 1, "nothing deleted");
+});
+
 test("unclaim frees the chunk for other players", async () => {
     const {game, alice, bob} = await setup();
     const chunk = chunkId(5, 5);
