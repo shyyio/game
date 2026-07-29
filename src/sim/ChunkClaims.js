@@ -84,13 +84,27 @@ export class ChunkClaims {
      * @returns {number} a ClaimResult
      */
     unclaim(playerId, chunk) {
+        const check = this.unclaimCheck(playerId, chunk);
+        if (check !== ClaimResult.CLAIM_RESULT_OK) {
+            return check;
+        }
+        this._ownerByChunk.delete(chunk);
+        return ClaimResult.CLAIM_RESULT_OK;
+    }
+
+    /**
+     * Whether an unclaim would succeed, without applying it.
+     * @param {number} playerId
+     * @param {number} chunk
+     * @returns {number} a ClaimResult
+     */
+    unclaimCheck(playerId, chunk) {
         if (this._ownerByChunk.get(chunk) !== playerId) {
             return ClaimResult.CLAIM_RESULT_NOT_OWNER;
         }
         if (!this._connectedWithout(this.chunksOf(playerId), chunk)) {
             return ClaimResult.CLAIM_RESULT_WOULD_SPLIT;
         }
-        this._ownerByChunk.delete(chunk);
         return ClaimResult.CLAIM_RESULT_OK;
     }
 

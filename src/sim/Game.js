@@ -283,9 +283,15 @@ export class Game {
      * @private
      */
     _handleUnclaim(session, chunk, clear) {
+        // A doomed unclaim (not owner, would split) rejects before the not-empty confirmation.
+        const check = this.claims.unclaimCheck(session.playerId, chunk);
+        if (check !== ClaimResult.CLAIM_RESULT_OK) {
+            this.bus.publishTo(session.id, new ClaimResultEvent(chunk, check));
+            return;
+        }
         const solidIds = this._solidObjectIdsIn(chunk);
         // An unclaim must empty the chunk; without the clear confirmation it is rejected.
-        if (this.claims.ownerOf(chunk) === session.playerId && solidIds.length > 0 && !clear) {
+        if (solidIds.length > 0 && !clear) {
             this.bus.publishTo(session.id, new ClaimResultEvent(chunk, ClaimResult.CLAIM_RESULT_NOT_EMPTY));
             return;
         }
