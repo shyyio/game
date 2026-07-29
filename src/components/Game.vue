@@ -41,6 +41,7 @@ const unclaimChunk = ref(null);
 let confirmUnclaim = null;
 
 // Mod-contributed settings-menu controls, each mirrored to its player setting by key.
+const settingsOpen = ref(false);
 const settingsControls = ref([]);
 const settingValues = reactive({});
 
@@ -403,15 +404,19 @@ export default defineComponent({
 <template>
   <div id="game">
   </div>
-  <v-menu :close-on-content-click="false" location="bottom end">
-    <template #activator="{ props: menuProps }">
-      <v-btn v-bind="menuProps" class="settings-button" size="small" variant="elevated">Settings</v-btn>
+  <v-dialog v-model="settingsOpen" max-width="480" content-class="settings-dialog" transition="dialog-bottom-transition">
+    <template #activator="{ props: dialogProps }">
+      <v-btn v-bind="dialogProps" class="settings-button" size="small" variant="elevated">Settings</v-btn>
     </template>
-    <v-card min-width="260">
+    <v-card>
+      <v-toolbar title="Settings">
+        <v-btn variant="text" @click="settingsOpen = false">Close</v-btn>
+      </v-toolbar>
       <v-card-text>
         <v-switch
             v-model="fullscreenEnabled"
             label="Fullscreen"
+            color="primary"
             density="compact"
             hide-details
         />
@@ -420,12 +425,13 @@ export default defineComponent({
             :key="control.key"
             v-model="settingValues[control.key]"
             :label="control.label"
+            color="primary"
             density="compact"
             hide-details
         />
       </v-card-text>
     </v-card>
-  </v-menu>
+  </v-dialog>
   <v-snackbar v-model="noticeOpen" timeout="3000">{{ noticeText }}</v-snackbar>
   <v-dialog :model-value="unclaimChunk !== null" max-width="420" @update:model-value="unclaimChunk = null">
     <v-card title="Unclaim chunk?">
@@ -452,5 +458,15 @@ export default defineComponent({
   top: max(env(safe-area-inset-top, 0px), 12px);
   right: max(env(safe-area-inset-right, 0px), 12px);
   z-index: 10;
+}
+</style>
+
+<!-- Unscoped: the dialog content is teleported outside this component. -->
+<style>
+.v-dialog > .settings-dialog {
+  margin: max(env(safe-area-inset-top, 0px), 24px)
+          max(env(safe-area-inset-right, 0px), 24px)
+          max(env(safe-area-inset-bottom, 0px), 24px)
+          max(env(safe-area-inset-left, 0px), 24px);
 }
 </style>
