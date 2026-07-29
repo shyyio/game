@@ -22,8 +22,7 @@ class HeldTouch {
 }
 
 /**
- * Mobile-only input glue: keeps the app fullscreen and routes HUD-origin touches into the
- * viewport's pinch tracker.
+ * Mobile-only input glue: routes HUD-origin touches into the viewport's pinch tracker.
  */
 export class MobileTouchInput {
 
@@ -45,14 +44,7 @@ export class MobileTouchInput {
      * @returns {void}
      */
     install() {
-        // Fullscreen demotes Android's edge-back gesture; needs a user gesture, so
-        // (re)request on any press.
-        window.addEventListener("pointerdown", () => {
-            if (document.fullscreenElement === null && document.documentElement.requestFullscreen) {
-                document.documentElement.requestFullscreen().catch(() => {});
-            }
-        }, {capture: true});
-        // The transition swallows the exit gesture's pointerup, stranding ghost touches;
+        // The fullscreen transition swallows the exit gesture's pointerup, stranding ghost touches;
         // drop all pointer state on the switch.
         document.addEventListener("fullscreenchange", () => {
             this._viewport.input.clear();
