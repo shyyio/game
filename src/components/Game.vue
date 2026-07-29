@@ -5,6 +5,8 @@ import {ClientViewport} from "@/client/ClientViewport.js";
 import Keyboard from "@/client/Keyboard.js";
 import Mouse from "@/client/Mouse.js";
 import {MobileTouchInput} from "@/client/MobileTouchInput.js";
+import DeviceSettings, {DEVICE_SETTING_FULLSCREEN} from "@/client/DeviceSettings.js";
+import Fullscreen from "@/client/Fullscreen.js";
 import WindowFocus from "@/client/WindowFocus.js";
 import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
@@ -41,6 +43,9 @@ let confirmUnclaim = null;
 // Mod-contributed settings-menu controls, each mirrored to its player setting by key.
 const settingsControls = ref([]);
 const settingValues = reactive({});
+
+// Device-local fullscreen preference.
+const fullscreenEnabled = ref(false);
 
 // Rejection notices per ClaimResult; OK stays silent (the border appearing is the feedback).
 const CLAIM_RESULT_NOTICES = {
@@ -184,6 +189,15 @@ onMounted(async () => {
     viewport.pinch();
     new MobileTouchInput(app, viewport).install();
   }
+
+  Fullscreen.install();
+  fullscreenEnabled.value = DeviceSettings.getBoolean(DEVICE_SETTING_FULLSCREEN, false);
+  Fullscreen.setEnabled(fullscreenEnabled.value);
+  watch(fullscreenEnabled, on => {
+    DeviceSettings.setBoolean(DEVICE_SETTING_FULLSCREEN, on);
+    // The switch tap is the user gesture the fullscreen request needs.
+    Fullscreen.setEnabled(on);
+  });
 
   Mouse.init(app, viewport);
   WindowFocus.init();
@@ -340,16 +354,14 @@ onMounted(async () => {
     applyEffectiveTool();
   });
 
-  // "c" toggles claim selection; "Escape"/"q" exit any input mode; "h" glides home.
+  // "c" toggles claim selection; "q" exits any input mode; "h" glides home.
   Keyboard.on("c", () => {
     client.claimSelection.toggle();
   });
-  for (const key of ["Escape", "q"]) {
-    Keyboard.on(key, () => {
-      toolbar.setActiveTool(null);
-      client.claimSelection.set(false);
-    });
-  }
+  Keyboard.on("q", () => {
+    toolbar.setActiveTool(null);
+    client.claimSelection.set(false);
+  });
   Keyboard.on("h", () => {
     client.glideHome();
   });
@@ -397,6 +409,12 @@ export default defineComponent({
     </template>
     <v-card min-width="260">
       <v-card-text>
+        <v-switch
+            v-model="fullscreenEnabled"
+            label="Fullscreen"
+            density="compact"
+            hide-details
+        />
         <v-switch
             v-for="control in settingsControls"
             :key="control.key"
