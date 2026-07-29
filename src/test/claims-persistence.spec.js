@@ -26,7 +26,7 @@ test("players, friends, and claims survive a save/load", async () => {
     game.connect(aliceSession);
     game.dispatchMessage(new ClaimChunkMessage(chunkId(0, 0)), aliceSession);
     game.dispatchMessage(new ClaimChunkMessage(chunkId(64, 0)), aliceSession);
-    game.dispatchMessage(new AddFriendMessage("bob"), aliceSession);
+    game.dispatchMessage(new AddFriendMessage(bob.playerId), aliceSession);
     await game.save();
 
     const restored = await makeGame(store);

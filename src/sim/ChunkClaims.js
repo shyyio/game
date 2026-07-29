@@ -1,11 +1,11 @@
-import {NEIGHBOR_DELTAS, PLAYER_ID_NONE} from "@/common/constants.js";
+import {PLAYER_ID_NONE} from "@/common/constants.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
-import {chunkOrdinal, chunkPosition, REGION_HALF} from "@/common/util.js";
+import {chunkNeighbors} from "@/common/util.js";
 
 export const CHUNK_CLAIM_RECORD = "ChunkClaim";
 
 /**
- * Chunk ownership: which player owns each claimed chunk. A player's territory stays contiguous:
+ * Chunk ownership: which player owns each claimed chunk. A player's claimed chunks stay contiguous:
  * every claim after the first must touch an own chunk edge-on, and an unclaim that would split the
  * remainder is rejected.
  */
@@ -54,6 +54,7 @@ export class ChunkClaims {
     }
 
     /**
+     * Mirrored client-side by ChunkClaimsView.claimCheck; keep the rule order in sync.
      * @param {number} playerId
      * @param {number} chunk
      * @param {number} maxChunks
@@ -140,33 +141,13 @@ export class ChunkClaims {
     }
 
     /**
-     * The chunk's edge neighbors, clipped to the region.
-     * @private
-     * @param {number} chunk
-     * @returns {number[]}
-     */
-    _neighbors(chunk) {
-        const position = chunkPosition(chunk);
-        const neighbors = [];
-        for (const delta of NEIGHBOR_DELTAS) {
-            const x = position.x + delta.dx;
-            const y = position.y + delta.dy;
-            if (x < -REGION_HALF || x >= REGION_HALF || y < -REGION_HALF || y >= REGION_HALF) {
-                continue;
-            }
-            neighbors.push(chunkOrdinal(x, y));
-        }
-        return neighbors;
-    }
-
-    /**
      * @private
      * @param {number} chunk
      * @param {Set<number>} owned
      * @returns {boolean}
      */
     _touchesOwn(chunk, owned) {
-        for (const neighbor of this._neighbors(chunk)) {
+        for (const neighbor of chunkNeighbors(chunk)) {
             if (owned.has(neighbor)) {
                 return true;
             }
@@ -192,7 +173,7 @@ export class ChunkClaims {
         const frontier = [seed];
         while (frontier.length > 0) {
             const chunk = frontier.pop();
-            for (const neighbor of this._neighbors(chunk)) {
+            for (const neighbor of chunkNeighbors(chunk)) {
                 if (remaining.has(neighbor) && !visited.has(neighbor)) {
                     visited.add(neighbor);
                     frontier.push(neighbor);

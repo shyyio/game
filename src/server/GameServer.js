@@ -1,9 +1,8 @@
 import uWS from "uWebSockets.js";
-import packageInfo from "../../package.json" with {type: "json"};
 import {SignInMessage} from "@/common/PlayerMessages.js";
 import {PlayerDirectoryEvent} from "@/common/PlayerEvents.js";
 import {WebSocketSession} from "@/server/WebSocketSession.js";
-import {PROTOCOL_VERSION} from "@/common/constants.js";
+import {GAME_VERSION} from "@/common/constants.js";
 import {formatBytes} from "@/common/util.js";
 
 // Application close codes (4000-4999).
@@ -106,8 +105,7 @@ export class GameServer {
             "|                 Game Server                  |",
             "+==============================================+",
             "",
-            `  version    : ${packageInfo.version}`,
-            `  protocol   : ${PROTOCOL_VERSION}`,
+            `  version    : ${GAME_VERSION}`,
             `  mods       : ${this._game.modRegistry.modNames.join(", ")}`,
             `  websocket  : ws://${host}`,
             `  players    : ${this._sessionsByPlayer.size} online, ${registered} registered`,
@@ -170,7 +168,13 @@ export class GameServer {
         if (signIn) {
             return;
         }
-        this._api.sendMessage(message, session);
+        // A handler throw must cost only the offending session, never the process.
+        try {
+            this._api.sendMessage(message, session);
+        } catch (error) {
+            console.error(`Message dispatch failed for player ${session.playerId}:`, error);
+            ws.end(CLOSE_CODE_BAD_FRAME);
+        }
     }
 
     /**

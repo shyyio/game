@@ -22,6 +22,8 @@ export class StatusMessageLayer extends Container {
 
     constructor() {
         super();
+        // Display-only: never a hit target (the stage is interactive for mobile pinch).
+        this.eventMode = "none";
         this.zIndex = 10000;
         this.visible = false;
         this._connecting = false;

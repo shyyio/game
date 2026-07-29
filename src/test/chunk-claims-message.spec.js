@@ -6,7 +6,7 @@ import {Direction, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
-import {AddFriendMessage} from "@/common/PlayerMessages.js";
+import {AddFriendMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
 import {ChunkClaimSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult} from "@/common/ClaimEvents.js";
 import {WelcomeEvent, PlayerDirectoryEvent, FriendListEvent} from "@/common/PlayerEvents.js";
 import {DemoMachineType} from "@/mods/Demo/declaration.js";
@@ -72,7 +72,17 @@ test("a rejected claim answers only the requester", async () => {
     assert.ok(!bob.events.some(event => event instanceof ChunkClaimUpdateEvent));
 });
 
-test("building in a foreign chunk is rejected until befriended", async () => {
+test("building in an unclaimed chunk is rejected until claimed", async () => {
+    const {game, alice} = await setup();
+    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP), alice);
+    assert.equal(machineCount(game), 0, "unclaimed build rejected");
+
+    game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
+    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP), alice);
+    assert.equal(machineCount(game), 1, "claiming unlocks the chunk");
+});
+
+test("building in a foreign chunk is rejected until the owner grants it", async () => {
     const {game, alice, bob} = await setup();
     game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
 
@@ -82,9 +92,30 @@ test("building in a foreign chunk is rejected until befriended", async () => {
     game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP), alice);
     assert.equal(machineCount(game), 1, "owner builds freely");
 
-    game.dispatchMessage(new AddFriendMessage("player2"), alice);
+    game.dispatchMessage(new AddFriendMessage(ALICE), bob);
     game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 10, 5, Direction.UP), bob);
-    assert.equal(machineCount(game), 2, "friend builds after the grant");
+    assert.equal(machineCount(game), 1, "bob's own grant to alice gives him nothing");
+
+    game.dispatchMessage(new AddFriendMessage(BOB), alice);
+    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 10, 5, Direction.UP), bob);
+    assert.equal(machineCount(game), 2, "alice's grant lets bob build");
+});
+
+test("a friendship change resyncs both players' lists", async () => {
+    const {game, alice, bob} = await setup();
+    game.dispatchMessage(new AddFriendMessage(BOB), alice);
+
+    const aliceList = alice.events.filter(event => event instanceof FriendListEvent).at(-1);
+    assert.deepEqual(aliceList.friendIds, [BOB]);
+    assert.deepEqual(aliceList.grantedByIds, []);
+    const bobList = bob.events.filter(event => event instanceof FriendListEvent).at(-1);
+    assert.deepEqual(bobList.friendIds, []);
+    assert.deepEqual(bobList.grantedByIds, [ALICE], "bob learns alice granted him build rights");
+
+    bob.events.length = 0;
+    game.dispatchMessage(new RemoveFriendMessage(BOB), alice);
+    const revoked = bob.events.filter(event => event instanceof FriendListEvent).at(-1);
+    assert.deepEqual(revoked.grantedByIds, [], "bob learns the grant was revoked");
 });
 
 test("deleting in a foreign chunk is rejected and leaves occupancy intact", async () => {
@@ -105,6 +136,24 @@ test("deleting in a foreign chunk is rejected and leaves occupancy intact", asyn
     assert.equal(engine.cellsFree(footprint), true);
 });
 
+test("unclaiming a non-empty chunk needs the clear confirmation, which deletes the objects", async () => {
+    const {game, alice} = await setup();
+    const chunk = chunkId(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP), alice);
+    alice.events.length = 0;
+
+    game.dispatchMessage(new UnclaimChunkMessage(chunk), alice);
+    const rejected = alice.events.find(event => event instanceof ClaimResultEvent);
+    assert.equal(rejected.result, ClaimResult.CLAIM_RESULT_NOT_EMPTY);
+    assert.equal(game.claims.ownerOf(chunk), ALICE, "still claimed");
+    assert.equal(machineCount(game), 1, "nothing deleted on the rejection");
+
+    game.dispatchMessage(new UnclaimChunkMessage(chunk, true), alice);
+    assert.equal(game.claims.ownerOf(chunk), PLAYER_ID_NONE);
+    assert.equal(machineCount(game), 0, "the confirmation cleared the chunk");
+});
+
 test("unclaim frees the chunk for other players", async () => {
     const {game, alice, bob} = await setup();
     const chunk = chunkId(5, 5);
@@ -113,6 +162,7 @@ test("unclaim frees the chunk for other players", async () => {
 
     const update = bob.events.filter(event => event instanceof ChunkClaimUpdateEvent).at(-1);
     assert.equal(update.playerId, PLAYER_ID_NONE);
+    game.dispatchMessage(new ClaimChunkMessage(chunk), bob);
     game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1);
 });

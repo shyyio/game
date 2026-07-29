@@ -12,6 +12,7 @@ export const ClaimResult = {
     CLAIM_RESULT_NOT_ADJACENT: 4,
     CLAIM_RESULT_NOT_OWNER: 5,
     CLAIM_RESULT_WOULD_SPLIT: 6,
+    CLAIM_RESULT_NOT_EMPTY: 7,
 };
 
 /**

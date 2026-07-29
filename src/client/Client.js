@@ -19,7 +19,6 @@ import {PLAYER_SETTINGS_SCHEMA, GAME_SETTINGS_SCHEMA, PlayerSettingsWriter, Game
 import {WORKER_ASSIGNMENTS_SCHEMA, WorkerAssignmentsWriter, WorkerAssignmentsView} from "@/client/WorkerAssignmentsState.js";
 import {OBJECTS_SCHEMA, ObjectsWriter} from "@/client/ObjectsState.js";
 import {INSPECT_SCHEMA, InspectWriter, InspectView} from "@/client/InspectState.js";
-import {MiniMenuEntry} from "@/common/ObjectType.js";
 import {
     TILE_SIZE,
     snapToChunk,
@@ -29,10 +28,9 @@ import {
     OVERWORLD_SCALE_THRESHOLD,
     OVERWORLD_CHUNK_TTL_MS,
     OVERWORLD_REFRESH_THROTTLE_MS,
-    CHUNK_UNSUBSCRIBE_DELAY_MS,
 } from "@/client/constants.js";
-import {CHUNK_SIZE, REGION_SIZE, Direction, PLAYER_ID_NONE} from "@/common/constants.js";
-import {chunkId, formatBytes, REGION_HALF} from "@/common/util.js";
+import {CHUNK_SIZE, REGION_SIZE, Direction} from "@/common/constants.js";
+import {chunkCenter, chunkId, formatBytes, REGION_HALF} from "@/common/util.js";
 import {OVERWORLD_SCHEMA, OverworldRect, OverworldWriter, OverworldView} from "@/client/OverworldState.js";
 import {OverworldDrawLayer} from "@/client/OverworldDrawLayer.js";
 import {GridDrawLayer} from "@/client/GridDrawLayer.js";
@@ -50,6 +48,14 @@ import {WorkerDrawLayer} from "@/client/WorkerDrawLayer.js";
 import {WorkerDebugLayer} from "@/client/WorkerDebugLayer.js";
 import {WorkerBadgeLayer} from "@/client/WorkerBadgeLayer.js";
 import {StatusMessageLayer} from "@/client/StatusMessageLayer.js";
+import {FirstClaimLayer} from "@/client/FirstClaimLayer.js";
+import {ChunkInfoPanelLayer} from "@/client/ChunkInfoPanelLayer.js";
+import {ChunkSelectionLayer} from "@/client/ChunkSelectionLayer.js";
+import {ClaimFrontierDrawLayer} from "@/client/ClaimFrontierDrawLayer.js";
+import {ClaimSelectionMode} from "@/client/ClaimSelectionMode.js";
+import {CenterMarkerLayer} from "@/client/CenterMarkerLayer.js";
+import {MapButtonsLayer} from "@/client/MapButtonsLayer.js";
+import {drawClaimIcon, drawHomeIcon} from "@/client/icons.js";
 import {advanceAnimationFrame} from "@/client/animation.js";
 import {DEV, BROWSER} from "@/common/env.js";
 import {ListenerList} from "@/common/ListenerList.js";
@@ -150,10 +156,31 @@ export class Client {
         // app.stage (sibling of the viewport), so it never pans or zooms with the world.
         this.statusLayer = new StatusMessageLayer();
         this.statusLayer.setConnecting();
+        // Onboarding banner while the player holds no chunks.
+        this.firstClaimLayer = new FirstClaimLayer(app);
+        // Center-lock aim point for claim selection (mobile).
+        this.centerMarkerLayer = new CenterMarkerLayer(app, viewport);
+        // Contextual map-mode buttons (bottom-right); each toggles an input mode.
+        this.mapButtonsLayer = new MapButtonsLayer(app);
+        this.mapButtonsLayer.addButton("claimSelection", drawClaimIcon, () => this.claimSelection.toggle());
+        // One-shot action, never a mode: setActive never fires.
+        this.mapButtonsLayer.addButton("home", drawHomeIcon, () => this.glideHome());
 
         // Ownership borders for claimed chunks (map/overworld mode).
         this.chunkClaimsLayer = new ChunkClaimsDrawLayer(this.cache);
         this.drawLayerRegistry.add(this.chunkClaimsLayer);
+        // Selected-chunk and hovered-chunk squares (map/overworld mode).
+        this.chunkSelectionLayer = new ChunkSelectionLayer(this.cache.view("chunkClaims"));
+        this.drawLayerRegistry.add(this.chunkSelectionLayer);
+        // Dashed claim-frontier squares while claim selection mode is on.
+        this.claimFrontierLayer = new ClaimFrontierDrawLayer(this.cache);
+        this.drawLayerRegistry.add(this.claimFrontierLayer);
+        // Chunk owner/claim panel for the hovered chunk (map mode).
+        this.chunkInfoPanelLayer = new ChunkInfoPanelLayer(app, this.cache.view("chunkClaims"));
+        this.chunkInfoPanelLayer.onClaim(chunk => this.sendMessage(new ClaimChunkMessage(chunk)));
+        this.chunkInfoPanelLayer.onUnclaim(chunk => this.sendMessage(new UnclaimChunkMessage(chunk)));
+        this.chunkInfoPanelLayer.onAddFriend(playerId => this.sendMessage(new AddFriendMessage(playerId)));
+        this.chunkInfoPanelLayer.onUnfriend(playerId => this.sendMessage(new RemoveFriendMessage(playerId)));
 
         // The derived client surface (draw layer + ghost + tool) of every behavior-driven type;
         // bespokeClient types (belts) bring their own through their client mod.
@@ -186,8 +213,7 @@ export class Client {
             layer.bindCache(this.objects);
         }
 
-        // The chunks currently requested from the server (subscribed): the visible chunks
-        // plus any that recently panned out and are awaiting a throttled unsubscribe.
+        // Chunks currently subscribed on the server: the visible chunks.
         this._requestedChunks = new Set();
         // Per-delta events awaiting the budgeted per-frame drain: a chunk-sync bundle explodes to
         // hundreds of cache writes + sprite builds. Later events queue only when their own chunk
@@ -197,7 +223,6 @@ export class Client {
         // chunk -> its queued event count; a chunk with an entry gates its later events.
         this._queuedCountByChunk = new Map();
         this._lastVisibleKey = null;
-        this._unsubscribeTimer = null;
         this._viewMode = ViewMode.WORLD;
         this._onViewModeChange = null;
         this._lastOverworldRefreshMs = 0;
@@ -205,6 +230,58 @@ export class Client {
         this._debugMode = false;
         // Host event listeners, the last stop of the event fan-out.
         this._eventListeners = new ListenerList();
+        // Claim selection input mode controller.
+        this.claimSelection = new ClaimSelectionMode(this);
+        this.onEvent(event => this.claimSelection.onEvent(event));
+    }
+
+    /**
+     * @returns {ViewMode}
+     */
+    get viewMode() {
+        return this._viewMode;
+    }
+
+    /**
+     * Mirrors the sim's placement gate for the chunk under a tile; tools route their
+     * ghost/placement checks through here.
+     * @param {number} tileX
+     * @param {number} tileY
+     * @returns {boolean}
+     */
+    canBuildAt(tileX, tileY) {
+        return this.cache.view("chunkClaims").canBuildIn(chunkId(tileX, tileY));
+    }
+
+    /**
+     * The world-pixel centroid of the player's claimed chunks, or null with none.
+     * @returns {{x: number, y: number}|null}
+     */
+    ownClaimsCenter() {
+        const chunks = this.cache.view("chunkClaims").ownChunks();
+        if (chunks.length === 0) {
+            return null;
+        }
+        let sumX = 0;
+        let sumY = 0;
+        for (const chunk of chunks) {
+            const center = chunkCenter(chunk);
+            sumX += center.x * TILE_SIZE;
+            sumY += center.y * TILE_SIZE;
+        }
+        return {x: sumX / chunks.length, y: sumY / chunks.length};
+    }
+
+    /**
+     * Glides the viewport to the claims centroid at the current zoom; a no-op with no claims.
+     * @returns {void}
+     */
+    glideHome() {
+        const center = this.ownClaimsCenter();
+        if (center === null) {
+            return;
+        }
+        this.viewport.glideTo({x: center.x, y: center.y});
     }
 
     /**
@@ -272,10 +349,14 @@ export class Client {
         this.inspectPanelLayer.itemTextures = this.modRegistry.itemTextures;
         this.inspectPanelLayer.viewport = this.viewport;
         this.inspectPanelLayer.onClose(objectId => this.unInspectObject(objectId));
+        this.app.stage.addChild(this.centerMarkerLayer);
+        this.app.stage.addChild(this.mapButtonsLayer);
+        this.app.stage.addChild(this.chunkInfoPanelLayer);
         this.app.stage.addChild(this.miniMenuLayer);
         this.app.stage.addChild(this.rotateButtonsLayer);
         this.app.stage.addChild(this.toolbarLayer);
         this.app.stage.addChild(this.statusLayer);
+        this.app.stage.addChild(this.firstClaimLayer);
         // Panels sit above every other HUD layer.
         this.app.stage.addChild(this.inspectPanelLayer);
 
@@ -354,12 +435,15 @@ export class Client {
         const previous = this._viewMode;
         this._viewMode = mode;
         this.drawLayerRegistry.setViewMode(mode);
+        this.firstClaimLayer.setViewMode(mode);
+        this.mapButtonsLayer.setViewMode(mode);
         for (const mod of this.modRegistry.clientMods) {
             mod.setViewMode(mode, this);
         }
         if (this._onViewModeChange != null) {
             this._onViewModeChange(mode);
         }
+        this.claimSelection.onViewMode(previous);
         if (mode === ViewMode.OVERWORLD) {
             this._enterOverworld();
         } else if (previous === ViewMode.OVERWORLD) {
@@ -373,10 +457,6 @@ export class Client {
      * @private
      */
     _enterOverworld() {
-        if (this._unsubscribeTimer != null) {
-            clearTimeout(this._unsubscribeTimer);
-            this._unsubscribeTimer = null;
-        }
         this._requestedChunks.clear();
         this._sendViewport(false);
         this._lastVisibleKey = null;
@@ -433,12 +513,14 @@ export class Client {
 
     /**
      * @private
+     * @param {number} [marginChunks] - extra chunk rings beyond the viewport
      */
-    _visibleChunks() {
-        const x1 = this.viewport.left / TILE_SIZE;
-        const y1 = this.viewport.top / TILE_SIZE;
-        const x2 = this.viewport.right / TILE_SIZE;
-        const y2 = this.viewport.bottom / TILE_SIZE;
+    _visibleChunks(marginChunks = 0) {
+        const margin = marginChunks * CHUNK_SIZE;
+        const x1 = this.viewport.left / TILE_SIZE - margin;
+        const y1 = this.viewport.top / TILE_SIZE - margin;
+        const x2 = this.viewport.right / TILE_SIZE + margin;
+        const y2 = this.viewport.bottom / TILE_SIZE + margin;
 
         const chunks = [];
         for (let x = snapToChunk(x1) - CHUNK_SIZE; x <= snapToChunk(x2); x += CHUNK_SIZE) {
@@ -465,19 +547,27 @@ export class Client {
         }
         this._lastVisibleKey = visibleKey;
 
-        // Subscribe to any newly visible chunks at once; chunks that left the viewport
-        // stay requested until a throttled pass drops them.
+        // Unsubscribe only past a one-chunk hysteresis ring, so a pan grazing a boundary
+        // never re-syncs the chunk.
+        let changed = false;
+        const retained = new Set(this._visibleChunks(1));
+        for (const chunk of [...this._requestedChunks]) {
+            if (!retained.has(chunk)) {
+                this._requestedChunks.delete(chunk);
+                changed = true;
+            }
+        }
         let added = false;
         for (const chunk of visible) {
             if (!this._requestedChunks.has(chunk)) {
                 this._requestedChunks.add(chunk);
                 added = true;
+                changed = true;
             }
         }
-        if (added) {
-            this._sendViewport(true);
+        if (changed) {
+            this._sendViewport(added);
         }
-        this._scheduleUnsubscribe();
     }
 
     /**
@@ -496,39 +586,6 @@ export class Client {
     }
 
     /**
-     * Schedules a throttled pass that unsubscribes chunks now outside the viewport, so a
-     * quick pan back doesn't re-sync them. Runs at most once per delay while panning.
-     * @private
-     */
-    _scheduleUnsubscribe() {
-        if (this._unsubscribeTimer != null) {
-            return;
-        }
-        this._unsubscribeTimer = setTimeout(() => {
-            this._unsubscribeTimer = null;
-            this._pruneHiddenChunks();
-        }, CHUNK_UNSUBSCRIBE_DELAY_MS);
-    }
-
-    /**
-     * Drops requested chunks that are no longer visible, resyncing if any left.
-     * @private
-     */
-    _pruneHiddenChunks() {
-        const visible = new Set(this._visibleChunks());
-        let removed = false;
-        for (const chunk of [...this._requestedChunks]) {
-            if (!visible.has(chunk)) {
-                this._requestedChunks.delete(chunk);
-                removed = true;
-            }
-        }
-        if (removed) {
-            this._sendViewport(false);
-        }
-    }
-
-    /**
      * @returns {boolean} whether center-lock (mobile mode) is active
      */
     get centerLock() {
@@ -544,6 +601,7 @@ export class Client {
         // Draw layers before the input layer, so a hover Mouse emits renders with center-lock on.
         this.drawLayerRegistry.setCenterLock(enabled);
         Mouse.setCenterLock(enabled);
+        this.claimSelection.updateIndicators();
     }
 
     /**
@@ -559,21 +617,13 @@ export class Client {
         if (!this._centerLock) {
             return;
         }
-        // Absolute next-tile center so rapid taps don't drift; snap emits "moved"
-        // each frame, so the chunk subscription refreshes via that listener.
+        // Absolute next-tile center so rapid taps don't drift.
         const targetTileX = tileX + Direction.dx(direction) * tiles;
         const targetTileY = tileY + Direction.dy(direction) * tiles;
-        this.viewport.snap(
-            targetTileX * TILE_SIZE + TILE_SIZE / 2,
-            targetTileY * TILE_SIZE + TILE_SIZE / 2,
-            {
-                time: 120,
-                ease: "easeOutBack", // single overshoot-and-settle
-                forceStart: true,
-                interrupt: true,
-                removeOnComplete: true,
-            },
-        );
+        this.viewport.glideTo({
+            x: targetTileX * TILE_SIZE + TILE_SIZE / 2,
+            y: targetTileY * TILE_SIZE + TILE_SIZE / 2,
+        });
     }
 
     /**
@@ -756,16 +806,13 @@ export class Client {
     }
 
     /**
-     * Aggregates mini-menu entries for the tile at (tileX, tileY): the chunk claim menu when zoomed
-     * out to map/overworld mode, every client mod's object entries otherwise.
+     * Aggregates mini-menu entries for the tile: each client mod's object entries plus the
+     * derived menu verbs. World mode only.
      * @param {number} tileX
      * @param {number} tileY
      * @returns {MiniMenuEntry[]}
      */
     miniMenuEntries(tileX, tileY) {
-        if (this._viewMode !== ViewMode.WORLD) {
-            return this._mapMenuEntries(tileX, tileY);
-        }
         const derived = this.bundles.flatMap(bundle => {
             const record = this.objects.objectAt(tileX, tileY, bundle.type);
             if (record === null) {
@@ -776,35 +823,6 @@ export class Client {
         const bespoke = this.modRegistry.clientMods
             .flatMap(mod => mod.miniMenuEntries(tileX, tileY, this.session, this));
         return derived.concat(bespoke).sort((a, b) => b.rank - a.rank);
-    }
-
-    /**
-     * The map-mode context menu for the chunk under (tileX, tileY): claim, unclaim, or friend the
-     * owner — by tap alone, no text entry.
-     * @private
-     * @param {number} tileX
-     * @param {number} tileY
-     * @returns {MiniMenuEntry[]}
-     */
-    _mapMenuEntries(tileX, tileY) {
-        const chunk = chunkId(tileX, tileY);
-        const claims = this.cache.view("chunkClaims");
-        const owner = claims.ownerOf(chunk);
-        if (owner === PLAYER_ID_NONE) {
-            const label = `Claim chunk (${claims.ownCount()}/${claims.maxChunks})`;
-            return [new MiniMenuEntry(label, 10, () => this.sendMessage(new ClaimChunkMessage(chunk)))];
-        }
-        if (owner === claims.ownPlayerId) {
-            return [new MiniMenuEntry("Unclaim chunk", 10, () => this.sendMessage(new UnclaimChunkMessage(chunk)))];
-        }
-        const name = claims.usernameOf(owner);
-        const entries = [new MiniMenuEntry(`Owned by ${name}`, 20, () => {})];
-        if (claims.isFriend(owner)) {
-            entries.push(new MiniMenuEntry(`Unfriend ${name}`, 10, () => this.sendMessage(new RemoveFriendMessage(owner))));
-        } else {
-            entries.push(new MiniMenuEntry(`Add friend ${name}`, 10, () => this.sendMessage(new AddFriendMessage(name))));
-        }
-        return entries;
     }
 
     /**

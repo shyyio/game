@@ -1,4 +1,5 @@
 import {Color} from "pixi.js";
+import {getOrCreate} from "@/common/util.js";
 
 // Central color palette for all client-side (pixi) rendering. Mods keep their own
 // domain palettes; this holds shared HUD/chrome colors and engine render colors.
@@ -48,19 +49,29 @@ export const TARGET_TILE_BORDER_WIDTH = 3;
 export const MAP_TILE_COLOR = 0x888888;
 
 // ---- Chunk-claim borders (map/overworld mode) ----
-export const OWN_CLAIM_COLOR = 0x2f80ed; // the player's own territory (blue)
-export const OWN_CLAIM_FILL_ALPHA = 0.10;
+export const CLAIM_FILL_ALPHA = 0.2;
 export const CLAIM_BORDER_ALPHA = 0.9;
 
+// ---- Map-mode chunk selection (the chunk panel's target + the cursor square) ----
+export const CHUNK_SELECT_COLOR = 0x5bb5ff;
+export const CHUNK_SELECT_ALPHA = 0.9;
+export const CHUNK_SELECT_FILL_ALPHA = 0.45;
+export const CHUNK_HOVER_COLOR = 0x444444; // dark: must read on the white map background
+export const CHUNK_HOVER_ALPHA = 0.5;
+
+const CLAIM_COLORS = new Map();
+
 /**
- * A stable, distinct border color per foreign player: golden-angle hue steps keep neighboring ids
- * far apart on the wheel.
+ * A stable, distinct claim color per player, identical on every client: golden-angle hue steps
+ * keep neighboring ids far apart on the wheel.
  * @param {number} playerId
  * @returns {number}
  */
 export function claimColor(playerId) {
-    const hue = (playerId * 137.508) % 360;
-    return new Color({h: hue, s: 70, l: 45}).toNumber();
+    return getOrCreate(CLAIM_COLORS, playerId, () => {
+        const hue = (playerId * 137.508) % 360;
+        return new Color({h: hue, s: 70, l: 45}).toNumber();
+    });
 }
 
 // Saturated, distinct hues chosen to stay legible over belts on the white

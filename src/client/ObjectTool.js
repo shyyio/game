@@ -279,9 +279,10 @@ export class ObjectTool extends AbstractTool {
             }
         }
 
-        // A mod veto (the sim would reject the spawn) blocks the whole placement.
-        const vetoed = this._client.modRegistry.clientMods
-            .some(mod => !mod.canPlace(this._type, tileX, tileY, direction, this._client));
+        // An unbuildable chunk or a mod veto blocks the whole placement.
+        const vetoed = !this._client.canBuildAt(tileX, tileY)
+            || this._client.modRegistry.clientMods
+                .some(mod => !mod.canPlace(this._type, tileX, tileY, direction, this._client));
         if (vetoed) {
             blockedCells.push(...overwriteCells, ...clearCells);
             return {blockedCells, overwriteCells: [], clearCells: [], overwriteIds: []};

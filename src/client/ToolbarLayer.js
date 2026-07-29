@@ -17,7 +17,7 @@ const LABEL_SIZE = 15;
 const TOOL_SHORTCUT_COUNT = 9;
 // Reserved height for the label under each slot (up to 2 wrapped lines), so cells align regardless of text.
 const LABEL_HEIGHT = 34;
-const CELL_GAP = 20;
+const CELL_GAP = 12;
 const ROW_GAP = 12;
 const MARGIN_BOTTOM = 6;
 // Tools shown on the visible top row; the rest overflow into the drawer rows below.
@@ -42,8 +42,6 @@ const SLIDE_DURATION_MS = 230;
 // this much (plus a fixed cushion) so the overshoot never exposes its bottom edge.
 const OPEN_OVERSHOOT = 0.2;
 const DRAWER_BOTTOM_PAD = 12;
-// Pointer travel (px) past which a press on the panel is a drawer drag, not a tool tap.
-const DRAG_THRESHOLD = 6;
 
 const CELL_HEIGHT = SLOT_SIZE + LABEL_GAP + LABEL_HEIGHT;
 
@@ -52,7 +50,7 @@ const CELL_HEIGHT = SLOT_SIZE + LABEL_GAP + LABEL_HEIGHT;
  * not a viewport child, so it never pans or zooms. The whole bar is one panel arranged as a grid:
  * a decorative strip on the left, then the top row (a "no tool" cursor cell plus the first
  * {@link MAX_BAR_TOOLS} tools) resting at the bottom edge while the overflow rows sit off-screen
- * below it. Tapping the strip (or dragging the panel) slides it up to reveal those rows. Each tool
+ * below it. Tapping the strip slides it up to reveal those rows. Each tool
  * is a slot holding its icon sprite with its label underneath; tapping one toggles it active.
  */
 export class ToolbarLayer extends Container {
@@ -78,11 +76,6 @@ export class ToolbarLayer extends Container {
         // Decorative left strip; tapping it toggles the drawer. Rebuilt in _drawPanel.
         this._drawerStrip = null;
         this._drawerOpen = false;
-        // Vertical-drag state for opening/closing the drawer by dragging the panel.
-        this._dragging = false;
-        this._dragMoved = false;
-        this._dragStartY = 0;
-        this._dragStartOffset = 0;
         // Window pointerdown listener that closes the drawer on a click off it; installed while
         // open, mirroring MiniMenuLayer.
         this._clickOffListener = null;
@@ -104,13 +97,7 @@ export class ToolbarLayer extends Container {
         // Magenta layout-debug outlines (setDebug), a child of _panel so it slides with it.
         this._debugOutlines = null;
 
-        // Drag the panel vertically to open/close the drawer (the only way on mobile; alongside the
-        // button on desktop). Handlers ride the bubbled events from the cells and background.
         this._panel.eventMode = "static";
-        this._panel.on("pointerdown", (e) => this._onDragStart(e));
-        this._panel.on("globalpointermove", (e) => this._onDragMove(e));
-        this._panel.on("pointerup", () => this._onDragEnd());
-        this._panel.on("pointerupoutside", () => this._onDragEnd());
 
         this._layout();
         this._app.ticker.add(() => this._layout());
@@ -356,11 +343,11 @@ export class ToolbarLayer extends Container {
                 slot._pressPointerId = e.pointerId;
             }
         });
-        // Act on release only when this slot held the press, and the gesture didn't become a drawer drag.
+        // Act on release only when this slot held the press.
         slot.on("pointerup", (e) => {
             const pressed = slot._pressPointerId === e.pointerId;
             slot._pressPointerId = null;
-            if (!pressed || this._dragMoved) {
+            if (!pressed) {
                 return;
             }
             Haptics.tap();
@@ -425,8 +412,8 @@ export class ToolbarLayer extends Container {
     }
 
     /**
-     * Builds the left drawer strip: a title-bar-style pattern rectangle that toggles the drawer on
-     * tap (unless the press became a panel drag). Mirrors the slot's press/drag arming.
+     * Builds the left drawer strip: a title-bar-style pattern rectangle that toggles the drawer
+     * on tap.
      * @private
      * @param {number} height - the strip's height (the grid rows it spans)
      * @returns {TilingSprite}
@@ -447,7 +434,7 @@ export class ToolbarLayer extends Container {
         strip.on("pointerup", (e) => {
             const pressed = strip._pressPointerId === e.pointerId;
             strip._pressPointerId = null;
-            if (!pressed || this._dragMoved) {
+            if (!pressed) {
                 return;
             }
             Haptics.tap();
@@ -522,51 +509,6 @@ export class ToolbarLayer extends Container {
                 slot._badge.visible = visible;
             }
         }
-    }
-
-    /**
-     * Begins tracking a possible drawer drag; the press is a tool tap until it moves past the threshold.
-     * @private
-     * @param {FederatedPointerEvent} e
-     */
-    _onDragStart(e) {
-        this._dragging = true;
-        this._dragMoved = false;
-        this._dragStartY = e.global.y;
-        this._dragStartOffset = this._slide.value;
-    }
-
-    /**
-     * While dragging, moves the panel with the pointer (up reveals rows, down hides them).
-     * @private
-     * @param {FederatedPointerEvent} e
-     */
-    _onDragMove(e) {
-        if (!this._dragging) {
-            return;
-        }
-        const dy = e.global.y - this._dragStartY;
-        if (Math.abs(dy) > DRAG_THRESHOLD) {
-            this._dragMoved = true;
-        }
-        const offset = Math.max(0, Math.min(this._slideDistance, this._dragStartOffset - dy));
-        this._slide.reset(offset);
-    }
-
-    /**
-     * Settles a drag to fully open or closed by how far it was pulled; a tap (no drag) is left to the cell.
-     * @private
-     */
-    _onDragEnd() {
-        if (!this._dragging) {
-            return;
-        }
-        this._dragging = false;
-        if (this._dragMoved) {
-            this._setDrawerOpen(this._slide.value > this._slideDistance / 2);
-        }
-        // Cleared after the cells' pointerup handlers have read it (they fire first, as the target).
-        this._dragMoved = false;
     }
 
     /**

@@ -19,8 +19,9 @@ export class InputHandler {
         this._toolbar = toolbar;
 
         this._onMiniMenuEntryClick = null;
-        this._onMapMenuEntryClick = null;
         this._onInspect = null;
+        this._onMapHover = null;
+        this._onMapTap = null;
 
         // The tool that last received onTileEnter, so its ghost preview can be
         // cleared on tool change even if the cursor hasn't moved.
@@ -46,10 +47,17 @@ export class InputHandler {
 
     init() {
         Mouse.onTap((tileX, tileY) => {
-            if (this.activeTool == null) {
+            if (this._mapMode || this.activeTool == null) {
                 return;
             }
             this.activeTool.onTap(tileX, tileY);
+        });
+
+        // Chunk selection rides the press (a pan's start included), not the release.
+        Mouse.onPress((tileX, tileY) => {
+            if (this._mapMode) {
+                this._emitMapTap(tileX, tileY);
+            }
         });
 
         Mouse.onDragStart((tileX, tileY) => {
@@ -71,6 +79,10 @@ export class InputHandler {
         });
 
         Mouse.onTileExit((tileX, tileY) => {
+            // Map-mode hover persists across exits; the next enter retargets it.
+            if (this._mapMode) {
+                return;
+            }
             if (this.activeTool == null) {
                 this._emitInspect(null, null);
                 return;
@@ -85,10 +97,6 @@ export class InputHandler {
 
         Keyboard.on("r", () => {
             this._rotateActiveTool(1);
-        });
-
-        Keyboard.on("q", () => {
-            this._clearActiveTool();
         });
 
         Keyboard.on("i", () => {
@@ -117,19 +125,27 @@ export class InputHandler {
     }
 
     /**
-     * Registers the map-mode context-gesture handler (the chunk claim menu).
-     * @param {function(tileX: number, tileY: number, screenX: number, screenY: number, onClose: function(): void)} callback
-     */
-    onMapMenuEntryClick(callback) {
-        this._onMapMenuEntryClick = callback;
-    }
-
-    /**
      * Registers the inspect-hover handler (entered tile while tool-less, or null on clear).
      * @param {function(tileX: number|null, tileY: number|null)} callback
      */
     onInspect(callback) {
         this._onInspect = callback;
+    }
+
+    /**
+     * Registers the map-mode hover handler (entered tile, or null when map mode ends).
+     * @param {function(tileX: number|null, tileY: number|null)} callback
+     */
+    onMapHover(callback) {
+        this._onMapHover = callback;
+    }
+
+    /**
+     * Registers the map-mode tap handler (claim selection).
+     * @param {function(tileX: number, tileY: number)} callback
+     */
+    onMapTap(callback) {
+        this._onMapTap = callback;
     }
 
     /**
@@ -151,14 +167,23 @@ export class InputHandler {
     }
 
     /**
-     * Enters/leaves map mode, which deactivates the active tool (activeTool reads
-     * null) and disables hover without clearing the toolbar selection.
+     * Enters/leaves map mode: activeTool reads null without clearing the toolbar
+     * selection; hover reroutes to the map-hover handler.
      * @param {boolean} mapMode
      * @returns {void}
      */
     setMapMode(mapMode) {
+        if (this._mapMode === mapMode) {
+            return;
+        }
         this._mapMode = mapMode;
-        Mouse.setHoverEnabled(!mapMode);
+        if (mapMode) {
+            if (this._hoverTileX != null) {
+                this._emitMapHover(this._hoverTileX, this._hoverTileY);
+            }
+        } else {
+            this._emitMapHover(null, null);
+        }
     }
 
     /**
@@ -173,12 +198,17 @@ export class InputHandler {
     }
 
     /**
-     * Routes an entered tile to the active tool's preview, or to the tool-less inspect hover.
+     * Routes an entered tile to the map-mode chunk hover, the active tool's preview,
+     * or the tool-less inspect hover.
      * @private
      */
     _enterTile(tileX, tileY) {
         this._hoverTileX = tileX;
         this._hoverTileY = tileY;
+        if (this._mapMode) {
+            this._emitMapHover(tileX, tileY);
+            return;
+        }
         if (this.activeTool == null) {
             this._emitInspect(tileX, tileY);
             return;
@@ -198,13 +228,32 @@ export class InputHandler {
     }
 
     /**
-     * The context gesture (long-press or right-click): in map mode it opens the chunk claim menu;
-     * with a tool active it deselects the tool; otherwise it opens the mini-menu.
+     * @private
+     */
+    _emitMapHover(tileX, tileY) {
+        if (this._onMapHover == null) {
+            return;
+        }
+        this._onMapHover(tileX, tileY);
+    }
+
+    /**
+     * @private
+     */
+    _emitMapTap(tileX, tileY) {
+        if (this._onMapTap == null) {
+            return;
+        }
+        this._onMapTap(tileX, tileY);
+    }
+
+    /**
+     * The context gesture (long-press or right-click): no-op in map mode, deselects an
+     * active tool, otherwise opens the mini-menu.
      * @private
      */
     _handleContextGesture(tileX, tileY, screenX, screenY) {
         if (this._mapMode) {
-            this._openMapMenu(tileX, tileY, screenX, screenY);
             return;
         }
         if (this.activeTool != null) {
@@ -212,17 +261,6 @@ export class InputHandler {
             return;
         }
         this._openMiniMenu(tileX, tileY, screenX, screenY);
-    }
-
-    /**
-     * Hover is already off in map mode, so no freeze/resume bookkeeping applies here.
-     * @private
-     */
-    _openMapMenu(tileX, tileY, screenX, screenY) {
-        if (this._onMapMenuEntryClick == null) {
-            return;
-        }
-        this._onMapMenuEntryClick(tileX, tileY, screenX, screenY, () => {});
     }
 
     /**
@@ -298,7 +336,7 @@ export class InputHandler {
             this._emitInspect(null, null);
             Mouse.resumeHoverOnMove();
         });
-        Mouse.setHoverEnabled(false);
+        Mouse.freezeHover();
         this._emitInspect(tileX, tileY);
     }
 }

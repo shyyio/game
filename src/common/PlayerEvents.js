@@ -46,19 +46,23 @@ export class PlayerDirectoryEvent extends AbstractBroadcastEvent {
 }
 
 /**
- * The receiving player's full friend list. Targeted (publishTo).
+ * The receiving player's friendships, both directions: build rights granted (friendIds) and
+ * received (grantedByIds). Targeted (publishTo).
  */
 export class FriendListEvent extends AbstractEvent {
 
     static wireFields = {
-        playerIds: "int64[]",
+        friendIds: "int64[]",
+        grantedByIds: "int64[]",
     };
 
     /**
-     * @param {number[]} playerIds
+     * @param {number[]} friendIds
+     * @param {number[]} grantedByIds
      */
-    constructor(playerIds) {
+    constructor(friendIds, grantedByIds) {
         super();
-        this.playerIds = playerIds;
+        this.friendIds = friendIds;
+        this.grantedByIds = grantedByIds;
     }
 }

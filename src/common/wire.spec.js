@@ -15,7 +15,7 @@ import {WelcomeEvent, PlayerDirectoryEvent, FriendListEvent} from "@/common/Play
 import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
 import {ChunkClaimSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent} from "@/common/ClaimEvents.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
-import {PROTOCOL_VERSION, PLAYER_ID_NONE} from "@/common/constants.js";
+import {GAME_VERSION, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 
 // Core-only registry: common/ must not depend on mods/. Mod wire classes are
@@ -139,8 +139,8 @@ test("Round-trips an OverworldSnapshotEvent's flattened run columns", () => {
 
 test("Round-trips the player messages", () => {
     const reg = registry();
-    roundTrip(reg, new SignInMessage(PROTOCOL_VERSION, "alice_01"), SignInMessage);
-    roundTrip(reg, new AddFriendMessage("bob"), AddFriendMessage);
+    roundTrip(reg, new SignInMessage(GAME_VERSION, "alice_01"), SignInMessage);
+    roundTrip(reg, new AddFriendMessage(7), AddFriendMessage);
     roundTrip(reg, new RemoveFriendMessage(999999999999), RemoveFriendMessage);
 });
 
@@ -149,25 +149,33 @@ test("Round-trips the player events", () => {
     roundTrip(reg, new WelcomeEvent(7, 9), WelcomeEvent);
     roundTrip(reg, new PlayerDirectoryEvent([1, 2], ["alice", "bob"]), PlayerDirectoryEvent);
     roundTrip(reg, new PlayerDirectoryEvent([], []), PlayerDirectoryEvent);
-    roundTrip(reg, new FriendListEvent([]), FriendListEvent);
-    roundTrip(reg, new FriendListEvent([3, 4, 5]), FriendListEvent);
+    roundTrip(reg, new FriendListEvent([], []), FriendListEvent);
+    roundTrip(reg, new FriendListEvent([3, 4, 5], [6, 7]), FriendListEvent);
 });
 
 test("Round-trips the claim messages and events", () => {
     const reg = registry();
     roundTrip(reg, new ClaimChunkMessage(0), ClaimChunkMessage);
     roundTrip(reg, new UnclaimChunkMessage(8256), UnclaimChunkMessage);
+    roundTrip(reg, new UnclaimChunkMessage(8256, true), UnclaimChunkMessage);
     roundTrip(reg, new ChunkClaimSyncEvent([], []), ChunkClaimSyncEvent);
     roundTrip(reg, new ChunkClaimSyncEvent([8256, 8257], [1, 2]), ChunkClaimSyncEvent);
     roundTrip(reg, new ChunkClaimUpdateEvent(8256, PLAYER_ID_NONE), ChunkClaimUpdateEvent);
     roundTrip(reg, new ClaimResultEvent(8256, ClaimResult.CLAIM_RESULT_WOULD_SPLIT), ClaimResultEvent);
 });
 
+test("Overworld request validation gates dimensions and region bounds", () => {
+    assert.strictEqual(new OverworldRequestMessage(-3, 7, 4, 4).validate(null, null), true);
+    assert.strictEqual(new OverworldRequestMessage(-3, 7, 0, 4).validate(null, null), false);
+    assert.strictEqual(new OverworldRequestMessage(-100000, 0, 4, 4).validate(null, null), false);
+    assert.strictEqual(new OverworldRequestMessage(62, 0, 4, 4).validate(null, null), false, "rect crosses the region edge");
+});
+
 test("Sign-in validation gates version and username", () => {
-    assert.strictEqual(new SignInMessage(PROTOCOL_VERSION, "alice").validate(null, null), true);
-    assert.strictEqual(new SignInMessage(PROTOCOL_VERSION + 1, "alice").validate(null, null), false);
-    assert.strictEqual(new SignInMessage(PROTOCOL_VERSION, "no spaces").validate(null, null), false);
-    assert.strictEqual(new SignInMessage(PROTOCOL_VERSION, null).validate(null, null), false);
+    assert.strictEqual(new SignInMessage(GAME_VERSION, "alice").validate(null, null), true);
+    assert.strictEqual(new SignInMessage(`${GAME_VERSION}-stale`, "alice").validate(null, null), false);
+    assert.strictEqual(new SignInMessage(GAME_VERSION, "no spaces").validate(null, null), false);
+    assert.strictEqual(new SignInMessage(GAME_VERSION, null).validate(null, null), false);
 });
 
 test("Round-trips a SetPlayerSettingMessage", () => {

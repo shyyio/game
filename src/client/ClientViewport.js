@@ -1,12 +1,51 @@
 import {Viewport} from "pixi-viewport";
 import {isMobile} from "pixi.js";
 
+// One easing and duration for every scripted viewport move.
+const MOVE_MS = 300;
+const MOVE_EASE = "easeOutCubic";
+
 /**
  * The game's pan/zoom {@link Viewport}, with helpers to freeze interaction:
  * panning only (while a tool is active, so cursor drags paint tiles and zoom
  * stays live) or everything (while the direction wheel or mini-menu is open).
  */
 export class ClientViewport extends Viewport {
+
+    /**
+     * Glides to a world position and/or scale. `onDone` settles exactly once: arrived=true on
+     * completion, false when an interrupt or a newer glide cancels it.
+     * @param {{x?: number|null, y?: number|null, scale?: number|null}} target
+     * @param {function(arrived: boolean): void|null} [onDone]
+     * @returns {void}
+     */
+    glideTo({x = null, y = null, scale = null}, onDone = null) {
+        if (this._glideFinish !== undefined && this._glideFinish !== null) {
+            this._glideFinish(false);
+        }
+        const options = {time: MOVE_MS, ease: MOVE_EASE, removeOnInterrupt: true};
+        if (scale !== null) {
+            options.scale = scale;
+        }
+        if (x !== null) {
+            options.position = {x, y};
+        }
+        if (onDone !== null) {
+            const interrupt = () => this._glideFinish(false);
+            this._glideFinish = (arrived) => {
+                this._glideFinish = null;
+                this.off("pointerdown", interrupt);
+                onDone(arrived);
+            };
+            this.on("pointerdown", interrupt);
+            options.callbackOnComplete = () => {
+                if (this._glideFinish !== null) {
+                    this._glideFinish(true);
+                }
+            };
+        }
+        this.animate(options);
+    }
 
     /**
      * Freezes all viewport interaction (pan, zoom, pinch, decelerate) so the

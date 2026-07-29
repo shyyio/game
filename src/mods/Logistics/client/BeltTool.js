@@ -50,7 +50,7 @@ export class BeltTool extends AbstractTool {
      */
     _showGhost(tileX, tileY, direction) {
         const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
-        const blocked = occupant !== null && !this._overwritable(occupant);
+        const blocked = this._blocked(tileX, tileY);
         const overwrite = occupant !== null && !blocked;
         const tile = [{x: tileX, y: tileY}];
         let blockedTiles = [];
@@ -86,11 +86,14 @@ export class BeltTool extends AbstractTool {
     }
 
     /**
-     * Whether the surface layer holds something the tool can't overwrite.
+     * Whether the tile sits outside buildable chunks or holds something the tool can't overwrite.
      * @private
      * @returns {boolean}
      */
     _blocked(tileX, tileY) {
+        if (!this._client.canBuildAt(tileX, tileY)) {
+            return true;
+        }
         const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
         return occupant !== null && !this._overwritable(occupant);
     }
@@ -119,6 +122,10 @@ export class BeltTool extends AbstractTool {
      * @private
      */
     _placeBelt(tileX, tileY, direction) {
+        // The server would drop an ungated placement anyway.
+        if (!this._client.canBuildAt(tileX, tileY)) {
+            return;
+        }
         const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
         if (occupant !== null) {
             if (!this._overwritable(occupant)) {
