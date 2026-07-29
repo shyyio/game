@@ -5,8 +5,9 @@ import {ClientViewport} from "@/client/ClientViewport.js";
 import Keyboard from "@/client/Keyboard.js";
 import Mouse from "@/client/Mouse.js";
 import {MobileTouchInput} from "@/client/MobileTouchInput.js";
-import DeviceSettings, {DEVICE_SETTING_FULLSCREEN} from "@/client/DeviceSettings.js";
+import DeviceSettings, {DEVICE_SETTING_FULLSCREEN, DEVICE_SETTING_REDUCED_MOTION} from "@/client/DeviceSettings.js";
 import Fullscreen from "@/client/Fullscreen.js";
+import ReducedMotion from "@/client/ReducedMotion.js";
 import WindowFocus from "@/client/WindowFocus.js";
 import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
@@ -47,6 +48,9 @@ const settingValues = reactive({});
 
 // Device-local fullscreen preference.
 const fullscreenEnabled = ref(false);
+
+// Device-local reduced-motion preference.
+const reducedMotionEnabled = ref(false);
 
 // Rejection notices per ClaimResult; OK stays silent (the border appearing is the feedback).
 const CLAIM_RESULT_NOTICES = {
@@ -198,6 +202,13 @@ onMounted(async () => {
     DeviceSettings.setBoolean(DEVICE_SETTING_FULLSCREEN, on);
     // The switch tap is the user gesture the fullscreen request needs.
     Fullscreen.setEnabled(on);
+  });
+
+  reducedMotionEnabled.value = DeviceSettings.getBoolean(DEVICE_SETTING_REDUCED_MOTION, ReducedMotion.devicePrefers());
+  ReducedMotion.setEnabled(reducedMotionEnabled.value);
+  watch(reducedMotionEnabled, on => {
+    DeviceSettings.setBoolean(DEVICE_SETTING_REDUCED_MOTION, on);
+    ReducedMotion.setEnabled(on);
   });
 
   Mouse.init(app, viewport);
@@ -416,6 +427,13 @@ export default defineComponent({
         <v-switch
             v-model="fullscreenEnabled"
             label="Fullscreen"
+            color="primary"
+            density="compact"
+            hide-details
+        />
+        <v-switch
+            v-model="reducedMotionEnabled"
+            label="Reduced motion"
             color="primary"
             density="compact"
             hide-details

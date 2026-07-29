@@ -1,6 +1,8 @@
 import {Viewport} from "pixi-viewport";
 import {isMobile} from "pixi.js";
 
+import ReducedMotion from "@/client/ReducedMotion.js";
+
 // One easing and duration for every scripted viewport move.
 const MOVE_MS = 300;
 const MOVE_EASE = "easeOutCubic";
@@ -22,6 +24,18 @@ export class ClientViewport extends Viewport {
     glideTo({x = null, y = null, scale = null}, onDone = null) {
         if (this._glideFinish !== undefined && this._glideFinish !== null) {
             this._glideFinish(false);
+        }
+        if (ReducedMotion.enabled) {
+            if (scale !== null) {
+                this.setZoom(scale, true);
+            }
+            if (x !== null) {
+                this.moveCenter(x, y);
+            }
+            if (onDone !== null) {
+                onDone(true);
+            }
+            return;
         }
         const options = {time: MOVE_MS, ease: MOVE_EASE, removeOnInterrupt: true};
         if (scale !== null) {

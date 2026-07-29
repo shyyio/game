@@ -3,6 +3,7 @@ import Haptics from "@/client/Haptics.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {TOOLBAR_TEXT, PANEL_TINT} from "@/client/Theme.js";
 import {Tween, easeOutBack, easeInCubic} from "@/client/Tween.js";
+import ReducedMotion from "@/client/ReducedMotion.js";
 import {UIPanel} from "@/client/UIPanel.js";
 import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/InspectContent.js";
 import {addSlotHighlight} from "@/client/slotHighlight.js";
@@ -488,7 +489,11 @@ export class ToolbarLayer extends Container {
             slideTarget = 0;
             slideEase = easeInCubic;
         }
-        this._slide.to(slideTarget, slideEase);
+        if (ReducedMotion.enabled) {
+            this._slide.reset(slideTarget);
+        } else {
+            this._slide.to(slideTarget, slideEase);
+        }
         if (open && this._clickOffListener === null) {
             this._clickOffListener = () => this._setDrawerOpen(false);
             window.addEventListener("pointerdown", this._clickOffListener);
