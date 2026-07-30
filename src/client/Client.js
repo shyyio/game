@@ -285,6 +285,20 @@ export class Client {
     }
 
     /**
+     * Snaps the viewport to the claims centroid with no glide; a no-op with no claims.
+     * @returns {void}
+     */
+    startAtHome() {
+        const center = this.ownClaimsCenter();
+        if (center === null) {
+            return;
+        }
+        this.viewport.moveCenter(center.x, center.y);
+        // moveCenter emits no "moved"; refresh the data feed directly.
+        this._onViewportMoved();
+    }
+
+    /**
      * Opens a machine's menu: subscribes to its per-tick inspect snapshots.
      * @param {number} objectId
      * @returns {void}
@@ -367,6 +381,9 @@ export class Client {
         // clamp with the settled scale, so only the view mode (thresholds well inside the zoom
         // limits, never mid-clamp) keys off "zoomed".
         this.viewport.on("zoomed", () => this._updateViewMode());
+        // Scale-only glides emit "zoomed" but never "moved"; the settled zoom (post-clamp)
+        // catches the data feed up here.
+        this.viewport.on("zoomed-end", () => this._onViewportMoved());
         // While a pan is in progress, drop the rotate buttons out of hit-testing so
         // a finger that crosses one keeps panning instead of being captured by it.
         this.viewport.on("drag-start", () => this.rotateButtonsLayer.setInteractive(false));

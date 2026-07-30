@@ -28,8 +28,8 @@ export class ClaimSelectionMode {
         // Entry glide in flight: the mode activates only once the viewport arrives.
         this._entering = false;
         this._selectedChunk = null;
-        // One-shot: the connect-time auto-zoom to the map for a player with no claimed chunks.
-        this._autoZoomed = false;
+        // One-shot: the connect-time view (map zoom without claims, home with them).
+        this._connectViewApplied = false;
     }
 
     /**
@@ -101,9 +101,13 @@ export class ClaimSelectionMode {
         this._client.firstClaimLayer.setNoClaims(noClaims);
         this._client.chunkInfoPanelLayer.refresh();
         this._client.chunkSelectionLayer.refresh();
-        if (noClaims && event instanceof ChunkClaimSyncEvent && !this._autoZoomed) {
-            this._autoZoomed = true;
-            this._client.viewport.glideTo({scale: MODE_ZOOM_SCALE});
+        if (event instanceof ChunkClaimSyncEvent && !this._connectViewApplied) {
+            this._connectViewApplied = true;
+            if (noClaims) {
+                this._client.viewport.glideTo({scale: MODE_ZOOM_SCALE});
+            } else {
+                this._client.startAtHome();
+            }
         }
     }
 
