@@ -28,10 +28,13 @@ export class ClientViewport extends Viewport {
         if (ReducedMotion.enabled) {
             if (scale !== null) {
                 this.setZoom(scale, true);
+                this.emit("zoomed", {viewport: this, type: "animate"});
             }
             if (x !== null) {
                 this.moveCenter(x, y);
             }
+            // setZoom/moveCenter emit nothing themselves; fire the event a glide would.
+            this.emit("moved", {viewport: this, type: "animate"});
             if (onDone !== null) {
                 onDone(true);
             }
