@@ -1,5 +1,5 @@
 import {AbstractSimMod, SETTING_OFF} from "@/sdk/common.js";
-import {CURSOR_SETTING_SHARE} from "./common/constants.js";
+import {CURSOR_SETTING_SHARE, CURSOR_SETTING_EVERYONE} from "./common/constants.js";
 import {CursorMoveMessage, CursorHideMessage} from "./common/messages.js";
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "./common/events.js";
 
@@ -20,7 +20,8 @@ class CursorState {
 
 /**
  * Relays each session's cursor heartbeats to the sessions viewing its chunk, hiding it for
- * viewers losing sight (chunk crossing, hide message, share-off, disconnect).
+ * viewers losing sight (chunk crossing, hide message, share-off, disconnect). A friends-only
+ * player sends and receives cursors over their friend list alone.
  */
 export class CursorSyncSimMod extends AbstractSimMod {
 
@@ -79,6 +80,33 @@ export class CursorSyncSimMod extends AbstractSimMod {
         if (key === CURSOR_SETTING_SHARE && value === SETTING_OFF) {
             this._hideCursor(session.id, game);
         }
+        if (key === CURSOR_SETTING_EVERYONE && value === SETTING_OFF) {
+            // Broad erase; the next heartbeat re-shows the cursor for the remaining friends.
+            this._hideCursor(session.id, game);
+            this._eraseStrangerCursors(session.playerId, game);
+        }
+    }
+
+    /**
+     * A one-directional unfriend cuts the remover's friends-only sight both ways: the removed
+     * player loses the remover's cursor, and the remover loses the removed player's.
+     * @param {number} playerId
+     * @param {number} friendId
+     * @param {Game} game
+     * @returns {void}
+     */
+    onFriendRemoved(playerId, friendId, game) {
+        if (!this._friendsOnly(playerId, game)) {
+            return;
+        }
+        const removerHide = new PlayerCursorHideEvent(playerId);
+        for (const sessionId of game.bus.sessionIdsOf(friendId)) {
+            game.bus.publishTo(sessionId, removerHide);
+        }
+        const removedHide = new PlayerCursorHideEvent(friendId);
+        for (const sessionId of game.bus.sessionIdsOf(playerId)) {
+            game.bus.publishTo(sessionId, removedHide);
+        }
     }
 
     /**
@@ -116,9 +144,67 @@ export class CursorSyncSimMod extends AbstractSimMod {
             if (viewerId === session.id) {
                 continue;
             }
+            if (!this._cursorVisibleTo(session.playerId, viewerId, game)) {
+                continue;
+            }
             // The cursor label needs its owner's name; first sight of a player sends it.
             game.syncUsernames(viewerId, [session.playerId]);
             game.bus.publishTo(viewerId, event);
+        }
+    }
+
+    /**
+     * Whether both friends-only gates, the owner's and the viewer's, let the viewer see the cursor.
+     * @param {number} ownerId
+     * @param {number} viewerSessionId
+     * @param {Game} game
+     * @returns {boolean}
+     * @private
+     */
+    _cursorVisibleTo(ownerId, viewerSessionId, game) {
+        const viewerId = game.bus.playerIdOf(viewerSessionId);
+        // A player's other sessions always see their cursor.
+        if (viewerId === ownerId) {
+            return true;
+        }
+        if (this._friendsOnly(ownerId, game) && !game.players.isFriend(ownerId, viewerId)) {
+            return false;
+        }
+        if (this._friendsOnly(viewerId, game) && !game.players.isFriend(viewerId, ownerId)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * @param {number} playerId
+     * @param {Game} game
+     * @returns {boolean}
+     * @private
+     */
+    _friendsOnly(playerId, game) {
+        return game.playerSettings.get(playerId, CURSOR_SETTING_EVERYONE) === SETTING_OFF;
+    }
+
+    /**
+     * Erases every shown non-friend cursor from a player's sessions (their friends-only turned on).
+     * @param {number} viewerId
+     * @param {Game} game
+     * @private
+     */
+    _eraseStrangerCursors(viewerId, game) {
+        const strangerIds = new Set();
+        for (const state of this._cursorBySession.values()) {
+            if (state.playerId !== viewerId && !game.players.isFriend(viewerId, state.playerId)) {
+                strangerIds.add(state.playerId);
+            }
+        }
+        const sessionIds = game.bus.sessionIdsOf(viewerId);
+        for (const strangerId of strangerIds) {
+            const event = new PlayerCursorHideEvent(strangerId);
+            for (const sessionId of sessionIds) {
+                game.bus.publishTo(sessionId, event);
+            }
         }
     }
 

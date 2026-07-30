@@ -37,6 +37,15 @@ export class AbstractSimMod {
     onSessionDisconnect(sessionId, game) {}
 
     /**
+     * Optional hook: a player dropped another from their friend list (already applied and synced).
+     * @param {number} playerId
+     * @param {number} friendId
+     * @param {Game} game
+     * @returns {void}
+     */
+    onFriendRemoved(playerId, friendId, game) {}
+
+    /**
      * Optional hook: a client wrote one of its player settings (already stored and echoed).
      * @param {AbstractSession} session
      * @param {number} key
