@@ -45,7 +45,7 @@ test("a cursor move fans out to the sessions watching its chunk", async () => {
     assert.equal(seen[0].playerId, 1);
     assert.equal(seen[0].x, 4.5);
     assert.equal(cursorEvents(bystander).length, 0, "a session watching another chunk gets nothing");
-    assert.equal(cursorEvents(sender).length, 1, "the echo comes back; the client filters its own id");
+    assert.equal(cursorEvents(sender).length, 0, "no echo back to the owning session");
 });
 
 test("a share-off player's cursor moves are dropped", async () => {
