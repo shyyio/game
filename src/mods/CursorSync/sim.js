@@ -102,18 +102,24 @@ export class CursorSyncSimMod extends AbstractSimMod {
             this._cursorBySession.set(session.id, new CursorState(session.playerId, chunk));
         } else {
             if (state.chunk !== chunk) {
-                this._publishCursorHide(state.playerId, state.chunk, chunk, game);
+                this._publishCursorHide(state.playerId, state.chunk, chunk, session.id, game);
             }
             state.chunk = chunk;
         }
         const viewers = game.bus.chunkSubscribers(chunk);
-        if (viewers !== undefined) {
-            // The cursor label needs its owner's name; first sight of a player sends it.
-            for (const sessionId of viewers) {
-                game.syncUsernames(sessionId, [session.playerId]);
-            }
+        if (viewers === undefined) {
+            return;
         }
-        game.bus.publish(event);
+        // Copied: a viewer's own dispatch may resubscribe while we fan out.
+        for (const viewerId of [...viewers]) {
+            // The owning session never gets its own cursor echoed back.
+            if (viewerId === session.id) {
+                continue;
+            }
+            // The cursor label needs its owner's name; first sight of a player sends it.
+            game.syncUsernames(viewerId, [session.playerId]);
+            game.bus.publishTo(viewerId, event);
+        }
     }
 
     /**
@@ -129,7 +135,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
             return;
         }
         this._cursorBySession.delete(sessionId);
-        this._publishCursorHide(state.playerId, state.chunk, null, game);
+        this._publishCursorHide(state.playerId, state.chunk, null, sessionId, game);
     }
 
     /**
@@ -137,10 +143,11 @@ export class CursorSyncSimMod extends AbstractSimMod {
      * @param {number} playerId
      * @param {number} fromChunk
      * @param {number|null} toChunk
+     * @param {number} ownerSessionId
      * @param {Game} game
      * @private
      */
-    _publishCursorHide(playerId, fromChunk, toChunk, game) {
+    _publishCursorHide(playerId, fromChunk, toChunk, ownerSessionId, game) {
         const losing = game.bus.chunkSubscribers(fromChunk);
         if (losing === undefined) {
             return;
@@ -149,6 +156,9 @@ export class CursorSyncSimMod extends AbstractSimMod {
         // One shared instance: delivery only encodes, and publishTo never resubscribes.
         const event = new PlayerCursorHideEvent(playerId);
         for (const sessionId of losing) {
+            if (sessionId === ownerSessionId) {
+                continue;
+            }
             if (keeping !== undefined && keeping.has(sessionId)) {
                 continue;
             }
