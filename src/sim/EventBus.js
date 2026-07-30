@@ -90,6 +90,19 @@ export class EventBus {
     }
 
     /**
+     * The player behind a connected session.
+     * @param {number} sessionId
+     * @returns {number}
+     */
+    playerIdOf(sessionId) {
+        const session = this._sessions.get(sessionId);
+        if (session === undefined) {
+            throw new RangeError(`Unknown sessionId: ${sessionId}`);
+        }
+        return session.playerId;
+    }
+
+    /**
      * The sessions viewing a chunk, or undefined when none.
      * @param {number} chunk
      * @returns {Set<number>|undefined}

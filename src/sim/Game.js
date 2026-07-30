@@ -261,6 +261,9 @@ export class Game {
         if (message instanceof RemoveFriendMessage) {
             this.players.removeFriend(session.playerId, message.playerId);
             this._syncFriendLists(session, message.playerId);
+            for (const mod of this.modRegistry.simMods) {
+                mod.onFriendRemoved(session.playerId, message.playerId, this);
+            }
             return;
         }
 

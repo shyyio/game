@@ -1,5 +1,5 @@
 import {AbstractClientMod, Mouse, PlayerSettingToggle, WindowFocus} from "@/sdk/client.js";
-import {CURSOR_SETTING_SHARE, CURSOR_SETTING_SHOW} from "./common/constants.js";
+import {CURSOR_SETTING_SHARE, CURSOR_SETTING_SHOW, CURSOR_SETTING_EVERYONE} from "./common/constants.js";
 import {REMOTE_CURSORS_SCHEMA, RemoteCursorsWriter} from "./client/RemoteCursorsState.js";
 import {RemoteCursorsDrawLayer} from "./client/RemoteCursorsDrawLayer.js";
 import {CursorPublisher} from "./client/CursorPublisher.js";
@@ -38,6 +38,7 @@ export class CursorSyncClientMod extends AbstractClientMod {
         return [
             new PlayerSettingToggle(CURSOR_SETTING_SHARE, "Share my cursor"),
             new PlayerSettingToggle(CURSOR_SETTING_SHOW, "Show player cursors"),
+            new PlayerSettingToggle(CURSOR_SETTING_EVERYONE, "Sync cursors with everyone"),
         ];
     }
 
