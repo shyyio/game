@@ -11,9 +11,9 @@ import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/Playe
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {SignInMessage, AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
-import {WelcomeEvent, PlayerDirectoryEvent, FriendListEvent} from "@/common/PlayerEvents.js";
+import {WelcomeEvent, PlayerNamesEvent, FriendListEvent} from "@/common/PlayerEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
-import {ChunkClaimSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent} from "@/common/ClaimEvents.js";
+import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent} from "@/common/ClaimEvents.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
 import {GAME_VERSION, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
@@ -129,11 +129,13 @@ test("Round-trips an OverworldRequestMessage", () => {
     roundTrip(reg, new OverworldRequestMessage(-3, 7, 4, 4), OverworldRequestMessage);
 });
 
-test("Round-trips an OverworldSnapshotEvent's flattened run columns", () => {
+test("Round-trips an OverworldSnapshotEvent's flattened run and claim columns", () => {
     const reg = registry();
     const event = new OverworldSnapshotEvent(-2, -2, 4, 4);
     event.addChunk(8128, [131, 650], [1, 2], [4, 9]);
     event.addChunk(8129, [0], [64], [4]);
+    event.claimedChunks = [8128, 8200];
+    event.claimOwners = [1, 2];
     roundTrip(reg, event, OverworldSnapshotEvent);
 });
 
@@ -147,8 +149,8 @@ test("Round-trips the player messages", () => {
 test("Round-trips the player events", () => {
     const reg = registry();
     roundTrip(reg, new WelcomeEvent(7, 9), WelcomeEvent);
-    roundTrip(reg, new PlayerDirectoryEvent([1, 2], ["alice", "bob"]), PlayerDirectoryEvent);
-    roundTrip(reg, new PlayerDirectoryEvent([], []), PlayerDirectoryEvent);
+    roundTrip(reg, new PlayerNamesEvent([1, 2], ["alice", "bob"]), PlayerNamesEvent);
+    roundTrip(reg, new PlayerNamesEvent([], []), PlayerNamesEvent);
     roundTrip(reg, new FriendListEvent([], []), FriendListEvent);
     roundTrip(reg, new FriendListEvent([3, 4, 5], [6, 7]), FriendListEvent);
 });
@@ -158,8 +160,8 @@ test("Round-trips the claim messages and events", () => {
     roundTrip(reg, new ClaimChunkMessage(0), ClaimChunkMessage);
     roundTrip(reg, new UnclaimChunkMessage(8256), UnclaimChunkMessage);
     roundTrip(reg, new UnclaimChunkMessage(8256, true), UnclaimChunkMessage);
-    roundTrip(reg, new ChunkClaimSyncEvent([], []), ChunkClaimSyncEvent);
-    roundTrip(reg, new ChunkClaimSyncEvent([8256, 8257], [1, 2]), ChunkClaimSyncEvent);
+    roundTrip(reg, new OwnClaimsSyncEvent([]), OwnClaimsSyncEvent);
+    roundTrip(reg, new OwnClaimsSyncEvent([8256, 8257]), OwnClaimsSyncEvent);
     roundTrip(reg, new ChunkClaimUpdateEvent(8256, PLAYER_ID_NONE), ChunkClaimUpdateEvent);
     roundTrip(reg, new ClaimResultEvent(8256, ClaimResult.CLAIM_RESULT_WOULD_SPLIT), ClaimResultEvent);
 });

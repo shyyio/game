@@ -4,11 +4,11 @@ import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {Direction, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
-import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
+import {CreateObjectMessage, DeleteObjectMessage, SetViewportMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
 import {AddFriendMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
-import {ChunkClaimSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult} from "@/common/ClaimEvents.js";
-import {WelcomeEvent, PlayerDirectoryEvent, FriendListEvent} from "@/common/PlayerEvents.js";
+import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult} from "@/common/ClaimEvents.js";
+import {WelcomeEvent, PlayerNamesEvent, FriendListEvent} from "@/common/PlayerEvents.js";
 import {DemoMachineType} from "@/mods/Demo/declaration.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
@@ -33,7 +33,7 @@ function machineCount(game) {
     return game.simEngine.placed.eidsOf(DemoMachineType.typeId).length;
 }
 
-test("connect syncs identity, directory, claims, and friends", async () => {
+test("connect syncs identity, the own name, own claims, and friends", async () => {
     const modRegistry = ecsModRegistry();
     const game = new Game(modRegistry, new GameEngine(modRegistry));
     await game.init();
@@ -43,21 +43,69 @@ test("connect syncs identity, directory, claims, and friends", async () => {
     const welcome = alice.events.find(event => event instanceof WelcomeEvent);
     assert.equal(welcome.playerId, ALICE);
     assert.ok(welcome.maxChunks > 0);
-    assert.ok(alice.events.some(event => event instanceof PlayerDirectoryEvent));
-    assert.ok(alice.events.some(event => event instanceof ChunkClaimSyncEvent));
+    const names = alice.events.find(event => event instanceof PlayerNamesEvent);
+    assert.deepEqual(names.playerIds, [ALICE], "only the own name arrives on connect");
+    assert.ok(alice.events.some(event => event instanceof OwnClaimsSyncEvent));
     assert.ok(alice.events.some(event => event instanceof FriendListEvent));
 });
 
-test("a claim broadcasts to every session and answers the requester", async () => {
+test("a claim reaches the chunk's viewers, name first, and skips the rest", async () => {
     const {game, alice, bob} = await setup();
     const chunk = chunkId(5, 5);
+    game.dispatchMessage(new SetViewportMessage([chunk]), bob);
+    bob.events.length = 0;
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
 
     const result = alice.events.find(event => event instanceof ClaimResultEvent);
     assert.equal(result.result, ClaimResult.CLAIM_RESULT_OK);
+    const nameIndex = bob.events.findIndex(
+        event => event instanceof PlayerNamesEvent && event.playerIds.includes(ALICE),
+    );
+    const updateIndex = bob.events.findIndex(event => event instanceof ChunkClaimUpdateEvent);
+    assert.ok(nameIndex >= 0, "the viewer learns the owner's name");
+    assert.ok(updateIndex > nameIndex, "the name precedes the update");
+    const update = bob.events[updateIndex];
+    assert.equal(update.chunk, chunk);
+    assert.equal(update.playerId, ALICE);
+
+    const charlie = new CapturingSession(3);
+    game.connect(charlie);
+    charlie.events.length = 0;
+    game.dispatchMessage(new ClaimChunkMessage(chunkId(69, 5)), alice);
+    assert.ok(
+        !charlie.events.some(event => event instanceof ChunkClaimUpdateEvent),
+        "a session without the chunk in view hears nothing",
+    );
+});
+
+test("the acting player's session gets the update without viewing the chunk", async () => {
+    const {game, alice} = await setup();
+    const chunk = chunkId(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+
+    const update = alice.events.find(event => event instanceof ChunkClaimUpdateEvent);
+    assert.equal(update.chunk, chunk);
+    assert.equal(update.playerId, ALICE);
+});
+
+test("a viewport gaining a claimed chunk is seeded its claim and owner name", async () => {
+    const {game, alice, bob} = await setup();
+    const chunk = chunkId(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+    game.dispatchMessage(new SetViewportMessage([chunk]), bob);
+
+    const names = bob.events.find(event => event instanceof PlayerNamesEvent);
+    assert.deepEqual(names.playerIds, [ALICE]);
     const update = bob.events.find(event => event instanceof ChunkClaimUpdateEvent);
     assert.equal(update.chunk, chunk);
     assert.equal(update.playerId, ALICE);
+
+    // Leaving and returning re-seeds the claim, but a known name never resends.
+    bob.events.length = 0;
+    game.dispatchMessage(new SetViewportMessage([]), bob);
+    game.dispatchMessage(new SetViewportMessage([chunk]), bob);
+    assert.ok(bob.events.some(event => event instanceof ChunkClaimUpdateEvent));
+    assert.ok(!bob.events.some(event => event instanceof PlayerNamesEvent));
 });
 
 test("a rejected claim answers only the requester", async () => {
@@ -101,13 +149,15 @@ test("building in a foreign chunk is rejected until the owner grants it", async 
     assert.equal(machineCount(game), 2, "alice's grant lets bob build");
 });
 
-test("a friendship change resyncs both players' lists", async () => {
+test("a friendship change resyncs both players' lists, names first", async () => {
     const {game, alice, bob} = await setup();
     game.dispatchMessage(new AddFriendMessage(BOB), alice);
 
     const aliceList = alice.events.filter(event => event instanceof FriendListEvent).at(-1);
     assert.deepEqual(aliceList.friendIds, [BOB]);
     assert.deepEqual(aliceList.grantedByIds, []);
+    const bobNames = bob.events.find(event => event instanceof PlayerNamesEvent);
+    assert.deepEqual(bobNames.playerIds, [ALICE], "bob learns his granter's name");
     const bobList = bob.events.filter(event => event instanceof FriendListEvent).at(-1);
     assert.deepEqual(bobList.friendIds, []);
     assert.deepEqual(bobList.grantedByIds, [ALICE], "bob learns alice granted him build rights");
@@ -170,9 +220,10 @@ test("a splitting unclaim rejects with WOULD_SPLIT before the non-empty confirma
     assert.equal(machineCount(game), 1, "nothing deleted");
 });
 
-test("unclaim frees the chunk for other players", async () => {
+test("unclaim frees the chunk for other players and tells its viewers", async () => {
     const {game, alice, bob} = await setup();
     const chunk = chunkId(5, 5);
+    game.dispatchMessage(new SetViewportMessage([chunk]), bob);
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
     game.dispatchMessage(new UnclaimChunkMessage(chunk), alice);
 

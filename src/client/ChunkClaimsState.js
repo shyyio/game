@@ -1,22 +1,28 @@
-import {WelcomeEvent, PlayerDirectoryEvent, FriendListEvent} from "@/common/PlayerEvents.js";
-import {ChunkClaimSyncEvent, ChunkClaimUpdateEvent, ClaimResult} from "@/common/ClaimEvents.js";
+import {WelcomeEvent, FriendListEvent} from "@/common/PlayerEvents.js";
+import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResult} from "@/common/ClaimEvents.js";
+import {ChunkSubscribeEvent} from "@/common/CoreEvents.js";
+import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {DEFAULT_MAX_CHUNKS, PLAYER_ID_NONE} from "@/common/constants.js";
-import {chunkNeighbors, syntheticUsername} from "@/common/util.js";
+import {chunkNeighbors} from "@/common/util.js";
+import {OverworldRect} from "@/client/OverworldState.js";
 import {AbstractCacheWriter, AbstractCacheView, schemaScalar, schemaMap, schemaSet} from "@/client/ClientCache.js";
 
 export const CHUNK_CLAIMS_SCHEMA = {
     ownPlayerId: schemaScalar(null),
     maxChunks: schemaScalar(DEFAULT_MAX_CHUNKS),
+    // Last-seen ownership mirror; entries persist until a fresher look (subscribe seed or
+    // overworld stamp) corrects them.
     ownerByChunk: schemaMap(),
-    usernameByPlayer: schemaMap(),
+    // Every own claim, viewport or not (the centroid, count, and adjacency source).
+    ownChunks: schemaSet(),
     // Players the own player granted build rights to, and players who granted them.
     friendIds: schemaSet(),
     grantedByIds: schemaSet(),
 };
 
 /**
- * Writes the chunk-ownership mirror and player directory from the connect-time syncs and the
- * broadcast deltas.
+ * Writes the chunk-ownership mirror from the connect-time own-claims sync, the chunk-topic
+ * deltas, the subscribe-time resets, and the overworld snapshots' claim stamps.
  */
 export class ChunkClaimsWriter extends AbstractCacheWriter {
 
@@ -31,35 +37,75 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
             this._state.set("chunkClaims.maxChunks", event.maxChunks);
             return;
         }
-        if (event instanceof PlayerDirectoryEvent) {
-            for (let i = 0; i < event.playerIds.length; i += 1) {
-                this._state.mapSet("chunkClaims.usernameByPlayer", event.playerIds[i], event.usernames[i]);
-            }
-            return;
-        }
         if (event instanceof FriendListEvent) {
             this._state.setReplace("chunkClaims.friendIds", event.friendIds);
             this._state.setReplace("chunkClaims.grantedByIds", event.grantedByIds);
             return;
         }
-        if (event instanceof ChunkClaimSyncEvent) {
-            const synced = new Set(event.chunks);
-            for (const [chunk] of this._state.mapEntries("chunkClaims.ownerByChunk")) {
-                if (!synced.has(chunk)) {
-                    this._state.mapDelete("chunkClaims.ownerByChunk", chunk);
-                }
-            }
-            for (let i = 0; i < event.chunks.length; i += 1) {
-                this._state.mapSet("chunkClaims.ownerByChunk", event.chunks[i], event.playerIds[i]);
+        if (event instanceof OwnClaimsSyncEvent) {
+            this._state.setReplace("chunkClaims.ownChunks", event.chunks);
+            const ownPlayerId = this._state.get("chunkClaims.ownPlayerId");
+            for (const chunk of event.chunks) {
+                this._state.mapSet("chunkClaims.ownerByChunk", chunk, ownPlayerId);
             }
             return;
         }
         if (event instanceof ChunkClaimUpdateEvent) {
             if (event.playerId === PLAYER_ID_NONE) {
                 this._state.mapDelete("chunkClaims.ownerByChunk", event.chunk);
-            } else {
-                this._state.mapSet("chunkClaims.ownerByChunk", event.chunk, event.playerId);
+                this._state.setDelete("chunkClaims.ownChunks", event.chunk);
+                return;
             }
+            this._state.mapSet("chunkClaims.ownerByChunk", event.chunk, event.playerId);
+            if (event.playerId === this._state.get("chunkClaims.ownPlayerId")) {
+                this._state.setAdd("chunkClaims.ownChunks", event.chunk);
+            }
+            return;
+        }
+        if (event instanceof ChunkSubscribeEvent) {
+            // A stale foreign entry resets before the seeded update (claimed chunks only) lands.
+            this._dropForeign(event.chunk);
+            return;
+        }
+        if (event instanceof OverworldSnapshotEvent) {
+            this._stampOverworldClaims(event);
+        }
+    }
+
+    /**
+     * Applies a snapshot's claims across its whole rect: claimed chunks stamp their owner,
+     * unclaimed ones shed any stale foreign entry.
+     * @private
+     * @param {OverworldSnapshotEvent} event
+     * @returns {void}
+     */
+    _stampOverworldClaims(event) {
+        const ownerByChunk = new Map();
+        for (let i = 0; i < event.claimedChunks.length; i += 1) {
+            ownerByChunk.set(event.claimedChunks[i], event.claimOwners[i]);
+        }
+        const rect = new OverworldRect(event.chunkX, event.chunkY, event.chunkWidth, event.chunkHeight);
+        for (const chunk of rect.ordinals()) {
+            const owner = ownerByChunk.get(chunk);
+            if (owner === undefined) {
+                this._dropForeign(chunk);
+            } else {
+                this._state.mapSet("chunkClaims.ownerByChunk", chunk, owner);
+            }
+        }
+    }
+
+    /**
+     * Removes a chunk's ownership entry unless it is the own player's (own claims track the
+     * targeted updates alone).
+     * @private
+     * @param {number} chunk
+     * @returns {void}
+     */
+    _dropForeign(chunk) {
+        const owner = this._state.mapGet("chunkClaims.ownerByChunk", chunk);
+        if (owner !== undefined && owner !== this._state.get("chunkClaims.ownPlayerId")) {
+            this._state.mapDelete("chunkClaims.ownerByChunk", chunk);
         }
     }
 }
@@ -99,28 +145,14 @@ export class ChunkClaimsView extends AbstractCacheView {
      * @returns {number} chunks the own player holds
      */
     ownCount() {
-        const ownPlayerId = this.ownPlayerId;
-        let count = 0;
-        for (const [, owner] of this._state.mapEntries("chunkClaims.ownerByChunk")) {
-            if (owner === ownPlayerId) {
-                count += 1;
-            }
-        }
-        return count;
+        return this._state.setSize("chunkClaims.ownChunks");
     }
 
     /**
      * @returns {number[]} the own player's claimed chunks
      */
     ownChunks() {
-        const ownPlayerId = this.ownPlayerId;
-        const chunks = [];
-        for (const [chunk, owner] of this._state.mapEntries("chunkClaims.ownerByChunk")) {
-            if (owner === ownPlayerId) {
-                chunks.push(chunk);
-            }
-        }
-        return chunks;
+        return [...this._state.setValues("chunkClaims.ownChunks")];
     }
 
     /**
@@ -166,23 +198,11 @@ export class ChunkClaimsView extends AbstractCacheView {
      */
     _touchesOwn(chunk) {
         for (const neighbor of chunkNeighbors(chunk)) {
-            if (this.ownerOf(neighbor) === this.ownPlayerId) {
+            if (this._state.setHas("chunkClaims.ownChunks", neighbor)) {
                 return true;
             }
         }
         return false;
-    }
-
-    /**
-     * @param {number} playerId
-     * @returns {string}
-     */
-    usernameOf(playerId) {
-        const username = this._state.mapGet("chunkClaims.usernameByPlayer", playerId);
-        if (username === undefined) {
-            return syntheticUsername(playerId);
-        }
-        return username;
     }
 
     /**

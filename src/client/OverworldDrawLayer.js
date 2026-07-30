@@ -11,7 +11,8 @@ const REGION_HALF_PX = (REGION_SIZE / 2) * CHUNK_PX;
 /**
  * Renders the baked overworld: a region-wide backdrop matching the map-mode grid look, plus one
  * Graphics of colored tile runs per cached chunk. Not chunk-mounted — overworld mode has no chunk
- * subscriptions; content comes straight from the overworld state.
+ * subscriptions; content comes straight from the overworld state. Claim fills and labels come
+ * from the claims layer above.
  */
 export class OverworldDrawLayer extends AbstractDrawLayer {
 

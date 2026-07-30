@@ -1,5 +1,4 @@
 import {AbstractEvent} from "@/common/AbstractEvent.js";
-import {AbstractBroadcastEvent} from "@/common/AbstractBroadcastEvent.js";
 
 /**
  * Told to a session right after it authenticates: its own identity and chunk allowance. Targeted
@@ -24,10 +23,12 @@ export class WelcomeEvent extends AbstractEvent {
 }
 
 /**
- * The playerId -> username directory, as parallel arrays: the full roster on connect, a one-entry
- * delta when a new player registers. The only place usernames cross the wire after sign-in.
+ * playerId -> username entries as parallel arrays, sent to a session only for players it can see
+ * (claim owners in its viewport or requested overworld rects, visible cursors, friends). Targeted
+ * (publishTo), never broadcast; a repeated id carries a rename. The only place usernames cross
+ * the wire after sign-in.
  */
-export class PlayerDirectoryEvent extends AbstractBroadcastEvent {
+export class PlayerNamesEvent extends AbstractEvent {
 
     static wireFields = {
         playerIds: "int64[]",

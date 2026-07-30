@@ -22,11 +22,13 @@ export class ChunkInfoPanelLayer extends Container {
     /**
      * @param {Application} app
      * @param {ChunkClaimsView} claims
+     * @param {PlayersView} players
      */
-    constructor(app, claims) {
+    constructor(app, claims, players) {
         super();
         this._app = app;
         this._claims = claims;
+        this._players = players;
         this.zIndex = 900;
         this.visible = false;
         this._chunk = null;
@@ -138,7 +140,7 @@ export class ChunkInfoPanelLayer extends Container {
             };
         }
         if (owner !== PLAYER_ID_NONE) {
-            const name = claims.usernameOf(owner);
+            const name = this._players.usernameOf(owner);
             // Access comes from THEIR grant; the button toggles the own player's grant back.
             let info;
             if (claims.isGrantedBy(owner)) {

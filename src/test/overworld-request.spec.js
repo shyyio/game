@@ -6,7 +6,10 @@ import {GameAPI} from "@/sim/GameAPI.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {CHUNK_SIZE, REGION_SIZE, Direction} from "@/common/constants.js";
 import {CreateObjectMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
+import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
+import {PlayerNamesEvent} from "@/common/PlayerEvents.js";
+import {chunkId} from "@/common/util.js";
 import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
@@ -29,6 +32,37 @@ test("a session with no chunk subscriptions gets an overworld snapshot on reques
     assert.deepEqual(snapshot.runStarts, [2 * CHUNK_SIZE + 3]);
     assert.deepEqual(snapshot.runLengths, [1]);
     assert.deepEqual(snapshot.runTypeIds, [BeltDefinition.typeId]);
+});
+
+test("an overworld snapshot carries the rect's claims, owner names pushed first", async () => {
+    const modRegistry = ecsModRegistry();
+    const game = new Game(modRegistry, new GameEngine(modRegistry));
+    await game.init();
+
+    const alice = new CapturingSession(1);
+    const bob = new CapturingSession(2);
+    game.connect(alice);
+    game.connect(bob);
+    game.dispatchMessage(new ClaimChunkMessage(chunkId(3, 2)), alice);
+    bob.events.length = 0;
+
+    game.dispatchMessage(new OverworldRequestMessage(-1, -1, 2, 2), bob);
+    const nameIndex = bob.events.findIndex(
+        event => event instanceof PlayerNamesEvent && event.playerIds.includes(1),
+    );
+    const snapshotIndex = bob.events.findIndex(event => event instanceof OverworldSnapshotEvent);
+    assert.ok(nameIndex >= 0, "the requester learns the owner's name");
+    assert.ok(snapshotIndex > nameIndex, "the name precedes the snapshot");
+    const snapshot = bob.events[snapshotIndex];
+    assert.deepEqual(snapshot.claimedChunks, [chunkId(3, 2)]);
+    assert.deepEqual(snapshot.claimOwners, [1]);
+
+    // A repeat request resends no known name; a rect missing the claim carries none.
+    bob.events.length = 0;
+    game.dispatchMessage(new OverworldRequestMessage(5, 5, 2, 2), bob);
+    assert.ok(!bob.events.some(event => event instanceof PlayerNamesEvent));
+    const far = bob.events.filter(event => event instanceof OverworldSnapshotEvent).at(-1);
+    assert.deepEqual(far.claimedChunks, []);
 });
 
 test("an over-area overworld request fails validation and gets no snapshot", async () => {

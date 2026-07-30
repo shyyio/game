@@ -1,9 +1,8 @@
 /**
  * Topic pub/sub for session event delivery. A session subscribes to the chunks it views and the
- * objects it inspects; every event is published to its topic's subscribers. This collapses the old
- * broadcast-then-publish split into one `publish`: it picks recipients from the event's own topic and
- * hands each the event, and whether a given session's delivery crosses the wire is that session's own
- * concern. Also allocates session ids and owns the session registry.
+ * objects it inspects; `publish` picks recipients from the event's own topic and hands each the
+ * event, and whether a given session's delivery crosses the wire is that session's own concern.
+ * Also allocates session ids and owns the session registry.
  *
  * Chunk and object topics live in separate maps keyed by the raw numeric id, so routing an event
  * builds no string.
@@ -73,14 +72,6 @@ export class EventBus {
         for (const sessionId of [...subscribers]) {
             this._sessions.get(sessionId).publishEvent(event);
         }
-    }
-
-    /**
-     * Every connected session's id (broadcast events route through this).
-     * @returns {Iterable<number>}
-     */
-    allSessionIds() {
-        return this._sessions.keys();
     }
 
     /**

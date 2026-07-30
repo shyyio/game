@@ -317,6 +317,14 @@ export class ClientCache {
     }
 
     /**
+     * @param {string} path
+     * @returns {number}
+     */
+    setSize(path) {
+        return this._entry(path, STATE_KIND_SET).value.size;
+    }
+
+    /**
      * Adds one member, notifying with (id, true); a present member notifies nobody.
      * @param {string} path
      * @param {number} id

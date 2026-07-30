@@ -1,5 +1,4 @@
 import {AbstractEvent} from "@/common/AbstractEvent.js";
-import {AbstractBroadcastEvent} from "@/common/AbstractBroadcastEvent.js";
 
 /**
  * A claim/unclaim attempt's outcome, carried by ClaimResultEvent.
@@ -16,31 +15,29 @@ export const ClaimResult = {
 };
 
 /**
- * The full chunk-ownership map as parallel arrays, sent to a session on connect. Targeted
- * (publishTo).
+ * The session's own claimed chunks, sent to it on connect. Targeted (publishTo).
  */
-export class ChunkClaimSyncEvent extends AbstractEvent {
+export class OwnClaimsSyncEvent extends AbstractEvent {
 
     static wireFields = {
         chunks: "int32[]",
-        playerIds: "int64[]",
     };
 
     /**
      * @param {number[]} chunks
-     * @param {number[]} playerIds
      */
-    constructor(chunks, playerIds) {
+    constructor(chunks) {
         super();
         this.chunks = chunks;
-        this.playerIds = playerIds;
     }
 }
 
 /**
- * One chunk's ownership changed; playerId PLAYER_ID_NONE means it is now unclaimed.
+ * One chunk's ownership changed; playerId PLAYER_ID_NONE means it is now unclaimed. Routed to the
+ * chunk's topic; the sim also targets it at the affected owner's sessions and at a session whose
+ * viewport gains a claimed chunk.
  */
-export class ChunkClaimUpdateEvent extends AbstractBroadcastEvent {
+export class ChunkClaimUpdateEvent extends AbstractEvent {
 
     static wireFields = {
         chunk: "int32",
@@ -55,6 +52,14 @@ export class ChunkClaimUpdateEvent extends AbstractBroadcastEvent {
         super();
         this.chunk = chunk;
         this.playerId = playerId;
+    }
+
+    /**
+     * @param {EventBus} bus
+     * @returns {Set<number>|undefined}
+     */
+    subscribersIn(bus) {
+        return bus.chunkSubscribers(this.chunk);
     }
 }
 
