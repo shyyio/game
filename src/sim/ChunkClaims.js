@@ -1,6 +1,6 @@
 import {PLAYER_ID_NONE} from "@/common/constants.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
-import {chunkNeighbors} from "@/common/util.js";
+import {chunkNeighbors, chunkPosition} from "@/common/util.js";
 
 export const CHUNK_CLAIM_RECORD = "ChunkClaim";
 
@@ -109,13 +109,23 @@ export class ChunkClaims {
     }
 
     /**
-     * The full ownership map as parallel arrays, for the connect-time sync event.
+     * The (chunk, owner) pairs inside a chunk-coordinate rect as parallel arrays, by scanning the
+     * ownership map: claims are few, rects can span the region.
+     * @param {number} chunkX
+     * @param {number} chunkY
+     * @param {number} chunkWidth
+     * @param {number} chunkHeight
      * @returns {{chunks: number[], playerIds: number[]}}
      */
-    snapshot() {
+    claimsIn(chunkX, chunkY, chunkWidth, chunkHeight) {
         const chunks = [];
         const playerIds = [];
         for (const [chunk, playerId] of this._ownerByChunk) {
+            const position = chunkPosition(chunk);
+            if (position.x < chunkX || position.x >= chunkX + chunkWidth
+                || position.y < chunkY || position.y >= chunkY + chunkHeight) {
+                continue;
+            }
             chunks.push(chunk);
             playerIds.push(playerId);
         }

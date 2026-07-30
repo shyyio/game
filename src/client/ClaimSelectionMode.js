@@ -1,7 +1,7 @@
 import {OVERWORLD_SCALE_THRESHOLD, TILE_SIZE, ViewMode} from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 import {chunkId, inRegion} from "@/common/util.js";
-import {ChunkClaimSyncEvent, ChunkClaimUpdateEvent} from "@/common/ClaimEvents.js";
+import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent} from "@/common/ClaimEvents.js";
 import {FriendListEvent} from "@/common/PlayerEvents.js";
 
 // Where the mode's auto-zoom lands: map mode's far edge, just shy of overworld.
@@ -86,7 +86,7 @@ export class ClaimSelectionMode {
             this._client.chunkInfoPanelLayer.refresh();
             return;
         }
-        if (!(event instanceof ChunkClaimSyncEvent) && !(event instanceof ChunkClaimUpdateEvent)) {
+        if (!(event instanceof OwnClaimsSyncEvent) && !(event instanceof ChunkClaimUpdateEvent)) {
             return;
         }
         const noClaims = this._noClaims();
@@ -101,7 +101,7 @@ export class ClaimSelectionMode {
         this._client.firstClaimLayer.setNoClaims(noClaims);
         this._client.chunkInfoPanelLayer.refresh();
         this._client.chunkSelectionLayer.refresh();
-        if (event instanceof ChunkClaimSyncEvent && !this._connectViewApplied) {
+        if (event instanceof OwnClaimsSyncEvent && !this._connectViewApplied) {
             this._connectViewApplied = true;
             if (noClaims) {
                 this._client.viewport.glideTo({scale: MODE_ZOOM_SCALE});

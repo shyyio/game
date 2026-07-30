@@ -133,7 +133,7 @@ export class RemoteCursorsDrawLayer extends AbstractDrawLayer {
      */
     constructor(state) {
         super();
-        this._claims = state.view("chunkClaims");
+        this._players = state.view("players");
         const pool = new DisplayPool(
             () => {
                 const display = new RemoteCursorDisplay();
@@ -173,7 +173,7 @@ export class RemoteCursorsDrawLayer extends AbstractDrawLayer {
         let display = this._displays.get(cursor.playerId);
         if (display === undefined) {
             display = this._displays.take(cursor.playerId);
-            display.show(this._claims.usernameOf(cursor.playerId), claimColor(cursor.playerId));
+            display.show(this._players.usernameOf(cursor.playerId), claimColor(cursor.playerId));
             display.snap(x, y);
         } else {
             display.retarget(x, y);

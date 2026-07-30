@@ -106,6 +106,13 @@ export class CursorSyncSimMod extends AbstractSimMod {
             }
             state.chunk = chunk;
         }
+        const viewers = game.bus.chunkSubscribers(chunk);
+        if (viewers !== undefined) {
+            // The cursor label needs its owner's name; first sight of a player sends it.
+            for (const sessionId of viewers) {
+                game.syncUsernames(sessionId, [session.playerId]);
+            }
+        }
         game.bus.publish(event);
     }
 

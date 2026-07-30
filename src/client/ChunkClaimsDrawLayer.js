@@ -12,7 +12,7 @@ const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
 const BORDER_WIDTH = TILE_SIZE;
 
 // Thin perimeter line at world (build) zoom.
-const WORLD_BORDER_WIDTH = 3;
+const WORLD_BORDER_WIDTH = 4;
 const WORLD_BORDER_ALPHA = 0.35;
 
 // Constant screen-pixel label size (rescaled per tick).
@@ -22,7 +22,8 @@ const LABEL_CLAMP_MARGIN = TILE_SIZE * 8;
 
 /**
  * Claim borders with owner labels (home glyph for the own player) at map/overworld zoom;
- * thin perimeter lines at world zoom. Not chunk-mounted: claims are few and global.
+ * thin perimeter lines at world zoom. Not chunk-mounted: renders the claims cache's last-seen
+ * ownership map, whole-region.
  */
 export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
 
@@ -32,6 +33,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
     constructor(state) {
         super();
         this._claims = state.view("chunkClaims");
+        this._players = state.view("players");
         // Chunk ordinal -> its border Graphics.
         this._graphics = new Map();
         // Owner playerId -> username Text.
@@ -61,8 +63,8 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
             this._dirtyChunks.add(chunk);
             this._labelsDirty = true;
         });
-        // A directory update can rename an owner after their claims arrived.
-        state.subscribe("chunkClaims.usernameByPlayer", () => {
+        // A name push can arrive after its owner's claims, or rename them.
+        state.subscribe("players.usernameByPlayer", () => {
             this._labelsDirty = true;
         });
     }
@@ -177,7 +179,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
                 this._labelLayer.addChild(created);
                 return created;
             });
-            label.text = this._claims.usernameOf(owner);
+            label.text = this._players.usernameOf(owner);
             const position = this._labelPosition(territory);
             label.position.set(position.x, position.y);
         }

@@ -1,6 +1,5 @@
 import uWS from "uWebSockets.js";
 import {SignInMessage} from "@/common/PlayerMessages.js";
-import {PlayerDirectoryEvent} from "@/common/PlayerEvents.js";
 import {WebSocketSession} from "@/server/WebSocketSession.js";
 import {GAME_VERSION} from "@/common/constants.js";
 import {formatBytes} from "@/common/util.js";
@@ -189,13 +188,7 @@ export class GameServer {
             ws.end(CLOSE_CODE_BAD_SIGN_IN);
             return;
         }
-        const known = this._game.players.findByUsername(message.username) !== null;
         const record = this._game.players.getOrCreate(message.username);
-        if (!known) {
-            // A one-entry directory delta; connected clients learn the new name.
-            this._game.bus.publish(new PlayerDirectoryEvent([record.playerId], [record.username]));
-        }
-
         const superseded = this._sessionsByPlayer.get(record.playerId);
         if (superseded !== undefined) {
             // The close callback runs the usual disconnect cleanup.

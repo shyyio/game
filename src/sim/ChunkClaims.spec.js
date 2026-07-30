@@ -78,15 +78,25 @@ test("claims clip to the region edge", () => {
     assert.equal(claims.claim(1, chunkOrdinal(-63, -64), MAX), ClaimResult.CLAIM_RESULT_OK);
 });
 
-test("snapshot and table round-trip", () => {
+test("claimsIn filters claims to the rect", () => {
     const claims = new ChunkClaims();
     claims.claim(1, chunkOrdinal(0, 0), MAX);
     claims.claim(1, chunkOrdinal(1, 0), MAX);
     claims.claim(2, chunkOrdinal(10, 10), MAX);
 
-    const snapshot = claims.snapshot();
-    assert.equal(snapshot.chunks.length, 3);
-    assert.equal(snapshot.playerIds.length, 3);
+    const inRect = claims.claimsIn(0, 0, 2, 1);
+    assert.deepEqual(inRect.chunks.sort(), [chunkOrdinal(0, 0), chunkOrdinal(1, 0)].sort());
+    assert.deepEqual(inRect.playerIds, [1, 1]);
+
+    const empty = claims.claimsIn(-5, -5, 3, 3);
+    assert.deepEqual(empty.chunks, []);
+});
+
+test("table round-trip", () => {
+    const claims = new ChunkClaims();
+    claims.claim(1, chunkOrdinal(0, 0), MAX);
+    claims.claim(1, chunkOrdinal(1, 0), MAX);
+    claims.claim(2, chunkOrdinal(10, 10), MAX);
 
     const restored = new ChunkClaims();
     restored.deserializeRecords(claims.serializeRecords());

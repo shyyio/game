@@ -2,7 +2,8 @@ import {AbstractEvent} from "@/common/AbstractEvent.js";
 
 /**
  * The baked tile runs of every non-empty chunk in a requested rect; rect chunks absent from
- * `chunks` are empty. Sent per-session via publishTo, never topic-published.
+ * `chunks` are empty. Claimed chunks ride along as (claimedChunks, claimOwners) pairs, owner
+ * names pushed separately beforehand. Sent per-session via publishTo, never topic-published.
  */
 export class OverworldSnapshotEvent extends AbstractEvent {
 
@@ -16,6 +17,8 @@ export class OverworldSnapshotEvent extends AbstractEvent {
         runStarts: "int32[]",
         runLengths: "int32[]",
         runTypeIds: "int32[]",
+        claimedChunks: "int32[]",
+        claimOwners: "int64[]",
     };
 
     /**
@@ -36,6 +39,9 @@ export class OverworldSnapshotEvent extends AbstractEvent {
         this.runStarts = [];
         this.runLengths = [];
         this.runTypeIds = [];
+        // Claimed chunk ordinals in the rect and their owners, parallel.
+        this.claimedChunks = [];
+        this.claimOwners = [];
     }
 
     /**

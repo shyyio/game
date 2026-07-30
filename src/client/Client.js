@@ -15,6 +15,7 @@ import {AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/
 import {ChunkClaimsDrawLayer} from "@/client/ChunkClaimsDrawLayer.js";
 import {ClientCache} from "@/client/ClientCache.js";
 import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/ChunkClaimsState.js";
+import {PLAYERS_SCHEMA, PlayersWriter, PlayersView} from "@/client/PlayersState.js";
 import {PLAYER_SETTINGS_SCHEMA, GAME_SETTINGS_SCHEMA, PlayerSettingsWriter, GameSettingsWriter, PlayerSettingsView, GameSettingsView} from "@/client/SettingsState.js";
 import {WORKER_ASSIGNMENTS_SCHEMA, WorkerAssignmentsWriter, WorkerAssignmentsView} from "@/client/WorkerAssignmentsState.js";
 import {OBJECTS_SCHEMA, ObjectsWriter} from "@/client/ObjectsState.js";
@@ -121,6 +122,7 @@ export class Client {
         this.objects = new ObjectsView(modRegistry);
         this.cache.register("objects", OBJECTS_SCHEMA, new ObjectsWriter(modRegistry, this.cache), this.objects);
         this.cache.register("chunkClaims", CHUNK_CLAIMS_SCHEMA, new ChunkClaimsWriter(this.cache), new ChunkClaimsView());
+        this.cache.register("players", PLAYERS_SCHEMA, new PlayersWriter(this.cache), new PlayersView());
         this.cache.register("gameSettings", GAME_SETTINGS_SCHEMA, new GameSettingsWriter(this.cache), new GameSettingsView());
         this.cache.register("playerSettings", PLAYER_SETTINGS_SCHEMA, new PlayerSettingsWriter(this.cache), new PlayerSettingsView());
         this.cache.register("workerAssignments", WORKER_ASSIGNMENTS_SCHEMA, new WorkerAssignmentsWriter(this.cache), new WorkerAssignmentsView());
@@ -176,7 +178,7 @@ export class Client {
         this.claimFrontierLayer = new ClaimFrontierDrawLayer(this.cache);
         this.drawLayerRegistry.add(this.claimFrontierLayer);
         // Chunk owner/claim panel for the hovered chunk (map mode).
-        this.chunkInfoPanelLayer = new ChunkInfoPanelLayer(app, this.cache.view("chunkClaims"));
+        this.chunkInfoPanelLayer = new ChunkInfoPanelLayer(app, this.cache.view("chunkClaims"), this.cache.view("players"));
         this.chunkInfoPanelLayer.onClaim(chunk => this.sendMessage(new ClaimChunkMessage(chunk)));
         this.chunkInfoPanelLayer.onUnclaim(chunk => this.sendMessage(new UnclaimChunkMessage(chunk)));
         this.chunkInfoPanelLayer.onAddFriend(playerId => this.sendMessage(new AddFriendMessage(playerId)));
