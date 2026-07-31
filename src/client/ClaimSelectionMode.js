@@ -104,8 +104,7 @@ export class ClaimSelectionMode {
         }
         this._forced = noClaims;
         this.updateIndicators();
-        // No claimed chunks means nothing to build on: the toolbar hides until the first claim.
-        this._client.toolbarLayer.visible = !noClaims;
+        this._client.refreshToolbarVisibility();
         this._client.chunkInfoPanelLayer.refresh();
         this._client.chunkSelectionLayer.refresh();
         if (event instanceof OwnClaimsSyncEvent && !this._connectViewApplied) {
@@ -140,9 +139,11 @@ export class ClaimSelectionMode {
         );
         this._client.claimFrontierLayer.setModeActive(this.active);
         this._client.mapButtonsLayer.setActive("claimSelection", this.active);
-        // Forced mode can't be exited, so its close button hides with it; home needs claims.
-        this._client.mapButtonsLayer.setButtonVisible("claimSelection", !this._noClaims());
-        this._client.mapButtonsLayer.setButtonVisible("home", !this._noClaims());
+        // The top bar's Back button already covers exit while the mode is active, so the map
+        // buttons show only for entering it (and stay hidden entirely with no claims to home to).
+        const canShowMapButtons = !this._noClaims() && !this.active;
+        this._client.mapButtonsLayer.setButtonVisible("claimSelection", canShowMapButtons);
+        this._client.mapButtonsLayer.setButtonVisible("home", canShowMapButtons);
         this._client.topStatusBar.setSection(STATUS_BAR_SECTION_ID, this._statusBarSection());
     }
 
