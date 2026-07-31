@@ -12,8 +12,8 @@ import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSetti
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {SignInMessage, AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
 import {WelcomeEvent, PlayerNamesEvent, FriendListEvent} from "@/common/PlayerEvents.js";
-import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
-import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent} from "@/common/ClaimEvents.js";
+import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
+import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ChunkPermission} from "@/common/ClaimEvents.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
 import {GAME_VERSION, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
@@ -136,6 +136,7 @@ test("Round-trips an OverworldSnapshotEvent's flattened run and claim columns", 
     event.addChunk(8129, [0], [64], [4]);
     event.claimedChunks = [8128, 8200];
     event.claimOwners = [1, 2];
+    event.claimPermissions = [ChunkPermission.PERMISSION_FRIENDS, ChunkPermission.PERMISSION_ONLY_ME];
     roundTrip(reg, event, OverworldSnapshotEvent);
 });
 
@@ -160,9 +161,19 @@ test("Round-trips the claim messages and events", () => {
     roundTrip(reg, new ClaimChunkMessage(0), ClaimChunkMessage);
     roundTrip(reg, new UnclaimChunkMessage(8256), UnclaimChunkMessage);
     roundTrip(reg, new UnclaimChunkMessage(8256, true), UnclaimChunkMessage);
-    roundTrip(reg, new OwnClaimsSyncEvent([]), OwnClaimsSyncEvent);
-    roundTrip(reg, new OwnClaimsSyncEvent([8256, 8257]), OwnClaimsSyncEvent);
+    roundTrip(reg, new SetChunkPermissionMessage(8256, ChunkPermission.PERMISSION_ONLY_ME), SetChunkPermissionMessage);
+    roundTrip(reg, new OwnClaimsSyncEvent([], []), OwnClaimsSyncEvent);
+    roundTrip(
+        reg,
+        new OwnClaimsSyncEvent([8256, 8257], [ChunkPermission.PERMISSION_FRIENDS, ChunkPermission.PERMISSION_ONLY_ME]),
+        OwnClaimsSyncEvent,
+    );
     roundTrip(reg, new ChunkClaimUpdateEvent(8256, PLAYER_ID_NONE), ChunkClaimUpdateEvent);
+    roundTrip(
+        reg,
+        new ChunkClaimUpdateEvent(8256, 7, ChunkPermission.PERMISSION_ONLY_ME),
+        ChunkClaimUpdateEvent,
+    );
     roundTrip(reg, new ClaimResultEvent(8256, ClaimResult.CLAIM_RESULT_WOULD_SPLIT), ClaimResultEvent);
 });
 

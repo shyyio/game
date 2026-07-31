@@ -19,6 +19,7 @@ export class OverworldSnapshotEvent extends AbstractEvent {
         runTypeIds: "int32[]",
         claimedChunks: "int32[]",
         claimOwners: "int64[]",
+        claimPermissions: "int32[]",
     };
 
     /**
@@ -39,9 +40,10 @@ export class OverworldSnapshotEvent extends AbstractEvent {
         this.runStarts = [];
         this.runLengths = [];
         this.runTypeIds = [];
-        // Claimed chunk ordinals in the rect and their owners, parallel.
+        // Claimed chunk ordinals in the rect and their owners/permissions, parallel.
         this.claimedChunks = [];
         this.claimOwners = [];
+        this.claimPermissions = [];
     }
 
     /**

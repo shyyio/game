@@ -10,7 +10,7 @@ import {EraserTool} from "@/client/EraserTool.js";
 import {SetViewportMessage, SetInspectedObjectsMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
-import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
+import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {NoticeLayer} from "@/client/NoticeLayer.js";
 import {ConfirmDialogLayer} from "@/client/ConfirmDialogLayer.js";
 import {ClaimResultFeedback} from "@/client/ClaimResultFeedback.js";
@@ -212,6 +212,9 @@ export class Client {
         this.chunkInfoPanelLayer.onUnclaim(chunk => this.sendMessage(new UnclaimChunkMessage(chunk)));
         this.chunkInfoPanelLayer.onAddFriend(playerId => this.sendMessage(new AddFriendMessage(playerId)));
         this.chunkInfoPanelLayer.onUnfriend(playerId => this.sendMessage(new RemoveFriendMessage(playerId)));
+        this.chunkInfoPanelLayer.onSetPermission(
+            (chunk, permission) => this.sendMessage(new SetChunkPermissionMessage(chunk, permission)),
+        );
 
         // The derived client surface (draw layer + ghost + tool) of every behavior-driven type;
         // bespokeClient types (belts) bring their own through their client mod.

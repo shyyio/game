@@ -40,6 +40,47 @@ export function drawHomeIcon(face, color = PANEL_TEXT, width = ICON_STROKE) {
 }
 
 /**
+ * The only-me badge: a closed padlock.
+ * @param {Graphics} face
+ * @param {number} [color]
+ * @param {number} [width]
+ * @returns {void}
+ */
+export function drawLockIcon(face, color = PANEL_TEXT, width = ICON_STROKE) {
+    face
+        .moveTo(-4, -3)
+        .arc(0, -3, 4, Math.PI, 0, false)
+        .stroke({color, width});
+    face
+        .rect(-6, -1, 12, 8)
+        .stroke({color, width});
+}
+
+/**
+ * The friend-access badge: two overlapping head-and-shoulders glyphs.
+ * @param {Graphics} face
+ * @param {number} [color]
+ * @param {number} [width]
+ * @returns {void}
+ */
+export function drawFriendIcon(face, color = PANEL_TEXT, width = ICON_STROKE) {
+    face
+        .circle(-3, -5, 3)
+        .stroke({color, width});
+    face
+        .circle(3, -5, 3)
+        .stroke({color, width});
+    face
+        .moveTo(-9, 6)
+        .arc(-3, 2, 6, Math.PI, 0, true)
+        .stroke({color, width});
+    face
+        .moveTo(-3, 6)
+        .arc(3, 2, 6, Math.PI, 0, true)
+        .stroke({color, width});
+}
+
+/**
  * The settings icon: three sliders, each a horizontal line with a knob.
  * @param {Graphics} face
  * @returns {void}

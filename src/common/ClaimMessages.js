@@ -1,7 +1,9 @@
 import {AbstractMessage} from "@/common/AbstractMessage.js";
 import {REGION_SIZE} from "@/common/constants.js";
+import {ChunkPermission} from "@/common/ClaimEvents.js";
 
 const CHUNK_ORDINAL_LIMIT = REGION_SIZE * REGION_SIZE;
+const VALID_PERMISSIONS = new Set(Object.values(ChunkPermission));
 
 /**
  * Base for messages targeting one chunk by ordinal; subclasses exist for wire identity.
@@ -51,5 +53,34 @@ export class UnclaimChunkMessage extends AbstractChunkMessage {
     constructor(chunk, clear = false) {
         super(chunk);
         this.clear = clear ? 1 : 0;
+    }
+}
+
+/**
+ * Sets a claimed chunk's build permission; rejected sim-side unless the sender owns it.
+ */
+export class SetChunkPermissionMessage extends AbstractChunkMessage {
+
+    static wireFields = {
+        chunk: "int32",
+        permission: "int32",
+    };
+
+    /**
+     * @param {number} chunk
+     * @param {number} permission - a ChunkPermission
+     */
+    constructor(chunk, permission) {
+        super(chunk);
+        this.permission = permission;
+    }
+
+    /**
+     * @param {GameAPI} api
+     * @param {AbstractSession} session
+     * @returns {boolean}
+     */
+    validate(api, session) {
+        return super.validate(api, session) && VALID_PERMISSIONS.has(this.permission);
     }
 }
