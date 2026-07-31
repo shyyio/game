@@ -185,10 +185,25 @@ onMounted(async () => {
         minScale: MIN_VIEWPORT_SCALE
       });
 
-  if (Mobile.enabled) {
-    viewport.pinch();
-    new MobileTouchInput(app, viewport).install();
-  }
+  // Live-toggled by the "Touchscreen input" device setting: adds/removes the pinch plugin and the
+  // HUD-touch routing glue instead of only reading Mobile.enabled once at mount.
+  let touchInput = null;
+  const syncMobileTouchInput = () => {
+    if (Mobile.enabled) {
+      if (touchInput === null) {
+        viewport.pinch();
+        touchInput = new MobileTouchInput(app, viewport);
+        touchInput.install();
+      }
+      return;
+    }
+    if (touchInput !== null) {
+      viewport.plugins.remove("pinch");
+      touchInput.uninstall();
+      touchInput = null;
+    }
+  };
+  syncMobileTouchInput();
 
   Fullscreen.install();
 
@@ -299,8 +314,12 @@ onMounted(async () => {
       viewport.unfreezePan();
     }
   };
-  // Recomputes center-lock/pan-freeze when the "Mobile" toggle flips mid-tool.
-  Mobile.onChange(applyEffectiveTool);
+  // Installs/tears down touch input and recomputes center-lock/pan-freeze when the
+  // "Touchscreen input" toggle flips mid-session.
+  Mobile.onChange(() => {
+    syncMobileTouchInput();
+    applyEffectiveTool();
+  });
 
   // Selecting a toolbar tool zooms in. On desktop the zoom homes on the mouse cursor
   toolbar.onChange(() => {

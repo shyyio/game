@@ -38,6 +38,19 @@ export class MobileTouchInput {
         this._viewport = viewport;
         // pointerId -> held-back HUD touch, replayed into the tracker when a pinch partner lands.
         this._heldHudTouches = new Map();
+        // Bound once so uninstall() can remove the exact listeners install() added.
+        this._onFullscreenChange = () => {
+            this._viewport.input.clear();
+            this._heldHudTouches.clear();
+            Mouse.cancelInteraction();
+        };
+        this._onPointerDown = (e) => this._handlePointerDown(e);
+        this._onPointerUp = (e) => {
+            if (e.pointerType === "touch") {
+                this._heldHudTouches.delete(e.pointerId);
+                this._viewport.input.up(e);
+            }
+        };
     }
 
     /**
@@ -46,24 +59,28 @@ export class MobileTouchInput {
     install() {
         // The fullscreen transition swallows the exit gesture's pointerup, stranding ghost touches;
         // drop all pointer state on the switch.
-        document.addEventListener("fullscreenchange", () => {
-            this._viewport.input.clear();
-            this._heldHudTouches.clear();
-            Mouse.cancelInteraction();
-        });
+        document.addEventListener("fullscreenchange", this._onFullscreenChange);
         // Stage-capture listeners route HUD-origin touches into the pinch tracker, but only
         // once a second finger shows pinch intent; a lone HUD touch is held back so it never
         // pans the world underneath.
         this._stage.eventMode = "static";
-        this._stage.addEventListener("pointerdown", (e) => this._handlePointerDown(e), {capture: true});
+        this._stage.addEventListener("pointerdown", this._onPointerDown, {capture: true});
         for (const type of ["pointerup", "pointercancel"]) {
-            this._stage.addEventListener(type, (e) => {
-                if (e.pointerType === "touch") {
-                    this._heldHudTouches.delete(e.pointerId);
-                    this._viewport.input.up(e);
-                }
-            }, {capture: true});
+            this._stage.addEventListener(type, this._onPointerUp, {capture: true});
         }
+    }
+
+    /**
+     * Reverses {@link MobileTouchInput#install}, dropping any held-back touch state.
+     * @returns {void}
+     */
+    uninstall() {
+        document.removeEventListener("fullscreenchange", this._onFullscreenChange);
+        this._stage.removeEventListener("pointerdown", this._onPointerDown, {capture: true});
+        for (const type of ["pointerup", "pointercancel"]) {
+            this._stage.removeEventListener(type, this._onPointerUp, {capture: true});
+        }
+        this._heldHudTouches.clear();
     }
 
     /**
