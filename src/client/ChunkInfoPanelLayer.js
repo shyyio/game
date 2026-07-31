@@ -2,14 +2,13 @@ import {Container, Graphics, Text} from "pixi.js";
 import {PLAYER_ID_NONE} from "@/common/constants.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
 import {GAME_FONT, HUD_BOTTOM_OFFSET} from "@/client/constants.js";
-import {PANEL_BORDER, PANEL_TEXT, PANEL_HOVER_FILL, ACTIVE_ACCENT, LABEL_EMPHASIS} from "@/client/Theme.js";
+import {PANEL_BORDER, PANEL_TEXT, ACTIVE_ACCENT, LABEL_EMPHASIS} from "@/client/Theme.js";
 import {drawPanelBackground} from "@/client/icons.js";
+import {buildPanelButton, BUTTON_HEIGHT} from "@/client/panelButton.js";
 
 const PADDING_X = 14;
 const PADDING_Y = 10;
 const LINE_GAP = 4;
-const BUTTON_HEIGHT = 34;
-const BUTTON_PADDING_X = 16;
 const BUTTON_GAP = 10;
 const MIN_WIDTH = 220;
 
@@ -251,38 +250,8 @@ export class ChunkInfoPanelLayer extends Container {
      * @returns {Container}
      */
     _buildButton(label, disabled) {
-        const button = new Container();
-        const text = new Text({
-            text: label,
-            style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TEXT, fontWeight: "bold"},
-        });
-        const width = text.width + BUTTON_PADDING_X * 2;
         const borderColor = disabled ? PANEL_BORDER : ACTIVE_ACCENT;
-
-        const fill = new Graphics()
-            .roundRect(0, 0, width, BUTTON_HEIGHT, 6)
-            .fill({color: PANEL_HOVER_FILL})
-            .stroke({color: borderColor, width: 1});
-        button.addChild(fill);
-        text.x = BUTTON_PADDING_X;
-        text.y = (BUTTON_HEIGHT - text.height) / 2;
-        button.addChild(text);
-
-        if (disabled) {
-            button.alpha = 0.45;
-            return button;
-        }
-        button.eventMode = "static";
-        button.cursor = "pointer";
-        button.on("pointerover", () => {
-            fill.tint = 0xcccccc;
-        });
-        button.on("pointerout", () => {
-            fill.tint = 0xffffff;
-        });
-        button.on("pointerdown", (e) => e.stopPropagation());
-        button.on("pointertap", () => this._buttonAction());
-        return button;
+        return buildPanelButton(label, borderColor, () => this._buttonAction(), disabled);
     }
 
     /**

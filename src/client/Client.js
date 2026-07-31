@@ -11,6 +11,9 @@ import {SetViewportMessage, SetInspectedObjectsMessage, OverworldRequestMessage}
 import {ChunkSyncEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
+import {NoticeLayer} from "@/client/NoticeLayer.js";
+import {ConfirmDialogLayer} from "@/client/ConfirmDialogLayer.js";
+import {ClaimResultFeedback} from "@/client/ClaimResultFeedback.js";
 import {AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
 import {SettingCategory} from "@/client/SettingCategory.js";
 import {AbstractPlayerSettingControl} from "@/client/AbstractPlayerSettingControl.js";
@@ -172,6 +175,10 @@ export class Client {
         this.statusLayer.setConnecting();
         // Onboarding banner while the player holds no chunks.
         this.firstClaimLayer = new FirstClaimLayer(app);
+        // Bottom-center toast (claim rejections, session disconnects).
+        this.noticeLayer = new NoticeLayer(app);
+        // Centered confirm/cancel dialog, currently only the destructive unclaim confirm.
+        this.confirmDialogLayer = new ConfirmDialogLayer(app);
         // Center-lock aim point for claim selection (mobile).
         this.centerMarkerLayer = new CenterMarkerLayer(app, viewport);
         // Contextual map-mode buttons (bottom-right); each toggles an input mode.
@@ -247,6 +254,18 @@ export class Client {
         // Claim selection input mode controller.
         this.claimSelection = new ClaimSelectionMode(this);
         this.onEvent(event => this.claimSelection.onEvent(event));
+        // Toast/confirm-dialog feedback for claim/unclaim rejections.
+        this.claimResultFeedback = new ClaimResultFeedback(this);
+        this.onEvent(event => this.claimResultFeedback.onEvent(event));
+    }
+
+    /**
+     * Shows a toast notice (claim rejections, session disconnects).
+     * @param {string} text
+     * @returns {void}
+     */
+    notify(text) {
+        this.noticeLayer.notify(text);
     }
 
     /**
@@ -387,6 +406,9 @@ export class Client {
         this.app.stage.addChild(this.firstClaimLayer);
         // Panels sit above every other HUD layer.
         this.app.stage.addChild(this.inspectPanelLayer);
+        // Toast and confirm dialog sit above every other HUD layer, including panels.
+        this.app.stage.addChild(this.noticeLayer);
+        this.app.stage.addChild(this.confirmDialogLayer);
 
         this.viewport.on("moved", () => this._onViewportMoved());
         // "zoomed" fires mid-wheel with the over-zoomed scale, before clampZoom restores it;
