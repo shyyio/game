@@ -1,7 +1,7 @@
 import {Viewport} from "pixi-viewport";
-import {isMobile} from "pixi.js";
 
 import ReducedMotion from "@/client/ReducedMotion.js";
+import Mobile from "@/client/Mobile.js";
 
 // One easing and duration for every scripted viewport move.
 const MOVE_MS = 300;
@@ -85,7 +85,7 @@ export class ClientViewport extends Viewport {
      */
     freezePan() {
         this.plugins.pause("drag");
-        if (isMobile.any) {
+        if (Mobile.enabled) {
             this.plugins.pause("pinch");
         }
     }
@@ -95,7 +95,7 @@ export class ClientViewport extends Viewport {
      */
     unfreezePan() {
         this.plugins.resume("drag");
-        if (isMobile.any) {
+        if (Mobile.enabled) {
             this.plugins.resume("pinch");
         }
     }

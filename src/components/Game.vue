@@ -1,12 +1,13 @@
 <script setup>
 import {onMounted, reactive, ref, watch} from "vue";
-import {Application, Graphics, Container, FillGradient, isMobile} from "pixi.js";
+import {Application, Graphics, Container, FillGradient} from "pixi.js";
 import {ClientViewport} from "@/client/ClientViewport.js";
 import Keyboard from "@/client/Keyboard.js";
 import Mouse from "@/client/Mouse.js";
 import {MobileTouchInput} from "@/client/MobileTouchInput.js";
-import DeviceSettings from "@/client/DeviceSettings.js";
+import DeviceSettings, {DEVICE_SETTING_MOBILE} from "@/client/DeviceSettings.js";
 import Fullscreen from "@/client/Fullscreen.js";
+import Mobile from "@/client/Mobile.js";
 import WindowFocus from "@/client/WindowFocus.js";
 import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
@@ -63,10 +64,7 @@ function notify(text) {
   noticeOpen.value = true;
 }
 
-// Mobile mode (touch device): panning stays live while a tool is active so the
-// player can aim the screen-center crosshair, hover/placement lock to center, and
-// the pixi rotate button replaces the "r" key.
-const mobile = isMobile.any;
+Mobile.setEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_MOBILE, Mobile.devicePrefers()));
 
 // Selecting a tool zooms in to at least this scale (a no-op if already past it): on
 // mobile, far enough that tiles are large enough to aim the center crosshair; on desktop,
@@ -187,7 +185,7 @@ onMounted(async () => {
         minScale: MIN_VIEWPORT_SCALE
       });
 
-  if (isMobile.any) {
+  if (Mobile.enabled) {
     viewport.pinch();
     new MobileTouchInput(app, viewport).install();
   }
@@ -289,9 +287,10 @@ onMounted(async () => {
     inputHandler.clearInspect();
     inputHandler.refreshHover();
     client.rotateButtonsLayer.setVisible(tool != null && tool.orientable);
+    const mobile = Mobile.enabled;
+    // Map mode locks the "cursor" to the screen center too.
+    client.setCenterLock(mobile && (mapMode || (tool != null && tool.usesCenterLock)));
     if (mobile) {
-      // Map mode locks the "cursor" to the screen center too.
-      client.setCenterLock(mapMode || (tool != null && tool.usesCenterLock));
       return;
     }
     if (tool != null) {
@@ -300,10 +299,13 @@ onMounted(async () => {
       viewport.unfreezePan();
     }
   };
+  // Recomputes center-lock/pan-freeze when the "Mobile" toggle flips mid-tool.
+  Mobile.onChange(applyEffectiveTool);
 
   // Selecting a toolbar tool zooms in. On desktop the zoom homes on the mouse cursor
   toolbar.onChange(() => {
     applyEffectiveTool();
+    const mobile = Mobile.enabled;
     const target = mobile ? TOOL_SELECT_ZOOM_MOBILE : TOOL_SELECT_ZOOM_DESKTOP;
     if (toolbar.activeTool == null || viewport.scale.x >= target) {
       return;

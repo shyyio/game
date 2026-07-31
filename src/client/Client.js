@@ -17,9 +17,10 @@ import {AbstractPlayerSettingControl} from "@/client/AbstractPlayerSettingContro
 import {PlayerSettingChoice} from "@/client/PlayerSettingChoice.js";
 import {PlayerSettingToggle} from "@/client/PlayerSettingToggle.js";
 import {DeviceSettingToggle} from "@/client/DeviceSettingToggle.js";
-import {DEVICE_SETTING_FULLSCREEN, DEVICE_SETTING_REDUCED_MOTION} from "@/client/DeviceSettings.js";
+import {DEVICE_SETTING_FULLSCREEN, DEVICE_SETTING_REDUCED_MOTION, DEVICE_SETTING_MOBILE} from "@/client/DeviceSettings.js";
 import Fullscreen from "@/client/Fullscreen.js";
 import ReducedMotion from "@/client/ReducedMotion.js";
+import Mobile from "@/client/Mobile.js";
 import {ChunkClaimsDrawLayer} from "@/client/ChunkClaimsDrawLayer.js";
 import {ClientCache} from "@/client/ClientCache.js";
 import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/ChunkClaimsState.js";
@@ -627,6 +628,9 @@ export class Client {
      * @param {boolean} enabled
      */
     setCenterLock(enabled) {
+        if (enabled === this._centerLock) {
+            return;
+        }
         this._centerLock = enabled;
         // Draw layers before the input layer, so a hover Mouse emits renders with center-lock on.
         this.drawLayerRegistry.setCenterLock(enabled);
@@ -922,6 +926,7 @@ export class Client {
             new SettingCategory("Display", DISPLAY_CATEGORY_ORDER, [
                 new DeviceSettingToggle(DEVICE_SETTING_FULLSCREEN, "Fullscreen", false, on => Fullscreen.setEnabled(on)),
                 new DeviceSettingToggle(DEVICE_SETTING_REDUCED_MOTION, "Reduced motion", ReducedMotion.devicePrefers(), on => ReducedMotion.setEnabled(on)),
+                new DeviceSettingToggle(DEVICE_SETTING_MOBILE, "Mobile", Mobile.devicePrefers(), on => Mobile.setEnabled(on)),
             ]),
         ];
     }
