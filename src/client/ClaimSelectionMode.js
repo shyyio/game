@@ -3,12 +3,20 @@ import {CHUNK_SIZE} from "@/common/constants.js";
 import {chunkId, inRegion} from "@/common/util.js";
 import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent} from "@/common/ClaimEvents.js";
 import {FriendListEvent} from "@/common/PlayerEvents.js";
+import {StatusBarSection, StatusBarButton} from "@/client/TopStatusBarLayer.js";
+import Mobile from "@/client/Mobile.js";
 
 // Where the mode's auto-zoom lands: map mode's far edge, just shy of overworld.
 const MODE_ZOOM_SCALE = OVERWORLD_SCALE_THRESHOLD * 1.1;
 
 // Entry glide skipped within a chunk of the centroid; the mode activates in place.
 const GLIDE_MIN_DISTANCE_PX = CHUNK_SIZE * TILE_SIZE;
+
+// This mode's owned id in the top status bar.
+const STATUS_BAR_SECTION_ID = "claimSelection";
+
+const WORLD_ONBOARDING = "No claimed chunks yet — zoom out to the map to claim your first one";
+const MAP_ONBOARDING = "Select an unclaimed chunk and press Claim chunk";
 
 /**
  * Claim selection input mode: the selected chunk, its widgets, and the mode's lifecycle.
@@ -98,7 +106,6 @@ export class ClaimSelectionMode {
         this.updateIndicators();
         // No claimed chunks means nothing to build on: the toolbar hides until the first claim.
         this._client.toolbarLayer.visible = !noClaims;
-        this._client.firstClaimLayer.setNoClaims(noClaims);
         this._client.chunkInfoPanelLayer.refresh();
         this._client.chunkSelectionLayer.refresh();
         if (event instanceof OwnClaimsSyncEvent && !this._connectViewApplied) {
@@ -136,6 +143,34 @@ export class ClaimSelectionMode {
         // Forced mode can't be exited, so its close button hides with it; home needs claims.
         this._client.mapButtonsLayer.setButtonVisible("claimSelection", !this._noClaims());
         this._client.mapButtonsLayer.setButtonVisible("home", !this._noClaims());
+        this._client.topStatusBar.setSection(STATUS_BAR_SECTION_ID, this._statusBarSection());
+    }
+
+    /**
+     * This mode's status-bar contribution: the onboarding text while forced with no claims, or
+     * the claim count with an exit button once there's somewhere to exit to. Null while inactive.
+     * @private
+     * @returns {StatusBarSection|null}
+     */
+    _statusBarSection() {
+        if (!this.active) {
+            return null;
+        }
+        if (this._noClaims()) {
+            let text;
+            if (this._client.viewMode === ViewMode.WORLD) {
+                text = WORLD_ONBOARDING;
+            } else {
+                text = MAP_ONBOARDING;
+            }
+            return new StatusBarSection(text);
+        }
+        const text = `${this._claims.ownCount()}/${this._claims.maxChunks} chunks claimed`;
+        let exitLabel = "Back";
+        if (!Mobile.enabled) {
+            exitLabel = "Back [Q]";
+        }
+        return new StatusBarSection(text, [new StatusBarButton(exitLabel, () => this.set(false))]);
     }
 
     /**

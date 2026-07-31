@@ -38,3 +38,23 @@ export function drawHomeIcon(face, color = PANEL_TEXT, width = ICON_STROKE) {
         .rect(-7, 1, 14, 9)
         .stroke({color, width});
 }
+
+/**
+ * The settings icon: three sliders, each a horizontal line with a knob.
+ * @param {Graphics} face
+ * @returns {void}
+ */
+export function drawSettingsIcon(face) {
+    const halfWidth = 9;
+    const rows = [-7, 0, 7];
+    const knobX = [-3, 4, -4];
+    for (const y of rows) {
+        face
+            .moveTo(-halfWidth, y)
+            .lineTo(halfWidth, y)
+            .stroke({color: PANEL_TEXT, width: ICON_STROKE, cap: "round"});
+    }
+    for (const [i, y] of rows.entries()) {
+        face.circle(knobX[i], y, 2.5).fill({color: PANEL_TEXT});
+    }
+}

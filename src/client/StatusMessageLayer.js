@@ -1,10 +1,10 @@
 import {Container, Text} from "pixi.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
-import {GAME_FONT} from "@/client/constants.js";
+import {GAME_FONT, HUD_TOP_OFFSET} from "@/client/constants.js";
 import {PANEL_TEXT, PANEL_TINT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/UIPanel.js";
 
-// Screen-pixel inset of the panel from the top-left corner.
+// Screen-pixel inset of the panel from the left edge.
 const MARGIN = 12;
 const PADDING_X = 12;
 const PADDING_Y = 8;
@@ -46,7 +46,8 @@ export class StatusMessageLayer extends Container {
 
         this._panel = new Container();
         this._panel.x = MARGIN;
-        this._panel.y = MARGIN;
+        // Clears the full-width top status bar, which docks above this layer's usual corner spot.
+        this._panel.y = HUD_TOP_OFFSET;
         this._frame = null;
         this._inset = null;
         this._text = new Text({

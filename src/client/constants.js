@@ -23,6 +23,9 @@ export const MIN_VIEWPORT_SCALE = 1024 / (REGION_SIZE * CHUNK_SIZE * TILE_SIZE);
 // Screen-pixel gap between bottom-anchored HUD elements and the screen bottom, clearing the toolbar.
 export const HUD_BOTTOM_OFFSET = 160;
 
+// Screen-pixel gap between top-anchored HUD elements and the screen top, clearing the top status bar.
+export const HUD_TOP_OFFSET = 76;
+
 // A cached overworld chunk older than this refetches when it is next visible.
 export const OVERWORLD_CHUNK_TTL_MS = 30_000;
 
