@@ -2,10 +2,9 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {CursorPublisher} from "./CursorPublisher.js";
 import {CursorMoveMessage, CursorHideMessage} from "../common/messages.js";
-import {CURSOR_SETTING_SHARE} from "../common/constants.js";
+import {CURSOR_SETTING_SHARE, CURSOR_AUDIENCE_NONE, CURSOR_AUDIENCE_FRIENDS, CURSOR_AUDIENCE_EVERYONE} from "../common/constants.js";
 import {ClientCache} from "@/client/ClientCache.js";
 import {PLAYER_SETTINGS_SCHEMA, PlayerSettingsWriter, PlayerSettingsView} from "@/client/SettingsState.js";
-import {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
 import {TILE_SIZE, ViewMode} from "@/client/constants.js";
 
 class FakeWindowFocus {
@@ -95,17 +94,28 @@ test("leaving world mode hides; a hide before any heartbeat sends nothing", () =
     assert.equal(sent.length, 2, "no heartbeat outside world mode");
 });
 
-test("share-off gates heartbeats without a wire hide; share-on resumes", () => {
+test("sharing with no one gates heartbeats without a wire hide; re-sharing resumes", () => {
     const {sent, mouse, state, publisher: pub} = publisher();
     mouse.currentX = 0;
     mouse.currentY = 0;
     pub.tick();
-    state.mapSet("playerSettings.values", CURSOR_SETTING_SHARE, SETTING_OFF);
+    state.mapSet("playerSettings.values", CURSOR_SETTING_SHARE, CURSOR_AUDIENCE_NONE);
     pub.tick();
     assert.equal(sent.length, 1, "the server erases on the setting write; no client hide");
 
-    state.mapSet("playerSettings.values", CURSOR_SETTING_SHARE, SETTING_ON);
+    state.mapSet("playerSettings.values", CURSOR_SETTING_SHARE, CURSOR_AUDIENCE_EVERYONE);
     pub.tick();
     assert.equal(sent.length, 2);
+    assert.ok(sent[1] instanceof CursorMoveMessage);
+});
+
+test("narrowing sharing to friends re-sends the resting cursor on the next heartbeat", () => {
+    const {sent, mouse, state, publisher: pub} = publisher();
+    mouse.currentX = 0;
+    mouse.currentY = 0;
+    pub.tick();
+    state.mapSet("playerSettings.values", CURSOR_SETTING_SHARE, CURSOR_AUDIENCE_FRIENDS);
+    pub.tick();
+    assert.equal(sent.length, 2, "the server-erased cursor re-shows for friends");
     assert.ok(sent[1] instanceof CursorMoveMessage);
 });

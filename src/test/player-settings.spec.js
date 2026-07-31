@@ -21,8 +21,8 @@ class SettingsDeclaration extends AbstractModDeclaration {
 
     get playerSettingEntries() {
         return [
-            new PlayerSettingEntry(LOCKED_KEY, false),
-            new PlayerSettingEntry(WRITABLE_KEY, true),
+            new PlayerSettingEntry(LOCKED_KEY, false, 2),
+            new PlayerSettingEntry(WRITABLE_KEY, true, 8),
         ];
     }
 }
@@ -51,6 +51,15 @@ test("client writes to unknown or non-client-writable keys are dropped", async (
 
     assert.equal(game.playerSettings.get(1, 999), undefined);
     assert.equal(game.playerSettings.get(1, LOCKED_KEY), undefined);
+    assert.equal(updateEvents(sender).length, 0);
+});
+
+test("out-of-range setting writes are dropped", async () => {
+    const {game, sender} = await gameWithSessions();
+    game.dispatchMessage(new SetPlayerSettingMessage(WRITABLE_KEY, -1), sender);
+    game.dispatchMessage(new SetPlayerSettingMessage(WRITABLE_KEY, 8), sender);
+
+    assert.equal(game.playerSettings.get(1, WRITABLE_KEY), undefined);
     assert.equal(updateEvents(sender).length, 0);
 });
 

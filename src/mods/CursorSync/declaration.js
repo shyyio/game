@@ -1,5 +1,5 @@
 import {AbstractModDeclaration, PlayerSettingEntry} from "@/sdk/common.js";
-import {CURSOR_SETTING_SHARE, CURSOR_SETTING_SHOW, CURSOR_SETTING_EVERYONE} from "./common/constants.js";
+import {CURSOR_SETTING_SHARE, CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_OPTIONS} from "./common/constants.js";
 import {CursorMoveMessage, CursorHideMessage} from "./common/messages.js";
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "./common/events.js";
 
@@ -23,9 +23,8 @@ export class CursorSyncDeclaration extends AbstractModDeclaration {
 
     get playerSettingEntries() {
         return [
-            new PlayerSettingEntry(CURSOR_SETTING_SHARE, true),
-            new PlayerSettingEntry(CURSOR_SETTING_SHOW, true),
-            new PlayerSettingEntry(CURSOR_SETTING_EVERYONE, true),
+            new PlayerSettingEntry(CURSOR_SETTING_SHARE, true, CURSOR_AUDIENCE_OPTIONS.length),
+            new PlayerSettingEntry(CURSOR_SETTING_DISPLAY, true, CURSOR_AUDIENCE_OPTIONS.length),
         ];
     }
 }

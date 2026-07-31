@@ -2,13 +2,12 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {REMOTE_CURSORS_SCHEMA, RemoteCursorsWriter} from "./RemoteCursorsState.js";
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "../common/events.js";
-import {CURSOR_SETTING_SHOW} from "../common/constants.js";
-import {WelcomeEvent} from "@/common/PlayerEvents.js";
+import {CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_NONE, CURSOR_AUDIENCE_FRIENDS, CURSOR_AUDIENCE_EVERYONE} from "../common/constants.js";
+import {WelcomeEvent, FriendListEvent} from "@/common/PlayerEvents.js";
 import {ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {ClientCache} from "@/client/ClientCache.js";
 import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/ChunkClaimsState.js";
 import {PLAYER_SETTINGS_SCHEMA, PlayerSettingsWriter} from "@/client/SettingsState.js";
-import {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 
 function stateWithOwnPlayer(ownPlayerId) {
@@ -61,16 +60,30 @@ test("a chunk unsubscribe drops only its own cursors", () => {
     assert.deepEqual(removes, [2]);
 });
 
-test("the show toggle clears and gates; re-enabling resumes", () => {
+test("displaying no cursors clears and gates; widening to everyone resumes", () => {
     const {state, upserts, removes} = stateWithOwnPlayer(1);
     state.onEvent(new PlayerCursorEvent(2, 0, 0));
-    state.mapSet("playerSettings.values", CURSOR_SETTING_SHOW, SETTING_OFF);
+    state.mapSet("playerSettings.values", CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_NONE);
     assert.deepEqual(removes, [2]);
 
     state.onEvent(new PlayerCursorEvent(3, 1, 1));
     assert.equal(upserts.length, 1, "updates are ignored while hidden");
 
-    state.mapSet("playerSettings.values", CURSOR_SETTING_SHOW, SETTING_ON);
+    state.mapSet("playerSettings.values", CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_EVERYONE);
     state.onEvent(new PlayerCursorEvent(3, 1, 1));
     assert.equal(upserts.length, 2);
+});
+
+test("displaying friends only clears and gates non-friend cursors", () => {
+    const {state, upserts, removes} = stateWithOwnPlayer(1);
+    state.onEvent(new FriendListEvent([2], []));
+    state.onEvent(new PlayerCursorEvent(2, 0, 0));
+    state.onEvent(new PlayerCursorEvent(3, 1, 1));
+    state.mapSet("playerSettings.values", CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_FRIENDS);
+    assert.deepEqual(removes, [3], "only the non-friend cursor clears");
+
+    state.onEvent(new PlayerCursorEvent(3, 2, 2));
+    state.onEvent(new PlayerCursorEvent(2, 2, 2));
+    assert.equal(upserts.length, 3, "the non-friend update is ignored, the friend's lands");
+    assert.equal(upserts[2].playerId, 2);
 });

@@ -1,7 +1,6 @@
-import {SETTING_OFF} from "@/sdk/common.js";
 import {TILE_SIZE, ViewMode} from "@/sdk/client.js";
 import {CursorMoveMessage, CursorHideMessage} from "../common/messages.js";
-import {CURSOR_SETTING_SHARE, CURSOR_SEND_INTERVAL_MS} from "../common/constants.js";
+import {CURSOR_SETTING_SHARE, CURSOR_AUDIENCE_NONE, CURSOR_SEND_INTERVAL_MS} from "../common/constants.js";
 
 /**
  * Broadcasts the own cursor's tile position: one heartbeat per interval while it moves, silence
@@ -31,8 +30,9 @@ export class CursorPublisher {
         this._lastSentX = null;
         this._lastSentY = null;
         state.subscribe("playerSettings.values", (key, value) => {
-            // No wire hide: the server erases the cursor on the share-off setting write itself.
-            if (key === CURSOR_SETTING_SHARE && value === SETTING_OFF) {
+            // No wire hide: the server erases the cursor on the narrowing share write itself.
+            // Forgetting the last position makes the next heartbeat re-show it where allowed.
+            if (key === CURSOR_SETTING_SHARE) {
                 this._reset();
             }
         });
@@ -88,7 +88,7 @@ export class CursorPublisher {
     _canSend() {
         return this._windowFocus.focused
             && this._viewMode === ViewMode.WORLD
-            && this._playerSettings.get(CURSOR_SETTING_SHARE) !== SETTING_OFF;
+            && this._playerSettings.get(CURSOR_SETTING_SHARE) !== CURSOR_AUDIENCE_NONE;
     }
 
     /**
