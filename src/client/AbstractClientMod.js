@@ -35,12 +35,12 @@ export class AbstractClientMod {
     }
 
     /**
-     * The settings-menu controls this mod contributes; every key must be a registered
+     * The settings-menu categories this mod contributes; every control key must be a registered
      * client-writable player setting.
      * @param {Client} client
-     * @returns {AbstractPlayerSettingControl[]}
+     * @returns {SettingCategory[]}
      */
-    settingsControls(client) {
+    settingsCategories(client) {
         return [];
     }
 
