@@ -1,9 +1,10 @@
-import {Container, Sprite, Text, Rectangle, isMobile, FederatedPointerEvent} from "pixi.js";
+import {Container, Sprite, Text, Rectangle, FederatedPointerEvent} from "pixi.js";
 import Haptics from "@/client/Haptics.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {TOOLBAR_TEXT, PANEL_TINT} from "@/client/Theme.js";
 import {Tween, easeOutBack, easeInCubic} from "@/client/Tween.js";
 import ReducedMotion from "@/client/ReducedMotion.js";
+import Mobile from "@/client/Mobile.js";
 import {UIPanel} from "@/client/UIPanel.js";
 import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/InspectContent.js";
 import {addSlotHighlight} from "@/client/slotHighlight.js";
@@ -301,7 +302,7 @@ export class ToolbarLayer extends Container {
 
         // Badge sits above the icon; only read with the drawer open, so hidden on the resting top row.
         // Mobile has no keyboard, so no shortcut badges there.
-        if (shortcut !== null && !isMobile.any) {
+        if (shortcut !== null && !Mobile.enabled) {
             const badge = new Text({
                 text: shortcut,
                 style: {fontFamily: GAME_FONT, fontSize: SLOT_SIZE - 3, fill: 0xffffff, stroke: {color: 0x000000, width: 1}},
