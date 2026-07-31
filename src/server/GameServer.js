@@ -39,7 +39,7 @@ export class GameServer {
             res.writeHeader("Content-Type", "text/plain; charset=utf-8").end(this._infoScreen(host));
         });
         this._app.ws("/*", {
-            compression: uWS.DISABLED,
+            compression: uWS.SHARED_COMPRESSOR,
             maxPayloadLength: MAX_PAYLOAD_BYTES,
             maxBackpressure: MAX_BACKPRESSURE_BYTES,
             idleTimeout: IDLE_TIMEOUT_S,
