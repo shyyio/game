@@ -12,6 +12,8 @@ import {ChunkSyncEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
 import {AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
+import {PlayerSettingChoice} from "@/client/PlayerSettingChoice.js";
+import {PlayerSettingToggle} from "@/client/PlayerSettingToggle.js";
 import {ChunkClaimsDrawLayer} from "@/client/ChunkClaimsDrawLayer.js";
 import {ClientCache} from "@/client/ClientCache.js";
 import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/ChunkClaimsState.js";
@@ -880,6 +882,17 @@ export class Client {
             }
             if (!entry.clientWritable) {
                 throw new Error(`Settings control "${control.label}" targets server-authoritative player setting key ${control.key}`);
+            }
+            if (control instanceof PlayerSettingChoice) {
+                if (control.options.length !== entry.optionCount) {
+                    throw new Error(`Settings control "${control.label}" offers ${control.options.length} options but player setting key ${control.key} allows ${entry.optionCount}`);
+                }
+            } else if (control instanceof PlayerSettingToggle) {
+                if (entry.optionCount !== 2) {
+                    throw new Error(`Settings control "${control.label}" toggles player setting key ${control.key}, which allows ${entry.optionCount} values`);
+                }
+            } else {
+                throw new Error(`Settings control "${control.label}" has an unknown control type`);
             }
         }
         return controls;

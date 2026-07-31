@@ -113,7 +113,8 @@ export {
 
 // ---- Player settings ----
 // Per-key player-setting config a declaration contributes (playerSettingEntries); only
-// clientWritable keys accept a SetPlayerSettingMessage. Toggle values: 0/absent = on.
+// clientWritable keys accept a SetPlayerSettingMessage, holding an integer in
+// [0, optionCount). Toggle values: 0/absent = on.
 export {PlayerSettingEntry} from "@/common/PlayerSettingEntry.js";
 export {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
 

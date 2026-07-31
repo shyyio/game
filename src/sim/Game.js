@@ -274,6 +274,9 @@ export class Game {
             if (entry === undefined || !entry.clientWritable) {
                 return;
             }
+            if (message.value < 0 || message.value >= entry.optionCount) {
+                return;
+            }
             this.playerSettings.set(session.playerId, message.key, message.value);
             this.bus.publishTo(session.id, new PlayerSettingsUpdateEvent(message.key, message.value));
             for (const mod of this.modRegistry.simMods) {

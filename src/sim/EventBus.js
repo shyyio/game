@@ -90,6 +90,20 @@ export class EventBus {
     }
 
     /**
+     * Delivers an event to every connected session of one player.
+     * @param {number} playerId
+     * @param {AbstractEvent} event
+     * @returns {void}
+     */
+    publishToPlayer(playerId, event) {
+        for (const session of this._sessions.values()) {
+            if (session.playerId === playerId) {
+                session.publishEvent(event);
+            }
+        }
+    }
+
+    /**
      * The player behind a connected session.
      * @param {number} sessionId
      * @returns {number}

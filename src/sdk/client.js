@@ -50,6 +50,7 @@ export {ObjectGhostLayer} from "@/client/ObjectGhostLayer.js";
 // rendered generically by Game.vue; each binds a widget to a client-writable player setting.
 export {AbstractPlayerSettingControl} from "@/client/AbstractPlayerSettingControl.js";
 export {PlayerSettingToggle} from "@/client/PlayerSettingToggle.js";
+export {PlayerSettingChoice} from "@/client/PlayerSettingChoice.js";
 
 // ---- Input ----
 // Base class for a placement/interaction tool shown in the toolbar.

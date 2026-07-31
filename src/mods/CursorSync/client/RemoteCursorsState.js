@@ -1,6 +1,6 @@
-import {AbstractCacheWriter, ChunkUnsubscribeEvent, chunkId, schemaMap, SETTING_OFF} from "@/sdk/client.js";
+import {AbstractCacheWriter, ChunkUnsubscribeEvent, chunkId, schemaMap} from "@/sdk/client.js";
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "../common/events.js";
-import {CURSOR_SETTING_SHOW} from "../common/constants.js";
+import {CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_DEFAULT, audienceAdmits} from "../common/constants.js";
 
 export const REMOTE_CURSORS_SCHEMA = {
     byPlayer: schemaMap(),
@@ -14,36 +14,47 @@ export const REMOTE_CURSORS_SCHEMA = {
  */
 
 /**
- * Writes the mirror of other players' cursors. The server hides a cursor for viewers losing sight
- * of it (chunk crossing, blur, share-off, disconnect); a chunk unsubscribe drops its cursors here,
- * closing the last gap. Registered under the "remoteCursors" namespace.
+ * Writes the mirror of other players' cursors. The server gates delivery by the display setting and
+ * hides a cursor for viewers losing sight of it; the setting is re-applied here so narrowing it
+ * clears instantly, and a chunk unsubscribe drops its cursors, closing the last gap. Registered
+ * under the "remoteCursors" namespace.
  */
 export class RemoteCursorsWriter extends AbstractCacheWriter {
 
     /**
-     * @param {ClientCache} state own-player identity and the show toggle
+     * @param {ClientCache} state own-player identity, friend list, and the display setting
      */
     constructor(state) {
         super(state);
-        this._enabled = true;
+        this._claims = state.view("chunkClaims");
+        this._displayMode = CURSOR_AUDIENCE_DEFAULT;
         state.subscribe("playerSettings.values", (key, value) => {
-            if (key === CURSOR_SETTING_SHOW) {
-                this._setEnabled(value !== SETTING_OFF);
+            if (key === CURSOR_SETTING_DISPLAY) {
+                this._setDisplayMode(value);
             }
         });
     }
 
     /**
-     * Applies the show toggle: disabling clears every cursor and ignores further updates.
+     * Applies the display setting: narrowing clears the cursors it no longer admits.
      * @private
-     * @param {boolean} enabled
+     * @param {number} mode CURSOR_AUDIENCE_* option
      * @returns {void}
      */
-    _setEnabled(enabled) {
-        this._enabled = enabled;
-        if (!enabled) {
-            this._state.mapDeleteWhere("remoteCursors.byPlayer", () => true);
-        }
+    _setDisplayMode(mode) {
+        this._displayMode = mode;
+        this._state.mapDeleteWhere("remoteCursors.byPlayer", cursor => !this._admits(cursor.playerId));
+    }
+
+    /**
+     * Whether the display setting admits a player's cursor.
+     * @private
+     * @param {number} playerId
+     * @returns {boolean}
+     */
+    _admits(playerId) {
+        // Own events are dropped before this gate; self-admission never applies.
+        return audienceAdmits(this._displayMode, false, this._claims.isFriend(playerId));
     }
 
     /**
@@ -53,7 +64,7 @@ export class RemoteCursorsWriter extends AbstractCacheWriter {
      */
     onEvent(event) {
         if (event instanceof PlayerCursorEvent) {
-            if (!this._enabled || event.playerId === this._state.view("chunkClaims").ownPlayerId) {
+            if (event.playerId === this._claims.ownPlayerId || !this._admits(event.playerId)) {
                 return;
             }
             this._state.mapSet("remoteCursors.byPlayer", event.playerId, {

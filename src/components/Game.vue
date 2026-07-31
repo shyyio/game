@@ -21,6 +21,8 @@ import {LocalSession} from "@/sim/LocalSession.js";
 import {RemoteSession} from "@/client/RemoteSession.js";
 import {WireRegistry} from "@/common/wire.js";
 import {Client} from "@/client/Client.js";
+import {PlayerSettingChoice} from "@/client/PlayerSettingChoice.js";
+import {PlayerSettingToggle} from "@/client/PlayerSettingToggle.js";
 import {ClaimResult, ClaimResultEvent} from "@/common/ClaimEvents.js";
 import {UnclaimChunkMessage} from "@/common/ClaimMessages.js";
 import {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
@@ -344,17 +346,33 @@ onMounted(async () => {
   refreshTools();
 
   const controls = client.settingsControls();
+  // Per-type value mirroring: a toggle models a boolean, a choice models the option index.
+  const controlModel = (control, value) => {
+    if (control instanceof PlayerSettingChoice) {
+      return value === undefined ? control.defaultIndex : value;
+    }
+    if (control instanceof PlayerSettingToggle) {
+      return value !== SETTING_OFF;
+    }
+    throw new Error(`Settings control "${control.label}" has an unknown control type`);
+  };
+  const controlByKey = new Map(controls.map(control => [control.key, control]));
   client.cache.subscribe("playerSettings.values", (key, value) => {
-    if (key in settingValues) {
-      settingValues[key] = value !== SETTING_OFF;
+    const control = controlByKey.get(key);
+    if (control !== undefined) {
+      settingValues[key] = controlModel(control, value);
     }
   });
   const playerSettings = client.cache.view("playerSettings");
   for (const control of controls) {
-    // Seed from the cache: the settings sync may have landed during client init (absent = on).
-    settingValues[control.key] = playerSettings.get(control.key) !== SETTING_OFF;
-    watch(() => settingValues[control.key], on => {
-      client.updatePlayerSetting(control.key, on ? SETTING_ON : SETTING_OFF);
+    // Seed from the cache: the settings sync may have landed during client init.
+    settingValues[control.key] = controlModel(control, playerSettings.get(control.key));
+    watch(() => settingValues[control.key], modelValue => {
+      if (control instanceof PlayerSettingChoice) {
+        client.updatePlayerSetting(control.key, modelValue);
+        return;
+      }
+      client.updatePlayerSetting(control.key, modelValue ? SETTING_ON : SETTING_OFF);
     });
   }
   settingsControls.value = controls;
@@ -424,29 +442,41 @@ export default defineComponent({
         <v-btn variant="text" @click="settingsOpen = false">Close</v-btn>
       </v-toolbar>
       <v-card-text>
-        <v-switch
-            v-model="fullscreenEnabled"
-            label="Fullscreen"
-            color="primary"
-            density="compact"
-            hide-details
-        />
-        <v-switch
-            v-model="reducedMotionEnabled"
-            label="Reduced motion"
-            color="primary"
-            density="compact"
-            hide-details
-        />
-        <v-switch
-            v-for="control in settingsControls"
-            :key="control.key"
-            v-model="settingValues[control.key]"
-            :label="control.label"
-            color="primary"
-            density="compact"
-            hide-details
-        />
+        <div class="settings-list">
+          <v-switch
+              v-model="fullscreenEnabled"
+              label="Fullscreen"
+              color="primary"
+              density="compact"
+              hide-details
+          />
+          <v-switch
+              v-model="reducedMotionEnabled"
+              label="Reduced motion"
+              color="primary"
+              density="compact"
+              hide-details
+          />
+          <template v-for="control in settingsControls" :key="control.key">
+            <v-select
+                v-if="control instanceof PlayerSettingChoice"
+                v-model="settingValues[control.key]"
+                :label="control.label"
+                :items="control.items"
+                variant="solo"
+                density="compact"
+                hide-details
+            />
+            <v-switch
+                v-else
+                v-model="settingValues[control.key]"
+                :label="control.label"
+                color="primary"
+                density="compact"
+                hide-details
+            />
+          </template>
+        </div>
       </v-card-text>
     </v-card>
   </v-dialog>
@@ -486,5 +516,11 @@ export default defineComponent({
           max(env(safe-area-inset-right, 0px), 24px)
           max(env(safe-area-inset-bottom, 0px), 24px)
           max(env(safe-area-inset-left, 0px), 24px);
+}
+
+.settings-dialog .settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 </style>

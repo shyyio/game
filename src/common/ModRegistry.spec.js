@@ -30,7 +30,7 @@ class EntriesDeclaration extends AbstractModDeclaration {
 
 test("a mod's player-setting entries collect at freeze", () => {
     const registry = new ModRegistry();
-    registry.register(new ModPackage(new EntriesDeclaration("A", [new PlayerSettingEntry(MOD_KEY, false)])));
+    registry.register(new ModPackage(new EntriesDeclaration("A", [new PlayerSettingEntry(MOD_KEY, false, 2)])));
     registry.freeze();
     assert.equal(registry.playerSettingEntry(MOD_KEY).clientWritable, false);
     assert.equal(registry.playerSettingEntry(999), undefined);
@@ -38,8 +38,8 @@ test("a mod's player-setting entries collect at freeze", () => {
 
 test("a duplicate key across mods throws at freeze", () => {
     const registry = new ModRegistry();
-    registry.register(new ModPackage(new EntriesDeclaration("A", [new PlayerSettingEntry(MOD_KEY, true)])));
-    registry.register(new ModPackage(new EntriesDeclaration("B", [new PlayerSettingEntry(MOD_KEY, false)])));
+    registry.register(new ModPackage(new EntriesDeclaration("A", [new PlayerSettingEntry(MOD_KEY, true, 2)])));
+    registry.register(new ModPackage(new EntriesDeclaration("B", [new PlayerSettingEntry(MOD_KEY, false, 2)])));
     assert.throws(() => registry.freeze(), /Duplicate player setting key/);
 });
 
