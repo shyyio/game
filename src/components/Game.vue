@@ -36,6 +36,7 @@ onMounted(async () => {
   });
 
   bindSettingsMenu(client);
+  client.settingsButtonLayer.onPress(() => settingsOpen.value = true);
 
   bindGameKeyboardShortcuts(client, game, client.toolbarLayer);
 });
@@ -55,9 +56,6 @@ export default defineComponent({
   <div id="game">
   </div>
   <v-dialog v-model="settingsOpen" max-width="480" content-class="settings-dialog" transition="dialog-bottom-transition">
-    <template #activator="{ props: dialogProps }">
-      <v-btn v-bind="dialogProps" class="settings-button" size="small" variant="elevated">Settings</v-btn>
-    </template>
     <v-card>
       <v-toolbar title="Settings">
         <v-btn variant="text" @click="settingsOpen = false">Close</v-btn>
@@ -96,13 +94,6 @@ export default defineComponent({
 #game {
   position: absolute;
   overflow: hidden;
-}
-
-.settings-button {
-  position: fixed;
-  top: max(env(safe-area-inset-top, 0px), 12px);
-  right: max(env(safe-area-inset-right, 0px), 12px);
-  z-index: 10;
 }
 </style>
 

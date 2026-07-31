@@ -173,7 +173,7 @@ export class ChunkInfoPanelLayer extends Container {
             return {
                 title: "Unclaimed chunk",
                 info: "Claim it to build here",
-                buttonLabel: `Claim chunk (${claims.ownCount()}/${claims.maxChunks})`,
+                buttonLabel: "Claim chunk",
                 buttonAction: () => this._onClaim(chunk),
             };
         }

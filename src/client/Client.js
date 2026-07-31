@@ -61,7 +61,8 @@ import {WorkerDrawLayer} from "@/client/WorkerDrawLayer.js";
 import {WorkerDebugLayer} from "@/client/WorkerDebugLayer.js";
 import {WorkerBadgeLayer} from "@/client/WorkerBadgeLayer.js";
 import {StatusMessageLayer} from "@/client/StatusMessageLayer.js";
-import {FirstClaimLayer} from "@/client/FirstClaimLayer.js";
+import {TopStatusBarLayer} from "@/client/TopStatusBarLayer.js";
+import {SettingsButtonLayer} from "@/client/SettingsButtonLayer.js";
 import {ChunkInfoPanelLayer} from "@/client/ChunkInfoPanelLayer.js";
 import {ChunkSelectionLayer} from "@/client/ChunkSelectionLayer.js";
 import {ClaimFrontierDrawLayer} from "@/client/ClaimFrontierDrawLayer.js";
@@ -173,8 +174,12 @@ export class Client {
         // app.stage (sibling of the viewport), so it never pans or zooms with the world.
         this.statusLayer = new StatusMessageLayer();
         this.statusLayer.setConnecting();
-        // Onboarding banner while the player holds no chunks.
-        this.firstClaimLayer = new FirstClaimLayer(app);
+        // Full-width top status bar: core systems and mods each own a section by id (text +
+        // buttons), e.g. claim mode's claim count and exit button.
+        this.topStatusBar = new TopStatusBarLayer(app);
+        // Always-visible top-right settings button; stays clear of the bar above via its height.
+        this.settingsButtonLayer = new SettingsButtonLayer(app);
+        this.topStatusBar.onChange((height) => this.settingsButtonLayer.setTopOffset(height));
         // Bottom-center toast (claim rejections, session disconnects).
         this.noticeLayer = new NoticeLayer(app);
         // Centered confirm/cancel dialog, currently only the destructive unclaim confirm.
@@ -398,8 +403,8 @@ export class Client {
         this.inspectPanelLayer.onClose(objectId => this.unInspectObject(objectId));
         this.statusLayer.textureRegistry = this.textureRegistry;
         this.statusLayer.refreshBackground();
-        this.firstClaimLayer.textureRegistry = this.textureRegistry;
-        this.firstClaimLayer.refreshBackground();
+        this.topStatusBar.textureRegistry = this.textureRegistry;
+        this.topStatusBar.refreshBackground();
         this.noticeLayer.textureRegistry = this.textureRegistry;
         this.confirmDialogLayer.textureRegistry = this.textureRegistry;
         this.chunkInfoPanelLayer.textureRegistry = this.textureRegistry;
@@ -413,7 +418,8 @@ export class Client {
         this.app.stage.addChild(this.rotateButtonsLayer);
         this.app.stage.addChild(this.toolbarLayer);
         this.app.stage.addChild(this.statusLayer);
-        this.app.stage.addChild(this.firstClaimLayer);
+        this.app.stage.addChild(this.topStatusBar);
+        this.app.stage.addChild(this.settingsButtonLayer);
         // Panels sit above every other HUD layer.
         this.app.stage.addChild(this.inspectPanelLayer);
         // Toast and confirm dialog sit above every other HUD layer, including panels.
@@ -498,7 +504,6 @@ export class Client {
         const previous = this._viewMode;
         this._viewMode = mode;
         this.drawLayerRegistry.setViewMode(mode);
-        this.firstClaimLayer.setViewMode(mode);
         this.mapButtonsLayer.setViewMode(mode);
         for (const mod of this.modRegistry.clientMods) {
             mod.setViewMode(mode, this);
