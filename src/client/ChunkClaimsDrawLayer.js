@@ -4,9 +4,13 @@ import {GAME_FONT, TILE_SIZE, ViewMode} from "@/client/constants.js";
 import {CHUNK_SIZE, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkCenter, chunkOrdinal, chunkOrigin, chunkPosition, getOrCreate, inRegion} from "@/common/util.js";
 import {claimColor, CLAIM_FILL_ALPHA, CLAIM_BORDER_ALPHA} from "@/client/Theme.js";
-import {drawHomeIcon} from "@/client/icons.js";
+import {ChunkPermission} from "@/common/ClaimEvents.js";
+import {drawHomeIcon, drawLockIcon, drawFriendIcon} from "@/client/icons.js";
 
 const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
+
+// World-space inset keeping a chunk's permission badge off its corner.
+const BADGE_CORNER_INSET = TILE_SIZE * 6;
 
 // World-space border width at map zoom.
 const BORDER_WIDTH = TILE_SIZE;
@@ -36,6 +40,8 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
         this._players = state.view("players");
         // Chunk ordinal -> its border Graphics.
         this._graphics = new Map();
+        // Chunk ordinal -> its permission badge Graphics, present only where notable.
+        this._badges = new Map();
         // Owner playerId -> username Text.
         this._labels = new Map();
         // Home glyph on the own player's territory.
@@ -56,12 +62,29 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
         state.subscribe("chunkClaims.ownerByChunk", (chunk, owner) => {
             if (owner === undefined) {
                 this._dropChunk(chunk);
+                this._dropBadge(chunk);
             } else {
                 this._drawChunk(chunk, owner);
+                this._updateBadge(chunk, owner);
             }
             // Neighbors' edges shift too.
             this._dirtyChunks.add(chunk);
             this._labelsDirty = true;
+        });
+        // A permission-only change (same owner) skips the ownerByChunk notify above.
+        state.subscribe("chunkClaims.permissionByChunk", (chunk, permission) => {
+            if (permission === undefined) {
+                return;
+            }
+            this._updateBadge(chunk, this._claims.ownerOf(chunk));
+        });
+        // A grant toggling changes whether that owner's friends-only chunks read as buildable.
+        state.subscribe("chunkClaims.grantedByIds", (playerId) => {
+            for (const chunk of this._graphics.keys()) {
+                if (this._claims.ownerOf(chunk) === playerId) {
+                    this._updateBadge(chunk, playerId);
+                }
+            }
         });
         // A name push can arrive after its owner's claims, or rename them.
         state.subscribe("players.usernameByPlayer", () => {
@@ -255,6 +278,9 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
             for (const chunk of this._graphics.keys()) {
                 this._drawChunk(chunk, this._claims.ownerOf(chunk));
             }
+            for (const badge of this._badges.values()) {
+                badge.visible = !overworld;
+            }
         }
     }
 
@@ -290,6 +316,78 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
         this.removeChild(graphics);
         graphics.destroy();
         this._graphics.delete(chunk);
+    }
+
+    /**
+     * The badge glyph notable to the own player for `chunk`, or null: own chunks read their own
+     * permission (friends-only is the silent default); foreign chunks read whether the own player
+     * specifically can build there, not the raw permission value.
+     * @private
+     * @param {number} chunk
+     * @param {number} owner
+     * @returns {function(Graphics, number, number): void|null}
+     */
+    _badgeIconFor(chunk, owner) {
+        const permission = this._claims.permissionOf(chunk);
+        if (owner === this._claims.ownPlayerId) {
+            if (permission === ChunkPermission.PERMISSION_ONLY_ME) {
+                return drawLockIcon;
+            }
+            return null;
+        }
+        if (permission === ChunkPermission.PERMISSION_FRIENDS && this._claims.isFriendsWithMe(owner)) {
+            return drawFriendIcon;
+        }
+        return null;
+    }
+
+    /**
+     * (Re)draws or drops `chunk`'s permission badge at its top-left corner.
+     * @private
+     * @param {number} chunk
+     * @param {number} owner
+     * @returns {void}
+     */
+    _updateBadge(chunk, owner) {
+        const drawIcon = this._badgeIconFor(chunk, owner);
+        if (drawIcon === null) {
+            this._dropBadge(chunk);
+            return;
+        }
+        let badge = this._badges.get(chunk);
+        if (badge === undefined) {
+            badge = new Graphics();
+            badge.visible = !this._overworld;
+            this._labelLayer.addChild(badge);
+            this._badges.set(chunk, badge);
+            // A fresh child needs the next tick's rescale; skip only fires on an unchanged zoom.
+            this._labelScale = null;
+        } else {
+            badge.clear();
+        }
+        // White halo under the colored glyph, matching the home marker's technique.
+        drawIcon(badge, 0xffffff, 6);
+        drawIcon(badge, claimColor(owner), 3);
+        const origin = chunkOrigin(chunk);
+        badge.position.set(
+            origin.x * TILE_SIZE + BADGE_CORNER_INSET,
+            origin.y * TILE_SIZE + BADGE_CORNER_INSET,
+        );
+    }
+
+    /**
+     * @private
+     * @param {number} chunk
+     * @returns {void}
+     */
+    _dropBadge(chunk) {
+        const badge = this._badges.get(chunk);
+        if (badge === undefined) {
+            return;
+        }
+        this._labelLayer.removeChild(badge);
+        badge.destroy();
+        this._badges.delete(chunk);
     }
 
     /**

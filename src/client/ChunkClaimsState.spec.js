@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {ClientCache} from "@/client/ClientCache.js";
 import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/ChunkClaimsState.js";
 import {WelcomeEvent, FriendListEvent} from "@/common/PlayerEvents.js";
-import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResult} from "@/common/ClaimEvents.js";
+import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResult, ChunkPermission} from "@/common/ClaimEvents.js";
 import {ChunkSubscribeEvent} from "@/common/CoreEvents.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {PLAYER_ID_NONE} from "@/common/constants.js";
@@ -22,13 +22,18 @@ test("welcome fills identity", () => {
     assert.equal(claims.maxChunks, 12);
 });
 
-test("own-claims sync fills the own set and the ownership mirror", () => {
+test("own-claims sync fills the own set, the ownership mirror, and the permission mirror", () => {
     const {state, claims} = claimsState();
     state.onEvent(new WelcomeEvent(1, 9));
-    state.onEvent(new OwnClaimsSyncEvent([100, 101]));
+    state.onEvent(new OwnClaimsSyncEvent(
+        [100, 101],
+        [ChunkPermission.PERMISSION_FRIENDS, ChunkPermission.PERMISSION_ONLY_ME],
+    ));
     assert.deepEqual(claims.ownChunks().sort(), [100, 101]);
     assert.equal(claims.ownCount(), 2);
     assert.equal(claims.ownerOf(100), 1);
+    assert.equal(claims.permissionOf(100), ChunkPermission.PERMISSION_FRIENDS);
+    assert.equal(claims.permissionOf(101), ChunkPermission.PERMISSION_ONLY_ME);
 });
 
 test("updates apply deltas to the mirror and the own set", () => {
@@ -89,7 +94,7 @@ test("an overworld snapshot stamps its rect's claims and sheds stale foreign ent
 test("canBuildIn mirrors the sim gate", () => {
     const {state, claims} = claimsState();
     state.onEvent(new WelcomeEvent(1, 9));
-    state.onEvent(new OwnClaimsSyncEvent([100]));
+    state.onEvent(new OwnClaimsSyncEvent([100], [ChunkPermission.PERMISSION_FRIENDS]));
     state.onEvent(new ChunkClaimUpdateEvent(101, 2));
     assert.equal(claims.canBuildIn(100), true, "own chunk");
     assert.equal(claims.canBuildIn(101), false, "stranger's chunk");
@@ -105,12 +110,22 @@ test("canBuildIn mirrors the sim gate", () => {
     assert.equal(claims.canBuildIn(101), false, "unclaimed again");
 });
 
+test("canBuildIn's only-me permission blocks even a grant", () => {
+    const {state, claims} = claimsState();
+    state.onEvent(new WelcomeEvent(1, 9));
+
+    state.onEvent(new ChunkClaimUpdateEvent(201, 2, ChunkPermission.PERMISSION_ONLY_ME));
+    assert.equal(claims.canBuildIn(201), false, "only-me blocks a non-owner outright");
+    state.onEvent(new FriendListEvent([], [2]));
+    assert.equal(claims.canBuildIn(201), false, "only-me still blocks once granted");
+});
+
 test("claimCheck mirrors the sim's claim rules", () => {
     const {state, claims} = claimsState();
     state.onEvent(new WelcomeEvent(1, 2));
     assert.equal(claims.claimCheck(500), ClaimResult.CLAIM_RESULT_OK, "first claim goes anywhere");
 
-    state.onEvent(new OwnClaimsSyncEvent([100]));
+    state.onEvent(new OwnClaimsSyncEvent([100], [ChunkPermission.PERMISSION_FRIENDS]));
     assert.equal(claims.claimCheck(100), ClaimResult.CLAIM_RESULT_OWNED);
     assert.equal(claims.claimCheck(101), ClaimResult.CLAIM_RESULT_OK, "edge neighbor of own");
     assert.equal(claims.claimCheck(105), ClaimResult.CLAIM_RESULT_NOT_ADJACENT);
@@ -125,6 +140,6 @@ test("friends", () => {
     state.onEvent(new FriendListEvent([2], [3]));
     assert.equal(claims.isFriend(2), true);
     assert.equal(claims.isFriend(3), false);
-    assert.equal(claims.isGrantedBy(3), true);
-    assert.equal(claims.isGrantedBy(2), false);
+    assert.equal(claims.isFriendsWithMe(3), true);
+    assert.equal(claims.isFriendsWithMe(2), false);
 });

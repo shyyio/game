@@ -1,5 +1,5 @@
 import {WelcomeEvent, FriendListEvent} from "@/common/PlayerEvents.js";
-import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResult} from "@/common/ClaimEvents.js";
+import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResult, ChunkPermission} from "@/common/ClaimEvents.js";
 import {ChunkSubscribeEvent} from "@/common/CoreEvents.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {DEFAULT_MAX_CHUNKS, PLAYER_ID_NONE} from "@/common/constants.js";
@@ -13,6 +13,8 @@ export const CHUNK_CLAIMS_SCHEMA = {
     // Last-seen ownership mirror; entries persist until a fresher look (subscribe seed or
     // overworld stamp) corrects them.
     ownerByChunk: schemaMap(),
+    // Last-seen permission mirror, own and foreign chunks alike; tracks ownerByChunk's lifecycle.
+    permissionByChunk: schemaMap(),
     // Every own claim, viewport or not (the centroid, count, and adjacency source).
     ownChunks: schemaSet(),
     // Players the own player granted build rights to, and players who granted them.
@@ -45,18 +47,21 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
         if (event instanceof OwnClaimsSyncEvent) {
             this._state.setReplace("chunkClaims.ownChunks", event.chunks);
             const ownPlayerId = this._state.get("chunkClaims.ownPlayerId");
-            for (const chunk of event.chunks) {
-                this._state.mapSet("chunkClaims.ownerByChunk", chunk, ownPlayerId);
+            for (let i = 0; i < event.chunks.length; i += 1) {
+                this._state.mapSet("chunkClaims.ownerByChunk", event.chunks[i], ownPlayerId);
+                this._state.mapSet("chunkClaims.permissionByChunk", event.chunks[i], event.permissions[i]);
             }
             return;
         }
         if (event instanceof ChunkClaimUpdateEvent) {
             if (event.playerId === PLAYER_ID_NONE) {
                 this._state.mapDelete("chunkClaims.ownerByChunk", event.chunk);
+                this._state.mapDelete("chunkClaims.permissionByChunk", event.chunk);
                 this._state.setDelete("chunkClaims.ownChunks", event.chunk);
                 return;
             }
             this._state.mapSet("chunkClaims.ownerByChunk", event.chunk, event.playerId);
+            this._state.mapSet("chunkClaims.permissionByChunk", event.chunk, event.permission);
             if (event.playerId === this._state.get("chunkClaims.ownPlayerId")) {
                 this._state.setAdd("chunkClaims.ownChunks", event.chunk);
             }
@@ -81,8 +86,10 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
      */
     _stampOverworldClaims(event) {
         const ownerByChunk = new Map();
+        const permissionByChunk = new Map();
         for (let i = 0; i < event.claimedChunks.length; i += 1) {
             ownerByChunk.set(event.claimedChunks[i], event.claimOwners[i]);
+            permissionByChunk.set(event.claimedChunks[i], event.claimPermissions[i]);
         }
         const rect = new OverworldRect(event.chunkX, event.chunkY, event.chunkWidth, event.chunkHeight);
         for (const chunk of rect.ordinals()) {
@@ -91,6 +98,7 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
                 this._dropForeign(chunk);
             } else {
                 this._state.mapSet("chunkClaims.ownerByChunk", chunk, owner);
+                this._state.mapSet("chunkClaims.permissionByChunk", chunk, permissionByChunk.get(chunk));
             }
         }
     }
@@ -106,6 +114,7 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
         const owner = this._state.mapGet("chunkClaims.ownerByChunk", chunk);
         if (owner !== undefined && owner !== this._state.get("chunkClaims.ownPlayerId")) {
             this._state.mapDelete("chunkClaims.ownerByChunk", chunk);
+            this._state.mapDelete("chunkClaims.permissionByChunk", chunk);
         }
     }
 }
@@ -156,7 +165,19 @@ export class ChunkClaimsView extends AbstractCacheView {
     }
 
     /**
-     * Mirrors the sim's placement gate: own chunks, or chunks whose owner granted build rights.
+     * @param {number} chunk
+     * @returns {number} the chunk's ChunkPermission, defaulting to friends-only when unclaimed
+     */
+    permissionOf(chunk) {
+        const permission = this._state.mapGet("chunkClaims.permissionByChunk", chunk);
+        if (permission === undefined) {
+            return ChunkPermission.PERMISSION_FRIENDS;
+        }
+        return permission;
+    }
+
+    /**
+     * Mirrors the sim's placement gate: the owner always can, permission gates everyone else.
      * @param {number} chunk
      * @returns {boolean}
      */
@@ -168,7 +189,10 @@ export class ChunkClaimsView extends AbstractCacheView {
         if (owner === this.ownPlayerId) {
             return true;
         }
-        return this.isGrantedBy(owner);
+        if (this.permissionOf(chunk) === ChunkPermission.PERMISSION_ONLY_ME) {
+            return false;
+        }
+        return this.isFriendsWithMe(owner);
     }
 
     /**
@@ -219,7 +243,7 @@ export class ChunkClaimsView extends AbstractCacheView {
      * @param {number} playerId
      * @returns {boolean}
      */
-    isGrantedBy(playerId) {
+    isFriendsWithMe(playerId) {
         return this._state.setHas("chunkClaims.grantedByIds", playerId);
     }
 }

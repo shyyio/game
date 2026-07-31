@@ -1,5 +1,5 @@
 import {PLAYER_ID_NONE} from "@/common/constants.js";
-import {ClaimResult} from "@/common/ClaimEvents.js";
+import {ClaimResult, ChunkPermission} from "@/common/ClaimEvents.js";
 import {chunkNeighbors, chunkPosition} from "@/common/util.js";
 
 export const CHUNK_CLAIM_RECORD = "ChunkClaim";
@@ -16,6 +16,10 @@ export class ChunkClaims {
          * @type {Map<number, number>} chunk ordinal -> owning playerId
          */
         this._ownerByChunk = new Map();
+        /**
+         * @type {Map<number, number>} chunk ordinal -> ChunkPermission, own entries only
+         */
+        this._permissionByChunk = new Map();
     }
 
     /**
@@ -28,6 +32,18 @@ export class ChunkClaims {
             return PLAYER_ID_NONE;
         }
         return owner;
+    }
+
+    /**
+     * @param {number} chunk
+     * @returns {number} the chunk's ChunkPermission, defaulting to friends-only when unclaimed
+     */
+    permissionOf(chunk) {
+        const permission = this._permissionByChunk.get(chunk);
+        if (permission === undefined) {
+            return ChunkPermission.PERMISSION_FRIENDS;
+        }
+        return permission;
     }
 
     /**
@@ -75,6 +91,7 @@ export class ChunkClaims {
             return ClaimResult.CLAIM_RESULT_NOT_ADJACENT;
         }
         this._ownerByChunk.set(chunk, playerId);
+        this._permissionByChunk.set(chunk, ChunkPermission.PERMISSION_FRIENDS);
         return ClaimResult.CLAIM_RESULT_OK;
     }
 
@@ -89,6 +106,21 @@ export class ChunkClaims {
             return check;
         }
         this._ownerByChunk.delete(chunk);
+        this._permissionByChunk.delete(chunk);
+        return ClaimResult.CLAIM_RESULT_OK;
+    }
+
+    /**
+     * @param {number} playerId
+     * @param {number} chunk
+     * @param {number} permission - a ChunkPermission
+     * @returns {number} a ClaimResult
+     */
+    setPermission(playerId, chunk, permission) {
+        if (this._ownerByChunk.get(chunk) !== playerId) {
+            return ClaimResult.CLAIM_RESULT_NOT_OWNER;
+        }
+        this._permissionByChunk.set(chunk, permission);
         return ClaimResult.CLAIM_RESULT_OK;
     }
 
@@ -115,11 +147,12 @@ export class ChunkClaims {
      * @param {number} chunkY
      * @param {number} chunkWidth
      * @param {number} chunkHeight
-     * @returns {{chunks: number[], playerIds: number[]}}
+     * @returns {{chunks: number[], playerIds: number[], permissions: number[]}}
      */
     claimsIn(chunkX, chunkY, chunkWidth, chunkHeight) {
         const chunks = [];
         const playerIds = [];
+        const permissions = [];
         for (const [chunk, playerId] of this._ownerByChunk) {
             const position = chunkPosition(chunk);
             if (position.x < chunkX || position.x >= chunkX + chunkWidth
@@ -128,8 +161,9 @@ export class ChunkClaims {
             }
             chunks.push(chunk);
             playerIds.push(playerId);
+            permissions.push(this.permissionOf(chunk));
         }
-        return {chunks, playerIds};
+        return {chunks, playerIds, permissions};
     }
 
     /**
@@ -138,13 +172,14 @@ export class ChunkClaims {
     serializeRecords() {
         const rows = [];
         for (const [chunk, playerId] of this._ownerByChunk) {
-            rows.push({chunk, player_id: playerId});
+            rows.push({chunk, player_id: playerId, permission: this.permissionOf(chunk)});
         }
         return {
             name: CHUNK_CLAIM_RECORD,
             fields: [
                 {name: "chunk", kind: "integer"},
                 {name: "player_id", kind: "integer"},
+                {name: "permission", kind: "integer"},
             ],
             rows,
         };
@@ -156,11 +191,13 @@ export class ChunkClaims {
      */
     deserializeRecords(table) {
         this._ownerByChunk.clear();
+        this._permissionByChunk.clear();
         if (table === undefined) {
             return;
         }
         for (const row of table.rows) {
             this._ownerByChunk.set(row.chunk, row.player_id);
+            this._permissionByChunk.set(row.chunk, row.permission);
         }
     }
 

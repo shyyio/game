@@ -1,6 +1,6 @@
 import {Container, Text} from "pixi.js";
 import {PLAYER_ID_NONE} from "@/common/constants.js";
-import {ClaimResult} from "@/common/ClaimEvents.js";
+import {ClaimResult, ChunkPermission} from "@/common/ClaimEvents.js";
 import {GAME_FONT, HUD_BOTTOM_OFFSET} from "@/client/constants.js";
 import {PANEL_BORDER, PANEL_TEXT, ACTIVE_ACCENT, PANEL_TITLE_TEXT, PANEL_TINT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/UIPanel.js";
@@ -9,7 +9,18 @@ import {buildPanelButton, BUTTON_HEIGHT} from "@/client/panelButton.js";
 const PADDING_X = 14;
 const PADDING_Y = 10;
 const BUTTON_GAP = 10;
+const SEGMENT_GAP = 4;
 const MIN_WIDTH = 220;
+
+// Left to right, the own-chunk permission row's segments.
+const PERMISSION_ORDER = [
+    ChunkPermission.PERMISSION_FRIENDS,
+    ChunkPermission.PERMISSION_ONLY_ME,
+];
+const PERMISSION_LABELS = {
+    [ChunkPermission.PERMISSION_FRIENDS]: "Friends",
+    [ChunkPermission.PERMISSION_ONLY_ME]: "Only me",
+};
 // Gap between the outer frame and the sunken inset body.
 const FRAME_MARGIN = 6;
 // Title row above the inset body, matching the inspect panel's title bar.
@@ -45,6 +56,7 @@ export class ChunkInfoPanelLayer extends Container {
         this._onUnclaim = null;
         this._onAddFriend = null;
         this._onUnfriend = null;
+        this._onSetPermission = null;
         // The panel and its texts persist; a rebuild only retargets them and the button.
         this._panel = new Container();
         this._frame = null;
@@ -69,6 +81,9 @@ export class ChunkInfoPanelLayer extends Container {
         this._buttonDisabled = false;
         // Current button action; retargeting swaps it without rebuilding the button.
         this._buttonAction = null;
+        // Own-chunk permission row; null while showing a chunk that isn't the own player's.
+        this._permissionRow = null;
+        this._permissionValue = undefined;
         app.renderer.on("resize", () => this._layout());
     }
 
@@ -98,6 +113,13 @@ export class ChunkInfoPanelLayer extends Container {
      */
     onUnfriend(callback) {
         this._onUnfriend = callback;
+    }
+
+    /**
+     * @param {function(chunk: number, permission: number): void} callback
+     */
+    onSetPermission(callback) {
+        this._onSetPermission = callback;
     }
 
     /**
@@ -135,7 +157,10 @@ export class ChunkInfoPanelLayer extends Container {
      * The panel's lines and button for the current chunk; a labeled button with a null action
      * renders disabled.
      * @private
-     * @returns {{title: string, info: string, buttonLabel: string|null, buttonAction: function(): void|null}}
+     * @returns {{
+     *     title: string, info: string, buttonLabel: string|null, buttonAction: function(): void|null,
+     *     permission: number|null,
+     * }}
      */
     _content() {
         const chunk = this._chunk;
@@ -147,13 +172,14 @@ export class ChunkInfoPanelLayer extends Container {
                 info: "You can build here",
                 buttonLabel: "Unclaim chunk",
                 buttonAction: () => this._onUnclaim(chunk),
+                permission: claims.permissionOf(chunk),
             };
         }
         if (owner !== PLAYER_ID_NONE) {
             const name = this._players.usernameOf(owner);
             // Access comes from THEIR grant; the button toggles the own player's grant back.
             let info;
-            if (claims.isGrantedBy(owner)) {
+            if (claims.isFriendsWithMe(owner)) {
                 info = `${name} lets you build here`;
             } else {
                 info = "You cannot build here";
@@ -167,7 +193,7 @@ export class ChunkInfoPanelLayer extends Container {
                 buttonLabel = `Add friend ${name}`;
                 buttonAction = () => this._onAddFriend(owner);
             }
-            return {title: `${name}'s chunk`, info, buttonLabel, buttonAction};
+            return {title: `${name}'s chunk`, info, buttonLabel, buttonAction, permission: null};
         }
         const check = claims.claimCheck(chunk);
         if (check === ClaimResult.CLAIM_RESULT_OK) {
@@ -176,6 +202,7 @@ export class ChunkInfoPanelLayer extends Container {
                 info: "Claim it to build here",
                 buttonLabel: "Claim chunk",
                 buttonAction: () => this._onClaim(chunk),
+                permission: null,
             };
         }
         if (check === ClaimResult.CLAIM_RESULT_LIMIT) {
@@ -184,6 +211,7 @@ export class ChunkInfoPanelLayer extends Container {
                 info: `Chunk limit reached (${claims.maxChunks}/${claims.maxChunks})`,
                 buttonLabel: "Claim chunk",
                 buttonAction: null,
+                permission: null,
             };
         }
         return {
@@ -191,6 +219,7 @@ export class ChunkInfoPanelLayer extends Container {
             info: "Must touch one of your claimed chunks",
             buttonLabel: null,
             buttonAction: null,
+            permission: null,
         };
     }
 
@@ -199,15 +228,20 @@ export class ChunkInfoPanelLayer extends Container {
      * @returns {void}
      */
     _rebuild() {
-        const {title, info, buttonLabel, buttonAction} = this._content();
+        const {title, info, buttonLabel, buttonAction, permission} = this._content();
         this._title.text = title;
         this._info.text = info;
+        this._refreshPermissionRow(permission);
         this._refreshButton(buttonLabel, buttonAction);
 
+        const rowWidth = this._permissionRow === null ? 0 : this._permissionRow.width;
         const buttonWidth = this._button === null ? 0 : this._button.width;
-        const contentWidth = Math.max(MIN_WIDTH, this._title.width, this._info.width, buttonWidth);
+        const contentWidth = Math.max(MIN_WIDTH, this._title.width, this._info.width, rowWidth, buttonWidth);
         const width = contentWidth + (PADDING_X + FRAME_MARGIN) * 2;
         let height = FRAME_MARGIN + TITLE_ROW_HEIGHT + PADDING_Y + this._info.height + PADDING_Y + FRAME_MARGIN;
+        if (this._permissionRow !== null) {
+            height += BUTTON_GAP + BUTTON_HEIGHT;
+        }
         if (this._button !== null) {
             height += BUTTON_GAP + BUTTON_HEIGHT;
         }
@@ -217,12 +251,69 @@ export class ChunkInfoPanelLayer extends Container {
         this._title.y = FRAME_MARGIN + (TITLE_ROW_HEIGHT - this._title.height) / 2;
         this._info.x = FRAME_MARGIN + PADDING_X;
         this._info.y = FRAME_MARGIN + TITLE_ROW_HEIGHT + PADDING_Y;
+        let nextY = this._info.y + this._info.height;
+        if (this._permissionRow !== null) {
+            nextY += BUTTON_GAP;
+            this._permissionRow.x = (width - this._permissionRow.width) / 2;
+            this._permissionRow.y = nextY;
+            nextY += BUTTON_HEIGHT;
+        }
         if (this._button !== null) {
+            nextY += BUTTON_GAP;
             this._button.x = (width - this._button.width) / 2;
-            this._button.y = this._info.y + this._info.height + BUTTON_GAP;
+            this._button.y = nextY;
         }
         this._layout();
         this.visible = true;
+    }
+
+    /**
+     * Retargets the own-chunk permission row: an unchanged permission is a no-op; otherwise it
+     * rebuilds, or drops with a null permission (not the own player's chunk).
+     * @private
+     * @param {number|null} permission
+     * @returns {void}
+     */
+    _refreshPermissionRow(permission) {
+        if (permission === this._permissionValue) {
+            return;
+        }
+        this._permissionValue = permission;
+        if (this._permissionRow !== null) {
+            this._panel.removeChild(this._permissionRow);
+            this._permissionRow.destroy({children: true});
+            this._permissionRow = null;
+        }
+        if (permission === null) {
+            return;
+        }
+        this._permissionRow = this._buildPermissionRow(permission);
+        this._panel.addChild(this._permissionRow);
+    }
+
+    /**
+     * A row of one button per {@link PERMISSION_ORDER} entry; the active one is accent-bordered,
+     * tapping any of them sets that permission.
+     * @private
+     * @param {number} current
+     * @returns {Container}
+     */
+    _buildPermissionRow(current) {
+        const row = new Container();
+        let x = 0;
+        for (const value of PERMISSION_ORDER) {
+            const borderColor = value === current ? ACTIVE_ACCENT : PANEL_BORDER;
+            const segment = buildPanelButton(
+                this.textureRegistry,
+                PERMISSION_LABELS[value],
+                borderColor,
+                () => this._onSetPermission(this._chunk, value),
+            );
+            segment.x = x;
+            row.addChild(segment);
+            x += segment.width + SEGMENT_GAP;
+        }
+        return row;
     }
 
     /**

@@ -5,9 +5,11 @@ import {GameEngine} from "@/sim/GameEngine.js";
 import {Direction, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {CreateObjectMessage, DeleteObjectMessage, SetViewportMessage} from "@/common/CoreMessages.js";
-import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
+import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {AddFriendMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
-import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult} from "@/common/ClaimEvents.js";
+import {
+    OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult, ChunkPermission,
+} from "@/common/ClaimEvents.js";
 import {WelcomeEvent, PlayerNamesEvent, FriendListEvent} from "@/common/PlayerEvents.js";
 import {DemoMachineType} from "@/mods/Demo/declaration.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
@@ -147,6 +149,49 @@ test("building in a foreign chunk is rejected until the owner grants it", async 
     game.dispatchMessage(new AddFriendMessage(BOB), alice);
     game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 10, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 2, "alice's grant lets bob build");
+});
+
+test("a claim defaults to friends-only permission", async () => {
+    const {game, alice} = await setup();
+    const chunk = chunkId(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+    assert.equal(game.claims.permissionOf(chunk), ChunkPermission.PERMISSION_FRIENDS);
+});
+
+test("only-me permission blocks a friend-granted player", async () => {
+    const {game, alice, bob} = await setup();
+    const chunk = chunkId(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+    game.dispatchMessage(new AddFriendMessage(BOB), alice);
+    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP), bob);
+    assert.equal(machineCount(game), 1, "the grant lets bob build under the friends-only default");
+
+    game.dispatchMessage(new SetChunkPermissionMessage(chunk, ChunkPermission.PERMISSION_ONLY_ME), alice);
+    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 10, 5, Direction.UP), bob);
+    assert.equal(machineCount(game), 1, "only-me overrides bob's existing grant");
+});
+
+test("a non-owner's permission change is ignored", async () => {
+    const {game, alice, bob} = await setup();
+    const chunk = chunkId(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+
+    game.dispatchMessage(new SetChunkPermissionMessage(chunk, ChunkPermission.PERMISSION_ONLY_ME), bob);
+    assert.equal(game.claims.permissionOf(chunk), ChunkPermission.PERMISSION_FRIENDS, "bob owns nothing here");
+});
+
+test("a permission change reaches the chunk's viewers", async () => {
+    const {game, alice, bob} = await setup();
+    const chunk = chunkId(5, 5);
+    game.dispatchMessage(new SetViewportMessage([chunk]), bob);
+    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+    bob.events.length = 0;
+
+    game.dispatchMessage(new SetChunkPermissionMessage(chunk, ChunkPermission.PERMISSION_ONLY_ME), alice);
+    const update = bob.events.find(event => event instanceof ChunkClaimUpdateEvent);
+    assert.equal(update.chunk, chunk);
+    assert.equal(update.playerId, ALICE);
+    assert.equal(update.permission, ChunkPermission.PERMISSION_ONLY_ME);
 });
 
 test("a friendship change resyncs both players' lists, names first", async () => {
