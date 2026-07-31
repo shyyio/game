@@ -12,8 +12,8 @@ const MODE_ZOOM_SCALE = OVERWORLD_SCALE_THRESHOLD * 1.1;
 // Entry glide skipped within a chunk of the centroid; the mode activates in place.
 const GLIDE_MIN_DISTANCE_PX = CHUNK_SIZE * TILE_SIZE;
 
-// This mode's owned id in the top status bar.
-const STATUS_BAR_SECTION_ID = "claimSelection";
+// This mode's id: both its map button id and its top status bar section id.
+const MODE_ID = "claimSelection";
 
 const WORLD_ONBOARDING = "No claimed chunks yet — zoom out to the map to claim your first one";
 const MAP_ONBOARDING = "Select an unclaimed chunk and press Claim chunk";
@@ -138,13 +138,13 @@ export class ClaimSelectionMode {
             this._client.centerLock && this.active && this._client.viewMode !== ViewMode.WORLD,
         );
         this._client.claimFrontierLayer.setModeActive(this.active);
-        this._client.mapButtonsLayer.setActive("claimSelection", this.active);
+        this._client.mapButtonsLayer.setActive(MODE_ID, this.active);
         // The top bar's Back button already covers exit while the mode is active, so the map
         // buttons show only for entering it (and stay hidden entirely with no claims to home to).
         const canShowMapButtons = !this._noClaims() && !this.active;
-        this._client.mapButtonsLayer.setButtonVisible("claimSelection", canShowMapButtons);
+        this._client.mapButtonsLayer.setButtonVisible(MODE_ID, canShowMapButtons);
         this._client.mapButtonsLayer.setButtonVisible("home", canShowMapButtons);
-        this._client.topStatusBar.setSection(STATUS_BAR_SECTION_ID, this._statusBarSection());
+        this._client.topStatusBar.setSection(MODE_ID, this._statusBarSection());
     }
 
     /**

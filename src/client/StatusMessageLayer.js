@@ -1,6 +1,6 @@
 import {Container, Text} from "pixi.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
-import {GAME_FONT, HUD_TOP_OFFSET} from "@/client/constants.js";
+import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_TEXT, PANEL_TINT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/UIPanel.js";
 
@@ -30,6 +30,7 @@ export class StatusMessageLayer extends Container {
         this.eventMode = "none";
         this.zIndex = 10000;
         this.visible = false;
+        this._topOffset = 0;
         this._connecting = false;
         // Chunks already subscribed, so a re-issued viewport request only counts new ones.
         this._subscribed = new Set();
@@ -46,8 +47,7 @@ export class StatusMessageLayer extends Container {
 
         this._panel = new Container();
         this._panel.x = MARGIN;
-        // Clears the full-width top status bar, which docks above this layer's usual corner spot.
-        this._panel.y = HUD_TOP_OFFSET;
+        this._panel.y = this._topOffset;
         this._frame = null;
         this._inset = null;
         this._text = new Text({
@@ -58,6 +58,20 @@ export class StatusMessageLayer extends Container {
         this._text.y = FRAME_MARGIN + PADDING_Y;
         this._panel.addChild(this._text);
         this.addChild(this._panel);
+    }
+
+    /**
+     * Shifts the panel down by `offset` px, clearing whatever currently occupies the top edge
+     * (the full-width top status bar).
+     * @param {number} offset
+     * @returns {void}
+     */
+    setTopOffset(offset) {
+        if (offset === this._topOffset) {
+            return;
+        }
+        this._topOffset = offset;
+        this._panel.y = offset;
     }
 
     /**

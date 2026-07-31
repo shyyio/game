@@ -1,6 +1,6 @@
 import {Container, Graphics} from "pixi.js";
-import {PANEL_FILL, PANEL_FILL_ALPHA, PANEL_BORDER, PANEL_HOVER_FILL} from "@/client/Theme.js";
 import {drawSettingsIcon} from "@/client/icons.js";
+import {drawCircleButtonFace} from "@/client/pixiUtils.js";
 
 const RADIUS = 24;
 const MARGIN = 16;
@@ -75,14 +75,7 @@ export class SettingsButtonLayer extends Container {
     _render() {
         const face = this._face;
         face.clear();
-        let fill = PANEL_FILL;
-        if (this._hovered) {
-            fill = PANEL_HOVER_FILL;
-        }
-        face
-            .circle(0, 0, RADIUS)
-            .fill({color: fill, alpha: PANEL_FILL_ALPHA})
-            .stroke({color: PANEL_BORDER, width: 1});
+        drawCircleButtonFace(face, RADIUS, this._hovered);
         drawSettingsIcon(face);
     }
 
