@@ -1,7 +1,7 @@
 import {Container, Graphics, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_TEXT, ACTIVE_ACCENT, BLOCKED_TILE_COLOR} from "@/client/Theme.js";
-import {drawPanelBackground} from "@/client/icons.js";
+import {PANEL_TEXT, ACTIVE_ACCENT, BLOCKED_TILE_COLOR, PANEL_TINT} from "@/client/Theme.js";
+import {UIPanel} from "@/client/UIPanel.js";
 import {buildPanelButton, BUTTON_HEIGHT} from "@/client/panelButton.js";
 
 const PANEL_WIDTH = 360;
@@ -11,6 +11,8 @@ const MESSAGE_FONT_SIZE = 15;
 const MESSAGE_GAP = 16;
 const BUTTON_GAP = 10;
 const BACKDROP_ALPHA = 0.5;
+// Gap between the outer frame and the sunken inset body.
+const FRAME_MARGIN = 6;
 
 /**
  * Full-screen centered confirm/cancel dialog with a dimmed backdrop; a screen-space HUD on
@@ -24,6 +26,7 @@ export class ConfirmDialogLayer extends Container {
     constructor(app) {
         super();
         this._app = app;
+        this.textureRegistry = null;
         this.zIndex = 12000;
         this.visible = false;
         this.eventMode = "none";
@@ -57,8 +60,8 @@ export class ConfirmDialogLayer extends Container {
             text: title,
             style: {fontFamily: GAME_FONT, fontSize: TITLE_FONT_SIZE, fill: PANEL_TEXT, fontWeight: "bold"},
         });
-        titleText.x = PADDING;
-        titleText.y = PADDING;
+        titleText.x = FRAME_MARGIN + PADDING;
+        titleText.y = FRAME_MARGIN + PADDING;
         panel.addChild(titleText);
 
         const messageText = new Text({
@@ -71,27 +74,29 @@ export class ConfirmDialogLayer extends Container {
                 wordWrapWidth: PANEL_WIDTH - PADDING * 2,
             },
         });
-        messageText.x = PADDING;
+        messageText.x = FRAME_MARGIN + PADDING;
         messageText.y = titleText.y + titleText.height + MESSAGE_GAP;
         panel.addChild(messageText);
 
         const buttonsY = messageText.y + messageText.height + MESSAGE_GAP;
-        const confirmButton = buildPanelButton(confirmLabel, BLOCKED_TILE_COLOR, () => {
+        const confirmButton = buildPanelButton(this.textureRegistry, confirmLabel, BLOCKED_TILE_COLOR, () => {
             this.close();
             onConfirm();
         });
-        const cancelButton = buildPanelButton("Cancel", ACTIVE_ACCENT, () => this.close());
-        confirmButton.x = PANEL_WIDTH - PADDING - confirmButton.width;
+        const cancelButton = buildPanelButton(this.textureRegistry, "Cancel", ACTIVE_ACCENT, () => this.close());
+        confirmButton.x = PANEL_WIDTH - FRAME_MARGIN - PADDING - confirmButton.width;
         confirmButton.y = buttonsY;
         cancelButton.x = confirmButton.x - BUTTON_GAP - cancelButton.width;
         cancelButton.y = buttonsY;
         panel.addChild(cancelButton);
         panel.addChild(confirmButton);
 
-        const panelHeight = buttonsY + BUTTON_HEIGHT + PADDING;
-        const bg = new Graphics();
-        drawPanelBackground(bg, PANEL_WIDTH, panelHeight);
-        panel.addChildAt(bg, 0);
+        const panelHeight = buttonsY + BUTTON_HEIGHT + PADDING + FRAME_MARGIN;
+        const frame = UIPanel.frameSprite(this.textureRegistry, PANEL_WIDTH, panelHeight, PANEL_TINT);
+        const inset = UIPanel.insetSprite(this.textureRegistry, PANEL_WIDTH - FRAME_MARGIN * 2, panelHeight - FRAME_MARGIN * 2, PANEL_TINT);
+        inset.position.set(FRAME_MARGIN, FRAME_MARGIN);
+        panel.addChildAt(inset, 0);
+        panel.addChildAt(frame, 0);
 
         // Swallow presses so they don't fall through to the map.
         panel.eventMode = "static";

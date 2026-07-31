@@ -1,16 +1,24 @@
-import {Container, Graphics, Text} from "pixi.js";
+import {Container, Text} from "pixi.js";
 import {PLAYER_ID_NONE} from "@/common/constants.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
 import {GAME_FONT, HUD_BOTTOM_OFFSET} from "@/client/constants.js";
-import {PANEL_BORDER, PANEL_TEXT, ACTIVE_ACCENT, LABEL_EMPHASIS} from "@/client/Theme.js";
-import {drawPanelBackground} from "@/client/icons.js";
+import {PANEL_BORDER, PANEL_TEXT, ACTIVE_ACCENT, PANEL_TITLE_TEXT, PANEL_TINT} from "@/client/Theme.js";
+import {UIPanel} from "@/client/UIPanel.js";
 import {buildPanelButton, BUTTON_HEIGHT} from "@/client/panelButton.js";
 
 const PADDING_X = 14;
 const PADDING_Y = 10;
-const LINE_GAP = 4;
 const BUTTON_GAP = 10;
 const MIN_WIDTH = 220;
+// Gap between the outer frame and the sunken inset body.
+const FRAME_MARGIN = 6;
+// Title row above the inset body, matching the inspect panel's title bar.
+const TITLE_ROW_HEIGHT = 36;
+// Left inset of the title text, matching the inspect panel's title bar padding.
+const TITLE_PADDING_X = 8;
+// Gap between the title text and the trailing decorative pattern.
+const TITLE_GAP = 8;
+const PATTERN_HEIGHT = 22;
 
 /**
  * Map-mode chunk panel: the hovered chunk's owner and buildability, with a claim or unclaim
@@ -28,6 +36,7 @@ export class ChunkInfoPanelLayer extends Container {
         this._app = app;
         this._claims = claims;
         this._players = players;
+        this.textureRegistry = null;
         this.zIndex = 900;
         this.visible = false;
         this._chunk = null;
@@ -37,16 +46,17 @@ export class ChunkInfoPanelLayer extends Container {
         this._onUnfriend = null;
         // The panel and its texts persist; a rebuild only retargets them and the button.
         this._panel = new Container();
-        this._background = new Graphics();
+        this._frame = null;
+        this._inset = null;
+        this._pattern = null;
         this._title = new Text({
             text: "",
-            style: {fontFamily: GAME_FONT, fontSize: 16, fill: LABEL_EMPHASIS, fontWeight: "bold"},
+            style: {fontFamily: GAME_FONT, fontSize: 18, fill: PANEL_TITLE_TEXT, fontWeight: "bold"},
         });
         this._info = new Text({
             text: "",
             style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TEXT},
         });
-        this._panel.addChild(this._background);
         this._panel.addChild(this._title);
         this._panel.addChild(this._info);
         // Presses on the panel body must not fall through to the viewport (pan/tap).
@@ -195,18 +205,17 @@ export class ChunkInfoPanelLayer extends Container {
 
         const buttonWidth = this._button === null ? 0 : this._button.width;
         const contentWidth = Math.max(MIN_WIDTH, this._title.width, this._info.width, buttonWidth);
-        const width = contentWidth + PADDING_X * 2;
-        let height = PADDING_Y + this._title.height + LINE_GAP + this._info.height + PADDING_Y;
+        const width = contentWidth + (PADDING_X + FRAME_MARGIN) * 2;
+        let height = FRAME_MARGIN + TITLE_ROW_HEIGHT + PADDING_Y + this._info.height + PADDING_Y + FRAME_MARGIN;
         if (this._button !== null) {
             height += BUTTON_GAP + BUTTON_HEIGHT;
         }
-        this._background.clear();
-        drawPanelBackground(this._background, width, height);
+        this._rebuildBackground(width, height);
 
-        this._title.x = PADDING_X;
-        this._title.y = PADDING_Y;
-        this._info.x = PADDING_X;
-        this._info.y = this._title.y + this._title.height + LINE_GAP;
+        this._title.x = TITLE_PADDING_X;
+        this._title.y = FRAME_MARGIN + (TITLE_ROW_HEIGHT - this._title.height) / 2;
+        this._info.x = FRAME_MARGIN + PADDING_X;
+        this._info.y = FRAME_MARGIN + TITLE_ROW_HEIGHT + PADDING_Y;
         if (this._button !== null) {
             this._button.x = (width - this._button.width) / 2;
             this._button.y = this._info.y + this._info.height + BUTTON_GAP;
@@ -251,7 +260,44 @@ export class ChunkInfoPanelLayer extends Container {
      */
     _buildButton(label, disabled) {
         const borderColor = disabled ? PANEL_BORDER : ACTIVE_ACCENT;
-        return buildPanelButton(label, borderColor, () => this._buttonAction(), disabled);
+        return buildPanelButton(this.textureRegistry, label, borderColor, () => this._buttonAction(), disabled);
+    }
+
+    /**
+     * @private
+     * @param {number} width
+     * @param {number} height
+     * @returns {void}
+     */
+    _rebuildBackground(width, height) {
+        if (this._frame !== null) {
+            this._frame.destroy();
+            this._inset.destroy();
+        }
+        if (this._pattern !== null) {
+            this._pattern.destroy();
+        }
+        this._frame = UIPanel.frameSprite(this.textureRegistry, width, height, PANEL_TINT);
+
+        const insetHeight = height - FRAME_MARGIN - TITLE_ROW_HEIGHT - FRAME_MARGIN;
+        this._inset = UIPanel.insetSprite(this.textureRegistry, width - FRAME_MARGIN * 2, insetHeight, PANEL_TINT);
+        this._inset.position.set(FRAME_MARGIN, FRAME_MARGIN + TITLE_ROW_HEIGHT);
+
+        // Trailing decorative pattern filling the title row past the title text.
+        const patternX = TITLE_PADDING_X + this._title.width + TITLE_GAP;
+        const patternWidth = Math.max(width - FRAME_MARGIN - PADDING_X - patternX, 0);
+        if (patternWidth > 0) {
+            this._pattern = UIPanel.patternStrip(this.textureRegistry, patternWidth, PATTERN_HEIGHT);
+            this._pattern.position.set(patternX, FRAME_MARGIN + (TITLE_ROW_HEIGHT - PATTERN_HEIGHT) / 2);
+        } else {
+            this._pattern = null;
+        }
+
+        this._panel.addChildAt(this._inset, 0);
+        this._panel.addChildAt(this._frame, 0);
+        if (this._pattern !== null) {
+            this._panel.addChildAt(this._pattern, 2);
+        }
     }
 
     /**

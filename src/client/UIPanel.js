@@ -38,7 +38,7 @@ const TX_PATTERN = "ui/PlusPattern";
 
 /**
  * A framed HUD panel: raised outer frame + sunken inset body + draggable title bar with a close
- * button. Chrome only — callers fill the body via {@link UIPanel#addContent}. The host wires
+ * button. Background only — callers fill the body via {@link UIPanel#addContent}. The host wires
  * dragging onto {@link UIPanel#dragHandle}.
  */
 export class UIPanel extends Container {
@@ -166,7 +166,7 @@ export class UIPanel extends Container {
     }
 
     /**
-     * The panel's raised outer frame as a standalone tinted 9-slice sprite (for chrome that wants the
+     * The panel's raised outer frame as a standalone tinted 9-slice sprite (for background that wants the
      * UIPanel look without the rest of the panel). Sets a hit area so it can catch pointer events.
      * @param {TextureRegistry} textureRegistry
      * @param {number} width
@@ -192,7 +192,7 @@ export class UIPanel extends Container {
 
     /**
      * The panel's sunken inset body as a standalone tinted 9-slice sprite, matching the inspect
-     * panel's body (for chrome that wants the inset look without the rest of the panel).
+     * panel's body (for background that wants the inset look without the rest of the panel).
      * @param {TextureRegistry} textureRegistry
      * @param {number} width
      * @param {number} height
@@ -216,7 +216,7 @@ export class UIPanel extends Container {
 
     /**
      * A standalone tiled decorative pattern rectangle, matching the title bar's strip (same texture,
-     * scale, and alpha), for chrome that wants the pattern outside a full panel.
+     * scale, and alpha), for background that wants the pattern outside a full panel.
      * @param {TextureRegistry} textureRegistry
      * @param {number} width
      * @param {number} height
@@ -258,7 +258,7 @@ export class UIPanel extends Container {
     }
 
     /**
-     * Toggles a 1px outline around each element (chrome and content), for layout debugging.
+     * Toggles a 1px outline around each element (background and content), for layout debugging.
      * @param {boolean} on
      * @returns {void}
      */

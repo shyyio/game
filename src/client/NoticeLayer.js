@@ -1,11 +1,13 @@
-import {Container, Graphics, Text} from "pixi.js";
+import {Container, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_TEXT} from "@/client/Theme.js";
-import {drawPanelBackground} from "@/client/icons.js";
+import {PANEL_TEXT, PANEL_TINT} from "@/client/Theme.js";
+import {UIPanel} from "@/client/UIPanel.js";
 
 const MARGIN = 24;
 const PADDING_X = 16;
 const PADDING_Y = 12;
+// Gap between the outer frame and the sunken inset body.
+const FRAME_MARGIN = 6;
 
 // How long a notice stays up; a new notify() call restarts this from the current message.
 const NOTICE_DURATION_MS = 3000;
@@ -22,6 +24,7 @@ export class NoticeLayer extends Container {
     constructor(app) {
         super();
         this._app = app;
+        this.textureRegistry = null;
         // Display-only: never a hit target (the stage is interactive for mobile pinch).
         this.eventMode = "none";
         this.zIndex = 11000;
@@ -29,14 +32,12 @@ export class NoticeLayer extends Container {
         this._timer = null;
 
         this._panel = new Container();
-        this._background = new Graphics();
+        this._frame = null;
+        this._inset = null;
         this._text = new Text({
             text: "",
             style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TEXT},
         });
-        this._text.x = PADDING_X;
-        this._text.y = PADDING_Y;
-        this._panel.addChild(this._background);
         this._panel.addChild(this._text);
         this.addChild(this._panel);
         app.renderer.on("resize", () => this._center());
@@ -50,8 +51,11 @@ export class NoticeLayer extends Container {
      */
     notify(text) {
         this._text.text = text;
-        this._background.clear();
-        drawPanelBackground(this._background, this._text.width + PADDING_X * 2, this._text.height + PADDING_Y * 2);
+        const width = this._text.width + (PADDING_X + FRAME_MARGIN) * 2;
+        const height = this._text.height + (PADDING_Y + FRAME_MARGIN) * 2;
+        this._rebuildBackground(width, height);
+        this._text.x = FRAME_MARGIN + PADDING_X;
+        this._text.y = FRAME_MARGIN + PADDING_Y;
         this._center();
         this.visible = true;
         if (this._timer !== null) {
@@ -61,6 +65,24 @@ export class NoticeLayer extends Container {
             this._timer = null;
             this.visible = false;
         }, NOTICE_DURATION_MS);
+    }
+
+    /**
+     * @private
+     * @param {number} width
+     * @param {number} height
+     * @returns {void}
+     */
+    _rebuildBackground(width, height) {
+        if (this._frame !== null) {
+            this._frame.destroy();
+            this._inset.destroy();
+        }
+        this._frame = UIPanel.frameSprite(this.textureRegistry, width, height, PANEL_TINT);
+        this._inset = UIPanel.insetSprite(this.textureRegistry, width - FRAME_MARGIN * 2, height - FRAME_MARGIN * 2, PANEL_TINT);
+        this._inset.position.set(FRAME_MARGIN, FRAME_MARGIN);
+        this._panel.addChildAt(this._inset, 0);
+        this._panel.addChildAt(this._frame, 0);
     }
 
     /**

@@ -1,11 +1,15 @@
 import {Container, Graphics, Text} from "pixi.js";
 import {MiniMenuEntry} from "@/common/ObjectType.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_FILL, PANEL_FILL_ALPHA, PANEL_BORDER, PANEL_TEXT, PANEL_HOVER_FILL, LABEL_EMPHASIS} from "@/client/Theme.js";
+import {PANEL_TEXT, PANEL_TINT, SLOT_HIGHLIGHT_COLOR, LABEL_EMPHASIS} from "@/client/Theme.js";
+import {UIPanel} from "@/client/UIPanel.js";
 
 const PADDING = 6;
 const ITEM_HEIGHT = 32;
 const ITEM_PADDING_X = 16;
+// Gap between the outer frame and the sunken inset body.
+const FRAME_MARGIN = 6;
+const HOVER_ALPHA = 0.2;
 
 /**
  * Builds a menu label: the first word in normal weight, the remainder bold and
@@ -44,6 +48,7 @@ export class MiniMenuLayer extends Container {
     constructor(viewport) {
         super();
         this._viewport = viewport;
+        this.textureRegistry = null;
         this._menu = null;
         this._pressDownListener = null;
         this._pressUpListener = null;
@@ -76,26 +81,27 @@ export class MiniMenuLayer extends Container {
 
         const labels = allEntries.map(entry => buildLabel(entry.label));
 
-        const menuWidth = Math.max(...labels.map(l => l.width)) + ITEM_PADDING_X * 2;
-        const menuHeight = allEntries.length * ITEM_HEIGHT + PADDING * 2;
+        const menuWidth = Math.max(...labels.map(l => l.width)) + ITEM_PADDING_X * 2 + FRAME_MARGIN * 2;
+        const menuHeight = allEntries.length * ITEM_HEIGHT + PADDING * 2 + FRAME_MARGIN * 2;
 
         this._menu.x = screenX - menuWidth / 2;
         this._menu.y = screenY;
 
-        const bg = new Graphics();
-        bg.rect(0, 0, menuWidth, menuHeight)
-            .fill({color: PANEL_FILL, alpha: PANEL_FILL_ALPHA})
-            .stroke({color: PANEL_BORDER, width: 1});
-        this._menu.addChild(bg);
+        const frame = UIPanel.frameSprite(this.textureRegistry, menuWidth, menuHeight, PANEL_TINT);
+        this._menu.addChild(frame);
+        const inset = UIPanel.insetSprite(this.textureRegistry, menuWidth - FRAME_MARGIN * 2, menuHeight - FRAME_MARGIN * 2, PANEL_TINT);
+        inset.position.set(FRAME_MARGIN, FRAME_MARGIN);
+        this._menu.addChild(inset);
 
         for (const [i, entry] of allEntries.entries()) {
             const item = new Container();
-            item.y = PADDING + i * ITEM_HEIGHT;
+            item.x = FRAME_MARGIN;
+            item.y = FRAME_MARGIN + PADDING + i * ITEM_HEIGHT;
             item.eventMode = "static";
             item.cursor = "pointer";
 
             const hoverBg = new Graphics();
-            hoverBg.rect(0, 0, menuWidth, ITEM_HEIGHT).fill({color: PANEL_HOVER_FILL});
+            hoverBg.rect(0, 0, menuWidth - FRAME_MARGIN * 2, ITEM_HEIGHT).fill(SLOT_HIGHLIGHT_COLOR);
             hoverBg.alpha = 0;
             item.addChild(hoverBg);
 
@@ -104,7 +110,7 @@ export class MiniMenuLayer extends Container {
             label.y = (ITEM_HEIGHT - label.height) / 2;
             item.addChild(label);
 
-            item.on("pointerover", () => { hoverBg.alpha = 1; });
+            item.on("pointerover", () => { hoverBg.alpha = HOVER_ALPHA; });
             item.on("pointerout", () => { hoverBg.alpha = 0; });
             item.on("pointerdown", (e) => {
                 e.nativeEvent.stopPropagation();
