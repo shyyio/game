@@ -12,8 +12,14 @@ import {ChunkSyncEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {ClaimChunkMessage, UnclaimChunkMessage} from "@/common/ClaimMessages.js";
 import {AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
+import {SettingCategory} from "@/client/SettingCategory.js";
+import {AbstractPlayerSettingControl} from "@/client/AbstractPlayerSettingControl.js";
 import {PlayerSettingChoice} from "@/client/PlayerSettingChoice.js";
 import {PlayerSettingToggle} from "@/client/PlayerSettingToggle.js";
+import {DeviceSettingToggle} from "@/client/DeviceSettingToggle.js";
+import {DEVICE_SETTING_FULLSCREEN, DEVICE_SETTING_REDUCED_MOTION} from "@/client/DeviceSettings.js";
+import Fullscreen from "@/client/Fullscreen.js";
+import ReducedMotion from "@/client/ReducedMotion.js";
 import {ChunkClaimsDrawLayer} from "@/client/ChunkClaimsDrawLayer.js";
 import {ClientCache} from "@/client/ClientCache.js";
 import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/ChunkClaimsState.js";
@@ -72,6 +78,9 @@ const NO_VISIBLE_CHUNKS = new Set();
 
 // Leading entries shown per column when logging a columnar batch event.
 const LOG_BATCH_ITEMS = 5;
+
+// Settings-menu placement of the "Display" section.
+const DISPLAY_CATEGORY_ORDER = 0;
 
 /**
  * A console view of an event: a batch event's columns cut to their first {@link LOG_BATCH_ITEMS}
@@ -869,13 +878,18 @@ export class Client {
     }
 
     /**
-     * Gathers the settings-menu controls every client mod contributes, validating each key
-     * against the player-setting registry.
-     * @returns {AbstractPlayerSettingControl[]}
+     * Gathers and merges every mod's settings categories, validating player control keys.
+     * @returns {SettingCategory[]}
      */
-    settingsControls() {
-        const controls = this.modRegistry.clientMods.flatMap(mod => mod.settingsControls(this));
+    settingsCategories() {
+        const contributions = this._coreSettingsCategories()
+            .concat(this.modRegistry.clientMods.flatMap(mod => mod.settingsCategories(this)));
+        const categories = SettingCategory.merge(contributions);
+        const controls = categories.flatMap(category => category.controls);
         for (const control of controls) {
+            if (!(control instanceof AbstractPlayerSettingControl)) {
+                continue;
+            }
             const entry = this.modRegistry.playerSettingEntry(control.key);
             if (entry === undefined) {
                 throw new Error(`Settings control "${control.label}" targets unregistered player setting key ${control.key}`);
@@ -895,7 +909,21 @@ export class Client {
                 throw new Error(`Settings control "${control.label}" has an unknown control type`);
             }
         }
-        return controls;
+        return categories;
+    }
+
+    /**
+     * The engine's own settings section: device toggles.
+     * @private
+     * @returns {SettingCategory[]}
+     */
+    _coreSettingsCategories() {
+        return [
+            new SettingCategory("Display", DISPLAY_CATEGORY_ORDER, [
+                new DeviceSettingToggle(DEVICE_SETTING_FULLSCREEN, "Fullscreen", false, on => Fullscreen.setEnabled(on)),
+                new DeviceSettingToggle(DEVICE_SETTING_REDUCED_MOTION, "Reduced motion", ReducedMotion.devicePrefers(), on => ReducedMotion.setEnabled(on)),
+            ]),
+        ];
     }
 
     /**

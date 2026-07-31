@@ -46,11 +46,15 @@ export {ConnectionDrawLayer} from "@/client/ConnectionDrawLayer.js";
 export {ObjectGhostLayer} from "@/client/ObjectGhostLayer.js";
 
 // ---- Settings menu ----
-// Declarative settings-menu controls, returned from a client mod's settingsControls hook and
-// rendered generically by Game.vue; each binds a widget to a client-writable player setting.
+// Declarative settings-menu controls, returned from a client mod's settingsCategories hook and
+// rendered generically by Game.vue; each binds a widget to a client-writable player setting or
+// a device-local localStorage setting.
+export {AbstractSettingControl} from "@/client/AbstractSettingControl.js";
 export {AbstractPlayerSettingControl} from "@/client/AbstractPlayerSettingControl.js";
+export {SettingCategory} from "@/client/SettingCategory.js";
 export {PlayerSettingToggle} from "@/client/PlayerSettingToggle.js";
 export {PlayerSettingChoice} from "@/client/PlayerSettingChoice.js";
+export {DeviceSettingToggle} from "@/client/DeviceSettingToggle.js";
 
 // ---- Input ----
 // Base class for a placement/interaction tool shown in the toolbar.

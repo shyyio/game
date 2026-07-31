@@ -5,9 +5,8 @@ import {ClientViewport} from "@/client/ClientViewport.js";
 import Keyboard from "@/client/Keyboard.js";
 import Mouse from "@/client/Mouse.js";
 import {MobileTouchInput} from "@/client/MobileTouchInput.js";
-import DeviceSettings, {DEVICE_SETTING_FULLSCREEN, DEVICE_SETTING_REDUCED_MOTION} from "@/client/DeviceSettings.js";
+import DeviceSettings from "@/client/DeviceSettings.js";
 import Fullscreen from "@/client/Fullscreen.js";
-import ReducedMotion from "@/client/ReducedMotion.js";
 import WindowFocus from "@/client/WindowFocus.js";
 import {InputHandler} from "@/client/InputHandler.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
@@ -21,8 +20,10 @@ import {LocalSession} from "@/sim/LocalSession.js";
 import {RemoteSession} from "@/client/RemoteSession.js";
 import {WireRegistry} from "@/common/wire.js";
 import {Client} from "@/client/Client.js";
+import {AbstractPlayerSettingControl} from "@/client/AbstractPlayerSettingControl.js";
 import {PlayerSettingChoice} from "@/client/PlayerSettingChoice.js";
 import {PlayerSettingToggle} from "@/client/PlayerSettingToggle.js";
+import {DeviceSettingToggle} from "@/client/DeviceSettingToggle.js";
 import {ClaimResult, ClaimResultEvent} from "@/common/ClaimEvents.js";
 import {UnclaimChunkMessage} from "@/common/ClaimMessages.js";
 import {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
@@ -43,16 +44,10 @@ const noticeOpen = ref(false);
 const unclaimChunk = ref(null);
 let confirmUnclaim = null;
 
-// Mod-contributed settings-menu controls, each mirrored to its player setting by key.
+// Settings-menu categories; each control mirrored to its setting by key.
 const settingsOpen = ref(false);
-const settingsControls = ref([]);
+const settingsCategories = ref([]);
 const settingValues = reactive({});
-
-// Device-local fullscreen preference.
-const fullscreenEnabled = ref(false);
-
-// Device-local reduced-motion preference.
-const reducedMotionEnabled = ref(false);
 
 // Rejection notices per ClaimResult; OK stays silent (the border appearing is the feedback).
 const CLAIM_RESULT_NOTICES = {
@@ -198,20 +193,6 @@ onMounted(async () => {
   }
 
   Fullscreen.install();
-  fullscreenEnabled.value = DeviceSettings.getBoolean(DEVICE_SETTING_FULLSCREEN, false);
-  Fullscreen.setEnabled(fullscreenEnabled.value);
-  watch(fullscreenEnabled, on => {
-    DeviceSettings.setBoolean(DEVICE_SETTING_FULLSCREEN, on);
-    // The switch tap is the user gesture the fullscreen request needs.
-    Fullscreen.setEnabled(on);
-  });
-
-  reducedMotionEnabled.value = DeviceSettings.getBoolean(DEVICE_SETTING_REDUCED_MOTION, ReducedMotion.devicePrefers());
-  ReducedMotion.setEnabled(reducedMotionEnabled.value);
-  watch(reducedMotionEnabled, on => {
-    DeviceSettings.setBoolean(DEVICE_SETTING_REDUCED_MOTION, on);
-    ReducedMotion.setEnabled(on);
-  });
 
   Mouse.init(app, viewport);
   WindowFocus.init();
@@ -345,7 +326,8 @@ onMounted(async () => {
   client.cache.subscribe("playerSettings.values", refreshTools);
   refreshTools();
 
-  const controls = client.settingsControls();
+  const categories = client.settingsCategories();
+  const controls = categories.flatMap(category => category.controls);
   // Per-type value mirroring: a toggle models a boolean, a choice models the option index.
   const controlModel = (control, value) => {
     if (control instanceof PlayerSettingChoice) {
@@ -356,7 +338,9 @@ onMounted(async () => {
     }
     throw new Error(`Settings control "${control.label}" has an unknown control type`);
   };
-  const controlByKey = new Map(controls.map(control => [control.key, control]));
+  const deviceControls = controls.filter(control => control instanceof DeviceSettingToggle);
+  const playerControls = controls.filter(control => control instanceof AbstractPlayerSettingControl);
+  const controlByKey = new Map(playerControls.map(control => [control.key, control]));
   client.cache.subscribe("playerSettings.values", (key, value) => {
     const control = controlByKey.get(key);
     if (control !== undefined) {
@@ -364,7 +348,17 @@ onMounted(async () => {
     }
   });
   const playerSettings = client.cache.view("playerSettings");
-  for (const control of controls) {
+  for (const control of deviceControls) {
+    const initial = DeviceSettings.getBoolean(control.key, control.fallback);
+    settingValues[control.key] = initial;
+    control.apply(initial);
+    watch(() => settingValues[control.key], on => {
+      DeviceSettings.setBoolean(control.key, on);
+      // The switch tap is the user gesture a fullscreen request needs.
+      control.apply(on);
+    });
+  }
+  for (const control of playerControls) {
     // Seed from the cache: the settings sync may have landed during client init.
     settingValues[control.key] = controlModel(control, playerSettings.get(control.key));
     watch(() => settingValues[control.key], modelValue => {
@@ -375,7 +369,7 @@ onMounted(async () => {
       client.updatePlayerSetting(control.key, modelValue ? SETTING_ON : SETTING_OFF);
     });
   }
-  settingsControls.value = controls;
+  settingsCategories.value = categories;
 
   client.onViewModeChange((mode) => {
     const zoomedOut = mode !== ViewMode.WORLD;
@@ -443,38 +437,27 @@ export default defineComponent({
       </v-toolbar>
       <v-card-text>
         <div class="settings-list">
-          <v-switch
-              v-model="fullscreenEnabled"
-              label="Fullscreen"
-              color="primary"
-              density="compact"
-              hide-details
-          />
-          <v-switch
-              v-model="reducedMotionEnabled"
-              label="Reduced motion"
-              color="primary"
-              density="compact"
-              hide-details
-          />
-          <template v-for="control in settingsControls" :key="control.key">
-            <v-select
-                v-if="control instanceof PlayerSettingChoice"
-                v-model="settingValues[control.key]"
-                :label="control.label"
-                :items="control.items"
-                variant="solo"
-                density="compact"
-                hide-details
-            />
-            <v-switch
-                v-else
-                v-model="settingValues[control.key]"
-                :label="control.label"
-                color="primary"
-                density="compact"
-                hide-details
-            />
+          <template v-for="category in settingsCategories" :key="category.name">
+            <div class="settings-category-title">{{ category.name }}</div>
+            <template v-for="control in category.controls" :key="control.key">
+              <v-select
+                  v-if="control instanceof PlayerSettingChoice"
+                  v-model="settingValues[control.key]"
+                  :label="control.label"
+                  :items="control.items"
+                  variant="solo"
+                  density="compact"
+                  hide-details
+              />
+              <v-switch
+                  v-else
+                  v-model="settingValues[control.key]"
+                  :label="control.label"
+                  color="primary"
+                  density="compact"
+                  hide-details
+              />
+            </template>
           </template>
         </div>
       </v-card-text>
@@ -522,5 +505,17 @@ export default defineComponent({
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.settings-dialog .settings-category-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.settings-dialog .settings-category-title:not(:first-child) {
+  margin-top: 8px;
 }
 </style>

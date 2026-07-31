@@ -1,4 +1,4 @@
-import {AbstractClientMod, Mouse, PlayerSettingChoice, WindowFocus} from "@/sdk/client.js";
+import {AbstractClientMod, Mouse, SettingCategory, PlayerSettingChoice, WindowFocus} from "@/sdk/client.js";
 import {CURSOR_SETTING_SHARE, CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_OPTIONS, CURSOR_AUDIENCE_DEFAULT} from "./common/constants.js";
 import {REMOTE_CURSORS_SCHEMA, RemoteCursorsWriter} from "./client/RemoteCursorsState.js";
 import {RemoteCursorsDrawLayer} from "./client/RemoteCursorsDrawLayer.js";
@@ -32,12 +32,14 @@ export class CursorSyncClientMod extends AbstractClientMod {
 
     /**
      * @param {Client} client
-     * @returns {AbstractPlayerSettingControl[]}
+     * @returns {SettingCategory[]}
      */
-    settingsControls(client) {
+    settingsCategories(client) {
         return [
-            new PlayerSettingChoice(CURSOR_SETTING_SHARE, "Share my cursor with", CURSOR_AUDIENCE_OPTIONS, CURSOR_AUDIENCE_DEFAULT),
-            new PlayerSettingChoice(CURSOR_SETTING_DISPLAY, "Display cursors from", CURSOR_AUDIENCE_OPTIONS, CURSOR_AUDIENCE_DEFAULT),
+            new SettingCategory("Cursor Sync", 10, [
+                new PlayerSettingChoice(CURSOR_SETTING_SHARE, "Share my cursor with", CURSOR_AUDIENCE_OPTIONS, CURSOR_AUDIENCE_DEFAULT),
+                new PlayerSettingChoice(CURSOR_SETTING_DISPLAY, "Display cursors from", CURSOR_AUDIENCE_OPTIONS, CURSOR_AUDIENCE_DEFAULT),
+            ]),
         ];
     }
 
