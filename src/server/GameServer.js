@@ -97,7 +97,6 @@ export class GameServer {
      */
     _infoScreen(host) {
         const uptime = this._formatUptime();
-        const registered = this._game.players.directory().playerIds.length;
         return [
             "+==============================================+",
             "|            SHY'S POWER-UP FACTORY            |",
@@ -107,7 +106,7 @@ export class GameServer {
             `  version    : ${GAME_VERSION}`,
             `  mods       : ${this._game.modRegistry.modNames.join(", ")}`,
             `  websocket  : ws://${host}`,
-            `  players    : ${this._sessionsByPlayer.size} online, ${registered} registered`,
+            `  players    : ${this._sessionsByPlayer.size} online`,
             `  uptime     : ${uptime}`,
         ].join("\n");
     }
@@ -217,6 +216,7 @@ export class GameServer {
             this._sessionsByPlayer.delete(session.playerId);
         }
         this._game.disconnect(session.id);
-        console.log(`- player ${session.playerId} (session ${session.id}, tx ${formatBytes(session.txBytes)}, rx ${formatBytes(session.rxBytes)})`);
+        const username = this._game.players.byId(session.playerId).username;
+        console.log(`- ${username} (player ${session.playerId}, session ${session.id}, tx ${formatBytes(session.txBytes)}, rx ${formatBytes(session.rxBytes)})`);
     }
 }
