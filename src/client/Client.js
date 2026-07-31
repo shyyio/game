@@ -41,6 +41,8 @@ import {
     OVERWORLD_SCALE_THRESHOLD,
     OVERWORLD_CHUNK_TTL_MS,
     OVERWORLD_REFRESH_THROTTLE_MS,
+    HUD_BOTTOM_OFFSET,
+    HUD_BOTTOM_MARGIN,
 } from "@/client/constants.js";
 import {CHUNK_SIZE, REGION_SIZE, Direction} from "@/common/constants.js";
 import {chunkCenter, chunkId, formatBytes, REGION_HALF} from "@/common/util.js";
@@ -262,6 +264,24 @@ export class Client {
         // Toast/confirm-dialog feedback for claim/unclaim rejections.
         this.claimResultFeedback = new ClaimResultFeedback(this);
         this.onEvent(event => this.claimResultFeedback.onEvent(event));
+    }
+
+    /**
+     * Shows the toolbar only in world view with at least one claimed chunk: placement tools are
+     * inert while zoomed to map/overworld (EffectiveToolController nulls the effective tool
+     * there), and irrelevant with nothing to build on. Docks the chunk info panel to the screen
+     * bottom instead of clearing the toolbar's height once it's hidden.
+     * @returns {void}
+     */
+    refreshToolbarVisibility() {
+        const hasClaims = this.cache.view("chunkClaims").ownCount() > 0;
+        const visible = hasClaims && this._viewMode === ViewMode.WORLD;
+        this.toolbarLayer.visible = visible;
+        if (visible) {
+            this.chunkInfoPanelLayer.setBottomOffset(HUD_BOTTOM_OFFSET);
+        } else {
+            this.chunkInfoPanelLayer.setBottomOffset(HUD_BOTTOM_MARGIN);
+        }
     }
 
     /**
@@ -505,6 +525,7 @@ export class Client {
         this._viewMode = mode;
         this.drawLayerRegistry.setViewMode(mode);
         this.mapButtonsLayer.setViewMode(mode);
+        this.refreshToolbarVisibility();
         for (const mod of this.modRegistry.clientMods) {
             mod.setViewMode(mode, this);
         }

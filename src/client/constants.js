@@ -23,6 +23,10 @@ export const MIN_VIEWPORT_SCALE = 1024 / (REGION_SIZE * CHUNK_SIZE * TILE_SIZE);
 // Screen-pixel gap between bottom-anchored HUD elements and the screen bottom, clearing the toolbar.
 export const HUD_BOTTOM_OFFSET = 160;
 
+// Screen-pixel gap between bottom-anchored HUD elements and the screen bottom when the toolbar
+// is hidden and there's nothing to clear.
+export const HUD_BOTTOM_MARGIN = 16;
+
 // Screen-pixel gap between top-anchored HUD elements and the screen top, clearing the top status bar.
 export const HUD_TOP_OFFSET = 76;
 

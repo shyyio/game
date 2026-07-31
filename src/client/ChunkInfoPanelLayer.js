@@ -39,6 +39,7 @@ export class ChunkInfoPanelLayer extends Container {
         this.textureRegistry = null;
         this.zIndex = 900;
         this.visible = false;
+        this._bottomOffset = HUD_BOTTOM_OFFSET;
         this._chunk = null;
         this._onClaim = null;
         this._onUnclaim = null;
@@ -301,12 +302,26 @@ export class ChunkInfoPanelLayer extends Container {
     }
 
     /**
+     * Sets the clearance from the screen bottom (the host docks this to the toolbar's height,
+     * or a small margin once the toolbar is hidden).
+     * @param {number} offset
+     * @returns {void}
+     */
+    setBottomOffset(offset) {
+        if (offset === this._bottomOffset) {
+            return;
+        }
+        this._bottomOffset = offset;
+        this._layout();
+    }
+
+    /**
      * Bottom-center, clear of the toolbar.
      * @private
      * @returns {void}
      */
     _layout() {
         this._panel.x = Math.round((this._app.screen.width - this._panel.width) / 2);
-        this._panel.y = this._app.screen.height - HUD_BOTTOM_OFFSET - this._panel.height;
+        this._panel.y = this._app.screen.height - this._bottomOffset - this._panel.height;
     }
 }
