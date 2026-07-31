@@ -2,9 +2,9 @@ import {Color} from "pixi.js";
 import {getOrCreate} from "@/common/util.js";
 
 // Central color palette for all client-side (pixi) rendering. Mods keep their own
-// domain palettes; this holds shared HUD/chrome colors and engine render colors.
+// domain palettes; this holds shared HUD/panel colors and engine render colors.
 
-// ---- HUD panel chrome (mini-menu, rotate buttons, status message) ----
+// ---- HUD panel background (mini-menu, rotate buttons, status message) ----
 export const PANEL_FILL = 0x1a1a1a;
 export const PANEL_FILL_ALPHA = 0.92;
 export const PANEL_BORDER = 0x555555;
@@ -17,7 +17,7 @@ export const LABEL_EMPHASIS = 0xffd24a;
 
 export const TOOLBAR_TEXT = 0x000000;
 
-// ---- Inspect & toolbar panels (ui frame chrome) ----
+// ---- Inspect & toolbar panels (ui frame background) ----
 export const PANEL_TINT = 0xeee6d8; // warm-gray tint over the ui frame
 export const PANEL_TITLE_TEXT = 0xffffff;
 export const SLOT_HIGHLIGHT_COLOR = 0x9be89b; // active/hover slot highlight (green)

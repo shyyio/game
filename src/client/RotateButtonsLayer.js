@@ -1,10 +1,11 @@
 import {Container, Graphics, Text} from "pixi.js";
 import Haptics from "@/client/Haptics.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_FILL, PANEL_FILL_ALPHA, PANEL_BORDER, PANEL_TEXT, ACTIVE_ACCENT} from "@/client/Theme.js";
+import {PANEL_TEXT, PANEL_TINT, ACTIVE_ACCENT} from "@/client/Theme.js";
+import {nineSlice} from "@/client/pixiUtils.js";
+import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/InspectContent.js";
 
 const BUTTON_SIZE = 56;
-const BUTTON_RADIUS = 8;
 // Sits above the bottom-centered tool toolbar, anchored to the bottom-right.
 const MARGIN_BOTTOM = 96;
 const MARGIN_RIGHT = 24;
@@ -23,10 +24,19 @@ export class RotateButtonsLayer extends Container {
         super();
         this._app = app;
         this._viewport = viewport;
+        this.textureRegistry = null;
         this._onRotate = null;
+        this._button = null;
         this.visible = false;
         this.zIndex = 1000;
+    }
 
+    /**
+     * Builds the button, once the texture registry is ready (the button's 9-slice background
+     * needs its texture loaded, which happens after construction).
+     * @returns {void}
+     */
+    build() {
         this._button = this._createButton("↻", () => this._invoke(this._onRotate));
         this.addChild(this._button);
 
@@ -81,15 +91,13 @@ export class RotateButtonsLayer extends Container {
         button.eventMode = "static";
         button.cursor = "pointer";
 
-        const bg = new Graphics();
-        bg.roundRect(0, 0, BUTTON_SIZE, BUTTON_SIZE, BUTTON_RADIUS)
-            .fill({color: PANEL_FILL, alpha: PANEL_FILL_ALPHA})
-            .stroke({color: PANEL_BORDER, width: 1});
+        const bg = nineSlice(this.textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, BUTTON_SIZE, BUTTON_SIZE);
+        bg.tint = PANEL_TINT;
         button.addChild(bg);
 
         // Lit on press for tap feedback, cleared on release.
         const pressBg = new Graphics();
-        pressBg.roundRect(0, 0, BUTTON_SIZE, BUTTON_SIZE, BUTTON_RADIUS).fill({color: ACTIVE_ACCENT});
+        pressBg.rect(0, 0, BUTTON_SIZE, BUTTON_SIZE).fill({color: ACTIVE_ACCENT});
         pressBg.alpha = 0;
         button.addChild(pressBg);
 

@@ -1,20 +1,24 @@
 import {Container, Graphics, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_TEXT, PANEL_HOVER_FILL} from "@/client/Theme.js";
+import {PANEL_TEXT, SLOT_HIGHLIGHT_COLOR} from "@/client/Theme.js";
+import {nineSlice} from "@/client/pixiUtils.js";
+import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/InspectContent.js";
 
 export const BUTTON_HEIGHT = 34;
 const BUTTON_PADDING_X = 16;
+const HOVER_ALPHA = 0.2;
 
 /**
- * A rounded, bordered HUD button sized to its label; tap fires onClick. Disabled grays it out
- * and drops interactivity.
+ * A 9-slice HUD button sized to its label, tinted `borderColor`; tap fires onClick. Disabled
+ * grays it out and drops interactivity.
+ * @param {TextureRegistry} textureRegistry
  * @param {string} label
  * @param {number} borderColor
  * @param {function(): void} onClick
  * @param {boolean} [disabled]
  * @returns {Container}
  */
-export function buildPanelButton(label, borderColor, onClick, disabled = false) {
+export function buildPanelButton(textureRegistry, label, borderColor, onClick, disabled = false) {
     const text = new Text({
         text: label,
         style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TEXT, fontWeight: "bold"},
@@ -22,11 +26,13 @@ export function buildPanelButton(label, borderColor, onClick, disabled = false) 
     const width = text.width + BUTTON_PADDING_X * 2;
 
     const button = new Container();
-    const fill = new Graphics()
-        .roundRect(0, 0, width, BUTTON_HEIGHT, 6)
-        .fill({color: PANEL_HOVER_FILL})
-        .stroke({color: borderColor, width: 1});
-    button.addChild(fill);
+    const bg = nineSlice(textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, width, BUTTON_HEIGHT);
+    bg.tint = borderColor;
+    button.addChild(bg);
+
+    const hover = new Graphics().rect(0, 0, width, BUTTON_HEIGHT).fill(SLOT_HIGHLIGHT_COLOR);
+    hover.alpha = 0;
+    button.addChild(hover);
 
     text.x = BUTTON_PADDING_X;
     text.y = (BUTTON_HEIGHT - text.height) / 2;
@@ -38,8 +44,8 @@ export function buildPanelButton(label, borderColor, onClick, disabled = false) 
     }
     button.eventMode = "static";
     button.cursor = "pointer";
-    button.on("pointerover", () => fill.tint = 0xcccccc);
-    button.on("pointerout", () => fill.tint = 0xffffff);
+    button.on("pointerover", () => hover.alpha = HOVER_ALPHA);
+    button.on("pointerout", () => hover.alpha = 0);
     button.on("pointerdown", (e) => e.stopPropagation());
     button.on("pointertap", () => onClick());
     return button;

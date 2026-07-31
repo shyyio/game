@@ -1,22 +1,8 @@
-import {PANEL_FILL, PANEL_FILL_ALPHA, PANEL_BORDER, PANEL_TEXT} from "@/client/Theme.js";
+import {PANEL_TEXT} from "@/client/Theme.js";
 
 // Vector HUD glyphs shared by the map buttons and world markers; each paints around (0, 0).
 
 export const ICON_STROKE = 2.5;
-
-/**
- * The shared HUD panel background: a rounded panel-chrome rect at (0, 0).
- * @param {Graphics} graphics
- * @param {number} width
- * @param {number} height
- * @returns {void}
- */
-export function drawPanelBackground(graphics, width, height) {
-    graphics
-        .roundRect(0, 0, width, height, 6)
-        .fill({color: PANEL_FILL, alpha: PANEL_FILL_ALPHA})
-        .stroke({color: PANEL_BORDER, width: 1});
-}
 
 /**
  * The claim-selection icon: a 2x2 chunk grid.

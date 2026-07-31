@@ -1,12 +1,15 @@
-import {Container, Graphics, Text} from "pixi.js";
+import {Container, Text} from "pixi.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_FILL, PANEL_FILL_ALPHA, PANEL_BORDER, PANEL_TEXT} from "@/client/Theme.js";
+import {PANEL_TEXT, PANEL_TINT} from "@/client/Theme.js";
+import {UIPanel} from "@/client/UIPanel.js";
 
 // Screen-pixel inset of the panel from the top-left corner.
 const MARGIN = 12;
 const PADDING_X = 12;
 const PADDING_Y = 8;
+// Gap between the outer frame and the sunken inset body.
+const FRAME_MARGIN = 6;
 
 // Loading counts can change several times a frame while syncs drain, and every Text write
 // re-rasterizes its canvas; message writes coalesce to one per interval.
@@ -22,6 +25,7 @@ export class StatusMessageLayer extends Container {
 
     constructor() {
         super();
+        this.textureRegistry = null;
         // Display-only: never a hit target (the stage is interactive for mobile pinch).
         this.eventMode = "none";
         this.zIndex = 10000;
@@ -43,14 +47,14 @@ export class StatusMessageLayer extends Container {
         this._panel = new Container();
         this._panel.x = MARGIN;
         this._panel.y = MARGIN;
-        this._background = new Graphics();
+        this._frame = null;
+        this._inset = null;
         this._text = new Text({
             text: "",
             style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TEXT},
         });
-        this._text.x = PADDING_X;
-        this._text.y = PADDING_Y;
-        this._panel.addChild(this._background);
+        this._text.x = FRAME_MARGIN + PADDING_X;
+        this._text.y = FRAME_MARGIN + PADDING_Y;
         this._panel.addChild(this._text);
         this.addChild(this._panel);
     }
@@ -168,10 +172,40 @@ export class StatusMessageLayer extends Container {
      */
     _applyMessage(message) {
         this._text.text = message;
-        this._background
-            .clear()
-            .roundRect(0, 0, this._text.width + PADDING_X * 2, this._text.height + PADDING_Y * 2, 4)
-            .fill({color: PANEL_FILL, alpha: PANEL_FILL_ALPHA})
-            .stroke({color: PANEL_BORDER, width: 1});
+        this._rebuildBackground();
+    }
+
+    /**
+     * Rebuilds the background sized to the current text; a no-op until the texture
+     * registry is assigned (events can arrive before the client has loaded textures).
+     * @private
+     * @returns {void}
+     */
+    _rebuildBackground() {
+        if (this.textureRegistry === null) {
+            return;
+        }
+        const width = this._text.width + (PADDING_X + FRAME_MARGIN) * 2;
+        const height = this._text.height + (PADDING_Y + FRAME_MARGIN) * 2;
+        if (this._frame !== null) {
+            this._frame.destroy();
+            this._inset.destroy();
+        }
+        this._frame = UIPanel.frameSprite(this.textureRegistry, width, height, PANEL_TINT);
+        this._inset = UIPanel.insetSprite(this.textureRegistry, width - FRAME_MARGIN * 2, height - FRAME_MARGIN * 2, PANEL_TINT);
+        this._inset.position.set(FRAME_MARGIN, FRAME_MARGIN);
+        this._panel.addChildAt(this._inset, 0);
+        this._panel.addChildAt(this._frame, 0);
+    }
+
+    /**
+     * Rebuilds the background for whatever message is already showing, once the texture registry
+     * becomes available (the initial connect can drive messages before textures are loaded).
+     * @returns {void}
+     */
+    refreshBackground() {
+        if (this.textureRegistry !== null && this.visible) {
+            this._rebuildBackground();
+        }
     }
 }

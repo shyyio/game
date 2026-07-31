@@ -259,7 +259,7 @@ export class ToolbarLayer extends Container {
             this._drawerStrip.destroy({children: true});
         }
         this._panelBg = UIPanel.frameSprite(this.textureRegistry, this._panelWidth, height, PANEL_TINT);
-        // Swallow presses on the bar chrome: no tile placement beneath, no click-off close.
+        // Swallow presses on the bar background: no tile placement beneath, no click-off close.
         this._panelBg.eventMode = "static";
         this._panelBg.on("pointerdown", (e) => e.nativeEvent.stopPropagation());
         this._panel.addChildAt(this._panelBg, 0);

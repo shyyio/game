@@ -396,6 +396,16 @@ export class Client {
         this.inspectPanelLayer.itemTextures = this.modRegistry.itemTextures;
         this.inspectPanelLayer.viewport = this.viewport;
         this.inspectPanelLayer.onClose(objectId => this.unInspectObject(objectId));
+        this.statusLayer.textureRegistry = this.textureRegistry;
+        this.statusLayer.refreshBackground();
+        this.firstClaimLayer.textureRegistry = this.textureRegistry;
+        this.firstClaimLayer.refreshBackground();
+        this.noticeLayer.textureRegistry = this.textureRegistry;
+        this.confirmDialogLayer.textureRegistry = this.textureRegistry;
+        this.chunkInfoPanelLayer.textureRegistry = this.textureRegistry;
+        this.miniMenuLayer.textureRegistry = this.textureRegistry;
+        this.rotateButtonsLayer.textureRegistry = this.textureRegistry;
+        this.rotateButtonsLayer.build();
         this.app.stage.addChild(this.centerMarkerLayer);
         this.app.stage.addChild(this.mapButtonsLayer);
         this.app.stage.addChild(this.chunkInfoPanelLayer);

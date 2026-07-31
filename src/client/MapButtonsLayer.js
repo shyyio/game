@@ -168,7 +168,7 @@ export class MapButtonsLayer extends Container {
     }
 
     /**
-     * Idle: panel-chrome circle with the button's icon; active: red circle with a close cross.
+     * Idle: panel-background circle with the button's icon; active: red circle with a close cross.
      * @private
      * @param {MapButton} button
      * @returns {void}
