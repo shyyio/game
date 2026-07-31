@@ -1,5 +1,5 @@
 import {Container, Graphics, NineSliceSprite} from "pixi.js";
-import {DEBUG_OUTLINE_COLOR} from "@/client/Theme.js";
+import {DEBUG_OUTLINE_COLOR, PANEL_FILL, PANEL_FILL_ALPHA, PANEL_BORDER, PANEL_HOVER_FILL} from "@/client/Theme.js";
 
 /**
  * A NineSliceSprite of `name` at the given on-screen size, with equal edge insets per axis.
@@ -22,6 +22,25 @@ export function nineSlice(textureRegistry, name, insetX, insetY, width, height) 
     sprite.width = width;
     sprite.height = height;
     return sprite;
+}
+
+/**
+ * Draws a circular button's idle/hover face — filled circle with a border stroke, centered on
+ * (0, 0) — shared by every circular icon button (map buttons, settings button).
+ * @param {Graphics} face
+ * @param {number} radius
+ * @param {boolean} hovered
+ * @returns {void}
+ */
+export function drawCircleButtonFace(face, radius, hovered) {
+    let fill = PANEL_FILL;
+    if (hovered) {
+        fill = PANEL_HOVER_FILL;
+    }
+    face
+        .circle(0, 0, radius)
+        .fill({color: fill, alpha: PANEL_FILL_ALPHA})
+        .stroke({color: PANEL_BORDER, width: 1});
 }
 
 /**

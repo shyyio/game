@@ -27,9 +27,6 @@ export const HUD_BOTTOM_OFFSET = 160;
 // is hidden and there's nothing to clear.
 export const HUD_BOTTOM_MARGIN = 16;
 
-// Screen-pixel gap between top-anchored HUD elements and the screen top, clearing the top status bar.
-export const HUD_TOP_OFFSET = 76;
-
 // A cached overworld chunk older than this refetches when it is next visible.
 export const OVERWORLD_CHUNK_TTL_MS = 30_000;
 

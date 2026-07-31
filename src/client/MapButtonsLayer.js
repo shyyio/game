@@ -1,7 +1,8 @@
 import {Container, Graphics} from "pixi.js";
 import {HUD_BOTTOM_OFFSET, ViewMode} from "@/client/constants.js";
-import {PANEL_FILL, PANEL_FILL_ALPHA, PANEL_BORDER, PANEL_TEXT, PANEL_HOVER_FILL, BLOCKED_TILE_COLOR} from "@/client/Theme.js";
+import {PANEL_BORDER, PANEL_TEXT, BLOCKED_TILE_COLOR} from "@/client/Theme.js";
 import {ICON_STROKE} from "@/client/icons.js";
+import {drawCircleButtonFace} from "@/client/pixiUtils.js";
 
 const BUTTON_RADIUS = 24;
 const BUTTON_GAP = 10;
@@ -189,14 +190,7 @@ export class MapButtonsLayer extends Container {
                 .stroke({color: PANEL_TEXT, width: ICON_STROKE + 0.5, cap: "round"});
             return;
         }
-        let fill = PANEL_FILL;
-        if (button.hovered) {
-            fill = PANEL_HOVER_FILL;
-        }
-        face
-            .circle(0, 0, BUTTON_RADIUS)
-            .fill({color: fill, alpha: PANEL_FILL_ALPHA})
-            .stroke({color: PANEL_BORDER, width: 1});
+        drawCircleButtonFace(face, BUTTON_RADIUS, button.hovered);
         button.drawIcon(face);
     }
 }

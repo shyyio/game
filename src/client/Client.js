@@ -181,7 +181,10 @@ export class Client {
         this.topStatusBar = new TopStatusBarLayer(app);
         // Always-visible top-right settings button; stays clear of the bar above via its height.
         this.settingsButtonLayer = new SettingsButtonLayer(app);
-        this.topStatusBar.onChange((height) => this.settingsButtonLayer.setTopOffset(height));
+        this.topStatusBar.onChange((height) => {
+            this.settingsButtonLayer.setTopOffset(height);
+            this.statusLayer.setTopOffset(height);
+        });
         // Bottom-center toast (claim rejections, session disconnects).
         this.noticeLayer = new NoticeLayer(app);
         // Centered confirm/cancel dialog, currently only the destructive unclaim confirm.
