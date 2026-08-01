@@ -63,14 +63,15 @@ export class GameServer {
     }
 
     /**
+     * @param {string} host
      * @param {number} port
      * @returns {Promise<void>} resolves once the port is bound; rejects when taken
      */
-    listen(port) {
+    listen(host, port) {
         return new Promise((resolve, reject) => {
-            this._app.listen(port, listenSocket => {
+            this._app.listen(host, port, listenSocket => {
                 if (!listenSocket) {
-                    reject(new Error(`Failed to listen on port ${port}`));
+                    reject(new Error(`Failed to listen on ${host}:${port}`));
                     return;
                 }
                 this._listenSocket = listenSocket;
