@@ -143,7 +143,9 @@ export const PLAYER_ID_NONE = 0;
 // Chunks a player may claim before any bonus grants.
 export const DEFAULT_MAX_CHUNKS = 9;
 
-export const USERNAME_PATTERN = /^[A-Za-z0-9_]{3,20}$/;
+// 3-12 chars, letters/digits/underscore with single spaces between words (no leading/trailing/double).
+export const USERNAME_PATTERN = /^(?=.{3,12}$)[A-Za-z0-9_]+(?: [A-Za-z0-9_]+)*$/;
+export const USERNAME_PATTERN_HINT = "3-12 chars: letters, digits, _; single spaces, no leading/trailing";
 
 // Sign-in with a differing version is rejected; bump package.json's version on any
 // wire- or rule-incompatible change.

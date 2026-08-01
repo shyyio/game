@@ -15,9 +15,11 @@ test("getOrCreate is idempotent and allocates stable ids from 1", () => {
 
 test("invalid usernames are rejected", () => {
     const players = new PlayerRegistry();
-    assert.throws(() => players.getOrCreate("no spaces"), RangeError);
+    assert.throws(() => players.getOrCreate(" alice"), RangeError, "leading space");
+    assert.throws(() => players.getOrCreate("alice "), RangeError, "trailing space");
+    assert.throws(() => players.getOrCreate("ali  ce"), RangeError, "double space");
     assert.throws(() => players.getOrCreate("ab"), RangeError);
-    assert.throws(() => players.getOrCreate("x".repeat(21)), RangeError);
+    assert.throws(() => players.getOrCreate("x".repeat(13)), RangeError);
 });
 
 test("unknown ids break loudly", () => {

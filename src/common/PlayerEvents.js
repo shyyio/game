@@ -67,3 +67,25 @@ export class FriendListEvent extends AbstractEvent {
         this.grantedByIds = grantedByIds;
     }
 }
+
+/**
+ * The outcome of an {@link AddFriendByUsernameMessage}: whether the username resolved to another
+ * real player. Targeted (publishTo).
+ */
+export class AddFriendByUsernameResultEvent extends AbstractEvent {
+
+    static wireFields = {
+        username: "string",
+        found: "int32",
+    };
+
+    /**
+     * @param {string} username
+     * @param {boolean} found
+     */
+    constructor(username, found) {
+        super();
+        this.username = username;
+        this.found = found ? 1 : 0;
+    }
+}

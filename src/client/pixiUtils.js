@@ -44,6 +44,28 @@ export function drawCircleButtonFace(face, radius, hovered) {
 }
 
 /**
+ * Tracks a native pointer drag through window-level pointermove/pointerup, from `startEvent`'s
+ * position: `onMove(deltaX, deltaY)` fires on every move (screen px since the drag began),
+ * `onEnd()` once on release. The window listeners are torn down automatically on release.
+ * @param {PointerEvent} startEvent
+ * @param {function(deltaX: number, deltaY: number): void} onMove
+ * @param {function(): void} [onEnd]
+ * @returns {void}
+ */
+export function trackWindowDrag(startEvent, onMove, onEnd = () => {}) {
+    const startX = startEvent.clientX;
+    const startY = startEvent.clientY;
+    const onPointerMove = (event) => onMove(event.clientX - startX, event.clientY - startY);
+    const onPointerUp = () => {
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", onPointerUp);
+        onEnd();
+    };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+}
+
+/**
  * A Container of 1px outlines around each leaf under `roots`, for layout debugging. Bounds are
  * mapped into `localTarget`'s space so the outlines ride with it.
  * @param {Container[]} roots

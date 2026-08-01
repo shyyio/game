@@ -142,4 +142,31 @@ test("friends", () => {
     assert.equal(claims.isFriend(3), false);
     assert.equal(claims.isFriendsWithMe(3), true);
     assert.equal(claims.isFriendsWithMe(2), false);
+    assert.deepEqual(claims.friendIds(), [2]);
+});
+
+test("nearbyForeignOwners orders by distance and dedupes a multi-chunk owner", () => {
+    const {state, claims} = claimsState();
+    state.onEvent(new WelcomeEvent(1, 9));
+    const near = chunkOrdinal(1, 0);
+    const far = chunkOrdinal(5, 0);
+    // Player 2 also owns a second, farther chunk; their nearest one still decides their ranking.
+    const fartherStillOfNearOwner = chunkOrdinal(9, 0);
+    state.onEvent(new ChunkClaimUpdateEvent(near, 2));
+    state.onEvent(new ChunkClaimUpdateEvent(far, 3));
+    state.onEvent(new ChunkClaimUpdateEvent(fartherStillOfNearOwner, 2));
+
+    const result = claims.nearbyForeignOwners([near, far, fartherStillOfNearOwner], 0, 0);
+    assert.deepEqual(result, [2, 3], "closer owner first, deduped to one entry per owner");
+});
+
+test("nearbyForeignOwners skips unclaimed chunks, the own player, and friends", () => {
+    const {state, claims} = claimsState();
+    state.onEvent(new WelcomeEvent(1, 9));
+    state.onEvent(new OwnClaimsSyncEvent([chunkOrdinal(0, 0)], [ChunkPermission.PERMISSION_FRIENDS]));
+    state.onEvent(new ChunkClaimUpdateEvent(chunkOrdinal(1, 0), 2));
+    state.onEvent(new FriendListEvent([2], []));
+
+    const result = claims.nearbyForeignOwners([chunkOrdinal(0, 0), chunkOrdinal(1, 0), chunkOrdinal(2, 0)], 0, 0);
+    assert.deepEqual(result, [], "own chunk, friend's chunk, and unclaimed chunk all excluded");
 });

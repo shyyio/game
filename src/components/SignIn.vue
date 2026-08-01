@@ -1,6 +1,6 @@
 <script setup>
 import {ref} from "vue";
-import {USERNAME_PATTERN} from "@/common/constants.js";
+import {USERNAME_PATTERN, USERNAME_PATTERN_HINT} from "@/common/constants.js";
 
 const STORAGE_USERNAME = "shys-power-up-factory.username";
 const STORAGE_SERVER_URL = "shys-power-up-factory.serverUrl";
@@ -12,7 +12,7 @@ const username = ref(localStorage.getItem(STORAGE_USERNAME) || "");
 const serverUrl = ref(localStorage.getItem(STORAGE_SERVER_URL) || DEFAULT_SERVER_URL);
 
 const usernameRules = [
-  value => USERNAME_PATTERN.test(value) || "3-20 letters, digits, or _",
+  value => USERNAME_PATTERN.test(value) || USERNAME_PATTERN_HINT,
 ];
 
 function usernameValid() {
@@ -40,7 +40,7 @@ function connect() {
       <v-card-text>
         <v-text-field
             v-model="username"
-            label="Username"
+            label="Name"
             :rules="usernameRules"
             autofocus
             @keyup.enter="connect"

@@ -81,6 +81,29 @@ export function drawFriendIcon(face, color = PANEL_TEXT, width = ICON_STROKE) {
 }
 
 /**
+ * The friends button's icon: a smiley face.
+ * @param {Graphics} face
+ * @param {number} [color]
+ * @param {number} [width]
+ * @returns {void}
+ */
+export function drawSmileyIcon(face, color = PANEL_TEXT, width = ICON_STROKE) {
+    face
+        .circle(0, 0, 10)
+        .stroke({color, width});
+    face
+        .circle(-4, -3, 1.4)
+        .fill({color});
+    face
+        .circle(4, -3, 1.4)
+        .fill({color});
+    face
+        .moveTo(-5, 2)
+        .quadraticCurveTo(0, 7, 5, 2)
+        .stroke({color, width, cap: "round"});
+}
+
+/**
  * The settings icon: three sliders, each a horizontal line with a knob.
  * @param {Graphics} face
  * @returns {void}
