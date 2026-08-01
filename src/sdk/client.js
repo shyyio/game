@@ -45,6 +45,16 @@ export {ConnectionDrawLayer} from "@/client/ConnectionDrawLayer.js";
 // The derived-default placement-preview ghost (single sprite + center-lock); paired with ObjectTool.
 export {ObjectGhostLayer} from "@/client/ObjectGhostLayer.js";
 
+// ---- HUD panel look-and-feel ----
+// The same framed-panel toolkit the core Friends/Inspect panels use, for a mod-contributed HUD
+// panel (see hudLayers()) that wants to match: a draggable UIPanel (title bar + close button) and
+// buildPanelButton for its 9-slice buttons.
+export {UIPanel} from "@/client/UIPanel.js";
+export {buildPanelButton, BUTTON_HEIGHT} from "@/client/panelButton.js";
+export {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT, TOOLBAR_TEXT} from "@/client/Theme.js";
+// A curved line from a HUD panel to the tile it targets (used by the core Inspect panel).
+export {rectEdgePoint, drawPanelConnector, CONNECTOR_PANEL_INSET} from "@/client/PanelConnector.js";
+
 // ---- Settings menu ----
 // Declarative settings-menu controls, returned from a client mod's settingsCategories hook and
 // rendered generically by Game.vue; each binds a widget to a client-writable player setting or

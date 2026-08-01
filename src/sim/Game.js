@@ -605,6 +605,9 @@ export class Game {
     }
 
     postTick() {
+        for (const mod of this.modRegistry.simMods) {
+            mod.onTick(this);
+        }
         this._dispatchInspectEvents();
     }
 

@@ -6,6 +6,8 @@ import {ResourcesDeclaration} from "@/mods/Resources/declaration.js";
 import {FluidsDeclaration} from "@/mods/Fluids/declaration.js";
 import {CursorSyncDeclaration} from "@/mods/CursorSync/declaration.js";
 import {CursorSyncSimMod} from "@/mods/CursorSync/sim.js";
+import {MarketDeclaration} from "@/mods/Market/declaration.js";
+import {MarketSimMod} from "@/mods/Market/sim.js";
 
 // The canonical mod loadout. Both build sites register the same declarations in the same order, so
 // the positional typeIds/wireIds assigned at freeze() match between sim and client. The client
@@ -24,5 +26,6 @@ export function simLoadout() {
         new ModPackage(new ResourcesDeclaration()),
         new ModPackage(new FluidsDeclaration()),
         new ModPackage(new CursorSyncDeclaration(), {sim: new CursorSyncSimMod()}),
+        new ModPackage(new MarketDeclaration(), {sim: new MarketSimMod()}),
     ];
 }
