@@ -12,8 +12,6 @@ export default defineConfig(({mode}) => ({
         ssr: "src/server/main.js",
         outDir: "dist-server",
         target: "node20",
-        // SSR builds skip minification by default; the server artifact wants it anyway.
-        minify: "esbuild",
         rollupOptions: {
             // Native addons cannot be inlined into the bundle.
             external: ["better-sqlite3", "uWebSockets.js"],
