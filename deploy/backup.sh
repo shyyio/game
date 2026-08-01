@@ -3,7 +3,7 @@ set -euo pipefail
 
 DB=/home/app/data/world.sqlite3
 NAME=world.sqlite3
-TMP="$(mktemp -d)"
+TMP="$(mktemp -d -p /home/app/data)"
 trap 'rm -rf "$TMP"' EXIT
 
 sqlite3 "$DB" "VACUUM INTO '${TMP}/${NAME}'"
