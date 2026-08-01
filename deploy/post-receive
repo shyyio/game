@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+GIT_WORK_TREE=/home/app/spup GIT_DIR=/home/app/spup.git git checkout -f main
+cd /home/app/spup
+npm ci
+npm run build:server
+sudo /usr/bin/systemctl restart spup

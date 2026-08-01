@@ -10,12 +10,14 @@ import {GameServer} from "@/server/GameServer.js";
 const {values: args} = parseArgs({
     options: {
         "db": {type: "string", default: "world.sqlite3"},
+        "host": {type: "string", default: "0.0.0.0"},
         "port": {type: "string", default: "8080"},
         "tick-ms": {type: "string", default: "600"},
         "save-ms": {type: "string", default: "60000"},
     },
 });
 const dbPath = args["db"];
+const host = args["host"];
 const port = Number(args["port"]);
 const tickMs = Number(args["tick-ms"]);
 const saveMs = Number(args["save-ms"]);
@@ -36,8 +38,8 @@ if (await game.load()) {
 
 const api = new GameAPI(game);
 const server = new GameServer(game, api);
-await server.listen(port);
-console.log(`Listening on ws://0.0.0.0:${port} (tick ${tickMs}ms, save ${saveMs}ms)`);
+await server.listen(host, port);
+console.log(`Listening on ws://${host}:${port} (tick ${tickMs}ms, save ${saveMs}ms)`);
 
 const tickInterval = setInterval(() => {
     game.runTick();
