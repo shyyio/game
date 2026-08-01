@@ -19,8 +19,15 @@ function usernameValid() {
   return USERNAME_PATTERN.test(username.value);
 }
 
+function resolveServerUrl() {
+  if (/^wss?:\/\//.test(serverUrl.value)) {
+    return serverUrl.value;
+  }
+  return `wss://${serverUrl.value}`;
+}
+
 function playLocal() {
-  emit("start", {mode: "local", username: username.value, serverUrl: serverUrl.value});
+  emit("start", {mode: "local", username: username.value, serverUrl: resolveServerUrl()});
 }
 
 function connect() {
@@ -29,7 +36,7 @@ function connect() {
   }
   localStorage.setItem(STORAGE_USERNAME, username.value);
   localStorage.setItem(STORAGE_SERVER_URL, serverUrl.value);
-  emit("start", {mode: "remote", username: username.value, serverUrl: serverUrl.value});
+  emit("start", {mode: "remote", username: username.value, serverUrl: resolveServerUrl()});
 }
 </script>
 
