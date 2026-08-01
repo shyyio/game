@@ -33,6 +33,10 @@ export const OVERWORLD_CHUNK_TTL_MS = 30_000;
 // At most one overworld request per this window while panning.
 export const OVERWORLD_REFRESH_THROTTLE_MS = 500;
 
+// At most one friends-panel rebuild (full DOM-input teardown/recreate included) per this window
+// while panning/zooming with the panel open.
+export const FRIENDS_PANEL_REFRESH_THROTTLE_MS = 500;
+
 export function snapToTile(n) {
     return Math.floor(n / TILE_SIZE) * TILE_SIZE;
 }

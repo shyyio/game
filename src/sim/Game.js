@@ -5,8 +5,12 @@ import {ObjectSyncEvent} from "@/common/ObjectEvents.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
-import {AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
-import {WelcomeEvent, PlayerNamesEvent, FriendListEvent} from "@/common/PlayerEvents.js";
+import {
+    AddFriendMessage, AddFriendByUsernameMessage, RemoveFriendMessage, SetPlayerSettingMessage,
+} from "@/common/PlayerMessages.js";
+import {
+    WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByUsernameResultEvent,
+} from "@/common/PlayerEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {
     OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult, ChunkPermission,
@@ -269,6 +273,14 @@ export class Game {
 
         if (message instanceof AddFriendMessage) {
             this._handleAddFriend(session, message.playerId);
+            return;
+        }
+
+        if (message instanceof AddFriendByUsernameMessage) {
+            const record = this.players.findByUsername(message.username);
+            const found = record !== null && record.playerId !== session.playerId;
+            this._handleAddFriend(session, record === null ? PLAYER_ID_NONE : record.playerId);
+            this.bus.publishTo(session.id, new AddFriendByUsernameResultEvent(message.username, found));
             return;
         }
 

@@ -6,11 +6,14 @@ import {Direction, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {CreateObjectMessage, DeleteObjectMessage, SetViewportMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
-import {AddFriendMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
+import {AddFriendMessage, AddFriendByUsernameMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
 import {
     OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult, ChunkPermission,
 } from "@/common/ClaimEvents.js";
-import {WelcomeEvent, PlayerNamesEvent, FriendListEvent} from "@/common/PlayerEvents.js";
+import {
+    WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByUsernameResultEvent,
+} from "@/common/PlayerEvents.js";
+import {syntheticUsername} from "@/common/util.js";
 import {DemoMachineType} from "@/mods/Demo/declaration.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
@@ -211,6 +214,38 @@ test("a friendship change resyncs both players' lists, names first", async () =>
     game.dispatchMessage(new RemoveFriendMessage(BOB), alice);
     const revoked = bob.events.filter(event => event instanceof FriendListEvent).at(-1);
     assert.deepEqual(revoked.grantedByIds, [], "bob learns the grant was revoked");
+});
+
+test("add-friend-by-username resolves the username before granting, and answers found", async () => {
+    const {game, alice} = await setup();
+    game.dispatchMessage(new AddFriendByUsernameMessage(syntheticUsername(2)), alice);
+
+    const aliceList = alice.events.filter(event => event instanceof FriendListEvent).at(-1);
+    assert.deepEqual(aliceList.friendIds, [2]);
+    const result = alice.events.find(event => event instanceof AddFriendByUsernameResultEvent);
+    assert.equal(result.username, syntheticUsername(2));
+    assert.equal(result.found, 1);
+});
+
+test("add-friend-by-username on an unknown username is silently ignored, and answers not found", async () => {
+    const {game, alice} = await setup();
+    alice.events.length = 0;
+    game.dispatchMessage(new AddFriendByUsernameMessage("nobodyhome"), alice);
+
+    assert.deepEqual(game.players.byId(ALICE).friends, new Set());
+    const aliceList = alice.events.filter(event => event instanceof FriendListEvent).at(-1);
+    assert.deepEqual(aliceList.friendIds, [], "the unchanged list still re-sends");
+    const result = alice.events.find(event => event instanceof AddFriendByUsernameResultEvent);
+    assert.equal(result.username, "nobodyhome");
+    assert.equal(result.found, 0);
+});
+
+test("add-friend-by-username on your own username answers not found", async () => {
+    const {game, alice} = await setup();
+    game.dispatchMessage(new AddFriendByUsernameMessage(syntheticUsername(ALICE)), alice);
+
+    const result = alice.events.find(event => event instanceof AddFriendByUsernameResultEvent);
+    assert.equal(result.found, 0);
 });
 
 test("deleting in a foreign chunk is rejected and leaves occupancy intact", async () => {

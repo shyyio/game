@@ -10,8 +10,12 @@ import {PortItemSetEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
-import {SignInMessage, AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
-import {WelcomeEvent, PlayerNamesEvent, FriendListEvent} from "@/common/PlayerEvents.js";
+import {
+    SignInMessage, AddFriendMessage, AddFriendByUsernameMessage, RemoveFriendMessage, SetPlayerSettingMessage,
+} from "@/common/PlayerMessages.js";
+import {
+    WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByUsernameResultEvent,
+} from "@/common/PlayerEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ChunkPermission} from "@/common/ClaimEvents.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
@@ -144,6 +148,7 @@ test("Round-trips the player messages", () => {
     const reg = registry();
     roundTrip(reg, new SignInMessage(GAME_VERSION, "alice_01"), SignInMessage);
     roundTrip(reg, new AddFriendMessage(7), AddFriendMessage);
+    roundTrip(reg, new AddFriendByUsernameMessage("bob_02"), AddFriendByUsernameMessage);
     roundTrip(reg, new RemoveFriendMessage(999999999999), RemoveFriendMessage);
 });
 
@@ -154,6 +159,8 @@ test("Round-trips the player events", () => {
     roundTrip(reg, new PlayerNamesEvent([], []), PlayerNamesEvent);
     roundTrip(reg, new FriendListEvent([], []), FriendListEvent);
     roundTrip(reg, new FriendListEvent([3, 4, 5], [6, 7]), FriendListEvent);
+    roundTrip(reg, new AddFriendByUsernameResultEvent("alice_01", true), AddFriendByUsernameResultEvent);
+    roundTrip(reg, new AddFriendByUsernameResultEvent("nobody", false), AddFriendByUsernameResultEvent);
 });
 
 test("Round-trips the claim messages and events", () => {
@@ -187,7 +194,10 @@ test("Overworld request validation gates dimensions and region bounds", () => {
 test("Sign-in validation gates version and username", () => {
     assert.strictEqual(new SignInMessage(GAME_VERSION, "alice").validate(null, null), true);
     assert.strictEqual(new SignInMessage(`${GAME_VERSION}-stale`, "alice").validate(null, null), false);
-    assert.strictEqual(new SignInMessage(GAME_VERSION, "no spaces").validate(null, null), false);
+    assert.strictEqual(new SignInMessage(GAME_VERSION, "alice bob").validate(null, null), true, "single space allowed");
+    assert.strictEqual(new SignInMessage(GAME_VERSION, " alice").validate(null, null), false, "leading space");
+    assert.strictEqual(new SignInMessage(GAME_VERSION, "alice ").validate(null, null), false, "trailing space");
+    assert.strictEqual(new SignInMessage(GAME_VERSION, "ali  ce").validate(null, null), false, "double space");
     assert.strictEqual(new SignInMessage(GAME_VERSION, null).validate(null, null), false);
 });
 

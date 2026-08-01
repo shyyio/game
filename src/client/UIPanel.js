@@ -1,6 +1,6 @@
 import {Container, Sprite, Text, NineSliceSprite, TilingSprite, Rectangle} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {debugOutlines} from "@/client/pixiUtils.js";
+import {debugOutlines, trackWindowDrag} from "@/client/pixiUtils.js";
 
 const TITLE_ROW_HEIGHT = 40;
 const PADDING = 8;
@@ -137,23 +137,15 @@ export class UIPanel extends Container {
      */
     _startDrag(event) {
         this._raise();
-        const startX = event.clientX;
-        const startY = event.clientY;
         const originX = this.x;
         const originY = this.y;
         const screen = this._app.screen;
-        const onMove = (ev) => {
+        trackWindowDrag(event, (deltaX, deltaY) => {
             const maxX = screen.width - EDGE_MARGIN - this._width;
             const maxY = screen.height - EDGE_MARGIN - this._height;
-            this.x = Math.min(Math.max(originX + (ev.clientX - startX), EDGE_MARGIN), maxX);
-            this.y = Math.min(Math.max(originY + (ev.clientY - startY), EDGE_MARGIN), maxY);
-        };
-        const onUp = () => {
-            window.removeEventListener("pointermove", onMove);
-            window.removeEventListener("pointerup", onUp);
-        };
-        window.addEventListener("pointermove", onMove);
-        window.addEventListener("pointerup", onUp);
+            this.x = Math.min(Math.max(originX + deltaX, EDGE_MARGIN), maxX);
+            this.y = Math.min(Math.max(originY + deltaY, EDGE_MARGIN), maxY);
+        });
     }
 
     /**
@@ -163,6 +155,16 @@ export class UIPanel extends Container {
      */
     static heightForContent(contentHeight) {
         return contentHeight + TITLE_ROW_HEIGHT + BODY_MARGIN + 2 * PADDING;
+    }
+
+    /**
+     * The content width available inside a panel of the given outer width, before it exists (for
+     * sizing content ahead of construction).
+     * @param {number} width
+     * @returns {number}
+     */
+    static contentWidthFor(width) {
+        return width - 2 * (BODY_MARGIN + PADDING);
     }
 
     /**
@@ -254,7 +256,7 @@ export class UIPanel extends Container {
 
     /** @returns {number} width available to content inside the padded body */
     get contentWidth() {
-        return this._width - 2 * (BODY_MARGIN + PADDING);
+        return UIPanel.contentWidthFor(this._width);
     }
 
     /**

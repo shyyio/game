@@ -61,6 +61,8 @@ export class InspectPanelLayer extends Container {
     constructor(app, cache) {
         super();
         this._app = app;
+        // Above the always-visible settings/friends buttons (9500), below toasts/dialogs.
+        this.zIndex = 9600;
         const objects = cache.view("objects");
         cache.subscribe("inspect.heartbeatByObject", (objectId, heartbeat) => {
             if (heartbeat === undefined) {

@@ -48,7 +48,8 @@ export class ChunkInfoPanelLayer extends Container {
         this._claims = claims;
         this._players = players;
         this.textureRegistry = null;
-        this.zIndex = 900;
+        // Above the always-visible settings/friends buttons (9500), below toasts/dialogs.
+        this.zIndex = 9600;
         this.visible = false;
         this._bottomOffset = HUD_BOTTOM_OFFSET;
         this._chunk = null;

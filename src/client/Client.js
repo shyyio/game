@@ -14,7 +14,9 @@ import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from 
 import {NoticeLayer} from "@/client/NoticeLayer.js";
 import {ConfirmDialogLayer} from "@/client/ConfirmDialogLayer.js";
 import {ClaimResultFeedback} from "@/client/ClaimResultFeedback.js";
-import {AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
+import {
+    AddFriendMessage, AddFriendByUsernameMessage, RemoveFriendMessage, SetPlayerSettingMessage,
+} from "@/common/PlayerMessages.js";
 import {SettingCategory} from "@/client/SettingCategory.js";
 import {AbstractPlayerSettingControl} from "@/client/AbstractPlayerSettingControl.js";
 import {PlayerSettingChoice} from "@/client/PlayerSettingChoice.js";
@@ -41,6 +43,7 @@ import {
     OVERWORLD_SCALE_THRESHOLD,
     OVERWORLD_CHUNK_TTL_MS,
     OVERWORLD_REFRESH_THROTTLE_MS,
+    FRIENDS_PANEL_REFRESH_THROTTLE_MS,
     HUD_BOTTOM_OFFSET,
     HUD_BOTTOM_MARGIN,
 } from "@/client/constants.js";
@@ -65,6 +68,8 @@ import {WorkerBadgeLayer} from "@/client/WorkerBadgeLayer.js";
 import {StatusMessageLayer} from "@/client/StatusMessageLayer.js";
 import {TopStatusBarLayer} from "@/client/TopStatusBarLayer.js";
 import {SettingsButtonLayer} from "@/client/SettingsButtonLayer.js";
+import {FriendsButtonLayer} from "@/client/FriendsButtonLayer.js";
+import {FriendsPanelLayer} from "@/client/FriendsPanelLayer.js";
 import {ChunkInfoPanelLayer} from "@/client/ChunkInfoPanelLayer.js";
 import {ChunkSelectionLayer} from "@/client/ChunkSelectionLayer.js";
 import {ClaimFrontierDrawLayer} from "@/client/ClaimFrontierDrawLayer.js";
@@ -181,8 +186,19 @@ export class Client {
         this.topStatusBar = new TopStatusBarLayer(app);
         // Always-visible top-right settings button; stays clear of the bar above via its height.
         this.settingsButtonLayer = new SettingsButtonLayer(app);
+        // Friend management (account-wide, not gated behind claim mode); sits left of settings.
+        this.friendsButtonLayer = new FriendsButtonLayer(app);
+        this.friendsPanelLayer = new FriendsPanelLayer(app, this.cache);
+        this.friendsButtonLayer.onPress(() => this.friendsPanelLayer.toggle());
+        this.friendsPanelLayer.onAddByUsername(
+            username => this.sendMessage(new AddFriendByUsernameMessage(username)),
+        );
+        this.friendsPanelLayer.onAddFriend(playerId => this.sendMessage(new AddFriendMessage(playerId)));
+        this.friendsPanelLayer.onUnfriend(playerId => this.sendMessage(new RemoveFriendMessage(playerId)));
+        this.friendsPanelLayer.onError(message => this.notify(message));
         this.topStatusBar.onChange((height) => {
             this.settingsButtonLayer.setTopOffset(height);
+            this.friendsButtonLayer.setTopOffset(height);
             this.statusLayer.setTopOffset(height);
         });
         // Bottom-center toast (claim rejections, session disconnects).
@@ -260,6 +276,7 @@ export class Client {
         this._viewMode = ViewMode.WORLD;
         this._onViewModeChange = null;
         this._lastOverworldRefreshMs = 0;
+        this._lastFriendsPanelRefreshMs = 0;
         this._centerLock = false;
         this._debugMode = false;
         // Host event listeners, the last stop of the event fan-out.
@@ -270,6 +287,7 @@ export class Client {
         // Toast/confirm-dialog feedback for claim/unclaim rejections.
         this.claimResultFeedback = new ClaimResultFeedback(this);
         this.onEvent(event => this.claimResultFeedback.onEvent(event));
+        this.onEvent(event => this.friendsPanelLayer.onEvent(event));
     }
 
     /**
@@ -434,6 +452,9 @@ export class Client {
         this.noticeLayer.textureRegistry = this.textureRegistry;
         this.confirmDialogLayer.textureRegistry = this.textureRegistry;
         this.chunkInfoPanelLayer.textureRegistry = this.textureRegistry;
+        this.friendsPanelLayer.textureRegistry = this.textureRegistry;
+        this.friendsPanelLayer.viewport = this.viewport;
+        this.friendsPanelLayer.anchorButton = this.friendsButtonLayer;
         this.miniMenuLayer.textureRegistry = this.textureRegistry;
         this.rotateButtonsLayer.textureRegistry = this.textureRegistry;
         this.rotateButtonsLayer.build();
@@ -446,8 +467,10 @@ export class Client {
         this.app.stage.addChild(this.statusLayer);
         this.app.stage.addChild(this.topStatusBar);
         this.app.stage.addChild(this.settingsButtonLayer);
+        this.app.stage.addChild(this.friendsButtonLayer);
         // Panels sit above every other HUD layer.
         this.app.stage.addChild(this.inspectPanelLayer);
+        this.app.stage.addChild(this.friendsPanelLayer);
         // Toast and confirm dialog sit above every other HUD layer, including panels.
         this.app.stage.addChild(this.noticeLayer);
         this.app.stage.addChild(this.confirmDialogLayer);
@@ -507,6 +530,16 @@ export class Client {
         } else {
             this._updateViewportChunks();
         }
+        // The nearby-in-view roster reads the current viewport directly; the claims mirror it
+        // draws from may already hold every chunk in the new view, so no cache event would
+        // otherwise tell it to recompute. Throttled like _refreshOverworld: "moved" fires on
+        // every step of a drag, and a rebuild here tears down and recreates the add-by-name
+        // field's real DOM input, not just some pixi Graphics.
+        const now = Date.now();
+        if (now - this._lastFriendsPanelRefreshMs >= FRIENDS_PANEL_REFRESH_THROTTLE_MS) {
+            this._lastFriendsPanelRefreshMs = now;
+            this.friendsPanelLayer.refresh();
+        }
     }
 
     /**
@@ -531,6 +564,7 @@ export class Client {
         this._viewMode = mode;
         this.drawLayerRegistry.setViewMode(mode);
         this.mapButtonsLayer.setViewMode(mode);
+        this.friendsPanelLayer.setViewMode(mode);
         this.refreshToolbarVisibility();
         for (const mod of this.modRegistry.clientMods) {
             mod.setViewMode(mode, this);

@@ -3,8 +3,9 @@ import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResult, ChunkPermission}
 import {ChunkSubscribeEvent} from "@/common/CoreEvents.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {DEFAULT_MAX_CHUNKS, PLAYER_ID_NONE} from "@/common/constants.js";
-import {chunkNeighbors} from "@/common/util.js";
+import {chunkNeighbors, chunkCenter} from "@/common/util.js";
 import {OverworldRect} from "@/client/OverworldState.js";
+import {TILE_SIZE} from "@/client/constants.js";
 import {AbstractCacheWriter, AbstractCacheView, schemaScalar, schemaMap, schemaSet} from "@/client/ClientCache.js";
 
 export const CHUNK_CLAIMS_SCHEMA = {
@@ -245,5 +246,40 @@ export class ChunkClaimsView extends AbstractCacheView {
      */
     isFriendsWithMe(playerId) {
         return this._state.setHas("chunkClaims.grantedByIds", playerId);
+    }
+
+    /**
+     * @returns {number[]} players the own player granted build rights to
+     */
+    friendIds() {
+        return [...this._state.setValues("chunkClaims.friendIds")];
+    }
+
+    /**
+     * The distinct foreign, non-friend owners of `chunks`, nearest-chunk-first by distance to
+     * (centerX, centerY) in world px; a player can own several of the chunks, only their
+     * nearest counts.
+     * @param {Iterable<number>} chunks
+     * @param {number} centerX
+     * @param {number} centerY
+     * @returns {number[]}
+     */
+    nearbyForeignOwners(chunks, centerX, centerY) {
+        const nearestByOwner = new Map();
+        for (const chunk of chunks) {
+            const owner = this.ownerOf(chunk);
+            if (owner === PLAYER_ID_NONE || owner === this.ownPlayerId || this.isFriend(owner)) {
+                continue;
+            }
+            const point = chunkCenter(chunk);
+            const dx = point.x * TILE_SIZE - centerX;
+            const dy = point.y * TILE_SIZE - centerY;
+            const distance = dx * dx + dy * dy;
+            const nearest = nearestByOwner.get(owner);
+            if (nearest === undefined || distance < nearest) {
+                nearestByOwner.set(owner, distance);
+            }
+        }
+        return [...nearestByOwner.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => id);
     }
 }

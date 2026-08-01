@@ -50,6 +50,34 @@ export class AddFriendMessage extends AbstractMessage {
     }
 }
 
+/**
+ * Grants a player build rights in the sender's chunks, by username; an unknown username is
+ * silently ignored.
+ */
+export class AddFriendByUsernameMessage extends AbstractMessage {
+
+    static wireFields = {
+        username: "string",
+    };
+
+    /**
+     * @param {string} username
+     */
+    constructor(username) {
+        super();
+        this.username = username;
+    }
+
+    /**
+     * @param {GameAPI} api
+     * @param {AbstractSession} session
+     * @returns {boolean}
+     */
+    validate(api, session) {
+        return typeof this.username === "string" && USERNAME_PATTERN.test(this.username);
+    }
+}
+
 export class RemoveFriendMessage extends AbstractMessage {
 
     static wireFields = {

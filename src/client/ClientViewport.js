@@ -99,4 +99,19 @@ export class ClientViewport extends Viewport {
             this.plugins.resume("pinch");
         }
     }
+
+    /**
+     * Freezes wheel-zoom (e.g. while the pointer is over a scrollable HUD list, so a scroll
+     * doesn't also zoom the map underneath) while leaving panning available.
+     */
+    freezeZoom() {
+        this.plugins.pause("wheel");
+    }
+
+    /**
+     * Resumes the wheel-zoom frozen by {@link ClientViewport#freezeZoom}.
+     */
+    unfreezeZoom() {
+        this.plugins.resume("wheel");
+    }
 }
