@@ -22,8 +22,13 @@ const LABEL_HEIGHT = 34;
 const CELL_GAP = 12;
 const ROW_GAP = 12;
 const MARGIN_BOTTOM = 6;
-// Tools shown on the visible top row; the rest overflow into the drawer rows below.
-const MAX_BAR_TOOLS = 4;
+// Tools shown on the visible top row; the rest overflow into the drawer rows below. Mobile always
+// gets this fixed count; desktop grows past it up to MAX_BAR_TOOLS_DESKTOP if the screen allows.
+const MIN_BAR_TOOLS = 4;
+// Desktop upper bound on visible top-row tools, reached only on wide-enough screens.
+const MAX_BAR_TOOLS_DESKTOP = 10;
+// Screen margin kept clear on each side when sizing the desktop bar.
+const SIDE_MARGIN = 40;
 // Inset of the cells from the enclosing panel edge.
 const PANEL_PADDING = 10;
 // Gap between the outer frame and the sunken inset body (matches the inspect panel's body margin).
@@ -50,9 +55,10 @@ const CELL_HEIGHT = SLOT_SIZE + LABEL_GAP + LABEL_HEIGHT;
 /**
  * Static bottom-center tool toolbar: a screen-space HUD sibling of the viewport (on app.stage),
  * not a viewport child, so it never pans or zooms. The whole bar is one panel arranged as a grid:
- * a decorative strip on the left, then the top row (a "no tool" cursor cell plus the first
- * {@link MAX_BAR_TOOLS} tools) resting at the bottom edge while the overflow rows sit off-screen
- * below it. Tapping the strip slides it up to reveal those rows. Each tool
+ * a decorative strip on the left, then the top row (a "no tool" cursor cell plus the leading
+ * tools, {@link MIN_BAR_TOOLS} up to {@link MAX_BAR_TOOLS_DESKTOP} on desktop as the screen
+ * allows) resting at the bottom edge while the overflow rows sit off-screen below it. Tapping the
+ * strip slides it up to reveal those rows. Each tool
  * is a slot holding its icon sprite with its label underneath; tapping one toggles it active.
  */
 export class ToolbarLayer extends Container {
@@ -85,6 +91,8 @@ export class ToolbarLayer extends Container {
         this._columns = 0;
         this._rowCount = 1;
         this._panelWidth = 0;
+        // Top-row tool capacity, recomputed from screen width; triggers a rebuild when it changes.
+        this._barTools = this._computeBarTools();
         // Vertical slide: 0 rests with the top row at the bottom edge, _slideDistance reveals the
         // overflow rows.
         this._slideDistance = 0;
@@ -229,9 +237,9 @@ export class ToolbarLayer extends Container {
         this._noneCell = this._createNoneCell();
         this._cells = this._tools.map(tool => this._createCell(tool));
 
-        // Row-major grid; the top row is the none cell + the first MAX_BAR_TOOLS tools.
+        // Row-major grid; the top row is the none cell + the first _barTools tools.
         const slots = [this._noneCell, ...this._cells];
-        this._columns = MAX_BAR_TOOLS + 1;
+        this._columns = this._barTools + 1;
         this._rowCount = Math.ceil(slots.length / this._columns);
         for (const [i, slot] of slots.entries()) {
             slot.x = GRID_LEFT + (i % this._columns) * (SLOT_SIZE + CELL_GAP);
@@ -531,6 +539,21 @@ export class ToolbarLayer extends Container {
     }
 
     /**
+     * Top-row tool capacity: fixed on Mobile, otherwise as many as fit the screen width, clamped
+     * between MIN_BAR_TOOLS and MAX_BAR_TOOLS_DESKTOP.
+     * @private
+     * @returns {number}
+     */
+    _computeBarTools() {
+        if (Mobile.enabled) {
+            return MIN_BAR_TOOLS;
+        }
+        const maxWidth = this._viewport.screenWidth - SIDE_MARGIN * 2;
+        const columns = Math.floor((maxWidth - GRID_LEFT - PANEL_PADDING + CELL_GAP) / (SLOT_SIZE + CELL_GAP));
+        return Math.max(MIN_BAR_TOOLS, Math.min(MAX_BAR_TOOLS_DESKTOP, columns - 1));
+    }
+
+    /**
      * Centers the panel horizontally and advances the slide tween so the rows glide into/out of view.
      * @private
      */
@@ -539,6 +562,13 @@ export class ToolbarLayer extends Container {
         this._panel.visible = this._noneCell !== null;
         if (this._noneCell === null) {
             return;
+        }
+        // Screen width changed enough to fit more/fewer desktop tools: rebuild the grid for it.
+        const barTools = this._computeBarTools();
+        if (barTools !== this._barTools) {
+            this._barTools = barTools;
+            this._rebuild();
+            this._refreshHighlights();
         }
         // Collapsed panel top: its top row sits above the bottom margin, rows below spill off-screen.
         const collapsedTop = this._app.screen.height - MARGIN_BOTTOM - PANEL_PADDING - CELL_HEIGHT;

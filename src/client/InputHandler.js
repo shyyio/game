@@ -99,7 +99,9 @@ export class InputHandler {
             this._rotateActiveTool(1);
         });
 
-        Keyboard.on("i", () => {
+        Keyboard.on("Tab", (event) => {
+            // Stop Tab from cycling focus off the canvas.
+            event.preventDefault();
             this._toolbar.toggleDrawer();
         });
 
