@@ -28,7 +28,14 @@ export class CircleButtonLayer extends Container {
         this.cursor = "pointer";
         this._face = new Graphics();
         this.addChild(this._face);
-        this.on("pointerdown", (e) => e.stopPropagation());
+        this.on("pointerdown", (e) => {
+            e.stopPropagation();
+            if (e.pointerType !== "mouse") {
+                // Suppresses the ghost mousedown/click Vuetify's click-outside directive
+                // would otherwise see right after this button opens a dialog.
+                e.nativeEvent.preventDefault();
+            }
+        });
         this.on("pointertap", () => {
             if (this._onPress !== null) {
                 this._onPress();
