@@ -11,7 +11,7 @@ if ! command -v node >/dev/null || [[ "$(node -v)" != v24.* ]]; then
     apt-get install -y nodejs
 fi
 
-apt-get install -y git nftables debian-keyring debian-archive-keyring apt-transport-https curl
+apt-get install -y git nftables debian-archive-keyring apt-transport-https curl
 
 if ! command -v caddy >/dev/null; then
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
