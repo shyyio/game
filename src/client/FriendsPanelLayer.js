@@ -178,7 +178,7 @@ export class FriendsPanelLayer extends Container {
      * @returns {void}
      */
     _rebuild() {
-        const friendIds = this._claims.friendIds();
+        const friendIds = this._sortByUsername(this._claims.friendIds());
 
         if (this._usernameInput !== null) {
             this._usernameInput.blur();
@@ -196,7 +196,7 @@ export class FriendsPanelLayer extends Container {
         cursorY += SECTION_GAP;
 
         if (this._viewMode !== ViewMode.OVERWORLD) {
-            const roster = this._nearbyOwners();
+            const roster = this._sortByUsername(this._nearbyOwners());
             cursorY = this._addHeader(body, "Nearby (in view)", cursorY);
             cursorY = this._addScrollableRows(body, contentWidth, roster, cursorY, (id) => ({
                 label: this._players.usernameOf(id),
@@ -296,7 +296,16 @@ export class FriendsPanelLayer extends Container {
     }
 
     /**
-     * The distinct foreign, non-friend owners of the chunks currently in view, closest-first;
+     * @private
+     * @param {number[]} ids
+     * @returns {number[]}
+     */
+    _sortByUsername(ids) {
+        return [...ids].sort((a, b) => this._players.usernameOf(a).localeCompare(this._players.usernameOf(b)));
+    }
+
+    /**
+     * The distinct foreign, non-friend owners of the chunks currently in view;
      * unbounded, scrolled by the caller.
      * @private
      * @returns {number[]}
