@@ -36,7 +36,8 @@ export class GameServer {
         // A plain-browser visit gets a text info screen instead of a failed upgrade.
         this._app.get("/*", (res, req) => {
             const host = req.getHeader("host");
-            res.writeHeader("Content-Type", "text/plain; charset=utf-8").end(this._infoScreen(host));
+            const scheme = req.getHeader("x-forwarded-proto") === "https" ? "wss" : "ws";
+            res.writeHeader("Content-Type", "text/plain; charset=utf-8").end(this._infoScreen(host, scheme));
         });
         this._app.ws("/*", {
             compression: uWS.SHARED_COMPRESSOR,
@@ -93,9 +94,10 @@ export class GameServer {
      * The plain-text welcome/info screen served to browsers.
      * @private
      * @param {string} host - the request's Host header
+     * @param {string} scheme - "ws" or "wss"
      * @returns {string}
      */
-    _infoScreen(host) {
+    _infoScreen(host, scheme) {
         const uptime = this._formatUptime();
         return [
             "+==============================================+",
@@ -105,7 +107,7 @@ export class GameServer {
             "",
             `  version    : ${GAME_VERSION}`,
             `  mods       : ${this._game.modRegistry.modNames.join(", ")}`,
-            `  websocket  : ws://${host}`,
+            `  websocket  : ${scheme}://${host}`,
             `  players    : ${this._sessionsByPlayer.size} online`,
             `  uptime     : ${uptime}`,
         ].join("\n");
