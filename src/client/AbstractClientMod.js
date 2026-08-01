@@ -26,6 +26,17 @@ export class AbstractClientMod {
     }
 
     /**
+     * The screen-space HUD layers this mod contributes (pixi Containers mounted directly on
+     * app.stage, unlike drawLayers() which mount into the world viewport) — for overlays like a
+     * placed object's config panel that must stay screen-anchored regardless of pan/zoom.
+     * @param {Client} client
+     * @returns {Container[]}
+     */
+    hudLayers(client) {
+        return [];
+    }
+
+    /**
      * The tools this mod makes available, bound to the shared client surfaces.
      * @param {Client} client
      * @returns {AbstractTool[]}

@@ -1,52 +1,15 @@
 import {Container, Graphics} from "pixi.js";
 import {UIPanel} from "@/client/UIPanel.js";
 import {buildInspectContent, inspectContentHeight} from "@/client/InspectContent.js";
-import {PANEL_TINT, PANEL_TITLE_TEXT, CONNECTOR_COLOR} from "@/client/Theme.js";
+import {PANEL_TINT, PANEL_TITLE_TEXT} from "@/client/Theme.js";
 import {TILE_SIZE} from "@/client/constants.js";
+import {rectEdgePoint, drawPanelConnector, CONNECTOR_PANEL_INSET} from "@/client/PanelConnector.js";
 
 const PANEL_WIDTH = 375;
 // Down-right cascade of each successive panel's default spawn position.
 const SPAWN_CASCADE = 32;
 // Keep a spawned panel at least this far inside the screen edges.
 const SPAWN_MARGIN = 12;
-
-// A single 1px curve from the panel to its machine.
-const CONNECTOR_ALPHA = 0.5;
-// Peak perpendicular bow (fraction of length), reached at a 45° angle; zero when axis-aligned.
-const CONNECTOR_BOW = 0.15;
-// Bow fades to straight for short curves: 0 below the min length, full above the max (smooth between).
-const CONNECTOR_BOW_MIN_LENGTH = 120;
-const CONNECTOR_BOW_FULL_LENGTH = 440;
-// Inset of the curve's attach point inside the panel rect (screen px).
-const CONNECTOR_PANEL_INSET = 6;
-
-// Smooth 0→1 ramp of `x` across [edge0, edge1].
-function smoothstep(edge0, edge1, x) {
-    const t = Math.min(Math.max((x - edge0) / (edge1 - edge0), 0), 1);
-    return t * t * (3 - 2 * t);
-}
-
-// Where the ray from `center` toward `toward` exits `rect` (its boundary point in that direction).
-// Slides continuously around corners as the direction rotates, so the attach point never snaps.
-function rectEdgePoint(center, toward, rect) {
-    const dx = toward.x - center.x;
-    const dy = toward.y - center.y;
-    let t = Infinity;
-    if (dx > 0) {
-        t = Math.min(t, (rect.maxX - center.x) / dx);
-    } else if (dx < 0) {
-        t = Math.min(t, (rect.minX - center.x) / dx);
-    }
-    if (dy > 0) {
-        t = Math.min(t, (rect.maxY - center.y) / dy);
-    } else if (dy < 0) {
-        t = Math.min(t, (rect.minY - center.y) / dy);
-    }
-    if (!Number.isFinite(t)) {
-        t = 0;
-    }
-    return {x: center.x + dx * t, y: center.y + dy * t};
-}
 
 /**
  * HUD of floating, draggable {@link UIPanel}s — one per inspected machine. Owns the collection,
@@ -248,33 +211,7 @@ export class InspectPanelLayer extends Container {
             const machineCenterScreen = this.viewport.toScreen(machineCenterWorld.x, machineCenterWorld.y);
             const tail = rectEdgePoint(panelCenterScreen, machineCenterScreen, panelRect);
 
-            this._drawCurve(tail, head);
+            drawPanelConnector(this._connectors, tail, head);
         }
-    }
-
-    /**
-     * Draws a curve from `tail` to `head`, bowed perpendicular by sin(2·angle) of its length so it
-     * eases through straight when axis-aligned and never snaps.
-     * @param {{x: number, y: number}} tail
-     * @param {{x: number, y: number}} head
-     * @returns {void}
-     * @private
-     */
-    _drawCurve(tail, head) {
-        const dx = head.x - tail.x;
-        const dy = head.y - tail.y;
-        const mid = {x: (tail.x + head.x) / 2, y: (tail.y + head.y) / 2};
-        // Bow proportional to sin(2·angle): straight when axis-aligned, most curved at 45°. Signed, so
-        // it eases through zero (no snap) and bows the opposite way past each axis.
-        const lengthSq = dx * dx + dy * dy;
-        // Also fade to straight for short curves (smoothstep on length).
-        const lengthFactor = smoothstep(CONNECTOR_BOW_MIN_LENGTH, CONNECTOR_BOW_FULL_LENGTH, Math.sqrt(lengthSq));
-        const bow = lengthSq > 0 ? CONNECTOR_BOW * (2 * dx * dy / lengthSq) * lengthFactor : 0;
-        const control = {x: mid.x - dy * bow, y: mid.y + dx * bow};
-
-        this._connectors
-            .moveTo(tail.x, tail.y)
-            .quadraticCurveTo(control.x, control.y, head.x, head.y)
-            .stroke({width: 1, color: CONNECTOR_COLOR, alpha: CONNECTOR_ALPHA});
     }
 }

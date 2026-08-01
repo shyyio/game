@@ -245,6 +245,8 @@ export class Client {
         for (const layer of this.modRegistry.clientMods.flatMap(mod => mod.drawLayers(this))) {
             this.drawLayerRegistry.add(layer);
         }
+        // Screen-space HUD layers (unlike drawLayers, mounted straight onto app.stage in init()).
+        this._modHudLayers = this.modRegistry.clientMods.flatMap(mod => mod.hudLayers(this));
         // The overworld renderer, active below the overworld zoom threshold.
         this.overworldLayer = new OverworldDrawLayer(modRegistry, this.cache);
         this.drawLayerRegistry.add(this.overworldLayer);
@@ -471,6 +473,11 @@ export class Client {
         // Panels sit above every other HUD layer.
         this.app.stage.addChild(this.inspectPanelLayer);
         this.app.stage.addChild(this.friendsPanelLayer);
+        for (const layer of this._modHudLayers) {
+            layer.textureRegistry = this.textureRegistry;
+            layer.viewport = this.viewport;
+            this.app.stage.addChild(layer);
+        }
         // Toast and confirm dialog sit above every other HUD layer, including panels.
         this.app.stage.addChild(this.noticeLayer);
         this.app.stage.addChild(this.confirmDialogLayer);

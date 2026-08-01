@@ -100,7 +100,11 @@ export class InputHandler {
         });
 
         Keyboard.on("Tab", (event) => {
-            // Stop Tab from cycling focus off the canvas.
+            // Let Tab cycle focus normally inside dialogs/form controls (e.g. Settings).
+            if (InputHandler._isEditableTarget(event.target)) {
+                return;
+            }
+            // Otherwise stop Tab from cycling focus off the canvas.
             event.preventDefault();
             this._toolbar.toggleDrawer();
         });
@@ -340,5 +344,25 @@ export class InputHandler {
         });
         Mouse.freezeHover();
         this._emitInspect(tileX, tileY);
+    }
+
+    /**
+     * Whether `target` is a form control or lives inside a dialog, where Tab should
+     * keep its native focus-cycling behavior instead of toggling the toolbar drawer.
+     * @param {EventTarget} target
+     * @returns {boolean}
+     * @private
+     */
+    static _isEditableTarget(target) {
+        if (!(target instanceof Element)) {
+            return false;
+        }
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) {
+            return true;
+        }
+        if (target.isContentEditable) {
+            return true;
+        }
+        return target.closest("[role=\"dialog\"]") != null;
     }
 }

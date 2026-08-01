@@ -8,6 +8,8 @@ import {FluidsDeclaration} from "@/mods/Fluids/declaration.js";
 import {FluidsClientMod} from "@/mods/Fluids/client.js";
 import {CursorSyncDeclaration} from "@/mods/CursorSync/declaration.js";
 import {CursorSyncClientMod} from "@/mods/CursorSync/client.js";
+import {MarketDeclaration} from "@/mods/Market/declaration.js";
+import {MarketClientMod} from "@/mods/Market/client.js";
 
 /**
  * The loadout for a browser client (which also runs the local sim): declarations + client parts,
@@ -22,5 +24,6 @@ export function clientLoadout() {
         new ModPackage(new ResourcesDeclaration()),
         new ModPackage(new FluidsDeclaration(), {client: new FluidsClientMod()}),
         new ModPackage(new CursorSyncDeclaration(), {client: new CursorSyncClientMod()}),
+        new ModPackage(new MarketDeclaration(), {client: new MarketClientMod()}),
     ];
 }

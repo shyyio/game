@@ -20,7 +20,7 @@ function usernameValid() {
 }
 
 function resolveServerUrl() {
-  if (/^wss?:\/\//.test(serverUrl.value)) {
+  if (/^wss?:\/\//i.test(serverUrl.value)) {
     return serverUrl.value;
   }
   return `wss://${serverUrl.value}`;

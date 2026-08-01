@@ -54,4 +54,11 @@ export class AbstractSimMod {
      * @returns {void}
      */
     onPlayerSettingWritten(session, key, value, game) {}
+
+    /**
+     * Optional hook: runs once per tick, after every phase has resolved for this tick.
+     * @param {Game} game
+     * @returns {void}
+     */
+    onTick(game) {}
 }
