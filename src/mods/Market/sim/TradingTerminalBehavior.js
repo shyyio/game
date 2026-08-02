@@ -167,9 +167,6 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             return;
         }
         const outPort = terminal.out[row];
-        if (item[outPort] !== EMPTY) {
-            return;
-        }
         const owner = terminal.owner[row];
         let remaining = terminal.balance[row];
         if (reservedBalance.has(owner)) {
@@ -178,7 +175,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         if (remaining < fixedPrice) {
             return;
         }
-        engine.submitCreate(outPort, itemType, true);
+        engine.submitCreate(outPort, itemType, item[outPort] === EMPTY);
         terminal.pendingPrice[row] = fixedPrice;
         terminal.pendingIsNpc[row] = 1;
         reservedBalance.set(owner, remaining - fixedPrice);
