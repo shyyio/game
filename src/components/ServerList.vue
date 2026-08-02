@@ -10,17 +10,37 @@ const props = defineProps({
 
 const emit = defineEmits(["select", "back"]);
 
+const DEV_SERVER_ORIGIN = "ws://localhost:8080";
+const DEV_SERVER_NAME = "🧪 DEV";
+
+const REFRESH_COOLDOWN_MS = 3000;
+
 const servers = ref([]);
 // origin -> {loading, offline, name, online, chunksClaimed, chunksAvailable, pingMs}
 const statusByOrigin = reactive({});
 const refreshing = ref(false);
+const refreshCoolingDown = ref(false);
 
-onMounted(refresh);
+onMounted(loadServers);
+
+/**
+ * @returns {void}
+ */
+function refresh() {
+  if (refreshCoolingDown.value) {
+    return;
+  }
+  refreshCoolingDown.value = true;
+  setTimeout(() => {
+    refreshCoolingDown.value = false;
+  }, REFRESH_COOLDOWN_MS);
+  loadServers();
+}
 
 /**
  * @returns {Promise<void>}
  */
-async function refresh() {
+async function loadServers() {
   refreshing.value = true;
   try {
     const response = await fetch(`${props.authServerUrl}/servers`);
@@ -28,6 +48,9 @@ async function refresh() {
     servers.value = body.servers;
   } catch {
     servers.value = [];
+  }
+  if (import.meta.env.DEV && !servers.value.some((server) => server.origin === DEV_SERVER_ORIGIN)) {
+    servers.value = [{origin: DEV_SERVER_ORIGIN}, ...servers.value];
   }
   for (const {origin} of servers.value) {
     statusByOrigin[origin] = {loading: true, offline: false};
@@ -41,9 +64,10 @@ async function refresh() {
  * @returns {Promise<void>}
  */
 async function fetchStatus(origin) {
-  const startedAtMs = performance.now();
+  const url = `${httpOriginFor(origin)}/status`;
+  const timingPromise = observeNetworkDurationMs(url);
   try {
-    const response = await fetch(`${httpOriginFor(origin)}/status`);
+    const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`status ${response.status}`);
     }
@@ -55,11 +79,43 @@ async function fetchStatus(origin) {
       online: body.online,
       chunksClaimed: body.chunksClaimed,
       chunksAvailable: body.chunksAvailable,
-      pingMs: Math.round(performance.now() - startedAtMs),
+      pingMs: await timingPromise,
     };
   } catch {
     statusByOrigin[origin] = {loading: false, offline: true};
   }
+}
+
+const RESOURCE_TIMING_TIMEOUT_MS = 5000;
+
+/**
+ * Resource Timing duration for the given request, matching what devtools' network panel reports.
+ * Observes live via PerformanceObserver rather than reading the shared buffer, since Vite's own
+ * module fetches fill that buffer's default capacity well before a status request completes.
+ * @param {string} url
+ * @returns {Promise<number>}
+ */
+function observeNetworkDurationMs(url) {
+  // Browsers normalize away default ports (e.g. ":443") when recording an entry's name, so an
+  // origin like "https://host:443/status" must be compared against its normalized form too.
+  const normalizedUrl = new URL(url).href;
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      observer.disconnect();
+      reject(new Error(`No resource timing entry for ${url}`));
+    }, RESOURCE_TIMING_TIMEOUT_MS);
+    const observer = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (entry.name === normalizedUrl) {
+          clearTimeout(timeout);
+          observer.disconnect();
+          resolve(Math.round(entry.duration));
+          return;
+        }
+      }
+    });
+    observer.observe({type: "resource", buffered: true});
+  });
 }
 
 const MIN_CHUNK_BAR_PERCENT = 1;
@@ -104,7 +160,7 @@ function select(origin) {
           @click="select(origin)"
       >
         <div class="server-row-main">
-          <div class="server-row-name">{{ statusByOrigin[origin]?.name || origin }}</div>
+          <div class="server-row-name">{{ origin === DEV_SERVER_ORIGIN ? DEV_SERVER_NAME : (statusByOrigin[origin]?.name || origin) }}</div>
           <div class="server-row-detail">
             <template v-if="statusByOrigin[origin]?.loading">Pinging…</template>
             <template v-else-if="statusByOrigin[origin]?.offline">Offline</template>
@@ -136,7 +192,7 @@ function select(origin) {
     <v-card-actions>
       <v-btn variant="text" @click="emit('back')">Back</v-btn>
       <v-spacer/>
-      <v-btn variant="text" :loading="refreshing" @click="refresh">Refresh</v-btn>
+      <v-btn variant="text" :disabled="refreshCoolingDown" :loading="refreshing" @click="refresh">Refresh</v-btn>
     </v-card-actions>
   </v-card>
 </template>
