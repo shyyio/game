@@ -1,16 +1,10 @@
 // Mod SDK — client-only surface.
 //
-// Re-exports the full engine-agnostic API (`@/sdk/common.js`) plus the
-// browser-only pieces a client mod needs. Simulation-side mod files (the parts
-// that run on both client and server) import from `@/sdk/common.js`; files that
-// render or handle input import from here.
+// Re-exports `@/sdk/common.js` plus the browser-only pieces a client mod needs; sim-side mod
+// files import from common.js, rendering/input files import from here.
 //
-// A declaration-only mod needs nothing from this file: for every ObjectType with a behavior the
-// client derives a draw layer, placement ghost, and tool (overridable per piece via the type's
-// createDrawLayer/createGhostLayer/createTool hooks), keeps the shared cache in sync, and derives
-// inspect highlights and mini-menu entries from the type's menuVerbs. An AbstractClientMod is only
-// for bespoke rendering/input (belts); every hook receives the client for the shared surfaces
-// (client.cache, client.objects, client.itemLayer, client.session, ...).
+// A declaration-only mod needs nothing from this file: the client derives a draw layer, ghost,
+// and tool per ObjectType automatically. AbstractClientMod is only for bespoke rendering/input.
 
 // Everything from the engine-agnostic SDK is available here too.
 export * from "@/sdk/common.js";
@@ -20,9 +14,7 @@ export * from "@/sdk/common.js";
 export {AbstractClientMod} from "@/client/AbstractClientMod.js";
 
 // ---- Rendering ----
-// `AbstractDrawLayer` is the base class for a Pixi layer that reacts to game events;
-// `ObjectDrawLayer` is the derived-default renderer for a placed object type, driven purely by the
-// shared cache (the objects state owns the entries). A type swaps it via `createDrawLayer(client)`.
+// Base class for a Pixi layer that reacts to game events.
 export {AbstractDrawLayer} from "@/client/AbstractDrawLayer.js";
 // `AbstractChunkedDrawLayer` adds per-chunk grouping: ChunkNode roots mounted by viewport,
 // one-pass stale-chunk rebuilds, and the map-mode sprite/geometry swap.
@@ -30,8 +22,9 @@ export {AbstractChunkedDrawLayer} from "@/client/AbstractChunkedDrawLayer.js";
 
 // Debug overlays: visible only in debug mode, repainted lazily via markStale.
 export {AbstractDebugDrawLayer} from "@/client/AbstractDebugDrawLayer.js";
-// `AbstractTileMeshDrawLayer` draws each chunk as one AnimatedTileMesh off a shared shader.
+// Draws each chunk as one AnimatedTileMesh off a shared shader.
 export {AbstractTileMeshDrawLayer} from "@/client/AbstractTileMeshDrawLayer.js";
+// Derived-default renderer for a placed object type, driven by the shared cache.
 export {ObjectDrawLayer} from "@/client/ObjectDrawLayer.js";
 // The `data` payload of a derived-type cache entry ({type, direction}).
 export {ObjectClientData} from "@/client/ObjectsState.js";
@@ -46,19 +39,21 @@ export {ConnectionDrawLayer} from "@/client/ConnectionDrawLayer.js";
 export {ObjectGhostLayer} from "@/client/ObjectGhostLayer.js";
 
 // ---- HUD panel look-and-feel ----
-// The same framed-panel toolkit the core Friends/Inspect panels use, for a mod-contributed HUD
-// panel (see hudLayers()) that wants to match: a draggable UIPanel (title bar + close button) and
-// buildPanelButton for its 9-slice buttons.
-export {UIPanel} from "@/client/UIPanel.js";
-export {buildPanelButton, BUTTON_HEIGHT} from "@/client/panelButton.js";
+// Same framed-panel toolkit the core Friends/Inspect panels use, for a mod-contributed HUD panel.
+export {UIPanel, ManagedPanel} from "@/client/UIPanel.js";
+export {buildPanelButton, buildToggleRow, BUTTON_HEIGHT} from "@/client/panelButton.js";
 export {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT, TOOLBAR_TEXT} from "@/client/Theme.js";
 // A curved line from a HUD panel to the tile it targets (used by the core Inspect panel).
 export {rectEdgePoint, drawPanelConnector, CONNECTOR_PANEL_INSET} from "@/client/PanelConnector.js";
+// Declarative panel-body builder (header/text/row/scrollSection) for use with UIPanel.managed.
+export {PanelStack, ROW_HEIGHT, ROW_GAP} from "@/client/PanelStack.js";
+export {panelText, TextRole} from "@/client/PanelText.js";
+export {ConnectedPanelLayer} from "@/client/ConnectedPanelLayer.js";
+// Masked, scrollable viewport with a draggable thumb, for a scroll region outside PanelStack.scrollSection.
+export {ScrollView} from "@/client/ScrollView.js";
 
 // ---- Settings menu ----
-// Declarative settings-menu controls, returned from a client mod's settingsCategories hook and
-// rendered generically by Game.vue; each binds a widget to a client-writable player setting or
-// a device-local localStorage setting.
+// Declarative settings-menu controls, returned from a client mod's settingsCategories hook.
 export {AbstractSettingControl} from "@/client/AbstractSettingControl.js";
 export {AbstractPlayerSettingControl} from "@/client/AbstractPlayerSettingControl.js";
 export {SettingCategory} from "@/client/SettingCategory.js";
@@ -85,14 +80,8 @@ export {default as Haptics} from "@/client/Haptics.js";
 export {InspectHighlight} from "@/client/InspectHighlight.js";
 
 // ---- Client world state ----
-// The shared plain-data state tree (`client.cache`). Each namespace registers three parts via
-// `client.cache.register(name, schema, writer, view)` in a mod's setup: a schema
-// (schemaScalar/schemaMap/schemaSet leaves), a writer (the only code that writes — from events
-// via onEvent, or its own local write methods, reached via `cache.writer(name)`), and an
-// optional view (derived reads, reached via `cache.view(name)`). Raw paths stay readable
-// (get/mapGet/setHas), observable via subscribe, and reflectable via dump() (contents) and
-// schema() (declared shapes); the engine and base mods read through views only, but the raw
-// path API is open to mods preferring it.
+// The shared plain-data state tree (`client.cache`); namespaces register schema/writer/view via
+// `client.cache.register(name, schema, writer, view)`, reached via cache.writer(name)/cache.view(name).
 export {ClientCache, AbstractCacheWriter, AbstractCacheView, schemaScalar, schemaMap, schemaSet} from "@/client/ClientCache.js";
 // The core namespaces' views, for typing and the static helpers.
 export {ChunkClaimsView} from "@/client/ChunkClaimsState.js";
@@ -100,18 +89,13 @@ export {PlayerSettingsView, GameSettingsView} from "@/client/SettingsState.js";
 export {WorkerAssignmentsView} from "@/client/WorkerAssignmentsState.js";
 export {OverworldView} from "@/client/OverworldState.js";
 
-// The objects namespace's view doubles as the shared cross-mod spatial index (a CacheEntry
-// each, by id, primary tile, chunk, tile+layer cell, and rendered out-port id), reached via
-// `client.objects` (also `cache.view("objects")`) and injected into draw layers as `this.cache`.
-// Client code queries it instead of the simulation DB (tile lookups, placement collision,
-// connection).
+// The objects namespace's view doubles as the shared cross-mod spatial index; reached via
+// `client.objects` and injected into draw layers as `this.cache`, instead of querying the sim DB.
 export {ObjectsView, CacheEntry} from "@/client/ObjectsState.js";
 
 
 // ---- Pixel-space geometry ----
-// `TILE_SIZE` is a tile's size in pixels; the snap helpers round pixel
-// coordinates to tile/chunk boundaries. (CHUNK_SIZE comes from the common SDK —
-// it is measured in tiles, not pixels, so it is not re-exported here.)
+// `TILE_SIZE` is a tile's size in pixels; the snap helpers round pixel coordinates to tile/chunk boundaries.
 export {TILE_SIZE, snapToTile, snapToChunk} from "@/client/constants.js";
 
 // The zoom-driven view mode (world sprites / map geometry / baked overworld).
@@ -120,12 +104,10 @@ export {ViewMode} from "@/client/constants.js";
 // The shared UI font, for debug/overlay labels.
 export {GAME_FONT} from "@/client/constants.js";
 
-// Compares a layer's mounted chunks against the visible set handed to `tick`, for layers that cull
-// their children — pixi walks every child of a container each frame.
+// Compares a layer's mounted chunks against the visible set handed to `tick`.
 export {sameChunks} from "@/client/constants.js";
 
-// Groups a chunk's sprites and pooled map geometry under one mountable root, so a layer mounts and
-// unmounts per chunk instead of per sprite.
+// Groups a chunk's sprites and pooled map geometry under one mountable root.
 export {ChunkNode} from "@/client/ChunkNode.js";
 
 // ---- Drawing helpers ----
@@ -149,9 +131,7 @@ export {
 } from "@/client/Theme.js";
 
 // ---- Animation ----
-// Shared mod-8 animation clock: every animated sequence has 8 frames named
-// "<base>/0".."<base>/7", and currentAnimationFrame() returns the single frame
-// every sprite shows right now, keeping all mods in lockstep.
+// Shared mod-8 animation clock: frames named "<base>/0".."<base>/7"; currentAnimationFrame() keeps all mods in lockstep.
 export {currentAnimationFrame} from "@/client/animation.js";
 
 // Scalar tween + easing curves, and display-object pooling for layers that churn sprites.
@@ -159,11 +139,9 @@ export {Tween, linear, easeOutBack, easeInCubic} from "@/client/Tween.js";
 export {DisplayPool} from "@/client/DisplayPool.js";
 export {KeyedDisplayPool} from "@/client/KeyedDisplayPool.js";
 
-// Draws a group of animated tiles as one mesh whose vertices never change as the animation runs, so
-// the whole group advances a frame with a single uniform write instead of a texture swap per sprite.
+// Draws a group of animated tiles as one mesh, advancing frames via a single uniform write.
 export {AnimatedTile, AnimatedTileMesh, AnimatedTileShader, FrameTable} from "@/client/AnimatedTileMesh.js";
 
 // ---- Pixi types ----
-// Passed through so mods share the engine's single Pixi instance rather than
-// bundling their own (multiple Pixi copies break rendering).
+// Passed through so mods share the engine's single Pixi instance (multiple copies break rendering).
 export {Graphics, Rectangle, Sprite, Text, Texture, Container} from "pixi.js";

@@ -1,7 +1,7 @@
 import {Container, Graphics, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_TEXT, SLOT_HIGHLIGHT_COLOR} from "@/client/Theme.js";
-import {nineSlice} from "@/client/pixiUtils.js";
+import {nineSlice, trackTap} from "@/client/pixiUtils.js";
 import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/InspectContent.js";
 
 export const BUTTON_HEIGHT = 34;
@@ -42,11 +42,32 @@ export function buildPanelButton(textureRegistry, label, borderColor, onClick, d
         button.alpha = 0.45;
         return button;
     }
-    button.eventMode = "static";
     button.cursor = "pointer";
     button.on("pointerover", () => hover.alpha = HOVER_ALPHA);
     button.on("pointerout", () => hover.alpha = 0);
-    button.on("pointerdown", (e) => e.stopPropagation());
-    button.on("pointertap", () => onClick());
+    trackTap(button, onClick);
     return button;
+}
+
+/**
+ * A horizontal row of {@link buildPanelButton} segments, one per option; the option matching
+ * `current` is tinted `activeTint`, the rest `inactiveTint`; tapping one selects it via `onSelect`.
+ * @param {TextureRegistry} textureRegistry
+ * @param {Array<{value: *, label: string}>} options
+ * @param {*} current
+ * @param {function(value: *): void} onSelect
+ * @param {{activeTint: number, inactiveTint: number, gap: number}} style
+ * @returns {Container}
+ */
+export function buildToggleRow(textureRegistry, options, current, onSelect, {activeTint, inactiveTint, gap}) {
+    const row = new Container();
+    let x = 0;
+    for (const {value, label} of options) {
+        const tint = value === current ? activeTint : inactiveTint;
+        const segment = buildPanelButton(textureRegistry, label, tint, () => onSelect(value));
+        segment.x = x;
+        row.addChild(segment);
+        x += segment.width + gap;
+    }
+    return row;
 }

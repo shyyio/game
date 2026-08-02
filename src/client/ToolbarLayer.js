@@ -8,7 +8,7 @@ import Mobile from "@/client/Mobile.js";
 import {UIPanel} from "@/client/UIPanel.js";
 import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/InspectContent.js";
 import {addSlotHighlight} from "@/client/slotHighlight.js";
-import {debugOutlines, nineSlice} from "@/client/pixiUtils.js";
+import {debugOutlines, nineSlice, swallowClicks, trackTap} from "@/client/pixiUtils.js";
 
 const SLOT_SIZE = 56;
 // Inset of the icon sprite from the slot's edges.
@@ -22,8 +22,7 @@ const LABEL_HEIGHT = 34;
 const CELL_GAP = 12;
 const ROW_GAP = 12;
 const MARGIN_BOTTOM = 6;
-// Tools shown on the visible top row; the rest overflow into the drawer rows below. Mobile always
-// gets this fixed count; desktop grows past it up to MAX_BAR_TOOLS_DESKTOP if the screen allows.
+// Tools on the visible top row; rest overflow into drawer rows. Fixed on mobile, grows on desktop.
 const MIN_BAR_TOOLS = 4;
 // Desktop upper bound on visible top-row tools, reached only on wide-enough screens.
 const MAX_BAR_TOOLS_DESKTOP = 10;
@@ -45,21 +44,14 @@ const INSET_PADDING = 12;
 const GRID_LEFT = INSET_LEFT + INSET_PADDING;
 // Duration of the drawer open/close slide tween.
 const SLIDE_DURATION_MS = 230;
-// Upper bound on the open-slide overshoot as a fraction of the slide; the panel bottom is bled by
-// this much (plus a fixed cushion) so the overshoot never exposes its bottom edge.
+// Open-slide overshoot as a fraction of the slide; panel bottom is bled by this much to cover it.
 const OPEN_OVERSHOOT = 0.2;
 const DRAWER_BOTTOM_PAD = 12;
 
 const CELL_HEIGHT = SLOT_SIZE + LABEL_GAP + LABEL_HEIGHT;
 
 /**
- * Static bottom-center tool toolbar: a screen-space HUD sibling of the viewport (on app.stage),
- * not a viewport child, so it never pans or zooms. The whole bar is one panel arranged as a grid:
- * a decorative strip on the left, then the top row (a "no tool" cursor cell plus the leading
- * tools, {@link MIN_BAR_TOOLS} up to {@link MAX_BAR_TOOLS_DESKTOP} on desktop as the screen
- * allows) resting at the bottom edge while the overflow rows sit off-screen below it. Tapping the
- * strip slides it up to reveal those rows. Each tool
- * is a slot holding its icon sprite with its label underneath; tapping one toggles it active.
+ * Static bottom-center tool toolbar: one panel grid, top row visible, overflow rows in a slide-out drawer.
  */
 export class ToolbarLayer extends Container {
 
@@ -202,8 +194,7 @@ export class ToolbarLayer extends Container {
     }
 
     /**
-     * Toggles a 1px outline around each leaf element, for layout debugging (matches UIPanel). Drawn
-     * in panel-local space so it rides the slide.
+     * Toggles a 1px outline around each leaf element, for layout debugging (matches UIPanel).
      * @param {boolean} on
      * @returns {void}
      */
@@ -221,10 +212,7 @@ export class ToolbarLayer extends Container {
     }
 
     /**
-     * Tears down the old slots and lays the grid out row-major in the panel: the "no tool" cell,
-     * then the tools. The drawer strip and background are (re)built by _drawPanel. Leaves
-     * `_drawerOpen` as-is: a resize-driven rebuild (from `_layout`) shouldn't close a drawer the
-     * user has open; callers that need it closed (e.g. `setTools`) do so themselves first.
+     * Tears down the old slots and lays the grid out row-major; leaves `_drawerOpen` as-is so a resize doesn't close it.
      * @private
      */
     _rebuild() {
@@ -249,15 +237,13 @@ export class ToolbarLayer extends Container {
 
         this._panelWidth = GRID_LEFT + this._columns * SLOT_SIZE + (this._columns - 1) * CELL_GAP + PANEL_PADDING;
         this._slideDistance = (this._rowCount - 1) * (CELL_HEIGHT + ROW_GAP);
-        // Snap (no animation) to the resting position for the current open/closed state under the
-        // rebuilt geometry.
+        // Snap to the resting position for the current open/closed state under the rebuilt geometry.
         this._slide.reset(this._drawerOpen ? this._slideDistance : 0);
         this._drawPanel();
     }
 
     /**
-     * Redraws the panel rectangle, bleeding below the last row (by the bottom margin, the overshoot
-     * allowance, and a cushion) so its bottom edge never clears the screen bottom.
+     * Redraws the panel rectangle, bleeding below the last row so its bottom edge never clears the screen.
      * @private
      */
     _drawPanel() {
@@ -271,8 +257,7 @@ export class ToolbarLayer extends Container {
         }
         this._panelBg = UIPanel.frameSprite(this.textureRegistry, this._panelWidth, height, PANEL_TINT);
         // Swallow presses on the bar background: no tile placement beneath, no click-off close.
-        this._panelBg.eventMode = "static";
-        this._panelBg.on("pointerdown", (e) => e.nativeEvent.stopPropagation());
+        swallowClicks(this._panelBg, {pixi: false, native: true});
         this._panel.addChildAt(this._panelBg, 0);
 
         // Inset holds only the cell grid: it starts right of the pattern strip.
@@ -289,7 +274,6 @@ export class ToolbarLayer extends Container {
 
     /**
      * Builds an interactive slot (background + optional label + icon) with the given press handler.
-     * The press is stopped so it neither pans the viewport nor places a tile beneath.
      * @private
      * @param {string|null} label
      * @param {string|null} shortcut - the key badge drawn top-left, or null for none
@@ -299,7 +283,6 @@ export class ToolbarLayer extends Container {
      */
     _createSlot(label, shortcut, addIcon, onPress) {
         const slot = new Container();
-        slot.eventMode = "static";
         slot.cursor = "pointer";
 
         slot._bg = nineSlice(this.textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, SLOT_SIZE, SLOT_SIZE);
@@ -311,8 +294,7 @@ export class ToolbarLayer extends Container {
 
         addIcon(slot);
 
-        // Badge sits above the icon; only read with the drawer open, so hidden on the resting top row.
-        // Mobile has no keyboard, so no shortcut badges there.
+        // Badge sits above the icon, hidden on the resting top row; no badges on Mobile (no keyboard).
         if (shortcut !== null && !Mobile.enabled) {
             const badge = new Text({
                 text: shortcut,
@@ -345,30 +327,11 @@ export class ToolbarLayer extends Container {
             slot.addChild(text);
         }
 
-        // The pointer id whose press landed on this slot; a tap only counts if release matches, so a
-        // map drag or pinch that merely ends over the slot (its press was elsewhere) never clicks.
-        slot._pressPointerId = null;
-        // Swallow the press so it neither pans the viewport nor places a tile beneath.
-        slot.on("pointerdown", (e) => {
-            e.nativeEvent.stopPropagation();
-            // Only the primary button arms a tap; a right/middle press never counts as a click.
-            if (e.button === 0) {
-                slot._pressPointerId = e.pointerId;
-            }
-        });
-        // Act on release only when this slot held the press.
-        slot.on("pointerup", (e) => {
-            const pressed = slot._pressPointerId === e.pointerId;
-            slot._pressPointerId = null;
-            if (!pressed) {
-                return;
-            }
+        // trackTap swallows the press and only counts a release matching the press that landed here.
+        trackTap(slot, () => {
             Haptics.tap();
             onPress();
-        });
-        slot.on("pointerupoutside", () => {
-            slot._pressPointerId = null;
-        });
+        }, {stopNativePropagation: true});
         return slot;
     }
 
@@ -433,29 +396,13 @@ export class ToolbarLayer extends Container {
      */
     _createDrawerStrip(height) {
         const strip = UIPanel.patternStrip(this.textureRegistry, STRIP_WIDTH, height);
-        strip.eventMode = "static";
         strip.cursor = "pointer";
         // Hit the whole left gutter, from the panel edge to the first slot column.
         strip.hitArea = new Rectangle(-PANEL_PADDING, -PANEL_PADDING, GRID_LEFT, height + PANEL_PADDING);
-        strip._pressPointerId = null;
-        strip.on("pointerdown", (e) => {
-            e.nativeEvent.stopPropagation();
-            if (e.button === 0) {
-                strip._pressPointerId = e.pointerId;
-            }
-        });
-        strip.on("pointerup", (e) => {
-            const pressed = strip._pressPointerId === e.pointerId;
-            strip._pressPointerId = null;
-            if (!pressed) {
-                return;
-            }
+        trackTap(strip, () => {
             Haptics.tap();
             this._toggleDrawer();
-        });
-        strip.on("pointerupoutside", () => {
-            strip._pressPointerId = null;
-        });
+        }, {stopNativePropagation: true});
         return strip;
     }
 
@@ -483,9 +430,7 @@ export class ToolbarLayer extends Container {
     }
 
     /**
-     * Opens or closes the drawer: tweens the slide (overshoot open / accelerate closed) and
-     * installs/removes the click-off listener. The press that toggles it is stopped before it
-     * bubbles to the window, so it doesn't self-close.
+     * Opens or closes the drawer: tweens the slide and installs/removes the click-off listener.
      * @private
      * @param {boolean} open
      */
