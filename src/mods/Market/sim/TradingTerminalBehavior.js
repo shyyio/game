@@ -28,8 +28,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             {name: "price"},
             // Buy only: cached owner balance, refreshed per tick by MarketSimMod.onTick. Not authoritative.
             {name: "balance"},
-            // Buy only: cached chunk owner, refreshed alongside balance; lets _submitIntents pool
-            // balance across a player's several buy terminals within a single tick's matching pass.
+            // Buy only: cached chunk owner, lets _submitIntents pool balance across a player's buy terminals.
             {name: "owner", fill: PLAYER_ID_NONE},
             // Sell only: whether this terminal's chunk is owned, refreshed per tick by MarketSimMod.onTick.
             {name: "sellEnabled"},

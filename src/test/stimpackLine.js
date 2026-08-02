@@ -1,4 +1,4 @@
-// Builds the full recipes/Items.puml production chain, end to end, as a real placed factory
+// Builds the full production chain, end to end, as a real placed factory
 // (extractors, machines, belts, pipes, Trading Terminals) — not scripted item-shuttling. Every
 // producer instance feeds exactly one consumer port (a tree, never a shared fan-out network), so
 // placement uses a simple tree layout: each leaf gets its own horizontal lane, each internal node

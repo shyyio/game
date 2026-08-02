@@ -5,8 +5,8 @@ const ORIGIN_X = 8;
 const ORIGIN_Y = 8;
 
 /**
- * The full recipes/Items.puml production chain, physically placed and wired end to end: raw
- * extraction through Biotech/Industry to a working Stimpack assembly line.
+ * The full production chain, physically placed and wired end to end: raw extraction through
+ * Biotech/Industry to a working Stimpack assembly line.
  */
 export class StimpackScenario extends AbstractScenario {
 

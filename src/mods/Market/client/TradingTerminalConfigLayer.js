@@ -16,9 +16,7 @@ const MAX_ITEM_ROWS = 6;
 const INACTIVE_TINT = 0x777777;
 
 /**
- * Configures a placed Trading Terminal (mode, item, price) in the same framed-panel look as
- * FriendsPanelLayer: a draggable UIPanel with buildPanelButton rows. A screen-space HUD layer,
- * contributed via AbstractClientMod.hudLayers (mounted on app.stage, not the world viewport).
+ * Configures a placed Trading Terminal (mode, item, price); framed-panel HUD layer like FriendsPanelLayer.
  */
 export class TradingTerminalConfigLayer extends Container {
 
