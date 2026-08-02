@@ -15,7 +15,7 @@ const {values: args} = parseArgs({
         "port": {type: "string", default: "8080"},
         "tick-ms": {type: "string", default: "600"},
         "save-ms": {type: "string", default: "60000"},
-        "auth-server": {type: "string", default: "http://localhost:8081"},
+        "auth-server": {type: "string", default: "https://spup-auth.shyy.io"},
         "origin": {type: "string", default: "ws://localhost:8080"},
         "name": {type: "string", default: "Shy's Power-Up Factory"},
     },
