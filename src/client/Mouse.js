@@ -99,13 +99,6 @@ class Mouse {
 
         this._hoverTileX = null;
         this._hoverTileY = null;
-        // Hard-off while the mini-menu is open (see freezeHover/resumeHoverOnMove).
-        this._hoverEnabled = true;
-        // After the mini-menu closes, hover is held until the cursor next moves at all
-        // (any pixel), so selecting an entry doesn't re-inspect under a stationary cursor.
-        this._hoverSuppressed = false;
-        this._suppressAnchorX = null;
-        this._suppressAnchorY = null;
         // Mobile-mode lock: while a tool is active the "cursor" is pinned to the
         // screen center, so hover and tap-to-place use the center tile and the
         // player pans the map to aim (see setCenterLock).
@@ -220,25 +213,6 @@ class Mouse {
     }
 
     /**
-     * Turns tile enter/exit hover events hard off, while the mini-menu is open.
-     */
-    freezeHover() {
-        this._hoverEnabled = false;
-    }
-
-    /**
-     * Re-enables hover but holds it until the cursor next moves (any pixel), then
-     * resumes with an enter for whatever tile it lands on. Used when the mini-menu
-     * closes, so selecting an entry doesn't re-inspect under a stationary cursor.
-     */
-    resumeHoverOnMove() {
-        this._hoverEnabled = true;
-        this._hoverSuppressed = true;
-        this._suppressAnchorX = this._app.renderer.events.pointer.global.x;
-        this._suppressAnchorY = this._app.renderer.events.pointer.global.y;
-    }
-
-    /**
      * Toggles center-lock (mobile mode): hover/tap use the screen-center tile and re-evaluate immediately.
      * @param {boolean} enabled
      */
@@ -297,10 +271,7 @@ class Mouse {
     _handlePointerDown(event) {
         if (event.button === 2) {
             // A right-click is the desktop equivalent of a touch long-press, so it
-            // fires the same context gesture. Stop the native event too: the
-            // mini-menu installs a window-level pointerdown click-off listener as
-            // it opens, and without this the very press that opened it would bubble
-            // up and close it again.
+            // fires the same context gesture.
             event.stopPropagation();
             event.nativeEvent.stopPropagation();
             const world = this._worldFromEvent(event);
@@ -318,7 +289,7 @@ class Mouse {
         if (this._clickStartX != null) {
             // A press is already in flight, so this is a second finger: a pinch,
             // not a tap or long-press. Drop the single-finger gesture so the pinch
-            // can't fire a tap or open the mini-menu.
+            // can't fire a tap or a long-press.
             this.cancelInteraction();
             return;
         }
@@ -345,7 +316,7 @@ class Mouse {
 
         // Center-lock (mobile, tool active) has no context gesture — orientation is
         // set by the rotate buttons and a tap places — so the long-press timer is
-        // only armed for the mini-menu when the cursor isn't locked to center.
+        // only armed when the cursor isn't locked to center.
         if (this._centerLock) {
             return;
         }
@@ -353,8 +324,8 @@ class Mouse {
         this._longPressTimer = window.setTimeout(() => {
             this._longPressTimer = null;
             this._hasDragged = true;
-            // The long-press opens the mini-menu; clear the hovered tile first so
-            // the active tool's ghost preview drops while it is up.
+            // The long-press fires the context gesture; clear the hovered tile first
+            // so the active tool's ghost preview drops while it is up.
             this._emitTileExit();
             for (const cb of this._longPressCallbacks) {
                 cb(this._clickStartTileX, this._clickStartTileY, this._clickStartScreenX, this._clickStartScreenY);
@@ -439,7 +410,6 @@ class Mouse {
         } else if (this._clickStartX == null && this._pointerOverHud()) {
             this._emitTileExit();
         } else {
-            this._resumeHoverIfMoved();
             this._updateHoverTile();
         }
 
@@ -576,32 +546,10 @@ class Mouse {
     }
 
     /**
-     * Lifts the post-menu hover hold once the cursor moves at all, clearing the
-     * hovered tile so the next update fires an enter for the current tile.
-     * @private
-     */
-    _resumeHoverIfMoved() {
-        if (!this._hoverSuppressed) {
-            return;
-        }
-        const global = this._app.renderer.events.pointer.global;
-        if (global.x === this._suppressAnchorX && global.y === this._suppressAnchorY) {
-            return;
-        }
-        this._hoverSuppressed = false;
-        this._hoverTileX = null;
-        this._hoverTileY = null;
-    }
-
-    /**
      * Fires tile enter/exit callbacks when the hovered tile changes.
      * @private
      */
     _updateHoverTile() {
-        if (!this._hoverEnabled || this._hoverSuppressed) {
-            return;
-        }
-
         let tileX = this.tileX;
         let tileY = this.tileY;
         if (this._centerLock) {

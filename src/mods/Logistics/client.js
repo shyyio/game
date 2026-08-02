@@ -17,12 +17,10 @@ import {tunnelStep, BELT_RAMP_DOWN, BELT_RAMP_UP, BELT_UNDERGROUND} from "./comm
 import {surfaceBeltAt, walkTunnel, isRamp, inferBeltParent} from "./common/geometry.js";
 import {
     AbstractClientMod,
-    MiniMenuEntry,
     ObjectInsertEvent,
     PortItemSetEvent,
     PortItemClearEvent,
     Direction,
-    DeleteObjectMessage,
     PORT_SPRITE_KEY,
     InspectHighlight,
     Rectangle,
@@ -520,19 +518,6 @@ export class LogisticsClientMod extends AbstractClientMod {
             this._overlayLayer.showUndergroundReveal(tunnel.tiles, ramp.data.direction);
         }
         return highlights;
-    }
-
-    miniMenuEntries(tileX, tileY, session, client) {
-        const entries = [];
-        const surface = surfaceBeltAt(client.objects, tileX, tileY);
-        if (surface !== null) {
-            entries.push(new MiniMenuEntry(
-                "Delete Belt",
-                10,
-                () => session.sendMessage(new DeleteObjectMessage(surface.id)),
-            ));
-        }
-        return entries;
     }
 
 }
