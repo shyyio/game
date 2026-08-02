@@ -17,11 +17,13 @@ export class AuthHttpServer {
      * @param {AccountRegistry} accounts
      * @param {SigningKeys} signingKeys
      * @param {JoinTokenService} joinTokens
+     * @param {ServerDirectory} servers
      */
-    constructor(accounts, signingKeys, joinTokens) {
+    constructor(accounts, signingKeys, joinTokens, servers) {
         this._accounts = accounts;
         this._signingKeys = signingKeys;
         this._joinTokens = joinTokens;
+        this._servers = servers;
         this._listenSocket = null;
         this._startedAtMs = Date.now();
         // sessionToken -> {accountId, expiresAtMs}
@@ -39,6 +41,9 @@ export class AuthHttpServer {
         this._app.post("/join", (res, req) => {
             const authHeader = req.getHeader("authorization");
             this._onJoin(res, authHeader);
+        });
+        this._app.get("/servers", (res, req) => {
+            this._respond(res, {servers: this._servers.list()});
         });
         // /join carries an Authorization header, so browsers preflight it.
         this._app.options("/*", (res, req) => {

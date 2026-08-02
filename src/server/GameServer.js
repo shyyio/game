@@ -1,7 +1,7 @@
 import uWS from "uWebSockets.js";
 import {SignInMessage} from "@/common/PlayerMessages.js";
 import {WebSocketSession} from "@/server/WebSocketSession.js";
-import {GAME_VERSION} from "@/common/constants.js";
+import {GAME_VERSION, REGION_SIZE} from "@/common/constants.js";
 import {formatBytes, formatUptime} from "@/common/util.js";
 
 // Application close codes (4000-4999).
@@ -24,18 +24,23 @@ export class GameServer {
      * @param {GameAPI} api
      * @param {JwksVerifier} jwksVerifier
      * @param {string} origin - this server's own canonical origin, checked against a token's aud
+     * @param {string} name - the display name shown in the client's server directory
      */
-    constructor(game, api, jwksVerifier, origin) {
+    constructor(game, api, jwksVerifier, origin, name) {
         this._game = game;
         this._api = api;
         this._jwksVerifier = jwksVerifier;
         this._origin = origin;
+        this._name = name;
         this._listenSocket = null;
         this._startedAtMs = Date.now();
         // playerId -> WebSocketSession, to kick a superseded login.
         this._sessionsByPlayer = new Map();
 
         this._app = uWS.App();
+        this._app.get("/status", (res, req) => {
+            this._onStatus(res);
+        });
         // A plain-browser visit gets a text info screen instead of a failed upgrade.
         this._app.get("/*", (res, req) => {
             const host = req.getHeader("host");
@@ -115,6 +120,27 @@ export class GameServer {
             `  players    : ${this._sessionsByPlayer.size} online`,
             `  uptime     : ${uptime}`,
         ].join("\n");
+    }
+
+    /**
+     * The client's server-directory listing calls this: unauthenticated, JSON, CORS-open.
+     * @private
+     * @param {object} res
+     * @returns {void}
+     */
+    _onStatus(res) {
+        const claimed = this._game.claims.claimedCount();
+        res.cork(() => {
+            res.writeHeader("Content-Type", "application/json")
+                .writeHeader("Access-Control-Allow-Origin", "*")
+                .end(JSON.stringify({
+                    name: this._name,
+                    version: GAME_VERSION,
+                    online: this._sessionsByPlayer.size,
+                    chunksClaimed: claimed,
+                    chunksAvailable: REGION_SIZE * REGION_SIZE - claimed,
+                }));
+        });
     }
 
     /**

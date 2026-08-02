@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Run locally: deploy/remote-install.sh HOST DOMAIN
+# Run locally: deploy/remote-install.sh HOST DOMAIN NAME
 set -euo pipefail
 
-HOST="${1:?usage: remote-install.sh HOST DOMAIN}"
-DOMAIN="${2:?usage: remote-install.sh HOST DOMAIN}"
+HOST="${1:?usage: remote-install.sh HOST DOMAIN NAME}"
+DOMAIN="${2:?usage: remote-install.sh HOST DOMAIN NAME}"
+NAME="${3:?usage: remote-install.sh HOST DOMAIN NAME}"
 PUBKEY="${HOME}/.ssh/id_rsa.pub"
 DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RCLONE_CONF="${DEPLOY_DIR}/rclone.conf"
@@ -27,4 +28,4 @@ scp "${FILES[@]}" "${HOST}:${REMOTE_TMP}/"
 scp "$CADDYFILE" "${HOST}:${REMOTE_TMP}/Caddyfile"
 scp "$PUBKEY" "${HOST}:${REMOTE_TMP}/authorized_key"
 scp "$RCLONE_CONF" "${HOST}:${REMOTE_TMP}/rclone.conf"
-ssh -t "$HOST" "sudo bash ${REMOTE_TMP}/install.sh ${DOMAIN} && rm -rf ${REMOTE_TMP}"
+ssh -t "$HOST" "sudo bash ${REMOTE_TMP}/install.sh ${DOMAIN} '${NAME}' && rm -rf ${REMOTE_TMP}"
