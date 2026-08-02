@@ -160,6 +160,7 @@ export class ToolbarLayer extends Container {
         this._coreTools = coreTools;
         this._modTools = modTools;
         this._tools = [...coreTools, ...modTools];
+        this._setDrawerOpen(false);
         this._rebuild();
         if (!this._tools.includes(this._activeTool)) {
             this.setActiveTool(null);
@@ -221,13 +222,12 @@ export class ToolbarLayer extends Container {
 
     /**
      * Tears down the old slots and lays the grid out row-major in the panel: the "no tool" cell,
-     * then the tools. The drawer strip and background are (re)built by _drawPanel.
+     * then the tools. The drawer strip and background are (re)built by _drawPanel. Leaves
+     * `_drawerOpen` as-is: a resize-driven rebuild (from `_layout`) shouldn't close a drawer the
+     * user has open; callers that need it closed (e.g. `setTools`) do so themselves first.
      * @private
      */
     _rebuild() {
-        // Detach any click-off listener and snap to closed before the old slots are destroyed.
-        this._setDrawerOpen(false);
-        this._slide.reset(0);
         for (const slot of [this._noneCell, ...this._cells]) {
             if (slot !== null) {
                 slot.destroy({children: true});
@@ -249,6 +249,9 @@ export class ToolbarLayer extends Container {
 
         this._panelWidth = GRID_LEFT + this._columns * SLOT_SIZE + (this._columns - 1) * CELL_GAP + PANEL_PADDING;
         this._slideDistance = (this._rowCount - 1) * (CELL_HEIGHT + ROW_GAP);
+        // Snap (no animation) to the resting position for the current open/closed state under the
+        // rebuilt geometry.
+        this._slide.reset(this._drawerOpen ? this._slideDistance : 0);
         this._drawPanel();
     }
 
