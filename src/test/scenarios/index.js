@@ -3,7 +3,7 @@ import {ProductionLineScenario} from "@/test/scenarios/ProductionLineScenario.js
 import {StimpackScenario} from "@/test/scenarios/StimpackScenario.js";
 
 // Selects a scenario: ?scenario=lines&lines=200
-const SCENARIO_PARAM = "scenario";
+export const SCENARIO_PARAM = "scenario";
 
 const SCENARIOS = [
     new BlankScenario(),
