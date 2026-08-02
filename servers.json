@@ -1,4 +1,4 @@
 [
-    {"origin": "wss:spup-ca1.shyy.io"},
-    {"origin": "wss:spup-de1.shyy.io"}
+    {"origin": "wss://spup-ca1.shyy.io:443"},
+    {"origin": "wss://spup-de1.shyy.io:443"}
 ]
