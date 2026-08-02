@@ -267,7 +267,9 @@ export class AuthHttpServer {
     _readBody(res, onEnd) {
         let buffer;
         res.onData((chunk, isLast) => {
-            const piece = Buffer.from(chunk);
+            // Buffer.from(arrayBuffer) is a view, not a copy; uWS detaches chunk right after
+            // this callback returns, so copy it now via slice() before buffering it past that point.
+            const piece = Buffer.from(chunk.slice(0));
             if (buffer === undefined) {
                 buffer = piece;
             } else {
