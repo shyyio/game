@@ -135,7 +135,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
                 engine.submitDrain(inPort, true);
                 terminal.pendingIsNpc[row] = 1;
             } else {
-                engine.submitTransfer(inPort, match.outPort, true, true, -match.price, terminal.itemType[row]);
+                engine.submitTransfer(inPort, match.outPort, true, true, EMPTY, terminal.itemType[row]);
                 terminal.pendingBuyer[row] = match.eid;
                 const owner = terminal.owner[def.row(match.eid)];
                 const remaining = TradingTerminalBehavior._remainingBalance(def, terminal, match.eid, reservedBalance);
