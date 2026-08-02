@@ -41,8 +41,8 @@ export class AbstractModDeclaration {
     }
 
     /**
-     * Item type -> texture name, for the shared item layer.
-     * @returns {Object.<number, string>}
+     * Item type -> render texture, for the shared item layer.
+     * @returns {Object.<number, ItemTextureEntry>}
      */
     get itemTextures() {
         return {};

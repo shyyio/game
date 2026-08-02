@@ -125,6 +125,11 @@ export {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
 // means player-market-only (no fixed NPC price).
 export {MarketListingEntry} from "@/common/MarketListingEntry.js";
 
+// ---- Item textures ----
+// Item type -> render texture a declaration contributes (itemTextures): a texture name plus a
+// pixi multiply tint, so shared shapes stay visually distinct per item type.
+export {ItemTextureEntry} from "@/common/ItemTextureEntry.js";
+
 // Rotates a `{x, y}` offset (a port or size vector) by a placement direction, so a mod
 // can compute where an object's ports/geometry land from its ObjectType.
 export {rotate} from "@/common/util.js";

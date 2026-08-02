@@ -22,7 +22,7 @@ export class ModRegistry {
         this._clientMods = [];
         this._textureDefinitions = [];
         /**
-         * @type {Object<number, string>}
+         * @type {Object<number, ItemTextureEntry>}
          */
         this._itemTextures = {};
         /**
@@ -201,8 +201,8 @@ export class ModRegistry {
     }
 
     /**
-     * Item type -> texture name, merged across all mods, for the shared item layer.
-     * @returns {Object.<number, string>}
+     * Item type -> render texture, merged across all mods, for the shared item layer.
+     * @returns {Object.<number, ItemTextureEntry>}
      */
     get itemTextures() {
         this._assertFrozen();

@@ -7,6 +7,7 @@ import {
     ResourceBehavior,
     ExtractorBehavior,
     Direction,
+    ItemTextureEntry,
 } from "@/sdk/common.js";
 
 /**
@@ -81,8 +82,8 @@ export class VolcanoFixtureDeclaration extends AbstractModDeclaration {
 
     get itemTextures() {
         return {
-            [ITEM_TYPE_TEST_SULFUR]: "items/2",
-            [ITEM_TYPE_TEST_BRINE]: "items/1",
+            [ITEM_TYPE_TEST_SULFUR]: new ItemTextureEntry("items/2"),
+            [ITEM_TYPE_TEST_BRINE]: new ItemTextureEntry("items/1"),
         };
     }
 

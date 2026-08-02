@@ -6,13 +6,14 @@ import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
 import {rotate} from "@/common/util.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
+import {ItemTextureEntry} from "@/common/ItemTextureEntry.js";
 
 // Item sprites resting in out-ports share this layer with belt-path items; their keys are
 // namespaced from the path-item row-id keys so the two can't collide.
 export const PORT_SPRITE_KEY = portId => `port:${portId}`;
 
-// Texture for an item type with no mod-supplied mapping.
-export const DEFAULT_ITEM_TEXTURE = "items/3";
+// Texture entry for an item type with no mod-supplied mapping.
+export const DEFAULT_ITEM_TEXTURE = new ItemTextureEntry("items/3");
 
 // Items glide to each new position over this long (the game tick is 600ms, so they
 // arrive and briefly rest before the next move).
@@ -31,7 +32,7 @@ const MOVE_DURATION_MS = 190;
 export class ItemDrawLayer extends AbstractDrawLayer {
 
     /**
-     * @param {Object.<number, string>} itemTextures item type -> texture name, merged across mods
+     * @param {Object.<number, ItemTextureEntry>} itemTextures item type -> render texture, merged across mods
      */
     constructor(itemTextures) {
         super();
@@ -73,8 +74,8 @@ export class ItemDrawLayer extends AbstractDrawLayer {
             },
         ));
         /**
-         * Item type -> texture name, merged across mods.
-         * @type {Object.<number, string>}
+         * Item type -> render texture, merged across mods.
+         * @type {Object.<number, ItemTextureEntry>}
          * @private
          */
         this._itemTextures = itemTextures;
@@ -202,9 +203,11 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {boolean} [move.hidden] - the item is under cover (in a tunnel)
      */
     moveItem({key, tileX, tileY, halfTile, sourceDirection, type, snap=false, hidden=false}) {
-        const texture = this._textureForType(type);
+        const entry = this._entryForType(type);
+        const texture = this.textureRegistry.get(entry.texture);
         const particle = this._items.take(key, texture);
         particle.setTexture(texture);
+        particle.setTint(entry.tint);
         particle.hidden = hidden;
         this._applyItemVisibility(particle);
         particle.moveTo(tileX, tileY, halfTile, sourceDirection, snap);
@@ -227,14 +230,13 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * The texture for an item type, or the default for an unmapped type.
+     * The render texture entry for an item type, or the default for an unmapped type.
      * @param {number} type
-     * @returns {Texture}
+     * @returns {ItemTextureEntry}
      * @private
      */
-    _textureForType(type) {
-        const name = this._itemTextures[type] !== undefined ? this._itemTextures[type] : DEFAULT_ITEM_TEXTURE;
-        return this.textureRegistry.get(name);
+    _entryForType(type) {
+        return this._itemTextures[type] !== undefined ? this._itemTextures[type] : DEFAULT_ITEM_TEXTURE;
     }
 
     /**
@@ -373,6 +375,19 @@ class ItemParticle extends Particle {
             return;
         }
         this.texture = texture;
+        this._container.update();
+    }
+
+    /**
+     * Sets the tint; a static (uv) particle property, so a change flags the container flush.
+     * @param {number} tint
+     * @returns {void}
+     */
+    setTint(tint) {
+        if (this.tint === tint) {
+            return;
+        }
+        this.tint = tint;
         this._container.update();
     }
 

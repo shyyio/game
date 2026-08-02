@@ -65,7 +65,7 @@ export function inspectContentHeight(event) {
  * @param {UIPanel} panel
  * @param {InspectHeartbeatEvent} event
  * @param {TextureRegistry} textureRegistry
- * @param {Object<number, string>} itemTextures
+ * @param {Object<number, ItemTextureEntry>} itemTextures
  * @param {number|undefined} lastProduced - the machine's last produced item (output fallback)
  * @returns {void}
  */
@@ -171,8 +171,10 @@ function addSlot(panel, item, itemAlpha, x, y, textureRegistry, itemTextures) {
 }
 
 function itemSprite(item, textureRegistry, itemTextures) {
-    const name = itemTextures[item] !== undefined ? itemTextures[item] : DEFAULT_ITEM_TEXTURE;
-    return new Sprite(textureRegistry.get(name));
+    const entry = itemTextures[item] !== undefined ? itemTextures[item] : DEFAULT_ITEM_TEXTURE;
+    const sprite = new Sprite(textureRegistry.get(entry.texture));
+    sprite.tint = entry.tint;
+    return sprite;
 }
 
 function addProgressBar(panel, remaining, total, x, y, width, textureRegistry) {
