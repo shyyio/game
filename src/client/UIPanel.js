@@ -1,6 +1,6 @@
 import {Container, Sprite, Text, NineSliceSprite, TilingSprite, Rectangle} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {debugOutlines, swallowClicks, trackWindowDrag} from "@/client/pixiUtils.js";
+import {debugOutlines, swallowClicks, trackTap, trackWindowDrag} from "@/client/pixiUtils.js";
 import {PanelStack} from "@/client/PanelStack.js";
 
 const TITLE_ROW_HEIGHT = 40;
@@ -9,6 +9,8 @@ const PADDING = 8;
 const BODY_MARGIN = 8;
 const CLOSE_SIZE = 25;
 const TITLE_FONT_SIZE = 18;
+// Close button icon shrinks to this fraction of its size while pressed.
+const CLOSE_PRESS_SCALE = 0.9;
 
 // Tiled pattern after the title, filling up to the close button.
 const PATTERN_GAP = 7;
@@ -556,22 +558,36 @@ export class UIPanel extends Container {
     }
 
     /**
-     * @returns {Sprite}
+     * @returns {Container}
      * @private
      */
     _buildCloseButton() {
-        const button = new Sprite(this._textureRegistry.get(TX_CLOSE));
-        button.width = CLOSE_SIZE;
-        button.height = CLOSE_SIZE;
-        button.eventMode = "static";
+        const button = new Container();
         button.cursor = "pointer";
-        button.on("pointerdown", (e) => {
-            e.stopPropagation();
-            e.nativeEvent.stopPropagation();
+
+        // Anchored/positioned to its own center so it can shrink in place; the container itself
+        // stays unscaled, since callers position it (and read `.x`) by its top-left corner.
+        const icon = new Sprite(this._textureRegistry.get(TX_CLOSE));
+        icon.width = CLOSE_SIZE;
+        icon.height = CLOSE_SIZE;
+        const baseScale = {x: icon.scale.x, y: icon.scale.y};
+        icon.anchor = 0.5;
+        icon.position.set(CLOSE_SIZE / 2, CLOSE_SIZE / 2);
+        button.addChild(icon);
+
+        button.on("pointerover", () => icon.tint = 0xEEEEEE);
+        button.on("pointerout", () => {
+            icon.tint = 0xffffff;
+            icon.scale.set(baseScale.x, baseScale.y);
+        });
+        button.on("pointerdown", () => icon.scale.set(baseScale.x * CLOSE_PRESS_SCALE, baseScale.y * CLOSE_PRESS_SCALE));
+        button.on("pointerup", () => icon.scale.set(baseScale.x, baseScale.y));
+        button.on("pointerupoutside", () => icon.scale.set(baseScale.x, baseScale.y));
+        trackTap(button, () => {
             if (this._onClose !== null) {
                 this._onClose();
             }
-        });
+        }, {stopNativePropagation: true});
         return button;
     }
 }
