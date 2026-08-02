@@ -161,17 +161,11 @@ export class FriendsPanelLayer extends Container {
     }
 
     /**
-     * The previous input (if any) is blurred before the rebuild destroys it, rather than leaving
-     * the page's focus dangling.
      * @private
      * @returns {void}
      */
     _rebuild() {
         const friendIds = this._sortByUsername(this._claims.friendIds());
-        if (this._usernameInput !== null) {
-            this._usernameInput.blur();
-        }
-
         const panel = this._managed.show({
             app: this._app,
             textureRegistry: this.textureRegistry,
@@ -238,7 +232,9 @@ export class FriendsPanelLayer extends Container {
     }
 
     /**
-     * The add-by-username row: a text input plus its Add button.
+     * The add-by-username row: a text input plus its Add button. The input is reused across
+     * rebuilds (re-parented into the fresh row) rather than recreated, so its real DOM element
+     * doesn't get torn down and flicker on every viewport-triggered refresh.
      * @private
      * @param {Container} row
      * @param {number} contentWidth
@@ -246,19 +242,22 @@ export class FriendsPanelLayer extends Container {
      */
     _fillUsernameRow(row, contentWidth) {
         const addButtonWidth = 70;
-        const input = new TextInput(
-            this._app,
-            contentWidth - addButtonWidth - INPUT_GAP,
-            INPUT_HEIGHT,
-            MAX_USERNAME_LENGTH,
-            "Name",
-        );
-        input.value = this._pendingUsername;
-        input.onInput(value => this._pendingUsername = value);
+        let input = this._usernameInput;
+        if (input === null) {
+            input = new TextInput(
+                this._app,
+                contentWidth - addButtonWidth - INPUT_GAP,
+                INPUT_HEIGHT,
+                MAX_USERNAME_LENGTH,
+                "Name",
+            );
+            input.value = this._pendingUsername;
+            this._usernameInput = input;
+        }
         const submit = () => this._submitUsername(input);
+        input.onInput(value => this._pendingUsername = value);
         input.onSubmit(submit);
         row.addChild(input);
-        this._usernameInput = input;
 
         const button = buildPanelButton(this.textureRegistry, "Add", ACTIVE_ACCENT, submit);
         button.x = input.x + input.width + INPUT_GAP;
