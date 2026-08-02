@@ -61,12 +61,7 @@ export async function createClient(app, viewport, props) {
 
     const inputHandler = createInputHandler(client);
 
-    const toolbar = client.toolbarLayer;
-    const refreshTools = () => {
-        toolbar.setTools(client.coreTools(), client.modTools());
-    };
-    client.cache.subscribe("playerSettings.values", refreshTools);
-    refreshTools();
+    client.toolbarLayer.setTools(client.coreTools(), client.modTools());
 
     return {client, session, game, inputHandler};
 }
