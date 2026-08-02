@@ -7,37 +7,9 @@ DOMAIN="${1:?usage: install.sh DOMAIN}"
 hostnamectl set-hostname "$DOMAIN"
 grep -qE "^127\.0\.1\.1\s+${DOMAIN}$" /etc/hosts || echo "127.0.1.1 ${DOMAIN}" >> /etc/hosts
 
-apt-get update -y
-apt-get full-upgrade -y
+"${SCRIPT_DIR}/bootstrap.sh"
 
-if ! command -v node >/dev/null || [[ "$(node -v)" != v24.* ]]; then
-    curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
-    apt-get install -y nodejs
-fi
-
-apt-get install -y git nftables debian-archive-keyring apt-transport-https curl unattended-upgrades sqlite3 zstd unzip
-
-if ! command -v rclone >/dev/null; then
-    curl -fsSL https://rclone.org/install.sh | bash
-fi
-
-if ! command -v caddy >/dev/null; then
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
-    apt-get update -y
-    apt-get install -y caddy
-fi
-
-GIT_SHELL="$(command -v git-shell)"
-grep -qxF "$GIT_SHELL" /etc/shells || echo "$GIT_SHELL" >> /etc/shells
-id -u app >/dev/null 2>&1 || useradd --system --create-home --shell "$GIT_SHELL" app
-
-install -d -o app -g app /home/app/data /home/app/spup
-
-if [[ -f "${SCRIPT_DIR}/authorized_key" ]]; then
-    install -d -m 700 -o app -g app /home/app/.ssh
-    install -m 600 -o app -g app "${SCRIPT_DIR}/authorized_key" /home/app/.ssh/authorized_keys
-fi
+install -d -o app -g app /home/app/spup
 
 sudo -u app git init --bare /home/app/spup.git
 
@@ -46,30 +18,12 @@ install -m 755 -o app -g app "${SCRIPT_DIR}/post-receive" /home/app/spup.git/hoo
 echo "app ALL=(root) NOPASSWD: /usr/bin/systemctl restart spup" > /etc/sudoers.d/app-restart
 chmod 440 /etc/sudoers.d/app-restart
 
-cp "${SCRIPT_DIR}/spup.service" /etc/systemd/system/spup.service
+sed "s/{{DOMAIN}}/${DOMAIN}/" "${SCRIPT_DIR}/spup.service" > /etc/systemd/system/spup.service
+systemctl daemon-reload
 systemctl enable spup
 
-cp "${SCRIPT_DIR}/Caddyfile" /etc/caddy/Caddyfile
-systemctl enable caddy
-systemctl restart caddy
-
-cp "${SCRIPT_DIR}/nftables.conf" /etc/nftables.conf
-systemctl enable nftables
-systemctl restart nftables
-
-install -m 644 "${SCRIPT_DIR}/sysctl-network.conf" /etc/sysctl.d/99-network.conf
-sysctl --system
-
-ADMIN_USER="${SUDO_USER:?install.sh must be run via sudo}"
-sed "s/{{ADMIN_USER}}/${ADMIN_USER}/" "${SCRIPT_DIR}/sshd-access.conf" > /etc/ssh/sshd_config.d/access.conf
-sshd -t
-rm -f /root/.ssh/authorized_keys
-systemctl reload ssh
-
-install -m 644 "${SCRIPT_DIR}/unattended-upgrades-reboot.conf" /etc/apt/apt.conf.d/51-unattended-upgrades-reboot.conf
-
-install -d -m 700 -o app -g app /home/app/.config/rclone
-install -m 600 -o app -g app "${SCRIPT_DIR}/rclone.conf" /home/app/.config/rclone/rclone.conf
+cp "${SCRIPT_DIR}/Caddyfile" /etc/caddy/sites/spup.conf
+systemctl reload caddy
 
 install -m 755 "${SCRIPT_DIR}/backup.sh" /usr/local/bin/spup-backup.sh
 install -m 644 "${SCRIPT_DIR}/spup-backup.service" /etc/systemd/system/spup-backup.service
