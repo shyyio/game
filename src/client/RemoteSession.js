@@ -12,13 +12,13 @@ export class RemoteSession extends AbstractSession {
     /**
      * @param {WireRegistry} wire
      * @param {string} url
-     * @param {string} username
+     * @param {string} token - a signed join token from the auth server
      */
-    constructor(wire, url, username) {
+    constructor(wire, url, token) {
         super(null);
         this._wire = wire;
         this._url = url;
-        this._username = username;
+        this._token = token;
         this._ws = null;
         this._playerId = null;
         this._onClose = null;
@@ -32,7 +32,7 @@ export class RemoteSession extends AbstractSession {
         const ws = new WebSocket(this._url);
         ws.binaryType = "arraybuffer";
         ws.onopen = () => {
-            const bytes = this._wire.encode(new SignInMessage(GAME_VERSION, this._username));
+            const bytes = this._wire.encode(new SignInMessage(GAME_VERSION, this._token));
             this.txBytes += bytes.length;
             ws.send(bytes);
         };
@@ -83,5 +83,12 @@ export class RemoteSession extends AbstractSession {
             throw new Error("playerId read before the server's welcome");
         }
         return this._playerId;
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    get hasPlayerId() {
+        return this._playerId !== null;
     }
 }

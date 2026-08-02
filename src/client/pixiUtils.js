@@ -81,17 +81,23 @@ export function trackTap(target, onTap, {suppressTouchGhostClick = false, stopNa
         if (e.button !== 0) {
             return;
         }
-        pressPointerId = e.pointerId;
+        // A second concurrent pointer (e.g. a fat-finger touch) must not steal the tap from
+        // whichever pointer pressed first.
+        if (pressPointerId === null) {
+            pressPointerId = e.pointerId;
+        }
     });
     target.on("pointerup", (e) => {
         const pressed = pressPointerId === e.pointerId;
-        pressPointerId = null;
         if (pressed) {
+            pressPointerId = null;
             onTap();
         }
     });
-    target.on("pointerupoutside", () => {
-        pressPointerId = null;
+    target.on("pointerupoutside", (e) => {
+        if (pressPointerId === e.pointerId) {
+            pressPointerId = null;
+        }
     });
 }
 

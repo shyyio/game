@@ -12,6 +12,7 @@ import {PlayerSettingChoice} from "@/client/PlayerSettingChoice.js";
 const props = defineProps({
   mode: {type: String, default: "local"},
   username: {type: String, default: ""},
+  token: {type: String, default: ""},
   serverUrl: {type: String, default: ""},
 });
 

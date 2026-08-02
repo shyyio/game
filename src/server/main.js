@@ -5,6 +5,7 @@ import {Game} from "@/sim/Game.js";
 import {GameAPI} from "@/sim/GameAPI.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
+import {JwksVerifier} from "@/server/JwksVerifier.js";
 import {GameServer} from "@/server/GameServer.js";
 
 const {values: args} = parseArgs({
@@ -14,6 +15,8 @@ const {values: args} = parseArgs({
         "port": {type: "string", default: "8080"},
         "tick-ms": {type: "string", default: "600"},
         "save-ms": {type: "string", default: "60000"},
+        "auth-server": {type: "string", default: "http://localhost:8081"},
+        "origin": {type: "string", default: "ws://localhost:8080"},
     },
 });
 const dbPath = args["db"];
@@ -21,6 +24,8 @@ const host = args["host"];
 const port = Number(args["port"]);
 const tickMs = Number(args["tick-ms"]);
 const saveMs = Number(args["save-ms"]);
+const authServerUrl = args["auth-server"];
+const origin = args["origin"];
 
 const modRegistry = new ModRegistry();
 for (const pkg of simLoadout()) {
@@ -41,8 +46,11 @@ try {
     process.exit(1);
 }
 
+const jwksVerifier = new JwksVerifier(authServerUrl);
+await jwksVerifier.load();
+
 const api = new GameAPI(game);
-const server = new GameServer(game, api);
+const server = new GameServer(game, api, jwksVerifier, origin);
 await server.listen(host, port);
 console.log(`Listening on ws://${host}:${port} (tick ${tickMs}ms, save ${saveMs}ms)`);
 

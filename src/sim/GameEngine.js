@@ -1964,7 +1964,7 @@ export class GameEngine {
         }
 
         this._nextObjectId = snapshot.globals.nextObjectId;
-        this.clock = snapshot.globals.clock;
+        this.clock = snapshot.globals.clock === undefined ? 0 : snapshot.globals.clock;
         for (const key of Object.keys(snapshot.globals)) {
             if (key !== "nextObjectId" && key !== "clock") {
                 this.globals[key] = snapshot.globals[key];

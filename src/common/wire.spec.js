@@ -11,10 +11,10 @@ import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/Playe
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {
-    SignInMessage, AddFriendMessage, AddFriendByUsernameMessage, RemoveFriendMessage, SetPlayerSettingMessage,
+    SignInMessage, AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage, SetPlayerSettingMessage,
 } from "@/common/PlayerMessages.js";
 import {
-    WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByUsernameResultEvent,
+    WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByCodeResultEvent,
 } from "@/common/PlayerEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ChunkPermission} from "@/common/ClaimEvents.js";
@@ -146,9 +146,9 @@ test("Round-trips an OverworldSnapshotEvent's flattened run and claim columns", 
 
 test("Round-trips the player messages", () => {
     const reg = registry();
-    roundTrip(reg, new SignInMessage(GAME_VERSION, "alice_01"), SignInMessage);
+    roundTrip(reg, new SignInMessage(GAME_VERSION, "signed.jwt.token"), SignInMessage);
     roundTrip(reg, new AddFriendMessage(7), AddFriendMessage);
-    roundTrip(reg, new AddFriendByUsernameMessage("bob_02"), AddFriendByUsernameMessage);
+    roundTrip(reg, new AddFriendByCodeMessage("0001-2A3B"), AddFriendByCodeMessage);
     roundTrip(reg, new RemoveFriendMessage(999999999999), RemoveFriendMessage);
 });
 
@@ -159,8 +159,8 @@ test("Round-trips the player events", () => {
     roundTrip(reg, new PlayerNamesEvent([], []), PlayerNamesEvent);
     roundTrip(reg, new FriendListEvent([], []), FriendListEvent);
     roundTrip(reg, new FriendListEvent([3, 4, 5], [6, 7]), FriendListEvent);
-    roundTrip(reg, new AddFriendByUsernameResultEvent("alice_01", true), AddFriendByUsernameResultEvent);
-    roundTrip(reg, new AddFriendByUsernameResultEvent("nobody", false), AddFriendByUsernameResultEvent);
+    roundTrip(reg, new AddFriendByCodeResultEvent("0001-2A3B", true), AddFriendByCodeResultEvent);
+    roundTrip(reg, new AddFriendByCodeResultEvent("nobody", false), AddFriendByCodeResultEvent);
 });
 
 test("Round-trips the claim messages and events", () => {
@@ -191,13 +191,10 @@ test("Overworld request validation gates dimensions and region bounds", () => {
     assert.strictEqual(new OverworldRequestMessage(62, 0, 4, 4).validate(null, null), false, "rect crosses the region edge");
 });
 
-test("Sign-in validation gates version and username", () => {
-    assert.strictEqual(new SignInMessage(GAME_VERSION, "alice").validate(null, null), true);
-    assert.strictEqual(new SignInMessage(`${GAME_VERSION}-stale`, "alice").validate(null, null), false);
-    assert.strictEqual(new SignInMessage(GAME_VERSION, "alice bob").validate(null, null), true, "single space allowed");
-    assert.strictEqual(new SignInMessage(GAME_VERSION, " alice").validate(null, null), false, "leading space");
-    assert.strictEqual(new SignInMessage(GAME_VERSION, "alice ").validate(null, null), false, "trailing space");
-    assert.strictEqual(new SignInMessage(GAME_VERSION, "ali  ce").validate(null, null), false, "double space");
+test("Sign-in validation gates version and token presence", () => {
+    assert.strictEqual(new SignInMessage(GAME_VERSION, "signed.jwt.token").validate(null, null), true);
+    assert.strictEqual(new SignInMessage(`${GAME_VERSION}-stale`, "signed.jwt.token").validate(null, null), false);
+    assert.strictEqual(new SignInMessage(GAME_VERSION, "").validate(null, null), false, "empty token");
     assert.strictEqual(new SignInMessage(GAME_VERSION, null).validate(null, null), false);
 });
 

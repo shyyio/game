@@ -67,4 +67,12 @@ export class AbstractSession {
     get playerId() {
         throw new NotImplementedError();
     }
+
+    /**
+     * Whether {@link playerId} is safe to read yet.
+     * @returns {boolean}
+     */
+    get hasPlayerId() {
+        return true;
+    }
 }

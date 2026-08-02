@@ -15,7 +15,7 @@ import {NoticeLayer} from "@/client/NoticeLayer.js";
 import {ConfirmDialogLayer} from "@/client/ConfirmDialogLayer.js";
 import {ClaimResultFeedback} from "@/client/ClaimResultFeedback.js";
 import {
-    AddFriendMessage, AddFriendByUsernameMessage, RemoveFriendMessage, SetPlayerSettingMessage,
+    AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage, SetPlayerSettingMessage,
 } from "@/common/PlayerMessages.js";
 import {SettingCategory} from "@/client/SettingCategory.js";
 import {AbstractPlayerSettingControl} from "@/client/AbstractPlayerSettingControl.js";
@@ -188,10 +188,10 @@ export class Client {
         this.settingsButtonLayer = new SettingsButtonLayer(app);
         // Friend management (account-wide, not gated behind claim mode); sits left of settings.
         this.friendsButtonLayer = new FriendsButtonLayer(app);
-        this.friendsPanelLayer = new FriendsPanelLayer(app, this.cache);
+        this.friendsPanelLayer = new FriendsPanelLayer(app, this.cache, this.session);
         this.friendsButtonLayer.onPress(() => this.friendsPanelLayer.toggle());
-        this.friendsPanelLayer.onAddByUsername(
-            username => this.sendMessage(new AddFriendByUsernameMessage(username)),
+        this.friendsPanelLayer.onAddByCode(
+            code => this.sendMessage(new AddFriendByCodeMessage(code)),
         );
         this.friendsPanelLayer.onAddFriend(playerId => this.sendMessage(new AddFriendMessage(playerId)));
         this.friendsPanelLayer.onUnfriend(playerId => this.sendMessage(new RemoveFriendMessage(playerId)));

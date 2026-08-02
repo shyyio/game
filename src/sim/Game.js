@@ -6,11 +6,12 @@ import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
 import {
-    AddFriendMessage, AddFriendByUsernameMessage, RemoveFriendMessage, SetPlayerSettingMessage,
+    AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage, SetPlayerSettingMessage,
 } from "@/common/PlayerMessages.js";
 import {
-    WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByUsernameResultEvent,
+    WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByCodeResultEvent,
 } from "@/common/PlayerEvents.js";
+import {decodeFriendCode} from "@/common/FriendCode.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {
     OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult, ChunkPermission,
@@ -276,11 +277,12 @@ export class Game {
             return;
         }
 
-        if (message instanceof AddFriendByUsernameMessage) {
-            const record = this.players.findByUsername(message.username);
-            const found = record !== null && record.playerId !== session.playerId;
-            this._handleAddFriend(session, record === null ? PLAYER_ID_NONE : record.playerId);
-            this.bus.publishTo(session.id, new AddFriendByUsernameResultEvent(message.username, found));
+        if (message instanceof AddFriendByCodeMessage) {
+            const decoded = decodeFriendCode(message.code);
+            const playerId = decoded === null ? PLAYER_ID_NONE : decoded;
+            const found = playerId !== PLAYER_ID_NONE && this.players.has(playerId) && playerId !== session.playerId;
+            this._handleAddFriend(session, playerId);
+            this.bus.publishTo(session.id, new AddFriendByCodeResultEvent(message.code, found));
             return;
         }
 
