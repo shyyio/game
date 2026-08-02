@@ -22,6 +22,7 @@ export class RemoteSession extends AbstractSession {
         this._ws = null;
         this._playerId = null;
         this._onClose = null;
+        this._pending = [];
     }
 
     /**
@@ -35,6 +36,10 @@ export class RemoteSession extends AbstractSession {
             const bytes = this._wire.encode(new SignInMessage(GAME_VERSION, this._token));
             this.txBytes += bytes.length;
             ws.send(bytes);
+            for (const message of this._pending) {
+                this.sendMessage(message);
+            }
+            this._pending.length = 0;
         };
         ws.onmessage = event => {
             const bytes = new Uint8Array(event.data);
@@ -68,6 +73,9 @@ export class RemoteSession extends AbstractSession {
      */
     sendMessage(message) {
         if (this._ws === null || this._ws.readyState !== WebSocket.OPEN) {
+            if (this._ws !== null && this._ws.readyState === WebSocket.CONNECTING) {
+                this._pending.push(message);
+            }
             return;
         }
         const bytes = this._wire.encode(message);
