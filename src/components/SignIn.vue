@@ -16,10 +16,6 @@ const connecting = ref(false);
 const connectingOrigin = ref("");
 const sessionToken = ref("");
 
-const usernameRules = [
-  value => USERNAME_PATTERN.test(value) || USERNAME_PATTERN_HINT,
-];
-
 function usernameValid() {
   return USERNAME_PATTERN.test(username.value);
 }
@@ -100,7 +96,7 @@ function back() {
         <v-text-field
             v-model="username"
             label="Name"
-            :rules="usernameRules"
+            :hint="USERNAME_PATTERN_HINT"
             autofocus
             @keyup.enter="login"
         />

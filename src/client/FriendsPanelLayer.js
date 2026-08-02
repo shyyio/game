@@ -1,8 +1,10 @@
 import {Container} from "pixi.js";
 import {ManagedPanel, UIPanel} from "@/client/UIPanel.js";
 import {TextInput} from "@/client/TextInput.js";
+import {SelectableText} from "@/client/SelectableText.js";
 import {buildPanelButton} from "@/client/panelButton.js";
 import {ROW_HEIGHT} from "@/client/PanelStack.js";
+import {panelText, TextRole} from "@/client/PanelText.js";
 import {ViewMode, viewportChunks} from "@/client/constants.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT} from "@/client/Theme.js";
 import {isValidFriendCode} from "@/common/FriendCode.js";
@@ -42,6 +44,7 @@ export class FriendsPanelLayer extends Container {
         this.visible = false;
         this._managed = new ManagedPanel();
         this._codeInput = null;
+        this._ownCodeSelection = null;
         this._pendingCode = "";
         this._onAddByCode = null;
         this._onAddFriend = null;
@@ -134,6 +137,10 @@ export class FriendsPanelLayer extends Container {
             this._codeInput.blur();
             this._codeInput = null;
         }
+        if (this._ownCodeSelection !== null) {
+            this._ownCodeSelection.destroy();
+            this._ownCodeSelection = null;
+        }
         this._managed.hide();
     }
 
@@ -209,11 +216,13 @@ export class FriendsPanelLayer extends Container {
 
         stack.header("Add by code");
         const ownFriendCode = this._claims.ownFriendCode;
+        let ownCode;
         if (ownFriendCode !== null) {
-            stack.text(`Your code: ${ownFriendCode}`);
+            ownCode = ownFriendCode;
         } else {
-            stack.text("Your code: (connecting...)");
+            ownCode = "(connecting...)";
         }
+        stack.row((row) => this._fillOwnCodeRow(row, ownCode));
         stack.row((row) => this._fillCodeRow(row, stack.contentWidth));
     }
 
@@ -271,6 +280,33 @@ export class FriendsPanelLayer extends Container {
         const button = buildPanelButton(this.textureRegistry, "Add", ACTIVE_ACCENT, submit);
         button.x = input.x + input.width + INPUT_GAP;
         row.addChild(button);
+    }
+
+    /**
+     * The "Your code:" label plus the code itself; only the code is selectable/copyable, via a
+     * {@link SelectableText} overlay kept pointed at the current row's Text (a fresh instance
+     * every rebuild).
+     * @private
+     * @param {Container} row
+     * @param {string} ownCode
+     * @returns {void}
+     */
+    _fillOwnCodeRow(row, ownCode) {
+        const label = panelText("Your code: ", TextRole.BODY);
+        label.y = (ROW_HEIGHT - label.height) / 2;
+        row.addChild(label);
+
+        const code = panelText(ownCode, TextRole.BODY);
+        code.x = label.width;
+        code.y = (ROW_HEIGHT - code.height) / 2;
+        row.addChild(code);
+
+        if (this._ownCodeSelection === null) {
+            this._ownCodeSelection = new SelectableText(this._app, code);
+        } else {
+            this._ownCodeSelection.setTarget(code);
+        }
+        this._ownCodeSelection.setText(ownCode);
     }
 
     /**
