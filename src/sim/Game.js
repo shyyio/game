@@ -11,7 +11,6 @@ import {
 import {
     WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByCodeResultEvent,
 } from "@/common/PlayerEvents.js";
-import {decodeFriendCode} from "@/common/FriendCode.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {
     OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult, ChunkPermission,
@@ -175,7 +174,7 @@ export class Game {
      */
     _syncPlayerState(session) {
         const record = this.players.byId(session.playerId);
-        this.bus.publishTo(session.id, new WelcomeEvent(record.playerId, record.maxChunks));
+        this.bus.publishTo(session.id, new WelcomeEvent(record.playerId, record.maxChunks, record.friendCode));
         this.syncUsernames(session.id, [session.playerId]);
         const ownChunks = [...this.claims.chunksOf(session.playerId)];
         const ownPermissions = ownChunks.map(chunk => this.claims.permissionOf(chunk));
@@ -278,9 +277,9 @@ export class Game {
         }
 
         if (message instanceof AddFriendByCodeMessage) {
-            const decoded = decodeFriendCode(message.code);
-            const playerId = decoded === null ? PLAYER_ID_NONE : decoded;
-            const found = playerId !== PLAYER_ID_NONE && this.players.has(playerId) && playerId !== session.playerId;
+            const target = this.players.byFriendCode(message.code);
+            const playerId = target === undefined ? PLAYER_ID_NONE : target.playerId;
+            const found = playerId !== PLAYER_ID_NONE && playerId !== session.playerId;
             this._handleAddFriend(session, playerId);
             this.bus.publishTo(session.id, new AddFriendByCodeResultEvent(message.code, found));
             return;

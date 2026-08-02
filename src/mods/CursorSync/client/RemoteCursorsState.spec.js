@@ -15,7 +15,7 @@ function stateWithOwnPlayer(ownPlayerId) {
     state.register("chunkClaims", CHUNK_CLAIMS_SCHEMA, new ChunkClaimsWriter(state), new ChunkClaimsView());
     state.register("playerSettings", PLAYER_SETTINGS_SCHEMA, new PlayerSettingsWriter(state));
     state.register("remoteCursors", REMOTE_CURSORS_SCHEMA, new RemoteCursorsWriter(state));
-    state.onEvent(new WelcomeEvent(ownPlayerId, 9));
+    state.onEvent(new WelcomeEvent(ownPlayerId, 9, "0001-2A3B"));
     const upserts = [];
     const removes = [];
     state.subscribe("remoteCursors.byPlayer", (playerId, cursor) => {

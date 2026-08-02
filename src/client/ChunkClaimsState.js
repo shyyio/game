@@ -11,6 +11,9 @@ import {AbstractCacheWriter, AbstractCacheView, schemaScalar, schemaMap, schemaS
 export const CHUNK_CLAIMS_SCHEMA = {
     ownPlayerId: schemaScalar(null),
     maxChunks: schemaScalar(DEFAULT_MAX_CHUNKS),
+    // Cached from the welcome at sign-in; never re-fetched, so opening the friends panel never
+    // hits the server.
+    ownFriendCode: schemaScalar(null),
     // Last-seen ownership mirror; entries persist until a fresher look (subscribe seed or
     // overworld stamp) corrects them.
     ownerByChunk: schemaMap(),
@@ -38,6 +41,7 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
         if (event instanceof WelcomeEvent) {
             this._state.set("chunkClaims.ownPlayerId", event.playerId);
             this._state.set("chunkClaims.maxChunks", event.maxChunks);
+            this._state.set("chunkClaims.ownFriendCode", event.friendCode);
             return;
         }
         if (event instanceof FriendListEvent) {
@@ -137,6 +141,13 @@ export class ChunkClaimsView extends AbstractCacheView {
      */
     get maxChunks() {
         return this._state.get("chunkClaims.maxChunks");
+    }
+
+    /**
+     * @returns {string|null} null until the welcome arrives
+     */
+    get ownFriendCode() {
+        return this._state.get("chunkClaims.ownFriendCode");
     }
 
     /**

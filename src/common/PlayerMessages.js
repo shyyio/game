@@ -1,6 +1,6 @@
 import {AbstractMessage} from "@/common/AbstractMessage.js";
 import {GAME_VERSION} from "@/common/constants.js";
-import {decodeFriendCode} from "@/common/FriendCode.js";
+import {isValidFriendCode} from "@/common/FriendCode.js";
 
 /**
  * The first frame on a fresh connection: authenticates the sender by a signed join token from
@@ -76,7 +76,7 @@ export class AddFriendByCodeMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return typeof this.code === "string" && decodeFriendCode(this.code) !== null;
+        return typeof this.code === "string" && isValidFriendCode(this.code);
     }
 }
 

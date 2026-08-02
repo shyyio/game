@@ -154,7 +154,7 @@ test("Round-trips the player messages", () => {
 
 test("Round-trips the player events", () => {
     const reg = registry();
-    roundTrip(reg, new WelcomeEvent(7, 9), WelcomeEvent);
+    roundTrip(reg, new WelcomeEvent(7, 9, "0001-2A3B"), WelcomeEvent);
     roundTrip(reg, new PlayerNamesEvent([1, 2], ["alice", "bob"]), PlayerNamesEvent);
     roundTrip(reg, new PlayerNamesEvent([], []), PlayerNamesEvent);
     roundTrip(reg, new FriendListEvent([], []), FriendListEvent);

@@ -5,7 +5,7 @@ import {buildPanelButton} from "@/client/panelButton.js";
 import {ROW_HEIGHT} from "@/client/PanelStack.js";
 import {ViewMode, viewportChunks} from "@/client/constants.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT} from "@/client/Theme.js";
-import {encodeFriendCode, decodeFriendCode} from "@/common/FriendCode.js";
+import {isValidFriendCode} from "@/common/FriendCode.js";
 import {AddFriendByCodeResultEvent, WelcomeEvent} from "@/common/PlayerEvents.js";
 
 const PANEL_WIDTH = 360;
@@ -24,14 +24,12 @@ export class FriendsPanelLayer extends Container {
     /**
      * @param {Application} app
      * @param {ClientCache} state
-     * @param {AbstractSession} session - for the own-account friend code display
      */
-    constructor(app, state, session) {
+    constructor(app, state) {
         super();
         this._app = app;
         this._claims = state.view("chunkClaims");
         this._players = state.view("players");
-        this._session = session;
         this.textureRegistry = null;
         // The game viewport, for the currently-visible-owners roster (set by the host).
         this.viewport = null;
@@ -210,8 +208,9 @@ export class FriendsPanelLayer extends Container {
         }
 
         stack.header("Add by code");
-        if (this._session.hasPlayerId) {
-            stack.text(`Your code: ${encodeFriendCode(this._session.playerId)}`);
+        const ownFriendCode = this._claims.ownFriendCode;
+        if (ownFriendCode !== null) {
+            stack.text(`Your code: ${ownFriendCode}`);
         } else {
             stack.text("Your code: (connecting...)");
         }
@@ -281,7 +280,7 @@ export class FriendsPanelLayer extends Container {
      */
     _submitCode(input) {
         const code = input.value;
-        if (decodeFriendCode(code) === null) {
+        if (!isValidFriendCode(code)) {
             this._onError("Format: XXXX-XXXX");
             return;
         }
