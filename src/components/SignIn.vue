@@ -5,8 +5,7 @@ import {ORIGIN_PATTERN, USERNAME_PATTERN, USERNAME_PATTERN_HINT} from "@/common/
 const STORAGE_USERNAME = "shys-power-up-factory.username";
 const STORAGE_SERVER_URL = "shys-power-up-factory.serverUrl";
 const DEFAULT_SERVER_URL = "ws://localhost:8080";
-// TODO: point at the real central auth server once one is deployed.
-const AUTH_SERVER_URL = "http://localhost:8081";
+const AUTH_SERVER_URL = "https://spup-auth.shyy.io";
 
 const emit = defineEmits(["start"]);
 
@@ -26,7 +25,8 @@ function usernameValid() {
 // Doubles as the origin the client dials and the aud it requests a token for.
 function resolveServerUrl() {
   const withScheme = /^wss?:\/\//i.test(serverUrl.value) ? serverUrl.value : `wss://${serverUrl.value}`;
-  return withScheme.toLowerCase();
+  const withPort = /:[0-9]{1,5}$/.test(withScheme) ? withScheme : `${withScheme}:443`;
+  return withPort.toLowerCase();
 }
 
 function playLocal() {
