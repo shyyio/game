@@ -55,6 +55,13 @@ export class ChunkClaims {
     }
 
     /**
+     * @returns {number} the total number of claimed chunks, across every player
+     */
+    claimedCount() {
+        return this._ownerByChunk.size;
+    }
+
+    /**
      * Derived by scanning the ownership map: claims are rare user-rate operations on a small map.
      * @param {number} playerId
      * @returns {Set<number>}

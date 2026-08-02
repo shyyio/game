@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(dirname "$0")"
-DOMAIN="${1:?usage: install.sh DOMAIN}"
+DOMAIN="${1:?usage: install.sh DOMAIN NAME}"
+NAME="${2:?usage: install.sh DOMAIN NAME}"
 
 hostnamectl set-hostname "$DOMAIN"
 grep -qE "^127\.0\.1\.1\s+${DOMAIN}$" /etc/hosts || echo "127.0.1.1 ${DOMAIN}" >> /etc/hosts
@@ -18,7 +19,7 @@ install -m 755 -o app -g app "${SCRIPT_DIR}/post-receive" /home/app/spup.git/hoo
 echo "app ALL=(root) NOPASSWD: /usr/bin/systemctl restart spup" > /etc/sudoers.d/app-restart
 chmod 440 /etc/sudoers.d/app-restart
 
-sed "s/{{DOMAIN}}/${DOMAIN}/" "${SCRIPT_DIR}/spup.service" > /etc/systemd/system/spup.service
+sed -e "s/{{DOMAIN}}/${DOMAIN}/" -e "s/{{NAME}}/${NAME}/" "${SCRIPT_DIR}/spup.service" > /etc/systemd/system/spup.service
 systemctl daemon-reload
 systemctl enable spup
 

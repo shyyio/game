@@ -181,6 +181,16 @@ export function formatUptime(startedAtMs) {
 }
 
 /**
+ * The HTTP(S) origin a game server's status endpoint is queried on, derived from its WS(S)
+ * origin: same host:port, "ws"->"http" and "wss"->"https".
+ * @param {string} wsOrigin - e.g. "wss://example.com:443"
+ * @returns {string}
+ */
+export function httpOriginFor(wsOrigin) {
+    return wsOrigin.replace(/^ws/, "http");
+}
+
+/**
  * The map's value under a key, created and stored on first use.
  * @param map {Map}
  * @param key {*}
