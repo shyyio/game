@@ -10,10 +10,10 @@ import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
 import {WorkerAssignmentEvent, WorkerAssignmentBatchEvent} from "@/common/WorkerEvents.js";
 import {
-    SignInMessage, AddFriendMessage, AddFriendByUsernameMessage, RemoveFriendMessage, SetPlayerSettingMessage,
+    SignInMessage, AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage, SetPlayerSettingMessage,
 } from "@/common/PlayerMessages.js";
 import {
-    WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByUsernameResultEvent,
+    WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByCodeResultEvent,
 } from "@/common/PlayerEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent} from "@/common/ClaimEvents.js";
@@ -65,8 +65,8 @@ const CORE_WIRE_CLASSES = [
     ClaimResultEvent,
     SetPlayerSettingMessage,
     SetChunkPermissionMessage,
-    AddFriendByUsernameMessage,
-    AddFriendByUsernameResultEvent,
+    AddFriendByCodeMessage,
+    AddFriendByCodeResultEvent,
 ];
 
 /**

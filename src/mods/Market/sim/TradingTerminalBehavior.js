@@ -174,7 +174,10 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         if (remaining < fixedPrice) {
             return;
         }
-        engine.submitCreate(outPort, itemType, item[outPort] === EMPTY);
+        if (item[outPort] !== EMPTY) {
+            return;
+        }
+        engine.submitCreate(outPort, itemType, true);
         terminal.pendingPrice[row] = fixedPrice;
         terminal.pendingIsNpc[row] = 1;
         reservedBalance.set(owner, remaining - fixedPrice);

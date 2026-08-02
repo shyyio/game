@@ -14,5 +14,5 @@ function onStart(options) {
 
 <template>
   <SignIn v-if="start === null" @start="onStart"/>
-  <Game v-else :mode="start.mode" :username="start.username" :server-url="start.serverUrl"/>
+  <Game v-else :mode="start.mode" :username="start.username" :token="start.token" :server-url="start.serverUrl"/>
 </template>

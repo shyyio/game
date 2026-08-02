@@ -150,3 +150,8 @@ export const USERNAME_PATTERN_HINT = "3-12 chars: letters, digits, _; single spa
 // Sign-in with a differing version is rejected; bump package.json's version on any
 // wire- or rule-incompatible change.
 export const GAME_VERSION = packageJson.version;
+
+// A game server's canonical origin per docs/auth.md: scheme, lowercase host, explicit port, no
+// trailing slash. Shared by the auth server (validates /join) and the client (normalizes before
+// asking for a token), so the two never disagree on what counts as a valid origin.
+export const ORIGIN_PATTERN = /^wss?:\/\/[a-z0-9.-]+:[0-9]{1,5}$/;

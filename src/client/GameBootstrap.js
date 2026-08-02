@@ -18,7 +18,7 @@ const LOCAL_TICK_INTERVAL_MS = 600;
  * Builds the mod registry, session (local sim or remote), Client, and its input handler.
  * @param {Application} app
  * @param {ClientViewport} viewport
- * @param {{mode: string, username: string, serverUrl: string}} props
+ * @param {{mode: string, username: string, token: string, serverUrl: string}} props
  * @returns {Promise<{client: Client, session: AbstractSession, game: Game|null, inputHandler: InputHandler}>}
  */
 export async function createClient(app, viewport, props) {
@@ -32,7 +32,7 @@ export async function createClient(app, viewport, props) {
     let game = null;
     let session;
     if (props.mode === "remote") {
-        session = new RemoteSession(new WireRegistry(modRegistry), props.serverUrl, props.username);
+        session = new RemoteSession(new WireRegistry(modRegistry), props.serverUrl, props.token);
     } else {
         game = new Game(modRegistry, new GameEngine(modRegistry), new ClientSaveStore());
         await game.init();

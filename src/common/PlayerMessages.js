@@ -1,25 +1,27 @@
 import {AbstractMessage} from "@/common/AbstractMessage.js";
-import {GAME_VERSION, USERNAME_PATTERN} from "@/common/constants.js";
+import {GAME_VERSION} from "@/common/constants.js";
+import {decodeFriendCode} from "@/common/FriendCode.js";
 
 /**
- * The first frame on a fresh connection: authenticates the sender by username. Handled by the
- * server transport before a session exists, never dispatched through the engine.
+ * The first frame on a fresh connection: authenticates the sender by a signed join token from
+ * the auth server. Handled by the server transport before a session exists, never dispatched
+ * through the engine.
  */
 export class SignInMessage extends AbstractMessage {
 
     static wireFields = {
         version: "string",
-        username: "string",
+        token: "string",
     };
 
     /**
      * @param {string} version
-     * @param {string} username
+     * @param {string} token
      */
-    constructor(version, username) {
+    constructor(version, token) {
         super();
         this.version = version;
-        this.username = username;
+        this.token = token;
     }
 
     /**
@@ -28,7 +30,7 @@ export class SignInMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return this.version === GAME_VERSION && typeof this.username === "string" && USERNAME_PATTERN.test(this.username);
+        return this.version === GAME_VERSION && typeof this.token === "string" && this.token.length > 0;
     }
 }
 
@@ -51,21 +53,21 @@ export class AddFriendMessage extends AbstractMessage {
 }
 
 /**
- * Grants a player build rights in the sender's chunks, by username; an unknown username is
+ * Grants a player build rights in the sender's chunks, by friend code; an unknown code is
  * silently ignored.
  */
-export class AddFriendByUsernameMessage extends AbstractMessage {
+export class AddFriendByCodeMessage extends AbstractMessage {
 
     static wireFields = {
-        username: "string",
+        code: "string",
     };
 
     /**
-     * @param {string} username
+     * @param {string} code
      */
-    constructor(username) {
+    constructor(code) {
         super();
-        this.username = username;
+        this.code = code;
     }
 
     /**
@@ -74,7 +76,7 @@ export class AddFriendByUsernameMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return typeof this.username === "string" && USERNAME_PATTERN.test(this.username);
+        return typeof this.code === "string" && decodeFriendCode(this.code) !== null;
     }
 }
 

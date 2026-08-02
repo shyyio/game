@@ -2,7 +2,7 @@ import uWS from "uWebSockets.js";
 import {SignInMessage} from "@/common/PlayerMessages.js";
 import {WebSocketSession} from "@/server/WebSocketSession.js";
 import {GAME_VERSION} from "@/common/constants.js";
-import {formatBytes} from "@/common/util.js";
+import {formatBytes, formatUptime} from "@/common/util.js";
 
 // Application close codes (4000-4999).
 const CLOSE_CODE_BAD_SIGN_IN = 4001;
@@ -12,7 +12,6 @@ const CLOSE_CODE_SUPERSEDED = 4003;
 const MAX_PAYLOAD_BYTES = 64 * 1024;
 const MAX_BACKPRESSURE_BYTES = 1024 * 1024;
 const IDLE_TIMEOUT_S = 120;
-const MINUTES_PER_DAY = 24 * 60;
 
 /**
  * The uWebSockets.js front end: accepts connections, authenticates the sign-in frame, and pumps
@@ -23,10 +22,14 @@ export class GameServer {
     /**
      * @param {Game} game
      * @param {GameAPI} api
+     * @param {JwksVerifier} jwksVerifier
+     * @param {string} origin - this server's own canonical origin, checked against a token's aud
      */
-    constructor(game, api) {
+    constructor(game, api, jwksVerifier, origin) {
         this._game = game;
         this._api = api;
+        this._jwksVerifier = jwksVerifier;
+        this._origin = origin;
         this._listenSocket = null;
         this._startedAtMs = Date.now();
         // playerId -> WebSocketSession, to kick a superseded login.
@@ -99,7 +102,7 @@ export class GameServer {
      * @returns {string}
      */
     _infoScreen(host, scheme) {
-        const uptime = this._formatUptime();
+        const uptime = formatUptime(this._startedAtMs);
         return [
             "+==============================================+",
             "|            SHY'S POWER-UP FACTORY            |",
@@ -112,23 +115,6 @@ export class GameServer {
             `  players    : ${this._sessionsByPlayer.size} online`,
             `  uptime     : ${uptime}`,
         ].join("\n");
-    }
-
-    /**
-     * Uptime as "1day, 23h45m", day part omitted under one day.
-     * @private
-     * @returns {string}
-     */
-    _formatUptime() {
-        const totalMinutes = Math.floor((Date.now() - this._startedAtMs) / 60_000);
-        const days = Math.floor(totalMinutes / MINUTES_PER_DAY);
-        const hours = Math.floor((totalMinutes % MINUTES_PER_DAY) / 60);
-        const minutes = totalMinutes % 60;
-        const clock = `${hours}h${String(minutes).padStart(2, "0")}m`;
-        if (days === 0) {
-            return clock;
-        }
-        return `${days}day, ${clock}`;
     }
 
     /**
@@ -190,7 +176,12 @@ export class GameServer {
             ws.end(CLOSE_CODE_BAD_SIGN_IN);
             return;
         }
-        const record = this._game.players.getOrCreate(message.username);
+        const claims = this._jwksVerifier.verify(message.token, this._origin);
+        if (claims === null) {
+            ws.end(CLOSE_CODE_BAD_SIGN_IN);
+            return;
+        }
+        const record = this._game.players.getOrCreate(claims.sub, claims.name);
         const superseded = this._sessionsByPlayer.get(record.playerId);
         if (superseded !== undefined) {
             // The close callback runs the usual disconnect cleanup.
@@ -201,7 +192,7 @@ export class GameServer {
         ws.getUserData().session = session;
         this._sessionsByPlayer.set(record.playerId, session);
         this._game.connect(session);
-        console.log(`+ ${message.username} (player ${record.playerId}, session ${session.id})`);
+        console.log(`+ ${claims.name} (player ${record.playerId}, session ${session.id})`);
     }
 
     /**

@@ -5,8 +5,8 @@ import {buildPanelButton} from "@/client/panelButton.js";
 import {ROW_HEIGHT} from "@/client/PanelStack.js";
 import {ViewMode, viewportChunks} from "@/client/constants.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT} from "@/client/Theme.js";
-import {USERNAME_PATTERN, USERNAME_PATTERN_HINT} from "@/common/constants.js";
-import {AddFriendByUsernameResultEvent} from "@/common/PlayerEvents.js";
+import {encodeFriendCode, decodeFriendCode} from "@/common/FriendCode.js";
+import {AddFriendByCodeResultEvent, WelcomeEvent} from "@/common/PlayerEvents.js";
 
 const PANEL_WIDTH = 360;
 // Default open position: right edge under the button row, clear of it by this much.
@@ -14,22 +14,24 @@ const ANCHOR_MARGIN_RIGHT = 16;
 const ANCHOR_GAP = 12;
 const INPUT_HEIGHT = ROW_HEIGHT;
 const INPUT_GAP = 8;
-const MAX_USERNAME_LENGTH = 12;
+const MAX_CODE_LENGTH = 9; // "XXXX-XXXX"
 
 /**
- * Friend list/management panel: granted rights, add-by-username field, visible-chunk-owners roster.
+ * Friend list/management panel: granted rights, add-by-code field, visible-chunk-owners roster.
  */
 export class FriendsPanelLayer extends Container {
 
     /**
      * @param {Application} app
      * @param {ClientCache} state
+     * @param {AbstractSession} session - for the own-account friend code display
      */
-    constructor(app, state) {
+    constructor(app, state, session) {
         super();
         this._app = app;
         this._claims = state.view("chunkClaims");
         this._players = state.view("players");
+        this._session = session;
         this.textureRegistry = null;
         // The game viewport, for the currently-visible-owners roster (set by the host).
         this.viewport = null;
@@ -41,9 +43,9 @@ export class FriendsPanelLayer extends Container {
         this.zIndex = 9600;
         this.visible = false;
         this._managed = new ManagedPanel();
-        this._usernameInput = null;
-        this._pendingUsername = "";
-        this._onAddByUsername = null;
+        this._codeInput = null;
+        this._pendingCode = "";
+        this._onAddByCode = null;
         this._onAddFriend = null;
         this._onUnfriend = null;
         this._onError = null;
@@ -55,10 +57,10 @@ export class FriendsPanelLayer extends Container {
     }
 
     /**
-     * @param {function(username: string): void} callback
+     * @param {function(code: string): void} callback
      */
-    onAddByUsername(callback) {
-        this._onAddByUsername = callback;
+    onAddByCode(callback) {
+        this._onAddByCode = callback;
     }
 
     /**
@@ -76,8 +78,8 @@ export class FriendsPanelLayer extends Container {
     }
 
     /**
-     * @param {function(message: string): void} callback fired on a rejected add-by-name (bad
-     * format locally, or unknown name once the server answers)
+     * @param {function(message: string): void} callback fired on a rejected add-by-code (bad
+     * format locally, or unknown code once the server answers)
      */
     onError(callback) {
         this._onError = callback;
@@ -88,8 +90,11 @@ export class FriendsPanelLayer extends Container {
      * @returns {void}
      */
     onEvent(event) {
-        if (event instanceof AddFriendByUsernameResultEvent && event.found === 0) {
-            this._onError(`No player named "${event.username}"`);
+        if (event instanceof AddFriendByCodeResultEvent && event.found === 0) {
+            this._onError(`No player with code "${event.code}"`);
+        }
+        if (event instanceof WelcomeEvent) {
+            this.refresh();
         }
     }
 
@@ -126,10 +131,10 @@ export class FriendsPanelLayer extends Container {
      */
     hide() {
         this.visible = false;
-        if (this._usernameInput !== null) {
+        if (this._codeInput !== null) {
             // Blurs the DOM input before destroying it, so focus doesn't dangle.
-            this._usernameInput.blur();
-            this._usernameInput = null;
+            this._codeInput.blur();
+            this._codeInput = null;
         }
         this._managed.hide();
     }
@@ -204,8 +209,13 @@ export class FriendsPanelLayer extends Container {
             stack.gap();
         }
 
-        stack.header("Add by name");
-        stack.row((row) => this._fillUsernameRow(row, stack.contentWidth));
+        stack.header("Add by code");
+        if (this._session.hasPlayerId) {
+            stack.text(`Your code: ${encodeFriendCode(this._session.playerId)}`);
+        } else {
+            stack.text("Your code: (connecting...)");
+        }
+        stack.row((row) => this._fillCodeRow(row, stack.contentWidth));
     }
 
     /**
@@ -232,7 +242,7 @@ export class FriendsPanelLayer extends Container {
     }
 
     /**
-     * The add-by-username row: a text input plus its Add button. The input is reused across
+     * The add-by-code row: a text input plus its Add button. The input is reused across
      * rebuilds (re-parented into the fresh row) rather than recreated, so its real DOM element
      * doesn't get torn down and flicker on every viewport-triggered refresh.
      * @private
@@ -240,22 +250,22 @@ export class FriendsPanelLayer extends Container {
      * @param {number} contentWidth
      * @returns {void}
      */
-    _fillUsernameRow(row, contentWidth) {
+    _fillCodeRow(row, contentWidth) {
         const addButtonWidth = 70;
-        let input = this._usernameInput;
+        let input = this._codeInput;
         if (input === null) {
             input = new TextInput(
                 this._app,
                 contentWidth - addButtonWidth - INPUT_GAP,
                 INPUT_HEIGHT,
-                MAX_USERNAME_LENGTH,
-                "Name",
+                MAX_CODE_LENGTH,
+                "Code",
             );
-            input.value = this._pendingUsername;
-            this._usernameInput = input;
+            input.value = this._pendingCode;
+            this._codeInput = input;
         }
-        const submit = () => this._submitUsername(input);
-        input.onInput(value => this._pendingUsername = value);
+        const submit = () => this._submitCode(input);
+        input.onInput(value => this._pendingCode = value);
         input.onSubmit(submit);
         row.addChild(input);
 
@@ -269,14 +279,14 @@ export class FriendsPanelLayer extends Container {
      * @param {TextInput} input
      * @returns {void}
      */
-    _submitUsername(input) {
-        const username = input.value;
-        if (!USERNAME_PATTERN.test(username)) {
-            this._onError(USERNAME_PATTERN_HINT);
+    _submitCode(input) {
+        const code = input.value;
+        if (decodeFriendCode(code) === null) {
+            this._onError("Format: XXXX-XXXX");
             return;
         }
-        this._onAddByUsername(username);
-        this._pendingUsername = "";
+        this._onAddByCode(code);
+        this._pendingCode = "";
         input.blur();
     }
 }

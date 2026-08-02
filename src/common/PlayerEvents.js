@@ -69,23 +69,23 @@ export class FriendListEvent extends AbstractEvent {
 }
 
 /**
- * The outcome of an {@link AddFriendByUsernameMessage}: whether the username resolved to another
- * real player. Targeted (publishTo).
+ * The outcome of an {@link AddFriendByCodeMessage}: whether the code resolved to another real
+ * player. Targeted (publishTo).
  */
-export class AddFriendByUsernameResultEvent extends AbstractEvent {
+export class AddFriendByCodeResultEvent extends AbstractEvent {
 
     static wireFields = {
-        username: "string",
+        code: "string",
         found: "int32",
     };
 
     /**
-     * @param {string} username
+     * @param {string} code
      * @param {boolean} found
      */
-    constructor(username, found) {
+    constructor(code, found) {
         super();
-        this.username = username;
+        this.code = code;
         this.found = found ? 1 : 0;
     }
 }

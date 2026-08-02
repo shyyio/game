@@ -1,4 +1,4 @@
-import {DEFAULT_MAX_CHUNKS, USERNAME_PATTERN} from "@/common/constants.js";
+import {DEFAULT_MAX_CHUNKS} from "@/common/constants.js";
 import {syntheticUsername} from "@/common/util.js";
 
 export const PLAYER_RECORD = "Player";
@@ -8,11 +8,14 @@ export class PlayerRecord {
 
     /**
      * @param {number} playerId
-     * @param {string} username
+     * @param {string|null} sub - the auth server's pairwise identity for this player on this
+     *     server, or null for a locally-registered record (ensure()) with no auth server involved
+     * @param {string} username - a display name only; not unique
      * @param {number} maxChunks
      */
-    constructor(playerId, username, maxChunks) {
+    constructor(playerId, sub, username, maxChunks) {
         this.playerId = playerId;
+        this.sub = sub;
         this.username = username;
         this.maxChunks = maxChunks;
 
@@ -24,8 +27,9 @@ export class PlayerRecord {
 }
 
 /**
- * The persistent player roster: stable ids, usernames, chunk allowances, friend lists. Identity
- * resolution lives in getOrCreate — the seam a Steam-SSO lookup replaces later.
+ * The persistent player roster: stable ids, auth-server identities, display names, chunk
+ * allowances, friend lists. Identity resolution lives in getOrCreate, keyed by the auth server's
+ * pairwise sub — display names are cosmetic only and may repeat across accounts.
  */
 export class PlayerRegistry {
 
@@ -38,24 +42,25 @@ export class PlayerRegistry {
         /**
          * @type {Map<string, PlayerRecord>}
          */
-        this._byUsername = new Map();
+        this._bySub = new Map();
         this._nextPlayerId = 1;
     }
 
     /**
-     * The player named `username`, registered on first sight.
+     * The player identified by `sub`, registered on first sight.
+     * @param {string} sub
      * @param {string} username
      * @returns {PlayerRecord}
      */
-    getOrCreate(username) {
-        if (!USERNAME_PATTERN.test(username)) {
-            throw new RangeError(`Invalid username: ${JSON.stringify(username)}`);
+    getOrCreate(sub, username) {
+        if (typeof sub !== "string" || sub.length === 0) {
+            throw new RangeError(`Invalid sub: ${JSON.stringify(sub)}`);
         }
-        const existing = this._byUsername.get(username);
+        const existing = this._bySub.get(sub);
         if (existing !== undefined) {
             return existing;
         }
-        return this._register(new PlayerRecord(this._nextPlayerId, username, DEFAULT_MAX_CHUNKS));
+        return this._register(new PlayerRecord(this._nextPlayerId, sub, username, DEFAULT_MAX_CHUNKS));
     }
 
     /**
@@ -68,7 +73,7 @@ export class PlayerRegistry {
         if (existing !== undefined) {
             return existing;
         }
-        return this._register(new PlayerRecord(playerId, syntheticUsername(playerId), DEFAULT_MAX_CHUNKS));
+        return this._register(new PlayerRecord(playerId, null, syntheticUsername(playerId), DEFAULT_MAX_CHUNKS));
     }
 
     /**
@@ -79,7 +84,9 @@ export class PlayerRegistry {
      */
     _register(record) {
         this._byId.set(record.playerId, record);
-        this._byUsername.set(record.username, record);
+        if (record.sub !== null) {
+            this._bySub.set(record.sub, record);
+        }
         if (record.playerId >= this._nextPlayerId) {
             this._nextPlayerId = record.playerId + 1;
         }
@@ -104,18 +111,6 @@ export class PlayerRegistry {
      */
     has(playerId) {
         return this._byId.has(playerId);
-    }
-
-    /**
-     * @param {string} username
-     * @returns {PlayerRecord|null}
-     */
-    findByUsername(username) {
-        const record = this._byUsername.get(username);
-        if (record === undefined) {
-            return null;
-        }
-        return record;
     }
 
     /**
@@ -190,6 +185,7 @@ export class PlayerRegistry {
         for (const record of this._byId.values()) {
             playerRows.push({
                 player_id: record.playerId,
+                sub: record.sub,
                 username: record.username,
                 max_chunks: record.maxChunks,
             });
@@ -202,6 +198,7 @@ export class PlayerRegistry {
                 name: PLAYER_RECORD,
                 fields: [
                     {name: "player_id", kind: "integer"},
+                    {name: "sub", kind: "text"},
                     {name: "username", kind: "text"},
                     {name: "max_chunks", kind: "integer"},
                 ],
@@ -225,13 +222,14 @@ export class PlayerRegistry {
      */
     deserializeRecords(playerTable, friendTable) {
         this._byId.clear();
-        this._byUsername.clear();
+        this._bySub.clear();
         this._nextPlayerId = 1;
         if (playerTable === undefined) {
             return;
         }
         for (const row of playerTable.rows) {
-            this._register(new PlayerRecord(row.player_id, row.username, row.max_chunks));
+            const sub = row.sub === undefined ? null : row.sub;
+            this._register(new PlayerRecord(row.player_id, sub, row.username, row.max_chunks));
         }
         if (friendTable === undefined) {
             return;

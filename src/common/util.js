@@ -161,6 +161,25 @@ export function formatBytes(n) {
     return `${n}B`;
 }
 
+const MINUTES_PER_DAY = 24 * 60;
+
+/**
+ * Elapsed time since startedAtMs as "1day, 23h45m", day part omitted under one day.
+ * @param {number} startedAtMs
+ * @returns {string}
+ */
+export function formatUptime(startedAtMs) {
+    const totalMinutes = Math.floor((Date.now() - startedAtMs) / 60_000);
+    const days = Math.floor(totalMinutes / MINUTES_PER_DAY);
+    const hours = Math.floor((totalMinutes % MINUTES_PER_DAY) / 60);
+    const minutes = totalMinutes % 60;
+    const clock = `${hours}h${String(minutes).padStart(2, "0")}m`;
+    if (days === 0) {
+        return clock;
+    }
+    return `${days}day, ${clock}`;
+}
+
 /**
  * The map's value under a key, created and stored on first use.
  * @param map {Map}

@@ -19,8 +19,8 @@ async function makeGame(saveStore) {
 test("players, friends, and claims survive a save/load", async () => {
     const store = new NodeSaveStore(":memory:");
     const game = await makeGame(store);
-    const alice = game.players.getOrCreate("alice");
-    const bob = game.players.getOrCreate("bob");
+    const alice = game.players.getOrCreate("sub-alice", "alice");
+    const bob = game.players.getOrCreate("sub-bob", "bob");
     bob.maxChunks = 20;
     const aliceSession = new CapturingSession(alice.playerId);
     game.connect(aliceSession);
@@ -38,14 +38,14 @@ test("players, friends, and claims survive a save/load", async () => {
     assert.equal(restored.claims.ownerOf(chunkId(64, 0)), alice.playerId);
     assert.equal(restored.claims.countOf(alice.playerId), 2);
     // The id counter resumes past the loaded players.
-    assert.equal(restored.players.getOrCreate("carol").playerId, 3);
+    assert.equal(restored.players.getOrCreate("sub-carol", "carol").playerId, 3);
 });
 
 test("player settings survive a save/load", async () => {
     const store = new NodeSaveStore(":memory:");
     const game = await makeGame(store);
-    const alice = game.players.getOrCreate("alice");
-    const bob = game.players.getOrCreate("bob");
+    const alice = game.players.getOrCreate("sub-alice", "alice");
+    const bob = game.players.getOrCreate("sub-bob", "bob");
     game.playerSettings.set(alice.playerId, 1, 1);
     game.playerSettings.set(alice.playerId, 2, 0);
     game.playerSettings.set(bob.playerId, 1, 0);
