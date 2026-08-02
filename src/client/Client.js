@@ -188,7 +188,7 @@ export class Client {
         this.settingsButtonLayer = new SettingsButtonLayer(app);
         // Friend management (account-wide, not gated behind claim mode); sits left of settings.
         this.friendsButtonLayer = new FriendsButtonLayer(app);
-        this.friendsPanelLayer = new FriendsPanelLayer(app, this.cache, this.session);
+        this.friendsPanelLayer = new FriendsPanelLayer(app, this.cache);
         this.friendsButtonLayer.onPress(() => this.friendsPanelLayer.toggle());
         this.friendsPanelLayer.onAddByCode(
             code => this.sendMessage(new AddFriendByCodeMessage(code)),

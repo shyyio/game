@@ -1,5 +1,6 @@
 import {DEFAULT_MAX_CHUNKS} from "@/common/constants.js";
 import {syntheticUsername} from "@/common/util.js";
+import {generateFriendCode, normalizeFriendCode} from "@/common/FriendCode.js";
 
 export const PLAYER_RECORD = "Player";
 export const FRIEND_RECORD = "Friend";
@@ -12,12 +13,14 @@ export class PlayerRecord {
      *     server, or null for a locally-registered record (ensure()) with no auth server involved
      * @param {string} username - a display name only; not unique
      * @param {number} maxChunks
+     * @param {string} friendCode - random, unguessable; not derived from playerId or sub
      */
-    constructor(playerId, sub, username, maxChunks) {
+    constructor(playerId, sub, username, maxChunks, friendCode) {
         this.playerId = playerId;
         this.sub = sub;
         this.username = username;
         this.maxChunks = maxChunks;
+        this.friendCode = friendCode;
 
         /**
          * @type {Set<number>} playerIds allowed to build in this player's chunks
@@ -43,6 +46,11 @@ export class PlayerRegistry {
          * @type {Map<string, PlayerRecord>}
          */
         this._bySub = new Map();
+
+        /**
+         * @type {Map<string, PlayerRecord>} keyed by normalizeFriendCode() output
+         */
+        this._byFriendCode = new Map();
         this._nextPlayerId = 1;
     }
 
@@ -60,7 +68,7 @@ export class PlayerRegistry {
         if (existing !== undefined) {
             return existing;
         }
-        return this._register(new PlayerRecord(this._nextPlayerId, sub, username, DEFAULT_MAX_CHUNKS));
+        return this._register(new PlayerRecord(this._nextPlayerId, sub, username, DEFAULT_MAX_CHUNKS, this._freshFriendCode()));
     }
 
     /**
@@ -73,7 +81,32 @@ export class PlayerRegistry {
         if (existing !== undefined) {
             return existing;
         }
-        return this._register(new PlayerRecord(playerId, null, syntheticUsername(playerId), DEFAULT_MAX_CHUNKS));
+        return this._register(new PlayerRecord(playerId, null, syntheticUsername(playerId), DEFAULT_MAX_CHUNKS, this._freshFriendCode()));
+    }
+
+    /**
+     * @param {string} code - as typed by a player, any casing/spacing/dashing
+     * @returns {PlayerRecord|undefined}
+     */
+    byFriendCode(code) {
+        const normalized = normalizeFriendCode(code);
+        if (normalized === null) {
+            return undefined;
+        }
+        return this._byFriendCode.get(normalized);
+    }
+
+    /**
+     * A friend code not already assigned to another player on this server.
+     * @private
+     * @returns {string}
+     */
+    _freshFriendCode() {
+        let code = generateFriendCode();
+        while (this._byFriendCode.has(normalizeFriendCode(code))) {
+            code = generateFriendCode();
+        }
+        return code;
     }
 
     /**
@@ -87,6 +120,7 @@ export class PlayerRegistry {
         if (record.sub !== null) {
             this._bySub.set(record.sub, record);
         }
+        this._byFriendCode.set(normalizeFriendCode(record.friendCode), record);
         if (record.playerId >= this._nextPlayerId) {
             this._nextPlayerId = record.playerId + 1;
         }
@@ -188,6 +222,7 @@ export class PlayerRegistry {
                 sub: record.sub,
                 username: record.username,
                 max_chunks: record.maxChunks,
+                friend_code: record.friendCode,
             });
             for (const friendId of record.friends) {
                 friendRows.push({player_id: record.playerId, friend_id: friendId});
@@ -201,6 +236,7 @@ export class PlayerRegistry {
                     {name: "sub", kind: "text"},
                     {name: "username", kind: "text"},
                     {name: "max_chunks", kind: "integer"},
+                    {name: "friend_code", kind: "text"},
                 ],
                 rows: playerRows,
             },
@@ -223,13 +259,16 @@ export class PlayerRegistry {
     deserializeRecords(playerTable, friendTable) {
         this._byId.clear();
         this._bySub.clear();
+        this._byFriendCode.clear();
         this._nextPlayerId = 1;
         if (playerTable === undefined) {
             return;
         }
         for (const row of playerTable.rows) {
             const sub = row.sub === undefined ? null : row.sub;
-            this._register(new PlayerRecord(row.player_id, sub, row.username, row.max_chunks));
+            // Older saves predate friend codes; mint one on load rather than rejecting the save.
+            const friendCode = row.friend_code === undefined ? this._freshFriendCode() : row.friend_code;
+            this._register(new PlayerRecord(row.player_id, sub, row.username, row.max_chunks, friendCode));
         }
         if (friendTable === undefined) {
             return;

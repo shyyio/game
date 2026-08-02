@@ -91,3 +91,39 @@ test("a locally-ensured record (no auth server involved) never collides on sub",
     // Both ensured records have sub=null; getOrCreate must not treat that as a shared identity.
     assert.equal(players.getOrCreate("sub-alice", "alice").playerId, 3);
 });
+
+test("friend codes are random, unique per player, and not tied to playerId", () => {
+    const players = new PlayerRegistry();
+    const alice = players.getOrCreate("sub-alice", "alice");
+    const bob = players.getOrCreate("sub-bob", "bob");
+    assert.notEqual(alice.friendCode, bob.friendCode);
+    assert.equal(players.byFriendCode(alice.friendCode), alice);
+    assert.equal(players.byFriendCode(bob.friendCode), bob);
+});
+
+test("byFriendCode is case/format-tolerant and returns undefined for an unknown or malformed code", () => {
+    const players = new PlayerRegistry();
+    const alice = players.getOrCreate("sub-alice", "alice");
+    assert.equal(players.byFriendCode(alice.friendCode.toLowerCase()), alice);
+    assert.equal(players.byFriendCode(alice.friendCode.replace("-", "")), alice);
+    assert.equal(players.byFriendCode("not-a-code"), undefined);
+});
+
+test("friend codes survive a round-trip; a save from before friend codes existed gets one minted", () => {
+    const players = new PlayerRegistry();
+    const alice = players.getOrCreate("sub-alice", "alice");
+
+    const [playerTable, friendTable] = players.serializeRecords();
+    const restored = new PlayerRegistry();
+    restored.deserializeRecords(playerTable, friendTable);
+    assert.equal(restored.byId(1).friendCode, alice.friendCode);
+
+    const [legacyTable] = players.serializeRecords();
+    for (const row of legacyTable.rows) {
+        delete row.friend_code;
+    }
+    const migrated = new PlayerRegistry();
+    migrated.deserializeRecords(legacyTable, friendTable);
+    assert.equal(typeof migrated.byId(1).friendCode, "string");
+    assert.equal(migrated.byFriendCode(migrated.byId(1).friendCode), migrated.byId(1));
+});

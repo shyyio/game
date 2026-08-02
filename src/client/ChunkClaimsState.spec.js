@@ -17,14 +17,15 @@ function claimsState() {
 
 test("welcome fills identity", () => {
     const {state, claims} = claimsState();
-    state.onEvent(new WelcomeEvent(3, 12));
+    state.onEvent(new WelcomeEvent(3, 12, "0001-2A3B"));
     assert.equal(claims.ownPlayerId, 3);
     assert.equal(claims.maxChunks, 12);
+    assert.equal(claims.ownFriendCode, "0001-2A3B");
 });
 
 test("own-claims sync fills the own set, the ownership mirror, and the permission mirror", () => {
     const {state, claims} = claimsState();
-    state.onEvent(new WelcomeEvent(1, 9));
+    state.onEvent(new WelcomeEvent(1, 9, "0001-2A3B"));
     state.onEvent(new OwnClaimsSyncEvent(
         [100, 101],
         [ChunkPermission.PERMISSION_FRIENDS, ChunkPermission.PERMISSION_ONLY_ME],
@@ -38,7 +39,7 @@ test("own-claims sync fills the own set, the ownership mirror, and the permissio
 
 test("updates apply deltas to the mirror and the own set", () => {
     const {state, claims} = claimsState();
-    state.onEvent(new WelcomeEvent(1, 9));
+    state.onEvent(new WelcomeEvent(1, 9, "0001-2A3B"));
     const touched = [];
     state.subscribe("chunkClaims.ownerByChunk", (chunk, owner) => touched.push([chunk, owner]));
 
@@ -58,7 +59,7 @@ test("updates apply deltas to the mirror and the own set", () => {
 
 test("a chunk subscribe resets a stale foreign entry ahead of the seeded update", () => {
     const {state, claims} = claimsState();
-    state.onEvent(new WelcomeEvent(1, 9));
+    state.onEvent(new WelcomeEvent(1, 9, "0001-2A3B"));
     state.onEvent(new ChunkClaimUpdateEvent(100, 1));
     state.onEvent(new ChunkClaimUpdateEvent(101, 2));
 
@@ -71,7 +72,7 @@ test("a chunk subscribe resets a stale foreign entry ahead of the seeded update"
 
 test("an overworld snapshot stamps its rect's claims and sheds stale foreign entries", () => {
     const {state, claims} = claimsState();
-    state.onEvent(new WelcomeEvent(1, 9));
+    state.onEvent(new WelcomeEvent(1, 9, "0001-2A3B"));
     const inRect = chunkOrdinal(0, 0);
     const staleInRect = chunkOrdinal(1, 0);
     const ownInRect = chunkOrdinal(0, 1);
@@ -93,7 +94,7 @@ test("an overworld snapshot stamps its rect's claims and sheds stale foreign ent
 
 test("canBuildIn mirrors the sim gate", () => {
     const {state, claims} = claimsState();
-    state.onEvent(new WelcomeEvent(1, 9));
+    state.onEvent(new WelcomeEvent(1, 9, "0001-2A3B"));
     state.onEvent(new OwnClaimsSyncEvent([100], [ChunkPermission.PERMISSION_FRIENDS]));
     state.onEvent(new ChunkClaimUpdateEvent(101, 2));
     assert.equal(claims.canBuildIn(100), true, "own chunk");
@@ -112,7 +113,7 @@ test("canBuildIn mirrors the sim gate", () => {
 
 test("canBuildIn's only-me permission blocks even a grant", () => {
     const {state, claims} = claimsState();
-    state.onEvent(new WelcomeEvent(1, 9));
+    state.onEvent(new WelcomeEvent(1, 9, "0001-2A3B"));
 
     state.onEvent(new ChunkClaimUpdateEvent(201, 2, ChunkPermission.PERMISSION_ONLY_ME));
     assert.equal(claims.canBuildIn(201), false, "only-me blocks a non-owner outright");
@@ -122,7 +123,7 @@ test("canBuildIn's only-me permission blocks even a grant", () => {
 
 test("claimCheck mirrors the sim's claim rules", () => {
     const {state, claims} = claimsState();
-    state.onEvent(new WelcomeEvent(1, 2));
+    state.onEvent(new WelcomeEvent(1, 2, "0001-2A3B"));
     assert.equal(claims.claimCheck(500), ClaimResult.CLAIM_RESULT_OK, "first claim goes anywhere");
 
     state.onEvent(new OwnClaimsSyncEvent([100], [ChunkPermission.PERMISSION_FRIENDS]));
@@ -136,7 +137,7 @@ test("claimCheck mirrors the sim's claim rules", () => {
 
 test("friends", () => {
     const {state, claims} = claimsState();
-    state.onEvent(new WelcomeEvent(1, 9));
+    state.onEvent(new WelcomeEvent(1, 9, "0001-2A3B"));
     state.onEvent(new FriendListEvent([2], [3]));
     assert.equal(claims.isFriend(2), true);
     assert.equal(claims.isFriend(3), false);
@@ -147,7 +148,7 @@ test("friends", () => {
 
 test("nearbyForeignOwners orders by distance and dedupes a multi-chunk owner", () => {
     const {state, claims} = claimsState();
-    state.onEvent(new WelcomeEvent(1, 9));
+    state.onEvent(new WelcomeEvent(1, 9, "0001-2A3B"));
     const near = chunkOrdinal(1, 0);
     const far = chunkOrdinal(5, 0);
     // Player 2 also owns a second, farther chunk; their nearest one still decides their ranking.
@@ -162,7 +163,7 @@ test("nearbyForeignOwners orders by distance and dedupes a multi-chunk owner", (
 
 test("nearbyForeignOwners skips unclaimed chunks, the own player, and friends", () => {
     const {state, claims} = claimsState();
-    state.onEvent(new WelcomeEvent(1, 9));
+    state.onEvent(new WelcomeEvent(1, 9, "0001-2A3B"));
     state.onEvent(new OwnClaimsSyncEvent([chunkOrdinal(0, 0)], [ChunkPermission.PERMISSION_FRIENDS]));
     state.onEvent(new ChunkClaimUpdateEvent(chunkOrdinal(1, 0), 2));
     state.onEvent(new FriendListEvent([2], []));

@@ -9,16 +9,19 @@ export class WelcomeEvent extends AbstractEvent {
     static wireFields = {
         playerId: "int64",
         maxChunks: "int32",
+        friendCode: "string",
     };
 
     /**
      * @param {number} playerId
      * @param {number} maxChunks
+     * @param {string} friendCode
      */
-    constructor(playerId, maxChunks) {
+    constructor(playerId, maxChunks, friendCode) {
         super();
         this.playerId = playerId;
         this.maxChunks = maxChunks;
+        this.friendCode = friendCode;
     }
 }
 

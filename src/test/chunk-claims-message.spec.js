@@ -13,7 +13,7 @@ import {
 import {
     WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByCodeResultEvent,
 } from "@/common/PlayerEvents.js";
-import {encodeFriendCode} from "@/common/FriendCode.js";
+import {generateFriendCode} from "@/common/FriendCode.js";
 import {BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
@@ -218,31 +218,34 @@ test("a friendship change resyncs both players' lists, names first", async () =>
 
 test("add-friend-by-code resolves the code before granting, and answers found", async () => {
     const {game, alice} = await setup();
-    game.dispatchMessage(new AddFriendByCodeMessage(encodeFriendCode(2)), alice);
+    const bobCode = game.players.byId(BOB).friendCode;
+    game.dispatchMessage(new AddFriendByCodeMessage(bobCode), alice);
 
     const aliceList = alice.events.filter(event => event instanceof FriendListEvent).at(-1);
-    assert.deepEqual(aliceList.friendIds, [2]);
+    assert.deepEqual(aliceList.friendIds, [BOB]);
     const result = alice.events.find(event => event instanceof AddFriendByCodeResultEvent);
-    assert.equal(result.code, encodeFriendCode(2));
+    assert.equal(result.code, bobCode);
     assert.equal(result.found, 1);
 });
 
-test("add-friend-by-code for an unregistered player is silently ignored, and answers not found", async () => {
+test("add-friend-by-code for an unregistered code is silently ignored, and answers not found", async () => {
     const {game, alice} = await setup();
     alice.events.length = 0;
-    game.dispatchMessage(new AddFriendByCodeMessage(encodeFriendCode(999)), alice);
+    const unknownCode = generateFriendCode();
+    game.dispatchMessage(new AddFriendByCodeMessage(unknownCode), alice);
 
     assert.deepEqual(game.players.byId(ALICE).friends, new Set());
     const aliceList = alice.events.filter(event => event instanceof FriendListEvent).at(-1);
     assert.deepEqual(aliceList.friendIds, [], "the unchanged list still re-sends");
     const result = alice.events.find(event => event instanceof AddFriendByCodeResultEvent);
-    assert.equal(result.code, encodeFriendCode(999));
+    assert.equal(result.code, unknownCode);
     assert.equal(result.found, 0);
 });
 
 test("add-friend-by-code on your own code answers not found", async () => {
     const {game, alice} = await setup();
-    game.dispatchMessage(new AddFriendByCodeMessage(encodeFriendCode(ALICE)), alice);
+    const ownCode = game.players.byId(ALICE).friendCode;
+    game.dispatchMessage(new AddFriendByCodeMessage(ownCode), alice);
 
     const result = alice.events.find(event => event instanceof AddFriendByCodeResultEvent);
     assert.equal(result.found, 0);
