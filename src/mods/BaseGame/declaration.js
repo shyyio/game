@@ -1,4 +1,4 @@
-import {AbstractModDeclaration, MarketListingEntry} from "@/sdk/common.js";
+import {AbstractModDeclaration, MarketListingEntry, ItemTextureEntry} from "@/sdk/common.js";
 import {
     RESOURCE_TYPES,
     ExtractorType,
@@ -50,28 +50,33 @@ export class BaseGameDeclaration extends AbstractModDeclaration {
 
     get itemTextures() {
         return {
-            [ITEM_TYPE_WATER]: "items/1",
-            [ITEM_TYPE_SOUL]: "items/2",
-            [ITEM_TYPE_SOYBEAN_SEEDS]: "items/1",
-            [ITEM_TYPE_SOYBEAN]: "items/2",
-            [ITEM_TYPE_MUSHROOM_SPORE]: "items/1",
-            [ITEM_TYPE_MUSHROOM]: "items/2",
-            [ITEM_TYPE_NUTRIENT_SLOP]: "items/1",
-            [ITEM_TYPE_CREATURE]: "items/2",
-            [ITEM_TYPE_ADRENOCHROME]: "items/1",
-            [ITEM_TYPE_BASIC_POTION_BASE]: "items/2",
-            [ITEM_TYPE_OVERLOAD_MIX]: "items/1",
-            [ITEM_TYPE_IRON_ORE]: "items/2",
-            [ITEM_TYPE_COAL]: "items/1",
-            [ITEM_TYPE_COKE]: "items/2",
-            [ITEM_TYPE_OXYGEN]: "items/2",
-            [ITEM_TYPE_RAW_STEEL]: "items/1",
-            [ITEM_TYPE_STEEL_PARTS]: "items/2",
-            [ITEM_TYPE_SAND]: "items/1",
-            [ITEM_TYPE_GLASS]: "items/2",
-            [ITEM_TYPE_EMPTY_SYRINGE]: "items/1",
-            [ITEM_TYPE_STIMPACK]: "items/2",
-            [ITEM_TYPE_WASTE]: "items/1",
+            // Fluids never render as a port item sprite; texture unused, tint irrelevant.
+            [ITEM_TYPE_WATER]: new ItemTextureEntry("items/1-gray"),
+            [ITEM_TYPE_NUTRIENT_SLOP]: new ItemTextureEntry("items/1-gray"),
+            [ITEM_TYPE_OXYGEN]: new ItemTextureEntry("items/2-gray"),
+            [ITEM_TYPE_BASIC_POTION_BASE]: new ItemTextureEntry("items/2-gray"),
+
+            [ITEM_TYPE_SOUL]: new ItemTextureEntry("items/3-gray", 0xC8D8FF),
+            [ITEM_TYPE_SOYBEAN_SEEDS]: new ItemTextureEntry("items/3-gray", 0xD8C878),
+            [ITEM_TYPE_MUSHROOM_SPORE]: new ItemTextureEntry("items/3-gray", 0x9B7FBF),
+
+            [ITEM_TYPE_SOYBEAN]: new ItemTextureEntry("items/4-gray", 0x8FBF5A),
+            [ITEM_TYPE_MUSHROOM]: new ItemTextureEntry("items/4-gray", 0xC98A4B),
+            [ITEM_TYPE_CREATURE]: new ItemTextureEntry("items/4-gray", 0xE8A0A0),
+            [ITEM_TYPE_WASTE]: new ItemTextureEntry("items/4-gray", 0x6B6B47),
+
+            [ITEM_TYPE_IRON_ORE]: new ItemTextureEntry("items/2-gray", 0xA0522D),
+            [ITEM_TYPE_COAL]: new ItemTextureEntry("items/2-gray", 0x3A3A3A),
+            [ITEM_TYPE_COKE]: new ItemTextureEntry("items/2-gray", 0x708090),
+            [ITEM_TYPE_SAND]: new ItemTextureEntry("items/2-gray", 0xE0C878),
+
+            [ITEM_TYPE_ADRENOCHROME]: new ItemTextureEntry("items/1-gray", 0xFF3EA5),
+            [ITEM_TYPE_OVERLOAD_MIX]: new ItemTextureEntry("items/1-gray", 0x4BE04B),
+            [ITEM_TYPE_RAW_STEEL]: new ItemTextureEntry("items/1-gray", 0xB0B8C0),
+            [ITEM_TYPE_STEEL_PARTS]: new ItemTextureEntry("items/1-gray", 0x5B7FA6),
+            [ITEM_TYPE_GLASS]: new ItemTextureEntry("items/1-gray", 0xBEEAF0),
+            [ITEM_TYPE_EMPTY_SYRINGE]: new ItemTextureEntry("items/1-gray", 0xD9D9D9),
+            [ITEM_TYPE_STIMPACK]: new ItemTextureEntry("items/1-gray", 0xE63946),
         };
     }
 

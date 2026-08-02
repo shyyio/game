@@ -1,4 +1,4 @@
-import {AbstractModDeclaration} from "@/sdk/common.js";
+import {AbstractModDeclaration, ItemTextureEntry} from "@/sdk/common.js";
 import {
     BeltDefinition,
     BeltRampDownDefinition,
@@ -53,6 +53,6 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
     }
 
     get itemTextures() {
-        return {3: "items/1"};
+        return {3: new ItemTextureEntry("items/1")};
     }
 }
