@@ -1,16 +1,10 @@
-import {Container, Text, Graphics} from "pixi.js";
-import {UIPanel, buildPanelButton, BUTTON_HEIGHT, GAME_FONT, TILE_SIZE} from "@/sdk/client.js";
-import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT, TOOLBAR_TEXT} from "@/sdk/client.js";
-import {rectEdgePoint, drawPanelConnector, CONNECTOR_PANEL_INSET} from "@/sdk/client.js";
+import {ManagedPanel, UIPanel, buildPanelButton, buildToggleRow, ConnectedPanelLayer, ROW_HEIGHT, ROW_GAP, panelText, TextRole} from "@/sdk/client.js";
+import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT} from "@/sdk/client.js";
 import {ConfigureTradingTerminalMessage} from "../common/messages.js";
 import {MARKET_SNAPSHOT_NONE} from "../common/events.js";
 import {MARKET_MODE_SELL, MARKET_MODE_BUY} from "../common/constants.js";
 
 const PANEL_WIDTH = 340;
-const ROW_HEIGHT = BUTTON_HEIGHT;
-const ROW_GAP = 6;
-const HEADER_HEIGHT = 22;
-const SECTION_GAP = 14;
 const MAX_ITEM_ROWS = 6;
 // Neutral tint for a toggle's inactive side.
 const INACTIVE_TINT = 0x777777;
@@ -18,7 +12,7 @@ const INACTIVE_TINT = 0x777777;
 /**
  * Configures a placed Trading Terminal (mode, item, price); framed-panel HUD layer like FriendsPanelLayer.
  */
-export class TradingTerminalConfigLayer extends Container {
+export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
 
     /**
      * @param {Application} app
@@ -26,20 +20,14 @@ export class TradingTerminalConfigLayer extends Container {
      * @param {AbstractSession} session
      */
     constructor(app, cache, session) {
-        super();
-        this._app = app;
+        super(app);
         this._cache = cache;
         this._session = session;
         this._objects = cache.view("objects");
         this.textureRegistry = null;
-        // Viewport for connector curve; set by host, same as InspectPanelLayer/FriendsPanelLayer.
-        this.viewport = null;
         this.zIndex = 9600;
         this.visible = false;
-        this._panel = null;
-        this._panelHeight = 0;
-        this._savedX = null;
-        this._savedY = null;
+        this._managed = new ManagedPanel();
 
         this._mode = MARKET_MODE_SELL;
         this._itemIndex = 0;
@@ -48,11 +36,14 @@ export class TradingTerminalConfigLayer extends Container {
         // The price row's live Text, mutated in place by the +/- stepper instead of a full rebuild.
         this._priceText = null;
 
-        // Connector curve, drawn behind the panel and redrawn each frame.
-        this._connector = new Graphics();
-        this._connector.eventMode = "none";
-        this.addChild(this._connector);
-        this._app.ticker.add(() => this._drawConnector());
+        this._connectors.set("terminal", () => this._managed.panel, () => {
+            const objectId = this._targetObjectId();
+            const entry = objectId === null ? null : this._objects.get(objectId);
+            if (entry === null) {
+                return null;
+            }
+            return {x: entry.tileX, y: entry.tileY};
+        });
 
         cache.subscribe("market.configTarget", value => {
             if (value === null) {
@@ -101,18 +92,11 @@ export class TradingTerminalConfigLayer extends Container {
      */
     _hide() {
         this.visible = false;
-        if (this._panel !== null) {
-            this._savedX = this._panel.x;
-            this._savedY = this._panel.y;
-            this._panel.destroy({children: true});
-            this._panel = null;
-        }
-        this._connector.clear();
+        this._managed.hide();
     }
 
     /**
-     * Seeds local UI state from a freshly arrived snapshot: the target's own current config if any,
-     * else a sensible default (first tradable item, mode SELL).
+     * Seeds local UI state from a fresh snapshot: target's current config, else a default (first item, SELL).
      * @private
      * @returns {void}
      */
@@ -169,8 +153,6 @@ export class TradingTerminalConfigLayer extends Container {
     }
 
     /**
-     * Builds the body into a detached container first (so its measured height sizes the panel),
-     * then swaps it in, preserving the previous panel's position — mirrors FriendsPanelLayer.
      * @private
      * @returns {void}
      */
@@ -180,133 +162,50 @@ export class TradingTerminalConfigLayer extends Container {
             return;
         }
         const snapshot = this._snapshot();
-        const contentWidth = UIPanel.contentWidthFor(PANEL_WIDTH);
-        const body = new Container();
-        let y = 0;
 
-        if (snapshot === null) {
-            this._addText(body, "Loading...", 0, y);
-            y += ROW_HEIGHT;
-        } else {
-            y = this._addHeader(body, "Mode", y);
-            y = this._addModeRow(body, y);
-            y += SECTION_GAP;
-
-            y = this._addHeader(body, "Item", y);
-            y = this._addItemRows(body, contentWidth, snapshot, y);
-            y += SECTION_GAP;
-
-            y = this._addHeader(body, "Price", y);
-            y = this._addPriceRow(body, contentWidth, snapshot, y);
-            y += SECTION_GAP;
-
-            y = this._addConfirmRow(body, objectId, snapshot, y);
-        }
-
-        const previous = this._panel;
-        let x;
-        let py;
-        if (this._savedX !== null) {
-            x = this._savedX;
-            py = this._savedY;
-        } else {
-            x = (this._app.screen.width - PANEL_WIDTH) / 2;
-            py = (this._app.screen.height - UIPanel.heightForContent(y)) / 2;
-        }
-        if (previous !== null) {
-            x = previous.x;
-            py = previous.y;
-            previous.destroy({children: true});
-        }
-
-        this._panelHeight = UIPanel.heightForContent(y);
-        this._panel = new UIPanel({
+        const panel = this._managed.show({
             app: this._app,
             textureRegistry: this.textureRegistry,
             title: "Trading Terminal",
             titleColor: PANEL_TITLE_TEXT,
             tint: PANEL_TINT,
             width: PANEL_WIDTH,
-            height: this._panelHeight,
             onClose: () => this._cache.writer("market").closeConfig(),
-        });
-        this._panel.x = x;
-        this._panel.y = py;
-        this.addChild(this._panel);
-        this._panel.addContent(body);
+        }, UIPanel.centerPosition(this._app, PANEL_WIDTH), (stack) => this._buildBody(stack, objectId, snapshot));
+        this.addChild(panel);
     }
 
     /**
-     * Redraws the curve from the panel to the terminal's tile. The attach points are ray-rect
-     * boundary hits (continuous, so they never snap) — same construction as InspectPanelLayer's
-     * connector. Runs every frame (world/panel move).
      * @private
+     * @param {PanelStack} stack
+     * @param {number} objectId
+     * @param {MarketSnapshotEvent|null} snapshot
      * @returns {void}
      */
-    _drawConnector() {
-        this._connector.clear();
-        if (!this.visible || this._panel === null || this.viewport === null) {
-            return;
-        }
-        const objectId = this._targetObjectId();
-        const entry = objectId === null ? null : this._objects.get(objectId);
-        if (entry === null) {
+    _buildBody(stack, objectId, snapshot) {
+        if (snapshot === null) {
+            stack.text("Loading...");
             return;
         }
 
-        // Terminal attach point: rect edge toward the panel, in world px (inset scales with zoom).
-        const tx = entry.tileX * TILE_SIZE;
-        const ty = entry.tileY * TILE_SIZE;
-        const terminalRect = {minX: tx, minY: ty, maxX: tx + TILE_SIZE, maxY: ty + TILE_SIZE};
-        const terminalCenterWorld = {x: tx + TILE_SIZE / 2, y: ty + TILE_SIZE / 2};
-        const panelCenterScreen = {x: this._panel.x + PANEL_WIDTH / 2, y: this._panel.y + this._panelHeight / 2};
-        const panelCenterWorld = this.viewport.toWorld(panelCenterScreen.x, panelCenterScreen.y);
-        const terminalEdge = rectEdgePoint(terminalCenterWorld, panelCenterWorld, terminalRect);
-        const head = this.viewport.toScreen(terminalEdge.x, terminalEdge.y);
+        stack.header("Mode");
+        stack.row((row) => this._fillModeRow(row));
+        stack.gap();
 
-        // Panel attach point: rect edge toward the terminal, in screen px.
-        const panelRect = {
-            minX: this._panel.x + CONNECTOR_PANEL_INSET,
-            minY: this._panel.y + CONNECTOR_PANEL_INSET,
-            maxX: this._panel.x + PANEL_WIDTH - CONNECTOR_PANEL_INSET,
-            maxY: this._panel.y + this._panelHeight - CONNECTOR_PANEL_INSET,
-        };
-        const terminalCenterScreen = this.viewport.toScreen(terminalCenterWorld.x, terminalCenterWorld.y);
-        const tail = rectEdgePoint(panelCenterScreen, terminalCenterScreen, panelRect);
+        stack.header("Item");
+        stack.scrollSection(this.viewport, snapshot.itemTypes, (itemType, i) => ({
+            label: `Item ${itemType} (${this._itemDetail(snapshot, i)})`,
+            buttonLabel: i === this._itemIndex ? "Selected" : "Select",
+            buttonTint: i === this._itemIndex ? ACTIVE_ACCENT : INACTIVE_TINT,
+            onClick: () => this._selectAndReset(() => this._itemIndex = i),
+        }), "No tradable items configured.", {visibleRows: MAX_ITEM_ROWS});
+        stack.gap();
 
-        drawPanelConnector(this._connector, tail, head);
-    }
+        stack.header("Price");
+        stack.row((row) => this._fillPriceRow(row, stack.contentWidth, snapshot));
+        stack.gap();
 
-    /**
-     * @private
-     * @param {Container} body
-     * @param {string} label
-     * @param {number} y
-     * @returns {number} the next y
-     */
-    _addHeader(body, label, y) {
-        const text = new Text({
-            text: label,
-            style: {fontFamily: GAME_FONT, fontSize: 14, fill: TOOLBAR_TEXT, fontWeight: "bold"},
-        });
-        text.y = y;
-        body.addChild(text);
-        return y + HEADER_HEIGHT;
-    }
-
-    /**
-     * @private
-     * @param {Container} body
-     * @param {string} label
-     * @param {number} x
-     * @param {number} y
-     * @returns {void}
-     */
-    _addText(body, label, x, y) {
-        const text = new Text({text: label, style: {fontFamily: GAME_FONT, fontSize: 15, fill: TOOLBAR_TEXT}});
-        text.x = x;
-        text.y = y;
-        body.addChild(text);
+        stack.row((row) => this._fillConfirmRow(row, objectId, snapshot));
     }
 
     /**
@@ -325,93 +224,61 @@ export class TradingTerminalConfigLayer extends Container {
 
     /**
      * @private
-     * @param {Container} body
-     * @param {number} y
-     * @returns {number} the next y
+     * @param {Container} row
+     * @returns {void}
      */
-    _addModeRow(body, y) {
-        const row = new Container();
-        row.y = y;
-        const sellTint = this._mode === MARKET_MODE_SELL ? ACTIVE_ACCENT : INACTIVE_TINT;
-        const sell = buildPanelButton(this.textureRegistry, "Sell", sellTint, () => {
+    _fillModeRow(row) {
+        const options = [
+            {value: MARKET_MODE_SELL, label: "Sell"},
+            {value: MARKET_MODE_BUY, label: "Buy"},
+        ];
+        const toggle = buildToggleRow(this.textureRegistry, options, this._mode, mode => {
             this._selectAndReset(() => {
-                this._mode = MARKET_MODE_SELL;
+                this._mode = mode;
             });
-        });
-        row.addChild(sell);
-        const buyTint = this._mode === MARKET_MODE_BUY ? ACTIVE_ACCENT : INACTIVE_TINT;
-        const buy = buildPanelButton(this.textureRegistry, "Buy", buyTint, () => {
-            this._selectAndReset(() => {
-                this._mode = MARKET_MODE_BUY;
-            });
-        });
-        buy.x = sell.width + ROW_GAP;
-        row.addChild(buy);
-        body.addChild(row);
-        return y + ROW_HEIGHT + ROW_GAP;
+        }, {activeTint: ACTIVE_ACCENT, inactiveTint: INACTIVE_TINT, gap: ROW_GAP});
+        row.addChild(toggle);
     }
 
     /**
      * @private
-     * @param {Container} body
-     * @param {number} contentWidth
      * @param {MarketSnapshotEvent} snapshot
-     * @param {number} y
-     * @returns {number} the next y
+     * @param {number} i
+     * @returns {string}
      */
-    _addItemRows(body, contentWidth, snapshot, y) {
-        if (snapshot.itemTypes.length === 0) {
-            this._addText(body, "No tradable items configured.", 0, y);
-            return y + ROW_HEIGHT + ROW_GAP;
+    _itemDetail(snapshot, i) {
+        const npc = snapshot.npcPrices[i];
+        if (npc !== MARKET_SNAPSHOT_NONE) {
+            return `fixed: ${npc}`;
         }
-        let cursorY = y;
-        for (let i = 0; i < Math.min(snapshot.itemTypes.length, MAX_ITEM_ROWS); i += 1) {
-            const itemType = snapshot.itemTypes[i];
-            const npc = snapshot.npcPrices[i];
-            let detail;
-            if (npc !== MARKET_SNAPSHOT_NONE) {
-                detail = `fixed: ${npc}`;
-            } else {
-                const bid = snapshot.bestBidPrices[i] === MARKET_SNAPSHOT_NONE ? "-" : snapshot.bestBidPrices[i];
-                const ask = snapshot.bestAskPrices[i] === MARKET_SNAPSHOT_NONE ? "-" : snapshot.bestAskPrices[i];
-                detail = `bid ${bid} / ask ${ask}`;
-            }
-            const row = new Container();
-            row.y = cursorY;
-            this._addText(row, `Item ${itemType} (${detail})`, 0, (ROW_HEIGHT - 15) / 2);
-            const selected = i === this._itemIndex;
-            const selectLabel = selected ? "Selected" : "Select";
-            const selectTint = selected ? ACTIVE_ACCENT : INACTIVE_TINT;
-            const select = buildPanelButton(this.textureRegistry, selectLabel, selectTint, () => {
-                this._selectAndReset(() => {
-                    this._itemIndex = i;
-                });
-            });
-            select.x = contentWidth - select.width;
-            row.addChild(select);
-            body.addChild(row);
-            cursorY += ROW_HEIGHT + ROW_GAP;
-        }
-        return cursorY;
+        const bid = this._priceOrDash(snapshot.bestBidPrices[i]);
+        const ask = this._priceOrDash(snapshot.bestAskPrices[i]);
+        return `bid ${bid} / ask ${ask}`;
     }
 
     /**
      * @private
-     * @param {Container} body
+     * @param {number} price
+     * @returns {string|number}
+     */
+    _priceOrDash(price) {
+        if (price === MARKET_SNAPSHOT_NONE) {
+            return "-";
+        }
+        return price;
+    }
+
+    /**
+     * @private
+     * @param {Container} row
      * @param {number} contentWidth
      * @param {MarketSnapshotEvent} snapshot
-     * @param {number} y
-     * @returns {number} the next y
+     * @returns {void}
      */
-    _addPriceRow(body, contentWidth, snapshot, y) {
-        const row = new Container();
-        row.y = y;
+    _fillPriceRow(row, contentWidth, snapshot) {
         const npcSelected = snapshot.itemTypes.length > 0 && snapshot.npcPrices[this._itemIndex] !== MARKET_SNAPSHOT_NONE;
-        this._priceText = new Text({
-            text: this._priceLabel(npcSelected),
-            style: {fontFamily: GAME_FONT, fontSize: 15, fill: TOOLBAR_TEXT},
-        });
-        this._priceText.y = (ROW_HEIGHT - 15) / 2;
+        this._priceText = panelText(this._priceLabel(npcSelected), TextRole.BODY);
+        this._priceText.y = (ROW_HEIGHT - this._priceText.height) / 2;
         row.addChild(this._priceText);
         if (!npcSelected) {
             const plus = buildPanelButton(this.textureRegistry, "+", ACTIVE_ACCENT, () => this._stepPrice(1));
@@ -421,8 +288,6 @@ export class TradingTerminalConfigLayer extends Container {
             minus.x = plus.x - minus.width - ROW_GAP;
             row.addChild(minus);
         }
-        body.addChild(row);
-        return y + ROW_HEIGHT + ROW_GAP;
     }
 
     /**
@@ -438,8 +303,7 @@ export class TradingTerminalConfigLayer extends Container {
     }
 
     /**
-     * Adjusts the price by `delta` and updates the price row's Text in place — the stepper never
-     * touches mode/item/confirm state, so a full panel rebuild is unneeded work.
+     * Adjusts the price by `delta` and updates the price row's Text in place, skipping a full rebuild.
      * @private
      * @param {number} delta
      * @returns {void}
@@ -452,15 +316,12 @@ export class TradingTerminalConfigLayer extends Container {
 
     /**
      * @private
-     * @param {Container} body
+     * @param {Container} row
      * @param {number} objectId
      * @param {MarketSnapshotEvent} snapshot
-     * @param {number} y
-     * @returns {number} the next y
+     * @returns {void}
      */
-    _addConfirmRow(body, objectId, snapshot, y) {
-        const row = new Container();
-        row.y = y;
+    _fillConfirmRow(row, objectId, snapshot) {
         const canConfirm = snapshot.itemTypes.length > 0;
         const confirm = buildPanelButton(this.textureRegistry, "Confirm", ACTIVE_ACCENT, () => {
             const itemType = snapshot.itemTypes[this._itemIndex];
@@ -468,7 +329,5 @@ export class TradingTerminalConfigLayer extends Container {
             this._cache.writer("market").closeConfig();
         }, !canConfirm);
         row.addChild(confirm);
-        body.addChild(row);
-        return y + ROW_HEIGHT;
     }
 }

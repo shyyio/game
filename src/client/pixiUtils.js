@@ -25,8 +25,7 @@ export function nineSlice(textureRegistry, name, insetX, insetY, width, height) 
 }
 
 /**
- * Draws a circular button's idle/hover face — filled circle with a border stroke, centered on
- * (0, 0) — shared by every circular icon button (map buttons, settings button).
+ * Draws a circular button's idle/hover face — filled circle with a border stroke, centered on (0, 0).
  * @param {Graphics} face
  * @param {number} radius
  * @param {boolean} hovered
@@ -44,9 +43,60 @@ export function drawCircleButtonFace(face, radius, hovered) {
 }
 
 /**
- * Tracks a native pointer drag through window-level pointermove/pointerup, from `startEvent`'s
- * position: `onMove(deltaX, deltaY)` fires on every move (screen px since the drag began),
- * `onEnd()` once on release. The window listeners are torn down automatically on release.
+ * Stops a background/panel container from passing its presses through to whatever sits behind it.
+ * @param {Container} target
+ * @param {{pixi: boolean, native: boolean}} [options] - pixi: stop bubbling to pixi ancestors; native: stop bubbling to window-level listeners
+ * @returns {void}
+ */
+export function swallowClicks(target, {pixi = true, native = false} = {}) {
+    target.eventMode = "static";
+    target.on("pointerdown", (e) => {
+        if (pixi) {
+            e.stopPropagation();
+        }
+        if (native) {
+            e.nativeEvent.stopPropagation();
+        }
+    });
+}
+
+/**
+ * Wires a tap gesture on `target`: only a release matching the primary-button press that began here counts.
+ * @param {Container} target
+ * @param {function(): void} onTap
+ * @param {{suppressTouchGhostClick: boolean, stopNativePropagation: boolean}} [options] - blocks touch ghost click / window-level listeners
+ * @returns {void}
+ */
+export function trackTap(target, onTap, {suppressTouchGhostClick = false, stopNativePropagation = false} = {}) {
+    let pressPointerId = null;
+    target.eventMode = "static";
+    target.on("pointerdown", (e) => {
+        e.stopPropagation();
+        if (stopNativePropagation) {
+            e.nativeEvent.stopPropagation();
+        }
+        if (suppressTouchGhostClick && e.pointerType !== "mouse") {
+            e.nativeEvent.preventDefault();
+        }
+        if (e.button !== 0) {
+            return;
+        }
+        pressPointerId = e.pointerId;
+    });
+    target.on("pointerup", (e) => {
+        const pressed = pressPointerId === e.pointerId;
+        pressPointerId = null;
+        if (pressed) {
+            onTap();
+        }
+    });
+    target.on("pointerupoutside", () => {
+        pressPointerId = null;
+    });
+}
+
+/**
+ * Tracks a native pointer drag through window-level pointermove/pointerup, from `startEvent`'s position.
  * @param {PointerEvent} startEvent
  * @param {function(deltaX: number, deltaY: number): void} onMove
  * @param {function(): void} [onEnd]
@@ -66,8 +116,7 @@ export function trackWindowDrag(startEvent, onMove, onEnd = () => {}) {
 }
 
 /**
- * A Container of 1px outlines around each leaf under `roots`, for layout debugging. Bounds are
- * mapped into `localTarget`'s space so the outlines ride with it.
+ * A Container of 1px outlines around each leaf under `roots`, mapped into `localTarget`'s space.
  * @param {Container[]} roots
  * @param {Container} localTarget
  * @returns {Container}

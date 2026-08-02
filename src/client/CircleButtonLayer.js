@@ -1,13 +1,11 @@
 import {Container, Graphics} from "pixi.js";
-import {drawCircleButtonFace} from "@/client/pixiUtils.js";
+import {drawCircleButtonFace, trackTap} from "@/client/pixiUtils.js";
 
 export const CIRCLE_BUTTON_RADIUS = 24;
 export const CIRCLE_BUTTON_MARGIN = 16;
 
 /**
- * An always-visible circular icon button, screen-space on app.stage: hover/press wiring and a
- * top offset that clears the top status bar. A subclass draws its own icon and, if it doesn't
- * sit alone in the top-right corner, overrides {@link CircleButtonLayer#_x}.
+ * Always-visible circular icon button, screen-space on app.stage; subclass draws its own icon.
  */
 export class CircleButtonLayer extends Container {
 
@@ -24,23 +22,15 @@ export class CircleButtonLayer extends Container {
         this._hovered = false;
         this._onPress = null;
 
-        this.eventMode = "static";
         this.cursor = "pointer";
         this._face = new Graphics();
         this.addChild(this._face);
-        this.on("pointerdown", (e) => {
-            e.stopPropagation();
-            if (e.pointerType !== "mouse") {
-                // Suppresses the ghost mousedown/click Vuetify's click-outside directive
-                // would otherwise see right after this button opens a dialog.
-                e.nativeEvent.preventDefault();
-            }
-        });
-        this.on("pointertap", () => {
+        // suppressTouchGhostClick: avoids the dialog's click-outside directive seeing the ghost click.
+        trackTap(this, () => {
             if (this._onPress !== null) {
                 this._onPress();
             }
-        });
+        }, {suppressTouchGhostClick: true});
         this.on("pointerover", () => {
             this._hovered = true;
             this._render();

@@ -2,7 +2,7 @@ import {Container, Graphics} from "pixi.js";
 import {HUD_BOTTOM_OFFSET, ViewMode} from "@/client/constants.js";
 import {PANEL_BORDER, PANEL_TEXT, BLOCKED_TILE_COLOR} from "@/client/Theme.js";
 import {ICON_STROKE} from "@/client/icons.js";
-import {drawCircleButtonFace} from "@/client/pixiUtils.js";
+import {drawCircleButtonFace, trackTap} from "@/client/pixiUtils.js";
 
 const BUTTON_RADIUS = 24;
 const BUTTON_GAP = 10;
@@ -35,9 +35,7 @@ class MapButton {
 }
 
 /**
- * Contextual map-mode buttons: a bottom-right stack shown only zoomed out, one per input
- * mode. A press toggles the mode; active buttons show a red close cross. The host registers
- * the buttons and pushes their active/shown state.
+ * Contextual map-mode buttons: bottom-right stack, zoomed-out only, one per input mode.
  */
 export class MapButtonsLayer extends Container {
 
@@ -68,11 +66,9 @@ export class MapButtonsLayer extends Container {
         const container = new Container();
         const face = new Graphics();
         container.addChild(face);
-        container.eventMode = "static";
         container.cursor = "pointer";
         const button = new MapButton(id, drawIcon, onPress, container, face);
-        container.on("pointerdown", (e) => e.stopPropagation());
-        container.on("pointertap", () => button.onPress());
+        trackTap(container, () => button.onPress());
         container.on("pointerover", () => {
             button.hovered = true;
             this._render(button);

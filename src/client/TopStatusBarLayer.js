@@ -3,6 +3,7 @@ import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_TINT, PANEL_BORDER, TOOLBAR_TEXT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/UIPanel.js";
 import {buildPanelButton} from "@/client/panelButton.js";
+import {swallowClicks} from "@/client/pixiUtils.js";
 
 // Gap between the outer frame and its content (buttons, pattern, inset), matching the inspect
 // panel's body margin.
@@ -15,8 +16,7 @@ const TEXT_GAP = "   ";
 const THIN_PATTERN_WIDTH = 14;
 // Gap around each decorative pattern strip.
 const PATTERN_GAP = 10;
-// How far the frame sprite bleeds past the left/top/right edges, past its border's on-screen
-// thickness, so only the bottom border reads — the bar already spans edge to edge on the others.
+// How far the frame sprite bleeds past the left/top/right edges, so only the bottom border reads.
 const EDGE_BLEED = 24;
 
 /**
@@ -35,9 +35,7 @@ export class StatusBarButton {
 }
 
 /**
- * One caller's contribution to the top status bar: a text line and its buttons. Callers (core
- * systems or mods) own their section by id, set through {@link TopStatusBarLayer#setSection};
- * setting the same id again replaces their content without touching anyone else's.
+ * One caller's contribution to the top status bar: a text line and its buttons, owned by id.
  */
 export class StatusBarSection {
 
@@ -77,11 +75,7 @@ function sectionsEqual(a, b) {
 }
 
 /**
- * Full-width status bar docked to the top of the screen, laid out left to right: every section's
- * buttons, a thin decorative pattern, then an inset holding the joined section text centered
- * within itself. Each section is independently owned by id — core systems (e.g. claim mode) and
- * mods set or clear their own section without touching anyone else's. Hidden with zero sections.
- * A screen-space HUD on app.stage, so it never pans or zooms with the world.
+ * Full-width status bar docked to the top: sections' buttons, a pattern, then centered joined text.
  */
 export class TopStatusBarLayer extends Container {
 
@@ -103,8 +97,7 @@ export class TopStatusBarLayer extends Container {
         this._panel.x = 0;
         this._panel.y = 0;
         // Presses on the bar must not fall through to the viewport (pan/tap).
-        this._panel.eventMode = "static";
-        this._panel.on("pointerdown", (e) => e.stopPropagation());
+        swallowClicks(this._panel);
         this._frame = null;
         this._onChange = null;
         this.addChild(this._panel);
@@ -112,8 +105,7 @@ export class TopStatusBarLayer extends Container {
     }
 
     /**
-     * Registers the callback invoked with the bar's occupied height (0 while hidden) whenever it
-     * changes; other top-anchored HUD elements use this to stay clear of the bar.
+     * Registers the callback invoked with the bar's occupied height (0 while hidden) whenever it changes.
      * @param {function(height: number): void} callback
      * @returns {void}
      */
@@ -122,9 +114,7 @@ export class TopStatusBarLayer extends Container {
     }
 
     /**
-     * Sets (or replaces) the section owned by `id`; null clears it. The bar shows whenever at
-     * least one section is set, hides at zero. A no-op if the section is unchanged, so callers
-     * can safely call this every frame.
+     * Sets (or replaces) the section owned by `id`; null clears it, hiding the bar at zero sections. No-op if unchanged.
      * @param {string} id
      * @param {StatusBarSection|null} section
      * @returns {void}
@@ -172,8 +162,7 @@ export class TopStatusBarLayer extends Container {
     }
 
     /**
-     * Builds the bar's content left to right — buttons, a thin pattern, then an inset holding
-     * the centered text — and the background sized to fit it.
+     * Builds the bar's content left to right and the background sized to fit it.
      * @private
      * @returns {number} the bar's total height
      */
@@ -253,11 +242,7 @@ export class TopStatusBarLayer extends Container {
      * @returns {void}
      */
     _rebuildBackground(width, height) {
-        if (this._frame !== null) {
-            this._frame.destroy();
-        }
-        this._frame = UIPanel.frameSprite(this.textureRegistry, width + EDGE_BLEED * 2, height + EDGE_BLEED, PANEL_TINT);
-        this._frame.position.set(-EDGE_BLEED, -EDGE_BLEED);
-        this._panel.addChildAt(this._frame, 0);
+        this._frame = UIPanel.rebuildFrame(this._panel, this._frame, this.textureRegistry,
+            width + EDGE_BLEED * 2, height + EDGE_BLEED, PANEL_TINT, {x: -EDGE_BLEED, y: -EDGE_BLEED});
     }
 }

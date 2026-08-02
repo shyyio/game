@@ -4,7 +4,8 @@ import {ClaimResult, ChunkPermission} from "@/common/ClaimEvents.js";
 import {GAME_FONT, HUD_BOTTOM_OFFSET} from "@/client/constants.js";
 import {PANEL_BORDER, PANEL_TEXT, ACTIVE_ACCENT, PANEL_TITLE_TEXT, PANEL_TINT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/UIPanel.js";
-import {buildPanelButton, BUTTON_HEIGHT} from "@/client/panelButton.js";
+import {buildPanelButton, buildToggleRow, BUTTON_HEIGHT} from "@/client/panelButton.js";
+import {swallowClicks} from "@/client/pixiUtils.js";
 
 const PADDING_X = 14;
 const PADDING_Y = 10;
@@ -32,8 +33,7 @@ const TITLE_GAP = 8;
 const PATTERN_HEIGHT = 22;
 
 /**
- * Map-mode chunk panel: the hovered chunk's owner and buildability, with a claim or unclaim
- * button where available. A screen-space HUD on app.stage; the host feeds it the chunk.
+ * Map-mode HUD: hovered chunk's owner/buildability and a claim/unclaim button; host feeds it the chunk.
  */
 export class ChunkInfoPanelLayer extends Container {
 
@@ -74,8 +74,7 @@ export class ChunkInfoPanelLayer extends Container {
         this._panel.addChild(this._title);
         this._panel.addChild(this._info);
         // Presses on the panel body must not fall through to the viewport (pan/tap).
-        this._panel.eventMode = "static";
-        this._panel.on("pointerdown", (e) => e.stopPropagation());
+        swallowClicks(this._panel);
         this.addChild(this._panel);
         this._button = null;
         this._buttonLabel = null;
@@ -269,8 +268,7 @@ export class ChunkInfoPanelLayer extends Container {
     }
 
     /**
-     * Retargets the own-chunk permission row: an unchanged permission is a no-op; otherwise it
-     * rebuilds, or drops with a null permission (not the own player's chunk).
+     * Retargets the permission row; no-op if unchanged, drops on null (not own chunk).
      * @private
      * @param {number|null} permission
      * @returns {void}
@@ -300,21 +298,9 @@ export class ChunkInfoPanelLayer extends Container {
      * @returns {Container}
      */
     _buildPermissionRow(current) {
-        const row = new Container();
-        let x = 0;
-        for (const value of PERMISSION_ORDER) {
-            const borderColor = value === current ? ACTIVE_ACCENT : PANEL_BORDER;
-            const segment = buildPanelButton(
-                this.textureRegistry,
-                PERMISSION_LABELS[value],
-                borderColor,
-                () => this._onSetPermission(this._chunk, value),
-            );
-            segment.x = x;
-            row.addChild(segment);
-            x += segment.width + SEGMENT_GAP;
-        }
-        return row;
+        const options = PERMISSION_ORDER.map(value => ({value, label: PERMISSION_LABELS[value]}));
+        return buildToggleRow(this.textureRegistry, options, current, value => this._onSetPermission(this._chunk, value),
+            {activeTint: ACTIVE_ACCENT, inactiveTint: PANEL_BORDER, gap: SEGMENT_GAP});
     }
 
     /**
@@ -363,34 +349,18 @@ export class ChunkInfoPanelLayer extends Container {
      * @returns {void}
      */
     _rebuildBackground(width, height) {
-        if (this._frame !== null) {
-            this._frame.destroy();
-            this._inset.destroy();
-        }
-        if (this._pattern !== null) {
-            this._pattern.destroy();
-        }
-        this._frame = UIPanel.frameSprite(this.textureRegistry, width, height, PANEL_TINT);
-
         const insetHeight = height - FRAME_MARGIN - TITLE_ROW_HEIGHT - FRAME_MARGIN;
-        this._inset = UIPanel.insetSprite(this.textureRegistry, width - FRAME_MARGIN * 2, insetHeight, PANEL_TINT);
-        this._inset.position.set(FRAME_MARGIN, FRAME_MARGIN + TITLE_ROW_HEIGHT);
+        const insetPosition = {x: FRAME_MARGIN, y: FRAME_MARGIN + TITLE_ROW_HEIGHT};
+        this._inset = UIPanel.rebuildInset(this._panel, this._inset, this.textureRegistry,
+            width - FRAME_MARGIN * 2, insetHeight, PANEL_TINT, insetPosition);
+        this._frame = UIPanel.rebuildFrame(this._panel, this._frame, this.textureRegistry, width, height, PANEL_TINT);
 
         // Trailing decorative pattern filling the title row past the title text.
         const patternX = TITLE_PADDING_X + this._title.width + TITLE_GAP;
         const patternWidth = Math.max(width - FRAME_MARGIN - PADDING_X - patternX, 0);
-        if (patternWidth > 0) {
-            this._pattern = UIPanel.patternStrip(this.textureRegistry, patternWidth, PATTERN_HEIGHT);
-            this._pattern.position.set(patternX, FRAME_MARGIN + (TITLE_ROW_HEIGHT - PATTERN_HEIGHT) / 2);
-        } else {
-            this._pattern = null;
-        }
-
-        this._panel.addChildAt(this._inset, 0);
-        this._panel.addChildAt(this._frame, 0);
-        if (this._pattern !== null) {
-            this._panel.addChildAt(this._pattern, 2);
-        }
+        const patternPosition = {x: patternX, y: FRAME_MARGIN + (TITLE_ROW_HEIGHT - PATTERN_HEIGHT) / 2};
+        this._pattern = UIPanel.rebuildPattern(this._panel, this._pattern, this.textureRegistry,
+            patternWidth, PATTERN_HEIGHT, patternPosition, 2);
     }
 
     /**

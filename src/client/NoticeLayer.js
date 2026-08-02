@@ -13,8 +13,7 @@ const FRAME_MARGIN = 6;
 const NOTICE_DURATION_MS = 3000;
 
 /**
- * Bottom-center toast notice (claim rejections, session disconnects). A screen-space HUD on
- * app.stage; the host drives it by calling {@link NoticeLayer#notify}.
+ * Bottom-center toast notice (claim rejections, session disconnects); host drives it via {@link NoticeLayer#notify}.
  */
 export class NoticeLayer extends Container {
 
@@ -25,9 +24,7 @@ export class NoticeLayer extends Container {
         super();
         this._app = app;
         this._textureRegistry = null;
-        // A notify() before textureRegistry is assigned (e.g. the session closes while Client.init's
-        // texture load is still in flight) can't build a background yet; the text waits here and
-        // fires for real once the registry lands.
+        // A notify() before textureRegistry is assigned queues here; fires once the registry lands.
         this._pendingText = null;
         // Display-only: never a hit target (the stage is interactive for mobile pinch).
         this.eventMode = "none";
@@ -36,8 +33,7 @@ export class NoticeLayer extends Container {
         this._timer = null;
 
         this._panel = new Container();
-        this._frame = null;
-        this._inset = null;
+        this._box = {frame: null, inset: null};
         this._text = new Text({
             text: "",
             style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TEXT},
@@ -101,15 +97,7 @@ export class NoticeLayer extends Container {
      * @returns {void}
      */
     _rebuildBackground(width, height) {
-        if (this._frame !== null) {
-            this._frame.destroy();
-            this._inset.destroy();
-        }
-        this._frame = UIPanel.frameSprite(this.textureRegistry, width, height, PANEL_TINT);
-        this._inset = UIPanel.insetSprite(this.textureRegistry, width - FRAME_MARGIN * 2, height - FRAME_MARGIN * 2, PANEL_TINT);
-        this._inset.position.set(FRAME_MARGIN, FRAME_MARGIN);
-        this._panel.addChildAt(this._inset, 0);
-        this._panel.addChildAt(this._frame, 0);
+        this._box = UIPanel.rebuildFramedBox(this._panel, this._box, this.textureRegistry, width, height, PANEL_TINT, FRAME_MARGIN);
     }
 
     /**

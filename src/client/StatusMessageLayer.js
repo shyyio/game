@@ -16,10 +16,7 @@ const FRAME_MARGIN = 6;
 const TEXT_REFRESH_MS = 100;
 
 /**
- * Static top-left status overlay: a screen-space HUD sibling of the viewport (on app.stage),
- * not a viewport child, so it never pans or zooms. Shows "Connecting…" until the client
- * issues its first viewport request, then "Loading... x / y" while the requested chunks are
- * subscribing, where x is the number of ChunkSubscribeEvents processed out of the total.
+ * Static top-left status overlay: "Connecting…" then "Loading... x / y" while chunks subscribe.
  */
 export class StatusMessageLayer extends Container {
 
@@ -35,8 +32,7 @@ export class StatusMessageLayer extends Container {
         // Chunks already subscribed, so a re-issued viewport request only counts new ones.
         this._subscribed = new Set();
         // Chunks in the active load; total = _batch.size, loaded = _batch.size - _pending.size.
-        // A chunk that pans out of view is unsubscribed and drops from the batch, so the
-        // total tracks only currently-relevant chunks instead of growing while panning.
+        // A chunk panned out of view drops from the batch, so total stays currently-relevant.
         this._batch = new Set();
         // Batch chunks still awaiting a ChunkSubscribeEvent.
         this._pending = new Set();
@@ -48,8 +44,7 @@ export class StatusMessageLayer extends Container {
         this._panel = new Container();
         this._panel.x = MARGIN;
         this._panel.y = this._topOffset;
-        this._frame = null;
-        this._inset = null;
+        this._box = {frame: null, inset: null};
         this._text = new Text({
             text: "",
             style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TEXT},
@@ -84,9 +79,7 @@ export class StatusMessageLayer extends Container {
     }
 
     /**
-     * Begins tracking a viewport request: the not-yet-subscribed chunks become the
-     * loading total, cleared as their ChunkSubscribeEvents arrive. Any "Connecting…"
-     * message holds until the first of those chunks actually arrives.
+     * Begins tracking a viewport request; not-yet-subscribed chunks become the loading total.
      * @param {string[]} chunks all chunks in the request
      * @returns {void}
      */
@@ -118,9 +111,7 @@ export class StatusMessageLayer extends Container {
             }
         } else if (event instanceof ChunkUnsubscribeEvent) {
             this._subscribed.delete(event.chunk);
-            // A chunk that left the viewport drops out of the load: it leaves the total,
-            // and if its subscribe hadn't arrived yet, the pending count too — so the
-            // loader tracks only currently-relevant chunks and always reaches completion.
+            // A chunk that left drops from total (and pending, if not yet subscribed).
             if (this._batch.delete(event.chunk)) {
                 this._pending.delete(event.chunk);
                 this._refresh();
@@ -163,8 +154,7 @@ export class StatusMessageLayer extends Container {
     }
 
     /**
-     * Gates the next Text write; a fired trailing write opens its own interval, so a sustained
-     * burst stays at one write per {@link TEXT_REFRESH_MS}.
+     * Gates the next Text write to one per {@link TEXT_REFRESH_MS}.
      * @private
      * @returns {void}
      */
@@ -191,8 +181,7 @@ export class StatusMessageLayer extends Container {
     }
 
     /**
-     * Rebuilds the background sized to the current text; a no-op until the texture
-     * registry is assigned (events can arrive before the client has loaded textures).
+     * Rebuilds the background sized to the current text; no-op until textureRegistry is assigned.
      * @private
      * @returns {void}
      */
@@ -202,20 +191,11 @@ export class StatusMessageLayer extends Container {
         }
         const width = this._text.width + (PADDING_X + FRAME_MARGIN) * 2;
         const height = this._text.height + (PADDING_Y + FRAME_MARGIN) * 2;
-        if (this._frame !== null) {
-            this._frame.destroy();
-            this._inset.destroy();
-        }
-        this._frame = UIPanel.frameSprite(this.textureRegistry, width, height, PANEL_TINT);
-        this._inset = UIPanel.insetSprite(this.textureRegistry, width - FRAME_MARGIN * 2, height - FRAME_MARGIN * 2, PANEL_TINT);
-        this._inset.position.set(FRAME_MARGIN, FRAME_MARGIN);
-        this._panel.addChildAt(this._inset, 0);
-        this._panel.addChildAt(this._frame, 0);
+        this._box = UIPanel.rebuildFramedBox(this._panel, this._box, this.textureRegistry, width, height, PANEL_TINT, FRAME_MARGIN);
     }
 
     /**
-     * Rebuilds the background for whatever message is already showing, once the texture registry
-     * becomes available (the initial connect can drive messages before textures are loaded).
+     * Rebuilds the background for the already-showing message, once textureRegistry becomes available.
      * @returns {void}
      */
     refreshBackground() {

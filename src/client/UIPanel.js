@@ -1,6 +1,7 @@
 import {Container, Sprite, Text, NineSliceSprite, TilingSprite, Rectangle} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {debugOutlines, trackWindowDrag} from "@/client/pixiUtils.js";
+import {debugOutlines, swallowClicks, trackWindowDrag} from "@/client/pixiUtils.js";
+import {PanelStack} from "@/client/PanelStack.js";
 
 const TITLE_ROW_HEIGHT = 40;
 const PADDING = 8;
@@ -37,9 +38,7 @@ const TX_CLOSE = "ui/IconCross01a";
 const TX_PATTERN = "ui/PlusPattern";
 
 /**
- * A framed HUD panel: raised outer frame + sunken inset body + draggable title bar with a close
- * button. Background only — callers fill the body via {@link UIPanel#addContent}. The host wires
- * dragging onto {@link UIPanel#dragHandle}.
+ * A framed HUD panel: raised outer frame + sunken inset body + draggable title bar with a close button.
  */
 export class UIPanel extends Container {
 
@@ -92,7 +91,7 @@ export class UIPanel extends Container {
         if (this._shadow !== null) {
             return;
         }
-        // Same 9-slice frame as the panel background, so the shadow matches its exact shape.
+        // Same 9-slice frame as the panel, so the shadow matches its shape.
         const shadow = this._nineSlice(TX_FRAME, this._width, this._height);
         shadow.tint = 0x000000;
         shadow.alpha = SHADOW_ALPHA;
@@ -168,8 +167,7 @@ export class UIPanel extends Container {
     }
 
     /**
-     * The panel's raised outer frame as a standalone tinted 9-slice sprite (for background that wants the
-     * UIPanel look without the rest of the panel). Sets a hit area so it can catch pointer events.
+     * The panel's raised outer frame as a standalone tinted 9-slice sprite, with a hit area set.
      * @param {TextureRegistry} textureRegistry
      * @param {number} width
      * @param {number} height
@@ -193,8 +191,7 @@ export class UIPanel extends Container {
     }
 
     /**
-     * The panel's sunken inset body as a standalone tinted 9-slice sprite, matching the inspect
-     * panel's body (for background that wants the inset look without the rest of the panel).
+     * The panel's sunken inset body as a standalone tinted 9-slice sprite.
      * @param {TextureRegistry} textureRegistry
      * @param {number} width
      * @param {number} height
@@ -217,8 +214,7 @@ export class UIPanel extends Container {
     }
 
     /**
-     * A standalone tiled decorative pattern rectangle, matching the title bar's strip (same texture,
-     * scale, and alpha), for background that wants the pattern outside a full panel.
+     * A standalone tiled decorative pattern rectangle, matching the title bar's strip.
      * @param {TextureRegistry} textureRegistry
      * @param {number} width
      * @param {number} height
@@ -233,6 +229,158 @@ export class UIPanel extends Container {
         strip.tileScale.set(PATTERN_SCALE);
         strip.alpha = PATTERN_ALPHA;
         return strip;
+    }
+
+    /**
+     * Default `position` fallback for {@link UIPanel.managed}/{@link ManagedPanel#show}: centered on screen.
+     * @param {Application} app
+     * @param {number} width
+     * @returns {function(height: number): {x: number, y: number}}
+     */
+    static centerPosition(app, width) {
+        return (height) => ({
+            x: (app.screen.width - width) / 2,
+            y: (app.screen.height - height) / 2,
+        });
+    }
+
+    /**
+     * Rebuilds a content-sized frame+inset pair (compact HUD boxes like NoticeLayer/StatusMessageLayer/
+     * ChunkInfoPanelLayer, not a full draggable {@link UIPanel}); inset is inset by `frameMargin` on every side.
+     * @param {Container} container
+     * @param {{frame: NineSliceSprite|null, inset: NineSliceSprite|null}} previous
+     * @param {TextureRegistry} textureRegistry
+     * @param {number} width
+     * @param {number} height
+     * @param {number} tint
+     * @param {number} frameMargin
+     * @returns {{frame: NineSliceSprite, inset: NineSliceSprite}}
+     */
+    static rebuildFramedBox(container, previous, textureRegistry, width, height, tint, frameMargin) {
+        const inset = UIPanel.rebuildInset(container, previous.inset, textureRegistry,
+            width - frameMargin * 2, height - frameMargin * 2, tint, {x: frameMargin, y: frameMargin});
+        const frame = UIPanel.rebuildFrame(container, previous.frame, textureRegistry, width, height, tint);
+        return {frame, inset};
+    }
+
+    /**
+     * Replaces `previous` (destroyed if given) with a fresh {@link UIPanel.frameSprite} at index 0; call last so it ends up behind everything else.
+     * @param {Container} container
+     * @param {NineSliceSprite|null} previous
+     * @param {TextureRegistry} textureRegistry
+     * @param {number} width
+     * @param {number} height
+     * @param {number} tint
+     * @param {{x: number, y: number}} [position]
+     * @returns {NineSliceSprite}
+     */
+    static rebuildFrame(container, previous, textureRegistry, width, height, tint, position = {x: 0, y: 0}) {
+        return UIPanel._rebuildSprite(container, previous,
+            () => UIPanel.frameSprite(textureRegistry, width, height, tint), position, 0);
+    }
+
+    /**
+     * Replaces `previous` (destroyed if given) with a fresh {@link UIPanel.insetSprite} at index 0; call before {@link UIPanel.rebuildFrame}.
+     * @param {Container} container
+     * @param {NineSliceSprite|null} previous
+     * @param {TextureRegistry} textureRegistry
+     * @param {number} width
+     * @param {number} height
+     * @param {number} tint
+     * @param {{x: number, y: number}} [position]
+     * @returns {NineSliceSprite}
+     */
+    static rebuildInset(container, previous, textureRegistry, width, height, tint, position = {x: 0, y: 0}) {
+        return UIPanel._rebuildSprite(container, previous,
+            () => UIPanel.insetSprite(textureRegistry, width, height, tint), position, 0);
+    }
+
+    /**
+     * Replaces `previous` with a fresh {@link UIPanel.patternStrip} at `index`; `width <= 0` just drops `previous` and returns null.
+     * @param {Container} container
+     * @param {TilingSprite|null} previous
+     * @param {TextureRegistry} textureRegistry
+     * @param {number} width
+     * @param {number} height
+     * @param {{x: number, y: number}} position
+     * @param {number} index
+     * @returns {TilingSprite|null}
+     */
+    static rebuildPattern(container, previous, textureRegistry, width, height, position, index) {
+        if (width <= 0) {
+            if (previous !== null) {
+                previous.destroy();
+            }
+            return null;
+        }
+        return UIPanel._rebuildSprite(container, previous,
+            () => UIPanel.patternStrip(textureRegistry, width, height), position, index);
+    }
+
+    /**
+     * Shared "destroy previous, build fresh, position, insert" step for the rebuild* helpers.
+     * @private
+     * @param {Container} container
+     * @param {Container|null} previous
+     * @param {function(): Container} factory
+     * @param {{x: number, y: number}} position
+     * @param {number} index
+     * @returns {Container}
+     */
+    static _rebuildSprite(container, previous, factory, position, index) {
+        if (previous !== null) {
+            previous.destroy();
+        }
+        const sprite = factory();
+        sprite.position.set(position.x, position.y);
+        container.addChildAt(sprite, index);
+        return sprite;
+    }
+
+    /**
+     * Builds (or rebuilds) a panel from declarative content: `buildBody` fills a {@link PanelStack} that sizes the panel's height.
+     * @param {UIPanel|null} previous
+     * @param {object} options
+     * @param {Application} options.app
+     * @param {TextureRegistry} options.textureRegistry
+     * @param {string} options.title
+     * @param {number} options.titleColor
+     * @param {number} options.tint
+     * @param {number} options.width
+     * @param {function(): void} [options.onClose]
+     * @param {function(height: number): {x: number, y: number}} options.position
+     * @param {function(PanelStack): void} buildBody
+     * @returns {UIPanel}
+     */
+    static managed(previous, options, buildBody) {
+        const stack = new PanelStack(options.textureRegistry, UIPanel.contentWidthFor(options.width));
+        buildBody(stack);
+
+        const height = UIPanel.heightForContent(stack.contentHeight);
+        let x;
+        let y;
+        if (previous !== null) {
+            x = previous.x;
+            y = previous.y;
+            previous.destroy({children: true});
+        } else {
+            ({x, y} = options.position(height));
+        }
+
+        const panel = new UIPanel({
+            app: options.app,
+            textureRegistry: options.textureRegistry,
+            title: options.title,
+            titleColor: options.titleColor,
+            tint: options.tint,
+            width: options.width,
+            height: height,
+            onClose: options.onClose,
+        });
+        panel.x = x;
+        panel.y = y;
+        panel.addContent(stack);
+        return panel;
     }
 
     /**
@@ -257,6 +405,22 @@ export class UIPanel extends Container {
     /** @returns {number} width available to content inside the padded body */
     get contentWidth() {
         return UIPanel.contentWidthFor(this._width);
+    }
+
+    /**
+     * The panel's outer width; named `outerWidth` to avoid shadowing {@link Container#width}.
+     * @returns {number}
+     */
+    get outerWidth() {
+        return this._width;
+    }
+
+    /**
+     * The panel's outer height; named `outerHeight` for the same reason as {@link UIPanel#outerWidth}.
+     * @returns {number}
+     */
+    get outerHeight() {
+        return this._height;
     }
 
     /**
@@ -285,15 +449,10 @@ export class UIPanel extends Container {
         // Outer frame: raised border/background spanning the whole panel.
         const bg = this._nineSlice(TX_FRAME, this._width, this._height);
         bg.tint = this._tint;
-        // Swallow pointer events so body clicks neither drag nor pass through to the map (mesh-based
-        // NineSliceSprite has no default hit bounds, so the hit area is explicit, in unscaled space).
-        bg.eventMode = "static";
+        // Swallows clicks so they don't pass through to the map; explicit hit area (mesh sprite has none by default).
         bg.hitArea = new Rectangle(0, 0, this._width / FRAME_SCALE, this._height / FRAME_SCALE);
-        bg.on("pointerdown", (e) => {
-            e.stopPropagation();
-            e.nativeEvent.stopPropagation();
-            this._raise();
-        });
+        swallowClicks(bg, {native: true});
+        bg.on("pointerdown", () => this._raise());
         this.addChild(bg);
 
         // Inset body below the title row.
@@ -414,5 +573,49 @@ export class UIPanel extends Container {
             }
         });
         return button;
+    }
+}
+
+/**
+ * Owns a {@link UIPanel} across hide/show cycles, remembering the dragged position between them.
+ */
+export class ManagedPanel {
+
+    constructor() {
+        this.panel = null;
+        this._savedX = null;
+        this._savedY = null;
+    }
+
+    /**
+     * Builds (or rebuilds, keeping the dragged position) the panel via {@link UIPanel.managed}.
+     * @param {object} options - same as {@link UIPanel.managed}'s `options`, minus `position`
+     * @param {function(height: number): {x: number, y: number}} fallback - position when nothing's remembered yet
+     * @param {function(PanelStack): void} buildBody
+     * @returns {UIPanel}
+     */
+    show(options, fallback, buildBody) {
+        const position = (height) => {
+            if (this._savedX !== null) {
+                return {x: this._savedX, y: this._savedY};
+            }
+            return fallback(height);
+        };
+        this.panel = UIPanel.managed(this.panel, {...options, position}, buildBody);
+        return this.panel;
+    }
+
+    /**
+     * Remembers the dragged position and destroys the panel; a no-op while already hidden.
+     * @returns {void}
+     */
+    hide() {
+        if (this.panel === null) {
+            return;
+        }
+        this._savedX = this.panel.x;
+        this._savedY = this.panel.y;
+        this.panel.destroy({children: true});
+        this.panel = null;
     }
 }
