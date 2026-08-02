@@ -45,10 +45,6 @@ export {
     RecipeDefinition, // one recipe: a consumed input set mapping to an output item
     RecipeByproduct,  // a recipe's chance-driven secondary output
     PlacementRule,    // how an object type may be placed (overwrite/advance/placeOn/solid)
-    MenuVerb,         // one derived mini-menu action on an object type
-    InspectVerb,
-    DeleteVerb,
-    MiniMenuEntry,    // one entry in the right-click / long-press context menu
 } from "@/common/ObjectType.js";
 
 // ---- Sim behaviors ----

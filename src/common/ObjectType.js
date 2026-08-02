@@ -1,8 +1,6 @@
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {ObjectGeometries} from "@/common/ObjectGeometry.js";
-import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {StaticBehavior} from "@/sim/behaviors.js";
-import {NotImplementedError} from "@/common/error.js";
 
 export class PortDefinition {
     /**
@@ -59,20 +57,6 @@ export class RecipeDefinition {
     }
 }
 
-export class MiniMenuEntry {
-
-    /**
-     * @param {string} label
-     * @param {number} rank
-     * @param {function(): void} callback
-     */
-    constructor(label, rank, callback) {
-        this.label = label;
-        this.rank = rank;
-        this.callback = callback;
-    }
-}
-
 export class PlacementRule {
 
     /**
@@ -104,69 +88,6 @@ export class PlacementRule {
     }
 }
 
-export class MenuVerb {
-
-    /**
-     * One derived mini-menu action on an object type.
-     * @param {number} rank
-     */
-    constructor(rank) {
-        this.rank = rank;
-    }
-
-    /**
-     * The mini-menu entry acting on the cached object `record`.
-     * @param {ObjectType} type
-     * @param {CacheEntry} record
-     * @param {AbstractSession} session
-     * @param {Client} client
-     * @returns {MiniMenuEntry}
-     */
-    entry(type, record, session, client) {
-        throw new NotImplementedError();
-    }
-}
-
-export class InspectVerb extends MenuVerb {
-
-    /**
-     * @param {ObjectType} type
-     * @param {CacheEntry} record
-     * @param {AbstractSession} session
-     * @param {Client} client
-     * @returns {MiniMenuEntry}
-     */
-    entry(type, record, session, client) {
-        return new MiniMenuEntry(
-            `Inspect ${type.label}`,
-            this.rank,
-            () => client.inspectObject(record.id),
-        );
-    }
-}
-
-export class DeleteVerb extends MenuVerb {
-
-    /**
-     * @param {ObjectType} type
-     * @param {CacheEntry} record
-     * @param {AbstractSession} session
-     * @param {Client} client
-     * @returns {MiniMenuEntry}
-     */
-    entry(type, record, session, client) {
-        return new MiniMenuEntry(
-            `Delete ${type.label}`,
-            this.rank,
-            () => session.sendMessage(new DeleteObjectMessage(record.id)),
-        );
-    }
-}
-
-// Default verb ranks: inspect above delete.
-const INSPECT_RANK = 20;
-const DELETE_RANK = 10;
-
 export class ObjectType {
 
     /**
@@ -194,8 +115,11 @@ export class ObjectType {
      * @param [config.behavior] {AbstractBehavior} the sim behavior; defaults to StaticBehavior
      *     (a bare spawn-managed entity)
      * @param [config.placement] {PlacementRule}
-     * @param [config.inspectable] {boolean} wires the sim inspect path + client Inspect verb
-     * @param [config.menuVerbs] {MenuVerb[]|null} derived from `inspectable` when null
+     * @param [config.inspectable] {boolean} wires the sim inspect path; also the client's default
+     *     tap action when `tapAction` is left null
+     * @param [config.tapAction] {function(record: CacheEntry, session: AbstractSession, client: Client): void|null}
+     *     the left-click (tool-less) action on a placed instance of this type; derived from
+     *     `inspectable` when null
      * @param [config.bespokeClient] {boolean} the type's client mod brings its own layers/tools,
      *     so no derived client bundle is built
      */
@@ -216,7 +140,7 @@ export class ObjectType {
         behavior=undefined,
         placement=undefined,
         inspectable=false,
-        menuVerbs=null,
+        tapAction=null,
         bespokeClient=false,
     }) {
         if (ObjectGeometries[geometry] === undefined) {
@@ -243,12 +167,12 @@ export class ObjectType {
         this.placement = placement === undefined ? new PlacementRule() : placement;
         this.bespokeClient = bespokeClient;
         this.inspectable = inspectable;
-        if (menuVerbs !== null) {
-            this.menuVerbs = menuVerbs;
+        if (tapAction !== null) {
+            this.tapAction = tapAction;
         } else if (inspectable) {
-            this.menuVerbs = [new InspectVerb(INSPECT_RANK), new DeleteVerb(DELETE_RANK)];
+            this.tapAction = (record, session, client) => client.inspectObject(record.id);
         } else {
-            this.menuVerbs = [new DeleteVerb(DELETE_RANK)];
+            this.tapAction = null;
         }
         // Stable numeric identity assigned at ModRegistry.freeze() (registration order); the wire
         // carries it and the client cache keys off this type.

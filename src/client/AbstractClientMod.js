@@ -110,16 +110,4 @@ export class AbstractClientMod {
     onInspect(tileX, tileY, client) {
         return [];
     }
-
-    /**
-     * Returns mini-menu entries (each with its own handler) for the tile at (tileX, tileY).
-     * @param {number} tileX
-     * @param {number} tileY
-     * @param {AbstractSession} session
-     * @param {Client} client
-     * @returns {MiniMenuEntry[]}
-     */
-    miniMenuEntries(tileX, tileY, session, client) {
-        return [];
-    }
 }

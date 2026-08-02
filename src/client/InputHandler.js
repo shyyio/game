@@ -18,7 +18,7 @@ export class InputHandler {
     constructor(toolbar) {
         this._toolbar = toolbar;
 
-        this._onMiniMenuEntryClick = null;
+        this._onObjectTap = null;
         this._onInspect = null;
         this._onMapHover = null;
         this._onMapTap = null;
@@ -47,7 +47,11 @@ export class InputHandler {
 
     init() {
         Mouse.onTap((tileX, tileY) => {
-            if (this._mapMode || this.activeTool == null) {
+            if (this._mapMode) {
+                return;
+            }
+            if (this.activeTool == null) {
+                this._emitObjectTap(tileX, tileY);
                 return;
             }
             this.activeTool.onTap(tileX, tileY);
@@ -124,10 +128,11 @@ export class InputHandler {
     }
 
     /**
-     * @param {function(tileX: number, tileY: number, screenX: number, screenY: number, onClose: function(): void)} callback
+     * Registers the object-tap handler (left click on a tile while tool-less).
+     * @param {function(tileX: number, tileY: number)} callback
      */
-    onMiniMenuEntryClick(callback) {
-        this._onMiniMenuEntryClick = callback;
+    onObjectTap(callback) {
+        this._onObjectTap = callback;
     }
 
     /**
@@ -226,6 +231,16 @@ export class InputHandler {
     /**
      * @private
      */
+    _emitObjectTap(tileX, tileY) {
+        if (this._onObjectTap == null) {
+            return;
+        }
+        this._onObjectTap(tileX, tileY);
+    }
+
+    /**
+     * @private
+     */
     _emitInspect(tileX, tileY) {
         if (this._onInspect == null) {
             return;
@@ -254,19 +269,15 @@ export class InputHandler {
     }
 
     /**
-     * The context gesture (long-press or right-click): no-op in map mode, deselects an
-     * active tool, otherwise opens the mini-menu.
+     * The context gesture (long-press or right-click): no-op in map mode or when no tool is
+     * active, otherwise deselects the active tool.
      * @private
      */
     _handleContextGesture(tileX, tileY, screenX, screenY) {
-        if (this._mapMode) {
+        if (this._mapMode || this.activeTool == null) {
             return;
         }
-        if (this.activeTool != null) {
-            this._clearActiveTool();
-            return;
-        }
-        this._openMiniMenu(tileX, tileY, screenX, screenY);
+        this._clearActiveTool();
     }
 
     /**
@@ -323,27 +334,6 @@ export class InputHandler {
             return;
         }
         this._toolbar.setActiveTool(tool);
-    }
-
-    /**
-     * @private
-     */
-    _openMiniMenu(tileX, tileY, screenX, screenY) {
-        if (this._onMiniMenuEntryClick == null) {
-            console.trace("Mini menu opened before a click handler was registered");
-            return;
-        }
-        // Open first: this closes any prior menu, firing its onClose (which resumes hover
-        // and clears the old highlight). Only then pin the inspect highlight to this menu's
-        // tile and freeze hover, so a reopen doesn't get its freeze clobbered by the old
-        // menu's teardown. On close, clear it and resume hover from the current tile so
-        // selecting an entry doesn't immediately re-inspect under the cursor.
-        this._onMiniMenuEntryClick(tileX, tileY, screenX, screenY, () => {
-            this._emitInspect(null, null);
-            Mouse.resumeHoverOnMove();
-        });
-        Mouse.freezeHover();
-        this._emitInspect(tileX, tileY);
     }
 
     /**

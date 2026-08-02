@@ -1,7 +1,6 @@
 import Mouse from "@/client/Mouse.js";
 import {TextureRegistry} from "@/client/TextureRegistry.js";
 import {DrawLayerRegistry} from "@/client/DrawLayerRegistry.js";
-import {MiniMenuLayer} from "@/client/MiniMenuLayer.js";
 import {InspectPanelLayer} from "@/client/InspectPanelLayer.js";
 import {RotateButtonsLayer} from "@/client/RotateButtonsLayer.js";
 import {ToolbarLayer} from "@/client/ToolbarLayer.js";
@@ -153,7 +152,6 @@ export class Client {
         this.cache.register("inspect", INSPECT_SCHEMA, new InspectWriter(this.cache), new InspectView());
         // The open-menu set rides to the sim as the inspect subscription, whoever changes it.
         this.cache.subscribe("inspect.openObjects", () => this._sendInspectedObjects());
-        this.miniMenuLayer = new MiniMenuLayer(viewport);
         // Screen-space panels for open machine menus; fed by the inspect heartbeat state.
         this.inspectPanelLayer = new InspectPanelLayer(app, this.cache);
         // Rotate controls, toggled with the active tool by the host.
@@ -457,13 +455,11 @@ export class Client {
         this.friendsPanelLayer.textureRegistry = this.textureRegistry;
         this.friendsPanelLayer.viewport = this.viewport;
         this.friendsPanelLayer.anchorButton = this.friendsButtonLayer;
-        this.miniMenuLayer.textureRegistry = this.textureRegistry;
         this.rotateButtonsLayer.textureRegistry = this.textureRegistry;
         this.rotateButtonsLayer.build();
         this.app.stage.addChild(this.centerMarkerLayer);
         this.app.stage.addChild(this.mapButtonsLayer);
         this.app.stage.addChild(this.chunkInfoPanelLayer);
-        this.app.stage.addChild(this.miniMenuLayer);
         this.app.stage.addChild(this.rotateButtonsLayer);
         this.app.stage.addChild(this.toolbarLayer);
         this.app.stage.addChild(this.statusLayer);
@@ -945,23 +941,21 @@ export class Client {
     }
 
     /**
-     * Aggregates mini-menu entries for the tile: each client mod's object entries plus the
-     * derived menu verbs. World mode only.
+     * Handles a left-click (tool-less) tap on the tile: runs the first placed object's
+     * tapAction, if any. World mode only.
      * @param {number} tileX
      * @param {number} tileY
-     * @returns {MiniMenuEntry[]}
+     * @returns {void}
      */
-    miniMenuEntries(tileX, tileY) {
-        const derived = this.bundles.flatMap(bundle => {
+    handleObjectTap(tileX, tileY) {
+        for (const bundle of this.bundles) {
             const record = this.objects.objectAt(tileX, tileY, bundle.type);
-            if (record === null) {
-                return [];
+            if (record === null || bundle.type.tapAction === null) {
+                continue;
             }
-            return bundle.type.menuVerbs.map(verb => verb.entry(bundle.type, record, this.session, this));
-        });
-        const bespoke = this.modRegistry.clientMods
-            .flatMap(mod => mod.miniMenuEntries(tileX, tileY, this.session, this));
-        return derived.concat(bespoke).sort((a, b) => b.rank - a.rank);
+            bundle.type.tapAction(record, this.session, this);
+            return;
+        }
     }
 
     /**

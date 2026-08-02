@@ -1,16 +1,15 @@
 import {InputHandler} from "@/client/InputHandler.js";
 
 /**
- * Builds the InputHandler and wires its callbacks to the client (mini-menu, inspect, map
+ * Builds the InputHandler and wires its callbacks to the client (object tap, inspect, map
  * hover/tap, rotate button).
  * @param {Client} client
  * @returns {InputHandler}
  */
 export function createInputHandler(client) {
     const inputHandler = new InputHandler(client.toolbarLayer);
-    inputHandler.onMiniMenuEntryClick((tileX, tileY, screenX, screenY, onClose) => {
-        const entries = client.miniMenuEntries(tileX, tileY);
-        client.miniMenuLayer.open(entries, screenX, screenY, onClose);
+    inputHandler.onObjectTap((tileX, tileY) => {
+        client.handleObjectTap(tileX, tileY);
     });
     inputHandler.onInspect((tileX, tileY) => {
         client.handleInspect(tileX, tileY);

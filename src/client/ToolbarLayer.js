@@ -77,7 +77,7 @@ export class ToolbarLayer extends Container {
         this._drawerStrip = null;
         this._drawerOpen = false;
         // Window pointerdown listener that closes the drawer on a click off it; installed while
-        // open, mirroring MiniMenuLayer.
+        // open.
         this._clickOffListener = null;
         // Grid dimensions, computed on setTools and consumed by _layout for sizing/positioning.
         this._columns = 0;
