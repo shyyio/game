@@ -5,7 +5,7 @@ export const RESOURCE_OXIDE = 302;
 export const RESOURCE_COAL = 303;
 export const RESOURCE_QUARTZ = 304;
 
-// Item types, following the production chain in recipes/Items.puml.
+// Item types, following the production chain.
 export const ITEM_TYPE_WATER = 310;
 export const ITEM_TYPE_SOUL = 311;
 export const ITEM_TYPE_SOYBEAN_SEEDS = 312;
@@ -28,12 +28,10 @@ export const ITEM_TYPE_GLASS = 329;
 export const ITEM_TYPE_EMPTY_SYRINGE = 330;
 export const ITEM_TYPE_STIMPACK = 331;
 
-// Shared fallback output for every machine below: a mis-fed input set (wrong items gathered) always
-// produces this instead of silently discarding them.
+// Fallback output for mis-fed machine inputs.
 export const ITEM_TYPE_WASTE = 399;
 
-// Placeholder NPC prices for the two seed items sold at a Trading Terminal; tune once a real economy
-// balance pass happens.
+// Placeholder NPC prices for Trading Terminal seed items.
 export const NPC_PRICE_SOYBEAN_SEEDS = 5;
 export const NPC_PRICE_MUSHROOM_SPORE = 8;
 

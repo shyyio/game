@@ -43,8 +43,7 @@ import {
 } from "./constants.js";
 
 // ---- Resource bodies ----
-// Every resource here is a simple 1x1, non-solid tile: the shared Extractor sits directly on top of
-// it, same as Resources mod's original WaterResourceType.
+// Simple 1x1 non-solid tile; shared Extractor sits on top.
 
 function resourceBody(name, label, resourceType) {
     return new ObjectType({
@@ -74,7 +73,7 @@ export const RESOURCE_TYPES = [
 ];
 
 // ---- Primary extraction ----
-// One shared Extractor type: recipes.puml's "Primary Extraction" agent, reused for every resource.
+// Shared Extractor type: the "Primary Extraction" agent, reused for every resource.
 
 export const ExtractorType = new ObjectType({
     name: "Extractor",
@@ -98,20 +97,16 @@ export const ExtractorType = new ObjectType({
 });
 
 // ---- Machines ----
-// Convention: ports only ever face bottom (inputs, direction UP, fed by whatever sits south) or top
-// (outputs, direction UP, feeding whatever sits north) — never a side. A single input/output sits at
-// column x=0 on a 1x1 footprint; a second input or output widens the machine to "1x2" (2 tiles wide,
-// 1 tall — same shape Logistics' Splitter uses) and sits at column x=1, so the two never collide.
+// Ports face bottom (inputs) or top (outputs), never a side. Single port at column x=0 on 1x1;
+// second port widens footprint to "1x2" at column x=1.
 
 const IN_A = new PortDefinition("in_a", {x: 0, y: 0, direction: Direction.UP});
 const IN_B = new PortDefinition("in_b", {x: 1, y: 0, direction: Direction.UP});
 const OUT_A = new PortDefinition("out_a", {x: 0, y: -1, direction: Direction.UP});
 const OUT_B = new PortDefinition("out_b", {x: 1, y: -1, direction: Direction.UP});
 
-// 2x2 footprint (Blender/TormentChamber/Brew/FormingMachine/DelicateAssembly/AirFilter): bottom row
-// is y=1 (not the anchor row), one tile further south than a 1-tall footprint's inputs. A pipe only
-// ever delivers into a port already claimed via engine.markFluidPort — the `fluid` flag (4th
-// PortDefinition arg) opts a port into that (see MachineBehavior.onSpawn/onDespawn).
+// 2x2 footprint: bottom row is y=1. `fluid` flag (4th PortDefinition arg) opts a port into
+// engine.markFluidPort (see MachineBehavior.onSpawn/onDespawn).
 const IN2_A = new PortDefinition("in_a", {x: 0, y: 1, direction: Direction.UP});
 const IN2_B = new PortDefinition("in_b", {x: 1, y: 1, direction: Direction.UP});
 const IN2_B_FLUID = new PortDefinition("in_b", {x: 1, y: 1, direction: Direction.UP}, true, true);
@@ -127,9 +122,8 @@ const IN3_B = new PortDefinition("in_b", {x: 2, y: 2, direction: Direction.UP});
 const IN3_B_FLUID = new PortDefinition("in_b", {x: 2, y: 2, direction: Direction.UP}, true, true);
 const OUT3_A = new PortDefinition("out_a", {x: 1, y: -1, direction: Direction.UP});
 
-// One placeholder texture per footprint size, so a machine's sprite always matches its own
-// footprint instead of every size reusing the 1x1 demo-machine art. The 1x2/3x3 frames are Housing's
-// 2x2 art (housing/0) 9-sliced up/down to size — see src/mods/BaseTextures/sprites/main/housing/.
+// Placeholder texture per footprint size. 1x2/3x3 frames are Housing's 2x2 art 9-sliced to size —
+// see src/mods/BaseTextures/sprites/main/housing/.
 const TEXTURE_BY_GEOMETRY = {
     "1x1": "demo-machine/0",
     "1x2": "housing/0-1x2",
@@ -194,9 +188,7 @@ export const TormentChamberType = machine("TormentChamber", "Torment Chamber", {
     ],
 });
 
-// One Brew machine, two recipes. Its fluid-side port carries Water in one recipe and BasicPotionBase
-// in the other — consistently fluid both times (BasicPotionBase is a liquid), so no port-role
-// conflict; unlike Blast Furnace below, nothing here needed collapsing.
+// Fluid-side port carries Water or BasicPotionBase, both fluids — no port-role conflict.
 export const BrewType = machine("Brew", "Brew", {
     inputPorts: [IN2_A, IN2_B_FLUID],
     outputPorts: [OUT2_A],
@@ -218,10 +210,8 @@ export const BakeType = machine("Bake", "Bake", {
     ],
 });
 
-// One Blast Furnace machine, one craft: unlike Brew, Coke (solid) and Oxygen (fluid) can't share a
-// port role no matter what, so instead of two recipes this is one recipe with three dedicated ports
-// (3x3, the extra column fits the third input) — PigIron is no longer a separate transportable item,
-// just what happens between Coke igniting the ore and Oxygen finishing the steel.
+// Coke (solid) and Oxygen (fluid) can't share a port role, so one recipe gets three dedicated
+// ports (3x3) instead of two recipes. PigIron isn't a transportable item, just the in-between state.
 export const BlastFurnaceType = machine("BlastFurnace", "Blast Furnace", {
     inputPorts: [IN3_A, IN3_MID, IN3_B_FLUID],
     outputPorts: [OUT3_A],
@@ -255,9 +245,7 @@ export const FillType = machine("Fill", "Fill", {
 });
 
 // ---- Air Filter ----
-// No input port: a passive generator, per recipes.puml's fiction (filters ambient air). Oxygen is
-// the main output; Water is a much slower secondary trickle. Two outputs, both still top (north),
-// never a side.
+// No input: passive generator (filters ambient air). Oxygen main output, Water a slow trickle.
 
 export const AirFilterType = new ObjectType({
     name: "AirFilter",

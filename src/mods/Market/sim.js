@@ -43,18 +43,14 @@ export class MarketSimMod extends AbstractSimMod {
     }
 
     /**
-     * Settles this tick's confirmed trades and NPC purchases (before refreshing the balance cache, so
-     * next tick's eligibility check sees the post-settlement balance, not a tick-stale one), refreshes
-     * every buy terminal's cached balance from its chunk owner's real balance, then advances the
-     * guide-price clock.
+     * Settles trades/purchases, refreshes buy-terminal balances, advances guide-price clock.
      * @param {Game} game
      * @returns {void}
      */
     onTick(game) {
         const engine = game.simEngine;
         const book = engine.resolve(MarketBook);
-        // Shared across both passes so a terminal that settles and refreshes in the same tick has
-        // its chunk owner looked up once, not twice.
+        // Shared across both passes: one chunk-owner lookup per terminal, not two.
         const owners = new Map();
         this._settle(book, engine, game, owners);
         this._settlePurchases(book, engine, game, owners);

@@ -32,9 +32,8 @@ import {
 } from "./common/constants.js";
 
 /**
- * The real game content: recipes/Items.puml's whole production chain, from primary extraction
- * through the Biotech (food/adrenochrome/potion) and Industry (steel/glass) chains to the final
- * Stimpack assembly.
+ * The real game content: the whole production chain, from primary extraction through the
+ * Biotech (food/adrenochrome/potion) and Industry (steel/glass) chains to the final Stimpack assembly.
  */
 export class BaseGameDeclaration extends AbstractModDeclaration {
 
@@ -83,9 +82,7 @@ export class BaseGameDeclaration extends AbstractModDeclaration {
         ];
     }
 
-    // Water, Oxygen, Nutrient Slop, and Basic Potion Base are fluids: they fill pipes and never rest
-    // as a port item sprite. Basic Potion Base being a liquid is what lets Brew's fluid-side port
-    // carry it (recipe 2) and Water (recipe 1) without a port-role conflict — see BrewType.
+    // Water, Oxygen, Nutrient Slop, Basic Potion Base fill pipes, never render as a port item sprite.
     get fluidTypes() {
         return [ITEM_TYPE_WATER, ITEM_TYPE_OXYGEN, ITEM_TYPE_NUTRIENT_SLOP, ITEM_TYPE_BASIC_POTION_BASE];
     }
