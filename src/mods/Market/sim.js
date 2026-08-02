@@ -88,10 +88,11 @@ export class MarketSimMod extends AbstractSimMod {
         book.removeSell(eid);
         terminal.mode[row] = message.mode;
         terminal.itemType[row] = message.itemType;
-        terminal.price[row] = message.price;
         if (isFixed) {
+            terminal.price[row] = book.fixedPriceOf(message.itemType);
             return;
         }
+        terminal.price[row] = message.price;
         if (message.mode === MARKET_MODE_SELL) {
             book.postSell(eid, message.itemType, message.price);
         } else {
@@ -215,8 +216,9 @@ export class MarketSimMod extends AbstractSimMod {
     /**
      * Pays out this tick's confirmed NPC purchases: the buyer is debited against its chunk's current
      * owner (an unclaimed chunk has nobody to charge, so the purchase is simply skipped rather than
-     * left to error — this can only happen if the chunk lost its owner between submit and resolve, in
-     * the same tick). Deltas are batched per player, same as _settle.
+     * left to error — reachable when the chunk was unclaimed after this terminal's cached owner/balance
+     * were last refreshed, since that cache is a tick stale). Deltas are batched per player, same as
+     * _settle.
      * @param {MarketBook} book
      * @param {GameEngine} engine
      * @param {Game} game
