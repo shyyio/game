@@ -1,5 +1,0 @@
-{{DOMAIN}} {
-    reverse_proxy 127.0.0.1:27500
-    header -Via
-    header -Uwebsockets
-}
