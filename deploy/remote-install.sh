@@ -17,7 +17,7 @@ trap 'rm -f "$CADDYFILE"' EXIT
 sed "s/{{DOMAIN}}/${DOMAIN}/" "${DEPLOY_DIR}/Caddyfile" > "$CADDYFILE"
 
 FILES=(
-    "${DEPLOY_DIR}/install.sh" "${DEPLOY_DIR}/post-receive" "${DEPLOY_DIR}/spup.service" "${DEPLOY_DIR}/nftables.conf"
+    "${DEPLOY_DIR}/bootstrap.sh" "${DEPLOY_DIR}/install.sh" "${DEPLOY_DIR}/post-receive" "${DEPLOY_DIR}/spup.service" "${DEPLOY_DIR}/nftables.conf"
     "${DEPLOY_DIR}/sysctl-network.conf" "${DEPLOY_DIR}/unattended-upgrades-reboot.conf" "${DEPLOY_DIR}/sshd-access.conf"
     "${DEPLOY_DIR}/backup.sh" "${DEPLOY_DIR}/spup-backup.service" "${DEPLOY_DIR}/spup-backup.timer"
 )

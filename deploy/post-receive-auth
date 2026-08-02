@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+GIT_WORK_TREE=/home/app/spup-auth GIT_DIR=/home/app/spup-auth.git git checkout -f main
+cd /home/app/spup-auth
+npm ci
+npm run build:authserver
+sudo /usr/bin/systemctl restart spup-auth
