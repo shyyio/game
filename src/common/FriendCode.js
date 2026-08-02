@@ -1,5 +1,3 @@
-import {randomBytes} from "node:crypto";
-
 // Crockford base32: ambiguous letters (I, L, O, U) dropped.
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const CODE_DIGITS = 8;
@@ -34,7 +32,8 @@ function formatFriendCode(digits) {
  * @returns {string}
  */
 export function generateFriendCode() {
-    const bytes = randomBytes(PAYLOAD_DIGITS);
+    const bytes = new Uint8Array(PAYLOAD_DIGITS);
+    crypto.getRandomValues(bytes);
     let payload = "";
     for (let i = 0; i < PAYLOAD_DIGITS; i++) {
         payload += ALPHABET[bytes[i] % 32];
