@@ -59,13 +59,14 @@ export class PanelStack extends Container {
      * A single line of body text.
      * @param {string} label
      * @param {string} [role] - a TextRole value
-     * @returns {void}
+     * @returns {Text}
      */
     text(label, role = TextRole.BODY) {
         const text = panelText(label, role);
         text.y = this._y;
         this.addChild(text);
         this._y += ROW_HEIGHT;
+        return text;
     }
 
     /**
