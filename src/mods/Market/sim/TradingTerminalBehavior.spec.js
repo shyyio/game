@@ -130,6 +130,26 @@ test("an NPC-priced sell terminal always has a counterparty, no buy terminal nee
     assert.equal(engine.portItem(terminal.in[row]), EMPTY, "the NPC always buys, no player counterparty posted");
 });
 
+test("an NPC-priced buy terminal purchases every tick, at full throughput", async () => {
+    const engine = await makeGameEngine([new ModPackage(new NpcPriceFixtureDeclaration())]);
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
+    const [buyerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
+    const def = engine.component("MarketTerminal");
+    const terminal = def.store;
+    const row = def.row(buyerEid);
+    terminal.mode[row] = MARKET_MODE_BUY;
+    terminal.itemType[row] = ITEM;
+    terminal.balance[row] = 1_000_000;
+
+    const outPort = terminal.out[row];
+    for (let tick = 0; tick < 10; tick += 1) {
+        engine.tickAll();
+        assert.equal(engine.portItem(outPort), ITEM, `tick ${tick}: the NPC purchase landed this tick`);
+        // A belt would pull it away immediately; simulate that so the next tick isn't blocked.
+        engine.setPortItem(outPort, EMPTY);
+    }
+});
+
 test("two sellers racing for one buyer: the loser's item stays resting, no double-delivery", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
