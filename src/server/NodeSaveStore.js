@@ -1,14 +1,6 @@
 import BetterSqlite3 from "better-sqlite3";
 import {AbstractSaveStore} from "@/common/AbstractSaveStore.js";
 
-// Bookkeeping tables describing the saved component tables + globals (prefixed to avoid colliding
-// with a component named the same).
-const COMPONENT_META = "_Component";
-const FIELD_META = "_Field";
-const GLOBAL_TABLE = "_Global";
-const RECORD_META = "_Record";
-const RECORD_FIELD_META = "_RecordField";
-
 /**
  * Node {@link AbstractSaveStore}: persists the snapshot as structured SQLite — one table per
  * component (a column per field), plus meta tables recording the component/field descriptors and the
@@ -38,6 +30,7 @@ export class NodeSaveStore extends AbstractSaveStore {
                 this._writeComponent(component);
             }
             this._writeGlobals(snapshot.globals);
+            this._writeObjectTypeNames(snapshot.objectTypeNames);
             this._writeRecordMeta(records);
             for (const table of records) {
                 this._writeRecords(table);
@@ -72,7 +65,7 @@ export class NodeSaveStore extends AbstractSaveStore {
     async load() {
         const hasSave = this.db
             .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
-            .get(COMPONENT_META);
+            .get("_Component");
         if (hasSave === undefined) {
             return null;
         }
@@ -80,6 +73,7 @@ export class NodeSaveStore extends AbstractSaveStore {
             components: this._readComponents(),
             globals: this._readGlobals(),
             records: this._readRecords(),
+            objectTypeNames: this._readObjectTypeNames(),
         };
     }
 
@@ -103,12 +97,12 @@ export class NodeSaveStore extends AbstractSaveStore {
      * @returns {void}
      */
     _writeMeta(components) {
-        this.db.exec(`CREATE TABLE "${COMPONENT_META}" (name TEXT PRIMARY KEY, seq INTEGER)`);
-        this.db.exec(`CREATE TABLE "${FIELD_META}" (component TEXT, name TEXT, kind TEXT, seq INTEGER)`);
-        this.db.exec(`CREATE TABLE "${GLOBAL_TABLE}" (key TEXT PRIMARY KEY, value INTEGER)`);
+        this.db.exec('CREATE TABLE "_Component" (name TEXT PRIMARY KEY, seq INTEGER)');
+        this.db.exec('CREATE TABLE "_Field" (component TEXT, name TEXT, kind TEXT, seq INTEGER)');
+        this.db.exec('CREATE TABLE "_Global" (key TEXT PRIMARY KEY, value INTEGER)');
 
-        const componentInsert = this.db.prepare(`INSERT INTO "${COMPONENT_META}" (name, seq) VALUES (?, ?)`);
-        const fieldInsert = this.db.prepare(`INSERT INTO "${FIELD_META}" (component, name, kind, seq) VALUES (?, ?, ?, ?)`);
+        const componentInsert = this.db.prepare('INSERT INTO "_Component" (name, seq) VALUES (?, ?)');
+        const fieldInsert = this.db.prepare('INSERT INTO "_Field" (component, name, kind, seq) VALUES (?, ?, ?, ?)');
         for (const [index, component] of components.entries()) {
             componentInsert.run(component.name, index);
             for (const [fieldIndex, field] of component.fields.entries()) {
@@ -141,7 +135,7 @@ export class NodeSaveStore extends AbstractSaveStore {
      * @returns {void}
      */
     _writeGlobals(globals) {
-        const insert = this.db.prepare(`INSERT INTO "${GLOBAL_TABLE}" (key, value) VALUES (?, ?)`);
+        const insert = this.db.prepare('INSERT INTO "_Global" (key, value) VALUES (?, ?)');
         for (const [key, value] of Object.entries(globals)) {
             insert.run(key, value);
         }
@@ -153,10 +147,10 @@ export class NodeSaveStore extends AbstractSaveStore {
      */
     _readComponents() {
         const componentRows = this.db
-            .prepare(`SELECT name FROM "${COMPONENT_META}" ORDER BY seq`)
+            .prepare('SELECT name FROM "_Component" ORDER BY seq')
             .all();
         const fieldStatement = this.db
-            .prepare(`SELECT name, kind FROM "${FIELD_META}" WHERE component=? ORDER BY seq`);
+            .prepare('SELECT name, kind FROM "_Field" WHERE component=? ORDER BY seq');
 
         return componentRows.map(componentRow => {
             const fields = fieldStatement.all(componentRow.name).map(field => ({name: field.name, kind: field.kind}));
@@ -172,11 +166,11 @@ export class NodeSaveStore extends AbstractSaveStore {
      * @returns {void}
      */
     _writeRecordMeta(records) {
-        this.db.exec(`CREATE TABLE "${RECORD_META}" (name TEXT PRIMARY KEY, seq INTEGER)`);
-        this.db.exec(`CREATE TABLE "${RECORD_FIELD_META}" (record TEXT, name TEXT, kind TEXT, seq INTEGER)`);
+        this.db.exec('CREATE TABLE "_Record" (name TEXT PRIMARY KEY, seq INTEGER)');
+        this.db.exec('CREATE TABLE "_RecordField" (record TEXT, name TEXT, kind TEXT, seq INTEGER)');
 
-        const recordInsert = this.db.prepare(`INSERT INTO "${RECORD_META}" (name, seq) VALUES (?, ?)`);
-        const fieldInsert = this.db.prepare(`INSERT INTO "${RECORD_FIELD_META}" (record, name, kind, seq) VALUES (?, ?, ?, ?)`);
+        const recordInsert = this.db.prepare('INSERT INTO "_Record" (name, seq) VALUES (?, ?)');
+        const fieldInsert = this.db.prepare('INSERT INTO "_RecordField" (record, name, kind, seq) VALUES (?, ?, ?, ?)');
         for (const [index, table] of records.entries()) {
             recordInsert.run(table.name, index);
             for (const [fieldIndex, field] of table.fields.entries()) {
@@ -210,15 +204,15 @@ export class NodeSaveStore extends AbstractSaveStore {
     _readRecords() {
         const hasRecords = this.db
             .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
-            .get(RECORD_META);
+            .get("_Record");
         if (hasRecords === undefined) {
             return [];
         }
         const recordRows = this.db
-            .prepare(`SELECT name FROM "${RECORD_META}" ORDER BY seq`)
+            .prepare('SELECT name FROM "_Record" ORDER BY seq')
             .all();
         const fieldStatement = this.db
-            .prepare(`SELECT name, kind FROM "${RECORD_FIELD_META}" WHERE record=? ORDER BY seq`);
+            .prepare('SELECT name, kind FROM "_RecordField" WHERE record=? ORDER BY seq');
 
         return recordRows.map(recordRow => {
             const fields = fieldStatement.all(recordRow.name).map(field => ({name: field.name, kind: field.kind}));
@@ -234,10 +228,45 @@ export class NodeSaveStore extends AbstractSaveStore {
      */
     _readGlobals() {
         const globals = {};
-        const globalRows = this.db.prepare(`SELECT key, value FROM "${GLOBAL_TABLE}"`).all();
+        const globalRows = this.db.prepare('SELECT key, value FROM "_Global"').all();
         for (const row of globalRows) {
             globals[row.key] = row.value;
         }
         return globals;
+    }
+
+    /**
+     * @private
+     * @param {string[]|null} names
+     * @returns {void}
+     */
+    _writeObjectTypeNames(names) {
+        this.db.exec('CREATE TABLE "_ObjectType" (name TEXT, seq INTEGER)');
+        if (names === null || names === undefined) {
+            return;
+        }
+        const insert = this.db.prepare('INSERT INTO "_ObjectType" (name, seq) VALUES (?, ?)');
+        for (const [index, name] of names.entries()) {
+            insert.run(name, index);
+        }
+    }
+
+    /**
+     * @private
+     * @returns {string[]|null} null when the save predates this table, or was written by an engine
+     *     with no modRegistry
+     */
+    _readObjectTypeNames() {
+        const hasTable = this.db
+            .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
+            .get("_ObjectType");
+        if (hasTable === undefined) {
+            return null;
+        }
+        const rows = this.db.prepare('SELECT name FROM "_ObjectType" ORDER BY seq').all();
+        if (rows.length === 0) {
+            return null;
+        }
+        return rows.map(row => row.name);
     }
 }

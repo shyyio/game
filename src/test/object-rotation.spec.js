@@ -3,28 +3,34 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {BeltDefinition, SplitterDefinition} from "@/mods/Logistics/common/objectTypes.js";
-import {DemoMachineType, ITEM_TYPE_DEMO_INPUT, ITEM_TYPE_DEMO_OUTPUT} from "@/mods/Demo/declaration.js";
+import {ModPackage} from "@/common/ModPackage.js";
+import {
+    TestMachineType,
+    ITEM_TYPE_TEST_MACHINE_INPUT,
+    ITEM_TYPE_TEST_MACHINE_OUTPUT,
+    MachineFixtureDeclaration,
+} from "@/test/machineFixture.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 
 async function setup() {
-    return makeGameEngine();
+    return makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
 }
 
 test("a RIGHT-facing machine adopts a RIGHT belt and cooks", async () => {
     const engine = await setup();
     // Belt (5,5) RIGHT feeds (6,5); machine at (6,5) facing RIGHT.
-    engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, 6, 5, Direction.RIGHT));
+    engine.applyMessage(new CreateObjectMessage(TestMachineType.typeId, 6, 5, Direction.RIGHT));
     engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, 5, 5, Direction.RIGHT));
     const belt = beltsOf(engine).pathAt(5, 5);
     assert.equal(belt.outPort, engine.portAt(6, 5, Direction.RIGHT), "belt out adopted as machine input");
 
-    engine.setPortItem(belt.inPort, ITEM_TYPE_DEMO_INPUT);
+    engine.setPortItem(belt.inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
     const machineOut = engine.portAt(7, 5, Direction.RIGHT);
     let cooked = false;
     for (let i = 0; i < 16 && !cooked; i += 1) {
         engine.tickAll();
-        cooked = engine.portItem(machineOut) === ITEM_TYPE_DEMO_OUTPUT;
+        cooked = engine.portItem(machineOut) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
     }
     assert.ok(cooked, "RIGHT machine cooked the belt-fed input");
 });

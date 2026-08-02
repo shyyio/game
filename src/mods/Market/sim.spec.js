@@ -9,16 +9,33 @@ import {chunkId} from "@/common/util.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
+import {ModPackage} from "@/common/ModPackage.js";
+import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
+import {MarketListingEntry} from "@/common/MarketListingEntry.js";
 import {TradingTerminalType} from "./common/objectTypes.js";
 import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./common/messages.js";
 import {MarketSnapshotEvent, MARKET_SNAPSHOT_NONE} from "./common/events.js";
-import {MARKET_MODE_SELL, MARKET_MODE_BUY, MARKET_SETTING_BALANCE, NPC_FIXED_PRICES, TRADABLE_ITEMS} from "./common/constants.js";
+import {MARKET_MODE_SELL, MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "./common/constants.js";
 
 const ITEM = 500;
 const PRICE = 10;
 
-async function gameWithSessions() {
-    const modRegistry = ecsModRegistry();
+/**
+ * A fixture-only declaration listing ITEM at a fixed NPC price, for the NPC-priced tests.
+ */
+class NpcPriceFixtureDeclaration extends AbstractModDeclaration {
+
+    get name() {
+        return "NpcPriceFixture";
+    }
+
+    get marketListings() {
+        return [new MarketListingEntry(ITEM, PRICE)];
+    }
+}
+
+async function gameWithSessions(extraPackages = []) {
+    const modRegistry = ecsModRegistry(extraPackages);
     const game = new Game(modRegistry, new GameEngine(modRegistry));
     await game.init();
     const seller = new CapturingSession(1);
@@ -108,45 +125,76 @@ test("an unclaimed chunk's terminal never trades", async () => {
 });
 
 test("an NPC-priced item trades without any buy terminal, crediting the seller's chunk owner", async () => {
-    const {game, seller} = await gameWithSessions();
-    NPC_FIXED_PRICES.set(ITEM, PRICE);
-    TRADABLE_ITEMS.add(ITEM);
-    try {
-        const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, PRICE);
-        const def = game.simEngine.component("MarketTerminal");
-        const inPort = def.store.in[def.row(sellerEid)];
-        game.simEngine.setPortItem(inPort, ITEM);
-        // sellEnabled refreshes only at tick end; first tick runs on stale cache.
+    const {game, seller} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
+    const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, PRICE);
+    const def = game.simEngine.component("MarketTerminal");
+    const inPort = def.store.in[def.row(sellerEid)];
+    game.simEngine.setPortItem(inPort, ITEM);
+    // sellEnabled refreshes only at tick end; first tick runs on stale cache.
+    game.runTick();
+    game.runTick();
+    assert.equal(balanceOf(game, seller.playerId), PRICE);
+    assert.ok(balanceUpdates(seller).some(event => event.value === PRICE));
+});
+
+test("a buy terminal on an NPC-priced item purchases from the NPC, no seller needed", async () => {
+    const {game, buyer} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
+    const buyerEid = placeTerminal(game, buyer, 5, 5, MARKET_MODE_BUY, ITEM, PRICE);
+    game.playerSettings.set(buyer.playerId, MARKET_SETTING_BALANCE, 1000);
+    const def = game.simEngine.component("MarketTerminal");
+    const outPort = def.store.out[def.row(buyerEid)];
+
+    // Cached balance refreshes only at tick end; second tick needed to see funding take effect.
+    game.runTick();
+    game.runTick();
+
+    assert.equal(game.simEngine.portItem(outPort), ITEM, "the NPC delivered straight into the terminal's output");
+    assert.equal(balanceOf(game, buyer.playerId), 1000 - PRICE);
+    assert.ok(balanceUpdates(buyer).some(event => event.value === 1000 - PRICE));
+});
+
+test("a buy terminal on an NPC-priced item never purchases without enough balance", async () => {
+    const {game, buyer} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
+    const buyerEid = placeTerminal(game, buyer, 5, 5, MARKET_MODE_BUY, ITEM, PRICE);
+    const def = game.simEngine.component("MarketTerminal");
+    const outPort = def.store.out[def.row(buyerEid)];
+
+    game.runTick();
+    game.runTick();
+
+    assert.equal(game.simEngine.portItem(outPort), EMPTY, "no balance, nothing bought");
+    assert.equal(balanceOf(game, buyer.playerId), 0);
+});
+
+test("a buy terminal keeps purchasing from the NPC every tick its output is free", async () => {
+    const {game, buyer} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
+    const buyerEid = placeTerminal(game, buyer, 5, 5, MARKET_MODE_BUY, ITEM, PRICE);
+    game.playerSettings.set(buyer.playerId, MARKET_SETTING_BALANCE, 1000);
+    const def = game.simEngine.component("MarketTerminal");
+    const outPort = def.store.out[def.row(buyerEid)];
+
+    game.runTick();
+    for (let i = 0; i < 5; i += 1) {
         game.runTick();
-        game.runTick();
-        assert.equal(balanceOf(game, seller.playerId), PRICE);
-        assert.ok(balanceUpdates(seller).some(event => event.value === PRICE));
-    } finally {
-        NPC_FIXED_PRICES.delete(ITEM);
-        TRADABLE_ITEMS.delete(ITEM);
+        assert.equal(game.simEngine.portItem(outPort), ITEM, `tick ${i}: bought`);
+        game.simEngine.setPortItem(outPort, EMPTY);
     }
+    assert.equal(balanceOf(game, buyer.playerId), 1000 - PRICE * 5);
 });
 
 test("the market snapshot reports the tradable catalog and the requested terminal's own config", async () => {
-    const {game, seller} = await gameWithSessions();
-    NPC_FIXED_PRICES.set(ITEM, PRICE);
-    TRADABLE_ITEMS.add(ITEM);
-    try {
-        const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, PRICE);
-        const objectId = game.simEngine.placed.objectIdOf(sellerEid);
-        game.dispatchMessage(new MarketSnapshotRequestMessage(objectId), seller);
-        const snapshot = seller.events.find(event => event instanceof MarketSnapshotEvent);
-        assert.ok(snapshot);
-        const index = snapshot.itemTypes.indexOf(ITEM);
-        assert.notEqual(index, -1);
-        assert.equal(snapshot.npcPrices[index], PRICE);
-        assert.equal(snapshot.currentMode, MARKET_MODE_SELL);
-        assert.equal(snapshot.currentItemType, ITEM);
-        assert.equal(snapshot.currentPrice, PRICE);
-    } finally {
-        NPC_FIXED_PRICES.delete(ITEM);
-        TRADABLE_ITEMS.delete(ITEM);
-    }
+    const {game, seller} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
+    const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, PRICE);
+    const objectId = game.simEngine.placed.objectIdOf(sellerEid);
+    game.dispatchMessage(new MarketSnapshotRequestMessage(objectId), seller);
+    const snapshot = seller.events.find(event => event instanceof MarketSnapshotEvent);
+    assert.ok(snapshot);
+    const index = snapshot.itemTypes.indexOf(ITEM);
+    assert.notEqual(index, -1);
+    assert.equal(snapshot.npcPrices[index], PRICE);
+    assert.equal(snapshot.currentMode, MARKET_MODE_SELL);
+    assert.equal(snapshot.currentItemType, ITEM);
+    assert.equal(snapshot.currentPrice, PRICE);
 });
 
 test("a snapshot request for an unconfigured terminal reports MARKET_SNAPSHOT_NONE", async () => {

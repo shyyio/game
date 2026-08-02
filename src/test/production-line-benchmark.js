@@ -24,8 +24,7 @@
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {TickPhase, TICK_PHASE_ORDER, EMPTY} from "@/sim/GameEngine.js";
 import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
-import {ExtractorType} from "@/mods/Resources/declaration.js";
-import {DemoMachineType} from "@/mods/Demo/declaration.js";
+import {ExtractorType, BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
 import {buildLine, lineOrigin, lineSinkPort} from "@/test/productionLine.js";
 import {CpuProfiler, printProfileSummary, printHeapUsage} from "@/test/profiler.js";
 
@@ -111,7 +110,7 @@ async function main() {
     }
 
     const extractors = engine.placed.eidsOf(ExtractorType.typeId).length;
-    const machines = engine.placed.eidsOf(DemoMachineType.typeId).length;
+    const machines = engine.placed.eidsOf(BlenderType.typeId).length;
     console.log(
         `Built in ${(buildMs / MS_PER_SECOND).toFixed(1)}s: `
         + `${extractors.toLocaleString()} extractors, ${machines.toLocaleString()} machines.`

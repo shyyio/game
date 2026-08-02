@@ -3,8 +3,7 @@
 
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {Direction} from "@/common/constants.js";
-import {WaterResourceType, ExtractorType} from "@/mods/Resources/declaration.js";
-import {DemoMachineType} from "@/mods/Demo/declaration.js";
+import {WaterResourceType, ExtractorType, BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
 import {BeltDefinition, RoadDefinition, HousingDefinition} from "@/mods/Logistics/common/objectTypes.js";
 
 // One line spans 9 tiles in x (extractor at 0, belts 1..4, machines/belt 5..8) and three tiles in
@@ -36,10 +35,10 @@ export function buildLine(engine, ox, oy) {
     for (let i = 1; i <= 4; i += 1) {
         engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, ox + i, oy, dir));
     }
-    engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, ox + 5, oy, dir));
+    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, ox + 5, oy, dir));
     engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, ox + 6, oy, dir));
-    engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, ox + 7, oy, dir));
-    engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, ox + 8, oy, dir));
+    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, ox + 7, oy, dir));
+    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, ox + 8, oy, dir));
     // The line's worker network: a road under the machines, fed by one housing off its left end.
     for (let i = ROAD_FIRST_X; i <= 8; i += 1) {
         engine.applyMessage(new CreateObjectMessage(RoadDefinition.typeId, ox + i, oy + 1, Direction.UP));

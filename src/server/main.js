@@ -30,10 +30,15 @@ modRegistry.freeze();
 
 const game = new Game(modRegistry, new GameEngine(modRegistry), new NodeSaveStore(dbPath));
 await game.init();
-if (await game.load()) {
-    console.log(`Loaded world from ${dbPath}`);
-} else {
-    console.log(`Fresh world; saving to ${dbPath}`);
+try {
+    if (await game.load()) {
+        console.log(`Loaded world from ${dbPath}`);
+    } else {
+        console.log(`Fresh world; saving to ${dbPath}`);
+    }
+} catch (error) {
+    console.error(`Refusing to start: ${dbPath} is incompatible with the current build.\n${error.message}`);
+    process.exit(1);
 }
 
 const api = new GameAPI(game);

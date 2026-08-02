@@ -4,9 +4,26 @@ import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {EMPTY} from "@/sim/GameEngine.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
+import {ModPackage} from "@/common/ModPackage.js";
+import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
+import {MarketListingEntry} from "@/common/MarketListingEntry.js";
 import {TradingTerminalType} from "./../common/objectTypes.js";
-import {MARKET_MODE_SELL, MARKET_MODE_BUY, NPC_FIXED_PRICES} from "../common/constants.js";
+import {MARKET_MODE_SELL, MARKET_MODE_BUY} from "../common/constants.js";
 import {MarketBook} from "./MarketBook.js";
+
+/**
+ * A fixture-only declaration listing ITEM at a fixed NPC price, for the NPC-priced-seller test.
+ */
+class NpcPriceFixtureDeclaration extends AbstractModDeclaration {
+
+    get name() {
+        return "NpcPriceFixture";
+    }
+
+    get marketListings() {
+        return [new MarketListingEntry(ITEM, PRICE)];
+    }
+}
 
 const ITEM = 500;
 const PRICE = 10;
@@ -97,7 +114,7 @@ test("a sell terminal with sellEnabled=0 never sells, even with an eligible buye
 });
 
 test("an NPC-priced sell terminal always has a counterparty, no buy terminal needed", async () => {
-    const engine = await makeGameEngine();
+    const engine = await makeGameEngine([new ModPackage(new NpcPriceFixtureDeclaration())]);
     engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
     const [sellerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
     const def = engine.component("MarketTerminal");
@@ -108,15 +125,9 @@ test("an NPC-priced sell terminal always has a counterparty, no buy terminal nee
     terminal.price[row] = PRICE;
     terminal.sellEnabled[row] = 1;
 
-    // MarketBook holds this exact NPC_FIXED_PRICES reference, so mutating it reaches the engine too. Restored below.
-    NPC_FIXED_PRICES.set(ITEM, PRICE);
-    try {
-        engine.setPortItem(terminal.in[row], ITEM);
-        engine.tickAll();
-        assert.equal(engine.portItem(terminal.in[row]), EMPTY, "the NPC always buys, no player counterparty posted");
-    } finally {
-        NPC_FIXED_PRICES.delete(ITEM);
-    }
+    engine.setPortItem(terminal.in[row], ITEM);
+    engine.tickAll();
+    assert.equal(engine.portItem(terminal.in[row]), EMPTY, "the NPC always buys, no player counterparty posted");
 });
 
 test("two sellers racing for one buyer: the loser's item stays resting, no double-delivery", async () => {

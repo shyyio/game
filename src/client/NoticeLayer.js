@@ -24,7 +24,11 @@ export class NoticeLayer extends Container {
     constructor(app) {
         super();
         this._app = app;
-        this.textureRegistry = null;
+        this._textureRegistry = null;
+        // A notify() before textureRegistry is assigned (e.g. the session closes while Client.init's
+        // texture load is still in flight) can't build a background yet; the text waits here and
+        // fires for real once the registry lands.
+        this._pendingText = null;
         // Display-only: never a hit target (the stage is interactive for mobile pinch).
         this.eventMode = "none";
         this.zIndex = 11000;
@@ -44,12 +48,35 @@ export class NoticeLayer extends Container {
     }
 
     /**
+     * @returns {TextureRegistry|null}
+     */
+    get textureRegistry() {
+        return this._textureRegistry;
+    }
+
+    /**
+     * @param {TextureRegistry} registry
+     */
+    set textureRegistry(registry) {
+        this._textureRegistry = registry;
+        if (this._pendingText !== null) {
+            const text = this._pendingText;
+            this._pendingText = null;
+            this.notify(text);
+        }
+    }
+
+    /**
      * Shows a message for {@link NOTICE_DURATION_MS}, replacing and re-timing any notice
      * already showing.
      * @param {string} text
      * @returns {void}
      */
     notify(text) {
+        if (this._textureRegistry === null) {
+            this._pendingText = text;
+            return;
+        }
         this._text.text = text;
         const width = this._text.width + (PADDING_X + FRAME_MARGIN) * 2;
         const height = this._text.height + (PADDING_Y + FRAME_MARGIN) * 2;

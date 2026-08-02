@@ -1,5 +1,6 @@
 import {BlankScenario} from "@/test/scenarios/BlankScenario.js";
 import {ProductionLineScenario} from "@/test/scenarios/ProductionLineScenario.js";
+import {StimpackScenario} from "@/test/scenarios/StimpackScenario.js";
 
 // Selects a scenario: ?scenario=lines&lines=200
 const SCENARIO_PARAM = "scenario";
@@ -7,6 +8,7 @@ const SCENARIO_PARAM = "scenario";
 const SCENARIOS = [
     new BlankScenario(),
     new ProductionLineScenario(),
+    new StimpackScenario(),
 ];
 
 const BY_NAME = new Map(SCENARIOS.map(scenario => [scenario.name, scenario]));

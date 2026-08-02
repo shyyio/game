@@ -33,6 +33,10 @@ export class ModRegistry {
          * @type {Map<number, PlayerSettingEntry>}
          */
         this._playerSettingEntries = new Map();
+        /**
+         * @type {MarketListingEntry[]}
+         */
+        this._marketListings = [];
     }
 
     /**
@@ -106,6 +110,17 @@ export class ModRegistry {
                     throw new Error(`Duplicate player setting key ${entry.key}`);
                 }
                 this._playerSettingEntries.set(entry.key, entry);
+            }
+        }
+
+        const listedItemTypes = new Set();
+        for (const pkg of this._packages) {
+            for (const entry of pkg.declaration.marketListings) {
+                if (listedItemTypes.has(entry.itemType)) {
+                    throw new Error(`Duplicate market listing for item type ${entry.itemType}`);
+                }
+                listedItemTypes.add(entry.itemType);
+                this._marketListings.push(entry);
             }
         }
     }
@@ -212,5 +227,14 @@ export class ModRegistry {
     playerSettingEntry(key) {
         this._assertFrozen();
         return this._playerSettingEntries.get(key);
+    }
+
+    /**
+     * Every item type listed on the market, merged across all mods.
+     * @returns {MarketListingEntry[]}
+     */
+    get marketListings() {
+        this._assertFrozen();
+        return this._marketListings;
     }
 }

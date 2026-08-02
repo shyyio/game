@@ -10,10 +10,14 @@ export class PortDefinition {
      * @param [vec] {Vec|null}
      * @param [render] {boolean} the engine captures this out-port's resting item into ViewedPortItem;
      *     opt out for virtual ports or out-ports captured manually
+     * @param [fluid] {boolean} an adjacent pipe network may deliver into this port; opts an input
+     *     port into engine.markFluidPort (a pipe only ever delivers into a port already claimed this
+     *     way — see GameEngine#isFluidPort)
      */
-    constructor(name, vec=null, render=true) {
+    constructor(name, vec=null, render=true, fluid=false) {
         this.name = name;
         this.render = render;
+        this.fluid = fluid;
         if (vec !== null) {
             this.x = vec.x;
             this.y = vec.y;
@@ -26,6 +30,19 @@ export class PortDefinition {
     }
 }
 
+export class RecipeByproduct {
+
+    /**
+     * A recipe's chance-driven secondary output, landing in the object type's second output port.
+     * @param {number} itemType
+     * @param {number} chance in [0, 1], rolled once per craft via a deterministic per-craft seed
+     */
+    constructor(itemType, chance) {
+        this.itemType = itemType;
+        this.chance = chance;
+    }
+}
+
 export class RecipeDefinition {
 
     /**
@@ -33,10 +50,12 @@ export class RecipeDefinition {
      * per input port; an extractor consumes exactly one resource type (its sole input).
      * @param {number[]} inputs
      * @param {number} output
+     * @param {RecipeByproduct} [byproduct] a chance-driven secondary output alongside the main one
      */
-    constructor(inputs, output) {
+    constructor(inputs, output, byproduct=null) {
         this.inputs = inputs;
         this.output = output;
+        this.byproduct = byproduct;
     }
 }
 

@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {DemoMachineType} from "@/mods/Demo/declaration.js";
+import {BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {Belts} from "@/mods/Logistics/sim/Belts.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
@@ -22,8 +22,8 @@ test("a second surface belt cannot occupy the same tile, and delete frees it", a
 test("an object cannot be placed on an occupied tile", async () => {
     const engine = await makeGameEngine();
 
-    engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP));
-    assert.equal(engine.placed.eidsOf(DemoMachineType.typeId).length, 1);
-    engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP));
-    assert.equal(engine.placed.eidsOf(DemoMachineType.typeId).length, 1, "overlapping machine rejected");
+    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP));
+    assert.equal(engine.placed.eidsOf(BlenderType.typeId).length, 1);
+    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP));
+    assert.equal(engine.placed.eidsOf(BlenderType.typeId).length, 1, "overlapping machine rejected");
 });

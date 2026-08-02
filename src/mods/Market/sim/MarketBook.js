@@ -1,5 +1,5 @@
 import {EMPTY} from "@/sdk/common.js";
-import {NPC_FIXED_PRICES, GUIDE_PRICE_INTERVAL_TICKS, GUIDE_PRICE_MAX_STEP_FRACTION} from "../common/constants.js";
+import {GUIDE_PRICE_INTERVAL_TICKS, GUIDE_PRICE_MAX_STEP_FRACTION} from "../common/constants.js";
 
 /**
  * One terminal's standing bid, indexed by item type.
@@ -78,6 +78,24 @@ class MarketSettlement {
 }
 
 /**
+ * One confirmed NPC-sourced purchase, handed off from {@link TradingTerminalBehavior}'s
+ * POST_RESOLVE to {@link MarketSimMod}'s onTick for currency settlement.
+ */
+class MarketPurchase {
+
+    /**
+     * @param {number} buyerEid
+     * @param {number} itemType
+     * @param {number} price
+     */
+    constructor(buyerEid, itemType, price) {
+        this.buyerEid = buyerEid;
+        this.itemType = itemType;
+        this.price = price;
+    }
+}
+
+/**
  * One side (buy or sell) of the book's standing-quote index: itemType -> quote[] for lookup,
  * eid -> quote for O(1) removal.
  */
@@ -148,10 +166,10 @@ class QuoteIndex {
 export class MarketBook {
 
     /**
-     * @param {Map<number, number>} [fixedPrices] itemType -> NPC price; defaults to the real catalog
+     * @param {Map<number, number>} [fixedPrices] itemType -> NPC price
      * @param {number} [guidePriceIntervalTicks] overridable so tests don't need real-length intervals
      */
-    constructor(fixedPrices = NPC_FIXED_PRICES, guidePriceIntervalTicks = GUIDE_PRICE_INTERVAL_TICKS) {
+    constructor(fixedPrices = new Map(), guidePriceIntervalTicks = GUIDE_PRICE_INTERVAL_TICKS) {
         this._fixedPrices = fixedPrices;
         this._guidePriceIntervalTicks = guidePriceIntervalTicks;
         this._nextSequence = 0;
@@ -163,6 +181,8 @@ export class MarketBook {
 
         // This tick's confirmed trades, drained by MarketSimMod.onTick.
         this._settlements = [];
+        // This tick's confirmed NPC purchases, drained by MarketSimMod.onTick.
+        this._purchases = [];
 
         // itemType -> GuidePrice.
         this._guidePrices = new Map();
@@ -351,6 +371,28 @@ export class MarketBook {
         const settlements = this._settlements;
         this._settlements = [];
         return settlements;
+    }
+
+    /**
+     * Records a confirmed NPC-sourced purchase (a buy terminal creating a fixed-price item straight
+     * from the NPC's infinite supply) for MarketSimMod.onTick to settle.
+     * @param {number} buyerEid
+     * @param {number} itemType
+     * @param {number} price
+     * @returns {void}
+     */
+    recordPurchase(buyerEid, itemType, price) {
+        this._purchases.push(new MarketPurchase(buyerEid, itemType, price));
+    }
+
+    /**
+     * Returns and clears this tick's confirmed NPC purchases.
+     * @returns {MarketPurchase[]}
+     */
+    drainPurchases() {
+        const purchases = this._purchases;
+        this._purchases = [];
+        return purchases;
     }
 
     /**

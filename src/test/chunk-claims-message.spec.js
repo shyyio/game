@@ -14,7 +14,7 @@ import {
     WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByUsernameResultEvent,
 } from "@/common/PlayerEvents.js";
 import {syntheticUsername} from "@/common/util.js";
-import {DemoMachineType} from "@/mods/Demo/declaration.js";
+import {BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 
@@ -35,7 +35,7 @@ async function setup() {
 }
 
 function machineCount(game) {
-    return game.simEngine.placed.eidsOf(DemoMachineType.typeId).length;
+    return game.simEngine.placed.eidsOf(BlenderType.typeId).length;
 }
 
 test("connect syncs identity, the own name, own claims, and friends", async () => {
@@ -127,11 +127,11 @@ test("a rejected claim answers only the requester", async () => {
 
 test("building in an unclaimed chunk is rejected until claimed", async () => {
     const {game, alice} = await setup();
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP), alice);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), alice);
     assert.equal(machineCount(game), 0, "unclaimed build rejected");
 
     game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP), alice);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), alice);
     assert.equal(machineCount(game), 1, "claiming unlocks the chunk");
 });
 
@@ -139,18 +139,18 @@ test("building in a foreign chunk is rejected until the owner grants it", async 
     const {game, alice, bob} = await setup();
     game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
 
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 0, "stranger's build rejected");
 
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP), alice);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), alice);
     assert.equal(machineCount(game), 1, "owner builds freely");
 
     game.dispatchMessage(new AddFriendMessage(ALICE), bob);
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 10, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 10, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1, "bob's own grant to alice gives him nothing");
 
     game.dispatchMessage(new AddFriendMessage(BOB), alice);
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 10, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 10, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 2, "alice's grant lets bob build");
 });
 
@@ -166,11 +166,11 @@ test("only-me permission blocks a friend-granted player", async () => {
     const chunk = chunkId(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
     game.dispatchMessage(new AddFriendMessage(BOB), alice);
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1, "the grant lets bob build under the friends-only default");
 
     game.dispatchMessage(new SetChunkPermissionMessage(chunk, ChunkPermission.PERMISSION_ONLY_ME), alice);
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 10, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 10, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1, "only-me overrides bob's existing grant");
 });
 
@@ -252,10 +252,10 @@ test("deleting in a foreign chunk is rejected and leaves occupancy intact", asyn
     const {game, alice, bob} = await setup();
     const engine = game.simEngine;
     game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP), alice);
-    const eid = engine.placed.eidsOf(DemoMachineType.typeId)[0];
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), alice);
+    const eid = engine.placed.eidsOf(BlenderType.typeId)[0];
     const objectId = engine.placed.objectIdOf(eid);
-    const footprint = engine.footprint(DemoMachineType, 5, 5, Direction.UP);
+    const footprint = engine.footprint(BlenderType, 5, 5, Direction.UP);
 
     game.dispatchMessage(new DeleteObjectMessage(objectId), bob);
     assert.equal(machineCount(game), 1, "stranger's delete rejected");
@@ -270,7 +270,7 @@ test("unclaiming a non-empty chunk needs the clear confirmation, which deletes t
     const {game, alice} = await setup();
     const chunk = chunkId(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP), alice);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), alice);
     alice.events.length = 0;
 
     game.dispatchMessage(new UnclaimChunkMessage(chunk), alice);
@@ -290,7 +290,7 @@ test("a splitting unclaim rejects with WOULD_SPLIT before the non-empty confirma
     game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
     game.dispatchMessage(new ClaimChunkMessage(middle), alice);
     game.dispatchMessage(new ClaimChunkMessage(chunkId(133, 5)), alice);
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 69, 5, Direction.UP), alice);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 69, 5, Direction.UP), alice);
     alice.events.length = 0;
 
     game.dispatchMessage(new UnclaimChunkMessage(middle), alice);
@@ -310,6 +310,6 @@ test("unclaim frees the chunk for other players and tells its viewers", async ()
     const update = bob.events.filter(event => event instanceof ChunkClaimUpdateEvent).at(-1);
     assert.equal(update.playerId, PLAYER_ID_NONE);
     game.dispatchMessage(new ClaimChunkMessage(chunk), bob);
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, 5, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1);
 });

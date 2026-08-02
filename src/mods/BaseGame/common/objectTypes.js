@@ -1,0 +1,290 @@
+import {
+    ObjectType,
+    PortDefinition,
+    RecipeDefinition,
+    RecipeByproduct,
+    PlacementRule,
+    ResourceBehavior,
+    ExtractorBehavior,
+    MachineBehavior,
+    GeneratorBehavior,
+    Direction,
+} from "@/sdk/common.js";
+import {
+    RESOURCE_WATER,
+    RESOURCE_GRAVEYARD,
+    RESOURCE_OXIDE,
+    RESOURCE_COAL,
+    RESOURCE_QUARTZ,
+    ITEM_TYPE_WATER,
+    ITEM_TYPE_SOUL,
+    ITEM_TYPE_SOYBEAN_SEEDS,
+    ITEM_TYPE_SOYBEAN,
+    ITEM_TYPE_MUSHROOM_SPORE,
+    ITEM_TYPE_MUSHROOM,
+    ITEM_TYPE_NUTRIENT_SLOP,
+    ITEM_TYPE_CREATURE,
+    ITEM_TYPE_ADRENOCHROME,
+    ITEM_TYPE_BASIC_POTION_BASE,
+    ITEM_TYPE_OVERLOAD_MIX,
+    ITEM_TYPE_IRON_ORE,
+    ITEM_TYPE_COAL,
+    ITEM_TYPE_COKE,
+    ITEM_TYPE_OXYGEN,
+    ITEM_TYPE_RAW_STEEL,
+    ITEM_TYPE_STEEL_PARTS,
+    ITEM_TYPE_SAND,
+    ITEM_TYPE_GLASS,
+    ITEM_TYPE_EMPTY_SYRINGE,
+    ITEM_TYPE_STIMPACK,
+    ITEM_TYPE_WASTE,
+    TORMENT_CHAMBER_SOUL_CHANCE,
+    BLENDER_WORKER_COST,
+} from "./constants.js";
+
+// ---- Resource bodies ----
+// Every resource here is a simple 1x1, non-solid tile: the shared Extractor sits directly on top of
+// it, same as Resources mod's original WaterResourceType.
+
+function resourceBody(name, label, resourceType) {
+    return new ObjectType({
+        name,
+        geometry: "1x1",
+        textureName: "resource/placeholder",
+        directional: false,
+        label,
+        extractionTiles: [{x: 0, y: 0}],
+        placement: new PlacementRule({solid: false}),
+        behavior: new ResourceBehavior({resourceType}),
+    });
+}
+
+export const WaterResourceType = resourceBody("WaterResource", "Water", RESOURCE_WATER);
+export const GraveyardResourceType = resourceBody("Graveyard", "Graveyard", RESOURCE_GRAVEYARD);
+export const OxideDepositResourceType = resourceBody("OxideDeposit", "Oxide Ore Deposit", RESOURCE_OXIDE);
+export const CoalDepositResourceType = resourceBody("CoalDeposit", "Coal Deposit", RESOURCE_COAL);
+export const QuartzDepositResourceType = resourceBody("QuartzDeposit", "Quartz Deposit", RESOURCE_QUARTZ);
+
+export const RESOURCE_TYPES = [
+    WaterResourceType,
+    GraveyardResourceType,
+    OxideDepositResourceType,
+    CoalDepositResourceType,
+    QuartzDepositResourceType,
+];
+
+// ---- Primary extraction ----
+// One shared Extractor type: recipes.puml's "Primary Extraction" agent, reused for every resource.
+
+export const ExtractorType = new ObjectType({
+    name: "Extractor",
+    outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
+    geometry: "1x1",
+    renderConnections: true,
+    textureName: "demo-machine/0",
+    label: "Extractor",
+    inspectable: true,
+    placement: new PlacementRule({replaceSameKind: true, placeOn: RESOURCE_TYPES}),
+    behavior: new ExtractorBehavior({
+        processingTicks: 4,
+        recipes: [
+            new RecipeDefinition([RESOURCE_WATER], ITEM_TYPE_WATER),
+            new RecipeDefinition([RESOURCE_GRAVEYARD], ITEM_TYPE_SOUL),
+            new RecipeDefinition([RESOURCE_OXIDE], ITEM_TYPE_IRON_ORE),
+            new RecipeDefinition([RESOURCE_COAL], ITEM_TYPE_COAL),
+            new RecipeDefinition([RESOURCE_QUARTZ], ITEM_TYPE_SAND),
+        ],
+    }),
+});
+
+// ---- Machines ----
+// Convention: ports only ever face bottom (inputs, direction UP, fed by whatever sits south) or top
+// (outputs, direction UP, feeding whatever sits north) — never a side. A single input/output sits at
+// column x=0 on a 1x1 footprint; a second input or output widens the machine to "1x2" (2 tiles wide,
+// 1 tall — same shape Logistics' Splitter uses) and sits at column x=1, so the two never collide.
+
+const IN_A = new PortDefinition("in_a", {x: 0, y: 0, direction: Direction.UP});
+const IN_B = new PortDefinition("in_b", {x: 1, y: 0, direction: Direction.UP});
+const OUT_A = new PortDefinition("out_a", {x: 0, y: -1, direction: Direction.UP});
+const OUT_B = new PortDefinition("out_b", {x: 1, y: -1, direction: Direction.UP});
+
+// 2x2 footprint (Blender/TormentChamber/Brew/FormingMachine/DelicateAssembly/AirFilter): bottom row
+// is y=1 (not the anchor row), one tile further south than a 1-tall footprint's inputs. A pipe only
+// ever delivers into a port already claimed via engine.markFluidPort — the `fluid` flag (4th
+// PortDefinition arg) opts a port into that (see MachineBehavior.onSpawn/onDespawn).
+const IN2_A = new PortDefinition("in_a", {x: 0, y: 1, direction: Direction.UP});
+const IN2_B = new PortDefinition("in_b", {x: 1, y: 1, direction: Direction.UP});
+const IN2_B_FLUID = new PortDefinition("in_b", {x: 1, y: 1, direction: Direction.UP}, true, true);
+const OUT2_A = new PortDefinition("out_a", {x: 0, y: -1, direction: Direction.UP});
+const OUT2_B = new PortDefinition("out_b", {x: 1, y: -1, direction: Direction.UP});
+
+// 3x3 footprint (Greenhouse/SpawningPool/BlastFurnace): bottom row is y=2, three columns available;
+// a single output centers at x=1.
+const IN3_A = new PortDefinition("in_a", {x: 0, y: 2, direction: Direction.UP});
+const IN3_A_FLUID = new PortDefinition("in_a", {x: 0, y: 2, direction: Direction.UP}, true, true);
+const IN3_MID = new PortDefinition("in_mid", {x: 1, y: 2, direction: Direction.UP});
+const IN3_B = new PortDefinition("in_b", {x: 2, y: 2, direction: Direction.UP});
+const IN3_B_FLUID = new PortDefinition("in_b", {x: 2, y: 2, direction: Direction.UP}, true, true);
+const OUT3_A = new PortDefinition("out_a", {x: 1, y: -1, direction: Direction.UP});
+
+// One placeholder texture per footprint size, so a machine's sprite always matches its own
+// footprint instead of every size reusing the 1x1 demo-machine art. The 1x2/3x3 frames are Housing's
+// 2x2 art (housing/0) 9-sliced up/down to size — see src/mods/BaseTextures/sprites/main/housing/.
+const TEXTURE_BY_GEOMETRY = {
+    "1x1": "demo-machine/0",
+    "1x2": "housing/0-1x2",
+    "2x2": "housing/0",
+    "3x3": "housing/0-3x3",
+};
+
+function machine(name, label, {inputPorts, outputPorts, recipes, processingTicks, workerCost=0, geometry="1x1"}) {
+    return new ObjectType({
+        name,
+        inputPorts,
+        outputPorts,
+        geometry,
+        renderConnections: true,
+        textureName: TEXTURE_BY_GEOMETRY[geometry],
+        label,
+        inspectable: true,
+        placement: new PlacementRule({replaceSameKind: true}),
+        behavior: new MachineBehavior({processingTicks, recipes, fallback: ITEM_TYPE_WASTE, workerCost}),
+    });
+}
+
+export const GreenhouseType = machine("Greenhouse", "Greenhouse", {
+    inputPorts: [IN3_A, IN3_B_FLUID],
+    outputPorts: [OUT3_A],
+    geometry: "3x3",
+    processingTicks: 6,
+    recipes: [
+        new RecipeDefinition([ITEM_TYPE_SOYBEAN_SEEDS, ITEM_TYPE_WATER], ITEM_TYPE_SOYBEAN),
+        new RecipeDefinition([ITEM_TYPE_MUSHROOM_SPORE, ITEM_TYPE_WATER], ITEM_TYPE_MUSHROOM),
+    ],
+});
+
+export const BlenderType = machine("Blender", "Blender", {
+    inputPorts: [IN2_A],
+    outputPorts: [OUT2_A],
+    geometry: "2x2",
+    processingTicks: 2,
+    recipes: [new RecipeDefinition([ITEM_TYPE_SOYBEAN], ITEM_TYPE_NUTRIENT_SLOP)],
+    workerCost: BLENDER_WORKER_COST,
+});
+
+export const SpawningPoolType = machine("SpawningPool", "Spawning Pool", {
+    inputPorts: [IN3_A_FLUID, IN3_B],
+    outputPorts: [OUT3_A],
+    geometry: "3x3",
+    processingTicks: 8,
+    recipes: [new RecipeDefinition([ITEM_TYPE_NUTRIENT_SLOP, ITEM_TYPE_SOUL], ITEM_TYPE_CREATURE)],
+});
+
+export const TormentChamberType = machine("TormentChamber", "Torment Chamber", {
+    inputPorts: [IN2_A],
+    outputPorts: [OUT2_A, OUT2_B],
+    geometry: "2x2",
+    processingTicks: 6,
+    recipes: [
+        new RecipeDefinition(
+            [ITEM_TYPE_CREATURE],
+            ITEM_TYPE_ADRENOCHROME,
+            new RecipeByproduct(ITEM_TYPE_SOUL, TORMENT_CHAMBER_SOUL_CHANCE),
+        ),
+    ],
+});
+
+// One Brew machine, two recipes. Its fluid-side port carries Water in one recipe and BasicPotionBase
+// in the other — consistently fluid both times (BasicPotionBase is a liquid), so no port-role
+// conflict; unlike Blast Furnace below, nothing here needed collapsing.
+export const BrewType = machine("Brew", "Brew", {
+    inputPorts: [IN2_A, IN2_B_FLUID],
+    outputPorts: [OUT2_A],
+    geometry: "2x2",
+    processingTicks: 6,
+    recipes: [
+        new RecipeDefinition([ITEM_TYPE_MUSHROOM, ITEM_TYPE_WATER], ITEM_TYPE_BASIC_POTION_BASE),
+        new RecipeDefinition([ITEM_TYPE_ADRENOCHROME, ITEM_TYPE_BASIC_POTION_BASE], ITEM_TYPE_OVERLOAD_MIX),
+    ],
+});
+
+export const BakeType = machine("Bake", "Bake", {
+    inputPorts: [IN_A],
+    outputPorts: [OUT_A],
+    processingTicks: 5,
+    recipes: [
+        new RecipeDefinition([ITEM_TYPE_COAL], ITEM_TYPE_COKE),
+        new RecipeDefinition([ITEM_TYPE_SAND], ITEM_TYPE_GLASS),
+    ],
+});
+
+// One Blast Furnace machine, one craft: unlike Brew, Coke (solid) and Oxygen (fluid) can't share a
+// port role no matter what, so instead of two recipes this is one recipe with three dedicated ports
+// (3x3, the extra column fits the third input) — PigIron is no longer a separate transportable item,
+// just what happens between Coke igniting the ore and Oxygen finishing the steel.
+export const BlastFurnaceType = machine("BlastFurnace", "Blast Furnace", {
+    inputPorts: [IN3_A, IN3_MID, IN3_B_FLUID],
+    outputPorts: [OUT3_A],
+    geometry: "3x3",
+    processingTicks: 8,
+    recipes: [new RecipeDefinition([ITEM_TYPE_IRON_ORE, ITEM_TYPE_COKE, ITEM_TYPE_OXYGEN], ITEM_TYPE_RAW_STEEL)],
+});
+
+export const FormingMachineType = machine("FormingMachine", "Forming Machine", {
+    inputPorts: [IN2_A],
+    outputPorts: [OUT2_A],
+    geometry: "2x2",
+    processingTicks: 5,
+    recipes: [new RecipeDefinition([ITEM_TYPE_RAW_STEEL], ITEM_TYPE_STEEL_PARTS)],
+});
+
+export const DelicateAssemblyType = machine("DelicateAssembly", "Delicate Assembly", {
+    inputPorts: [IN2_A, IN2_B],
+    outputPorts: [OUT2_A],
+    geometry: "2x2",
+    processingTicks: 6,
+    recipes: [new RecipeDefinition([ITEM_TYPE_STEEL_PARTS, ITEM_TYPE_GLASS], ITEM_TYPE_EMPTY_SYRINGE)],
+});
+
+export const FillType = machine("Fill", "Fill", {
+    inputPorts: [IN_A, IN_B],
+    outputPorts: [OUT_A],
+    geometry: "1x2",
+    processingTicks: 4,
+    recipes: [new RecipeDefinition([ITEM_TYPE_EMPTY_SYRINGE, ITEM_TYPE_OVERLOAD_MIX], ITEM_TYPE_STIMPACK)],
+});
+
+// ---- Air Filter ----
+// No input port: a passive generator, per recipes.puml's fiction (filters ambient air). Oxygen is
+// the main output; Water is a much slower secondary trickle. Two outputs, both still top (north),
+// never a side.
+
+export const AirFilterType = new ObjectType({
+    name: "AirFilter",
+    outputPorts: [OUT2_A, OUT2_B],
+    geometry: "2x2",
+    renderConnections: true,
+    textureName: TEXTURE_BY_GEOMETRY["2x2"],
+    label: "Air Filter",
+    inspectable: true,
+    placement: new PlacementRule({replaceSameKind: true}),
+    behavior: new GeneratorBehavior({
+        processingTicks: 4,
+        output: ITEM_TYPE_OXYGEN,
+        secondaryOutput: {itemType: ITEM_TYPE_WATER, processingTicks: 40},
+    }),
+});
+
+export const MACHINE_TYPES = [
+    GreenhouseType,
+    BlenderType,
+    SpawningPoolType,
+    TormentChamberType,
+    BrewType,
+    BakeType,
+    BlastFurnaceType,
+    FormingMachineType,
+    DelicateAssemblyType,
+    FillType,
+    AirFilterType,
+];

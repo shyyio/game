@@ -2,7 +2,8 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Game} from "@/sim/Game.js";
 import {Direction} from "@/common/constants.js";
-import {DemoMachineType, ITEM_TYPE_DEMO_INPUT, ITEM_TYPE_DEMO_OUTPUT} from "@/mods/Demo/declaration.js";
+import {BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
+import {ITEM_TYPE_SOYBEAN, ITEM_TYPE_NUTRIENT_SLOP} from "@/mods/BaseGame/common/constants.js";
 import {SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
@@ -18,9 +19,9 @@ async function setup() {
 
 // Places a DemoMachine and returns its client id (object id) plus its input port.
 function createMachine(game, x, y) {
-    game.dispatchMessage(new CreateObjectMessage(DemoMachineType.typeId, x, y, Direction.UP), new CapturingSession());
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, x, y, Direction.UP), new CapturingSession());
     const placed = game.simEngine.placed;
-    const eids = placed.eidsOf(DemoMachineType.typeId);
+    const eids = placed.eidsOf(BlenderType.typeId);
     const eid = eids[eids.length - 1];
     const machine = game.simEngine.component("Machine");
     return {id: placed.objectIdOf(eid), inPort: machine.store.in0[machine.row(eid)]};
@@ -104,20 +105,20 @@ test("heartbeat tracks the processing countdown, consumed batch, and output", as
         return heartbeats(session)[0];
     };
 
-    game.simEngine.setPortItem(machine.inPort, ITEM_TYPE_DEMO_INPUT);
+    game.simEngine.setPortItem(machine.inPort, ITEM_TYPE_SOYBEAN);
     const started = tick();
     assert.equal(started.processingRemaining, 2);
-    assert.deepEqual(started.inputMemory, [ITEM_TYPE_DEMO_INPUT]);
-    assert.equal(started.recipeOutput, ITEM_TYPE_DEMO_OUTPUT);
+    assert.deepEqual(started.inputMemory, [ITEM_TYPE_SOYBEAN]);
+    assert.equal(started.recipeOutput, ITEM_TYPE_NUTRIENT_SLOP);
 
     const midway = tick();
     assert.equal(midway.processingRemaining, 1);
-    assert.deepEqual(midway.inputMemory, [ITEM_TYPE_DEMO_INPUT]);
+    assert.deepEqual(midway.inputMemory, [ITEM_TYPE_SOYBEAN]);
 
     const done = tick();
     assert.equal(done.processingRemaining, null);
     assert.deepEqual(done.inputMemory, [0]);
-    assert.equal(done.outputItem, ITEM_TYPE_DEMO_OUTPUT);
+    assert.equal(done.outputItem, ITEM_TYPE_NUTRIENT_SLOP);
 });
 
 test("unsubscribing stops the heartbeats", async () => {

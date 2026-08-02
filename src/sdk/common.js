@@ -43,6 +43,7 @@ export {
     ObjectType,       // the entity blueprint for a placeable: ports, geometry, behavior, rules
     PortDefinition,   // one input/output/internal port on an object (position + facing)
     RecipeDefinition, // one recipe: a consumed input set mapping to an output item
+    RecipeByproduct,  // a recipe's chance-driven secondary output
     PlacementRule,    // how an object type may be placed (overwrite/advance/placeOn/solid)
     MenuVerb,         // one derived mini-menu action on an object type
     InspectVerb,
@@ -59,6 +60,7 @@ export {
     StaticBehavior,
     MachineBehavior,
     ExtractorBehavior,
+    GeneratorBehavior,
     ResourceBehavior,
     RoadBehavior,
     HousingBehavior,
@@ -117,6 +119,11 @@ export {
 // [0, optionCount). Toggle values: 0/absent = on.
 export {PlayerSettingEntry} from "@/common/PlayerSettingEntry.js";
 export {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
+
+// ---- Market ----
+// Item type -> tradable-catalog listing a declaration contributes (marketListings); npcPrice null
+// means player-market-only (no fixed NPC price).
+export {MarketListingEntry} from "@/common/MarketListingEntry.js";
 
 // Rotates a `{x, y}` offset (a port or size vector) by a placement direction, so a mod
 // can compute where an object's ports/geometry land from its ObjectType.

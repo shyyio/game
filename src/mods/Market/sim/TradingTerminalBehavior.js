@@ -15,7 +15,13 @@ import {MarketBook} from "./MarketBook.js";
 export class TradingTerminalBehavior extends AbstractBehavior {
 
     install(engine, placed) {
-        engine.provide(MarketBook, new MarketBook());
+        const fixedPrices = new Map();
+        for (const listing of engine.modRegistry.marketListings) {
+            if (listing.npcPrice !== null) {
+                fixedPrices.set(listing.itemType, listing.npcPrice);
+            }
+        }
+        engine.provide(MarketBook, new MarketBook(fixedPrices));
         engine.defineComponent("MarketTerminal", [
             {name: "mode"},
             {name: "itemType", fill: EMPTY},
@@ -79,14 +85,17 @@ export class TradingTerminalBehavior extends AbstractBehavior {
     /**
      * SUBMIT_INTENTS: a sell terminal armed with a live match submits exactly one transfer straight
      * into its chosen buyer's output port (or a plain drain for an NPC counterparty); a buy terminal
-     * submits nothing itself — it only ever receives via a seller's transfer landing in its own
-     * output port.
+     * configured for an NPC-fixed-price item likewise submits a source-less create straight from the
+     * NPC's infinite supply — there's no real seller to match against, so it needs only its own
+     * output port free and its own cached balance to cover the price. A buy terminal on a
+     * player-market item still submits nothing itself; it only ever receives via a seller's transfer.
      *
      * `reservedBalance` tracks each buyer's remaining cached balance across this single pass, keyed
      * by owning player rather than by terminal eid: a player with several buy terminals shares one
-     * balance, and submitting a match against one of their terminals must reduce what any of their
-     * other terminals appear to have left, or the same tick-stale balance would clear every one of
-     * them independently and let a multi-terminal player spend past their real balance.
+     * balance, and committing a spend against one of their terminals (a sell-side match paying them,
+     * or an NPC purchase of their own) must reduce what any of their other terminals appear to have
+     * left, or the same tick-stale balance would clear every one of them independently and let a
+     * multi-terminal player spend past their real balance.
      * @private
      * @param {GameEngine} engine
      * @returns {void}
@@ -102,6 +111,10 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             terminal.pendingPrice[row] = EMPTY;
             terminal.pendingBuyer[row] = NO_EID;
             terminal.pendingIsNpc[row] = 0;
+            if (terminal.mode[row] === MARKET_MODE_BUY) {
+                TradingTerminalBehavior._submitNpcPurchase(engine, item, book, terminal, row, reservedBalance);
+                continue;
+            }
             if (terminal.mode[row] !== MARKET_MODE_SELL || terminal.sellEnabled[row] === 0) {
                 continue;
             }
@@ -133,6 +146,45 @@ export class TradingTerminalBehavior extends AbstractBehavior {
     }
 
     /**
+     * A buy terminal configured for an NPC-fixed-price item purchases straight from the NPC's
+     * infinite supply whenever its output port is free and its owner's remaining balance covers the
+     * price — no matching needed, since there's no real seller on the other side. Player-market items
+     * have no fixed price and take no action here; they stay purely passive, waiting on a seller's
+     * transfer.
+     * @private
+     * @param {GameEngine} engine
+     * @param {Int32Array} item
+     * @param {MarketBook} book
+     * @param {object} terminal
+     * @param {number} row
+     * @param {Map<number, number>} reservedBalance owning player -> balance remaining this pass
+     * @returns {void}
+     */
+    static _submitNpcPurchase(engine, item, book, terminal, row, reservedBalance) {
+        const itemType = terminal.itemType[row];
+        const fixedPrice = book.fixedPriceOf(itemType);
+        if (fixedPrice === undefined) {
+            return;
+        }
+        const outPort = terminal.out[row];
+        if (item[outPort] !== EMPTY) {
+            return;
+        }
+        const owner = terminal.owner[row];
+        let remaining = terminal.balance[row];
+        if (reservedBalance.has(owner)) {
+            remaining = reservedBalance.get(owner);
+        }
+        if (remaining < fixedPrice) {
+            return;
+        }
+        engine.submitCreate(outPort, itemType, true);
+        terminal.pendingPrice[row] = fixedPrice;
+        terminal.pendingIsNpc[row] = 1;
+        reservedBalance.set(owner, remaining - fixedPrice);
+    }
+
+    /**
      * A buyer's cached balance, minus whatever this pass has already committed to spend on behalf of
      * its owning player (see `_submitIntents`).
      * @private
@@ -152,11 +204,14 @@ export class TradingTerminalBehavior extends AbstractBehavior {
     }
 
     /**
-     * POST_RESOLVE: a buy terminal whose output resolved records last_output (cosmetic); a sell
-     * terminal whose attempted transfer actually landed this tick hands the confirmed trade off to
-     * MarketSimMod.onTick for currency settlement (an NPC drain always lands once submitted — no
-     * counterpart contention — a real transfer may lose the engine's fan-in arbitration to a
-     * different seller targeting the same buyer, so it alone needs the resolution check).
+     * POST_RESOLVE: a buy terminal whose output resolved records last_output (cosmetic) and, if it
+     * had an NPC purchase pending (from _submitNpcPurchase), hands the confirmed purchase off to
+     * MarketSimMod.onTick for currency settlement — a source-less create always lands once submitted
+     * (no counterpart contention), so no separate resolution check is needed beyond wasResolvedDest.
+     * A sell terminal whose attempted transfer actually landed this tick hands the confirmed trade off
+     * to MarketSimMod.onTick the same way (an NPC drain always lands once submitted — no counterpart
+     * contention — a real transfer may lose the engine's fan-in arbitration to a different seller
+     * targeting the same buyer, so it alone needs the resolution check).
      * @private
      * @param {GameEngine} engine
      * @returns {void}
@@ -168,8 +223,14 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         const book = engine.resolve(MarketBook);
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
-            if (terminal.mode[row] === MARKET_MODE_BUY && engine.wasResolvedDest(terminal.out[row])) {
-                terminal.lastOutput[row] = terminal.itemType[row];
+            if (terminal.mode[row] === MARKET_MODE_BUY) {
+                if (engine.wasResolvedDest(terminal.out[row])) {
+                    terminal.lastOutput[row] = terminal.itemType[row];
+                    if (terminal.pendingPrice[row] !== EMPTY) {
+                        book.recordPurchase(eids[row], terminal.itemType[row], terminal.pendingPrice[row]);
+                    }
+                }
+                continue;
             }
             if (terminal.pendingPrice[row] === EMPTY) {
                 continue;
