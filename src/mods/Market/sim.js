@@ -5,7 +5,7 @@ import {MarketBook} from "./sim/MarketBook.js";
 import {TradingTerminalType} from "./common/objectTypes.js";
 import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./common/messages.js";
 import {MarketSnapshotEvent, MARKET_SNAPSHOT_NONE} from "./common/events.js";
-import {MARKET_MODE_NONE, MARKET_MODE_SELL, MARKET_MODE_BUY, MARKET_SETTING_BALANCE, TRADABLE_ITEMS} from "./common/constants.js";
+import {MARKET_MODE_NONE, MARKET_MODE_SELL, MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "./common/constants.js";
 
 /**
  * The Market mod's session/currency layer: configuring a terminal, reporting the tradable catalog,
@@ -43,10 +43,10 @@ export class MarketSimMod extends AbstractSimMod {
     }
 
     /**
-     * Settles this tick's confirmed trades (before refreshing the balance cache, so next tick's
-     * eligibility check sees the post-settlement balance, not a tick-stale one), refreshes every buy
-     * terminal's cached balance from its chunk owner's real balance, then advances the guide-price
-     * clock.
+     * Settles this tick's confirmed trades and NPC purchases (before refreshing the balance cache, so
+     * next tick's eligibility check sees the post-settlement balance, not a tick-stale one), refreshes
+     * every buy terminal's cached balance from its chunk owner's real balance, then advances the
+     * guide-price clock.
      * @param {Game} game
      * @returns {void}
      */
@@ -57,6 +57,7 @@ export class MarketSimMod extends AbstractSimMod {
         // its chunk owner looked up once, not twice.
         const owners = new Map();
         this._settle(book, engine, game, owners);
+        this._settlePurchases(book, engine, game, owners);
         this._refreshBalances(engine, game, owners);
         book.advanceTick();
     }
@@ -119,7 +120,8 @@ export class MarketSimMod extends AbstractSimMod {
         const bestBidPrices = [];
         const bestAskPrices = [];
         const guidePrices = [];
-        for (const itemType of TRADABLE_ITEMS) {
+        for (const listing of engine.modRegistry.marketListings) {
+            const itemType = listing.itemType;
             itemTypes.push(itemType);
             const npcPrice = book.fixedPriceOf(itemType);
             const npcSnapshot = npcPrice === undefined ? MARKET_SNAPSHOT_NONE : npcPrice;
@@ -204,6 +206,38 @@ export class MarketSimMod extends AbstractSimMod {
                 if (buyerOwner !== PLAYER_ID_NONE) {
                     deltas.set(buyerOwner, (deltas.get(buyerOwner) || 0) - settlement.price);
                 }
+            }
+        }
+        for (const [playerId, delta] of deltas) {
+            const current = game.playerSettings.get(playerId, MARKET_SETTING_BALANCE) || 0;
+            const next = Math.max(0, current + delta);
+            game.playerSettings.set(playerId, MARKET_SETTING_BALANCE, next);
+            game.bus.publishToPlayer(playerId, new PlayerSettingsUpdateEvent(MARKET_SETTING_BALANCE, next));
+        }
+    }
+
+    /**
+     * Pays out this tick's confirmed NPC purchases: the buyer is debited against its chunk's current
+     * owner (an unclaimed chunk has nobody to charge, so the purchase is simply skipped rather than
+     * left to error — this can only happen if the chunk lost its owner between submit and resolve, in
+     * the same tick). Deltas are batched per player, same as _settle.
+     * @param {MarketBook} book
+     * @param {GameEngine} engine
+     * @param {Game} game
+     * @param {Map<number, number>} owners this tick's eid -> playerId cache
+     * @private
+     * @returns {void}
+     */
+    _settlePurchases(book, engine, game, owners) {
+        const purchases = book.drainPurchases();
+        if (purchases.length === 0) {
+            return;
+        }
+        const deltas = new Map();
+        for (const purchase of purchases) {
+            const buyerOwner = this._ownerOf(purchase.buyerEid, engine, game, owners);
+            if (buyerOwner !== PLAYER_ID_NONE) {
+                deltas.set(buyerOwner, (deltas.get(buyerOwner) || 0) - purchase.price);
             }
         }
         for (const [playerId, delta] of deltas) {

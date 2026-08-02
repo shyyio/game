@@ -1,8 +1,7 @@
 import {ModPackage} from "@/common/ModPackage.js";
 import {BaseTexturesDeclaration} from "@/mods/BaseTextures/declaration.js";
 import {LogisticsDeclaration} from "@/mods/Logistics/declaration.js";
-import {DemoDeclaration} from "@/mods/Demo/declaration.js";
-import {ResourcesDeclaration} from "@/mods/Resources/declaration.js";
+import {BaseGameDeclaration} from "@/mods/BaseGame/declaration.js";
 import {FluidsDeclaration} from "@/mods/Fluids/declaration.js";
 import {CursorSyncDeclaration} from "@/mods/CursorSync/declaration.js";
 import {CursorSyncSimMod} from "@/mods/CursorSync/sim.js";
@@ -22,8 +21,7 @@ export function simLoadout() {
     return [
         new ModPackage(new BaseTexturesDeclaration()),
         new ModPackage(new LogisticsDeclaration()),
-        new ModPackage(new DemoDeclaration()),
-        new ModPackage(new ResourcesDeclaration()),
+        new ModPackage(new BaseGameDeclaration()),
         new ModPackage(new FluidsDeclaration()),
         new ModPackage(new CursorSyncDeclaration(), {sim: new CursorSyncSimMod()}),
         new ModPackage(new MarketDeclaration(), {sim: new MarketSimMod()}),

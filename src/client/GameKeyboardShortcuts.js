@@ -21,7 +21,7 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
         client.glideHome();
     });
 
-    // The local sim ticks by key; the server drives its own tick loop in remote mode.
+    // The local sim also auto-ticks (GameBootstrap.js); "t" forces an extra tick for debugging.
     if (game !== null) {
         // Debug keybindings (moved off the number keys, which now select tools).
         // Insert an item of value 1 onto the lowest-id belt path via its in-port.

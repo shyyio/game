@@ -8,12 +8,6 @@ export const MARKET_MODE_BUY = 2;
 // Per-player currency balance (server-authoritative).
 export const MARKET_SETTING_BALANCE = 10;
 
-// itemType -> fixed NPC price, bypassing player market. Extended by item-owning mods.
-export const NPC_FIXED_PRICES = new Map();
-
-// Every item type the market lists (superset of NPC_FIXED_PRICES' keys). Extend as content adds tradable items.
-export const TRADABLE_ITEMS = new Set();
-
 // Ticks between guide-price recomputes; stands in for "24 in-game hours".
 export const GUIDE_PRICE_INTERVAL_TICKS = 86400;
 

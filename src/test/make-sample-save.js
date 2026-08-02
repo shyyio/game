@@ -2,8 +2,7 @@ import {Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {BeltDefinition, SplitterDefinition} from "@/mods/Logistics/common/objectTypes.js";
-import {DemoMachineType} from "@/mods/Demo/declaration.js";
-import {WaterResourceType, ExtractorType} from "@/mods/Resources/declaration.js";
+import {WaterResourceType, ExtractorType, BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
@@ -23,7 +22,7 @@ const game = new Game(modRegistry, engine, new NodeSaveStore(PATH));
 await game.init();
 engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 5, 5, Direction.UP));
 engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 5, 5, Direction.UP));
-engine.applyMessage(new CreateObjectMessage(DemoMachineType.typeId, 10, 10, Direction.UP));
+engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 10, 10, Direction.UP));
 engine.applyMessage(new CreateObjectMessage(SplitterDefinition.typeId, 3, 8, Direction.UP));
 for (const cell of [{x: 20, y: 20}, {x: 20, y: 21}, {x: 20, y: 22}, {x: 20, y: 23}]) {
     engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP));

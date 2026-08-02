@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent} from "@/common/ObjectEvents.js";
-import {WaterResourceType, ExtractorType, ITEM_TYPE_WATER} from "@/mods/Resources/declaration.js";
+import {WaterResourceType, ExtractorType} from "@/mods/BaseGame/common/objectTypes.js";
+import {ITEM_TYPE_WATER} from "@/mods/BaseGame/common/constants.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector} from "@/test/EventCollector.js";
 

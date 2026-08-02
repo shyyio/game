@@ -60,4 +60,5 @@ export const ObjectGeometries = {
     "1x1": new ObjectGeometry({x: 0, y: 0}),
     "1x2": new ObjectGeometry({x: 1, y: 0}),
     "2x2": new ObjectGeometry({x: 1, y: 1}),
+    "3x3": new ObjectGeometry({x: 2, y: 2}),
 };

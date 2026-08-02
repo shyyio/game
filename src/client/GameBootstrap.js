@@ -11,6 +11,9 @@ import {Client} from "@/client/Client.js";
 import {createInputHandler} from "@/client/GameInputWiring.js";
 import {DEV} from "@/common/env.js";
 
+// Matches the server's --tick-ms default, so local mode runs at the same real-time rate.
+const LOCAL_TICK_INTERVAL_MS = 600;
+
 /**
  * Builds the mod registry, session (local sim or remote), Client, and its input handler.
  * @param {Application} app
@@ -52,6 +55,7 @@ export async function createClient(app, viewport, props) {
         session.connect();
     } else {
         game.connect(session);
+        window.setInterval(() => game.runTick(), LOCAL_TICK_INTERVAL_MS);
     }
     await client.init();
 

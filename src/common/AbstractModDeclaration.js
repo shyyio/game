@@ -63,4 +63,13 @@ export class AbstractModDeclaration {
     get playerSettingEntries() {
         return [];
     }
+
+    /**
+     * Item types this mod adds to the market's tradable catalog; item types must be unique across
+     * the loadout.
+     * @returns {MarketListingEntry[]}
+     */
+    get marketListings() {
+        return [];
+    }
 }

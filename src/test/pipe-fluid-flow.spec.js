@@ -6,15 +6,15 @@ import {EMPTY} from "@/sim/GameEngine.js";
 import {makePipes, pipesOf} from "@/mods/Fluids/sim/testHelpers.js";
 import {FLUID_TYPE_WATER, FLUID_TYPE_OIL, FLUID_UNIT} from "@/mods/Fluids/common/constants.js";
 import {PipeDefinition, TankDefinition} from "@/mods/Fluids/common/objectTypes.js";
+import {WaterResourceType, ExtractorType, OxideDepositResourceType} from "@/mods/BaseGame/common/objectTypes.js";
+import {ITEM_TYPE_WATER, ITEM_TYPE_IRON_ORE} from "@/mods/BaseGame/common/constants.js";
+import {ModPackage} from "@/common/ModPackage.js";
 import {
-    WaterResourceType,
-    VolcanoResourceType,
-    ExtractorType,
-    DeepExtractorType,
-    ITEM_TYPE_WATER,
-    ITEM_TYPE_SULFUR,
-    ITEM_TYPE_BRINE,
-} from "@/mods/Resources/declaration.js";
+    TestVolcanoResourceType,
+    TestDeepExtractorType,
+    ITEM_TYPE_TEST_BRINE,
+    VolcanoFixtureDeclaration,
+} from "@/test/volcanoFixture.js";
 import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 import {PortItemSetEvent} from "@/common/PortItemEvents.js";
@@ -129,8 +129,8 @@ test("a resting fluid output never renders as a port item; a solid one does", as
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 0, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 0, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(VolcanoResourceType.typeId, 10, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 10, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(OxideDepositResourceType.typeId, 10, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 10, 5, Direction.UP));
     const collector = new EventCollector(engine);
 
     for (let i = 0; i < 10; i += 1) {
@@ -138,7 +138,7 @@ test("a resting fluid output never renders as a port item; a solid one does", as
     }
 
     const sets = collector.drain().filter(event => event instanceof PortItemSetEvent);
-    assert.ok(sets.some(event => event.itemType === ITEM_TYPE_SULFUR), "the solid product renders");
+    assert.ok(sets.some(event => event.itemType === ITEM_TYPE_IRON_ORE), "the solid product renders");
     assert.ok(!sets.some(event => event.itemType === ITEM_TYPE_WATER), "the fluid product does not");
 });
 
@@ -180,14 +180,14 @@ test("a pipe cannot connect a producer's out-port to a different fluid", async (
 });
 
 test("a pipe binds brine from a deep extractor and cannot bridge to a water source", async () => {
-    const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(VolcanoResourceType.typeId, 5, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(DeepExtractorType.typeId, 6, 4, Direction.UP));
+    const engine = await makeGameEngine([new ModPackage(new VolcanoFixtureDeclaration())]);
+    engine.applyMessage(new CreateObjectMessage(TestVolcanoResourceType.typeId, 5, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TestDeepExtractorType.typeId, 6, 4, Direction.UP));
     const pipes = pipesOf(engine);
 
     // The deep extractor's out-port edge is at (6, 3): the adopting pipe binds brine at placement.
     engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 6, 3, Direction.UP));
-    assert.equal(pipes.networkAt(6, 3).fluidType, ITEM_TYPE_BRINE, "typed before any payload");
+    assert.equal(pipes.networkAt(6, 3).fluidType, ITEM_TYPE_TEST_BRINE, "typed before any payload");
 
     // A water extractor facing DOWN puts its out-port edge at (5, 3); a pipe there would join the
     // brine network to a water source.
@@ -222,7 +222,7 @@ test("a belt never pops an item into a fluid port", async () => {
     const belts = beltsOf(engine);
     const pipes = pipesOf(engine);
     const path = belts.pathAt(0, 1);
-    engine.setPortItem(path.inPort, ITEM_TYPE_SULFUR);
+    engine.setPortItem(path.inPort, ITEM_TYPE_IRON_ORE);
 
     for (let i = 0; i < 20; i += 1) {
         engine.tickAll();

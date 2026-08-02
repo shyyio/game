@@ -380,6 +380,10 @@ export class GameEngine {
         // Global client-facing object id, shared across all object types so ids never collide.
         this._nextObjectId = 1;
 
+        // Whole ticks elapsed, incremented once per tick (see the SUBMIT_INTENTS registration below).
+        // A stable per-tick seed component for deterministic per-craft rolls (see MachineBehavior).
+        this.clock = 0;
+
         // Flat global counters that survive a save (mods stash their own here, e.g. beltNextRunId).
         this.globals = {};
 
@@ -399,6 +403,9 @@ export class GameEngine {
             this.systems[phase] = [];
         }
         this.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._resetTick());
+        this.registerSystem(TickPhase.SUBMIT_INTENTS, () => {
+            this.clock += 1;
+        });
         this.registerSystem(TickPhase.RESOLVE_TRANSFERS, () => this.resolvePortTransfer());
         this.registerSystem(TickPhase.CONSUME_INPUTS, () => this.flushSinks());
         this.registerSystem(TickPhase.COMMIT_TRANSFERS, () => this.commitTransfers());
@@ -1848,13 +1855,50 @@ export class GameEngine {
         });
         // Component values are Int32Array-backed, so always safe; only the unbounded globals (id
         // counters) can overflow past 2^53, where Number silently loses precision.
-        const globals = {nextObjectId: this._nextObjectId, ...this.globals};
+        const globals = {nextObjectId: this._nextObjectId, clock: this.clock, ...this.globals};
         for (const key of Object.keys(globals)) {
             if (!Number.isSafeInteger(globals[key])) {
                 throw new RangeError(`GameEngine.serialize: global "${key}" is not a safe integer: ${globals[key]}`);
             }
         }
-        return {components: components, globals: globals};
+        // Every object type's name, in typeId order — deserialize compares this against the current
+        // loadout so a stale save (object types added/removed/reordered since) fails loudly at load
+        // time instead of resolving a component row's typeId to the wrong behavior mid-tick.
+        let objectTypeNames = null;
+        if (this.modRegistry !== null) {
+            objectTypeNames = this.modRegistry.objectTypes.map(type => type.name);
+        }
+        return {components: components, globals: globals, objectTypeNames: objectTypeNames};
+    }
+
+    /**
+     * Throws when `snapshot` was written against a different object-type layout than the current
+     * loadout: typeIds are positional (assigned by registration order at ModRegistry.freeze()), so
+     * adding/removing/reordering a mod's object types shifts every typeId after the change, and a
+     * component row's saved typeId would silently resolve to the wrong ObjectType/behavior — a crash
+     * deep in an unrelated tick, far from the real cause. A pure append (current has every saved name
+     * as a prefix, plus new ones after) is fine; anything else is not. No-op when this engine has no
+     * modRegistry (synthetic test engines never persist for real).
+     * @private
+     * @param {{objectTypeNames: string[]|null|undefined}} snapshot
+     * @returns {void}
+     */
+    _assertLoadoutCompatible(snapshot) {
+        if (this.modRegistry === null) {
+            return;
+        }
+        const current = this.modRegistry.objectTypes.map(type => type.name);
+        const saved = snapshot.objectTypeNames;
+        const prefixMatches = saved !== null && saved !== undefined && saved.length <= current.length
+            && saved.every((name, i) => name === current[i]);
+        if (!prefixMatches) {
+            throw new Error(
+                "Save is incompatible with the current mod loadout: object types were added, removed, "
+                + "or reordered since this save was written, so typeIds no longer mean the same thing. "
+                + `Saved: [${saved === null || saved === undefined ? "unknown (pre-dates this check)" : saved.join(", ")}]. `
+                + `Current: [${current.join(", ")}]. Delete or migrate the save file.`
+            );
+        }
     }
 
     /**
@@ -1865,6 +1909,7 @@ export class GameEngine {
      * @returns {void}
      */
     deserialize(snapshot) {
+        this._assertLoadoutCompatible(snapshot);
         this.world = new World();
         for (const def of this._components) {
             this._bindComponent(def);
@@ -1919,8 +1964,9 @@ export class GameEngine {
         }
 
         this._nextObjectId = snapshot.globals.nextObjectId;
+        this.clock = snapshot.globals.clock;
         for (const key of Object.keys(snapshot.globals)) {
-            if (key !== "nextObjectId") {
+            if (key !== "nextObjectId" && key !== "clock") {
                 this.globals[key] = snapshot.globals[key];
             }
         }

@@ -1,5 +1,6 @@
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {EMPTY, NO_EID, TickPhase} from "@/sim/GameEngine.js";
+import {deterministicRoll} from "@/sim/Rng.js";
 
 // Position layer for resource cover: an extraction tile stores its resource type as the cell userData.
 const LAYER_RESOURCE = "R";
@@ -28,6 +29,22 @@ const PROCESSING_COLS = ["processing0", "processing1", "processing2"];
  */
 function columns(store, names) {
     return names.map(name => store[name]);
+}
+
+/**
+ * Declares (or clears) `port`'s fluid source based on whether `item` is a declared fluid payload —
+ * lets a pipe network type itself off a producer before the first payload actually arrives.
+ * @param {GameEngine} engine
+ * @param {number} port
+ * @param {number} item
+ * @returns {void}
+ */
+function syncFluidSource(engine, port, item) {
+    if (item !== EMPTY && engine.isFluid(item)) {
+        engine.setPortFluidSource(port, item);
+    } else {
+        engine.setPortFluidSource(port, EMPTY);
+    }
 }
 
 /**
@@ -249,8 +266,14 @@ export class MachineBehavior extends AbstractBehavior {
 
         // Packed gathered-set key -> output (see _recipeKey).
         this.recipes = new Map();
+        // Packed gathered-set key -> RecipeByproduct, only for recipes that have one.
+        this.byproducts = new Map();
         for (const recipe of recipes) {
-            this.recipes.set(this._recipeKey(recipe.inputs), recipe.output);
+            const key = this._recipeKey(recipe.inputs);
+            this.recipes.set(key, recipe.output);
+            if (recipe.byproduct !== null) {
+                this.byproducts.set(key, recipe.byproduct);
+            }
         }
     }
 
@@ -259,6 +282,8 @@ export class MachineBehavior extends AbstractBehavior {
         // Cached off the type: the tick loop reads it per entity, and a getter chaining through
         // type.inputPorts blocks that from folding away.
         this.inputCount = type.inputPorts.length;
+        // A second output port is the byproduct port; opt-in per ObjectType.
+        this.hasByproductPort = type.outputPorts.length > 1;
     }
 
     /**
@@ -281,6 +306,8 @@ export class MachineBehavior extends AbstractBehavior {
     install(engine, placed) {
         engine.defineComponent("Machine", [
             {name: "out", kind: "eid", fill: NO_EID},
+            // Byproduct port; NO_EID unless the object type declares a second output port.
+            {name: "out2", kind: "eid", fill: NO_EID},
             {name: "in0", kind: "eid", fill: NO_EID},
             {name: "in1", kind: "eid", fill: NO_EID},
             {name: "in2", kind: "eid", fill: NO_EID},
@@ -295,6 +322,9 @@ export class MachineBehavior extends AbstractBehavior {
             {name: "carry", kind: "f32"},
             {name: "output", fill: EMPTY},
             {name: "lastOutput", fill: EMPTY},
+            // This craft's rolled byproduct (EMPTY if the recipe has none or the roll missed).
+            {name: "byproduct", fill: EMPTY},
+            {name: "lastByproduct", fill: EMPTY},
             // The two behavior constants the submit pass reads per machine per tick. Kept on the row so
             // the pass never hops through PlacedObject to reach the behavior instance.
             {name: "inputCount"},
@@ -315,10 +345,19 @@ export class MachineBehavior extends AbstractBehavior {
         machine.inputCount[row] = this.inputCount;
         machine.processingTicks[row] = this.processingTicks;
         for (const [i, port] of type.inputPorts.entries()) {
-            machine[IN_COLS[i]][row] = engine.portFor(port, message.x, message.y, message.direction).port;
+            const inPort = engine.portFor(port, message.x, message.y, message.direction).port;
+            machine[IN_COLS[i]][row] = inPort;
+            if (port.fluid) {
+                engine.markFluidPort(inPort);
+            }
         }
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         machine.out[row] = output.port;
+        if (this.hasByproductPort) {
+            const byproductOutput = engine.portFor(type.outputPorts[1], message.x, message.y, message.direction);
+            machine.out2[row] = byproductOutput.port;
+            engine.registerRenderedPort(byproductOutput.port, byproductOutput.tile.x, byproductOutput.tile.y);
+        }
         // Explicit: a recycled row may hold a stale step from a previous occupant.
         machine.workerStep[row] = 1;
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
@@ -329,7 +368,19 @@ export class MachineBehavior extends AbstractBehavior {
 
     onDespawn(engine, placed, eid) {
         const def = engine.component("Machine");
-        engine.unregisterRenderedPort(def.store.out[def.row(eid)]);
+        const machine = def.store;
+        const row = def.row(eid);
+        for (const [i, port] of this.type.inputPorts.entries()) {
+            if (port.fluid) {
+                engine.unmarkFluidPort(machine[IN_COLS[i]][row]);
+            }
+        }
+        engine.unregisterRenderedPort(def.store.out[row]);
+        engine.setPortFluidSource(def.store.out[row], EMPTY);
+        if (this.hasByproductPort) {
+            engine.unregisterRenderedPort(def.store.out2[row]);
+            engine.setPortFluidSource(def.store.out2[row], EMPTY);
+        }
         if (this.workerCost > 0) {
             const position = engine.Position;
             engine.workers.markDirty(engine.footprint(this.type, position.x[eid], position.y[eid], position.direction[eid]));
@@ -349,13 +400,22 @@ export class MachineBehavior extends AbstractBehavior {
         if (last === EMPTY) {
             lastOutput = null;
         }
-        return {portIds: [def.store.out[row]], lastOutput};
+        const portIds = [def.store.out[row]];
+        if (this.hasByproductPort) {
+            portIds.push(def.store.out2[row]);
+        }
+        return {portIds, lastOutput};
     }
 
     resyncRenderedPorts(engine, placed, eid) {
         const def = engine.component("Machine");
-        const out = def.store.out[def.row(eid)];
+        const row = def.row(eid);
+        const out = def.store.out[row];
         engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
+        if (this.hasByproductPort) {
+            const out2 = def.store.out2[row];
+            engine.registerRenderedPort(out2, engine.Position.x[out2], engine.Position.y[out2]);
+        }
     }
 
     /**
@@ -456,6 +516,10 @@ export class MachineBehavior extends AbstractBehavior {
             const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
             machine.inputCount[row] = behavior.inputCount;
             machine.processingTicks[row] = behavior.processingTicks;
+            syncFluidSource(engine, machine.out[row], machine.output[row]);
+            if (behavior.hasByproductPort) {
+                syncFluidSource(engine, machine.out2[row], machine.byproduct[row]);
+            }
         }
     }
 
@@ -480,9 +544,9 @@ export class MachineBehavior extends AbstractBehavior {
      * @private
      * @param {ArrayLike<number>[]} slotCols
      * @param {number} row
-     * @returns {number} the produced output for the gathered slots, or the fallback
+     * @returns {number} the packed gathered-set key (see _recipeKey)
      */
-    _resolveRecipe(slotCols, row) {
+    _gatheredKey(slotCols, row) {
         let key = 0;
         for (let i = 0; i < RECIPE_SLOTS; i += 1) {
             const slot = i < this.inputCount ? slotCols[i][row] : EMPTY;
@@ -492,11 +556,42 @@ export class MachineBehavior extends AbstractBehavior {
             }
             key = key * RECIPE_SLOT_LIMIT + packed;
         }
-        const output = this.recipes.get(key);
+        return key;
+    }
+
+    /**
+     * @private
+     * @param {ArrayLike<number>[]} slotCols
+     * @param {number} row
+     * @returns {number} the produced output for the gathered slots, or the fallback
+     */
+    _resolveRecipe(slotCols, row) {
+        const output = this.recipes.get(this._gatheredKey(slotCols, row));
         if (output === undefined) {
             return this.fallback;
         }
         return output;
+    }
+
+    /**
+     * Rolls this craft's byproduct, if the matched recipe has one: a deterministic per-craft seed
+     * (entity id + the engine's global clock) keeps the outcome reproducible across save/reload.
+     * @private
+     * @param {ArrayLike<number>[]} slotCols
+     * @param {number} row
+     * @param {number} eid
+     * @param {number} clock
+     * @returns {number} the rolled byproduct item type, or EMPTY
+     */
+    _resolveByproduct(slotCols, row, eid, clock) {
+        const byproduct = this.byproducts.get(this._gatheredKey(slotCols, row));
+        if (byproduct === undefined) {
+            return EMPTY;
+        }
+        if (deterministicRoll(eid, clock) < byproduct.chance) {
+            return byproduct.itemType;
+        }
+        return EMPTY;
     }
 
     /**
@@ -519,6 +614,8 @@ export class MachineBehavior extends AbstractBehavior {
         const carry = machine.carry;
         const output = machine.output;
         const out = machine.out;
+        const out2 = machine.out2;
+        const byproduct = machine.byproduct;
         const inputCounts = machine.inputCount;
         const processingTicks = machine.processingTicks;
         const workerStep = machine.workerStep;
@@ -576,7 +673,13 @@ export class MachineBehavior extends AbstractBehavior {
             if (idle && filled === inputCount) {
                 // Only the recipe match needs the behavior instance, and only on the tick a set
                 // completes — rare next to the per-tick passes above.
-                output[row] = placed.behaviorFor(placed.typeIdOf(eids[row]))._resolveRecipe(slotCols, row);
+                const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
+                output[row] = behavior._resolveRecipe(slotCols, row);
+                syncFluidSource(engine, out[row], output[row]);
+                if (behavior.hasByproductPort) {
+                    byproduct[row] = behavior._resolveByproduct(slotCols, row, eids[row], engine.clock);
+                    syncFluidSource(engine, out2[row], byproduct[row]);
+                }
                 const start = processingTicks[row] - carry[row];
                 if (start > 0) {
                     remaining[row] = start;
@@ -594,12 +697,16 @@ export class MachineBehavior extends AbstractBehavior {
 
             if (remaining[row] === 0) {
                 engine.submitCreate(out[row], output[row], item[out[row]] === EMPTY);
+                if (byproduct[row] !== EMPTY) {
+                    engine.submitCreate(out2[row], byproduct[row], item[out2[row]] === EMPTY);
+                }
             }
         }
     }
 
     /**
-     * POST_RESOLVE: a machine whose output was delivered records last_output and goes idle.
+     * POST_RESOLVE: a machine whose output (and byproduct, if this craft rolled one) was delivered
+     * records last_output/last_byproduct and goes idle.
      * @private
      * @param {GameEngine} engine
      * @param {PlacedObjects} placed
@@ -611,10 +718,16 @@ export class MachineBehavior extends AbstractBehavior {
         const processingCols = columns(machine, PROCESSING_COLS);
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
-            if (engine.wasResolvedDest(machine.out[row])) {
+            const byproductPending = machine.byproduct[row] !== EMPTY;
+            const byproductDelivered = !byproductPending || engine.wasResolvedDest(machine.out2[row]);
+            if (engine.wasResolvedDest(machine.out[row]) && byproductDelivered) {
                 machine.lastOutput[row] = machine.output[row];
                 machine.output[row] = EMPTY;
                 machine.remaining[row] = EMPTY;
+                if (byproductPending) {
+                    machine.lastByproduct[row] = machine.byproduct[row];
+                    machine.byproduct[row] = EMPTY;
+                }
                 for (let i = 0; i < RECIPE_SLOTS; i += 1) {
                     processingCols[i][row] = EMPTY;
                 }
@@ -844,6 +957,259 @@ export class ExtractorBehavior extends AbstractBehavior {
                 extractor.lastOutput[row] = extractor.output[row];
                 extractor.output[row] = EMPTY;
                 extractor.remaining[row] = EMPTY;
+            }
+        }
+    }
+}
+
+/**
+ * A passive producer with no input port: a fixed item lands in its output port every
+ * `processingTicks`, like ExtractorBehavior but never bound to a resource tile. An optional
+ * secondary output (its own independent, non-recipe cadence — e.g. Air Filter's Water trickle)
+ * lands in the object type's second output port every `secondaryOutput.processingTicks`.
+ */
+export class GeneratorBehavior extends AbstractBehavior {
+
+    /**
+     * @param {object} config
+     * @param {number} config.processingTicks
+     * @param {number} config.output
+     * @param {object} [config.secondaryOutput]
+     * @param {number} config.secondaryOutput.itemType
+     * @param {number} config.secondaryOutput.processingTicks
+     */
+    constructor({processingTicks, output, secondaryOutput=null}) {
+        super();
+        this.processingTicks = processingTicks;
+        this.output = output;
+        this.secondaryOutput = secondaryOutput;
+    }
+
+    _attachType(type) {
+        super._attachType(type);
+        this.hasSecondaryPort = this.secondaryOutput !== null;
+    }
+
+    install(engine, placed) {
+        engine.defineComponent("Generator", [
+            {name: "out", kind: "eid", fill: NO_EID},
+            {name: "remaining", kind: "f32", fill: EMPTY},
+            {name: "carry", kind: "f32"},
+            {name: "output", fill: EMPTY},
+            {name: "lastOutput", fill: EMPTY},
+            {name: "processingTicks"},
+            // Secondary cycle; unused columns stay at fill for a type with no secondary port.
+            {name: "out2", kind: "eid", fill: NO_EID},
+            {name: "remaining2", kind: "f32", fill: EMPTY},
+            {name: "carry2", kind: "f32"},
+            {name: "output2", fill: EMPTY},
+            {name: "lastOutput2", fill: EMPTY},
+            {name: "processingTicks2"},
+        ], {sparse: true});
+        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GeneratorBehavior._submitIntents(engine, placed));
+        engine.registerSystem(TickPhase.POST_RESOLVE, () => GeneratorBehavior._finish(engine, placed));
+    }
+
+    onSpawn(engine, placed, eid, type, message) {
+        const def = engine.component("Generator");
+        engine.attachComponent(def, eid);
+        const generator = def.store;
+        const row = def.row(eid);
+        const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
+        generator.out[row] = output.port;
+        generator.processingTicks[row] = this.processingTicks;
+        engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
+        syncFluidSource(engine, output.port, this.output);
+        if (this.hasSecondaryPort) {
+            const secondary = engine.portFor(type.outputPorts[1], message.x, message.y, message.direction);
+            generator.out2[row] = secondary.port;
+            generator.processingTicks2[row] = this.secondaryOutput.processingTicks;
+            engine.registerRenderedPort(secondary.port, secondary.tile.x, secondary.tile.y);
+            syncFluidSource(engine, secondary.port, this.secondaryOutput.itemType);
+        }
+    }
+
+    onDespawn(engine, placed, eid) {
+        const def = engine.component("Generator");
+        const row = def.row(eid);
+        engine.unregisterRenderedPort(def.store.out[row]);
+        engine.setPortFluidSource(def.store.out[row], EMPTY);
+        if (this.hasSecondaryPort) {
+            engine.unregisterRenderedPort(def.store.out2[row]);
+            engine.setPortFluidSource(def.store.out2[row], EMPTY);
+        }
+    }
+
+    syncData(engine, placed, eid) {
+        const def = engine.component("Generator");
+        const row = def.row(eid);
+        const last = def.store.lastOutput[row];
+        let lastOutput = last;
+        if (last === EMPTY) {
+            lastOutput = null;
+        }
+        const portIds = [def.store.out[row]];
+        if (this.hasSecondaryPort) {
+            portIds.push(def.store.out2[row]);
+        }
+        return {portIds, lastOutput};
+    }
+
+    resyncRenderedPorts(engine, placed, eid) {
+        const def = engine.component("Generator");
+        const row = def.row(eid);
+        const out = def.store.out[row];
+        engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
+        if (this.hasSecondaryPort) {
+            const out2 = def.store.out2[row];
+            engine.registerRenderedPort(out2, engine.Position.x[out2], engine.Position.y[out2]);
+        }
+    }
+
+    /**
+     * @param {GameEngine} engine
+     * @param {PlacedObjects} placed
+     * @param {number} eid
+     * @param {number} objectId
+     * @returns {InspectHeartbeatEvent}
+     */
+    inspect(engine, placed, eid, objectId) {
+        const def = engine.component("Generator");
+        const generator = def.store;
+        const row = def.row(eid);
+        let remaining = null;
+        if (generator.remaining[row] !== EMPTY) {
+            remaining = Math.ceil(generator.remaining[row]);
+        }
+        const outItem = engine.Port.item[generator.out[row]];
+        let displayOutItem = outItem;
+        if (outItem === EMPTY) {
+            displayOutItem = null;
+        }
+        return new InspectHeartbeatEvent(objectId, [], [], remaining, this.processingTicks, displayOutItem, this.output);
+    }
+
+    /**
+     * Restores the denormalized countdown lengths after a load (see MachineBehavior#onRebuild).
+     * @param {GameEngine} engine
+     * @param {PlacedObjects} placed
+     * @returns {void}
+     */
+    onRebuild(engine, placed) {
+        const def = engine.component("Generator");
+        const generator = def.store;
+        const eids = def.eids;
+        for (let row = 0; row < def.count; row += 1) {
+            const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
+            generator.processingTicks[row] = behavior.processingTicks;
+            syncFluidSource(engine, generator.out[row], behavior.output);
+            if (behavior.hasSecondaryPort) {
+                generator.processingTicks2[row] = behavior.secondaryOutput.processingTicks;
+                syncFluidSource(engine, generator.out2[row], behavior.secondaryOutput.itemType);
+            }
+        }
+    }
+
+    /**
+     * Advances one output cycle in place: counts down, starts the next cycle once idle (fixed item,
+     * no recipe match needed), and (re)submits the create once the countdown reaches zero.
+     * @private
+     * @param {GameEngine} engine
+     * @param {ArrayLike<number>} remaining
+     * @param {ArrayLike<number>} carry
+     * @param {ArrayLike<number>} output
+     * @param {ArrayLike<number>} outPort
+     * @param {ArrayLike<number>} processingTicks
+     * @param {number} itemType
+     * @param {number} row
+     * @returns {void}
+     */
+    static _advanceCycle(engine, remaining, carry, output, outPort, processingTicks, itemType, row) {
+        if (remaining[row] > 0) {
+            const next = remaining[row] - 1;
+            if (next > 0) {
+                remaining[row] = next;
+            } else {
+                // Bank the overshoot; the next cycle starts that far along.
+                carry[row] -= next;
+                remaining[row] = 0;
+            }
+        }
+        if (output[row] === EMPTY) {
+            output[row] = itemType;
+            const start = processingTicks[row] - carry[row];
+            if (start > 0) {
+                remaining[row] = start;
+                carry[row] = 0;
+            } else {
+                // Banked progress covers the whole cycle; the surplus keeps carrying.
+                remaining[row] = 0;
+                carry[row] = -start;
+            }
+        }
+        if (remaining[row] === 0) {
+            const item = engine.Port.item;
+            engine.submitCreate(outPort[row], output[row], item[outPort[row]] === EMPTY);
+        }
+    }
+
+    /**
+     * SUBMIT_INTENTS: advances the main cycle every row, and the secondary cycle only for rows a
+     * second output port was wired onto (see onSpawn).
+     * @private
+     * @param {GameEngine} engine
+     * @param {PlacedObjects} placed
+     * @returns {void}
+     */
+    static _submitIntents(engine, placed) {
+        const def = engine.component("Generator");
+        const generator = def.store;
+        const eids = def.eids;
+        const count = def.count;
+        for (let row = 0; row < count; row += 1) {
+            let itemType = generator.output[row];
+            if (itemType === EMPTY) {
+                itemType = placed.behaviorFor(placed.typeIdOf(eids[row])).output;
+            }
+            GeneratorBehavior._advanceCycle(
+                engine, generator.remaining, generator.carry, generator.output, generator.out,
+                generator.processingTicks, itemType, row,
+            );
+            if (generator.out2[row] === NO_EID) {
+                continue;
+            }
+            let secondaryItemType = generator.output2[row];
+            if (secondaryItemType === EMPTY) {
+                secondaryItemType = placed.behaviorFor(placed.typeIdOf(eids[row])).secondaryOutput.itemType;
+            }
+            GeneratorBehavior._advanceCycle(
+                engine, generator.remaining2, generator.carry2, generator.output2, generator.out2,
+                generator.processingTicks2, secondaryItemType, row,
+            );
+        }
+    }
+
+    /**
+     * POST_RESOLVE: a delivered cycle (main or secondary) records its last_output and goes idle.
+     * @private
+     * @param {GameEngine} engine
+     * @param {PlacedObjects} placed
+     * @returns {void}
+     */
+    static _finish(engine, placed) {
+        const def = engine.component("Generator");
+        const generator = def.store;
+        const count = def.count;
+        for (let row = 0; row < count; row += 1) {
+            if (engine.wasResolvedDest(generator.out[row])) {
+                generator.lastOutput[row] = generator.output[row];
+                generator.output[row] = EMPTY;
+                generator.remaining[row] = EMPTY;
+            }
+            if (generator.out2[row] !== NO_EID && engine.wasResolvedDest(generator.out2[row])) {
+                generator.lastOutput2[row] = generator.output2[row];
+                generator.output2[row] = EMPTY;
+                generator.remaining2[row] = EMPTY;
             }
         }
     }
