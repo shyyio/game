@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared host bootstrap: base packages, Node, Caddy, nftables,
+# Shared host bootstrap: base packages, Node, nginx, nftables,
 # the "app" service user, sshd hardening. Called by install.sh and install-auth.sh;
 # safe to run more than once and safe to run on a completely fresh host.
 set -euo pipefail
@@ -20,12 +20,7 @@ if ! command -v rclone >/dev/null; then
     curl -fsSL https://rclone.org/install.sh | bash
 fi
 
-if ! command -v caddy >/dev/null; then
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
-    apt-get update -y
-    apt-get install -y caddy
-fi
+apt-get install -y nginx libnginx-mod-http-headers-more-filter certbot python3-certbot-nginx
 
 GIT_SHELL="$(command -v git-shell)"
 grep -qxF "$GIT_SHELL" /etc/shells || echo "$GIT_SHELL" >> /etc/shells
@@ -41,16 +36,12 @@ fi
 install -d -m 700 -o app -g app /home/app/.config/rclone
 install -m 600 -o app -g app "${SCRIPT_DIR}/rclone.conf" /home/app/.config/rclone/rclone.conf
 
-# Caddy is fronted per-service: each install script drops its own /etc/caddy/sites/*.conf
-# so installing the auth server never clobbers the game server's config (or vice versa).
-# Migrate an old single-block Caddyfile (pre-split) into sites/spup.conf on first run.
-install -d -m 755 /etc/caddy/sites
-if [[ -f /etc/caddy/Caddyfile ]] && ! grep -q '^import /etc/caddy/sites/' /etc/caddy/Caddyfile; then
-    mv /etc/caddy/Caddyfile /etc/caddy/sites/spup.conf
-fi
-printf 'import /etc/caddy/sites/*.conf\n' > /etc/caddy/Caddyfile
-systemctl enable caddy
-systemctl restart caddy
+# nginx is fronted per-service: each install script drops its own sites-available/*.conf
+# and conf.d rate-limit zone file, so installing the auth server never clobbers the game
+# server's config (or vice versa).
+rm -f /etc/nginx/sites-enabled/default
+systemctl enable nginx
+systemctl restart nginx
 
 cp "${SCRIPT_DIR}/nftables.conf" /etc/nftables.conf
 systemctl enable nftables

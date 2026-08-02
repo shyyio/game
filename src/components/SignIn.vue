@@ -5,7 +5,7 @@ import ServerList from "@/components/ServerList.vue";
 
 const STORAGE_USERNAME = "shys-power-up-factory.username";
 const LOCAL_SERVER_URL = "ws://localhost:8080";
-const AUTH_SERVER_URL = "https://spup-auth.shyy.io";
+const AUTH_SERVER_URL = "https://auth.spupgame.com";
 
 const emit = defineEmits(["start"]);
 

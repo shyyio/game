@@ -13,19 +13,19 @@ REMOTE_TMP="/tmp/spup-install"
 [[ -f "$PUBKEY" ]] || { echo "missing $PUBKEY"; exit 1; }
 [[ -f "$RCLONE_CONF" ]] || { echo "missing $RCLONE_CONF"; exit 1; }
 
-CADDYFILE="$(mktemp)"
-trap 'rm -f "$CADDYFILE"' EXIT
-sed "s/{{DOMAIN}}/${DOMAIN}/" "${DEPLOY_DIR}/Caddyfile" > "$CADDYFILE"
+NGINXFILE="$(mktemp)"
+trap 'rm -f "$NGINXFILE"' EXIT
+sed "s/{{DOMAIN}}/${DOMAIN}/" "${DEPLOY_DIR}/nginx-game.conf" > "$NGINXFILE"
 
 FILES=(
     "${DEPLOY_DIR}/bootstrap.sh" "${DEPLOY_DIR}/install.sh" "${DEPLOY_DIR}/post-receive" "${DEPLOY_DIR}/spup.service" "${DEPLOY_DIR}/nftables.conf"
     "${DEPLOY_DIR}/sysctl-network.conf" "${DEPLOY_DIR}/unattended-upgrades-reboot.conf" "${DEPLOY_DIR}/sshd-access.conf"
-    "${DEPLOY_DIR}/backup.sh" "${DEPLOY_DIR}/spup-backup.service" "${DEPLOY_DIR}/spup-backup.timer"
+    "${DEPLOY_DIR}/backup.sh" "${DEPLOY_DIR}/spup-backup.service" "${DEPLOY_DIR}/spup-backup.timer" "${DEPLOY_DIR}/nginx-ratelimit-game.conf"
 )
 
 ssh "$HOST" "mkdir -p ${REMOTE_TMP}"
 scp "${FILES[@]}" "${HOST}:${REMOTE_TMP}/"
-scp "$CADDYFILE" "${HOST}:${REMOTE_TMP}/Caddyfile"
+scp "$NGINXFILE" "${HOST}:${REMOTE_TMP}/nginx-game.conf"
 scp "$PUBKEY" "${HOST}:${REMOTE_TMP}/authorized_key"
 scp "$RCLONE_CONF" "${HOST}:${REMOTE_TMP}/rclone.conf"
 ssh -t "$HOST" "sudo bash ${REMOTE_TMP}/install.sh ${DOMAIN} '${NAME}' && rm -rf ${REMOTE_TMP}"
