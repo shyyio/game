@@ -53,10 +53,34 @@ async function loadServers() {
     servers.value = [{origin: DEV_SERVER_ORIGIN}, ...servers.value];
   }
   for (const {origin} of servers.value) {
+    preconnect(origin);
+  }
+  for (const {origin} of servers.value) {
     statusByOrigin[origin] = {loading: true, offline: false};
     fetchStatus(origin);
   }
   refreshing.value = false;
+}
+
+const preconnectedOrigins = new Set();
+
+/**
+ * Opens the connection to a server's status endpoint ahead of fetchStatus(), so the first ping
+ * after page load isn't inflated by DNS/TCP/TLS handshake time.
+ * @param {string} origin
+ * @returns {void}
+ */
+function preconnect(origin) {
+  const httpOrigin = httpOriginFor(origin);
+  if (preconnectedOrigins.has(httpOrigin)) {
+    return;
+  }
+  preconnectedOrigins.add(httpOrigin);
+  const link = document.createElement("link");
+  link.rel = "preconnect";
+  link.href = httpOrigin;
+  link.crossOrigin = "anonymous";
+  document.head.appendChild(link);
 }
 
 /**
