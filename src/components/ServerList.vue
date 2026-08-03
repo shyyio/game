@@ -114,7 +114,7 @@ function observeNetworkDurationMs(url) {
         }
       }
     });
-    observer.observe({type: "resource", buffered: true});
+    observer.observe({type: "resource"});
   });
 }
 
