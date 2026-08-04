@@ -1,7 +1,7 @@
 import {Container, Text} from "pixi.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_TINT} from "@/client/Theme.js";
+import {PANEL_TINT, PANEL_TEXT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/UIPanel.js";
 
 // Screen-pixel inset of the panel from the left edge.
@@ -49,7 +49,7 @@ export class StatusMessageLayer extends Container {
         this._box = {frame: null, inset: null};
         this._text = new Text({
             text: "",
-            style: {fontFamily: GAME_FONT, fontSize: 15, fill: 0x000000},
+            style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TEXT},
         });
         this._text.x = FRAME_MARGIN + PADDING_X;
         this._text.y = FRAME_MARGIN + PADDING_Y;
@@ -101,6 +101,18 @@ export class StatusMessageLayer extends Container {
         }
         this._override = null;
         this._refresh();
+    }
+
+    /**
+     * Forgets every subscribed/pending chunk, so a resync's re-requested viewport counts as fresh
+     * rather than already-subscribed. Used after a reconnect, when the server has no memory of
+     * this connection's old subscriptions.
+     * @returns {void}
+     */
+    reset() {
+        this._subscribed.clear();
+        this._batch.clear();
+        this._pending.clear();
     }
 
     /**

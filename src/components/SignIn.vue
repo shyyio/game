@@ -34,7 +34,7 @@ async function login() {
     localStorage.setItem(STORAGE_USERNAME, username.value);
     step.value = "servers";
   } catch {
-    error.value = "Could not reach the auth server";
+    error.value = "Login failed, please try again in a few minutes";
   } finally {
     connecting.value = false;
   }

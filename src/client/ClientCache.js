@@ -14,13 +14,12 @@ class StateEntry {
     /**
      * @param {string} kind
      * @param {*} value
+     * @param {*} [initial] - scalars only: the value reset() restores
      */
-    constructor(kind, value) {
+    constructor(kind, value, initial) {
         this.kind = kind;
         this.value = value;
-        // Only meaningful for scalars: reset() restores this value. Map/set entries always reset
-        // to empty regardless, so their initial reference goes unused.
-        this.initial = value;
+        this.initial = initial;
         this.listeners = new ListenerList();
     }
 }
@@ -156,7 +155,7 @@ export class ClientCache {
             } else {
                 throw new Error(`Unknown schema kind for ${namespace}.${key}: ${declared.kind}`);
             }
-            this._entriesByPath.set(`${namespace}.${key}`, new StateEntry(declared.kind, value));
+            this._entriesByPath.set(`${namespace}.${key}`, new StateEntry(declared.kind, value, declared.initial));
         }
         this._writersByNamespace.set(namespace, writer);
         if (view !== null) {

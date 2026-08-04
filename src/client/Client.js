@@ -81,6 +81,7 @@ import {DEV, BROWSER} from "@/common/env.js";
 import {ListenerList} from "@/common/ListenerList.js";
 import {
     SESSION_STATUS_CONNECTED, SESSION_STATUS_RECONNECTING, SESSION_STATUS_SERVER_SHUTDOWN, SESSION_STATUS_SUPERSEDED,
+    SESSION_STATUS_REJECTED,
 } from "@/client/RemoteSession.js";
 
 // Frame time spent applying queued sync events; the rest wait for the next frame.
@@ -333,6 +334,8 @@ export class Client {
             this.statusLayer.setOverride("Server is restarting…");
         } else if (status === SESSION_STATUS_SUPERSEDED) {
             this.statusLayer.setOverride("Signed in on another device");
+        } else if (status === SESSION_STATUS_REJECTED) {
+            this.statusLayer.setOverride("Could not reconnect — refresh the page");
         } else if (status === SESSION_STATUS_CONNECTED) {
             this.statusLayer.clearOverride();
             this._resync();
@@ -347,6 +350,7 @@ export class Client {
      */
     _resync() {
         this.cache.reset();
+        this.statusLayer.reset();
         this._lastVisibleKey = null;
         if (this._viewMode === ViewMode.OVERWORLD) {
             this._lastOverworldRefreshMs = 0;
