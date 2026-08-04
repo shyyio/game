@@ -2,7 +2,7 @@ import {AbstractSession} from "@/common/AbstractSession.js";
 import {SignInMessage} from "@/common/PlayerMessages.js";
 import {WelcomeEvent} from "@/common/PlayerEvents.js";
 import {GAME_VERSION} from "@/common/constants.js";
-import {CLOSE_CODE_SUPERSEDED, CLOSE_CODE_SERVER_SHUTDOWN} from "@/common/CloseCodes.js";
+import {CLOSE_CODE_SUPERSEDED, CLOSE_CODE_SERVER_SHUTDOWN, CLOSE_CODE_BAD_SIGN_IN, CLOSE_CODE_BAD_FRAME} from "@/common/CloseCodes.js";
 import {DEV} from "@/common/env.js";
 import {jwtExpiry} from "@/common/util.js";
 
@@ -18,6 +18,11 @@ export const SESSION_STATUS_CONNECTED = "connected";
 export const SESSION_STATUS_RECONNECTING = "reconnecting";
 export const SESSION_STATUS_SERVER_SHUTDOWN = "server-shutdown";
 export const SESSION_STATUS_SUPERSEDED = "superseded";
+export const SESSION_STATUS_REJECTED = "rejected";
+
+// Close codes the server sends for a bad request, not a transient drop; retrying resends the same
+// bad request forever, so these never retry.
+const TERMINAL_CLOSE_CODES = new Set([CLOSE_CODE_SUPERSEDED, CLOSE_CODE_BAD_SIGN_IN, CLOSE_CODE_BAD_FRAME]);
 
 /**
  * The browser side of a server connection: messages encode onto a WebSocket, decoded events feed
@@ -172,6 +177,10 @@ export class RemoteSession extends AbstractSession {
         }
         if (code === CLOSE_CODE_SUPERSEDED) {
             this._notifyStatus(SESSION_STATUS_SUPERSEDED, code);
+            return;
+        }
+        if (TERMINAL_CLOSE_CODES.has(code)) {
+            this._notifyStatus(SESSION_STATUS_REJECTED, code);
             return;
         }
         this._reconnecting = true;

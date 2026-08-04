@@ -50,7 +50,7 @@ EOF
 fi
 
 install -m 644 "${SCRIPT_DIR}/nginx-ratelimit-game.conf" /etc/nginx/conf.d/spup-ratelimit.conf
-cp "${SCRIPT_DIR}/nginx-game.conf" /etc/nginx/sites-available/spup.conf
+sed "s/{{DOMAIN}}/${DOMAIN}/" "${SCRIPT_DIR}/nginx-game.conf" > /etc/nginx/sites-available/spup.conf
 ln -sf /etc/nginx/sites-available/spup.conf /etc/nginx/sites-enabled/spup.conf
 nginx -t
 systemctl reload nginx
