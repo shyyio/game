@@ -26,6 +26,21 @@ class Keyboard {
     }
 
     /**
+     * @param key {string}
+     * @param callback {keyboardCallback}
+     */
+    off(key, callback) {
+        const listeners = this._listeners[key];
+        if (!listeners) {
+            return;
+        }
+        const index = listeners.indexOf(callback);
+        if (index !== -1) {
+            listeners.splice(index, 1);
+        }
+    }
+
+    /**
      * @param event {KeyboardEvent}
      * @private
      */

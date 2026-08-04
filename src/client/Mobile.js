@@ -30,10 +30,15 @@ class Mobile {
 
     /**
      * @param {function(boolean): void} callback
-     * @returns {void}
+     * @returns {function(): void} unsubscribe
      */
     onChange(callback) {
         this._onChange = callback;
+        return () => {
+            if (this._onChange === callback) {
+                this._onChange = null;
+            }
+        };
     }
 
     /**
