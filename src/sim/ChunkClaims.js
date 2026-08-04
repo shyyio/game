@@ -36,12 +36,12 @@ export class ChunkClaims {
 
     /**
      * @param {number} chunk
-     * @returns {number} the chunk's ChunkPermission, defaulting to friends-only when unclaimed
+     * @returns {number} the chunk's ChunkPermission, defaulting to owner-only when unclaimed
      */
     permissionOf(chunk) {
         const permission = this._permissionByChunk.get(chunk);
         if (permission === undefined) {
-            return ChunkPermission.PERMISSION_FRIENDS;
+            return ChunkPermission.PERMISSION_ONLY_ME;
         }
         return permission;
     }
@@ -98,7 +98,7 @@ export class ChunkClaims {
             return ClaimResult.CLAIM_RESULT_NOT_ADJACENT;
         }
         this._ownerByChunk.set(chunk, playerId);
-        this._permissionByChunk.set(chunk, ChunkPermission.PERMISSION_FRIENDS);
+        this._permissionByChunk.set(chunk, ChunkPermission.PERMISSION_ONLY_ME);
         return ClaimResult.CLAIM_RESULT_OK;
     }
 

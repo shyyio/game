@@ -71,12 +71,12 @@ export function drawFriendIcon(face, color = PANEL_TEXT, width = ICON_STROKE) {
         .circle(3, -5, 3)
         .stroke({color, width});
     face
-        .moveTo(-9, 6)
-        .arc(-3, 2, 6, Math.PI, 0, true)
+        .moveTo(-9, 2)
+        .arc(-3, 2, 6, Math.PI, 0, false)
         .stroke({color, width});
     face
-        .moveTo(-3, 6)
-        .arc(3, 2, 6, Math.PI, 0, true)
+        .moveTo(-3, 2)
+        .arc(3, 2, 6, Math.PI, 0, false)
         .stroke({color, width});
 }
 

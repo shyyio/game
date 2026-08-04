@@ -178,12 +178,12 @@ export class ChunkClaimsView extends AbstractCacheView {
 
     /**
      * @param {number} chunk
-     * @returns {number} the chunk's ChunkPermission, defaulting to friends-only when unclaimed
+     * @returns {number} the chunk's ChunkPermission, defaulting to owner-only when unclaimed
      */
     permissionOf(chunk) {
         const permission = this._state.mapGet("chunkClaims.permissionByChunk", chunk);
         if (permission === undefined) {
-            return ChunkPermission.PERMISSION_FRIENDS;
+            return ChunkPermission.PERMISSION_ONLY_ME;
         }
         return permission;
     }
