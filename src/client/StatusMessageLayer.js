@@ -1,7 +1,7 @@
 import {Container, Text} from "pixi.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_TEXT, PANEL_TINT} from "@/client/Theme.js";
+import {PANEL_TINT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/UIPanel.js";
 
 // Screen-pixel inset of the panel from the left edge.
@@ -29,6 +29,8 @@ export class StatusMessageLayer extends Container {
         this.visible = false;
         this._topOffset = 0;
         this._connecting = false;
+        // Reconnect/shutdown status, when set, takes priority over connecting/loading.
+        this._override = null;
         // Chunks already subscribed, so a re-issued viewport request only counts new ones.
         this._subscribed = new Set();
         // Chunks in the active load; total = _batch.size, loaded = _batch.size - _pending.size.
@@ -47,7 +49,7 @@ export class StatusMessageLayer extends Container {
         this._box = {frame: null, inset: null};
         this._text = new Text({
             text: "",
-            style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TEXT},
+            style: {fontFamily: GAME_FONT, fontSize: 15, fill: 0x000000},
         });
         this._text.x = FRAME_MARGIN + PADDING_X;
         this._text.y = FRAME_MARGIN + PADDING_Y;
@@ -75,6 +77,29 @@ export class StatusMessageLayer extends Container {
      */
     setConnecting() {
         this._connecting = true;
+        this._refresh();
+    }
+
+    /**
+     * Shows a persistent message (reconnecting, server restarting) that takes priority over the
+     * connecting/loading display until cleared.
+     * @param {string} message
+     * @returns {void}
+     */
+    setOverride(message) {
+        this._override = message;
+        this._refresh();
+    }
+
+    /**
+     * Clears the override, resuming the connecting/loading display.
+     * @returns {void}
+     */
+    clearOverride() {
+        if (this._override === null) {
+            return;
+        }
+        this._override = null;
         this._refresh();
     }
 
@@ -125,7 +150,9 @@ export class StatusMessageLayer extends Container {
      * @returns {void}
      */
     _refresh() {
-        if (this._connecting) {
+        if (this._override !== null) {
+            this._show(this._override);
+        } else if (this._connecting) {
             this._show("Connecting…");
         } else if (this._pending.size > 0) {
             this._show(`Loading... ${this._batch.size - this._pending.size} / ${this._batch.size}`);

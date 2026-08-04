@@ -79,6 +79,9 @@ import {drawClaimIcon, drawHomeIcon} from "@/client/icons.js";
 import {advanceAnimationFrame} from "@/client/animation.js";
 import {DEV, BROWSER} from "@/common/env.js";
 import {ListenerList} from "@/common/ListenerList.js";
+import {
+    SESSION_STATUS_CONNECTED, SESSION_STATUS_RECONNECTING, SESSION_STATUS_SERVER_SHUTDOWN, SESSION_STATUS_SUPERSEDED,
+} from "@/client/RemoteSession.js";
 
 // Frame time spent applying queued sync events; the rest wait for the next frame.
 const DRAIN_BUDGET_MS = 6;
@@ -315,6 +318,44 @@ export class Client {
      */
     notify(text) {
         this.noticeLayer.notify(text);
+    }
+
+    /**
+     * Reacts to the remote session's connection status; local sessions never call this. Shows a
+     * persistent status message while down, clears it and resyncs once reconnected.
+     * @param {string} status
+     * @returns {void}
+     */
+    onConnectionStatusChange(status) {
+        if (status === SESSION_STATUS_RECONNECTING) {
+            this.statusLayer.setOverride("Reconnecting…");
+        } else if (status === SESSION_STATUS_SERVER_SHUTDOWN) {
+            this.statusLayer.setOverride("Server is restarting…");
+        } else if (status === SESSION_STATUS_SUPERSEDED) {
+            this.statusLayer.setOverride("Signed in on another device");
+        } else if (status === SESSION_STATUS_CONNECTED) {
+            this.statusLayer.clearOverride();
+            this._resync();
+        }
+    }
+
+    /**
+     * Wipes the stale cache and re-requests the current viewport/overworld data after a
+     * reconnect: the server has no memory of this connection's old subscriptions.
+     * @private
+     * @returns {void}
+     */
+    _resync() {
+        this.cache.reset();
+        this._lastVisibleKey = null;
+        if (this._viewMode === ViewMode.OVERWORLD) {
+            this._lastOverworldRefreshMs = 0;
+            this._refreshOverworld(true);
+        } else {
+            this._requestedChunks.clear();
+            this._updateViewportChunks();
+        }
+        this.notify("Reconnected");
     }
 
     /**

@@ -147,6 +147,30 @@ export function syntheticUsername(playerId) {
 }
 
 /**
+ * Reads a compact JWT's `exp` claim without verifying its signature — only for a client-side
+ * "is this still worth reusing" check; the server always re-verifies signature and expiry itself.
+ * @param {string} token
+ * @returns {number|null} the exp claim in epoch seconds, or null if unreadable
+ */
+export function jwtExpiry(token) {
+    const parts = token.split(".");
+    if (parts.length !== 3) {
+        return null;
+    }
+    try {
+        let base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        base64 += "=".repeat((4 - base64.length % 4) % 4);
+        const payload = JSON.parse(atob(base64));
+        if (typeof payload.exp !== "number") {
+            return null;
+        }
+        return payload.exp;
+    } catch {
+        return null;
+    }
+}
+
+/**
  * A byte count as short human-readable text (472B, 12KB, 1.3MB).
  * @param {number} n
  * @returns {string}
