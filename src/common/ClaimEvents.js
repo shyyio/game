@@ -63,7 +63,7 @@ export class ChunkClaimUpdateEvent extends AbstractEvent {
      * @param {number} playerId
      * @param {number} permission - a ChunkPermission; meaningless once unclaimed
      */
-    constructor(chunk, playerId, permission = ChunkPermission.PERMISSION_FRIENDS) {
+    constructor(chunk, playerId, permission = ChunkPermission.PERMISSION_ONLY_ME) {
         super();
         this.chunk = chunk;
         this.playerId = playerId;

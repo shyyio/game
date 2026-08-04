@@ -5,7 +5,7 @@ import {CHUNK_SIZE, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkCenter, chunkOrdinal, chunkOrigin, chunkPosition, getOrCreate, inRegion} from "@/common/util.js";
 import {claimColor, CLAIM_FILL_ALPHA, CLAIM_BORDER_ALPHA} from "@/client/Theme.js";
 import {ChunkPermission} from "@/common/ClaimEvents.js";
-import {drawHomeIcon, drawLockIcon, drawFriendIcon} from "@/client/icons.js";
+import {drawHomeIcon, drawFriendIcon} from "@/client/icons.js";
 
 const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
 
@@ -320,7 +320,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
 
     /**
      * The badge glyph notable to the own player for `chunk`, or null: own chunks read their own
-     * permission (friends-only is the silent default); foreign chunks read whether the own player
+     * permission (only-me is the silent default); foreign chunks read whether the own player
      * specifically can build there, not the raw permission value.
      * @private
      * @param {number} chunk
@@ -330,8 +330,8 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
     _badgeIconFor(chunk, owner) {
         const permission = this._claims.permissionOf(chunk);
         if (owner === this._claims.ownPlayerId) {
-            if (permission === ChunkPermission.PERMISSION_ONLY_ME) {
-                return drawLockIcon;
+            if (permission === ChunkPermission.PERMISSION_FRIENDS) {
+                return drawFriendIcon;
             }
             return null;
         }

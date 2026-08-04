@@ -96,7 +96,7 @@ test("canBuildIn mirrors the sim gate", () => {
     const {state, claims} = claimsState();
     state.onEvent(new WelcomeEvent(1, 9, "0001-2A3B"));
     state.onEvent(new OwnClaimsSyncEvent([100], [ChunkPermission.PERMISSION_FRIENDS]));
-    state.onEvent(new ChunkClaimUpdateEvent(101, 2));
+    state.onEvent(new ChunkClaimUpdateEvent(101, 2, ChunkPermission.PERMISSION_FRIENDS));
     assert.equal(claims.canBuildIn(100), true, "own chunk");
     assert.equal(claims.canBuildIn(101), false, "stranger's chunk");
     assert.equal(claims.canBuildIn(102), false, "unclaimed chunk");
