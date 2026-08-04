@@ -1,5 +1,6 @@
 import Keyboard from "@/client/Keyboard.js";
 import {Belts} from "@/mods/Logistics/sim/Belts.js";
+import {DEV} from "@/common/env.js";
 
 /**
  * Binds the game's global keyboard shortcuts to the client, toolbar, and sim (local mode only).
@@ -31,6 +32,11 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
 
         Keyboard.on("t", () => {
             game.runTick();
+        });
+    } else if (DEV) {
+        // Dev-only: force-closes the socket to test the reconnect flow without touching the server.
+        Keyboard.on("k", () => {
+            client.session.debugDisconnect();
         });
     }
 

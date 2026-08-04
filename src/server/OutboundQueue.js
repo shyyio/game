@@ -1,11 +1,10 @@
+import {CLOSE_CODE_SLOW_CONSUMER} from "@/common/CloseCodes.js";
+
 // Stop feeding the socket once uWS is buffering this much; the drain callback resumes.
 const BACKPRESSURE_HIGH_WATER = 256 * 1024;
 
 // A consumer this far behind is not coming back; disconnect instead of buffering forever.
 const MAX_QUEUED_BYTES = 4 * 1024 * 1024;
-
-// 4000-4999 is the application close-code range.
-export const CLOSE_CODE_SLOW_CONSUMER = 4000;
 
 // uWS send() results.
 const SEND_DROPPED = 0;

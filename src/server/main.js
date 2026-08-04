@@ -80,7 +80,7 @@ async function shutdown(signal) {
     console.log(`${signal}: saving and shutting down`);
     clearInterval(tickInterval);
     clearInterval(saveInterval);
-    server.stop();
+    server.shutdown();
     await game.save();
     process.exit(0);
 }

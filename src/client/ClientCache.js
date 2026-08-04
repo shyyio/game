@@ -18,6 +18,9 @@ class StateEntry {
     constructor(kind, value) {
         this.kind = kind;
         this.value = value;
+        // Only meaningful for scalars: reset() restores this value. Map/set entries always reset
+        // to empty regardless, so their initial reference goes unused.
+        this.initial = value;
         this.listeners = new ListenerList();
     }
 }
@@ -196,6 +199,27 @@ export class ClientCache {
     onEvent(event) {
         for (const writer of this._writersByNamespace.values()) {
             writer.onEvent(event);
+        }
+    }
+
+    /**
+     * Wipes every namespace back to its declared initial shape, notifying subscribers per change.
+     * Used before a reconnect's fresh sync lands, when the whole tree is stale.
+     * @returns {void}
+     */
+    reset() {
+        for (const [path, entry] of this._entriesByPath) {
+            if (entry.kind === STATE_KIND_SCALAR) {
+                this.set(path, entry.initial);
+            } else if (entry.kind === STATE_KIND_MAP) {
+                for (const id of [...entry.value.keys()]) {
+                    this.mapDelete(path, id);
+                }
+            } else {
+                for (const id of [...entry.value]) {
+                    this.setDelete(path, id);
+                }
+            }
         }
     }
 

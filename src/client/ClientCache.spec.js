@@ -149,6 +149,22 @@ test("unsubscribe stops notifications; a repeated call never touches other liste
     assert.deepEqual(surviving, [1, 2]);
 });
 
+test("reset restores scalars to initial and empties maps/sets, notifying per change", () => {
+    const state = registered();
+    state.set("demo.counter", 5);
+    state.mapSet("demo.byId", 1, "a");
+    state.setAdd("demo.members", 2);
+    const seen = [];
+    state.subscribe("demo.counter", value => seen.push(["counter", value]));
+    state.subscribe("demo.byId", (id, value) => seen.push(["byId", id, value]));
+    state.subscribe("demo.members", (id, present) => seen.push(["members", id, present]));
+    state.reset();
+    assert.equal(state.get("demo.counter"), 0);
+    assert.equal(state.mapGet("demo.byId", 1), undefined);
+    assert.equal(state.setHas("demo.members", 2), false);
+    assert.deepEqual(seen, [["counter", 0], ["byId", 1, undefined], ["members", 2, false]]);
+});
+
 test("schema returns every namespace's declared shape", () => {
     const state = registered();
     state.register("other", {flag: schemaScalar(0)}, new NoopWriter(state));

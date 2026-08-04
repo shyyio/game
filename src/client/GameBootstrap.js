@@ -10,6 +10,8 @@ import {WireRegistry} from "@/common/wire.js";
 import {Client} from "@/client/Client.js";
 import {createInputHandler} from "@/client/GameInputWiring.js";
 import {DEV} from "@/common/env.js";
+import {mintJoinToken} from "@/client/AuthClient.js";
+import WindowFocus from "@/client/WindowFocus.js";
 
 // Matches the server's --tick-ms default, so local mode runs at the same real-time rate.
 const LOCAL_TICK_INTERVAL_MS = 600;
@@ -32,7 +34,10 @@ export async function createClient(app, viewport, props) {
     let game = null;
     let session;
     if (props.mode === "remote") {
-        session = new RemoteSession(new WireRegistry(modRegistry), props.serverUrl, props.token);
+        session = new RemoteSession(
+            new WireRegistry(modRegistry), props.serverUrl, props.token,
+            () => mintJoinToken(props.serverUrl),
+        );
     } else {
         game = new Game(modRegistry, new GameEngine(modRegistry), new ClientSaveStore());
         await game.init();
@@ -51,8 +56,16 @@ export async function createClient(app, viewport, props) {
     const client = new Client(app, viewport, session, modRegistry);
     session.client = client;
     if (game === null) {
-        session.onClose(code => client.notify(`Disconnected from server (${code})`));
+        session.onStatusChange(status => client.onConnectionStatusChange(status));
         session.connect();
+        // A tab regaining focus or the network coming back online means the current backoff
+        // wait is likely stale; retry immediately instead of waiting it out.
+        WindowFocus.onChange(focused => {
+            if (focused) {
+                session.retryNow();
+            }
+        });
+        window.addEventListener("online", () => session.retryNow());
     } else {
         game.connect(session);
         window.setInterval(() => game.runTick(), LOCAL_TICK_INTERVAL_MS);

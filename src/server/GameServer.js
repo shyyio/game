@@ -3,11 +3,9 @@ import {SignInMessage} from "@/common/PlayerMessages.js";
 import {WebSocketSession} from "@/server/WebSocketSession.js";
 import {GAME_VERSION, REGION_SIZE} from "@/common/constants.js";
 import {formatBytes, formatUptime} from "@/common/util.js";
-
-// Application close codes (4000-4999).
-const CLOSE_CODE_BAD_SIGN_IN = 4001;
-const CLOSE_CODE_BAD_FRAME = 4002;
-const CLOSE_CODE_SUPERSEDED = 4003;
+import {
+    CLOSE_CODE_BAD_SIGN_IN, CLOSE_CODE_BAD_FRAME, CLOSE_CODE_SUPERSEDED, CLOSE_CODE_SERVER_SHUTDOWN,
+} from "@/common/CloseCodes.js";
 
 const MAX_PAYLOAD_BYTES = 64 * 1024;
 const MAX_BACKPRESSURE_BYTES = 1024 * 1024;
@@ -97,6 +95,18 @@ export class GameServer {
             uWS.us_listen_socket_close(this._listenSocket);
             this._listenSocket = null;
         }
+    }
+
+    /**
+     * Kicks every connected session with a shutdown code, so the client shows a distinct
+     * "server restarting" message instead of a generic drop, then stops accepting connections.
+     * @returns {void}
+     */
+    shutdown() {
+        for (const session of [...this._sessionsByPlayer.values()]) {
+            session.kick(CLOSE_CODE_SERVER_SHUTDOWN);
+        }
+        this.stop();
     }
 
     /**
