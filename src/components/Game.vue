@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, ref} from "vue";
+import {onMounted, onUnmounted, ref} from "vue";
 import {createPixiApp} from "@/client/PixiApp.js";
 import {createClient} from "@/client/GameBootstrap.js";
 import {EffectiveToolController} from "@/client/EffectiveToolController.js";
@@ -8,13 +8,7 @@ import {useSettingsMenu} from "@/composables/useSettingsMenu.js";
 import Mobile from "@/client/Mobile.js";
 import DeviceSettings, {DEVICE_SETTING_MOBILE} from "@/client/DeviceSettings.js";
 import {PlayerSettingChoice} from "@/client/PlayerSettingChoice.js";
-
-const props = defineProps({
-  mode: {type: String, default: "local"},
-  username: {type: String, default: ""},
-  token: {type: String, default: ""},
-  serverUrl: {type: String, default: ""},
-});
+import {gameStart} from "@/client/GameStart.js";
 
 const settingsOpen = ref(false);
 
@@ -22,16 +16,33 @@ const {settingsCategories, settingValues, bindSettingsMenu} = useSettingsMenu();
 
 Mobile.setEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_MOBILE, Mobile.devicePrefers()));
 
+// Set once setup finishes; onUnmounted may fire mid-setup (a fast back-navigation), so each
+// await below checks `disposed` and unwinds whatever it already built instead of racing ahead.
+let disposed = false;
+let teardown = () => {};
+
 onMounted(async () => {
-  const {app, viewport, syncMobileTouchInput} = await createPixiApp();
-  const {client, game, inputHandler} = await createClient(app, viewport, props);
+  const pixiApp = await createPixiApp();
+  if (disposed) {
+    pixiApp.destroy();
+    return;
+  }
+  const {app, viewport, syncMobileTouchInput, destroy: destroyPixiApp} = pixiApp;
+
+  const bootstrap = await createClient(app, viewport, gameStart.value);
+  if (disposed) {
+    bootstrap.destroy();
+    destroyPixiApp();
+    return;
+  }
+  const {client, game, inputHandler, destroy: destroyClient} = bootstrap;
 
   const toolController = new EffectiveToolController(client, viewport, client.toolbarLayer, inputHandler);
   toolController.init();
 
   // Installs/tears down touch input and recomputes center-lock/pan-freeze when the
   // "Touchscreen input" toggle flips mid-session.
-  Mobile.onChange(() => {
+  const unsubMobile = Mobile.onChange(() => {
     syncMobileTouchInput();
     toolController.applyEffectiveTool();
   });
@@ -39,7 +50,19 @@ onMounted(async () => {
   bindSettingsMenu(client);
   client.settingsButtonLayer.onPress(() => settingsOpen.value = true);
 
-  bindGameKeyboardShortcuts(client, game, client.toolbarLayer);
+  const unbindKeyboard = bindGameKeyboardShortcuts(client, game, client.toolbarLayer);
+
+  teardown = () => {
+    unbindKeyboard();
+    unsubMobile();
+    destroyClient();
+    destroyPixiApp();
+  };
+});
+
+onUnmounted(() => {
+  disposed = true;
+  teardown();
 });
 
 </script>

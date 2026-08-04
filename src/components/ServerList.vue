@@ -1,14 +1,14 @@
 <script setup>
 import {onMounted, reactive, ref} from "vue";
 import {httpOriginFor} from "@/common/util.js";
+import {hasSessionToken, listServers} from "@/client/AuthClient.js";
 
 const props = defineProps({
-  authServerUrl: {type: String, required: true},
   connectingOrigin: {type: String, default: ""},
   error: {type: String, default: ""},
 });
 
-const emit = defineEmits(["select", "back"]);
+const emit = defineEmits(["select", "back", "unauthorized"]);
 
 const DEV_SERVER_ORIGIN = "ws://localhost:8080";
 const DEV_SERVER_NAME = "🧪 DEV";
@@ -43,11 +43,14 @@ function refresh() {
 async function loadServers() {
   refreshing.value = true;
   try {
-    const response = await fetch(`${props.authServerUrl}/servers`);
-    const body = await response.json();
-    servers.value = body.servers;
+    servers.value = await listServers();
   } catch {
     servers.value = [];
+    if (!hasSessionToken()) {
+      refreshing.value = false;
+      emit("unauthorized");
+      return;
+    }
   }
   if (import.meta.env.DEV && !servers.value.some((server) => server.origin === DEV_SERVER_ORIGIN)) {
     servers.value = [{origin: DEV_SERVER_ORIGIN}, ...servers.value];

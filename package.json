@@ -28,6 +28,7 @@
     "underscore": "^1.13.7",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.52.0",
     "vue": "^3.5.18",
+    "vue-router": "^4.6.4",
     "vuetify": "^3.9.5"
   },
   "devDependencies": {

@@ -146,6 +146,30 @@ class Mouse {
         this._app.ticker.add(() => this._updateCurrentMousePos());
     }
 
+    /**
+     * Forgets the bound app/viewport (both destroyed already), drops in-flight gesture state, and
+     * clears every callback list, so the next {@link init} rebinds to a fresh pixi Application
+     * instead of silently no-oping, and the next InputHandler's callbacks don't pile up alongside
+     * a previous, now-defunct, Game mount's.
+     * @returns {void}
+     */
+    reset() {
+        this.cancelInteraction();
+        this._viewport = null;
+        this._app = null;
+        this.currentX = null;
+        this.currentY = null;
+        this._hoverTileX = null;
+        this._hoverTileY = null;
+        this._tapCallbacks = [];
+        this._pressCallbacks = [];
+        this._dragStartCallbacks = [];
+        this._tileDragCallbacks = [];
+        this._longPressCallbacks = [];
+        this._tileEnterCallbacks = [];
+        this._tileExitCallbacks = [];
+    }
+
     // ---- Callback registration ----
 
     /**

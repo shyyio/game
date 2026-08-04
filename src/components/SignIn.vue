@@ -1,26 +1,31 @@
 <script setup>
-import {ref} from "vue";
+import {ref, watch} from "vue";
+import {useRoute, useRouter} from "vue-router";
 import {ORIGIN_PATTERN, USERNAME_PATTERN, USERNAME_PATTERN_HINT} from "@/common/constants.js";
 import ServerList from "@/components/ServerList.vue";
-import {AUTH_SERVER_URL, login as authClientLogin, mintJoinToken} from "@/client/AuthClient.js";
+import {hasSessionToken, login as authClientLogin, mintJoinToken} from "@/client/AuthClient.js";
+import {gameStart} from "@/client/GameStart.js";
 
-const STORAGE_USERNAME = "shys-power-up-factory.username";
+const STORAGE_USERNAME = "spup.username";
 const LOCAL_SERVER_URL = "ws://localhost:8080";
 
-const emit = defineEmits(["start"]);
+const route = useRoute();
+const router = useRouter();
 
-const step = ref("login");
 const username = ref(localStorage.getItem(STORAGE_USERNAME) || "");
 const error = ref("");
 const connecting = ref(false);
 const connectingOrigin = ref("");
+
+watch(() => route.name, () => error.value = "");
 
 function usernameValid() {
   return USERNAME_PATTERN.test(username.value);
 }
 
 function playLocal() {
-  emit("start", {mode: "local", username: username.value, serverUrl: LOCAL_SERVER_URL});
+  gameStart.value = {mode: "local", username: username.value, serverUrl: LOCAL_SERVER_URL};
+  router.push({name: "game"});
 }
 
 async function login() {
@@ -32,7 +37,7 @@ async function login() {
   try {
     await authClientLogin(username.value);
     localStorage.setItem(STORAGE_USERNAME, username.value);
-    step.value = "servers";
+    router.push({name: "servers"});
   } catch {
     error.value = "Login failed, please try again in a few minutes";
   } finally {
@@ -52,23 +57,33 @@ async function selectServer(origin) {
   connectingOrigin.value = origin;
   try {
     const token = await mintJoinToken(origin);
-    emit("start", {mode: "remote", token, serverUrl: origin});
+    gameStart.value = {mode: "remote", token, serverUrl: origin};
+    router.push({name: "game"});
   } catch {
-    error.value = "Could not join that server";
+    // mintJoinToken already clears the stored token on a 401; hasSessionToken() distinguishes
+    // an expired/invalid session (bounce home) from any other join failure (show inline error).
+    if (!hasSessionToken()) {
+      unauthorized();
+    } else {
+      error.value = "Could not join that server";
+    }
   } finally {
     connectingOrigin.value = "";
   }
 }
 
+function unauthorized() {
+  router.push({name: "login"});
+}
+
 function back() {
-  step.value = "login";
-  error.value = "";
+  router.back();
 }
 </script>
 
 <template>
   <div class="sign-in">
-    <v-card v-if="step === 'login'" class="sign-in-card" elevation="8">
+    <v-card v-if="route.name === 'login'" class="sign-in-card" elevation="8">
       <v-card-title>Shy's Power-Up Factory</v-card-title>
       <v-card-text>
         <v-text-field
@@ -88,11 +103,11 @@ function back() {
     </v-card>
     <ServerList
         v-else
-        :auth-server-url="AUTH_SERVER_URL"
         :connecting-origin="connectingOrigin"
         :error="error"
         @select="selectServer"
         @back="back"
+        @unauthorized="unauthorized"
     />
   </div>
 </template>

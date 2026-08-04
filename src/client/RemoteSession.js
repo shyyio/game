@@ -51,6 +51,7 @@ export class RemoteSession extends AbstractSession {
         this._reconnecting = false;
         this._retryAttempt = 0;
         this._retryTimer = null;
+        this._closed = false;
     }
 
     /**
@@ -125,6 +126,28 @@ export class RemoteSession extends AbstractSession {
     debugDisconnect() {
         if (this._ws !== null) {
             this._ws.close();
+        }
+    }
+
+    /**
+     * Closes the socket for good and cancels any pending retry; unlike {@link debugDisconnect},
+     * the reconnect loop never restarts. Leaving the game screen calls this so the tab doesn't
+     * keep a socket and backoff timer alive behind it.
+     * @returns {void}
+     */
+    disconnect() {
+        this._closed = true;
+        this._onStatusChange = null;
+        if (this._retryTimer !== null) {
+            clearTimeout(this._retryTimer);
+            this._retryTimer = null;
+        }
+        if (this._ws !== null) {
+            this._ws.onopen = null;
+            this._ws.onmessage = null;
+            this._ws.onclose = null;
+            this._ws.close();
+            this._ws = null;
         }
     }
 
@@ -212,13 +235,21 @@ export class RemoteSession extends AbstractSession {
      */
     async _retryNow() {
         this._retryTimer = null;
+        if (this._closed) {
+            return;
+        }
         if (!this._tokenStillValid()) {
             try {
                 this._token = await this._mintJoinToken();
             } catch {
-                this._scheduleRetry();
+                if (!this._closed) {
+                    this._scheduleRetry();
+                }
                 return;
             }
+        }
+        if (this._closed) {
+            return;
         }
         this._open();
     }

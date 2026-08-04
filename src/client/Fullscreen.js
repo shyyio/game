@@ -6,13 +6,19 @@ class Fullscreen {
 
     constructor() {
         this._enabled = false;
+        this._installed = false;
     }
 
     /**
-     * Attaches the press listener that (re)enters fullscreen while the preference is on.
+     * Attaches the press listener that (re)enters fullscreen while the preference is on; a no-op
+     * past the first call.
      * @returns {void}
      */
     install() {
+        if (this._installed) {
+            return;
+        }
+        this._installed = true;
         window.addEventListener("pointerdown", () => {
             if (this._enabled) {
                 this._request();

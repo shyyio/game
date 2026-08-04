@@ -61,6 +61,14 @@ export class AbstractSession {
     }
 
     /**
+     * Tears down the session so it stops doing anything in the background (closing a socket,
+     * canceling a reconnect retry). A no-op for sessions with nothing to close.
+     * @returns {void}
+     */
+    disconnect() {
+    }
+
+    /**
      * @abstract
      * @returns {number}
      */

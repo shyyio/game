@@ -21,7 +21,7 @@ const LOCAL_TICK_INTERVAL_MS = 600;
  * @param {Application} app
  * @param {ClientViewport} viewport
  * @param {{mode: string, username: string, token: string, serverUrl: string}} props
- * @returns {Promise<{client: Client, session: AbstractSession, game: Game|null, inputHandler: InputHandler}>}
+ * @returns {Promise<{client: Client, session: AbstractSession, game: Game|null, inputHandler: InputHandler, destroy: function(): void}>}
  */
 export async function createClient(app, viewport, props) {
     const modRegistry = new ModRegistry();
@@ -55,20 +55,25 @@ export async function createClient(app, viewport, props) {
 
     const client = new Client(app, viewport, session, modRegistry);
     session.client = client;
+
+    let unsubWindowFocus = null;
+    let onOnline = null;
+    let tickInterval = null;
     if (game === null) {
         session.onStatusChange(status => client.onConnectionStatusChange(status));
         session.connect();
         // A tab regaining focus or the network coming back online means the current backoff
         // wait is likely stale; retry immediately instead of waiting it out.
-        WindowFocus.onChange(focused => {
+        unsubWindowFocus = WindowFocus.onChange(focused => {
             if (focused) {
                 session.retryNow();
             }
         });
-        window.addEventListener("online", () => session.retryNow());
+        onOnline = () => session.retryNow();
+        window.addEventListener("online", onOnline);
     } else {
         game.connect(session);
-        window.setInterval(() => game.runTick(), LOCAL_TICK_INTERVAL_MS);
+        tickInterval = window.setInterval(() => game.runTick(), LOCAL_TICK_INTERVAL_MS);
     }
     await client.init();
 
@@ -76,5 +81,23 @@ export async function createClient(app, viewport, props) {
 
     client.toolbarLayer.setTools(client.coreTools(), client.modTools());
 
-    return {client, session, game, inputHandler};
+    /**
+     * Reverses everything above that outlives a Client/viewport teardown: the reconnect loop,
+     * its window listeners, and the local sim's tick interval.
+     * @returns {void}
+     */
+    function destroy() {
+        session.disconnect();
+        if (unsubWindowFocus !== null) {
+            unsubWindowFocus();
+        }
+        if (onOnline !== null) {
+            window.removeEventListener("online", onOnline);
+        }
+        if (tickInterval !== null) {
+            window.clearInterval(tickInterval);
+        }
+    }
+
+    return {client, session, game, inputHandler, destroy};
 }

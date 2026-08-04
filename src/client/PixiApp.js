@@ -53,7 +53,7 @@ function createShadowOverlay(width, height) {
 /**
  * Boots the pixi Application and world viewport: canvas mount, resize handling, drag/wheel/zoom,
  * and live touch-input toggling off the "Touchscreen input" device setting.
- * @returns {Promise<{app: Application, viewport: ClientViewport, syncMobileTouchInput: function(): void}>}
+ * @returns {Promise<{app: Application, viewport: ClientViewport, syncMobileTouchInput: function(): void, destroy: function(): void}>}
  */
 export async function createPixiApp() {
     const app = new Application();
@@ -104,16 +104,18 @@ export async function createPixiApp() {
         app.stage.addChild(overlay);
     }
 
-    window.addEventListener("resize", () => {
+    const onWindowResize = () => {
         handleResize();
-    });
+    };
+    window.addEventListener("resize", onWindowResize);
     // Window resize fires before fullscreen dimensions are real; the visual-viewport resize
     // re-runs the sizing afterward.
+    const onVisualViewportResize = () => {
+        app.resize();
+        handleResize();
+    };
     if (window.visualViewport) {
-        window.visualViewport.addEventListener("resize", () => {
-            app.resize();
-            handleResize();
-        });
+        window.visualViewport.addEventListener("resize", onVisualViewportResize);
     }
 
     viewport
@@ -151,5 +153,24 @@ export async function createPixiApp() {
 
     document.getElementById("game").appendChild(app.canvas);
 
-    return {app, viewport, syncMobileTouchInput};
+    /**
+     * Reverses everything above: touch-input glue, window listeners, and the pixi Application
+     * itself (which recursively destroys the viewport, its plugins, and every HUD layer mounted
+     * under app.stage).
+     * @returns {void}
+     */
+    function destroy() {
+        if (touchInput !== null) {
+            touchInput.uninstall();
+            touchInput = null;
+        }
+        window.removeEventListener("resize", onWindowResize);
+        if (window.visualViewport) {
+            window.visualViewport.removeEventListener("resize", onVisualViewportResize);
+        }
+        Mouse.reset();
+        app.destroy({removeView: true}, {children: true});
+    }
+
+    return {app, viewport, syncMobileTouchInput, destroy};
 }

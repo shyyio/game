@@ -1,13 +1,33 @@
 export const AUTH_SERVER_URL = "https://auth.spupgame.com";
 
+const HTTP_STATUS_UNAUTHORIZED = 401;
 const HTTP_STATUS_TOO_MANY_REQUESTS = 429;
 
 // Cap on silent 429 retries; beyond this the rate limit is surfaced as a normal failure.
 const LOGIN_MAX_RETRIES = 5;
 
+const STORAGE_SESSION_TOKEN = "spup.session-token";
+
 // Set by login(); mintJoinToken bears it to each /join call, including reconnect retries long
-// after SignIn.vue has unmounted.
-let sessionToken = null;
+// after SignIn.vue has unmounted. Mirrored to sessionStorage so a page reload (e.g. on /servers
+// or /game) doesn't strand the tab with an unauthenticated in-memory null.
+let sessionToken = sessionStorage.getItem(STORAGE_SESSION_TOKEN);
+
+/**
+ * @returns {boolean}
+ */
+export function hasSessionToken() {
+    return sessionToken !== null && sessionToken !== "";
+}
+
+/**
+ * Drops the stored session token, e.g. after the auth server rejects it as expired/invalid.
+ * @returns {void}
+ */
+export function clearSessionToken() {
+    sessionToken = null;
+    sessionStorage.removeItem(STORAGE_SESSION_TOKEN);
+}
 
 class AuthFetchError extends Error {
 
@@ -72,6 +92,7 @@ export async function login(username) {
                 body: JSON.stringify({username}),
             });
             sessionToken = body.sessionToken;
+            sessionStorage.setItem(STORAGE_SESSION_TOKEN, sessionToken);
             return;
         } catch (error) {
             const retryable = error instanceof AuthFetchError
@@ -87,14 +108,43 @@ export async function login(username) {
 }
 
 /**
+ * authFetch, bearing the stored session token; a 401 means it's expired or invalid, so it's
+ * dropped rather than kept around to fail the same way on every subsequent call.
+ * @param {string} path
+ * @param {object} options
+ * @returns {Promise<object>}
+ */
+async function authorizedFetch(path, options) {
+    try {
+        return await authFetch(path, {
+            ...options,
+            headers: {...options.headers, authorization: `Bearer ${sessionToken}`},
+        });
+    } catch (error) {
+        if (error instanceof AuthFetchError && error.status === HTTP_STATUS_UNAUTHORIZED) {
+            clearSessionToken();
+        }
+        throw error;
+    }
+}
+
+/**
+ * The public server directory, using the stored session token.
+ * @returns {Promise<object[]>}
+ */
+export async function listServers() {
+    const {servers} = await authorizedFetch("/servers", {method: "GET"});
+    return servers;
+}
+
+/**
  * Mints a fresh short-lived join token for a server origin, using the stored session token.
  * @param {string} origin
  * @returns {Promise<string>}
  */
 export async function mintJoinToken(origin) {
-    const {token} = await authFetch("/join", {
+    const {token} = await authorizedFetch("/join", {
         method: "POST",
-        headers: {authorization: `Bearer ${sessionToken}`},
         body: JSON.stringify({origin}),
     });
     return token;

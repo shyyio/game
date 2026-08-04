@@ -1,7 +1,7 @@
 import {AbstractSaveStore} from "@/common/AbstractSaveStore.js";
 
 // localStorage key holding the single-player save blob.
-const SAVE_KEY = "shys-power-up-factory.save";
+const SAVE_KEY = "spup.save";
 
 /**
  * Browser {@link AbstractSaveStore}: persists the snapshot as one JSON blob in localStorage.

@@ -43,14 +43,15 @@ export class AuthHttpServer {
             this._onJoin(res, authHeader);
         });
         this._app.get("/servers", (res, req) => {
-            this._respond(res, {servers: this._servers.list()});
+            const authHeader = req.getHeader("authorization");
+            this._onServers(res, authHeader);
         });
-        // /join carries an Authorization header, so browsers preflight it.
+        // /join and /servers both carry an Authorization header, so browsers preflight them.
         this._app.options("/*", (res, req) => {
             res.cork(() => {
                 res.writeStatus("204 No Content")
                     .writeHeader("Access-Control-Allow-Origin", "*")
-                    .writeHeader("Access-Control-Allow-Methods", "POST")
+                    .writeHeader("Access-Control-Allow-Methods", "GET, POST")
                     .writeHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
                     .endWithoutBody();
             });
@@ -219,6 +220,21 @@ export class AuthHttpServer {
             const token = this._joinTokens.mint(account, origin);
             this._respond(res, {token});
         });
+    }
+
+    /**
+     * @private
+     * @param {object} res
+     * @param {string|undefined} authHeader
+     * @returns {void}
+     */
+    _onServers(res, authHeader) {
+        const accountId = this._accountIdFromAuthHeader(authHeader);
+        if (accountId === null) {
+            this._reject(res, "401 Unauthorized", "Missing or invalid bearer token");
+            return;
+        }
+        this._respond(res, {servers: this._servers.list()});
     }
 
     /**

@@ -7,18 +7,25 @@ import {DEV} from "@/common/env.js";
  * @param {Client} client
  * @param {Game|null} game
  * @param {ToolbarLayer} toolbar
- * @returns {void}
+ * @returns {function(): void} unbind
  */
 export function bindGameKeyboardShortcuts(client, game, toolbar) {
+    const bindings = [];
+
+    function on(key, callback) {
+        Keyboard.on(key, callback);
+        bindings.push([key, callback]);
+    }
+
     // "c" toggles claim selection; "q" exits any input mode; "h" glides home.
-    Keyboard.on("c", () => {
+    on("c", () => {
         client.claimSelection.toggle();
     });
-    Keyboard.on("q", () => {
+    on("q", () => {
         toolbar.setActiveTool(null);
         client.claimSelection.set(false);
     });
-    Keyboard.on("h", () => {
+    on("h", () => {
         client.glideHome();
     });
 
@@ -26,22 +33,28 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
     if (game !== null) {
         // Debug keybindings (moved off the number keys, which now select tools).
         // Insert an item of value 1 onto the lowest-id belt path via its in-port.
-        Keyboard.on("b", () => {
+        on("b", () => {
             game.simEngine.resolve(Belts).debugInsertItem();
         });
 
-        Keyboard.on("t", () => {
+        on("t", () => {
             game.runTick();
         });
     } else if (DEV) {
         // Dev-only: force-closes the socket to test the reconnect flow without touching the server.
-        Keyboard.on("k", () => {
+        on("k", () => {
             client.session.debugDisconnect();
         });
     }
 
     // Toggle debug mode
-    Keyboard.on("d", () => {
+    on("d", () => {
         client.toggleDebugMode();
     });
+
+    return () => {
+        for (const [key, callback] of bindings) {
+            Keyboard.off(key, callback);
+        }
+    };
 }
