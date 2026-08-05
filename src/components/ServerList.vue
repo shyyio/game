@@ -167,7 +167,7 @@ function chunkPercent(origin) {
  * @returns {void}
  */
 function select(origin) {
-  if (props.connectingOrigin) {
+  if (props.connectingOrigin || statusByOrigin[origin]?.offline || statusByOrigin[origin]?.loading) {
     return;
   }
   emit("select", origin);
