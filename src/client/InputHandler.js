@@ -30,6 +30,9 @@ export class InputHandler {
         this._hoverTileY = null;
         // Map mode (zoomed far out) temporarily deactivates the active tool.
         this._mapMode = false;
+        // Keyboard bindings registered in init(), unbound in destroy() so a stale InputHandler from
+        // a torn-down Game mount doesn't keep driving a destroyed toolbar/tool/draw layer.
+        this._keyboardBindings = [];
     }
 
     /**
@@ -99,11 +102,11 @@ export class InputHandler {
             this._handleContextGesture(tileX, tileY, screenX, screenY);
         });
 
-        Keyboard.on("r", () => {
+        this._onKey("r", () => {
             this._rotateActiveTool(1);
         });
 
-        Keyboard.on("Tab", (event) => {
+        this._onKey("Tab", (event) => {
             // Let Tab cycle focus normally inside dialogs/form controls (e.g. Settings).
             if (InputHandler._isEditableTarget(event.target)) {
                 return;
@@ -114,17 +117,37 @@ export class InputHandler {
         });
 
         for (const [index, key] of TOOL_HOTKEYS.entries()) {
-            Keyboard.on(key, () => {
+            this._onKey(key, () => {
                 this._selectTool(index);
             });
         }
 
         // Core tools bind their declared letter hotkey (e.g. the eraser's "e").
         for (const key of CORE_TOOL_HOTKEYS) {
-            Keyboard.on(key, () => {
+            this._onKey(key, () => {
                 this._selectCoreTool(key);
             });
         }
+    }
+
+    /**
+     * Binds a Keyboard callback and records it so {@link destroy} can unbind it.
+     * @private
+     */
+    _onKey(key, callback) {
+        Keyboard.on(key, callback);
+        this._keyboardBindings.push([key, callback]);
+    }
+
+    /**
+     * Unbinds every Keyboard listener registered in {@link init}.
+     * @returns {void}
+     */
+    destroy() {
+        for (const [key, callback] of this._keyboardBindings) {
+            Keyboard.off(key, callback);
+        }
+        this._keyboardBindings = [];
     }
 
     /**

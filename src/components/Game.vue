@@ -54,6 +54,7 @@ onMounted(async () => {
 
   teardown = () => {
     unbindKeyboard();
+    inputHandler.destroy();
     unsubMobile();
     destroyClient();
     destroyPixiApp();
