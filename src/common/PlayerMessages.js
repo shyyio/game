@@ -124,3 +124,36 @@ export class SetPlayerSettingMessage extends AbstractMessage {
         return Number.isInteger(this.key) && Number.isInteger(this.value);
     }
 }
+
+// Sanity bound on a player's custom toolbar order; well past any real mod's tool count.
+const MAX_PLAYER_SETTINGS_TOOL_ORDER_LENGTH = 64;
+
+/**
+ * Replaces the sender's whole custom toolbar order. The ids are opaque to the server — each
+ * tool's hand-authored AbstractTool#id, only stored and echoed back.
+ */
+export class SetPlayerSettingsToolOrderMessage extends AbstractMessage {
+
+    static wireFields = {
+        toolIds: "int32[]",
+    };
+
+    /**
+     * @param {number[]} toolIds
+     */
+    constructor(toolIds) {
+        super();
+        this.toolIds = toolIds;
+    }
+
+    /**
+     * @param {GameAPI} api
+     * @param {AbstractSession} session
+     * @returns {boolean}
+     */
+    validate(api, session) {
+        return Array.isArray(this.toolIds)
+            && this.toolIds.length <= MAX_PLAYER_SETTINGS_TOOL_ORDER_LENGTH
+            && this.toolIds.every(Number.isInteger);
+    }
+}

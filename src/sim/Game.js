@@ -4,9 +4,11 @@ import {InspectClosedEvent} from "@/common/InspectEvents.js";
 import {ObjectSyncEvent} from "@/common/ObjectEvents.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
+import {PlayerSettingsToolOrderSyncEvent} from "@/common/PlayerSettingsToolOrderEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
 import {
     AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage, SetPlayerSettingMessage,
+    SetPlayerSettingsToolOrderMessage,
 } from "@/common/PlayerMessages.js";
 import {
     WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByCodeResultEvent,
@@ -19,6 +21,7 @@ import {WireRegistry} from "@/common/wire.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
 import {EventBus} from "@/sim/EventBus.js";
 import {SettingsCache, PlayerSettingsCache, PLAYER_SETTING_RECORD} from "@/common/SettingsCache.js";
+import {PlayerSettingsToolOrderCache, PLAYER_SETTINGS_TOOL_ORDER_RECORD} from "@/common/PlayerSettingsToolOrderCache.js";
 import {ChunkClaims, CHUNK_CLAIM_RECORD} from "@/sim/ChunkClaims.js";
 import {PlayerRegistry, PLAYER_RECORD, FRIEND_RECORD} from "@/sim/PlayerRegistry.js";
 import {CHUNK_SIZE, GameSettingsKey, PLAYER_ID_NONE} from "@/common/constants.js";
@@ -68,6 +71,11 @@ export class Game {
          * @type {PlayerSettingsCache}
          */
         this.playerSettings = new PlayerSettingsCache();
+
+        /**
+         * @type {PlayerSettingsToolOrderCache}
+         */
+        this.toolOrder = new PlayerSettingsToolOrderCache();
 
         /**
          * @type {PlayerRegistry}
@@ -127,6 +135,7 @@ export class Game {
             ...this.players.serializeRecords(),
             this.claims.serializeRecords(),
             this.playerSettings.serializeRecords(),
+            this.toolOrder.serializeRecords(),
         ];
         await this.saveStore.save(snapshot);
     }
@@ -146,6 +155,7 @@ export class Game {
         this.players.deserializeRecords(byName.get(PLAYER_RECORD), byName.get(FRIEND_RECORD));
         this.claims.deserializeRecords(byName.get(CHUNK_CLAIM_RECORD));
         this.playerSettings.deserializeRecords(byName.get(PLAYER_SETTING_RECORD));
+        this.toolOrder.deserializeRecords(byName.get(PLAYER_SETTINGS_TOOL_ORDER_RECORD));
         return true;
     }
 
@@ -163,6 +173,7 @@ export class Game {
         this.players.ensure(session.playerId);
 
         this._syncPlayerSettings(session);
+        this._syncToolOrder(session);
         this._syncGameSettings(session);
         this._syncPlayerState(session);
     }
@@ -217,6 +228,14 @@ export class Game {
      */
     _syncPlayerSettings(session) {
         this.bus.publishTo(session.id, new PlayerSettingsSyncEvent(this.playerSettings.snapshot(session.playerId)));
+    }
+
+    /**
+     * @param session {AbstractSession}
+     * @private
+     */
+    _syncToolOrder(session) {
+        this.bus.publishTo(session.id, new PlayerSettingsToolOrderSyncEvent(this.toolOrder.get(session.playerId)));
     }
 
     /**
@@ -309,6 +328,12 @@ export class Game {
             for (const mod of this.modRegistry.simMods) {
                 mod.onPlayerSettingWritten(session, message.key, message.value, this);
             }
+            return;
+        }
+
+        if (message instanceof SetPlayerSettingsToolOrderMessage) {
+            this.toolOrder.set(session.playerId, message.toolIds);
+            this.bus.publishTo(session.id, new PlayerSettingsToolOrderSyncEvent(message.toolIds));
             return;
         }
 

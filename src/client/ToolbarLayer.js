@@ -8,7 +8,7 @@ import Mobile from "@/client/Mobile.js";
 import {UIPanel} from "@/client/UIPanel.js";
 import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/InspectContent.js";
 import {addSlotHighlight} from "@/client/slotHighlight.js";
-import {debugOutlines, nineSlice, swallowClicks, trackTap} from "@/client/pixiUtils.js";
+import {debugOutlines, nineSlice, swallowClicks, trackTap, trackWindowDrag} from "@/client/pixiUtils.js";
 
 const SLOT_SIZE = 56;
 // Inset of the icon sprite from the slot's edges.
@@ -44,6 +44,13 @@ const INSET_PADDING = 12;
 const GRID_LEFT = INSET_LEFT + INSET_PADDING;
 // Duration of the drawer open/close slide tween.
 const SLIDE_DURATION_MS = 230;
+// Hold time before a press on a mod-tool cell picks it up for a reorder drag, instead of a tap.
+const REORDER_HOLD_MS = 400;
+// Movement past this many px before the hold timer fires cancels the pickup (and the tap).
+const REORDER_MOVE_CANCEL_PX = 8;
+// How large the picked-up cell grows, and how long it takes to get there.
+const DRAG_LIFT_SCALE = 1.12;
+const DRAG_LIFT_DURATION_MS = 150;
 // Open-slide overshoot as a fraction of the slide; panel bottom is bled by this much to cover it.
 const OPEN_OVERSHOOT = 0.2;
 const DRAWER_BOTTOM_PAD = 12;
@@ -69,6 +76,9 @@ export class ToolbarLayer extends Container {
         this._modTools = [];
         this._activeTool = null;
         this._onChange = null;
+        this._onReorder = null;
+        // Set only while a mod-tool cell is picked up for a reorder drag.
+        this._dragState = null;
         // One cell Container per tool, parallel to _tools, so highlights update in place.
         this._cells = [];
         // Always-present top-row cell that selects "no tool" (activeTool null).
@@ -143,6 +153,16 @@ export class ToolbarLayer extends Container {
     }
 
     /**
+     * Registers the callback fired when a mod-tool drag reorder completes, with the tools in
+     * their new order.
+     * @param {function(AbstractTool[]): void} callback
+     * @returns {void}
+     */
+    onReorder(callback) {
+        this._onReorder = callback;
+    }
+
+    /**
      * Rebuilds the panel grid for a new tool list, dropping the active selection if it's gone.
      * @param {AbstractTool[]} coreTools - leading tools with letter hotkeys
      * @param {AbstractTool[]} modTools - tools with number-key hotkeys
@@ -152,7 +172,8 @@ export class ToolbarLayer extends Container {
         this._coreTools = coreTools;
         this._modTools = modTools;
         this._tools = [...coreTools, ...modTools];
-        this._setDrawerOpen(false);
+        // Not closed here: a reorder commits by calling this same method, and should leave the
+        // drawer exactly as the user left it mid-drag.
         this._rebuild();
         if (!this._tools.includes(this._activeTool)) {
             this.setActiveTool(null);
@@ -216,6 +237,10 @@ export class ToolbarLayer extends Container {
      * @private
      */
     _rebuild() {
+        // An in-progress reorder drag's slot is about to be destroyed below; abort it rather than
+        // leaving _dragState pointing at a dead Container.
+        this._cancelDrag();
+
         for (const slot of [this._noneCell, ...this._cells]) {
             if (slot !== null) {
                 slot.destroy({children: true});
@@ -223,15 +248,16 @@ export class ToolbarLayer extends Container {
         }
 
         this._noneCell = this._createNoneCell();
-        this._cells = this._tools.map(tool => this._createCell(tool));
+        this._cells = this._tools.map((tool, index) => this._createCell(tool, index >= this._coreTools.length));
 
         // Row-major grid; the top row is the none cell + the first _barTools tools.
         const slots = [this._noneCell, ...this._cells];
         this._columns = this._barTools + 1;
         this._rowCount = Math.ceil(slots.length / this._columns);
         for (const [i, slot] of slots.entries()) {
-            slot.x = GRID_LEFT + (i % this._columns) * (SLOT_SIZE + CELL_GAP);
-            slot.y = PANEL_PADDING + Math.floor(i / this._columns) * (CELL_HEIGHT + ROW_GAP);
+            const position = this._slotPosition(i);
+            slot.x = position.x;
+            slot.y = position.y;
             this._panel.addChild(slot);
         }
 
@@ -278,10 +304,11 @@ export class ToolbarLayer extends Container {
      * @param {string|null} label
      * @param {string|null} shortcut - the key badge drawn top-left, or null for none
      * @param {function(Container): void} addIcon - adds the slot's icon
-     * @param {function(): void} onPress
+     * @param {boolean} [liveBadge] - keeps the badge around even with no shortcut yet, so a
+     *     reorder drag can fill it in live (mod-tool cells: their hotkey slot can change)
      * @returns {Container}
      */
-    _createSlot(label, shortcut, addIcon, onPress) {
+    _createSlot(label, shortcut, addIcon, liveBadge=false) {
         const slot = new Container();
         slot.cursor = "pointer";
 
@@ -295,9 +322,9 @@ export class ToolbarLayer extends Container {
         addIcon(slot);
 
         // Badge sits above the icon, hidden on the resting top row; no badges on Mobile (no keyboard).
-        if (shortcut !== null && !Mobile.enabled) {
+        if ((shortcut !== null || liveBadge) && !Mobile.enabled) {
             const badge = new Text({
-                text: shortcut,
+                text: shortcut === null ? "" : shortcut,
                 style: {fontFamily: GAME_FONT, fontSize: SLOT_SIZE - 3, fill: 0xffffff, stroke: {color: 0x000000, width: 1}},
             });
             badge.x = slot.width / 2 + 1;
@@ -327,33 +354,36 @@ export class ToolbarLayer extends Container {
             slot.addChild(text);
         }
 
-        // trackTap swallows the press and only counts a release matching the press that landed here.
-        trackTap(slot, () => {
-            Haptics.tap();
-            onPress();
-        }, {stopNativePropagation: true});
         return slot;
     }
 
     /**
-     * Builds one tool cell: its icon sprite, toggling the tool on tap.
+     * Builds one tool cell: its icon sprite, toggling the tool on tap. Mod-tool cells additionally
+     * pick up for a reorder drag on a long press.
      * @private
      * @param {AbstractTool} tool
+     * @param {boolean} draggable
      * @returns {Container}
      */
-    _createCell(tool) {
-        return this._createSlot(
-            tool.label,
-            this._shortcutFor(tool),
-            (slot) => this._addSprite(slot, tool.textureName),
-            () => {
-                if (tool === this._activeTool) {
-                    this.setActiveTool(null);
-                } else {
-                    this.setActiveTool(tool);
-                }
-            },
-        );
+    _createCell(tool, draggable) {
+        const slot = this._createSlot(tool.label, this._shortcutFor(tool), (slot) => this._addSprite(slot, tool.textureName), draggable);
+        const onPress = () => {
+            if (tool === this._activeTool) {
+                this.setActiveTool(null);
+            } else {
+                this.setActiveTool(tool);
+            }
+        };
+        if (draggable) {
+            this._wireDraggableCell(slot, tool, onPress);
+        } else {
+            // trackTap swallows the press and only counts a release matching the press that landed here.
+            trackTap(slot, () => {
+                Haptics.tap();
+                onPress();
+            }, {stopNativePropagation: true});
+        }
+        return slot;
     }
 
     /**
@@ -366,11 +396,266 @@ export class ToolbarLayer extends Container {
         if (tool.hotkey !== null) {
             return tool.hotkey.toUpperCase();
         }
-        const index = this._modTools.indexOf(tool);
+        return this._shortcutForIndex(this._modTools.indexOf(tool));
+    }
+
+    /**
+     * The number-key badge for a mod tool at `index` among mod tools, or null past the
+     * shortcut-eligible range (also null for a negative/not-found index).
+     * @private
+     * @param {number} index
+     * @returns {string|null}
+     */
+    _shortcutForIndex(index) {
         if (index < 0 || index >= TOOL_SHORTCUT_COUNT) {
             return null;
         }
         return String(index + 1);
+    }
+
+    /**
+     * The rest position of the flat slot at `flatIndex` (0 = none cell, then tools in bar order).
+     * @private
+     * @param {number} flatIndex
+     * @returns {{x: number, y: number}}
+     */
+    _slotPosition(flatIndex) {
+        return {
+            x: GRID_LEFT + (flatIndex % this._columns) * (SLOT_SIZE + CELL_GAP),
+            y: PANEL_PADDING + Math.floor(flatIndex / this._columns) * (CELL_HEIGHT + ROW_GAP),
+        };
+    }
+
+    /**
+     * Wires a mod-tool cell's combined gesture: a plain tap fires `onPress`; holding past
+     * {@link REORDER_HOLD_MS} without drifting past {@link REORDER_MOVE_CANCEL_PX} picks the cell
+     * up for a reorder drag instead.
+     * @private
+     * @param {Container} slot
+     * @param {AbstractTool} tool
+     * @param {function(): void} onPress
+     */
+    _wireDraggableCell(slot, tool, onPress) {
+        slot.eventMode = "static";
+        let pointerId = null;
+        let startX = 0;
+        let startY = 0;
+        let holdTimer = null;
+
+        const cancelHold = () => {
+            if (holdTimer !== null) {
+                window.clearTimeout(holdTimer);
+                holdTimer = null;
+            }
+        };
+
+        slot.on("pointerdown", (e) => {
+            e.stopPropagation();
+            e.nativeEvent.stopPropagation();
+            if (e.button !== 0 || pointerId !== null) {
+                return;
+            }
+            pointerId = e.pointerId;
+            startX = e.global.x;
+            startY = e.global.y;
+            holdTimer = window.setTimeout(() => {
+                holdTimer = null;
+                // Reordering needs the drawer open (every mod-tool slot visible to drag into);
+                // closed, the hold just falls through to a normal tap on release.
+                if (!this._drawerOpen) {
+                    return;
+                }
+                // Once the drag starts, window-level tracking (trackWindowDrag) takes over the
+                // gesture; this pointer's tap detection is done.
+                pointerId = null;
+                this._beginDrag(slot, tool, e);
+            }, REORDER_HOLD_MS);
+        });
+
+        slot.on("globalpointermove", (e) => {
+            if (pointerId === null || e.pointerId !== pointerId) {
+                return;
+            }
+            if (Math.hypot(e.global.x - startX, e.global.y - startY) > REORDER_MOVE_CANCEL_PX) {
+                cancelHold();
+                pointerId = null;
+            }
+        });
+
+        const endPress = (e) => {
+            if (pointerId === null || e.pointerId !== pointerId) {
+                return;
+            }
+            cancelHold();
+            pointerId = null;
+            Haptics.tap();
+            onPress();
+        };
+        slot.on("pointerup", endPress);
+        slot.on("pointerupoutside", endPress);
+    }
+
+    /**
+     * Picks a mod-tool cell's icon up for a reorder drag: haptic pulse, detaches the icon sprite
+     * to the panel (front, above every slot) so only the icon lifts and follows the pointer,
+     * while the slot's background/label/badge stay put and reflow in place like any other cell.
+     * Starts a working copy of the mod-tool order that live-reorders as the drag crosses slots.
+     * Movement/release tracking is handed off to {@link trackWindowDrag} for the rest of the
+     * gesture.
+     * @private
+     * @param {Container} slot
+     * @param {AbstractTool} tool
+     * @param {FederatedPointerEvent} e
+     */
+    _beginDrag(slot, tool, e) {
+        Haptics.tap();
+
+        const icon = slot._icon;
+        const iconBaseScale = icon.scale.x;
+        const originX = slot.x + icon.x;
+        const originY = slot.y + icon.y;
+        icon.position.set(originX, originY);
+        this._panel.addChild(icon);
+
+        const scaleTween = new Tween(1, DRAG_LIFT_DURATION_MS);
+        if (ReducedMotion.enabled) {
+            scaleTween.reset(DRAG_LIFT_SCALE);
+        } else {
+            scaleTween.to(DRAG_LIFT_SCALE, easeOutBack);
+        }
+
+        const detachDrag = trackWindowDrag(e.nativeEvent, (deltaX, deltaY) => {
+            this._updateDrag(originX + deltaX, originY + deltaY);
+        }, () => this._endDrag());
+
+        this._dragState = {
+            tool,
+            icon,
+            iconBaseScale,
+            scaleTween,
+            order: [...this._modTools],
+            detachDrag,
+        };
+    }
+
+    /**
+     * Follows the pointer with the dragged icon and live-reorders the working copy when it
+     * crosses into a neighboring slot.
+     * @private
+     * @param {number} x
+     * @param {number} y
+     */
+    _updateDrag(x, y) {
+        const drag = this._dragState;
+        drag.icon.x = x;
+        drag.icon.y = y;
+
+        const nearest = this._nearestModToolIndex(x, y);
+        const currentIndex = drag.order.indexOf(drag.tool);
+        if (nearest !== currentIndex) {
+            drag.order.splice(currentIndex, 1);
+            drag.order.splice(nearest, 0, drag.tool);
+            this._layoutDragOrder(drag);
+            this._refreshDragBadges(drag);
+        }
+    }
+
+    /**
+     * The persistent cell Container for a mod tool, regardless of where the working order has
+     * moved it to.
+     * @private
+     * @param {AbstractTool} tool
+     * @returns {Container}
+     */
+    _cellForModTool(tool) {
+        return this._cells[this._coreTools.length + this._modTools.indexOf(tool)];
+    }
+
+    /**
+     * The mod-tool slot index whose rest position is nearest (centerX, centerY).
+     * @private
+     * @param {number} centerX
+     * @param {number} centerY
+     * @returns {number}
+     */
+    _nearestModToolIndex(centerX, centerY) {
+        let best = 0;
+        let bestDistance = Infinity;
+        for (let i = 0; i < this._modTools.length; i += 1) {
+            const position = this._slotPosition(1 + this._coreTools.length + i);
+            const dx = (position.x + SLOT_SIZE / 2) - centerX;
+            const dy = (position.y + SLOT_SIZE / 2) - centerY;
+            const distance = dx * dx + dy * dy;
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = i;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Snaps every mod-tool cell, including the dragged one's now-icon-less slot, to its rest
+     * position under the working order.
+     * @private
+     * @param {object} drag
+     */
+    _layoutDragOrder(drag) {
+        for (const [i, tool] of drag.order.entries()) {
+            const cell = this._cellForModTool(tool);
+            const position = this._slotPosition(1 + this._coreTools.length + i);
+            cell.x = position.x;
+            cell.y = position.y;
+        }
+    }
+
+    /**
+     * Live-updates every mod-tool cell's number badge (including the dragged one) to match the
+     * working order's current hotkey slots, so the badges track the drag in real time.
+     * @private
+     * @param {object} drag
+     */
+    _refreshDragBadges(drag) {
+        for (const [i, tool] of drag.order.entries()) {
+            const badge = this._cellForModTool(tool)._badge;
+            if (badge == null) {
+                continue;
+            }
+            const shortcut = this._shortcutForIndex(i);
+            badge.text = shortcut === null ? "" : shortcut;
+        }
+    }
+
+    /**
+     * Reattaches the dragged icon to its slot (already at its final rest position via
+     * {@link _layoutDragOrder}) and, if the order changed, commits it via {@link onReorder}.
+     * @private
+     */
+    _endDrag() {
+        const drag = this._dragState;
+        this._dragState = null;
+        drag.icon.scale.set(drag.iconBaseScale);
+        drag.icon.position.set(SLOT_SIZE / 2, SLOT_SIZE / 2);
+        this._cellForModTool(drag.tool).addChild(drag.icon);
+        const changed = drag.order.some((tool, i) => tool !== this._modTools[i]);
+        if (changed && this._onReorder !== null) {
+            this._onReorder(drag.order);
+        }
+    }
+
+    /**
+     * Aborts an in-progress reorder drag without committing it, detaching its window-level
+     * tracking and destroying its detached icon; used when the tool list is about to be rebuilt
+     * out from under the dragged cell.
+     * @private
+     */
+    _cancelDrag() {
+        if (this._dragState === null) {
+            return;
+        }
+        this._dragState.detachDrag();
+        this._dragState.icon.destroy();
+        this._dragState = null;
     }
 
     /**
@@ -379,12 +664,12 @@ export class ToolbarLayer extends Container {
      * @returns {Container}
      */
     _createNoneCell() {
-        return this._createSlot(
-            "Inspect",
-            "Q",
-            (slot) => this._addSprite(slot, "inspect/1x1"),
-            () => this.setActiveTool(null),
-        );
+        const slot = this._createSlot("Inspect", "Q", (slot) => this._addSprite(slot, "inspect/1x1"));
+        trackTap(slot, () => {
+            Haptics.tap();
+            this.setActiveTool(null);
+        }, {stopNativePropagation: true});
+        return slot;
     }
 
     /**
@@ -420,6 +705,7 @@ export class ToolbarLayer extends Container {
         icon.scale = Math.min(fit / texture.width, fit / texture.height);
         icon.position.set(SLOT_SIZE / 2, SLOT_SIZE / 2);
         slot.addChild(icon);
+        slot._icon = icon;
     }
 
     /**
@@ -517,6 +803,11 @@ export class ToolbarLayer extends Container {
             this._barTools = barTools;
             this._rebuild();
             this._refreshHighlights();
+        }
+        // Grows the picked-up icon into its lifted scale while a reorder drag is in progress.
+        if (this._dragState !== null) {
+            const scale = this._dragState.scaleTween.advance(this._app.ticker.deltaMS);
+            this._dragState.icon.scale.set(this._dragState.iconBaseScale * scale);
         }
         // Collapsed panel top: its top row sits above the bottom margin, rows below spill off-screen.
         const collapsedTop = this._app.screen.height - MARGIN_BOTTOM - PANEL_PADDING - CELL_HEIGHT;

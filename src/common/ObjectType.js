@@ -122,6 +122,9 @@ export class ObjectType {
      *     `inspectable` when null
      * @param [config.bespokeClient] {boolean} the type's client mod brings its own layers/tools,
      *     so no derived client bundle is built
+     * @param [config.toolId] {number|null} hand-authored stable identity for this type's derived
+     *     placement tool (see AbstractTool#id); required unless bespokeClient, or the type never
+     *     reaches Client._buildBundles (a sim-only test fixture)
      */
     constructor({
         name,
@@ -142,6 +145,7 @@ export class ObjectType {
         inspectable=false,
         tapAction=null,
         bespokeClient=false,
+        toolId=null,
     }) {
         if (ObjectGeometries[geometry] === undefined) {
             throw new Error(`Unknown object geometry "${geometry}"`);
@@ -166,6 +170,7 @@ export class ObjectType {
         this.behavior._attachType(this);
         this.placement = placement === undefined ? new PlacementRule() : placement;
         this.bespokeClient = bespokeClient;
+        this.toolId = toolId;
         this.inspectable = inspectable;
         if (tapAction !== null) {
             this.tapAction = tapAction;

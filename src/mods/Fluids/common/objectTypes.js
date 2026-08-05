@@ -11,6 +11,7 @@ import {TankBehavior} from "../sim/TankBehavior.js";
 // Portless: the network derives boundary ports from adjacency.
 export const PipeDefinition = new ObjectType({
     name: "Pipe",
+    toolId: 7,
     geometry: "1x1",
     textureName: "pipe/0",
     directional: false,
@@ -41,6 +42,7 @@ export function isTankType(type) {
 // out of item rendering.
 export const TankDefinition = new ObjectType({
     name: "Tank",
+    toolId: 8,
     inputPorts: [
         new PortDefinition("in", {x: 0, y: 1, direction: Direction.UP}),
     ],

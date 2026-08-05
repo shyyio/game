@@ -26,6 +26,10 @@ export class UndergroundBeltTool extends AbstractTool {
         return "Ramp";
     }
 
+    get id() {
+        return 3;
+    }
+
     get textureName() {
         return "belt-ramp-down/0";
     }

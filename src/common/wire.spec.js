@@ -12,7 +12,9 @@ import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSetti
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {
     SignInMessage, AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage, SetPlayerSettingMessage,
+    SetPlayerSettingsToolOrderMessage,
 } from "@/common/PlayerMessages.js";
+import {PlayerSettingsToolOrderSyncEvent} from "@/common/PlayerSettingsToolOrderEvents.js";
 import {
     WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByCodeResultEvent,
 } from "@/common/PlayerEvents.js";
@@ -201,4 +203,14 @@ test("Sign-in validation gates version and token presence", () => {
 test("Round-trips a SetPlayerSettingMessage", () => {
     const reg = registry();
     roundTrip(reg, new SetPlayerSettingMessage(1, 1), SetPlayerSettingMessage);
+});
+
+test("Round-trips a SetPlayerSettingsToolOrderMessage", () => {
+    const reg = registry();
+    roundTrip(reg, new SetPlayerSettingsToolOrderMessage([-100, 0, 100]), SetPlayerSettingsToolOrderMessage);
+});
+
+test("Round-trips a PlayerSettingsToolOrderSyncEvent", () => {
+    const reg = registry();
+    roundTrip(reg, new PlayerSettingsToolOrderSyncEvent([-100, 0, 100]), PlayerSettingsToolOrderSyncEvent);
 });

@@ -122,6 +122,7 @@ export const BeltUndergroundDefinition = new BeltObjectType({
 // belt speed.
 export const SplitterDefinition = new ObjectType({
     name: "Splitter",
+    toolId: 4,
     inputPorts: [
         new PortDefinition("in_a", {x: 0, y: 0, direction: Direction.UP}),
         new PortDefinition("in_b", {x: 1, y: 0, direction: Direction.UP}),
@@ -144,6 +145,7 @@ export const SplitterDefinition = new ObjectType({
 // A road cell of the worker network; workers walk it from Housing to machines.
 export const RoadDefinition = new ObjectType({
     name: "Road",
+    toolId: 5,
     geometry: "1x1",
     textureName: "road/0",
     mapColor: MAP_COLOR_ROAD,
@@ -156,6 +158,7 @@ export const RoadDefinition = new ObjectType({
 
 export const HousingDefinition = new ObjectType({
     name: "Housing",
+    toolId: 6,
     geometry: "2x2",
     textureName: "housing/0",
     mapColor: MAP_COLOR_HOUSING,
