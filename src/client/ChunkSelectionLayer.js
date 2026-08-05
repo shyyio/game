@@ -4,6 +4,7 @@ import {TILE_SIZE, ViewMode} from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
 import {chunkOrigin} from "@/common/util.js";
+import Mobile from "@/client/Mobile.js";
 import {
     CHUNK_SELECT_COLOR,
     CHUNK_SELECT_ALPHA,
@@ -79,15 +80,30 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
     }
 
     /**
+     * No-op on mobile: there's no cursor to hover with, only the center-locked selection square.
      * @param {number|null} chunk
      * @returns {void}
      */
     setHoverChunk(chunk) {
+        if (Mobile.enabled) {
+            chunk = null;
+        }
         if (chunk === this._hoverChunk) {
             return;
         }
         this._hoverChunk = chunk;
         this._redrawHover();
+    }
+
+    /**
+     * Drops any hover square left over from before mobile mode engaged.
+     * @param {boolean} enabled
+     * @returns {void}
+     */
+    setCenterLock(enabled) {
+        if (enabled) {
+            this.setHoverChunk(null);
+        }
     }
 
     /**
