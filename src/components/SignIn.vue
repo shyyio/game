@@ -25,7 +25,7 @@ function usernameValid() {
 
 function playLocal() {
   gameStart.value = {mode: "local", username: username.value, serverUrl: LOCAL_SERVER_URL};
-  router.push({name: "game"});
+  router.push({name: "play"});
 }
 
 async function login() {
@@ -58,7 +58,7 @@ async function selectServer(origin) {
   try {
     const token = await mintJoinToken(origin);
     gameStart.value = {mode: "remote", token, serverUrl: origin};
-    router.push({name: "game"});
+    router.push({name: "play"});
   } catch {
     // mintJoinToken already clears the stored token on a 401; hasSessionToken() distinguishes
     // an expired/invalid session (bounce home) from any other join failure (show inline error).
