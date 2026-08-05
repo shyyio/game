@@ -1,9 +1,9 @@
 import {BlankScenario} from "@/test/scenarios/BlankScenario.js";
 import {ProductionLineScenario} from "@/test/scenarios/ProductionLineScenario.js";
 import {StimpackScenario} from "@/test/scenarios/StimpackScenario.js";
+import {SCENARIO_PARAM} from "@/test/scenarios/scenarioParam.js";
 
-// Selects a scenario: ?scenario=lines&lines=200
-export const SCENARIO_PARAM = "scenario";
+export {SCENARIO_PARAM};
 
 const SCENARIOS = [
     new BlankScenario(),

@@ -3,7 +3,7 @@ import SignIn from "@/components/SignIn.vue";
 import Game from "@/components/Game.vue";
 import {gameStart} from "@/client/GameStart.js";
 import {hasSessionToken} from "@/client/AuthClient.js";
-import {SCENARIO_PARAM} from "@/test/scenarios/index.js";
+import {SCENARIO_PARAM} from "@/test/scenarios/scenarioParam.js";
 
 const hasScenario = new URLSearchParams(window.location.search).has(SCENARIO_PARAM);
 
