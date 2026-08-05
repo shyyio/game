@@ -10,7 +10,7 @@ const STORAGE_SESSION_TOKEN = "spup.session-token";
 
 // Set by login(); mintJoinToken bears it to each /join call, including reconnect retries long
 // after SignIn.vue has unmounted. Mirrored to sessionStorage so a page reload (e.g. on /servers
-// or /game) doesn't strand the tab with an unauthenticated in-memory null.
+// or /play) doesn't strand the tab with an unauthenticated in-memory null.
 let sessionToken = sessionStorage.getItem(STORAGE_SESSION_TOKEN);
 
 /**

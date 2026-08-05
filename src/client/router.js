@@ -12,21 +12,21 @@ export const router = createRouter({
     routes: [
         {path: "/", name: "login", component: SignIn},
         {path: "/servers", name: "servers", component: SignIn},
-        {path: "/game", name: "game", component: Game},
+        {path: "/play", name: "play", component: Game},
     ],
 });
 
-// A scenario URL skips straight to the game; a bare "/game" without a set-up session (e.g. a
+// A scenario URL skips straight to the game; a bare "/play" without a set-up session (e.g. a
 // refresh) bounces back to the server list rather than mounting Game with nothing to connect to;
 // "/servers" without (or no longer with) a valid session token bounces back to the login screen.
 router.beforeEach((to) => {
     if (to.name === "login" && hasScenario) {
-        return {name: "game"};
+        return {name: "play"};
     }
     if (to.name === "servers" && !hasSessionToken()) {
         return {name: "login"};
     }
-    if (to.name === "game" && gameStart.value === null) {
+    if (to.name === "play" && gameStart.value === null) {
         if (hasScenario) {
             gameStart.value = {mode: "local", username: "", serverUrl: ""};
             return true;
