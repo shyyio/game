@@ -31,6 +31,7 @@ onMounted(async () => {
 
   const bootstrap = await createClient(app, viewport, gameStart.value);
   if (disposed) {
+    bootstrap.inputHandler.destroy();
     bootstrap.destroy();
     destroyPixiApp();
     return;
