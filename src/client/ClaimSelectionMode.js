@@ -119,10 +119,15 @@ export class ClaimSelectionMode {
 
     /**
      * Zooming out of world mode selects the centered chunk (an aimed entry keeps its selection).
+     * Zooming into world mode exits the mode.
      * @param {ViewMode} previous
      * @returns {void}
      */
     onViewMode(previous) {
+        if (this._client.viewMode === ViewMode.WORLD) {
+            this.set(false);
+            return;
+        }
         if (previous === ViewMode.WORLD && this.active && this._selectedChunk === null) {
             this._selectCenterChunk();
         }
