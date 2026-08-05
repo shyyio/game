@@ -6,6 +6,7 @@ import {loadOrCreateAuthSecret} from "@/authserver/AuthSecret.js";
 import {JoinTokenService} from "@/authserver/JoinTokenService.js";
 import {AuthHttpServer} from "@/authserver/AuthHttpServer.js";
 import {ServerDirectory} from "@/authserver/ServerDirectory.js";
+import {bindShutdownSignals} from "@/server/cliShutdown.js";
 
 const {values: args} = parseArgs({
     options: {
@@ -33,21 +34,7 @@ const server = new AuthHttpServer(accounts, signingKeys, joinTokens, servers);
 await server.listen(host, port);
 console.log(`Auth server listening on http://${host}:${port} (db ${dbPath})`);
 
-let shuttingDown = false;
-
-/**
- * @param {string} signal
- * @returns {Promise<void>}
- */
-async function shutdown(signal) {
-    if (shuttingDown) {
-        return;
-    }
-    shuttingDown = true;
+bindShutdownSignals(signal => {
     console.log(`${signal}: shutting down`);
     server.stop();
-    process.exit(0);
-}
-
-process.on("SIGINT", () => shutdown("SIGINT"));
-process.on("SIGTERM", () => shutdown("SIGTERM"));
+});

@@ -7,6 +7,7 @@ import {GameEngine} from "@/sim/GameEngine.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {JwksVerifier} from "@/server/JwksVerifier.js";
 import {GameServer} from "@/server/GameServer.js";
+import {bindShutdownSignals} from "@/server/cliShutdown.js";
 
 const {values: args} = parseArgs({
     options: {
@@ -66,24 +67,10 @@ const saveInterval = setInterval(() => {
     });
 }, saveMs);
 
-let shuttingDown = false;
-
-/**
- * @param {string} signal
- * @returns {Promise<void>}
- */
-async function shutdown(signal) {
-    if (shuttingDown) {
-        return;
-    }
-    shuttingDown = true;
+bindShutdownSignals(async signal => {
     console.log(`${signal}: saving and shutting down`);
     clearInterval(tickInterval);
     clearInterval(saveInterval);
     server.shutdown();
     await game.save();
-    process.exit(0);
-}
-
-process.on("SIGINT", () => shutdown("SIGINT"));
-process.on("SIGTERM", () => shutdown("SIGTERM"));
+});

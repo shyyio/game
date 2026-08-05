@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export GIT_WORK_TREE=/home/app/spup-reporting
+export GIT_DIR=/home/app/spup-reporting.git
+git checkout -f main
+cd /home/app/spup-reporting
+npm ci
+
+# reportingserver builds the client itself, from the exact commit it just deployed, so its
+# sourcemaps always match a report's buildVersion (the client's __BUILD_COMMIT__). Maps are
+# written outside dist/ (which `npm run build` empties every run) into the persistent data dir.
+COMMIT="$(git rev-parse HEAD)"
+npm run build:reportingserver &
+reportingserver_pid=$!
+BUILD_SOURCEMAPS=1 npm run build &
+client_pid=$!
+wait "$reportingserver_pid"
+wait "$client_pid"
+MAPS_DIR="/home/app/data/reporting-maps/${COMMIT}"
+mkdir -p "$MAPS_DIR"
+find dist -name '*.map' -exec cp --parents -t "$MAPS_DIR" {} +
+
+# Keep the last 10 builds' worth of maps; older reports fall back to unresolved stacks.
+ls -1dt /home/app/data/reporting-maps/*/ 2>/dev/null | tail -n +11 | xargs -r rm -rf
+
+sudo /usr/bin/systemctl restart spup-reporting
