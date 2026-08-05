@@ -20,7 +20,7 @@ if ! command -v rclone >/dev/null; then
     curl -fsSL https://rclone.org/install.sh | bash
 fi
 
-apt-get install -y nginx libnginx-mod-http-headers-more-filter certbot python3-certbot-nginx
+apt-get install -y nginx libnginx-mod-http-headers-more-filter certbot python3-certbot-nginx apache2-utils
 
 GIT_SHELL="$(command -v git-shell)"
 grep -qxF "$GIT_SHELL" /etc/shells || echo "$GIT_SHELL" >> /etc/shells

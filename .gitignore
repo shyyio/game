@@ -15,6 +15,7 @@ node_modules
 dist
 dist-server
 dist-authserver
+dist-reportingserver
 dist-ssr
 coverage
 *.local
