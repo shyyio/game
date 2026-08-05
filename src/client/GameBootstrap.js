@@ -79,7 +79,12 @@ export async function createClient(app, viewport, props) {
 
     const inputHandler = createInputHandler(client);
 
-    client.toolbarLayer.setTools(client.coreTools(), client.modTools());
+    const renderToolbar = () => client.toolbarLayer.setTools(client.coreTools(), client.modTools());
+    renderToolbar();
+    // Re-renders the toolbar once the player's custom order syncs (or after a local reorder);
+    // wired only after the toolbar's first render, so an in-flight sync racing client.init()
+    // never rebuilds it before its textureRegistry is set.
+    client.cache.subscribe("playerSettings.toolOrder", renderToolbar);
 
     /**
      * Reverses everything above that outlives a Client/viewport teardown: the reconnect loop,

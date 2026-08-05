@@ -106,19 +106,23 @@ export function trackTap(target, onTap, {suppressTouchGhostClick = false, stopNa
  * @param {PointerEvent} startEvent
  * @param {function(deltaX: number, deltaY: number): void} onMove
  * @param {function(): void} [onEnd]
- * @returns {void}
+ * @returns {function(): void} detaches the listeners without firing `onEnd`; safe to call again after a real pointerup
  */
 export function trackWindowDrag(startEvent, onMove, onEnd = () => {}) {
     const startX = startEvent.clientX;
     const startY = startEvent.clientY;
     const onPointerMove = (event) => onMove(event.clientX - startX, event.clientY - startY);
-    const onPointerUp = () => {
+    const detach = () => {
         window.removeEventListener("pointermove", onPointerMove);
         window.removeEventListener("pointerup", onPointerUp);
+    };
+    const onPointerUp = () => {
+        detach();
         onEnd();
     };
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
+    return detach;
 }
 
 /**

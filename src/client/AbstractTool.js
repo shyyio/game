@@ -30,6 +30,17 @@ export class AbstractTool {
     }
 
     /**
+     * Stable identity for persisting a player's custom toolbar order: a hand-authored constant,
+     * unique across every tool (collisions throw when the mod tools are gathered). Must survive
+     * mod reload/reorder, so never derived from position (e.g. an ObjectType's typeId).
+     * @abstract
+     * @returns {number}
+     */
+    get id() {
+        throw new NotImplementedError();
+    }
+
+    /**
      * Texture name for the tool's toolbar icon.
      * @abstract
      * @returns {string}

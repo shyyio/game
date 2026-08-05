@@ -24,6 +24,10 @@ export class EraserTool extends AbstractTool {
         return "Eraser";
     }
 
+    get id() {
+        return 1;
+    }
+
     get hotkey() {
         return "e";
     }

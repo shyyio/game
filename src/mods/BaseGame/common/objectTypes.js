@@ -45,7 +45,7 @@ import {
 // ---- Resource bodies ----
 // Simple 1x1 non-solid tile; shared Extractor sits on top.
 
-function resourceBody(name, label, resourceType) {
+function resourceBody(name, label, resourceType, toolId) {
     return new ObjectType({
         name,
         geometry: "1x1",
@@ -55,14 +55,15 @@ function resourceBody(name, label, resourceType) {
         extractionTiles: [{x: 0, y: 0}],
         placement: new PlacementRule({solid: false}),
         behavior: new ResourceBehavior({resourceType}),
+        toolId,
     });
 }
 
-export const WaterResourceType = resourceBody("WaterResource", "Water", RESOURCE_WATER);
-export const GraveyardResourceType = resourceBody("Graveyard", "Graveyard", RESOURCE_GRAVEYARD);
-export const OxideDepositResourceType = resourceBody("OxideDeposit", "Oxide Ore Deposit", RESOURCE_OXIDE);
-export const CoalDepositResourceType = resourceBody("CoalDeposit", "Coal Deposit", RESOURCE_COAL);
-export const QuartzDepositResourceType = resourceBody("QuartzDeposit", "Quartz Deposit", RESOURCE_QUARTZ);
+export const WaterResourceType = resourceBody("WaterResource", "Water", RESOURCE_WATER, 10);
+export const GraveyardResourceType = resourceBody("Graveyard", "Graveyard", RESOURCE_GRAVEYARD, 11);
+export const OxideDepositResourceType = resourceBody("OxideDeposit", "Oxide Ore Deposit", RESOURCE_OXIDE, 12);
+export const CoalDepositResourceType = resourceBody("CoalDeposit", "Coal Deposit", RESOURCE_COAL, 13);
+export const QuartzDepositResourceType = resourceBody("QuartzDeposit", "Quartz Deposit", RESOURCE_QUARTZ, 14);
 
 export const RESOURCE_TYPES = [
     WaterResourceType,
@@ -77,6 +78,7 @@ export const RESOURCE_TYPES = [
 
 export const ExtractorType = new ObjectType({
     name: "Extractor",
+    toolId: 15,
     outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
     geometry: "1x1",
     renderConnections: true,
@@ -131,9 +133,10 @@ const TEXTURE_BY_GEOMETRY = {
     "3x3": "housing/0-3x3",
 };
 
-function machine(name, label, {inputPorts, outputPorts, recipes, processingTicks, workerCost=0, geometry="1x1"}) {
+function machine(name, label, {toolId, inputPorts, outputPorts, recipes, processingTicks, workerCost=0, geometry="1x1"}) {
     return new ObjectType({
         name,
+        toolId,
         inputPorts,
         outputPorts,
         geometry,
@@ -147,6 +150,7 @@ function machine(name, label, {inputPorts, outputPorts, recipes, processingTicks
 }
 
 export const GreenhouseType = machine("Greenhouse", "Greenhouse", {
+    toolId: 16,
     inputPorts: [IN3_A, IN3_B_FLUID],
     outputPorts: [OUT3_A],
     geometry: "3x3",
@@ -158,6 +162,7 @@ export const GreenhouseType = machine("Greenhouse", "Greenhouse", {
 });
 
 export const BlenderType = machine("Blender", "Blender", {
+    toolId: 17,
     inputPorts: [IN2_A],
     outputPorts: [OUT2_A],
     geometry: "2x2",
@@ -167,6 +172,7 @@ export const BlenderType = machine("Blender", "Blender", {
 });
 
 export const SpawningPoolType = machine("SpawningPool", "Spawning Pool", {
+    toolId: 18,
     inputPorts: [IN3_A_FLUID, IN3_B],
     outputPorts: [OUT3_A],
     geometry: "3x3",
@@ -175,6 +181,7 @@ export const SpawningPoolType = machine("SpawningPool", "Spawning Pool", {
 });
 
 export const TormentChamberType = machine("TormentChamber", "Torment Chamber", {
+    toolId: 19,
     inputPorts: [IN2_A],
     outputPorts: [OUT2_A, OUT2_B],
     geometry: "2x2",
@@ -190,6 +197,7 @@ export const TormentChamberType = machine("TormentChamber", "Torment Chamber", {
 
 // Fluid-side port carries Water or BasicPotionBase, both fluids — no port-role conflict.
 export const BrewType = machine("Brew", "Brew", {
+    toolId: 20,
     inputPorts: [IN2_A, IN2_B_FLUID],
     outputPorts: [OUT2_A],
     geometry: "2x2",
@@ -201,6 +209,7 @@ export const BrewType = machine("Brew", "Brew", {
 });
 
 export const BakeType = machine("Bake", "Bake", {
+    toolId: 21,
     inputPorts: [IN_A],
     outputPorts: [OUT_A],
     processingTicks: 5,
@@ -213,6 +222,7 @@ export const BakeType = machine("Bake", "Bake", {
 // Coke (solid) and Oxygen (fluid) can't share a port role, so one recipe gets three dedicated
 // ports (3x3) instead of two recipes. PigIron isn't a transportable item, just the in-between state.
 export const BlastFurnaceType = machine("BlastFurnace", "Blast Furnace", {
+    toolId: 22,
     inputPorts: [IN3_A, IN3_MID, IN3_B_FLUID],
     outputPorts: [OUT3_A],
     geometry: "3x3",
@@ -221,6 +231,7 @@ export const BlastFurnaceType = machine("BlastFurnace", "Blast Furnace", {
 });
 
 export const FormingMachineType = machine("FormingMachine", "Forming Machine", {
+    toolId: 23,
     inputPorts: [IN2_A],
     outputPorts: [OUT2_A],
     geometry: "2x2",
@@ -229,6 +240,7 @@ export const FormingMachineType = machine("FormingMachine", "Forming Machine", {
 });
 
 export const DelicateAssemblyType = machine("DelicateAssembly", "Delicate Assembly", {
+    toolId: 24,
     inputPorts: [IN2_A, IN2_B],
     outputPorts: [OUT2_A],
     geometry: "2x2",
@@ -237,6 +249,7 @@ export const DelicateAssemblyType = machine("DelicateAssembly", "Delicate Assemb
 });
 
 export const FillType = machine("Fill", "Fill", {
+    toolId: 25,
     inputPorts: [IN_A, IN_B],
     outputPorts: [OUT_A],
     geometry: "1x2",
@@ -249,6 +262,7 @@ export const FillType = machine("Fill", "Fill", {
 
 export const AirFilterType = new ObjectType({
     name: "AirFilter",
+    toolId: 26,
     outputPorts: [OUT2_A, OUT2_B],
     geometry: "2x2",
     renderConnections: true,

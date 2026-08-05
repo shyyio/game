@@ -3,6 +3,7 @@ import {TradingTerminalBehavior} from "../sim/TradingTerminalBehavior.js";
 
 export const TradingTerminalType = new ObjectType({
     name: "TradingTerminal",
+    toolId: 9,
     inputPorts: [new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP})],
     outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
     geometry: "1x1",

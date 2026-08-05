@@ -59,6 +59,18 @@ test("player settings survive a save/load", async () => {
     assert.equal(restored.playerSettings.get(bob.playerId, 2), undefined);
 });
 
+test("a player's custom tool order survives a save/load", async () => {
+    const store = new NodeSaveStore(":memory:");
+    const game = await makeGame(store);
+    const alice = game.players.getOrCreate("sub-alice", "alice");
+    game.toolOrder.set(alice.playerId, [30, -10, 20]);
+    await game.save();
+
+    const restored = await makeGame(store);
+    assert.equal(await restored.load(), true);
+    assert.deepEqual(restored.toolOrder.get(alice.playerId), [30, -10, 20]);
+});
+
 test("a snapshot without tables loads with empty registries", async () => {
     const store = new NodeSaveStore(":memory:");
     const seed = await makeGame(store);

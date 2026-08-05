@@ -20,6 +20,9 @@ export class ObjectTool extends AbstractTool {
      */
     constructor(client, type, ghostLayer) {
         super(client.session);
+        if (type.toolId === null) {
+            throw new Error(`Object type "${type.name}" has no toolId`);
+        }
         this._client = client;
         this._cache = client.objects;
         this._type = type;
@@ -41,6 +44,10 @@ export class ObjectTool extends AbstractTool {
 
     get label() {
         return this._type.label;
+    }
+
+    get id() {
+        return this._type.toolId;
     }
 
     get textureName() {

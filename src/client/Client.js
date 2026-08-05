@@ -15,7 +15,9 @@ import {ConfirmDialogLayer} from "@/client/ConfirmDialogLayer.js";
 import {ClaimResultFeedback} from "@/client/ClaimResultFeedback.js";
 import {
     AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage, SetPlayerSettingMessage,
+    SetPlayerSettingsToolOrderMessage,
 } from "@/common/PlayerMessages.js";
+import {applyToolOrder} from "@/client/ToolOrder.js";
 import {SettingCategory} from "@/client/SettingCategory.js";
 import {AbstractPlayerSettingControl} from "@/client/AbstractPlayerSettingControl.js";
 import {PlayerSettingChoice} from "@/client/PlayerSettingChoice.js";
@@ -162,8 +164,12 @@ export class Client {
         this.rotateButtonsLayer = new RotateButtonsLayer(app, viewport);
         // Bottom-center tool bar; the host feeds it the tool list and reacts to selection.
         this.toolbarLayer = new ToolbarLayer(app, viewport);
+        this.toolbarLayer.onReorder(tools => this.setModToolOrder(tools));
         // Shared placement-feedback layer, driven by whichever tool is active.
         this.placementFeedbackLayer = new PlacementFeedbackLayer();
+        // Built once: coreTools() must return the same instances every call so a toolbar rebuild
+        // (reorder, resync) doesn't orphan an active core tool's identity.
+        this._coreTools = [new EraserTool(this)];
         // Shared hover-highlight layer, driven by mods' inspect hover.
         this.inspectLayer = new InspectLayer();
         // Shared placement facing, so orientation persists across tool switches.
@@ -244,6 +250,9 @@ export class Client {
         for (const mod of this.modRegistry.clientMods) {
             mod.setup(this);
         }
+        // Built once, same as _coreTools: a toolbar rebuild (reorder, resync) must never orphan a
+        // bespoke mod tool's identity by reallocating it.
+        this._bespokeModTools = this.modRegistry.clientMods.flatMap(mod => mod.tools(this));
         for (const layer of this.modRegistry.clientMods.flatMap(mod => mod.drawLayers(this))) {
             this.drawLayerRegistry.add(layer);
         }
@@ -451,7 +460,7 @@ export class Client {
      * @returns {AbstractTool[]}
      */
     coreTools() {
-        return [new EraserTool(this)];
+        return this._coreTools;
     }
 
     /**
@@ -829,6 +838,18 @@ export class Client {
     }
 
     /**
+     * Writes a new custom order for the mod tools (toolbar drag reorder): optimistic local update
+     * plus the server write, so the echoed update is a no-op.
+     * @param {AbstractTool[]} tools - the mod tools in their new display order
+     * @returns {void}
+     */
+    setModToolOrder(tools) {
+        const toolIds = tools.map(tool => tool.id);
+        this.cache.writer("playerSettings").setToolOrder(toolIds);
+        this.sendMessage(new SetPlayerSettingsToolOrderMessage(toolIds));
+    }
+
+    /**
      * @param {AbstractEvent} event
      * @param {number} [bytes] - protobuf bytes this event arrived as (dev only; 0 for the
      *     inner events of a re-published bundle, already counted in the bundle)
@@ -1080,8 +1101,8 @@ export class Client {
      * @returns {AbstractTool[]}
      */
     modTools() {
-        const bespoke = this.modRegistry.clientMods.flatMap(mod => mod.tools(this));
-        return bespoke.concat(this.bundles.map(bundle => bundle.tool));
+        const tools = this._bespokeModTools.concat(this.bundles.map(bundle => bundle.tool));
+        return applyToolOrder(tools, this.cache.view("playerSettings").toolOrder());
     }
 
 }

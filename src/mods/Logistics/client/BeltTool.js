@@ -26,6 +26,10 @@ export class BeltTool extends AbstractTool {
         return "Belt";
     }
 
+    get id() {
+        return 2;
+    }
+
     get textureName() {
         return "belt-straight/0";
     }

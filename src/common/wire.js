@@ -5,12 +5,14 @@ import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {PortItemSetEvent, PortItemClearEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
+import {PlayerSettingsToolOrderSyncEvent} from "@/common/PlayerSettingsToolOrderEvents.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
 import {WorkerAssignmentEvent, WorkerAssignmentBatchEvent} from "@/common/WorkerEvents.js";
 import {
     SignInMessage, AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage, SetPlayerSettingMessage,
+    SetPlayerSettingsToolOrderMessage,
 } from "@/common/PlayerMessages.js";
 import {
     WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByCodeResultEvent,
@@ -67,6 +69,8 @@ const CORE_WIRE_CLASSES = [
     SetChunkPermissionMessage,
     AddFriendByCodeMessage,
     AddFriendByCodeResultEvent,
+    SetPlayerSettingsToolOrderMessage,
+    PlayerSettingsToolOrderSyncEvent,
 ];
 
 /**
