@@ -137,6 +137,7 @@ docs/
 # Markdown files (keep README.md)
 *.md
 !README.md
+deploy/README.md
 
 # Benchmark CPU profiles
 profiles/
