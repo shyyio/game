@@ -13,7 +13,7 @@ REMOTE_TMP="/tmp/spup-auth-install"
 [[ -f "$RCLONE_CONF" ]] || { echo "missing $RCLONE_CONF"; exit 1; }
 
 FILES=(
-    "${DEPLOY_DIR}/bootstrap.sh" "${DEPLOY_DIR}/install-auth.sh" "${DEPLOY_DIR}/post-receive-auth" "${DEPLOY_DIR}/spup-auth.service"
+    "${DEPLOY_DIR}/bootstrap.sh" "${DEPLOY_DIR}/logrotate-nginx.conf" "${DEPLOY_DIR}/install-auth.sh" "${DEPLOY_DIR}/post-receive-auth" "${DEPLOY_DIR}/spup-auth.service"
     "${DEPLOY_DIR}/nginx-auth.conf" "${DEPLOY_DIR}/nginx-ratelimit-auth.conf" "${DEPLOY_DIR}/nftables.conf" "${DEPLOY_DIR}/sysctl-network.conf"
     "${DEPLOY_DIR}/unattended-upgrades-reboot.conf" "${DEPLOY_DIR}/sshd-access.conf"
     "${DEPLOY_DIR}/backup-auth.sh" "${DEPLOY_DIR}/spup-auth-backup.service" "${DEPLOY_DIR}/spup-auth-backup.timer"

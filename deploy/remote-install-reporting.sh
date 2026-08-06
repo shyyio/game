@@ -13,7 +13,7 @@ REMOTE_TMP="/tmp/spup-reporting-install"
 [[ -f "$RCLONE_CONF" ]] || { echo "missing $RCLONE_CONF"; exit 1; }
 
 FILES=(
-    "${DEPLOY_DIR}/bootstrap.sh" "${DEPLOY_DIR}/install-reporting.sh" "${DEPLOY_DIR}/post-receive-reporting" "${DEPLOY_DIR}/spup-reporting.service"
+    "${DEPLOY_DIR}/bootstrap.sh" "${DEPLOY_DIR}/logrotate-nginx.conf" "${DEPLOY_DIR}/install-reporting.sh" "${DEPLOY_DIR}/post-receive-reporting" "${DEPLOY_DIR}/spup-reporting.service"
     "${DEPLOY_DIR}/nginx-reporting.conf" "${DEPLOY_DIR}/nginx-ratelimit-reporting.conf" "${DEPLOY_DIR}/nftables.conf" "${DEPLOY_DIR}/sysctl-network.conf"
     "${DEPLOY_DIR}/unattended-upgrades-reboot.conf" "${DEPLOY_DIR}/sshd-access.conf"
 )
