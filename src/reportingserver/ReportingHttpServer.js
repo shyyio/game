@@ -13,7 +13,6 @@ const BUILD_VERSION_MAX_BYTES = 100;
 const DEDUP_WINDOW_MS = 5 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RETENTION_MS = 30 * DAY_MS;
-const DAILY_INSERT_QUOTA = 2000;
 const ADMIN_LIST_LIMIT = 200;
 
 const PAGE_STYLE = `<style>
@@ -179,7 +178,6 @@ export class ReportingHttpServer extends AbstractHttpServer {
         this._symbolicator = symbolicator;
         this._startedAtMs = Date.now();
         this._dayBucket = Math.floor(this._startedAtMs / DAY_MS);
-        this._insertsToday = 0;
 
         this._app.post("/report", (res, req) => {
             this._onReport(res);
@@ -234,13 +232,8 @@ export class ReportingHttpServer extends AbstractHttpServer {
             }
             const now = Date.now();
             this._rollDayBucket(now);
-            if (this._insertsToday < DAILY_INSERT_QUOTA) {
-                const fingerprint = this._fingerprint(report.message, report.stack);
-                const {isNew} = this._store.recordReport({fingerprint, ...report}, now, DEDUP_WINDOW_MS);
-                if (isNew) {
-                    this._insertsToday++;
-                }
-            }
+            const fingerprint = this._fingerprint(report.message, report.stack);
+            this._store.recordReport({fingerprint, ...report}, now, DEDUP_WINDOW_MS);
             this._respond(res, {});
         });
     }
@@ -301,8 +294,8 @@ export class ReportingHttpServer extends AbstractHttpServer {
     }
 
     /**
-     * Resets the daily insert counter on UTC day rollover and prunes rows past retention —
-     * runs at most once per day, not on every request.
+     * Prunes rows past retention on UTC day rollover — runs at most once per day, not on
+     * every request.
      * @private
      * @param {number} nowMs
      * @returns {void}
@@ -313,7 +306,6 @@ export class ReportingHttpServer extends AbstractHttpServer {
             return;
         }
         this._dayBucket = today;
-        this._insertsToday = 0;
         this._store.prune(nowMs - RETENTION_MS);
     }
 

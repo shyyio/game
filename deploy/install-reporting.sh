@@ -7,6 +7,7 @@ REPORTING_DOMAIN="${1:?usage: install-reporting.sh REPORTING_DOMAIN}"
 "${SCRIPT_DIR}/bootstrap.sh"
 
 install -d -o app -g app /home/app/spup-reporting
+install -d -o app -g app /home/app/data/reporting
 
 sudo -u app git init --bare /home/app/spup-reporting.git
 
