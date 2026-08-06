@@ -234,7 +234,11 @@ export class ReportingHttpServer extends AbstractHttpServer {
             this._rollDayBucket(now);
             const fingerprint = this._fingerprint(report.message, report.stack);
             this._store.recordReport({fingerprint, ...report}, now, DEDUP_WINDOW_MS);
-            this._respond(res, {});
+            res.cork(() => {
+                res.writeStatus("204 No Content")
+                    .writeHeader("Access-Control-Allow-Origin", "*")
+                    .endWithoutBody();
+            });
         });
     }
 
