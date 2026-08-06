@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DB=/home/app/data/world.sqlite3
+DB=/home/app/data/game/world.sqlite3
 NAME=world.sqlite3
-TMP="$(mktemp -d -p /home/app/data)"
+TMP="$(mktemp -d -p /home/app/data/game)"
 trap 'rm -rf "$TMP"' EXIT
 
 sqlite3 "$DB" "VACUUM INTO '${TMP}/${NAME}'"

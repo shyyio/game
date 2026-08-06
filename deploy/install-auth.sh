@@ -7,6 +7,7 @@ AUTH_DOMAIN="${1:?usage: install-auth.sh AUTH_DOMAIN}"
 "${SCRIPT_DIR}/bootstrap.sh"
 
 install -d -o app -g app /home/app/spup-auth
+install -d -o app -g app /home/app/data/auth
 
 sudo -u app git init --bare /home/app/spup-auth.git
 

@@ -12,4 +12,4 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/app/data
+ReadWritePaths=/home/app/data/auth
