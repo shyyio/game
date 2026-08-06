@@ -11,6 +11,7 @@ grep -qE "^127\.0\.1\.1\s+${DOMAIN}$" /etc/hosts || echo "127.0.1.1 ${DOMAIN}" >
 "${SCRIPT_DIR}/bootstrap.sh"
 
 install -d -o app -g app /home/app/spup
+install -d -o app -g app /home/app/data/game
 
 sudo -u app git init --bare /home/app/spup.git
 
