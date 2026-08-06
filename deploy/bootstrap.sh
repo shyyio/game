@@ -14,7 +14,7 @@ if ! command -v node >/dev/null || [[ "$(node -v)" != v24.* ]]; then
     apt-get install -y nodejs
 fi
 
-apt-get install -y git nftables debian-archive-keyring apt-transport-https curl unattended-upgrades sqlite3 zstd unzip
+apt-get install -y git nftables debian-archive-keyring apt-transport-https curl unattended-upgrades sqlite3 zstd unzip logrotate
 
 if ! command -v rclone >/dev/null; then
     curl -fsSL https://rclone.org/install.sh | bash
@@ -42,6 +42,10 @@ install -m 600 -o app -g app "${SCRIPT_DIR}/rclone.conf" /home/app/.config/rclon
 rm -f /etc/nginx/sites-enabled/default
 systemctl enable nginx
 systemctl restart nginx
+
+# Access logs hold client IPs (personal data); cap retention to 14 days across all
+# services on this host, overriding the distro default.
+install -m 644 "${SCRIPT_DIR}/logrotate-nginx.conf" /etc/logrotate.d/nginx
 
 cp "${SCRIPT_DIR}/nftables.conf" /etc/nftables.conf
 systemctl enable nftables
