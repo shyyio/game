@@ -1,6 +1,7 @@
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {EMPTY, NO_EID, TickPhase} from "@/sim/GameEngine.js";
 import {deterministicRoll} from "@/sim/Rng.js";
+import {METRICS_EVENT_TYPE_ITEM_PRODUCED} from "@/common/MetricsEvent.js";
 
 // Position layer for resource cover: an extraction tile stores its resource type as the cell userData.
 const LAYER_RESOURCE = "R";
@@ -717,14 +718,22 @@ export class MachineBehavior extends AbstractBehavior {
         const machine = def.store;
         const processingCols = columns(machine, PROCESSING_COLS);
         const count = def.count;
+        const eids = def.eids;
         for (let row = 0; row < count; row += 1) {
             const byproductPending = machine.byproduct[row] !== EMPTY;
             const byproductDelivered = !byproductPending || engine.wasResolvedDest(machine.out2[row]);
             if (engine.wasResolvedDest(machine.out[row]) && byproductDelivered) {
+                const eid = eids[row];
+                engine.emitMetrics(
+                    METRICS_EVENT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), machine.output[row], 1,
+                );
                 machine.lastOutput[row] = machine.output[row];
                 machine.output[row] = EMPTY;
                 machine.remaining[row] = EMPTY;
                 if (byproductPending) {
+                    engine.emitMetrics(
+                        METRICS_EVENT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), machine.byproduct[row], 1,
+                    );
                     machine.lastByproduct[row] = machine.byproduct[row];
                     machine.byproduct[row] = EMPTY;
                 }
@@ -951,9 +960,14 @@ export class ExtractorBehavior extends AbstractBehavior {
     static _finish(engine, placed) {
         const def = engine.component("Extractor");
         const extractor = def.store;
+        const eids = def.eids;
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
             if (engine.wasResolvedDest(extractor.out[row])) {
+                const eid = eids[row];
+                engine.emitMetrics(
+                    METRICS_EVENT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), extractor.output[row], 1,
+                );
                 extractor.lastOutput[row] = extractor.output[row];
                 extractor.output[row] = EMPTY;
                 extractor.remaining[row] = EMPTY;
@@ -1199,14 +1213,22 @@ export class GeneratorBehavior extends AbstractBehavior {
     static _finish(engine, placed) {
         const def = engine.component("Generator");
         const generator = def.store;
+        const eids = def.eids;
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
+            const eid = eids[row];
             if (engine.wasResolvedDest(generator.out[row])) {
+                engine.emitMetrics(
+                    METRICS_EVENT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), generator.output[row], 1,
+                );
                 generator.lastOutput[row] = generator.output[row];
                 generator.output[row] = EMPTY;
                 generator.remaining[row] = EMPTY;
             }
             if (generator.out2[row] !== NO_EID && engine.wasResolvedDest(generator.out2[row])) {
+                engine.emitMetrics(
+                    METRICS_EVENT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), generator.output2[row], 1,
+                );
                 generator.lastOutput2[row] = generator.output2[row];
                 generator.output2[row] = EMPTY;
                 generator.remaining2[row] = EMPTY;

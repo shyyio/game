@@ -131,7 +131,12 @@ export const LAYER_SURFACE = "S";
  */
 export const GameSettingsKey = {
     CHUNK_SIZE: 0,
+    // Real-time length of one sim tick, ms.
+    TICK_MS: 1,
 };
+
+// Shared default so server/GameBootstrap/Game tick-ms configs can't drift apart.
+export const DEFAULT_TICK_MS = 600;
 
 // Toggle setting values; an absent key reads as on, so toggles default on.
 export const SETTING_ON = 0;

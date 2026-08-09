@@ -129,6 +129,9 @@ SAMPLE.sqlite3
 LINES.sqlite3
 world.sqlite3
 auth.sqlite3
+analytics.sqlite3
+analytics.sqlite3-shm
+analytics.sqlite3-wal
 auth-signing-key.json
 auth-secret.json
 docs/

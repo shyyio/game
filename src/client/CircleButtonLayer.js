@@ -3,6 +3,7 @@ import {drawCircleButtonFace, trackTap} from "@/client/pixiUtils.js";
 
 export const CIRCLE_BUTTON_RADIUS = 24;
 export const CIRCLE_BUTTON_MARGIN = 16;
+export const CIRCLE_BUTTON_GAP = 12;
 
 /**
  * Always-visible circular icon button, screen-space on app.stage; subclass draws its own icon.
@@ -79,7 +80,18 @@ export class CircleButtonLayer extends Container {
      * @returns {number}
      */
     _x() {
-        return this._app.screen.width - CIRCLE_BUTTON_MARGIN - CIRCLE_BUTTON_RADIUS;
+        return this._slotX(0);
+    }
+
+    /**
+     * X position of the nth button slot from the top-right corner.
+     * @protected
+     * @param {number} slot
+     * @returns {number}
+     */
+    _slotX(slot) {
+        return this._app.screen.width - CIRCLE_BUTTON_MARGIN - CIRCLE_BUTTON_RADIUS
+            - slot * (2 * CIRCLE_BUTTON_RADIUS + CIRCLE_BUTTON_GAP);
     }
 
     /**

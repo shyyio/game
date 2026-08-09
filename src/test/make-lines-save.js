@@ -45,7 +45,7 @@ async function main() {
     for (let k = 0; k < lineCount; k += 1) {
         const origin = lineOrigin(k);
         buildLine(engine, origin.x, origin.y);
-        sinkPorts.push(lineSinkPort(engine, origin.x, origin.y));
+        sinkPorts.push(...lineSinkPort(engine, origin.x, origin.y));
     }
     const buildMs = performance.now() - buildStart;
     console.log(`Built in ${(buildMs / MS_PER_SECOND).toFixed(1)}s.`);

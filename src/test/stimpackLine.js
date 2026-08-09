@@ -361,11 +361,9 @@ export function buildStimpackFactory(engine, game, originX, originY) {
     const tree = buildTree();
     assignLanes(tree, {next: 0});
     assignDepth(tree, 0);
-    const occupied = new Set();
-    placeNode(engine, tree, originX, originY, occupied);
-    connectEdges(engine, tree, occupied);
-    configureTerminals(game, tree);
 
+    // Claimed before anything is placed: PlacedObject.ownerId is cached from the chunk's owner at
+    // spawn time, so a claim arriving afterward would leave every object attributed to nobody.
     let leafCount = 0;
     countLeaves(tree, {count: () => { leafCount += 1; }});
     const maxDepth = maxOf(tree, node => node.depth);
@@ -384,6 +382,11 @@ export function buildStimpackFactory(engine, game, originX, originY) {
         }
     }
     game.playerSettings.set(STIMPACK_FACTORY_PLAYER_ID, MARKET_SETTING_BALANCE, STARTING_BALANCE);
+
+    const occupied = new Set();
+    placeNode(engine, tree, originX, originY, occupied);
+    connectEdges(engine, tree, occupied);
+    configureTerminals(game, tree);
 
     return tree;
 }

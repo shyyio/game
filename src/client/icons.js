@@ -104,6 +104,24 @@ export function drawSmileyIcon(face, color = PANEL_TEXT, width = ICON_STROKE) {
 }
 
 /**
+ * The production button's icon: an ascending 3-bar chart.
+ * @param {Graphics} face
+ * @param {number} [color]
+ * @param {number} [width]
+ * @returns {void}
+ */
+export function drawChartIcon(face, color = PANEL_TEXT, width = ICON_STROKE) {
+    const baseline = 8;
+    const bars = [{x: -7, height: 8}, {x: 0, height: 13}, {x: 7, height: 18}];
+    for (const bar of bars) {
+        face
+            .moveTo(bar.x, baseline)
+            .lineTo(bar.x, baseline - bar.height)
+            .stroke({color, width, cap: "round"});
+    }
+}
+
+/**
  * The settings icon: three sliders, each a horizontal line with a knob.
  * @param {Graphics} face
  * @returns {void}

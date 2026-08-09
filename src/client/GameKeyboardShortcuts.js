@@ -7,9 +7,10 @@ import {DEV} from "@/common/env.js";
  * @param {Client} client
  * @param {Game|null} game
  * @param {ToolbarLayer} toolbar
+ * @param {function(): void} [onOpenMetrics] - opens the production-stats panel
  * @returns {function(): void} unbind
  */
-export function bindGameKeyboardShortcuts(client, game, toolbar) {
+export function bindGameKeyboardShortcuts(client, game, toolbar, onOpenMetrics=() => {}) {
     const bindings = [];
 
     function on(key, callback) {
@@ -17,7 +18,7 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
         bindings.push([key, callback]);
     }
 
-    // "c" toggles claim selection; "q" exits any input mode; "h" glides home.
+    // "c" toggles claim selection; "q" exits any input mode; "h" glides home; "p" opens production stats.
     on("c", () => {
         client.claimSelection.toggle();
     });
@@ -28,6 +29,7 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
     on("h", () => {
         client.glideHome();
     });
+    on("p", onOpenMetrics);
 
     // The local sim also auto-ticks (GameBootstrap.js); "t" forces an extra tick for debugging.
     if (game !== null) {
