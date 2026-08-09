@@ -104,7 +104,7 @@ export class NodeMetricsStore extends AbstractMetricsStore {
                 bucket_ticks: bucketTicks, player_id: playerId, type, from_tick: fromTick, to_tick: toTick,
             });
         }
-        return rows.map(MetricsRollupRow.fromSqlRow);
+        return rows.map(row => new MetricsRollupRow(row.bucket_tick, row.category, row.tag, row.count, row.sum));
     }
 
     /**

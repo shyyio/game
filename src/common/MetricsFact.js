@@ -10,6 +10,7 @@ export const METRICS_FACT_TYPE_PLAYER_LEFT = 5;
 // declared globally queryable (AbstractModDeclaration.metricsGlobalQueries).
 export const METRICS_QUERY_SCOPE_OWN = 0;
 export const METRICS_QUERY_SCOPE_GLOBAL = 1;
+const METRICS_QUERY_SCOPE_COUNT = 2;
 
 /**
  * Packs (metricsType, scope) into one dense integer key; shared by the client cache and the sim's subscription registry.
@@ -18,7 +19,7 @@ export const METRICS_QUERY_SCOPE_GLOBAL = 1;
  * @returns {number}
  */
 export function metricsRollupKey(metricsType, scope) {
-    return metricsType * 2 + scope;
+    return metricsType * METRICS_QUERY_SCOPE_COUNT + scope;
 }
 
 /**
@@ -39,15 +40,6 @@ export class MetricsRollupRow {
         this.tag = tag;
         this.count = count;
         this.sum = sum;
-    }
-
-    /**
-     * Decodes a NodeMetricsStore SQL row (snake_case bucket_tick column) into a row instance.
-     * @param {{bucket_tick: number, category: number, tag: number, count: number, sum: number}} sqlRow
-     * @returns {MetricsRollupRow}
-     */
-    static fromSqlRow(sqlRow) {
-        return new MetricsRollupRow(sqlRow.bucket_tick, sqlRow.category, sqlRow.tag, sqlRow.count, sqlRow.sum);
     }
 }
 
