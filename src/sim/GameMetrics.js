@@ -2,7 +2,7 @@ import {
     MetricsFact, METRICS_FACT_TYPE_PLAYER_JOINED, METRICS_FACT_TYPE_PLAYER_LEFT,
     METRICS_QUERY_SCOPE_GLOBAL, metricsRollupKey,
 } from "@/common/MetricsFact.js";
-import {MetricsRollupEvent, MetricsRollupBucketEvent} from "@/common/MetricsEvents.js";
+import {MetricsRollupEvent, MetricsRollupBucketEvent, compactRollupRows} from "@/common/MetricsEvents.js";
 import {
     MetricsRollupRequestMessage, MetricsSubscribeMessage, MetricsUnsubscribeMessage,
 } from "@/common/MetricsMessages.js";
@@ -29,49 +29,13 @@ class MetricsSubscription {
 }
 
 /**
- * Dictionary-encodes flat SQL rows for MetricsRollupEvent's wire shape; assumes rows already grouped by bucket.
- * @param {MetricsRollupRow[]} rows
- * @returns {{buckets: number[], bucketRowCounts: number[], seriesCategory: number[], seriesTag: number[], seriesIndex: number[], count: number[], sum: number[]}}
- */
-function compactRows(rows) {
-    const buckets = [];
-    const bucketRowCounts = [];
-    const seriesIndexByKey = new Map();
-    const seriesCategory = [];
-    const seriesTag = [];
-    const seriesIndex = [];
-    const count = [];
-    const sum = [];
-    for (const row of rows) {
-        if (buckets.length === 0 || buckets[buckets.length - 1] !== row.bucketTick) {
-            buckets.push(row.bucketTick);
-            bucketRowCounts.push(0);
-        }
-        bucketRowCounts[bucketRowCounts.length - 1] += 1;
-
-        const key = `${row.category}:${row.tag}`;
-        let index = seriesIndexByKey.get(key);
-        if (index === undefined) {
-            index = seriesCategory.length;
-            seriesIndexByKey.set(key, index);
-            seriesCategory.push(row.category);
-            seriesTag.push(row.tag);
-        }
-        seriesIndex.push(index);
-        count.push(row.count);
-        sum.push(row.sum);
-    }
-    return {buckets, bucketRowCounts, seriesCategory, seriesTag, seriesIndex, count, sum};
-}
-
-/**
  * The sim's whole metrics surface: buffers facts for batched persistence, tracks session lengths,
  * and serves the metrics query/subscribe/unsubscribe messages plus the host's periodic push.
  */
 export class GameMetrics {
 
     /**
-     * @param {AbstractMetricsStore} [store] - omitted when metrics is off; flush() then drops the buffered facts instead of persisting them
+     * @param {AbstractMetricsStore} [store] - omitted when metrics is off; record() then drops facts instead of buffering them
      * @param {ModRegistry} modRegistry - source of the GLOBAL-query declarations
      * @param {EventBus} bus
      * @param {GameEngine} simEngine - source of the tick clock
@@ -83,11 +47,9 @@ export class GameMetrics {
         this._simEngine = simEngine;
         this._buffer = [];
 
-        if (store !== undefined) {
-            simEngine.setMetricsSink(
-                (type, playerId, category, amount, tag) => this.record(type, playerId, category, amount, tag),
-            );
-        }
+        simEngine.setMetricsSink(
+            (type, playerId, category, amount, tag) => this.record(type, playerId, category, amount, tag),
+        );
 
         /**
          * sessionId -> join timestamp (epoch ms), so disconnect can record session length.
@@ -113,6 +75,9 @@ export class GameMetrics {
      * @returns {void}
      */
     record(type, playerId, category, amount, tag) {
+        if (this._store === undefined) {
+            return;
+        }
         this._buffer.push(new MetricsFact(type, this._simEngine.clock, playerId, category, amount, tag));
     }
 
@@ -168,11 +133,11 @@ export class GameMetrics {
      * @returns {Promise<void>}
      */
     async flush() {
-        const facts = this._buffer;
-        this._buffer = [];
         if (this._store === undefined) {
             return;
         }
+        const facts = this._buffer;
+        this._buffer = [];
         await this._store.recordBatch(facts);
         await this._store.pruneTo(this._simEngine.clock);
     }
@@ -362,7 +327,7 @@ export class GameMetrics {
             if (isStillValid !== undefined && !isStillValid()) {
                 return;
             }
-            const compact = compactRows(this._filterGlobalRows(metricsType, scope, rows));
+            const compact = compactRollupRows(this._filterGlobalRows(metricsType, scope, rows));
             const event = new MetricsRollupEvent(
                 metricsType, scope, bucketTicks, toTick,
                 compact.buckets, compact.bucketRowCounts,

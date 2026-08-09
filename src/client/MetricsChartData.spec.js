@@ -1,7 +1,8 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {
-    BUCKET_LADDER, MAX_HISTORY_TICKS, selectBucketTicks, windowTicksFor, buildSeries, integerTicks, visibleExtent,
+    BUCKET_LADDER, MAX_HISTORY_TICKS, CHART_METRIC_COUNT, CHART_METRIC_AVG,
+    selectBucketTicks, windowTicksFor, buildSeries, integerTicks, visibleExtent,
 } from "@/client/MetricsChartData.js";
 
 test("selectBucketTicks picks the largest tier keeping ~10 buckets visible", () => {
@@ -28,7 +29,7 @@ test("buildSeries fills absent buckets with zero after a series' first observati
         sum: [30, 50, 20],
     };
 
-    const {ticks, seriesList} = buildSeries(rollup, "count");
+    const {ticks, seriesList} = buildSeries(rollup, CHART_METRIC_COUNT);
 
     // Ticks span first bucket to the last completed one (toTick's bucket, 40, is still filling).
     assert.deepEqual(ticks, [0, 10, 20, 30]);
@@ -50,13 +51,13 @@ test("buildSeries avg metric divides sum by count and leaves absent buckets null
         sum: [40, 30],
     };
 
-    const {seriesList} = buildSeries(rollup, "avg");
+    const {seriesList} = buildSeries(rollup, CHART_METRIC_AVG);
 
     assert.deepEqual(seriesList[0].values, [10, null, 15]);
 });
 
 test("buildSeries without data returns empty series and the default bucket tier", () => {
-    assert.deepEqual(buildSeries(undefined, "count"), {ticks: [], seriesList: [], bucketTicks: BUCKET_LADDER[0]});
+    assert.deepEqual(buildSeries(undefined, CHART_METRIC_COUNT), {ticks: [], seriesList: [], bucketTicks: BUCKET_LADDER[0]});
 });
 
 test("integerTicks steps on the 1-2-5 ladder and never duplicates labels", () => {

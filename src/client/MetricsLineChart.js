@@ -4,7 +4,10 @@ import {scaleLinear} from "d3-scale";
 import {axisBottom, axisLeft} from "d3-axis";
 import {format} from "d3-format";
 import {ChartColors, INK_MUTED} from "@/client/ChartColors.js";
-import {selectBucketTicks, windowTicksFor, buildSeries, integerTicks, visibleExtent} from "@/client/MetricsChartData.js";
+import {
+    CHART_METRIC_COUNT, CHART_METRIC_AVG, MIN_RANGE_TICKS, MAX_RANGE_TICKS,
+    selectBucketTicks, windowTicksFor, buildSeries, integerTicks, visibleExtent,
+} from "@/client/MetricsChartData.js";
 import {TickIntervalEstimator} from "@/client/TickIntervalEstimator.js";
 
 const INK = "#000000";
@@ -17,8 +20,6 @@ const DEFAULT_RANGE_TICKS = 100;
 const ZOOM_DRAG_STRENGTH = 4;
 const WHEEL_ZOOM_IN_FACTOR = 0.85;
 const WHEEL_ZOOM_OUT_FACTOR = 1.15;
-const MIN_RANGE_TICKS = 60;
-const MAX_RANGE_TICKS = 1_000_000;
 
 const formatCount = format(",d");
 const formatAvg = format(",.2~f");
@@ -34,16 +35,16 @@ export class MetricsLineChart {
     /**
      * @param {HTMLElement} container - mounts an <svg> and an empty-state <div>; never resized/positioned by this class
      * @param {object} [options]
-     * @param {string} [options.metric] "count" | "sum" | "avg"
+     * @param {string} [options.metric] CHART_METRIC_*
      * @param {number} [options.width]
      * @param {number} [options.height]
-     * @param {function(bucketTicks: number, windowTicks: number): void} [options.onSubscribe] fired on
+     * @param {function(bucketTicks: number, windowTicks: number): void} [options.onWindowChange] fired on
      *     construction and again whenever a zoom gesture needs more data
      */
-    constructor(container, {metric = "count", width = null, height = null, onSubscribe = null} = {}) {
+    constructor(container, {metric = CHART_METRIC_COUNT, width = null, height = null, onWindowChange = null} = {}) {
         this._container = container;
         this._metric = metric;
-        this._onSubscribe = onSubscribe;
+        this._onWindowChange = onWindowChange;
 
         this._instanceId = nextInstanceId;
         nextInstanceId += 1;
@@ -68,9 +69,9 @@ export class MetricsLineChart {
         this._hasData = false;
         this._rangeTicks = DEFAULT_RANGE_TICKS;
 
-        // Bucket/window currently subscribed; re-subscribe only on a wider tier or window.
-        this._subscribedBucketTicks = null;
-        this._subscribedWindowTicks = null;
+        // Bucket/window last requested; a new request only on a wider tier or window.
+        this._requestedBucketTicks = null;
+        this._requestedWindowTicks = null;
 
         this._colors = new ChartColors();
 
@@ -98,7 +99,7 @@ export class MetricsLineChart {
         if (width !== null && height !== null) {
             this.setSize(width, height);
         }
-        this._scheduleResubscribe(true);
+        this._requestWindow(true);
 
         this._animationFrame = this._animationFrame.bind(this);
         this._rafHandle = requestAnimationFrame(this._animationFrame);
@@ -112,11 +113,11 @@ export class MetricsLineChart {
     setSize(width, height) {
         this._targetWidth = width;
         this._targetHeight = height;
-        this._redrawStatic();
+        this._redrawAll();
     }
 
     /**
-     * @param {string} metric "count" | "sum" | "avg"
+     * @param {string} metric CHART_METRIC_*
      * @returns {void}
      */
     setMetric(metric) {
@@ -124,7 +125,7 @@ export class MetricsLineChart {
             return;
         }
         this._metric = metric;
-        this._rebuild();
+        this._redrawData();
     }
 
     /**
@@ -139,7 +140,7 @@ export class MetricsLineChart {
     }
 
     /**
-     * @param {object|undefined} rollup
+     * @param {MetricsRollup|undefined} rollup
      * @returns {void}
      */
     push(rollup) {
@@ -149,7 +150,7 @@ export class MetricsLineChart {
             this._pendingUpdate = true;
             return;
         }
-        this._rebuild();
+        this._redrawData();
     }
 
     /**
@@ -227,23 +228,23 @@ export class MetricsLineChart {
     }
 
     /**
-     * Fires onSubscribe for the current zoom's ideal (bucketTicks, windowTicks); zooming in reuses
+     * Fires onWindowChange for the current zoom's ideal (bucketTicks, windowTicks); zooming in reuses
      * data already on hand.
      * @param {boolean} force always fires, even at the same tier (construction)
      * @returns {void}
      * @private
      */
-    _scheduleResubscribe(force) {
+    _requestWindow(force) {
         const bucket = selectBucketTicks(this._rangeTicks);
         const window = windowTicksFor(this._rangeTicks, bucket);
-        if (!force && bucket === this._subscribedBucketTicks && window <= this._subscribedWindowTicks) {
+        if (!force && bucket === this._requestedBucketTicks && window <= this._requestedWindowTicks) {
             return;
         }
-        this._subscribedBucketTicks = bucket;
-        this._subscribedWindowTicks = window;
+        this._requestedBucketTicks = bucket;
+        this._requestedWindowTicks = window;
         this._estimator.suppressNextSample();
-        if (this._onSubscribe !== null) {
-            this._onSubscribe(bucket, window);
+        if (this._onWindowChange !== null) {
+            this._onWindowChange(bucket, window);
         }
     }
 
@@ -275,8 +276,8 @@ export class MetricsLineChart {
         const dragFraction = (this._dragStartClientX - event.clientX) / width;
         const factor = Math.pow(ZOOM_DRAG_STRENGTH, -dragFraction);
         this._rangeTicks = this._clampRange(this._dragStartRange * factor);
-        this._redrawStatic();
-        this._scheduleResubscribe(false);
+        this._redrawAll();
+        this._requestWindow(false);
     }
 
     /**
@@ -289,7 +290,7 @@ export class MetricsLineChart {
         this._isDragging = false;
         if (this._pendingUpdate) {
             this._pendingUpdate = false;
-            this._rebuild();
+            this._redrawData();
         }
     }
 
@@ -301,8 +302,8 @@ export class MetricsLineChart {
         event.preventDefault();
         const factor = event.deltaY < 0 ? WHEEL_ZOOM_IN_FACTOR : WHEEL_ZOOM_OUT_FACTOR;
         this._rangeTicks = this._clampRange(this._rangeTicks * factor);
-        this._redrawStatic();
-        this._scheduleResubscribe(false);
+        this._redrawAll();
+        this._requestWindow(false);
     }
 
     /**
@@ -315,7 +316,7 @@ export class MetricsLineChart {
         if (this._estimator.lastPushWallTime === null) {
             return this._lastPushToTick;
         }
-        const maxExtrapolationTicks = this._subscribedBucketTicks === null ? 1 : this._subscribedBucketTicks;
+        const maxExtrapolationTicks = this._requestedBucketTicks === null ? 1 : this._requestedBucketTicks;
         const elapsedTicks = (performance.now() - this._estimator.lastPushWallTime) / this._estimator.intervalMs;
         return this._lastPushToTick + Math.min(maxExtrapolationTicks, Math.max(0, elapsedTicks));
     }
@@ -398,8 +399,8 @@ export class MetricsLineChart {
             this._lastPushToTick - 2 * this._latestSeriesData.bucketTicks,
         ));
         const [yMin, yMax] = this._yScale.domain();
-        const yTickValues = this._metric === "avg" ? this._yScale.ticks(5) : integerTicks(yMin, yMax, 5);
-        const yFormat = this._metric === "avg" ? formatAvg : formatCount;
+        const yTickValues = this._metric === CHART_METRIC_AVG ? this._yScale.ticks(5) : integerTicks(yMin, yMax, 5);
+        const yFormat = this._metric === CHART_METRIC_AVG ? formatAvg : formatCount;
         const yAxis = axisLeft(this._yScale).tickValues(yTickValues).tickFormat(yFormat).tickSizeOuter(0);
         this._gAxisY.call(yAxis);
         this._gGridY.selectAll("line").data(yTickValues).join("line")
@@ -424,7 +425,7 @@ export class MetricsLineChart {
      * @returns {void}
      * @private
      */
-    _redrawStatic() {
+    _redrawAll() {
         if (this._svg === null) {
             return;
         }
@@ -455,10 +456,11 @@ export class MetricsLineChart {
     }
 
     /**
+     * Data-change redraw: rebuilds the series, then everything the data drives.
      * @returns {void}
      * @private
      */
-    _rebuild() {
+    _redrawData() {
         this._latestSeriesData = buildSeries(this._rollup, this._metric);
         this._updateYAxis();
         this._applyThemeStrokes();

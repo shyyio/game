@@ -2,6 +2,7 @@ import {Container} from "pixi.js";
 import {UIPanel} from "@/client/UIPanel.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT} from "@/client/Theme.js";
 import {MetricsLineChart} from "@/client/MetricsLineChart.js";
+import {CHART_METRIC_COUNT} from "@/client/MetricsChartData.js";
 import {metricsRollupKey} from "@/common/MetricsFact.js";
 import {GameSettingsKey} from "@/common/constants.js";
 
@@ -166,10 +167,10 @@ export class ProductionPanelLayer extends Container {
         document.body.appendChild(this._chartRoot);
 
         this._chart = new MetricsLineChart(this._chartRoot, {
-            metric: "count",
+            metric: CHART_METRIC_COUNT,
             width: panel.contentWidth,
             height: CHART_HEIGHT,
-            onSubscribe: (bucketTicks, windowTicks) => {
+            onWindowChange: (bucketTicks, windowTicks) => {
                 if (this._onSubscribe !== null) {
                     this._onSubscribe(this._metricsType, this._scope, bucketTicks, windowTicks);
                 }

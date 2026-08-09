@@ -1,9 +1,18 @@
 // MetricsLineChart's pure data shaping — no DOM/d3, so it's spec-testable.
 
+// What buildSeries plots per bucket.
+export const CHART_METRIC_COUNT = "count";
+export const CHART_METRIC_SUM = "sum";
+export const CHART_METRIC_AVG = "avg";
+
 // Bucket widths offered as zoom tiers; re-subscribe only fires on a tier change.
 export const BUCKET_LADDER = [10, 100, 1000, 6000];
 // 7 days at the default tick rate — cap on how much history gets requested.
 export const MAX_HISTORY_TICKS = 1_008_000;
+
+// Zoom bounds on the visible range; the max leaves windowTicksFor's headroom inside the history cap.
+export const MIN_RANGE_TICKS = 60;
+export const MAX_RANGE_TICKS = MAX_HISTORY_TICKS - 2 * BUCKET_LADDER[BUCKET_LADDER.length - 1];
 
 // Headroom above the max value so the topmost line clears the plot's top edge.
 const Y_MAX_HEADROOM = 1.1;
@@ -35,8 +44,8 @@ export function windowTicksFor(rangeTicks, bucketTicks) {
 
 /**
  * Groups a rollup's flat rows into one series per (category, tag); an absent bucket is a real zero, not missing data.
- * @param {object|undefined} rollup the flat {bucketTick, category, tag, count, sum, bucketTicks, toTick} shape
- * @param {string} metric "count" | "sum" | "avg"
+ * @param {MetricsRollup|undefined} rollup
+ * @param {string} metric CHART_METRIC_*
  * @returns {{ticks: number[], seriesList: {key: string, category: number, tag: number, values: (number|null)[]}[], bucketTicks: number}}
  */
 export function buildSeries(rollup, metric) {
@@ -78,20 +87,20 @@ export function buildSeries(rollup, metric) {
 
 /**
  * @param {{count: number, sum: number}|undefined} point
- * @param {string} metric
+ * @param {string} metric CHART_METRIC_*
  * @returns {number|null}
  */
 function valueAt(point, metric) {
     if (point === undefined) {
-        if (metric === "avg") {
+        if (metric === CHART_METRIC_AVG) {
             return null;
         }
         return 0;
     }
-    if (metric === "sum") {
+    if (metric === CHART_METRIC_SUM) {
         return point.sum;
     }
-    if (metric === "avg") {
+    if (metric === CHART_METRIC_AVG) {
         return point.sum / point.count;
     }
     return point.count;
