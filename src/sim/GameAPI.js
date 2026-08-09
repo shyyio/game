@@ -20,6 +20,13 @@ export class GameAPI {
     }
 
     /**
+     * @returns {ModRegistry}
+     */
+    get modRegistry() {
+        return this._game.modRegistry;
+    }
+
+    /**
      * @param {AbstractMessage} message
      * @param {AbstractSession} session
      */

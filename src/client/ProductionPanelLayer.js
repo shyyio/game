@@ -2,7 +2,7 @@ import {Container} from "pixi.js";
 import {UIPanel} from "@/client/UIPanel.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT} from "@/client/Theme.js";
 import {MetricsLineChart} from "@/client/MetricsLineChart.js";
-import {METRICS_EVENT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, metricsRollupKey} from "@/common/MetricsEvent.js";
+import {metricsRollupKey} from "@/common/MetricsFact.js";
 import {GameSettingsKey} from "@/common/constants.js";
 
 const PANEL_WIDTH = 640;
@@ -17,8 +17,6 @@ const Z_INDEX = 9600;
 // Matches TextInput/SelectableText's DOM-overlay convention.
 const DOM_Z_INDEX = "1000";
 
-const ROLLUP_KEY = metricsRollupKey(METRICS_EVENT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN);
-
 /**
  * Production-rate panel: a draggable {@link UIPanel} with a sunken inset placeholder that a real DOM/SVG {@link MetricsLineChart} overlays every tick.
  */
@@ -27,11 +25,16 @@ export class ProductionPanelLayer extends Container {
     /**
      * @param {Application} app
      * @param {ClientCache} state
+     * @param {number} metricsType - METRICS_FACT_TYPE_* the chart plots
+     * @param {number} scope - METRICS_QUERY_SCOPE_*, echoed back through the (un)subscribe callbacks
      */
-    constructor(app, state) {
+    constructor(app, state, metricsType, scope) {
         super();
         this._app = app;
         this._state = state;
+        this._metricsType = metricsType;
+        this._scope = scope;
+        this._rollupKey = metricsRollupKey(metricsType, scope);
         this._metrics = state.view("metrics");
         this._gameSettings = state.view("gameSettings");
         this.textureRegistry = null;
@@ -54,14 +57,14 @@ export class ProductionPanelLayer extends Container {
     }
 
     /**
-     * @param {function(bucketTicks: number, windowTicks: number): void} callback
+     * @param {function(metricsType: number, scope: number, bucketTicks: number, windowTicks: number): void} callback
      */
     onSubscribe(callback) {
         this._onSubscribe = callback;
     }
 
     /**
-     * @param {function(): void} callback
+     * @param {function(metricsType: number, scope: number): void} callback
      */
     onUnsubscribe(callback) {
         this._onUnsubscribe = callback;
@@ -168,13 +171,13 @@ export class ProductionPanelLayer extends Container {
             height: CHART_HEIGHT,
             onSubscribe: (bucketTicks, windowTicks) => {
                 if (this._onSubscribe !== null) {
-                    this._onSubscribe(bucketTicks, windowTicks);
+                    this._onSubscribe(this._metricsType, this._scope, bucketTicks, windowTicks);
                 }
             },
         });
-        this._chart.push(this._metrics.rollup(METRICS_EVENT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN));
+        this._chart.push(this._metrics.rollup(this._metricsType, this._scope));
         this._unbindRollup = this._state.subscribe("metrics.rollups", (key, value) => {
-            if (key === ROLLUP_KEY) {
+            if (key === this._rollupKey) {
                 this._chart.push(value);
             }
         });
@@ -212,7 +215,7 @@ export class ProductionPanelLayer extends Container {
         this._savedX = this._panel.x;
         this._savedY = this._panel.y;
         if (this._onUnsubscribe !== null) {
-            this._onUnsubscribe();
+            this._onUnsubscribe(this._metricsType, this._scope);
         }
         this._app.ticker.remove(this._tick);
         this._tick = null;

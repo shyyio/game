@@ -1,5 +1,5 @@
-import {metricsRollupKey} from "@/common/MetricsEvent.js";
-import {MetricsRollupEvent, MetricsRollupBucketEvent} from "@/common/MetricsQueryEvents.js";
+import {metricsRollupKey} from "@/common/MetricsFact.js";
+import {MetricsRollupEvent, MetricsRollupBucketEvent} from "@/common/MetricsEvents.js";
 import {AbstractCacheWriter, AbstractCacheView, schemaMap} from "@/client/ClientCache.js";
 
 export const METRICS_SCHEMA = {

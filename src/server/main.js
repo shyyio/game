@@ -78,6 +78,6 @@ bindShutdownSignals(async signal => {
     clearInterval(tickInterval);
     clearInterval(saveInterval);
     server.shutdown();
-    await Promise.all([game.save(), game.flushMetrics()]);
+    await Promise.all([game.save(), game.metrics.flush()]);
     await game.metrics.close();
 });

@@ -37,6 +37,10 @@ export class ModRegistry {
          * @type {MarketListingEntry[]}
          */
         this._marketListings = [];
+        /**
+         * @type {Map<number, MetricsGlobalQueryEntry>}
+         */
+        this._metricsGlobalQueries = new Map();
     }
 
     /**
@@ -121,6 +125,15 @@ export class ModRegistry {
                 }
                 listedItemTypes.add(entry.itemType);
                 this._marketListings.push(entry);
+            }
+        }
+
+        for (const pkg of this._packages) {
+            for (const entry of pkg.declaration.metricsGlobalQueries) {
+                if (this._metricsGlobalQueries.has(entry.metricsType)) {
+                    throw new Error(`Duplicate metrics global query for type ${entry.metricsType}`);
+                }
+                this._metricsGlobalQueries.set(entry.metricsType, entry);
             }
         }
     }
@@ -236,5 +249,16 @@ export class ModRegistry {
     get marketListings() {
         this._assertFrozen();
         return this._marketListings;
+    }
+
+    /**
+     * The GLOBAL-query declaration for a metrics type, or undefined for a private type (a GLOBAL
+     * query for one fails validation).
+     * @param {number} metricsType
+     * @returns {MetricsGlobalQueryEntry|undefined}
+     */
+    metricsGlobalQuery(metricsType) {
+        this._assertFrozen();
+        return this._metricsGlobalQueries.get(metricsType);
     }
 }

@@ -72,4 +72,13 @@ export class AbstractModDeclaration {
     get marketListings() {
         return [];
     }
+
+    /**
+     * Metrics types this mod opens to GLOBAL-scope queries; metrics types must be unique across
+     * the loadout.
+     * @returns {MetricsGlobalQueryEntry[]}
+     */
+    get metricsGlobalQueries() {
+        return [];
+    }
 }

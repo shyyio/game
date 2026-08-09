@@ -1,45 +1,24 @@
 import {AbstractMetricsStore, METRICS_RETENTION_TICKS} from "@/common/AbstractMetricsStore.js";
-import {MetricsRollupRow} from "@/common/MetricsEvent.js";
+import {MetricsRollupRow} from "@/common/MetricsFact.js";
 
 /**
- * Browser {@link AbstractMetricsStore}: events in a plain array, bounded by METRICS_RETENTION_TICKS.
+ * Browser {@link AbstractMetricsStore}: facts in a plain array, bounded by METRICS_RETENTION_TICKS.
  */
 export class ClientMetricsStore extends AbstractMetricsStore {
 
     constructor() {
         super();
-        this._events = [];
-        this._ticks = new Map();
-        this._latestTick = 0;
+        this._facts = [];
     }
 
     /**
-     * @param {MetricsEvent[]} events
+     * @param {MetricsFact[]} facts
      * @returns {Promise<void>}
      */
-    async recordBatch(events) {
-        this._events.push(...events);
-    }
-
-    /**
-     * @param {number} type
-     * @param {number|null} playerId
-     * @param {number} fromTick
-     * @param {number} toTick
-     * @returns {Promise<MetricsEvent[]>}
-     */
-    async queryRange(type, playerId, fromTick, toTick) {
-        const result = [];
-        for (let i = this._firstIndexAtOrAfter(fromTick); i < this._events.length; i += 1) {
-            const event = this._events[i];
-            if (event.tick > toTick) {
-                break;
-            }
-            if (event.type === type && (playerId === null || event.playerId === playerId)) {
-                result.push(event);
-            }
+    async recordBatch(facts) {
+        for (const fact of facts) {
+            this._facts.push(fact);
         }
-        return result;
     }
 
     /**
@@ -52,99 +31,59 @@ export class ClientMetricsStore extends AbstractMetricsStore {
      */
     async queryRollup(type, playerId, fromTick, toTick, bucketTicks) {
         const buckets = new Map();
-        for (let i = this._firstIndexAtOrAfter(fromTick); i < this._events.length; i += 1) {
-            const event = this._events[i];
-            if (event.tick > toTick) {
+        for (let i = this._firstIndexAtOrAfter(fromTick); i < this._facts.length; i += 1) {
+            const fact = this._facts[i];
+            if (fact.tick > toTick) {
                 break;
             }
-            if (event.type !== type) {
+            if (fact.type !== type) {
                 continue;
             }
-            if (playerId !== null && event.playerId !== playerId) {
+            if (playerId !== null && fact.playerId !== playerId) {
                 continue;
             }
-            const bucketTick = Math.floor(event.tick / bucketTicks) * bucketTicks;
-            const key = `${bucketTick}:${event.category}:${event.tag}`;
+            const bucketTick = Math.floor(fact.tick / bucketTicks) * bucketTicks;
+            const key = `${bucketTick}:${fact.category}:${fact.tag}`;
             let entry = buckets.get(key);
             if (entry === undefined) {
-                entry = new MetricsRollupRow(bucketTick, event.category, event.tag, 0, 0);
+                entry = new MetricsRollupRow(bucketTick, fact.category, fact.tag, 0, 0);
                 buckets.set(key, entry);
             }
             entry.count += 1;
-            entry.sum += event.amount;
+            entry.sum += fact.amount;
         }
         return [...buckets.values()].sort((x, y) => x.bucketTick - y.bucketTick);
     }
 
     /**
-     * @param {{tick: number, timestamp: number}[]} ticks
+     * @param {number} latestTick
      * @returns {Promise<void>}
      */
-    async recordTicks(ticks) {
-        for (const entry of ticks) {
-            if (!this._ticks.has(entry.tick)) {
-                this._ticks.set(entry.tick, entry.timestamp);
-            }
-            if (entry.tick > this._latestTick) {
-                this._latestTick = entry.tick;
-            }
-        }
-        this._prune();
-    }
-
-    /**
-     * Drops events/ticks older than METRICS_RETENTION_TICKS behind the latest known tick.
-     * @private
-     * @returns {void}
-     */
-    _prune() {
-        const cutoff = this._latestTick - METRICS_RETENTION_TICKS;
+    async pruneTo(latestTick) {
+        const cutoff = latestTick - METRICS_RETENTION_TICKS;
         if (cutoff <= 0) {
             return;
         }
-        // Events are in non-decreasing tick order, so binary search finds the surviving suffix.
-        this._events.splice(0, this._firstIndexAtOrAfter(cutoff));
-        // _ticks insertion order is ascending tick order too.
-        for (const tick of this._ticks.keys()) {
-            if (tick >= cutoff) {
-                break;
-            }
-            this._ticks.delete(tick);
-        }
+        // Facts are in non-decreasing tick order, so binary search finds the surviving suffix.
+        this._facts.splice(0, this._firstIndexAtOrAfter(cutoff));
     }
 
     /**
      * @param {number} tick
-     * @returns {number} index of the first event with tick >= tick (or this._events.length if none)
+     * @returns {number} index of the first fact with tick >= tick (or this._facts.length if none)
      * @private
      */
     _firstIndexAtOrAfter(tick) {
         let lo = 0;
-        let hi = this._events.length;
+        let hi = this._facts.length;
         while (lo < hi) {
             const mid = (lo + hi) >> 1;
-            if (this._events[mid].tick < tick) {
+            if (this._facts[mid].tick < tick) {
                 lo = mid + 1;
             } else {
                 hi = mid;
             }
         }
         return lo;
-    }
-
-    /**
-     * @param {number} fromTick
-     * @param {number} toTick
-     * @returns {Promise<{tick: number, timestamp: number}[]>}
-     */
-    async queryTickTimestamps(fromTick, toTick) {
-        const rows = [];
-        for (const [tick, timestamp] of this._ticks) {
-            if (tick >= fromTick && tick <= toTick) {
-                rows.push({tick, timestamp});
-            }
-        }
-        rows.sort((a, b) => a.tick - b.tick);
-        return rows;
     }
 }

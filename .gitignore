@@ -132,6 +132,9 @@ auth.sqlite3
 analytics.sqlite3
 analytics.sqlite3-shm
 analytics.sqlite3-wal
+metrics.sqlite3
+metrics.sqlite3-shm
+metrics.sqlite3-wal
 auth-signing-key.json
 auth-secret.json
 docs/

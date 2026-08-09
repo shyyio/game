@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {NodeMetricsStore} from "@/server/NodeMetricsStore.js";
-import {MetricsEvent, MetricsRollupRow} from "@/common/MetricsEvent.js";
+import {MetricsFact, MetricsRollupRow} from "@/common/MetricsFact.js";
 
 const TYPE = 2;
 const PLAYER = 7;
@@ -9,11 +9,11 @@ const OTHER_PLAYER = 9;
 
 test("queryRollup buckets by tick, not by wall-clock, and sums amount per (bucket, category, tag)", async () => {
     const store = new NodeMetricsStore(":memory:");
-    const events = [];
+    const facts = [];
     for (let tick = 0; tick < 25; tick += 1) {
-        events.push(new MetricsEvent(TYPE, tick, PLAYER, 42, 1, 0));
+        facts.push(new MetricsFact(TYPE, tick, PLAYER, 42, 1, 0));
     }
-    await store.recordBatch(events);
+    await store.recordBatch(facts);
 
     const rollup = await store.queryRollup(TYPE, PLAYER, 0, 24, 10);
 
@@ -27,9 +27,9 @@ test("queryRollup buckets by tick, not by wall-clock, and sums amount per (bucke
 test("queryRollup keeps category and tag as separate groups within the same bucket", async () => {
     const store = new NodeMetricsStore(":memory:");
     await store.recordBatch([
-        new MetricsEvent(TYPE, 0, PLAYER, 1, 100, 0), // sell
-        new MetricsEvent(TYPE, 1, PLAYER, 1, 200, 1), // buy, same bucket+a, different side
-        new MetricsEvent(TYPE, 2, PLAYER, 2, 50, 0), // different itemType
+        new MetricsFact(TYPE, 0, PLAYER, 1, 100, 0), // sell
+        new MetricsFact(TYPE, 1, PLAYER, 1, 200, 1), // buy, same bucket+a, different side
+        new MetricsFact(TYPE, 2, PLAYER, 2, 50, 0), // different itemType
     ]);
 
     const rollup = await store.queryRollup(TYPE, PLAYER, 0, 9, 10);
@@ -44,8 +44,8 @@ test("queryRollup keeps category and tag as separate groups within the same buck
 test("queryRollup with playerId null is unscoped across every player", async () => {
     const store = new NodeMetricsStore(":memory:");
     await store.recordBatch([
-        new MetricsEvent(TYPE, 0, PLAYER, 1, 10, 0),
-        new MetricsEvent(TYPE, 0, OTHER_PLAYER, 1, 20, 0),
+        new MetricsFact(TYPE, 0, PLAYER, 1, 10, 0),
+        new MetricsFact(TYPE, 0, OTHER_PLAYER, 1, 20, 0),
     ]);
 
     const rollup = await store.queryRollup(TYPE, null, 0, 9, 10);
@@ -53,25 +53,17 @@ test("queryRollup with playerId null is unscoped across every player", async () 
     assert.deepEqual(rollup, [new MetricsRollupRow(0, 1, 0, 2, 30)]);
 });
 
-test("queryRange orders by tick and ignores events outside the range", async () => {
+test("pruneTo drops facts more than RETENTION_TICKS behind the latest tick", async () => {
     const store = new NodeMetricsStore(":memory:");
+    const RETENTION_TICKS = 50_000;
+    const LATEST = RETENTION_TICKS + 10;
     await store.recordBatch([
-        new MetricsEvent(TYPE, 5, PLAYER, 1, 1, 0),
-        new MetricsEvent(TYPE, 1, PLAYER, 1, 1, 0),
-        new MetricsEvent(TYPE, 100, PLAYER, 1, 1, 0), // outside range
+        new MetricsFact(TYPE, 0, PLAYER, 1, 1, 0),
+        new MetricsFact(TYPE, LATEST, PLAYER, 1, 1, 0),
     ]);
 
-    const rows = await store.queryRange(TYPE, PLAYER, 0, 10);
+    await store.pruneTo(LATEST);
 
-    assert.deepEqual(rows.map(row => row.tick), [1, 5]);
-});
-
-test("recordTicks is idempotent on tick and queryTickTimestamps returns them in order", async () => {
-    const store = new NodeMetricsStore(":memory:");
-    await store.recordTicks([{tick: 3, timestamp: 3000}]);
-    await store.recordTicks([{tick: 1, timestamp: 1000}, {tick: 3, timestamp: 9999}]);
-
-    const rows = await store.queryTickTimestamps(0, 10);
-
-    assert.deepEqual(rows, [{tick: 1, timestamp: 1000}, {tick: 3, timestamp: 3000}]);
+    const rollup = await store.queryRollup(TYPE, PLAYER, 0, LATEST, 10);
+    assert.deepEqual(rollup.map(row => row.bucketTick), [RETENTION_TICKS + 10]);
 });
