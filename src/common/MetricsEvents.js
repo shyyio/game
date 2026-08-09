@@ -3,7 +3,7 @@ import {AbstractEvent} from "@/common/AbstractEvent.js";
 /**
  * Answers an {@link MetricsRollupRequestMessage} or a (re)subscribe's initial answer; can span many buckets.
  */
-// Dictionary-encoded: buckets and (category, tag) series listed once, rows carry indices (see MetricsSubscriptions' compactRows).
+// Dictionary-encoded: buckets and (category, tag) series listed once, rows carry indices (see GameMetrics' compactRows).
 export class MetricsRollupEvent extends AbstractEvent {
 
     static wireFields = {
@@ -21,7 +21,7 @@ export class MetricsRollupEvent extends AbstractEvent {
     };
 
     /**
-     * @param {number} metricsType METRICS_EVENT_TYPE_*
+     * @param {number} metricsType METRICS_FACT_TYPE_*
      * @param {number} scope METRICS_QUERY_SCOPE_*
      * @param {number} bucketTicks
      * @param {number} toTick the query's right edge (current tick at query time); anchor "now" to this, not the data
@@ -50,7 +50,7 @@ export class MetricsRollupEvent extends AbstractEvent {
 }
 
 /**
- * A live subscription's heartbeat push (MetricsSubscriptions.push()): one completed bucket.
+ * A live subscription's heartbeat push (GameMetrics.push()): one completed bucket.
  */
 export class MetricsRollupBucketEvent extends AbstractEvent {
 
@@ -68,7 +68,7 @@ export class MetricsRollupBucketEvent extends AbstractEvent {
     };
 
     /**
-     * @param {number} metricsType METRICS_EVENT_TYPE_*
+     * @param {number} metricsType METRICS_FACT_TYPE_*
      * @param {number} scope METRICS_QUERY_SCOPE_*
      * @param {number} bucketTicks
      * @param {number} toTick same meaning as MetricsRollupEvent's toTick — not bucketTick below

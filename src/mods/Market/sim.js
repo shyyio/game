@@ -5,10 +5,10 @@ import {MarketBook} from "./sim/MarketBook.js";
 import {TradingTerminalType} from "./common/objectTypes.js";
 import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./common/messages.js";
 import {MarketSnapshotEvent, MARKET_SNAPSHOT_NONE} from "./common/events.js";
-import {MARKET_MODE_NONE, MARKET_MODE_SELL, MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "./common/constants.js";
 import {
-    METRICS_EVENT_TYPE_TRADE_EXECUTED, METRICS_TRADE_SIDE_SELL, METRICS_TRADE_SIDE_BUY,
-} from "@/common/MetricsEvent.js";
+    MARKET_MODE_NONE, MARKET_MODE_SELL, MARKET_MODE_BUY, MARKET_SETTING_BALANCE,
+    METRICS_FACT_TYPE_TRADE_EXECUTED, METRICS_TRADE_SIDE_SELL, METRICS_TRADE_SIDE_BUY,
+} from "./common/constants.js";
 
 /**
  * The Market mod's session/currency layer: configuring a terminal, reporting the tradable catalog,
@@ -201,7 +201,7 @@ export class MarketSimMod extends AbstractSimMod {
             if (sellerOwner !== PLAYER_ID_NONE) {
                 deltas.set(sellerOwner, (deltas.get(sellerOwner) || 0) + settlement.price);
                 engine.emitMetrics(
-                    METRICS_EVENT_TYPE_TRADE_EXECUTED, sellerOwner,
+                    METRICS_FACT_TYPE_TRADE_EXECUTED, sellerOwner,
                     settlement.itemType, settlement.price, METRICS_TRADE_SIDE_SELL,
                 );
             }
@@ -210,7 +210,7 @@ export class MarketSimMod extends AbstractSimMod {
                 if (buyerOwner !== PLAYER_ID_NONE) {
                     deltas.set(buyerOwner, (deltas.get(buyerOwner) || 0) - settlement.price);
                     engine.emitMetrics(
-                        METRICS_EVENT_TYPE_TRADE_EXECUTED, buyerOwner,
+                        METRICS_FACT_TYPE_TRADE_EXECUTED, buyerOwner,
                         settlement.itemType, settlement.price, METRICS_TRADE_SIDE_BUY,
                     );
                 }
@@ -248,7 +248,7 @@ export class MarketSimMod extends AbstractSimMod {
             if (buyerOwner !== PLAYER_ID_NONE) {
                 deltas.set(buyerOwner, (deltas.get(buyerOwner) || 0) - purchase.price);
                 engine.emitMetrics(
-                    METRICS_EVENT_TYPE_TRADE_EXECUTED, buyerOwner,
+                    METRICS_FACT_TYPE_TRADE_EXECUTED, buyerOwner,
                     purchase.itemType, purchase.price, METRICS_TRADE_SIDE_BUY,
                 );
             }

@@ -1,7 +1,7 @@
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {EMPTY, NO_EID, TickPhase} from "@/sim/GameEngine.js";
 import {deterministicRoll} from "@/sim/Rng.js";
-import {METRICS_EVENT_TYPE_ITEM_PRODUCED} from "@/common/MetricsEvent.js";
+import {METRICS_FACT_TYPE_ITEM_PRODUCED} from "@/common/MetricsFact.js";
 
 // Position layer for resource cover: an extraction tile stores its resource type as the cell userData.
 const LAYER_RESOURCE = "R";
@@ -725,14 +725,14 @@ export class MachineBehavior extends AbstractBehavior {
             if (engine.wasResolvedDest(machine.out[row]) && byproductDelivered) {
                 const eid = eids[row];
                 engine.emitMetrics(
-                    METRICS_EVENT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), machine.output[row], 1,
+                    METRICS_FACT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), machine.output[row], 1,
                 );
                 machine.lastOutput[row] = machine.output[row];
                 machine.output[row] = EMPTY;
                 machine.remaining[row] = EMPTY;
                 if (byproductPending) {
                     engine.emitMetrics(
-                        METRICS_EVENT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), machine.byproduct[row], 1,
+                        METRICS_FACT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), machine.byproduct[row], 1,
                     );
                     machine.lastByproduct[row] = machine.byproduct[row];
                     machine.byproduct[row] = EMPTY;
@@ -966,7 +966,7 @@ export class ExtractorBehavior extends AbstractBehavior {
             if (engine.wasResolvedDest(extractor.out[row])) {
                 const eid = eids[row];
                 engine.emitMetrics(
-                    METRICS_EVENT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), extractor.output[row], 1,
+                    METRICS_FACT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), extractor.output[row], 1,
                 );
                 extractor.lastOutput[row] = extractor.output[row];
                 extractor.output[row] = EMPTY;
@@ -1219,7 +1219,7 @@ export class GeneratorBehavior extends AbstractBehavior {
             const eid = eids[row];
             if (engine.wasResolvedDest(generator.out[row])) {
                 engine.emitMetrics(
-                    METRICS_EVENT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), generator.output[row], 1,
+                    METRICS_FACT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), generator.output[row], 1,
                 );
                 generator.lastOutput[row] = generator.output[row];
                 generator.output[row] = EMPTY;
@@ -1227,7 +1227,7 @@ export class GeneratorBehavior extends AbstractBehavior {
             }
             if (generator.out2[row] !== NO_EID && engine.wasResolvedDest(generator.out2[row])) {
                 engine.emitMetrics(
-                    METRICS_EVENT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), generator.output2[row], 1,
+                    METRICS_FACT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), generator.output2[row], 1,
                 );
                 generator.lastOutput2[row] = generator.output2[row];
                 generator.output2[row] = EMPTY;

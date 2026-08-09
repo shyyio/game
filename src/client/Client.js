@@ -34,7 +34,7 @@ import {PLAYERS_SCHEMA, PlayersWriter, PlayersView} from "@/client/PlayersState.
 import {PLAYER_SETTINGS_SCHEMA, GAME_SETTINGS_SCHEMA, PlayerSettingsWriter, GameSettingsWriter, PlayerSettingsView, GameSettingsView} from "@/client/SettingsState.js";
 import {WORKER_ASSIGNMENTS_SCHEMA, WorkerAssignmentsWriter, WorkerAssignmentsView} from "@/client/WorkerAssignmentsState.js";
 import {METRICS_SCHEMA, MetricsWriter, MetricsView} from "@/client/MetricsState.js";
-import {METRICS_EVENT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN} from "@/common/MetricsEvent.js";
+import {METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN} from "@/common/MetricsFact.js";
 import {MetricsSubscribeMessage, MetricsUnsubscribeMessage} from "@/common/MetricsMessages.js";
 import {OBJECTS_SCHEMA, ObjectsWriter} from "@/client/ObjectsState.js";
 import {INSPECT_SCHEMA, InspectWriter, InspectView} from "@/client/InspectState.js";
@@ -206,13 +206,18 @@ export class Client {
         this.friendsButtonLayer.onPress(() => this.friendsPanelLayer.toggle());
         // Opens the production metrics panel; sits left of friends.
         this.productionButtonLayer = new ProductionButtonLayer(app);
-        this.productionPanelLayer = new ProductionPanelLayer(app, this.cache);
+        this.productionPanelLayer = new ProductionPanelLayer(
+            app,
+            this.cache,
+            METRICS_FACT_TYPE_ITEM_PRODUCED,
+            METRICS_QUERY_SCOPE_OWN,
+        );
         this.productionButtonLayer.onPress(() => this.productionPanelLayer.toggle());
-        this.productionPanelLayer.onSubscribe((bucketTicks, windowTicks) => this.sendMessage(
-            new MetricsSubscribeMessage(METRICS_EVENT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, bucketTicks, windowTicks),
+        this.productionPanelLayer.onSubscribe((metricsType, scope, bucketTicks, windowTicks) => this.sendMessage(
+            new MetricsSubscribeMessage(metricsType, scope, bucketTicks, windowTicks),
         ));
-        this.productionPanelLayer.onUnsubscribe(() => this.sendMessage(
-            new MetricsUnsubscribeMessage(METRICS_EVENT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN),
+        this.productionPanelLayer.onUnsubscribe((metricsType, scope) => this.sendMessage(
+            new MetricsUnsubscribeMessage(metricsType, scope),
         ));
         this.friendsPanelLayer.onAddByCode(
             code => this.sendMessage(new AddFriendByCodeMessage(code)),

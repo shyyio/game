@@ -121,6 +121,11 @@ export {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
 // means player-market-only (no fixed NPC price).
 export {MarketListingEntry} from "@/common/MarketListingEntry.js";
 
+// ---- Metrics ----
+// GLOBAL-scope query opt-in a declaration contributes (metricsGlobalQueries); rowFilter trims a
+// public answer's rows (e.g. one side of each trade).
+export {MetricsGlobalQueryEntry} from "@/common/MetricsGlobalQueryEntry.js";
+
 // ---- Item textures ----
 // Item type -> render texture a declaration contributes (itemTextures): a texture name plus a
 // pixi multiply tint, so shared shapes stay visually distinct per item type.

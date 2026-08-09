@@ -22,7 +22,7 @@ import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent} from "@/com
 import {
     MetricsRollupRequestMessage, MetricsSubscribeMessage, MetricsUnsubscribeMessage,
 } from "@/common/MetricsMessages.js";
-import {MetricsRollupEvent, MetricsRollupBucketEvent} from "@/common/MetricsQueryEvents.js";
+import {MetricsRollupEvent, MetricsRollupBucketEvent} from "@/common/MetricsEvents.js";
 
 const {Type, Field, MapField, Root} = protobuf;
 const Long = protobuf.util.Long;

@@ -459,8 +459,8 @@ export class GameEngine {
     }
 
     /**
-     * Passes an metrics fact to the metrics sink; a no-op if none is installed.
-     * @param {number} type METRICS_EVENT_TYPE_*
+     * Passes a metrics fact to the metrics sink; a no-op if none is installed.
+     * @param {number} type METRICS_FACT_TYPE_*
      * @param {number} playerId PLAYER_ID_NONE when not player-scoped
      * @param {number} [category]
      * @param {number} [amount]

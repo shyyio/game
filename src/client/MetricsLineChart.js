@@ -3,8 +3,9 @@ import {line} from "d3-shape";
 import {scaleLinear} from "d3-scale";
 import {axisBottom, axisLeft} from "d3-axis";
 import {format} from "d3-format";
-import {DEFAULT_TICK_MS} from "@/common/constants.js";
 import {ChartColors, INK_MUTED} from "@/client/ChartColors.js";
+import {selectBucketTicks, windowTicksFor, buildSeries, integerTicks, visibleExtent} from "@/client/MetricsChartData.js";
+import {TickIntervalEstimator} from "@/client/TickIntervalEstimator.js";
 
 const INK = "#000000";
 const GRID = "#e1e0d9";
@@ -19,184 +20,13 @@ const WHEEL_ZOOM_OUT_FACTOR = 1.15;
 const MIN_RANGE_TICKS = 60;
 const MAX_RANGE_TICKS = 1_000_000;
 
-// Bucket widths offered as zoom tiers; re-subscribe only fires on a tier change.
-const BUCKET_LADDER = [10, 100, 1000, 6000];
-// 7 days at the default tick rate — cap on how much history gets requested.
-const MAX_HISTORY_TICKS = 1_008_000;
-
-const MIN_PUSH_INTERVAL_MS = 50;
-const MAX_PUSH_INTERVAL_MS = 5000;
-const TICK_INTERVAL_SMOOTHING = 0.7;
-
-// Headroom above the max value so the topmost line clears the plot's top edge.
-const Y_MAX_HEADROOM = 1.1;
-
 const formatCount = format(",d");
 const formatAvg = format(",.2~f");
 
 let nextInstanceId = 0;
 
 /**
- * Largest ladder entry keeping at least ~10 buckets across the visible range.
- * @param {number} rangeTicks
- * @returns {number}
- */
-function selectBucketTicks(rangeTicks) {
-    let selected = BUCKET_LADDER[0];
-    for (const candidate of BUCKET_LADDER) {
-        if (candidate * 10 <= rangeTicks) {
-            selected = candidate;
-        }
-    }
-    return selected;
-}
-
-/**
- * History window to request: visible range plus 2 buckets of headroom.
- * @param {number} rangeTicks
- * @param {number} bucketTicks
- * @returns {number}
- */
-function windowTicksFor(rangeTicks, bucketTicks) {
-    return Math.min(rangeTicks + 2 * bucketTicks, MAX_HISTORY_TICKS);
-}
-
-/**
- * Groups a rollup's flat rows into one series per (category, tag); an absent bucket is a real zero, not missing data.
- * @param {object|undefined} rollup the flat {bucketTick, category, tag, count, sum, bucketTicks, toTick} shape
- * @param {string} metric "count" | "sum" | "avg"
- * @returns {{ticks: number[], seriesList: {key: string, category: number, tag: number, values: (number|null)[]}[], bucketTicks: number}}
- */
-function buildSeries(rollup, metric) {
-    if (rollup === undefined || rollup.bucketTick.length === 0) {
-        const bucketTicks = rollup === undefined ? BUCKET_LADDER[0] : rollup.bucketTicks;
-        return {ticks: [], seriesList: [], bucketTicks};
-    }
-    const byKey = new Map();
-    let minBucketTick = Infinity;
-    for (let i = 0; i < rollup.bucketTick.length; i += 1) {
-        if (rollup.bucketTick[i] < minBucketTick) {
-            minBucketTick = rollup.bucketTick[i];
-        }
-        const key = `${rollup.category[i]}:${rollup.tag[i]}`;
-        let entry = byKey.get(key);
-        if (entry === undefined) {
-            entry = {category: rollup.category[i], tag: rollup.tag[i], points: new Map(), firstTick: Infinity};
-            byKey.set(key, entry);
-        }
-        entry.points.set(rollup.bucketTick[i], {count: rollup.count[i], sum: rollup.sum[i]});
-        if (rollup.bucketTick[i] < entry.firstTick) {
-            entry.firstTick = rollup.bucketTick[i];
-        }
-    }
-    const currentBucket = Math.floor(rollup.toTick / rollup.bucketTicks) * rollup.bucketTicks;
-    const ticks = [];
-    for (let tick = minBucketTick; tick < currentBucket; tick += rollup.bucketTicks) {
-        ticks.push(tick);
-    }
-    const seriesList = [...byKey.entries()].map(([key, entry]) => ({
-        key,
-        category: entry.category,
-        tag: entry.tag,
-        // Before the series' first observed bucket it didn't exist yet, distinct from a real zero after.
-        values: ticks.map(tick => tick < entry.firstTick ? null : valueAt(entry.points.get(tick), metric)),
-    }));
-    return {ticks, seriesList, bucketTicks: rollup.bucketTicks};
-}
-
-/**
- * @param {{count: number, sum: number}|undefined} point
- * @param {string} metric
- * @returns {number|null}
- */
-function valueAt(point, metric) {
-    if (point === undefined) {
-        if (metric === "avg") {
-            return null;
-        }
-        return 0;
-    }
-    if (metric === "sum") {
-        return point.sum;
-    }
-    if (metric === "avg") {
-        return point.sum / point.count;
-    }
-    return point.count;
-}
-
-// 1-2-5 ladder (floor 1) so integer-rounded tick labels never duplicate.
-function integerTickStep(span, targetCount) {
-    const rawStep = span / Math.max(1, targetCount);
-    if (rawStep <= 1) {
-        return 1;
-    }
-    const power = Math.floor(Math.log10(rawStep));
-    const base = 10 ** power;
-    for (const multiple of [1, 2, 5, 10]) {
-        const step = multiple * base;
-        if (step >= rawStep) {
-            return Math.max(1, Math.round(step));
-        }
-    }
-    return Math.max(1, Math.round(10 * base));
-}
-
-/**
- * @param {number} min
- * @param {number} max
- * @param {number} targetCount
- * @returns {number[]}
- */
-function integerTicks(min, max, targetCount) {
-    const step = integerTickStep(max - min, targetCount);
-    const start = Math.ceil(min / step) * step;
-    const values = [];
-    for (let tick = start; tick <= max; tick += step) {
-        values.push(tick);
-    }
-    return values;
-}
-
-/**
- * Auto-fits the y domain to what's visible in [nowTick - rangeTicks, nowTick].
- * @param {number[]} ticks
- * @param {{values: (number|null)[]}[]} seriesList
- * @param {number} rangeTicks
- * @param {number} nowTick
- * @returns {[number, number]}
- */
-function visibleExtent(ticks, seriesList, rangeTicks, nowTick) {
-    const minTick = nowTick - rangeTicks;
-    let lo = 0;
-    let hi = 0;
-    let any = false;
-    for (const series of seriesList) {
-        for (let i = 0; i < ticks.length; i += 1) {
-            if (ticks[i] < minTick) {
-                continue;
-            }
-            const value = series.values[i];
-            if (value === null) {
-                continue;
-            }
-            if (!any) {
-                lo = value;
-                hi = value;
-                any = true;
-            } else if (value > hi) {
-                hi = value;
-            }
-        }
-    }
-    if (!any || lo === hi) {
-        return [0, Math.max(1, hi) * Y_MAX_HEADROOM];
-    }
-    return [Math.min(0, lo), hi * Y_MAX_HEADROOM];
-}
-
-/**
- * Scrolling, drag/wheel-zoomable line chart over an MetricsRollupRow accumulation: real d3/SVG
+ * Scrolling, drag/wheel-zoomable line chart over a MetricsRollupRow accumulation: real d3/SVG
  * mounted into a caller-owned DOM element, no framework binding of its own.
  */
 export class MetricsLineChart {
@@ -250,13 +80,9 @@ export class MetricsLineChart {
         this._dragStartClientX = 0;
         this._dragStartRange = MIN_RANGE_TICKS;
 
-        // Wall-clock + sim tick of the last push, for the continuous scroll animation.
-        this._lastPushWallTime = null;
+        // Sim tick of the last push + observed push cadence, for the continuous scroll animation.
         this._lastPushToTick = 0;
-        this._estimatedTickIntervalMs = DEFAULT_TICK_MS;
-        this._tickIntervalMsKnown = false;
-        // A subscribe's immediate reply shouldn't feed the interval estimate.
-        this._suppressNextIntervalSample = false;
+        this._estimator = new TickIntervalEstimator();
 
         this._onPointerDown = this._onPointerDown.bind(this);
         this._onPointerMove = this._onPointerMove.bind(this);
@@ -309,8 +135,7 @@ export class MetricsLineChart {
         if (tickIntervalMs === undefined) {
             return;
         }
-        this._tickIntervalMsKnown = true;
-        this._estimatedTickIntervalMs = tickIntervalMs;
+        this._estimator.setKnown(tickIntervalMs);
     }
 
     /**
@@ -416,8 +241,7 @@ export class MetricsLineChart {
         }
         this._subscribedBucketTicks = bucket;
         this._subscribedWindowTicks = window;
-        // The subscribe's immediate reply isn't a regular-cadence push.
-        this._suppressNextIntervalSample = true;
+        this._estimator.suppressNextSample();
         if (this._onSubscribe !== null) {
             this._onSubscribe(bucket, window);
         }
@@ -488,11 +312,11 @@ export class MetricsLineChart {
      * @private
      */
     _virtualNowTick() {
-        if (this._lastPushWallTime === null) {
+        if (this._estimator.lastPushWallTime === null) {
             return this._lastPushToTick;
         }
         const maxExtrapolationTicks = this._subscribedBucketTicks === null ? 1 : this._subscribedBucketTicks;
-        const elapsedTicks = (performance.now() - this._lastPushWallTime) / this._estimatedTickIntervalMs;
+        const elapsedTicks = (performance.now() - this._estimator.lastPushWallTime) / this._estimator.intervalMs;
         return this._lastPushToTick + Math.min(maxExtrapolationTicks, Math.max(0, elapsedTicks));
     }
 
@@ -620,17 +444,7 @@ export class MetricsLineChart {
         if (this._rollup === undefined) {
             return;
         }
-        const now = performance.now();
-        if (!this._tickIntervalMsKnown && this._lastPushWallTime !== null && !this._suppressNextIntervalSample) {
-            // Raw gap is bucketTicks ticks — divide down to per-tick before feeding the EMA.
-            const perTickDt = (now - this._lastPushWallTime) / this._rollup.bucketTicks;
-            if (perTickDt > MIN_PUSH_INTERVAL_MS && perTickDt < MAX_PUSH_INTERVAL_MS) {
-                this._estimatedTickIntervalMs = this._estimatedTickIntervalMs * TICK_INTERVAL_SMOOTHING
-                    + perTickDt * (1 - TICK_INTERVAL_SMOOTHING);
-            }
-        }
-        this._suppressNextIntervalSample = false;
-        this._lastPushWallTime = now;
+        this._estimator.recordPush(performance.now(), this._rollup.bucketTicks);
         this._lastPushToTick = this._rollup.toTick;
         this._hasData = this._rollup.bucketTick.length > 0;
         if (this._hasData) {

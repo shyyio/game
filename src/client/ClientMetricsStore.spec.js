@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {ClientMetricsStore} from "@/client/ClientMetricsStore.js";
-import {MetricsEvent, MetricsRollupRow} from "@/common/MetricsEvent.js";
+import {MetricsFact, MetricsRollupRow} from "@/common/MetricsFact.js";
 
 const TYPE = 2;
 const PLAYER = 7;
@@ -9,11 +9,11 @@ const OTHER_PLAYER = 9;
 
 test("queryRollup buckets by tick and sums amount per (bucket, category, tag), matching NodeMetricsStore", async () => {
     const store = new ClientMetricsStore();
-    const events = [];
+    const facts = [];
     for (let tick = 0; tick < 25; tick += 1) {
-        events.push(new MetricsEvent(TYPE, tick, PLAYER, 42, 1, 0));
+        facts.push(new MetricsFact(TYPE, tick, PLAYER, 42, 1, 0));
     }
-    await store.recordBatch(events);
+    await store.recordBatch(facts);
 
     const rollup = await store.queryRollup(TYPE, PLAYER, 0, 24, 10);
 
@@ -27,9 +27,9 @@ test("queryRollup buckets by tick and sums amount per (bucket, category, tag), m
 test("queryRollup keeps category and tag as separate groups within the same bucket", async () => {
     const store = new ClientMetricsStore();
     await store.recordBatch([
-        new MetricsEvent(TYPE, 0, PLAYER, 1, 100, 0), // sell
-        new MetricsEvent(TYPE, 1, PLAYER, 1, 200, 1), // buy, same bucket+a, different side
-        new MetricsEvent(TYPE, 2, PLAYER, 2, 50, 0), // different itemType
+        new MetricsFact(TYPE, 0, PLAYER, 1, 100, 0), // sell
+        new MetricsFact(TYPE, 1, PLAYER, 1, 200, 1), // buy, same bucket+a, different side
+        new MetricsFact(TYPE, 2, PLAYER, 2, 50, 0), // different itemType
     ]);
 
     const rollup = await store.queryRollup(TYPE, PLAYER, 0, 9, 10);
@@ -44,8 +44,8 @@ test("queryRollup keeps category and tag as separate groups within the same buck
 test("queryRollup with playerId null is unscoped across every player", async () => {
     const store = new ClientMetricsStore();
     await store.recordBatch([
-        new MetricsEvent(TYPE, 0, PLAYER, 1, 10, 0),
-        new MetricsEvent(TYPE, 0, OTHER_PLAYER, 1, 20, 0),
+        new MetricsFact(TYPE, 0, PLAYER, 1, 10, 0),
+        new MetricsFact(TYPE, 0, OTHER_PLAYER, 1, 20, 0),
     ]);
 
     const rollup = await store.queryRollup(TYPE, null, 0, 9, 10);
@@ -53,41 +53,15 @@ test("queryRollup with playerId null is unscoped across every player", async () 
     assert.deepEqual(rollup, [new MetricsRollupRow(0, 1, 0, 2, 30)]);
 });
 
-test("queryRange ignores events outside the tick range", async () => {
-    const store = new ClientMetricsStore();
-    await store.recordBatch([
-        new MetricsEvent(TYPE, 5, PLAYER, 1, 1, 0),
-        new MetricsEvent(TYPE, 1, PLAYER, 1, 1, 0),
-        new MetricsEvent(TYPE, 100, PLAYER, 1, 1, 0), // outside range
-    ]);
-
-    const rows = await store.queryRange(TYPE, PLAYER, 0, 10);
-
-    assert.deepEqual(rows.map(row => row.tick).sort((x, y) => x - y), [1, 5]);
-});
-
-test("recordTicks is idempotent on tick and queryTickTimestamps returns them in order", async () => {
-    const store = new ClientMetricsStore();
-    await store.recordTicks([{tick: 3, timestamp: 3000}]);
-    await store.recordTicks([{tick: 1, timestamp: 1000}, {tick: 3, timestamp: 9999}]);
-
-    const rows = await store.queryTickTimestamps(0, 10);
-
-    assert.deepEqual(rows, [{tick: 1, timestamp: 1000}, {tick: 3, timestamp: 3000}]);
-});
-
-test("events and ticks older than RETENTION_TICKS behind the latest tick are pruned", async () => {
+test("pruneTo drops facts more than RETENTION_TICKS behind the latest tick", async () => {
     const store = new ClientMetricsStore();
     const RETENTION_TICKS = 50_000;
+    const LATEST = RETENTION_TICKS + 10;
+    await store.recordBatch([new MetricsFact(TYPE, 0, PLAYER, 1, 1, 0)]);
+    await store.recordBatch([new MetricsFact(TYPE, LATEST, PLAYER, 1, 1, 0)]);
 
-    await store.recordBatch([new MetricsEvent(TYPE, 0, PLAYER, 1, 1, 0)]);
-    await store.recordTicks([{tick: 0, timestamp: 0}]);
-    await store.recordBatch([new MetricsEvent(TYPE, RETENTION_TICKS + 10, PLAYER, 1, 1, 0)]);
-    await store.recordTicks([{tick: RETENTION_TICKS + 10, timestamp: 999}]);
+    await store.pruneTo(LATEST);
 
-    const events = await store.queryRange(TYPE, PLAYER, 0, RETENTION_TICKS + 10);
-    const ticks = await store.queryTickTimestamps(0, RETENTION_TICKS + 10);
-
-    assert.deepEqual(events.map(e => e.tick), [RETENTION_TICKS + 10]);
-    assert.deepEqual(ticks.map(t => t.tick), [RETENTION_TICKS + 10]);
+    const rollup = await store.queryRollup(TYPE, PLAYER, 0, LATEST, 10);
+    assert.deepEqual(rollup.map(row => row.bucketTick), [RETENTION_TICKS + 10]);
 });

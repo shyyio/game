@@ -4,41 +4,28 @@ import {NotImplementedError} from "@/common/error.js";
 export const METRICS_RETENTION_TICKS = 50_000;
 
 /**
- * Persists metrics events and answers time-range queries. Backends store this however suits their
+ * Persists metrics facts and answers rollup queries. Backends store this however suits their
  * platform (SQLite on Node, in-memory on the browser for local play).
  * @abstract
  */
 export class AbstractMetricsStore {
 
     /**
-     * Persists a batch of events, in order.
+     * Persists a batch of facts, in order.
      * @abstract
-     * @param {MetricsEvent[]} events
+     * @param {MetricsFact[]} facts
      * @returns {Promise<void>}
      */
-    async recordBatch(events) {
+    async recordBatch(facts) {
         throw new NotImplementedError();
     }
 
     // Queried by tick, not wall-clock timestamp, to stay immune to tick-length jitter.
-    /**
-     * Raw events of one type in a tick range, optionally scoped to one player.
-     * @abstract
-     * @param {number} type METRICS_EVENT_TYPE_*
-     * @param {number|null} playerId null for unscoped (every player)
-     * @param {number} fromTick
-     * @param {number} toTick
-     * @returns {Promise<MetricsEvent[]>}
-     */
-    async queryRange(type, playerId, fromTick, toTick) {
-        throw new NotImplementedError();
-    }
-
     // Bucket tick is its start tick: floor(tick / bucketTicks) * bucketTicks.
     /**
      * Bucketed (bucket, category, tag) aggregates of one type in a tick range, optionally scoped to one player.
      * @abstract
-     * @param {number} type METRICS_EVENT_TYPE_*
+     * @param {number} type METRICS_FACT_TYPE_*
      * @param {number|null} playerId null for unscoped (every player)
      * @param {number} fromTick
      * @param {number} toTick
@@ -50,23 +37,19 @@ export class AbstractMetricsStore {
     }
 
     /**
-     * Persists a batch of tick -> wall-clock mappings, idempotent on tick.
+     * Drops facts more than METRICS_RETENTION_TICKS behind `latestTick`.
      * @abstract
-     * @param {{tick: number, timestamp: number}[]} ticks
+     * @param {number} latestTick
      * @returns {Promise<void>}
      */
-    async recordTicks(ticks) {
+    async pruneTo(latestTick) {
         throw new NotImplementedError();
     }
 
     /**
-     * The tick -> timestamp table over a tick range.
-     * @abstract
-     * @param {number} fromTick
-     * @param {number} toTick
-     * @returns {Promise<{tick: number, timestamp: number}[]>}
+     * Releases backend resources; backends without any keep this no-op.
+     * @returns {Promise<void>}
      */
-    async queryTickTimestamps(fromTick, toTick) {
-        throw new NotImplementedError();
+    async close() {
     }
 }

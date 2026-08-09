@@ -1,22 +1,19 @@
 import {AbstractMessage} from "@/common/AbstractMessage.js";
-import {
-    METRICS_EVENT_TYPE_TRADE_EXECUTED, METRICS_QUERY_SCOPE_OWN, METRICS_QUERY_SCOPE_GLOBAL,
-} from "@/common/MetricsEvent.js";
-
-// Types any session may query GLOBAL scope; currently just trade history, for the public market price series.
-const GLOBAL_QUERYABLE_TYPES = new Set([METRICS_EVENT_TYPE_TRADE_EXECUTED]);
+import {METRICS_QUERY_SCOPE_OWN, METRICS_QUERY_SCOPE_GLOBAL} from "@/common/MetricsFact.js";
 
 /**
- * Shared by every metrics query message: scope must be known, GLOBAL only for a public type.
+ * Shared by every metrics query message: scope must be known, GLOBAL only for a type a mod
+ * declared globally queryable.
+ * @param {GameAPI} api
  * @param {number} scope METRICS_QUERY_SCOPE_*
- * @param {number} metricsType METRICS_EVENT_TYPE_*
+ * @param {number} metricsType METRICS_FACT_TYPE_*
  * @returns {boolean}
  */
-function validScope(scope, metricsType) {
+function validScope(api, scope, metricsType) {
     if (scope !== METRICS_QUERY_SCOPE_OWN && scope !== METRICS_QUERY_SCOPE_GLOBAL) {
         return false;
     }
-    return scope !== METRICS_QUERY_SCOPE_GLOBAL || GLOBAL_QUERYABLE_TYPES.has(metricsType);
+    return scope !== METRICS_QUERY_SCOPE_GLOBAL || api.modRegistry.metricsGlobalQuery(metricsType) !== undefined;
 }
 
 /**
@@ -33,7 +30,7 @@ export class MetricsRollupRequestMessage extends AbstractMessage {
     };
 
     /**
-     * @param {number} metricsType METRICS_EVENT_TYPE_*
+     * @param {number} metricsType METRICS_FACT_TYPE_*
      * @param {number} scope METRICS_QUERY_SCOPE_*
      * @param {number} fromTick
      * @param {number} toTick
@@ -54,7 +51,7 @@ export class MetricsRollupRequestMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        if (!validScope(this.scope, this.metricsType)) {
+        if (!validScope(api, this.scope, this.metricsType)) {
             return false;
         }
         return Number.isInteger(this.fromTick) && Number.isInteger(this.toTick) && this.fromTick <= this.toTick
@@ -75,7 +72,7 @@ export class MetricsSubscribeMessage extends AbstractMessage {
     };
 
     /**
-     * @param {number} metricsType METRICS_EVENT_TYPE_*
+     * @param {number} metricsType METRICS_FACT_TYPE_*
      * @param {number} scope METRICS_QUERY_SCOPE_*
      * @param {number} bucketTicks
      * @param {number} windowTicks - how far back from the current tick the sliding window reaches
@@ -94,7 +91,7 @@ export class MetricsSubscribeMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        if (!validScope(this.scope, this.metricsType)) {
+        if (!validScope(api, this.scope, this.metricsType)) {
             return false;
         }
         return Number.isInteger(this.bucketTicks) && this.bucketTicks > 0
@@ -113,7 +110,7 @@ export class MetricsUnsubscribeMessage extends AbstractMessage {
     };
 
     /**
-     * @param {number} metricsType METRICS_EVENT_TYPE_*
+     * @param {number} metricsType METRICS_FACT_TYPE_*
      * @param {number} scope METRICS_QUERY_SCOPE_*
      */
     constructor(metricsType, scope) {

@@ -1,10 +1,9 @@
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
-import {Direction} from "@/common/constants.js";
+import {Direction, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkId, chunkOrigin} from "@/common/util.js";
 import {NO_EID} from "@/sim/GameEngine.js";
-import {METRICS_EVENT_TYPE_OBJECT_PLACED, METRICS_EVENT_TYPE_OBJECT_DESPAWNED} from "@/common/MetricsEvent.js";
-import {PLAYER_ID_NONE} from "@/common/constants.js";
+import {METRICS_FACT_TYPE_OBJECT_PLACED, METRICS_FACT_TYPE_OBJECT_DESPAWNED} from "@/common/MetricsFact.js";
 
 const EMPTY_EIDS = new Set();
 
@@ -227,7 +226,7 @@ export class PlacedObjects {
         // One source for the insert payload: the behavior's sync record (ports + seeded lastOutput).
         const sync = type.behavior.syncData(engine, this, eid);
         engine.emitEvent(new ObjectInsertEvent(type.typeId, objectId, message.x, message.y, message.direction, sync.portIds, sync.lastOutput));
-        engine.emitMetrics(METRICS_EVENT_TYPE_OBJECT_PLACED, playerId, type.typeId, 1);
+        engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_PLACED, playerId, type.typeId, 1);
         return true;
     }
 
@@ -250,7 +249,7 @@ export class PlacedObjects {
         const x = position.x[eid];
         const y = position.y[eid];
         engine.emitEvent(new ObjectDeleteEvent(type.typeId, objectId, x, y));
-        engine.emitMetrics(METRICS_EVENT_TYPE_OBJECT_DESPAWNED, playerId, type.typeId, 1);
+        engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_DESPAWNED, playerId, type.typeId, 1);
         // Before the destroy, which recycles the eid and may clear its position.
         this._unindexChunk(eid, x, y);
         engine.destroyEntity(eid);
