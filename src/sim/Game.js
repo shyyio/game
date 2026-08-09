@@ -24,7 +24,15 @@ import {SettingsCache, PlayerSettingsCache, PLAYER_SETTING_RECORD} from "@/commo
 import {PlayerSettingsToolOrderCache, PLAYER_SETTINGS_TOOL_ORDER_RECORD} from "@/common/PlayerSettingsToolOrderCache.js";
 import {ChunkClaims, CHUNK_CLAIM_RECORD} from "@/sim/ChunkClaims.js";
 import {PlayerRegistry, PLAYER_RECORD, FRIEND_RECORD} from "@/sim/PlayerRegistry.js";
-import {CHUNK_SIZE, GameSettingsKey, PLAYER_ID_NONE} from "@/common/constants.js";
+import {CHUNK_SIZE, DEFAULT_TICK_MS, GameSettingsKey, PLAYER_ID_NONE} from "@/common/constants.js";
+import {MetricsRecorder} from "@/sim/MetricsRecorder.js";
+import {MetricsSubscriptions} from "@/sim/MetricsSubscriptions.js";
+import {
+    METRICS_EVENT_TYPE_PLAYER_JOINED, METRICS_EVENT_TYPE_PLAYER_LEFT,
+} from "@/common/MetricsEvent.js";
+import {
+    MetricsRollupRequestMessage, MetricsSubscribeMessage, MetricsUnsubscribeMessage,
+} from "@/common/MetricsMessages.js";
 
 export class Game {
 
@@ -32,8 +40,10 @@ export class Game {
      * @param {ModRegistry} modRegistry
      * @param {GameEngine} [simEngine] - the simulation engine; defaults to a fresh GameEngine
      * @param {AbstractSaveStore} [saveStore] - persists/restores the world; omitted when saving is off
+     * @param {AbstractMetricsStore} [metricsStore] - persists metrics facts; omitted when metrics is off
+     * @param {number} [tickMs] - real-time length of one sim tick, published as GameSettingsKey.TICK_MS
      */
-    constructor(modRegistry, simEngine, saveStore) {
+    constructor(modRegistry, simEngine, saveStore, metricsStore, tickMs = DEFAULT_TICK_MS) {
         this.modRegistry = modRegistry;
         this.saveStore = saveStore;
 
@@ -66,6 +76,7 @@ export class Game {
          */
         this.gameSettings = new SettingsCache();
         this.gameSettings.set(GameSettingsKey.CHUNK_SIZE, CHUNK_SIZE);
+        this.gameSettings.set(GameSettingsKey.TICK_MS, tickMs);
 
         /**
          * @type {PlayerSettingsCache}
@@ -87,6 +98,7 @@ export class Game {
          */
         this.claims = new ChunkClaims();
         this.simEngine.setPlacementGate((playerId, chunk) => this._canBuildIn(playerId, chunk));
+        this.simEngine.setChunkOwnerResolver(chunk => this.claims.ownerOf(chunk));
 
         /**
          * sessionId -> playerIds whose usernames the session already received.
@@ -94,6 +106,30 @@ export class Game {
          * @private
          */
         this._knownPlayersBySession = new Map();
+
+        /**
+         * sessionId -> join timestamp (epoch ms), so disconnect can record session length.
+         * @type {Map<number, number>}
+         * @private
+         */
+        this._sessionJoinedAt = new Map();
+
+        /**
+         * Buffers and flushes metrics facts; a no-op store when metricsStore is omitted.
+         * @type {MetricsRecorder}
+         */
+        this.metrics = new MetricsRecorder(metricsStore, this.simEngine);
+        if (metricsStore !== undefined) {
+            this.simEngine.setMetricsSink(
+                (type, playerId, category, amount, tag) => this.metrics.record(type, playerId, category, amount, tag),
+            );
+        }
+
+        /**
+         * Serves the metrics query/subscribe wire messages and the host's periodic push.
+         * @type {MetricsSubscriptions}
+         */
+        this.metricsSubscriptions = new MetricsSubscriptions(this.metrics, this.bus, this.simEngine);
     }
 
     /**
@@ -172,6 +208,9 @@ export class Game {
         // players before connecting them, so this is a no-op there.
         this.players.ensure(session.playerId);
 
+        this._sessionJoinedAt.set(sessionId, Date.now());
+        this.metrics.record(METRICS_EVENT_TYPE_PLAYER_JOINED, session.playerId);
+
         this._syncPlayerSettings(session);
         this._syncToolOrder(session);
         this._syncGameSettings(session);
@@ -242,6 +281,14 @@ export class Game {
      * @param {number} sessionId
      */
     disconnect(sessionId) {
+        // Read before removeSession drops the session, and before joinedAt is dropped below.
+        const playerId = this.bus.playerIdOf(sessionId);
+        const joinedAt = this._sessionJoinedAt.get(sessionId);
+        const sessionLengthMs = joinedAt === undefined ? 0 : Date.now() - joinedAt;
+        this._sessionJoinedAt.delete(sessionId);
+        this.metrics.record(METRICS_EVENT_TYPE_PLAYER_LEFT, playerId, undefined, sessionLengthMs);
+        this.metricsSubscriptions.handleDisconnect(sessionId);
+
         this.bus.removeSession(sessionId);
         this._knownPlayersBySession.delete(sessionId);
         // After the removal, so mod farewells fan out to the remaining sessions alone.
@@ -337,6 +384,21 @@ export class Game {
             return;
         }
 
+        if (message instanceof MetricsRollupRequestMessage) {
+            this.metricsSubscriptions.handleRollupRequest(session, message);
+            return;
+        }
+
+        if (message instanceof MetricsSubscribeMessage) {
+            this.metricsSubscriptions.handleSubscribe(session, message);
+            return;
+        }
+
+        if (message instanceof MetricsUnsubscribeMessage) {
+            this.metricsSubscriptions.handleUnsubscribe(session, message);
+            return;
+        }
+
         for (const mod of this.modRegistry.simMods) {
             if (mod.onSessionMessage(message, session, this)) {
                 return;
@@ -349,6 +411,23 @@ export class Game {
         if (message instanceof DeleteObjectMessage) {
             this._closeInspect(message.id);
         }
+    }
+
+    // ---- Metrics ----
+
+    /**
+     * @returns {void}
+     */
+    pushMetricsUpdates() {
+        this.metricsSubscriptions.push();
+    }
+
+    /**
+     * Flushes whatever metrics facts are still buffered; called on shutdown.
+     * @returns {Promise<void>}
+     */
+    async flushMetrics() {
+        await this.metrics.flush();
     }
 
     // ---- Claims and friends ----
@@ -627,6 +706,11 @@ export class Game {
         for (const phase of TICK_PHASE_ORDER) {
             this.simEngine.tick(phase);
         }
+        this.metrics.recordTick();
+        // better-sqlite3 is synchronous, so the write runs inline despite the async/await wrapping.
+        this.metrics.flush()
+            .then(() => this.pushMetricsUpdates())
+            .catch(error => console.error("Metrics flush failed:", error));
         this.postTick();
     }
 

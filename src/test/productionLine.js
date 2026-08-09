@@ -1,49 +1,47 @@
 // The production-line world shared by the tick benchmark and the bench save writer, so both stamp
 // out byte-identical layouts.
+//
+// Each line is LANES_PER_LINE independent (resource -> Extractor -> belt climb -> Bake) lanes, side
+// by side. BakeType (1x1, single-input recipe: Quartz -> Sand -> Glass) can't fan one extractor's
+// output out to several Bakes without a Splitter, so lanes stay independent rather than sharing an
+// extractor — same extractor/belt/machine counts and transfer volume per line either way.
 
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {Direction} from "@/common/constants.js";
-import {WaterResourceType, ExtractorType, BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
-import {BeltDefinition, RoadDefinition, HousingDefinition} from "@/mods/Logistics/common/objectTypes.js";
+import {QuartzDepositResourceType, ExtractorType, BakeType} from "@/mods/BaseGame/common/objectTypes.js";
+import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
 
-// One line spans 9 tiles in x (extractor at 0, belts 1..4, machines/belt 5..8) and three tiles in
-// y: the objects row, a road row beneath the machines, and the housing's bottom row. Each line's
-// road+housing is its own worker network (supply 10 > 3 machines x cost 2, fully manned); lines tile
-// on a grid with a spare column between them so no two lines ever share a port or road.
-export const LINE_WIDTH = 9;
+export const LANES_PER_LINE = 3;
+// A lane's vertical extent, relative to its extractor at row 0: the extractor's output lands at
+// row -1, three belts climb rows -1..-3 (row -3 is the Bake's feeder tile), the Bake sits at row
+// -BAKE_DY, and its own output lands one further row north (see lineSinkPort).
+const BAKE_DY = 4;
+
+export const LINE_WIDTH = LANES_PER_LINE;
 export const CELL_WIDTH = LINE_WIDTH + 1;
-export const ROW_STRIDE = 3;
+export const ROW_STRIDE = BAKE_DY + 2;
 export const LINES_PER_BAND = 64;
 export const BASE_X = 8;
 export const BASE_Y = 8;
 
-// The road row's column span (under the machines) and the housing anchor, line-relative.
-const ROAD_FIRST_X = 4;
-const HOUSING_X = 2;
-
 /**
- * Stamps one production line at (ox, oy) running rightward, exactly as a client would place it.
+ * Stamps one production line at (ox, oy): LANES_PER_LINE independent lanes, lane i at column
+ * ox + i, each climbing straight north from its own resource/extractor to its own Bake.
  * @param {GameEngine} engine
  * @param {number} ox
  * @param {number} oy
  * @returns {void}
  */
 export function buildLine(engine, ox, oy) {
-    const dir = Direction.RIGHT;
-    engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, ox, oy, dir));
-    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, ox, oy, dir));
-    for (let i = 1; i <= 4; i += 1) {
-        engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, ox + i, oy, dir));
+    for (let lane = 0; lane < LANES_PER_LINE; lane += 1) {
+        const x = ox + lane;
+        engine.applyMessage(new CreateObjectMessage(QuartzDepositResourceType.typeId, x, oy, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, x, oy, Direction.UP));
+        for (let dy = 1; dy <= 3; dy += 1) {
+            engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, x, oy - dy, Direction.UP));
+        }
+        engine.applyMessage(new CreateObjectMessage(BakeType.typeId, x, oy - BAKE_DY, Direction.UP));
     }
-    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, ox + 5, oy, dir));
-    engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, ox + 6, oy, dir));
-    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, ox + 7, oy, dir));
-    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, ox + 8, oy, dir));
-    // The line's worker network: a road under the machines, fed by one housing off its left end.
-    for (let i = ROAD_FIRST_X; i <= 8; i += 1) {
-        engine.applyMessage(new CreateObjectMessage(RoadDefinition.typeId, ox + i, oy + 1, Direction.UP));
-    }
-    engine.applyMessage(new CreateObjectMessage(HousingDefinition.typeId, ox + HOUSING_X, oy + 1, Direction.UP));
 }
 
 /**
@@ -58,13 +56,16 @@ export function lineOrigin(k) {
 }
 
 /**
- * The out-port a line's last machine feeds — the edge past the line's right end, where nothing
- * consumes.
+ * Every lane's sink port — where its Bake's Glass lands, one tile north of it.
  * @param {GameEngine} engine
  * @param {number} ox
  * @param {number} oy
- * @returns {number} the port eid
+ * @returns {number[]} port eids, one per lane
  */
 export function lineSinkPort(engine, ox, oy) {
-    return engine.portAt(ox + LINE_WIDTH, oy, Direction.RIGHT);
+    const ports = [];
+    for (let lane = 0; lane < LANES_PER_LINE; lane += 1) {
+        ports.push(engine.portAt(ox + lane, oy - BAKE_DY - 1, Direction.UP));
+    }
+    return ports;
 }

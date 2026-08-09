@@ -3,6 +3,8 @@ import {ObjectInsertEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/comm
 import {Direction} from "@/common/constants.js";
 import {chunkId, chunkOrigin} from "@/common/util.js";
 import {NO_EID} from "@/sim/GameEngine.js";
+import {METRICS_EVENT_TYPE_OBJECT_PLACED, METRICS_EVENT_TYPE_OBJECT_DESPAWNED} from "@/common/MetricsEvent.js";
+import {PLAYER_ID_NONE} from "@/common/constants.js";
 
 const EMPTY_EIDS = new Set();
 
@@ -23,6 +25,9 @@ export class PlacedObjects {
         this.def = engine.defineComponent("PlacedObject", [
             {name: "typeId"},
             {name: "objectId", fill: NO_EID},
+            // The chunk's owner at spawn time, cached so per-tick behaviors never need Game access.
+            // An unclaim deletes solid objects first, so this never goes stale for them.
+            {name: "ownerId", fill: PLAYER_ID_NONE},
         ], {sparse: true});
 
         // typeId -> ObjectType, derived types only.
@@ -39,7 +44,7 @@ export class PlacedObjects {
 
         // Before the behavior installs, so anything a behavior registers (a belt path sync) runs
         // after the host's — the client rebuilds objects first, then what references them.
-        engine.registerMessageHandler(message => this._message(message));
+        engine.registerMessageHandler((message, playerId) => this._message(message, playerId));
         engine.registerChunkSync(chunk => this._chunkSync(chunk));
         engine.registerInspector(objectId => this._inspect(objectId));
         engine.registerRebuildHook(() => this._rebuild());
@@ -71,6 +76,15 @@ export class PlacedObjects {
      */
     objectIdOf(eid) {
         return this.def.store.objectId[this.def.row(eid)];
+    }
+
+    /**
+     * The chunk owner at the time this entity was placed.
+     * @param {number} eid
+     * @returns {number}
+     */
+    ownerIdOf(eid) {
+        return this.def.store.ownerId[this.def.row(eid)];
     }
 
     /**
@@ -153,14 +167,15 @@ export class PlacedObjects {
     /**
      * @private
      * @param {AbstractMessage} message
+     * @param {number} playerId
      * @returns {boolean}
      */
-    _message(message) {
+    _message(message, playerId) {
         if (message instanceof CreateObjectMessage) {
-            return this._place(message);
+            return this._place(message, playerId);
         }
         if (message instanceof DeleteObjectMessage) {
-            return this._delete(message.id);
+            return this._delete(message.id, playerId);
         }
         return false;
     }
@@ -171,9 +186,10 @@ export class PlacedObjects {
      * own (bespoke placement falls through to the mod's own handler).
      * @private
      * @param {CreateObjectMessage} message
+     * @param {number} playerId
      * @returns {boolean}
      */
-    _place(message) {
+    _place(message, playerId) {
         const type = this._types.get(message.typeId);
         if (type === undefined) {
             return false;
@@ -199,6 +215,7 @@ export class PlacedObjects {
         const row = this.def.row(eid);
         this.def.store.typeId[row] = type.typeId;
         this.def.store.objectId[row] = objectId;
+        this.def.store.ownerId[row] = engine.chunkOwnerOf(chunkId(message.x, message.y));
         engine.setPosition(eid, message.x, message.y, message.direction);
         type.behavior.onSpawn(engine, this, eid, type, message);
         if (type.placement.solid) {
@@ -210,6 +227,7 @@ export class PlacedObjects {
         // One source for the insert payload: the behavior's sync record (ports + seeded lastOutput).
         const sync = type.behavior.syncData(engine, this, eid);
         engine.emitEvent(new ObjectInsertEvent(type.typeId, objectId, message.x, message.y, message.direction, sync.portIds, sync.lastOutput));
+        engine.emitMetrics(METRICS_EVENT_TYPE_OBJECT_PLACED, playerId, type.typeId, 1);
         return true;
     }
 
@@ -217,9 +235,10 @@ export class PlacedObjects {
      * The generic despawn path; an index miss returns false (a bespoke type's delete falls through).
      * @private
      * @param {number} objectId
+     * @param {number} playerId
      * @returns {boolean}
      */
-    _delete(objectId) {
+    _delete(objectId, playerId) {
         const eid = this._eidByObjectId.get(objectId);
         if (eid === undefined) {
             return false;
@@ -231,6 +250,7 @@ export class PlacedObjects {
         const x = position.x[eid];
         const y = position.y[eid];
         engine.emitEvent(new ObjectDeleteEvent(type.typeId, objectId, x, y));
+        engine.emitMetrics(METRICS_EVENT_TYPE_OBJECT_DESPAWNED, playerId, type.typeId, 1);
         // Before the destroy, which recycles the eid and may clear its position.
         this._unindexChunk(eid, x, y);
         engine.destroyEntity(eid);

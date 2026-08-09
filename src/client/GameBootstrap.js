@@ -3,6 +3,7 @@ import {clientLoadout} from "@/mods/clientLoadout.js";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {ClientSaveStore} from "@/client/ClientSaveStore.js";
+import {ClientMetricsStore} from "@/client/ClientMetricsStore.js";
 import {GameAPI} from "@/sim/GameAPI.js";
 import {LocalSession} from "@/sim/LocalSession.js";
 import {RemoteSession} from "@/client/RemoteSession.js";
@@ -12,9 +13,10 @@ import {createInputHandler} from "@/client/GameInputWiring.js";
 import {DEV} from "@/common/env.js";
 import {mintJoinToken} from "@/client/AuthClient.js";
 import WindowFocus from "@/client/WindowFocus.js";
+import {DEFAULT_TICK_MS} from "@/common/constants.js";
 
 // Matches the server's --tick-ms default, so local mode runs at the same real-time rate.
-const LOCAL_TICK_INTERVAL_MS = 600;
+const LOCAL_TICK_INTERVAL_MS = DEFAULT_TICK_MS;
 
 /**
  * Builds the mod registry, session (local sim or remote), Client, and its input handler.
@@ -39,7 +41,10 @@ export async function createClient(app, viewport, props) {
             () => mintJoinToken(props.serverUrl),
         );
     } else {
-        game = new Game(modRegistry, new GameEngine(modRegistry), new ClientSaveStore());
+        game = new Game(
+            modRegistry, new GameEngine(modRegistry), new ClientSaveStore(), new ClientMetricsStore(),
+            LOCAL_TICK_INTERVAL_MS,
+        );
         await game.init();
 
         // Dev scenarios populate the world before any session connects, so the objects reach the
@@ -73,6 +78,7 @@ export async function createClient(app, viewport, props) {
         window.addEventListener("online", onOnline);
     } else {
         game.connect(session);
+        // runTick() flushes/pushes metrics itself, piggybacking on this interval.
         tickInterval = window.setInterval(() => game.runTick(), LOCAL_TICK_INTERVAL_MS);
     }
     await client.init();

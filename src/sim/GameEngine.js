@@ -281,6 +281,9 @@ export class GameEngine {
         // Decides whether a player may modify a chunk; without one every change is allowed.
         this._placementGate = null;
 
+        // Resolves a chunk's current owner for the placed-object owner cache; null in tests without a Game.
+        this._chunkOwnerResolver = null;
+
         /**
          * @type {World|null}
          */
@@ -418,6 +421,8 @@ export class GameEngine {
         // Sink for domain events (placement/path/delete + port-item render deltas). Game broadcasts each
         // synchronously by chunk; tests install an EventCollector. Null until one is installed.
         this._eventSink = null;
+        // Sink for metrics facts; unlike _eventSink, ignores chunk observation.
+        this._metricsSink = null;
         // Whether any session is watching a chunk. Emitters skip building an event nobody receives; a
         // session that subscribes later gets the state through chunkSync, not the missed deltas.
         this._chunkObserved = () => false;
@@ -454,6 +459,30 @@ export class GameEngine {
     }
 
     /**
+     * Passes an metrics fact to the metrics sink; a no-op if none is installed.
+     * @param {number} type METRICS_EVENT_TYPE_*
+     * @param {number} playerId PLAYER_ID_NONE when not player-scoped
+     * @param {number} [category]
+     * @param {number} [amount]
+     * @param {number} [tag]
+     * @returns {void}
+     */
+    emitMetrics(type, playerId, category, amount, tag) {
+        if (this._metricsSink !== null) {
+            this._metricsSink(type, playerId, category, amount, tag);
+        }
+    }
+
+    /**
+     * Sets the sink each emitted metrics fact is delivered to.
+     * @param {function(number, number, number, number, number): void} sink
+     * @returns {void}
+     */
+    setMetricsSink(sink) {
+        this._metricsSink = sink;
+    }
+
+    /**
      * Sets the predicate deciding whether a player may modify a chunk.
      * @param {function(number, number): boolean} gate - (playerId, chunk) -> allowed
      * @returns {void}
@@ -474,6 +503,28 @@ export class GameEngine {
             return true;
         }
         return this._placementGate(playerId, chunk);
+    }
+
+    /**
+     * Sets the resolver a spawn queries for the placing chunk's current owner, cached onto the placed object.
+     * @param {function(number): number} resolver - chunk -> playerId (PLAYER_ID_NONE if unclaimed)
+     * @returns {void}
+     */
+    setChunkOwnerResolver(resolver) {
+        this._chunkOwnerResolver = resolver;
+    }
+
+    /**
+     * The current owner of `chunk`, or PLAYER_ID_NONE when no resolver is installed (tests without
+     * a Game) or the chunk is unclaimed.
+     * @param {number} chunk
+     * @returns {number}
+     */
+    chunkOwnerOf(chunk) {
+        if (this._chunkOwnerResolver === null) {
+            return PLAYER_ID_NONE;
+        }
+        return this._chunkOwnerResolver(chunk);
     }
 
     /**
@@ -2019,7 +2070,7 @@ export class GameEngine {
 
     /**
      * A mod registers a message handler (returns true if it handled the message).
-     * @param {function(AbstractMessage): boolean} handler
+     * @param {function(AbstractMessage, number): boolean} handler - message, acting playerId
      * @returns {void}
      */
     registerMessageHandler(handler) {
@@ -2106,11 +2157,11 @@ export class GameEngine {
                 return true;
             }
             this.untrack(message.id);
-            handled = this._messageHandlers.some(handler => handler(message));
+            handled = this._messageHandlers.some(handler => handler(message, playerId));
             // A delete (and any belt relink it triggered) can strand ports; destroy them now.
             this.collectUnreferencedPorts();
         } else {
-            handled = this._messageHandlers.some(handler => handler(message));
+            handled = this._messageHandlers.some(handler => handler(message, playerId));
         }
         if (this.workers !== null) {
             this.workers.ensureFresh();

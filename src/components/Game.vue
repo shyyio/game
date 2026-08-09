@@ -14,6 +14,8 @@ const settingsOpen = ref(false);
 
 const {settingsCategories, settingValues, bindSettingsMenu} = useSettingsMenu();
 
+let client = null;
+
 Mobile.setEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_MOBILE, Mobile.devicePrefers()));
 
 // Set once setup finishes; onUnmounted may fire mid-setup (a fast back-navigation), so each
@@ -36,7 +38,8 @@ onMounted(async () => {
     destroyPixiApp();
     return;
   }
-  const {client, game, inputHandler, destroy: destroyClient} = bootstrap;
+  const {client: boundClient, game, inputHandler, destroy: destroyClient} = bootstrap;
+  client = boundClient;
 
   const toolController = new EffectiveToolController(client, viewport, client.toolbarLayer, inputHandler);
   toolController.init();
@@ -51,7 +54,7 @@ onMounted(async () => {
   bindSettingsMenu(client);
   client.settingsButtonLayer.onPress(() => settingsOpen.value = true);
 
-  const unbindKeyboard = bindGameKeyboardShortcuts(client, game, client.toolbarLayer);
+  const unbindKeyboard = bindGameKeyboardShortcuts(client, game, client.toolbarLayer, () => client.productionPanelLayer.toggle());
 
   teardown = () => {
     unbindKeyboard();
@@ -59,6 +62,7 @@ onMounted(async () => {
     unsubMobile();
     destroyClient();
     destroyPixiApp();
+    client = null;
   };
 });
 

@@ -11,20 +11,17 @@
 // over the tick loop - as profiles/lines-<lines>x<ticks>-{seed,tick}.cpuprofile, for Chrome
 // DevTools / VS Code.
 //
-// Stamps out identical production lines - extractor on a water resource, a 4-belt path, a furnace,
-// a 1-belt path, then two chained furnaces, plus a road+housing worker network manning all three
-// furnaces - and reports which tick phase costs the most.
+// Stamps out identical production lines - each 3 independent lanes (Quartz deposit -> Extractor ->
+// belt climb -> Bake, Sand into Glass) - and reports which tick phase costs the most.
 //
-// Each line's last furnace has no consumer, so left alone every line backs up within ~150 ticks and
-// the world becomes a saturated deadlock: intents still submitted, none resolvable. That is a real
-// scenario but it is not throughput, so by default the run drains each line's final out-port every
-// tick and the lines flow. Pass --jammed for the deadlocked world instead. Either way the report
-// prints intents/resolved per tick, so a stalled run is visible rather than silent.
+// Each lane's Bake has no consumer, so by default the run drains each line's final out-port every
+// tick to keep lines flowing. Pass --jammed for the deadlocked world instead (intents submitted,
+// none resolvable). Report prints intents/resolved per tick either way.
 
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {TickPhase, TICK_PHASE_ORDER, EMPTY} from "@/sim/GameEngine.js";
 import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
-import {ExtractorType, BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
+import {ExtractorType, BakeType} from "@/mods/BaseGame/common/objectTypes.js";
 import {buildLine, lineOrigin, lineSinkPort} from "@/test/productionLine.js";
 import {CpuProfiler, printProfileSummary, printHeapUsage} from "@/test/profiler.js";
 
@@ -100,7 +97,7 @@ async function main() {
     for (let k = 0; k < lineCount; k += 1) {
         const origin = lineOrigin(k);
         buildLine(engine, origin.x, origin.y);
-        sinkPorts.push(lineSinkPort(engine, origin.x, origin.y));
+        sinkPorts.push(...lineSinkPort(engine, origin.x, origin.y));
     }
     const buildMs = performance.now() - buildStart;
 
@@ -110,7 +107,7 @@ async function main() {
     }
 
     const extractors = engine.placed.eidsOf(ExtractorType.typeId).length;
-    const machines = engine.placed.eidsOf(BlenderType.typeId).length;
+    const machines = engine.placed.eidsOf(BakeType.typeId).length;
     console.log(
         `Built in ${(buildMs / MS_PER_SECOND).toFixed(1)}s: `
         + `${extractors.toLocaleString()} extractors, ${machines.toLocaleString()} machines.`

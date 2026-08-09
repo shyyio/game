@@ -19,6 +19,10 @@ import {
 } from "@/common/PlayerEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent} from "@/common/ClaimEvents.js";
+import {
+    MetricsRollupRequestMessage, MetricsSubscribeMessage, MetricsUnsubscribeMessage,
+} from "@/common/MetricsMessages.js";
+import {MetricsRollupEvent, MetricsRollupBucketEvent} from "@/common/MetricsQueryEvents.js";
 
 const {Type, Field, MapField, Root} = protobuf;
 const Long = protobuf.util.Long;
@@ -71,6 +75,11 @@ const CORE_WIRE_CLASSES = [
     AddFriendByCodeResultEvent,
     SetPlayerSettingsToolOrderMessage,
     PlayerSettingsToolOrderSyncEvent,
+    MetricsRollupRequestMessage,
+    MetricsRollupEvent,
+    MetricsSubscribeMessage,
+    MetricsUnsubscribeMessage,
+    MetricsRollupBucketEvent,
 ];
 
 /**

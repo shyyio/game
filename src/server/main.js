@@ -5,16 +5,19 @@ import {Game} from "@/sim/Game.js";
 import {GameAPI} from "@/sim/GameAPI.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
+import {NodeMetricsStore} from "@/server/NodeMetricsStore.js";
 import {JwksVerifier} from "@/server/JwksVerifier.js";
 import {GameServer} from "@/server/GameServer.js";
 import {bindShutdownSignals} from "@/server/cliShutdown.js";
+import {DEFAULT_TICK_MS} from "@/common/constants.js";
 
 const {values: args} = parseArgs({
     options: {
         "db": {type: "string", default: "world.sqlite3"},
+        "metrics-db": {type: "string", default: "metrics.sqlite3"},
         "host": {type: "string", default: "0.0.0.0"},
         "port": {type: "string", default: "8080"},
-        "tick-ms": {type: "string", default: "600"},
+        "tick-ms": {type: "string", default: String(DEFAULT_TICK_MS)},
         "save-ms": {type: "string", default: "60000"},
         "auth-server": {type: "string", default: "https://auth.spupgame.com"},
         "origin": {type: "string", default: "ws://localhost:8080"},
@@ -22,6 +25,7 @@ const {values: args} = parseArgs({
     },
 });
 const dbPath = args["db"];
+const metricsDbPath = args["metrics-db"];
 const host = args["host"];
 const port = Number(args["port"]);
 const tickMs = Number(args["tick-ms"]);
@@ -36,7 +40,9 @@ for (const pkg of simLoadout()) {
 }
 modRegistry.freeze();
 
-const game = new Game(modRegistry, new GameEngine(modRegistry), new NodeSaveStore(dbPath));
+const game = new Game(
+    modRegistry, new GameEngine(modRegistry), new NodeSaveStore(dbPath), new NodeMetricsStore(metricsDbPath), tickMs,
+);
 await game.init();
 try {
     if (await game.load()) {
@@ -55,7 +61,7 @@ await jwksVerifier.load();
 const api = new GameAPI(game);
 const server = new GameServer(game, api, jwksVerifier, origin, name);
 await server.listen(host, port);
-console.log(`Listening on ws://${host}:${port} (tick ${tickMs}ms, save ${saveMs}ms)`);
+console.log(`Listening on ws://${host}:${port} (tick ${tickMs}ms, save ${saveMs}ms, metrics every tick)`);
 
 const tickInterval = setInterval(() => {
     game.runTick();
@@ -72,5 +78,6 @@ bindShutdownSignals(async signal => {
     clearInterval(tickInterval);
     clearInterval(saveInterval);
     server.shutdown();
-    await game.save();
+    await Promise.all([game.save(), game.flushMetrics()]);
+    await game.metrics.close();
 });

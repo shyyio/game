@@ -33,6 +33,9 @@ import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/
 import {PLAYERS_SCHEMA, PlayersWriter, PlayersView} from "@/client/PlayersState.js";
 import {PLAYER_SETTINGS_SCHEMA, GAME_SETTINGS_SCHEMA, PlayerSettingsWriter, GameSettingsWriter, PlayerSettingsView, GameSettingsView} from "@/client/SettingsState.js";
 import {WORKER_ASSIGNMENTS_SCHEMA, WorkerAssignmentsWriter, WorkerAssignmentsView} from "@/client/WorkerAssignmentsState.js";
+import {METRICS_SCHEMA, MetricsWriter, MetricsView} from "@/client/MetricsState.js";
+import {METRICS_EVENT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN} from "@/common/MetricsEvent.js";
+import {MetricsSubscribeMessage, MetricsUnsubscribeMessage} from "@/common/MetricsMessages.js";
 import {OBJECTS_SCHEMA, ObjectsWriter} from "@/client/ObjectsState.js";
 import {INSPECT_SCHEMA, InspectWriter, InspectView} from "@/client/InspectState.js";
 import {
@@ -70,6 +73,8 @@ import {StatusMessageLayer} from "@/client/StatusMessageLayer.js";
 import {TopStatusBarLayer} from "@/client/TopStatusBarLayer.js";
 import {SettingsButtonLayer} from "@/client/SettingsButtonLayer.js";
 import {FriendsButtonLayer} from "@/client/FriendsButtonLayer.js";
+import {ProductionButtonLayer} from "@/client/ProductionButtonLayer.js";
+import {ProductionPanelLayer} from "@/client/ProductionPanelLayer.js";
 import {FriendsPanelLayer} from "@/client/FriendsPanelLayer.js";
 import {ChunkInfoPanelLayer} from "@/client/ChunkInfoPanelLayer.js";
 import {ChunkSelectionLayer} from "@/client/ChunkSelectionLayer.js";
@@ -156,6 +161,7 @@ export class Client {
         this.cache.register("workerAssignments", WORKER_ASSIGNMENTS_SCHEMA, new WorkerAssignmentsWriter(this.cache), new WorkerAssignmentsView());
         this.cache.register("overworld", OVERWORLD_SCHEMA, new OverworldWriter(this.cache), new OverworldView());
         this.cache.register("inspect", INSPECT_SCHEMA, new InspectWriter(this.cache), new InspectView());
+        this.cache.register("metrics", METRICS_SCHEMA, new MetricsWriter(this.cache), new MetricsView());
         // The open-menu set rides to the sim as the inspect subscription, whoever changes it.
         this.cache.subscribe("inspect.openObjects", () => this._sendInspectedObjects());
         // Screen-space panels for open machine menus; fed by the inspect heartbeat state.
@@ -198,6 +204,16 @@ export class Client {
         this.friendsButtonLayer = new FriendsButtonLayer(app);
         this.friendsPanelLayer = new FriendsPanelLayer(app, this.cache);
         this.friendsButtonLayer.onPress(() => this.friendsPanelLayer.toggle());
+        // Opens the production metrics panel; sits left of friends.
+        this.productionButtonLayer = new ProductionButtonLayer(app);
+        this.productionPanelLayer = new ProductionPanelLayer(app, this.cache);
+        this.productionButtonLayer.onPress(() => this.productionPanelLayer.toggle());
+        this.productionPanelLayer.onSubscribe((bucketTicks, windowTicks) => this.sendMessage(
+            new MetricsSubscribeMessage(METRICS_EVENT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, bucketTicks, windowTicks),
+        ));
+        this.productionPanelLayer.onUnsubscribe(() => this.sendMessage(
+            new MetricsUnsubscribeMessage(METRICS_EVENT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN),
+        ));
         this.friendsPanelLayer.onAddByCode(
             code => this.sendMessage(new AddFriendByCodeMessage(code)),
         );
@@ -207,6 +223,7 @@ export class Client {
         this.topStatusBar.onChange((height) => {
             this.settingsButtonLayer.setTopOffset(height);
             this.friendsButtonLayer.setTopOffset(height);
+            this.productionButtonLayer.setTopOffset(height);
             this.statusLayer.setTopOffset(height);
         });
         // Bottom-center toast (claim rejections, session disconnects).
@@ -509,6 +526,8 @@ export class Client {
         this.friendsPanelLayer.textureRegistry = this.textureRegistry;
         this.friendsPanelLayer.viewport = this.viewport;
         this.friendsPanelLayer.anchorButton = this.friendsButtonLayer;
+        this.productionPanelLayer.textureRegistry = this.textureRegistry;
+        this.productionPanelLayer.anchorButton = this.productionButtonLayer;
         this.rotateButtonsLayer.textureRegistry = this.textureRegistry;
         this.rotateButtonsLayer.build();
         this.app.stage.addChild(this.centerMarkerLayer);
@@ -520,9 +539,11 @@ export class Client {
         this.app.stage.addChild(this.topStatusBar);
         this.app.stage.addChild(this.settingsButtonLayer);
         this.app.stage.addChild(this.friendsButtonLayer);
+        this.app.stage.addChild(this.productionButtonLayer);
         // Panels sit above every other HUD layer.
         this.app.stage.addChild(this.inspectPanelLayer);
         this.app.stage.addChild(this.friendsPanelLayer);
+        this.app.stage.addChild(this.productionPanelLayer);
         for (const layer of this._modHudLayers) {
             layer.textureRegistry = this.textureRegistry;
             layer.viewport = this.viewport;
