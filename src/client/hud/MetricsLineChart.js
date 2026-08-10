@@ -17,7 +17,9 @@ const MARGIN = {top: 12, right: 16, bottom: 32, left: 28};
 
 const DEFAULT_RANGE_TICKS = 100;
 // Stroke opacity for the other series while one is highlighted (keeps a color hint).
-const HIGHLIGHT_DIM_OPACITY = 0.15;
+const HIGHLIGHT_DIM_OPACITY = 0.05;
+const STROKE_WIDTH = 3;
+const HIGHLIGHT_STROKE_WIDTH = 5;
 // Full-width drag: left = zoom to 1/N, right = zoom to N×.
 const ZOOM_DRAG_STRENGTH = 4;
 const WHEEL_ZOOM_IN_FACTOR = 0.85;
@@ -412,7 +414,7 @@ export class MetricsLineChart {
         // series paints last, on top of the dimmed rest.
         this._gLines.selectAll("path").data(this._latestSeriesData.seriesList, d => d.key).join("path")
             .attr("fill", "none")
-            .attr("stroke-width", 3)
+            .attr("stroke-width", d => this._strokeWidthFor(d.key))
             .attr("stroke-linejoin", "round")
             .attr("stroke-linecap", "round")
             .attr("stroke", d => this._colors.colorFor(d.key))
@@ -427,6 +429,18 @@ export class MetricsLineChart {
                 }
                 return this._colors.indexFor(a.key) - this._colors.indexFor(b.key);
             });
+    }
+
+    /**
+     * @param {string} key
+     * @returns {number}
+     * @private
+     */
+    _strokeWidthFor(key) {
+        if (key === this._highlightKey) {
+            return HIGHLIGHT_STROKE_WIDTH;
+        }
+        return STROKE_WIDTH;
     }
 
     /**
