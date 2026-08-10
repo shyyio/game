@@ -5,9 +5,8 @@ import {PlayerCursorEvent, PlayerCursorHideEvent} from "../common/events.js";
 import {CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_NONE, CURSOR_AUDIENCE_FRIENDS, CURSOR_AUDIENCE_EVERYONE} from "../common/constants.js";
 import {WelcomeEvent, FriendListEvent} from "@/common/PlayerEvents.js";
 import {ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
-import {ClientCache} from "@/client/ClientCache.js";
-import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/ChunkClaimsState.js";
-import {PLAYER_SETTINGS_SCHEMA, PlayerSettingsWriter} from "@/client/SettingsState.js";
+import {ClientCache, CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/sdk/client.js";
+import {PLAYER_SETTINGS_SCHEMA, PlayerSettingsWriter} from "@/sdk/client.js";
 import {chunkId} from "@/common/util.js";
 
 function stateWithOwnPlayer(ownPlayerId) {

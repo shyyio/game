@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {LAYER_SURFACE} from "@/common/constants.js";
-import {ObjectsView} from "@/client/ObjectsState.js";
+import {ObjectsView} from "@/client/state/ObjectsState.js";
 
 const WATER_ID = 1;
 const EXTRACTOR_ID = 2;
