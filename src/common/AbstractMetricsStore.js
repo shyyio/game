@@ -1,7 +1,9 @@
 import {NotImplementedError} from "@/common/error.js";
+import {DEFAULT_TICK_MS} from "@/common/constants.js";
 
 // Shared by both backends so server and local-play sessions prune to the same history depth.
-export const METRICS_RETENTION_TICKS = 50_000;
+const RETENTION_DAYS = 30;
+export const METRICS_RETENTION_TICKS = RETENTION_DAYS * 24 * 60 * 60 * 1000 / DEFAULT_TICK_MS;
 
 /**
  * Persists metrics facts and answers rollup queries. Backends store this however suits their

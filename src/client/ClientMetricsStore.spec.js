@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {ClientMetricsStore} from "@/client/ClientMetricsStore.js";
+import {METRICS_RETENTION_TICKS} from "@/common/AbstractMetricsStore.js";
 import {MetricsFact, MetricsRollupRow} from "@/common/MetricsFact.js";
 
 const TYPE = 2;
@@ -55,13 +56,12 @@ test("queryRollup with playerId null is unscoped across every player", async () 
 
 test("pruneTo drops facts more than RETENTION_TICKS behind the latest tick", async () => {
     const store = new ClientMetricsStore();
-    const RETENTION_TICKS = 50_000;
-    const LATEST = RETENTION_TICKS + 10;
+    const LATEST = METRICS_RETENTION_TICKS + 10;
     await store.recordBatch([new MetricsFact(TYPE, 0, PLAYER, 1, 1, 0)]);
     await store.recordBatch([new MetricsFact(TYPE, LATEST, PLAYER, 1, 1, 0)]);
 
     await store.pruneTo(LATEST);
 
     const rollup = await store.queryRollup(TYPE, PLAYER, 0, LATEST, 10);
-    assert.deepEqual(rollup.map(row => row.bucketTick), [RETENTION_TICKS + 10]);
+    assert.deepEqual(rollup.map(row => row.bucketTick), [METRICS_RETENTION_TICKS + 10]);
 });
