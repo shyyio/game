@@ -4,8 +4,10 @@ import {ModRegistry} from "@/common/ModRegistry.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
 import {PlayerSettingEntry} from "@/common/PlayerSettingEntry.js";
+import {ItemDefinition} from "@/common/ItemDefinition.js";
 
 const MOD_KEY = 900;
+const MOD_ITEM_TYPE = 910;
 
 class EntriesDeclaration extends AbstractModDeclaration {
 
@@ -46,4 +48,39 @@ test("a duplicate key across mods throws at freeze", () => {
 test("the entry accessor throws before freeze", () => {
     const registry = new ModRegistry();
     assert.throws(() => registry.playerSettingEntry(MOD_KEY), /not frozen/);
+});
+
+class ItemsDeclaration extends AbstractModDeclaration {
+
+    /**
+     * @param {string} name
+     * @param {Object.<number, ItemDefinition>} items
+     */
+    constructor(name, items) {
+        super();
+        this._name = name;
+        this._items = items;
+    }
+
+    get name() {
+        return this._name;
+    }
+
+    get items() {
+        return this._items;
+    }
+}
+
+test("a mod's item definitions collect into the item registry at freeze", () => {
+    const registry = new ModRegistry();
+    registry.register(new ModPackage(new ItemsDeclaration("A", {[MOD_ITEM_TYPE]: new ItemDefinition("Water", "items/1-gray")})));
+    registry.freeze();
+    assert.equal(registry.items.require(MOD_ITEM_TYPE).name, "Water");
+});
+
+test("a duplicate item type across mods throws at freeze", () => {
+    const registry = new ModRegistry();
+    registry.register(new ModPackage(new ItemsDeclaration("A", {[MOD_ITEM_TYPE]: new ItemDefinition("Water", "items/1-gray")})));
+    registry.register(new ModPackage(new ItemsDeclaration("B", {[MOD_ITEM_TYPE]: new ItemDefinition("Brine", "items/2-gray")})));
+    assert.throws(() => registry.freeze(), /Duplicate item definition/);
 });

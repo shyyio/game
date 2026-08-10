@@ -18,11 +18,18 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
      * @param {Application} app
      * @param {ClientCache} cache
      * @param {AbstractSession} session
+     * @param {ItemRegistry} items
      */
-    constructor(app, cache, session) {
+    constructor(
+        app,
+        cache,
+        session,
+        items,
+    ) {
         super(app);
         this._cache = cache;
         this._session = session;
+        this._items = items;
         this._objects = cache.view("objects");
         this.textureRegistry = null;
         this.zIndex = 9600;
@@ -194,7 +201,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
 
         stack.header("Item");
         stack.scrollSection(this.viewport, snapshot.itemTypes, (itemType, i) => ({
-            label: `Item ${itemType} (${this._itemDetail(snapshot, i)})`,
+            label: `${this._items.require(itemType).name} (${this._itemDetail(snapshot, i)})`,
             buttonLabel: i === this._itemIndex ? "Selected" : "Select",
             buttonTint: i === this._itemIndex ? ACTIVE_ACCENT : INACTIVE_TINT,
             onClick: () => this._selectAndReset(() => this._itemIndex = i),

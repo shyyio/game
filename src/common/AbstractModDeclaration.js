@@ -41,10 +41,10 @@ export class AbstractModDeclaration {
     }
 
     /**
-     * Item type -> render texture, for the shared item layer.
-     * @returns {Object.<number, ItemTextureEntry>}
+     * Item type -> definition (name, render texture); item types must be unique across the loadout.
+     * @returns {Object.<number, ItemDefinition>}
      */
-    get itemTextures() {
+    get items() {
         return {};
     }
 

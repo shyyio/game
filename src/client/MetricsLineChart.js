@@ -16,6 +16,8 @@ const GRID = "#e1e0d9";
 const MARGIN = {top: 12, right: 16, bottom: 32, left: 28};
 
 const DEFAULT_RANGE_TICKS = 100;
+// Stroke opacity for the other series while one is highlighted (keeps a color hint).
+const HIGHLIGHT_DIM_OPACITY = 0.15;
 // Full-width drag: left = zoom to 1/N, right = zoom to N×.
 const ZOOM_DRAG_STRENGTH = 4;
 const WHEEL_ZOOM_IN_FACTOR = 0.85;
@@ -40,11 +42,14 @@ export class MetricsLineChart {
      * @param {number} [options.height]
      * @param {function(bucketTicks: number, windowTicks: number): void} [options.onWindowChange] fired on
      *     construction and again whenever a zoom gesture needs more data
+     * @param {function(rangeTicks: number): void} [options.onRangeChange] fired whenever a zoom
+     *     gesture changes the visible range
      */
-    constructor(container, {metric = CHART_METRIC_COUNT, width = null, height = null, onWindowChange = null} = {}) {
+    constructor(container, {metric = CHART_METRIC_COUNT, width = null, height = null, onWindowChange = null, onRangeChange = null} = {}) {
         this._container = container;
         this._metric = metric;
         this._onWindowChange = onWindowChange;
+        this._onRangeChange = onRangeChange;
 
         this._instanceId = nextInstanceId;
         nextInstanceId += 1;
@@ -68,6 +73,7 @@ export class MetricsLineChart {
         this._latestSeriesData = null;
         this._hasData = false;
         this._rangeTicks = DEFAULT_RANGE_TICKS;
+        this._highlightKey = null;
 
         // Bucket/window last requested; a new request only on a wider tier or window.
         this._requestedBucketTicks = null;
@@ -126,6 +132,35 @@ export class MetricsLineChart {
         }
         this._metric = metric;
         this._redrawData();
+    }
+
+    /**
+     * @returns {number} the visible range, in ticks
+     */
+    get rangeTicks() {
+        return this._rangeTicks;
+    }
+
+    /**
+     * The persistent color slot for a series key (shared with any legend/list beside the chart).
+     * @param {string} key
+     * @returns {string}
+     */
+    colorFor(key) {
+        return this._colors.colorFor(key);
+    }
+
+    /**
+     * Highlights one series: the rest dim, the highlighted one paints on top. Null restores all.
+     * @param {string|null} key
+     * @returns {void}
+     */
+    setHighlightKey(key) {
+        if (key === this._highlightKey) {
+            return;
+        }
+        this._highlightKey = key;
+        this._updateLines();
     }
 
     /**
@@ -275,9 +310,7 @@ export class MetricsLineChart {
         // Dragged left = zoom in (factor < 1).
         const dragFraction = (this._dragStartClientX - event.clientX) / width;
         const factor = Math.pow(ZOOM_DRAG_STRENGTH, -dragFraction);
-        this._rangeTicks = this._clampRange(this._dragStartRange * factor);
-        this._redrawAll();
-        this._requestWindow(false);
+        this._setRangeTicks(this._dragStartRange * factor);
     }
 
     /**
@@ -301,9 +334,27 @@ export class MetricsLineChart {
     _onWheel(event) {
         event.preventDefault();
         const factor = event.deltaY < 0 ? WHEEL_ZOOM_IN_FACTOR : WHEEL_ZOOM_OUT_FACTOR;
-        this._rangeTicks = this._clampRange(this._rangeTicks * factor);
+        this._setRangeTicks(this._rangeTicks * factor);
+    }
+
+    /**
+     * Applies a zoom gesture's new range: redraws, requests wider data when needed, and notifies
+     * the host.
+     * @param {number} candidate
+     * @returns {void}
+     * @private
+     */
+    _setRangeTicks(candidate) {
+        const next = this._clampRange(candidate);
+        if (next === this._rangeTicks) {
+            return;
+        }
+        this._rangeTicks = next;
         this._redrawAll();
         this._requestWindow(false);
+        if (this._onRangeChange !== null) {
+            this._onRangeChange(next);
+        }
     }
 
     /**
@@ -357,15 +408,37 @@ export class MetricsLineChart {
             .defined(d => d.value !== null)
             .x(d => this._xScale(d.tick - fakeNow))
             .y(d => this._yScale(d.value));
-        // sort() keeps paint order pinned to each series' persistent color slot.
+        // sort() keeps paint order pinned to each series' persistent color slot; a highlighted
+        // series paints last, on top of the dimmed rest.
         this._gLines.selectAll("path").data(this._latestSeriesData.seriesList, d => d.key).join("path")
             .attr("fill", "none")
             .attr("stroke-width", 3)
             .attr("stroke-linejoin", "round")
             .attr("stroke-linecap", "round")
             .attr("stroke", d => this._colors.colorFor(d.key))
+            .attr("stroke-opacity", d => this._strokeOpacityFor(d.key))
             .attr("d", d => lineGenerator(this._latestSeriesData.ticks.map((tick, i) => ({tick, value: d.values[i]}))))
-            .sort((a, b) => this._colors.indexFor(a.key) - this._colors.indexFor(b.key));
+            .sort((a, b) => {
+                if (a.key === this._highlightKey) {
+                    return 1;
+                }
+                if (b.key === this._highlightKey) {
+                    return -1;
+                }
+                return this._colors.indexFor(a.key) - this._colors.indexFor(b.key);
+            });
+    }
+
+    /**
+     * @param {string} key
+     * @returns {number}
+     * @private
+     */
+    _strokeOpacityFor(key) {
+        if (this._highlightKey === null || key === this._highlightKey) {
+            return 1;
+        }
+        return HIGHLIGHT_DIM_OPACITY;
     }
 
     /**

@@ -1,13 +1,19 @@
 import {Container} from "pixi.js";
+import {format} from "d3-format";
 import {UIPanel} from "@/client/UIPanel.js";
+import {PanelStack, PanelRowDescriptor} from "@/client/PanelStack.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT} from "@/client/Theme.js";
 import {MetricsLineChart} from "@/client/MetricsLineChart.js";
-import {CHART_METRIC_COUNT} from "@/client/MetricsChartData.js";
+import {CHART_METRIC_COUNT, seriesRates} from "@/client/MetricsChartData.js";
 import {metricsRollupKey} from "@/common/MetricsFact.js";
 import {GameSettingsKey} from "@/common/constants.js";
 
 const PANEL_WIDTH = 640;
 const CHART_HEIGHT = 280;
+// Vertical space between the chart inset and the item list below it.
+const LIST_GAP = 12;
+
+const formatRate = format(",.1f");
 // Keep the panel this far clear of both screen edges on narrow (mobile) viewports.
 const SCREEN_MARGIN = 16;
 // Default open position: right edge under the button row, clear of it by this much.
@@ -19,7 +25,9 @@ const Z_INDEX = 9600;
 const DOM_Z_INDEX = "1000";
 
 /**
- * Production-rate panel: a draggable {@link UIPanel} with a sunken inset placeholder that a real DOM/SVG {@link MetricsLineChart} overlays every tick.
+ * Production-rate panel: a draggable {@link UIPanel} with a sunken inset placeholder that a real
+ * DOM/SVG {@link MetricsLineChart} overlays every tick, plus a scrollable per-item rate list
+ * whose rows toggle a series highlight on the chart.
  */
 export class ProductionPanelLayer extends Container {
 
@@ -28,19 +36,29 @@ export class ProductionPanelLayer extends Container {
      * @param {ClientCache} state
      * @param {number} metricsType - METRICS_FACT_TYPE_* the chart plots
      * @param {number} scope - METRICS_QUERY_SCOPE_*, echoed back through the (un)subscribe callbacks
+     * @param {ItemRegistry} items - names the list's rows (a series' category is an item type)
      */
-    constructor(app, state, metricsType, scope) {
+    constructor(
+        app,
+        state,
+        metricsType,
+        scope,
+        items,
+    ) {
         super();
         this._app = app;
         this._state = state;
         this._metricsType = metricsType;
         this._scope = scope;
+        this._items = items;
         this._rollupKey = metricsRollupKey(metricsType, scope);
         this._metrics = state.view("metrics");
         this._gameSettings = state.view("gameSettings");
         this.textureRegistry = null;
         // The production button, to open below it by default (set by the host).
         this.anchorButton = null;
+        // The game viewport, frozen against wheel-zoom while the list scrollbar is hovered (set by the host).
+        this.viewport = null;
         this.zIndex = Z_INDEX;
         this.visible = false;
 
@@ -55,6 +73,10 @@ export class ProductionPanelLayer extends Container {
         this._savedY = null;
         this._onSubscribe = null;
         this._onUnsubscribe = null;
+        this._rollup = undefined;
+        this._listHandle = null;
+        // Selected series key ("category:tag"), kept across close/reopen.
+        this._selectedKey = null;
     }
 
     /**
@@ -138,7 +160,15 @@ export class ProductionPanelLayer extends Container {
      */
     _build() {
         const width = this._panelWidth();
-        const height = UIPanel.heightForContent(CHART_HEIGHT);
+        const contentWidth = UIPanel.contentWidthFor(width);
+
+        // Fixed-height list section, so pushes can swap the row set without resizing the panel.
+        const stack = new PanelStack(this.textureRegistry, contentWidth);
+        this._listHandle = stack.scrollSection(this.viewport, [], entry => this._describeEntry(entry),
+            "No production yet", {fixedHeight: true});
+        stack.y = CHART_HEIGHT + LIST_GAP;
+
+        const height = UIPanel.heightForContent(CHART_HEIGHT + LIST_GAP + stack.contentHeight);
         const panel = new UIPanel({
             app: this._app,
             textureRegistry: this.textureRegistry,
@@ -157,6 +187,7 @@ export class ProductionPanelLayer extends Container {
         // Placeholder the real DOM/SVG chart overlay sits on top of every frame (see _positionChartRoot()).
         this._chartInset = UIPanel.insetSprite(this.textureRegistry, panel.contentWidth, CHART_HEIGHT, PANEL_TINT);
         panel.addContent(this._chartInset);
+        panel.addContent(stack);
         this.addChild(panel);
 
         this._chartRoot = document.createElement("div");
@@ -175,11 +206,17 @@ export class ProductionPanelLayer extends Container {
                     this._onSubscribe(this._metricsType, this._scope, bucketTicks, windowTicks);
                 }
             },
+            onRangeChange: () => this._refreshList(),
         });
-        this._chart.push(this._metrics.rollup(this._metricsType, this._scope));
+        this._chart.setHighlightKey(this._selectedKey);
+        this._rollup = this._metrics.rollup(this._metricsType, this._scope);
+        this._chart.push(this._rollup);
+        this._refreshList();
         this._unbindRollup = this._state.subscribe("metrics.rollups", (key, value) => {
             if (key === this._rollupKey) {
+                this._rollup = value;
                 this._chart.push(value);
+                this._refreshList();
             }
         });
 
@@ -193,6 +230,93 @@ export class ProductionPanelLayer extends Container {
         this._tick = () => this._positionChartRoot();
         this._app.ticker.add(this._tick);
         this._positionChartRoot();
+    }
+
+    /**
+     * Recomputes the rate rows from the current rollup and the chart's visible range; drops a
+     * selection whose series vanished from the data.
+     * @private
+     * @returns {void}
+     */
+    _refreshList() {
+        const entries = this._listEntries();
+        if (this._selectedKey !== null && !entries.some(entry => entry.key === this._selectedKey)) {
+            this._selectedKey = null;
+            this._chart.setHighlightKey(null);
+        }
+        this._listHandle.update(entries);
+    }
+
+    /**
+     * @private
+     * @returns {SeriesRate[]}
+     */
+    _listEntries() {
+        if (this._rollup === undefined) {
+            return [];
+        }
+        // Same shifted "now" the chart plots against: the freshest completed point.
+        const nowTick = this._rollup.toTick - 2 * this._rollup.bucketTicks;
+        return seriesRates(this._rollup, this._chart.rangeTicks, nowTick);
+    }
+
+    /**
+     * @private
+     * @param {SeriesRate} entry
+     * @returns {PanelRowDescriptor}
+     */
+    _describeEntry(entry) {
+        return new PanelRowDescriptor({
+            label: this._itemName(entry.category),
+            swatchColor: this._chart.colorFor(entry.key),
+            trailingLabel: this._rateLabel(entry.ratePerTick),
+            selected: entry.key === this._selectedKey,
+            onRowClick: () => this._toggleSelect(entry.key),
+        });
+    }
+
+    /**
+     * @private
+     * @param {number} itemType
+     * @returns {string}
+     */
+    _itemName(itemType) {
+        const definition = this._items.get(itemType);
+        if (definition === undefined) {
+            return `Item ${itemType}`;
+        }
+        return definition.name;
+    }
+
+    /**
+     * The per-minute production rate, e.g. "13.4/m"; a dash until TICK_MS is synced.
+     * @private
+     * @param {number} ratePerTick
+     * @returns {string}
+     */
+    _rateLabel(ratePerTick) {
+        const tickMs = this._gameSettings.get(GameSettingsKey.TICK_MS);
+        if (tickMs === undefined) {
+            return "-/m";
+        }
+        const perMinute = ratePerTick * (60000 / tickMs);
+        return `${formatRate(perMinute)}/m`;
+    }
+
+    /**
+     * Selects a series (highlighting its chart line, dimming the rest) or deselects it again.
+     * @private
+     * @param {string} key
+     * @returns {void}
+     */
+    _toggleSelect(key) {
+        if (this._selectedKey === key) {
+            this._selectedKey = null;
+        } else {
+            this._selectedKey = key;
+        }
+        this._chart.setHighlightKey(this._selectedKey);
+        this._refreshList();
     }
 
     /**
@@ -229,6 +353,7 @@ export class ProductionPanelLayer extends Container {
         this._chartRoot.remove();
         this._chartRoot = null;
         this._chartInset = null;
+        this._listHandle = null;
         this._panel.destroy({children: true});
         this._panel = null;
     }

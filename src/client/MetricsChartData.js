@@ -86,6 +86,79 @@ export function buildSeries(rollup, metric) {
 }
 
 /**
+ * One series' average production rate over the visible window.
+ */
+export class SeriesRate {
+
+    /**
+     * @param {string} key
+     * @param {number} category
+     * @param {number} tag
+     * @param {number} ratePerTick
+     */
+    constructor(
+        key,
+        category,
+        tag,
+        ratePerTick,
+    ) {
+        this.key = key;
+        this.category = category;
+        this.tag = tag;
+        this.ratePerTick = ratePerTick;
+    }
+}
+
+/**
+ * Per-series count rate over [nowTick - rangeTicks, nowTick), sorted by rate descending. The
+ * window clamps to the data actually on hand, so a fresh subscription isn't diluted by empty
+ * history; an absent bucket inside the window is a real zero.
+ * @param {MetricsRollup|undefined} rollup
+ * @param {number} rangeTicks
+ * @param {number} nowTick - freshest tick to count up to (the chart's shifted "now")
+ * @returns {SeriesRate[]}
+ */
+export function seriesRates(rollup, rangeTicks, nowTick) {
+    if (rollup === undefined || rollup.bucketTick.length === 0) {
+        return [];
+    }
+    let minBucketTick = Infinity;
+    for (let i = 0; i < rollup.bucketTick.length; i += 1) {
+        if (rollup.bucketTick[i] < minBucketTick) {
+            minBucketTick = rollup.bucketTick[i];
+        }
+    }
+    const minTick = nowTick - rangeTicks;
+    const windowTicks = Math.min(rangeTicks, nowTick - minBucketTick);
+    if (windowTicks <= 0) {
+        return [];
+    }
+    // Every series in the rollup gets a row (matching the chart's lines); only in-window
+    // buckets count toward its rate.
+    const byKey = new Map();
+    for (let i = 0; i < rollup.bucketTick.length; i += 1) {
+        const key = `${rollup.category[i]}:${rollup.tag[i]}`;
+        let entry = byKey.get(key);
+        if (entry === undefined) {
+            entry = {category: rollup.category[i], tag: rollup.tag[i], total: 0};
+            byKey.set(key, entry);
+        }
+        if (rollup.bucketTick[i] >= minTick && rollup.bucketTick[i] < nowTick) {
+            entry.total += rollup.count[i];
+        }
+    }
+    const rates = [...byKey.entries()].map(([key, entry]) =>
+        new SeriesRate(key, entry.category, entry.tag, entry.total / windowTicks));
+    rates.sort((a, b) => {
+        if (b.ratePerTick !== a.ratePerTick) {
+            return b.ratePerTick - a.ratePerTick;
+        }
+        return a.key.localeCompare(b.key);
+    });
+    return rates;
+}
+
+/**
  * @param {{count: number, sum: number}|undefined} point
  * @param {string} metric CHART_METRIC_*
  * @returns {number|null}

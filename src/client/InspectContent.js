@@ -2,7 +2,7 @@
 // panel.addContent(...), with (0,0) at the body's top-left corner after padding.
 import {Container, Sprite, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {DEFAULT_ITEM_TEXTURE} from "@/client/ItemDrawLayer.js";
+import {DEFAULT_ITEM_DEFINITION} from "@/client/ItemDrawLayer.js";
 import {
     PANEL_TINT,
     PROGRESS_BAR_TINT,
@@ -65,11 +65,11 @@ export function inspectContentHeight(event) {
  * @param {UIPanel} panel
  * @param {InspectHeartbeatEvent} event
  * @param {TextureRegistry} textureRegistry
- * @param {Object<number, ItemTextureEntry>} itemTextures
+ * @param {ItemRegistry} items
  * @param {number|undefined} lastProduced - the machine's last produced item (output fallback)
  * @returns {void}
  */
-export function buildInspectContent(panel, event, textureRegistry, itemTextures, lastProduced) {
+export function buildInspectContent(panel, event, textureRegistry, items, lastProduced) {
     let y = 0;
     // Output slot right-aligned in the body (independent of the input columns).
     const outputX = panel.contentWidth - SLOT_SIZE;
@@ -78,7 +78,7 @@ export function buildInspectContent(panel, event, textureRegistry, itemTextures,
     for (const [i, portItem] of event.inputPorts.entries()) {
         const item = portItem !== 0 ? portItem : event.inputMemory[i];
         const alpha = portItem !== 0 ? 1 : HALF_ALPHA;
-        addSlot(panel, item, alpha, i * (SLOT_SIZE + SLOT_MARGIN_X), y, textureRegistry, itemTextures);
+        addSlot(panel, item, alpha, i * (SLOT_SIZE + SLOT_MARGIN_X), y, textureRegistry, items);
     }
     y += SLOT_SIZE + SLOT_MARGIN_Y;
 
@@ -99,7 +99,7 @@ export function buildInspectContent(panel, event, textureRegistry, itemTextures,
         outputItem = lastProduced;
         outputAlpha = HALF_ALPHA;
     }
-    addSlot(panel, outputItem, outputAlpha, outputX, y, textureRegistry, itemTextures);
+    addSlot(panel, outputItem, outputAlpha, outputX, y, textureRegistry, items);
 
     if (event.workerCost !== null) {
         y += SLOT_SIZE + SLOT_MARGIN_Y;
@@ -146,7 +146,7 @@ function addWorkerRow(panel, event, y) {
     panel.addContent(label);
 }
 
-function addSlot(panel, item, itemAlpha, x, y, textureRegistry, itemTextures) {
+function addSlot(panel, item, itemAlpha, x, y, textureRegistry, items) {
     const slot = new Container();
     slot.x = x;
     slot.y = y;
@@ -159,7 +159,7 @@ function addSlot(panel, item, itemAlpha, x, y, textureRegistry, itemTextures) {
     addSlotHighlight(slot, SLOT_SIZE);
 
     if (item !== 0) {
-        const icon = itemSprite(item, textureRegistry, itemTextures);
+        const icon = itemSprite(item, textureRegistry, items);
         const box = SLOT_SIZE - SLOT_ITEM_INSET * 2;
         icon.scale.set(Math.min(box / icon.texture.width, box / icon.texture.height));
         icon.x = (SLOT_SIZE - icon.width) / 2;
@@ -170,10 +170,13 @@ function addSlot(panel, item, itemAlpha, x, y, textureRegistry, itemTextures) {
     panel.addContent(slot);
 }
 
-function itemSprite(item, textureRegistry, itemTextures) {
-    const entry = itemTextures[item] !== undefined ? itemTextures[item] : DEFAULT_ITEM_TEXTURE;
-    const sprite = new Sprite(textureRegistry.get(entry.texture));
-    sprite.tint = entry.tint;
+function itemSprite(item, textureRegistry, items) {
+    let definition = items.get(item);
+    if (definition === undefined) {
+        definition = DEFAULT_ITEM_DEFINITION;
+    }
+    const sprite = new Sprite(textureRegistry.get(definition.texture));
+    sprite.tint = definition.tint;
     return sprite;
 }
 
