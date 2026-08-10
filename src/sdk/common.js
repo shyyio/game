@@ -51,16 +51,14 @@ export {
 // Component+system bundles a declaration plugs into an ObjectType's `behavior` slot; the engine's
 // PlacedObjects host derives the whole entity lifecycle from them. TickPhase is the enum of the
 // per-tick phases systems are scheduled into.
-export {
-    AbstractBehavior,
-    StaticBehavior,
-    MachineBehavior,
-    ExtractorBehavior,
-    GeneratorBehavior,
-    ResourceBehavior,
-    RoadBehavior,
-    HousingBehavior,
-} from "@/sim/behaviors.js";
+export {AbstractBehavior} from "@/sim/behaviors/AbstractBehavior.js";
+export {StaticBehavior} from "@/sim/behaviors/StaticBehavior.js";
+export {MachineBehavior} from "@/sim/behaviors/MachineBehavior.js";
+export {ExtractorBehavior} from "@/sim/behaviors/ExtractorBehavior.js";
+export {GeneratorBehavior} from "@/sim/behaviors/GeneratorBehavior.js";
+export {ResourceBehavior} from "@/sim/behaviors/ResourceBehavior.js";
+export {RoadBehavior} from "@/sim/behaviors/RoadBehavior.js";
+export {HousingBehavior} from "@/sim/behaviors/HousingBehavior.js";
 export {TickPhase, EMPTY, NO_EID} from "@/sim/GameEngine.js";
 
 // ---- Engine events ----

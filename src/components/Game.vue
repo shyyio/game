@@ -2,12 +2,12 @@
 import {onMounted, onUnmounted, ref} from "vue";
 import {createPixiApp} from "@/client/PixiApp.js";
 import {createClient} from "@/client/GameBootstrap.js";
-import {EffectiveToolController} from "@/client/EffectiveToolController.js";
-import {bindGameKeyboardShortcuts} from "@/client/GameKeyboardShortcuts.js";
+import {EffectiveToolController} from "@/client/input/EffectiveToolController.js";
+import {bindGameKeyboardShortcuts} from "@/client/input/GameKeyboardShortcuts.js";
 import {useSettingsMenu} from "@/composables/useSettingsMenu.js";
 import Mobile from "@/client/Mobile.js";
-import DeviceSettings, {DEVICE_SETTING_MOBILE} from "@/client/DeviceSettings.js";
-import {PlayerSettingChoice} from "@/client/PlayerSettingChoice.js";
+import DeviceSettings, {DEVICE_SETTING_MOBILE} from "@/client/state/DeviceSettings.js";
+import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
 import {gameStart} from "@/client/GameStart.js";
 
 const settingsOpen = ref(false);

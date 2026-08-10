@@ -1,9 +1,9 @@
 import {reactive, ref, watch} from "vue";
-import {AbstractPlayerSettingControl} from "@/client/AbstractPlayerSettingControl.js";
-import {PlayerSettingChoice} from "@/client/PlayerSettingChoice.js";
-import {PlayerSettingToggle} from "@/client/PlayerSettingToggle.js";
-import {DeviceSettingToggle} from "@/client/DeviceSettingToggle.js";
-import DeviceSettings from "@/client/DeviceSettings.js";
+import {AbstractPlayerSettingControl} from "@/client/hud/AbstractPlayerSettingControl.js";
+import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
+import {PlayerSettingToggle} from "@/client/hud/PlayerSettingToggle.js";
+import {DeviceSettingToggle} from "@/client/hud/DeviceSettingToggle.js";
+import DeviceSettings from "@/client/state/DeviceSettings.js";
 import {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
 
 /**

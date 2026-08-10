@@ -1,0 +1,25 @@
+import {AbstractBehavior} from "@/sim/behaviors/AbstractBehavior.js";
+
+/**
+ * A worker source: contributes workerSupply to the road component its footprint touches.
+ */
+export class HousingBehavior extends AbstractBehavior {
+
+    /**
+     * @param {object} config
+     * @param {number} config.workerSupply
+     */
+    constructor({workerSupply}) {
+        super();
+        this.workerSupply = workerSupply;
+    }
+
+    onSpawn(engine, placed, eid, type, message) {
+        engine.workers.markDirty(engine.footprint(type, message.x, message.y, message.direction));
+    }
+
+    onDespawn(engine, placed, eid) {
+        const position = engine.Position;
+        engine.workers.markDirty(engine.footprint(this.type, position.x[eid], position.y[eid], position.direction[eid]));
+    }
+}

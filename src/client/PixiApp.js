@@ -1,10 +1,10 @@
 import {Application, Graphics, Container, FillGradient} from "pixi.js";
 import {ClientViewport} from "@/client/ClientViewport.js";
-import Mouse from "@/client/Mouse.js";
+import Mouse from "@/client/input/Mouse.js";
 import Fullscreen from "@/client/Fullscreen.js";
 import WindowFocus from "@/client/WindowFocus.js";
 import Mobile from "@/client/Mobile.js";
-import {MobileTouchInput} from "@/client/MobileTouchInput.js";
+import {MobileTouchInput} from "@/client/input/MobileTouchInput.js";
 import {GAME_FONT, MIN_VIEWPORT_SCALE} from "@/client/constants.js";
 
 const gameWidth = () => window.innerWidth;

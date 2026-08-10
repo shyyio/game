@@ -1,7 +1,7 @@
 import {cellNeighbors, getOrCreate, tileId, chunkId, chunkOrigin} from "@/common/util.js";
 import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
 import {TickPhase} from "@/sim/GameEngine.js";
-import {RoadBehavior} from "@/sim/behaviors.js";
+import {RoadBehavior} from "@/sim/behaviors/RoadBehavior.js";
 import {WorkerAssignmentEvent, WorkerAssignmentBatchEvent, NO_HOUSING} from "@/common/WorkerEvents.js";
 
 // Worker recompute runs before any machine countdown reads the manned flags.

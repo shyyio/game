@@ -10,21 +10,7 @@ import {
 } from "./common/constants.js";
 import {CursorMoveMessage, CursorHideMessage} from "./common/messages.js";
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "./common/events.js";
-
-/**
- * A session's published cursor: its owner and the chunk it was last seen in, for targeted hides.
- */
-class CursorState {
-
-    /**
-     * @param {number} playerId
-     * @param {number} chunk
-     */
-    constructor(playerId, chunk) {
-        this.playerId = playerId;
-        this.chunk = chunk;
-    }
-}
+import {CursorState} from "./sim/CursorState.js";
 
 /**
  * Relays each session's cursor heartbeats to the sessions viewing its chunk, hiding it for

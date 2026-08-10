@@ -1,0 +1,494 @@
+import {Container, Graphics, Particle, ParticleContainer, Texture} from "pixi.js";
+import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
+import {DisplayPool} from "@/client/layers/DisplayPool.js";
+import {KeyedDisplayPool} from "@/client/layers/KeyedDisplayPool.js";
+import {TILE_SIZE} from "@/client/constants.js";
+import {Direction} from "@/common/constants.js";
+import {rotate} from "@/common/util.js";
+import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
+import {ItemDefinition} from "@/common/ItemDefinition.js";
+
+// Item sprites resting in out-ports share this layer with belt-path items; their keys are
+// namespaced from the path-item row-id keys so the two can't collide.
+export const PORT_SPRITE_KEY = portId => `port:${portId}`;
+
+// Definition for an item type with no mod-supplied mapping.
+export const DEFAULT_ITEM_DEFINITION = new ItemDefinition("Unknown", "items/3");
+
+// Items glide to each new position over this long (the game tick is 600ms, so they
+// arrive and briefly rest before the next move).
+const MOVE_DURATION_MS = 190;
+
+/**
+ * The single shared item layer. Renders item particles keyed by id, with glide. Mods that
+ * compute item positions (belts) drive it imperatively; resting items in render-flagged
+ * out-ports are driven here from the PORT_ITEM_SET/CLEAR events, with the render tile derived
+ * from the shared object index and the owning object's PortDefinition.
+ *
+ * Items render as a ParticleContainer: gliding positions ride the per-frame dynamic buffer,
+ * while texture/alpha changes and add/removes flag a static-buffer flush — so thousands of
+ * moving items never re-pack a batch the way Sprite children would.
+ */
+export class ItemDrawLayer extends AbstractDrawLayer {
+
+    /**
+     * @param {ItemRegistry} items item definitions merged across mods
+     */
+    constructor(items) {
+        super();
+        /**
+         * The particle view holding every item; all item textures share the one atlas source.
+         * @type {ParticleContainer}
+         * @private
+         */
+        this._particles = new ParticleContainer();
+        this.addChild(this._particles);
+        /**
+         * Particles with a glide in flight; the only ones the per-frame tick advances.
+         * @type {Set<ItemParticle>}
+         * @private
+         */
+        this._gliding = new Set();
+        /**
+         * Live particles keyed by particle key — a number row id for belt items, a namespaced
+         * string for items resting in out-ports. Idle particles await reuse parked in the
+         * container at alpha 0 and kept at the high-water mark: pixi's removeParticle is a
+         * linear scan per call, so unload bursts would go quadratic.
+         * @type {KeyedDisplayPool}
+         * @private
+         */
+        this._items = new KeyedDisplayPool(new DisplayPool(
+            texture => {
+                const particle = new ItemParticle(texture, this._particles);
+                this._particles.addParticle(particle);
+                return particle;
+            },
+            particle => {
+                particle.setAlpha(0);
+                this._gliding.delete(particle);
+            },
+            (particle, texture) => {
+                // Parked particles are still attached; re-light in place.
+                particle.setTexture(texture);
+                particle.reset();
+            },
+        ));
+        /**
+         * Item definitions merged across mods.
+         * @type {ItemRegistry}
+         * @private
+         */
+        this._itemRegistry = items;
+        /**
+         * Occluder graphics, keyed by caller-chosen key (owner id + role); this layer's
+         * inverse mask, hiding items beneath.
+         * @type {Object.<string, Graphics>}
+         * @private
+         */
+        this._masks = {};
+        /**
+         * The occluder graphics, applied as this layer's inverse alpha mask.
+         * @type {Container}
+         * @private
+         */
+        // A child so it shares the camera transform; kept out of the normal draw except debug.
+        this._maskContainer = new Container();
+        this._maskContainer.renderable = false;
+        this._maskContainer.includeInBuild = false;
+        this.addChild(this._maskContainer);
+
+        /**
+         * Whether debug mode shows the occluders instead of masking with them.
+         * @type {boolean}
+         * @private
+         */
+        this._debugMasks = false;
+    }
+
+    get layerIndex() {
+        // Above belts (10), below the debug path overlay (100).
+        return 15;
+    }
+
+    get eventClasses() {
+        return [PortItemSetEvent, PortItemClearEvent];
+    }
+
+    /**
+     * Renders or clears a resting out-port item, deriving its tile from the object index;
+     * ignores ports not in the index (e.g. belt-path ports, which the Logistics mod drives).
+     * @param {AbstractEvent} event
+     * @returns {void}
+     */
+    onEvent(event) {
+        // A null placement means a port this layer doesn't own (a belt-path port, or a
+        // port whose id isn't in the index) — leave it to the owning mod.
+        const placement = this._resolvePort(event.portId);
+        if (placement === null) {
+            return;
+        }
+        if (event instanceof PortItemSetEvent) {
+            this.moveItem({
+                key: PORT_SPRITE_KEY(event.portId),
+                tileX: placement.tileX,
+                tileY: placement.tileY,
+                halfTile: true,
+                sourceDirection: placement.sourceDirection,
+                type: event.itemType,
+            });
+        } else {
+            this.removeItem(PORT_SPRITE_KEY(event.portId));
+        }
+    }
+
+    /**
+     * The render tile for a port id, derived from its owning object's cached position/direction
+     * and the matching output PortDefinition (offset + facing rotated by the object). Null when
+     * the port isn't in the object index (another mod's port, or not yet cached).
+     * @param {number} portId
+     * @returns {{tileX: number, tileY: number, sourceDirection: Direction}|null}
+     * @private
+     */
+    _resolvePort(portId) {
+        const entry = this.cache.getByPort(portId);
+        if (entry === null) {
+            return null;
+        }
+        const portDef = entry.data.type.outputPorts.find(port => port.name === entry.portName(portId));
+        const world = rotate(portDef, entry.data.direction);
+        return {
+            tileX: entry.tileX + world.x,
+            tileY: entry.tileY + world.y,
+            sourceDirection: Direction.invert(world.direction),
+        };
+    }
+
+    /**
+     * Drops a removed object's resting out-port item particles.
+     * @param {CacheEntry} entry
+     * @returns {void}
+     */
+    onCacheRemove(entry) {
+        for (const portId of Object.values(entry.ports)) {
+            this.removeItem(PORT_SPRITE_KEY(portId));
+        }
+    }
+
+    /**
+     * Advances each item's glide toward its target by the frame's elapsed time.
+     * @param {number} frame unused — items move, they don't cycle frames
+     * @param {number} deltaMS elapsed time since the previous tick, in ms
+     * @param {Set<number>} visibleChunks unused — particles cull by chunk mount
+     */
+    tick(frame, deltaMS, visibleChunks) {
+        for (const particle of this._gliding) {
+            particle.advance(deltaMS);
+            if (!particle.gliding) {
+                this._gliding.delete(particle);
+            }
+        }
+    }
+
+    /**
+     * Places or repositions an item at a belt tile, with the texture for its item type. A hidden
+     * item is still positioned, keeping its glide continuous.
+     * @param {Object} move
+     * @param {number|string} move.key - particle key (row id for belt items, namespaced string for out-port items)
+     * @param {number} move.tileX
+     * @param {number} move.tileY
+     * @param {boolean} move.halfTile
+     * @param {Direction} move.sourceDirection - toward the belt feeding this one (the input/bend edge)
+     * @param {number} move.type - item type, selecting the texture
+     * @param {boolean} [move.snap] - place at the target without animating (a re-sync)
+     * @param {boolean} [move.hidden] - the item is under cover (in a tunnel)
+     */
+    moveItem({key, tileX, tileY, halfTile, sourceDirection, type, snap=false, hidden=false}) {
+        const definition = this._definitionFor(type);
+        const texture = this.textureRegistry.get(definition.texture);
+        const particle = this._items.take(key, texture);
+        particle.setTexture(texture);
+        particle.setTint(definition.tint);
+        particle.hidden = hidden;
+        this._applyItemVisibility(particle);
+        particle.moveTo(tileX, tileY, halfTile, sourceDirection, snap);
+        if (particle.gliding) {
+            this._gliding.add(particle);
+        }
+    }
+
+    /**
+     * Applies an item's hidden state: hidden items render at alpha 0, except at 0.7 in debug mode.
+     * @param {ItemParticle} particle
+     * @private
+     */
+    _applyItemVisibility(particle) {
+        let alpha = 1;
+        if (particle.hidden) {
+            alpha = this._debugMasks ? 0.7 : 0;
+        }
+        particle.setAlpha(alpha);
+    }
+
+    /**
+     * The definition for an item type, or the default for an unmapped type.
+     * @param {number} type
+     * @returns {ItemDefinition}
+     * @private
+     */
+    _definitionFor(type) {
+        const definition = this._itemRegistry.get(type);
+        if (definition === undefined) {
+            return DEFAULT_ITEM_DEFINITION;
+        }
+        return definition;
+    }
+
+    /**
+     * Re-keys a live particle, preserving it (and its in-flight glide) so a moved item can
+     * keep gliding under a new identity — e.g. a belt item popping into an out-port.
+     * Drops whatever particle already held the new key (the previous occupant). No-op for an
+     * unknown source key.
+     * @param {number|string} oldKey
+     * @param {number|string} newKey
+     */
+    renameItem(oldKey, newKey) {
+        this._items.rename(oldKey, newKey);
+    }
+
+    /**
+     * Drops an item; a no-op for an unknown key.
+     * @param {number|string} key
+     */
+    removeItem(key) {
+        this._items.release(key);
+    }
+
+    /**
+     * Adds a rectangular occluder at a tile so items hide where it covers.
+     * @param {string} key - caller-chosen key (owner id + role), used to remove it later
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Rectangle} rect - occluder in tile-local pixels
+     * @param {Direction} direction - the owning object's facing; rotates the mask with it
+     */
+    addMask(key, tileX, tileY, rect, direction) {
+        this.removeMask(key);
+        const graphics = new Graphics()
+            .rect(rect.x, rect.y, rect.width, rect.height)
+            .fill(0x000000);
+        // Pivot on the tile center so the facing rotation turns the rect about the tile.
+        graphics.pivot.set(TILE_SIZE / 2, TILE_SIZE / 2);
+        graphics.angle = Direction.angle(direction);
+        graphics.position.set(tileX * TILE_SIZE + TILE_SIZE / 2, tileY * TILE_SIZE + TILE_SIZE / 2);
+        this._masks[key] = graphics;
+        this._maskContainer.addChild(graphics);
+        this._applyMask();
+    }
+
+    /**
+     * Drops the occluder under a key; a no-op for an unknown key.
+     * @param {string} key
+     */
+    removeMask(key) {
+        const graphics = this._masks[key];
+        if (graphics === undefined) {
+            return;
+        }
+        this._maskContainer.removeChild(graphics);
+        graphics.destroy();
+        delete this._masks[key];
+        this._applyMask();
+    }
+
+    /**
+     * Applies the occluder container as this layer's inverse alpha mask; in debug mode shows
+     * the occluders instead.
+     * @private
+     */
+    _applyMask() {
+        this.mask = null;
+        if (this._debugMasks) {
+            this._maskContainer.renderable = true;
+            this._maskContainer.includeInBuild = true;
+            this._maskContainer.alpha = 0.6;
+            return;
+        }
+        this._maskContainer.alpha = 1;
+        if (this._maskContainer.children.length === 0) {
+            this._maskContainer.renderable = false;
+            this._maskContainer.includeInBuild = false;
+            return;
+        }
+        // pixi only renders the mask (and thus occludes) when the container is built/renderable.
+        this._maskContainer.renderable = true;
+        this._maskContainer.includeInBuild = true;
+        this.setMask({mask: this._maskContainer, inverse: true, channel: "alpha"});
+    }
+
+    /**
+     * Debug mode shows the occluders and hidden items semi-transparent instead of masking.
+     * @param {boolean} enabled
+     * @returns {void}
+     */
+    setDebugMode(enabled) {
+        this._debugMasks = enabled;
+        for (const particle of this._items.values()) {
+            this._applyItemVisibility(particle);
+        }
+        this._applyMask();
+    }
+}
+
+class ItemParticle extends Particle {
+
+    /**
+     * @param {Texture} texture
+     * @param {ParticleContainer} container the container whose static buffer this particle rides
+     */
+    constructor(
+        texture,
+        container,
+    ) {
+        super({texture, anchorX: 0.5, anchorY: 0.5});
+        this._container = container;
+        // Under cover (in a tunnel): positioned but rendered at alpha 0 outside debug mode.
+        this.hidden = false;
+        // Glide state: start/target pixels and ms elapsed into the current move.
+        // _startX is null when not gliding (freshly placed or arrived).
+        this._startX = null;
+        this._startY = null;
+        this._targetX = null;
+        this._targetY = null;
+        this._elapsed = 0;
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    get gliding() {
+        return this._startX !== null;
+    }
+
+    /**
+     * Swaps the texture; a static (uv) particle property, so a change flags the container flush.
+     * @param {Texture} texture
+     * @returns {void}
+     */
+    setTexture(texture) {
+        if (this.texture === texture) {
+            return;
+        }
+        this.texture = texture;
+        this._container.update();
+    }
+
+    /**
+     * Sets the tint; a static (uv) particle property, so a change flags the container flush.
+     * @param {number} tint
+     * @returns {void}
+     */
+    setTint(tint) {
+        if (this.tint === tint) {
+            return;
+        }
+        this.tint = tint;
+        this._container.update();
+    }
+
+    /**
+     * Sets the alpha; a static particle property, so a change flags the container flush.
+     * @param {number} alpha
+     * @returns {void}
+     */
+    setAlpha(alpha) {
+        if (this.alpha === alpha) {
+            return;
+        }
+        this.alpha = alpha;
+        this._container.update();
+    }
+
+    /**
+     * Clears glide and cover state for reuse from the pool.
+     * @returns {void}
+     */
+    reset() {
+        this.hidden = false;
+        this._startX = null;
+        this._startY = null;
+        this._targetX = null;
+        this._targetY = null;
+        this._elapsed = 0;
+    }
+
+    /**
+     * Aims the item at a belt tile. When straddling (half-tile) it sits a half-tile
+     * toward `sourceDirection` — the belt feeding this one — so on a bend it lands on the
+     * input edge, not simply opposite the flow. A new item glides in from a further
+     * half-tile that way; later moves glide from the item's current position.
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {boolean} halfTile
+     * @param {Direction} sourceDirection - toward the source (parent) belt
+     * @param {boolean} [snap] - jump straight to the target without gliding (a re-sync: the
+     *     item was re-keyed in place, not moved, so animating it would look like motion)
+     */
+    moveTo(tileX, tileY, halfTile, sourceDirection, snap=false) {
+        const half = TILE_SIZE / 2;
+        const sdx = Direction.dx(sourceDirection);
+        const sdy = Direction.dy(sourceDirection);
+        let offsetX = 0;
+        let offsetY = 0;
+        if (halfTile) {
+            offsetX = sdx * half;
+            offsetY = sdy * half;
+        }
+        const targetX = tileX * TILE_SIZE + half + offsetX;
+        const targetY = tileY * TILE_SIZE + half + offsetY;
+        if (snap) {
+            this.x = targetX;
+            this.y = targetY;
+            this._startX = null;
+            this._targetX = targetX;
+            this._targetY = targetY;
+            return;
+        }
+        if (this._targetX === null) {
+            // First placement of a new item entering the belt: start a half-tile further
+            // toward the source so it slides in along the flow. (A re-sync snaps instead.)
+            this.x = targetX + sdx * half;
+            this.y = targetY + sdy * half;
+            this._startX = this.x;
+            this._startY = this.y;
+            this._elapsed = 0;
+        } else if (targetX !== this._targetX || targetY !== this._targetY) {
+            // New target: glide from wherever the item currently is (picking up any
+            // glide still in flight).
+            this._startX = this.x;
+            this._startY = this.y;
+            this._elapsed = 0;
+        }
+        this._targetX = targetX;
+        this._targetY = targetY;
+    }
+
+    /**
+     * Advances an in-flight glide toward the target; a no-op once arrived or unplaced.
+     * @param {number} deltaMS elapsed time since the previous tick, in ms
+     */
+    advance(deltaMS) {
+        if (this._startX === null) {
+            return;
+        }
+        this._elapsed += deltaMS;
+        if (this._elapsed >= MOVE_DURATION_MS) {
+            this.x = this._targetX;
+            this.y = this._targetY;
+            this._startX = null;
+            return;
+        }
+        const t = this._elapsed / MOVE_DURATION_MS;
+        this.x = this._startX + t * (this._targetX - this._startX);
+        this.y = this._startY + t * (this._targetY - this._startY);
+    }
+}

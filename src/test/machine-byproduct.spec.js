@@ -7,7 +7,7 @@ import {makeGameEngine} from "@/test/ecsSim.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
 import {ObjectType, PortDefinition, RecipeDefinition, RecipeByproduct, PlacementRule} from "@/common/ObjectType.js";
-import {MachineBehavior} from "@/sim/behaviors.js";
+import {MachineBehavior} from "@/sim/behaviors/MachineBehavior.js";
 
 const ITEM_INPUT = 901;
 const ITEM_OUTPUT = 902;

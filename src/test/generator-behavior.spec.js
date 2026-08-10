@@ -7,7 +7,7 @@ import {makeGameEngine} from "@/test/ecsSim.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
 import {ObjectType, PortDefinition, PlacementRule} from "@/common/ObjectType.js";
-import {GeneratorBehavior} from "@/sim/behaviors.js";
+import {GeneratorBehavior} from "@/sim/behaviors/GeneratorBehavior.js";
 
 const ITEM_MAIN = 910;
 const ITEM_SECONDARY = 911;
