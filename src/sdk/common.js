@@ -6,7 +6,7 @@
 //
 // Mod anatomy — a mod is a ModPackage of up to three parts:
 //   declaration.js — an AbstractModDeclaration: pure data (objectTypes, wireClasses, textures,
-//       itemTextures). Most mods are declaration-only: each ObjectType bundles its geometry/ports
+//       items). Most mods are declaration-only: each ObjectType bundles its geometry/ports
 //       with a behavior (a component+system bundle) and the engine derives the whole sim and
 //       client surface from it.
 //   sim.js (optional) — an AbstractSimMod for bespoke sim content, in ECS terms: define components
@@ -126,10 +126,11 @@ export {MarketListingEntry} from "@/common/MarketListingEntry.js";
 // public answer's rows (e.g. one side of each trade).
 export {MetricsGlobalQueryEntry} from "@/common/MetricsGlobalQueryEntry.js";
 
-// ---- Item textures ----
-// Item type -> render texture a declaration contributes (itemTextures): a texture name plus a
-// pixi multiply tint, so shared shapes stay visually distinct per item type.
-export {ItemTextureEntry} from "@/common/ItemTextureEntry.js";
+// ---- Items ----
+// Item type -> definition a declaration contributes (items): a player-visible name plus a texture
+// name and a pixi multiply tint, so shared shapes stay visually distinct per item type. The frozen
+// ModRegistry merges them into its ItemRegistry (modRegistry.items).
+export {ItemDefinition} from "@/common/ItemDefinition.js";
 
 // Rotates a `{x, y}` offset (a port or size vector) by a placement direction, so a mod
 // can compute where an object's ports/geometry land from its ObjectType.

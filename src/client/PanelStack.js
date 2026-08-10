@@ -1,4 +1,4 @@
-import {Container} from "pixi.js";
+import {Container, Graphics, Rectangle} from "pixi.js";
 import {panelText, TextRole} from "@/client/PanelText.js";
 import {buildPanelButton, BUTTON_HEIGHT} from "@/client/panelButton.js";
 import {UIPanel} from "@/client/UIPanel.js";
@@ -16,6 +16,13 @@ const SECTION_PADDING_LEFT = 6;
 const DEFAULT_VISIBLE_ROWS = 5;
 // Mobile screens are shorter, so a section's viewport shows fewer rows before scrolling.
 const DEFAULT_VISIBLE_ROWS_MOBILE = 3;
+const SWATCH_SIZE = 14;
+const SWATCH_RADIUS = 3;
+const SWATCH_GAP = 8;
+const SELECTED_RADIUS = 4;
+const SELECTED_ALPHA = 0.25;
+// Pointer movement past this turns a row press into a scroll drag, not a row tap (matches ScrollView).
+const ROW_TAP_THRESHOLD = 6;
 
 /**
  * Declarative panel-body builder: appends header/text/row/scrollSection content top to bottom.
@@ -92,15 +99,17 @@ export class PanelStack extends Container {
     }
 
     /**
-     * A label + optional trailing button per item, scrolled past `visibleRows` instead of growing the panel.
+     * A row per item — swatch/label/trailing text and per-row or trailing-button actions —
+     * scrolled past `visibleRows` instead of growing the panel.
      * @param {ClientViewport|null} viewport - frozen against wheel-zoom while a resulting scrollbar is hovered
      * @param {Array} items
-     * @param {function(*, number): {label: string, buttonLabel: (string|null), buttonTint: (number|undefined), onClick: (function(): void|null)}} describe
+     * @param {function(*, number): PanelRowDescriptor} describe
      * @param {string} emptyLabel - shown in place of rows when `items` is empty
-     * @param {{visibleRows: number}} [options]
-     * @returns {void}
+     * @param {{visibleRows: number, fixedHeight: boolean}} [options] - fixedHeight keeps the
+     *     section at `visibleRows` tall regardless of item count, so the row set can change later
+     * @returns {ScrollSectionHandle|null} an update handle for a fixedHeight section, null otherwise
      */
-    scrollSection(viewport, items, describe, emptyLabel, {visibleRows} = {}) {
+    scrollSection(viewport, items, describe, emptyLabel, {visibleRows, fixedHeight = false} = {}) {
         const innerWidth = this._contentWidth - SECTION_PADDING_LEFT;
         // Always built at scrollbar-reserved width, so a short list never reflows crossing the threshold.
         const rowsWidth = ScrollView.contentWidthFor(innerWidth);
@@ -116,12 +125,28 @@ export class PanelStack extends Container {
             }
         }
         const viewportHeight = maxRows * (ROW_HEIGHT + ROW_GAP) - ROW_GAP;
-        const visibleHeight = Math.min(rowsHeight, viewportHeight);
+        let visibleHeight = viewportHeight;
+        if (!fixedHeight) {
+            visibleHeight = Math.min(rowsHeight, viewportHeight);
+        }
         const insetHeight = visibleHeight + SECTION_PADDING_TOP;
 
         const inset = UIPanel.insetSprite(this._textureRegistry, this._contentWidth, insetHeight, PANEL_TINT);
         inset.y = this._y;
         this.addChild(inset);
+
+        if (fixedHeight) {
+            // Always a ScrollView: the row set can grow past the viewport after later updates.
+            const scrollView = new ScrollView(viewport, innerWidth, viewportHeight);
+            scrollView.x = SECTION_PADDING_LEFT;
+            scrollView.y = this._y + SECTION_PADDING_TOP;
+            scrollView.content.addChild(rows);
+            scrollView.setContentHeight(rowsHeight);
+            this.addChild(scrollView);
+            this._y += insetHeight;
+            return new ScrollSectionHandle(scrollView, (container, nextItems) =>
+                this._buildRows(container, rowsWidth, nextItems, describe, emptyLabel));
+        }
 
         if (rowsHeight <= viewportHeight) {
             rows.x = SECTION_PADDING_LEFT;
@@ -136,6 +161,7 @@ export class PanelStack extends Container {
             this.addChild(scrollView);
         }
         this._y += insetHeight;
+        return null;
     }
 
     /**
@@ -143,7 +169,7 @@ export class PanelStack extends Container {
      * @param {Container} container
      * @param {number} width
      * @param {Array} items
-     * @param {function(*, number): {label: string, buttonLabel: (string|null), buttonTint: (number|undefined), onClick: (function(): void|null)}} describe
+     * @param {function(*, number): PanelRowDescriptor} describe
      * @param {string} emptyLabel
      * @returns {number} the built rows' total height
      */
@@ -156,24 +182,149 @@ export class PanelStack extends Container {
         }
         let y = 0;
         for (const [index, item] of items.entries()) {
-            const {label, buttonLabel, buttonTint, onClick} = describe(item, index);
+            const descriptor = describe(item, index);
             const row = new Container();
             row.y = y;
-            const text = panelText(label, TextRole.BODY);
+            if (descriptor.selected === true) {
+                const background = new Graphics()
+                    .roundRect(0, 0, width, ROW_HEIGHT, SELECTED_RADIUS)
+                    .fill({color: ACTIVE_ACCENT, alpha: SELECTED_ALPHA});
+                row.addChild(background);
+            }
+            let textX = 0;
+            if (descriptor.swatchColor !== undefined) {
+                const swatch = new Graphics()
+                    .roundRect(0, (ROW_HEIGHT - SWATCH_SIZE) / 2, SWATCH_SIZE, SWATCH_SIZE, SWATCH_RADIUS)
+                    .fill(descriptor.swatchColor);
+                row.addChild(swatch);
+                textX = SWATCH_SIZE + SWATCH_GAP;
+            }
+            const text = panelText(descriptor.label, TextRole.BODY);
+            text.x = textX;
             text.y = (ROW_HEIGHT - text.height) / 2;
             row.addChild(text);
-            if (buttonLabel !== null && buttonLabel !== undefined) {
-                let tint = buttonTint;
+            if (descriptor.trailingLabel !== undefined) {
+                const trailing = panelText(descriptor.trailingLabel, TextRole.BODY);
+                trailing.x = width - trailing.width;
+                trailing.y = (ROW_HEIGHT - trailing.height) / 2;
+                row.addChild(trailing);
+            }
+            if (descriptor.buttonLabel !== null && descriptor.buttonLabel !== undefined) {
+                let tint = descriptor.buttonTint;
                 if (tint === undefined) {
                     tint = ACTIVE_ACCENT;
                 }
-                const button = buildPanelButton(this._textureRegistry, buttonLabel, tint, onClick);
+                const button = buildPanelButton(this._textureRegistry, descriptor.buttonLabel, tint, descriptor.onClick);
                 button.x = width - button.width;
                 row.addChild(button);
+            }
+            if (descriptor.onRowClick !== undefined) {
+                this._wireRowTap(row, width, descriptor.onRowClick);
             }
             container.addChild(row);
             y += ROW_HEIGHT + ROW_GAP;
         }
         return y;
+    }
+
+    /**
+     * Row-wide tap wiring: fires only when the pointer barely moved, so a scroll drag starting on
+     * the row still scrolls (propagation stays untouched, unlike a button's trackTap).
+     * @private
+     * @param {Container} row
+     * @param {number} width
+     * @param {function(): void} onRowClick
+     * @returns {void}
+     */
+    _wireRowTap(row, width, onRowClick) {
+        row.eventMode = "static";
+        row.cursor = "pointer";
+        row.hitArea = new Rectangle(0, 0, width, ROW_HEIGHT);
+        let press = null;
+        row.on("pointerdown", (event) => {
+            if (event.button !== 0) {
+                return;
+            }
+            press = {x: event.global.x, y: event.global.y};
+        });
+        row.on("pointerup", (event) => {
+            if (press === null) {
+                return;
+            }
+            const moved = Math.abs(event.global.x - press.x) + Math.abs(event.global.y - press.y);
+            press = null;
+            if (moved < ROW_TAP_THRESHOLD) {
+                onRowClick();
+            }
+        });
+        row.on("pointerupoutside", () => press = null);
+        row.on("pointercancel", () => press = null);
+    }
+}
+
+/**
+ * One scrollSection row's content and actions.
+ */
+export class PanelRowDescriptor {
+
+    /**
+     * @param {object} fields
+     * @param {string} fields.label
+     * @param {number} [fields.swatchColor] leading color swatch
+     * @param {string} [fields.trailingLabel] right-aligned text (not combined with a button)
+     * @param {boolean} [fields.selected] accent row background
+     * @param {function(): void} [fields.onRowClick] fired on a tap anywhere on the row
+     * @param {string} [fields.buttonLabel] trailing button
+     * @param {number} [fields.buttonTint]
+     * @param {function(): void} [fields.onClick] fired by the trailing button
+     */
+    constructor({label, swatchColor, trailingLabel, selected, onRowClick, buttonLabel, buttonTint, onClick}) {
+        this.label = label;
+        this.swatchColor = swatchColor;
+        this.trailingLabel = trailingLabel;
+        this.selected = selected;
+        this.onRowClick = onRowClick;
+        this.buttonLabel = buttonLabel;
+        this.buttonTint = buttonTint;
+        this.onClick = onClick;
+    }
+}
+
+/**
+ * Handle to a fixedHeight scrollSection: swaps the row set in place, keeping the inset and
+ * scroll machinery (and scroll position, clamped) alive.
+ */
+export class ScrollSectionHandle {
+
+    /**
+     * @param {ScrollView} scrollView
+     * @param {function(Container, Array): number} buildRows fills a container, returns its height
+     */
+    constructor(
+        scrollView,
+        buildRows,
+    ) {
+        this._scrollView = scrollView;
+        this._buildRows = buildRows;
+        this._rows = null;
+    }
+
+    /**
+     * @param {Array} items
+     * @returns {void}
+     */
+    update(items) {
+        if (this._rows !== null) {
+            this._rows.destroy({children: true});
+        } else {
+            // The initial rows were built by scrollSection itself.
+            for (const child of this._scrollView.content.removeChildren()) {
+                child.destroy({children: true});
+            }
+        }
+        this._rows = new Container();
+        const height = this._buildRows(this._rows, items);
+        this._scrollView.content.addChild(this._rows);
+        this._scrollView.setContentHeight(height);
     }
 }

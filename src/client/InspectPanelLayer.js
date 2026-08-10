@@ -37,10 +37,10 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
          */
         this.textureRegistry = null;
         /**
-         * Item type -> texture name, for drawing item icons.
-         * @type {Object<number, string>}
+         * Item definitions, for drawing item icons (set by the host before any panel opens).
+         * @type {ItemRegistry|null}
          */
-        this.itemTextures = {};
+        this.items = null;
         this._onClose = null;
         // objectId string -> {panel, position}.
         this._panels = new Map();
@@ -91,7 +91,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
 
         // Rebuild the body from the latest snapshot.
         record.panel.clearContent();
-        buildInspectContent(record.panel, event, this.textureRegistry, this.itemTextures, lastProduced);
+        buildInspectContent(record.panel, event, this.textureRegistry, this.items, lastProduced);
         if (this.debug) {
             record.panel.setDebug(true);
         }

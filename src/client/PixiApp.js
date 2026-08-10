@@ -119,7 +119,9 @@ export async function createPixiApp() {
     }
 
     viewport
-        .drag()
+        // wheel: false — drag's wheel-pan fallback would pan the world while freezeZoom pauses
+        // the wheel plugin over a scrollable HUD list.
+        .drag({wheel: false})
         .wheel()
         .clampZoom({
             maxScale: 2,

@@ -19,7 +19,7 @@ export class MarketClientMod extends AbstractClientMod {
      */
     setup(client) {
         client.cache.register("market", MARKET_SCHEMA, new MarketWriter(client.cache, client.session));
-        this._configLayer = new TradingTerminalConfigLayer(client.app, client.cache, client.session);
+        this._configLayer = new TradingTerminalConfigLayer(client.app, client.cache, client.session, client.modRegistry.items);
     }
 
     /**

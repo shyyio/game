@@ -182,7 +182,7 @@ export class Client {
         this.toolRotation = new ToolRotation();
         // The single shared item layer: belts drive their computed-position items imperatively;
         // resting out-port items render here automatically from the port-item events.
-        this.itemLayer = new ItemDrawLayer(modRegistry.itemTextures);
+        this.itemLayer = new ItemDrawLayer(modRegistry.items);
         // The single shared connection-stub layer, derived from the cache as objects change.
         this.connectionLayer = new ConnectionDrawLayer();
         // Commuting worker figures for manned machines, routed over the cached road tiles.
@@ -211,6 +211,7 @@ export class Client {
             this.cache,
             METRICS_FACT_TYPE_ITEM_PRODUCED,
             METRICS_QUERY_SCOPE_OWN,
+            modRegistry.items,
         );
         this.productionButtonLayer.onPress(() => this.productionPanelLayer.toggle());
         this.productionPanelLayer.onSubscribe((metricsType, scope, bucketTicks, windowTicks) => this.sendMessage(
@@ -518,7 +519,7 @@ export class Client {
 
         this.toolbarLayer.textureRegistry = this.textureRegistry;
         this.inspectPanelLayer.textureRegistry = this.textureRegistry;
-        this.inspectPanelLayer.itemTextures = this.modRegistry.itemTextures;
+        this.inspectPanelLayer.items = this.modRegistry.items;
         this.inspectPanelLayer.viewport = this.viewport;
         this.inspectPanelLayer.onClose(objectId => this.unInspectObject(objectId));
         this.statusLayer.textureRegistry = this.textureRegistry;
@@ -533,6 +534,7 @@ export class Client {
         this.friendsPanelLayer.anchorButton = this.friendsButtonLayer;
         this.productionPanelLayer.textureRegistry = this.textureRegistry;
         this.productionPanelLayer.anchorButton = this.productionButtonLayer;
+        this.productionPanelLayer.viewport = this.viewport;
         this.rotateButtonsLayer.textureRegistry = this.textureRegistry;
         this.rotateButtonsLayer.build();
         this.app.stage.addChild(this.centerMarkerLayer);

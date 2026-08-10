@@ -1,4 +1,5 @@
 import {CORE_PLAYER_SETTING_ENTRIES} from "@/common/PlayerSettingEntry.js";
+import {ItemRegistry} from "@/common/ItemRegistry.js";
 
 /**
  * The declarative register of loaded mods. Mods are registered as ModPackages, then freeze()
@@ -22,9 +23,9 @@ export class ModRegistry {
         this._clientMods = [];
         this._textureDefinitions = [];
         /**
-         * @type {Object<number, ItemTextureEntry>}
+         * @type {ItemRegistry}
          */
-        this._itemTextures = {};
+        this._items = new ItemRegistry();
         /**
          * @type {Set<number>}
          */
@@ -99,7 +100,9 @@ export class ModRegistry {
             for (const definition of pkg.declaration.textureDefinitions) {
                 this._textureDefinitions.push(definition);
             }
-            Object.assign(this._itemTextures, pkg.declaration.itemTextures);
+            for (const [itemType, definition] of Object.entries(pkg.declaration.items)) {
+                this._items.register(Number(itemType), definition);
+            }
             for (const fluidType of pkg.declaration.fluidTypes) {
                 this._fluidTypes.add(fluidType);
             }
@@ -214,12 +217,12 @@ export class ModRegistry {
     }
 
     /**
-     * Item type -> render texture, merged across all mods, for the shared item layer.
-     * @returns {Object.<number, ItemTextureEntry>}
+     * The item definitions merged across all mods.
+     * @returns {ItemRegistry}
      */
-    get itemTextures() {
+    get items() {
         this._assertFrozen();
-        return this._itemTextures;
+        return this._items;
     }
 
     /**

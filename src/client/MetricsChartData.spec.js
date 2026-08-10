@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {
     BUCKET_LADDER, MAX_HISTORY_TICKS, CHART_METRIC_COUNT, CHART_METRIC_AVG,
-    selectBucketTicks, windowTicksFor, buildSeries, integerTicks, visibleExtent,
+    selectBucketTicks, windowTicksFor, buildSeries, integerTicks, visibleExtent, seriesRates,
 } from "@/client/MetricsChartData.js";
 
 test("selectBucketTicks picks the largest tier keeping ~10 buckets visible", () => {
@@ -83,4 +83,81 @@ test("visibleExtent of no visible data spans [0, headroom]", () => {
     const [lo, hi] = visibleExtent([], [], 100, 0);
     assert.equal(lo, 0);
     assert.ok(hi > 1);
+});
+
+test("seriesRates averages in-window counts and sorts by rate descending", () => {
+    const rollup = {
+        bucketTicks: 10,
+        toTick: 100,
+        bucketTick: [60, 70, 80, 60, 80],
+        category: [1, 1, 1, 2, 2],
+        tag: [0, 0, 0, 0, 0],
+        count: [2, 4, 6, 20, 20],
+        sum: [0, 0, 0, 0, 0],
+    };
+
+    const rates = seriesRates(rollup, 40, 100);
+
+    assert.equal(rates.length, 2);
+    assert.equal(rates[0].key, "2:0");
+    assert.equal(rates[0].category, 2);
+    assert.equal(rates[0].ratePerTick, 1);
+    assert.equal(rates[1].key, "1:0");
+    assert.equal(rates[1].ratePerTick, 0.3);
+});
+
+test("seriesRates counts only buckets inside [nowTick - rangeTicks, nowTick)", () => {
+    const rollup = {
+        bucketTicks: 10,
+        toTick: 200,
+        // 100 is below the window, 200 is at nowTick (excluded); only 150 counts.
+        bucketTick: [100, 150, 200],
+        category: [1, 1, 1],
+        tag: [0, 0, 0],
+        count: [999, 5, 999],
+        sum: [0, 0, 0],
+    };
+
+    const rates = seriesRates(rollup, 60, 200);
+
+    assert.equal(rates[0].ratePerTick, 5 / 60);
+});
+
+test("seriesRates clamps the window to the data on hand", () => {
+    const rollup = {
+        bucketTicks: 10,
+        toTick: 50,
+        bucketTick: [30, 40],
+        category: [1, 1],
+        tag: [0, 0],
+        count: [4, 6],
+        sum: [0, 0],
+    };
+
+    // Data starts at tick 30, so a 1000-tick range averages over 50 - 30 = 20 ticks.
+    const rates = seriesRates(rollup, 1000, 50);
+
+    assert.equal(rates[0].ratePerTick, 0.5);
+});
+
+test("seriesRates keeps a zero-rate row for a series with no in-window buckets", () => {
+    const rollup = {
+        bucketTicks: 10,
+        toTick: 100,
+        bucketTick: [10, 90],
+        category: [1, 2],
+        tag: [0, 0],
+        count: [7, 3],
+        sum: [0, 0],
+    };
+
+    const rates = seriesRates(rollup, 20, 100);
+
+    const stale = rates.find(rate => rate.category === 1);
+    assert.equal(stale.ratePerTick, 0);
+});
+
+test("seriesRates without data returns no rows", () => {
+    assert.deepEqual(seriesRates(undefined, 100, 0), []);
+    assert.deepEqual(seriesRates({bucketTicks: 10, toTick: 0, bucketTick: [], category: [], tag: [], count: [], sum: []}, 100, 0), []);
 });

@@ -46,7 +46,7 @@ export {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT, TOOLBAR_TEXT} from "@/clien
 // A curved line from a HUD panel to the tile it targets (used by the core Inspect panel).
 export {rectEdgePoint, drawPanelConnector, CONNECTOR_PANEL_INSET} from "@/client/PanelConnector.js";
 // Declarative panel-body builder (header/text/row/scrollSection) for use with UIPanel.managed.
-export {PanelStack, ROW_HEIGHT, ROW_GAP} from "@/client/PanelStack.js";
+export {PanelStack, PanelRowDescriptor, ROW_HEIGHT, ROW_GAP} from "@/client/PanelStack.js";
 export {panelText, TextRole} from "@/client/PanelText.js";
 export {ConnectedPanelLayer} from "@/client/ConnectedPanelLayer.js";
 // Masked, scrollable viewport with a draggable thumb, for a scroll region outside PanelStack.scrollSection.
