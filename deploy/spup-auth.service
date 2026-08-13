@@ -1,6 +1,10 @@
 [Unit]
 Description=Shy's Power-Up Factory (spup) auth server
 After=network.target
+# Give up after 5 failed starts in 5 minutes: a boot-time crash (bad build, unwritable DB) then
+# lands in "failed" instead of looping forever and looking merely "activating".
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 Type=simple
