@@ -1,15 +1,21 @@
 import {Container, Graphics, Rectangle} from "pixi.js";
-import {PANEL_BORDER, ACTIVE_ACCENT} from "@/client/Theme.js";
+import {SCROLLBAR_TRACK_TINT, ACTIVE_ACCENT} from "@/client/Theme.js";
 import {trackWindowDrag} from "@/client/layers/pixiUtils.js";
+import {UIPanel} from "@/client/hud/UIPanel.js";
 
-const SCROLLBAR_WIDTH = 6;
+const SCROLLBAR_WIDTH = 14;
 const SCROLLBAR_GAP = 4;
-const TRACK_ALPHA = 0.15;
-const THUMB_ALPHA = 0.6;
+// Thumb clearance inside the inset track's border.
+const THUMB_INSET = 2;
+const THUMB_RADIUS = 3;
 const MIN_THUMB_HEIGHT = 24;
 // Pointer movement past this before a press-and-move counts as a scroll drag, not a tap on
 // whatever's underneath (a row's button, say).
 const CONTENT_DRAG_THRESHOLD = 6;
+// Pixels per line for line-mode (Firefox) wheel deltas.
+const WHEEL_LINE_PIXELS = 16;
+// Scales down the large per-notch wheel delta (~120px) for finer steps.
+const WHEEL_STEP_SCALE = 0.5;
 
 /**
  * A masked, scrollable viewport with a draggable vertical scrollbar; the bar draws (and scrolling
@@ -29,15 +35,20 @@ export class ScrollView extends Container {
     }
 
     /**
+     * @param {TextureRegistry} textureRegistry
      * @param {ClientViewport|null} viewport - frozen against wheel-zoom while the pointer is
      *     over this view, so a scroll doesn't also zoom the map underneath
      * @param {number} width
      * @param {number} height - the visible viewport height; content beyond this scrolls
      */
-    constructor(viewport, width, height) {
+    constructor(
+        textureRegistry,
+        viewport,
+        width,
+        height,
+    ) {
         super();
         this._viewport = viewport;
-        this._width = width;
         this._height = height;
         this._contentHeight = 0;
         this._scrollY = 0;
@@ -54,9 +65,12 @@ export class ScrollView extends Container {
         this.addChild(maskGraphics);
         this.mask = maskGraphics;
 
-        this._track = new Graphics();
-        this._thumb = new Graphics();
+        const trackX = width - SCROLLBAR_WIDTH;
+        this._track = UIPanel.insetSprite(textureRegistry, SCROLLBAR_WIDTH, height, SCROLLBAR_TRACK_TINT);
+        this._track.x = trackX;
         this.addChild(this._track);
+        this._thumb = new Graphics();
+        this._thumb.x = trackX + THUMB_INSET;
         this.addChild(this._thumb);
 
         this.eventMode = "static";
@@ -74,7 +88,7 @@ export class ScrollView extends Container {
                 return;
             }
             event.preventDefault();
-            this._setScroll(this._scrollY + event.deltaY);
+            this._setScroll(this._scrollY + this._wheelDeltaPixels(event) * WHEEL_STEP_SCALE);
         });
 
         this.on("pointerdown", (event) => {
@@ -112,7 +126,7 @@ export class ScrollView extends Container {
             event.nativeEvent.stopPropagation();
             const startScroll = this._scrollY;
             trackWindowDrag(event.nativeEvent, (deltaX, deltaY) => {
-                const trackRange = Math.max(this._height - this._thumbHeight(), 1);
+                const trackRange = Math.max(this._trackHeight() - this._thumbHeight(), 1);
                 const scrollRange = Math.max(this._contentHeight - this._height, 0);
                 this._setScroll(startScroll + deltaY * (scrollRange / trackRange));
             });
@@ -146,14 +160,39 @@ export class ScrollView extends Container {
     }
 
     /**
+     * The wheel delta in pixels, whatever the event's native unit.
+     * @private
+     * @param {FederatedWheelEvent} event
+     * @returns {number}
+     */
+    _wheelDeltaPixels(event) {
+        if (event.deltaMode === event.DOM_DELTA_LINE) {
+            return event.deltaY * WHEEL_LINE_PIXELS;
+        }
+        if (event.deltaMode === event.DOM_DELTA_PAGE) {
+            return event.deltaY * this._height;
+        }
+        return event.deltaY;
+    }
+
+    /**
+     * The track's inner (thumb-travel) height, inside the frame insets.
+     * @private
+     * @returns {number}
+     */
+    _trackHeight() {
+        return this._height - THUMB_INSET * 2;
+    }
+
+    /**
      * @private
      * @returns {number}
      */
     _thumbHeight() {
         if (this._contentHeight <= this._height) {
-            return this._height;
+            return this._trackHeight();
         }
-        return Math.max(this._height * (this._height / this._contentHeight), MIN_THUMB_HEIGHT);
+        return Math.max(this._trackHeight() * (this._height / this._contentHeight), MIN_THUMB_HEIGHT);
     }
 
     /**
@@ -173,22 +212,19 @@ export class ScrollView extends Container {
      * @returns {void}
      */
     _render() {
-        this._track.clear();
+        const overflowing = this._contentHeight > this._height;
+        this._track.visible = overflowing;
+        this._thumb.visible = overflowing;
         this._thumb.clear();
-        if (this._contentHeight <= this._height) {
+        if (!overflowing) {
             return;
         }
-        const trackX = this._width - SCROLLBAR_WIDTH;
-        this._track
-            .roundRect(trackX, 0, SCROLLBAR_WIDTH, this._height, SCROLLBAR_WIDTH / 2)
-            .fill({color: PANEL_BORDER, alpha: TRACK_ALPHA});
-
         const thumbHeight = this._thumbHeight();
-        const trackRange = Math.max(this._height - thumbHeight, 1);
+        const trackRange = Math.max(this._trackHeight() - thumbHeight, 1);
         const scrollRange = Math.max(this._contentHeight - this._height, 1);
-        const thumbY = (this._scrollY / scrollRange) * trackRange;
         this._thumb
-            .roundRect(trackX, thumbY, SCROLLBAR_WIDTH, thumbHeight, SCROLLBAR_WIDTH / 2)
-            .fill({color: ACTIVE_ACCENT, alpha: THUMB_ALPHA});
+            .roundRect(0, 0, SCROLLBAR_WIDTH - THUMB_INSET * 2, thumbHeight, THUMB_RADIUS)
+            .fill(ACTIVE_ACCENT);
+        this._thumb.y = THUMB_INSET + (this._scrollY / scrollRange) * trackRange;
     }
 }

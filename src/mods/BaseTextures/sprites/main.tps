@@ -34,7 +34,7 @@
         <key>dataFormat</key>
         <string>pixijs4</string>
         <key>textureFileName</key>
-        <filename>../8b185108/main.png</filename>
+        <filename>../fc62534/main.png</filename>
         <key>flipPVR</key>
         <false/>
         <key>pvrQualityLevel</key>
@@ -124,7 +124,7 @@
             <key>data</key>
             <struct type="DataFile">
                 <key>name</key>
-                <filename>../ab107a4/main.json</filename>
+                <filename>../9bcfa400/main.json</filename>
             </struct>
         </map>
         <key>multiPackMode</key>
@@ -175,11 +175,13 @@
         </struct>
         <key>individualSpriteSettings</key>
         <map type="IndividualSpriteSettingsMap">
-            <key type="filename">../54f3628e/main/belt-underground/0.png</key>
-            <key type="filename">../54f3628e/main/demo-machine/0.png</key>
-            <key type="filename">../54f3628e/main/inspect/1x1-alt.png</key>
-            <key type="filename">../54f3628e/main/inspect/1x1.png</key>
-            <key type="filename">../54f3628e/main/resource/placeholder.png</key>
+            <key type="filename">../73600b11/main/belt-underground/0.png</key>
+            <key type="filename">../73600b11/main/demo-machine/0.png</key>
+            <key type="filename">../73600b11/main/inspect/1x1-alt.png</key>
+            <key type="filename">../73600b11/main/inspect/1x1.png</key>
+            <key type="filename">../73600b11/main/pipe/0.png</key>
+            <key type="filename">../73600b11/main/resource/placeholder.png</key>
+            <key type="filename">../73600b11/main/road/0.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0,0</point_f>
@@ -194,9 +196,10 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">../54f3628e/main/inspect/1x2-alt.png</key>
-            <key type="filename">../54f3628e/main/inspect/1x2.png</key>
-            <key type="filename">../54f3628e/main/splitter/1.png</key>
+            <key type="filename">../73600b11/main/housing/0-1x2.png</key>
+            <key type="filename">../73600b11/main/inspect/1x2-alt.png</key>
+            <key type="filename">../73600b11/main/inspect/1x2.png</key>
+            <key type="filename">../73600b11/main/splitter/1.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0,0</point_f>
@@ -211,9 +214,42 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">../54f3628e/main/inspect/2x2-alt.png</key>
-            <key type="filename">../54f3628e/main/inspect/2x2.png</key>
-            <key type="filename">../54f3628e/main/resource/placeholder-2x2.png</key>
+            <key type="filename">../73600b11/main/housing/0-3x3.png</key>
+            <key type="filename">../73600b11/main/inspect/3x3-alt.png</key>
+            <key type="filename">../73600b11/main/inspect/3x3.png</key>
+            <struct type="IndividualSpriteSettings">
+                <key>pivotPoint</key>
+                <point_f>0,0</point_f>
+                <key>spriteScale</key>
+                <double>1</double>
+                <key>scale9Enabled</key>
+                <false/>
+                <key>scale9Borders</key>
+                <rect>24,24,48,48</rect>
+                <key>scale9Paddings</key>
+                <rect>24,24,48,48</rect>
+                <key>scale9FromFile</key>
+                <false/>
+            </struct>
+            <key type="filename">../73600b11/main/housing/0.png</key>
+            <key type="filename">../73600b11/main/tank/0.png</key>
+            <struct type="IndividualSpriteSettings">
+                <key>pivotPoint</key>
+                <point_f>0,0</point_f>
+                <key>spriteScale</key>
+                <double>1</double>
+                <key>scale9Enabled</key>
+                <false/>
+                <key>scale9Borders</key>
+                <rect>16,16,32,31</rect>
+                <key>scale9Paddings</key>
+                <rect>16,16,32,31</rect>
+                <key>scale9FromFile</key>
+                <false/>
+            </struct>
+            <key type="filename">../73600b11/main/inspect/2x2-alt.png</key>
+            <key type="filename">../73600b11/main/inspect/2x2.png</key>
+            <key type="filename">../73600b11/main/resource/placeholder-2x2.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0,0</point_f>
@@ -228,9 +264,12 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">../54f3628e/main/items/1.png</key>
-            <key type="filename">../54f3628e/main/items/2.png</key>
-            <key type="filename">../54f3628e/main/items/3.png</key>
+            <key type="filename">../73600b11/main/items/1-gray.png</key>
+            <key type="filename">../73600b11/main/items/1.png</key>
+            <key type="filename">../73600b11/main/items/2-gray.png</key>
+            <key type="filename">../73600b11/main/items/2.png</key>
+            <key type="filename">../73600b11/main/items/3-gray.png</key>
+            <key type="filename">../73600b11/main/items/3.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0,0</point_f>
@@ -245,7 +284,8 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">../54f3628e/main/items/4.png</key>
+            <key type="filename">../73600b11/main/items/4-gray.png</key>
+            <key type="filename">../73600b11/main/items/4.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0,0</point_f>
@@ -260,11 +300,11 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">../54f3628e/main/ui/Frame02a.png</key>
-            <key type="filename">../54f3628e/main/ui/Frame02a_inset2.png</key>
-            <key type="filename">../54f3628e/main/ui/Frame02a_inset4.png</key>
-            <key type="filename">../54f3628e/main/ui/IconCross01a.png</key>
-            <key type="filename">../54f3628e/main/ui/barfill.png</key>
+            <key type="filename">../73600b11/main/ui/Frame02a.png</key>
+            <key type="filename">../73600b11/main/ui/Frame02a_inset2.png</key>
+            <key type="filename">../73600b11/main/ui/Frame02a_inset4.png</key>
+            <key type="filename">../73600b11/main/ui/IconCross01a.png</key>
+            <key type="filename">../73600b11/main/ui/barfill.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0,0</point_f>
@@ -279,7 +319,7 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">../54f3628e/main/ui/PlusPattern.png</key>
+            <key type="filename">../73600b11/main/ui/PlusPattern.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0,0</point_f>
@@ -294,8 +334,8 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">../54f3628e/main/ui/arrow_down.png</key>
-            <key type="filename">../54f3628e/main/ui/arrow_up.png</key>
+            <key type="filename">../73600b11/main/ui/arrow_down.png</key>
+            <key type="filename">../73600b11/main/ui/arrow_up.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0,0</point_f>
@@ -317,7 +357,7 @@
             <struct type="SpriteSheet">
                 <key>files</key>
                 <array>
-                    <filename>../54f3628e/main</filename>
+                    <filename>../73600b11/main</filename>
                 </array>
             </struct>
         </map>

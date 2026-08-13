@@ -19,6 +19,7 @@ export const TOOLBAR_TEXT = 0x000000;
 
 // ---- Inspect & toolbar panels (ui frame background) ----
 export const PANEL_TINT = 0xeee6d8; // warm-gray tint over the ui frame
+export const SCROLLBAR_TRACK_TINT = 0xe4ddcf; // PANEL_TINT darkened by 0.96 per channel
 export const PANEL_TITLE_TEXT = 0xffffff;
 export const SLOT_HIGHLIGHT_COLOR = 0x9be89b; // active/hover slot highlight (green)
 export const CONNECTOR_COLOR = 0x000000; // machine<->panel connector curve
