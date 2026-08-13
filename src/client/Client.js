@@ -27,6 +27,7 @@ import {DEVICE_SETTING_FULLSCREEN, DEVICE_SETTING_REDUCED_MOTION, DEVICE_SETTING
 import Fullscreen from "@/client/Fullscreen.js";
 import ReducedMotion from "@/client/ReducedMotion.js";
 import Mobile from "@/client/Mobile.js";
+import SafeArea from "@/client/SafeArea.js";
 import {ChunkClaimsDrawLayer} from "@/client/layers/ChunkClaimsDrawLayer.js";
 import {ClientCache} from "@/client/state/ClientCache.js";
 import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/state/ChunkClaimsState.js";
@@ -193,7 +194,7 @@ export class Client {
         this.workerBadgeLayer = new WorkerBadgeLayer(this.cache);
         // Top-left connection/chunk-loading status overlay. A static screen-space HUD on
         // app.stage (sibling of the viewport), so it never pans or zooms with the world.
-        this.statusLayer = new StatusMessageLayer();
+        this.statusLayer = new StatusMessageLayer(app);
         this.statusLayer.setConnecting();
         // Full-width top status bar: core systems and mods each own a section by id (text +
         // buttons), e.g. claim mode's claim count and exit button.
@@ -227,10 +228,12 @@ export class Client {
         this.friendsPanelLayer.onUnfriend(playerId => this.sendMessage(new RemoveFriendMessage(playerId)));
         this.friendsPanelLayer.onError(message => this.notify(message));
         this.topStatusBar.onChange((height) => {
-            this.settingsButtonLayer.setTopOffset(height);
-            this.friendsButtonLayer.setTopOffset(height);
-            this.productionButtonLayer.setTopOffset(height);
-            this.statusLayer.setTopOffset(height);
+            // The bar's height already covers the safe area; the inset only matters while it is hidden.
+            const offset = Math.max(height, SafeArea.insets().top);
+            this.settingsButtonLayer.setTopOffset(offset);
+            this.friendsButtonLayer.setTopOffset(offset);
+            this.productionButtonLayer.setTopOffset(offset);
+            this.statusLayer.setTopOffset(offset);
         });
         // Bottom-center toast (claim rejections, session disconnects).
         this.noticeLayer = new NoticeLayer(app);

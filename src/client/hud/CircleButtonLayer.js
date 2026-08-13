@@ -1,5 +1,6 @@
 import {Container, Graphics} from "pixi.js";
 import {drawCircleButtonFace, trackTap} from "@/client/layers/pixiUtils.js";
+import SafeArea from "@/client/SafeArea.js";
 
 export const CIRCLE_BUTTON_RADIUS = 24;
 export const CIRCLE_BUTTON_MARGIN = 16;
@@ -90,7 +91,7 @@ export class CircleButtonLayer extends Container {
      * @returns {number}
      */
     _slotX(slot) {
-        return this._app.screen.width - CIRCLE_BUTTON_MARGIN - CIRCLE_BUTTON_RADIUS
+        return this._app.screen.width - SafeArea.insets().right - CIRCLE_BUTTON_MARGIN - CIRCLE_BUTTON_RADIUS
             - slot * (2 * CIRCLE_BUTTON_RADIUS + CIRCLE_BUTTON_GAP);
     }
 

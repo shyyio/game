@@ -4,6 +4,7 @@ import {PANEL_TINT, PANEL_BORDER, TOOLBAR_TEXT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {buildPanelButton} from "@/client/hud/panelButton.js";
 import {swallowClicks} from "@/client/layers/pixiUtils.js";
+import SafeArea from "@/client/SafeArea.js";
 
 // Gap between the outer frame and its content (buttons, pattern, inset), matching the inspect
 // panel's body margin.
@@ -18,6 +19,10 @@ const THIN_PATTERN_WIDTH = 14;
 const PATTERN_GAP = 10;
 // How far the frame sprite bleeds past the left/top/right edges, so only the bottom border reads.
 const EDGE_BLEED = 24;
+// Gap between the text and its inset's edges, kept clear of the wrap width.
+const TEXT_PADDING = 8;
+// Wrap width floor, so a narrow screen wraps hard instead of collapsing to nothing.
+const MIN_TEXT_WIDTH = 80;
 
 /**
  * One button in a status-bar section: a label and its press handler.
@@ -167,40 +172,64 @@ export class TopStatusBarLayer extends Container {
      * @returns {number} the bar's total height
      */
     _rebuildContent() {
+        const insets = SafeArea.insets();
         const sections = [...this._sections.values()].sort((a, b) => a.order - b.order);
         const builtButtons = sections.flatMap(section => section.buttons)
             .map(button => buildPanelButton(this.textureRegistry, button.label, PANEL_BORDER, button.onClick));
+
+        const width = this._app.screen.width;
+        const contentTop = insets.top + FRAME_MARGIN;
+        const contentRight = width - insets.right - FRAME_MARGIN;
+
+        let x = insets.left + FRAME_MARGIN;
+        for (const [i, built] of builtButtons.entries()) {
+            if (i > 0) {
+                x += BUTTON_GAP;
+            }
+            built.x = x;
+            x += built.width;
+        }
+        let patternX = 0;
+        if (builtButtons.length > 0) {
+            patternX = x + PATTERN_GAP;
+            x = patternX + THIN_PATTERN_WIDTH + PATTERN_GAP;
+        }
+
+        // The inset fills the rest of the bar, holding the text centered within itself; the text
+        // wraps rather than overflowing the inset, growing the bar instead.
+        const insetX = x;
+        const insetWidth = Math.max(contentRight - insetX, 0);
+        const textWidth = Math.max(insetWidth - TEXT_PADDING * 2, MIN_TEXT_WIDTH);
         const text = new Text({
             text: sections.map(section => section.text).join(TEXT_GAP),
-            style: {fontFamily: GAME_FONT, fontSize: 20, fill: TOOLBAR_TEXT},
+            style: {
+                fontFamily: GAME_FONT,
+                fontSize: 20,
+                fill: TOOLBAR_TEXT,
+                align: "center",
+                wordWrap: true,
+                wordWrapWidth: textWidth,
+                breakWords: true,
+            },
         });
 
         let rowHeight = text.height;
         for (const built of builtButtons) {
             rowHeight = Math.max(rowHeight, built.height);
         }
-        const width = this._app.screen.width;
-        const contentTop = FRAME_MARGIN;
 
-        let x = FRAME_MARGIN;
+        for (const built of builtButtons) {
+            built.y = contentTop + (rowHeight - built.height) / 2;
+            this._panel.addChild(built);
+            this._sectionNodes.push(built);
+        }
         if (builtButtons.length > 0) {
-            for (const [i, built] of builtButtons.entries()) {
-                if (i > 0) {
-                    x += BUTTON_GAP;
-                }
-                built.x = x;
-                built.y = contentTop + (rowHeight - built.height) / 2;
-                this._panel.addChild(built);
-                this._sectionNodes.push(built);
-                x += built.width;
-            }
-            x += PATTERN_GAP;
-            x = this._addPattern(x, contentTop, rowHeight);
+            const pattern = UIPanel.patternStrip(this.textureRegistry, THIN_PATTERN_WIDTH, rowHeight);
+            pattern.position.set(patternX, contentTop);
+            this._panel.addChild(pattern);
+            this._sectionNodes.push(pattern);
         }
 
-        // The inset fills the rest of the bar, holding the text centered within itself.
-        const insetX = x;
-        const insetWidth = Math.max(width - FRAME_MARGIN - insetX, 0);
         if (insetWidth > 0) {
             const inset = UIPanel.insetSprite(this.textureRegistry, insetWidth, rowHeight, PANEL_TINT);
             inset.position.set(insetX, contentTop);
@@ -214,25 +243,9 @@ export class TopStatusBarLayer extends Container {
         this._panel.addChild(text);
         this._sectionNodes.push(text);
 
-        const height = rowHeight + FRAME_MARGIN * 2;
+        const height = contentTop + rowHeight + FRAME_MARGIN;
         this._rebuildBackground(width, height);
         return height;
-    }
-
-    /**
-     * Adds a very thin decorative pattern strip at `x`, tracked for the next rebuild's teardown.
-     * @private
-     * @param {number} x
-     * @param {number} y
-     * @param {number} height
-     * @returns {number} x past the strip and its trailing gap
-     */
-    _addPattern(x, y, height) {
-        const pattern = UIPanel.patternStrip(this.textureRegistry, THIN_PATTERN_WIDTH, height);
-        pattern.position.set(x, y);
-        this._panel.addChild(pattern);
-        this._sectionNodes.push(pattern);
-        return x + THIN_PATTERN_WIDTH + PATTERN_GAP;
     }
 
     /**
