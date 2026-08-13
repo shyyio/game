@@ -137,11 +137,7 @@ export class PanelStack extends Container {
 
         if (fixedHeight) {
             // Always a ScrollView: the row set can grow past the viewport after later updates.
-            const scrollView = new ScrollView(viewport, innerWidth, viewportHeight);
-            scrollView.x = SECTION_PADDING_LEFT;
-            scrollView.y = this._y + SECTION_PADDING_TOP;
-            scrollView.content.addChild(rows);
-            scrollView.setContentHeight(rowsHeight);
+            const scrollView = this._buildScrollView(viewport, innerWidth, viewportHeight, rows, rowsHeight);
             this.addChild(scrollView);
             this._y += insetHeight;
             return new ScrollSectionHandle(scrollView, (container, nextItems) =>
@@ -153,15 +149,36 @@ export class PanelStack extends Container {
             rows.y = this._y + SECTION_PADDING_TOP;
             this.addChild(rows);
         } else {
-            const scrollView = new ScrollView(viewport, innerWidth, viewportHeight);
-            scrollView.x = SECTION_PADDING_LEFT;
-            scrollView.y = this._y + SECTION_PADDING_TOP;
-            scrollView.content.addChild(rows);
-            scrollView.setContentHeight(rowsHeight);
-            this.addChild(scrollView);
+            this.addChild(this._buildScrollView(viewport, innerWidth, viewportHeight, rows, rowsHeight));
         }
         this._y += insetHeight;
         return null;
+    }
+
+    /**
+     * A section's ScrollView, spanning the full inset height so the scrollbar runs edge to edge;
+     * the rows keep their top clearance inside the scrolled content instead.
+     * @private
+     * @param {ClientViewport|null} viewport
+     * @param {number} innerWidth
+     * @param {number} viewportHeight
+     * @param {Container} rows
+     * @param {number} rowsHeight
+     * @returns {ScrollView}
+     */
+    _buildScrollView(viewport, innerWidth, viewportHeight, rows, rowsHeight) {
+        const scrollView = new ScrollView(
+            this._textureRegistry,
+            viewport,
+            innerWidth,
+            viewportHeight + SECTION_PADDING_TOP,
+        );
+        scrollView.x = SECTION_PADDING_LEFT;
+        scrollView.y = this._y;
+        rows.y = SECTION_PADDING_TOP;
+        scrollView.content.addChild(rows);
+        scrollView.setContentHeight(rowsHeight + SECTION_PADDING_TOP);
+        return scrollView;
     }
 
     /**
@@ -324,7 +341,8 @@ export class ScrollSectionHandle {
         }
         this._rows = new Container();
         const height = this._buildRows(this._rows, items);
+        this._rows.y = SECTION_PADDING_TOP;
         this._scrollView.content.addChild(this._rows);
-        this._scrollView.setContentHeight(height);
+        this._scrollView.setContentHeight(height + SECTION_PADDING_TOP);
     }
 }

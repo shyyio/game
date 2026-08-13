@@ -3,6 +3,8 @@ import {buildStimpackFactory} from "@/test/stimpackLine.js";
 
 const ORIGIN_X = 8;
 const ORIGIN_Y = 8;
+// Pre-run ticks: fills the belts and gives the production chart a full history window on open.
+const WARMUP_TICKS = 200;
 
 /**
  * The full production chain, physically placed and wired end to end: raw extraction through
@@ -24,5 +26,8 @@ export class StimpackScenario extends AbstractScenario {
      */
     async apply(game, params) {
         buildStimpackFactory(game.simEngine, game, ORIGIN_X, ORIGIN_Y);
+        for (let tick = 0; tick < WARMUP_TICKS; tick += 1) {
+            game.runTick();
+        }
     }
 }
