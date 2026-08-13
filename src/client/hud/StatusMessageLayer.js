@@ -3,6 +3,7 @@ import {ChunkSubscribeEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js
 import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_TINT, PANEL_TEXT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
+import SafeArea from "@/client/SafeArea.js";
 
 // Screen-pixel inset of the panel from the left edge.
 const MARGIN = 12;
@@ -20,7 +21,10 @@ const TEXT_REFRESH_MS = 100;
  */
 export class StatusMessageLayer extends Container {
 
-    constructor() {
+    /**
+     * @param {Application} app
+     */
+    constructor(app) {
         super();
         this.textureRegistry = null;
         // Display-only: never a hit target (the stage is interactive for mobile pinch).
@@ -44,8 +48,7 @@ export class StatusMessageLayer extends Container {
         this._pendingMessage = null;
 
         this._panel = new Container();
-        this._panel.x = MARGIN;
-        this._panel.y = this._topOffset;
+        this._layoutPanel();
         this._box = {frame: null, inset: null};
         this._text = new Text({
             text: "",
@@ -55,6 +58,7 @@ export class StatusMessageLayer extends Container {
         this._text.y = FRAME_MARGIN + PADDING_Y;
         this._panel.addChild(this._text);
         this.addChild(this._panel);
+        app.renderer.on("resize", () => this._layoutPanel());
     }
 
     /**
@@ -68,7 +72,17 @@ export class StatusMessageLayer extends Container {
             return;
         }
         this._topOffset = offset;
-        this._panel.y = offset;
+        this._layoutPanel();
+    }
+
+    /**
+     * Positions the panel clear of the left safe-area inset, below whatever occupies the top edge.
+     * @private
+     * @returns {void}
+     */
+    _layoutPanel() {
+        this._panel.x = SafeArea.insets().left + MARGIN;
+        this._panel.y = this._topOffset;
     }
 
     /**
