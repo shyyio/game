@@ -1,13 +1,17 @@
 [Unit]
 Description=Shy's Power-Up Factory (spup) game server
 After=network.target
+# Give up after 5 failed starts in 5 minutes: a boot-time crash (bad build, unwritable DB) then
+# lands in "failed" instead of looping forever and looking merely "activating".
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 Type=simple
 User=app
 Group=app
 WorkingDirectory=/home/app/spup
-ExecStart=/usr/bin/node dist-server/main.js --host 127.0.0.1 --port 27500 --db /home/app/data/game/world.sqlite3 --auth-server https://auth.spupgame.com --origin wss://{{DOMAIN}}:443 --name "{{NAME}}"
+ExecStart=/usr/bin/node dist-server/main.js --host 127.0.0.1 --port 27500 --db /home/app/data/game/world.sqlite3 --metrics-db /home/app/data/game/metrics.sqlite3 --auth-server https://auth.spupgame.com --origin wss://{{DOMAIN}}:443 --name "{{NAME}}"
 Restart=on-failure
 RestartSec=2
 NoNewPrivileges=true
