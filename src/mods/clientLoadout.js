@@ -1,5 +1,6 @@
 import {ModPackage} from "@/common/ModPackage.js";
 import {BaseTexturesDeclaration} from "@/mods/BaseTextures/declaration.js";
+import {BaseTexturesClientMod} from "@/mods/BaseTextures/client.js";
 import {LogisticsDeclaration} from "@/mods/Logistics/declaration.js";
 import {LogisticsClientMod} from "@/mods/Logistics/client.js";
 import {BaseGameDeclaration} from "@/mods/BaseGame/declaration.js";
@@ -22,7 +23,7 @@ import {MarketSimMod} from "@/mods/Market/sim.js";
  */
 export function clientLoadout() {
     return [
-        new ModPackage(new BaseTexturesDeclaration()),
+        new ModPackage(new BaseTexturesDeclaration(), {client: new BaseTexturesClientMod()}),
         new ModPackage(new LogisticsDeclaration(), {client: new LogisticsClientMod()}),
         new ModPackage(new BaseGameDeclaration()),
         new ModPackage(new FluidsDeclaration(), {client: new FluidsClientMod()}),

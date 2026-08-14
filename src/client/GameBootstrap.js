@@ -1,5 +1,5 @@
 import {ModRegistry} from "@/common/ModRegistry.js";
-import {clientLoadout} from "@/mods/clientLoadout.js";
+import {fetchModLoadout} from "@/client/ModFetcher.js";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {ClientSaveStore} from "@/client/state/ClientSaveStore.js";
@@ -11,12 +11,28 @@ import {WireRegistry} from "@/common/wire.js";
 import {Client} from "@/client/Client.js";
 import {createInputHandler} from "@/client/input/GameInputWiring.js";
 import {DEV} from "@/common/env.js";
-import {mintJoinToken} from "@/client/AuthClient.js";
+import {mintReconnectToken, enterServerContext} from "@/client/AuthClient.js";
 import WindowFocus from "@/client/WindowFocus.js";
 import {DEFAULT_TICK_MS} from "@/common/constants.js";
 
 // Matches the server's --tick-ms default, so local mode runs at the same real-time rate.
 const LOCAL_TICK_INTERVAL_MS = DEFAULT_TICK_MS;
+
+/**
+ * The packages to register. A remote server's own pinned loadout is fetched from it — the client
+ * ships no game content for remote play, which is also what keeps the positional wire ids in sync.
+ * Local mode has no server to ask, so it registers the loadout built into this client, imported
+ * lazily so a remote join never loads it.
+ * @param {{mode: string, serverUrl: string}} props
+ * @returns {Promise<ModPackage[]>}
+ */
+async function loadoutFor(props) {
+    if (props.mode === "remote") {
+        return await fetchModLoadout(props.serverUrl);
+    }
+    const {clientLoadout} = await import("@/mods/clientLoadout.js");
+    return clientLoadout();
+}
 
 /**
  * Builds the mod registry, session (local sim or remote), Client, and its input handler.
@@ -26,8 +42,14 @@ const LOCAL_TICK_INTERVAL_MS = DEFAULT_TICK_MS;
  * @returns {Promise<{client: Client, session: AbstractSession, game: Game|null, inputHandler: InputHandler, destroy: function(): void}>}
  */
 export async function createClient(app, viewport, props) {
+    if (props.mode === "remote") {
+        // The server's mod code is about to be evaluated in this page; the account session must be
+        // gone before it runs, leaving only this server's origin-scoped reconnect token.
+        enterServerContext();
+    }
+
     const modRegistry = new ModRegistry();
-    for (const pkg of clientLoadout()) {
+    for (const pkg of await loadoutFor(props)) {
         modRegistry.register(pkg);
     }
     modRegistry.freeze();
@@ -38,7 +60,7 @@ export async function createClient(app, viewport, props) {
     if (props.mode === "remote") {
         session = new RemoteSession(
             new WireRegistry(modRegistry), props.serverUrl, props.token,
-            () => mintJoinToken(props.serverUrl),
+            () => mintReconnectToken(props.serverUrl),
         );
     } else {
         game = new Game(

@@ -15,16 +15,18 @@ export class TextureRegistry {
     }
 
     /**
-     * @param {TextureDefinition[]} definitions
+     * @param {TextureAtlas[]} atlases
      * @returns {Promise<void>}
      */
-    async load(definitions) {
-        await Promise.all(definitions.map(async def => {
-            const texture = await Assets.load(def.imageUrl);
+    async load(atlases) {
+        await Promise.all(atlases.map(async atlas => {
+            // A packaged mod's atlas arrives as a blob URL, which carries no extension for pixi to
+            // pick a parser from; naming the texture parser makes both that and a plain URL work.
+            const texture = await Assets.load({src: atlas.imageUrl, parser: "texture"});
 
             texture.source.scaleMode = "nearest";
             // TexturePacker sets scale=2 because source art was upscaled 2x; override so Pixi renders frames at actual pixel size.
-            const data = {...def.jsonUrl, meta: {...def.jsonUrl.meta, scale: "1"}};
+            const data = {...atlas.sheetData, meta: {...atlas.sheetData.meta, scale: "1"}};
             const sheet = new Spritesheet(texture, data);
             await sheet.parse();
             Object.assign(this.textures, sheet.textures);

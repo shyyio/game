@@ -17,7 +17,12 @@ dist-server
 dist-authserver
 dist-reportingserver
 dist-ssr
+dist-mods
 coverage
+
+# A server's pinned mod packages and their fetched files
+mods.json
+mods-cache
 *.local
 
 /cypress/videos/

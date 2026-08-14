@@ -24,8 +24,9 @@ export class GameServer {
      * @param {JwksVerifier} jwksVerifier
      * @param {string} origin - this server's own canonical origin, checked against a token's aud
      * @param {string} name - the display name shown in the client's server directory
+     * @param {ModHost|null} [modHost] - serves this server's packaged loadout; null on a static build
      */
-    constructor(game, api, jwksVerifier, origin, name) {
+    constructor(game, api, jwksVerifier, origin, name, modHost=null) {
         this._game = game;
         this._api = api;
         this._jwksVerifier = jwksVerifier;
@@ -40,6 +41,9 @@ export class GameServer {
         this._app.get("/status", (res, req) => {
             this._onStatus(res);
         });
+        if (modHost !== null) {
+            modHost.registerRoutes(this._app);
+        }
         // A plain-browser visit gets a text info screen instead of a failed upgrade.
         this._app.get("/*", (res, req) => {
             const host = req.getHeader("host");

@@ -6,3 +6,10 @@ import {ref} from "vue";
  * @type {import("vue").Ref<{mode: string, username: string, token: string, serverUrl: string}|null>}
  */
 export const gameStart = ref(null);
+
+/**
+ * Why the last join attempt bounced back to the server list (e.g. the server's mods failed to load);
+ * shown there once, then cleared.
+ * @type {import("vue").Ref<string>}
+ */
+export const startError = ref("");

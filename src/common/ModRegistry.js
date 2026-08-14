@@ -21,7 +21,7 @@ export class ModRegistry {
         this._wireClasses = [];
         this._simMods = [];
         this._clientMods = [];
-        this._textureDefinitions = [];
+        this._textureAtlases = [];
         /**
          * @type {ItemRegistry}
          */
@@ -96,9 +96,7 @@ export class ModRegistry {
             }
             if (pkg.client !== null) {
                 this._clientMods.push(pkg.client);
-            }
-            for (const definition of pkg.declaration.textureDefinitions) {
-                this._textureDefinitions.push(definition);
+                this._textureAtlases.push(...pkg.client.textureAtlases());
             }
             for (const [itemType, definition] of Object.entries(pkg.declaration.items)) {
                 this._items.register(Number(itemType), definition);
@@ -209,11 +207,12 @@ export class ModRegistry {
     }
 
     /**
-     * @returns {TextureDefinition[]}
+     * Every atlas the loadout's client parts ship, in registration order.
+     * @returns {TextureAtlas[]}
      */
-    get textureDefinitions() {
+    get textureAtlases() {
         this._assertFrozen();
-        return this._textureDefinitions;
+        return this._textureAtlases;
     }
 
     /**

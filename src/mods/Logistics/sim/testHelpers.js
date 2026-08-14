@@ -1,6 +1,4 @@
-// Belt-specific conveniences for specs, built on the SDK's generic TestHarness.
-// They live with the mod they serve — the harness itself (`@/sdk/test.js`) stays
-// content-agnostic.
+// Belt-specific conveniences for specs; they live with the mod they serve.
 
 import {Belts} from "./Belts.js";
 

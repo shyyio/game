@@ -8,6 +8,10 @@ import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {NodeMetricsStore} from "@/server/NodeMetricsStore.js";
 import {JwksVerifier} from "@/server/JwksVerifier.js";
 import {GameServer} from "@/server/GameServer.js";
+import {ModLockfile} from "@/server/ModLockfile.js";
+import {ModCache} from "@/server/ModCache.js";
+import {ModHost} from "@/server/ModHost.js";
+import {loadPackagedMods} from "@/server/ModLoader.js";
 import {bindShutdownSignals} from "@/server/cliShutdown.js";
 import {installCrashReporter, reportError, reportFatal} from "@/server/crashReporter.js";
 import {DEFAULT_TICK_MS} from "@/common/constants.js";
@@ -23,6 +27,8 @@ const {values: args} = parseArgs({
         "auth-server": {type: "string", default: "https://auth.spupgame.com"},
         "origin": {type: "string", default: "ws://localhost:27500"},
         "name": {type: "string", default: "Shy's Power-Up Factory"},
+        "mods": {type: "string"},
+        "mods-cache": {type: "string", default: "mods-cache"},
     },
 });
 const dbPath = args["db"];
@@ -34,11 +40,29 @@ const saveMs = Number(args["save-ms"]);
 const authServerUrl = args["auth-server"];
 const origin = args["origin"];
 const name = args["name"];
+const modsPath = args["mods"];
+const modsCachePath = args["mods-cache"];
 
 installCrashReporter(origin);
 
+// Without --mods the server runs the loadout compiled into this build; with it, the loadout is
+// whatever the operator pinned, fetched into the local cache and served to clients from here.
+let modHost = null;
+let packages;
+if (modsPath === undefined) {
+    packages = simLoadout();
+} else {
+    const lockfile = ModLockfile.read(modsPath);
+    const cache = new ModCache(modsCachePath);
+    const downloaded = await cache.populate(lockfile);
+    const loaded = await loadPackagedMods(lockfile, cache);
+    packages = loaded.packages;
+    modHost = new ModHost(loaded.mods, cache);
+    console.log(`Loaded ${packages.length} pinned mods from ${modsPath} (${downloaded} newly downloaded)`);
+}
+
 const modRegistry = new ModRegistry();
-for (const pkg of simLoadout()) {
+for (const pkg of packages) {
     modRegistry.register(pkg);
 }
 modRegistry.freeze();
@@ -61,7 +85,7 @@ const jwksVerifier = new JwksVerifier(authServerUrl);
 await jwksVerifier.load();
 
 const api = new GameAPI(game);
-const server = new GameServer(game, api, jwksVerifier, origin, name);
+const server = new GameServer(game, api, jwksVerifier, origin, name, modHost);
 await server.listen(host, port);
 console.log(`Listening on ws://${host}:${port} (tick ${tickMs}ms, save ${saveMs}ms, metrics every tick)`);
 

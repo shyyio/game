@@ -1,5 +1,6 @@
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {simLoadout} from "@/mods/loadout.js";
+import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 
 /**
@@ -30,4 +31,16 @@ export async function makeGameEngine(extraPackages = []) {
     const engine = new GameEngine(ecsModRegistry(extraPackages));
     await engine.init();
     return engine;
+}
+
+/**
+ * A booted Game over the standard loadout, for specs that drive it through sessions and messages.
+ * @param {ModPackage[]} [extraPackages] see ecsModRegistry
+ * @returns {Promise<Game>}
+ */
+export async function makeGame(extraPackages = []) {
+    const modRegistry = ecsModRegistry(extraPackages);
+    const game = new Game(modRegistry, new GameEngine(modRegistry));
+    await game.init();
+    return game;
 }

@@ -1,10 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert";
 
-import {ModRegistry} from "@/common/ModRegistry.js";
-import {ModPackage} from "@/common/ModPackage.js";
-import {WireRegistry} from "@/common/wire.js";
-import {chunkId} from "@/common/util.js";
+import {ModRegistry, ModPackage, WireRegistry, chunkId} from "@/sdk/common.js";
 import {CursorSyncDeclaration} from "../declaration.js";
 import {CursorMoveMessage, CursorHideMessage} from "./messages.js";
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "./events.js";

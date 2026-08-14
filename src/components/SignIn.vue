@@ -4,7 +4,7 @@ import {useRoute, useRouter} from "vue-router";
 import {ORIGIN_PATTERN, USERNAME_PATTERN, USERNAME_PATTERN_HINT} from "@/common/constants.js";
 import ServerList from "@/components/ServerList.vue";
 import {hasSessionToken, login as authClientLogin, mintJoinToken} from "@/client/AuthClient.js";
-import {gameStart} from "@/client/GameStart.js";
+import {gameStart, startError} from "@/client/GameStart.js";
 
 const STORAGE_USERNAME = "spup.username";
 const LOCAL_SERVER_URL = "ws://localhost:27500";
@@ -13,7 +13,8 @@ const route = useRoute();
 const router = useRouter();
 
 const username = ref(localStorage.getItem(STORAGE_USERNAME) || "");
-const error = ref("");
+const error = ref(startError.value);
+startError.value = "";
 const connecting = ref(false);
 const connectingOrigin = ref("");
 
@@ -21,6 +22,10 @@ watch(() => route.name, () => error.value = "");
 
 function usernameValid() {
   return USERNAME_PATTERN.test(username.value);
+}
+
+function browseMods() {
+  router.push({name: "mods"});
 }
 
 function playLocal() {
@@ -97,6 +102,7 @@ function back() {
       </v-card-text>
       <v-card-actions>
         <v-btn variant="text" @click="playLocal">Play local</v-btn>
+        <v-btn variant="text" @click="browseMods">Mods</v-btn>
         <v-spacer/>
         <v-btn color="primary" variant="flat" :disabled="!usernameValid() || connecting" :loading="connecting" @click="login">Log in</v-btn>
       </v-card-actions>
@@ -107,6 +113,7 @@ function back() {
         :error="error"
         @select="selectServer"
         @back="back"
+        @mods="browseMods"
         @unauthorized="unauthorized"
     />
   </div>

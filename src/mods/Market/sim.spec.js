@@ -1,17 +1,11 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {Game} from "@/sim/Game.js";
-import {GameEngine, EMPTY} from "@/sim/GameEngine.js";
-import {ecsModRegistry} from "@/test/ecsSim.js";
+import {makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {Direction, CHUNK_SIZE} from "@/common/constants.js";
-import {chunkId} from "@/common/util.js";
-import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
-import {PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
-import {ModPackage} from "@/common/ModPackage.js";
-import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
-import {MarketListingEntry} from "@/common/MarketListingEntry.js";
+import {
+    EMPTY, Direction, CHUNK_SIZE, chunkId, CreateObjectMessage, ClaimChunkMessage,
+    PlayerSettingsUpdateEvent, ModPackage, AbstractModDeclaration, MarketListingEntry,
+} from "@/sdk/common.js";
 import {TradingTerminalType} from "./common/objectTypes.js";
 import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./common/messages.js";
 import {MarketSnapshotEvent, MARKET_SNAPSHOT_NONE} from "./common/events.js";
@@ -35,9 +29,7 @@ class NpcPriceFixtureDeclaration extends AbstractModDeclaration {
 }
 
 async function gameWithSessions(extraPackages = []) {
-    const modRegistry = ecsModRegistry(extraPackages);
-    const game = new Game(modRegistry, new GameEngine(modRegistry));
-    await game.init();
+    const game = await makeGame(extraPackages);
     const seller = new CapturingSession(1);
     const buyer = new CapturingSession(2);
     game.connect(seller);
@@ -99,9 +91,7 @@ test("a buyer with insufficient balance never wins a trade", async () => {
 });
 
 test("an unclaimed chunk's terminal never trades", async () => {
-    const modRegistry = ecsModRegistry();
-    const game = new Game(modRegistry, new GameEngine(modRegistry));
-    await game.init();
+    const game = await makeGame();
     const seller = new CapturingSession(1);
     const buyer = new CapturingSession(2);
     game.connect(seller);

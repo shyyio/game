@@ -41,6 +41,11 @@ export class AuthHttpServer extends AbstractHttpServer {
             const authHeader = req.getHeader("authorization");
             this._onJoin(res, authHeader);
         });
+        // Reconnects during play: an origin-scoped token stands in for the account session, so a
+        // page running mod code never has to hold a credential good for another server.
+        this._app.post("/rejoin", (res, req) => {
+            this._onRejoin(res);
+        });
         this._app.get("/servers", (res, req) => {
             const authHeader = req.getHeader("authorization");
             this._onServers(res, authHeader);
@@ -190,8 +195,53 @@ export class AuthHttpServer extends AbstractHttpServer {
                 return;
             }
             const account = this._accounts.byId(accountId);
-            const token = this._joinTokens.mint(account, origin);
-            this._respond(res, {token});
+            this._respond(res, {
+                token: this._joinTokens.mint(account, origin),
+                reconnect: this._joinTokens.mintReconnect(account, origin),
+            });
+        });
+    }
+
+    /**
+     * @private
+     * @param {object} res
+     * @returns {void}
+     */
+    _onRejoin(res) {
+        res.onAborted(() => {
+            res.aborted = true;
+        });
+        this._readBody(res, body => {
+            if (res.aborted) {
+                return;
+            }
+            let payload;
+            try {
+                payload = JSON.parse(body);
+            } catch (error) {
+                this._reject(res, "400 Bad Request", "Malformed JSON body", {cors: true});
+                return;
+            }
+            if (typeof payload !== "object" || payload === null) {
+                this._reject(res, "400 Bad Request", "Invalid request body", {cors: true});
+                return;
+            }
+            const claims = this._joinTokens.verifyReconnect(payload.reconnect);
+            if (claims === null) {
+                this._reject(res, "401 Unauthorized", "Invalid or expired reconnect token", {cors: true});
+                return;
+            }
+            let account;
+            try {
+                account = this._accounts.byId(claims.accountId);
+            } catch (error) {
+                this._reject(res, "401 Unauthorized", "Unknown account", {cors: true});
+                return;
+            }
+            this._respond(res, {
+                token: this._joinTokens.mint(account, claims.origin),
+                reconnect: this._joinTokens.mintReconnect(account, claims.origin),
+            });
         });
     }
 

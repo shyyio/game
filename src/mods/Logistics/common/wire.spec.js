@@ -1,11 +1,10 @@
 import {test} from "node:test";
 import assert from "node:assert";
 
-import {ModRegistry} from "@/common/ModRegistry.js";
-import {ModPackage} from "@/common/ModPackage.js";
-import {WireRegistry} from "@/common/wire.js";
-import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
-import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
+import {
+    ModRegistry, ModPackage, WireRegistry, DeleteObjectMessage, CreateObjectMessage,
+    ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent,
+} from "@/sdk/common.js";
 import {LogisticsDeclaration} from "../declaration.js";
 import {
     BeltPathRecalculateEvent,
