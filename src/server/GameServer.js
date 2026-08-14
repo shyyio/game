@@ -1,6 +1,7 @@
 import uWS from "uWebSockets.js";
 import {SignInMessage} from "@/common/PlayerMessages.js";
 import {WebSocketSession} from "@/server/WebSocketSession.js";
+import {reportError} from "@/server/crashReporter.js";
 import {GAME_VERSION, REGION_SIZE} from "@/common/constants.js";
 import {formatBytes, formatUptime} from "@/common/util.js";
 import {
@@ -195,7 +196,10 @@ export class GameServer {
         try {
             this._api.sendMessage(message, session);
         } catch (error) {
-            console.error(`Message dispatch failed for player ${session.playerId}:`, error);
+            reportError(error, `Message dispatch failed for player ${session.playerId}`, {
+                playerId: session.playerId,
+                messageType: message.constructor.name,
+            });
             ws.end(CLOSE_CODE_BAD_FRAME);
         }
     }

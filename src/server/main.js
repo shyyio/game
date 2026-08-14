@@ -9,6 +9,7 @@ import {NodeMetricsStore} from "@/server/NodeMetricsStore.js";
 import {JwksVerifier} from "@/server/JwksVerifier.js";
 import {GameServer} from "@/server/GameServer.js";
 import {bindShutdownSignals} from "@/server/cliShutdown.js";
+import {installCrashReporter, reportError, reportFatal} from "@/server/crashReporter.js";
 import {DEFAULT_TICK_MS} from "@/common/constants.js";
 
 const {values: args} = parseArgs({
@@ -34,6 +35,8 @@ const authServerUrl = args["auth-server"];
 const origin = args["origin"];
 const name = args["name"];
 
+installCrashReporter(origin);
+
 const modRegistry = new ModRegistry();
 for (const pkg of simLoadout()) {
     modRegistry.register(pkg);
@@ -51,8 +54,7 @@ try {
         console.log(`Fresh world; saving to ${dbPath}`);
     }
 } catch (error) {
-    console.error(`Refusing to start: ${dbPath} is incompatible with the current build.\n${error.message}`);
-    process.exit(1);
+    await reportFatal(error, `Refusing to start: ${dbPath} is incompatible with the current build`);
 }
 
 const jwksVerifier = new JwksVerifier(authServerUrl);
@@ -64,12 +66,19 @@ await server.listen(host, port);
 console.log(`Listening on ws://${host}:${port} (tick ${tickMs}ms, save ${saveMs}ms, metrics every tick)`);
 
 const tickInterval = setInterval(() => {
-    game.runTick();
+    try {
+        game.runTick();
+    } catch (error) {
+        // Stop ticking first: reportFatal awaits the POST, and a broken sim would throw again
+        // on every interval in the meantime.
+        clearInterval(tickInterval);
+        reportFatal(error, "Tick failed");
+    }
 }, tickMs);
 
 const saveInterval = setInterval(() => {
     game.save().catch(error => {
-        console.error("Save failed:", error);
+        reportError(error, "Save failed");
     });
 }, saveMs);
 

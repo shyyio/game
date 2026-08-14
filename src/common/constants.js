@@ -156,6 +156,10 @@ export const USERNAME_PATTERN_HINT = "3-12 chars: letters, digits, _; single spa
 // wire- or rule-incompatible change.
 export const GAME_VERSION = packageJson.version;
 
+// reportingserver's ingest endpoint, on its own subdomain (see deploy/nginx-reporting.conf).
+// Both the browser client and the game server POST crashes here.
+export const REPORTING_URL = "https://bugs.spupgame.com/report";
+
 // A game server's canonical origin per docs/auth.md: scheme, lowercase host, explicit port, no
 // trailing slash. Shared by the auth server (validates /join) and the client (normalizes before
 // asking for a token), so the two never disagree on what counts as a valid origin.
