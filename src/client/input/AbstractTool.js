@@ -50,6 +50,14 @@ export class AbstractTool {
     }
 
     /**
+     * Line shown in the top status bar while this tool is active.
+     * @returns {string}
+     */
+    get statusText() {
+        return this.label;
+    }
+
+    /**
      * @returns {boolean}
      */
     get usesCenterLock() {

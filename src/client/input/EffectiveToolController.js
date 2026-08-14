@@ -1,6 +1,9 @@
 import Mobile from "@/client/Mobile.js";
 import Mouse from "@/client/input/Mouse.js";
-import {ViewMode} from "@/client/constants.js";
+import {EXIT_HOTKEY, ViewMode} from "@/client/constants.js";
+import {StatusBarSection, hotkeyButton} from "@/client/hud/TopStatusBarLayer.js";
+
+const SECTION_ID = "tool";
 
 // Selecting a tool zooms in to at least this scale (a no-op if already past it): on
 // mobile, far enough that tiles are large enough to aim the center crosshair; on desktop,
@@ -53,11 +56,12 @@ export class EffectiveToolController {
      * @returns {void}
      */
     applyEffectiveTool() {
-        const tool = this.mapMode ? null : this.toolbar.activeTool;
+        const tool = this.inputHandler.activeTool;
         this.inputHandler.clearToolPreview();
         this.inputHandler.clearInspect();
         this.inputHandler.refreshHover();
         this.client.rotateButtonsLayer.setVisible(tool != null && tool.orientable);
+        this.client.topStatusBar.setSection(SECTION_ID, this._statusBarSection(tool));
         const mobile = Mobile.enabled;
         // Map mode locks the "cursor" to the screen center too.
         this.client.setCenterLock(mobile && (this.mapMode || (tool != null && tool.usesCenterLock)));
@@ -69,6 +73,20 @@ export class EffectiveToolController {
         } else {
             this.viewport.unfreezePan();
         }
+    }
+
+    /**
+     * The tool's status-bar contribution: its text and an exit button. Null with no tool.
+     * @private
+     * @param {AbstractTool|null} tool
+     * @returns {StatusBarSection|null}
+     */
+    _statusBarSection(tool) {
+        if (tool == null) {
+            return null;
+        }
+        const exit = hotkeyButton("Exit", EXIT_HOTKEY, () => this.toolbar.setActiveTool(null));
+        return new StatusBarSection(tool.statusText, [exit]);
     }
 
     /**
