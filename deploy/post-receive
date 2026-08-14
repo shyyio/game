@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-GIT_WORK_TREE=/home/app/spup GIT_DIR=/home/app/spup.git git checkout -f main
+# Exported, not inline-prefixed: build:server's gitBuildInfo() shells out to git from a separate
+# process, and the checked-out work tree holds no .git of its own.
+export GIT_WORK_TREE=/home/app/spup
+export GIT_DIR=/home/app/spup.git
+git checkout -f main
 cd /home/app/spup
 npm ci
 npm run build:server

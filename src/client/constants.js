@@ -3,9 +3,6 @@ import {chunkId} from "@/common/util.js";
 
 export const TILE_SIZE = 64;
 
-// reportingserver's ingest endpoint, on its own subdomain (see deploy/nginx-reporting.conf).
-export const REPORTING_URL = "https://bugs.spupgame.com/report";
-
 // Font for all in-canvas (pixi) game text; loaded via the Lexend stylesheet in index.html.
 export const GAME_FONT = "Lexend";
 
