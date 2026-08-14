@@ -1,5 +1,6 @@
 import {AbstractMetricsStore, METRICS_RETENTION_TICKS} from "@/common/AbstractMetricsStore.js";
 import {MetricsRollupRow} from "@/common/MetricsFact.js";
+import {bucketTickFor} from "@/common/MetricsTiers.js";
 
 /**
  * Browser {@link AbstractMetricsStore}: facts in a plain array, bounded by METRICS_RETENTION_TICKS.
@@ -26,10 +27,10 @@ export class ClientMetricsStore extends AbstractMetricsStore {
      * @param {number|null} playerId
      * @param {number} fromTick
      * @param {number} toTick
-     * @param {number} bucketTicks
+     * @param {number} tier
      * @returns {Promise<MetricsRollupRow[]>}
      */
-    async queryRollup(type, playerId, fromTick, toTick, bucketTicks) {
+    async queryRollup(type, playerId, fromTick, toTick, tier) {
         const buckets = new Map();
         for (let i = this._firstIndexAtOrAfter(fromTick); i < this._facts.length; i += 1) {
             const fact = this._facts[i];
@@ -42,7 +43,7 @@ export class ClientMetricsStore extends AbstractMetricsStore {
             if (playerId !== null && fact.playerId !== playerId) {
                 continue;
             }
-            const bucketTick = Math.floor(fact.tick / bucketTicks) * bucketTicks;
+            const bucketTick = bucketTickFor(fact.tick, tier);
             const key = `${bucketTick}:${fact.category}:${fact.tag}`;
             let entry = buckets.get(key);
             if (entry === undefined) {
@@ -56,10 +57,11 @@ export class ClientMetricsStore extends AbstractMetricsStore {
     }
 
     /**
+     * Drops facts past the retention window; nothing here is pre-aggregated.
      * @param {number} latestTick
      * @returns {Promise<void>}
      */
-    async pruneTo(latestTick) {
+    async advanceTo(latestTick) {
         const cutoff = latestTick - METRICS_RETENTION_TICKS;
         if (cutoff <= 0) {
             return;

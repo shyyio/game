@@ -80,7 +80,7 @@ export class ProductionPanelLayer extends Container {
     }
 
     /**
-     * @param {function(metricsType: number, scope: number, bucketTicks: number, windowTicks: number): void} callback
+     * @param {function(metricsType: number, scope: number, tier: number, windowTicks: number): void} callback
      */
     onSubscribe(callback) {
         this._onSubscribe = callback;
@@ -201,9 +201,9 @@ export class ProductionPanelLayer extends Container {
             metric: CHART_METRIC_COUNT,
             width: panel.contentWidth,
             height: CHART_HEIGHT,
-            onWindowChange: (bucketTicks, windowTicks) => {
+            onWindowChange: (tier, windowTicks) => {
                 if (this._onSubscribe !== null) {
-                    this._onSubscribe(this._metricsType, this._scope, bucketTicks, windowTicks);
+                    this._onSubscribe(this._metricsType, this._scope, tier, windowTicks);
                 }
             },
             onRangeChange: () => this._refreshList(),
@@ -256,7 +256,7 @@ export class ProductionPanelLayer extends Container {
             return [];
         }
         // Same shifted "now" the chart plots against: the freshest completed point.
-        const nowTick = this._rollup.toTick - 2 * this._rollup.bucketTicks;
+        const nowTick = this._rollup.toTick - 2 * this._rollup.tier;
         return seriesRates(this._rollup, this._chart.rangeTicks, nowTick);
     }
 

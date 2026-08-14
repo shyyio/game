@@ -89,7 +89,7 @@ test("validate() accepts GLOBAL scope only for a declared metrics type", () => {
     assert.equal(declaredGlobal.validate(api, null), true);
 });
 
-test("validate() rejects a malformed range/bucket width", () => {
+test("validate() rejects a backwards range and an off-ladder tier", () => {
     assert.equal(
         new MetricsRollupRequestMessage(METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, 100, 0, 10)
             .validate(null, null),
@@ -97,6 +97,12 @@ test("validate() rejects a malformed range/bucket width", () => {
     );
     assert.equal(
         new MetricsRollupRequestMessage(METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, 0, 100, 0)
+            .validate(null, null),
+        false,
+    );
+    // A tier no store bakes would be served by scanning raw facts over the whole range.
+    assert.equal(
+        new MetricsRollupRequestMessage(METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, 0, 100, 7)
             .validate(null, null),
         false,
     );

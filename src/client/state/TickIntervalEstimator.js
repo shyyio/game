@@ -54,13 +54,13 @@ export class TickIntervalEstimator {
     /**
      * Feeds one push's arrival into the estimate.
      * @param {number} nowMs wall-clock time of the push
-     * @param {number} bucketTicks sim ticks the gap since the previous push spans
+     * @param {number} tier bucket width the gap since the previous push spans
      * @returns {void}
      */
-    recordPush(nowMs, bucketTicks) {
+    recordPush(nowMs, tier) {
         if (!this._known && this._lastPushWallTime !== null && !this._suppressNextSample) {
-            // Raw gap is bucketTicks ticks — divide down to per-tick before feeding the EMA.
-            const perTickMs = (nowMs - this._lastPushWallTime) / bucketTicks;
+            // Raw gap spans one whole bucket — divide down to per-tick before feeding the EMA.
+            const perTickMs = (nowMs - this._lastPushWallTime) / tier;
             if (perTickMs > MIN_SAMPLE_MS && perTickMs < MAX_SAMPLE_MS) {
                 this._intervalMs = this._intervalMs * SMOOTHING + perTickMs * (1 - SMOOTHING);
             }

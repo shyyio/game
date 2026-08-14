@@ -14,7 +14,7 @@ export class MetricsRollup {
     /**
      * @param {number} metricsType METRICS_FACT_TYPE_*
      * @param {number} scope METRICS_QUERY_SCOPE_*
-     * @param {number} bucketTicks
+     * @param {number} tier
      * @param {number} toTick
      * @param {number[]} bucketTick
      * @param {number[]} category
@@ -22,10 +22,10 @@ export class MetricsRollup {
      * @param {number[]} count
      * @param {number[]} sum
      */
-    constructor(metricsType, scope, bucketTicks, toTick, bucketTick, category, tag, count, sum) {
+    constructor(metricsType, scope, tier, toTick, bucketTick, category, tag, count, sum) {
         this.metricsType = metricsType;
         this.scope = scope;
-        this.bucketTicks = bucketTicks;
+        this.tier = tier;
         this.toTick = toTick;
         this.bucketTick = bucketTick;
         this.category = category;
@@ -41,7 +41,7 @@ export class MetricsRollup {
     static fromRollupEvent(event) {
         const {bucketTick, category, tag} = expandRollupRows(event);
         return new MetricsRollup(
-            event.metricsType, event.scope, event.bucketTicks, event.toTick,
+            event.metricsType, event.scope, event.tier, event.toTick,
             bucketTick, category, tag, event.count, event.sum,
         );
     }
@@ -54,7 +54,7 @@ export class MetricsRollup {
      */
     static mergeBucket(previous, event) {
         const byKey = new Map();
-        if (previous !== undefined && previous.bucketTicks === event.bucketTicks) {
+        if (previous !== undefined && previous.tier === event.tier) {
             for (let i = 0; i < previous.bucketTick.length; i += 1) {
                 byKey.set(`${previous.bucketTick[i]}:${previous.category[i]}:${previous.tag[i]}`, {
                     bucketTick: previous.bucketTick[i], category: previous.category[i], tag: previous.tag[i],
@@ -85,7 +85,7 @@ export class MetricsRollup {
             sum.push(point.sum);
         }
         return new MetricsRollup(
-            event.metricsType, event.scope, event.bucketTicks, event.toTick,
+            event.metricsType, event.scope, event.tier, event.toTick,
             bucketTick, category, tag, count, sum,
         );
     }
