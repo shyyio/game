@@ -7,7 +7,7 @@ import {hasSessionToken, login as authClientLogin, mintJoinToken} from "@/client
 import {gameStart} from "@/client/GameStart.js";
 
 const STORAGE_USERNAME = "spup.username";
-const LOCAL_SERVER_URL = "ws://localhost:8080";
+const LOCAL_SERVER_URL = "ws://localhost:27500";
 
 const route = useRoute();
 const router = useRouter();

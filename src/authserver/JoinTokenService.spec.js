@@ -72,7 +72,7 @@ test("sub is pairwise: stable per (account, origin), differs across either", () 
 
 test("origin pattern requires scheme, lowercase host, explicit port", () => {
     assert.equal(ORIGIN_PATTERN.test("wss://example.com:443"), true);
-    assert.equal(ORIGIN_PATTERN.test("ws://localhost:8080"), true);
+    assert.equal(ORIGIN_PATTERN.test("ws://localhost:27500"), true);
     assert.equal(ORIGIN_PATTERN.test("wss://Example.com:443"), false, "uppercase host");
     assert.equal(ORIGIN_PATTERN.test("wss://example.com"), false, "missing port");
     assert.equal(ORIGIN_PATTERN.test("wss://example.com:443/"), false, "trailing slash");

@@ -17,11 +17,11 @@ const {values: args} = parseArgs({
         "db": {type: "string", default: "world.sqlite3"},
         "metrics-db": {type: "string", default: "metrics.sqlite3"},
         "host": {type: "string", default: "0.0.0.0"},
-        "port": {type: "string", default: "8080"},
+        "port": {type: "string", default: "27500"},
         "tick-ms": {type: "string", default: String(DEFAULT_TICK_MS)},
         "save-ms": {type: "string", default: "60000"},
         "auth-server": {type: "string", default: "https://auth.spupgame.com"},
-        "origin": {type: "string", default: "ws://localhost:8080"},
+        "origin": {type: "string", default: "ws://localhost:27500"},
         "name": {type: "string", default: "Shy's Power-Up Factory"},
     },
 });
