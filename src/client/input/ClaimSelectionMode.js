@@ -1,10 +1,9 @@
-import {OVERWORLD_SCALE_THRESHOLD, TILE_SIZE, ViewMode} from "@/client/constants.js";
+import {EXIT_HOTKEY, OVERWORLD_SCALE_THRESHOLD, TILE_SIZE, ViewMode} from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 import {chunkId, inRegion} from "@/common/util.js";
 import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent} from "@/common/ClaimEvents.js";
 import {FriendListEvent} from "@/common/PlayerEvents.js";
-import {StatusBarSection, StatusBarButton} from "@/client/hud/TopStatusBarLayer.js";
-import Mobile from "@/client/Mobile.js";
+import {StatusBarSection, hotkeyButton} from "@/client/hud/TopStatusBarLayer.js";
 
 // Where the mode's auto-zoom lands: map mode's far edge, just shy of overworld.
 const MODE_ZOOM_SCALE = OVERWORLD_SCALE_THRESHOLD * 1.1;
@@ -172,11 +171,7 @@ export class ClaimSelectionMode {
             return new StatusBarSection(text);
         }
         const text = `${this._claims.ownCount()}/${this._claims.maxChunks} chunks claimed`;
-        let exitLabel = "Back";
-        if (!Mobile.enabled) {
-            exitLabel = "Back [Q]";
-        }
-        return new StatusBarSection(text, [new StatusBarButton(exitLabel, () => this.set(false))]);
+        return new StatusBarSection(text, [hotkeyButton("Back", EXIT_HOTKEY, () => this.set(false))]);
     }
 
     /**

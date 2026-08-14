@@ -1,4 +1,5 @@
 import Keyboard from "@/client/input/Keyboard.js";
+import {EXIT_HOTKEY} from "@/client/constants.js";
 import {Belts} from "@/mods/Logistics/sim/Belts.js";
 import {DEV} from "@/common/env.js";
 
@@ -21,7 +22,7 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
     on("c", () => {
         client.claimSelection.toggle();
     });
-    on("q", () => {
+    on(EXIT_HOTKEY, () => {
         toolbar.setActiveTool(null);
         client.claimSelection.set(false);
     });

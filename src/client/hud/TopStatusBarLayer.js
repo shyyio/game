@@ -5,6 +5,7 @@ import {UIPanel} from "@/client/hud/UIPanel.js";
 import {buildPanelButton} from "@/client/hud/panelButton.js";
 import {swallowClicks} from "@/client/layers/pixiUtils.js";
 import SafeArea from "@/client/SafeArea.js";
+import Mobile from "@/client/Mobile.js";
 
 // Gap between the outer frame and its content (buttons, pattern, inset), matching the inspect
 // panel's body margin.
@@ -37,6 +38,20 @@ export class StatusBarButton {
         this.label = label;
         this.onClick = onClick;
     }
+}
+
+/**
+ * Builds a status-bar button whose label carries its keyboard hint, dropped on touch input.
+ * @param {string} label
+ * @param {string} key
+ * @param {function(): void} onClick
+ * @returns {StatusBarButton}
+ */
+export function hotkeyButton(label, key, onClick) {
+    if (Mobile.enabled) {
+        return new StatusBarButton(label, onClick);
+    }
+    return new StatusBarButton(`${label} [${key.toUpperCase()}]`, onClick);
 }
 
 /**
