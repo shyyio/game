@@ -1,18 +1,18 @@
 // MetricsLineChart's pure data shaping — no DOM/d3, so it's spec-testable.
 
+import {TIER_LADDER, bucketTickFor} from "@/common/MetricsTiers.js";
+
 // What buildSeries plots per bucket.
 export const CHART_METRIC_COUNT = "count";
 export const CHART_METRIC_SUM = "sum";
 export const CHART_METRIC_AVG = "avg";
 
-// Bucket widths offered as zoom tiers; re-subscribe only fires on a tier change.
-export const BUCKET_LADDER = [10, 100, 1000, 6000];
 // 7 days at the default tick rate — cap on how much history gets requested.
 export const MAX_HISTORY_TICKS = 1_008_000;
 
 // Zoom bounds on the visible range; the max leaves windowTicksFor's headroom inside the history cap.
 export const MIN_RANGE_TICKS = 60;
-export const MAX_RANGE_TICKS = MAX_HISTORY_TICKS - 2 * BUCKET_LADDER[BUCKET_LADDER.length - 1];
+export const MAX_RANGE_TICKS = MAX_HISTORY_TICKS - 2 * TIER_LADDER[TIER_LADDER.length - 1];
 
 // Headroom above the max value so the topmost line clears the plot's top edge.
 const Y_MAX_HEADROOM = 1.1;
@@ -22,9 +22,9 @@ const Y_MAX_HEADROOM = 1.1;
  * @param {number} rangeTicks
  * @returns {number}
  */
-export function selectBucketTicks(rangeTicks) {
-    let selected = BUCKET_LADDER[0];
-    for (const candidate of BUCKET_LADDER) {
+export function selectTier(rangeTicks) {
+    let selected = TIER_LADDER[0];
+    for (const candidate of TIER_LADDER) {
         if (candidate * 10 <= rangeTicks) {
             selected = candidate;
         }
@@ -35,23 +35,23 @@ export function selectBucketTicks(rangeTicks) {
 /**
  * History window to request: visible range plus 2 buckets of headroom.
  * @param {number} rangeTicks
- * @param {number} bucketTicks
+ * @param {number} tier
  * @returns {number}
  */
-export function windowTicksFor(rangeTicks, bucketTicks) {
-    return Math.min(rangeTicks + 2 * bucketTicks, MAX_HISTORY_TICKS);
+export function windowTicksFor(rangeTicks, tier) {
+    return Math.min(rangeTicks + 2 * tier, MAX_HISTORY_TICKS);
 }
 
 /**
  * Groups a rollup's flat rows into one series per (category, tag); an absent bucket is a real zero, not missing data.
  * @param {MetricsRollup|undefined} rollup
  * @param {string} metric CHART_METRIC_*
- * @returns {{ticks: number[], seriesList: {key: string, category: number, tag: number, values: (number|null)[]}[], bucketTicks: number}}
+ * @returns {{ticks: number[], seriesList: {key: string, category: number, tag: number, values: (number|null)[]}[], tier: number}}
  */
 export function buildSeries(rollup, metric) {
     if (rollup === undefined || rollup.bucketTick.length === 0) {
-        const bucketTicks = rollup === undefined ? BUCKET_LADDER[0] : rollup.bucketTicks;
-        return {ticks: [], seriesList: [], bucketTicks};
+        const tier = rollup === undefined ? TIER_LADDER[0] : rollup.tier;
+        return {ticks: [], seriesList: [], tier};
     }
     const byKey = new Map();
     let minBucketTick = Infinity;
@@ -70,9 +70,9 @@ export function buildSeries(rollup, metric) {
             entry.firstTick = rollup.bucketTick[i];
         }
     }
-    const currentBucket = Math.floor(rollup.toTick / rollup.bucketTicks) * rollup.bucketTicks;
+    const currentBucket = bucketTickFor(rollup.toTick, rollup.tier);
     const ticks = [];
-    for (let tick = minBucketTick; tick < currentBucket; tick += rollup.bucketTicks) {
+    for (let tick = minBucketTick; tick < currentBucket; tick += rollup.tier) {
         ticks.push(tick);
     }
     const seriesList = [...byKey.entries()].map(([key, entry]) => ({
@@ -82,7 +82,7 @@ export function buildSeries(rollup, metric) {
         // Before the series' first observed bucket it didn't exist yet, distinct from a real zero after.
         values: ticks.map(tick => tick < entry.firstTick ? null : valueAt(entry.points.get(tick), metric)),
     }));
-    return {ticks, seriesList, bucketTicks: rollup.bucketTicks};
+    return {ticks, seriesList, tier: rollup.tier};
 }
 
 /**

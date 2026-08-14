@@ -15,14 +15,14 @@ class MetricsSubscription {
     /**
      * @param {number} metricsType METRICS_FACT_TYPE_*
      * @param {number} scope METRICS_QUERY_SCOPE_*
-     * @param {number} bucketTicks
+     * @param {number} tier
      * @param {number} windowTicks
      * @param {number} generation
      */
-    constructor(metricsType, scope, bucketTicks, windowTicks, generation) {
+    constructor(metricsType, scope, tier, windowTicks, generation) {
         this.metricsType = metricsType;
         this.scope = scope;
-        this.bucketTicks = bucketTicks;
+        this.tier = tier;
         this.windowTicks = windowTicks;
         this.generation = generation;
     }
@@ -129,7 +129,7 @@ export class GameMetrics {
     }
 
     /**
-     * Hands the buffered facts to the store and prunes past the retention window.
+     * Hands the buffered facts to the store and moves its clock to this tick.
      * @returns {Promise<void>}
      */
     async flush() {
@@ -139,7 +139,7 @@ export class GameMetrics {
         const facts = this._buffer;
         this._buffer = [];
         await this._store.recordBatch(facts);
-        await this._store.pruneTo(this._simEngine.clock);
+        await this._store.advanceTo(this._simEngine.clock);
     }
 
     /**
@@ -164,30 +164,30 @@ export class GameMetrics {
     }
 
     /**
-     * Pushes every subscription's just-completed bucket, grouped by identical (metricsType, scope, bucketTicks, playerId).
+     * Pushes every subscription's just-completed bucket, grouped by identical (metricsType, scope, tier, playerId).
      * @returns {void}
      */
     push() {
         const toTick = this._simEngine.clock;
-        // signature -> {metricsType, scope, playerId, bucketTick, bucketTicks, recipients}
+        // signature -> {metricsType, scope, playerId, bucketTick, tier, recipients}
         const groups = new Map();
         for (const [sessionId, subs] of this._subscriptions) {
             for (const sub of subs.values()) {
-                if (toTick % sub.bucketTicks !== 0) {
+                if (toTick % sub.tier !== 0) {
                     continue;
                 }
-                const bucketTick = toTick - sub.bucketTicks;
+                const bucketTick = toTick - sub.tier;
                 if (bucketTick < 0) {
                     // The very first possible bucket hasn't happened yet — nothing to report.
                     continue;
                 }
                 const playerId = this._playerIdForScope(sub.scope, sessionId);
-                const signature = `${sub.metricsType}:${sub.scope}:${sub.bucketTicks}:${bucketTick}:${playerId}`;
+                const signature = `${sub.metricsType}:${sub.scope}:${sub.tier}:${bucketTick}:${playerId}`;
                 let group = groups.get(signature);
                 if (group === undefined) {
                     group = {
                         metricsType: sub.metricsType, scope: sub.scope, playerId,
-                        bucketTick, bucketTicks: sub.bucketTicks, recipients: [],
+                        bucketTick, tier: sub.tier, recipients: [],
                     };
                     groups.set(signature, group);
                 }
@@ -197,7 +197,7 @@ export class GameMetrics {
         for (const group of groups.values()) {
             this._publishBucket(
                 group.recipients, group.metricsType, group.scope, group.playerId,
-                group.bucketTick, toTick, group.bucketTicks,
+                group.bucketTick, toTick, group.tier,
             );
         }
     }
@@ -225,7 +225,7 @@ export class GameMetrics {
     _handleRollupRequest(session, message) {
         this._publishRollup(
             [session.id], message.metricsType, message.scope, this._playerIdForScope(message.scope, session.id),
-            message.fromTick, message.toTick, message.bucketTicks,
+            message.fromTick, message.toTick, message.tier,
         );
     }
 
@@ -246,14 +246,14 @@ export class GameMetrics {
         const previous = subs.get(key);
         const generation = previous === undefined ? 0 : previous.generation + 1;
         subs.set(key, new MetricsSubscription(
-            message.metricsType, message.scope, message.bucketTicks, message.windowTicks, generation,
+            message.metricsType, message.scope, message.tier, message.windowTicks, generation,
         ));
 
         const toTick = this._simEngine.clock;
         const fromTick = Math.max(0, toTick - message.windowTicks);
         this._publishRollup(
             [session.id], message.metricsType, message.scope, this._playerIdForScope(message.scope, session.id),
-            fromTick, toTick, message.bucketTicks,
+            fromTick, toTick, message.tier,
             () => {
                 const current = subs.get(key);
                 return current !== undefined && current.generation === generation;
@@ -280,15 +280,15 @@ export class GameMetrics {
      * @param {number|null} playerId
      * @param {number} fromTick
      * @param {number} toTick
-     * @param {number} bucketTicks
+     * @param {number} tier
      * @returns {Promise<MetricsRollupRow[]>}
      * @private
      */
-    _queryRollup(metricsType, playerId, fromTick, toTick, bucketTicks) {
+    _queryRollup(metricsType, playerId, fromTick, toTick, tier) {
         if (this._store === undefined) {
             return Promise.resolve([]);
         }
-        return this._store.queryRollup(metricsType, playerId, fromTick, toTick, bucketTicks);
+        return this._store.queryRollup(metricsType, playerId, fromTick, toTick, tier);
     }
 
     /**
@@ -318,18 +318,18 @@ export class GameMetrics {
      * @param {number|null} playerId
      * @param {number} fromTick
      * @param {number} toTick
-     * @param {number} bucketTicks
+     * @param {number} tier
      * @param {function(): boolean} [isStillValid] - checked after the query resolves; skips publishing if false
      * @private
      */
-    _publishRollup(sessionIds, metricsType, scope, playerId, fromTick, toTick, bucketTicks, isStillValid) {
-        this._queryRollup(metricsType, playerId, fromTick, toTick, bucketTicks).then(rows => {
+    _publishRollup(sessionIds, metricsType, scope, playerId, fromTick, toTick, tier, isStillValid) {
+        this._queryRollup(metricsType, playerId, fromTick, toTick, tier).then(rows => {
             if (isStillValid !== undefined && !isStillValid()) {
                 return;
             }
             const compact = compactRollupRows(this._filterGlobalRows(metricsType, scope, rows));
             const event = new MetricsRollupEvent(
-                metricsType, scope, bucketTicks, toTick,
+                metricsType, scope, tier, toTick,
                 compact.buckets, compact.bucketRowCounts,
                 compact.seriesCategory, compact.seriesTag, compact.seriesIndex,
                 compact.count, compact.sum,
@@ -348,11 +348,11 @@ export class GameMetrics {
      * @param {number|null} playerId
      * @param {number} bucketTick - the completed bucket's start tick
      * @param {number} eventToTick
-     * @param {number} bucketTicks
+     * @param {number} tier
      * @private
      */
-    _publishBucket(recipients, metricsType, scope, playerId, bucketTick, eventToTick, bucketTicks) {
-        this._queryRollup(metricsType, playerId, bucketTick, bucketTick + bucketTicks - 1, bucketTicks).then(rows => {
+    _publishBucket(recipients, metricsType, scope, playerId, bucketTick, eventToTick, tier) {
+        this._queryRollup(metricsType, playerId, bucketTick, bucketTick + tier - 1, tier).then(rows => {
             const filteredRows = this._filterGlobalRows(metricsType, scope, rows);
             const category = filteredRows.map(row => row.category);
             const tag = filteredRows.map(row => row.tag);
@@ -360,7 +360,7 @@ export class GameMetrics {
             const sum = filteredRows.map(row => row.sum);
             for (const {sessionId, windowTicks} of recipients) {
                 const event = new MetricsRollupBucketEvent(
-                    metricsType, scope, bucketTicks, eventToTick, bucketTick, category, tag, count, sum, windowTicks,
+                    metricsType, scope, tier, eventToTick, bucketTick, category, tag, count, sum, windowTicks,
                 );
                 this._bus.publishTo(sessionId, event);
             }

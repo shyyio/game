@@ -1,16 +1,17 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
+import {TIER_LADDER} from "@/common/MetricsTiers.js";
 import {
-    BUCKET_LADDER, MAX_HISTORY_TICKS, CHART_METRIC_COUNT, CHART_METRIC_AVG,
-    selectBucketTicks, windowTicksFor, buildSeries, integerTicks, visibleExtent, seriesRates,
+    MAX_HISTORY_TICKS, CHART_METRIC_COUNT, CHART_METRIC_AVG,
+    selectTier, windowTicksFor, buildSeries, integerTicks, visibleExtent, seriesRates,
 } from "@/client/hud/MetricsChartData.js";
 
-test("selectBucketTicks picks the largest tier keeping ~10 buckets visible", () => {
-    assert.equal(selectBucketTicks(60), BUCKET_LADDER[0]);
-    assert.equal(selectBucketTicks(1000), 100);
-    assert.equal(selectBucketTicks(9999), 100);
-    assert.equal(selectBucketTicks(10_000), 1000);
-    assert.equal(selectBucketTicks(1_000_000), 6000);
+test("selectTier picks the largest tier keeping ~10 buckets visible", () => {
+    assert.equal(selectTier(60), TIER_LADDER[0]);
+    assert.equal(selectTier(1000), 100);
+    assert.equal(selectTier(9999), 100);
+    assert.equal(selectTier(10_000), 1000);
+    assert.equal(selectTier(1_000_000), 6000);
 });
 
 test("windowTicksFor adds two buckets of headroom, capped at MAX_HISTORY_TICKS", () => {
@@ -20,7 +21,7 @@ test("windowTicksFor adds two buckets of headroom, capped at MAX_HISTORY_TICKS",
 
 test("buildSeries fills absent buckets with zero after a series' first observation, null before", () => {
     const rollup = {
-        bucketTicks: 10,
+        tier: 10,
         toTick: 45,
         bucketTick: [0, 20, 20],
         category: [1, 1, 2],
@@ -42,7 +43,7 @@ test("buildSeries fills absent buckets with zero after a series' first observati
 
 test("buildSeries avg metric divides sum by count and leaves absent buckets null", () => {
     const rollup = {
-        bucketTicks: 10,
+        tier: 10,
         toTick: 35,
         bucketTick: [0, 20],
         category: [1, 1],
@@ -57,7 +58,7 @@ test("buildSeries avg metric divides sum by count and leaves absent buckets null
 });
 
 test("buildSeries without data returns empty series and the default bucket tier", () => {
-    assert.deepEqual(buildSeries(undefined, CHART_METRIC_COUNT), {ticks: [], seriesList: [], bucketTicks: BUCKET_LADDER[0]});
+    assert.deepEqual(buildSeries(undefined, CHART_METRIC_COUNT), {ticks: [], seriesList: [], tier: TIER_LADDER[0]});
 });
 
 test("integerTicks steps on the 1-2-5 ladder and never duplicates labels", () => {
@@ -87,7 +88,7 @@ test("visibleExtent of no visible data spans [0, headroom]", () => {
 
 test("seriesRates averages in-window counts and sorts by rate descending", () => {
     const rollup = {
-        bucketTicks: 10,
+        tier: 10,
         toTick: 100,
         bucketTick: [60, 70, 80, 60, 80],
         category: [1, 1, 1, 2, 2],
@@ -108,7 +109,7 @@ test("seriesRates averages in-window counts and sorts by rate descending", () =>
 
 test("seriesRates counts only buckets inside [nowTick - rangeTicks, nowTick)", () => {
     const rollup = {
-        bucketTicks: 10,
+        tier: 10,
         toTick: 200,
         // 100 is below the window, 200 is at nowTick (excluded); only 150 counts.
         bucketTick: [100, 150, 200],
@@ -125,7 +126,7 @@ test("seriesRates counts only buckets inside [nowTick - rangeTicks, nowTick)", (
 
 test("seriesRates clamps the window to the data on hand", () => {
     const rollup = {
-        bucketTicks: 10,
+        tier: 10,
         toTick: 50,
         bucketTick: [30, 40],
         category: [1, 1],
@@ -142,7 +143,7 @@ test("seriesRates clamps the window to the data on hand", () => {
 
 test("seriesRates keeps a zero-rate row for a series with no in-window buckets", () => {
     const rollup = {
-        bucketTicks: 10,
+        tier: 10,
         toTick: 100,
         bucketTick: [10, 90],
         category: [1, 2],
@@ -159,5 +160,5 @@ test("seriesRates keeps a zero-rate row for a series with no in-window buckets",
 
 test("seriesRates without data returns no rows", () => {
     assert.deepEqual(seriesRates(undefined, 100, 0), []);
-    assert.deepEqual(seriesRates({bucketTicks: 10, toTick: 0, bucketTick: [], category: [], tag: [], count: [], sum: []}, 100, 0), []);
+    assert.deepEqual(seriesRates({tier: 10, toTick: 0, bucketTick: [], category: [], tag: [], count: [], sum: []}, 100, 0), []);
 });

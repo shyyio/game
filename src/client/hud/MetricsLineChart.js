@@ -6,7 +6,7 @@ import {format} from "d3-format";
 import {ChartColors, INK_MUTED} from "@/client/hud/ChartColors.js";
 import {
     CHART_METRIC_COUNT, CHART_METRIC_AVG, MIN_RANGE_TICKS, MAX_RANGE_TICKS,
-    selectBucketTicks, windowTicksFor, buildSeries, integerTicks, visibleExtent,
+    selectTier, windowTicksFor, buildSeries, integerTicks, visibleExtent,
 } from "@/client/hud/MetricsChartData.js";
 import {TickIntervalEstimator} from "@/client/state/TickIntervalEstimator.js";
 
@@ -42,7 +42,7 @@ export class MetricsLineChart {
      * @param {string} [options.metric] CHART_METRIC_*
      * @param {number} [options.width]
      * @param {number} [options.height]
-     * @param {function(bucketTicks: number, windowTicks: number): void} [options.onWindowChange] fired on
+     * @param {function(tier: number, windowTicks: number): void} [options.onWindowChange] fired on
      *     construction and again whenever a zoom gesture needs more data
      * @param {function(rangeTicks: number): void} [options.onRangeChange] fired whenever a zoom
      *     gesture changes the visible range
@@ -78,7 +78,7 @@ export class MetricsLineChart {
         this._highlightKey = null;
 
         // Bucket/window last requested; a new request only on a wider tier or window.
-        this._requestedBucketTicks = null;
+        this._requestedTier = null;
         this._requestedWindowTicks = null;
 
         this._colors = new ChartColors();
@@ -265,23 +265,23 @@ export class MetricsLineChart {
     }
 
     /**
-     * Fires onWindowChange for the current zoom's ideal (bucketTicks, windowTicks); zooming in reuses
+     * Fires onWindowChange for the current zoom's ideal (tier, windowTicks); zooming in reuses
      * data already on hand.
      * @param {boolean} force always fires, even at the same tier (construction)
      * @returns {void}
      * @private
      */
     _requestWindow(force) {
-        const bucket = selectBucketTicks(this._rangeTicks);
-        const window = windowTicksFor(this._rangeTicks, bucket);
-        if (!force && bucket === this._requestedBucketTicks && window <= this._requestedWindowTicks) {
+        const tier = selectTier(this._rangeTicks);
+        const window = windowTicksFor(this._rangeTicks, tier);
+        if (!force && tier === this._requestedTier && window <= this._requestedWindowTicks) {
             return;
         }
-        this._requestedBucketTicks = bucket;
+        this._requestedTier = tier;
         this._requestedWindowTicks = window;
         this._estimator.suppressNextSample();
         if (this._onWindowChange !== null) {
-            this._onWindowChange(bucket, window);
+            this._onWindowChange(tier, window);
         }
     }
 
@@ -369,7 +369,7 @@ export class MetricsLineChart {
         if (this._estimator.lastPushWallTime === null) {
             return this._lastPushToTick;
         }
-        const maxExtrapolationTicks = this._requestedBucketTicks === null ? 1 : this._requestedBucketTicks;
+        const maxExtrapolationTicks = this._requestedTier === null ? 1 : this._requestedTier;
         const elapsedTicks = (performance.now() - this._estimator.lastPushWallTime) / this._estimator.intervalMs;
         return this._lastPushToTick + Math.min(maxExtrapolationTicks, Math.max(0, elapsedTicks));
     }
@@ -404,8 +404,8 @@ export class MetricsLineChart {
             this._gLines.selectAll("path").remove();
             return;
         }
-        // Shifts data right by 2*bucketTicks so the freshest completed point sits at the domain edge.
-        const fakeNow = this._virtualNowTick() - 2 * this._latestSeriesData.bucketTicks;
+        // Shifts data right by 2*tier so the freshest completed point sits at the domain edge.
+        const fakeNow = this._virtualNowTick() - 2 * this._latestSeriesData.tier;
         const lineGenerator = line()
             .defined(d => d.value !== null)
             .x(d => this._xScale(d.tick - fakeNow))
@@ -483,7 +483,7 @@ export class MetricsLineChart {
         }
         this._yScale.domain(visibleExtent(
             this._latestSeriesData.ticks, this._latestSeriesData.seriesList, this._rangeTicks,
-            this._lastPushToTick - 2 * this._latestSeriesData.bucketTicks,
+            this._lastPushToTick - 2 * this._latestSeriesData.tier,
         ));
         const [yMin, yMax] = this._yScale.domain();
         const yTickValues = this._metric === CHART_METRIC_AVG ? this._yScale.ticks(5) : integerTicks(yMin, yMax, 5);
@@ -532,7 +532,7 @@ export class MetricsLineChart {
         if (this._rollup === undefined) {
             return;
         }
-        this._estimator.recordPush(performance.now(), this._rollup.bucketTicks);
+        this._estimator.recordPush(performance.now(), this._rollup.tier);
         this._lastPushToTick = this._rollup.toTick;
         this._hasData = this._rollup.bucketTick.length > 0;
         if (this._hasData) {

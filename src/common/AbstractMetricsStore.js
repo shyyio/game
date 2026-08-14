@@ -23,7 +23,7 @@ export class AbstractMetricsStore {
     }
 
     // Queried by tick, not wall-clock timestamp, to stay immune to tick-length jitter.
-    // Bucket tick is its start tick: floor(tick / bucketTicks) * bucketTicks.
+    // Bucket tick is its start tick: floor(tick / tier) * tier.
     /**
      * Bucketed (bucket, category, tag) aggregates of one type in a tick range, optionally scoped to one player.
      * @abstract
@@ -31,20 +31,21 @@ export class AbstractMetricsStore {
      * @param {number|null} playerId null for unscoped (every player)
      * @param {number} fromTick
      * @param {number} toTick
-     * @param {number} bucketTicks - bucket width, in ticks
+     * @param {number} tier - bucket width in ticks, one of TIER_LADDER
      * @returns {Promise<MetricsRollupRow[]>}
      */
-    async queryRollup(type, playerId, fromTick, toTick, bucketTicks) {
+    async queryRollup(type, playerId, fromTick, toTick, tier) {
         throw new NotImplementedError();
     }
 
     /**
-     * Drops facts more than METRICS_RETENTION_TICKS behind `latestTick`.
+     * Moves the store's own clock forward: whatever pre-aggregating and retention pruning the
+     * backend does happens here, in whatever order it needs.
      * @abstract
      * @param {number} latestTick
      * @returns {Promise<void>}
      */
-    async pruneTo(latestTick) {
+    async advanceTo(latestTick) {
         throw new NotImplementedError();
     }
 

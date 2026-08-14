@@ -10,7 +10,7 @@ export class MetricsRollupEvent extends AbstractEvent {
     static wireFields = {
         metricsType: "int32",
         scope: "int32",
-        bucketTicks: "int32",
+        tier: "int32",
         toTick: "int32",
         buckets: "int32[]",
         bucketRowCounts: "int32[]",
@@ -24,7 +24,7 @@ export class MetricsRollupEvent extends AbstractEvent {
     /**
      * @param {number} metricsType METRICS_FACT_TYPE_*
      * @param {number} scope METRICS_QUERY_SCOPE_*
-     * @param {number} bucketTicks
+     * @param {number} tier
      * @param {number} toTick the query's right edge (current tick at query time); anchor "now" to this, not the data
      * @param {number[]} buckets distinct bucket-start ticks, ascending, each listed once
      * @param {number[]} bucketRowCounts parallel to buckets — rows belonging to each bucket
@@ -34,11 +34,11 @@ export class MetricsRollupEvent extends AbstractEvent {
      * @param {number[]} count per row
      * @param {number[]} sum per row
      */
-    constructor(metricsType, scope, bucketTicks, toTick, buckets, bucketRowCounts, seriesCategory, seriesTag, seriesIndex, count, sum) {
+    constructor(metricsType, scope, tier, toTick, buckets, bucketRowCounts, seriesCategory, seriesTag, seriesIndex, count, sum) {
         super();
         this.metricsType = metricsType;
         this.scope = scope;
-        this.bucketTicks = bucketTicks;
+        this.tier = tier;
         this.toTick = toTick;
         this.buckets = buckets;
         this.bucketRowCounts = bucketRowCounts;
@@ -117,7 +117,7 @@ export class MetricsRollupBucketEvent extends AbstractEvent {
     static wireFields = {
         metricsType: "int32",
         scope: "int32",
-        bucketTicks: "int32",
+        tier: "int32",
         toTick: "int32",
         bucketTick: "int32",
         category: "int32[]",
@@ -130,7 +130,7 @@ export class MetricsRollupBucketEvent extends AbstractEvent {
     /**
      * @param {number} metricsType METRICS_FACT_TYPE_*
      * @param {number} scope METRICS_QUERY_SCOPE_*
-     * @param {number} bucketTicks
+     * @param {number} tier
      * @param {number} toTick same meaning as MetricsRollupEvent's toTick — not bucketTick below
      * @param {number} bucketTick the one completed bucket every row belongs to
      * @param {number[]} category
@@ -139,11 +139,11 @@ export class MetricsRollupBucketEvent extends AbstractEvent {
      * @param {number[]} sum
      * @param {number} windowTicks retention window, so the client cache knows how far back to prune
      */
-    constructor(metricsType, scope, bucketTicks, toTick, bucketTick, category, tag, count, sum, windowTicks) {
+    constructor(metricsType, scope, tier, toTick, bucketTick, category, tag, count, sum, windowTicks) {
         super();
         this.metricsType = metricsType;
         this.scope = scope;
-        this.bucketTicks = bucketTicks;
+        this.tier = tier;
         this.toTick = toTick;
         this.bucketTick = bucketTick;
         this.category = category;

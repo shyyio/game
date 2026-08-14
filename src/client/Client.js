@@ -215,8 +215,8 @@ export class Client {
             modRegistry.items,
         );
         this.productionButtonLayer.onPress(() => this.productionPanelLayer.toggle());
-        this.productionPanelLayer.onSubscribe((metricsType, scope, bucketTicks, windowTicks) => this.sendMessage(
-            new MetricsSubscribeMessage(metricsType, scope, bucketTicks, windowTicks),
+        this.productionPanelLayer.onSubscribe((metricsType, scope, tier, windowTicks) => this.sendMessage(
+            new MetricsSubscribeMessage(metricsType, scope, tier, windowTicks),
         ));
         this.productionPanelLayer.onUnsubscribe((metricsType, scope) => this.sendMessage(
             new MetricsUnsubscribeMessage(metricsType, scope),
