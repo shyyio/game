@@ -1,5 +1,5 @@
 import {AbstractTool, Direction, Haptics, LAYER_SURFACE, CreateObjectMessage, DeleteObjectMessage} from "@/sdk/client.js";
-import {BELT_NORMAL} from "@/mods/Logistics/common/constants.js";
+import {BELT_NORMAL} from "../common/constants.js";
 import {BeltDefinition} from "../common/objectTypes.js";
 import {Belt} from "./BeltDrawLayer.js";
 import {inferBeltParent} from "../common/geometry.js";

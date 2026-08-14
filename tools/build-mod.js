@@ -18,7 +18,6 @@ import {
     ModManifest, SDK_VERSION, MOD_PART_DECLARATION, MOD_PART_SIM, MOD_PART_CLIENT,
 } from "../src/common/ModManifest.js";
 
-const SRC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../src");
 const SDK_SPECIFIERS = ["@/sdk/common.js", "@/sdk/client.js"];
 // The single external the SDK specifiers collapse into: one factory argument carries the whole SDK.
 const SDK_ID = "\0sdk";
@@ -47,14 +46,15 @@ function resolvePlugin(externalIds) {
             if (SDK_SPECIFIERS.includes(source)) {
                 return {id: SDK_ID, external: true};
             }
-            let resolved = null;
             if (source.startsWith("@/")) {
-                resolved = join(SRC_DIR, source.slice(2));
-            } else if (source.startsWith(".") && importer !== undefined) {
-                resolved = resolve(dirname(importer), source);
-            } else {
+                // A mod reaches the engine only through the SDK, and its own files relatively —
+                // which is what lets this builder run anywhere, with no game checkout in sight.
+                throw new Error(`A mod may not import ${source}; use @/sdk/common.js, @/sdk/client.js, or a relative path`);
+            }
+            if (!source.startsWith(".") || importer === undefined) {
                 return null;
             }
+            const resolved = resolve(dirname(importer), source);
             if (externalIds.has(resolved)) {
                 return {id: resolved, external: true};
             }

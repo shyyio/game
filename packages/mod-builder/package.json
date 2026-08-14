@@ -1,0 +1,47 @@
+{
+    "name": "@spup/mod-builder",
+    "version": "1.0.0",
+    "description": "Builds and checks a mod for Shy's Power-Up Factory",
+    "keywords": [
+        "spup",
+        "mod",
+        "bundler",
+        "game"
+    ],
+    "homepage": "https://spupgame.com",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/shyyio/game.git",
+        "directory": "packages/mod-builder"
+    },
+    "bugs": {
+        "url": "https://github.com/shyyio/game/issues"
+    },
+    "author": "Shy",
+    "license": "MIT",
+    "type": "module",
+    "bin": {
+        "spup-mod-builder": "cli.js"
+    },
+    "exports": {
+        ".": "./cli.js",
+        "./test-loader": "./testLoader.js",
+        "./sdk-fake": "./sdkFake.js"
+    },
+    "files": [
+        "cli.js",
+        "lib/",
+        "sdkFake.js",
+        "sdkFakeModule.js",
+        "testHooks.js",
+        "testLoader.js",
+        "README.md"
+    ],
+    "engines": {
+        "node": ">=20"
+    },
+    "dependencies": {
+        "acorn": "^8.18.0",
+        "rollup": "^4.62.2"
+    }
+}

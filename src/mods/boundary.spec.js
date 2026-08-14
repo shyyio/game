@@ -75,7 +75,9 @@ function violation(specifier, file, modName) {
     }
     if (specifier.startsWith(MOD_PREFIX)) {
         if (specifier.startsWith(`${MOD_PREFIX}${modName}/`)) {
-            return null;
+            // The builder resolves no aliases at all, so a mod's own files must be reached
+            // relatively — that is what lets a mod build outside this repo.
+            return "reaches its own files through the @/ alias; use a relative path";
         }
         return "imports another mod; mods share code only through the SDK";
     }
