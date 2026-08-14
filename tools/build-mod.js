@@ -288,7 +288,7 @@ ${factories.join("")}`;
  * @returns {string} the file's sha-256, in the integrity form the lockfile pins
  */
 function fileHash(path) {
-    return `sha256-${createHash("sha256").update(readFileSync(path)).digest("base64")}`;
+    return `sha256-${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
 }
 
 /**
