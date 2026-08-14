@@ -10,7 +10,7 @@ const props = defineProps({
 
 const emit = defineEmits(["select", "back", "unauthorized"]);
 
-const DEV_SERVER_ORIGIN = "ws://localhost:8080";
+const DEV_SERVER_ORIGIN = "ws://localhost:27500";
 const DEV_SERVER_NAME = "🧪 DEV";
 
 const REFRESH_COOLDOWN_MS = 3000;

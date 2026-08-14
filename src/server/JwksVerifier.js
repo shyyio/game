@@ -10,7 +10,7 @@ const JWKS_PATH = "/.well-known/jwks.json";
 export class JwksVerifier {
 
     /**
-     * @param {string} authServerUrl - e.g. "http://localhost:8081"
+     * @param {string} authServerUrl - e.g. "http://localhost:27501"
      */
     constructor(authServerUrl) {
         this._authServerUrl = authServerUrl;

@@ -9,7 +9,7 @@ const {values: args} = parseArgs({
         "db": {type: "string", default: "reporting.sqlite3"},
         "maps-dir": {type: "string", default: "dist/maps"},
         "host": {type: "string", default: "0.0.0.0"},
-        "port": {type: "string", default: "8082"},
+        "port": {type: "string", default: "27502"},
     },
 });
 const dbPath = args["db"];

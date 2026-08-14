@@ -15,7 +15,7 @@ const {values: args} = parseArgs({
         "auth-secret": {type: "string", default: "auth-secret.json"},
         "servers": {type: "string", default: "servers.json"},
         "host": {type: "string", default: "0.0.0.0"},
-        "port": {type: "string", default: "8081"},
+        "port": {type: "string", default: "27501"},
     },
 });
 const dbPath = args["db"];
