@@ -92,7 +92,7 @@ function preconnect(origin) {
  */
 async function fetchStatus(origin) {
   const url = `${httpOriginFor(origin)}/status`;
-  const timingPromise = observeNetworkDurationMs(url);
+  const timing = observeNetworkDurationMs(url);
   try {
     const response = await fetch(url);
     if (!response.ok) {
@@ -106,9 +106,10 @@ async function fetchStatus(origin) {
       online: body.online,
       chunksClaimed: body.chunksClaimed,
       chunksAvailable: body.chunksAvailable,
-      pingMs: await timingPromise,
+      pingMs: await timing.durationMs,
     };
   } catch {
+    timing.cancel();
     statusByOrigin[origin] = {loading: false, offline: true};
   }
 }
@@ -120,16 +121,18 @@ const RESOURCE_TIMING_TIMEOUT_MS = 5000;
  * Observes live via PerformanceObserver rather than reading the shared buffer, since Vite's own
  * module fetches fill that buffer's default capacity well before a status request completes.
  * @param {string} url
- * @returns {Promise<number>}
+ * @returns {{durationMs: Promise<number|null>, cancel: function(): void}} durationMs is null when
+ *     no entry arrives, which is the normal outcome for a request that never reached the server
  */
 function observeNetworkDurationMs(url) {
   // Browsers normalize away default ports (e.g. ":443") when recording an entry's name, so an
   // origin like "https://host:443/status" must be compared against its normalized form too.
   const normalizedUrl = new URL(url).href;
-  return new Promise((resolve, reject) => {
+  let stop = () => {};
+  const durationMs = new Promise((resolve) => {
     const timeout = setTimeout(() => {
       observer.disconnect();
-      reject(new Error(`No resource timing entry for ${url}`));
+      resolve(null);
     }, RESOURCE_TIMING_TIMEOUT_MS);
     const observer = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
@@ -142,7 +145,23 @@ function observeNetworkDurationMs(url) {
       }
     });
     observer.observe({type: "resource"});
+    stop = () => {
+      clearTimeout(timeout);
+      observer.disconnect();
+      resolve(null);
+    };
   });
+  return {durationMs, cancel: () => stop()};
+}
+
+const SCHEME_PATTERN = /^[a-z]+:\/\//;
+
+/**
+ * @param {string} origin
+ * @returns {string} the origin without its scheme, for display
+ */
+function displayOrigin(origin) {
+  return origin.replace(SCHEME_PATTERN, "");
 }
 
 const MIN_CHUNK_BAR_PERCENT = 1;
@@ -187,13 +206,13 @@ function select(origin) {
           @click="select(origin)"
       >
         <div class="server-row-main">
-          <div class="server-row-name">{{ origin === DEV_SERVER_ORIGIN ? DEV_SERVER_NAME : (statusByOrigin[origin]?.name || origin) }}</div>
+          <div class="server-row-name">{{ origin === DEV_SERVER_ORIGIN ? DEV_SERVER_NAME : (statusByOrigin[origin]?.name || displayOrigin(origin)) }}</div>
           <div class="server-row-detail">
             <template v-if="statusByOrigin[origin]?.loading">Pinging…</template>
             <template v-else-if="statusByOrigin[origin]?.offline">Offline</template>
             <template v-else>
-              {{ statusByOrigin[origin].pingMs }}ms
-              &middot; {{ statusByOrigin[origin].online }} online
+              <template v-if="statusByOrigin[origin].pingMs !== null">{{ statusByOrigin[origin].pingMs }}ms &middot; </template>
+              {{ statusByOrigin[origin].online }} online
             </template>
           </div>
           <div v-if="statusByOrigin[origin] && !statusByOrigin[origin].loading && !statusByOrigin[origin].offline" class="server-row-chunks">
