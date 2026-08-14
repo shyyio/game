@@ -5,8 +5,8 @@
 // runs identically on client and server. Mods import it as `@/sdk/common.js`.
 //
 // Mod anatomy — a mod is a ModPackage of up to three parts:
-//   declaration.js — an AbstractModDeclaration: pure data (objectTypes, wireClasses, textures,
-//       items). Most mods are declaration-only: each ObjectType bundles its geometry/ports
+//   declaration.js — an AbstractModDeclaration: pure data (objectTypes, wireClasses, items).
+//       Most mods are declaration-only: each ObjectType bundles its geometry/ports
 //       with a behavior (a component+system bundle) and the engine derives the whole sim and
 //       client surface from it.
 //   sim.js (optional) — an AbstractSimMod for bespoke sim content, in ECS terms: define components
@@ -32,9 +32,16 @@
 // which re-exports everything here. Everything a mod is meant to use should be
 // reachable from these two files and nowhere else.
 
+// ---- SDK version ----
+// The version of this SDK surface, declared by every packaged mod (mod.json's `sdkVersion`) and
+// checked before a bundle is evaluated. Bump on any breaking change to either SDK file — a removed
+// or renamed export, or a changed signature/semantics of one; pure additions keep the number.
+export {SDK_VERSION} from "@/common/ModManifest.js";
+
 // ---- Mod framework ----
-// A mod is a ModPackage: a pure-data declaration (object types, wire classes, textures) plus an
-// optional sim part and an optional client part, registered into a ModRegistry and frozen once.
+// A mod is a ModPackage: a pure-data declaration (object types, wire classes) plus its texture
+// atlases, an optional sim part, and an optional client part, registered into a ModRegistry and
+// frozen once.
 export {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
 export {ModPackage} from "@/common/ModPackage.js";
 export {ModRegistry} from "@/common/ModRegistry.js";
@@ -83,6 +90,12 @@ export {DeleteObjectMessage} from "@/common/CoreMessages.js";
 export {CreateObjectMessage} from "@/common/CoreMessages.js";
 export {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
 
+// The core player intents a mod's client side (or its specs) may send: viewport subscription,
+// chunk claiming, friend list edits, and a player-setting write.
+export {SetViewportMessage} from "@/common/CoreMessages.js";
+export {ClaimChunkMessage} from "@/common/ClaimMessages.js";
+export {AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
+
 // ---- Events ----
 // Base classes for events a mod emits to connected clients (rendering, effects).
 // Subclasses must declare a static `wireFields` map. Extend `AbstractChunkRoutedEvent`
@@ -95,6 +108,12 @@ export {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 // Engine render deltas for the item resting in a render-flagged out-port.
 export {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
+// The joining session's own identity, and the friend list a mod may gate on.
+export {WelcomeEvent, FriendListEvent} from "@/common/PlayerEvents.js";
+
+// Per-key player-setting delta, for a mod reacting to a setting flipping mid-session.
+export {PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
+
 // Worker assignment deltas/sync the engine's WorkerNetworks emits (NO_HOUSING = unmanned).
 export {WorkerAssignmentEvent, WorkerAssignmentSyncEvent, WorkerAssignmentBatchEvent, NO_HOUSING} from "@/common/WorkerEvents.js";
 
@@ -106,6 +125,9 @@ export {
     CHUNK_SIZE,
     LAYER_SURFACE,
 } from "@/common/constants.js";
+
+// The unowned/anonymous player id: no session owns the action.
+export {PLAYER_ID_NONE} from "@/common/constants.js";
 
 // ---- Player settings ----
 // Per-key player-setting config a declaration contributes (playerSettingEntries); only
@@ -151,6 +173,11 @@ export {getOrCreate} from "@/common/util.js";
 // Drops a member from a Map<*, Set>, deleting the key once its set empties.
 export {removeFromGroup} from "@/common/util.js";
 
+// ---- Wire ----
+// Encodes/decodes the registry's wire classes; a mod's spec round-trips its own events through it.
+export {WireRegistry} from "@/common/wire.js";
+
 // ---- Textures ----
-// Describes a texture atlas (image + frame data) a mod contributes.
-export {TextureDefinition} from "@/common/TextureDefinition.js";
+// One texture atlas (image + frame data) a mod package ships; built by the mod's loader, not by
+// its declaration.
+export {TextureAtlas} from "@/common/TextureAtlas.js";

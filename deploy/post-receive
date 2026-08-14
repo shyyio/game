@@ -8,4 +8,9 @@ git checkout -f main
 cd /home/app/spup
 npm ci
 npm run build:server
+# The server runs its mods as pinned packages, so build and pin this commit's in-repo loadout
+# before restarting; the lockfile lives with the world data, the cache next to it.
+node --import ./src/server/loader.js tools/publish-base-mods.js \
+    --out /home/app/spup/dist-mods \
+    --lockfile /home/app/data/game/mods.json
 sudo /usr/bin/systemctl restart spup

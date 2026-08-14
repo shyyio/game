@@ -1,0 +1,23 @@
+// The published mod catalog, read straight from the registry's static index. Browsing mods needs no
+// session and touches no game server — it is the same index.json a server operator's `mods add`
+// resolves names against.
+
+const MOD_REGISTRY_URL = "https://mods.spupgame.com";
+
+// Where a mod author opens the PR that lists their mod.
+export const MOD_REGISTRY_REPO_URL = "https://github.com/shy/spup-mods";
+
+/**
+ * @returns {Promise<object[]>} the listed mods, newest version first within each
+ */
+export async function listMods() {
+    const response = await fetch(`${MOD_REGISTRY_URL}/index.json`);
+    if (!response.ok) {
+        throw new Error(`The mod registry is unreachable (${response.status})`);
+    }
+    const index = await response.json();
+    if (!Array.isArray(index.mods)) {
+        throw new Error("The mod registry returned something unexpected");
+    }
+    return index.mods;
+}

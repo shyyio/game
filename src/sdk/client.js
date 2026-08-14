@@ -69,6 +69,9 @@ export {ObjectTool} from "@/client/input/ObjectTool.js";
 // The shared pointer singleton; ghost layers read `currentX`/`currentY` (world coordinates) to float on the cursor.
 export {default as Mouse} from "@/client/input/Mouse.js";
 
+// A page-lifetime repeating timer, so a mod's heartbeat never names a page global.
+export {startHeartbeat} from "@/client/timers.js";
+
 // Singleton tracking window focus + tab visibility as one `focused` boolean.
 export {default as WindowFocus} from "@/client/WindowFocus.js";
 

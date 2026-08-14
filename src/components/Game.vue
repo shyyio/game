@@ -8,8 +8,10 @@ import {useSettingsMenu} from "@/composables/useSettingsMenu.js";
 import Mobile from "@/client/Mobile.js";
 import DeviceSettings, {DEVICE_SETTING_MOBILE} from "@/client/state/DeviceSettings.js";
 import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
-import {gameStart} from "@/client/GameStart.js";
+import {gameStart, startError} from "@/client/GameStart.js";
+import {useRouter} from "vue-router";
 
+const router = useRouter();
 const settingsOpen = ref(false);
 
 const {settingsCategories, settingValues, bindSettingsMenu} = useSettingsMenu();
@@ -29,7 +31,17 @@ onMounted(async () => {
   }
   const {app, viewport, syncMobileTouchInput, destroy: destroyPixiApp} = pixiApp;
 
-  const bootstrap = await createClient(app, viewport, gameStart.value);
+  // A failed join (unreachable server, mods that will not load) goes back to the server list with
+  // the reason, instead of leaving an empty canvas mounted.
+  let bootstrap;
+  try {
+    bootstrap = await createClient(app, viewport, gameStart.value);
+  } catch (error) {
+    destroyPixiApp();
+    startError.value = error.message;
+    router.push({name: "servers"});
+    return;
+  }
   if (disposed) {
     bootstrap.inputHandler.destroy();
     bootstrap.destroy();

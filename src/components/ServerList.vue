@@ -8,7 +8,7 @@ const props = defineProps({
   error: {type: String, default: ""},
 });
 
-const emit = defineEmits(["select", "back", "unauthorized"]);
+const emit = defineEmits(["select", "back", "mods", "unauthorized"]);
 
 const DEV_SERVER_ORIGIN = "ws://localhost:27500";
 const DEV_SERVER_NAME = "🧪 DEV";
@@ -182,10 +182,11 @@ function chunkPercent(origin) {
 }
 
 /**
- * @param {string} origin
+ * @param {object} server
  * @returns {void}
  */
-function select(origin) {
+function select(server) {
+  const origin = server.origin;
   if (props.connectingOrigin || statusByOrigin[origin]?.offline || statusByOrigin[origin]?.loading) {
     return;
   }
@@ -199,44 +200,45 @@ function select(origin) {
     <v-card-text>
       <div v-if="servers.length === 0" class="server-list-empty">No servers configured</div>
       <div
-          v-for="{origin} in servers"
-          :key="origin"
+          v-for="server in servers"
+          :key="server.origin"
           class="server-row"
-          :class="{'server-row-offline': statusByOrigin[origin]?.offline}"
-          @click="select(origin)"
+          :class="{'server-row-offline': statusByOrigin[server.origin]?.offline}"
+          @click="select(server)"
       >
         <div class="server-row-main">
-          <div class="server-row-name">{{ origin === DEV_SERVER_ORIGIN ? DEV_SERVER_NAME : (statusByOrigin[origin]?.name || displayOrigin(origin)) }}</div>
+          <div class="server-row-name">{{ server.origin === DEV_SERVER_ORIGIN ? DEV_SERVER_NAME : (statusByOrigin[server.origin]?.name || displayOrigin(server.origin)) }}</div>
           <div class="server-row-detail">
-            <template v-if="statusByOrigin[origin]?.loading">Pinging…</template>
-            <template v-else-if="statusByOrigin[origin]?.offline">Offline</template>
+            <template v-if="statusByOrigin[server.origin]?.loading">Pinging…</template>
+            <template v-else-if="statusByOrigin[server.origin]?.offline">Offline</template>
             <template v-else>
-              <template v-if="statusByOrigin[origin].pingMs !== null">{{ statusByOrigin[origin].pingMs }}ms &middot; </template>
-              {{ statusByOrigin[origin].online }} online
+              <template v-if="statusByOrigin[server.origin].pingMs !== null">{{ statusByOrigin[server.origin].pingMs }}ms &middot; </template>
+              {{ statusByOrigin[server.origin].online }} online
             </template>
           </div>
-          <div v-if="statusByOrigin[origin] && !statusByOrigin[origin].loading && !statusByOrigin[origin].offline" class="server-row-chunks">
+          <div v-if="statusByOrigin[server.origin] && !statusByOrigin[server.origin].loading && !statusByOrigin[server.origin].offline" class="server-row-chunks">
             <v-progress-linear
-                :model-value="chunkPercent(origin)"
+                :model-value="chunkPercent(server.origin)"
                 :height="10"
                 color="primary"
             />
-            <span class="server-row-chunks-label">{{ chunkPercent(origin) }}% full</span>
+            <span class="server-row-chunks-label">{{ chunkPercent(server.origin) }}% full</span>
           </div>
         </div>
         <v-btn
             color="primary"
             variant="flat"
             size="small"
-            :disabled="statusByOrigin[origin]?.offline || statusByOrigin[origin]?.loading || !!connectingOrigin"
-            :loading="connectingOrigin === origin"
-            @click.stop="select(origin)"
+            :disabled="statusByOrigin[server.origin]?.offline || statusByOrigin[server.origin]?.loading || !!connectingOrigin"
+            :loading="connectingOrigin === server.origin"
+            @click.stop="select(server)"
         >Connect</v-btn>
       </div>
       <div v-if="error" class="server-list-error">{{ error }}</div>
     </v-card-text>
     <v-card-actions>
       <v-btn variant="text" @click="emit('back')">Back</v-btn>
+      <v-btn variant="text" @click="emit('mods')">Mods</v-btn>
       <v-spacer/>
       <v-btn variant="text" :disabled="refreshCoolingDown" :loading="refreshing" @click="refresh">Refresh</v-btn>
     </v-card-actions>

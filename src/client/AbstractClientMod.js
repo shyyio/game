@@ -17,6 +17,15 @@ export class AbstractClientMod {
     }
 
     /**
+     * The texture atlases this mod ships. A packaged bundle carries its own art inline (images as
+     * data URLs), so this is the same list in both the static and the packaged loadout.
+     * @returns {TextureAtlas[]}
+     */
+    textureAtlases() {
+        return [];
+    }
+
+    /**
      * The draw layers this mod contributes, bound to the shared client surfaces.
      * @param {Client} client
      * @returns {AbstractDrawLayer[]}

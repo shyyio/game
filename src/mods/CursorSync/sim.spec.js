@@ -1,21 +1,17 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {Game} from "@/sim/Game.js";
-import {GameEngine} from "@/sim/GameEngine.js";
-import {ecsModRegistry} from "@/test/ecsSim.js";
+import {makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {SetViewportMessage} from "@/common/CoreMessages.js";
-import {SetPlayerSettingMessage, AddFriendMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
+import {
+    SetViewportMessage, SetPlayerSettingMessage, AddFriendMessage, RemoveFriendMessage,
+    CHUNK_SIZE, chunkId,
+} from "@/sdk/common.js";
 import {CursorMoveMessage, CursorHideMessage} from "./common/messages.js";
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "./common/events.js";
 import {CURSOR_SETTING_SHARE, CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_NONE, CURSOR_AUDIENCE_FRIENDS} from "./common/constants.js";
-import {CHUNK_SIZE} from "@/common/constants.js";
-import {chunkId} from "@/common/util.js";
 
 async function gameWithSessions() {
-    const modRegistry = ecsModRegistry();
-    const game = new Game(modRegistry, new GameEngine(modRegistry));
-    await game.init();
+    const game = await makeGame();
     const sender = new CapturingSession(1);
     const watcher = new CapturingSession(2);
     const bystander = new CapturingSession(3);

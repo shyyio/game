@@ -34,13 +34,6 @@ export class AbstractModDeclaration {
     }
 
     /**
-     * @returns {TextureDefinition[]}
-     */
-    get textureDefinitions() {
-        return [];
-    }
-
-    /**
      * Item type -> definition (name, render texture); item types must be unique across the loadout.
      * @returns {Object.<number, ItemDefinition>}
      */

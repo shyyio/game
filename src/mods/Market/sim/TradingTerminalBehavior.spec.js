@@ -1,12 +1,9 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {Direction} from "@/common/constants.js";
-import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {EMPTY} from "@/sim/GameEngine.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {ModPackage} from "@/common/ModPackage.js";
-import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
-import {MarketListingEntry} from "@/common/MarketListingEntry.js";
+import {
+    Direction, EMPTY, CreateObjectMessage, ModPackage, AbstractModDeclaration, MarketListingEntry,
+} from "@/sdk/common.js";
 import {TradingTerminalType} from "./../common/objectTypes.js";
 import {MARKET_MODE_SELL, MARKET_MODE_BUY} from "../common/constants.js";
 import {MarketBook} from "./MarketBook.js";

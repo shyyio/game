@@ -512,7 +512,7 @@ export class Client {
      * @returns {Promise<void>}
      */
     async init() {
-        await this.textureRegistry.load(this.modRegistry.textureDefinitions);
+        await this.textureRegistry.load(this.modRegistry.textureAtlases);
 
         for (const layer of this.drawLayerRegistry.layers) {
             layer.textureRegistry = this.textureRegistry;
