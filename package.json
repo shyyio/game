@@ -12,6 +12,7 @@
     "build:mod": "node --import ./src/server/loader.js tools/build-mod.js",
     "mods:base": "node --import ./src/server/loader.js tools/publish-base-mods.js",
     "check:mod": "node --import ./src/server/loader.js tools/mod-check.js",
+    "pack:builder": "node tools/pack-builder.js",
     "scan:mod": "node tools/mod-scan.js",
     "build:server": "vite build --config vite.server.config.js",
     "build:authserver": "vite build --config vite.authserver.config.js",
