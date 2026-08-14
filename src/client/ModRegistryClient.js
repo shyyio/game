@@ -4,8 +4,8 @@
 
 const MOD_REGISTRY_URL = "https://mods.spupgame.com";
 
-// Where a mod author opens the PR that lists their mod.
-export const MOD_REGISTRY_REPO_URL = "https://github.com/shy/spup-mods";
+// Where a mod author opens the PR that lists their mod, and how to do it.
+export const MOD_LISTING_GUIDE_URL = "https://github.com/shyyio/spup-mods#listing-a-mod";
 
 /**
  * @returns {Promise<object[]>} the listed mods, newest version first within each
