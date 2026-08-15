@@ -8,6 +8,8 @@
 // without any per-sprite state or phase. Mods animate simply by following this
 // naming convention and reading currentAnimationFrame().
 
+import ReducedMotion from "@/client/ReducedMotion.js";
+
 // 8 frames per sequence.
 export const ANIMATION_FRAME_COUNT = 8;
 
@@ -22,6 +24,11 @@ let frame = 0;
  * @returns {number} the new frame, in [0, 8)
  */
 export function advanceAnimationFrame() {
+    if (ReducedMotion.enabled) {
+        // Every sequence holds its base frame: no belt scroll, no cycling machines.
+        frame = 0;
+        return frame;
+    }
     frame = (frame + 1) % ANIMATION_FRAME_COUNT;
     return frame;
 }

@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, onUnmounted, ref} from "vue";
+import {computed, onMounted, onUnmounted, ref} from "vue";
 import {useTheme} from "vuetify";
 import {createPixiApp} from "@/client/PixiApp.js";
 import {createClient} from "@/client/GameBootstrap.js";
@@ -7,7 +7,12 @@ import {EffectiveToolController} from "@/client/input/EffectiveToolController.js
 import {bindGameKeyboardShortcuts} from "@/client/input/GameKeyboardShortcuts.js";
 import {useSettingsMenu} from "@/composables/useSettingsMenu.js";
 import Mobile from "@/client/Mobile.js";
-import DeviceSettings, {DEVICE_SETTING_MOBILE, DEVICE_SETTING_THEME} from "@/client/state/DeviceSettings.js";
+import ReducedMotion from "@/client/ReducedMotion.js";
+import DeviceSettings, {
+  DEVICE_SETTING_MOBILE,
+  DEVICE_SETTING_REDUCED_MOTION,
+  DEVICE_SETTING_THEME,
+} from "@/client/state/DeviceSettings.js";
 import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
 import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
 import {applyTheme, onThemeChange, THEME_DEFAULT} from "@/client/Theme.js";
@@ -21,6 +26,18 @@ const settingsOpen = ref(false);
 const {settingsCategories, settingValues, bindSettingsMenu} = useSettingsMenu();
 
 Mobile.setEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_MOBILE, Mobile.devicePrefers()));
+// Before the dialog can open, so its first open honors the preference.
+ReducedMotion.setEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_REDUCED_MOTION, ReducedMotion.devicePrefers()));
+const reducedMotion = ref(ReducedMotion.enabled);
+const stopMotionSync = ReducedMotion.onChange(on => reducedMotion.value = on);
+
+// A false transition drops the dialog's slide; the scrim fade goes with the root class.
+const dialogTransition = computed(() => {
+  if (reducedMotion.value) {
+    return false;
+  }
+  return "dialog-bottom-transition";
+});
 // Before the HUD builds, so the first paint is in the chosen palette.
 applyTheme(DeviceSettings.getNumber(DEVICE_SETTING_THEME, THEME_DEFAULT));
 
@@ -88,6 +105,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   disposed = true;
+  stopMotionSync();
   stopThemeSync();
   teardown();
 });
@@ -106,7 +124,7 @@ export default defineComponent({
 <template>
   <div id="game">
   </div>
-  <v-dialog v-model="settingsOpen" max-width="480" content-class="settings-dialog" transition="dialog-bottom-transition">
+  <v-dialog v-model="settingsOpen" max-width="480" content-class="settings-dialog" :transition="dialogTransition">
     <v-card>
       <v-toolbar title="Settings">
         <v-btn variant="text" @click="settingsOpen = false">Close</v-btn>
@@ -150,6 +168,11 @@ export default defineComponent({
 
 <!-- Unscoped: the dialog content is teleported outside this component. -->
 <style>
+/* The scrim fade is Vuetify's own, not the `transition` prop's; its duration is !important. */
+.reduced-motion .v-overlay__scrim {
+  transition-duration: 0s !important;
+}
+
 .v-dialog > .settings-dialog {
   margin: max(env(safe-area-inset-top, 0px), 24px)
           max(env(safe-area-inset-right, 0px), 24px)
