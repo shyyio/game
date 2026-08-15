@@ -2,6 +2,7 @@ import {
     ACTIVE_ACCENT,
     ConnectedPanelLayer,
     ManagedPanel,
+    Mobile,
     PANEL_TINT,
     PANEL_TITLE_TEXT,
     ROW_HEIGHT,
@@ -23,6 +24,9 @@ const MARKER_SIZE_TILES = 0.4;
 // Clearance the panel keeps from the marker it belongs to, and from the screen edges.
 const MARKER_GAP = 40;
 const SCREEN_MARGIN = 12;
+// The on-screen keyboard covers the lower screen while a note is being typed, so on mobile the
+// editor stays within the top third.
+const KEYBOARD_CLEAR_FRACTION = 1 / 3;
 
 /**
  * The note editor: writes a new note, rewrites the player's own, or removes another player's from
@@ -155,7 +159,11 @@ export class NotePanelLayer extends ConnectedPanelLayer {
      */
     _positionBeside(target) {
         if (this.viewport === null) {
-            return UIPanel.centerPosition(this._app, PANEL_WIDTH);
+            const centered = UIPanel.centerPosition(this._app, PANEL_WIDTH);
+            return (height) => {
+                const position = centered(height);
+                return {x: position.x, y: clamp(position.y, SCREEN_MARGIN, this._maxY(height))};
+            };
         }
         const world = noteAnchor(target);
         const marker = this.viewport.toScreen(world.x, world.y);
@@ -167,9 +175,23 @@ export class NotePanelLayer extends ConnectedPanelLayer {
             const y = marker.y - height / 2;
             return {
                 x: clamp(x, SCREEN_MARGIN, this._app.screen.width - PANEL_WIDTH - SCREEN_MARGIN),
-                y: clamp(y, SCREEN_MARGIN, this._app.screen.height - height - SCREEN_MARGIN),
+                y: clamp(y, SCREEN_MARGIN, this._maxY(height)),
             };
         };
+    }
+
+    /**
+     * The lowest the panel's top may sit: clear of the keyboard on mobile, clear of the bottom edge
+     * otherwise. A panel too tall for the allowance top-aligns, since clamp collapses the range.
+     * @private
+     * @param {number} height
+     * @returns {number}
+     */
+    _maxY(height) {
+        if (Mobile.enabled) {
+            return this._app.screen.height * KEYBOARD_CLEAR_FRACTION - height;
+        }
+        return this._app.screen.height - height - SCREEN_MARGIN;
     }
 
     /**

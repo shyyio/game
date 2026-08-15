@@ -121,6 +121,18 @@ export class AbstractClientMod {
     }
 
     /**
+     * Context-gesture hook for tool-less (inspect) mode: a long press, or a right-click on desktop.
+     * Same claim rule as onObjectTap — claim only what the pointer is really on.
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Client} client
+     * @returns {boolean} whether the gesture was consumed
+     */
+    onObjectHold(tileX, tileY, client) {
+        return false;
+    }
+
+    /**
      * Inspect hook (null coords = cleared); returns the objects to highlight and may update the
      * mod's own draw layers.
      * @param {number|null} tileX

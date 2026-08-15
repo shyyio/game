@@ -1070,6 +1070,21 @@ export class Client {
      * @param {number} tileY
      * @returns {void}
      */
+    /**
+     * Handles a context gesture (long press, or right-click on desktop) on the tile while
+     * tool-less: offers it to the client mods' bespoke content. World mode only.
+     * @param {number} tileX
+     * @param {number} tileY
+     * @returns {void}
+     */
+    handleObjectHold(tileX, tileY) {
+        for (const mod of this.modRegistry.clientMods) {
+            if (mod.onObjectHold(tileX, tileY, this)) {
+                return;
+            }
+        }
+    }
+
     handleObjectTap(tileX, tileY) {
         for (const mod of this.modRegistry.clientMods) {
             if (mod.onObjectTap(tileX, tileY, this)) {

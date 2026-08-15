@@ -2,6 +2,7 @@ import {
     AbstractDrawLayer,
     DisplayPool,
     KeyedDisplayPool,
+    Mobile,
     OVERWRITE_TILE_COLOR,
     claimColor,
     tileId,
@@ -112,20 +113,26 @@ export class NotesDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * The note whose marker the pointer sits on, null for anywhere else — a tap claims a note only
-     * through this, so an object sharing the tile keeps the rest of it. The pointer's pin is what
-     * pixi hit-tested against the pin's own hitArea, so no second hit test is needed.
+     * The note whose marker covers a world point, null for anywhere else — a tap claims a note
+     * only through this, so an object sharing the tile keeps the rest of it. Position-based rather
+     * than off the pixi hover, since a touch tap has no hover to read.
+     * @param {{x: number, y: number}|null} point
      * @returns {Note|null}
      */
-    noteAtPointer() {
-        if (this._pointerTile === null) {
+    noteAt(point) {
+        if (point === null) {
             return null;
         }
-        const note = this._state.mapGet("notes.byTile", this._pointerTile);
-        if (note === undefined) {
-            return null;
+        for (const pin of this._pins.values()) {
+            if (pin.tile === null || !pin.visible || !pin.containsWorldPoint(point.x, point.y)) {
+                continue;
+            }
+            const note = this._state.mapGet("notes.byTile", pin.tile);
+            if (note !== undefined) {
+                return note;
+            }
         }
-        return note;
+        return null;
     }
 
     /**
@@ -162,7 +169,9 @@ export class NotesDrawLayer extends AbstractDrawLayer {
      */
     _onPointerOver(pin) {
         const tile = pin.tile;
-        if (tile === null) {
+        // Touch synthesizes a hover around the tap, which would open and close the tooltip under
+        // the gesture; there, the tap itself drives it.
+        if (tile === null || Mobile.enabled) {
             return;
         }
         this._pointerTile = tile;
@@ -184,7 +193,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _onPointerOut(pin) {
-        if (this._pointerTile !== pin.tile) {
+        if (this._pointerTile !== pin.tile || Mobile.enabled) {
             return;
         }
         this._pointerTile = null;

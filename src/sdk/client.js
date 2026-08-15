@@ -108,6 +108,8 @@ export {ObjectsView, CacheEntry} from "@/client/state/ObjectsState.js";
 // ---- Pixel-space geometry ----
 // `TILE_SIZE` is a tile's size in pixels; the snap helpers round pixel coordinates to tile/chunk boundaries.
 export {TILE_SIZE, snapToTile, snapToChunk} from "@/client/constants.js";
+// Whether the client is in mobile (touch) mode, for a mod branching on the gesture vocabulary.
+export {default as Mobile} from "@/client/Mobile.js";
 
 // The zoom-driven view mode (world sprites / map geometry / baked overworld).
 export {ViewMode} from "@/client/constants.js";

@@ -4,7 +4,9 @@ import {NOTE_EDITOR_MODE_PLACE, NOTE_EDITOR_MODE_EDIT, NOTE_EDITOR_MODE_DELETE, 
 
 /**
  * Places a note where the player taps, or reopens the note standing there. Nothing is sent until
- * the editor panel saves. Dragging pans the map instead of painting.
+ * the editor panel saves. Dragging pans the map instead of painting. The anchor is the aim point,
+ * so a note sits anywhere on its tile — under mobile's center-lock that is the crosshair, which a
+ * finger cannot cover.
  */
 export class NoteTool extends AbstractTool {
 
@@ -43,14 +45,6 @@ export class NoteTool extends AbstractTool {
 
     get statusText() {
         return "Note: tap a tile to leave one";
-    }
-
-    /**
-     * The anchor is the tapped point itself, so a note can sit anywhere on its tile.
-     * @returns {boolean}
-     */
-    get usesCenterLock() {
-        return false;
     }
 
     /**
@@ -128,11 +122,18 @@ export class NoteTool extends AbstractTool {
             this._client.notify("You cannot leave a note here");
             return;
         }
+        const aim = Mouse.aimPoint();
+        let aimX = null;
+        let aimY = null;
+        if (aim !== null) {
+            aimX = aim.x;
+            aimY = aim.y;
+        }
         this._notes.openEditor(new NoteEditorTarget(
             tileX,
             tileY,
-            this._anchorOffset(Mouse.currentX, tileX),
-            this._anchorOffset(Mouse.currentY, tileY),
+            this._anchorOffset(aimX, tileX),
+            this._anchorOffset(aimY, tileY),
             "",
             NOTE_EDITOR_MODE_PLACE,
             PLAYER_ID_NONE,
@@ -186,8 +187,8 @@ export class NoteTool extends AbstractTool {
     }
 
     /**
-     * The pointer's sub-tile offset in milli-tiles, falling back to the tile center where the
-     * pointer sits elsewhere (a tap the pointer never tracked).
+     * The aim point's sub-tile offset in milli-tiles, falling back to the tile center where it
+     * sits elsewhere (a tap the pointer never tracked).
      * @private
      * @param {number|null} coordinate world pixel coordinate
      * @param {number} tile the tapped tile along the same axis

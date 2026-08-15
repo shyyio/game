@@ -274,16 +274,41 @@ class Mouse {
     }
 
     /**
+     * The world point the gesture aims at: the screen center under center-lock, the pointer
+     * otherwise. `currentX`/`currentY` are the raw pointer either way, which under center-lock is
+     * a stale finger position — anything acting on the aimed tile wants this instead.
+     * @returns {{x: number, y: number}|null} null before the first pointer position is known
+     */
+    aimPoint() {
+        if (this._centerLock) {
+            return this._centerWorld();
+        }
+        if (this.currentX === null) {
+            return null;
+        }
+        return {x: this.currentX, y: this.currentY};
+    }
+
+    /**
+     * The world point under the screen center.
+     * @private
+     * @returns {{x: number, y: number}}
+     */
+    _centerWorld() {
+        return this._viewport.toWorld(
+            this._viewport.screenWidth / 2,
+            this._viewport.screenHeight / 2,
+        );
+    }
+
+    /**
      * The tile under the screen center, used as the gesture target while
      * center-lock is on.
      * @private
      * @returns {{tileX: number, tileY: number}}
      */
     _centerTile() {
-        const world = this._viewport.toWorld(
-            this._viewport.screenWidth / 2,
-            this._viewport.screenHeight / 2,
-        );
+        const world = this._centerWorld();
         return {
             tileX: Math.floor(world.x / TILE_SIZE),
             tileY: Math.floor(world.y / TILE_SIZE),

@@ -19,6 +19,7 @@ export class InputHandler {
         this._toolbar = toolbar;
 
         this._onObjectTap = null;
+        this._onObjectHold = null;
         this._onInspect = null;
         this._onMapHover = null;
         this._onMapTap = null;
@@ -169,6 +170,14 @@ export class InputHandler {
     }
 
     /**
+     * Registers the object-hold handler (context gesture on a tile while tool-less).
+     * @param {function(tileX: number, tileY: number)} callback
+     */
+    onObjectHold(callback) {
+        this._onObjectHold = callback;
+    }
+
+    /**
      * Registers the inspect-hover handler (entered tile while tool-less, or null on clear).
      * @param {function(tileX: number|null, tileY: number|null)} callback
      */
@@ -274,6 +283,16 @@ export class InputHandler {
     /**
      * @private
      */
+    _emitObjectHold(tileX, tileY) {
+        if (this._onObjectHold == null) {
+            return;
+        }
+        this._onObjectHold(tileX, tileY);
+    }
+
+    /**
+     * @private
+     */
     _emitInspect(tileX, tileY) {
         if (this._onInspect == null) {
             return;
@@ -302,12 +321,16 @@ export class InputHandler {
     }
 
     /**
-     * The context gesture (long-press or right-click): no-op in map mode or when no tool is
-     * active, otherwise deselects the active tool.
+     * The context gesture (long-press or right-click): no-op in map mode, offered to the mods'
+     * bespoke content while tool-less, otherwise deselects the active tool.
      * @private
      */
     _handleContextGesture(tileX, tileY, screenX, screenY) {
-        if (this._mapMode || this.activeTool == null) {
+        if (this._mapMode) {
+            return;
+        }
+        if (this.activeTool == null) {
+            this._emitObjectHold(tileX, tileY);
             return;
         }
         this._clearActiveTool();

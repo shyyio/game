@@ -11,6 +11,9 @@ export function createInputHandler(client) {
     inputHandler.onObjectTap((tileX, tileY) => {
         client.handleObjectTap(tileX, tileY);
     });
+    inputHandler.onObjectHold((tileX, tileY) => {
+        client.handleObjectHold(tileX, tileY);
+    });
     inputHandler.onInspect((tileX, tileY) => {
         client.handleInspect(tileX, tileY);
     });
