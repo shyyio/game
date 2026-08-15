@@ -26,6 +26,7 @@ import {ChunkClaims, CHUNK_CLAIM_RECORD} from "@/sim/ChunkClaims.js";
 import {PlayerRegistry, PLAYER_RECORD, FRIEND_RECORD} from "@/sim/PlayerRegistry.js";
 import {CHUNK_SIZE, DEFAULT_TICK_MS, GameSettingsKey, PLAYER_ID_NONE} from "@/common/constants.js";
 import {GameMetrics} from "@/sim/GameMetrics.js";
+import {migrateSnapshot} from "@/common/saveMigrations.js";
 
 export class Game {
 
@@ -153,13 +154,15 @@ export class Game {
 
     /**
      * Restores the world from the save store, if a save exists.
+     * Older formats are upgraded here, the only boundary that accepts a foreign-shaped snapshot.
      * @returns {Promise<boolean>} whether a save was loaded
      */
     async load() {
-        const snapshot = await this.saveStore.load();
-        if (snapshot === null) {
+        const stored = await this.saveStore.load();
+        if (stored === null) {
             return false;
         }
+        const snapshot = migrateSnapshot(stored);
         this.simEngine.deserialize(snapshot);
         const records = snapshot.records === undefined ? [] : snapshot.records;
         const byName = new Map(records.map(table => [table.name, table]));
