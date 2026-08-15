@@ -1,7 +1,7 @@
 import {Container, Sprite, Text, Rectangle, FederatedPointerEvent} from "pixi.js";
 import Haptics from "@/client/Haptics.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {TOOLBAR_TEXT, PANEL_TINT} from "@/client/Theme.js";
+import {PANEL_TINT_TEXT, PANEL_TINT} from "@/client/Theme.js";
 import {Tween, easeOutBack, easeInCubic} from "@/client/layers/Tween.js";
 import ReducedMotion from "@/client/ReducedMotion.js";
 import Mobile from "@/client/Mobile.js";
@@ -342,7 +342,7 @@ export class ToolbarLayer extends Container {
                 style: {
                     fontFamily: GAME_FONT,
                     fontSize: LABEL_SIZE,
-                    fill: TOOLBAR_TEXT,
+                    fill: PANEL_TINT_TEXT,
                     align: "center",
                     wordWrap: true,
                     wordWrapWidth: SLOT_SIZE + CELL_GAP,

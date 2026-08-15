@@ -2,7 +2,7 @@ import {Container, Text} from "pixi.js";
 import {PLAYER_ID_NONE} from "@/common/constants.js";
 import {ClaimResult, ChunkPermission} from "@/common/ClaimEvents.js";
 import {GAME_FONT, HUD_BOTTOM_OFFSET} from "@/client/constants.js";
-import {PANEL_BORDER, PANEL_TEXT, ACTIVE_ACCENT, PANEL_TITLE_TEXT, PANEL_TINT} from "@/client/Theme.js";
+import {PANEL_BORDER, PANEL_TINT_TEXT, ACTIVE_ACCENT, PANEL_TITLE_TEXT, PANEL_TINT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {buildPanelButton, buildToggleRow, BUTTON_HEIGHT} from "@/client/hud/panelButton.js";
 import {swallowClicks} from "@/client/layers/pixiUtils.js";
@@ -69,7 +69,7 @@ export class ChunkInfoPanelLayer extends Container {
         });
         this._info = new Text({
             text: "",
-            style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TEXT},
+            style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TINT_TEXT},
         });
         this._panel.addChild(this._title);
         this._panel.addChild(this._info);
@@ -193,7 +193,13 @@ export class ChunkInfoPanelLayer extends Container {
                 buttonLabel = `Add friend ${name}`;
                 buttonAction = () => this._onAddFriend(owner);
             }
-            return {title: `${name}'s chunk`, info, buttonLabel, buttonAction, permission: null};
+            return {
+                title: `${name}'s chunk`,
+                info,
+                buttonLabel,
+                buttonAction,
+                permission: null,
+            };
         }
         const check = claims.claimCheck(chunk);
         if (check === ClaimResult.CLAIM_RESULT_OK) {

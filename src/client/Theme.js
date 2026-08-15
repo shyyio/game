@@ -1,5 +1,6 @@
 import {Color} from "pixi.js";
 import {getOrCreate} from "@/common/util.js";
+import {contrastRatio} from "@/client/contrast.js";
 
 // Central color palette for all client-side (pixi) rendering. Mods keep their own
 // domain palettes; this holds shared HUD/panel colors and engine render colors.
@@ -8,24 +9,36 @@ import {getOrCreate} from "@/common/util.js";
 export const PANEL_FILL = 0x1a1a1a;
 export const PANEL_FILL_ALPHA = 0.92;
 export const PANEL_BORDER = 0x555555;
-export const PANEL_TEXT = 0xffffff;
+export const PANEL_TEXT = 0xffffff; // text and icons over the dark translucent fill
 export const PANEL_HOVER_FILL = 0x5a5a5a;
 
 // ---- Accents ----
 export const ACTIVE_ACCENT = 0x5bb5ff; // pressed/active control highlight
 export const LABEL_EMPHASIS = 0xffd24a;
 
-export const TOOLBAR_TEXT = 0x000000;
-
 // ---- Inspect & toolbar panels (ui frame background) ----
 export const PANEL_TINT = 0xeee6d8; // warm-gray tint over the ui frame
 export const SCROLLBAR_TRACK_TINT = 0xe4ddcf; // PANEL_TINT darkened by 0.96 per channel
-export const PANEL_TITLE_TEXT = 0xffffff;
+export const PANEL_TINT_TEXT = 0x000000; // body text over a PANEL_TINT panel
+export const PANEL_TITLE_TEXT = 0x000000; // title text over a PANEL_TINT title bar
 export const SLOT_HIGHLIGHT_COLOR = 0x9be89b; // active/hover slot highlight (green)
 export const CONNECTOR_COLOR = 0x000000; // machine<->panel connector curve
 export const PROGRESS_BAR_TINT = 0x81ff08; // progress bar fill (green)
 export const PROGRESS_TEXT_COLOR = 0xffffff;
 export const PROGRESS_TEXT_STROKE = 0x111111;
+
+/**
+ * Whichever of the two text colors reads better on `background`, for controls whose tint the caller
+ * chooses (panel buttons, toggle segments).
+ * @param {number} background
+ * @returns {number}
+ */
+export function textOn(background) {
+    if (contrastRatio(PANEL_TEXT, background) >= contrastRatio(PANEL_TINT_TEXT, background)) {
+        return PANEL_TEXT;
+    }
+    return PANEL_TINT_TEXT;
+}
 
 // ---- Layout debug ----
 export const DEBUG_OUTLINE_COLOR = 0xff00ff;

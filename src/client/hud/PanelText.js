@@ -1,6 +1,6 @@
 import {Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {TOOLBAR_TEXT} from "@/client/Theme.js";
+import {PANEL_TINT_TEXT} from "@/client/Theme.js";
 
 export const TextRole = {
     HEADER: "header",
@@ -9,9 +9,9 @@ export const TextRole = {
 };
 
 const STYLES = {
-    [TextRole.HEADER]: {fontFamily: GAME_FONT, fontSize: 15, fill: TOOLBAR_TEXT, fontWeight: "bold"},
-    [TextRole.BODY]: {fontFamily: GAME_FONT, fontSize: 15, fill: TOOLBAR_TEXT},
-    [TextRole.MUTED]: {fontFamily: GAME_FONT, fontSize: 15, fill: TOOLBAR_TEXT},
+    [TextRole.HEADER]: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TINT_TEXT, fontWeight: "bold"},
+    [TextRole.BODY]: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TINT_TEXT},
+    [TextRole.MUTED]: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TINT_TEXT},
 };
 
 /**

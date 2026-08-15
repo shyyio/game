@@ -1,7 +1,7 @@
 import {Container, Text} from "pixi.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_TINT, PANEL_TEXT} from "@/client/Theme.js";
+import {PANEL_TINT, PANEL_TINT_TEXT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import SafeArea from "@/client/SafeArea.js";
 
@@ -52,7 +52,7 @@ export class StatusMessageLayer extends Container {
         this._box = {frame: null, inset: null};
         this._text = new Text({
             text: "",
-            style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TEXT},
+            style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TINT_TEXT},
         });
         this._text.x = FRAME_MARGIN + PADDING_X;
         this._text.y = FRAME_MARGIN + PADDING_Y;

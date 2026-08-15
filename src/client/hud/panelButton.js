@@ -1,6 +1,6 @@
 import {Container, Graphics, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_TEXT, SLOT_HIGHLIGHT_COLOR} from "@/client/Theme.js";
+import {textOn, SLOT_HIGHLIGHT_COLOR} from "@/client/Theme.js";
 import {nineSlice, trackTap} from "@/client/layers/pixiUtils.js";
 import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/hud/InspectContent.js";
 
@@ -21,7 +21,7 @@ const HOVER_ALPHA = 0.2;
 export function buildPanelButton(textureRegistry, label, borderColor, onClick, disabled = false) {
     const text = new Text({
         text: label,
-        style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TEXT, fontWeight: "bold"},
+        style: {fontFamily: GAME_FONT, fontSize: 15, fill: textOn(borderColor), fontWeight: "bold"},
     });
     const width = text.width + BUTTON_PADDING_X * 2;
 
