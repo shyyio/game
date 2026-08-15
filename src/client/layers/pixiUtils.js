@@ -1,4 +1,4 @@
-import {Container, Graphics, NineSliceSprite} from "pixi.js";
+import {CanvasTextMetrics, Container, Graphics, NineSliceSprite} from "pixi.js";
 import {DEBUG_OUTLINE_COLOR, PANEL_FILL, PANEL_FILL_ALPHA, PANEL_BORDER, PANEL_HOVER_FILL} from "@/client/Theme.js";
 
 /**
@@ -22,6 +22,27 @@ export function nineSlice(textureRegistry, name, insetX, insetY, width, height) 
     sprite.width = width;
     sprite.height = height;
     return sprite;
+}
+
+/**
+ * Centers a single-glyph Text's drawn ink on (0, 0), instead of its text box.
+ * The box carries the font's full ascent/descent, which for a glyph the game font lacks (drawn
+ * from an unknown system fallback) sits visibly off-center.
+ * @param {Text} text
+ * @returns {void}
+ */
+export function centerGlyph(text) {
+    const style = text.style;
+    const font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`;
+    const context = document.createElement("canvas").getContext("2d");
+    context.font = font;
+    const ink = context.measureText(text.text);
+    // The text box's top is the baseline less the font ascent; the ink's center is offset from
+    // that same baseline by its own half-height.
+    const baseline = CanvasTextMetrics.measureFont(font).ascent;
+    const inkCenter = (ink.actualBoundingBoxDescent - ink.actualBoundingBoxAscent) / 2;
+    text.anchor.set(0.5, 0);
+    text.y = -baseline - inkCenter;
 }
 
 /**

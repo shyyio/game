@@ -540,8 +540,6 @@ export class Client {
         this.productionPanelLayer.textureRegistry = this.textureRegistry;
         this.productionPanelLayer.anchorButton = this.productionButtonLayer;
         this.productionPanelLayer.viewport = this.viewport;
-        this.rotateButtonsLayer.textureRegistry = this.textureRegistry;
-        this.rotateButtonsLayer.build();
         this.app.stage.addChild(this.centerMarkerLayer);
         this.app.stage.addChild(this.mapButtonsLayer);
         this.app.stage.addChild(this.chunkInfoPanelLayer);

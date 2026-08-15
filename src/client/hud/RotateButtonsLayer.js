@@ -1,14 +1,12 @@
 import {Container, Graphics, Text} from "pixi.js";
 import Haptics from "@/client/Haptics.js";
-import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_TEXT, PANEL_TINT, ACTIVE_ACCENT} from "@/client/Theme.js";
-import {nineSlice} from "@/client/layers/pixiUtils.js";
-import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/hud/InspectContent.js";
+import {GAME_FONT, HUD_BOTTOM_OFFSET} from "@/client/constants.js";
+import {PANEL_TEXT} from "@/client/Theme.js";
+import {centerGlyph, drawCircleButtonFace, trackTap} from "@/client/layers/pixiUtils.js";
 
-const BUTTON_SIZE = 56;
-// Sits above the bottom-centered tool toolbar, anchored to the bottom-right.
-const MARGIN_BOTTOM = 96;
-const MARGIN_RIGHT = 24;
+const BUTTON_RADIUS = 24;
+const MARGIN_RIGHT = 16;
+const ICON_SIZE = 28;
 
 /**
  * On-screen pixi button that rotates the active tool clockwise, toggled with the tool selection.
@@ -24,20 +22,12 @@ export class RotateButtonsLayer extends Container {
         super();
         this._app = app;
         this._viewport = viewport;
-        this.textureRegistry = null;
         this._onRotate = null;
-        this._button = null;
+        this._hovered = false;
         this.visible = false;
         this.zIndex = 1000;
-    }
 
-    /**
-     * Builds the button, once the texture registry is ready (the button's 9-slice background
-     * needs its texture loaded, which happens after construction).
-     * @returns {void}
-     */
-    build() {
-        this._button = this._createButton("↻", () => this._invoke(this._onRotate));
+        this._button = this._createButton();
         this.addChild(this._button);
 
         // Re-anchor every frame so the button tracks the game area through window
@@ -70,6 +60,40 @@ export class RotateButtonsLayer extends Container {
     }
 
     /**
+     * Builds the circular button with a hover highlight, matching the map buttons.
+     * @private
+     * @returns {Container}
+     */
+    _createButton() {
+        const button = new Container();
+        button.cursor = "pointer";
+        this._face = new Graphics();
+        button.addChild(this._face);
+        const icon = new Text({
+            text: "↻",
+            style: {fontFamily: GAME_FONT, fontSize: ICON_SIZE, fontWeight: "bold", fill: PANEL_TEXT},
+        });
+        centerGlyph(icon);
+        button.addChild(icon);
+        // stopNativePropagation: the press must not reach the viewport (pan) or be read as a
+        // tap-to-place on the world beneath.
+        trackTap(button, () => {
+            Haptics.tap();
+            this._invoke(this._onRotate);
+        }, {stopNativePropagation: true});
+        button.on("pointerover", () => {
+            this._hovered = true;
+            this._render();
+        });
+        button.on("pointerout", () => {
+            this._hovered = false;
+            this._render();
+        });
+        this._render();
+        return button;
+    }
+
+    /**
      * @private
      * @param {function(): void|null} callback
      */
@@ -80,59 +104,21 @@ export class RotateButtonsLayer extends Container {
     }
 
     /**
-     * Builds one square icon button with a hover highlight.
      * @private
-     * @param {string} label
-     * @param {function(): void} onPress
-     * @returns {Container}
+     * @returns {void}
      */
-    _createButton(label, onPress) {
-        const button = new Container();
-        button.eventMode = "static";
-        button.cursor = "pointer";
-
-        const bg = nineSlice(this.textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, BUTTON_SIZE, BUTTON_SIZE);
-        bg.tint = PANEL_TINT;
-        button.addChild(bg);
-
-        // Lit on press for tap feedback, cleared on release.
-        const pressBg = new Graphics();
-        pressBg.rect(0, 0, BUTTON_SIZE, BUTTON_SIZE).fill({color: ACTIVE_ACCENT});
-        pressBg.alpha = 0;
-        button.addChild(pressBg);
-
-        const text = new Text({
-            text: label,
-            style: {fontFamily: GAME_FONT, fontSize: 30, fill: PANEL_TEXT},
-        });
-        text.x = (BUTTON_SIZE - text.width) / 2;
-        text.y = (BUTTON_SIZE - text.height) / 2;
-        button.addChild(text);
-
-        button.on("pointerdown", (e) => {
-            // Keep the press on the button: it must not reach the viewport (pan) or
-            // be read as a tap-to-place on the world beneath.
-            e.nativeEvent.stopPropagation();
-            pressBg.alpha = 0.5;
-            Haptics.tap();
-            onPress();
-        });
-        const release = () => { pressBg.alpha = 0; };
-        button.on("pointerup", release);
-        button.on("pointerupoutside", release);
-        button.on("pointercancel", release);
-
-        return button;
+    _render() {
+        this._face.clear();
+        drawCircleButtonFace(this._face, BUTTON_RADIUS, this._hovered);
     }
 
     /**
-     * Anchors the rotate button to the bottom-right of the screen.
+     * Anchors the rotate button to the bottom-right, above the toolbar (the map buttons' spot,
+     * which is free whenever a tool is active).
      * @private
      */
     _layout() {
-        // Anchor to the game area's right edge (the canvas may be inset from the
-        // window's right), but the visible bottom is the full canvas height.
-        this._button.x = this._viewport.screenWidth - MARGIN_RIGHT - BUTTON_SIZE;
-        this._button.y = this._app.screen.height - MARGIN_BOTTOM - BUTTON_SIZE;
+        this._button.x = this._viewport.screenWidth - MARGIN_RIGHT - BUTTON_RADIUS;
+        this._button.y = this._app.screen.height - HUD_BOTTOM_OFFSET - BUTTON_RADIUS;
     }
 }
