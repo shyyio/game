@@ -1,4 +1,4 @@
-import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
+import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent, TickEndEvent} from "@/common/CoreEvents.js";
 import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
 import {InspectClosedEvent} from "@/common/InspectEvents.js";
 import {ObjectSyncEvent} from "@/common/ObjectEvents.js";
@@ -657,6 +657,9 @@ export class Game {
             mod.onTick(this);
         }
         this._dispatchInspectEvents();
+        // Last thing in the tick: every client learns the clock it just reached, so nothing on the
+        // client has to time ticks for itself.
+        this.bus.publishToAll(new TickEndEvent(this.simEngine.clock));
     }
 
     /**

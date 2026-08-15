@@ -113,10 +113,6 @@ export async function createClient(app, viewport, props) {
     }
     await client.init();
 
-    if (sideloadUrls.length > 0) {
-        client.noticeLayer.notify(`Running mod code from ${sideloadUrls.join(", ")}`);
-    }
-
     const inputHandler = createInputHandler(client);
 
     const renderToolbar = () => client.toolbarLayer.setTools(client.coreTools(), client.modTools());

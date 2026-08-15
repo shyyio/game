@@ -8,7 +8,7 @@ import {
     CHART_METRIC_COUNT, CHART_METRIC_AVG, MIN_RANGE_TICKS, MAX_RANGE_TICKS,
     selectTier, windowTicksFor, buildSeries, integerTicks, visibleExtent,
 } from "@/client/hud/MetricsChartData.js";
-import {TickIntervalEstimator} from "@/client/state/TickIntervalEstimator.js";
+import {DEFAULT_TICK_MS} from "@/common/constants.js";
 
 const INK = "#000000";
 const GRID = "#e1e0d9";
@@ -89,9 +89,12 @@ export class MetricsLineChart {
         this._dragStartClientX = 0;
         this._dragStartRange = MIN_RANGE_TICKS;
 
-        // Sim tick of the last push + observed push cadence, for the continuous scroll animation.
+        // Sim tick of the last push, plus the clock the server last reported and when it arrived —
+        // the scroll animation slides between two heartbeats, it never guesses where the sim is.
         this._lastPushToTick = 0;
-        this._estimator = new TickIntervalEstimator();
+        this._clockTick = null;
+        this._clockAtMs = 0;
+        this._tickIntervalMs = DEFAULT_TICK_MS;
 
         this._onPointerDown = this._onPointerDown.bind(this);
         this._onPointerMove = this._onPointerMove.bind(this);
@@ -173,7 +176,17 @@ export class MetricsLineChart {
         if (tickIntervalMs === undefined) {
             return;
         }
-        this._estimator.setKnown(tickIntervalMs);
+        this._tickIntervalMs = tickIntervalMs;
+    }
+
+    /**
+     * The sim clock, from the server's per-tick heartbeat.
+     * @param {number} tick
+     * @returns {void}
+     */
+    setClockTick(tick) {
+        this._clockTick = tick;
+        this._clockAtMs = performance.now();
     }
 
     /**
@@ -279,7 +292,6 @@ export class MetricsLineChart {
         }
         this._requestedTier = tier;
         this._requestedWindowTicks = window;
-        this._estimator.suppressNextSample();
         if (this._onWindowChange !== null) {
             this._onWindowChange(tier, window);
         }
@@ -360,18 +372,17 @@ export class MetricsLineChart {
     }
 
     /**
-     * Fractional sim tick "now": extrapolates past the last push by the observed cadence, capped
-     * at one bucket, so scrolling never freezes then jumps.
+     * Fractional sim tick "now": the reported clock, slid forward by however much of the current
+     * tick has elapsed, so scrolling is smooth between heartbeats without running ahead of one.
      * @returns {number}
      * @private
      */
-    _virtualNowTick() {
-        if (this._estimator.lastPushWallTime === null) {
+    _nowTick() {
+        if (this._clockTick === null) {
             return this._lastPushToTick;
         }
-        const maxExtrapolationTicks = this._requestedTier === null ? 1 : this._requestedTier;
-        const elapsedTicks = (performance.now() - this._estimator.lastPushWallTime) / this._estimator.intervalMs;
-        return this._lastPushToTick + Math.min(maxExtrapolationTicks, Math.max(0, elapsedTicks));
+        const elapsedTicks = (performance.now() - this._clockAtMs) / this._tickIntervalMs;
+        return this._clockTick + Math.min(1, Math.max(0, elapsedTicks));
     }
 
     /**
@@ -405,7 +416,7 @@ export class MetricsLineChart {
             return;
         }
         // Shifts data right by 2*tier so the freshest completed point sits at the domain edge.
-        const fakeNow = this._virtualNowTick() - 2 * this._latestSeriesData.tier;
+        const fakeNow = this._nowTick() - 2 * this._latestSeriesData.tier;
         const lineGenerator = line()
             .defined(d => d.value !== null)
             .x(d => this._xScale(d.tick - fakeNow))
@@ -524,7 +535,8 @@ export class MetricsLineChart {
     }
 
     /**
-     * Times the push and tracks data presence; this._rollup is already the merged accumulation.
+     * Tracks the freshest pushed tick and data presence; this._rollup is already the merged
+     * accumulation.
      * @returns {void}
      * @private
      */
@@ -532,7 +544,6 @@ export class MetricsLineChart {
         if (this._rollup === undefined) {
             return;
         }
-        this._estimator.recordPush(performance.now(), this._rollup.tier);
         this._lastPushToTick = this._rollup.toTick;
         this._hasData = this._rollup.bucketTick.length > 0;
         if (this._hasData) {

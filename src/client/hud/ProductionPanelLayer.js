@@ -54,6 +54,7 @@ export class ProductionPanelLayer extends Container {
         this._rollupKey = metricsRollupKey(metricsType, scope);
         this._metrics = state.view("metrics");
         this._gameSettings = state.view("gameSettings");
+        this._clock = state.view("clock");
         this.textureRegistry = null;
         // The production button, to open below it by default (set by the host).
         this.anchorButton = null;
@@ -69,6 +70,7 @@ export class ProductionPanelLayer extends Container {
         this._tick = null;
         this._unbindRollup = null;
         this._unbindTickMs = null;
+        this._unbindClock = null;
         this._savedX = null;
         this._savedY = null;
         this._onSubscribe = null;
@@ -227,6 +229,9 @@ export class ProductionPanelLayer extends Container {
             }
         });
 
+        this._chart.setClockTick(this._clock.tick());
+        this._unbindClock = this._state.subscribe("clock.tick", (tick) => this._chart.setClockTick(tick));
+
         this._tick = () => this._positionChartRoot();
         this._app.ticker.add(this._tick);
         this._positionChartRoot();
@@ -348,6 +353,8 @@ export class ProductionPanelLayer extends Container {
         this._unbindRollup = null;
         this._unbindTickMs();
         this._unbindTickMs = null;
+        this._unbindClock();
+        this._unbindClock = null;
         this._chart.destroy();
         this._chart = null;
         this._chartRoot.remove();

@@ -35,6 +35,7 @@ import {PLAYERS_SCHEMA, PlayersWriter, PlayersView} from "@/client/state/Players
 import {PLAYER_SETTINGS_SCHEMA, GAME_SETTINGS_SCHEMA, PlayerSettingsWriter, GameSettingsWriter, PlayerSettingsView, GameSettingsView} from "@/client/state/SettingsState.js";
 import {WORKER_ASSIGNMENTS_SCHEMA, WorkerAssignmentsWriter, WorkerAssignmentsView} from "@/client/state/WorkerAssignmentsState.js";
 import {METRICS_SCHEMA, MetricsWriter, MetricsView} from "@/client/state/MetricsState.js";
+import {CLOCK_SCHEMA, ClockWriter, ClockView} from "@/client/state/ClockState.js";
 import {METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN} from "@/common/MetricsFact.js";
 import {MetricsSubscribeMessage, MetricsUnsubscribeMessage} from "@/common/MetricsMessages.js";
 import {OBJECTS_SCHEMA, ObjectsWriter} from "@/client/state/ObjectsState.js";
@@ -163,6 +164,7 @@ export class Client {
         this.cache.register("overworld", OVERWORLD_SCHEMA, new OverworldWriter(this.cache), new OverworldView());
         this.cache.register("inspect", INSPECT_SCHEMA, new InspectWriter(this.cache), new InspectView());
         this.cache.register("metrics", METRICS_SCHEMA, new MetricsWriter(this.cache), new MetricsView());
+        this.cache.register("clock", CLOCK_SCHEMA, new ClockWriter(this.cache), new ClockView());
         // The open-menu set rides to the sim as the inspect subscription, whoever changes it.
         this.cache.subscribe("inspect.openObjects", () => this._sendInspectedObjects());
         // Screen-space panels for open machine menus; fed by the inspect heartbeat state.
