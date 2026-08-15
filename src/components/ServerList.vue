@@ -1,7 +1,6 @@
 <script setup>
-import {onMounted, reactive, ref} from "vue";
-import {httpOriginFor} from "@/common/util.js";
-import {ORIGIN_PATTERN} from "@/common/constants.js";
+import {computed, onMounted, reactive, ref} from "vue";
+import {canonicalOrigin, httpOriginFor} from "@/common/util.js";
 import {DEV_TOOLS} from "@/common/env.js";
 import {hasSessionToken, listServers} from "@/client/AuthClient.js";
 
@@ -199,18 +198,20 @@ function select(server) {
 // @spup/game-client ships (and a dev build) has this; the public site lists the directory only.
 const customOrigin = ref("");
 
-function customOriginValid() {
-  return ORIGIN_PATTERN.test(customOrigin.value);
-}
+// What is actually joined: the typed URL with its port filled in ("" while the field is unusable).
+const customCanonicalOrigin = computed(() => canonicalOrigin(customOrigin.value));
+
+// Empty field vs. nothing connecting is two empty strings, which must not read as a match.
+const connectingCustom = computed(() => customCanonicalOrigin.value !== "" && props.connectingOrigin === customCanonicalOrigin.value);
 
 /**
  * @returns {void}
  */
 function connectToCustomOrigin() {
-  if (!customOriginValid() || props.connectingOrigin) {
+  if (customCanonicalOrigin.value === "" || props.connectingOrigin) {
     return;
   }
-  emit("select", customOrigin.value);
+  emit("select", customCanonicalOrigin.value);
 }
 </script>
 
@@ -267,8 +268,8 @@ function connectToCustomOrigin() {
             color="primary"
             variant="flat"
             size="small"
-            :disabled="!customOriginValid() || !!connectingOrigin"
-            :loading="connectingOrigin === customOrigin"
+            :disabled="customCanonicalOrigin === '' || !!connectingOrigin"
+            :loading="connectingCustom"
             @click="connectToCustomOrigin"
         >Connect</v-btn>
       </div>
