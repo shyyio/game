@@ -1,13 +1,17 @@
 <script setup>
 import {onMounted, onUnmounted, ref} from "vue";
+import {useTheme} from "vuetify";
 import {createPixiApp} from "@/client/PixiApp.js";
 import {createClient} from "@/client/GameBootstrap.js";
 import {EffectiveToolController} from "@/client/input/EffectiveToolController.js";
 import {bindGameKeyboardShortcuts} from "@/client/input/GameKeyboardShortcuts.js";
 import {useSettingsMenu} from "@/composables/useSettingsMenu.js";
 import Mobile from "@/client/Mobile.js";
-import DeviceSettings, {DEVICE_SETTING_MOBILE} from "@/client/state/DeviceSettings.js";
+import DeviceSettings, {DEVICE_SETTING_MOBILE, DEVICE_SETTING_THEME} from "@/client/state/DeviceSettings.js";
 import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
+import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
+import {applyTheme, onThemeChange, THEME_DEFAULT} from "@/client/Theme.js";
+import {vuetifyThemeName} from "@/client/vuetifyTheme.js";
 import {gameStart, startError} from "@/client/GameStart.js";
 import {useRouter} from "vue-router";
 
@@ -17,6 +21,14 @@ const settingsOpen = ref(false);
 const {settingsCategories, settingValues, bindSettingsMenu} = useSettingsMenu();
 
 Mobile.setEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_MOBILE, Mobile.devicePrefers()));
+// Before the HUD builds, so the first paint is in the chosen palette.
+applyTheme(DeviceSettings.getNumber(DEVICE_SETTING_THEME, THEME_DEFAULT));
+
+// The menus are Vuetify, not pixi: same setting, their own theme.
+const vuetifyTheme = useTheme();
+const stopThemeSync = onThemeChange(themeId => {
+  vuetifyTheme.global.name.value = vuetifyThemeName(themeId);
+});
 
 // Set once setup finishes; onUnmounted may fire mid-setup (a fast back-navigation), so each
 // await below checks `disposed` and unwinds whatever it already built instead of racing ahead.
@@ -76,6 +88,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   disposed = true;
+  stopThemeSync();
   teardown();
 });
 
@@ -104,7 +117,7 @@ export default defineComponent({
             <div class="settings-category-title">{{ category.name }}</div>
             <template v-for="control in category.controls" :key="control.key">
               <v-select
-                  v-if="control instanceof PlayerSettingChoice"
+                  v-if="control instanceof PlayerSettingChoice || control instanceof DeviceSettingChoice"
                   v-model="settingValues[control.key]"
                   :label="control.label"
                   :items="control.items"

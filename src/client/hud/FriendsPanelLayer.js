@@ -128,6 +128,16 @@ export class FriendsPanelLayer extends Container {
     }
 
     /**
+     * Repaints for the current theme.
+     * @returns {void}
+     */
+    restyle() {
+        if (this.visible) {
+            this._rebuild();
+        }
+    }
+
+    /**
      * @returns {void}
      */
     hide() {

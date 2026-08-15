@@ -233,6 +233,14 @@ export class ToolbarLayer extends Container {
     }
 
     /**
+     * Repaints for the current theme.
+     * @returns {void}
+     */
+    restyle() {
+        this._rebuild();
+    }
+
+    /**
      * Tears down the old slots and lays the grid out row-major; leaves `_drawerOpen` as-is so a resize doesn't close it.
      * @private
      */

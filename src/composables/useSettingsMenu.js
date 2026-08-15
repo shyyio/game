@@ -3,6 +3,7 @@ import {AbstractPlayerSettingControl} from "@/client/hud/AbstractPlayerSettingCo
 import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
 import {PlayerSettingToggle} from "@/client/hud/PlayerSettingToggle.js";
 import {DeviceSettingToggle} from "@/client/hud/DeviceSettingToggle.js";
+import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
 import DeviceSettings from "@/client/state/DeviceSettings.js";
 import {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
 
@@ -55,7 +56,8 @@ export function useSettingsMenu() {
     function bindSettingsMenu(client) {
         const categories = client.settingsCategories();
         const controls = categories.flatMap(category => category.controls);
-        const deviceControls = controls.filter(control => control instanceof DeviceSettingToggle);
+        const deviceToggles = controls.filter(control => control instanceof DeviceSettingToggle);
+        const deviceChoices = controls.filter(control => control instanceof DeviceSettingChoice);
         const playerControls = controls.filter(control => control instanceof AbstractPlayerSettingControl);
         const controlByKey = new Map(playerControls.map(control => [control.key, control]));
         client.cache.subscribe("playerSettings.values", (key, value) => {
@@ -65,13 +67,25 @@ export function useSettingsMenu() {
             }
         });
         const playerSettings = client.cache.view("playerSettings");
-        for (const control of deviceControls) {
+        for (const control of deviceToggles) {
             const initial = DeviceSettings.getBoolean(control.key, control.fallback);
             control.apply(initial);
             mirror(control, initial, on => {
                 DeviceSettings.setBoolean(control.key, on);
                 // The switch tap is the user gesture a fullscreen request needs.
                 control.apply(on);
+            });
+        }
+        for (const control of deviceChoices) {
+            const stored = DeviceSettings.getNumber(control.key, control.fallback);
+            let initial = stored;
+            if (initial < 0 || initial >= control.options.length) {
+                initial = control.fallback;
+            }
+            control.apply(initial);
+            mirror(control, initial, index => {
+                DeviceSettings.setNumber(control.key, index);
+                control.apply(index);
             });
         }
         for (const control of playerControls) {

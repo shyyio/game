@@ -35,9 +35,21 @@ export class ConfirmDialogLayer extends Container {
         this._backdrop.eventMode = "static";
         this.addChild(this._backdrop);
         this._panel = null;
+        // Last open() arguments, so restyle can rebuild the same dialog.
+        this._options = null;
 
         app.renderer.on("resize", () => this._layoutBackdrop());
         this._layoutBackdrop();
+    }
+
+    /**
+     * Repaints for the current theme.
+     * @returns {void}
+     */
+    restyle() {
+        if (this.visible) {
+            this.open(this._options);
+        }
     }
 
     /**
@@ -52,6 +64,7 @@ export class ConfirmDialogLayer extends Container {
      */
     open({title, message, confirmLabel, onConfirm}) {
         this.close();
+        this._options = {title, message, confirmLabel, onConfirm};
         this.eventMode = "static";
 
         const panel = new Container();

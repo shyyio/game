@@ -24,6 +24,8 @@ export class RotateButtonsLayer extends Container {
         this._viewport = viewport;
         this._onRotate = null;
         this._hovered = false;
+        // Set by _createButton; restyle re-applies its fill.
+        this._icon = null;
         this.visible = false;
         this.zIndex = 1000;
 
@@ -60,6 +62,15 @@ export class RotateButtonsLayer extends Container {
     }
 
     /**
+     * Repaints for the current theme.
+     * @returns {void}
+     */
+    restyle() {
+        this._icon.style.fill = PANEL_TEXT;
+        this._render();
+    }
+
+    /**
      * Builds the circular button with a hover highlight, matching the map buttons.
      * @private
      * @returns {Container}
@@ -69,12 +80,12 @@ export class RotateButtonsLayer extends Container {
         button.cursor = "pointer";
         this._face = new Graphics();
         button.addChild(this._face);
-        const icon = new Text({
+        this._icon = new Text({
             text: "↻",
             style: {fontFamily: GAME_FONT, fontSize: ICON_SIZE, fontWeight: "bold", fill: PANEL_TEXT},
         });
-        centerGlyph(icon);
-        button.addChild(icon);
+        centerGlyph(this._icon);
+        button.addChild(this._icon);
         // stopNativePropagation: the press must not reach the viewport (pan) or be read as a
         // tap-to-place on the world beneath.
         trackTap(button, () => {

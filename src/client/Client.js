@@ -23,7 +23,12 @@ import {AbstractPlayerSettingControl} from "@/client/hud/AbstractPlayerSettingCo
 import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
 import {PlayerSettingToggle} from "@/client/hud/PlayerSettingToggle.js";
 import {DeviceSettingToggle} from "@/client/hud/DeviceSettingToggle.js";
-import {DEVICE_SETTING_FULLSCREEN, DEVICE_SETTING_REDUCED_MOTION, DEVICE_SETTING_MOBILE} from "@/client/state/DeviceSettings.js";
+import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
+import {
+    DEVICE_SETTING_FULLSCREEN, DEVICE_SETTING_REDUCED_MOTION, DEVICE_SETTING_MOBILE,
+    DEVICE_SETTING_THEME,
+} from "@/client/state/DeviceSettings.js";
+import {applyTheme, onThemeChange, THEME_NAMES, THEME_DEFAULT} from "@/client/Theme.js";
 import Fullscreen from "@/client/Fullscreen.js";
 import ReducedMotion from "@/client/ReducedMotion.js";
 import Mobile from "@/client/Mobile.js";
@@ -286,6 +291,26 @@ export class Client {
         }
         // Screen-space HUD layers (unlike drawLayers, mounted straight onto app.stage in init()).
         this._modHudLayers = this.modRegistry.clientMods.flatMap(mod => mod.hudLayers(this));
+        // Layers holding themed pixels; world layers draw from the non-themed placement palette.
+        // A mod HUD layer opts in by defining restyle.
+        this._themedLayers = [
+            this.inspectPanelLayer,
+            this.rotateButtonsLayer,
+            this.toolbarLayer,
+            this.statusLayer,
+            this.topStatusBar,
+            this.settingsButtonLayer,
+            this.friendsButtonLayer,
+            this.friendsPanelLayer,
+            this.productionButtonLayer,
+            this.productionPanelLayer,
+            this.noticeLayer,
+            this.confirmDialogLayer,
+            this.mapButtonsLayer,
+            this.chunkInfoPanelLayer,
+            ...this._modHudLayers.filter(layer => layer.restyle !== undefined),
+        ];
+        onThemeChange(() => this._restyleHud());
         // The overworld renderer, active below the overworld zoom threshold.
         this.overworldLayer = new OverworldDrawLayer(modRegistry, this.cache);
         this.drawLayerRegistry.add(this.overworldLayer);
@@ -1113,7 +1138,18 @@ export class Client {
     }
 
     /**
-     * The engine's own settings section: device toggles.
+     * Repaints every themed HUD layer after a palette swap.
+     * @private
+     * @returns {void}
+     */
+    _restyleHud() {
+        for (const layer of this._themedLayers) {
+            layer.restyle();
+        }
+    }
+
+    /**
+     * The engine's own settings section: device toggles and the theme picker.
      * @private
      * @returns {SettingCategory[]}
      */
@@ -1123,6 +1159,7 @@ export class Client {
                 new DeviceSettingToggle(DEVICE_SETTING_FULLSCREEN, "Fullscreen", false, on => Fullscreen.setEnabled(on)),
                 new DeviceSettingToggle(DEVICE_SETTING_REDUCED_MOTION, "Reduced motion", ReducedMotion.devicePrefers(), on => ReducedMotion.setEnabled(on)),
                 new DeviceSettingToggle(DEVICE_SETTING_MOBILE, "Touchscreen input", Mobile.devicePrefers(), on => Mobile.setEnabled(on)),
+                new DeviceSettingChoice(DEVICE_SETTING_THEME, "Theme", THEME_NAMES, THEME_DEFAULT, index => applyTheme(index)),
             ]),
         ];
     }

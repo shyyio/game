@@ -135,6 +135,16 @@ export class MapButtonsLayer extends Container {
     }
 
     /**
+     * Repaints for the current theme.
+     * @returns {void}
+     */
+    restyle() {
+        for (const button of this._buttons) {
+            this._render(button);
+        }
+    }
+
+    /**
      * @private
      * @returns {void}
      */

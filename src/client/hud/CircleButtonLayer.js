@@ -96,6 +96,14 @@ export class CircleButtonLayer extends Container {
     }
 
     /**
+     * Repaints for the current theme.
+     * @returns {void}
+     */
+    restyle() {
+        this._render();
+    }
+
+    /**
      * @private
      * @returns {void}
      */
