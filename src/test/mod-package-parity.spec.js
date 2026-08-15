@@ -23,7 +23,7 @@ import * as sdk from "@/sdk/common.js";
 import {buildMod} from "../../tools/build-mod.js";
 
 // Mirrors simLoadout's order, which is what assigns the positional ids.
-const MOD_DIRS = ["BaseTextures", "Logistics", "BaseGame", "Fluids", "CursorSync", "Market"];
+const MOD_DIRS = ["BaseTextures", "Logistics", "BaseGame", "Fluids", "CursorSync", "Market", "Notes"];
 
 /**
  * Builds every in-repo mod and registers the built bundles into a frozen registry.

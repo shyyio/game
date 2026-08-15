@@ -78,7 +78,8 @@ export class EffectiveToolController {
         if (mobile) {
             return;
         }
-        if (tool != null) {
+        // Only a painting tool needs the drag; the rest leave panning live.
+        if (tool != null && tool.paintsOnDrag) {
             this.viewport.freezePan();
         } else {
             this.viewport.unfreezePan();

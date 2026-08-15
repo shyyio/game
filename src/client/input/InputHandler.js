@@ -48,6 +48,16 @@ export class InputHandler {
         return this._toolbar.activeTool;
     }
 
+    /**
+     * Whether a drag belongs to the active tool rather than to the viewport's pan.
+     * @private
+     * @returns {boolean}
+     */
+    _paintingTool() {
+        const tool = this.activeTool;
+        return tool != null && tool.paintsOnDrag;
+    }
+
     init() {
         Mouse.onTap((tileX, tileY) => {
             if (this._mapMode) {
@@ -68,14 +78,14 @@ export class InputHandler {
         });
 
         Mouse.onDragStart((tileX, tileY) => {
-            if (this.activeTool == null) {
+            if (!this._paintingTool()) {
                 return;
             }
             this.activeTool.onDragStart(tileX, tileY);
         });
 
         Mouse.onTileDrag((tileX, tileY, direction) => {
-            if (this.activeTool == null) {
+            if (!this._paintingTool()) {
                 return;
             }
             this.activeTool.onDragTile(tileX, tileY, direction);

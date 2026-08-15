@@ -20,7 +20,7 @@ const MODS_DIR = join(REPO_ROOT, "src/mods");
 
 // The loadout order src/mods/loadout.js registers in; the lockfile's order assigns the positional
 // ids, so it has to match or existing saves stop loading.
-const LOADOUT = ["BaseTextures", "Logistics", "BaseGame", "Fluids", "CursorSync", "Market"];
+const LOADOUT = ["BaseTextures", "Logistics", "BaseGame", "Fluids", "CursorSync", "Market", "Notes"];
 
 /**
  * Builds the whole loadout and returns its lockfile.

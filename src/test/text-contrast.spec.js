@@ -61,6 +61,9 @@ function themedTexts() {
         {where: "InspectContent progress label", fill: Theme.PROGRESS_TEXT_COLOR, stroke: Theme.PROGRESS_TEXT_STROKE, background: progressBar, fontSize: 15, bold: true},
         {where: "InspectContent worker row (staffed)", fill: Theme.WORKER_OK_TEXT, stroke: Theme.PROGRESS_TEXT_STROKE, background: slot, fontSize: 15, bold: true},
         {where: "InspectContent worker row (missing)", fill: Theme.WORKER_MISSING_TEXT, stroke: Theme.PROGRESS_TEXT_STROKE, background: slot, fontSize: 15, bold: true},
+        // The note tooltip is a flat filled box, not a tinted 9-slice.
+        {where: "NoteTooltipLayer text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
+        {where: "NoteTooltipLayer author", fill: Theme.PANEL_BORDER, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
     ];
 }
 
@@ -78,6 +81,7 @@ const CHECKED_TEXTS = {
     "src/client/hud/TopStatusBarLayer.js": 1,
     "src/client/hud/UIPanel.js": 1,
     "src/client/hud/panelButton.js": 1,
+    "src/mods/Notes/client/NoteTooltipLayer.js": 2,
 };
 const UNCHECKED_TEXTS = {
     "src/client/layers/ChunkClaimsDrawLayer.js": 1,

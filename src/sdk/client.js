@@ -42,12 +42,14 @@ export {ObjectGhostLayer} from "@/client/layers/ObjectGhostLayer.js";
 // Same framed-panel toolkit the core Friends/Inspect panels use, for a mod-contributed HUD panel.
 export {UIPanel, ManagedPanel} from "@/client/hud/UIPanel.js";
 export {buildPanelButton, buildToggleRow, BUTTON_HEIGHT} from "@/client/hud/panelButton.js";
-export {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT, PANEL_TINT_TEXT} from "@/client/Theme.js";
+export {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT, PANEL_TINT_TEXT, PANEL_BORDER} from "@/client/Theme.js";
 // A curved line from a HUD panel to the tile it targets (used by the core Inspect panel).
 export {rectEdgePoint, drawPanelConnector, CONNECTOR_PANEL_INSET} from "@/client/hud/PanelConnector.js";
 // Declarative panel-body builder (header/text/row/scrollSection) for use with UIPanel.managed.
 export {PanelStack, PanelRowDescriptor, ROW_HEIGHT, ROW_GAP} from "@/client/hud/PanelStack.js";
 export {panelText, TextRole} from "@/client/hud/PanelText.js";
+// Single-line text field: a DOM input overlaid on a themed pixi box, swallowing game hotkeys while focused.
+export {TextInput} from "@/client/hud/TextInput.js";
 export {ConnectedPanelLayer} from "@/client/hud/ConnectedPanelLayer.js";
 // Masked, scrollable viewport with a draggable thumb, for a scroll region outside PanelStack.scrollSection.
 export {ScrollView} from "@/client/hud/ScrollView.js";
@@ -134,6 +136,7 @@ export {
     GHOST_TINT,
     GHOST_BLOCKED_TINT,
     GHOST_BLOCKED_ALPHA,
+    OVERWRITE_TILE_COLOR,
     TARGET_TILE_COLOR,
     TARGET_TILE_FILL_ALPHA,
     TARGET_TILE_BORDER_WIDTH,

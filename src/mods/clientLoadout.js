@@ -11,6 +11,9 @@ import {CursorSyncClientMod} from "@/mods/CursorSync/client.js";
 import {MarketDeclaration} from "@/mods/Market/declaration.js";
 import {MarketClientMod} from "@/mods/Market/client.js";
 import {MarketSimMod} from "@/mods/Market/sim.js";
+import {NotesDeclaration} from "@/mods/Notes/declaration.js";
+import {NotesClientMod} from "@/mods/Notes/client.js";
+import {NotesSimMod} from "@/mods/Notes/sim.js";
 
 /**
  * The loadout for a browser client (which also runs the local sim): declarations + client parts,
@@ -29,5 +32,6 @@ export function clientLoadout() {
         new ModPackage(new FluidsDeclaration(), {client: new FluidsClientMod()}),
         new ModPackage(new CursorSyncDeclaration(), {client: new CursorSyncClientMod()}),
         new ModPackage(new MarketDeclaration(), {sim: new MarketSimMod(), client: new MarketClientMod()}),
+        new ModPackage(new NotesDeclaration(), {sim: new NotesSimMod(), client: new NotesClientMod()}),
     ];
 }

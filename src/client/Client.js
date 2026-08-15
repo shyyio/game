@@ -1063,13 +1063,19 @@ export class Client {
     }
 
     /**
-     * Handles a left-click (tool-less) tap on the tile: runs the first placed object's
-     * tapAction, if any. World mode only.
+     * Handles a left-click (tool-less) tap on the tile: offers it to the client mods' bespoke
+     * content first — that content is hit-tested finer than a tile, so it only claims a tap the
+     * pointer is really on — then runs the first placed object's tapAction. World mode only.
      * @param {number} tileX
      * @param {number} tileY
      * @returns {void}
      */
     handleObjectTap(tileX, tileY) {
+        for (const mod of this.modRegistry.clientMods) {
+            if (mod.onObjectTap(tileX, tileY, this)) {
+                return;
+            }
+        }
         for (const bundle of this.bundles) {
             const record = this.objects.objectAt(tileX, tileY, bundle.type);
             if (record === null || bundle.type.tapAction === null) {

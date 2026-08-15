@@ -640,6 +640,16 @@ export class ManagedPanel {
     }
 
     /**
+     * Drops the remembered position, so the next show falls back to its own placement — for a panel
+     * whose target changed under it.
+     * @returns {void}
+     */
+    forgetPosition() {
+        this._savedX = null;
+        this._savedY = null;
+    }
+
+    /**
      * Remembers the dragged position and destroys the panel; a no-op while already hidden.
      * @returns {void}
      */
