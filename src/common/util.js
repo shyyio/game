@@ -204,6 +204,31 @@ export function formatUptime(startedAtMs) {
     return `${days}day, ${clock}`;
 }
 
+const DEFAULT_PORT_BY_SCHEME = {"ws:": "80", "wss:": "443"};
+
+/**
+ * A hand-typed server URL in canonical origin form (see {@link ORIGIN_PATTERN}): lowercase host
+ * and an explicit port, filled in from the scheme when omitted.
+ * @param {string} input - e.g. "wss://example.com"
+ * @returns {string} the canonical origin, or "" if the input isn't a ws(s) origin
+ */
+export function canonicalOrigin(input) {
+    let url;
+    try {
+        url = new URL(input.trim());
+    } catch {
+        return "";
+    }
+    const defaultPort = DEFAULT_PORT_BY_SCHEME[url.protocol];
+    // Anything past the origin (path, query, credentials) would fork the server's identity.
+    if (defaultPort === undefined || url.pathname !== "/" || url.search !== "" || url.hash !== ""
+        || url.username !== "" || url.password !== "") {
+        return "";
+    }
+    const port = url.port === "" ? defaultPort : url.port;
+    return `${url.protocol}//${url.hostname}:${port}`;
+}
+
 /**
  * The HTTP(S) origin a game server's status endpoint is queried on, derived from its WS(S)
  * origin: same host:port, "ws"->"http" and "wss"->"https".
