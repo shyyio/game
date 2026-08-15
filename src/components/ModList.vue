@@ -156,7 +156,6 @@ export default defineComponent({
         <v-text-field
             v-model="search"
             label="Search"
-            variant="outlined"
             autocomplete="off"
             hide-details
             class="my-4"

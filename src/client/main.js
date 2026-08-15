@@ -8,7 +8,11 @@ import "@/assets/main.css";
 import "vuetify/styles";
 import { createVuetify } from "vuetify";
 
-const vuetify = createVuetify();
+const vuetify = createVuetify({
+    defaults: {
+        VTextField: {variant: "outlined"},
+    },
+});
 
 installCrashReporter();
 
