@@ -85,6 +85,16 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
     }
 
     /**
+     * Repaints for the current theme; the engine calls this on any HUD layer defining it.
+     * @returns {void}
+     */
+    restyle() {
+        if (this.visible) {
+            this._rebuild();
+        }
+    }
+
+    /**
      * @private
      * @returns {void}
      */

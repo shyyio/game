@@ -248,6 +248,15 @@ export class StatusMessageLayer extends Container {
     }
 
     /**
+     * Repaints for the current theme.
+     * @returns {void}
+     */
+    restyle() {
+        this._text.style.fill = PANEL_TINT_TEXT;
+        this.refreshBackground();
+    }
+
+    /**
      * Rebuilds the background for the already-showing message, once textureRegistry becomes available.
      * @returns {void}
      */

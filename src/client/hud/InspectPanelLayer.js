@@ -98,6 +98,16 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
     }
 
     /**
+     * Repaints for the current theme.
+     * @returns {void}
+     */
+    restyle() {
+        for (const record of this._panels.values()) {
+            record.panel.restyle(PANEL_TINT, PANEL_TITLE_TEXT);
+        }
+    }
+
+    /**
      * Removes a machine's panel (its menu closed or the machine was deleted).
      * @param {number} objectId
      */

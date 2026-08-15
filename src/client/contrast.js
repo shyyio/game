@@ -1,8 +1,12 @@
 // WCAG 2.1 contrast math over 0xRRGGBB colors, for auditing HUD text against what it sits on.
 
-// AA thresholds: normal text, and "large" text (18pt / 14pt bold, i.e. 24px / 18.66px at 96dpi).
-const AA_NORMAL_RATIO = 4.5;
-const AA_LARGE_RATIO = 3;
+// Per level, for normal and "large" text (18pt / 14pt bold = 24px / 18.66px at 96dpi).
+export const LEVEL_AA = "AA";
+export const LEVEL_AAA = "AAA";
+const RATIOS = {
+    [LEVEL_AA]: {normal: 4.5, large: 3},
+    [LEVEL_AAA]: {normal: 7, large: 4.5},
+};
 const LARGE_SIZE = 24;
 const LARGE_BOLD_SIZE = 18.66;
 
@@ -89,14 +93,16 @@ export function contrastRatio(a, b) {
 /**
  * @param {number} fontSize - px
  * @param {boolean} bold
- * @returns {number} the ratio AA demands of text that size
+ * @param {string} level - LEVEL_AA or LEVEL_AAA
+ * @returns {number} the ratio that level demands of text that size
  */
-export function requiredRatio(fontSize, bold) {
-    if (fontSize >= LARGE_SIZE) {
-        return AA_LARGE_RATIO;
+export function requiredRatio(fontSize, bold, level) {
+    const ratios = RATIOS[level];
+    if (ratios === undefined) {
+        throw new Error(`Unknown conformance level "${level}"`);
     }
-    if (bold && fontSize >= LARGE_BOLD_SIZE) {
-        return AA_LARGE_RATIO;
+    if (fontSize >= LARGE_SIZE || (bold && fontSize >= LARGE_BOLD_SIZE)) {
+        return ratios.large;
     }
-    return AA_NORMAL_RATIO;
+    return ratios.normal;
 }

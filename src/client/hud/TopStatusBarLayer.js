@@ -153,6 +153,14 @@ export class TopStatusBarLayer extends Container {
     }
 
     /**
+     * Repaints for the current theme.
+     * @returns {void}
+     */
+    restyle() {
+        this._rebuild();
+    }
+
+    /**
      * Rebuilds for the current sections once the texture registry becomes available (a section
      * can be set before the client has loaded textures).
      * @returns {void}

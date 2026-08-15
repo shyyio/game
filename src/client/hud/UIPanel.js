@@ -444,6 +444,21 @@ export class UIPanel extends Container {
     }
 
     /**
+     * Repaints the frame and title for a new palette; the body's content belongs to the owner, which
+     * rebuilds it separately.
+     * @param {number} tint
+     * @param {number} titleColor
+     * @returns {void}
+     */
+    restyle(tint, titleColor) {
+        this._tint = tint;
+        this._titleColor = titleColor;
+        this._frameSprite.tint = tint;
+        this._bodySprite.tint = tint;
+        this._titleText.style.fill = titleColor;
+    }
+
+    /**
      * @returns {void}
      * @private
      */
@@ -451,6 +466,7 @@ export class UIPanel extends Container {
         // Outer frame: raised border/background spanning the whole panel.
         const bg = this._nineSlice(TX_FRAME, this._width, this._height);
         bg.tint = this._tint;
+        this._frameSprite = bg;
         // Swallows clicks so they don't pass through to the map; explicit hit area (mesh sprite has none by default).
         bg.hitArea = new Rectangle(0, 0, this._width / FRAME_SCALE, this._height / FRAME_SCALE);
         swallowClicks(bg, {native: true});
@@ -462,6 +478,7 @@ export class UIPanel extends Container {
         body.x = BODY_MARGIN;
         body.y = TITLE_ROW_HEIGHT;
         body.tint = this._tint;
+        this._bodySprite = body;
         this.addChild(body);
 
         this.addChild(this.content);
@@ -523,6 +540,7 @@ export class UIPanel extends Container {
             text: this._title,
             style: {fontFamily: GAME_FONT, fontSize: TITLE_FONT_SIZE, fill: this._titleColor, fontWeight: "bold"},
         });
+        this._titleText = title;
         title.x = PADDING;
         title.y = (TITLE_ROW_HEIGHT - title.height) / 2;
         handle.addChild(title);

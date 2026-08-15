@@ -118,6 +118,17 @@ export class ProductionPanelLayer extends Container {
     }
 
     /**
+     * Repaints for the current theme.
+     * @returns {void}
+     */
+    restyle() {
+        if (this.visible) {
+            this._teardown();
+            this._build();
+        }
+    }
+
+    /**
      * @returns {void}
      */
     hide() {

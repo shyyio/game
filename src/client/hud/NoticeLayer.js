@@ -101,6 +101,17 @@ export class NoticeLayer extends Container {
     }
 
     /**
+     * Repaints for the current theme.
+     * @returns {void}
+     */
+    restyle() {
+        this._text.style.fill = PANEL_TINT_TEXT;
+        if (this.visible && this.textureRegistry !== null) {
+            this._rebuildBackground(this._panel.width, this._panel.height);
+        }
+    }
+
+    /**
      * @private
      * @returns {void}
      */

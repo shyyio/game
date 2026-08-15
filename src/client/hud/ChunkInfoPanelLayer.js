@@ -154,6 +154,18 @@ export class ChunkInfoPanelLayer extends Container {
     }
 
     /**
+     * Repaints for the current theme.
+     * @returns {void}
+     */
+    restyle() {
+        this._title.style.fill = PANEL_TITLE_TEXT;
+        this._info.style.fill = PANEL_TINT_TEXT;
+        if (this._chunk !== null) {
+            this._rebuild();
+        }
+    }
+
+    /**
      * The panel's lines and button for the current chunk; a labeled button with a null action
      * renders disabled.
      * @private

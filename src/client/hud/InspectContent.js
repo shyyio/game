@@ -8,7 +8,8 @@ import {
     PROGRESS_BAR_TINT,
     PROGRESS_TEXT_COLOR,
     PROGRESS_TEXT_STROKE,
-    GHOST_BLOCKED_TINT,
+    WORKER_OK_TEXT,
+    WORKER_MISSING_TEXT,
 } from "@/client/Theme.js";
 import {addSlotHighlight} from "@/client/hud/slotHighlight.js";
 import {nineSlice} from "@/client/layers/pixiUtils.js";
@@ -44,8 +45,6 @@ const TX_BARFILL = "ui/barfill";
 
 const WORKER_TEXT_SIZE = 15;
 const WORKER_ROW_HEIGHT = WORKER_TEXT_SIZE + SLOT_MARGIN_Y;
-const WORKER_MANNED_COLOR = PROGRESS_BAR_TINT;
-const WORKER_MISSING_COLOR = GHOST_BLOCKED_TINT;
 
 /**
  * The body height for a machine's snapshot; worker-consuming machines get an extra status row.
@@ -127,9 +126,9 @@ function addWorkerRow(panel, event, y) {
     }
     let workerRowColor;
     if (staffed) {
-        workerRowColor = WORKER_MANNED_COLOR;
+        workerRowColor = WORKER_OK_TEXT;
     } else {
-        workerRowColor = WORKER_MISSING_COLOR;
+        workerRowColor = WORKER_MISSING_TEXT;
     }
     const label = new Text({
         text,

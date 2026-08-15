@@ -5,27 +5,162 @@ import {contrastRatio} from "@/client/contrast.js";
 // Central color palette for all client-side (pixi) rendering. Mods keep their own
 // domain palettes; this holds shared HUD/panel colors and engine render colors.
 
+// ---- Themes ----
+// A theme names one full set of the colors below. Ids are the dropdown's option indices: only append.
+export const THEME_DEFAULT = 0;
+export const THEME_HIGH_CONTRAST = 1;
+export const THEME_NAMES = ["Default", "High contrast"];
+
+// Light warm panels, dark translucent fill under the round buttons.
+const DEFAULT_PALETTE = {
+    PANEL_FILL: 0x1a1a1a,
+    PANEL_FILL_ALPHA: 0.92,
+    PANEL_BORDER: 0x555555,
+    PANEL_TEXT: 0xffffff,
+    PANEL_HOVER_FILL: 0x5a5a5a,
+    ACTIVE_ACCENT: 0x5bb5ff,
+    LABEL_EMPHASIS: 0xffd24a,
+    PANEL_TINT: 0xeee6d8,
+    SCROLLBAR_TRACK_TINT: 0xe4ddcf,
+    PANEL_TINT_TEXT: 0x000000,
+    PANEL_TITLE_TEXT: 0x000000,
+    SLOT_HIGHLIGHT_COLOR: 0x9be89b,
+    CONNECTOR_COLOR: 0x000000,
+    PROGRESS_BAR_TINT: 0x81ff08,
+    PROGRESS_TEXT_COLOR: 0xffffff,
+    PROGRESS_TEXT_STROKE: 0x111111,
+    WORKER_OK_TEXT: 0x81ff08,
+    WORKER_MISSING_TEXT: 0xf23030,
+};
+
+// Every pairing clears WCAG AAA (see text-contrast.spec.js): white panels, black text, accents
+// dark enough for white labels.
+const HIGH_CONTRAST_PALETTE = {
+    PANEL_FILL: 0x000000,
+    PANEL_FILL_ALPHA: 1,
+    PANEL_BORDER: 0x1a1a1a,
+    PANEL_TEXT: 0xffffff,
+    PANEL_HOVER_FILL: 0x3a3a3a,
+    ACTIVE_ACCENT: 0x0a3d91,
+    LABEL_EMPHASIS: 0xffe066,
+    PANEL_TINT: 0xffffff,
+    SCROLLBAR_TRACK_TINT: 0xd0d0d0,
+    PANEL_TINT_TEXT: 0x000000,
+    PANEL_TITLE_TEXT: 0x000000,
+    SLOT_HIGHLIGHT_COLOR: 0x9be89b,
+    CONNECTOR_COLOR: 0x000000,
+    PROGRESS_BAR_TINT: 0x006b1f,
+    PROGRESS_TEXT_COLOR: 0xffffff,
+    PROGRESS_TEXT_STROKE: 0x000000,
+    WORKER_OK_TEXT: 0x00591a,
+    WORKER_MISSING_TEXT: 0xa10000,
+};
+
+const PALETTES = [DEFAULT_PALETTE, HIGH_CONTRAST_PALETTE];
+
 // ---- HUD panel background (mini-menu, rotate buttons, status message) ----
-export const PANEL_FILL = 0x1a1a1a;
-export const PANEL_FILL_ALPHA = 0.92;
-export const PANEL_BORDER = 0x555555;
-export const PANEL_TEXT = 0xffffff; // text and icons over the dark translucent fill
-export const PANEL_HOVER_FILL = 0x5a5a5a;
+export let PANEL_FILL = DEFAULT_PALETTE.PANEL_FILL;
+export let PANEL_FILL_ALPHA = DEFAULT_PALETTE.PANEL_FILL_ALPHA;
+export let PANEL_BORDER = DEFAULT_PALETTE.PANEL_BORDER;
+export let PANEL_TEXT = DEFAULT_PALETTE.PANEL_TEXT; // text and icons over the dark translucent fill
+export let PANEL_HOVER_FILL = DEFAULT_PALETTE.PANEL_HOVER_FILL;
 
 // ---- Accents ----
-export const ACTIVE_ACCENT = 0x5bb5ff; // pressed/active control highlight
-export const LABEL_EMPHASIS = 0xffd24a;
+export let ACTIVE_ACCENT = DEFAULT_PALETTE.ACTIVE_ACCENT; // pressed/active control highlight
+export let LABEL_EMPHASIS = DEFAULT_PALETTE.LABEL_EMPHASIS;
 
 // ---- Inspect & toolbar panels (ui frame background) ----
-export const PANEL_TINT = 0xeee6d8; // warm-gray tint over the ui frame
-export const SCROLLBAR_TRACK_TINT = 0xe4ddcf; // PANEL_TINT darkened by 0.96 per channel
-export const PANEL_TINT_TEXT = 0x000000; // body text over a PANEL_TINT panel
-export const PANEL_TITLE_TEXT = 0x000000; // title text over a PANEL_TINT title bar
-export const SLOT_HIGHLIGHT_COLOR = 0x9be89b; // active/hover slot highlight (green)
-export const CONNECTOR_COLOR = 0x000000; // machine<->panel connector curve
-export const PROGRESS_BAR_TINT = 0x81ff08; // progress bar fill (green)
-export const PROGRESS_TEXT_COLOR = 0xffffff;
-export const PROGRESS_TEXT_STROKE = 0x111111;
+export let PANEL_TINT = DEFAULT_PALETTE.PANEL_TINT; // tint over the ui frame
+export let SCROLLBAR_TRACK_TINT = DEFAULT_PALETTE.SCROLLBAR_TRACK_TINT;
+export let PANEL_TINT_TEXT = DEFAULT_PALETTE.PANEL_TINT_TEXT; // body text over a PANEL_TINT panel
+export let PANEL_TITLE_TEXT = DEFAULT_PALETTE.PANEL_TITLE_TEXT; // title text over a PANEL_TINT title bar
+export let SLOT_HIGHLIGHT_COLOR = DEFAULT_PALETTE.SLOT_HIGHLIGHT_COLOR; // active/hover slot highlight
+export let CONNECTOR_COLOR = DEFAULT_PALETTE.CONNECTOR_COLOR; // machine<->panel connector curve
+export let PROGRESS_BAR_TINT = DEFAULT_PALETTE.PROGRESS_BAR_TINT; // progress bar fill
+export let PROGRESS_TEXT_COLOR = DEFAULT_PALETTE.PROGRESS_TEXT_COLOR;
+export let PROGRESS_TEXT_STROKE = DEFAULT_PALETTE.PROGRESS_TEXT_STROKE;
+export let WORKER_OK_TEXT = DEFAULT_PALETTE.WORKER_OK_TEXT; // staffed machine's status row
+export let WORKER_MISSING_TEXT = DEFAULT_PALETTE.WORKER_MISSING_TEXT; // understaffed machine's status row
+
+const themeListeners = [];
+let currentTheme = THEME_DEFAULT;
+
+/**
+ * @returns {number} the theme in force
+ */
+export function activeTheme() {
+    return currentTheme;
+}
+
+/**
+ * Swaps the palette. The colors above are live bindings, so anything reading one at paint time
+ * gets the new value; already-painted pixels need their layer's restyle().
+ * @param {number} themeId
+ * @returns {void}
+ */
+export function applyTheme(themeId) {
+    const palette = PALETTES[themeId];
+    if (palette === undefined) {
+        throw new Error(`Unknown theme id ${themeId}`);
+    }
+    currentTheme = themeId;
+    PANEL_FILL = palette.PANEL_FILL;
+    PANEL_FILL_ALPHA = palette.PANEL_FILL_ALPHA;
+    PANEL_BORDER = palette.PANEL_BORDER;
+    PANEL_TEXT = palette.PANEL_TEXT;
+    PANEL_HOVER_FILL = palette.PANEL_HOVER_FILL;
+    ACTIVE_ACCENT = palette.ACTIVE_ACCENT;
+    LABEL_EMPHASIS = palette.LABEL_EMPHASIS;
+    PANEL_TINT = palette.PANEL_TINT;
+    SCROLLBAR_TRACK_TINT = palette.SCROLLBAR_TRACK_TINT;
+    PANEL_TINT_TEXT = palette.PANEL_TINT_TEXT;
+    PANEL_TITLE_TEXT = palette.PANEL_TITLE_TEXT;
+    SLOT_HIGHLIGHT_COLOR = palette.SLOT_HIGHLIGHT_COLOR;
+    CONNECTOR_COLOR = palette.CONNECTOR_COLOR;
+    PROGRESS_BAR_TINT = palette.PROGRESS_BAR_TINT;
+    PROGRESS_TEXT_COLOR = palette.PROGRESS_TEXT_COLOR;
+    PROGRESS_TEXT_STROKE = palette.PROGRESS_TEXT_STROKE;
+    WORKER_OK_TEXT = palette.WORKER_OK_TEXT;
+    WORKER_MISSING_TEXT = palette.WORKER_MISSING_TEXT;
+    for (const listener of themeListeners) {
+        listener(themeId);
+    }
+}
+
+/**
+ * Registers a listener fired after every {@link applyTheme}.
+ * @param {function(number): void} listener
+ * @returns {function(): void} removes it again
+ */
+export function onThemeChange(listener) {
+    themeListeners.push(listener);
+    return () => {
+        const index = themeListeners.indexOf(listener);
+        if (index >= 0) {
+            themeListeners.splice(index, 1);
+        }
+    };
+}
+
+/**
+ * The keys every palette must define.
+ * @returns {string[]}
+ */
+export function themedColorNames() {
+    return Object.keys(DEFAULT_PALETTE);
+}
+
+/**
+ * @param {number} themeId
+ * @returns {object} that theme's palette
+ */
+export function palette(themeId) {
+    const found = PALETTES[themeId];
+    if (found === undefined) {
+        throw new Error(`Unknown theme id ${themeId}`);
+    }
+    return found;
+}
 
 /**
  * Whichever of the two text colors reads better on `background`, for controls whose tint the caller
