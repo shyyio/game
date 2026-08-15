@@ -7,6 +7,7 @@ import {Direction} from "@/common/constants.js";
 import {rotate} from "@/common/util.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {ItemDefinition} from "@/common/ItemDefinition.js";
+import ReducedMotion from "@/client/ReducedMotion.js";
 
 // Item sprites resting in out-ports share this layer with belt-path items; their keys are
 // namespaced from the path-item row-id keys so the two can't collide.
@@ -210,7 +211,8 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         particle.setTint(definition.tint);
         particle.hidden = hidden;
         this._applyItemVisibility(particle);
-        particle.moveTo(tileX, tileY, halfTile, sourceDirection, snap);
+        // Reduced motion puts the item on its new tile outright, no glide.
+        particle.moveTo(tileX, tileY, halfTile, sourceDirection, snap || ReducedMotion.enabled);
         if (particle.gliding) {
             this._gliding.add(particle);
         }
