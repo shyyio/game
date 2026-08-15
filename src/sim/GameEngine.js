@@ -1,6 +1,7 @@
 import {World} from "@/sim/World.js";
 import {rotate, chunkId, tileId, tileVariantId, TILE_VARIANT_LIMIT} from "@/common/util.js";
-import {LAYER_SURFACE, PLAYER_ID_NONE} from "@/common/constants.js";
+import {GAME_VERSION, LAYER_SURFACE, PLAYER_ID_NONE} from "@/common/constants.js";
+import {SAVE_FORMAT} from "@/common/saveMigrations.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlacedObjects} from "@/sim/PlacedObjects.js";
@@ -1880,7 +1881,7 @@ export class GameEngine {
      * A serializable snapshot of the whole world: every registered component as a table of rows (one
      * per entity holding it), plus the global counters. Reflection over the component registry, so a
      * module storing its state in components round-trips with no bespoke save code.
-     * @returns {{components:object[], globals:object}}
+     * @returns {{saveFormat:number, gameVersion:string, components:object[], globals:object}}
      */
     serialize() {
         for (const hook of this._serializeHooks) {
@@ -1919,7 +1920,14 @@ export class GameEngine {
         if (this.modRegistry !== null) {
             objectTypeNames = this.modRegistry.objectTypes.map(type => type.name);
         }
-        return {components: components, globals: globals, objectTypeNames: objectTypeNames};
+        // gameVersion is for humans; load decides on saveFormat.
+        return {
+            saveFormat: SAVE_FORMAT,
+            gameVersion: GAME_VERSION,
+            components: components,
+            globals: globals,
+            objectTypeNames: objectTypeNames,
+        };
     }
 
     /**
@@ -1953,6 +1961,74 @@ export class GameEngine {
     }
 
     /**
+     * Throws when `snapshot` is not at the format this build reads.
+     * @private
+     * @param {{saveFormat: number|undefined}} snapshot
+     * @returns {void}
+     */
+    _assertSnapshotFormat(snapshot) {
+        if (snapshot.saveFormat === SAVE_FORMAT) {
+            return;
+        }
+        let found = snapshot.saveFormat;
+        if (found === undefined || found === null) {
+            found = "unstamped (pre-dates save formats)";
+        }
+        throw new Error(
+            `Save is format ${found}, this build reads ${SAVE_FORMAT}: `
+            + "run it through migrateSnapshot() before deserializing."
+        );
+    }
+
+    /**
+     * Throws when `snapshot`'s components no longer match the ones this build registers.
+     * Rows restore by name against the current ComponentDefs: a dropped component crashes mid-restore,
+     * and a drifted field restores silently as a zero-filled column or an i32 read as an eid.
+     * @private
+     * @param {{components: object[]}} snapshot
+     * @returns {void}
+     */
+    _assertComponentsCompatible(snapshot) {
+        const mismatches = [];
+        const savedNames = new Set();
+        for (const component of snapshot.components) {
+            savedNames.add(component.name);
+            const def = this._componentByName.get(component.name);
+            if (def === undefined) {
+                mismatches.push(`component "${component.name}" is in the save but no longer registered`);
+                continue;
+            }
+            const savedKinds = new Map(component.fields.map(field => [field.name, field.kind]));
+            for (const field of def.fields) {
+                const savedKind = savedKinds.get(field.name);
+                if (savedKind === undefined) {
+                    mismatches.push(`${component.name}.${field.name} is registered but missing from the save`);
+                }
+                else if (savedKind !== field.kind) {
+                    mismatches.push(`${component.name}.${field.name} was saved as "${savedKind}", now "${field.kind}"`);
+                }
+            }
+            const currentNames = new Set(def.fields.map(field => field.name));
+            for (const name of savedKinds.keys()) {
+                if (!currentNames.has(name)) {
+                    mismatches.push(`${component.name}.${name} is in the save but no longer registered`);
+                }
+            }
+        }
+        for (const def of this._components) {
+            if (!savedNames.has(def.name)) {
+                mismatches.push(`component "${def.name}" is registered but missing from the save`);
+            }
+        }
+        if (mismatches.length > 0) {
+            throw new Error(
+                "Save is incompatible with this build's components: "
+                + `${mismatches.join("; ")}. Add a save migration, or delete the save file.`
+            );
+        }
+    }
+
+    /**
      * Rebuilds the world from a {@link serialize} snapshot: fresh entities for every saved eid (eid
      * columns remapped so references stay consistent), then the engine's derived indexes and each
      * module's via its rebuild hook.
@@ -1960,7 +2036,9 @@ export class GameEngine {
      * @returns {void}
      */
     deserialize(snapshot) {
+        this._assertSnapshotFormat(snapshot);
         this._assertLoadoutCompatible(snapshot);
+        this._assertComponentsCompatible(snapshot);
         this.world = new World();
         for (const def of this._components) {
             this._bindComponent(def);

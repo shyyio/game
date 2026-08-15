@@ -7,6 +7,7 @@ const GLOBAL_TABLE = "_Global";
 const RECORD_META = "_Record";
 const RECORD_FIELD_META = "_RecordField";
 const OBJECT_TYPE_TABLE = "_ObjectType";
+const META_TABLE = "_Meta";
 
 /**
  * Node {@link AbstractSaveStore}: persists the snapshot as structured SQLite — one table per
@@ -32,6 +33,7 @@ export class NodeSaveStore extends AbstractSaveStore {
         this._assertRecordNames(snapshot.components, records);
         const write = this.db.transaction(() => {
             this._reset();
+            this._writeSnapshotMeta(snapshot);
             this._writeMeta(snapshot.components);
             for (const component of snapshot.components) {
                 this._writeComponent(component);
@@ -77,11 +79,55 @@ export class NodeSaveStore extends AbstractSaveStore {
             return null;
         }
         return {
+            ...this._readSnapshotMeta(),
             components: this._readComponents(),
             globals: this._readGlobals(),
             records: this._readRecords(),
             objectTypeNames: this._readObjectTypeNames(),
         };
+    }
+
+    /**
+     * The snapshot's format/version stamp. Own table, not a _Global row: globals are integers.
+     * @private
+     * @param {{saveFormat: number, gameVersion: string|null}} snapshot
+     * @returns {void}
+     */
+    _writeSnapshotMeta(snapshot) {
+        this.db.exec(`CREATE TABLE "${META_TABLE}" (key TEXT PRIMARY KEY, value TEXT)`);
+        const insert = this.db.prepare(`INSERT INTO "${META_TABLE}" (key, value) VALUES (?, ?)`);
+        insert.run("saveFormat", String(snapshot.saveFormat));
+        let gameVersion = snapshot.gameVersion;
+        if (gameVersion === undefined) {
+            gameVersion = null;
+        }
+        insert.run("gameVersion", gameVersion);
+    }
+
+    /**
+     * @private
+     * @returns {{saveFormat?: number, gameVersion?: string|null}} empty when the save predates the
+     *     stamp, so migrateSnapshot reads it as unstamped
+     */
+    _readSnapshotMeta() {
+        const hasTable = this.db
+            .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
+            .get(META_TABLE);
+        if (hasTable === undefined) {
+            return {};
+        }
+        const rows = this.db.prepare(`SELECT key, value FROM "${META_TABLE}"`).all();
+        const values = new Map(rows.map(row => [row.key, row.value]));
+        const savedFormat = values.get("saveFormat");
+        let saveFormat = null;
+        if (savedFormat !== undefined && savedFormat !== null) {
+            saveFormat = Number(savedFormat);
+        }
+        let gameVersion = values.get("gameVersion");
+        if (gameVersion === undefined) {
+            gameVersion = null;
+        }
+        return {saveFormat: saveFormat, gameVersion: gameVersion};
     }
 
     /**

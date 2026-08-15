@@ -69,6 +69,72 @@ test("NodeSaveStore round-trips objectTypeNames through SQLite", async () => {
     assert.doesNotThrow(() => restored.deserialize(loaded));
 });
 
+test("a component that no longer exists is rejected", async () => {
+    const engine = await makeGameEngine();
+    const snapshot = engine.serialize();
+    snapshot.components = [...snapshot.components, {name: "RetiredComponent", fields: [], rows: []}];
+
+    const restored = await makeGameEngine();
+    assert.throws(
+        () => restored.deserialize(snapshot),
+        /"RetiredComponent" is in the save but no longer registered/,
+    );
+});
+
+test("a component missing from the save is rejected", async () => {
+    const engine = await makeGameEngine();
+    const snapshot = engine.serialize();
+    const dropped = snapshot.components[0].name;
+    snapshot.components = snapshot.components.slice(1);
+
+    const restored = await makeGameEngine();
+    assert.throws(
+        () => restored.deserialize(snapshot),
+        new RegExp(`"${dropped}" is registered but missing from the save`),
+    );
+});
+
+test("a field added since the save was written is rejected instead of silently zero-filled", async () => {
+    const engine = await makeGameEngine();
+    const snapshot = engine.serialize();
+    const component = snapshot.components.find(entry => entry.fields.length > 0);
+    const dropped = component.fields[0].name;
+    component.fields = component.fields.slice(1);
+
+    const restored = await makeGameEngine();
+    assert.throws(
+        () => restored.deserialize(snapshot),
+        new RegExp(`${component.name}\\.${dropped} is registered but missing from the save`),
+    );
+});
+
+test("a field removed since the save was written is rejected instead of silently dropped", async () => {
+    const engine = await makeGameEngine();
+    const snapshot = engine.serialize();
+    const component = snapshot.components[0];
+    component.fields = [...component.fields, {name: "retiredField", kind: "i32"}];
+
+    const restored = await makeGameEngine();
+    assert.throws(
+        () => restored.deserialize(snapshot),
+        new RegExp(`${component.name}\\.retiredField is in the save but no longer registered`),
+    );
+});
+
+test("a field whose kind changed is rejected instead of reinterpreted", async () => {
+    const engine = await makeGameEngine();
+    const snapshot = engine.serialize();
+    const component = snapshot.components.find(entry => entry.fields.some(field => field.kind === "i32"));
+    const field = component.fields.find(entry => entry.kind === "i32");
+    field.kind = "eid";
+
+    const restored = await makeGameEngine();
+    assert.throws(
+        () => restored.deserialize(snapshot),
+        new RegExp(`${component.name}\\.${field.name} was saved as "eid", now "i32"`),
+    );
+});
+
 test("NodeSaveStore reports objectTypeNames as null for a save written before this check existed", async () => {
     const engine = await makeGameEngine();
     const store = new NodeSaveStore(":memory:");
