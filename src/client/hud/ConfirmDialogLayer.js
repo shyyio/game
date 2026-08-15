@@ -1,6 +1,6 @@
 import {Container, Graphics, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_TEXT, ACTIVE_ACCENT, BLOCKED_TILE_COLOR, PANEL_TINT} from "@/client/Theme.js";
+import {PANEL_TINT_TEXT, ACTIVE_ACCENT, BLOCKED_TILE_COLOR, PANEL_TINT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {buildPanelButton, BUTTON_HEIGHT} from "@/client/hud/panelButton.js";
 
@@ -58,7 +58,7 @@ export class ConfirmDialogLayer extends Container {
 
         const titleText = new Text({
             text: title,
-            style: {fontFamily: GAME_FONT, fontSize: TITLE_FONT_SIZE, fill: PANEL_TEXT, fontWeight: "bold"},
+            style: {fontFamily: GAME_FONT, fontSize: TITLE_FONT_SIZE, fill: PANEL_TINT_TEXT, fontWeight: "bold"},
         });
         titleText.x = FRAME_MARGIN + PADDING;
         titleText.y = FRAME_MARGIN + PADDING;
@@ -69,7 +69,7 @@ export class ConfirmDialogLayer extends Container {
             style: {
                 fontFamily: GAME_FONT,
                 fontSize: MESSAGE_FONT_SIZE,
-                fill: PANEL_TEXT,
+                fill: PANEL_TINT_TEXT,
                 wordWrap: true,
                 wordWrapWidth: PANEL_WIDTH - PADDING * 2,
             },

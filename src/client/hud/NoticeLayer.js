@@ -1,6 +1,6 @@
 import {Container, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_TEXT, PANEL_TINT} from "@/client/Theme.js";
+import {PANEL_TINT_TEXT, PANEL_TINT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 
 const MARGIN = 24;
@@ -36,7 +36,7 @@ export class NoticeLayer extends Container {
         this._box = {frame: null, inset: null};
         this._text = new Text({
             text: "",
-            style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TEXT},
+            style: {fontFamily: GAME_FONT, fontSize: 15, fill: PANEL_TINT_TEXT},
         });
         this._panel.addChild(this._text);
         this.addChild(this._panel);

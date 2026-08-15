@@ -1,6 +1,6 @@
 import {Container, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_TINT, PANEL_BORDER, TOOLBAR_TEXT} from "@/client/Theme.js";
+import {PANEL_TINT, PANEL_BORDER, PANEL_TINT_TEXT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {buildPanelButton} from "@/client/hud/panelButton.js";
 import {swallowClicks} from "@/client/layers/pixiUtils.js";
@@ -220,7 +220,7 @@ export class TopStatusBarLayer extends Container {
             style: {
                 fontFamily: GAME_FONT,
                 fontSize: 20,
-                fill: TOOLBAR_TEXT,
+                fill: PANEL_TINT_TEXT,
                 align: "center",
                 wordWrap: true,
                 wordWrapWidth: textWidth,

@@ -42,7 +42,7 @@ export {ObjectGhostLayer} from "@/client/layers/ObjectGhostLayer.js";
 // Same framed-panel toolkit the core Friends/Inspect panels use, for a mod-contributed HUD panel.
 export {UIPanel, ManagedPanel} from "@/client/hud/UIPanel.js";
 export {buildPanelButton, buildToggleRow, BUTTON_HEIGHT} from "@/client/hud/panelButton.js";
-export {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT, TOOLBAR_TEXT} from "@/client/Theme.js";
+export {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT, PANEL_TINT_TEXT} from "@/client/Theme.js";
 // A curved line from a HUD panel to the tile it targets (used by the core Inspect panel).
 export {rectEdgePoint, drawPanelConnector, CONNECTOR_PANEL_INSET} from "@/client/hud/PanelConnector.js";
 // Declarative panel-body builder (header/text/row/scrollSection) for use with UIPanel.managed.
