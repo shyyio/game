@@ -2,7 +2,9 @@
 // loader parse before touching a bundle. Parsing throws on anything malformed or unknown — a bad
 // manifest must fail at load time, never half-load a mod.
 
-import {GAME_VERSION} from "@/common/constants.js";
+// Relative, not aliased: the builder runs this file straight from a checkout, with no alias
+// hook in sight.
+import {GAME_VERSION} from "./constants.js";
 
 // The game's major version is the SDK version, so there is one number to move: bump the major on a
 // breaking change to the SDK surface (a removed or renamed export, a changed signature) and every
