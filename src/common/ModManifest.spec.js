@@ -34,6 +34,12 @@ test("a declaration-only manifest needs no optional parts", () => {
     assert.deepEqual(manifest.files, ["mod.js"]);
 });
 
+test("a title is the display name, and the kebab-case name stands in without one", () => {
+    assert.equal(ModManifest.parse(validJson({title: "Trading Terminal"})).displayName, "Trading Terminal");
+    assert.equal(ModManifest.parse(validJson()).title, null);
+    assert.equal(ModManifest.parse(validJson()).displayName, "market");
+});
+
 test("a parsed manifest round-trips through toJSON", () => {
     const json = validJson();
     assert.deepEqual(ModManifest.parse(json).toJSON(), json);
@@ -52,6 +58,10 @@ test("malformed manifests are rejected loudly", () => {
         "duplicate part": {parts: ["declaration", "sim", "sim"]},
         "asset file listed": {textures: [{image: "sprites.png", json: "sprites.json"}]},
         "non-https homepage": {homepage: "http://example.com"},
+        "empty title": {title: ""},
+        "padded title": {title: " Market "},
+        "multi-line title": {title: "Market\nMod"},
+        "overlong title": {title: "M".repeat(49)},
     };
     for (const [what, overrides] of Object.entries(cases)) {
         assert.throws(() => ModManifest.parse(validJson(overrides)), what);

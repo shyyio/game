@@ -1,7 +1,8 @@
 <script setup>
 import {onMounted, ref, computed} from "vue";
 import {useRouter} from "vue-router";
-import {listMods, MOD_LISTING_GUIDE_URL} from "@/client/ModRegistryClient.js";
+import {listMods, tagsOf, displayNameOf, MOD_TAGS, MOD_LISTING_GUIDE_URL} from "@/client/ModRegistryClient.js";
+import {formatPastDate} from "@/common/dateFormat.js";
 
 const router = useRouter();
 
@@ -9,7 +10,8 @@ const mods = ref([]);
 const loading = ref(true);
 const error = ref("");
 const search = ref("");
-const expanded = ref("");
+const activeTags = ref([]);
+const expanded = ref(null);
 const selected = ref(null);
 const copied = ref("");
 
@@ -30,24 +32,44 @@ async function load() {
   loading.value = false;
 }
 
-const shown = computed(() => {
-  const term = search.value.trim().toLowerCase();
-  if (term === "") {
-    return mods.value;
+// Every tag any listed mod carries, in the order tags sort in — the filter row only offers tags
+// that can actually match something.
+const allTags = computed(() => {
+  const tags = new Set();
+  for (const mod of mods.value) {
+    for (const tag of tagsOf(mod)) {
+      tags.add(tag);
+    }
   }
-  return mods.value.filter((mod) => `${mod.name} ${mod.description}`.toLowerCase().includes(term));
+  return [...tags].sort((left, right) => MOD_TAGS.indexOf(left) - MOD_TAGS.indexOf(right));
+});
+
+const shown = computed(() => {
+  const term = search.value === null ? "" : search.value.trim().toLowerCase();
+  return mods.value.filter((mod) => {
+    const tags = tagsOf(mod);
+    if (!activeTags.value.every((tag) => tags.includes(tag))) {
+      return false;
+    }
+    if (term === "") {
+      return true;
+    }
+    return `${displayNameOf(mod)} ${mod.name} ${mod.description} ${tags.join(" ")}`.toLowerCase().includes(term);
+  });
 });
 
 /**
- * @param {object} mod
+ * Opening a panel starts on the mod's newest version.
+ * @param {string|null} name the panel now open, if any
  * @returns {void}
  */
-function toggle(mod) {
-  if (expanded.value === mod.name) {
-    expanded.value = "";
+function onExpand(name) {
+  expanded.value = name;
+  if (name === null || name === undefined) {
+    selected.value = null;
     return;
   }
-  expanded.value = mod.name;
+  const mod = mods.value.find((candidate) => candidate.name === name);
   selected.value = versionsOf(mod)[0];
 }
 
@@ -98,8 +120,20 @@ function versionsOf(mod) {
   return [...mod.versions].reverse();
 }
 
+/**
+ * @param {object} version
+ * @returns {string}
+ */
+function versionMeta(version) {
+  const sdk = `SDK ${version.sdkVersion}`;
+  if (!version.publishedAt) {
+    return sdk;
+  }
+  return `${sdk} · ${formatPastDate(version.publishedAt)}`;
+}
+
 function back() {
-  router.back();
+  router.push({name: "login"});
 }
 </script>
 
@@ -114,67 +148,71 @@ export default defineComponent({
 <template>
   <div class="mod-list">
     <v-card class="mod-list-card" elevation="8">
+      <div class="mod-list-back">
+        <v-btn variant="text" size="small" @click="back">Back</v-btn>
+      </div>
       <v-card-title>Mods</v-card-title>
-      <v-card-subtitle>
-        Every listed mod is reviewed and built from public source by the registry. Server operators
-        add one by pinning it in their <code>mods.json</code>.
-      </v-card-subtitle>
       <v-card-text>
         <v-text-field
             v-model="search"
-            label="Search mods"
-            density="compact"
-            variant="solo"
+            label="Search"
+            variant="outlined"
+            autocomplete="off"
             hide-details
-            clearable
+            class="my-4"
         />
+        <v-chip-group v-model="activeTags" class="mod-list-tags" column multiple filter>
+          <v-chip v-for="tag in allTags" :key="tag" :value="tag" size="small">{{ tag }}</v-chip>
+        </v-chip-group>
         <div v-if="loading" class="mod-list-empty">Loading…</div>
         <div v-else-if="error" class="mod-list-error">{{ error }}</div>
         <div v-else-if="shown.length === 0" class="mod-list-empty">No mods listed yet</div>
-        <div
-            v-for="mod in shown"
-            :key="mod.name"
-            class="mod-row"
-            @click="toggle(mod)"
-        >
-          <div class="mod-row-head">
-            <span class="mod-row-name">{{ mod.name }}</span>
-            <span class="mod-row-version">{{ mod.latest === null ? "no current version" : mod.latest }}</span>
-          </div>
-          <div class="mod-row-desc">{{ mod.description }}</div>
-          <div v-if="mod.author" class="mod-row-meta">by {{ mod.author }}</div>
-          <div v-if="expanded === mod.name" class="mod-row-detail" @click.stop>
-            <div class="mod-row-meta">
-              <a :href="mod.repo" target="_blank" rel="noreferrer">source</a>
-              <template v-if="mod.homepage"> &middot; <a :href="mod.homepage" target="_blank" rel="noreferrer">homepage</a></template>
-            </div>
-            <table class="mod-row-versions">
-              <tr
-                  v-for="version in versionsOf(mod)"
-                  :key="version.version"
-                  :class="{'mod-row-selected': selected?.version === version.version}"
-                  @click="select(version)"
-              >
-                <td>{{ version.version }}</td>
-                <td class="mod-row-meta">SDK {{ version.sdkVersion }}</td>
-                <td class="mod-row-meta">{{ version.publishedAt }}</td>
-                <td class="mod-row-meta">
-                  <a :href="`${version.url}mod.json`" target="_blank" rel="noreferrer">manifest</a>
-                </td>
-              </tr>
-            </table>
-            <div v-if="selected" class="mod-row-pin">
-              <div class="mod-row-meta">Add this to your server's mods.json:</div>
-              <pre>{{ lockfileEntry(mod, selected) }}</pre>
-              <v-btn size="small" variant="text" @click="copyEntry(mod, selected)">
-                {{ copied === mod.name ? "Copied" : "Copy" }}
-              </v-btn>
-            </div>
-          </div>
-        </div>
+        <v-expansion-panels v-else :model-value="expanded" variant="accordion" @update:model-value="onExpand">
+          <v-expansion-panel v-for="mod in shown" :key="mod.name" :value="mod.name">
+            <v-expansion-panel-title>
+              <div class="mod-row">
+                <div class="mod-row-head">
+                  <span class="mod-row-name">{{ displayNameOf(mod) }}</span>
+                  <span class="mod-row-meta">{{ mod.latest === null ? "no current version" : mod.latest }}</span>
+                  <v-chip
+                      v-for="tag in tagsOf(mod)"
+                      :key="tag"
+                      size="x-small"
+                      variant="tonal"
+                      @click.stop="activeTags = [tag]"
+                  >{{ tag }}</v-chip>
+                </div>
+                <div class="mod-row-desc">{{ mod.description }}</div>
+                <div v-if="mod.author" class="mod-row-meta">{{ mod.author }}</div>
+              </div>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <div class="mod-row-meta">
+                <a :href="mod.repo" target="_blank" rel="noreferrer">source</a>
+                <template v-if="mod.homepage"> &middot; <a :href="mod.homepage" target="_blank" rel="noreferrer">homepage</a></template>
+              </div>
+              <v-list class="mod-versions" density="compact" nav>
+                <v-list-item
+                    v-for="version in versionsOf(mod)"
+                    :key="version.version"
+                    :active="selected?.version === version.version"
+                    :title="version.version"
+                    :subtitle="versionMeta(version)"
+                    @click="select(version)"
+                />
+              </v-list>
+              <div v-if="selected" class="mod-row-pin">
+                <div class="mod-row-meta">Add this to your server's mods.json:</div>
+                <pre>{{ lockfileEntry(mod, selected) }}</pre>
+                <v-btn size="small" variant="text" @click="copyEntry(mod, selected)">
+                  {{ copied === mod.name ? "Copied" : "Copy" }}
+                </v-btn>
+              </div>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
       </v-card-text>
       <v-card-actions>
-        <v-btn variant="text" @click="back">Back</v-btn>
         <v-spacer/>
         <v-btn variant="text" :href="MOD_LISTING_GUIDE_URL" target="_blank" rel="noreferrer">Publish a mod</v-btn>
       </v-card-actions>
@@ -195,8 +233,26 @@ export default defineComponent({
 }
 
 .mod-list-card {
-  width: min(92vw, 560px);
+  width: min(94vw, 860px);
   margin-bottom: 32px;
+}
+
+/* On a phone the catalog is the whole screen: a full-bleed sheet, no background showing around it. */
+@media (max-width: 600px) {
+  .mod-list {
+    padding-top: 0;
+  }
+
+  .mod-list-card {
+    width: 100%;
+    min-height: 100%;
+    margin-bottom: 0;
+    border-radius: 0;
+  }
+}
+
+.mod-list-back {
+  padding: 8px 8px 0;
 }
 
 .mod-list-empty {
@@ -211,15 +267,18 @@ export default defineComponent({
   margin-top: 12px;
 }
 
+.mod-list-tags {
+  margin-bottom: 4px;
+}
+
 .mod-row {
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  cursor: pointer;
+  min-width: 0;
 }
 
 .mod-row-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -227,7 +286,6 @@ export default defineComponent({
   font-weight: 600;
 }
 
-.mod-row-version,
 .mod-row-meta {
   opacity: 0.65;
   font-size: 0.8125rem;
@@ -236,11 +294,8 @@ export default defineComponent({
 .mod-row-desc {
   font-size: 0.9375rem;
   opacity: 0.85;
-}
-
-.mod-row-detail {
-  margin-top: 8px;
-  cursor: default;
+  margin-top: 4px;
+  margin-bottom: 4px;
 }
 
 .mod-row-pin {
@@ -256,21 +311,8 @@ export default defineComponent({
   overflow-x: auto;
 }
 
-.mod-row-versions tr {
-  cursor: pointer;
-}
-
-.mod-row-selected {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.mod-row-versions {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.mod-row-versions td {
-  padding: 3px 6px 3px 0;
-  font-size: 0.8125rem;
+.mod-versions {
+  padding: 4px 0;
+  background: transparent;
 }
 </style>

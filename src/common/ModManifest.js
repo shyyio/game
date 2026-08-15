@@ -21,7 +21,12 @@ const NAME_PATTERN = /^[a-z][a-z0-9-]{1,31}$/;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
 const FILE_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
 
-const MANIFEST_KEYS = ["name", "version", "sdkVersion", "entry", "parts", "homepage"];
+const MANIFEST_KEYS = ["name", "version", "sdkVersion", "title", "entry", "parts", "homepage"];
+
+// A display name is one line of a mod's own choosing; the kebab-case `name` stays the identifier an
+// operator types and a lockfile pins.
+const TITLE_MAX_LENGTH = 48;
+const TITLE_PATTERN = /^[^\s\p{Cc}]([^\p{Cc}]*[^\s\p{Cc}])?$/u;
 
 /**
  * Asserts a plain-object shape with no keys outside `allowed`.
@@ -48,6 +53,7 @@ export class ModManifest {
      * @param {string} fields.name
      * @param {string} fields.version
      * @param {number} fields.sdkVersion
+     * @param {string|null} fields.title the display name, when the mod wants one other than its name
      * @param {string} fields.entry the bundle file, relative to the mod's base URL
      * @param {string[]} fields.parts which factories the bundle exports
      * @param {string|null} fields.homepage
@@ -57,6 +63,7 @@ export class ModManifest {
             name,
             version,
             sdkVersion,
+            title,
             entry,
             parts,
             homepage,
@@ -65,9 +72,21 @@ export class ModManifest {
         this.name = name;
         this.version = version;
         this.sdkVersion = sdkVersion;
+        this.title = title;
         this.entry = entry;
         this.parts = parts;
         this.homepage = homepage;
+    }
+
+    /**
+     * What a player sees the mod called.
+     * @returns {string}
+     */
+    get displayName() {
+        if (this.title === null) {
+            return this.name;
+        }
+        return this.title;
     }
 
     /**
@@ -99,6 +118,9 @@ export class ModManifest {
             entry: this.entry,
             parts: this.parts,
         };
+        if (this.title !== null) {
+            json.title = this.title;
+        }
         if (this.homepage !== null) {
             json.homepage = this.homepage;
         }
@@ -140,9 +162,25 @@ export class ModManifest {
         if (new Set(parts).size !== parts.length) {
             throw new Error(`Mod "${name}" declares a part twice`);
         }
+        const title = parseTitle(json.title, name);
         const homepage = parseHomepage(json.homepage, name);
-        return new ModManifest({name, version, sdkVersion, entry, parts, homepage});
+        return new ModManifest({name, version, sdkVersion, title, entry, parts, homepage});
     }
+}
+
+/**
+ * @param {*} value
+ * @param {string} name the mod's name, for error messages
+ * @returns {string|null}
+ */
+function parseTitle(value, name) {
+    if (value === undefined) {
+        return null;
+    }
+    if (typeof value !== "string" || value.length > TITLE_MAX_LENGTH || !TITLE_PATTERN.test(value)) {
+        throw new Error(`Mod "${name}" has an invalid title: ${JSON.stringify(value)}`);
+    }
+    return value;
 }
 
 /**
