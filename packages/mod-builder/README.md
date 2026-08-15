@@ -8,8 +8,9 @@ Run them in your mod: the mod is the working directory, it builds into `./dist`,
 the one in your `package.json`. Every default can be overridden — `build <mod dir> <out dir>`,
 `check <package dir>`, `--version <x.y.z>`.
 
-- **`build`** — writes `dist/mod.js` and `dist/mod.json`. Optional
-  `--homepage <url>` goes into the manifest. The bundle is minified (class names kept — the wire
+- **`build`** — writes `dist/mod.js` and `dist/mod.json`. Optional `--title <name>` (the display
+  name players see; it defaults to your directory name in words) and `--homepage <url>` go into the
+  manifest. The bundle is minified (class names kept — the wire
   codec names each message and event type after its class); `--minify false` keeps it readable,
   which is what the dev server builds with. The minifier is pinned to an exact version here, so the
   same source hashes the same from any machine.

@@ -237,6 +237,21 @@ function packageName(modDir) {
 }
 
 /**
+ * The display name for a mod directory (BaseTextures and base-textures both -> Base Textures);
+ * --title overrides it.
+ * @param {string} modDir
+ * @returns {string}
+ */
+function displayTitle(modDir) {
+    return basename(modDir)
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+        .split(/[-_\s]+/)
+        .filter(word => word !== "")
+        .map(word => `${word[0].toUpperCase()}${word.slice(1)}`)
+        .join(" ");
+}
+
+/**
  * Assembles the single-file bundle: the memoized core closure plus one lazy closure per part.
  * @param {object} parts
  * @param {string} parts.core
@@ -335,11 +350,12 @@ function parseFlags(argv) {
  * @param {string} outDir
  * @param {object} options
  * @param {string} options.version
+ * @param {string} [options.title] the display name, defaulting to the directory name in words
  * @param {string} [options.homepage]
  * @param {boolean} [options.minify] off for a dev build, where readable code beats bytes
  * @returns {Promise<ModManifest>}
  */
-export async function buildMod(modDir, outDir, {version, homepage, minify=true}) {
+export async function buildMod(modDir, outDir, {version, title, homepage, minify=true}) {
     const core = await buildCore(modDir);
     const sim = await buildPart(join(modDir, "sim.js"), core.moduleIds);
     const client = await buildPart(join(modDir, "client.js"), core.moduleIds);
@@ -350,10 +366,12 @@ export async function buildMod(modDir, outDir, {version, homepage, minify=true})
     if (client !== null) {
         parts.push(MOD_PART_CLIENT);
     }
+    const manifestTitle = title === undefined ? displayTitle(modDir) : title;
     const manifest = ModManifest.parse({
         name: packageName(modDir),
         version,
         sdkVersion: SDK_VERSION,
+        title: manifestTitle,
         entry: BUNDLE_NAME,
         parts,
         ...(homepage === undefined ? {} : {homepage}),
@@ -372,7 +390,7 @@ export async function buildMod(modDir, outDir, {version, homepage, minify=true})
 async function main() {
     const [modArg, outArg, ...rest] = process.argv.slice(2);
     if (modArg === undefined || outArg === undefined) {
-        throw new Error("usage: build-mod.js <mod dir> <out dir> --version <x.y.z> [--homepage <url>] [--minify false]");
+        throw new Error("usage: build-mod.js <mod dir> <out dir> --version <x.y.z> [--title <name>] [--homepage <url>] [--minify false]");
     }
     const flags = parseFlags(rest);
     const version = flags.get("version");
@@ -383,10 +401,11 @@ async function main() {
     const outDir = resolve(outArg);
     const manifest = await buildMod(modDir, outDir, {
         version,
+        title: flags.get("title"),
         homepage: flags.get("homepage"),
         minify: flags.get("minify") !== "false",
     });
-    console.log(`${manifest.name} ${manifest.version} (sdk ${manifest.sdkVersion}) -> ${relative(process.cwd(), outDir)}`);
+    console.log(`${manifest.displayName} (${manifest.name}) ${manifest.version} (sdk ${manifest.sdkVersion}) -> ${relative(process.cwd(), outDir)}`);
     for (const file of manifest.files) {
         const path = join(outDir, file);
         console.log(`  ${file}  ${statSync(path).size} bytes  ${fileHash(path)}`);

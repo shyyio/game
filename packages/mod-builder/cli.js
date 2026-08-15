@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The mod toolchain, as a mod author (and the registry's CI) uses it:
 //
-//   spup-mod-builder build <mod dir> <out dir> --version 1.0.0 [--homepage https://...]
+//   spup-mod-builder build <mod dir> <out dir> --version 1.0.0 [--title "My Mod"] [--homepage https://...]
 //   spup-mod-builder check <package dir>
 //   spup-mod-builder scan  <mod.js>
 //
@@ -20,7 +20,7 @@ import {VERDICT_PREFIX} from "./evalCheck.js";
 
 const USAGE = [
     "usage:",
-    "  spup-mod-builder build [mod dir] [out dir] [--version <x.y.z>] [--homepage <url>] [--minify false]",
+    "  spup-mod-builder build [mod dir] [out dir] [--version <x.y.z>] [--title <name>] [--homepage <url>] [--minify false]",
     "  spup-mod-builder check [package dir]",
     "  spup-mod-builder scan [mod.js]",
     "",
@@ -175,10 +175,11 @@ if (verb === "build") {
     }
     const manifest = await buildMod(modDir, outDir, {
         version,
+        title: flags.get("title"),
         homepage: flags.get("homepage"),
         minify: flags.get("minify") !== "false",
     });
-    console.log(`${manifest.name} ${manifest.version} (sdk ${manifest.sdkVersion}) -> ${relative(process.cwd(), outDir)}`);
+    console.log(`${manifest.displayName} (${manifest.name}) ${manifest.version} (sdk ${manifest.sdkVersion}) -> ${relative(process.cwd(), outDir)}`);
 } else if (verb === "check") {
     const dir = resolve(positionalOr(positional, 0, join(process.cwd(), OUT_DIR_NAME)));
     const problems = await checkPackage(dir);
