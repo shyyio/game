@@ -5,7 +5,7 @@
 //
 // --check only verifies that an assembled dist/ is current, for a test to assert.
 
-import {copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync} from "node:fs";
+import {mkdirSync, readFileSync, rmSync, writeFileSync, existsSync} from "node:fs";
 import {join, resolve, dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {parseArgs} from "node:util";
@@ -14,7 +14,7 @@ import {GAME_VERSION} from "../src/common/constants.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PACKAGE_DIR = join(ROOT, "packages/mod-builder");
-const LIB_DIR = join(PACKAGE_DIR, "dist");
+const DIST_DIR = join(PACKAGE_DIR, "dist");
 
 // Stamped rather than vendored: the published builder speaks the SDK of the commit it was packed
 // from, whatever version the package itself carries.
@@ -22,7 +22,7 @@ const VERSION_MODULE = "gameVersion.js";
 const VERSION_SOURCE = "// Stamped by tools/pack-builder.js — do not edit.\n"
     + `export const GAME_VERSION = ${JSON.stringify(GAME_VERSION)};\n`;
 
-// Source file -> what it becomes in lib/, with the imports it needs rewritten to lib-relative ones.
+// Source file -> what it becomes in dist/, with the imports it needs rewritten to dist-relative ones.
 const VENDORED = [
     {
         from: "src/common/ModManifest.js",
@@ -39,8 +39,12 @@ const VENDORED = [
     },
 ];
 
+// Written by hand, not vendored: it has no counterpart in the game, which never stubs its own SDK.
+// It is assembled all the same, so --check covers it.
+const COPIED = [{from: "packages/mod-builder/stubSdk.js", to: "stubSdk.js"}];
+
 /**
- * The lib/ contents this repo's sources imply.
+ * The dist/ contents this repo's sources imply.
  * @returns {Map<string, string>} file name -> source
  */
 function assemble() {
@@ -55,6 +59,9 @@ function assemble() {
         }
         files.set(entry.to, `// Vendored from ${entry.from} by tools/pack-builder.js — do not edit.\n${source}`);
     }
+    for (const entry of COPIED) {
+        files.set(entry.to, readFileSync(join(ROOT, entry.from), "utf8"));
+    }
     files.set(VERSION_MODULE, VERSION_SOURCE);
     return files;
 }
@@ -65,7 +72,7 @@ function assemble() {
 export function staleFiles() {
     const stale = [];
     for (const [name, source] of assemble()) {
-        const path = join(LIB_DIR, name);
+        const path = join(DIST_DIR, name);
         if (!existsSync(path) || readFileSync(path, "utf8") !== source) {
             stale.push(name);
         }
@@ -85,14 +92,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
             console.log("packages/mod-builder/dist is current");
         }
     } else {
-        rmSync(LIB_DIR, {recursive: true, force: true});
-        mkdirSync(LIB_DIR, {recursive: true});
-        for (const [name, source] of assemble()) {
-            writeFileSync(join(LIB_DIR, name), source);
+        const files = assemble();
+        rmSync(DIST_DIR, {recursive: true, force: true});
+        mkdirSync(DIST_DIR, {recursive: true});
+        for (const [name, source] of files) {
+            writeFileSync(join(DIST_DIR, name), source);
         }
-        // Written by hand, not vendored: it has no counterpart in the game, which never stubs its
-        // own SDK.
-        copyFileSync(join(PACKAGE_DIR, "stubSdk.js"), join(LIB_DIR, "stubSdk.js"));
-        console.log(`packages/mod-builder/dist: ${[...assemble().keys()].length + 1} files, SDK version ${SDK_VERSION}`);
+        console.log(`packages/mod-builder/dist: ${files.size} files, SDK version ${SDK_VERSION}`);
     }
 }

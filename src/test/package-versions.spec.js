@@ -39,3 +39,10 @@ test("the runtime packages depend on a toolchain speaking this SDK", () => {
     const builder = packageJson("game-client").dependencies["@spup/mod-builder"];
     assert.equal(builder, `^${packageJson("mod-builder").version}`);
 });
+
+// syncPackageVersion writes each package's own version, not the ranges between them: a major bump
+// has to widen this one by hand, and the release stops here until it does.
+test("the client asks for a server of this game version", () => {
+    const server = packageJson("game-client").peerDependencies["@spup/game-server"];
+    assert.equal(server, `^${GAME_VERSION}`);
+});

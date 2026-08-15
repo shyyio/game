@@ -32,7 +32,14 @@ const FALLBACK_MIME_TYPE = "application/octet-stream";
  * @returns {string|null}
  */
 function fileFor(root, path) {
-    const candidate = resolve(join(root, decodeURIComponent(path)));
+    let decoded;
+    try {
+        decoded = decodeURIComponent(path);
+    } catch {
+        // A malformed escape names no file, and must not take a dev server down.
+        return null;
+    }
+    const candidate = resolve(join(root, decoded));
     if (candidate !== root && !candidate.startsWith(root + sep)) {
         return null;
     }

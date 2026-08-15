@@ -3,8 +3,10 @@
 //
 //   spup-dev client [--port 8080] [--host 127.0.0.1] [--mod <dir>] [--out <dir>]
 //   spup-dev server [--port 27500] [--host 0.0.0.0] [--work <dir>] [--mod <dir>] [--out <dir>]
+//                   [--origin ws://localhost:27500] [--auth-server https://auth.spupgame.com]
 //
-// The mod is the working directory unless --mod says otherwise.
+// The mod is the working directory unless --mod says otherwise. A server's --origin is what a join
+// token is minted for — the URL a player types, not the interface it listens on.
 //
 // `client` builds the mod the same way `spup-mod-builder build` does, serves the prebuilt client
 // next to the built package, and points the client at it with `?mod=`. Local play only: a server
@@ -25,6 +27,7 @@ const USAGE = [
     "usage:",
     "  spup-dev client [--port 8080] [--host 127.0.0.1] [--mod <dir>] [--out <dir>]",
     "  spup-dev server [--port 27500] [--host 0.0.0.0] [--work <dir>] [--mod <dir>] [--out <dir>]",
+    "                  [--origin ws://localhost:27500] [--auth-server https://auth.spupgame.com]",
 ].join("\n");
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -33,6 +36,7 @@ const DEFAULT_PORT = 8080;
 const DEFAULT_HOST = "127.0.0.1";
 const DEFAULT_GAME_PORT = 27500;
 const DEFAULT_GAME_HOST = "0.0.0.0";
+const MAX_PORT = 65535;
 // Where a dev server keeps its lockfile, mod cache and world; beside the mod, so a world survives
 // restarts and is one directory to delete.
 const WORK_DIR_NAME = ".spup-dev";
@@ -175,6 +179,23 @@ function flagOr(flags, name, fallback) {
 
 /**
  * @param {Map<string, string>} flags
+ * @param {number} fallback
+ * @returns {number}
+ */
+function portFrom(flags, fallback) {
+    const given = flags.get("port");
+    if (given === undefined) {
+        return fallback;
+    }
+    const port = Number(given);
+    if (!Number.isInteger(port) || port < 1 || port > MAX_PORT) {
+        throw new Error(`--port ${given} is not a port number`);
+    }
+    return port;
+}
+
+/**
+ * @param {Map<string, string>} flags
  * @returns {Promise<void>}
  */
 async function runClient(flags) {
@@ -185,7 +206,7 @@ async function runClient(flags) {
     if (!await build(modDir, outDir)) {
         process.exit(1);
     }
-    const port = Number(flagOr(flags, "port", DEFAULT_PORT));
+    const port = portFrom(flags, DEFAULT_PORT);
     const host = flagOr(flags, "host", DEFAULT_HOST);
     await startDevServer({clientDir: CLIENT_DIR, modDir: outDir, port, host});
     watchMod(modDir, outDir);
@@ -208,7 +229,7 @@ async function runServer(flags) {
     if (!await build(modDir, outDir)) {
         process.exit(1);
     }
-    const port = Number(flagOr(flags, "port", DEFAULT_GAME_PORT));
+    const port = portFrom(flags, DEFAULT_GAME_PORT);
     const workDir = resolve(flagOr(flags, "work", join(modDir, WORK_DIR_NAME)));
     const server = startDevGameServer({
         modPackageDir: outDir,

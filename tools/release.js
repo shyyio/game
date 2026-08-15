@@ -1,4 +1,5 @@
-// Publishes this repo's four packages to npm, at the version the root package.json carries.
+// Publishes this repo's four packages to npm: the three runtime ones at the version the root
+// package.json carries, and the toolchain at its own (its major is the SDK version).
 //
 //   npm run release
 //

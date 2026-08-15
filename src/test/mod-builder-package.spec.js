@@ -43,7 +43,7 @@ function hashOf(path) {
     return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
-test("the vendored lib is current", () => {
+test("the vendored dist is current", () => {
     // Whoever changes the builder, the scanner, or the manifest model reruns `npm run pack:builder`.
     assert.deepEqual(staleFiles(), []);
 });

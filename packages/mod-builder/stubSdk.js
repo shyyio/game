@@ -35,8 +35,7 @@ function stub(path) {
         construct() {
             return stub(`new ${path}`);
         },
-        // Constants a mod compares or indexes with have to look like plain values sometimes; an
-        // absent property is better than a stub for `in` checks.
+        // Every property answers, so an `in` check against the SDK reads as present.
         has() {
             return true;
         },
