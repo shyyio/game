@@ -29,6 +29,7 @@
     },
     "files": [
         "cli.js",
+        "evalCheck.js",
         "dist/",
         "README.md"
     ],

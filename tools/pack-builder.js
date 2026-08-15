@@ -44,6 +44,21 @@ const VENDORED = [
 const COPIED = [{from: "packages/mod-builder/stubSdk.js", to: "stubSdk.js"}];
 
 /**
+ * Repoints an import, leaving the same text anywhere else in the file alone.
+ * @param {string} source
+ * @param {string} before
+ * @param {string} after
+ * @returns {string|null} null when nothing imports `before`
+ */
+function rewriteImport(source, before, after) {
+    const quoted = `from "${before}"`;
+    if (!source.includes(quoted)) {
+        return null;
+    }
+    return source.replaceAll(quoted, `from "${after}"`);
+}
+
+/**
  * The dist/ contents this repo's sources imply.
  * @returns {Map<string, string>} file name -> source
  */
@@ -52,10 +67,11 @@ function assemble() {
     for (const entry of VENDORED) {
         let source = readFileSync(join(ROOT, entry.from), "utf8");
         for (const [before, after] of entry.rewrites) {
-            if (!source.includes(before)) {
+            const rewritten = rewriteImport(source, before, after);
+            if (rewritten === null) {
                 throw new Error(`${entry.from} no longer imports ${before}; fix the rewrite list`);
             }
-            source = source.replaceAll(before, after);
+            source = rewritten;
         }
         files.set(entry.to, `// Vendored from ${entry.from} by tools/pack-builder.js — do not edit.\n${source}`);
     }

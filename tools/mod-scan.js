@@ -1,13 +1,22 @@
 // Free-variable scan of a built mod bundle. The factory format has zero imports, so a legitimate
 // bundle's only free references are whitelisted intrinsics — everything else (fetch, document,
-// eval, WebSocket) is a capability the mod has no business reaching, and fails the build.
+// eval, WebSocket) is a capability the mod has no business reaching, and fails `check`.
 //
 //   node tools/mod-scan.js <mod.js>
+//
+// This is a lint, not a sandbox: `[].constructor.constructor` is the Function constructor with no
+// free name anywhere, so a scan can never make evaluating a bundle safe. Anything that runs one
+// runs it under node's permission model instead (see packages/mod-builder/evalCheck.js).
 
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {parse} from "acorn";
+
+// Reported by node type, not by name: neither leaves a free identifier behind, so nothing in the
+// scope walk would otherwise see them.
+const DYNAMIC_IMPORT = "import()";
+const IMPORT_META = "import.meta";
 
 // Pure computation plus the debug channel. Anything with reach into the page, the network, the
 // clock's environment, or dynamic evaluation stays off this list on purpose.
@@ -216,6 +225,21 @@ function hoistVarsOnly(node, scope) {
 }
 
 /**
+ * Counts one unresolved reference.
+ * @param {string} name
+ * @param {Map<string, number>} free
+ * @returns {void}
+ */
+function reference(name, free) {
+    const seen = free.get(name);
+    if (seen === undefined) {
+        free.set(name, 1);
+        return;
+    }
+    free.set(name, seen + 1);
+}
+
+/**
  * Walks a node, resolving identifier references against the scope chain.
  * @param {object} node
  * @param {Scope} scope
@@ -229,8 +253,18 @@ function visit(node, scope, free) {
     switch (node.type) {
         case "Identifier": {
             if (!scope.has(node.name) && !ALLOWED_GLOBALS.has(node.name)) {
-                free.set(node.name, (free.get(node.name) === undefined ? 0 : free.get(node.name)) + 1);
+                reference(node.name, free);
             }
+            return;
+        }
+        case "ImportExpression": {
+            // A bundle has no imports at all; a dynamic one is the whole module system back.
+            reference(DYNAMIC_IMPORT, free);
+            visit(node.source, scope, free);
+            return;
+        }
+        case "MetaProperty": {
+            reference(IMPORT_META, free);
             return;
         }
         case "MemberExpression": {

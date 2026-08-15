@@ -4,9 +4,9 @@
 //
 //   node tools/pack-sdk.js [--check]
 //
-// --check only verifies that what is staged was built from this commit, so a stale copy fails CI.
+// --check only compares what is staged against what these sources imply, so a stale copy fails CI.
 
-import {existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from "node:fs";
+import {existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync} from "node:fs";
 import {dirname, join, relative, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {parseArgs} from "node:util";
@@ -23,6 +23,9 @@ const SOURCE_DIR = join(PACKAGE_DIR, "dist");
 const PACKED_FILE = join(PACKAGE_DIR, "packed.json");
 
 const ENTRIES = ["sdk/common.js", "sdk/client.js"];
+
+// Enough stale names to recognise what happened, without listing a whole re-pack.
+const STALE_FILES_SHOWN = 5;
 
 // The engine reads the game version out of the repo's package.json, which has no place in a
 // published package; the staged copy imports this generated module instead.
@@ -136,26 +139,54 @@ function stage(file, staged, packages) {
 }
 
 /**
- * @returns {{modules: number, packages: string[]}}
+ * The dist/ contents this repo's sources imply.
+ * @returns {{files: Map<string, string>, packages: string[]}} path under dist/ -> source
  */
-function pack() {
+function assemble() {
     const staged = new Map();
     const packages = new Set();
     for (const entry of ENTRIES) {
         stage(join(SRC_DIR, entry), staged, packages);
     }
-    rmSync(SOURCE_DIR, {recursive: true, force: true});
+    const files = new Map();
     for (const [file, source] of staged) {
-        const path = join(SOURCE_DIR, relative(SRC_DIR, file));
-        mkdirSync(dirname(path), {recursive: true});
-        writeFileSync(path, source);
+        files.set(relative(SRC_DIR, file), source);
     }
-    writeFileSync(join(SOURCE_DIR, VERSION_MODULE), VERSION_SOURCE);
-    return {modules: staged.size + 1, packages: [...packages].sort()};
+    files.set(VERSION_MODULE, VERSION_SOURCE);
+    return {files, packages: [...packages].sort()};
 }
 
 /**
- * @returns {string[]} what is stale about the staged copy, empty when it is current
+ * @returns {{modules: number, packages: string[]}}
+ */
+function pack() {
+    const {files, packages} = assemble();
+    rmSync(SOURCE_DIR, {recursive: true, force: true});
+    for (const [name, source] of files) {
+        const path = join(SOURCE_DIR, name);
+        mkdirSync(dirname(path), {recursive: true});
+        writeFileSync(path, source);
+    }
+    return {modules: files.size, packages};
+}
+
+/**
+ * @returns {string[]} the file names under dist/, in no particular order
+ */
+function stagedFiles() {
+    if (!existsSync(SOURCE_DIR)) {
+        return [];
+    }
+    return readdirSync(SOURCE_DIR, {recursive: true, withFileTypes: true})
+        .filter(entry => entry.isFile())
+        .map(entry => relative(SOURCE_DIR, join(entry.parentPath, entry.name)));
+}
+
+/**
+ * What is stale about the staged copy. The sources are copied verbatim, so this compares content
+ * rather than trusting a commit stamp: an uncommitted edit to the SDK is exactly the stale copy
+ * worth catching.
+ * @returns {string[]} empty when it is current
  */
 function staleReasons() {
     if (!existsSync(PACKED_FILE)) {
@@ -163,16 +194,23 @@ function staleReasons() {
     }
     const packed = JSON.parse(readFileSync(PACKED_FILE, "utf8"));
     const reasons = [];
-    if (packed.commit !== gitBuildInfo().commit) {
-        reasons.push(`built from ${packed.commit}, HEAD is ${gitBuildInfo().commit}`);
-    }
     if (packed.sdkVersion !== SDK_VERSION) {
         reasons.push(`built for SDK ${packed.sdkVersion}, this tree is ${SDK_VERSION}`);
     }
-    for (const entry of ENTRIES) {
-        if (!existsSync(join(SOURCE_DIR, entry))) {
-            reasons.push(`${entry} is missing`);
+    const {files} = assemble();
+    const changed = [];
+    for (const [name, source] of files) {
+        const path = join(SOURCE_DIR, name);
+        if (!existsSync(path) || readFileSync(path, "utf8") !== source) {
+            changed.push(name);
         }
+    }
+    if (changed.length > 0) {
+        reasons.push(`${changed.length} file(s) differ: ${changed.slice(0, STALE_FILES_SHOWN).join(", ")}`);
+    }
+    const extra = stagedFiles().filter(name => !files.has(name));
+    if (extra.length > 0) {
+        reasons.push(`${extra.length} file(s) no longer belong: ${extra.slice(0, STALE_FILES_SHOWN).join(", ")}`);
     }
     return reasons;
 }
