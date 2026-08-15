@@ -1,9 +1,9 @@
-// Assembles packages/mod-builder/lib/ from this repo's own sources, so the published toolchain is
+// Assembles packages/mod-builder/dist/ from this repo's own sources, so the published toolchain is
 // the same code the game builds its mods with — not a copy that drifts.
 //
 //   node tools/pack-builder.js [--check]
 //
-// --check only verifies that an assembled lib/ is current, for a test to assert.
+// --check only verifies that an assembled dist/ is current, for a test to assert.
 
 import {copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync} from "node:fs";
 import {join, resolve, dirname} from "node:path";
@@ -14,7 +14,7 @@ import {GAME_VERSION} from "../src/common/constants.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PACKAGE_DIR = join(ROOT, "packages/mod-builder");
-const LIB_DIR = join(PACKAGE_DIR, "lib");
+const LIB_DIR = join(PACKAGE_DIR, "dist");
 
 // Stamped rather than vendored: the published builder speaks the SDK of the commit it was packed
 // from, whatever version the package itself carries.
@@ -78,11 +78,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (args.check) {
         const stale = staleFiles();
         if (stale.length > 0) {
-            console.error(`packages/mod-builder/lib is stale: ${stale.join(", ")}`);
+            console.error(`packages/mod-builder/dist is stale: ${stale.join(", ")}`);
             console.error("run `npm run pack:builder`");
             process.exitCode = 1;
         } else {
-            console.log("packages/mod-builder/lib is current");
+            console.log("packages/mod-builder/dist is current");
         }
     } else {
         rmSync(LIB_DIR, {recursive: true, force: true});
@@ -93,6 +93,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         // Written by hand, not vendored: it has no counterpart in the game, which never stubs its
         // own SDK.
         copyFileSync(join(PACKAGE_DIR, "stubSdk.js"), join(LIB_DIR, "stubSdk.js"));
-        console.log(`packages/mod-builder/lib: ${[...assemble().keys()].length + 1} files, SDK version ${SDK_VERSION}`);
+        console.log(`packages/mod-builder/dist: ${[...assemble().keys()].length + 1} files, SDK version ${SDK_VERSION}`);
     }
 }
