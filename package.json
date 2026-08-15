@@ -1,6 +1,6 @@
 {
   "name": "shys-power-up-factory",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -20,6 +20,7 @@
     "pack:sdk": "node --import ./src/server/loader.js tools/pack-sdk.js",
     "pack:server": "node --import ./src/server/loader.js tools/pack-game-server.js",
     "release": "node --import ./src/server/loader.js tools/release.js",
+    "deploy": "node --import ./src/server/loader.js tools/deploy.js",
     "build:harness": "vite build --config vite.harness.config.js",
     "scan:mod": "node tools/mod-scan.js",
     "build:server": "vite build --config vite.server.config.js",
