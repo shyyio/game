@@ -1,6 +1,6 @@
 {
     "name": "@spup/game-server",
-    "version": "2.3.0",
+    "version": "2.4.0",
     "description": "The Shy's Power-Up Factory server, its base mods, and the harness a mod's tests run against",
     "keywords": [
         "spup",
