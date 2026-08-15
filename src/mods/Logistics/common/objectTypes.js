@@ -5,7 +5,7 @@ import {
     Direction,
     RoadBehavior,
     HousingBehavior,
-} from "@/sdk/common.js";
+} from "@spup/sdk";
 import {
     BELT_NORMAL,
     BELT_RAMP_DOWN,

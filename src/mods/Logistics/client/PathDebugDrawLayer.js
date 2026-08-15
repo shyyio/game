@@ -5,7 +5,7 @@ import {
     DEBUG_COLOR,
     drawLine,
     drawCircle,
-} from "@/sdk/client.js";
+} from "@spup/sdk/client";
 
 // Radius of the circle marking a path's head and tail belts.
 const END_MARKER_RADIUS = 10;

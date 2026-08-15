@@ -1,4 +1,4 @@
-import {AbstractSimMod} from "@/sdk/common.js";
+import {AbstractSimMod} from "@spup/sdk";
 import {
     CURSOR_SETTING_SHARE,
     CURSOR_SETTING_DISPLAY,

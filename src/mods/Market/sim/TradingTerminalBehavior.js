@@ -1,4 +1,4 @@
-import {AbstractBehavior, EMPTY, NO_EID, TickPhase, PLAYER_ID_NONE} from "@/sdk/common.js";
+import {AbstractBehavior, EMPTY, NO_EID, TickPhase, PLAYER_ID_NONE} from "@spup/sdk";
 import {MARKET_MODE_SELL, MARKET_MODE_BUY} from "../common/constants.js";
 import {MarketBook} from "./MarketBook.js";
 

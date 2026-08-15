@@ -1,4 +1,4 @@
-import {AbstractModDeclaration} from "@/sdk/common.js";
+import {AbstractModDeclaration} from "@spup/sdk";
 import {FLUID_TYPE_WATER, FLUID_TYPE_OIL} from "./common/constants.js";
 import {PipeDefinition, TankDefinition} from "./common/objectTypes.js";
 import {

@@ -1,4 +1,4 @@
-import {AbstractTool, Direction, Haptics, LAYER_SURFACE, CreateObjectMessage, DeleteObjectMessage} from "@/sdk/client.js";
+import {AbstractTool, Direction, Haptics, LAYER_SURFACE, CreateObjectMessage, DeleteObjectMessage} from "@spup/sdk/client";
 import {BeltBend, MAX_UNDERGROUND_LENGTH, BELT_NORMAL, BELT_RAMP_DOWN, BELT_RAMP_UP} from "../common/constants.js";
 import {BeltDefinition, BeltRampDownDefinition, BeltRampUpDefinition, isBeltType} from "../common/objectTypes.js";
 import {Belt} from "./BeltDrawLayer.js";

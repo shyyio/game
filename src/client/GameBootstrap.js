@@ -1,5 +1,6 @@
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {fetchModLoadout} from "@/client/ModFetcher.js";
+import {fetchSideloadedMods, sideloadedModUrls} from "@/client/ModSideload.js";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {ClientSaveStore} from "@/client/state/ClientSaveStore.js";
@@ -22,16 +23,17 @@ const LOCAL_TICK_INTERVAL_MS = DEFAULT_TICK_MS;
  * The packages to register. A remote server's own pinned loadout is fetched from it — the client
  * ships no game content for remote play, which is also what keeps the positional wire ids in sync.
  * Local mode has no server to ask, so it registers the loadout built into this client, imported
- * lazily so a remote join never loads it.
+ * lazily so a remote join never loads it, then the side-loaded packages a `?mod=` URL asks for.
  * @param {{mode: string, serverUrl: string}} props
+ * @param {string[]} sideloadUrls package base URLs, empty in remote mode
  * @returns {Promise<ModPackage[]>}
  */
-async function loadoutFor(props) {
+async function loadoutFor(props, sideloadUrls) {
     if (props.mode === "remote") {
         return await fetchModLoadout(props.serverUrl);
     }
     const {clientLoadout} = await import("@/mods/clientLoadout.js");
-    return clientLoadout();
+    return [...clientLoadout(), ...await fetchSideloadedMods(sideloadUrls)];
 }
 
 /**
@@ -48,8 +50,14 @@ export async function createClient(app, viewport, props) {
         enterServerContext();
     }
 
+    // A server's loadout is exactly what it pins, so only local play side-loads.
+    let sideloadUrls = [];
+    if (props.mode !== "remote") {
+        sideloadUrls = sideloadedModUrls();
+    }
+
     const modRegistry = new ModRegistry();
-    for (const pkg of await loadoutFor(props)) {
+    for (const pkg of await loadoutFor(props, sideloadUrls)) {
         modRegistry.register(pkg);
     }
     modRegistry.freeze();
@@ -104,6 +112,10 @@ export async function createClient(app, viewport, props) {
         tickInterval = window.setInterval(() => game.runTick(), LOCAL_TICK_INTERVAL_MS);
     }
     await client.init();
+
+    if (sideloadUrls.length > 0) {
+        client.noticeLayer.notify(`Running mod code from ${sideloadUrls.join(", ")}`);
+    }
 
     const inputHandler = createInputHandler(client);
 

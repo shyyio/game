@@ -128,7 +128,7 @@ async function fetchFile(origin, store, name) {
  * @param {Uint8Array} bytes
  * @returns {Promise<object>} the bundle's factory exports
  */
-async function importBundle(bytes) {
+export async function importBundle(bytes) {
     const url = URL.createObjectURL(new Blob([bytes], {type: "text/javascript"}));
     try {
         return await import(/* @vite-ignore */ url);

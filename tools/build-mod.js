@@ -14,15 +14,19 @@ import {createHash} from "node:crypto";
 import {join, resolve, dirname, basename, relative} from "node:path";
 import {fileURLToPath} from "node:url";
 import {rollup} from "rollup";
+import {minify as minifyCode} from "terser";
 import {
     ModManifest, SDK_VERSION, MOD_PART_DECLARATION, MOD_PART_SIM, MOD_PART_CLIENT,
 } from "../src/common/ModManifest.js";
 
-const SDK_SPECIFIERS = ["@/sdk/common.js", "@/sdk/client.js"];
+// What a mod imports the engine as, in-repo mods included.
+const SDK_SPECIFIERS = ["@spup/sdk", "@spup/sdk/client"];
 // The single external the SDK specifiers collapse into: one factory argument carries the whole SDK.
 const SDK_ID = "\0sdk";
 const SDK_GLOBAL = "sdk";
 const BUNDLE_NAME = "mod.js";
+
+const BANNER = "// Built by tools/build-mod.js — do not edit.";
 
 // Asset types a mod may import. Images become data URLs (pixi loads those directly); JSON becomes a
 // frozen object literal, the same shape vite's asset handling hands the static loadout.
@@ -49,7 +53,7 @@ function resolvePlugin(externalIds) {
             if (source.startsWith("@/")) {
                 // A mod reaches the engine only through the SDK, and its own files relatively —
                 // which is what lets this builder run anywhere, with no game checkout in sight.
-                throw new Error(`A mod may not import ${source}; use @/sdk/common.js, @/sdk/client.js, or a relative path`);
+                throw new Error(`A mod may not import ${source}; use @spup/sdk, @spup/sdk/client, or a relative path`);
             }
             if (!source.startsWith(".") || importer === undefined) {
                 return null;
@@ -261,7 +265,7 @@ export function createDeclaration(sdk) {
     if (client !== null) {
         factories.push(partFactory(client, "createClient", MOD_PART_CLIENT));
     }
-    return `// Built by tools/build-mod.js — do not edit.
+    return `${BANNER}
 
 let __coreModules = null;
 
@@ -281,6 +285,25 @@ function __only(namespace, part) {
     return namespace[names[0]];
 }
 ${factories.join("")}`;
+}
+
+/**
+ * Every player joining a server downloads this file, so a published package ships minified. What a
+ * listing is reviewed from is the mod's own repo at the pinned commit, not the bundle — and the
+ * builder version is pinned with it, so the same source still hashes the same everywhere.
+ * @param {string} code
+ * @returns {Promise<string>}
+ */
+async function minifyBundle(code) {
+    const result = await minifyCode(code, {
+        module: true,
+        ecma: 2022,
+        // Class names are load-bearing: the wire codec names each message/event type after its
+        // class, and two mods whose classes both minified to "a" would collide in one registry.
+        keep_classnames: true,
+        format: {comments: false, preamble: BANNER},
+    });
+    return `${result.code}\n`;
 }
 
 /**
@@ -313,9 +336,10 @@ function parseFlags(argv) {
  * @param {object} options
  * @param {string} options.version
  * @param {string} [options.homepage]
+ * @param {boolean} [options.minify] off for a dev build, where readable code beats bytes
  * @returns {Promise<ModManifest>}
  */
-export async function buildMod(modDir, outDir, {version, homepage}) {
+export async function buildMod(modDir, outDir, {version, homepage, minify=true}) {
     const core = await buildCore(modDir);
     const sim = await buildPart(join(modDir, "sim.js"), core.moduleIds);
     const client = await buildPart(join(modDir, "client.js"), core.moduleIds);
@@ -335,8 +359,12 @@ export async function buildMod(modDir, outDir, {version, homepage}) {
         ...(homepage === undefined ? {} : {homepage}),
     });
 
+    let bundle = assembleBundle({core: core.code, sim, client}, core.moduleIds.length);
+    if (minify) {
+        bundle = await minifyBundle(bundle);
+    }
     mkdirSync(outDir, {recursive: true});
-    writeFileSync(join(outDir, BUNDLE_NAME), assembleBundle({core: core.code, sim, client}, core.moduleIds.length));
+    writeFileSync(join(outDir, BUNDLE_NAME), bundle);
     writeFileSync(join(outDir, "mod.json"), `${JSON.stringify(manifest.toJSON(), null, 4)}\n`);
     return manifest;
 }
@@ -344,7 +372,7 @@ export async function buildMod(modDir, outDir, {version, homepage}) {
 async function main() {
     const [modArg, outArg, ...rest] = process.argv.slice(2);
     if (modArg === undefined || outArg === undefined) {
-        throw new Error("usage: build-mod.js <mod dir> <out dir> --version <x.y.z> [--homepage <url>]");
+        throw new Error("usage: build-mod.js <mod dir> <out dir> --version <x.y.z> [--homepage <url>] [--minify false]");
     }
     const flags = parseFlags(rest);
     const version = flags.get("version");
@@ -353,7 +381,11 @@ async function main() {
     }
     const modDir = resolve(modArg);
     const outDir = resolve(outArg);
-    const manifest = await buildMod(modDir, outDir, {version, homepage: flags.get("homepage")});
+    const manifest = await buildMod(modDir, outDir, {
+        version,
+        homepage: flags.get("homepage"),
+        minify: flags.get("minify") !== "false",
+    });
     console.log(`${manifest.name} ${manifest.version} (sdk ${manifest.sdkVersion}) -> ${relative(process.cwd(), outDir)}`);
     for (const file of manifest.files) {
         const path = join(outDir, file);

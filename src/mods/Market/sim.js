@@ -1,4 +1,4 @@
-import {AbstractSimMod, chunkId, NO_EID, PLAYER_ID_NONE, PlayerSettingsUpdateEvent} from "@/sdk/common.js";
+import {AbstractSimMod, chunkId, NO_EID, PLAYER_ID_NONE, PlayerSettingsUpdateEvent} from "@spup/sdk";
 import {MarketBook} from "./sim/MarketBook.js";
 import {TradingTerminalType} from "./common/objectTypes.js";
 import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./common/messages.js";

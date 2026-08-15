@@ -1,4 +1,4 @@
-import {TILE_SIZE, ViewMode, startHeartbeat} from "@/sdk/client.js";
+import {TILE_SIZE, ViewMode, startHeartbeat} from "@spup/sdk/client";
 import {CursorMoveMessage, CursorHideMessage} from "../common/messages.js";
 import {CURSOR_SETTING_SHARE, CURSOR_AUDIENCE_NONE, CURSOR_SEND_INTERVAL_MS} from "../common/constants.js";
 

@@ -34,8 +34,11 @@ export default defineConfig(({mode}) => ({
         __BUILD_DATE__: JSON.stringify(BUILD_DATE),
     },
     resolve: {
-        alias: {
-            "@": fileURLToPath(new URL("./src", import.meta.url))
-        },
+        // See vite.config.js: the SDK package name resolves to this repo's own source.
+        alias: [
+            {find: /^@spup\/sdk$/, replacement: fileURLToPath(new URL("./src/sdk/common.js", import.meta.url))},
+            {find: /^@spup\/sdk\/client$/, replacement: fileURLToPath(new URL("./src/sdk/client.js", import.meta.url))},
+            {find: /^@\//, replacement: `${fileURLToPath(new URL("./src", import.meta.url))}/`},
+        ],
     },
 }))

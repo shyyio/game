@@ -5,8 +5,11 @@ import ModList from "@/components/ModList.vue";
 import {gameStart} from "@/client/GameStart.js";
 import {hasSessionToken} from "@/client/AuthClient.js";
 import {SCENARIO_PARAM} from "@/test/scenarios/scenarioParam.js";
+import {sideloadedModUrls} from "@/client/ModSideload.js";
 
-const hasScenario = new URLSearchParams(window.location.search).has(SCENARIO_PARAM);
+// Either URL parameter means "start a local game with what the URL says", with no session to set up.
+const startsLocalGame = new URLSearchParams(window.location.search).has(SCENARIO_PARAM)
+    || sideloadedModUrls().length > 0;
 
 export const router = createRouter({
     history: createWebHistory(),
@@ -18,19 +21,19 @@ export const router = createRouter({
     ],
 });
 
-// A scenario URL skips straight to the game; a bare "/play" without a set-up session (e.g. a
-// refresh) bounces back to the server list rather than mounting Game with nothing to connect to;
+// A scenario or ?mod= URL skips straight to the game; a bare "/play" without a set-up session
+// (e.g. a refresh) bounces back to the server list rather than mounting Game with nothing to join;
 // "/servers" without (or no longer with) a valid session token bounces back to the login screen.
 // "/mods" browses the public registry and needs no session at all.
 router.beforeEach((to) => {
-    if (to.name === "login" && hasScenario) {
+    if (to.name === "login" && startsLocalGame) {
         return {name: "play"};
     }
     if (to.name === "servers" && !hasSessionToken()) {
         return {name: "login"};
     }
     if (to.name === "play" && gameStart.value === null) {
-        if (hasScenario) {
+        if (startsLocalGame) {
             gameStart.value = {mode: "local", username: "", serverUrl: ""};
             return true;
         }

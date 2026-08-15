@@ -1,4 +1,4 @@
-import {AbstractBehavior} from "@/sdk/common.js";
+import {AbstractBehavior} from "@spup/sdk";
 import {Pipes} from "./Pipes.js";
 
 /**

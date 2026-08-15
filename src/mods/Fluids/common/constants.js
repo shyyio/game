@@ -1,4 +1,4 @@
-import {Direction, EMPTY} from "@/sdk/common.js";
+import {Direction, EMPTY} from "@spup/sdk";
 
 // Shared numeric constants for the Fluids mod.
 

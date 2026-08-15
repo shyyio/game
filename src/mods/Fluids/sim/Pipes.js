@@ -1,4 +1,4 @@
-import {TickPhase, EMPTY, NO_EID, Direction, chunkId, chunkOrigin, tileId, getOrCreate, removeFromGroup} from "@/sdk/common.js";
+import {TickPhase, EMPTY, NO_EID, Direction, chunkId, chunkOrigin, tileId, getOrCreate, removeFromGroup} from "@spup/sdk";
 import {FLUID_UNIT, PIPE_SEGMENT_CAPACITY, DIRECTIONS, joinedFluidType} from "../common/constants.js";
 import {
     PipeNetworkRecalculateEvent,

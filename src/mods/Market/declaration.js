@@ -1,4 +1,4 @@
-import {AbstractModDeclaration, PlayerSettingEntry, MetricsGlobalQueryEntry} from "@/sdk/common.js";
+import {AbstractModDeclaration, PlayerSettingEntry, MetricsGlobalQueryEntry} from "@spup/sdk";
 import {
     MARKET_SETTING_BALANCE, METRICS_FACT_TYPE_TRADE_EXECUTED, METRICS_TRADE_SIDE_SELL,
 } from "./common/constants.js";

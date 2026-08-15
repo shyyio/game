@@ -7,7 +7,7 @@ import {
     GAME_FONT,
     DEBUG_COLOR,
     drawRect,
-} from "@/sdk/client.js";
+} from "@spup/sdk/client";
 import {isPipeType} from "../common/objectTypes.js";
 
 const MEMBER_FILL_ALPHA = 0.3;

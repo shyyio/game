@@ -1,4 +1,4 @@
-import {AbstractModDeclaration, MarketListingEntry, ItemDefinition} from "@/sdk/common.js";
+import {AbstractModDeclaration, MarketListingEntry, ItemDefinition} from "@spup/sdk";
 import {
     RESOURCE_TYPES,
     ExtractorType,

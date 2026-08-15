@@ -1,6 +1,6 @@
 {
   "name": "shys-power-up-factory",
-  "version": "0.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -12,7 +12,12 @@
     "build:mod": "node --import ./src/server/loader.js tools/build-mod.js",
     "mods:base": "node --import ./src/server/loader.js tools/publish-base-mods.js",
     "check:mod": "node --import ./src/server/loader.js tools/mod-check.js",
-    "pack:builder": "node tools/pack-builder.js",
+    "pack:builder": "node --import ./src/server/loader.js tools/pack-builder.js",
+    "pack:client": "node tools/pack-game-client.js",
+    "pack:sdk": "node --import ./src/server/loader.js tools/pack-sdk.js",
+    "pack:server": "node --import ./src/server/loader.js tools/pack-game-server.js",
+    "release": "node --import ./src/server/loader.js tools/release.js",
+    "build:harness": "vite build --config vite.harness.config.js",
     "scan:mod": "node tools/mod-scan.js",
     "build:server": "vite build --config vite.server.config.js",
     "build:authserver": "vite build --config vite.authserver.config.js",
@@ -52,6 +57,7 @@
     "acorn-walk": "^8.3.5",
     "playwright": "^1.62.1",
     "sass-embedded": "^1.100.0",
+    "terser": "5.50.0",
     "vite": "^7.0.6",
     "vite-plugin-vuetify": "^2.1.3"
   }

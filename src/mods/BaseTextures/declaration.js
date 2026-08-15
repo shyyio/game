@@ -1,4 +1,4 @@
-import {AbstractModDeclaration} from "@/sdk/common.js";
+import {AbstractModDeclaration} from "@spup/sdk";
 
 export class BaseTexturesDeclaration extends AbstractModDeclaration {
 

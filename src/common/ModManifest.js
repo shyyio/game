@@ -2,7 +2,12 @@
 // loader parse before touching a bundle. Parsing throws on anything malformed or unknown — a bad
 // manifest must fail at load time, never half-load a mod.
 
-export const SDK_VERSION = 1;
+import {GAME_VERSION} from "@/common/constants.js";
+
+// The game's major version is the SDK version, so there is one number to move: bump the major on a
+// breaking change to the SDK surface (a removed or renamed export, a changed signature) and every
+// mod rebuilds against it. 2 dropped the `@/sdk/*.js` specifiers for the `@spup/sdk` package.
+export const SDK_VERSION = Number(GAME_VERSION.split(".")[0]);
 
 export const MOD_PART_DECLARATION = "declaration";
 export const MOD_PART_SIM = "sim";

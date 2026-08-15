@@ -5,8 +5,8 @@ import {
     TILE_SIZE,
     Direction,
     AbstractTileMeshDrawLayer,
-} from "@/sdk/client.js";
-import {chunkId, getOrCreate, removeFromGroup} from "@/sdk/common.js";
+} from "@spup/sdk/client";
+import {chunkId, getOrCreate, removeFromGroup} from "@spup/sdk";
 import {
     BeltBend,
     BELT_NORMAL,

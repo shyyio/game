@@ -1,4 +1,4 @@
-import {AbstractBehavior, TickPhase, EMPTY, NO_EID} from "@/sdk/common.js";
+import {AbstractBehavior, TickPhase, EMPTY, NO_EID} from "@spup/sdk";
 import {FLUID_UNIT} from "../common/constants.js";
 import {TankFluidSetEvent} from "../common/events.js";
 

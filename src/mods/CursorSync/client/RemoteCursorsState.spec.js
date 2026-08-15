@@ -7,7 +7,7 @@ import {
     WelcomeEvent, FriendListEvent, ChunkUnsubscribeEvent, chunkId,
     ClientCache, CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView,
     PLAYER_SETTINGS_SCHEMA, PlayerSettingsWriter,
-} from "@/sdk/client.js";
+} from "@spup/sdk/client";
 
 function stateWithOwnPlayer(ownPlayerId) {
     const state = new ClientCache();

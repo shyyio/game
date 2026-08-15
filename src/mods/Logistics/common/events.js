@@ -1,4 +1,4 @@
-import {AbstractChunkRoutedEvent, AbstractBatchEvent} from "@/sdk/common.js";
+import {AbstractChunkRoutedEvent, AbstractBatchEvent} from "@spup/sdk";
 
 // Sentinel for a path feeding nothing, keeping `outPortIds` a plain int column; per-path events use null.
 const NO_OUT_PORT = 0;

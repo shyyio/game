@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {
     Direction, EMPTY, CreateObjectMessage, ModPackage, AbstractModDeclaration, MarketListingEntry,
-} from "@/sdk/common.js";
+} from "@spup/sdk";
 import {TradingTerminalType} from "./../common/objectTypes.js";
 import {MARKET_MODE_SELL, MARKET_MODE_BUY} from "../common/constants.js";
 import {MarketBook} from "./MarketBook.js";

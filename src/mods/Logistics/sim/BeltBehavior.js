@@ -1,4 +1,4 @@
-import {AbstractBehavior, CreateObjectMessage, DeleteObjectMessage} from "@/sdk/common.js";
+import {AbstractBehavior, CreateObjectMessage, DeleteObjectMessage} from "@spup/sdk";
 import {Belts} from "./Belts.js";
 import {BeltUndergroundDefinition} from "../common/objectTypes.js";
 import {getUndergroundBeltsToCreate, isRamp} from "../common/geometry.js";

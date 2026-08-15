@@ -1,4 +1,4 @@
-import {Direction} from "@/sdk/common.js";
+import {Direction} from "@spup/sdk";
 import {BeltDefinition, isBeltType} from "./objectTypes.js";
 import {
     BELT_NORMAL,

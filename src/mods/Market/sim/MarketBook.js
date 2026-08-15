@@ -1,4 +1,4 @@
-import {EMPTY} from "@/sdk/common.js";
+import {EMPTY} from "@spup/sdk";
 import {GUIDE_PRICE_INTERVAL_TICKS, GUIDE_PRICE_MAX_STEP_FRACTION} from "../common/constants.js";
 
 /**

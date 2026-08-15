@@ -1,4 +1,4 @@
-import {TickPhase, Direction, EMPTY, NO_EID, chunkId, chunkOrigin, tileId, getOrCreate, removeFromGroup} from "@/sdk/common.js";
+import {TickPhase, Direction, EMPTY, NO_EID, chunkId, chunkOrigin, tileId, getOrCreate, removeFromGroup} from "@spup/sdk";
 import {findRampPartner} from "../common/geometry.js";
 import {
     BeltPathBatchEvent,

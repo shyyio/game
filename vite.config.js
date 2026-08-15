@@ -20,6 +20,9 @@ export default defineConfig(({mode}) => ({
     // Literals for src/common/env.js: __DEV__ enables dead-code elimination.
     define: {
         __DEV__: JSON.stringify(mode !== "production"),
+        // On in a dev build, and in the production build @spup/game-client packs (SPUP_DEV_TOOLS=1):
+        // it adds the controls an author needs to reach their own server, which the site does not ship.
+        __DEV_TOOLS__: JSON.stringify(mode !== "production" || process.env.SPUP_DEV_TOOLS === "1"),
         __BUILD_COMMIT__: JSON.stringify(BUILD_COMMIT),
         __BUILD_DATE__: JSON.stringify(BUILD_DATE),
     },
@@ -31,8 +34,13 @@ export default defineConfig(({mode}) => ({
         host: "0.0.0.0"
     },
     resolve: {
-        alias: {
-            "@": fileURLToPath(new URL("./src", import.meta.url))
-        },
+        // The SDK entries come first: mods import the engine by its published package name, and in
+        // this repo that name resolves to the source it is packed from — never to an installed copy,
+        // which would give a mod its own second set of engine classes.
+        alias: [
+            {find: /^@spup\/sdk$/, replacement: fileURLToPath(new URL("./src/sdk/common.js", import.meta.url))},
+            {find: /^@spup\/sdk\/client$/, replacement: fileURLToPath(new URL("./src/sdk/client.js", import.meta.url))},
+            {find: /^@\//, replacement: `${fileURLToPath(new URL("./src", import.meta.url))}/`},
+        ],
     },
 }))

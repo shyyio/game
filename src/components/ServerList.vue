@@ -1,6 +1,8 @@
 <script setup>
 import {onMounted, reactive, ref} from "vue";
 import {httpOriginFor} from "@/common/util.js";
+import {ORIGIN_PATTERN} from "@/common/constants.js";
+import {DEV_TOOLS} from "@/common/env.js";
 import {hasSessionToken, listServers} from "@/client/AuthClient.js";
 
 const props = defineProps({
@@ -52,7 +54,7 @@ async function loadServers() {
       return;
     }
   }
-  if (import.meta.env.DEV && !servers.value.some((server) => server.origin === DEV_SERVER_ORIGIN)) {
+  if (DEV_TOOLS && !servers.value.some((server) => server.origin === DEV_SERVER_ORIGIN)) {
     servers.value = [{origin: DEV_SERVER_ORIGIN}, ...servers.value];
   }
   for (const {origin} of servers.value) {
@@ -192,6 +194,24 @@ function select(server) {
   }
   emit("select", origin);
 }
+
+// A server the directory does not list — an author's own dev server, mainly. Only the client
+// @spup/game-client ships (and a dev build) has this; the public site lists the directory only.
+const customOrigin = ref("");
+
+function customOriginValid() {
+  return ORIGIN_PATTERN.test(customOrigin.value);
+}
+
+/**
+ * @returns {void}
+ */
+function connectToCustomOrigin() {
+  if (!customOriginValid() || props.connectingOrigin) {
+    return;
+  }
+  emit("select", customOrigin.value);
+}
 </script>
 
 <template>
@@ -234,6 +254,24 @@ function select(server) {
             @click.stop="select(server)"
         >Connect</v-btn>
       </div>
+      <div v-if="DEV_TOOLS" class="server-list-custom">
+        <v-text-field
+            v-model="customOrigin"
+            label="Connect to a URL"
+            placeholder="ws://localhost:27500"
+            density="compact"
+            hide-details
+            @keyup.enter="connectToCustomOrigin"
+        />
+        <v-btn
+            color="primary"
+            variant="flat"
+            size="small"
+            :disabled="!customOriginValid() || !!connectingOrigin"
+            :loading="connectingOrigin === customOrigin"
+            @click="connectToCustomOrigin"
+        >Connect</v-btn>
+      </div>
       <div v-if="error" class="server-list-error">{{ error }}</div>
     </v-card-text>
     <v-card-actions>
@@ -248,6 +286,13 @@ function select(server) {
 <style scoped>
 .server-list-card {
   width: min(90vw, 480px);
+}
+
+.server-list-custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .server-list-empty {

@@ -5,7 +5,7 @@ import {CapturingSession} from "@/test/CapturingSession.js";
 import {
     SetViewportMessage, SetPlayerSettingMessage, AddFriendMessage, RemoveFriendMessage,
     CHUNK_SIZE, chunkId,
-} from "@/sdk/common.js";
+} from "@spup/sdk";
 import {CursorMoveMessage, CursorHideMessage} from "./common/messages.js";
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "./common/events.js";
 import {CURSOR_SETTING_SHARE, CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_NONE, CURSOR_AUDIENCE_FRIENDS} from "./common/constants.js";

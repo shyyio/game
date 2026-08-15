@@ -1,4 +1,4 @@
-import {AbstractMessage} from "@/sdk/common.js";
+import {AbstractMessage} from "@spup/sdk";
 
 /**
  * Configures a placed terminal's standing quote. `price` is a floor in sell mode, a ceiling in buy

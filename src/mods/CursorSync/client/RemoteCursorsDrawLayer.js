@@ -10,7 +10,7 @@ import {
     Tween,
     claimColor,
     linear,
-} from "@/sdk/client.js";
+} from "@spup/sdk/client";
 import {CURSOR_SEND_INTERVAL_MS} from "../common/constants.js";
 
 // Classic arrow pointer outline, in screen pixels (the display counter-scales the zoom).
