@@ -71,9 +71,12 @@ export {TickPhase, EMPTY, NO_EID} from "@/sim/GameEngine.js";
 // ---- Engine events ----
 // Chunk subscribe/unsubscribe events, so a mod's client side can react to chunks
 // entering/leaving a session's viewport.
+// TickEndEvent lands on every session every tick, carrying the world clock — a mod reads the tick
+// it is in from that, or from the `clock` cache namespace on the client.
 export {
     ChunkSubscribeEvent,
     ChunkUnsubscribeEvent,
+    TickEndEvent,
 } from "@/common/CoreEvents.js";
 
 // ---- Messages ----

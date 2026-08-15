@@ -6,7 +6,7 @@ import {PortItemSetEvent, PortItemClearEvent, PortItemBatchEvent} from "@/common
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {PlayerSettingsToolOrderSyncEvent} from "@/common/PlayerSettingsToolOrderEvents.js";
-import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
+import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent, TickEndEvent} from "@/common/CoreEvents.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
 import {WorkerAssignmentEvent, WorkerAssignmentBatchEvent} from "@/common/WorkerEvents.js";
@@ -80,6 +80,7 @@ const CORE_WIRE_CLASSES = [
     MetricsSubscribeMessage,
     MetricsUnsubscribeMessage,
     MetricsRollupBucketEvent,
+    TickEndEvent,
 ];
 
 /**

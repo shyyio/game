@@ -75,6 +75,18 @@ export class EventBus {
     }
 
     /**
+     * Delivers an event to every connected session, subscribed to anything or not. Reserved for
+     * what every client needs whatever it is looking at — the tick heartbeat.
+     * @param {AbstractEvent} event
+     * @returns {void}
+     */
+    publishToAll(event) {
+        for (const session of this._sessions.values()) {
+            session.publishEvent(event);
+        }
+    }
+
+    /**
      * The connected sessions of one player (targeted per-player resyncs route through this).
      * @param {number} playerId
      * @returns {number[]}

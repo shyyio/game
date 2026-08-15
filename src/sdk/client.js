@@ -93,6 +93,9 @@ export {PlayerSettingsView, GameSettingsView} from "@/client/state/SettingsState
 export {ChunkClaimsWriter, CHUNK_CLAIMS_SCHEMA} from "@/client/state/ChunkClaimsState.js";
 export {PlayerSettingsWriter, PLAYER_SETTINGS_SCHEMA} from "@/client/state/SettingsState.js";
 export {WorkerAssignmentsView} from "@/client/state/WorkerAssignmentsState.js";
+// The sim clock as the server last reported it: `client.cache.view("clock").tick()`, updated by the
+// per-tick heartbeat, or subscribe to "clock.tick".
+export {ClockView, ClockWriter, CLOCK_SCHEMA} from "@/client/state/ClockState.js";
 export {OverworldView} from "@/client/state/OverworldState.js";
 
 // The objects namespace's view doubles as the shared cross-mod spatial index; reached via
