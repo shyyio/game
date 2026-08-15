@@ -116,13 +116,14 @@ export class NoteGhostLayer extends AbstractDrawLayer {
             }
             return noteAnchor(target);
         }
-        if (!this._active || Mouse.currentX === null) {
+        const aim = Mouse.aimPoint();
+        if (!this._active || aim === null) {
             return null;
         }
         // A tap on an occupied tile opens its note instead of placing one, so no ghost promises it.
         if (this._hoveredTile !== null && this._state.mapGet("notes.byTile", this._hoveredTile) !== undefined) {
             return null;
         }
-        return {x: Mouse.currentX, y: Mouse.currentY};
+        return aim;
     }
 }

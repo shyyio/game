@@ -40,6 +40,21 @@ export class NotePin extends Container {
     }
 
     /**
+     * Whether a world point is inside the pin's marker, counter-scaled the way it is drawn. The
+     * tap path needs this because touch has no hover to hit-test with.
+     * @param {number} worldX
+     * @param {number} worldY
+     * @returns {boolean}
+     */
+    containsWorldPoint(worldX, worldY) {
+        const scale = this.scale.x;
+        const left = this.position.x + PIN_HIT_AREA.x * scale;
+        const top = this.position.y + PIN_HIT_AREA.y * scale;
+        return worldX >= left && worldX <= left + PIN_HIT_AREA.width * scale
+            && worldY >= top && worldY <= top + PIN_HIT_AREA.height * scale;
+    }
+
+    /**
      * @param {number} color the author's stable color
      * @returns {void}
      */

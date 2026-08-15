@@ -1,4 +1,4 @@
-import {AbstractClientMod, ViewMode} from "@spup/sdk/client";
+import {AbstractClientMod, Mobile, Mouse, ViewMode} from "@spup/sdk/client";
 import {notesTextureAtlases} from "./assets.js";
 import {NOTES_SCHEMA, NotesWriter} from "./client/NotesState.js";
 import {NotesDrawLayer} from "./client/NotesDrawLayer.js";
@@ -70,20 +70,48 @@ export class NotesClientMod extends AbstractClientMod {
     }
 
     /**
-     * A tap with no tool selected opens the marker under the pointer; anywhere else on the tile
-     * belongs to whatever is placed there.
+     * A tap with no tool selected acts on the marker under the pointer; anywhere else on the tile
+     * belongs to whatever is placed there. On mobile the tap only reads the note — there is no
+     * hover to raise its tooltip, and the editor is a long press away — while on desktop, where
+     * the tooltip already follows the pointer, the tap goes straight to the editor.
      * @param {number} tileX
      * @param {number} tileY
      * @param {Client} client
      * @returns {boolean}
      */
     onObjectTap(tileX, tileY, client) {
-        const note = this._layer.noteAtPointer();
+        const note = this._layer.noteAt(Mouse.aimPoint());
+        if (!Mobile.enabled) {
+            if (note === null) {
+                return false;
+            }
+            // The tap is spent on the marker either way: a note the player may not touch still
+            // answers with a notice rather than falling through to whatever it stands on.
+            this._tool.openAt(note.tileX, note.tileY);
+            return true;
+        }
+        // A tap off any marker dismisses the tooltip and still belongs to whatever is placed there.
+        this._writer.setHover(note);
+        return note !== null;
+    }
+
+    /**
+     * A long press on a marker opens its editor — the mobile counterpart of the desktop tap, which
+     * is spent raising the tooltip there.
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Client} client
+     * @returns {boolean}
+     */
+    onObjectHold(tileX, tileY, client) {
+        if (!Mobile.enabled) {
+            return false;
+        }
+        const note = this._layer.noteAt(Mouse.aimPoint());
         if (note === null) {
             return false;
         }
-        // The tap is spent on the marker either way: a note the player may not touch still
-        // answers with a notice rather than falling through to whatever it stands on.
+        this._writer.setHover(null);
         this._tool.openAt(note.tileX, note.tileY);
         return true;
     }
