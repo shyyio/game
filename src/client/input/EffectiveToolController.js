@@ -41,12 +41,22 @@ export class EffectiveToolController {
      */
     init() {
         this.toolbar.onChange(() => this._onToolbarChange());
-        this.client.onViewModeChange((mode) => {
-            const zoomedOut = mode !== ViewMode.WORLD;
-            this.inputHandler.setMapMode(zoomedOut);
-            this.mapMode = zoomedOut;
-            this.applyEffectiveTool();
-        });
+        this.client.onViewModeChange((mode) => this._onViewMode(mode));
+        // The connect-time zoom (map mode with no claims, home with them) can settle the view mode
+        // before this controller exists, so its change never reaches here; adopt the current one.
+        this._onViewMode(this.client.viewMode);
+    }
+
+    /**
+     * @private
+     * @param {ViewMode} mode
+     * @returns {void}
+     */
+    _onViewMode(mode) {
+        const zoomedOut = mode !== ViewMode.WORLD;
+        this.inputHandler.setMapMode(zoomedOut);
+        this.mapMode = zoomedOut;
+        this.applyEffectiveTool();
     }
 
     /**
