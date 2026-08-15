@@ -44,5 +44,10 @@ test("the runtime packages depend on a toolchain speaking this SDK", () => {
 // has to widen this one by hand, and the release stops here until it does.
 test("the client asks for a server of this game version", () => {
     const server = packageJson("game-client").peerDependencies["@spup/game-server"];
-    assert.equal(server, `^${GAME_VERSION}`);
+    assert.equal(
+        server,
+        `^${GAME_VERSION}`,
+        `packages/game-client/package.json peerDependencies["@spup/game-server"] is ${server}; `
+        + `set it to ^${GAME_VERSION} by hand and commit (no pack script writes this range)`,
+    );
 });
