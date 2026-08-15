@@ -61,6 +61,18 @@ test("the packaged builder produces exactly what the in-repo one does", async (t
     }
 });
 
+test("the builder runs from a bare checkout, the way the registry runs it", (t) => {
+    const dir = tempDir(t);
+
+    // No --import loader: the registry clones a pinned commit and runs this file directly, so
+    // nothing it reaches may depend on this repo's "@/" alias.
+    execFileSync("node", [
+        resolve("tools/build-mod.js"), resolve("src/mods/BaseGame"), dir, "--version", "2.0.0",
+    ], {encoding: "utf8"});
+
+    assert.match(readFileSync(join(dir, "mod.json"), "utf8"), /"name": "base-game"/);
+});
+
 test("check passes a real package and runs its factories against a stub SDK", (t) => {
     const dir = tempDir(t);
     runCli(["build", resolve("src/mods/Market"), dir, "--version", "2.0.0"]);

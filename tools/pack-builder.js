@@ -29,7 +29,7 @@ const VENDORED = [
         to: "ModManifest.js",
         // The whole constants file has no business in a builder; what it needs from it is the game
         // version, stamped in below at pack time.
-        rewrites: [["@/common/constants.js", "./gameVersion.js"]],
+        rewrites: [["./constants.js", "./gameVersion.js"]],
     },
     {from: "tools/mod-scan.js", to: "mod-scan.js", rewrites: []},
     {
