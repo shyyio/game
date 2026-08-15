@@ -16,6 +16,7 @@ import {join, resolve, dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {GAME_VERSION} from "../src/common/constants.js";
 import {SDK_VERSION} from "../src/common/ModManifest.js";
+import {StepError, StepLog, runStep, fail} from "./steps.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -39,19 +40,26 @@ const CHECKS = [
     ["tools/pack-game-client.js", "--check"],
 ];
 
-/**
- * Runs a command, failing the release on anything but a clean exit.
- * @param {string} command
- * @param {string[]} args
- * @param {string} [cwd]
- * @returns {void}
- */
-function run(command, args, cwd=ROOT) {
-    const result = spawnSync(command, args, {cwd, stdio: "inherit"});
-    if (result.status !== 0) {
-        throw new Error(`${command} ${args.join(" ")} failed`);
-    }
-}
+const PACK_HINT = [
+    "That pack script stages a package under packages/. Read its output above for the file it",
+    "choked on; nothing has been published, so fixing it and re-running is safe.",
+].join("\n");
+
+const CHECK_HINT = [
+    "A staged package no longer matches src/. Re-run the pack scripts and commit what they change:",
+    "  npm run pack:sdk && npm run pack:builder && npm run pack:server && npm run pack:client",
+].join("\n");
+
+const PUBLISH_HINT = [
+    "npm refused the publish. Read its error above; the usual ones:",
+    "  E401/ENEEDAUTH  not logged in. `npm whoami` should print your account, else `npm login`.",
+    "  EOTP            npm wants a 2FA code. Publish that one package by hand, then re-run:",
+    "                    (cd packages/<dir> && npm publish --access public --otp <code>)",
+    "  E403            the account has no publish rights on the @spup scope, or that exact",
+    "                  version already exists (versions are immutable — bump and re-commit).",
+    "Publishing is per package and already-published versions are skipped, so re-running picks up",
+    "where this stopped.",
+].join("\n");
 
 /**
  * @param {string} command
@@ -76,9 +84,10 @@ function manifestOf(dir) {
  * Stops the release while the tree still holds uncommitted work: what goes to npm has to be a
  * commit someone can check out again.
  * @param {string} when for the error message
+ * @param {string} hint
  * @returns {void}
  */
-function assertCommitted(when) {
+function assertCommitted(when, hint) {
     const {stdout} = capture("git", ["status", "--porcelain"]);
     if (stdout === "") {
         return;
@@ -89,7 +98,7 @@ function assertCommitted(when) {
     if (changed.length > DIRTY_FILES_SHOWN) {
         rest = `\n  ...and ${changed.length - DIRTY_FILES_SHOWN} more`;
     }
-    throw new Error(`the working tree has uncommitted changes ${when}:\n${shown}${rest}`);
+    throw new StepError(`the working tree has uncommitted changes ${when}:\n${shown}${rest}`, hint);
 }
 
 /**
@@ -102,34 +111,63 @@ function isPublished(name, version) {
     return status === 0 && stdout !== "";
 }
 
-assertCommitted("before packing");
-console.log(`releasing ${GAME_VERSION} (SDK ${SDK_VERSION})`);
+/**
+ * @returns {void}
+ */
+function main() {
+    // One step per pack, plus the commit check, the tests, the staleness checks, and the publish.
+    const steps = new StepLog(PACKAGES.length + 4);
 
-for (const {pack} of PACKAGES) {
-    run("npm", ["run", pack]);
-}
-// The pack scripts write the game version into three of the manifests; if that changed anything,
-// the commit being released no longer matches what is about to be published.
-assertCommitted("after packing");
+    steps.begin("check the tree is committed");
+    assertCommitted("before packing", "Commit (or stash) the listed files, then re-run.");
+    console.log(`releasing ${GAME_VERSION} (SDK ${SDK_VERSION})`);
 
-run("npm", ["test"]);
-for (const args of CHECKS) {
-    run("node", args);
-}
-
-for (const {dir} of PACKAGES) {
-    const {name, version} = manifestOf(dir);
-    if (isPublished(name, version)) {
-        console.log(`${name} ${version} is already published`);
-        continue;
+    for (const {dir, pack} of PACKAGES) {
+        steps.begin(`pack ${dir}`);
+        runStep(`pack ${dir}`, "npm", ["run", pack], {cwd: ROOT, hint: PACK_HINT});
     }
-    // Scoped packages publish privately unless told otherwise, which fails every install but yours.
-    run("npm", ["publish", "--access", "public"], join(ROOT, "packages", dir));
-    console.log(`published ${name} ${version}`);
+    // The pack scripts write the game version into three of the manifests; if that changed anything,
+    // the commit being released no longer matches what is about to be published.
+    steps.begin("check packing changed nothing");
+    assertCommitted(
+        "after packing",
+        "Packing rewrote staged files, so the commit no longer matches what would be published.\n"
+        + "Commit those files, then re-run.",
+    );
+
+    steps.begin("run the tests");
+    runStep("tests", "npm", ["test"], {cwd: ROOT, hint: "The failing test is named above. Nothing has been published."});
+
+    steps.begin("check the staged packages are current");
+    for (const args of CHECKS) {
+        runStep("staleness check", "node", args, {cwd: ROOT, hint: CHECK_HINT});
+    }
+
+    steps.begin("publish to npm");
+    for (const {dir} of PACKAGES) {
+        const {name, version} = manifestOf(dir);
+        if (isPublished(name, version)) {
+            console.log(`${name} ${version} is already published`);
+            continue;
+        }
+        // Scoped packages publish privately unless told otherwise, which fails every install but yours.
+        runStep(`publish ${name} ${version}`, "npm", ["publish", "--access", "public"], {
+            cwd: join(ROOT, "packages", dir),
+            hint: PUBLISH_HINT,
+        });
+        console.log(`published ${name} ${version}`);
+    }
+
+    const tag = `v${GAME_VERSION}`;
+    if (capture("git", ["tag", "--list", tag]).stdout === "") {
+        runStep(`tag ${tag}`, "git", ["tag", tag], {cwd: ROOT});
+        console.log(`tagged ${tag} — push it with \`git push all ${tag}\``);
+    }
 }
 
-const tag = `v${GAME_VERSION}`;
-if (capture("git", ["tag", "--list", tag]).stdout === "") {
-    run("git", ["tag", tag]);
-    console.log(`tagged ${tag} — push it with \`git push all ${tag}\``);
+try {
+    main();
+}
+catch (error) {
+    fail("release", error);
 }
