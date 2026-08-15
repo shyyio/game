@@ -33,8 +33,10 @@ export class NotesClientMod extends AbstractClientMod {
         this._writer = client.cache.writer("notes");
         this._layer = new NotesDrawLayer(client.cache);
         this._ghostLayer = new NoteGhostLayer(client.cache);
-        this._panelLayer = new NotePanelLayer(client.app, client.cache, client.session);
-        this._tooltipLayer = new NoteTooltipLayer(client.app, client.cache);
+        // Solo play has one author, whose name every note would repeat back at them.
+        const showAuthor = !client.session.isLocal;
+        this._panelLayer = new NotePanelLayer(client.app, client.cache, client.session, showAuthor);
+        this._tooltipLayer = new NoteTooltipLayer(client.app, client.cache, showAuthor);
         this._tool = new NoteTool(client, this._layer, this._ghostLayer);
     }
 

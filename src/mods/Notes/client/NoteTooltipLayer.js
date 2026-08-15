@@ -20,11 +20,17 @@ export class NoteTooltipLayer extends Container {
     /**
      * @param {Application} app
      * @param {ClientCache} cache the hovered note and the open editor
+     * @param {boolean} showAuthor false in solo play, where every note is the reader's own
      */
-    constructor(app, cache) {
+    constructor(
+        app,
+        cache,
+        showAuthor,
+    ) {
         super();
         this._app = app;
         this._cache = cache;
+        this._showAuthor = showAuthor;
         this._players = cache.view("players");
         // The game viewport, for mapping the hovered pin to the screen (set by the host).
         this.viewport = null;
@@ -101,10 +107,17 @@ export class NoteTooltipLayer extends Container {
             return;
         }
         this._text.text = note.text;
-        this._author.text = this._players.usernameOf(note.authorId);
-        this._author.y = this._text.y + this._text.height + PADDING / 2;
-        this._boxWidth = Math.max(this._text.width, this._author.width) + PADDING * 2;
-        this._boxHeight = this._author.y + this._author.height + PADDING;
+        this._author.visible = this._showAuthor;
+        let contentWidth = this._text.width;
+        let contentBottom = this._text.y + this._text.height;
+        if (this._showAuthor) {
+            this._author.text = this._players.usernameOf(note.authorId);
+            this._author.y = contentBottom + PADDING / 2;
+            contentWidth = Math.max(contentWidth, this._author.width);
+            contentBottom = this._author.y + this._author.height;
+        }
+        this._boxWidth = contentWidth + PADDING * 2;
+        this._boxHeight = contentBottom + PADDING;
         this._box
             .clear()
             .roundRect(0, 0, this._boxWidth, this._boxHeight, CORNER_RADIUS)

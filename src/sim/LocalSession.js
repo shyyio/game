@@ -29,4 +29,8 @@ export class LocalSession extends AbstractSession {
         // A real player id (PLAYER_ID_NONE would bypass the placement gate), stable per local world.
         return 1;
     }
+
+    get isLocal() {
+        return true;
+    }
 }

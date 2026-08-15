@@ -83,4 +83,14 @@ export class AbstractSession {
     get hasPlayerId() {
         return true;
     }
+
+    /**
+     * Whether this is solo play against an in-process sim, where the one player is the only one
+     * there is. False for anything that could have company, so a UI hiding other-player detail
+     * only does so when it is certain.
+     * @returns {boolean}
+     */
+    get isLocal() {
+        return false;
+    }
 }
