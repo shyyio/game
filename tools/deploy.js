@@ -9,8 +9,9 @@
 // then run this. A change to deploy/post-receive* or deploy/*.service still has to be installed onto
 // the host by hand — a push re-runs whatever hook is already there.
 
+import {readFileSync} from "node:fs";
 import {spawnSync} from "node:child_process";
-import {resolve, dirname} from "node:path";
+import {join, resolve, dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {GAME_VERSION} from "../src/common/constants.js";
 
@@ -23,6 +24,9 @@ const TAG = `v${GAME_VERSION}`;
 const BUILDS = ["build", "build:server", "build:authserver", "build:reportingserver"];
 
 const DEPLOY_REMOTES = ["ca1", "de1", "auth", "spup-reporting-ca1", "mirror", "pages"];
+
+// The pack scripts stamp GAME_VERSION into these three; mod-builder carries its own version.
+const VERSIONED_PACKAGES = ["sdk", "game-server", "game-client"];
 
 /**
  * Runs a command, failing the deploy on anything but a clean exit.
@@ -71,6 +75,24 @@ function assertCommitted() {
 }
 
 /**
+ * Catches a version bump whose package manifests were never re-packed and committed — the release
+ * packs them itself and would otherwise only fail on the dirty tree, a full build later.
+ * @returns {void}
+ */
+function assertVersionsSynced() {
+    const stale = [];
+    for (const dir of VERSIONED_PACKAGES) {
+        const {version} = JSON.parse(readFileSync(join(ROOT, "packages", dir, "package.json"), "utf8"));
+        if (version !== GAME_VERSION) {
+            stale.push(`packages/${dir} is ${version}`);
+        }
+    }
+    if (stale.length > 0) {
+        throw new Error(`these manifests are behind ${GAME_VERSION} — pack them and commit the result:\n${stale.join("\n")}`);
+    }
+}
+
+/**
  * Keeps package.json's version and its tag on one commit: a tag left behind on older code would go
  * out naming this deploy something it is not.
  * @param {boolean} mustExist whether the release should have written it by now
@@ -114,6 +136,7 @@ function assertRemotesAt(head) {
 
 assertOnMain();
 assertCommitted();
+assertVersionsSynced();
 assertVersionTag(false);
 
 console.log(`deploying ${GAME_VERSION}`);
