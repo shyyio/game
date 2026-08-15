@@ -25,11 +25,11 @@
     },
     "exports": {
         ".": "./cli.js",
-        "./build": "./lib/build-mod.js"
+        "./build": "./dist/build-mod.js"
     },
     "files": [
         "cli.js",
-        "lib/",
+        "dist/",
         "README.md"
     ],
     "engines": {

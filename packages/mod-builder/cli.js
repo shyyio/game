@@ -12,10 +12,10 @@
 import {existsSync, readFileSync} from "node:fs";
 import {join, relative, resolve} from "node:path";
 import {pathToFileURL} from "node:url";
-import {buildMod} from "./lib/build-mod.js";
-import {scanBundle} from "./lib/mod-scan.js";
-import {ModManifest, SDK_VERSION, MOD_PART_SIM, MOD_PART_CLIENT} from "./lib/ModManifest.js";
-import {stubSdk} from "./lib/stubSdk.js";
+import {buildMod} from "./dist/build-mod.js";
+import {scanBundle} from "./dist/mod-scan.js";
+import {ModManifest, SDK_VERSION, MOD_PART_SIM, MOD_PART_CLIENT} from "./dist/ModManifest.js";
+import {stubSdk} from "./dist/stubSdk.js";
 
 const USAGE = [
     "usage:",
