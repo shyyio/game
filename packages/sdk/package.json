@@ -1,0 +1,46 @@
+{
+    "name": "@spup/sdk",
+    "version": "2.0.0",
+    "description": "The API a Shy's Power-Up Factory mod is written against",
+    "keywords": [
+        "spup",
+        "mod",
+        "sdk",
+        "game"
+    ],
+    "homepage": "https://spupgame.com",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/shyyio/game.git",
+        "directory": "packages/sdk"
+    },
+    "bugs": {
+        "url": "https://github.com/shyyio/game/issues"
+    },
+    "author": "Shy",
+    "license": "MIT",
+    "type": "module",
+    "exports": {
+        ".": "./dist/sdk/common.js",
+        "./client": "./dist/sdk/client.js"
+    },
+    "files": [
+        "dist/",
+        "README.md"
+    ],
+    "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+    },
+    "peerDependencies": {
+        "pixi.js": "^8.19.0",
+        "protobufjs": "^8.6.4"
+    },
+    "peerDependenciesMeta": {
+        "pixi.js": {
+            "optional": true
+        },
+        "protobufjs": {
+            "optional": true
+        }
+    }
+}

@@ -2,7 +2,7 @@
 // by tools/build-mod.js (image as a data URL, frame data as an object literal) in a packaged one, so
 // this is the same list either way.
 
-import {TextureAtlas} from "@/sdk/common.js";
+import {TextureAtlas} from "@spup/sdk";
 import animatedImageUrl from "./animated.png";
 import animatedSheet from "./animated.json";
 import mainImageUrl from "./main.png";

@@ -1,4 +1,4 @@
-import {AbstractEvent} from "@/sdk/common.js";
+import {AbstractEvent} from "@spup/sdk";
 
 // Sentinel for "not applicable" in the snapshot's parallel arrays.
 export const MARKET_SNAPSHOT_NONE = -1;

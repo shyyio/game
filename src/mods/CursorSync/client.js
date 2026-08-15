@@ -1,4 +1,4 @@
-import {AbstractClientMod, Mouse, SettingCategory, PlayerSettingChoice, WindowFocus} from "@/sdk/client.js";
+import {AbstractClientMod, Mouse, SettingCategory, PlayerSettingChoice, WindowFocus} from "@spup/sdk/client";
 import {CURSOR_SETTING_SHARE, CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_OPTIONS, CURSOR_AUDIENCE_DEFAULT} from "./common/constants.js";
 import {REMOTE_CURSORS_SCHEMA, RemoteCursorsWriter} from "./client/RemoteCursorsState.js";
 import {RemoteCursorsDrawLayer} from "./client/RemoteCursorsDrawLayer.js";

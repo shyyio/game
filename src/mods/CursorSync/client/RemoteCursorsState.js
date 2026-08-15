@@ -1,4 +1,4 @@
-import {AbstractCacheWriter, ChunkUnsubscribeEvent, chunkId, schemaMap} from "@/sdk/client.js";
+import {AbstractCacheWriter, ChunkUnsubscribeEvent, chunkId, schemaMap} from "@spup/sdk/client";
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "../common/events.js";
 import {CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_DEFAULT, audienceAdmits} from "../common/constants.js";
 

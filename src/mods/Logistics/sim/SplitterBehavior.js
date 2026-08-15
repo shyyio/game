@@ -1,4 +1,4 @@
-import {Direction, EMPTY, NO_EID, TickPhase, AbstractBehavior} from "@/sdk/common.js";
+import {Direction, EMPTY, NO_EID, TickPhase, AbstractBehavior} from "@spup/sdk";
 import {ORDER_BEFORE_TRANSPORT} from "../common/constants.js";
 
 /**

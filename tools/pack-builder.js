@@ -10,14 +10,27 @@ import {join, resolve, dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {parseArgs} from "node:util";
 import {SDK_VERSION} from "../src/common/ModManifest.js";
+import {GAME_VERSION} from "../src/common/constants.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PACKAGE_DIR = join(ROOT, "packages/mod-builder");
 const LIB_DIR = join(PACKAGE_DIR, "lib");
 
+// Stamped rather than vendored: the published builder speaks the SDK of the commit it was packed
+// from, whatever version the package itself carries.
+const VERSION_MODULE = "gameVersion.js";
+const VERSION_SOURCE = "// Stamped by tools/pack-builder.js — do not edit.\n"
+    + `export const GAME_VERSION = ${JSON.stringify(GAME_VERSION)};\n`;
+
 // Source file -> what it becomes in lib/, with the imports it needs rewritten to lib-relative ones.
 const VENDORED = [
-    {from: "src/common/ModManifest.js", to: "ModManifest.js", rewrites: []},
+    {
+        from: "src/common/ModManifest.js",
+        to: "ModManifest.js",
+        // The whole constants file has no business in a builder; what it needs from it is the game
+        // version, stamped in below at pack time.
+        rewrites: [["@/common/constants.js", "./gameVersion.js"]],
+    },
     {from: "tools/mod-scan.js", to: "mod-scan.js", rewrites: []},
     {
         from: "tools/build-mod.js",
@@ -42,6 +55,7 @@ function assemble() {
         }
         files.set(entry.to, `// Vendored from ${entry.from} by tools/pack-builder.js — do not edit.\n${source}`);
     }
+    files.set(VERSION_MODULE, VERSION_SOURCE);
     return files;
 }
 

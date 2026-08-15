@@ -5,14 +5,17 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import {mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync} from "node:fs";
+import {mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync, symlinkSync, existsSync} from "node:fs";
 import {createHash} from "node:crypto";
 import {tmpdir} from "node:os";
 import {join, resolve} from "node:path";
 import {staleFiles} from "../../tools/pack-builder.js";
 import {buildMod} from "../../tools/build-mod.js";
+import {SDK_VERSION} from "../common/ModManifest.js";
 
 const CLI = resolve("packages/mod-builder/cli.js");
+// Built by `npm run pack:server`, so it is absent in a fresh checkout.
+const HARNESS = resolve("packages/game-server/dist-harness/harness.js");
 
 /**
  * @param {object} t the test context, for cleanup
@@ -71,7 +74,7 @@ test("check refuses a bundle that reaches past the SDK", (t) => {
     const dir = tempDir(t);
     mkdirSync(dir, {recursive: true});
     writeFileSync(join(dir, "mod.json"), JSON.stringify({
-        name: "hostile", version: "1.0.0", sdkVersion: 1, entry: "mod.js", parts: ["declaration"],
+        name: "hostile", version: "1.0.0", sdkVersion: SDK_VERSION, entry: "mod.js", parts: ["declaration"],
     }));
     writeFileSync(join(dir, "mod.js"), `
         export function createDeclaration(sdk) {
@@ -83,26 +86,47 @@ test("check refuses a bundle that reaches past the SDK", (t) => {
     assert.throws(() => runCli(["check", dir]), /disallowed globals/);
 });
 
-test("a mod's own spec runs against the fake SDK, with no game checkout", (t) => {
+test("a mod's own spec runs against the real engine, with no game checkout", (t) => {
+    if (!existsSync(HARNESS)) {
+        t.skip("packages/game-server is not staged; run `npm run pack:server`");
+        return;
+    }
     const dir = tempDir(t);
+    // The author's own install, as npm would lay it out: the package resolves by name from the mod.
+    mkdirSync(join(dir, "node_modules/@spup"), {recursive: true});
+    symlinkSync(resolve("packages/game-server"), join(dir, "node_modules/@spup/game-server"), "dir");
     writeFileSync(join(dir, "declaration.js"), `
-        import {AbstractModDeclaration, ObjectType, ItemDefinition, Direction} from "@/sdk/common.js";
+        import {AbstractModDeclaration, ObjectType, PlacementRule, GeneratorBehavior, PortDefinition, Direction} from "@spup/sdk";
+        export const WidgetType = new ObjectType({
+            name: "Widget",
+            toolId: 1,
+            outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
+            geometry: "1x1",
+            textureName: "demo-machine/0",
+            label: "Widget",
+            placement: new PlacementRule({replaceSameKind: true}),
+            behavior: new GeneratorBehavior({processingTicks: 1, output: 900}),
+        });
         export class Declaration extends AbstractModDeclaration {
             get name() { return "Fixture"; }
-            get objectTypes() { return [new ObjectType({name: "Widget", facing: Direction.UP})]; }
-            get items() { return {900: new ItemDefinition("Pebble", "items/1-gray")}; }
+            get objectTypes() { return [WidgetType]; }
         }
     `);
-    writeFileSync(join(dir, "declaration.spec.js"), `
+    writeFileSync(join(dir, "widget.spec.js"), `
         import {test} from "node:test";
         import assert from "node:assert/strict";
-        import {Declaration} from "./declaration.js";
-        test("the fake echoes what the declaration built", () => {
-            const declaration = new Declaration();
-            assert.equal(declaration.name, "Fixture");
-            assert.equal(declaration.objectTypes[0].name, "Widget");
-            assert.equal(declaration.objectTypes[0].facing, 0);
-            assert.equal(declaration.items[900].name, "Pebble");
+        import {makeGameEngine, ModPackage, CreateObjectMessage, Direction} from "@spup/game-server/test";
+        import {Declaration, WidgetType} from "./declaration.js";
+        test("the widget produces into its output port", async () => {
+            const engine = await makeGameEngine([new ModPackage(new Declaration())]);
+            engine.applyMessage(new CreateObjectMessage(WidgetType.typeId, 5, 5, Direction.UP));
+            const [eid] = engine.placed.eidsOf(WidgetType.typeId);
+            const def = engine.component("Generator");
+            const out = def.store.out[def.row(eid)];
+            for (let tick = 0; tick < 5; tick += 1) {
+                engine.tickAll();
+            }
+            assert.equal(engine.portItem(out), 900);
         });
     `);
 
@@ -111,9 +135,9 @@ test("a mod's own spec runs against the fake SDK, with no game checkout", (t) =>
     const env = {...process.env};
     delete env.NODE_TEST_CONTEXT;
     const output = execFileSync("node", [
-        "--import", resolve("packages/mod-builder/testLoader.js"),
-        "--test", join(dir, "declaration.spec.js"),
-    ], {encoding: "utf8", env});
+        "--import", resolve("packages/game-server/testLoader.js"),
+        "--test", join(dir, "widget.spec.js"),
+    ], {encoding: "utf8", env, cwd: dir});
 
     assert.match(output, /# pass 1/);
     assert.match(output, /# fail 0/);
@@ -123,7 +147,7 @@ test("check refuses a package whose manifest and bundle disagree", (t) => {
     const dir = tempDir(t);
     mkdirSync(dir, {recursive: true});
     writeFileSync(join(dir, "mod.json"), JSON.stringify({
-        name: "mismatched", version: "1.0.0", sdkVersion: 1, entry: "mod.js", parts: ["declaration", "sim"],
+        name: "mismatched", version: "1.0.0", sdkVersion: SDK_VERSION, entry: "mod.js", parts: ["declaration", "sim"],
     }));
     writeFileSync(join(dir, "mod.js"), "export function createDeclaration(sdk) { return new sdk.AbstractModDeclaration(); }\n");
 

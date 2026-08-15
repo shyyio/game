@@ -4,7 +4,7 @@ import assert from "node:assert";
 import {
     ModRegistry, ModPackage, WireRegistry, DeleteObjectMessage, CreateObjectMessage,
     ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent,
-} from "@/sdk/common.js";
+} from "@spup/sdk";
 import {LogisticsDeclaration} from "../declaration.js";
 import {
     BeltPathRecalculateEvent,

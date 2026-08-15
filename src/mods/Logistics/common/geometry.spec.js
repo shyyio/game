@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {Direction, LAYER_SURFACE, ObjectType, PortDefinition, ObjectsView} from "@/sdk/client.js";
+import {Direction, LAYER_SURFACE, ObjectType, PortDefinition, ObjectsView} from "@spup/sdk/client";
 import {inferBeltParent} from "./geometry.js";
 import {BeltDefinition, BeltRampDownDefinition, BeltRampUpDefinition, SplitterDefinition} from "./objectTypes.js";
 

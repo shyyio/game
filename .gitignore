@@ -20,6 +20,13 @@ dist-ssr
 dist-mods
 coverage
 
+# Bundles staged into the published runtime packages
+packages/*/dist/
+packages/*/dist-*/
+packages/*/packed.json
+dist-harness
+dist-devclient
+
 # A server's pinned mod packages and their fetched files
 mods.json
 mods-cache

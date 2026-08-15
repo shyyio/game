@@ -1,4 +1,4 @@
-// The SDK boundary, enforced mechanically: a mod may only reach the engine through @/sdk/*, so
+// The SDK boundary, enforced mechanically: a mod may only reach the engine through @spup/sdk, so
 // every mod is buildable as a standalone package (see docs/mod-distribution.md).
 
 import {test} from "node:test";
@@ -10,7 +10,7 @@ import {fileURLToPath} from "node:url";
 const MODS_DIR = dirname(fileURLToPath(import.meta.url));
 
 // The two SDK entries, plus the test harness a spec additionally binds to.
-const SDK_SPECIFIERS = ["@/sdk/common.js", "@/sdk/client.js"];
+const SDK_SPECIFIERS = ["@spup/sdk", "@spup/sdk/client"];
 const TEST_PREFIX = "@/test/";
 const MOD_PREFIX = "@/mods/";
 const NODE_PREFIX = "node:";
@@ -87,7 +87,7 @@ function violation(specifier, file, modName) {
         }
         return "the test harness is available to .spec.js files only";
     }
-    return "not part of the mod SDK; widen @/sdk/common.js or @/sdk/client.js instead";
+    return "not part of the mod SDK; widen src/sdk/common.js or src/sdk/client.js instead";
 }
 
 test("mods import nothing but the SDK", () => {

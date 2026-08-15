@@ -1,4 +1,4 @@
-import {AbstractClientMod, EMPTY, Direction, chunkId} from "@/sdk/client.js";
+import {AbstractClientMod, EMPTY, Direction, chunkId} from "@spup/sdk/client";
 import {PipeFluidDrawLayer} from "./client/PipeFluidDrawLayer.js";
 import {NetworkDebugDrawLayer} from "./client/NetworkDebugDrawLayer.js";
 import {isPipeType, isTankType, PipeDefinition} from "./common/objectTypes.js";

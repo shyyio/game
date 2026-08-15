@@ -1,4 +1,4 @@
-import {AbstractModDeclaration, ItemDefinition} from "@/sdk/common.js";
+import {AbstractModDeclaration, ItemDefinition} from "@spup/sdk";
 import {
     BeltDefinition,
     BeltRampDownDefinition,

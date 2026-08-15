@@ -3,6 +3,10 @@
 // follows the test flag set by the test loader: on under tests, off for the server/prod.
 export const DEV = typeof __DEV__ === "undefined" ? globalThis.__TEST__ === true : __DEV__;
 
+// Dev-only client controls (joining a server by URL): on in a dev build and in the client
+// @spup/game-client ships, off on the public site.
+export const DEV_TOOLS = typeof __DEV_TOOLS__ === "undefined" ? DEV : __DEV_TOOLS__;
+
 // True in the browser; false under Node tests/server.
 export const BROWSER = typeof window !== "undefined";
 

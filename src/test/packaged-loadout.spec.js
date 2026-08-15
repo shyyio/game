@@ -9,6 +9,7 @@ import {join, resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {formatIntegrity} from "@/common/ModIntegrity.js";
+import {SDK_VERSION} from "@/common/ModManifest.js";
 import {ModLockfile} from "@/server/ModLockfile.js";
 import {ModCache, resolvePackage, sha256Hex} from "@/server/ModCache.js";
 import {loadPackagedMods} from "@/server/ModLoader.js";
@@ -85,7 +86,7 @@ test("the served index names every file by its content hash", async (t) => {
 
     const index = JSON.parse(new ModHost(mods, cache).indexJson);
 
-    assert.equal(index.sdkVersion, 1);
+    assert.equal(index.sdkVersion, SDK_VERSION);
     assert.deepEqual(index.mods.map(mod => mod.name), lockfile.mods.map(entry => entry.name));
     for (const mod of index.mods) {
         // The name a bundle is served under is its own digest, so a client needs nothing else to

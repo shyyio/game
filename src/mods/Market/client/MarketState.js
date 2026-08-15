@@ -1,4 +1,4 @@
-import {AbstractCacheWriter, schemaScalar} from "@/sdk/client.js";
+import {AbstractCacheWriter, schemaScalar} from "@spup/sdk/client";
 import {MarketSnapshotEvent} from "../common/events.js";
 import {MarketSnapshotRequestMessage} from "../common/messages.js";
 

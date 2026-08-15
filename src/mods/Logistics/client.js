@@ -25,7 +25,7 @@ import {
     InspectHighlight,
     Rectangle,
     TILE_SIZE,
-} from "@/sdk/client.js";
+} from "@spup/sdk/client";
 
 export class LogisticsClientMod extends AbstractClientMod {
 

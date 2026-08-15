@@ -3,7 +3,7 @@ import {
     PortDefinition,
     PlacementRule,
     Direction,
-} from "@/sdk/common.js";
+} from "@spup/sdk";
 import {TANK_CAPACITY} from "./constants.js";
 import {PipeBehavior} from "../sim/PipeBehavior.js";
 import {TankBehavior} from "../sim/TankBehavior.js";

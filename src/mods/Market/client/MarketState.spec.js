@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {ClientCache} from "@/sdk/client.js";
+import {ClientCache} from "@spup/sdk/client";
 import {MARKET_SCHEMA, MarketWriter} from "./MarketState.js";
 import {MarketSnapshotRequestMessage} from "../common/messages.js";
 import {MarketSnapshotEvent} from "../common/events.js";

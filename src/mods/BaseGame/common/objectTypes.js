@@ -9,7 +9,7 @@ import {
     MachineBehavior,
     GeneratorBehavior,
     Direction,
-} from "@/sdk/common.js";
+} from "@spup/sdk";
 import {
     RESOURCE_WATER,
     RESOURCE_GRAVEYARD,

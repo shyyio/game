@@ -5,7 +5,7 @@ import {
     EMPTY,
     getOrCreate,
     removeFromGroup,
-} from "@/sdk/client.js";
+} from "@spup/sdk/client";
 import {isPipeType} from "../common/objectTypes.js";
 import {fluidColor, DRAW_LAYER_PIPE_FLUID} from "../common/constants.js";
 

@@ -1,5 +1,5 @@
-import {ManagedPanel, UIPanel, buildPanelButton, buildToggleRow, ConnectedPanelLayer, ROW_HEIGHT, ROW_GAP, panelText, TextRole} from "@/sdk/client.js";
-import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT} from "@/sdk/client.js";
+import {ManagedPanel, UIPanel, buildPanelButton, buildToggleRow, ConnectedPanelLayer, ROW_HEIGHT, ROW_GAP, panelText, TextRole} from "@spup/sdk/client";
+import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT} from "@spup/sdk/client";
 import {ConfigureTradingTerminalMessage} from "../common/messages.js";
 import {MARKET_SNAPSHOT_NONE} from "../common/events.js";
 import {MARKET_MODE_SELL, MARKET_MODE_BUY} from "../common/constants.js";

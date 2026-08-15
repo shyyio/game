@@ -1,4 +1,4 @@
-import {AbstractEvent, AbstractChunkRoutedEvent} from "@/sdk/common.js";
+import {AbstractEvent, AbstractChunkRoutedEvent} from "@spup/sdk";
 
 /**
  * A player's cursor at a tile position (fractional); routed to the sessions viewing its chunk.

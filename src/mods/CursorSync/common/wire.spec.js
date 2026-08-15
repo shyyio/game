@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert";
 
-import {ModRegistry, ModPackage, WireRegistry, chunkId} from "@/sdk/common.js";
+import {ModRegistry, ModPackage, WireRegistry, chunkId} from "@spup/sdk";
 import {CursorSyncDeclaration} from "../declaration.js";
 import {CursorMoveMessage, CursorHideMessage} from "./messages.js";
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "./events.js";

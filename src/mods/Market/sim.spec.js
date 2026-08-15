@@ -5,7 +5,7 @@ import {CapturingSession} from "@/test/CapturingSession.js";
 import {
     EMPTY, Direction, CHUNK_SIZE, chunkId, CreateObjectMessage, ClaimChunkMessage,
     PlayerSettingsUpdateEvent, ModPackage, AbstractModDeclaration, MarketListingEntry,
-} from "@/sdk/common.js";
+} from "@spup/sdk";
 import {TradingTerminalType} from "./common/objectTypes.js";
 import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./common/messages.js";
 import {MarketSnapshotEvent, MARKET_SNAPSHOT_NONE} from "./common/events.js";

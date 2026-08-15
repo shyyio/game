@@ -1,4 +1,4 @@
-import {ObjectType, PortDefinition, PlacementRule, Direction} from "@/sdk/common.js";
+import {ObjectType, PortDefinition, PlacementRule, Direction} from "@spup/sdk";
 import {TradingTerminalBehavior} from "../sim/TradingTerminalBehavior.js";
 
 export const TradingTerminalType = new ObjectType({

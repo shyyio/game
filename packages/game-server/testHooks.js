@@ -4,8 +4,9 @@
 import {readFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 
-const SDK_SPECIFIERS = ["@/sdk/common.js", "@/sdk/client.js"];
-const SDK_URL = new URL("./sdkFakeModule.js", import.meta.url).href;
+const SDK_COMMON = "@spup/sdk";
+const SDK_CLIENT = "@spup/sdk/client";
+const HARNESS_URL = new URL("./dist-harness/harness.js", import.meta.url).href;
 
 /**
  * @param {string} specifier
@@ -14,8 +15,15 @@ const SDK_URL = new URL("./sdkFakeModule.js", import.meta.url).href;
  * @returns {object}
  */
 export function resolve(specifier, context, nextResolve) {
-    if (SDK_SPECIFIERS.includes(specifier)) {
-        return {url: SDK_URL, format: "module", shortCircuit: true};
+    // The engine under test, not the copy in node_modules: a mod's classes and the game's have to
+    // be the same ones for `instanceof` to hold.
+    if (specifier === SDK_COMMON) {
+        return {url: HARNESS_URL, format: "module", shortCircuit: true};
+    }
+    if (specifier === SDK_CLIENT) {
+        // Rendering needs a browser: pixi does not run under node, so a client part cannot be
+        // imported here. Test the sim and the declaration; the client part is for playing.
+        throw new Error(`${specifier} cannot be imported in a test: the client SDK needs a browser`);
     }
     return nextResolve(specifier, context);
 }

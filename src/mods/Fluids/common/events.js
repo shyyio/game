@@ -1,4 +1,4 @@
-import {AbstractChunkRoutedEvent, AbstractBatchEvent} from "@/sdk/common.js";
+import {AbstractChunkRoutedEvent, AbstractBatchEvent} from "@spup/sdk";
 
 // `networkId` = the first member pipe's object id. Fluid events are network-granular, so deltas
 // scale with networks, not pipe tiles.

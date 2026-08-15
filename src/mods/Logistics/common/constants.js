@@ -1,4 +1,4 @@
-import {Direction, LAYER_SURFACE} from "@/sdk/common.js";
+import {Direction, LAYER_SURFACE} from "@spup/sdk";
 
 // Shared numeric constants and enums for the Logistics mod.
 

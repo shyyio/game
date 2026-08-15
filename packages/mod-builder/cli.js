@@ -10,7 +10,7 @@
 // external and the check stubs out.
 
 import {existsSync, readFileSync} from "node:fs";
-import {join, resolve} from "node:path";
+import {join, relative, resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {buildMod} from "./lib/build-mod.js";
 import {scanBundle} from "./lib/mod-scan.js";
@@ -19,10 +19,17 @@ import {stubSdk} from "./lib/stubSdk.js";
 
 const USAGE = [
     "usage:",
-    "  spup-mod-builder build <mod dir> <out dir> --version <x.y.z> [--homepage <url>]",
-    "  spup-mod-builder check <package dir>",
-    "  spup-mod-builder scan <mod.js>",
+    "  spup-mod-builder build [mod dir] [out dir] [--version <x.y.z>] [--homepage <url>] [--minify false]",
+    "  spup-mod-builder check [package dir]",
+    "  spup-mod-builder scan [mod.js]",
+    "",
+    "The mod is the working directory and it builds into ./dist, unless said otherwise; the version",
+    "comes from the mod's package.json.",
 ].join("\n");
+
+const OUT_DIR_NAME = "dist";
+const BUNDLE_NAME = "mod.js";
+const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
 
 /**
  * @param {string[]} argv
@@ -37,6 +44,24 @@ function parseFlags(argv) {
         flags.set(argv[index].slice(2), argv[index + 1]);
     }
     return flags;
+}
+
+/**
+ * The version to build as: what the mod's own package.json says, which is the one place a mod
+ * already records it.
+ * @param {string} modDir
+ * @returns {string}
+ */
+function versionOf(modDir) {
+    const path = join(modDir, "package.json");
+    if (!existsSync(path)) {
+        throw new Error(`${modDir} has no package.json to take a version from; pass --version`);
+    }
+    const {version} = JSON.parse(readFileSync(path, "utf8"));
+    if (typeof version !== "string" || !VERSION_PATTERN.test(version)) {
+        throw new Error(`${path} has no x.y.z version; pass --version`);
+    }
+    return version;
 }
 
 /**
@@ -96,23 +121,31 @@ export async function checkPackage(dir) {
 }
 
 const [verb, ...rest] = process.argv.slice(2);
+const positional = [];
+while (rest.length > 0 && !rest[0].startsWith("--")) {
+    positional.push(rest.shift());
+}
+const flags = parseFlags(rest);
+
 if (verb === "build") {
-    const [modDir, outDir, ...flagArgs] = rest;
-    const flags = parseFlags(flagArgs);
-    if (modDir === undefined || outDir === undefined || flags.get("version") === undefined) {
-        throw new Error(USAGE);
+    const modDir = resolve(positional[0] === undefined ? process.cwd() : positional[0]);
+    let outDir = join(modDir, OUT_DIR_NAME);
+    if (positional[1] !== undefined) {
+        outDir = resolve(positional[1]);
     }
-    const manifest = await buildMod(resolve(modDir), resolve(outDir), {
-        version: flags.get("version"),
+    let version = flags.get("version");
+    if (version === undefined) {
+        version = versionOf(modDir);
+    }
+    const manifest = await buildMod(modDir, outDir, {
+        version,
         homepage: flags.get("homepage"),
+        minify: flags.get("minify") !== "false",
     });
-    console.log(`${manifest.name} ${manifest.version} (sdk ${manifest.sdkVersion}) -> ${outDir}`);
+    console.log(`${manifest.name} ${manifest.version} (sdk ${manifest.sdkVersion}) -> ${relative(process.cwd(), outDir)}`);
 } else if (verb === "check") {
-    const [dir] = rest;
-    if (dir === undefined) {
-        throw new Error(USAGE);
-    }
-    const problems = await checkPackage(resolve(dir));
+    const dir = resolve(positional[0] === undefined ? join(process.cwd(), OUT_DIR_NAME) : positional[0]);
+    const problems = await checkPackage(dir);
     for (const problem of problems) {
         console.error(`  ${problem}`);
     }
@@ -123,11 +156,8 @@ if (verb === "build") {
         console.log(`${dir}: all checks passed`);
     }
 } else if (verb === "scan") {
-    const [bundle] = rest;
-    if (bundle === undefined) {
-        throw new Error(USAGE);
-    }
-    const reached = scanBundle(resolve(bundle));
+    const bundle = resolve(positional[0] === undefined ? join(process.cwd(), OUT_DIR_NAME, BUNDLE_NAME) : positional[0]);
+    const reached = scanBundle(bundle);
     if (reached.length > 0) {
         console.error(`${bundle} reaches disallowed globals: ${reached.join(", ")}`);
         process.exitCode = 1;

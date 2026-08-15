@@ -153,7 +153,8 @@ export const USERNAME_PATTERN = /^(?=.{3,12}$)[A-Za-z0-9_]+(?: [A-Za-z0-9_]+)*$/
 export const USERNAME_PATTERN_HINT = "3-12 chars: letters, digits, _; single spaces, no leading/trailing";
 
 // Sign-in with a differing version is rejected; bump package.json's version on any
-// wire- or rule-incompatible change.
+// wire- or rule-incompatible change. The @spup/game-client and @spup/game-server packages ship
+// under this same version: minor per game release, major reserved for an SDK break.
 export const GAME_VERSION = packageJson.version;
 
 // reportingserver's ingest endpoint, on its own subdomain (see deploy/nginx-reporting.conf).

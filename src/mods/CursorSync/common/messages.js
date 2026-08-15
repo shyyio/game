@@ -1,4 +1,4 @@
-import {AbstractMessage, TILE_HALF} from "@/sdk/common.js";
+import {AbstractMessage, TILE_HALF} from "@spup/sdk";
 
 /**
  * The sender's cursor heartbeat: its tile position (fractional), sent per interval while the

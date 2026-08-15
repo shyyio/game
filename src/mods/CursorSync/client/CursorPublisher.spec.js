@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {CursorPublisher} from "./CursorPublisher.js";
 import {CursorMoveMessage, CursorHideMessage} from "../common/messages.js";
 import {CURSOR_SETTING_SHARE, CURSOR_AUDIENCE_NONE, CURSOR_AUDIENCE_FRIENDS, CURSOR_AUDIENCE_EVERYONE} from "../common/constants.js";
-import {ClientCache, PLAYER_SETTINGS_SCHEMA, PlayerSettingsWriter, PlayerSettingsView, TILE_SIZE, ViewMode} from "@/sdk/client.js";
+import {ClientCache, PLAYER_SETTINGS_SCHEMA, PlayerSettingsWriter, PlayerSettingsView, TILE_SIZE, ViewMode} from "@spup/sdk/client";
 
 class FakeWindowFocus {
 

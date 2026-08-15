@@ -1,4 +1,4 @@
-import {AbstractModDeclaration, PlayerSettingEntry} from "@/sdk/common.js";
+import {AbstractModDeclaration, PlayerSettingEntry} from "@spup/sdk";
 import {CURSOR_SETTING_SHARE, CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_OPTIONS} from "./common/constants.js";
 import {CursorMoveMessage, CursorHideMessage} from "./common/messages.js";
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "./common/events.js";

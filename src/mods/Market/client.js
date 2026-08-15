@@ -1,4 +1,4 @@
-import {AbstractClientMod} from "@/sdk/client.js";
+import {AbstractClientMod} from "@spup/sdk/client";
 import {MARKET_SCHEMA, MarketWriter} from "./client/MarketState.js";
 import {TradingTerminalConfigLayer} from "./client/TradingTerminalConfigLayer.js";
 

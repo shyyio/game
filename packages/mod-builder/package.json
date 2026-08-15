@@ -1,6 +1,6 @@
 {
     "name": "@spup/mod-builder",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "Builds and checks a mod for Shy's Power-Up Factory",
     "keywords": [
         "spup",
@@ -25,16 +25,11 @@
     },
     "exports": {
         ".": "./cli.js",
-        "./test-loader": "./testLoader.js",
-        "./sdk-fake": "./sdkFake.js"
+        "./build": "./lib/build-mod.js"
     },
     "files": [
         "cli.js",
         "lib/",
-        "sdkFake.js",
-        "sdkFakeModule.js",
-        "testHooks.js",
-        "testLoader.js",
         "README.md"
     ],
     "engines": {
@@ -42,6 +37,7 @@
     },
     "dependencies": {
         "acorn": "^8.18.0",
-        "rollup": "^4.62.2"
+        "rollup": "^4.62.2",
+        "terser": "5.50.0"
     }
 }

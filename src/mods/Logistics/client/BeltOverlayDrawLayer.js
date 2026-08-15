@@ -1,4 +1,4 @@
-import {AbstractDrawLayer, currentAnimationFrame} from "@/sdk/client.js";
+import {AbstractDrawLayer, currentAnimationFrame} from "@spup/sdk/client";
 import {BeltBend, BELT_UNDERGROUND} from "../common/constants.js";
 import {BeltSprite, beltFrameBase} from "./BeltDrawLayer.js";
 

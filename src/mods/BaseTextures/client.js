@@ -1,4 +1,4 @@
-import {AbstractClientMod} from "@/sdk/client.js";
+import {AbstractClientMod} from "@spup/sdk/client";
 import {baseTextureAtlases} from "./assets.js";
 
 /**
