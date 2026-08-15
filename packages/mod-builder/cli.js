@@ -14,7 +14,9 @@ import {join, relative, resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {buildMod} from "./dist/build-mod.js";
 import {scanBundle} from "./dist/mod-scan.js";
-import {ModManifest, SDK_VERSION, MOD_PART_SIM, MOD_PART_CLIENT} from "./dist/ModManifest.js";
+import {
+    ModManifest, SDK_VERSION, MOD_PART_DECLARATION, MOD_PART_SIM, MOD_PART_CLIENT,
+} from "./dist/ModManifest.js";
 import {stubSdk} from "./dist/stubSdk.js";
 
 const USAGE = [
@@ -44,6 +46,19 @@ function parseFlags(argv) {
         flags.set(argv[index].slice(2), argv[index + 1]);
     }
     return flags;
+}
+
+/**
+ * @param {string[]} positional
+ * @param {number} index
+ * @param {string} fallback
+ * @returns {string}
+ */
+function positionalOr(positional, index, fallback) {
+    if (positional[index] === undefined) {
+        return fallback;
+    }
+    return positional[index];
 }
 
 /**
@@ -100,17 +115,29 @@ export async function checkPackage(dir) {
     } catch (error) {
         return [...problems, `${manifest.entry} could not be imported: ${error.message}`];
     }
-    for (const [part, factory] of [["declaration", "createDeclaration"], [MOD_PART_SIM, "createSim"], [MOD_PART_CLIENT, "createClient"]]) {
+    const partFactories = [
+        [MOD_PART_DECLARATION, "createDeclaration"],
+        [MOD_PART_SIM, "createSim"],
+        [MOD_PART_CLIENT, "createClient"],
+    ];
+    for (const [part, factory] of partFactories) {
         const declared = manifest.has(part);
-        if (declared !== (typeof bundle[factory] === "function")) {
-            problems.push(`the manifest ${declared ? "declares" : "omits"} the ${part} part, but the bundle ${declared ? "exports no" : "exports a"} ${factory}`);
+        const exported = typeof bundle[factory] === "function";
+        if (declared && !exported) {
+            problems.push(`the manifest declares the ${part} part, but the bundle exports no ${factory}`);
+        } else if (!declared && exported) {
+            problems.push(`the manifest omits the ${part} part, but the bundle exports a ${factory}`);
         }
     }
     if (problems.length > 0) {
         return problems;
     }
     // The client part is deliberately not called: it wants a live renderer, which no check has.
-    for (const factory of ["createDeclaration", ...(manifest.has(MOD_PART_SIM) ? ["createSim"] : [])]) {
+    const evaluated = ["createDeclaration"];
+    if (manifest.has(MOD_PART_SIM)) {
+        evaluated.push("createSim");
+    }
+    for (const factory of evaluated) {
         try {
             bundle[factory](stubSdk());
         } catch (error) {
@@ -128,7 +155,7 @@ while (rest.length > 0 && !rest[0].startsWith("--")) {
 const flags = parseFlags(rest);
 
 if (verb === "build") {
-    const modDir = resolve(positional[0] === undefined ? process.cwd() : positional[0]);
+    const modDir = resolve(positionalOr(positional, 0, process.cwd()));
     let outDir = join(modDir, OUT_DIR_NAME);
     if (positional[1] !== undefined) {
         outDir = resolve(positional[1]);
@@ -144,7 +171,7 @@ if (verb === "build") {
     });
     console.log(`${manifest.name} ${manifest.version} (sdk ${manifest.sdkVersion}) -> ${relative(process.cwd(), outDir)}`);
 } else if (verb === "check") {
-    const dir = resolve(positional[0] === undefined ? join(process.cwd(), OUT_DIR_NAME) : positional[0]);
+    const dir = resolve(positionalOr(positional, 0, join(process.cwd(), OUT_DIR_NAME)));
     const problems = await checkPackage(dir);
     for (const problem of problems) {
         console.error(`  ${problem}`);
@@ -156,7 +183,7 @@ if (verb === "build") {
         console.log(`${dir}: all checks passed`);
     }
 } else if (verb === "scan") {
-    const bundle = resolve(positional[0] === undefined ? join(process.cwd(), OUT_DIR_NAME, BUNDLE_NAME) : positional[0]);
+    const bundle = resolve(positionalOr(positional, 0, join(process.cwd(), OUT_DIR_NAME, BUNDLE_NAME)));
     const reached = scanBundle(bundle);
     if (reached.length > 0) {
         console.error(`${bundle} reaches disallowed globals: ${reached.join(", ")}`);
