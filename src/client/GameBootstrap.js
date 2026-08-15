@@ -15,6 +15,7 @@ import {DEV} from "@/common/env.js";
 import {mintReconnectToken, enterServerContext} from "@/client/AuthClient.js";
 import WindowFocus from "@/client/WindowFocus.js";
 import {DEFAULT_TICK_MS} from "@/common/constants.js";
+import {GAME_MODE_REMOTE} from "@/client/GameStart.js";
 
 // Matches the server's --tick-ms default, so local mode runs at the same real-time rate.
 const LOCAL_TICK_INTERVAL_MS = DEFAULT_TICK_MS;
@@ -29,7 +30,7 @@ const LOCAL_TICK_INTERVAL_MS = DEFAULT_TICK_MS;
  * @returns {Promise<ModPackage[]>}
  */
 async function loadoutFor(props, sideloadUrls) {
-    if (props.mode === "remote") {
+    if (props.mode === GAME_MODE_REMOTE) {
         return await fetchModLoadout(props.serverUrl);
     }
     const {clientLoadout} = await import("@/mods/clientLoadout.js");
@@ -44,7 +45,7 @@ async function loadoutFor(props, sideloadUrls) {
  * @returns {Promise<{client: Client, session: AbstractSession, game: Game|null, inputHandler: InputHandler, destroy: function(): void}>}
  */
 export async function createClient(app, viewport, props) {
-    if (props.mode === "remote") {
+    if (props.mode === GAME_MODE_REMOTE) {
         // The server's mod code is about to be evaluated in this page; the account session must be
         // gone before it runs, leaving only this server's origin-scoped reconnect token.
         enterServerContext();
@@ -52,7 +53,7 @@ export async function createClient(app, viewport, props) {
 
     // A server's loadout is exactly what it pins, so only local play side-loads.
     let sideloadUrls = [];
-    if (props.mode !== "remote") {
+    if (props.mode !== GAME_MODE_REMOTE) {
         sideloadUrls = sideloadedModUrls();
     }
 
@@ -65,7 +66,7 @@ export async function createClient(app, viewport, props) {
     // Local mode hosts the sim in-process; remote mode has no Game at all — the server owns it.
     let game = null;
     let session;
-    if (props.mode === "remote") {
+    if (props.mode === GAME_MODE_REMOTE) {
         session = new RemoteSession(
             new WireRegistry(modRegistry), props.serverUrl, props.token,
             () => mintReconnectToken(props.serverUrl),

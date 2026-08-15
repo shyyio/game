@@ -4,7 +4,7 @@ import {useRoute, useRouter} from "vue-router";
 import {ORIGIN_PATTERN, USERNAME_PATTERN, USERNAME_PATTERN_HINT} from "@/common/constants.js";
 import ServerList from "@/components/ServerList.vue";
 import {hasSessionToken, login as authClientLogin, mintJoinToken} from "@/client/AuthClient.js";
-import {gameStart, startError} from "@/client/GameStart.js";
+import {GAME_MODE_LOCAL, GAME_MODE_REMOTE, startGame, startError} from "@/client/GameStart.js";
 
 const STORAGE_USERNAME = "spup.username";
 const LOCAL_SERVER_URL = "ws://localhost:27500";
@@ -29,7 +29,7 @@ function browseMods() {
 }
 
 function playLocal() {
-  gameStart.value = {mode: "local", username: username.value, serverUrl: LOCAL_SERVER_URL};
+  startGame({mode: GAME_MODE_LOCAL, username: username.value, serverUrl: LOCAL_SERVER_URL});
   router.push({name: "play"});
 }
 
@@ -62,7 +62,7 @@ async function selectServer(origin) {
   connectingOrigin.value = origin;
   try {
     const token = await mintJoinToken(origin);
-    gameStart.value = {mode: "remote", token, serverUrl: origin};
+    startGame({mode: GAME_MODE_REMOTE, token, serverUrl: origin});
     router.push({name: "play"});
   } catch {
     // mintJoinToken already clears the stored token on a 401; hasSessionToken() distinguishes
