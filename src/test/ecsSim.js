@@ -36,11 +36,12 @@ export async function makeGameEngine(extraPackages = []) {
 /**
  * A booted Game over the standard loadout, for specs that drive it through sessions and messages.
  * @param {ModPackage[]} [extraPackages] see ecsModRegistry
+ * @param {AbstractSaveStore} [saveStore] for specs that save and reload
  * @returns {Promise<Game>}
  */
-export async function makeGame(extraPackages = []) {
+export async function makeGame(extraPackages = [], saveStore = undefined) {
     const modRegistry = ecsModRegistry(extraPackages);
-    const game = new Game(modRegistry, new GameEngine(modRegistry));
+    const game = new Game(modRegistry, new GameEngine(modRegistry), saveStore);
     await game.init();
     return game;
 }

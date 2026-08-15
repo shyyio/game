@@ -149,6 +149,9 @@ export class Game {
             this.playerSettings.serializeRecords(),
             this.toolOrder.serializeRecords(),
         ];
+        for (const mod of this.modRegistry.simMods) {
+            snapshot.records.push(...mod.serializeRecords());
+        }
         await this.saveStore.save(snapshot);
     }
 
@@ -170,6 +173,9 @@ export class Game {
         this.claims.deserializeRecords(byName.get(CHUNK_CLAIM_RECORD));
         this.playerSettings.deserializeRecords(byName.get(PLAYER_SETTING_RECORD));
         this.toolOrder.deserializeRecords(byName.get(PLAYER_SETTINGS_TOOL_ORDER_RECORD));
+        for (const mod of this.modRegistry.simMods) {
+            mod.deserializeRecords(byName);
+        }
         return true;
     }
 
@@ -555,6 +561,11 @@ export class Game {
                 this.syncUsernames(session.id, [owner]);
                 const permission = this.claims.permissionOf(chunk);
                 this.bus.publishTo(session.id, new ChunkClaimUpdateEvent(chunk, owner, permission));
+            }
+
+            // Before the bundle, so a mod's own per-chunk sync lands ahead of it.
+            for (const mod of this.modRegistry.simMods) {
+                mod.onChunkSubscribed(session, chunk, this);
             }
 
             // Bundle the chunk's recreate events into one ChunkSyncEvent; the client unwraps it.

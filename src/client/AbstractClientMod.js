@@ -109,6 +109,18 @@ export class AbstractClientMod {
     }
 
     /**
+     * Tap hook for tool-less (inspect) mode, before the placed types' own tap actions; the mod's
+     * bespoke content answers taps here, and must claim only what the pointer is really on.
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Client} client
+     * @returns {boolean} whether the tap was consumed
+     */
+    onObjectTap(tileX, tileY, client) {
+        return false;
+    }
+
+    /**
      * Inspect hook (null coords = cleared); returns the objects to highlight and may update the
      * mod's own draw layers.
      * @param {number|null} tileX

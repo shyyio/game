@@ -65,6 +65,15 @@ export class AbstractTool {
     }
 
     /**
+     * Whether a drag paints with this tool. False leaves dragging to the viewport, so the map
+     * still pans while the tool is active (and onDragStart/onDragTile never fire).
+     * @returns {boolean}
+     */
+    get paintsOnDrag() {
+        return true;
+    }
+
+    /**
      * Letter hotkey for core tools; mod tools return null and get a number-key slot instead.
      * @returns {string|null}
      */

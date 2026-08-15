@@ -1,0 +1,17 @@
+{
+	"frames": {
+		"ui/note": {
+			"frame": {"x": 0, "y": 0, "w": 33, "h": 33},
+			"rotated": false,
+			"trimmed": false,
+			"spriteSourceSize": {"x": 0, "y": 0, "w": 33, "h": 33},
+			"sourceSize": {"w": 33, "h": 33}
+		}
+	},
+	"meta": {
+		"image": "notes.png",
+		"format": "RGBA8888",
+		"size": {"w": 33, "h": 33},
+		"scale": "1"
+	}
+}

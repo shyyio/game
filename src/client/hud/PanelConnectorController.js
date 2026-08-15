@@ -23,9 +23,10 @@ export class PanelConnectorController {
 
     /**
      * Registers (or replaces) a link: a curve from `getPanel()` to the tile from `getTileXY()`; null skips it.
+     * The target may carry a `size` in tiles (default 1) to aim at something smaller than a tile.
      * @param {string} key
      * @param {function(): (UIPanel|null)} getPanel
-     * @param {function(): ({x: number, y: number}|null)} getTileXY
+     * @param {function(): ({x: number, y: number, size?: number}|null)} getTileXY
      * @returns {void}
      */
     set(key, getPanel, getTileXY) {
@@ -75,14 +76,18 @@ export class PanelConnectorController {
      * The attach points are ray-rect boundary hits (continuous, so they never snap).
      * @private
      * @param {UIPanel} panel
-     * @param {{x: number, y: number}} tile
+     * @param {{x: number, y: number, size?: number}} tile
      * @returns {void}
      */
     _drawLink(panel, tile) {
         const tx = tile.x * TILE_SIZE;
         const ty = tile.y * TILE_SIZE;
-        const targetRect = {minX: tx, minY: ty, maxX: tx + TILE_SIZE, maxY: ty + TILE_SIZE};
-        const targetCenterWorld = {x: tx + TILE_SIZE / 2, y: ty + TILE_SIZE / 2};
+        let span = TILE_SIZE;
+        if (tile.size !== undefined) {
+            span = tile.size * TILE_SIZE;
+        }
+        const targetRect = {minX: tx, minY: ty, maxX: tx + span, maxY: ty + span};
+        const targetCenterWorld = {x: tx + span / 2, y: ty + span / 2};
         const panelCenterScreen = {x: panel.x + panel.outerWidth / 2, y: panel.y + panel.outerHeight / 2};
         const panelCenterWorld = this.viewport.toWorld(panelCenterScreen.x, panelCenterScreen.y);
         const targetEdge = rectEdgePoint(targetCenterWorld, panelCenterWorld, targetRect);

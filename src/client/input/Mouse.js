@@ -398,24 +398,17 @@ class Mouse {
     }
 
     /**
-     * True when the global pointer sits over a HUD element drawn on top of the world (so the
-     * viewport is not the topmost hit target).
+     * True when something interactive sits under the global pointer: a HUD element over the world,
+     * or an interactive object inside it (a note marker). The bare viewport is not one.
      * @returns {boolean}
      * @private
      */
-    _pointerOverHud() {
+    _pointerOverInteractive() {
         const events = this._app.renderer.events;
         const boundary = events.rootBoundary;
         boundary.rootTarget = this._app.stage;
         const hit = boundary.hitTest(events.pointer.global.x, events.pointer.global.y);
-        let target = hit;
-        while (target != null) {
-            if (target === this._viewport) {
-                return false;
-            }
-            target = target.parent;
-        }
-        return hit != null;
+        return hit != null && hit !== this._viewport;
     }
 
     _updateCurrentMousePos() {
@@ -427,11 +420,12 @@ class Mouse {
         this.currentX = world.x;
         this.currentY = world.y;
 
-        // Center-lock ignores HUD hover; otherwise skip the hover ghost over a panel
-        // unless a press is in flight (a drag crossing the HUD keeps its hover).
+        // Center-lock ignores HUD hover; otherwise skip the hover ghost and the inspect highlight
+        // over a panel or a world marker, unless a press is in flight (a drag crossing the HUD
+        // keeps its hover).
         if (this._centerLock) {
             this._updateHoverTile();
-        } else if (this._clickStartX == null && this._pointerOverHud()) {
+        } else if (this._clickStartX == null && this._pointerOverInteractive()) {
             this._emitTileExit();
         } else {
             this._updateHoverTile();

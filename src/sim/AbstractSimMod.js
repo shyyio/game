@@ -56,9 +56,33 @@ export class AbstractSimMod {
     onPlayerSettingWritten(session, key, value, game) {}
 
     /**
+     * Optional hook: a session subscribed to a chunk, before that chunk's sync bundle is sent.
+     * @param {AbstractSession} session
+     * @param {number} chunk
+     * @param {Game} game
+     * @returns {void}
+     */
+    onChunkSubscribed(session, chunk, game) {}
+
+    /**
      * Optional hook: runs once per tick, after every phase has resolved for this tick.
      * @param {Game} game
      * @returns {void}
      */
     onTick(game) {}
+
+    /**
+     * Optional hook: the record tables this mod contributes to the world save.
+     * @returns {object[]}
+     */
+    serializeRecords() {
+        return [];
+    }
+
+    /**
+     * Optional hook: restores this mod's record tables; a missing table is an older save.
+     * @param {Map<string, object>} tablesByName
+     * @returns {void}
+     */
+    deserializeRecords(tablesByName) {}
 }
