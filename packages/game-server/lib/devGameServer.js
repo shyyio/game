@@ -54,7 +54,7 @@ export class DevGameServer {
     start() {
         mkdirSync(this._workDir, {recursive: true});
         writeDevLockfile(join(this._workDir, "mods.json"), MODS_DIR, this._modPackageDir);
-        this._child = spawn(process.execPath, [
+        const child = spawn(process.execPath, [
             SERVER_ENTRY,
             "--mods", join(this._workDir, "mods.json"),
             "--mods-cache", join(this._workDir, "mods-cache"),
@@ -65,6 +65,32 @@ export class DevGameServer {
             "--origin", this._origin,
             "--auth-server", this._authServer,
         ], {stdio: "inherit"});
+        this._child = child;
+        // A server that died at boot — a port already in use, a missing native dependency — must not
+        // read as a running one, or every later rebuild restarts nothing.
+        child.on("error", error => this._died(child, `could not be started: ${error.message}`));
+        child.on("exit", (code, signal) => {
+            if (signal !== null) {
+                this._died(child, `was killed by ${signal}`);
+                return;
+            }
+            this._died(child, `exited with code ${code}`);
+        });
+    }
+
+    /**
+     * Reports a server process that ended on its own; a restart is the author's next save.
+     * @param {ChildProcess} child the process that ended, ignored once it is no longer the current one
+     * @param {string} what for the message
+     * @returns {void}
+     * @private
+     */
+    _died(child, what) {
+        if (this._child !== child) {
+            return;
+        }
+        this._child = null;
+        console.error(`the game server ${what} — fix it and save again to restart`);
     }
 
     /**

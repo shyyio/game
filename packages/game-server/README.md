@@ -2,8 +2,10 @@
 
 The [Shy's Power-Up Factory](https://spupgame.com) server, the base mods, and the test harness a mod's specs run against.
 
+The `spup-dev` command lives in `@spup/game-client`; this package is what its `server` verb needs.
+
 ```
-npm i -D @spup/game-server
+npm i -D @spup/game-client @spup/game-server
 npx spup-dev server
 ```
 

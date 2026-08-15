@@ -6,8 +6,8 @@ import {gitBuildInfo} from "./vite.build-defines.js";
 const {commit: BUILD_COMMIT, date: BUILD_DATE} = gitBuildInfo();
 
 // The mod-author test harness (src/test/harness.js): the real SDK and the sim helpers in one node
-// bundle, shipped in @spup/game-server. Same externals as the server bundle, since it reaches the
-// same engine.
+// bundle, shipped in @spup/game-server. Everything is inlined — the sim it reaches has no native
+// dependency, so unlike the server bundle this one needs no externals and installs nothing.
 export default defineConfig(({mode}) => ({
     publicDir: false,
     build: {

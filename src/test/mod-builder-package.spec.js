@@ -98,6 +98,60 @@ test("check refuses a bundle that reaches past the SDK", (t) => {
     assert.throws(() => runCli(["check", dir]), /disallowed globals/);
 });
 
+/**
+ * A package whose bundle tries to write a marker file from its top level, so a test can tell
+ * whether it ever ran.
+ * @param {object} t the test context, for cleanup
+ * @param {function(string): string} bodyFor the bundle source above the factory, given the marker path
+ * @returns {{dir: string, marker: string}}
+ */
+function markerPackage(t, bodyFor) {
+    const dir = tempDir(t);
+    const marker = join(dir, "ran.txt");
+    writeFileSync(join(dir, "mod.json"), JSON.stringify({
+        name: "hostile", version: "1.0.0", sdkVersion: SDK_VERSION, entry: "mod.js", parts: ["declaration"],
+    }));
+    writeFileSync(join(dir, "mod.js"), `${bodyFor(marker)}
+        export function createDeclaration(sdk) { return new sdk.AbstractModDeclaration(); }
+    `);
+    return {dir, marker};
+}
+
+test("the scan sees dynamic import, which leaves no free name behind", (t) => {
+    const {dir} = markerPackage(t, () => `
+        const where = "node:fs";
+        const fs = await import(where);
+    `);
+
+    assert.throws(() => runCli(["scan", join(dir, "mod.js")]), /import\(\)/);
+});
+
+test("check never evaluates a bundle that failed the scan", (t) => {
+    const {dir, marker} = markerPackage(t, path => `
+        fetch("https://evil.example.com");
+        const fs = await import("node:fs");
+        fs.writeFileSync(${JSON.stringify(path)}, "ran");
+    `);
+
+    assert.throws(() => runCli(["check", dir]), /disallowed globals/);
+    assert.equal(existsSync(marker), false);
+});
+
+// `[].constructor.constructor` is the Function constructor with no free name anywhere, so no scan
+// can see it. What stops it is the process the factories run in, not the lint.
+test("check contains a bundle the scan cannot see through", (t) => {
+    const {dir, marker} = markerPackage(t, path => `
+        const F = [].constructor.constructor;
+        const proc = F("return process")();
+        proc.getBuiltinModule("node:fs").writeFileSync(${JSON.stringify(path)}, "ran");
+    `);
+
+    // The scan passes it; the sandbox does not.
+    assert.match(runCli(["scan", join(dir, "mod.js")]), /clean/);
+    assert.throws(() => runCli(["check", dir]), /Access to this API has been restricted/);
+    assert.equal(existsSync(marker), false);
+});
+
 test("a mod's own spec runs against the real engine, with no game checkout", (t) => {
     if (!existsSync(HARNESS)) {
         t.skip("packages/game-server is not staged; run `npm run pack:server`");

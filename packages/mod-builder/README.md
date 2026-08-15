@@ -14,10 +14,15 @@ the one in your `package.json`. Every default can be overridden — `build <mod 
   which is what the dev server builds with. The minifier is pinned to an exact version here, so the
   same source hashes the same from any machine.
 - **`check`** — what a registry listing must pass: the manifest parses, the bundle
-  reaches no global outside a small pure-computation whitelist (`fetch`, `document`, `eval` and
-  friends fail here), the declared parts match the exported factories, and the declaration and sim
-  factories evaluate against a stub SDK.
+  reaches no global outside a small pure-computation whitelist (`fetch`, `document`, `eval`,
+  `import()` and friends fail here), the declared parts match the exported factories, and the
+  declaration and sim factories evaluate against a stub SDK.
 - **`scan`** — just the free-variable scan, for a quick look at a bundle.
+
+A bundle that fails the scan is never run. One that passes is still only *run* under node's
+permission model, in a process that may read the package and do nothing else — the scan is a lint,
+not a sandbox, and `[].constructor.constructor` is the `Function` constructor under a name no scan
+can see.
 
 `check` proves a package loads and behaves at its edges; it cannot prove the content is valid, since
 that needs a running engine. The registry runs it on every published version, and a maintainer reads
