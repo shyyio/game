@@ -34,9 +34,30 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
         this._overworld = false;
         // The selected chunk's dashes hide, so the selection square replaces them.
         this._selectedChunk = null;
+        // Batches the cache-driven redraw until the next tick.
+        this._dirty = false;
         this.visible = false;
-        state.subscribe("chunkClaims.ownerByChunk", () => this._redraw());
-        state.subscribe("chunkClaims.ownPlayerId", () => this._redraw());
+        // Deferred: a claim update writes ownerByChunk before ownChunks, so neither notify sees
+        // both halves settled.
+        state.subscribe("chunkClaims.ownerByChunk", () => this._markDirty());
+        state.subscribe("chunkClaims.ownChunks", () => this._markDirty());
+        state.subscribe("chunkClaims.ownPlayerId", () => this._markDirty());
+        state.subscribe("chunkClaims.maxChunks", () => this._markDirty());
+    }
+
+    tick(frame, deltaMS, visibleChunks) {
+        if (!this._dirty) {
+            return;
+        }
+        this._redraw();
+    }
+
+    /**
+     * @private
+     * @returns {void}
+     */
+    _markDirty() {
+        this._dirty = true;
     }
 
     get layerIndex() {
@@ -101,8 +122,10 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _redraw() {
+        this._dirty = false;
         this._graphics.clear();
-        this.visible = this._modeActive && this._zoomedOut;
+        // At the chunk limit nothing is claimable, so the frontier has nothing to offer.
+        this.visible = this._modeActive && this._zoomedOut && !this._claims.atChunkLimit();
         if (!this.visible) {
             return;
         }
