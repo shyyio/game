@@ -55,8 +55,6 @@ import {
     OVERWORLD_CHUNK_TTL_MS,
     OVERWORLD_REFRESH_THROTTLE_MS,
     FRIENDS_PANEL_REFRESH_THROTTLE_MS,
-    HUD_BOTTOM_OFFSET,
-    HUD_BOTTOM_MARGIN,
 } from "@/client/constants.js";
 import {CHUNK_SIZE, REGION_SIZE, Direction} from "@/common/constants.js";
 import {chunkCenter, chunkId, formatBytes, REGION_HALF} from "@/common/util.js";
@@ -84,7 +82,7 @@ import {FriendsButtonLayer} from "@/client/hud/FriendsButtonLayer.js";
 import {ProductionButtonLayer} from "@/client/hud/ProductionButtonLayer.js";
 import {ProductionPanelLayer} from "@/client/hud/ProductionPanelLayer.js";
 import {FriendsPanelLayer} from "@/client/hud/FriendsPanelLayer.js";
-import {ChunkInfoPanelLayer} from "@/client/hud/ChunkInfoPanelLayer.js";
+import {ChunkActionsLayer} from "@/client/hud/ChunkActionsLayer.js";
 import {ChunkSelectionLayer} from "@/client/layers/ChunkSelectionLayer.js";
 import {ClaimFrontierDrawLayer} from "@/client/layers/ClaimFrontierDrawLayer.js";
 import {ClaimSelectionMode} from "@/client/input/ClaimSelectionMode.js";
@@ -210,11 +208,6 @@ export class Client {
         this.topStatusBar = new TopStatusBarLayer(app);
         // Full-width bottom bar holding the active mode's forward action (its text + Confirm).
         this.bottomActionBar = new BottomActionBarLayer(app);
-        this._bottomBarHeight = 0;
-        this.bottomActionBar.onChange((height) => {
-            this._bottomBarHeight = height;
-            this.refreshToolbarVisibility();
-        });
         // Always-visible top-right settings button; stays clear of the bar above via its height.
         this.settingsButtonLayer = new SettingsButtonLayer(app);
         // Friend management (account-wide, not gated behind claim mode); sits left of settings.
@@ -271,13 +264,13 @@ export class Client {
         // Dashed claim-frontier squares while claim selection mode is on.
         this.claimFrontierLayer = new ClaimFrontierDrawLayer(this.cache);
         this.drawLayerRegistry.add(this.claimFrontierLayer);
-        // Chunk owner/claim panel for the hovered chunk (map mode).
-        this.chunkInfoPanelLayer = new ChunkInfoPanelLayer(app, this.cache.view("chunkClaims"), this.cache.view("players"));
-        this.chunkInfoPanelLayer.onClaim(chunk => this.sendMessage(new ClaimChunkMessage(chunk)));
-        this.chunkInfoPanelLayer.onUnclaim(chunk => this.sendMessage(new UnclaimChunkMessage(chunk)));
-        this.chunkInfoPanelLayer.onAddFriend(playerId => this.sendMessage(new AddFriendMessage(playerId)));
-        this.chunkInfoPanelLayer.onUnfriend(playerId => this.sendMessage(new RemoveFriendMessage(playerId)));
-        this.chunkInfoPanelLayer.onSetPermission(
+        // The selected chunk's action stack, anchored beside the chunk (map mode).
+        this.chunkActionsLayer = new ChunkActionsLayer(app, viewport, this.cache.view("chunkClaims"), this.cache.view("players"));
+        this.chunkActionsLayer.onClaim(chunk => this.sendMessage(new ClaimChunkMessage(chunk)));
+        this.chunkActionsLayer.onUnclaim(chunk => this.sendMessage(new UnclaimChunkMessage(chunk)));
+        this.chunkActionsLayer.onAddFriend(playerId => this.sendMessage(new AddFriendMessage(playerId)));
+        this.chunkActionsLayer.onUnfriend(playerId => this.sendMessage(new RemoveFriendMessage(playerId)));
+        this.chunkActionsLayer.onSetPermission(
             (chunk, permission) => this.sendMessage(new SetChunkPermissionMessage(chunk, permission)),
         );
 
@@ -316,7 +309,7 @@ export class Client {
             this.noticeLayer,
             this.confirmDialogLayer,
             this.mapButtonsLayer,
-            this.chunkInfoPanelLayer,
+            this.chunkActionsLayer,
             ...this._modHudLayers.filter(layer => layer.restyle !== undefined),
         ];
         onThemeChange(() => this._restyleHud());
@@ -371,22 +364,12 @@ export class Client {
     /**
      * Shows the toolbar only in world view with at least one claimed chunk: placement tools are
      * inert while zoomed to map/overworld (EffectiveToolController nulls the effective tool
-     * there), and irrelevant with nothing to build on. Docks the chunk info panel to the screen
-     * bottom instead of clearing the toolbar's height once it's hidden.
+     * there), and irrelevant with nothing to build on.
      * @returns {void}
      */
     refreshToolbarVisibility() {
         const hasClaims = this.cache.view("chunkClaims").ownCount() > 0;
-        const visible = hasClaims && this._viewMode === ViewMode.WORLD;
-        this.toolbarLayer.visible = visible;
-        if (visible) {
-            this.chunkInfoPanelLayer.setBottomOffset(HUD_BOTTOM_OFFSET);
-        } else if (this._bottomBarHeight > 0) {
-            // The panel docks on top of the bottom action bar.
-            this.chunkInfoPanelLayer.setBottomOffset(this._bottomBarHeight + HUD_BOTTOM_MARGIN);
-        } else {
-            this.chunkInfoPanelLayer.setBottomOffset(HUD_BOTTOM_MARGIN);
-        }
+        this.toolbarLayer.visible = hasClaims && this._viewMode === ViewMode.WORLD;
     }
 
     /**
@@ -575,7 +558,7 @@ export class Client {
         this.bottomActionBar.refreshBackground();
         this.noticeLayer.textureRegistry = this.textureRegistry;
         this.confirmDialogLayer.textureRegistry = this.textureRegistry;
-        this.chunkInfoPanelLayer.textureRegistry = this.textureRegistry;
+        this.chunkActionsLayer.textureRegistry = this.textureRegistry;
         this.friendsPanelLayer.textureRegistry = this.textureRegistry;
         this.friendsPanelLayer.viewport = this.viewport;
         this.friendsPanelLayer.anchorButton = this.friendsButtonLayer;
@@ -584,7 +567,7 @@ export class Client {
         this.productionPanelLayer.viewport = this.viewport;
         this.app.stage.addChild(this.centerMarkerLayer);
         this.app.stage.addChild(this.mapButtonsLayer);
-        this.app.stage.addChild(this.chunkInfoPanelLayer);
+        this.app.stage.addChild(this.chunkActionsLayer);
         this.app.stage.addChild(this.rotateButtonsLayer);
         this.app.stage.addChild(this.toolbarLayer);
         this.app.stage.addChild(this.statusLayer);

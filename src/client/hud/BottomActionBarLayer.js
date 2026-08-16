@@ -60,7 +60,6 @@ export class BottomActionBarLayer extends Container {
         this.visible = false;
         /** @type {BottomBarAction|null} */
         this._action = null;
-        this._onChange = null;
         this._panel = new Container();
         // Presses on the bar must not fall through to the viewport (pan/tap).
         swallowClicks(this._panel);
@@ -69,15 +68,6 @@ export class BottomActionBarLayer extends Container {
         this._contentNodes = [];
         this.addChild(this._panel);
         app.renderer.on("resize", () => this._rebuild());
-    }
-
-    /**
-     * Registers the callback invoked with the bar's occupied height (0 while hidden) whenever it changes.
-     * @param {function(height: number): void} callback
-     * @returns {void}
-     */
-    onChange(callback) {
-        this._onChange = callback;
     }
 
     /**
@@ -136,12 +126,8 @@ export class BottomActionBarLayer extends Container {
         }
         this._contentNodes = [];
 
-        let height = 0;
         if (this.visible && this.textureRegistry !== null) {
-            height = this._rebuildContent();
-        }
-        if (this._onChange !== null) {
-            this._onChange(this.visible ? height : 0);
+            this._rebuildContent();
         }
     }
 
@@ -149,7 +135,7 @@ export class BottomActionBarLayer extends Container {
      * Builds the bar's content — text inset left, pattern, Confirm rightmost — and the
      * background sized to fit it.
      * @private
-     * @returns {number} the bar's total height
+     * @returns {void}
      */
     _rebuildContent() {
         const insets = SafeArea.insets();
@@ -204,7 +190,6 @@ export class BottomActionBarLayer extends Container {
         const height = contentTop + rowHeight + FRAME_MARGIN + insets.bottom;
         this._rebuildBackground(width, height);
         this._panel.y = this._app.screen.height - height;
-        return height;
     }
 
     /**

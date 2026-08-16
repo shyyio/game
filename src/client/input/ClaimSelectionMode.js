@@ -28,7 +28,8 @@ export class ClaimSelectionMode {
     constructor(client) {
         this._client = client;
         this._claims = client.cache.view("chunkClaims");
-        this._cursor = new ChunkCursor(client);
+        // The bottom bar's status text tracks the selection.
+        this._cursor = new ChunkCursor(client, () => this.updateIndicators());
         this._on = false;
         // Entry glide in flight: the mode activates only once the viewport arrives.
         this._entering = false;
@@ -78,7 +79,8 @@ export class ClaimSelectionMode {
      */
     onEvent(event) {
         if (event instanceof FriendListEvent) {
-            this._client.chunkInfoPanelLayer.refresh();
+            this._client.chunkActionsLayer.refresh();
+            this.updateIndicators();
             return;
         }
         if (!(event instanceof OwnClaimsSyncEvent) && !(event instanceof ChunkClaimUpdateEvent)) {
@@ -87,10 +89,10 @@ export class ClaimSelectionMode {
         if (!this._hasClaims()) {
             this.set(false);
         }
-        this.updateIndicators();
         this._client.refreshToolbarVisibility();
-        this._client.chunkInfoPanelLayer.refresh();
+        this._client.chunkActionsLayer.refresh();
         this._client.chunkSelectionLayer.refresh();
+        this.updateIndicators();
     }
 
     /**
@@ -126,7 +128,8 @@ export class ClaimSelectionMode {
     }
 
     /**
-     * This mode's status-bar contribution: the mode's name with its Back button. Null while inactive.
+     * This mode's status-bar contribution: the mode's name and claim count with its Back button.
+     * Null while inactive.
      * @private
      * @returns {StatusBarSection|null}
      */
@@ -134,13 +137,13 @@ export class ClaimSelectionMode {
         if (!this.active) {
             return null;
         }
-        return new StatusBarSection("Chunk administration",
-            [hotkeyButton("Back", EXIT_HOTKEY, () => this.set(false))]);
+        const text = `Chunk administration   ${this._claims.ownCount()}/${this._claims.maxChunks} chunks claimed`;
+        return new StatusBarSection(text, [hotkeyButton("Back", EXIT_HOTKEY, () => this.set(false))]);
     }
 
     /**
-     * This mode's forward action: the claim count with Confirm leaving the mode (every claim
-     * change already committed). Null while inactive.
+     * This mode's forward action: the selected chunk's status, with Confirm leaving the mode
+     * (every claim change already committed). Null while inactive.
      * @private
      * @returns {BottomBarAction|null}
      */
@@ -148,7 +151,10 @@ export class ClaimSelectionMode {
         if (!this.active) {
             return null;
         }
-        const text = `${this._claims.ownCount()}/${this._claims.maxChunks} chunks claimed`;
+        let text = this._client.chunkActionsLayer.statusText;
+        if (text === null) {
+            text = "Select a chunk";
+        }
         return new BottomBarAction(text, () => this.set(false));
     }
 
