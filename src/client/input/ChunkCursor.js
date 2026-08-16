@@ -1,6 +1,6 @@
 import {TILE_SIZE} from "@/client/constants.js";
-import {CHUNK_SIZE, PLAYER_ID_NONE} from "@/common/constants.js";
-import {chunkId, inRegion} from "@/common/util.js";
+import {CHUNK_SIZE} from "@/common/constants.js";
+import {chunkOrdinal, inRegion} from "@/common/util.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 
@@ -12,11 +12,9 @@ export class ChunkCursor {
 
     /**
      * @param {Client} client
-     * @param {function(chunk: number|null): void|null} [onChange] - fires after every selection change
      */
-    constructor(client, onChange = null) {
+    constructor(client) {
         this._client = client;
-        this._onChange = onChange;
         this._chunk = null;
     }
 
@@ -60,19 +58,22 @@ export class ChunkCursor {
         this.select(chunk);
         if (claimShortcut && chunk !== null) {
             const claims = this._client.cache.view("chunkClaims");
-            if (claims.ownerOf(chunk) === PLAYER_ID_NONE
-                    && claims.claimCheck(chunk) === ClaimResult.CLAIM_RESULT_OK) {
+            if (claims.claimCheck(chunk) === ClaimResult.CLAIM_RESULT_OK) {
                 this._client.sendMessage(new ClaimChunkMessage(chunk));
             }
         }
     }
 
     /**
-     * Targets the chunk action stack and the selection square; null clears both.
+     * Targets the chunk action stack and the selection square; null clears both. Re-selecting the
+     * current chunk is free.
      * @param {number|null} chunk
      * @returns {void}
      */
     select(chunk) {
+        if (chunk === this._chunk) {
+            return;
+        }
         this._chunk = chunk;
         this._client.chunkSelectionLayer.setSelectedChunk(chunk);
         this._client.chunkClaimsLayer.setSelectedChunk(chunk);
@@ -82,9 +83,8 @@ export class ChunkCursor {
         } else {
             this._client.chunkActionsLayer.showChunk(chunk);
         }
-        if (this._onChange !== null) {
-            this._onChange(chunk);
-        }
+        // The active mode surfaces the new selection in its bars.
+        this._client.chunkMode.updateIndicators();
     }
 
     /**
@@ -119,6 +119,6 @@ export class ChunkCursor {
         if (!inRegion(chunkX, chunkY)) {
             return null;
         }
-        return chunkId(tileX, tileY);
+        return chunkOrdinal(chunkX, chunkY);
     }
 }

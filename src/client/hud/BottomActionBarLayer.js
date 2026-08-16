@@ -1,32 +1,16 @@
-import {Container, Text} from "pixi.js";
-import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_TINT, PANEL_TINT_TEXT, ACTIVE_ACCENT} from "@/client/Theme.js";
+import {CONFIRM_HOTKEY} from "@/client/constants.js";
+import {PANEL_TINT, ACTIVE_ACCENT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
-import {buildPanelButton} from "@/client/hud/panelButton.js";
-import {swallowClicks} from "@/client/layers/pixiUtils.js";
+import {buildPanelButton, hotkeyLabel} from "@/client/hud/panelButton.js";
+import {
+    AbstractEdgeBarLayer,
+    FRAME_MARGIN,
+    MIN_TEXT_WIDTH,
+    PATTERN_GAP,
+    TEXT_PADDING,
+    THIN_PATTERN_WIDTH,
+} from "@/client/hud/AbstractEdgeBarLayer.js";
 import SafeArea from "@/client/SafeArea.js";
-import Mobile from "@/client/Mobile.js";
-
-// Gap between the outer frame and its content, matching the top status bar.
-const FRAME_MARGIN = 6;
-// Width of the decorative pattern strip between the text and the button.
-const THIN_PATTERN_WIDTH = 14;
-// Gap around the decorative pattern strip.
-const PATTERN_GAP = 10;
-// How far the frame sprite bleeds past the left/bottom/right edges, so only the top border reads.
-const EDGE_BLEED = 24;
-// Gap between the text and its inset's edges, kept clear of the wrap width.
-const TEXT_PADDING = 8;
-// Wrap width floor, so a narrow screen wraps hard instead of collapsing to nothing.
-const MIN_TEXT_WIDTH = 80;
-
-/**
- * The one forward label (docs/ux-conventions.md), with its Enter hint on desktop.
- * @returns {string}
- */
-function confirmLabel() {
-    return Mobile.enabled ? "Confirm" : "Confirm [Enter]";
-}
 
 /**
  * One mode's forward action: the bar's text and the Confirm handler.
@@ -47,27 +31,15 @@ export class BottomBarAction {
  * Full-width bar docked to the screen bottom: the active mode's forward action — its text and
  * the Confirm button, rightmost (docs/ux-conventions.md). Hidden without an action.
  */
-export class BottomActionBarLayer extends Container {
+export class BottomActionBarLayer extends AbstractEdgeBarLayer {
 
     /**
      * @param {Application} app
      */
     constructor(app) {
-        super();
-        this._app = app;
-        this.textureRegistry = null;
-        this.zIndex = 9000;
-        this.visible = false;
+        super(app);
         /** @type {BottomBarAction|null} */
         this._action = null;
-        this._panel = new Container();
-        // Presses on the bar must not fall through to the viewport (pan/tap).
-        swallowClicks(this._panel);
-        this._frame = null;
-        /** @type {Container[]} */
-        this._contentNodes = [];
-        this.addChild(this._panel);
-        app.renderer.on("resize", () => this._rebuild());
     }
 
     /**
@@ -76,21 +48,18 @@ export class BottomActionBarLayer extends Container {
      * @returns {void}
      */
     set(action) {
-        const previous = this._action;
-        if (previous === action) {
-            return;
-        }
-        if (previous !== null && action !== null && previous.text === action.text) {
-            // Same display, fresher handler: swap without a rebuild.
-            this._action = action;
-            return;
-        }
+        const previousText = this._action === null ? null : this._action.text;
+        const text = action === null ? null : action.text;
+        // Same display, fresher handler: swap without a rebuild.
         this._action = action;
+        if (previousText === text) {
+            return;
+        }
         this._rebuild();
     }
 
     /**
-     * Fires the current action's Confirm (the Enter keybind's path); a no-op while hidden.
+     * Fires the current action's Confirm (the keybind's path); a no-op while hidden.
      * @returns {void}
      */
     pressConfirm() {
@@ -100,42 +69,18 @@ export class BottomActionBarLayer extends Container {
     }
 
     /**
-     * Repaints for the current theme.
-     * @returns {void}
+     * @protected
+     * @returns {boolean}
      */
-    restyle() {
-        this._rebuild();
-    }
-
-    /**
-     * Rebuilds for the current action once the texture registry becomes available.
-     * @returns {void}
-     */
-    refreshBackground() {
-        this._rebuild();
-    }
-
-    /**
-     * @private
-     * @returns {void}
-     */
-    _rebuild() {
-        this.visible = this._action !== null;
-        for (const node of this._contentNodes) {
-            node.destroy({children: true});
-        }
-        this._contentNodes = [];
-
-        if (this.visible && this.textureRegistry !== null) {
-            this._rebuildContent();
-        }
+    _hasContent() {
+        return this._action !== null;
     }
 
     /**
      * Builds the bar's content — text inset left, pattern, Confirm rightmost — and the
      * background sized to fit it.
-     * @private
-     * @returns {void}
+     * @protected
+     * @returns {number} the bar's total height
      */
     _rebuildContent() {
         const insets = SafeArea.insets();
@@ -143,63 +88,39 @@ export class BottomActionBarLayer extends Container {
         const contentTop = FRAME_MARGIN;
         const contentRight = width - insets.right - FRAME_MARGIN;
 
-        const button = buildPanelButton(this.textureRegistry, confirmLabel(), ACTIVE_ACCENT,
-            () => this._action.onConfirm());
+        const button = buildPanelButton(this.textureRegistry, hotkeyLabel("Confirm", CONFIRM_HOTKEY),
+            ACTIVE_ACCENT, () => this._action.onConfirm());
         button.x = contentRight - button.width;
 
         const patternX = button.x - PATTERN_GAP - THIN_PATTERN_WIDTH;
         const insetX = insets.left + FRAME_MARGIN;
         const insetWidth = Math.max(patternX - PATTERN_GAP - insetX, 0);
         const textWidth = Math.max(insetWidth - TEXT_PADDING * 2, MIN_TEXT_WIDTH);
-        const text = new Text({
-            text: this._action.text,
-            style: {
-                fontFamily: GAME_FONT,
-                fontSize: 20,
-                fill: PANEL_TINT_TEXT,
-                align: "center",
-                wordWrap: true,
-                wordWrapWidth: textWidth,
-                breakWords: true,
-            },
-        });
+        const text = this._barText(this._action.text, textWidth);
 
         const rowHeight = Math.max(text.height, button.height);
         button.y = contentTop + (rowHeight - button.height) / 2;
-        this._panel.addChild(button);
-        this._contentNodes.push(button);
+        this._addNode(button);
 
         const pattern = UIPanel.patternStrip(this.textureRegistry, THIN_PATTERN_WIDTH, rowHeight);
         pattern.position.set(patternX, contentTop);
-        this._panel.addChild(pattern);
-        this._contentNodes.push(pattern);
+        this._addNode(pattern);
 
         if (insetWidth > 0) {
             const inset = UIPanel.insetSprite(this.textureRegistry, insetWidth, rowHeight, PANEL_TINT);
             inset.position.set(insetX, contentTop);
-            this._panel.addChild(inset);
-            this._contentNodes.push(inset);
+            this._addNode(inset);
             text.x = insetX + Math.round((insetWidth - text.width) / 2);
         } else {
             text.x = Math.round((width - text.width) / 2);
         }
         text.y = contentTop + (rowHeight - text.height) / 2;
-        this._panel.addChild(text);
-        this._contentNodes.push(text);
+        this._addNode(text);
 
         const height = contentTop + rowHeight + FRAME_MARGIN + insets.bottom;
-        this._rebuildBackground(width, height);
+        // The frame's border reads on the bar's top edge, so it bleeds off the other three.
+        this._rebuildFrame(width, height, 0);
         this._panel.y = this._app.screen.height - height;
-    }
-
-    /**
-     * @private
-     * @param {number} width
-     * @param {number} height
-     * @returns {void}
-     */
-    _rebuildBackground(width, height) {
-        this._frame = UIPanel.rebuildFrame(this._panel, this._frame, this.textureRegistry,
-            width + EDGE_BLEED * 2, height + EDGE_BLEED, PANEL_TINT, {x: -EDGE_BLEED, y: 0});
+        return height;
     }
 }

@@ -45,8 +45,7 @@ function themedTexts() {
         {where: "ConfirmDialogLayer message", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
         {where: "NoticeLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
         {where: "StatusMessageLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
-        {where: "TopStatusBarLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 20, bold: false},
-        {where: "BottomActionBarLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 20, bold: false},
+        {where: "AbstractEdgeBarLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 20, bold: false},
         {where: "PanelText header", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: true},
         {where: "PanelText body", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
         {where: "PanelText muted", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
@@ -69,7 +68,7 @@ function themedTexts() {
 // pixi Text constructions per file, so a new one has to be classified before this suite passes:
 // checked here, or listed as drawn over the world.
 const CHECKED_TEXTS = {
-    "src/client/hud/BottomActionBarLayer.js": 1,
+    "src/client/hud/AbstractEdgeBarLayer.js": 1,
     "src/client/hud/ConfirmDialogLayer.js": 2,
     "src/client/hud/InspectContent.js": 2,
     "src/client/hud/NoticeLayer.js": 1,
@@ -77,7 +76,6 @@ const CHECKED_TEXTS = {
     "src/client/hud/RotateButtonsLayer.js": 1,
     "src/client/hud/StatusMessageLayer.js": 1,
     "src/client/hud/ToolbarLayer.js": 2,
-    "src/client/hud/TopStatusBarLayer.js": 1,
     "src/client/hud/UIPanel.js": 1,
     "src/client/hud/panelButton.js": 1,
     "src/mods/Notes/client/NoteTooltipLayer.js": 2,

@@ -3,10 +3,28 @@ import {GAME_FONT} from "@/client/constants.js";
 import {textOn, SLOT_HIGHLIGHT_COLOR} from "@/client/Theme.js";
 import {nineSlice, trackTap} from "@/client/layers/pixiUtils.js";
 import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/hud/InspectContent.js";
+import Mobile from "@/client/Mobile.js";
 
 export const BUTTON_HEIGHT = 34;
 const BUTTON_PADDING_X = 16;
 const HOVER_ALPHA = 0.2;
+
+/**
+ * A button label carrying its keyboard hint in brackets (docs/ux-conventions.md), dropped on
+ * touch input; single-character keys display uppercase.
+ * @param {string} label
+ * @param {string} key
+ * @returns {string}
+ */
+export function hotkeyLabel(label, key) {
+    if (Mobile.enabled) {
+        return label;
+    }
+    if (key.length === 1) {
+        return `${label} [${key.toUpperCase()}]`;
+    }
+    return `${label} [${key}]`;
+}
 
 /**
  * A 9-slice HUD button sized to its label, tinted `borderColor`; tap fires onClick. Disabled

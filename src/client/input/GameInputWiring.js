@@ -17,20 +17,11 @@ export function createInputHandler(client) {
     inputHandler.onInspect((tileX, tileY) => {
         client.handleInspect(tileX, tileY);
     });
-    // The settle flow owns the map while the player holds no chunk; chunk administration after.
     inputHandler.onMapHover((tileX, tileY) => {
-        if (client.settleFlow.active) {
-            client.settleFlow.handleHover(tileX, tileY);
-            return;
-        }
-        client.claimSelection.handleHover(tileX, tileY);
+        client.chunkMode.handleHover(tileX, tileY);
     });
     inputHandler.onMapTap((tileX, tileY, shiftKey) => {
-        if (client.settleFlow.active) {
-            client.settleFlow.handleSelect(tileX, tileY, shiftKey);
-            return;
-        }
-        client.claimSelection.handleSelect(tileX, tileY, shiftKey);
+        client.chunkMode.handleSelect(tileX, tileY, shiftKey);
     });
     inputHandler.init();
 

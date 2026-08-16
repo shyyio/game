@@ -1,29 +1,21 @@
-import {Container, Text} from "pixi.js";
-import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_TINT, PANEL_BORDER, PANEL_TINT_TEXT} from "@/client/Theme.js";
+import {PANEL_TINT, PANEL_BORDER} from "@/client/Theme.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
-import {buildPanelButton} from "@/client/hud/panelButton.js";
-import {swallowClicks} from "@/client/layers/pixiUtils.js";
+import {buildPanelButton, hotkeyLabel} from "@/client/hud/panelButton.js";
+import {
+    AbstractEdgeBarLayer,
+    EDGE_BLEED,
+    FRAME_MARGIN,
+    MIN_TEXT_WIDTH,
+    PATTERN_GAP,
+    TEXT_PADDING,
+    THIN_PATTERN_WIDTH,
+} from "@/client/hud/AbstractEdgeBarLayer.js";
 import SafeArea from "@/client/SafeArea.js";
-import Mobile from "@/client/Mobile.js";
 
-// Gap between the outer frame and its content (buttons, pattern, inset), matching the inspect
-// panel's body margin.
-const FRAME_MARGIN = 6;
 // Gap between adjacent floating buttons.
 const BUTTON_GAP = 8;
 // Gap between joined section texts, when more than one section is active at once.
 const TEXT_GAP = "   ";
-// Width of the decorative pattern strip flanking the buttons; deliberately thin.
-const THIN_PATTERN_WIDTH = 14;
-// Gap around each decorative pattern strip.
-const PATTERN_GAP = 10;
-// How far the frame sprite bleeds past the left/top/right edges, so only the bottom border reads.
-const EDGE_BLEED = 24;
-// Gap between the text and its inset's edges, kept clear of the wrap width.
-const TEXT_PADDING = 8;
-// Wrap width floor, so a narrow screen wraps hard instead of collapsing to nothing.
-const MIN_TEXT_WIDTH = 80;
 
 /**
  * One button in a status-bar section: a label and its press handler.
@@ -48,10 +40,7 @@ export class StatusBarButton {
  * @returns {StatusBarButton}
  */
 export function hotkeyButton(label, key, onClick) {
-    if (Mobile.enabled) {
-        return new StatusBarButton(label, onClick);
-    }
-    return new StatusBarButton(`${label} [${key.toUpperCase()}]`, onClick);
+    return new StatusBarButton(hotkeyLabel(label, key), onClick);
 }
 
 /**
@@ -97,31 +86,16 @@ function sectionsEqual(a, b) {
 /**
  * Full-width status bar docked to the top: sections' buttons, a pattern, then centered joined text.
  */
-export class TopStatusBarLayer extends Container {
+export class TopStatusBarLayer extends AbstractEdgeBarLayer {
 
     /**
      * @param {Application} app
      */
     constructor(app) {
-        super();
-        this._app = app;
-        this.textureRegistry = null;
-        this.zIndex = 9000;
-        this.visible = false;
+        super(app);
         /** @type {Map<string, StatusBarSection>} */
         this._sections = new Map();
-        /** @type {Container[]} */
-        this._sectionNodes = [];
-
-        this._panel = new Container();
-        this._panel.x = 0;
-        this._panel.y = 0;
-        // Presses on the bar must not fall through to the viewport (pan/tap).
-        swallowClicks(this._panel);
-        this._frame = null;
         this._onChange = null;
-        this.addChild(this._panel);
-        app.renderer.on("resize", () => this._rebuild());
     }
 
     /**
@@ -153,45 +127,27 @@ export class TopStatusBarLayer extends Container {
     }
 
     /**
-     * Repaints for the current theme.
-     * @returns {void}
+     * @protected
+     * @returns {boolean}
      */
-    restyle() {
-        this._rebuild();
+    _hasContent() {
+        return this._sections.size > 0;
     }
 
     /**
-     * Rebuilds for the current sections once the texture registry becomes available (a section
-     * can be set before the client has loaded textures).
+     * @protected
+     * @param {number} height
      * @returns {void}
      */
-    refreshBackground() {
-        this._rebuild();
-    }
-
-    /**
-     * @private
-     * @returns {void}
-     */
-    _rebuild() {
-        this.visible = this._sections.size > 0;
-        for (const node of this._sectionNodes) {
-            node.destroy({children: true});
-        }
-        this._sectionNodes = [];
-
-        let height = 0;
-        if (this.visible && this.textureRegistry !== null) {
-            height = this._rebuildContent();
-        }
+    _onRebuilt(height) {
         if (this._onChange !== null) {
-            this._onChange(this.visible ? height : 0);
+            this._onChange(height);
         }
     }
 
     /**
      * Builds the bar's content left to right and the background sized to fit it.
-     * @private
+     * @protected
      * @returns {number} the bar's total height
      */
     _rebuildContent() {
@@ -223,18 +179,7 @@ export class TopStatusBarLayer extends Container {
         const insetX = x;
         const insetWidth = Math.max(contentRight - insetX, 0);
         const textWidth = Math.max(insetWidth - TEXT_PADDING * 2, MIN_TEXT_WIDTH);
-        const text = new Text({
-            text: sections.map(section => section.text).join(TEXT_GAP),
-            style: {
-                fontFamily: GAME_FONT,
-                fontSize: 20,
-                fill: PANEL_TINT_TEXT,
-                align: "center",
-                wordWrap: true,
-                wordWrapWidth: textWidth,
-                breakWords: true,
-            },
-        });
+        const text = this._barText(sections.map(section => section.text).join(TEXT_GAP), textWidth);
 
         let rowHeight = text.height;
         for (const built of builtButtons) {
@@ -243,42 +188,27 @@ export class TopStatusBarLayer extends Container {
 
         for (const built of builtButtons) {
             built.y = contentTop + (rowHeight - built.height) / 2;
-            this._panel.addChild(built);
-            this._sectionNodes.push(built);
+            this._addNode(built);
         }
         if (builtButtons.length > 0) {
             const pattern = UIPanel.patternStrip(this.textureRegistry, THIN_PATTERN_WIDTH, rowHeight);
             pattern.position.set(patternX, contentTop);
-            this._panel.addChild(pattern);
-            this._sectionNodes.push(pattern);
+            this._addNode(pattern);
         }
 
         if (insetWidth > 0) {
             const inset = UIPanel.insetSprite(this.textureRegistry, insetWidth, rowHeight, PANEL_TINT);
             inset.position.set(insetX, contentTop);
-            this._panel.addChild(inset);
-            this._sectionNodes.push(inset);
+            this._addNode(inset);
             text.x = insetX + Math.round((insetWidth - text.width) / 2);
         } else {
             text.x = Math.round((width - text.width) / 2);
         }
         text.y = contentTop + (rowHeight - text.height) / 2;
-        this._panel.addChild(text);
-        this._sectionNodes.push(text);
+        this._addNode(text);
 
         const height = contentTop + rowHeight + FRAME_MARGIN;
-        this._rebuildBackground(width, height);
+        this._rebuildFrame(width, height, EDGE_BLEED);
         return height;
-    }
-
-    /**
-     * @private
-     * @param {number} width
-     * @param {number} height
-     * @returns {void}
-     */
-    _rebuildBackground(width, height) {
-        this._frame = UIPanel.rebuildFrame(this._panel, this._frame, this.textureRegistry,
-            width + EDGE_BLEED * 2, height + EDGE_BLEED, PANEL_TINT, {x: -EDGE_BLEED, y: -EDGE_BLEED});
     }
 }
