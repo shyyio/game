@@ -355,6 +355,10 @@ export class ObjectTool extends AbstractTool {
         if (this._replaceSameKind && occupant.data.type.typeId === this._type.typeId) {
             return true;
         }
+        if (!this._type.directional) {
+            // No facing, no alignment: UP would match every vertical lane tile.
+            return false;
+        }
         return occupant.data.type.placement.conveyor
             && Direction.axis(occupant.data.direction) === Direction.axis(direction);
     }
