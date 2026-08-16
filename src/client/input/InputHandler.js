@@ -42,7 +42,7 @@ export class InputHandler {
     get activeTool() {
         // In map mode the tool is deactivated without clearing the toolbar
         // selection, so the cursor acts as if nothing were selected: no placement,
-        // no drag, no ghost preview. (The mini-menu is suppressed too — see _handleContextGesture.)
+        // no drag, no ghost preview.
         if (this._mapMode) {
             return null;
         }
@@ -72,9 +72,9 @@ export class InputHandler {
         });
 
         // Chunk selection rides the press (a pan's start included), not the release.
-        Mouse.onPress((tileX, tileY) => {
+        Mouse.onPress((tileX, tileY, shiftKey) => {
             if (this._mapMode) {
-                this._emitMapTap(tileX, tileY);
+                this._emitMapTap(tileX, tileY, shiftKey);
             }
         });
 
@@ -195,7 +195,7 @@ export class InputHandler {
 
     /**
      * Registers the map-mode tap handler (claim selection).
-     * @param {function(tileX: number, tileY: number)} callback
+     * @param {function(tileX: number, tileY: number, shiftKey: boolean)} callback
      */
     onMapTap(callback) {
         this._onMapTap = callback;
@@ -313,11 +313,11 @@ export class InputHandler {
     /**
      * @private
      */
-    _emitMapTap(tileX, tileY) {
+    _emitMapTap(tileX, tileY, shiftKey) {
         if (this._onMapTap == null) {
             return;
         }
-        this._onMapTap(tileX, tileY);
+        this._onMapTap(tileX, tileY, shiftKey);
     }
 
     /**

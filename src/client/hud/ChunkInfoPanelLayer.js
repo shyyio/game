@@ -6,6 +6,7 @@ import {PANEL_BORDER, PANEL_TINT_TEXT, ACTIVE_ACCENT, PANEL_TITLE_TEXT, PANEL_TI
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {buildPanelButton, buildToggleRow, BUTTON_HEIGHT} from "@/client/hud/panelButton.js";
 import {swallowClicks} from "@/client/layers/pixiUtils.js";
+import Mobile from "@/client/Mobile.js";
 
 const PADDING_X = 14;
 const PADDING_Y = 10;
@@ -215,10 +216,12 @@ export class ChunkInfoPanelLayer extends Container {
         }
         const check = claims.claimCheck(chunk);
         if (check === ClaimResult.CLAIM_RESULT_OK) {
+            const claimText = claims.ownCount() === 0 ? "Claim your first chunk" : "Claim chunk";
+            const buttonLabel = Mobile.enabled ? claimText : `${claimText} [Shift+Click]`;
             return {
                 title: "Unclaimed chunk",
                 info: "Claim it to build here",
-                buttonLabel: "Claim chunk",
+                buttonLabel,
                 buttonAction: () => this._onClaim(chunk),
                 permission: null,
             };

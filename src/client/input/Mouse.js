@@ -183,7 +183,7 @@ class Mouse {
     /**
      * Every primary press on the world with the tile under it, before any drag starts
      * (the center tile under center-lock).
-     * @param {function(tileX: number, tileY: number)} callback
+     * @param {function(tileX: number, tileY: number, shiftKey: boolean)} callback
      */
     onPress(callback) {
         this._pressCallbacks.push(callback);
@@ -360,7 +360,7 @@ class Mouse {
             ({tileX: pressTileX, tileY: pressTileY} = this._centerTile());
         }
         for (const cb of this._pressCallbacks) {
-            cb(pressTileX, pressTileY);
+            cb(pressTileX, pressTileY, event.shiftKey);
         }
 
         // Center-lock (mobile, tool active) has no context gesture — orientation is

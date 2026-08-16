@@ -78,6 +78,7 @@ import {WorkerDebugLayer} from "@/client/layers/WorkerDebugLayer.js";
 import {WorkerBadgeLayer} from "@/client/layers/WorkerBadgeLayer.js";
 import {StatusMessageLayer} from "@/client/hud/StatusMessageLayer.js";
 import {TopStatusBarLayer} from "@/client/hud/TopStatusBarLayer.js";
+import {BottomActionBarLayer} from "@/client/hud/BottomActionBarLayer.js";
 import {SettingsButtonLayer} from "@/client/hud/SettingsButtonLayer.js";
 import {FriendsButtonLayer} from "@/client/hud/FriendsButtonLayer.js";
 import {ProductionButtonLayer} from "@/client/hud/ProductionButtonLayer.js";
@@ -87,6 +88,7 @@ import {ChunkInfoPanelLayer} from "@/client/hud/ChunkInfoPanelLayer.js";
 import {ChunkSelectionLayer} from "@/client/layers/ChunkSelectionLayer.js";
 import {ClaimFrontierDrawLayer} from "@/client/layers/ClaimFrontierDrawLayer.js";
 import {ClaimSelectionMode} from "@/client/input/ClaimSelectionMode.js";
+import {SettleFlow} from "@/client/input/SettleFlow.js";
 import {CenterMarkerLayer} from "@/client/layers/CenterMarkerLayer.js";
 import {MapButtonsLayer} from "@/client/hud/MapButtonsLayer.js";
 import {drawClaimIcon, drawHomeIcon} from "@/client/hud/icons.js";
@@ -206,6 +208,13 @@ export class Client {
         // Full-width top status bar: core systems and mods each own a section by id (text +
         // buttons), e.g. claim mode's claim count and exit button.
         this.topStatusBar = new TopStatusBarLayer(app);
+        // Full-width bottom bar holding the active mode's forward action (its text + Confirm).
+        this.bottomActionBar = new BottomActionBarLayer(app);
+        this._bottomBarHeight = 0;
+        this.bottomActionBar.onChange((height) => {
+            this._bottomBarHeight = height;
+            this.refreshToolbarVisibility();
+        });
         // Always-visible top-right settings button; stays clear of the bar above via its height.
         this.settingsButtonLayer = new SettingsButtonLayer(app);
         // Friend management (account-wide, not gated behind claim mode); sits left of settings.
@@ -248,10 +257,9 @@ export class Client {
         this.confirmDialogLayer = new ConfirmDialogLayer(app);
         // Center-lock aim point for claim selection (mobile).
         this.centerMarkerLayer = new CenterMarkerLayer(app, viewport);
-        // Contextual map-mode buttons (bottom-right); each toggles an input mode.
+        // Contextual map-mode buttons (bottom-right): chunk administration entry and home.
         this.mapButtonsLayer = new MapButtonsLayer(app);
         this.mapButtonsLayer.addButton("claimSelection", drawClaimIcon, () => this.claimSelection.toggle());
-        // One-shot action, never a mode: setActive never fires.
         this.mapButtonsLayer.addButton("home", drawHomeIcon, () => this.glideHome());
 
         // Ownership borders for claimed chunks (map/overworld mode).
@@ -299,6 +307,7 @@ export class Client {
             this.toolbarLayer,
             this.statusLayer,
             this.topStatusBar,
+            this.bottomActionBar,
             this.settingsButtonLayer,
             this.friendsButtonLayer,
             this.friendsPanelLayer,
@@ -347,9 +356,12 @@ export class Client {
         this._debugMode = false;
         // Host event listeners, the last stop of the event fan-out.
         this._eventListeners = new ListenerList();
-        // Claim selection input mode controller.
+        // Chunk administration input mode controller.
         this.claimSelection = new ClaimSelectionMode(this);
         this.onEvent(event => this.claimSelection.onEvent(event));
+        // The first-claim flow, owning the state before the player holds any chunk.
+        this.settleFlow = new SettleFlow(this);
+        this.onEvent(event => this.settleFlow.onEvent(event));
         // Toast/confirm-dialog feedback for claim/unclaim rejections.
         this.claimResultFeedback = new ClaimResultFeedback(this);
         this.onEvent(event => this.claimResultFeedback.onEvent(event));
@@ -369,6 +381,9 @@ export class Client {
         this.toolbarLayer.visible = visible;
         if (visible) {
             this.chunkInfoPanelLayer.setBottomOffset(HUD_BOTTOM_OFFSET);
+        } else if (this._bottomBarHeight > 0) {
+            // The panel docks on top of the bottom action bar.
+            this.chunkInfoPanelLayer.setBottomOffset(this._bottomBarHeight + HUD_BOTTOM_MARGIN);
         } else {
             this.chunkInfoPanelLayer.setBottomOffset(HUD_BOTTOM_MARGIN);
         }
@@ -556,6 +571,8 @@ export class Client {
         this.statusLayer.refreshBackground();
         this.topStatusBar.textureRegistry = this.textureRegistry;
         this.topStatusBar.refreshBackground();
+        this.bottomActionBar.textureRegistry = this.textureRegistry;
+        this.bottomActionBar.refreshBackground();
         this.noticeLayer.textureRegistry = this.textureRegistry;
         this.confirmDialogLayer.textureRegistry = this.textureRegistry;
         this.chunkInfoPanelLayer.textureRegistry = this.textureRegistry;
@@ -572,6 +589,7 @@ export class Client {
         this.app.stage.addChild(this.toolbarLayer);
         this.app.stage.addChild(this.statusLayer);
         this.app.stage.addChild(this.topStatusBar);
+        this.app.stage.addChild(this.bottomActionBar);
         this.app.stage.addChild(this.settingsButtonLayer);
         this.app.stage.addChild(this.friendsButtonLayer);
         this.app.stage.addChild(this.productionButtonLayer);
@@ -686,6 +704,7 @@ export class Client {
             this._onViewModeChange(mode);
         }
         this.claimSelection.onViewMode(previous);
+        this.settleFlow.onViewMode(previous);
         if (mode === ViewMode.OVERWORLD) {
             this._enterOverworld();
         } else if (previous === ViewMode.OVERWORLD) {
@@ -846,7 +865,16 @@ export class Client {
         // Draw layers before the input layer, so a hover Mouse emits renders with center-lock on.
         this.drawLayerRegistry.setCenterLock(enabled);
         Mouse.setCenterLock(enabled);
-        this.claimSelection.updateIndicators();
+        this.refreshCenterMarker();
+    }
+
+    /**
+     * The center aim dot follows whichever chunk-picking mode is on, center-lock only.
+     * @returns {void}
+     */
+    refreshCenterMarker() {
+        const picking = this.claimSelection.active || this.settleFlow.active;
+        this.centerMarkerLayer.setActive(this._centerLock && picking && this._viewMode !== ViewMode.WORLD);
     }
 
     /**

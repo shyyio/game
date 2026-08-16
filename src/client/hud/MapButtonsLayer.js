@@ -1,14 +1,10 @@
 import {Container, Graphics} from "pixi.js";
 import {HUD_BOTTOM_OFFSET, ViewMode} from "@/client/constants.js";
-import {PANEL_BORDER, PANEL_TEXT, BLOCKED_TILE_COLOR} from "@/client/Theme.js";
-import {ICON_STROKE} from "@/client/hud/icons.js";
 import {drawCircleButtonFace, trackTap} from "@/client/layers/pixiUtils.js";
 
 const BUTTON_RADIUS = 24;
 const BUTTON_GAP = 10;
 const MARGIN = 16;
-// Arm length of the close cross inside the active (red) circle.
-const CROSS_ARM = 8;
 
 /**
  * One entry in the map button stack: its display, icon painter, press action, and state.
@@ -17,7 +13,7 @@ class MapButton {
 
     /**
      * @param {string} id
-     * @param {function(Graphics): void} drawIcon - paints the idle icon around (0, 0)
+     * @param {function(Graphics): void} drawIcon - paints the icon around (0, 0)
      * @param {function(): void} onPress
      * @param {Container} container
      * @param {Graphics} face
@@ -28,14 +24,14 @@ class MapButton {
         this.onPress = onPress;
         this.container = container;
         this.face = face;
-        this.active = false;
         this.shown = true;
         this.hovered = false;
     }
 }
 
 /**
- * Contextual map-mode buttons: bottom-right stack, zoomed-out only, one per input mode.
+ * Contextual map-mode buttons: bottom-right stack, zoomed-out only, each a one-shot action or
+ * a mode entry (the mode's own bars take over once inside).
  */
 export class MapButtonsLayer extends Container {
 
@@ -58,7 +54,7 @@ export class MapButtonsLayer extends Container {
     /**
      * Registers a button; order in the stack follows registration order, bottom-up.
      * @param {string} id
-     * @param {function(Graphics): void} drawIcon - paints the idle icon around (0, 0)
+     * @param {function(Graphics): void} drawIcon - paints the icon around (0, 0)
      * @param {function(): void} onPress
      * @returns {void}
      */
@@ -81,20 +77,6 @@ export class MapButtonsLayer extends Container {
         this.addChild(container);
         this._render(button);
         this._refresh();
-    }
-
-    /**
-     * @param {string} id
-     * @param {boolean} active
-     * @returns {void}
-     */
-    setActive(id, active) {
-        const button = this._require(id);
-        if (button.active === active) {
-            return;
-        }
-        button.active = active;
-        this._render(button);
     }
 
     /**
@@ -175,7 +157,7 @@ export class MapButtonsLayer extends Container {
     }
 
     /**
-     * Idle: panel-background circle with the button's icon; active: red circle with a close cross.
+     * Panel-background circle with the button's icon.
      * @private
      * @param {MapButton} button
      * @returns {void}
@@ -183,19 +165,6 @@ export class MapButtonsLayer extends Container {
     _render(button) {
         const face = button.face;
         face.clear();
-        if (button.active) {
-            face
-                .circle(0, 0, BUTTON_RADIUS)
-                .fill({color: BLOCKED_TILE_COLOR})
-                .stroke({color: PANEL_BORDER, width: 1});
-            face
-                .moveTo(-CROSS_ARM, -CROSS_ARM)
-                .lineTo(CROSS_ARM, CROSS_ARM)
-                .moveTo(CROSS_ARM, -CROSS_ARM)
-                .lineTo(-CROSS_ARM, CROSS_ARM)
-                .stroke({color: PANEL_TEXT, width: ICON_STROKE + 0.5, cap: "round"});
-            return;
-        }
         drawCircleButtonFace(face, BUTTON_RADIUS, button.hovered);
         button.drawIcon(face);
     }

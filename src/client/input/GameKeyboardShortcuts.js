@@ -26,6 +26,10 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
         toolbar.setActiveTool(null);
         client.claimSelection.set(false);
     });
+    // Enter fires the bottom action bar's Confirm (a no-op while the bar is hidden).
+    on("Enter", () => {
+        client.bottomActionBar.pressConfirm();
+    });
     on("h", () => {
         client.glideHome();
     });
