@@ -1,13 +1,9 @@
-import {EXIT_HOTKEY, OVERWORLD_SCALE_THRESHOLD, TILE_SIZE, ViewMode} from "@/client/constants.js";
+import {CHUNK_PICK_ZOOM_SCALE, EXIT_HOTKEY, TILE_SIZE, ViewMode} from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent} from "@/common/ClaimEvents.js";
 import {FriendListEvent} from "@/common/PlayerEvents.js";
 import {StatusBarSection, hotkeyButton} from "@/client/hud/TopStatusBarLayer.js";
 import {BottomBarAction} from "@/client/hud/BottomActionBarLayer.js";
-import {ChunkCursor} from "@/client/input/ChunkCursor.js";
-
-// Where the mode's auto-zoom lands: map mode's far edge, just shy of overworld.
-const MODE_ZOOM_SCALE = OVERWORLD_SCALE_THRESHOLD * 1.1;
 
 // Entry glide skipped within a chunk of the centroid; the mode activates in place.
 const GLIDE_MIN_DISTANCE_PX = CHUNK_SIZE * TILE_SIZE;
@@ -28,8 +24,7 @@ export class ClaimSelectionMode {
     constructor(client) {
         this._client = client;
         this._claims = client.cache.view("chunkClaims");
-        // The bottom bar's status text tracks the selection.
-        this._cursor = new ChunkCursor(client, () => this.updateIndicators());
+        this._cursor = client.chunkCursor;
         this._on = false;
         // Entry glide in flight: the mode activates only once the viewport arrives.
         this._entering = false;
@@ -137,7 +132,7 @@ export class ClaimSelectionMode {
         if (!this.active) {
             return null;
         }
-        const text = `Chunk administration   ${this._claims.ownCount()}/${this._claims.maxChunks} chunks claimed`;
+        const text = `${this._claims.ownCount()}/${this._claims.maxChunks} chunks claimed`;
         return new StatusBarSection(text, [hotkeyButton("Back", EXIT_HOTKEY, () => this.set(false))]);
     }
 
@@ -209,7 +204,7 @@ export class ClaimSelectionMode {
         this._entering = true;
         const center = this._client.ownClaimsCenter();
         if (this._client.viewMode === ViewMode.WORLD) {
-            this._client.viewport.glideTo({x: center.x, y: center.y, scale: MODE_ZOOM_SCALE}, done);
+            this._client.viewport.glideTo({x: center.x, y: center.y, scale: CHUNK_PICK_ZOOM_SCALE}, done);
             return;
         }
         if (this._farFromCenter(center)) {
@@ -235,6 +230,6 @@ export class ClaimSelectionMode {
      * @returns {boolean}
      */
     _hasClaims() {
-        return this._claims.ownCount() > 0;
+        return this._claims.hasOwnClaims();
     }
 }

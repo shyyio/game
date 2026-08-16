@@ -1,10 +1,6 @@
-import {MAP_MODE_SCALE_THRESHOLD, OVERWORLD_SCALE_THRESHOLD, ViewMode} from "@/client/constants.js";
+import {CHUNK_PICK_ZOOM_SCALE, MAP_MODE_SCALE_THRESHOLD, ViewMode} from "@/client/constants.js";
 import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent} from "@/common/ClaimEvents.js";
 import {StatusBarSection} from "@/client/hud/TopStatusBarLayer.js";
-import {ChunkCursor} from "@/client/input/ChunkCursor.js";
-
-// Where the flow's view sits: map mode's far edge, just shy of overworld.
-const SETTLE_ZOOM_SCALE = OVERWORLD_SCALE_THRESHOLD * 1.1;
 
 // Where the first claim lands the player: world mode's far edge, just past map mode.
 const LANDING_ZOOM_SCALE = MAP_MODE_SCALE_THRESHOLD * 1.1;
@@ -12,8 +8,8 @@ const LANDING_ZOOM_SCALE = MAP_MODE_SCALE_THRESHOLD * 1.1;
 // This flow's top status bar section id.
 const FLOW_ID = "settle";
 
-const WORLD_PROMPT = "No claimed chunks yet — zoom out to claim your first one";
-const MAP_PROMPT = "Claim your first chunk. You can change this later.";
+const WORLD_PROMPT = "No claimed chunks yet. Zoom out to claim your first one";
+const MAP_PROMPT = "Claim your first chunk. You can change it later.";
 
 /**
  * The first-claim flow: while the player holds no chunks the map picks one chunk and nothing else,
@@ -27,7 +23,7 @@ export class SettleFlow {
     constructor(client) {
         this._client = client;
         this._claims = client.cache.view("chunkClaims");
-        this._cursor = new ChunkCursor(client);
+        this._cursor = client.chunkCursor;
         this._active = false;
         // One-shot: the connect-time view (map zoom without claims, home with them).
         this._connectViewApplied = false;
@@ -54,7 +50,7 @@ export class SettleFlow {
         if (event instanceof OwnClaimsSyncEvent && !this._connectViewApplied) {
             this._connectViewApplied = true;
             if (this._active) {
-                this._client.viewport.glideTo({scale: SETTLE_ZOOM_SCALE});
+                this._client.viewport.glideTo({scale: CHUNK_PICK_ZOOM_SCALE});
             } else {
                 this._client.startAtHome();
             }
@@ -162,6 +158,6 @@ export class SettleFlow {
      * @returns {boolean}
      */
     _noClaims() {
-        return this._claims.ownPlayerId !== null && this._claims.ownCount() === 0;
+        return this._claims.ownPlayerId !== null && !this._claims.hasOwnClaims();
     }
 }

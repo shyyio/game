@@ -4,10 +4,11 @@ import {CHUNK_SIZE, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkOrigin} from "@/common/util.js";
 import {ClaimResult, ChunkPermission} from "@/common/ClaimEvents.js";
 import {ACTIVE_ACCENT, PANEL_BORDER} from "@/client/Theme.js";
-import {buildPanelButton, buildToggleRow} from "@/client/hud/panelButton.js";
+import {buildPanelButton, buildToggleRow, hotkeyLabel} from "@/client/hud/panelButton.js";
 import {swallowClicks} from "@/client/layers/pixiUtils.js";
-import Mobile from "@/client/Mobile.js";
 
+// Key hint on the Claim button, matching the shift-click shortcut.
+const CLAIM_SHORTCUT_HINT = "Shift+🖰";
 // Clearance kept from every screen edge.
 const SCREEN_MARGIN = 8;
 // Vertical gap between stacked rows.
@@ -50,6 +51,10 @@ export class ChunkActionsLayer extends Container {
         this.visible = false;
         this._chunk = null;
         this._statusText = null;
+        // The stack's size, measured once per rebuild: pixi's width/height getters walk the
+        // subtree, and _layout runs every frame.
+        this._stackWidth = 0;
+        this._stackHeight = 0;
         this._onClaim = null;
         this._onUnclaim = null;
         this._onAddFriend = null;
@@ -156,7 +161,7 @@ export class ChunkActionsLayer extends Container {
         const owner = claims.ownerOf(chunk);
         if (owner !== PLAYER_ID_NONE && owner === claims.ownPlayerId) {
             return {
-                status: "Your chunk — you can build here",
+                status: "Your chunk. You can build here",
                 rows: [
                     this._buildPermissionRow(claims.permissionOf(chunk)),
                     this._buildButton("Unclaim chunk", () => this._onUnclaim(chunk)),
@@ -168,9 +173,9 @@ export class ChunkActionsLayer extends Container {
             // Access comes from THEIR grant; the button toggles the own player's grant back.
             let status;
             if (claims.isFriendsWithMe(owner)) {
-                status = `${name}'s chunk — ${name} lets you build here`;
+                status = `${name}'s chunk. ${name} lets you build here`;
             } else {
-                status = `${name}'s chunk — you cannot build here`;
+                status = `${name}'s chunk. You cannot build here`;
             }
             let row;
             if (claims.isFriend(owner)) {
@@ -182,9 +187,9 @@ export class ChunkActionsLayer extends Container {
         }
         const check = claims.claimCheck(chunk);
         if (check === ClaimResult.CLAIM_RESULT_OK) {
-            const label = Mobile.enabled ? "Claim" : "Claim [Shift+🖰]";
+            const label = hotkeyLabel("Claim", CLAIM_SHORTCUT_HINT);
             return {
-                status: "Unclaimed chunk — claim it to build here",
+                status: "Unclaimed chunk. Claim it to build here",
                 rows: [this._buildButton(label, () => this._onClaim(chunk))],
             };
         }
@@ -221,6 +226,8 @@ export class ChunkActionsLayer extends Container {
             y += row.height + ROW_GAP;
             this._stack.addChild(row);
         }
+        this._stackWidth = width;
+        this._stackHeight = Math.max(y - ROW_GAP, 0);
         this.visible = true;
         this._layout();
     }
@@ -260,17 +267,16 @@ export class ChunkActionsLayer extends Container {
             return;
         }
         const origin = chunkOrigin(this._chunk);
-        const topLeft = this._viewport.toScreen(origin.x * TILE_SIZE, origin.y * TILE_SIZE);
-        const bottomRight = this._viewport.toScreen(
-            (origin.x + CHUNK_SIZE) * TILE_SIZE,
-            (origin.y + CHUNK_SIZE) * TILE_SIZE,
+        const center = this._viewport.toScreen(
+            (origin.x + CHUNK_SIZE / 2) * TILE_SIZE,
+            (origin.y + CHUNK_SIZE / 2) * TILE_SIZE,
         );
-        const width = this._stack.width;
-        const height = this._stack.height;
+        const width = this._stackWidth;
+        const height = this._stackHeight;
         const screen = this._app.screen;
-        let x = (topLeft.x + bottomRight.x) / 2 - width / 2;
+        let x = center.x - width / 2;
         x = Math.min(Math.max(x, SCREEN_MARGIN), screen.width - width - SCREEN_MARGIN);
-        let y = (topLeft.y + bottomRight.y) / 2 - height / 2;
+        let y = center.y - height / 2;
         y = Math.min(Math.max(y, SCREEN_MARGIN), screen.height - height - SCREEN_MARGIN);
         this._stack.x = Math.round(x);
         this._stack.y = Math.round(y);

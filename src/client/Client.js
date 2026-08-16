@@ -87,6 +87,7 @@ import {ChunkSelectionLayer} from "@/client/layers/ChunkSelectionLayer.js";
 import {ClaimFrontierDrawLayer} from "@/client/layers/ClaimFrontierDrawLayer.js";
 import {ClaimSelectionMode} from "@/client/input/ClaimSelectionMode.js";
 import {SettleFlow} from "@/client/input/SettleFlow.js";
+import {ChunkCursor} from "@/client/input/ChunkCursor.js";
 import {CenterMarkerLayer} from "@/client/layers/CenterMarkerLayer.js";
 import {MapButtonsLayer} from "@/client/hud/MapButtonsLayer.js";
 import {drawClaimIcon, drawHomeIcon} from "@/client/hud/icons.js";
@@ -349,6 +350,8 @@ export class Client {
         this._debugMode = false;
         // Host event listeners, the last stop of the event fan-out.
         this._eventListeners = new ListenerList();
+        // The selected chunk, shared by the chunk-picking modes below.
+        this.chunkCursor = new ChunkCursor(this);
         // Chunk administration input mode controller.
         this.claimSelection = new ClaimSelectionMode(this);
         this.onEvent(event => this.claimSelection.onEvent(event));
@@ -368,7 +371,7 @@ export class Client {
      * @returns {void}
      */
     refreshToolbarVisibility() {
-        const hasClaims = this.cache.view("chunkClaims").ownCount() > 0;
+        const hasClaims = this.cache.view("chunkClaims").hasOwnClaims();
         this.toolbarLayer.visible = hasClaims && this._viewMode === ViewMode.WORLD;
     }
 
@@ -395,7 +398,7 @@ export class Client {
         } else if (status === SESSION_STATUS_SUPERSEDED) {
             this.statusLayer.setOverride("Signed in on another device");
         } else if (status === SESSION_STATUS_REJECTED) {
-            this.statusLayer.setOverride("Could not reconnect — refresh the page");
+            this.statusLayer.setOverride("Could not reconnect. Refresh the page");
         } else if (status === SESSION_STATUS_CONNECTED) {
             this.statusLayer.clearOverride();
             this._resync();
@@ -559,6 +562,8 @@ export class Client {
         this.noticeLayer.textureRegistry = this.textureRegistry;
         this.confirmDialogLayer.textureRegistry = this.textureRegistry;
         this.chunkActionsLayer.textureRegistry = this.textureRegistry;
+        // A chunk can be selected before the textures land, which skips the stack's build.
+        this.chunkActionsLayer.refresh();
         this.friendsPanelLayer.textureRegistry = this.textureRegistry;
         this.friendsPanelLayer.viewport = this.viewport;
         this.friendsPanelLayer.anchorButton = this.friendsButtonLayer;
@@ -852,11 +857,23 @@ export class Client {
     }
 
     /**
+     * The chunk-picking mode holding the map: the settle flow until the player owns a chunk,
+     * chunk administration after (itself inert while off).
+     * @returns {SettleFlow|ClaimSelectionMode}
+     */
+    get chunkMode() {
+        if (this.settleFlow.active) {
+            return this.settleFlow;
+        }
+        return this.claimSelection;
+    }
+
+    /**
      * The center aim dot follows whichever chunk-picking mode is on, center-lock only.
      * @returns {void}
      */
     refreshCenterMarker() {
-        const picking = this.claimSelection.active || this.settleFlow.active;
+        const picking = this.chunkMode.active;
         this.centerMarkerLayer.setActive(this._centerLock && picking && this._viewMode !== ViewMode.WORLD);
     }
 

@@ -170,6 +170,13 @@ export class ChunkClaimsView extends AbstractCacheView {
     }
 
     /**
+     * @returns {boolean}
+     */
+    hasOwnClaims() {
+        return this.ownCount() > 0;
+    }
+
+    /**
      * @returns {number[]} the own player's claimed chunks
      */
     ownChunks() {

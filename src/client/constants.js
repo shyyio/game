@@ -23,12 +23,14 @@ export const MIN_VIEWPORT_SCALE = 1024 / (REGION_SIZE * CHUNK_SIZE * TILE_SIZE);
 // Screen-pixel gap between bottom-anchored HUD elements and the screen bottom, clearing the toolbar.
 export const HUD_BOTTOM_OFFSET = 160;
 
-// Screen-pixel gap between bottom-anchored HUD elements and the screen bottom when the toolbar
-// is hidden and there's nothing to clear.
-export const HUD_BOTTOM_MARGIN = 16;
-
 // Key that leaves any input mode, shown as the hint on the status bar's exit buttons.
 export const EXIT_HOTKEY = "q";
+
+// Key that fires the bottom action bar's Confirm.
+export const CONFIRM_HOTKEY = "Enter";
+
+// Where the chunk-picking modes park the view: map mode's far edge, just shy of overworld.
+export const CHUNK_PICK_ZOOM_SCALE = OVERWORLD_SCALE_THRESHOLD * 1.1;
 
 // A cached overworld chunk older than this refetches when it is next visible.
 export const OVERWORLD_CHUNK_TTL_MS = 30_000;

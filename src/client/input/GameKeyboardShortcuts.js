@@ -1,5 +1,5 @@
 import Keyboard from "@/client/input/Keyboard.js";
-import {EXIT_HOTKEY} from "@/client/constants.js";
+import {CONFIRM_HOTKEY, EXIT_HOTKEY} from "@/client/constants.js";
 import {Belts} from "@/mods/Logistics/sim/Belts.js";
 import {DEV} from "@/common/env.js";
 
@@ -26,8 +26,8 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
         toolbar.setActiveTool(null);
         client.claimSelection.set(false);
     });
-    // Enter fires the bottom action bar's Confirm (a no-op while the bar is hidden).
-    on("Enter", () => {
+    // Confirm fires the bottom action bar's forward action (a no-op while the bar is hidden).
+    on(CONFIRM_HOTKEY, () => {
         client.bottomActionBar.pressConfirm();
     });
     on("h", () => {

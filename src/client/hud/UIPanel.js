@@ -298,28 +298,6 @@ export class UIPanel extends Container {
     }
 
     /**
-     * Replaces `previous` with a fresh {@link UIPanel.patternStrip} at `index`; `width <= 0` just drops `previous` and returns null.
-     * @param {Container} container
-     * @param {TilingSprite|null} previous
-     * @param {TextureRegistry} textureRegistry
-     * @param {number} width
-     * @param {number} height
-     * @param {{x: number, y: number}} position
-     * @param {number} index
-     * @returns {TilingSprite|null}
-     */
-    static rebuildPattern(container, previous, textureRegistry, width, height, position, index) {
-        if (width <= 0) {
-            if (previous !== null) {
-                previous.destroy();
-            }
-            return null;
-        }
-        return UIPanel._rebuildSprite(container, previous,
-            () => UIPanel.patternStrip(textureRegistry, width, height), position, index);
-    }
-
-    /**
      * Shared "destroy previous, build fresh, position, insert" step for the rebuild* helpers.
      * @private
      * @param {Container} container
