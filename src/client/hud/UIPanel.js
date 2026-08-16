@@ -247,8 +247,8 @@ export class UIPanel extends Container {
     }
 
     /**
-     * Rebuilds a content-sized frame+inset pair (compact HUD boxes like NoticeLayer/StatusMessageLayer/
-     * ChunkInfoPanelLayer, not a full draggable {@link UIPanel}); inset is inset by `frameMargin` on every side.
+     * Rebuilds a content-sized frame+inset pair (compact HUD boxes like NoticeLayer/StatusMessageLayer,
+     * not a full draggable {@link UIPanel}); inset is inset by `frameMargin` on every side.
      * @param {Container} container
      * @param {{frame: NineSliceSprite|null, inset: NineSliceSprite|null}} previous
      * @param {TextureRegistry} textureRegistry

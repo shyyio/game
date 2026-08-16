@@ -12,9 +12,11 @@ export class ChunkCursor {
 
     /**
      * @param {Client} client
+     * @param {function(chunk: number|null): void|null} [onChange] - fires after every selection change
      */
-    constructor(client) {
+    constructor(client, onChange = null) {
         this._client = client;
+        this._onChange = onChange;
         this._chunk = null;
     }
 
@@ -66,7 +68,7 @@ export class ChunkCursor {
     }
 
     /**
-     * Targets the chunk panel and the selection square; null clears both.
+     * Targets the chunk action stack and the selection square; null clears both.
      * @param {number|null} chunk
      * @returns {void}
      */
@@ -76,9 +78,12 @@ export class ChunkCursor {
         this._client.chunkClaimsLayer.setSelectedChunk(chunk);
         this._client.claimFrontierLayer.setSelectedChunk(chunk);
         if (chunk === null) {
-            this._client.chunkInfoPanelLayer.hide();
+            this._client.chunkActionsLayer.hide();
         } else {
-            this._client.chunkInfoPanelLayer.showChunk(chunk);
+            this._client.chunkActionsLayer.showChunk(chunk);
+        }
+        if (this._onChange !== null) {
+            this._onChange(chunk);
         }
     }
 

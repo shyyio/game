@@ -40,8 +40,6 @@ function themedTexts() {
     // case, lightening the fill most under light text.
     const circleButton = composited(Theme.PANEL_FILL, Theme.PANEL_FILL_ALPHA, 0xffffff);
     return [
-        {where: "ChunkInfoPanelLayer title", fill: Theme.PANEL_TITLE_TEXT, background: frame, fontSize: 18, bold: true},
-        {where: "ChunkInfoPanelLayer info", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
         {where: "UIPanel title", fill: Theme.PANEL_TITLE_TEXT, background: frame, fontSize: 18, bold: true},
         {where: "ConfirmDialogLayer title", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 18, bold: true},
         {where: "ConfirmDialogLayer message", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
@@ -72,7 +70,6 @@ function themedTexts() {
 // checked here, or listed as drawn over the world.
 const CHECKED_TEXTS = {
     "src/client/hud/BottomActionBarLayer.js": 1,
-    "src/client/hud/ChunkInfoPanelLayer.js": 2,
     "src/client/hud/ConfirmDialogLayer.js": 2,
     "src/client/hud/InspectContent.js": 2,
     "src/client/hud/NoticeLayer.js": 1,
