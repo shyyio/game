@@ -87,7 +87,7 @@ export class EffectiveToolController {
     }
 
     /**
-     * The tool's status-bar contribution: its text and an exit button. Null with no tool.
+     * The tool's status-bar contribution: its text and its Back button. Null with no tool.
      * @private
      * @param {AbstractTool|null} tool
      * @returns {StatusBarSection|null}
@@ -96,8 +96,8 @@ export class EffectiveToolController {
         if (tool == null) {
             return null;
         }
-        const exit = hotkeyButton("Exit", EXIT_HOTKEY, () => this.toolbar.setActiveTool(null));
-        return new StatusBarSection(tool.statusText, [exit]);
+        const back = hotkeyButton("Back", EXIT_HOTKEY, () => this.toolbar.setActiveTool(null));
+        return new StatusBarSection(tool.statusText, [back]);
     }
 
     /**

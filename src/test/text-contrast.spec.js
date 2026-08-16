@@ -48,6 +48,7 @@ function themedTexts() {
         {where: "NoticeLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
         {where: "StatusMessageLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
         {where: "TopStatusBarLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 20, bold: false},
+        {where: "BottomActionBarLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 20, bold: false},
         {where: "PanelText header", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: true},
         {where: "PanelText body", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
         {where: "PanelText muted", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
@@ -70,6 +71,7 @@ function themedTexts() {
 // pixi Text constructions per file, so a new one has to be classified before this suite passes:
 // checked here, or listed as drawn over the world.
 const CHECKED_TEXTS = {
+    "src/client/hud/BottomActionBarLayer.js": 1,
     "src/client/hud/ChunkInfoPanelLayer.js": 2,
     "src/client/hud/ConfirmDialogLayer.js": 2,
     "src/client/hud/InspectContent.js": 2,

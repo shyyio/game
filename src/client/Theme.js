@@ -58,7 +58,7 @@ const HIGH_CONTRAST_PALETTE = {
 
 const PALETTES = [DEFAULT_PALETTE, HIGH_CONTRAST_PALETTE];
 
-// ---- HUD panel background (mini-menu, rotate buttons, status message) ----
+// ---- HUD panel background (rotate buttons, status message) ----
 export let PANEL_FILL = DEFAULT_PALETTE.PANEL_FILL;
 export let PANEL_FILL_ALPHA = DEFAULT_PALETTE.PANEL_FILL_ALPHA;
 export let PANEL_BORDER = DEFAULT_PALETTE.PANEL_BORDER;

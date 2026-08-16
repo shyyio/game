@@ -10,7 +10,7 @@ const MOVE_EASE = "easeOutCubic";
 /**
  * The game's pan/zoom {@link Viewport}, with helpers to freeze interaction:
  * panning only (while a tool is active, so cursor drags paint tiles and zoom
- * stays live) or everything (while the direction wheel or mini-menu is open).
+ * stays live) or wheel-zoom only (while the pointer is over a scrollable HUD list).
  */
 export class ClientViewport extends Viewport {
 
@@ -62,22 +62,6 @@ export class ClientViewport extends Viewport {
             };
         }
         this.animate(options);
-    }
-
-    /**
-     * Freezes all viewport interaction (pan, zoom, pinch, decelerate) so the
-     * world can't move behind a modal such as the direction wheel.
-     */
-    freeze() {
-        this.pause = true;
-    }
-
-    /**
-     * Resumes the interaction frozen by {@link ClientViewport#freeze}, handing
-     * control back to each plugin's own paused state.
-     */
-    unfreeze() {
-        this.pause = false;
     }
 
     /**
