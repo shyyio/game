@@ -14,7 +14,7 @@ import {
     BeltItemResetEvent,
 } from "./common/events.js";
 import {tunnelStep, BELT_RAMP_DOWN, BELT_RAMP_UP, BELT_UNDERGROUND} from "./common/constants.js";
-import {surfaceBeltAt, walkTunnel, isRamp, inferBeltParent} from "./common/geometry.js";
+import {walkTunnel, isRamp, inferBeltParent} from "./common/geometry.js";
 import {
     AbstractClientMod,
     ObjectInsertEvent,
@@ -22,7 +22,6 @@ import {
     PortItemClearEvent,
     Direction,
     PORT_SPRITE_KEY,
-    InspectHighlight,
     Rectangle,
     TILE_SIZE,
 } from "@spup/sdk/client";
@@ -487,7 +486,7 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Tool-less hover: reveal the buried tunnel under a hovered ramp and return the tiles to highlight.
+     * Tool-less hover: reveal the buried tunnel under a hovered ramp. Belts draw no highlight.
      * @param {number|null} tileX
      * @param {number|null} tileY
      * @param {Client} client
@@ -499,25 +498,14 @@ export class LogisticsClientMod extends AbstractClientMod {
             return [];
         }
         const records = client.objects.getAtTile(tileX, tileY);
-        const surface = surfaceBeltAt(client.objects, tileX, tileY);
         const ramp = records.find(record => isBeltType(record.data.type) && isRamp(record.data.type.beltKind));
         const tunnel = ramp === undefined ? null : walkTunnel(client.objects, ramp);
-
-        // Highlight the hovered surface belt/ramp, plus the tunneled-to ramp (alternate highlight).
-        const highlights = [];
-        if (surface !== null) {
-            highlights.push(new InspectHighlight(tileX, tileY, surface.data.direction, surface.data.type));
-        }
-        if (tunnel !== null && tunnel.pair !== null) {
-            highlights.push(new InspectHighlight(tunnel.pair.tileX, tunnel.pair.tileY, tunnel.pair.data.direction, tunnel.pair.data.type, true));
-        }
-
         if (tunnel === null) {
             this._overlayLayer.clearUndergroundReveal();
         } else {
             this._overlayLayer.showUndergroundReveal(tunnel.tiles, ramp.data.direction);
         }
-        return highlights;
+        return [];
     }
 
 }

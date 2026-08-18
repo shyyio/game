@@ -9,6 +9,12 @@ export class InspectLayer extends AbstractDrawLayer {
     constructor() {
         super();
         this._sprites = [];
+        /**
+         * Whether a hovered item outranks these highlights, hiding them.
+         * @type {boolean}
+         * @private
+         */
+        this._suppressed = false;
     }
 
     get layerIndex() {
@@ -39,6 +45,28 @@ export class InspectLayer extends AbstractDrawLayer {
             const sprite = new ObjectSprite(0, highlight.tileX, highlight.tileY, highlight.direction, texture, highlight.type);
             this.addChild(sprite);
             this._sprites.push(sprite);
+        }
+        this._applySuppressed();
+    }
+
+    /**
+     * Hides or reveals the highlights, driven by {@link ItemInspectLayer} when an item is
+     * bracketed under the cursor.
+     * @param {boolean} suppressed
+     * @returns {void}
+     */
+    setSuppressed(suppressed) {
+        this._suppressed = suppressed;
+        this._applySuppressed();
+    }
+
+    /**
+     * @private
+     * @returns {void}
+     */
+    _applySuppressed() {
+        for (const sprite of this._sprites) {
+            sprite.visible = !this._suppressed;
         }
     }
 
