@@ -58,6 +58,10 @@ export class Belts {
         this._colCount = new Int32Array(PATH_CAPACITY);
         this._colLeadGap = new Int32Array(PATH_CAPACITY);
         this._colFirstGap = new Int32Array(PATH_CAPACITY);
+        // The head tile's two side in-ports (NO_EID when absent) and the one chosen to ingest this tick.
+        this._colSideInPortA = new Int32Array(PATH_CAPACITY);
+        this._colSideInPortB = new Int32Array(PATH_CAPACITY);
+        this._colIngestPort = new Int32Array(PATH_CAPACITY);
         // Whether the path's chunk has a watcher, cached at an observation generation (0 = never).
         this._colObserved = new Uint8Array(PATH_CAPACITY);
         this._colObservedGen = new Int32Array(PATH_CAPACITY);
@@ -807,6 +811,22 @@ export class Belts {
     }
 
     /**
+     * The head tile's two side in-ports, mirroring a normal belt's virtual_left/virtual_right port
+     * definitions: a feed bending in from either flank lands on its own edge, not the head's straight
+     * one. NO_EID for a kind that only takes a straight feed.
+     * @private
+     * @param {object} head - the run's head belt
+     * @returns {number[]} two entries, either a port eid or NO_EID
+     */
+    _sideInPorts(head) {
+        if (head.type !== BELT_NORMAL) {
+            return [NO_EID, NO_EID];
+        }
+        return [Direction.rotate(head.direction, 1), Direction.rotate(head.direction, 3)]
+            .map(direction => this.engine.portAt(head.x, head.y, direction));
+    }
+
+    /**
      * Builds the single-chunk run into one path, preserving items when it end-extends one removed path.
      * @private
      * @param {object[]} run - the run's belts, head -> tail
@@ -980,6 +1000,11 @@ export class Belts {
         const ports = [];
         for (const path of this.paths) {
             ports.push(path.inPort, path.outPort);
+            for (const side of path.sideInPorts) {
+                if (side !== NO_EID) {
+                    ports.push(side);
+                }
+            }
         }
         return ports;
     }
@@ -1010,6 +1035,10 @@ export class Belts {
         this.paths.push(path);
         this._colInPort[slot] = path.inPort;
         this._colOutPort[slot] = path.outPort;
+        path.sideInPorts = this._sideInPorts(this.beltById(path.beltIds[0]));
+        this._colSideInPortA[slot] = path.sideInPorts[0];
+        this._colSideInPortB[slot] = path.sideInPorts[1];
+        this._colIngestPort[slot] = path.inPort;
         this._colHeadGap[slot] = path.initialHeadGap;
         this._colObservedGen[slot] = 0;
         this._loadItems(slot, path);
@@ -1100,7 +1129,7 @@ export class Belts {
         while (capacity <= slot) {
             capacity *= 2;
         }
-        for (const name of ["_colInPort", "_colOutPort", "_colHeadGap", "_colCount", "_colLeadGap", "_colFirstGap", "_colObservedGen", "_colItemBase", "_colItemSlab", "_colItemHead"]) {
+        for (const name of ["_colInPort", "_colOutPort", "_colHeadGap", "_colCount", "_colLeadGap", "_colFirstGap", "_colSideInPortA", "_colSideInPortB", "_colIngestPort", "_colObservedGen", "_colItemBase", "_colItemSlab", "_colItemHead"]) {
             const grown = new Int32Array(capacity);
             grown.set(this[name]);
             this[name] = grown;
@@ -1194,6 +1223,9 @@ export class Belts {
         this._colCount[slot] = this._colCount[lastSlot];
         this._colLeadGap[slot] = this._colLeadGap[lastSlot];
         this._colFirstGap[slot] = this._colFirstGap[lastSlot];
+        this._colSideInPortA[slot] = this._colSideInPortA[lastSlot];
+        this._colSideInPortB[slot] = this._colSideInPortB[lastSlot];
+        this._colIngestPort[slot] = this._colIngestPort[lastSlot];
         this._colItemBase[slot] = this._colItemBase[lastSlot];
         this._colItemSlab[slot] = this._colItemSlab[lastSlot];
         this._colItemHead[slot] = this._colItemHead[lastSlot];
@@ -1305,6 +1337,29 @@ export class Belts {
     }
 
     /**
+     * The head's side in-port holding an ingestible item, or `primary` when neither does. A side
+     * port another path already drains as its own in-port (an underground crossing the head tile)
+     * is left alone, so one resting item is never ingested twice.
+     * @private
+     * @param {number} slot
+     * @param {number} primary - the path's straight in-port
+     * @returns {number}
+     */
+    _sideFeed(slot, primary) {
+        const items = this.engine.Port.item;
+        const slotByInPort = this._slotByInPort.column;
+        for (const side of [this._colSideInPortA[slot], this._colSideInPortB[slot]]) {
+            if (side === NO_EID || items[side] === EMPTY || this.engine.isFluid(items[side])) {
+                continue;
+            }
+            if (slotByInPort[side] === NO_SLOT) {
+                return side;
+            }
+        }
+        return primary;
+    }
+
+    /**
      * SUBMIT_INTENTS: a lead item submits its out-port shift; a path with room declares its in-port drainable.
      * @private
      * @returns {void}
@@ -1321,7 +1376,11 @@ export class Belts {
         const count = this.paths.length;
         for (let slot = 0; slot < count; slot += 1) {
             const firstGap = firstGapCol[slot];
-            const inPort = inPortCol[slot];
+            let inPort = inPortCol[slot];
+            if (P[inPort] === EMPTY) {
+                inPort = this._sideFeed(slot, inPort);
+            }
+            this._colIngestPort[slot] = inPort;
             const outPort = outPortCol[slot];
             const leadIsItem = leadGapCol[slot] === 0;
             // A fluid port ahead never links: the path holds its lead instead of stranding an item there.
@@ -1355,7 +1414,7 @@ export class Belts {
         // Phase 1: move each path one half-tile; out-port writes deferred so a shared seam still
         // holds last tick's value.
         const engine = this.engine;
-        const inPortCol = this._colInPort;
+        const ingestPortCol = this._colIngestPort;
         const outPortCol = this._colOutPort;
         const headGapCol = this._colHeadGap;
         const countCol = this._colCount;
@@ -1419,7 +1478,7 @@ export class Belts {
         // Phase 2: ingest each path's resting in-port item at the input edge; fluids are refused.
         const itemIds = this._items.ids;
         for (let slot = 0; slot < count; slot += 1) {
-            const inPort = inPortCol[slot];
+            const inPort = ingestPortCol[slot];
             if (headGapCol[slot] === 0 || P[inPort] === EMPTY || engine.isFluid(P[inPort])) {
                 continue;
             }
