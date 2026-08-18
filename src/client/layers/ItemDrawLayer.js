@@ -20,6 +20,7 @@ export const DEFAULT_ITEM_DEFINITION = new ItemDefinition("Unknown", "items/3");
 // arrive and briefly rest before the next move).
 const MOVE_DURATION_MS = 190;
 
+
 /**
  * The single shared item layer. Renders item particles keyed by id, with glide. Mods that
  * compute item positions (belts) drive it imperatively; resting items in render-flagged
@@ -204,9 +205,10 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {boolean} [move.hidden] - the item is under cover (in a tunnel)
      */
     moveItem({key, tileX, tileY, halfTile, sourceDirection, type, snap=false, hidden=false}) {
-        const definition = this._definitionFor(type);
+        const definition = this.definitionFor(type);
         const texture = this.textureRegistry.get(definition.texture);
         const particle = this._items.take(key, texture);
+        particle.itemType = type;
         particle.setTexture(texture);
         particle.setTint(definition.tint);
         particle.hidden = hidden;
@@ -235,14 +237,42 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * The definition for an item type, or the default for an unmapped type.
      * @param {number} type
      * @returns {ItemDefinition}
-     * @private
      */
-    _definitionFor(type) {
+    definitionFor(type) {
         const definition = this._itemRegistry.get(type);
         if (definition === undefined) {
             return DEFAULT_ITEM_DEFINITION;
         }
         return definition;
+    }
+
+    /**
+     * The visible item nearest a world point, within `reach` of it on both axes; null if none is.
+     * Picking by point, not by tile, so half-tile items straddling a tile edge are pickable.
+     * @param {number} x - world pixels
+     * @param {number} y - world pixels
+     * @param {number} reach - world pixels from the point an item's center may sit
+     * @returns {ItemParticle|null}
+     */
+    itemAt(x, y, reach) {
+        let nearest = null;
+        let nearestDistance = 0;
+        for (const particle of this._items.values()) {
+            if (particle.hidden) {
+                continue;
+            }
+            const dx = Math.abs(particle.x - x);
+            const dy = Math.abs(particle.y - y);
+            if (dx > reach || dy > reach) {
+                continue;
+            }
+            const distance = dx + dy;
+            if (nearest === null || distance < nearestDistance) {
+                nearest = particle;
+                nearestDistance = distance;
+            }
+        }
+        return nearest;
     }
 
     /**
@@ -353,6 +383,8 @@ class ItemParticle extends Particle {
     ) {
         super({texture, anchorX: 0.5, anchorY: 0.5});
         this._container = container;
+        // The item type on show, so a picked particle can be named.
+        this.itemType = null;
         // Under cover (in a tunnel): positioned but rendered at alpha 0 outside debug mode.
         this.hidden = false;
         // Glide state: start/target pixels and ms elapsed into the current move.
@@ -415,6 +447,7 @@ class ItemParticle extends Particle {
      * @returns {void}
      */
     reset() {
+        this.itemType = null;
         this.hidden = false;
         this._startX = null;
         this._startY = null;

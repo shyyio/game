@@ -63,6 +63,8 @@ import {OverworldDrawLayer} from "@/client/layers/OverworldDrawLayer.js";
 import {GridDrawLayer} from "@/client/layers/GridDrawLayer.js";
 import {PlacementFeedbackLayer} from "@/client/layers/PlacementFeedbackLayer.js";
 import {InspectLayer} from "@/client/layers/InspectLayer.js";
+import {ItemInspectLayer} from "@/client/layers/ItemInspectLayer.js";
+import {InspectTooltipLayer} from "@/client/hud/InspectTooltipLayer.js";
 import {ObjectsView} from "@/client/state/ObjectsState.js";
 import {ObjectTypeClientBundle} from "@/client/ObjectTypeClientBundle.js";
 import {ObjectDrawLayer} from "@/client/layers/ObjectDrawLayer.js";
@@ -185,13 +187,17 @@ export class Client {
         // Built once: coreTools() must return the same instances every call so a toolbar rebuild
         // (reorder, resync) doesn't orphan an active core tool's identity.
         this._coreTools = [new EraserTool(this)];
-        // Shared hover-highlight layer, driven by mods' inspect hover.
-        this.inspectLayer = new InspectLayer();
         // Shared placement facing, so orientation persists across tool switches.
         this.toolRotation = new ToolRotation();
         // The single shared item layer: belts drive their computed-position items imperatively;
         // resting out-port items render here automatically from the port-item events.
         this.itemLayer = new ItemDrawLayer(modRegistry.items);
+        // Shared hover-highlight layer, driven by mods' inspect hover.
+        this.inspectLayer = new InspectLayer();
+        // The hovered item's bracket, drawn between the items and the objects carrying them.
+        this.itemInspectLayer = new ItemInspectLayer(this.itemLayer, this.inspectLayer);
+        // The bracketed item's name, docked above its bracket.
+        this.inspectTooltipLayer = new InspectTooltipLayer(app, this.itemInspectLayer, this.itemLayer);
         // The single shared connection-stub layer, derived from the cache as objects change.
         this.connectionLayer = new ConnectionDrawLayer();
         // Commuting worker figures for manned machines, routed over the cached road tiles.
@@ -311,6 +317,7 @@ export class Client {
             this.confirmDialogLayer,
             this.mapButtonsLayer,
             this.chunkActionsLayer,
+            this.inspectTooltipLayer,
             ...this._modHudLayers.filter(layer => layer.restyle !== undefined),
         ];
         onThemeChange(() => this._restyleHud());
@@ -320,6 +327,7 @@ export class Client {
         this.drawLayerRegistry.add(new GridDrawLayer());
         this.drawLayerRegistry.add(this.placementFeedbackLayer);
         this.drawLayerRegistry.add(this.inspectLayer);
+        this.drawLayerRegistry.add(this.itemInspectLayer);
         this.drawLayerRegistry.add(this.itemLayer);
         this.drawLayerRegistry.add(this.connectionLayer);
         this.drawLayerRegistry.add(this.workerLayer);
@@ -578,6 +586,8 @@ export class Client {
         this.app.stage.addChild(this.statusLayer);
         this.app.stage.addChild(this.topStatusBar);
         this.app.stage.addChild(this.bottomActionBar);
+        this.inspectTooltipLayer.viewport = this.viewport;
+        this.app.stage.addChild(this.inspectTooltipLayer);
         this.app.stage.addChild(this.settingsButtonLayer);
         this.app.stage.addChild(this.friendsButtonLayer);
         this.app.stage.addChild(this.productionButtonLayer);
@@ -1127,11 +1137,14 @@ export class Client {
             bundle.type.tapAction(record, this.session, this);
             return;
         }
+        // Nothing tappable here, so the tap names the item under it: touch has no hover to pick
+        // one with.
+        this.itemInspectLayer.tapAt(Mouse.aimPoint());
     }
 
     /**
      * Routes an inspect hover to every client mod and drives the inspect-highlight layer with the
-     * highlights they return (empty clears it).
+     * highlights they return (empty clears it); an item under the cursor outranks them.
      * @param {number|null} tileX
      * @param {number|null} tileY
      * @returns {void}
@@ -1148,6 +1161,8 @@ export class Client {
         }
         const bespoke = this.modRegistry.clientMods
             .flatMap(mod => mod.onInspect(tileX, tileY, this));
+        this.itemInspectLayer.setInspecting(tileX !== null);
+        this.itemInspectLayer.refresh();
         this.inspectLayer.show(derived.concat(bespoke));
     }
 
