@@ -9,7 +9,9 @@ import {
 import {TradingTerminalType} from "./common/objectTypes.js";
 import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./common/messages.js";
 import {MarketSnapshotEvent, MARKET_SNAPSHOT_NONE} from "./common/events.js";
-import {MARKET_MODE_SELL, MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "./common/constants.js";
+import {
+    MARKET_MODE_SELL, MARKET_MODE_BUY, MARKET_SETTING_BALANCE, MARKET_STARTING_BALANCE,
+} from "./common/constants.js";
 
 const ITEM = 500;
 const PRICE = 10;
@@ -28,12 +30,23 @@ class NpcPriceFixtureDeclaration extends AbstractModDeclaration {
     }
 }
 
+/**
+ * Drops the connect-time starting grant, so each test funds exactly the side it means to.
+ * @returns {void}
+ */
+function clearBalances(game, ...sessions) {
+    for (const session of sessions) {
+        game.playerSettings.set(session.playerId, MARKET_SETTING_BALANCE, 0);
+    }
+}
+
 async function gameWithSessions(extraPackages = []) {
     const game = await makeGame(extraPackages);
     const seller = new CapturingSession(1);
     const buyer = new CapturingSession(2);
     game.connect(seller);
     game.connect(buyer);
+    clearBalances(game, seller, buyer);
     return {game, seller, buyer};
 }
 
@@ -96,6 +109,7 @@ test("an unclaimed chunk's terminal never trades", async () => {
     const buyer = new CapturingSession(2);
     game.connect(seller);
     game.connect(buyer);
+    clearBalances(game, seller, buyer);
     // Claim only buyer's chunk; seller's stays unclaimed.
     game.dispatchMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP), seller);
     const sellerEid = game.simEngine.placed.eidsOf(TradingTerminalType.typeId).at(-1);
@@ -232,4 +246,15 @@ test("a sustained trade keeps settling every tick (full throughput, end to end)"
     }
     assert.equal(balanceOf(game, seller.playerId), PRICE * 5);
     assert.equal(balanceOf(game, buyer.playerId), 1000 - PRICE * 5);
+});
+
+test("a first-time player is granted a starting balance, a returning one is not topped up", async () => {
+    const game = await makeGame();
+    const player = new CapturingSession(1);
+    game.connect(player);
+    assert.equal(balanceOf(game, player.playerId), MARKET_STARTING_BALANCE);
+
+    game.playerSettings.set(player.playerId, MARKET_SETTING_BALANCE, 0);
+    game.connect(new CapturingSession(1));
+    assert.equal(balanceOf(game, player.playerId), 0, "a player who spent down to 0 is not re-granted");
 });

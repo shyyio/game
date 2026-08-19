@@ -11,11 +11,11 @@ import {RemoteSession} from "@/client/RemoteSession.js";
 import {WireRegistry} from "@/common/wire.js";
 import {Client} from "@/client/Client.js";
 import {createInputHandler} from "@/client/input/GameInputWiring.js";
-import {DEV} from "@/common/env.js";
 import {mintReconnectToken, enterServerContext} from "@/client/AuthClient.js";
 import WindowFocus from "@/client/WindowFocus.js";
 import {DEFAULT_TICK_MS} from "@/common/constants.js";
 import {GAME_MODE_REMOTE} from "@/client/GameStart.js";
+import {SCENARIO_PARAM} from "@/test/scenarios/scenarioParam.js";
 
 // Matches the server's --tick-ms default, so local mode runs at the same real-time rate.
 const LOCAL_TICK_INTERVAL_MS = DEFAULT_TICK_MS;
@@ -78,10 +78,9 @@ export async function createClient(app, viewport, props) {
         );
         await game.init();
 
-        // Dev scenarios populate the world before any session connects, so the objects reach the
-        // client through the normal chunk sync. DEV is a build-time literal, so the whole scenario
-        // tree drops out of production bundles.
-        if (DEV) {
+        // Scenarios populate the world before any session connects, so the objects reach the client
+        // through the normal chunk sync. Only a ?scenario= URL pulls in the tree.
+        if (new URLSearchParams(window.location.search).has(SCENARIO_PARAM)) {
             const {applyScenarioFromLocation} = await import("@/test/scenarios/index.js");
             await applyScenarioFromLocation(game);
         }

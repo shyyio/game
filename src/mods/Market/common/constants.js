@@ -8,6 +8,10 @@ export const MARKET_MODE_BUY = 2;
 // Per-player currency balance (server-authoritative).
 export const MARKET_SETTING_BALANCE = 10;
 
+// Granted once, on a player's first connect: nothing else seeds a balance, and every NPC listing is
+// buy-side, so a player with nothing cannot trade their way to a first credit.
+export const MARKET_STARTING_BALANCE = 10000;
+
 // This mod's metrics fact type: one fact per trade side (shared flat keyspace, see MetricsFact.js).
 export const METRICS_FACT_TYPE_TRADE_EXECUTED = 3;
 

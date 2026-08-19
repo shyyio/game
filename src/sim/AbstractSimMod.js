@@ -29,6 +29,14 @@ export class AbstractSimMod {
     }
 
     /**
+     * Optional hook: a session joined, before any of its state is synced.
+     * @param {AbstractSession} session
+     * @param {Game} game
+     * @returns {void}
+     */
+    onSessionConnect(session, game) {}
+
+    /**
      * Optional hook: a session left; its bus subscriptions are already gone.
      * @param {number} sessionId
      * @param {Game} game
