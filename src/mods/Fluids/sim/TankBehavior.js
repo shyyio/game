@@ -1,5 +1,4 @@
 import {AbstractBehavior, TickPhase, EMPTY, NO_EID} from "@spup/sdk";
-import {FLUID_UNIT} from "../common/constants.js";
 import {TankFluidSetEvent} from "../common/events.js";
 
 /**
@@ -106,14 +105,14 @@ export class TankBehavior extends AbstractBehavior {
         for (let row = 0; row < count; row += 1) {
             const resting = item[tank.in[row]];
             if (resting !== EMPTY
-                && tank.capacity[row] - tank.amount[row] >= FLUID_UNIT
+                && tank.amount[row] < tank.capacity[row]
                 && (tank.amount[row] === 0 || resting === tank.fluidType[row])) {
                 engine.submitDrain(tank.in[row], true);
                 tank.fluidType[row] = resting;
-                tank.amount[row] += FLUID_UNIT;
+                tank.amount[row] += 1;
                 engine.setPortFluidSource(tank.out[row], resting);
             }
-            if (tank.amount[row] >= FLUID_UNIT) {
+            if (tank.amount[row] > 0) {
                 engine.submitCreate(tank.out[row], tank.fluidType[row], item[tank.out[row]] === EMPTY);
             }
         }
@@ -134,7 +133,7 @@ export class TankBehavior extends AbstractBehavior {
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
             if (engine.wasResolvedDest(tank.out[row])) {
-                tank.amount[row] -= FLUID_UNIT;
+                tank.amount[row] -= 1;
                 if (tank.amount[row] === 0) {
                     tank.fluidType[row] = EMPTY;
                     engine.setPortFluidSource(tank.out[row], EMPTY);

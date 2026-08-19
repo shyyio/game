@@ -104,6 +104,7 @@ export const ExtractorType = new ObjectType({
 
 const IN_A = new PortDefinition("in_a", {x: 0, y: 0, direction: Direction.UP});
 const IN_B = new PortDefinition("in_b", {x: 1, y: 0, direction: Direction.UP});
+const IN_B_FLUID = new PortDefinition("in_b", {x: 1, y: 0, direction: Direction.UP}, true, true);
 const OUT_A = new PortDefinition("out_a", {x: 0, y: -1, direction: Direction.UP});
 const OUT_B = new PortDefinition("out_b", {x: 1, y: -1, direction: Direction.UP});
 
@@ -250,7 +251,7 @@ export const DelicateAssemblyType = machine("DelicateAssembly", "Delicate Assemb
 
 export const FillType = machine("Fill", "Fill", {
     toolId: 25,
-    inputPorts: [IN_A, IN_B],
+    inputPorts: [IN_A, IN_B_FLUID],
     outputPorts: [OUT_A],
     geometry: "1x2",
     processingTicks: 4,

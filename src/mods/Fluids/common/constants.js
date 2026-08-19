@@ -38,14 +38,11 @@ export const FLUID_TYPE_OIL = 231;
  * @typedef {number} FluidType
  */
 
-// Units per port payload per tick; a typical 100-unit recipe is ten payloads.
-export const FLUID_UNIT = 10;
-
 // Units one pipe segment buffers; a network's capacity is its segment count times this.
-export const PIPE_SEGMENT_CAPACITY = 100;
+export const PIPE_SEGMENT_CAPACITY = 2;
 
 // Units one tank holds.
-export const TANK_CAPACITY = 1000;
+export const TANK_CAPACITY = 40;
 
 // Map-mode / fill colors by fluid type.
 const FLUID_COLORS = {
