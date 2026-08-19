@@ -6,20 +6,15 @@ import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
 import {rotate} from "@/common/util.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
-import {ItemDefinition} from "@/common/ItemDefinition.js";
 import ReducedMotion from "@/client/ReducedMotion.js";
 
 // Item sprites resting in out-ports share this layer with belt-path items; their keys are
 // namespaced from the path-item row-id keys so the two can't collide.
 export const PORT_SPRITE_KEY = portId => `port:${portId}`;
 
-// Definition for an item type with no mod-supplied mapping.
-export const DEFAULT_ITEM_DEFINITION = new ItemDefinition("Unknown", "items/3");
-
 // Items glide to each new position over this long (the game tick is 600ms, so they
 // arrive and briefly rest before the next move).
 const MOVE_DURATION_MS = 190;
-
 
 /**
  * The single shared item layer. Renders item particles keyed by id, with glide. Mods that
@@ -66,6 +61,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
                 return particle;
             },
             particle => {
+                particle.live = false;
                 particle.setAlpha(0);
                 this._gliding.delete(particle);
             },
@@ -205,9 +201,10 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {boolean} [move.hidden] - the item is under cover (in a tunnel)
      */
     moveItem({key, tileX, tileY, halfTile, sourceDirection, type, snap=false, hidden=false}) {
-        const definition = this.definitionFor(type);
+        const definition = this._itemRegistry.definitionFor(type);
         const texture = this.textureRegistry.get(definition.texture);
         const particle = this._items.take(key, texture);
+        particle.live = true;
         particle.itemType = type;
         particle.setTexture(texture);
         particle.setTint(definition.tint);
@@ -234,19 +231,6 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * The definition for an item type, or the default for an unmapped type.
-     * @param {number} type
-     * @returns {ItemDefinition}
-     */
-    definitionFor(type) {
-        const definition = this._itemRegistry.get(type);
-        if (definition === undefined) {
-            return DEFAULT_ITEM_DEFINITION;
-        }
-        return definition;
-    }
-
-    /**
      * The visible item nearest a world point, within `reach` of it on both axes; null if none is.
      * Picking by point, not by tile, so half-tile items straddling a tile edge are pickable.
      * @param {number} x - world pixels
@@ -258,7 +242,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         let nearest = null;
         let nearestDistance = 0;
         for (const particle of this._items.values()) {
-            if (particle.hidden) {
+            if (!particle.pickable) {
                 continue;
             }
             const dx = Math.abs(particle.x - x);
@@ -385,6 +369,8 @@ class ItemParticle extends Particle {
         this._container = container;
         // The item type on show, so a picked particle can be named.
         this.itemType = null;
+        // False once released to the pool.
+        this.live = false;
         // Under cover (in a tunnel): positioned but rendered at alpha 0 outside debug mode.
         this.hidden = false;
         // Glide state: start/target pixels and ms elapsed into the current move.
@@ -394,6 +380,14 @@ class ItemParticle extends Particle {
         this._targetX = null;
         this._targetY = null;
         this._elapsed = 0;
+    }
+
+    /**
+     * Whether the item can be picked out of the world: on show, and not under cover.
+     * @returns {boolean}
+     */
+    get pickable() {
+        return this.live && !this.hidden;
     }
 
     /**

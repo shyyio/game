@@ -48,6 +48,13 @@ export {rectEdgePoint, drawPanelConnector, CONNECTOR_PANEL_INSET} from "@/client
 // Declarative panel-body builder (header/text/row/scrollSection) for use with UIPanel.managed.
 export {PanelStack, PanelRowDescriptor, ROW_HEIGHT, ROW_GAP} from "@/client/hud/PanelStack.js";
 export {panelText, TextRole} from "@/client/hud/PanelText.js";
+// Base for a tooltip box anchored beside a world point, with its shared metrics.
+export {
+    AbstractTooltipLayer,
+    TOOLTIP_HOVER_DELAY_MS,
+    TOOLTIP_PADDING,
+    TOOLTIP_SCREEN_MARGIN,
+} from "@/client/hud/AbstractTooltipLayer.js";
 // Single-line text field: a DOM input overlaid on a themed pixi box, swallowing game hotkeys while focused.
 export {TextInput} from "@/client/hud/TextInput.js";
 export {ConnectedPanelLayer} from "@/client/hud/ConnectedPanelLayer.js";
