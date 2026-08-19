@@ -78,10 +78,22 @@ export class AbstractTooltipLayer extends Container {
      */
     placeAt(worldX, worldY, offsetX, offsetY) {
         const anchor = this.viewport.toScreen(worldX, worldY);
+        this.placeAtScreen(anchor.x, anchor.y, offsetX, offsetY);
+    }
+
+    /**
+     * Puts the box at a screen point plus an offset, nudged back inside the screen.
+     * @param {number} screenX
+     * @param {number} screenY
+     * @param {number} offsetX
+     * @param {number} offsetY
+     * @returns {void}
+     */
+    placeAtScreen(screenX, screenY, offsetX, offsetY) {
         const maxX = this._app.screen.width - this._boxWidth - TOOLTIP_SCREEN_MARGIN;
         const maxY = this._app.screen.height - this._boxHeight - TOOLTIP_SCREEN_MARGIN;
-        this.x = clamp(anchor.x + offsetX, TOOLTIP_SCREEN_MARGIN, maxX);
-        this.y = clamp(anchor.y + offsetY, TOOLTIP_SCREEN_MARGIN, maxY);
+        this.x = clamp(screenX + offsetX, TOOLTIP_SCREEN_MARGIN, maxX);
+        this.y = clamp(screenY + offsetY, TOOLTIP_SCREEN_MARGIN, maxY);
     }
 }
 

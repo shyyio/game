@@ -56,10 +56,11 @@ function themedTexts() {
         {where: "panelButton label (accent)", fill: Theme.textOn(Theme.ACTIVE_ACCENT), background: buttonActive, fontSize: 15, bold: true},
         {where: "toggle segment label (inactive)", fill: Theme.textOn(Theme.PANEL_BORDER), background: buttonInactive, fontSize: 15, bold: true},
         {where: "RotateButtonsLayer icon", fill: Theme.PANEL_TEXT, background: circleButton, fontSize: 28, bold: true},
-        {where: "InspectContent progress label", fill: Theme.PROGRESS_TEXT_COLOR, stroke: Theme.PROGRESS_TEXT_STROKE, background: progressBar, fontSize: 15, bold: true},
+        {where: "InspectProgressBar label", fill: Theme.PROGRESS_TEXT_COLOR, stroke: Theme.PROGRESS_TEXT_STROKE, background: progressBar, fontSize: 15, bold: true},
         {where: "InspectContent worker row (staffed)", fill: Theme.WORKER_OK_TEXT, stroke: Theme.PROGRESS_TEXT_STROKE, background: slot, fontSize: 15, bold: true},
         {where: "InspectContent worker row (missing)", fill: Theme.WORKER_MISSING_TEXT, stroke: Theme.PROGRESS_TEXT_STROKE, background: slot, fontSize: 15, bold: true},
-        // The note tooltip is a flat filled box, not a tinted 9-slice.
+        // The slot and note tooltips are flat filled boxes, not tinted 9-slices.
+        {where: "SlotTooltip name", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
         {where: "NoteTooltipLayer text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
         {where: "NoteTooltipLayer author", fill: Theme.PANEL_BORDER, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
     ];
@@ -70,7 +71,8 @@ function themedTexts() {
 const CHECKED_TEXTS = {
     "src/client/hud/AbstractEdgeBarLayer.js": 1,
     "src/client/hud/ConfirmDialogLayer.js": 2,
-    "src/client/hud/InspectContent.js": 2,
+    "src/client/hud/InspectContent.js": 1,
+    "src/client/hud/InspectProgressBar.js": 1,
     "src/client/hud/NoticeLayer.js": 1,
     "src/client/hud/PanelText.js": 1,
     "src/client/hud/RotateButtonsLayer.js": 1,
