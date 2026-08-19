@@ -194,6 +194,11 @@ export class Game {
 
         this.metrics.onConnect(session);
 
+        // Before any sync, so a mod granting this player something starts it in the sync snapshot.
+        for (const mod of this.modRegistry.simMods) {
+            mod.onSessionConnect(session, this);
+        }
+
         this._syncPlayerSettings(session);
         this._syncToolOrder(session);
         this._syncGameSettings(session);

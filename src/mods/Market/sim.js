@@ -5,7 +5,8 @@ import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./c
 import {MarketSnapshotEvent, MARKET_SNAPSHOT_NONE} from "./common/events.js";
 import {
     MARKET_MODE_NONE, MARKET_MODE_SELL, MARKET_MODE_BUY, MARKET_SETTING_BALANCE,
-    METRICS_FACT_TYPE_TRADE_EXECUTED, METRICS_TRADE_SIDE_SELL, METRICS_TRADE_SIDE_BUY,
+    MARKET_STARTING_BALANCE, METRICS_FACT_TYPE_TRADE_EXECUTED, METRICS_TRADE_SIDE_SELL,
+    METRICS_TRADE_SIDE_BUY,
 } from "./common/constants.js";
 
 /**
@@ -24,6 +25,23 @@ export class MarketSimMod extends AbstractSimMod {
      * @returns {void}
      */
     setup(sim) {}
+
+    /**
+     * Grants a first-time player their starting balance. An unset key means never granted and never
+     * traded; a player who spent down to 0 holds a stored 0 and is not topped back up.
+     * @param {AbstractSession} session
+     * @param {Game} game
+     * @returns {void}
+     */
+    onSessionConnect(session, game) {
+        if (session.playerId === PLAYER_ID_NONE) {
+            return;
+        }
+        if (game.playerSettings.get(session.playerId, MARKET_SETTING_BALANCE) !== undefined) {
+            return;
+        }
+        game.playerSettings.set(session.playerId, MARKET_SETTING_BALANCE, MARKET_STARTING_BALANCE);
+    }
 
     /**
      * @param {AbstractMessage} message
