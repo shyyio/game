@@ -155,6 +155,9 @@ export {MetricsGlobalQueryEntry} from "@/common/MetricsGlobalQueryEntry.js";
 // ModRegistry merges them into its ItemRegistry (modRegistry.items).
 export {ItemDefinition} from "@/common/ItemDefinition.js";
 
+// An item count or currency amount as at most five characters (99999, 9999K, 999M, 1B).
+export {formatCount} from "@/common/util.js";
+
 // Rotates a `{x, y}` offset (a port or size vector) by a placement direction, so a mod
 // can compute where an object's ports/geometry land from its ObjectType.
 export {rotate} from "@/common/util.js";

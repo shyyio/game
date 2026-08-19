@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {canonicalOrigin, jwtExpiry} from "@/common/util.js";
+import {canonicalOrigin, formatCount, jwtExpiry} from "@/common/util.js";
 import {ORIGIN_PATTERN} from "@/common/constants.js";
 
 /**
@@ -43,4 +43,30 @@ test("canonicalOrigin rejects anything that isn't a bare ws(s) origin", () => {
 
 test("canonicalOrigin output matches the canonical origin pattern", () => {
     assert.equal(ORIGIN_PATTERN.test(canonicalOrigin("wss://Example.com")), true);
+});
+
+test("formatCount keeps counts within five characters", () => {
+    assert.equal(formatCount(0), "0");
+    assert.equal(formatCount(1), "1");
+    assert.equal(formatCount(99_999), "99999");
+    assert.equal(formatCount(100_000), "100K");
+    assert.equal(formatCount(999_999), "999K");
+    assert.equal(formatCount(1_500_000), "1500K");
+    assert.equal(formatCount(9_999_999), "9999K");
+    assert.equal(formatCount(10_000_000), "10M");
+    assert.equal(formatCount(999_999_999), "999M");
+    assert.equal(formatCount(1_000_000_000), "1B");
+    assert.equal(formatCount(9_999_000_000_000), "9999B");
+});
+
+test("formatCount clamps beyond the widest unit", () => {
+    assert.equal(formatCount(Number.MAX_SAFE_INTEGER), "9999B");
+});
+
+test("formatCount throws on anything but an unsigned integer", () => {
+    assert.throws(() => formatCount(-1), RangeError);
+    assert.throws(() => formatCount(-9_999_999), RangeError);
+    assert.throws(() => formatCount(1.5), RangeError);
+    assert.throws(() => formatCount(Number.NaN), RangeError);
+    assert.throws(() => formatCount("100"), RangeError);
 });

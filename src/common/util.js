@@ -317,3 +317,31 @@ export function rotate(point, direction) {
             return {x: point.y, y: fixNegativeZero(-point.x), direction: newDirection};
     }
 }
+// Count brackets, widest magnitude first per unit; the last one absorbs everything above it.
+const COUNT_UNITS = [
+    {divisor: 1, suffix: "", limit: 99_999},
+    {divisor: 1_000, suffix: "K", limit: 9_999_999},
+    {divisor: 1_000_000, suffix: "M", limit: 999_999_999},
+    {divisor: 1_000_000_000, suffix: "B", limit: Number.MAX_SAFE_INTEGER},
+];
+
+// The largest count the last unit still renders exactly; anything above it clamps.
+const COUNT_MAX = 9_999 * 1_000_000_000;
+
+/**
+ * An unsigned integer count or currency amount as at most five characters (99999, 9999K, 999M, 1B).
+ * @param {number} n
+ * @returns {string}
+ */
+export function formatCount(n) {
+    if (!Number.isInteger(n) || n < 0) {
+        throw new RangeError(`Cannot format ${n} as a count: expected an unsigned integer`);
+    }
+    const count = Math.min(n, COUNT_MAX);
+    for (const unit of COUNT_UNITS) {
+        if (count <= unit.limit) {
+            return `${Math.floor(count / unit.divisor)}${unit.suffix}`;
+        }
+    }
+    throw new RangeError(`Cannot format ${n} as a count`);
+}
