@@ -1,5 +1,6 @@
 import {UIPanel} from "@/client/hud/UIPanel.js";
-import {buildInspectContent, inspectContentHeight} from "@/client/hud/InspectContent.js";
+import {InspectContent, inspectContentHeight} from "@/client/hud/InspectContent.js";
+import {SlotTooltip} from "@/client/hud/SlotTooltip.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT} from "@/client/Theme.js";
 import {ConnectedPanelLayer} from "@/client/hud/ConnectedPanelLayer.js";
 
@@ -42,8 +43,11 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
          */
         this.items = null;
         this._onClose = null;
-        // objectId string -> {panel, position}.
+        // objectId string -> InspectPanelRecord.
         this._panels = new Map();
+        // The hovered slot's item name, above every panel.
+        this._tooltip = new SlotTooltip(app);
+        this.addChild(this._tooltip);
         this.debug = false;
     }
 
@@ -78,7 +82,12 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
         let record = this._panels.get(key);
         if (record === undefined) {
             // Height comes from the first snapshot (workerCost is a type constant, so a worker row never appears later).
-            record = this._createPanel(event.objectId, UIPanel.heightForContent(inspectContentHeight(event)));
+            const panel = this._createPanel(event.objectId, UIPanel.heightForContent(inspectContentHeight(event)));
+            const content = new InspectContent(event, panel.contentWidth, this.textureRegistry, this.items, this._tooltip);
+            panel.addContent(content);
+            // Outlines snapshot the children, so they are drawn once the body is in.
+            panel.setDebug(this.debug);
+            record = new InspectPanelRecord(panel, content);
             this._panels.set(key, record);
             this._connectors.set(key, () => record.panel, () => {
                 if (record.position === undefined) {
@@ -88,13 +97,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
             });
         }
         record.position = machineTile;
-
-        // Rebuild the body from the latest snapshot.
-        record.panel.clearContent();
-        buildInspectContent(record.panel, event, this.textureRegistry, this.items, lastProduced);
-        if (this.debug) {
-            record.panel.setDebug(true);
-        }
+        record.content.update(event, lastProduced);
     }
 
     /**
@@ -104,7 +107,9 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
     restyle() {
         for (const record of this._panels.values()) {
             record.panel.restyle(PANEL_TINT, PANEL_TITLE_TEXT);
+            record.content.restyle();
         }
+        this._tooltip.restyle();
     }
 
     /**
@@ -125,7 +130,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
     /**
      * @param {number} objectId
      * @param {number} height - the panel's outer height for this machine's content
-     * @returns {object} the panel record
+     * @returns {UIPanel}
      * @private
      */
     _createPanel(objectId, height) {
@@ -152,7 +157,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
         panel.x = this._cascadeAxis((screen.width - PANEL_WIDTH) / 2, maxX, index);
         panel.y = this._cascadeAxis((screen.height - height) / 2, maxY, index);
         this.addChild(panel);
-        return {panel};
+        return panel;
     }
 
     /**
@@ -169,5 +174,27 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
         const phase = index % (2 * range);
         const step = phase <= range ? phase : 2 * range - phase;
         return base + step * SPAWN_CASCADE;
+    }
+}
+
+/**
+ * One open machine's panel: its body content and the machine tile its connector points at.
+ */
+class InspectPanelRecord {
+
+    /**
+     * @param {UIPanel} panel
+     * @param {InspectContent} content
+     */
+    constructor(
+        panel,
+        content,
+    ) {
+        this.panel = panel;
+        this.content = content;
+        /**
+         * @type {{x: number, y: number}|undefined}
+         */
+        this.position = undefined;
     }
 }

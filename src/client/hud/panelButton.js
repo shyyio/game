@@ -2,7 +2,7 @@ import {Container, Graphics, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {textOn, SLOT_HIGHLIGHT_COLOR} from "@/client/Theme.js";
 import {nineSlice, trackTap} from "@/client/layers/pixiUtils.js";
-import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/hud/InspectContent.js";
+import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/hud/slotFrame.js";
 import Mobile from "@/client/Mobile.js";
 
 export const BUTTON_HEIGHT = 34;

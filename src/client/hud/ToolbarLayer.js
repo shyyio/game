@@ -6,7 +6,7 @@ import {Tween, easeOutBack, easeInCubic} from "@/client/layers/Tween.js";
 import ReducedMotion from "@/client/ReducedMotion.js";
 import Mobile from "@/client/Mobile.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
-import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/hud/InspectContent.js";
+import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/hud/slotFrame.js";
 import {addSlotHighlight} from "@/client/hud/slotHighlight.js";
 import {debugOutlines, nineSlice, swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
 

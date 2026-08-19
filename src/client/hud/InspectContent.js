@@ -1,53 +1,26 @@
-// Machine-specific inspect content (item slots + progress bar), built into a UIPanel body via
-// panel.addContent(...), with (0,0) at the body's top-left corner after padding.
-import {Container, Sprite, Text} from "pixi.js";
+import {Container, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {
-    PANEL_TINT,
-    PROGRESS_BAR_TINT,
-    PROGRESS_TEXT_COLOR,
-    PROGRESS_TEXT_STROKE,
-    WORKER_OK_TEXT,
-    WORKER_MISSING_TEXT,
-} from "@/client/Theme.js";
-import {addSlotHighlight} from "@/client/hud/slotHighlight.js";
-import {nineSlice} from "@/client/layers/pixiUtils.js";
+import {PROGRESS_TEXT_STROKE, WORKER_MISSING_TEXT, WORKER_OK_TEXT} from "@/client/Theme.js";
+import {InspectSlot, SLOT_SIZE} from "@/client/hud/InspectSlot.js";
+import {InspectProgressBar, PROGRESS_HEIGHT} from "@/client/hud/InspectProgressBar.js";
 
-const SLOT_SIZE = 60;
 const SLOT_MARGIN_Y = 10;
 const SLOT_MARGIN_X = 10;
-const SLOT_ITEM_INSET = 6;
-export const SLOT_FRAME_INSET = 12;
-// Opacity for a memory/inferred/last-produced item (vs a full-opacity port item).
-const HALF_ALPHA = 0.6;
-
-const PROGRESS_HEIGHT = 34;
-const PROGRESS_TEXT_SIZE = 15;
-const PROGRESS_TEXT_STROKE_WIDTH = 1;
-// 9-slice inset (atlas px) for the bar background frame.
-const PROGRESS_FRAME_INSET = 12;
-// 9-slice inset (atlas px) for the fill blocks (keeps their end caps fixed).
-const BARFILL_INSET = 10;
-// Inset of the fill region inside the bar frame (on-screen px = 2x the 2/2/2/1 texture-scale insets,
-// since the atlas is 2x).
-const BAR_FILL_INSET_LEFT = 4;
-const BAR_FILL_INSET_RIGHT = 2;
-const BAR_FILL_INSET_TOP = 2;
-const BAR_FILL_INSET_BOTTOM = 4;
-
-const TX_BAR = "ui/Frame02a_inset4";
-export const TX_SLOT = "ui/Frame02a_inset4";
-
-// Total content height: inputs row, then a row sharing the progress bar and output slot.
-export const INSPECT_CONTENT_HEIGHT = SLOT_SIZE + SLOT_MARGIN_Y + SLOT_SIZE;
-const TX_BARFILL = "ui/barfill";
 
 const WORKER_TEXT_SIZE = 15;
+const WORKER_TEXT_STROKE_WIDTH = 1;
 const WORKER_ROW_HEIGHT = WORKER_TEXT_SIZE + SLOT_MARGIN_Y;
+
+// Total content height: inputs row, then a row sharing the progress bar and output slot.
+const BASE_CONTENT_HEIGHT = SLOT_SIZE + SLOT_MARGIN_Y + SLOT_SIZE;
+
+// Ticks a port item keeps its present look after leaving the port: a machine pulling one item per
+// tick empties its ports every tick, which would otherwise read as flicker.
+const PRESENCE_HOLD_TICKS = 2;
 
 /**
  * The body height for a machine's snapshot; worker-consuming machines get an extra status row.
- * @param {InspectHeartbeatEvent} event
+ * @param {InspectHeartbeatState} event
  * @returns {number}
  */
 export function inspectContentHeight(event) {
@@ -55,162 +28,172 @@ export function inspectContentHeight(event) {
     if (event.workerCost !== null) {
         workerRow = WORKER_ROW_HEIGHT;
     }
-    return INSPECT_CONTENT_HEIGHT + workerRow;
+    return BASE_CONTENT_HEIGHT + workerRow;
 }
 
 /**
- * Builds the machine content (inputs row, progress bar, output slot) into a UIPanel.
- * @param {UIPanel} panel
- * @param {InspectHeartbeatEvent} event
- * @param {TextureRegistry} textureRegistry
- * @param {ItemRegistry} items
- * @param {number|undefined} lastProduced - the machine's last produced item (output fallback)
- * @returns {void}
+ * A machine's inspect body: input slots, progress bar, output slot, and a worker row for the
+ * machines that consume workers. Built once per panel and mutated per heartbeat, so nothing on it
+ * blinks as the snapshots arrive.
  */
-export function buildInspectContent(panel, event, textureRegistry, items, lastProduced) {
-    let y = 0;
-    // Output slot right-aligned in the body (independent of the input columns).
-    const outputX = panel.contentWidth - SLOT_SIZE;
+export class InspectContent extends Container {
 
-    // Inputs: the port item at full opacity (takes precedence), else the gathered/consumed item at half.
-    for (const [i, portItem] of event.inputPorts.entries()) {
-        const item = portItem !== 0 ? portItem : event.inputMemory[i];
-        const alpha = portItem !== 0 ? 1 : HALF_ALPHA;
-        addSlot(panel, item, alpha, i * (SLOT_SIZE + SLOT_MARGIN_X), y, textureRegistry, items);
-    }
-    y += SLOT_SIZE + SLOT_MARGIN_Y;
+    /**
+     * @param {InspectHeartbeatState} event - the first snapshot, which fixes the layout
+     * @param {number} contentWidth - width available inside the panel body
+     * @param {TextureRegistry} textureRegistry
+     * @param {ItemRegistry} items
+     * @param {SlotTooltip} tooltip - raised while the pointer rests on one of these slots
+     */
+    constructor(
+        event,
+        contentWidth,
+        textureRegistry,
+        items,
+        tooltip,
+    ) {
+        super();
+        // Output slot right-aligned in the body (independent of the input columns).
+        const outputX = contentWidth - SLOT_SIZE;
+        const secondRowY = SLOT_SIZE + SLOT_MARGIN_Y;
 
-    // Second row: progress bar on the left, output slot in its column on the right.
-    const progressY = y + (SLOT_SIZE - PROGRESS_HEIGHT) / 2;
-    addProgressBar(panel, event.processingRemaining, event.processingTotal, 0, progressY, outputX - SLOT_MARGIN_X, textureRegistry);
-
-    // Output: out-port item at full opacity, else the inferred recipe output, else the last produced
-    // item (both at half). All fall through to an empty slot.
-    let outputItem = 0;
-    let outputAlpha = 1;
-    if (event.outputItem) {
-        outputItem = event.outputItem;
-    } else if (event.recipeOutput) {
-        outputItem = event.recipeOutput;
-        outputAlpha = HALF_ALPHA;
-    } else if (lastProduced) {
-        outputItem = lastProduced;
-        outputAlpha = HALF_ALPHA;
-    }
-    addSlot(panel, outputItem, outputAlpha, outputX, y, textureRegistry, items);
-
-    if (event.workerCost !== null) {
-        y += SLOT_SIZE + SLOT_MARGIN_Y;
-        addWorkerRow(panel, event, y);
-    }
-}
-
-/**
- * One status line for a worker-consuming machine: staffing state plus its road network's
- * demand/supply, red while the machine runs unmanned.
- * @param {UIPanel} panel
- * @param {InspectHeartbeatEvent} event
- * @param {number} y
- * @returns {void}
- */
-function addWorkerRow(panel, event, y) {
-    const staffed = event.workers === event.workerCost;
-    let text;
-    if (event.workerSupply === null) {
-        text = `No road access · needs ${event.workerCost} workers`;
-    } else if (staffed) {
-        text = `Manned · ${event.workerCost} workers · network ${event.workerDemand}/${event.workerSupply}`;
-    } else {
-        text = `Staffed ${event.workers}/${event.workerCost} · network ${event.workerDemand}/${event.workerSupply}`;
-    }
-    let workerRowColor;
-    if (staffed) {
-        workerRowColor = WORKER_OK_TEXT;
-    } else {
-        workerRowColor = WORKER_MISSING_TEXT;
-    }
-    const label = new Text({
-        text,
-        style: {
-            fontFamily: GAME_FONT,
-            fontSize: WORKER_TEXT_SIZE,
-            fill: workerRowColor,
-            fontWeight: "bold",
-            stroke: {color: PROGRESS_TEXT_STROKE, width: PROGRESS_TEXT_STROKE_WIDTH},
-        },
-    });
-    label.x = 0;
-    label.y = y;
-    panel.addContent(label);
-}
-
-function addSlot(panel, item, itemAlpha, x, y, textureRegistry, items) {
-    const slot = new Container();
-    slot.x = x;
-    slot.y = y;
-
-    const frame = nineSlice(textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, SLOT_SIZE, SLOT_SIZE);
-    frame.tint = PANEL_TINT;
-    slot.addChild(frame);
-
-    // Hover highlight (no active state on inspect slots).
-    addSlotHighlight(slot, SLOT_SIZE);
-
-    if (item !== 0) {
-        const icon = itemSprite(item, textureRegistry, items);
-        const box = SLOT_SIZE - SLOT_ITEM_INSET * 2;
-        icon.scale.set(Math.min(box / icon.texture.width, box / icon.texture.height));
-        icon.x = (SLOT_SIZE - icon.width) / 2;
-        icon.y = (SLOT_SIZE - icon.height) / 2;
-        icon.alpha = itemAlpha;
-        slot.addChild(icon);
-    }
-    panel.addContent(slot);
-}
-
-function itemSprite(item, textureRegistry, items) {
-    const definition = items.definitionFor(item);
-    const sprite = new Sprite(textureRegistry.get(definition.texture));
-    sprite.tint = definition.tint;
-    return sprite;
-}
-
-function addProgressBar(panel, remaining, total, x, y, width, textureRegistry) {
-    const bg = nineSlice(textureRegistry, TX_BAR, PROGRESS_FRAME_INSET, PROGRESS_FRAME_INSET, width, PROGRESS_HEIGHT);
-    bg.x = x;
-    bg.y = y;
-    bg.tint = PANEL_TINT;
-    panel.addContent(bg);
-
-    // total+1 steps: idle shows 0, just-started shows 1/(total+1), each elapsed tick adds one, done fills all.
-    if (total > 0) {
-        const steps = total + 1;
-        const filled = remaining === null ? 0 : total - remaining + 1;
-        const usable = width - BAR_FILL_INSET_LEFT - BAR_FILL_INSET_RIGHT;
-        const blockWidth = usable / steps;
-        const fillHeight = PROGRESS_HEIGHT - BAR_FILL_INSET_TOP - BAR_FILL_INSET_BOTTOM;
-        const fillY = y + BAR_FILL_INSET_TOP;
-        for (let i = 0; i < filled; i++) {
-            const block = nineSlice(textureRegistry, TX_BARFILL, BARFILL_INSET, BARFILL_INSET, blockWidth, fillHeight);
-            block.tint = PROGRESS_BAR_TINT;
-            block.x = x + BAR_FILL_INSET_LEFT + i * blockWidth;
-            block.y = fillY;
-            panel.addContent(block);
+        this._inputSlots = [];
+        // Per input port, the ticks its present look still has to run.
+        this._inputHold = [];
+        for (const [i] of event.inputPorts.entries()) {
+            const slot = new InspectSlot(textureRegistry, items, tooltip);
+            slot.x = i * (SLOT_SIZE + SLOT_MARGIN_X);
+            this.addChild(slot);
+            this._inputSlots.push(slot);
+            this._inputHold.push(0);
         }
 
-        // Progress as text, e.g. "0 / 3" (total includes the +1 step), centered on the bar.
-        const label = new Text({
-            text: `${filled} / ${steps}`,
-            style: {
-                fontFamily: GAME_FONT,
-                fontSize: PROGRESS_TEXT_SIZE,
-                fill: PROGRESS_TEXT_COLOR,
-                fontWeight: "bold",
-                stroke: {color: PROGRESS_TEXT_STROKE, width: PROGRESS_TEXT_STROKE_WIDTH},
-            },
-        });
-        label.x = x + (width - label.width) / 2;
-        label.y = y + (PROGRESS_HEIGHT - label.height) / 2;
-        panel.addContent(label);
+        this._progressBar = new InspectProgressBar(textureRegistry, outputX - SLOT_MARGIN_X, event.processingTotal);
+        this._progressBar.y = secondRowY + (SLOT_SIZE - PROGRESS_HEIGHT) / 2;
+        this.addChild(this._progressBar);
+
+        this._outputSlot = new InspectSlot(textureRegistry, items, tooltip);
+        this._outputSlot.x = outputX;
+        this._outputSlot.y = secondRowY;
+        this.addChild(this._outputSlot);
+        this._outputHold = 0;
+
+        this._workerLabel = null;
+        if (event.workerCost !== null) {
+            this._workerLabel = new Text({
+                text: "",
+                style: {
+                    fontFamily: GAME_FONT,
+                    fontSize: WORKER_TEXT_SIZE,
+                    fill: WORKER_OK_TEXT,
+                    fontWeight: "bold",
+                    stroke: {color: PROGRESS_TEXT_STROKE, width: WORKER_TEXT_STROKE_WIDTH},
+                },
+            });
+            this._workerLabel.y = secondRowY + SLOT_SIZE + SLOT_MARGIN_Y;
+            this.addChild(this._workerLabel);
+            this._workerStaffed = true;
+        }
+    }
+
+    /**
+     * Applies a snapshot.
+     * @param {InspectHeartbeatState} event
+     * @param {number|undefined} lastProduced - the machine's last produced item (output fallback)
+     * @returns {void}
+     */
+    update(event, lastProduced) {
+        for (const [i, slot] of this._inputSlots.entries()) {
+            const portItem = event.inputPorts[i];
+            this._inputHold[i] = holdAfter(this._inputHold[i], portItem !== 0);
+            let item = portItem;
+            if (portItem === 0) {
+                item = event.inputMemory[i];
+            }
+            slot.setItem(item, this._inputHold[i] > 0);
+        }
+
+        this._progressBar.setProgress(event.processingRemaining, event.processingTotal);
+
+        // Out-port item first, else the inferred recipe output, else the last produced item.
+        this._outputHold = holdAfter(this._outputHold, event.outputItem !== null);
+        let outputItem = 0;
+        if (event.outputItem !== null) {
+            outputItem = event.outputItem;
+        } else if (this._outputHold > 0) {
+            outputItem = this._outputSlot.item;
+        } else if (event.recipeOutput !== null) {
+            outputItem = event.recipeOutput;
+        } else if (lastProduced !== undefined) {
+            outputItem = lastProduced;
+        }
+        this._outputSlot.setItem(outputItem, this._outputHold > 0);
+
+        if (this._workerLabel !== null) {
+            this._updateWorkerRow(event);
+        }
+    }
+
+    /**
+     * Repaints for the current theme.
+     * @returns {void}
+     */
+    restyle() {
+        for (const slot of this._inputSlots) {
+            slot.restyle();
+        }
+        this._progressBar.restyle();
+        this._outputSlot.restyle();
+        if (this._workerLabel !== null) {
+            this._workerLabel.style.stroke = {color: PROGRESS_TEXT_STROKE, width: WORKER_TEXT_STROKE_WIDTH};
+            this._workerLabel.style.fill = workerRowColor(this._workerStaffed);
+        }
+    }
+
+    /**
+     * One status line for a worker-consuming machine: staffing state plus its road network's
+     * demand/supply, red while the machine runs unmanned.
+     * @param {InspectHeartbeatState} event
+     * @returns {void}
+     * @private
+     */
+    _updateWorkerRow(event) {
+        const staffed = event.workers === event.workerCost;
+        this._workerStaffed = staffed;
+        let text;
+        if (event.workerSupply === null) {
+            text = `No road access · needs ${event.workerCost} workers`;
+        } else if (staffed) {
+            text = `Manned · ${event.workerCost} workers · network ${event.workerDemand}/${event.workerSupply}`;
+        } else {
+            text = `Staffed ${event.workers}/${event.workerCost} · network ${event.workerDemand}/${event.workerSupply}`;
+        }
+        this._workerLabel.text = text;
+        this._workerLabel.style.fill = workerRowColor(staffed);
     }
 }
+
+/**
+ * @param {boolean} staffed
+ * @returns {number}
+ */
+function workerRowColor(staffed) {
+    if (staffed) {
+        return WORKER_OK_TEXT;
+    }
+    return WORKER_MISSING_TEXT;
+}
+
+/**
+ * The hold counter after a tick: a port item recharges it, an empty port spends one tick of it.
+ * @param {number} hold
+ * @param {boolean} inPort
+ * @returns {number}
+ */
+function holdAfter(hold, inPort) {
+    if (inPort) {
+        return PRESENCE_HOLD_TICKS;
+    }
+    return Math.max(0, hold - 1);
+}
+
