@@ -50,15 +50,17 @@ function themedTexts() {
         {where: "PanelText body", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
         {where: "PanelText muted", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
         {where: "ToolbarLayer slot label", fill: Theme.PANEL_TINT_TEXT, background: slot, fontSize: 15, bold: false},
-        {where: "ToolbarLayer shortcut badge", fill: 0xffffff, alpha: 0.5, stroke: 0x000000, background: slot, fontSize: 45, bold: false},
+        {where: "ToolbarLayer shortcut badge", fill: Theme.PANEL_TINT_TEXT, alpha: 0.6, background: slot, fontSize: 45, bold: false},
         // textOn picks each label from its tint. A disabled button fades whole and is AA-exempt,
         // so only the enabled tints are checked.
         {where: "panelButton label (accent)", fill: Theme.textOn(Theme.ACTIVE_ACCENT), background: buttonActive, fontSize: 15, bold: true},
         {where: "toggle segment label (inactive)", fill: Theme.textOn(Theme.PANEL_BORDER), background: buttonInactive, fontSize: 15, bold: true},
         {where: "RotateButtonsLayer icon", fill: Theme.PANEL_TEXT, background: circleButton, fontSize: 28, bold: true},
-        {where: "InspectProgressBar label", fill: Theme.PROGRESS_TEXT_COLOR, stroke: Theme.PROGRESS_TEXT_STROKE, background: progressBar, fontSize: 15, bold: true},
-        {where: "InspectContent worker row (staffed)", fill: Theme.WORKER_OK_TEXT, stroke: Theme.PROGRESS_TEXT_STROKE, background: slot, fontSize: 15, bold: true},
-        {where: "InspectContent worker row (missing)", fill: Theme.WORKER_MISSING_TEXT, stroke: Theme.PROGRESS_TEXT_STROKE, background: slot, fontSize: 15, bold: true},
+        // The label is centered over the whole bar, so it sits on filled blocks or bare bar, by progress.
+        {where: "InspectProgressBar label (filled)", fill: Theme.PROGRESS_TEXT_COLOR, background: progressBar, fontSize: 15, bold: true},
+        {where: "InspectProgressBar label (empty)", fill: Theme.PROGRESS_TEXT_COLOR, background: slot, fontSize: 15, bold: true},
+        {where: "InspectContent worker row (staffed)", fill: Theme.WORKER_OK_TEXT, background: slot, fontSize: 15, bold: true},
+        {where: "InspectContent worker row (missing)", fill: Theme.WORKER_MISSING_TEXT, background: slot, fontSize: 15, bold: true},
         // The slot and note tooltips are flat filled boxes, not tinted 9-slices.
         {where: "SlotTooltip name", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
         {where: "NoteTooltipLayer text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
@@ -90,8 +92,8 @@ const UNCHECKED_TEXTS = {
 };
 
 /**
- * The ratio a reader gets: a translucent glyph fades into its background, an outlined one is read
- * against its outline, which must itself read against the background.
+ * The ratio a reader gets: a translucent glyph fades into its background. A text stroke earns no
+ * credit - a 1px outline is a halo around the glyph, not a background the glyph is read against.
  * @param {object} entry
  * @returns {number}
  */
@@ -100,12 +102,7 @@ function effectiveRatio(entry) {
     if (entry.alpha !== undefined) {
         fill = composited(fill, entry.alpha, entry.background);
     }
-    const ratio = contrastRatio(fill, entry.background);
-    if (entry.stroke === undefined) {
-        return ratio;
-    }
-    const outlined = Math.min(contrastRatio(fill, entry.stroke), contrastRatio(entry.stroke, entry.background));
-    return Math.max(ratio, outlined);
+    return contrastRatio(fill, entry.background);
 }
 
 for (const {themeId, level} of THEME_LEVELS) {

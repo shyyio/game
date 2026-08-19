@@ -29,8 +29,13 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
                 this.remove(objectId);
             } else {
                 const entry = objects.get(objectId);
-                const machineTile = entry === null ? undefined : {x: entry.tileX, y: entry.tileY};
-                this.update(heartbeat, objects.lastProducedOf(objectId), machineTile);
+                let machineTile = undefined;
+                let title = `Machine #${objectId}`;
+                if (entry !== null) {
+                    machineTile = {x: entry.tileX, y: entry.tileY};
+                    title = entry.data.type.label;
+                }
+                this.update(heartbeat, objects.lastProducedOf(objectId), machineTile, title);
             }
         });
         /**
@@ -76,13 +81,14 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
      * @param {InspectHeartbeatState} event
      * @param {number|undefined} lastProduced - the machine's last produced item, for the output fallback
      * @param {{x: number, y: number}|undefined} machineTile - the machine's tile position, for the connectors
+     * @param {string} title - the machine's object type label
      */
-    update(event, lastProduced, machineTile) {
+    update(event, lastProduced, machineTile, title) {
         const key = String(event.objectId);
         let record = this._panels.get(key);
         if (record === undefined) {
             // Height comes from the first snapshot (workerCost is a type constant, so a worker row never appears later).
-            const panel = this._createPanel(event.objectId, UIPanel.heightForContent(inspectContentHeight(event)));
+            const panel = this._createPanel(event.objectId, UIPanel.heightForContent(inspectContentHeight(event)), title);
             const content = new InspectContent(event, panel.contentWidth, this.textureRegistry, this.items, this._tooltip);
             panel.addContent(content);
             // Outlines snapshot the children, so they are drawn once the body is in.
@@ -130,15 +136,16 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
     /**
      * @param {number} objectId
      * @param {number} height - the panel's outer height for this machine's content
+     * @param {string} title
      * @returns {UIPanel}
      * @private
      */
-    _createPanel(objectId, height) {
+    _createPanel(objectId, height, title) {
         const index = this._panels.size;
         const panel = new UIPanel({
             app: this._app,
             textureRegistry: this.textureRegistry,
-            title: `Machine #${objectId}`,
+            title,
             titleColor: PANEL_TITLE_TEXT,
             tint: PANEL_TINT,
             width: PANEL_WIDTH,

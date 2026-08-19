@@ -333,12 +333,12 @@ export class ToolbarLayer extends Container {
         if ((shortcut !== null || liveBadge) && !Mobile.enabled) {
             const badge = new Text({
                 text: shortcut === null ? "" : shortcut,
-                style: {fontFamily: GAME_FONT, fontSize: SLOT_SIZE - 3, fill: 0xffffff, stroke: {color: 0x000000, width: 1}},
+                style: {fontFamily: GAME_FONT, fontSize: SLOT_SIZE - 3, fill: PANEL_TINT_TEXT, stroke: {color: PANEL_TINT, width: 1}},
             });
             badge.x = slot.width / 2 + 1;
             badge.y = (slot.height / 2) - 2;
             badge.anchor = 0.5;
-            badge.alpha = 0.5;
+            badge.alpha = 0.6;
             badge.visible = this._drawerOpen;
             slot.addChild(badge);
             slot._badge = badge;
