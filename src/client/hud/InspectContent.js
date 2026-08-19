@@ -2,7 +2,6 @@
 // panel.addContent(...), with (0,0) at the body's top-left corner after padding.
 import {Container, Sprite, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {DEFAULT_ITEM_DEFINITION} from "@/client/layers/ItemDrawLayer.js";
 import {
     PANEL_TINT,
     PROGRESS_BAR_TINT,
@@ -170,10 +169,7 @@ function addSlot(panel, item, itemAlpha, x, y, textureRegistry, items) {
 }
 
 function itemSprite(item, textureRegistry, items) {
-    let definition = items.get(item);
-    if (definition === undefined) {
-        definition = DEFAULT_ITEM_DEFINITION;
-    }
+    const definition = items.definitionFor(item);
     const sprite = new Sprite(textureRegistry.get(definition.texture));
     sprite.tint = definition.tint;
     return sprite;

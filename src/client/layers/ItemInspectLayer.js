@@ -4,20 +4,13 @@ import Mouse from "@/client/input/Mouse.js";
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
 import {TILE_SIZE} from "@/client/constants.js";
 
-// Half an item sprite: items render a half-tile wide, so a hover reaches an item's own edge and
-// no further.
+// Half an item sprite: a hover reaches an item's own edge, no further.
 const HOVER_REACH = TILE_SIZE / 4;
-// A fingertip covers more than an item, so a tap reaches the whole tile around it: the player
-// aims at the belt, not at the item.
+// A fingertip covers more than an item, so a tap aims at the belt.
 const TAP_REACH = TILE_SIZE / 2;
 
 /**
- * Brackets the inspected item and suppresses the object highlights whenever it has one: an item
- * outranks the belt or machine carrying it.
- *
- * The bracket locks onto the item it picks and rides its glide, so the player aims for an instant
- * and reads for as long as they like. Desktop re-picks whenever the cursor moves; touch, which
- * synthesizes a hover around every tap, picks on the tap alone.
+ * Brackets the inspected item, suppressing the object highlights while it has one.
  */
 export class ItemInspectLayer extends AbstractDrawLayer {
 
@@ -50,19 +43,13 @@ export class ItemInspectLayer extends AbstractDrawLayer {
          */
         this._inspecting = false;
         /**
-         * The locked item's particle, and the type it showed when locked: a pooled particle
-         * relit as another item is a different item, and drops the lock.
+         * The locked item, and the type it showed when locked: a pooled particle relit as another
+         * item is a different item, and drops the lock.
          * @type {ItemParticle|null}
          * @private
          */
         this._particle = null;
         this._lockedType = null;
-        /**
-         * Bumped on every new lock, so a reader can tell one item from the next of the same type.
-         * @type {number}
-         * @private
-         */
-        this._lockVersion = 0;
         // The aim point the current lock was picked at; a move re-picks.
         this._aimX = null;
         this._aimY = null;
@@ -74,33 +61,16 @@ export class ItemInspectLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Stays visible in map mode: the hover highlight reads at any zoom.
+     * Never hides itself: the bracket is parked in {@link tick} instead, with the items it marks.
      * @param {boolean} value
      */
     set mapMode(value) {}
 
     /**
-     * @returns {number|null} the locked item's type, null while none is locked
+     * @returns {ItemParticle|null} the bracketed item, null while none is locked
      */
-    get lockedItemType() {
-        return this._lockedType;
-    }
-
-    /**
-     * @returns {number} a counter identifying the current lock
-     */
-    get lockVersion() {
-        return this._lockVersion;
-    }
-
-    /**
-     * @returns {{x: number, y: number}|null} the locked item's world position
-     */
-    get lockedPoint() {
-        if (this._particle === null) {
-            return null;
-        }
-        return {x: this._particle.x, y: this._particle.y};
+    get lockedItem() {
+        return this._particle;
     }
 
     /**
@@ -113,36 +83,34 @@ export class ItemInspectLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Locks the item nearest a tapped world point, with a fingertip's reach; a tap landing on no
-     * item clears the lock. Null (the pointer position is unknown) clears it too.
-     * @param {{x: number, y: number}|null} point
-     * @returns {boolean} whether an item was locked
+     * Locks the item nearest the tapped point, with a fingertip's reach; a tap off every item
+     * clears the lock.
+     * @returns {void}
      */
-    tapAt(point) {
+    tapAt() {
+        const point = Mouse.aimPoint();
         if (point === null) {
             this._lock(null);
-            return false;
+            return;
         }
         this._lock(this._itemLayer.itemAt(point.x, point.y, TAP_REACH));
-        return this._particle !== null;
     }
 
     /**
-     * Re-picks and repositions the bracket every frame, so it rides the locked item's glide.
+     * Re-picks and repositions the bracket, so it rides the locked item's glide.
      * @param {number} frame unused
      * @param {number} deltaMS unused
      * @param {Set<number>} visibleChunks unused
      * @returns {void}
      */
     tick(frame, deltaMS, visibleChunks) {
-        this.refresh();
-    }
-
-    /**
-     * Re-picks the hovered item and re-applies the object-highlight suppression.
-     * @returns {void}
-     */
-    refresh() {
+        // Hidden items (map and overworld mode) are not worth picking.
+        if (!this._itemLayer.visible) {
+            this._lock(null);
+            this._inspectLayer.setSuppressed(false);
+            return;
+        }
+        // Touch synthesizes a hover around every tap, so there the tap alone picks.
         if (!Mobile.enabled) {
             this._pickUnderCursor();
         }
@@ -150,8 +118,8 @@ export class ItemInspectLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Locks the item under the cursor, re-picking only once the cursor has moved: a resting cursor
-     * keeps the item it caught even as the item glides away from it.
+     * Locks the item under the cursor, re-picking only once the cursor has moved: a resting
+     * cursor keeps the item it caught as the item glides away.
      * @private
      * @returns {void}
      */
@@ -175,14 +143,14 @@ export class ItemInspectLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Points the bracket at the locked item, dropping the lock once the item is gone: consumed or
-     * pooled (alpha 0), relit as another item, or panned off screen.
+     * Points the bracket at the locked item, dropping the lock once the item is gone: pooled,
+     * covered, relit as another item, or panned off screen.
      * @private
      * @returns {void}
      */
     _follow() {
         if (this._particle !== null) {
-            const lost = this._particle.alpha === 0
+            const lost = !this._particle.pickable
                 || this._particle.itemType !== this._lockedType
                 || this._offScreen(this._particle);
             if (lost) {
@@ -212,11 +180,10 @@ export class ItemInspectLayer extends AbstractDrawLayer {
      * @returns {boolean}
      */
     _offScreen(particle) {
-        const screen = this.viewport.toScreen(particle.x, particle.y);
-        return screen.x < 0
-            || screen.y < 0
-            || screen.x > this.viewport.screenWidth
-            || screen.y > this.viewport.screenHeight;
+        return particle.x < this.viewport.left
+            || particle.x > this.viewport.right
+            || particle.y < this.viewport.top
+            || particle.y > this.viewport.bottom;
     }
 
     /**
@@ -234,6 +201,5 @@ export class ItemInspectLayer extends AbstractDrawLayer {
         } else {
             this._lockedType = particle.itemType;
         }
-        this._lockVersion += 1;
     }
 }

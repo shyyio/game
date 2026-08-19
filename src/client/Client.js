@@ -197,7 +197,7 @@ export class Client {
         // The hovered item's bracket, drawn between the items and the objects carrying them.
         this.itemInspectLayer = new ItemInspectLayer(this.itemLayer, this.inspectLayer);
         // The bracketed item's name, docked above its bracket.
-        this.inspectTooltipLayer = new InspectTooltipLayer(app, this.itemInspectLayer, this.itemLayer);
+        this.inspectTooltipLayer = new InspectTooltipLayer(app, this.itemInspectLayer, modRegistry.items);
         // The single shared connection-stub layer, derived from the cache as objects change.
         this.connectionLayer = new ConnectionDrawLayer();
         // Commuting worker figures for manned machines, routed over the cached road tiles.
@@ -1101,14 +1101,6 @@ export class Client {
     }
 
     /**
-     * Handles a left-click (tool-less) tap on the tile: offers it to the client mods' bespoke
-     * content first — that content is hit-tested finer than a tile, so it only claims a tap the
-     * pointer is really on — then runs the first placed object's tapAction. World mode only.
-     * @param {number} tileX
-     * @param {number} tileY
-     * @returns {void}
-     */
-    /**
      * Handles a context gesture (long press, or right-click on desktop) on the tile while
      * tool-less: offers it to the client mods' bespoke content. World mode only.
      * @param {number} tileX
@@ -1123,6 +1115,14 @@ export class Client {
         }
     }
 
+    /**
+     * Handles a left-click (tool-less) tap on the tile: offers it to the client mods' bespoke
+     * content first, that content being hit-tested finer than a tile, then the first placed
+     * object's tapAction, then the item under the pointer. World mode only.
+     * @param {number} tileX
+     * @param {number} tileY
+     * @returns {void}
+     */
     handleObjectTap(tileX, tileY) {
         for (const mod of this.modRegistry.clientMods) {
             if (mod.onObjectTap(tileX, tileY, this)) {
@@ -1137,9 +1137,8 @@ export class Client {
             bundle.type.tapAction(record, this.session, this);
             return;
         }
-        // Nothing tappable here, so the tap names the item under it: touch has no hover to pick
-        // one with.
-        this.itemInspectLayer.tapAt(Mouse.aimPoint());
+        // Touch has no hover, so a tap on nothing tappable names the item under it.
+        this.itemInspectLayer.tapAt();
     }
 
     /**
@@ -1162,7 +1161,6 @@ export class Client {
         const bespoke = this.modRegistry.clientMods
             .flatMap(mod => mod.onInspect(tileX, tileY, this));
         this.itemInspectLayer.setInspecting(tileX !== null);
-        this.itemInspectLayer.refresh();
         this.inspectLayer.show(derived.concat(bespoke));
     }
 
