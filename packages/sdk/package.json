@@ -1,6 +1,6 @@
 {
     "name": "@spup/sdk",
-    "version": "2.6.0",
+    "version": "2.7.0",
     "description": "The API a Shy's Power-Up Factory mod is written against",
     "keywords": [
         "spup",
