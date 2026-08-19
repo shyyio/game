@@ -1,5 +1,5 @@
 import {TickPhase, EMPTY, NO_EID, Direction, chunkId, chunkOrigin, tileId, getOrCreate, removeFromGroup} from "@spup/sdk";
-import {FLUID_UNIT, PIPE_SEGMENT_CAPACITY, DIRECTIONS, joinedFluidType} from "../common/constants.js";
+import {PIPE_SEGMENT_CAPACITY, DIRECTIONS, joinedFluidType} from "../common/constants.js";
 import {
     PipeNetworkRecalculateEvent,
     PipeNetworkBatchEvent,
@@ -49,7 +49,7 @@ class PipeNetwork {
  * Pipe fluid transport: a network is the same-chunk connected component of pipe tiles (never
  * crossing a seam) holding one uniform (fluidType, amount), so equalization is free. Boundary
  * edges reuse the port-transfer resolver: drain resting payloads at in-ports, create one
- * FLUID_UNIT payload per out-edge port.
+ * one-unit payload per out-edge port.
  */
 export class Pipes {
 
@@ -428,7 +428,7 @@ export class Pipes {
         for (const net of this.networks) {
             for (const port of net.inPorts) {
                 const resting = P[port];
-                if (resting === EMPTY || net.capacity - net.amount < FLUID_UNIT) {
+                if (resting === EMPTY || net.amount === net.capacity) {
                     continue;
                 }
                 if (net.fluidType !== EMPTY && resting !== net.fluidType) {
@@ -436,7 +436,7 @@ export class Pipes {
                 }
                 engine.submitDrain(port, true);
                 net.fluidType = resting;
-                net.amount += FLUID_UNIT;
+                net.amount += 1;
             }
 
             let budget = net.amount;
@@ -444,7 +444,7 @@ export class Pipes {
                 continue;
             }
             for (const edge of net.outEdges) {
-                if (budget < FLUID_UNIT) {
+                if (budget === 0) {
                     break;
                 }
                 // Only fluid-flagged ports receive payloads.
@@ -464,7 +464,7 @@ export class Pipes {
                 engine.submitCreate(dest, net.fluidType, P[dest] === EMPTY);
                 this._emittedPorts.push(dest);
                 this._emittedNets.push(net);
-                budget -= FLUID_UNIT;
+                budget -= 1;
             }
         }
     }
@@ -479,7 +479,7 @@ export class Pipes {
         const engine = this.engine;
         for (let i = 0; i < this._emittedPorts.length; i += 1) {
             if (engine.wasResolvedDest(this._emittedPorts[i])) {
-                this._emittedNets[i].amount -= FLUID_UNIT;
+                this._emittedNets[i].amount -= 1;
             }
         }
         const batches = new Map();

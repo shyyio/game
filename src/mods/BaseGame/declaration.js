@@ -55,6 +55,7 @@ export class BaseGameDeclaration extends AbstractModDeclaration {
             [ITEM_TYPE_NUTRIENT_SLOP]: new ItemDefinition("Nutrient Slop", "items/1-gray"),
             [ITEM_TYPE_OXYGEN]: new ItemDefinition("Oxygen", "items/2-gray"),
             [ITEM_TYPE_BASIC_POTION_BASE]: new ItemDefinition("Basic Potion Base", "items/2-gray"),
+            [ITEM_TYPE_OVERLOAD_MIX]: new ItemDefinition("Overload Mix", "items/1-gray"),
 
             [ITEM_TYPE_SOUL]: new ItemDefinition("Soul", "items/3-gray", 0xC8D8FF),
             [ITEM_TYPE_SOYBEAN_SEEDS]: new ItemDefinition("Soybean Seeds", "items/3-gray", 0xD8C878),
@@ -71,7 +72,6 @@ export class BaseGameDeclaration extends AbstractModDeclaration {
             [ITEM_TYPE_SAND]: new ItemDefinition("Sand", "items/2-gray", 0xE0C878),
 
             [ITEM_TYPE_ADRENOCHROME]: new ItemDefinition("Adrenochrome", "items/1-gray", 0xFF3EA5),
-            [ITEM_TYPE_OVERLOAD_MIX]: new ItemDefinition("Overload Mix", "items/1-gray", 0x4BE04B),
             [ITEM_TYPE_RAW_STEEL]: new ItemDefinition("Raw Steel", "items/1-gray", 0xB0B8C0),
             [ITEM_TYPE_STEEL_PARTS]: new ItemDefinition("Steel Parts", "items/1-gray", 0x5B7FA6),
             [ITEM_TYPE_GLASS]: new ItemDefinition("Glass", "items/1-gray", 0xBEEAF0),
@@ -87,8 +87,14 @@ export class BaseGameDeclaration extends AbstractModDeclaration {
         ];
     }
 
-    // Water, Oxygen, Nutrient Slop, Basic Potion Base fill pipes, never render as a port item sprite.
+    // Fill pipes, never render as a port item sprite.
     get fluidTypes() {
-        return [ITEM_TYPE_WATER, ITEM_TYPE_OXYGEN, ITEM_TYPE_NUTRIENT_SLOP, ITEM_TYPE_BASIC_POTION_BASE];
+        return [
+            ITEM_TYPE_WATER,
+            ITEM_TYPE_OXYGEN,
+            ITEM_TYPE_NUTRIENT_SLOP,
+            ITEM_TYPE_BASIC_POTION_BASE,
+            ITEM_TYPE_OVERLOAD_MIX,
+        ];
     }
 }

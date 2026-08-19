@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {pipesOf} from "@/mods/Fluids/sim/testHelpers.js";
-import {FLUID_TYPE_WATER, FLUID_UNIT} from "@/mods/Fluids/common/constants.js";
+import {FLUID_TYPE_WATER} from "@/mods/Fluids/common/constants.js";
 import {PipeDefinition, TankDefinition} from "@/mods/Fluids/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 
@@ -17,7 +17,7 @@ async function populated() {
     engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 5, 63, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 5, 64, Direction.UP));
     const pipes = pipesOf(engine);
-    pipes.addFluid(0, 2, FLUID_TYPE_WATER, 60);
+    pipes.addFluid(0, 2, FLUID_TYPE_WATER, 4);
     for (let i = 0; i < 4; i += 1) {
         engine.tickAll();
     }
@@ -56,7 +56,7 @@ test("pipe networks and fluid state round-trip through the engine serializer", a
     }
     assert.equal(restoredPipes.networkAt(0, 2).amount, 0, "restored network still flows");
     const outPort = restored.portAt(1, -1, Direction.UP);
-    assert.equal(tankState(restored).amount + FLUID_UNIT, 60, "all units end in the tank plus its out-port payload");
+    assert.equal(tankState(restored).amount + 1, 4, "all units end in the tank plus its out-port payload");
     assert.equal(restored.portItem(outPort), FLUID_TYPE_WATER);
 });
 

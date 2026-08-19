@@ -5,7 +5,7 @@ import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {EMPTY} from "@/sim/GameEngine.js";
 import {makePipes} from "@/test/pipeFixture.js";
 import {pipesOf} from "@/mods/Fluids/sim/testHelpers.js";
-import {FLUID_TYPE_WATER, FLUID_TYPE_OIL, FLUID_UNIT} from "@/mods/Fluids/common/constants.js";
+import {FLUID_TYPE_WATER, FLUID_TYPE_OIL} from "@/mods/Fluids/common/constants.js";
 import {PipeDefinition, TankDefinition} from "@/mods/Fluids/common/objectTypes.js";
 import {WaterResourceType, ExtractorType, OxideDepositResourceType} from "@/mods/BaseGame/common/objectTypes.js";
 import {ITEM_TYPE_WATER, ITEM_TYPE_IRON_ORE} from "@/mods/BaseGame/common/constants.js";
@@ -23,12 +23,12 @@ import {TankFluidSetEvent} from "@/mods/Fluids/common/events.js";
 import {EventCollector} from "@/test/EventCollector.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 
-// Units in flight at the two ports of the y=63/64 seam (one payload = FLUID_UNIT units).
+// Units in flight at the two ports of the y=63/64 seam (one payload = one unit).
 function seamUnits(engine) {
     let units = 0;
     for (const port of [engine.portAt(0, 64, Direction.DOWN), engine.portAt(0, 63, Direction.UP)]) {
         if (engine.portItem(port) !== EMPTY) {
-            units += FLUID_UNIT;
+            units += 1;
         }
     }
     return units;
@@ -39,18 +39,18 @@ test("fluid crosses a chunk seam and equalizes between the networks", async () =
     for (const y of [62, 63, 64, 65]) {
         pipes.placePipe(0, y);
     }
-    pipes.addFluid(0, 62, FLUID_TYPE_WATER, 60);
+    pipes.addFluid(0, 62, FLUID_TYPE_WATER, 4);
 
     for (let i = 0; i < 30; i += 1) {
         engine.tickAll();
         const total = pipes.networkAt(0, 62).amount + pipes.networkAt(0, 64).amount + seamUnits(engine);
-        assert.equal(total, 60, `tick ${i}: no fluid created or destroyed`);
+        assert.equal(total, 4, `tick ${i}: no fluid created or destroyed`);
     }
 
     const above = pipes.networkAt(0, 62);
     const below = pipes.networkAt(0, 64);
-    assert.equal(above.amount, 30, "the seam settles at equal fill");
-    assert.equal(below.amount, 30);
+    assert.equal(above.amount, 2, "the seam settles at equal fill");
+    assert.equal(below.amount, 2);
     assert.equal(below.fluidType, FLUID_TYPE_WATER, "the crossing payload carried its type");
     assert.equal(seamUnits(engine), 0, "nothing left in flight at rest");
 
@@ -58,8 +58,8 @@ test("fluid crosses a chunk seam and equalizes between the networks", async () =
     for (let i = 0; i < 5; i += 1) {
         engine.tickAll();
     }
-    assert.equal(pipes.networkAt(0, 62).amount, 30);
-    assert.equal(pipes.networkAt(0, 64).amount, 30);
+    assert.equal(pipes.networkAt(0, 62).amount, 2);
+    assert.equal(pipes.networkAt(0, 64).amount, 2);
 });
 
 test("different fluids meeting at a seam block instead of mixing", async () => {
@@ -67,16 +67,16 @@ test("different fluids meeting at a seam block instead of mixing", async () => {
     for (const y of [62, 63, 64, 65]) {
         pipes.placePipe(0, y);
     }
-    pipes.addFluid(0, 62, FLUID_TYPE_WATER, 40);
-    pipes.addFluid(0, 64, FLUID_TYPE_OIL, 20);
+    pipes.addFluid(0, 62, FLUID_TYPE_WATER, 4);
+    pipes.addFluid(0, 64, FLUID_TYPE_OIL, 2);
 
     for (let i = 0; i < 10; i += 1) {
         engine.tickAll();
     }
 
-    assert.equal(pipes.networkAt(0, 62).amount, 40, "the water side holds");
+    assert.equal(pipes.networkAt(0, 62).amount, 4, "the water side holds");
     assert.equal(pipes.networkAt(0, 62).fluidType, FLUID_TYPE_WATER);
-    assert.equal(pipes.networkAt(0, 64).amount, 20, "the oil side holds");
+    assert.equal(pipes.networkAt(0, 64).amount, 2, "the oil side holds");
     assert.equal(pipes.networkAt(0, 64).fluidType, FLUID_TYPE_OIL);
     assert.equal(seamUnits(engine), 0, "no payload enters the mismatched seam");
 });
@@ -88,7 +88,7 @@ test("a pipe network drains into a tank through the shared edge port", async () 
     engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 0, 3, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(TankDefinition.typeId, 0, 0, Direction.UP));
     const pipes = pipesOf(engine);
-    pipes.addFluid(0, 2, FLUID_TYPE_WATER, 50);
+    pipes.addFluid(0, 2, FLUID_TYPE_WATER, 4);
     const collector = new EventCollector(engine);
 
     for (let i = 0; i < 20; i += 1) {
@@ -107,7 +107,7 @@ test("a pipe network drains into a tank through the shared edge port", async () 
     assert.equal(def.store.fluidType[row], FLUID_TYPE_WATER);
     // One payload rests in the tank's out-port (its unconsumed output).
     assert.equal(engine.portItem(outPort), FLUID_TYPE_WATER);
-    assert.equal(def.store.amount[row] + FLUID_UNIT, 50, "everything the network lost the tank (plus its out-port) holds");
+    assert.equal(def.store.amount[row] + 1, 4, "everything the network lost the tank (plus its out-port) holds");
 });
 
 test("an extractor pumps its produce into an adjacent pipe network", async () => {

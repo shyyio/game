@@ -38,7 +38,7 @@ test("removing a middle pipe splits the run and shares the fluid out by size", a
     for (let x = 0; x < 4; x += 1) {
         pipes.placePipe(x, 0);
     }
-    pipes.addFluid(0, 0, FLUID_TYPE_WATER, 80);
+    pipes.addFluid(0, 0, FLUID_TYPE_WATER, 6);
     pipes.removePipe(2);
 
     const left = pipes.networkAt(0, 0);
@@ -46,7 +46,7 @@ test("removing a middle pipe splits the run and shares the fluid out by size", a
     assert.equal(left.size, 1);
     assert.equal(right.size, 2);
     assert.notEqual(left.id, right.id);
-    assert.equal(left.amount + right.amount, 80, "the split conserves the fluid");
+    assert.equal(left.amount + right.amount, 6, "the split conserves the fluid");
     assert.equal(left.fluidType, FLUID_TYPE_WATER);
     assert.equal(right.fluidType, FLUID_TYPE_WATER);
 });
@@ -67,8 +67,8 @@ test("canJoin rejects a placement bridging networks of different fluids", async 
     const {pipes} = await makePipes();
     pipes.placePipe(0, 0);
     pipes.placePipe(2, 0);
-    pipes.addFluid(0, 0, FLUID_TYPE_WATER, 30);
-    pipes.addFluid(2, 0, FLUID_TYPE_OIL, 30);
+    pipes.addFluid(0, 0, FLUID_TYPE_WATER, 2);
+    pipes.addFluid(2, 0, FLUID_TYPE_OIL, 2);
 
     assert.equal(pipes.canJoin(1, 0), false, "water and oil must not merge");
     assert.equal(pipes.canJoin(3, 0), true, "extending one network is fine");
@@ -81,8 +81,8 @@ test("a drained network frees its fluid type for the next fill", async () => {
     pipes.placePipe(0, 0);
     pipes.addFluid(0, 0, FLUID_TYPE_OIL, 0);
     assert.equal(pipes.networkAt(0, 0).fluidType, EMPTY, "a zero add binds no type");
-    pipes.addFluid(0, 0, FLUID_TYPE_OIL, 10);
+    pipes.addFluid(0, 0, FLUID_TYPE_OIL, 2);
     assert.equal(pipes.networkAt(0, 0).fluidType, FLUID_TYPE_OIL);
     engine.tickAll();
-    assert.equal(pipes.networkAt(0, 0).amount, 10, "nothing consumes, nothing leaves");
+    assert.equal(pipes.networkAt(0, 0).amount, 2, "nothing consumes, nothing leaves");
 });
