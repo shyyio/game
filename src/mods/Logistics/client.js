@@ -22,6 +22,7 @@ import {
     PortItemClearEvent,
     Direction,
     PORT_SPRITE_KEY,
+    InspectHighlight,
     Rectangle,
     TILE_SIZE,
 } from "@spup/sdk/client";
@@ -486,7 +487,8 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Tool-less hover: reveal the buried tunnel under a hovered ramp. Belts draw no highlight.
+     * Tool-less hover: reveal the buried tunnel under a hovered ramp and highlight both its ends.
+     * Plain belts draw no highlight.
      * @param {number|null} tileX
      * @param {number|null} tileY
      * @param {Client} client
@@ -505,7 +507,21 @@ export class LogisticsClientMod extends AbstractClientMod {
         } else {
             this._overlayLayer.showUndergroundReveal(tunnel.tiles, ramp.data.direction);
         }
-        return [];
+        if (ramp === undefined) {
+            return [];
+        }
+        // The hovered ramp, plus the ramp it tunnels to (alternate highlight).
+        const highlights = [new InspectHighlight(ramp.tileX, ramp.tileY, ramp.data.direction, ramp.data.type)];
+        if (tunnel !== null && tunnel.pair !== null) {
+            highlights.push(new InspectHighlight(
+                tunnel.pair.tileX,
+                tunnel.pair.tileY,
+                tunnel.pair.data.direction,
+                tunnel.pair.data.type,
+                true,
+            ));
+        }
+        return highlights;
     }
 
 }
