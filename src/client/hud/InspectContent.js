@@ -14,8 +14,10 @@ const WORKER_ROW_HEIGHT = WORKER_TEXT_SIZE + SLOT_MARGIN_Y;
 // Total content height: inputs row, then a row sharing the progress bar and output slot.
 const BASE_CONTENT_HEIGHT = SLOT_SIZE + SLOT_MARGIN_Y + SLOT_SIZE;
 
-// Ticks a port item keeps its present look after leaving the port: a machine pulling one item per
-// tick empties its ports every tick, which would otherwise read as flicker.
+// Ticks an input item keeps its present look after leaving the port: a machine pulls its inputs
+// within the tick they arrive, so an input port reads as empty almost always. The output slot gets
+// no such hold — an out-port item genuinely rests there, and holding it made a port occupied every
+// other tick look identical to one occupied every tick.
 const PRESENCE_HOLD_TICKS = 2;
 
 /**
@@ -76,7 +78,6 @@ export class InspectContent extends Container {
         this._outputSlot.x = outputX;
         this._outputSlot.y = secondRowY;
         this.addChild(this._outputSlot);
-        this._outputHold = 0;
 
         this._workerLabel = null;
         if (event.workerCost !== null) {
@@ -115,19 +116,18 @@ export class InspectContent extends Container {
 
         this._progressBar.setProgress(event.processingRemaining, event.processingTotal);
 
-        // Out-port item first, else the inferred recipe output, else the last produced item.
-        this._outputHold = holdAfter(this._outputHold, event.outputItem !== null);
+        // Out-port item first, else the inferred recipe output, else the last produced item; only
+        // the first is really in the port, so only it renders as present.
+        const present = event.outputItem !== null;
         let outputItem = 0;
-        if (event.outputItem !== null) {
+        if (present) {
             outputItem = event.outputItem;
-        } else if (this._outputHold > 0) {
-            outputItem = this._outputSlot.item;
         } else if (event.recipeOutput !== null) {
             outputItem = event.recipeOutput;
         } else if (lastProduced !== undefined) {
             outputItem = lastProduced;
         }
-        this._outputSlot.setItem(outputItem, this._outputHold > 0);
+        this._outputSlot.setItem(outputItem, present);
 
         if (this._workerLabel !== null) {
             this._updateWorkerRow(event);
@@ -185,7 +185,7 @@ function workerRowColor(staffed) {
 }
 
 /**
- * The hold counter after a tick: a port item recharges it, an empty port spends one tick of it.
+ * The hold counter after a tick: an input item recharges it, an empty port spends one tick of it.
  * @param {number} hold
  * @param {boolean} inPort
  * @returns {number}
