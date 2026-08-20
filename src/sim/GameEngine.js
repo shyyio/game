@@ -86,6 +86,12 @@ const INTENT_CAPACITY = 1024;
 const INTENT_DEST_EMPTY = 1;
 const INTENT_MANAGED = 2;
 
+// How a port lost its item this tick, so the render diff re-emits a refilled port (the client
+// animates the swap) and flags engine-drained clears consumed (the item glides into the consumer).
+const PORT_EMPTIED_NONE = 0;
+const PORT_EMPTIED_MOD = 1;
+const PORT_EMPTIED_CONSUMED = 2;
+
 /**
  * A component column for a field kind: Float32Array for "f32", Int32Array otherwise ("i32"/"eid").
  * @param {string} kind
@@ -325,9 +331,9 @@ export class GameEngine {
         // EMIT_RENDER walks this instead of every rendered port in the world.
         this._dirtyPorts = [];
         this._portDirty = new Uint8Array(this._portDef.capacity);
-        // Ports the engine emptied this tick (sink drain or managed transfer), so the render diff
-        // flags their clear as consumed and the client glides the item out.
-        this._portConsumed = new Uint8Array(this._portDef.capacity);
+        // How each port lost its item this tick (PORT_EMPTIED_*), driving the render diff's
+        // forced clear/set and the clear's consumed flag.
+        this._portEmptied = new Uint8Array(this._portDef.capacity);
         // Whether a rendered port's tile has a watcher, and the observation generation that answer was
         // computed at (0 = never). The render diff would otherwise hash the chunk and call through the
         // subscription predicate for every port written this tick.
@@ -696,8 +702,8 @@ export class GameEngine {
         const item = this.Port.item;
         for (const eid of this._dirtyPorts) {
             this._portDirty[eid] = 0;
-            const consumed = this._portConsumed[eid] === 1;
-            this._portConsumed[eid] = 0;
+            const emptied = this._portEmptied[eid];
+            this._portEmptied[eid] = PORT_EMPTIED_NONE;
             if (this._rendered[eid] === 0) {
                 continue;
             }
@@ -706,9 +712,10 @@ export class GameEngine {
             if (this.isFluid(displayed)) {
                 displayed = EMPTY;
             }
-            // A consumed port's shown item glides out even when a new one refills it the same tick.
-            const consumedShown = consumed && this._portShadow[eid] !== EMPTY;
-            if (displayed === this._portShadow[eid] && !consumedShown) {
+            // An emptied port's shown item is cleared even when a new one refills it the same tick
+            // (a silent same-type swap would leave the client's sprite standing still).
+            const emptiedShown = emptied !== PORT_EMPTIED_NONE && this._portShadow[eid] !== EMPTY;
+            if (displayed === this._portShadow[eid] && !emptiedShown) {
                 continue;
             }
             this._portShadow[eid] = displayed;
@@ -718,14 +725,14 @@ export class GameEngine {
             const x = this._renderX[eid];
             const y = this._renderY[eid];
             const batch = this._portBatch(batches, x, y);
-            if (consumedShown) {
-                batch.addClear(eid, 1);
-            }
-            if (displayed === EMPTY) {
-                if (!consumedShown) {
-                    batch.addClear(eid);
+            if (emptiedShown || displayed === EMPTY) {
+                let consumed = 0;
+                if (emptied === PORT_EMPTIED_CONSUMED) {
+                    consumed = 1;
                 }
-            } else {
+                batch.addClear(eid, consumed);
+            }
+            if (displayed !== EMPTY) {
                 batch.addSet(eid, displayed);
             }
         }
@@ -1065,7 +1072,7 @@ export class GameEngine {
                 grown.set(this[name]);
                 this[name] = grown;
             }
-            for (const name of ["_portDirty", "_portConsumed", "_rendered", "_portFluid", "_portObserved", "_portResolved", "_portResolvedUnmanaged", "_draining"]) {
+            for (const name of ["_portDirty", "_portEmptied", "_rendered", "_portFluid", "_portObserved", "_portResolved", "_portResolvedUnmanaged", "_draining"]) {
                 const grown = new Uint8Array(capacity);
                 grown.set(this[name]);
                 this[name] = grown;
@@ -1571,6 +1578,9 @@ export class GameEngine {
      * @returns {void}
      */
     setPortItem(eid, item) {
+        if (item === EMPTY && this.Port.item[eid] !== EMPTY && this._portEmptied[eid] === PORT_EMPTIED_NONE) {
+            this._portEmptied[eid] = PORT_EMPTIED_MOD;
+        }
         this.Port.item[eid] = item;
         this._markPortDirty(eid);
     }
@@ -1826,7 +1836,7 @@ export class GameEngine {
         for (let index = 0; index < this._sinkCount; index += 1) {
             const source = this._sinks[index];
             this.Port.item[source] = EMPTY;
-            this._portConsumed[source] = 1;
+            this._portEmptied[source] = PORT_EMPTIED_CONSUMED;
             this._markPortDirty(source);
         }
     }
@@ -1841,7 +1851,7 @@ export class GameEngine {
             const source = this._resolvedSource[row];
             if (this._resolvedManaged[row] === 1 && source !== EMPTY) {
                 this.Port.item[source] = EMPTY;
-                this._portConsumed[source] = 1;
+                this._portEmptied[source] = PORT_EMPTIED_CONSUMED;
                 this._markPortDirty(source);
             }
         }
@@ -2071,7 +2081,7 @@ export class GameEngine {
         this._renderedByChunk = new Map();
         this._portShadow.fill(EMPTY);
         this._portDirty.fill(0);
-        this._portConsumed.fill(0);
+        this._portEmptied.fill(PORT_EMPTIED_NONE);
         this._dirtyPorts.length = 0;
         this._pendingClear = new Map();
         this._resetTick();
