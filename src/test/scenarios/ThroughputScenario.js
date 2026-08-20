@@ -1,4 +1,4 @@
-// A throughput probe, not game content: a Trading Terminal buying from the NPC feeds two 1-tick
+// A throughput probe, not game content: a Trading Terminal buying from the NPC feeds two 0-tick
 // machines in series, ending in a Sink that drains whatever reaches it. Every stage is 1x1 and sits
 // in one column, so `belts` (tiles of belt between stages) is the only variable: 0 wires each
 // stage's output port straight into the next stage's input port, which is the same port entity, and
@@ -46,7 +46,7 @@ const IN = new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP});
 const OUT = new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP});
 
 /**
- * A 1x1, single-recipe, 1-tick machine.
+ * A 1x1, single-recipe machine crafting in 0 ticks, so a fed line runs at full throughput.
  * @param {string} name
  * @param {string} label
  * @param {number} toolId
@@ -67,7 +67,7 @@ function press(name, label, toolId, input, output) {
         inspectable: true,
         placement: new PlacementRule({replaceSameKind: true}),
         behavior: new MachineBehavior({
-            processingTicks: 1,
+            processingTicks: 0,
             recipes: [new RecipeDefinition([input], output)],
             fallback: ITEM_TYPE_THROUGHPUT_UNIT,
         }),
@@ -260,7 +260,7 @@ function layBelts(engine, fromY, beltLength) {
 }
 
 /**
- * Trade terminal -> two 1-tick machines in series -> sink, with `belts` belt tiles between stages.
+ * Trade terminal -> two 0-tick machines in series -> sink, with `belts` belt tiles between stages.
  */
 export class ThroughputScenario extends AbstractScenario {
 
