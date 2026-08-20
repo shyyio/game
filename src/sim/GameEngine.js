@@ -325,6 +325,9 @@ export class GameEngine {
         // EMIT_RENDER walks this instead of every rendered port in the world.
         this._dirtyPorts = [];
         this._portDirty = new Uint8Array(this._portDef.capacity);
+        // Ports the engine emptied this tick (sink drain or managed transfer), so the render diff
+        // flags their clear as consumed and the client glides the item out.
+        this._portConsumed = new Uint8Array(this._portDef.capacity);
         // Whether a rendered port's tile has a watcher, and the observation generation that answer was
         // computed at (0 = never). The render diff would otherwise hash the chunk and call through the
         // subscription predicate for every port written this tick.
@@ -693,6 +696,8 @@ export class GameEngine {
         const item = this.Port.item;
         for (const eid of this._dirtyPorts) {
             this._portDirty[eid] = 0;
+            const consumed = this._portConsumed[eid] === 1;
+            this._portConsumed[eid] = 0;
             if (this._rendered[eid] === 0) {
                 continue;
             }
@@ -701,7 +706,9 @@ export class GameEngine {
             if (this.isFluid(displayed)) {
                 displayed = EMPTY;
             }
-            if (displayed === this._portShadow[eid]) {
+            // A consumed port's shown item glides out even when a new one refills it the same tick.
+            const consumedShown = consumed && this._portShadow[eid] !== EMPTY;
+            if (displayed === this._portShadow[eid] && !consumedShown) {
                 continue;
             }
             this._portShadow[eid] = displayed;
@@ -711,8 +718,13 @@ export class GameEngine {
             const x = this._renderX[eid];
             const y = this._renderY[eid];
             const batch = this._portBatch(batches, x, y);
+            if (consumedShown) {
+                batch.addClear(eid, 1);
+            }
             if (displayed === EMPTY) {
-                batch.addClear(eid);
+                if (!consumedShown) {
+                    batch.addClear(eid);
+                }
             } else {
                 batch.addSet(eid, displayed);
             }
@@ -1053,7 +1065,7 @@ export class GameEngine {
                 grown.set(this[name]);
                 this[name] = grown;
             }
-            for (const name of ["_portDirty", "_rendered", "_portFluid", "_portObserved", "_portResolved", "_portResolvedUnmanaged", "_draining"]) {
+            for (const name of ["_portDirty", "_portConsumed", "_rendered", "_portFluid", "_portObserved", "_portResolved", "_portResolvedUnmanaged", "_draining"]) {
                 const grown = new Uint8Array(capacity);
                 grown.set(this[name]);
                 this[name] = grown;
@@ -1814,6 +1826,7 @@ export class GameEngine {
         for (let index = 0; index < this._sinkCount; index += 1) {
             const source = this._sinks[index];
             this.Port.item[source] = EMPTY;
+            this._portConsumed[source] = 1;
             this._markPortDirty(source);
         }
     }
@@ -1828,6 +1841,7 @@ export class GameEngine {
             const source = this._resolvedSource[row];
             if (this._resolvedManaged[row] === 1 && source !== EMPTY) {
                 this.Port.item[source] = EMPTY;
+                this._portConsumed[source] = 1;
                 this._markPortDirty(source);
             }
         }
@@ -2057,6 +2071,7 @@ export class GameEngine {
         this._renderedByChunk = new Map();
         this._portShadow.fill(EMPTY);
         this._portDirty.fill(0);
+        this._portConsumed.fill(0);
         this._dirtyPorts.length = 0;
         this._pendingClear = new Map();
         this._resetTick();

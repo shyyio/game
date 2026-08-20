@@ -66,3 +66,59 @@ test("a render pass emits one port-item batch per chunk", async () => {
     assert.deepEqual(near.setItemTypes, [ITEM, ITEM]);
     assert.deepEqual(near.clearPortIds, []);
 });
+
+// A consumer eating a rendered port's item flags the clear consumed, so the client glides the
+// item into the consumer instead of dropping it; a mod-cleared port stays unflagged.
+test("a drained rendered port's clear is flagged consumed", async () => {
+    const engine = new GameEngine();
+    await engine.init();
+    const collector = new EventCollector(engine);
+    const port = engine.createPort(ITEM);
+    engine.registerRenderedPort(port, 5, 4);
+    engine.tickAll();
+    collector.drain();
+
+    engine.submitDrain(port, true);
+    engine.resolvePortTransfer();
+    engine.flushSinks();
+    engine.tickAll();
+    const events = collector.drain();
+    assert.equal(events.length, 1);
+    assert.ok(events[0] instanceof PortItemClearEvent);
+    assert.equal(events[0].consumed, 1);
+
+    engine.setPortItem(port, ITEM);
+    engine.tickAll();
+    collector.drain();
+    engine.setPortItem(port, EMPTY);
+    engine.tickAll();
+    const modCleared = collector.drain();
+    assert.equal(modCleared.length, 1);
+    assert.ok(modCleared[0] instanceof PortItemClearEvent);
+    assert.equal(modCleared[0].consumed, 0);
+});
+
+// A port consumed and refilled in one tick still emits the consumed clear ahead of the set, so
+// the shown item glides out while its replacement glides in.
+test("a consumed port refilled the same tick emits clear then set", async () => {
+    const engine = new GameEngine();
+    await engine.init();
+    const collector = new EventCollector(engine);
+    const port = engine.createPort(ITEM);
+    engine.registerRenderedPort(port, 5, 4);
+    engine.tickAll();
+    collector.drain();
+
+    const NEXT_ITEM = 8;
+    engine.submitDrain(port, true);
+    engine.resolvePortTransfer();
+    engine.flushSinks();
+    engine.setPortItem(port, NEXT_ITEM);
+    engine.tickAll();
+    const events = collector.drain();
+    assert.equal(events.length, 2);
+    assert.ok(events[0] instanceof PortItemClearEvent);
+    assert.equal(events[0].consumed, 1);
+    assert.ok(events[1] instanceof PortItemSetEvent);
+    assert.equal(events[1].itemType, NEXT_ITEM);
+});

@@ -47,6 +47,18 @@ export class ItemDrawLayer extends AbstractDrawLayer {
          */
         this._gliding = new Set();
         /**
+         * Consumed particles gliding out, mapped to the key releasing them once they arrive.
+         * @type {Map<ItemParticle, string>}
+         * @private
+         */
+        this._dying = new Map();
+        /**
+         * Uniquifies the keys consumed particles finish their glide under.
+         * @type {number}
+         * @private
+         */
+        this._consumedSerial = 0;
+        /**
          * Live particles keyed by particle key — a number row id for belt items, a namespaced
          * string for items resting in out-ports. Idle particles await reuse parked in the
          * container at alpha 0 and kept at the high-water mark: pixi's removeParticle is a
@@ -64,6 +76,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
                 particle.live = false;
                 particle.setAlpha(0);
                 this._gliding.delete(particle);
+                this._dying.delete(particle);
             },
             (particle, texture) => {
                 // Parked particles are still attached; re-light in place.
@@ -134,6 +147,8 @@ export class ItemDrawLayer extends AbstractDrawLayer {
                 sourceDirection: placement.sourceDirection,
                 type: event.itemType,
             });
+        } else if (event.consumed === 1) {
+            this.consumeItem(PORT_SPRITE_KEY(event.portId), Direction.invert(placement.sourceDirection));
         } else {
             this.removeItem(PORT_SPRITE_KEY(event.portId));
         }
@@ -183,6 +198,11 @@ export class ItemDrawLayer extends AbstractDrawLayer {
             particle.advance(deltaMS);
             if (!particle.gliding) {
                 this._gliding.delete(particle);
+                const dyingKey = this._dying.get(particle);
+                if (dyingKey !== undefined) {
+                    this._dying.delete(particle);
+                    this._items.release(dyingKey);
+                }
             }
         }
     }
@@ -257,6 +277,39 @@ export class ItemDrawLayer extends AbstractDrawLayer {
             }
         }
         return nearest;
+    }
+
+    /**
+     * Whether a live item holds the key.
+     * @param {number|string} key
+     * @returns {boolean}
+     */
+    hasItem(key) {
+        return this._items.has(key);
+    }
+
+    /**
+     * Glides a consumed item a half-tile along `direction`, then drops it; the key frees
+     * immediately, so the port's next item can take it while the exit plays out.
+     * @param {number|string} key
+     * @param {Direction} direction - the travel direction into the consumer
+     * @returns {void}
+     */
+    consumeItem(key, direction) {
+        const particle = this._items.get(key);
+        if (particle === undefined) {
+            return;
+        }
+        if (ReducedMotion.enabled || particle.hidden) {
+            this.removeItem(key);
+            return;
+        }
+        const dyingKey = `consumed:${this._consumedSerial}`;
+        this._consumedSerial += 1;
+        this._items.rename(key, dyingKey);
+        particle.consumeAlong(direction);
+        this._gliding.add(particle);
+        this._dying.set(particle, dyingKey);
     }
 
     /**
@@ -373,6 +426,8 @@ class ItemParticle extends Particle {
         this.live = false;
         // Under cover (in a tunnel): positioned but rendered at alpha 0 outside debug mode.
         this.hidden = false;
+        // Consumed: gliding into the consumer, dropped on arrival.
+        this._consuming = false;
         // Glide state: start/target pixels and ms elapsed into the current move.
         // _startX is null when not gliding (freshly placed or arrived).
         this._startX = null;
@@ -387,7 +442,7 @@ class ItemParticle extends Particle {
      * @returns {boolean}
      */
     get pickable() {
-        return this.live && !this.hidden;
+        return this.live && !this.hidden && !this._consuming;
     }
 
     /**
@@ -443,6 +498,7 @@ class ItemParticle extends Particle {
     reset() {
         this.itemType = null;
         this.hidden = false;
+        this._consuming = false;
         this._startX = null;
         this._startY = null;
         this._targetX = null;
@@ -499,6 +555,21 @@ class ItemParticle extends Particle {
         }
         this._targetX = targetX;
         this._targetY = targetY;
+    }
+
+    /**
+     * Starts the consumed glide: from the current position a half-tile along `direction`.
+     * @param {Direction} direction - the travel direction into the consumer
+     * @returns {void}
+     */
+    consumeAlong(direction) {
+        const half = TILE_SIZE / 2;
+        this._startX = this.x;
+        this._startY = this.y;
+        this._targetX = this.x + Direction.dx(direction) * half;
+        this._targetY = this.y + Direction.dy(direction) * half;
+        this._elapsed = 0;
+        this._consuming = true;
     }
 
     /**

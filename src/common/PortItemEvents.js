@@ -35,16 +35,19 @@ export class PortItemClearEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         portId: "int64",
+        consumed: "int32",
     };
 
     /**
      * @param {number} x
      * @param {number} y
      * @param {number} portId
+     * @param {number} [consumed] - 1 when a consumer ate the item, so the client glides it out
      */
-    constructor(x, y, portId) {
+    constructor(x, y, portId, consumed=0) {
         super(x, y);
         this.portId = portId;
+        this.consumed = consumed;
     }
 }
 
@@ -58,6 +61,7 @@ export class PortItemBatchEvent extends AbstractBatchEvent {
         setPortIds: "int64[]",
         setItemTypes: "int32[]",
         clearPortIds: "int64[]",
+        clearConsumed: "int32[]",
     };
 
     /**
@@ -69,6 +73,7 @@ export class PortItemBatchEvent extends AbstractBatchEvent {
         this.setPortIds = [];
         this.setItemTypes = [];
         this.clearPortIds = [];
+        this.clearConsumed = [];
     }
 
     /**
@@ -83,10 +88,12 @@ export class PortItemBatchEvent extends AbstractBatchEvent {
 
     /**
      * @param {number} portId
+     * @param {number} [consumed] - 1 when a consumer ate the item
      * @returns {void}
      */
-    addClear(portId) {
+    addClear(portId, consumed=0) {
         this.clearPortIds.push(portId);
+        this.clearConsumed.push(consumed);
     }
 
     /**
@@ -95,8 +102,8 @@ export class PortItemBatchEvent extends AbstractBatchEvent {
      */
     explode() {
         const events = [];
-        for (const portId of this.clearPortIds) {
-            events.push(new PortItemClearEvent(this.x, this.y, portId));
+        for (let i = 0; i < this.clearPortIds.length; i += 1) {
+            events.push(new PortItemClearEvent(this.x, this.y, this.clearPortIds[i], this.clearConsumed[i]));
         }
         for (let i = 0; i < this.setPortIds.length; i += 1) {
             events.push(new PortItemSetEvent(this.x, this.y, this.setPortIds[i], this.setItemTypes[i]));
