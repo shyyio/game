@@ -17,6 +17,15 @@ export class AbstractScenario {
     }
 
     /**
+     * The scenario-local mod packages to append to the loadout before it is frozen; empty for a
+     * scenario built purely from the loadout's own object types.
+     * @returns {ModPackage[]}
+     */
+    modPackages() {
+        return [];
+    }
+
+    /**
      * Populates the world.
      * @abstract
      * @param {Game} game
