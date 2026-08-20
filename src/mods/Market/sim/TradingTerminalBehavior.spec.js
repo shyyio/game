@@ -2,7 +2,8 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {
-    Direction, EMPTY, CreateObjectMessage, ModPackage, AbstractModDeclaration, MarketListingEntry,
+    Direction, EMPTY, TickPhase, CreateObjectMessage, ModPackage, AbstractModDeclaration,
+    MarketListingEntry,
 } from "@spup/sdk";
 import {TradingTerminalType} from "./../common/objectTypes.js";
 import {MARKET_MODE_SELL, MARKET_MODE_BUY} from "../common/constants.js";
@@ -145,6 +146,35 @@ test("an NPC-priced buy terminal purchases every tick, at full throughput", asyn
         // A belt would pull it away immediately; simulate that so the next tick isn't blocked.
         engine.setPortItem(outPort, EMPTY);
     }
+});
+
+test("an NPC-priced buy terminal keeps buying while a consumer drains its port the same tick", async () => {
+    const engine = await makeGameEngine([new ModPackage(new NpcPriceFixtureDeclaration())]);
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
+    const [buyerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
+    const def = engine.component("MarketTerminal");
+    const terminal = def.store;
+    const row = def.row(buyerEid);
+    terminal.mode[row] = MARKET_MODE_BUY;
+    terminal.itemType[row] = ITEM;
+    terminal.balance[row] = 1_000_000;
+
+    // A belt takes the resting item in the same phase the terminal submits its purchase, so the port
+    // is never observed empty at submit time — the terminal has to ride that drain, not wait a tick.
+    const outPort = terminal.out[row];
+    let drained = 0;
+    engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => {
+        if (engine.portItem(outPort) !== EMPTY) {
+            drained += 1;
+            engine.submitDrain(outPort, true);
+        }
+    });
+
+    const ticks = 20;
+    for (let tick = 0; tick < ticks; tick += 1) {
+        engine.tickAll();
+    }
+    assert.equal(drained, ticks - 1, "one purchase per tick after the first fill, not one every other tick");
 });
 
 test("two sellers racing for one buyer: the loser's item stays resting, no double-delivery", async () => {

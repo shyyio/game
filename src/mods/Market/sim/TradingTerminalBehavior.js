@@ -145,10 +145,9 @@ export class TradingTerminalBehavior extends AbstractBehavior {
 
     /**
      * A buy terminal configured for an NPC-fixed-price item purchases straight from the NPC's
-     * infinite supply whenever its output port is free and its owner's remaining balance covers the
-     * price — no matching needed, since there's no real seller on the other side. Player-market items
-     * have no fixed price and take no action here; they stay purely passive, waiting on a seller's
-     * transfer.
+     * infinite supply whenever its owner's remaining balance covers the price — no matching needed,
+     * since there's no real seller on the other side. Player-market items have no fixed price and take
+     * no action here; they stay purely passive, waiting on a seller's transfer.
      * @private
      * @param {GameEngine} engine
      * @param {Int32Array} item
@@ -173,10 +172,11 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         if (remaining < fixedPrice) {
             return;
         }
-        if (item[outPort] !== EMPTY) {
-            return;
-        }
-        engine.submitCreate(outPort, itemType, true);
+        // Submitted even on an occupied out port (destEmpty is computed, as ExtractorBehavior does):
+        // the resolver lands the create when that port drains this same tick, so a terminal feeding a
+        // belt buys every tick instead of every other one. The spend is reserved here either way — a
+        // create that loses its port for the tick only over-reserves this pass, never overspends.
+        engine.submitCreate(outPort, itemType, item[outPort] === EMPTY);
         terminal.pendingPrice[row] = fixedPrice;
         terminal.pendingIsNpc[row] = 1;
         reservedBalance.set(owner, remaining - fixedPrice);
@@ -204,8 +204,8 @@ export class TradingTerminalBehavior extends AbstractBehavior {
     /**
      * POST_RESOLVE: a buy terminal whose output resolved records last_output (cosmetic) and, if it
      * had an NPC purchase pending (from _submitNpcPurchase), hands the confirmed purchase off to
-     * MarketSimMod.onTick for currency settlement — a source-less create always lands once submitted
-     * (no counterpart contention), so no separate resolution check is needed beyond wasResolvedDest.
+     * MarketSimMod.onTick for currency settlement — wasResolvedDest is what confirms it, since a
+     * create submitted onto an occupied out port lands only if that port drains the same tick.
      * A sell terminal whose attempted transfer actually landed this tick hands the confirmed trade off
      * to MarketSimMod.onTick the same way (an NPC drain always lands once submitted — no counterpart
      * contention — a real transfer may lose the engine's fan-in arbitration to a different seller
