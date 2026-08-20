@@ -24,7 +24,9 @@ const LOCAL_TICK_INTERVAL_MS = DEFAULT_TICK_MS;
  * The packages to register. A remote server's own pinned loadout is fetched from it — the client
  * ships no game content for remote play, which is also what keeps the positional wire ids in sync.
  * Local mode has no server to ask, so it registers the loadout built into this client, imported
- * lazily so a remote join never loads it, then the side-loaded packages a `?mod=` URL asks for.
+ * lazily so a remote join never loads it, then the side-loaded packages a `?mod=` URL asks for, then
+ * whatever mod the selected `?scenario=` brings of its own. Both extras append, leaving the built-in
+ * packages' positional ids untouched.
  * @param {{mode: string, serverUrl: string}} props
  * @param {string[]} sideloadUrls package base URLs, empty in remote mode
  * @returns {Promise<ModPackage[]>}
@@ -34,7 +36,19 @@ async function loadoutFor(props, sideloadUrls) {
         return await fetchModLoadout(props.serverUrl);
     }
     const {clientLoadout} = await import("@/mods/clientLoadout.js");
-    return [...clientLoadout(), ...await fetchSideloadedMods(sideloadUrls)];
+    const packages = [...clientLoadout(), ...await fetchSideloadedMods(sideloadUrls)];
+    if (scenarioSelected()) {
+        const {scenarioModPackages} = await import("@/test/scenarios/index.js");
+        packages.push(...scenarioModPackages());
+    }
+    return packages;
+}
+
+/**
+ * @returns {boolean}
+ */
+function scenarioSelected() {
+    return new URLSearchParams(window.location.search).has(SCENARIO_PARAM);
 }
 
 /**
@@ -80,7 +94,7 @@ export async function createClient(app, viewport, props) {
 
         // Scenarios populate the world before any session connects, so the objects reach the client
         // through the normal chunk sync. Only a ?scenario= URL pulls in the tree.
-        if (new URLSearchParams(window.location.search).has(SCENARIO_PARAM)) {
+        if (scenarioSelected()) {
             const {applyScenarioFromLocation} = await import("@/test/scenarios/index.js");
             await applyScenarioFromLocation(game);
         }
