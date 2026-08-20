@@ -87,6 +87,7 @@ onMounted(async () => {
   const unsubMobile = Mobile.onChange(() => {
     syncMobileTouchInput();
     toolController.applyEffectiveTool();
+    client.versionWatermarkLayer.refresh();
   });
 
   bindSettingsMenu(client);

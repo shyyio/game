@@ -77,6 +77,7 @@ import {WorkerDrawLayer} from "@/client/layers/WorkerDrawLayer.js";
 import {WorkerDebugLayer} from "@/client/layers/WorkerDebugLayer.js";
 import {WorkerBadgeLayer} from "@/client/layers/WorkerBadgeLayer.js";
 import {StatusMessageLayer} from "@/client/hud/StatusMessageLayer.js";
+import {VersionWatermarkLayer} from "@/client/hud/VersionWatermarkLayer.js";
 import {TopStatusBarLayer} from "@/client/hud/TopStatusBarLayer.js";
 import {BottomActionBarLayer} from "@/client/hud/BottomActionBarLayer.js";
 import {SettingsButtonLayer} from "@/client/hud/SettingsButtonLayer.js";
@@ -251,6 +252,8 @@ export class Client {
             this.productionButtonLayer.setTopOffset(offset);
             this.statusLayer.setTopOffset(offset);
         });
+        // Bottom-left build watermark (desktop only).
+        this.versionWatermarkLayer = new VersionWatermarkLayer(app);
         // Bottom-center toast (claim rejections, session disconnects).
         this.noticeLayer = new NoticeLayer(app);
         // Centered confirm/cancel dialog, currently only the destructive unclaim confirm.
@@ -578,6 +581,7 @@ export class Client {
         this.productionPanelLayer.textureRegistry = this.textureRegistry;
         this.productionPanelLayer.anchorButton = this.productionButtonLayer;
         this.productionPanelLayer.viewport = this.viewport;
+        this.app.stage.addChild(this.versionWatermarkLayer);
         this.app.stage.addChild(this.centerMarkerLayer);
         this.app.stage.addChild(this.mapButtonsLayer);
         this.app.stage.addChild(this.chunkActionsLayer);

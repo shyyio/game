@@ -3,9 +3,10 @@ import {fileURLToPath, URL} from "node:url";
 import {defineConfig} from "vite";
 import vue from "@vitejs/plugin-vue";
 import vuetify from "vite-plugin-vuetify";
-import {gitBuildInfo} from "./vite.build-defines.js";
+import {gitBuildInfo, packageVersion} from "./vite.build-defines.js";
 
 const {commit: BUILD_COMMIT, date: BUILD_DATE} = gitBuildInfo();
+const APP_VERSION = packageVersion();
 
 // https://vite.dev/config/
 export default defineConfig(({mode}) => ({
@@ -23,6 +24,7 @@ export default defineConfig(({mode}) => ({
         // On in a dev build, and in the production build @spup/game-client packs (SPUP_DEV_TOOLS=1):
         // it adds the controls an author needs to reach their own server, which the site does not ship.
         __DEV_TOOLS__: JSON.stringify(mode !== "production" || process.env.SPUP_DEV_TOOLS === "1"),
+        __APP_VERSION__: JSON.stringify(APP_VERSION),
         __BUILD_COMMIT__: JSON.stringify(BUILD_COMMIT),
         __BUILD_DATE__: JSON.stringify(BUILD_DATE),
     },

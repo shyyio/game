@@ -10,6 +10,9 @@ export const DEV_TOOLS = typeof __DEV_TOOLS__ === "undefined" ? DEV : __DEV_TOOL
 // True in the browser; false under Node tests/server.
 export const BROWSER = typeof window !== "undefined";
 
+// The package version the client was built from; "dev" outside a Vite build.
+export const APP_VERSION = typeof __APP_VERSION__ === "undefined" ? "dev" : __APP_VERSION__;
+
 // Git commit the client bundle was built from; "dev" outside a Vite build.
 export const BUILD_COMMIT = typeof __BUILD_COMMIT__ === "undefined" ? "dev" : __BUILD_COMMIT__;
 

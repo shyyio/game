@@ -85,6 +85,7 @@ const CHECKED_TEXTS = {
     "src/mods/Notes/client/NoteTooltipLayer.js": 2,
 };
 const UNCHECKED_TEXTS = {
+    "src/client/hud/VersionWatermarkLayer.js": 1,
     "src/client/layers/ChunkClaimsDrawLayer.js": 1,
     "src/client/layers/WorkerDebugLayer.js": 1,
     "src/mods/CursorSync/client/RemoteCursorsDrawLayer.js": 1,
