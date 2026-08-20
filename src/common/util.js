@@ -328,15 +328,25 @@ const COUNT_UNITS = [
 // The largest count the last unit still renders exactly; anything above it clamps.
 const COUNT_MAX = 9_999 * 1_000_000_000;
 
+const EXACT_COUNT_FORMAT = new Intl.NumberFormat("en-US");
+
+/**
+ * @param {number} n
+ * @returns {void}
+ */
+function requireCount(n) {
+    if (!Number.isInteger(n) || n < 0) {
+        throw new RangeError(`Cannot format ${n} as a count: expected an unsigned integer`);
+    }
+}
+
 /**
  * An unsigned integer count or currency amount as at most five characters (99999, 9999K, 999M, 1B).
  * @param {number} n
  * @returns {string}
  */
 export function formatCount(n) {
-    if (!Number.isInteger(n) || n < 0) {
-        throw new RangeError(`Cannot format ${n} as a count: expected an unsigned integer`);
-    }
+    requireCount(n);
     const count = Math.min(n, COUNT_MAX);
     for (const unit of COUNT_UNITS) {
         if (count <= unit.limit) {
@@ -344,4 +354,14 @@ export function formatCount(n) {
         }
     }
     throw new RangeError(`Cannot format ${n} as a count`);
+}
+
+/**
+ * The same count in full, thousands-grouped (10,000): what {@link formatCount} abbreviates.
+ * @param {number} n
+ * @returns {string}
+ */
+export function formatExactCount(n) {
+    requireCount(n);
+    return EXACT_COUNT_FORMAT.format(n);
 }

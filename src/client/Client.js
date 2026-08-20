@@ -76,6 +76,8 @@ import {ConnectionDrawLayer} from "@/client/layers/ConnectionDrawLayer.js";
 import {WorkerDrawLayer} from "@/client/layers/WorkerDrawLayer.js";
 import {WorkerDebugLayer} from "@/client/layers/WorkerDebugLayer.js";
 import {WorkerBadgeLayer} from "@/client/layers/WorkerBadgeLayer.js";
+import {CounterListLayer} from "@/client/hud/CounterListLayer.js";
+import {CounterTooltip} from "@/client/hud/CounterTooltip.js";
 import {StatusMessageLayer} from "@/client/hud/StatusMessageLayer.js";
 import {VersionWatermarkLayer} from "@/client/hud/VersionWatermarkLayer.js";
 import {TopStatusBarLayer} from "@/client/hud/TopStatusBarLayer.js";
@@ -211,6 +213,19 @@ export class Client {
         // app.stage (sibling of the viewport), so it never pans or zooms with the world.
         this.statusLayer = new StatusMessageLayer(app);
         this.statusLayer.setConnecting();
+        // The top bar's height, so the counter list knows whether the bar owns the top-left corner.
+        this._topBarHeight = 0;
+        // The status message's height, so the counter list stacks under it rather than behind it.
+        this._statusHeight = 0;
+        // Top-left running counts (currency balance, and whatever else contributes a counter),
+        // stacked under the status message and hidden while the top bar owns the edge.
+        // The hovered counter's label and exact amount.
+        this.counterTooltip = new CounterTooltip(app);
+        this.counterListLayer = new CounterListLayer(app, this.counterTooltip);
+        this.statusLayer.onChange((height) => {
+            this._statusHeight = height;
+            this._layoutTopLeft();
+        });
         // Full-width top status bar: core systems and mods each own a section by id (text +
         // buttons), e.g. claim mode's claim count and exit button.
         this.topStatusBar = new TopStatusBarLayer(app);
@@ -251,6 +266,8 @@ export class Client {
             this.friendsButtonLayer.setTopOffset(offset);
             this.productionButtonLayer.setTopOffset(offset);
             this.statusLayer.setTopOffset(offset);
+            this._topBarHeight = height;
+            this._layoutTopLeft();
         });
         // Bottom-left build watermark (desktop only).
         this.versionWatermarkLayer = new VersionWatermarkLayer(app);
@@ -309,6 +326,7 @@ export class Client {
             this.rotateButtonsLayer,
             this.toolbarLayer,
             this.statusLayer,
+            this.counterListLayer,
             this.topStatusBar,
             this.bottomActionBar,
             this.settingsButtonLayer,
@@ -321,6 +339,7 @@ export class Client {
             this.mapButtonsLayer,
             this.chunkActionsLayer,
             this.inspectTooltipLayer,
+            this.counterTooltip,
             ...this._modHudLayers.filter(layer => layer.restyle !== undefined),
         ];
         onThemeChange(() => this._restyleHud());
@@ -537,6 +556,7 @@ export class Client {
         this.drawLayerRegistry.setDebugMode(this._debugMode);
         this.inspectPanelLayer.setDebug(this._debugMode);
         this.toolbarLayer.setDebug(this._debugMode);
+        this.counterListLayer.setDebug(this._debugMode);
     }
 
     /**
@@ -566,6 +586,7 @@ export class Client {
         this.inspectPanelLayer.onClose(objectId => this.unInspectObject(objectId));
         this.statusLayer.textureRegistry = this.textureRegistry;
         this.statusLayer.refreshBackground();
+        this._layoutTopLeft();
         this.topStatusBar.textureRegistry = this.textureRegistry;
         this.topStatusBar.refreshBackground();
         this.bottomActionBar.textureRegistry = this.textureRegistry;
@@ -588,6 +609,8 @@ export class Client {
         this.app.stage.addChild(this.rotateButtonsLayer);
         this.app.stage.addChild(this.toolbarLayer);
         this.app.stage.addChild(this.statusLayer);
+        this.app.stage.addChild(this.counterListLayer);
+        this.app.stage.addChild(this.counterTooltip);
         this.app.stage.addChild(this.topStatusBar);
         this.app.stage.addChild(this.bottomActionBar);
         this.inspectTooltipLayer.viewport = this.viewport;
@@ -1201,6 +1224,17 @@ export class Client {
             }
         }
         return categories;
+    }
+
+    /**
+     * Stacks the counter list under the status message, and stands it down while the top bar
+     * owns the top edge.
+     * @private
+     * @returns {void}
+     */
+    _layoutTopLeft() {
+        const offset = Math.max(this._topBarHeight, SafeArea.insets().top);
+        this.counterListLayer.setTopOffset(offset + this._statusHeight, this._topBarHeight > 0);
     }
 
     /**

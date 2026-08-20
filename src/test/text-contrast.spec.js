@@ -63,6 +63,7 @@ function themedTexts() {
         {where: "InspectContent worker row (missing)", fill: Theme.WORKER_MISSING_TEXT, background: slot, fontSize: 15, bold: true},
         // The slot and note tooltips are flat filled boxes, not tinted 9-slices.
         {where: "SlotTooltip name", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
+        {where: "CounterTooltip text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
         {where: "NoteTooltipLayer text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
         {where: "NoteTooltipLayer author", fill: Theme.PANEL_BORDER, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
     ];
@@ -85,6 +86,7 @@ const CHECKED_TEXTS = {
     "src/mods/Notes/client/NoteTooltipLayer.js": 2,
 };
 const UNCHECKED_TEXTS = {
+    "src/client/hud/CounterListLayer.js": 1,
     "src/client/hud/VersionWatermarkLayer.js": 1,
     "src/client/layers/ChunkClaimsDrawLayer.js": 1,
     "src/client/layers/WorkerDebugLayer.js": 1,
