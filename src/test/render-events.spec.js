@@ -67,9 +67,11 @@ test("a render pass emits one port-item batch per chunk", async () => {
     assert.deepEqual(near.clearPortIds, []);
 });
 
-// A consumer eating a rendered port's item flags the clear consumed, so the client glides the
-// item into the consumer instead of dropping it; a mod-cleared port stays unflagged.
-test("a drained rendered port's clear is flagged consumed", async () => {
+/**
+ * Boots an engine with one rendered port holding ITEM, its initial set already drained.
+ * @returns {Promise<{engine: GameEngine, collector: EventCollector, port: number}>}
+ */
+async function riggedPort() {
     const engine = new GameEngine();
     await engine.init();
     const collector = new EventCollector(engine);
@@ -77,6 +79,13 @@ test("a drained rendered port's clear is flagged consumed", async () => {
     engine.registerRenderedPort(port, 5, 4);
     engine.tickAll();
     collector.drain();
+    return {engine, collector, port};
+}
+
+// A consumer eating a rendered port's item flags the clear consumed, so the client glides the
+// item into the consumer instead of dropping it; a mod-cleared port stays unflagged.
+test("a drained rendered port's clear is flagged consumed", async () => {
+    const {engine, collector, port} = await riggedPort();
 
     engine.submitDrain(port, true);
     engine.resolvePortTransfer();
@@ -101,13 +110,7 @@ test("a drained rendered port's clear is flagged consumed", async () => {
 // A port consumed and refilled in one tick still emits the consumed clear ahead of the set, so
 // the shown item glides out while its replacement glides in.
 test("a consumed port refilled the same tick emits clear then set", async () => {
-    const engine = new GameEngine();
-    await engine.init();
-    const collector = new EventCollector(engine);
-    const port = engine.createPort(ITEM);
-    engine.registerRenderedPort(port, 5, 4);
-    engine.tickAll();
-    collector.drain();
+    const {engine, collector, port} = await riggedPort();
 
     const NEXT_ITEM = 8;
     engine.submitDrain(port, true);
@@ -126,13 +129,7 @@ test("a consumed port refilled the same tick emits clear then set", async () => 
 // A mod taking a rendered port's item and refilling it in one tick (full-throughput ingest) still
 // emits a plain clear then set, so the client re-glides the new item instead of standing still.
 test("a mod-emptied port refilled the same tick emits clear then set", async () => {
-    const engine = new GameEngine();
-    await engine.init();
-    const collector = new EventCollector(engine);
-    const port = engine.createPort(ITEM);
-    engine.registerRenderedPort(port, 5, 4);
-    engine.tickAll();
-    collector.drain();
+    const {engine, collector, port} = await riggedPort();
 
     engine.setPortItem(port, EMPTY);
     engine.setPortItem(port, ITEM);

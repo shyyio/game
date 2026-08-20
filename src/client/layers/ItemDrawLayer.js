@@ -47,26 +47,20 @@ export class ItemDrawLayer extends AbstractDrawLayer {
          */
         this._gliding = new Set();
         /**
-         * Consumed particles gliding out, mapped to the key releasing them once they arrive.
-         * @type {Map<ItemParticle, string>}
+         * Consumed particles gliding out, detached from the key space and released on arrival.
+         * @type {Set<ItemParticle>}
          * @private
          */
-        this._dying = new Map();
+        this._dying = new Set();
         /**
-         * Uniquifies the keys consumed particles finish their glide under.
-         * @type {number}
+         * The particle pool behind {@link _items}; also releases detached dying particles.
+         * Idle particles await reuse parked in the container at alpha 0 and kept at the
+         * high-water mark: pixi's removeParticle is a linear scan per call, so unload bursts
+         * would go quadratic.
+         * @type {DisplayPool}
          * @private
          */
-        this._consumedSerial = 0;
-        /**
-         * Live particles keyed by particle key — a number row id for belt items, a namespaced
-         * string for items resting in out-ports. Idle particles await reuse parked in the
-         * container at alpha 0 and kept at the high-water mark: pixi's removeParticle is a
-         * linear scan per call, so unload bursts would go quadratic.
-         * @type {KeyedDisplayPool}
-         * @private
-         */
-        this._items = new KeyedDisplayPool(new DisplayPool(
+        this._itemPool = new DisplayPool(
             texture => {
                 const particle = new ItemParticle(texture, this._particles);
                 this._particles.addParticle(particle);
@@ -83,7 +77,14 @@ export class ItemDrawLayer extends AbstractDrawLayer {
                 particle.setTexture(texture);
                 particle.reset();
             },
-        ));
+        );
+        /**
+         * Live particles keyed by particle key — a number row id for belt items, a namespaced
+         * string for items resting in out-ports.
+         * @type {KeyedDisplayPool}
+         * @private
+         */
+        this._items = new KeyedDisplayPool(this._itemPool);
         /**
          * Item definitions merged across mods.
          * @type {ItemRegistry}
@@ -148,7 +149,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
                 type: event.itemType,
             });
         } else if (event.consumed === 1) {
-            this.consumeItem(PORT_SPRITE_KEY(event.portId), Direction.invert(placement.sourceDirection));
+            this.consumeItem(PORT_SPRITE_KEY(event.portId), placement.sourceDirection);
         } else {
             this.removeItem(PORT_SPRITE_KEY(event.portId));
         }
@@ -198,10 +199,8 @@ export class ItemDrawLayer extends AbstractDrawLayer {
             particle.advance(deltaMS);
             if (!particle.gliding) {
                 this._gliding.delete(particle);
-                const dyingKey = this._dying.get(particle);
-                if (dyingKey !== undefined) {
-                    this._dying.delete(particle);
-                    this._items.release(dyingKey);
+                if (this._dying.delete(particle)) {
+                    this._itemPool.release(particle);
                 }
             }
         }
@@ -289,13 +288,13 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Glides a consumed item a half-tile along `direction`, then drops it; the key frees
+     * Glides a consumed item a half-tile on into the consumer, then drops it; the key frees
      * immediately, so the port's next item can take it while the exit plays out.
      * @param {number|string} key
-     * @param {Direction} direction - the travel direction into the consumer
+     * @param {Direction} sourceDirection - toward the belt/port feeding the item (as in moveItem)
      * @returns {void}
      */
-    consumeItem(key, direction) {
+    consumeItem(key, sourceDirection) {
         const particle = this._items.get(key);
         if (particle === undefined) {
             return;
@@ -304,12 +303,10 @@ export class ItemDrawLayer extends AbstractDrawLayer {
             this.removeItem(key);
             return;
         }
-        const dyingKey = `consumed:${this._consumedSerial}`;
-        this._consumedSerial += 1;
-        this._items.rename(key, dyingKey);
-        particle.consumeAlong(direction);
+        this._items.detach(key);
+        particle.consumeAlong(Direction.invert(sourceDirection));
         this._gliding.add(particle);
-        this._dying.set(particle, dyingKey);
+        this._dying.add(particle);
     }
 
     /**
@@ -426,8 +423,6 @@ class ItemParticle extends Particle {
         this.live = false;
         // Under cover (in a tunnel): positioned but rendered at alpha 0 outside debug mode.
         this.hidden = false;
-        // Consumed: gliding into the consumer, dropped on arrival.
-        this._consuming = false;
         // Glide state: start/target pixels and ms elapsed into the current move.
         // _startX is null when not gliding (freshly placed or arrived).
         this._startX = null;
@@ -442,7 +437,7 @@ class ItemParticle extends Particle {
      * @returns {boolean}
      */
     get pickable() {
-        return this.live && !this.hidden && !this._consuming;
+        return this.live && !this.hidden;
     }
 
     /**
@@ -498,7 +493,6 @@ class ItemParticle extends Particle {
     reset() {
         this.itemType = null;
         this.hidden = false;
-        this._consuming = false;
         this._startX = null;
         this._startY = null;
         this._targetX = null;
@@ -569,7 +563,6 @@ class ItemParticle extends Particle {
         this._targetX = this.x + Direction.dx(direction) * half;
         this._targetY = this.y + Direction.dy(direction) * half;
         this._elapsed = 0;
-        this._consuming = true;
     }
 
     /**

@@ -79,6 +79,20 @@ export class KeyedDisplayPool {
     }
 
     /**
+     * Removes a live object from the key space without releasing it, so the caller can animate it
+     * out and release it to the pool itself later; undefined for an unknown key.
+     * @param {number|string} key
+     * @returns {*}
+     */
+    detach(key) {
+        const object = this._live.get(key);
+        if (object !== undefined) {
+            this._live.delete(key);
+        }
+        return object;
+    }
+
+    /**
      * Releases a key's object back to the pool; a no-op for an unknown key.
      * @param {number|string} key
      * @returns {void}

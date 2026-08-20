@@ -726,10 +726,7 @@ export class GameEngine {
             const y = this._renderY[eid];
             const batch = this._portBatch(batches, x, y);
             if (emptiedShown || displayed === EMPTY) {
-                let consumed = 0;
-                if (emptied === PORT_EMPTIED_CONSUMED) {
-                    consumed = 1;
-                }
+                const consumed = emptied === PORT_EMPTIED_CONSUMED ? 1 : 0;
                 batch.addClear(eid, consumed);
             }
             if (displayed !== EMPTY) {
@@ -1586,6 +1583,18 @@ export class GameEngine {
     }
 
     /**
+     * Empties a port a consumer ate from, so its clear renders as a glide into the consumer.
+     * @private
+     * @param {number} eid
+     * @returns {void}
+     */
+    _consumePortItem(eid) {
+        this.Port.item[eid] = EMPTY;
+        this._portEmptied[eid] = PORT_EMPTIED_CONSUMED;
+        this._markPortDirty(eid);
+    }
+
+    /**
      * Submits a move of one item from `source` to `dest`.
      * @param {number} source - the port the item leaves
      * @param {number} dest - the port it lands in
@@ -1834,10 +1843,7 @@ export class GameEngine {
      */
     flushSinks() {
         for (let index = 0; index < this._sinkCount; index += 1) {
-            const source = this._sinks[index];
-            this.Port.item[source] = EMPTY;
-            this._portEmptied[source] = PORT_EMPTIED_CONSUMED;
-            this._markPortDirty(source);
+            this._consumePortItem(this._sinks[index]);
         }
     }
 
@@ -1850,9 +1856,7 @@ export class GameEngine {
         for (let row = 0; row < this._resolvedCount; row += 1) {
             const source = this._resolvedSource[row];
             if (this._resolvedManaged[row] === 1 && source !== EMPTY) {
-                this.Port.item[source] = EMPTY;
-                this._portEmptied[source] = PORT_EMPTIED_CONSUMED;
-                this._markPortDirty(source);
+                this._consumePortItem(source);
             }
         }
         for (let row = 0; row < this._resolvedCount; row += 1) {

@@ -173,7 +173,8 @@ export class LogisticsClientMod extends AbstractClientMod {
             this._clearPortItem(client, portId, event.consumed === 1);
             return;
         }
-        this._flushPendingPop(client, portId);
+        // Rename only: the render below places the sprite with the event's own item type.
+        this._takePendingPop(client, portId);
         this._renderPortItem(client, portId, event.itemType);
     }
 
@@ -189,7 +190,7 @@ export class LogisticsClientMod extends AbstractClientMod {
         const key = PORT_SPRITE_KEY(portId);
         const port = consumed ? this._resolvePortBelt(client, portId) : null;
         if (port !== null) {
-            client.itemLayer.consumeItem(key, Direction.invert(port.sourceDirection));
+            client.itemLayer.consumeItem(key, port.sourceDirection);
         } else {
             client.itemLayer.removeItem(key);
         }
@@ -197,19 +198,35 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Applies a deferred pop: renames its belt sprite into the (now settled) out-port.
+     * Applies a deferred pop: renames its belt sprite into the (now settled) out-port and
+     * renders it there.
      * @param {Client} client
      * @param {number} portId
      * @private
      */
     _flushPendingPop(client, portId) {
+        const pop = this._takePendingPop(client, portId);
+        if (pop === null) {
+            return;
+        }
+        this._renderPortItem(client, portId, pop.type);
+    }
+
+    /**
+     * Claims a deferred pop and renames its belt sprite into the out-port; null when none waits.
+     * @param {Client} client
+     * @param {number} portId
+     * @returns {PendingPop|null}
+     * @private
+     */
+    _takePendingPop(client, portId) {
         const pop = this._pendingPops.get(portId);
         if (pop === undefined) {
-            return;
+            return null;
         }
         this._pendingPops.delete(portId);
         client.itemLayer.renameItem(pop.itemId, PORT_SPRITE_KEY(portId));
-        this._renderPortItem(client, portId, pop.type);
+        return pop;
     }
 
     /**
