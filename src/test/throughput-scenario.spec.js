@@ -30,20 +30,14 @@ function measure(game) {
     return sinkConsumedTotal(game.simEngine) - before;
 }
 
-test("the belted chain delivers to the sink", async () => {
+test("the belted chain delivers at full throughput", async () => {
     const {game} = await runVariant(4);
     assert.ok(sinkConsumedTotal(game.simEngine) > 0, "nothing reached the sink during warmup");
-    assert.ok(measure(game) > 0);
+    assert.equal(measure(game), MEASURE_TICKS, "one item per tick");
 });
 
-test("the belt-less chain delivers to the sink", async () => {
+test("the belt-less chain delivers at full throughput", async () => {
     const {game} = await runVariant(0);
     assert.ok(sinkConsumedTotal(game.simEngine) > 0, "nothing reached the sink during warmup");
-    assert.ok(measure(game) > 0);
-});
-
-test("belts change latency, not the chain's steady-state rate", async () => {
-    const belted = await runVariant(4);
-    const direct = await runVariant(0);
-    assert.equal(measure(belted.game), measure(direct.game));
+    assert.equal(measure(game), MEASURE_TICKS, "one item per tick");
 });
