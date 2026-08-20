@@ -20,12 +20,28 @@ import {
     ObjectInsertEvent,
     PortItemSetEvent,
     PortItemClearEvent,
+    TickEndEvent,
     Direction,
     PORT_SPRITE_KEY,
     InspectHighlight,
     Rectangle,
     TILE_SIZE,
 } from "@spup/sdk/client";
+
+/**
+ * A pop whose sprite hand-off into its out-port waits on the occupant's fate.
+ */
+class PendingPop {
+
+    /**
+     * @param {number} itemId - the popped item's sprite key
+     * @param {number} type - item type
+     */
+    constructor(itemId, type) {
+        this.itemId = itemId;
+        this.type = type;
+    }
+}
 
 export class LogisticsClientMod extends AbstractClientMod {
 
@@ -45,6 +61,10 @@ export class LogisticsClientMod extends AbstractClientMod {
         this._outPortToPath = new Map();
         // Inverse map, so a lead item's DELETE (a pop) hands its sprite to the out-port.
         this._pathToOutPort = new Map();
+        // Out-port id → pop whose hand-off waits on the occupant's fate: a consumed CLEAR glides
+        // the occupant into the consumer first; TickEndEvent flushes the rest (occupant ingested
+        // downstream, its sprite simply replaced).
+        this._pendingPops = new Map();
         // Debug overlay of belt paths.
         this._pathDebugLayer = new PathDebugDrawLayer(this._pathParts);
     }
@@ -90,6 +110,12 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @param {Client} client
      */
     onEvent(event, client) {
+        if (event instanceof TickEndEvent) {
+            for (const portId of this._pendingPops.keys()) {
+                this._flushPendingPop(client, portId);
+            }
+            return;
+        }
         if (event instanceof ObjectInsertEvent && isBeltType(client.modRegistry.typeById(event.typeId))) {
             // A live insert's recalc precedes the belt, so repaint once it is cached.
             this._pathDebugLayer.markStale();
@@ -144,10 +170,46 @@ export class LogisticsClientMod extends AbstractClientMod {
             return;
         }
         if (event instanceof PortItemClearEvent) {
-            client.itemLayer.removeItem(PORT_SPRITE_KEY(portId));
+            this._clearPortItem(client, portId, event.consumed === 1);
             return;
         }
+        this._flushPendingPop(client, portId);
         this._renderPortItem(client, portId, event.itemType);
+    }
+
+    /**
+     * Drops an out-port's item sprite — a consumed one glides on into the consumer instead —
+     * then hands the port to any pop waiting on it.
+     * @param {Client} client
+     * @param {number} portId
+     * @param {boolean} consumed
+     * @private
+     */
+    _clearPortItem(client, portId, consumed) {
+        const key = PORT_SPRITE_KEY(portId);
+        const port = consumed ? this._resolvePortBelt(client, portId) : null;
+        if (port !== null) {
+            client.itemLayer.consumeItem(key, Direction.invert(port.sourceDirection));
+        } else {
+            client.itemLayer.removeItem(key);
+        }
+        this._flushPendingPop(client, portId);
+    }
+
+    /**
+     * Applies a deferred pop: renames its belt sprite into the (now settled) out-port.
+     * @param {Client} client
+     * @param {number} portId
+     * @private
+     */
+    _flushPendingPop(client, portId) {
+        const pop = this._pendingPops.get(portId);
+        if (pop === undefined) {
+            return;
+        }
+        this._pendingPops.delete(portId);
+        client.itemLayer.renameItem(pop.itemId, PORT_SPRITE_KEY(portId));
+        this._renderPortItem(client, portId, pop.type);
     }
 
     /**
@@ -247,7 +309,14 @@ export class LogisticsClientMod extends AbstractClientMod {
             client.itemLayer.removeItem(itemId);
             return;
         }
-        client.itemLayer.renameItem(itemId, PORT_SPRITE_KEY(outPortId));
+        const portKey = PORT_SPRITE_KEY(outPortId);
+        if (client.itemLayer.hasItem(portKey)) {
+            // The occupant's fate lands later this tick: a consumed CLEAR glides it into the
+            // consumer, a downstream ingest simply replaces its sprite. Defer the hand-off.
+            this._pendingPops.set(outPortId, new PendingPop(itemId, item.type));
+            return;
+        }
+        client.itemLayer.renameItem(itemId, portKey);
         this._renderPortItem(client, outPortId, item.type);
     }
 
