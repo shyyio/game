@@ -127,6 +127,21 @@ export async function createClient(app, viewport, props) {
     }
     await client.init();
 
+    // Console helper for bug reports: copy(dumpGameState()) puts a paste-able world snapshot
+    // (the save format plus a debug block) on the clipboard.
+    window.dumpGameState = () => {
+        if (game === null) {
+            throw new Error("dumpGameState: remote session, the sim state lives on the server");
+        }
+        const snapshot = game.serialize();
+        snapshot.debug = {
+            url: window.location.href,
+            capturedAt: new Date().toISOString(),
+            viewport: {x: viewport.center.x, y: viewport.center.y, scale: viewport.scale.x},
+        };
+        return JSON.stringify(snapshot);
+    };
+
     const inputHandler = createInputHandler(client);
 
     const renderToolbar = () => client.toolbarLayer.setTools(client.coreTools(), client.modTools());
@@ -142,6 +157,7 @@ export async function createClient(app, viewport, props) {
      * @returns {void}
      */
     function destroy() {
+        delete window.dumpGameState;
         session.disconnect();
         if (unsubWindowFocus !== null) {
             unsubWindowFocus();

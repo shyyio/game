@@ -138,10 +138,10 @@ export class Game {
     // ---- Persistence ----
 
     /**
-     * Persists the whole world through the save store.
-     * @returns {Promise<void>}
+     * The whole world as one snapshot: engine state plus every record table.
+     * @returns {object}
      */
-    async save() {
+    serialize() {
         const snapshot = this.simEngine.serialize();
         snapshot.records = [
             ...this.players.serializeRecords(),
@@ -152,7 +152,15 @@ export class Game {
         for (const mod of this.modRegistry.simMods) {
             snapshot.records.push(...mod.serializeRecords());
         }
-        await this.saveStore.save(snapshot);
+        return snapshot;
+    }
+
+    /**
+     * Persists the whole world through the save store.
+     * @returns {Promise<void>}
+     */
+    async save() {
+        await this.saveStore.save(this.serialize());
     }
 
     /**
