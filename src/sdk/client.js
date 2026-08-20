@@ -48,6 +48,9 @@ export {rectEdgePoint, drawPanelConnector, CONNECTOR_PANEL_INSET} from "@/client
 // Declarative panel-body builder (header/text/row/scrollSection) for use with UIPanel.managed.
 export {PanelStack, PanelRowDescriptor, ROW_HEIGHT, ROW_GAP} from "@/client/hud/PanelStack.js";
 export {panelText, TextRole} from "@/client/hud/PanelText.js";
+
+// One counter's look in the core top-left counter list (client.counterListLayer).
+export {CounterEntry} from "@/client/hud/CounterListLayer.js";
 // Base for a tooltip box anchored beside a world point, with its shared metrics.
 export {
     AbstractTooltipLayer,

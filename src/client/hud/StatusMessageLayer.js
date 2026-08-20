@@ -46,6 +46,9 @@ export class StatusMessageLayer extends Container {
         // apply when it fires.
         this._textTimer = null;
         this._pendingMessage = null;
+        // Reports the panel's occupied height, so whatever stacks under it follows.
+        this._onChange = null;
+        this._height = 0;
 
         this._panel = new Container();
         this._layoutPanel();
@@ -59,6 +62,16 @@ export class StatusMessageLayer extends Container {
         this._panel.addChild(this._text);
         this.addChild(this._panel);
         app.renderer.on("resize", () => this._layoutPanel());
+    }
+
+    /**
+     * Registers the callback invoked with the panel's occupied height (0 while hidden) whenever
+     * it changes.
+     * @param {function(height: number): void} callback
+     * @returns {void}
+     */
+    onChange(callback) {
+        this._onChange = callback;
     }
 
     /**
@@ -184,6 +197,26 @@ export class StatusMessageLayer extends Container {
             this._show(`Loading... ${this._batch.size - this._pending.size} / ${this._batch.size}`);
         } else {
             this.visible = false;
+            this._reportHeight();
+        }
+    }
+
+    /**
+     * Notifies the host when the occupied height changes.
+     * @private
+     * @returns {void}
+     */
+    _reportHeight() {
+        let height = 0;
+        if (this.visible) {
+            height = this._text.height + (PADDING_Y + FRAME_MARGIN) * 2;
+        }
+        if (height === this._height) {
+            return;
+        }
+        this._height = height;
+        if (this._onChange !== null) {
+            this._onChange(height);
         }
     }
 
@@ -195,6 +228,7 @@ export class StatusMessageLayer extends Container {
      */
     _show(message) {
         this.visible = true;
+        this._reportHeight();
         if (message === this._text.text) {
             return;
         }
@@ -231,6 +265,7 @@ export class StatusMessageLayer extends Container {
     _applyMessage(message) {
         this._text.text = message;
         this._rebuildBackground();
+        this._reportHeight();
     }
 
     /**

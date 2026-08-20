@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {canonicalOrigin, formatCount, jwtExpiry} from "@/common/util.js";
+import {canonicalOrigin, formatCount, formatExactCount, jwtExpiry} from "@/common/util.js";
 import {ORIGIN_PATTERN} from "@/common/constants.js";
 
 /**
@@ -69,4 +69,13 @@ test("formatCount throws on anything but an unsigned integer", () => {
     assert.throws(() => formatCount(1.5), RangeError);
     assert.throws(() => formatCount(Number.NaN), RangeError);
     assert.throws(() => formatCount("100"), RangeError);
+});
+
+test("formatExactCount groups thousands and rejects the same values formatCount does", () => {
+    assert.equal(formatExactCount(0), "0");
+    assert.equal(formatExactCount(999), "999");
+    assert.equal(formatExactCount(10_000), "10,000");
+    assert.equal(formatExactCount(9_999_999_999), "9,999,999,999");
+    assert.throws(() => formatExactCount(-1), RangeError);
+    assert.throws(() => formatExactCount(1.5), RangeError);
 });
