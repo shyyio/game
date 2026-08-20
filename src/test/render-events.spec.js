@@ -122,3 +122,25 @@ test("a consumed port refilled the same tick emits clear then set", async () => 
     assert.ok(events[1] instanceof PortItemSetEvent);
     assert.equal(events[1].itemType, NEXT_ITEM);
 });
+
+// A mod taking a rendered port's item and refilling it in one tick (full-throughput ingest) still
+// emits a plain clear then set, so the client re-glides the new item instead of standing still.
+test("a mod-emptied port refilled the same tick emits clear then set", async () => {
+    const engine = new GameEngine();
+    await engine.init();
+    const collector = new EventCollector(engine);
+    const port = engine.createPort(ITEM);
+    engine.registerRenderedPort(port, 5, 4);
+    engine.tickAll();
+    collector.drain();
+
+    engine.setPortItem(port, EMPTY);
+    engine.setPortItem(port, ITEM);
+    engine.tickAll();
+    const events = collector.drain();
+    assert.equal(events.length, 2);
+    assert.ok(events[0] instanceof PortItemClearEvent);
+    assert.equal(events[0].consumed, 0);
+    assert.ok(events[1] instanceof PortItemSetEvent);
+    assert.equal(events[1].itemType, ITEM);
+});
