@@ -74,11 +74,11 @@ test("same seed yields identical fields across instances", () => {
     }
 });
 
-test("values stay within [-1, 1] with octaves", () => {
+test("values stay within [0, 1] with octaves", () => {
     const noise = new WorldNoise(7, makeChannels());
     for (let i = 0; i < 500; i++) {
         const value = noise.get(i * 5, i * 11, i % 3);
-        assert.ok(value >= -1 && value <= 1, `${value}`);
+        assert.ok(value >= 0 && value <= 1, `${value}`);
     }
 });
 

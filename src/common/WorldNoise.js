@@ -99,7 +99,7 @@ export class WorldNoise {
      * @param {number} x tile position
      * @param {number} y tile position
      * @param {number} channelId
-     * @returns {number} the channel's fBm noise in [-1, 1]
+     * @returns {number} the channel's fBm noise in [0, 1]
      */
     get(x, y, channelId) {
         const field = this._fields[channelId];
@@ -117,6 +117,6 @@ export class WorldNoise {
             frequency *= channel.lacunarity;
             amplitude *= channel.persistence;
         }
-        return sum / norm;
+        return (sum / norm + 1) / 2;
     }
 }
