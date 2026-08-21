@@ -44,7 +44,7 @@ applyTheme(DeviceSettings.getNumber(DEVICE_SETTING_THEME, THEME_DEFAULT));
 // The menus are Vuetify, not pixi: same setting, their own theme.
 const vuetifyTheme = useTheme();
 const stopThemeSync = onThemeChange(themeId => {
-  vuetifyTheme.global.name.value = vuetifyThemeName(themeId);
+  vuetifyTheme.change(vuetifyThemeName(themeId));
 });
 
 // Set once setup finishes; onUnmounted may fire mid-setup (a fast back-navigation), so each
