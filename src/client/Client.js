@@ -64,6 +64,7 @@ import {OVERWORLD_SCHEMA, OverworldRect, OverworldWriter, OverworldView} from "@
 import {OverworldDrawLayer} from "@/client/layers/OverworldDrawLayer.js";
 import {GridDrawLayer} from "@/client/layers/GridDrawLayer.js";
 import {TerrainDrawLayer} from "@/client/layers/TerrainDrawLayer.js";
+import {TerrainDetailLayer} from "@/client/layers/TerrainDetailLayer.js";
 import {PlacementFeedbackLayer} from "@/client/layers/PlacementFeedbackLayer.js";
 import {InspectLayer} from "@/client/layers/InspectLayer.js";
 import {ItemInspectLayer} from "@/client/layers/ItemInspectLayer.js";
@@ -195,11 +196,13 @@ export class Client {
         this.terrain = null;
         // The ground, repainted from the terrain once the seed arrives.
         this.terrainLayer = new TerrainDrawLayer(modRegistry.biomes);
+        this.terrainDetailLayer = new TerrainDetailLayer(modRegistry.biomes);
         this.cache.subscribe("gameSettings.values", (key, value) => {
             if (key === GameSettingsKey.SEED) {
                 this.noise = new WorldNoise(value, modRegistry.noiseChannels);
                 this.terrain = new Terrain(this.noise, modRegistry.biomes);
                 this.terrainLayer.setTerrain(this.terrain);
+                this.terrainDetailLayer.setTerrain(this.terrain);
             }
         });
         // Screen-space panels for open machine menus; fed by the inspect heartbeat state.
@@ -371,6 +374,7 @@ export class Client {
         this.overworldLayer = new OverworldDrawLayer(modRegistry, this.cache);
         this.drawLayerRegistry.add(this.overworldLayer);
         this.drawLayerRegistry.add(this.terrainLayer);
+        this.drawLayerRegistry.add(this.terrainDetailLayer);
         this.drawLayerRegistry.add(new GridDrawLayer());
         this.drawLayerRegistry.add(this.placementFeedbackLayer);
         this.drawLayerRegistry.add(this.inspectLayer);

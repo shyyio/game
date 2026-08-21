@@ -1,6 +1,9 @@
 import {CHUNK_SIZE, REGION_SIZE} from "@/common/constants.js";
 import {chunkOrigin} from "@/common/util.js";
 import {NoiseChannel} from "@/common/NoiseChannel.js";
+import {tileHash} from "@/common/WorldNoise.js";
+
+const UINT32_RANGE = 0x100000000;
 
 // Blending: a tile within BLEND_WIDTH of a threshold mixes toward the biome across it, up to 50/50
 // at the line, in BLEND_LEVELS steps so the palette stays stepped.
@@ -176,6 +179,29 @@ export class Terrain {
     }
 
     /**
+     * The decoration a tile of the given biome carries, rolled from the seeded tile hash against the
+     * biome's detail densities; same answer on sim and client.
+     * @param {Biome} biome the tile's biome
+     * @param {number} tileX
+     * @param {number} tileY
+     * @returns {TerrainDetail|null}
+     */
+    detailFor(biome, tileX, tileY) {
+        if (biome.details.length === 0) {
+            return null;
+        }
+        const roll = tileHash(this.noise.seed, tileX, tileY) / UINT32_RANGE;
+        let cumulative = 0;
+        for (const detail of biome.details) {
+            cumulative += detail.density;
+            if (roll < cumulative) {
+                return detail;
+            }
+        }
+        return null;
+    }
+
+    /**
      * @param {number} tileX
      * @param {number} tileY
      * @returns {number} the shade noise in [0, 1]
@@ -214,9 +240,10 @@ export class Terrain {
     }
 
     /**
-     * How comfortably a biome's ranges hold at the tile: the smallest distance from a sample to its
+     * How comfortably a biome's ranges hold at the tile: the smallest distance from a sample to a
      * range edge, negative when a range fails (by the worst miss), +Infinity for an unconditional
-     * biome. Samples each channel at most once per tile.
+     * biome. Edges at 0 or 1 bound nothing (noise never crosses them) and don't count, so a range
+     * like [0, 0.4] only blends at 0.4. Samples each channel at most once per tile.
      * @private
      * @param {Biome} biome
      * @param {number} tileX
@@ -233,7 +260,12 @@ export class Terrain {
                 value = this.noise.get(tileX, tileY, channelId);
                 samples[channelId] = value;
             }
-            margin = Math.min(margin, value - range.min, range.max - value);
+            if (range.min > 0) {
+                margin = Math.min(margin, value - range.min);
+            }
+            if (range.max < 1) {
+                margin = Math.min(margin, range.max - value);
+            }
         }
         return margin;
     }
