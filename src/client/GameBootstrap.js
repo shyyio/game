@@ -3,7 +3,7 @@ import {fetchModLoadout} from "@/client/ModFetcher.js";
 import {fetchSideloadedMods, sideloadedModUrls} from "@/client/ModSideload.js";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
-import {randomWorldSeed} from "@/sim/Rng.js";
+import {randomWorldSeed} from "@/common/WorldNoise.js";
 import {ClientSaveStore} from "@/client/state/ClientSaveStore.js";
 import {ClientMetricsStore} from "@/client/state/ClientMetricsStore.js";
 import {GameAPI} from "@/sim/GameAPI.js";

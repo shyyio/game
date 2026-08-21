@@ -15,7 +15,7 @@ import {loadPackagedMods} from "@/server/ModLoader.js";
 import {bindShutdownSignals} from "@/server/cliShutdown.js";
 import {installCrashReporter, reportError, reportFatal} from "@/server/crashReporter.js";
 import {DEFAULT_TICK_MS} from "@/common/constants.js";
-import {randomWorldSeed} from "@/sim/Rng.js";
+import {randomWorldSeed} from "@/common/WorldNoise.js";
 
 const {values: args} = parseArgs({
     options: {

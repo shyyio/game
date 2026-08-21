@@ -56,7 +56,8 @@ import {
     OVERWORLD_REFRESH_THROTTLE_MS,
     FRIENDS_PANEL_REFRESH_THROTTLE_MS,
 } from "@/client/constants.js";
-import {CHUNK_SIZE, REGION_SIZE, Direction} from "@/common/constants.js";
+import {CHUNK_SIZE, REGION_SIZE, Direction, GameSettingsKey} from "@/common/constants.js";
+import {WorldNoise} from "@/common/WorldNoise.js";
 import {chunkCenter, chunkId, formatBytes, REGION_HALF} from "@/common/util.js";
 import {OVERWORLD_SCHEMA, OverworldRect, OverworldWriter, OverworldView} from "@/client/state/OverworldState.js";
 import {OverworldDrawLayer} from "@/client/layers/OverworldDrawLayer.js";
@@ -178,6 +179,17 @@ export class Client {
         this.cache.register("clock", CLOCK_SCHEMA, new ClockWriter(this.cache), new ClockView());
         // The open-menu set rides to the sim as the inspect subscription, whoever changes it.
         this.cache.subscribe("inspect.openObjects", () => this._sendInspectedObjects());
+
+        /**
+         * Seeded terrain noise, the sim's twin; null until the game settings sync arrives.
+         * @type {WorldNoise|null}
+         */
+        this.noise = null;
+        this.cache.subscribe("gameSettings.values", (key, value) => {
+            if (key === GameSettingsKey.SEED) {
+                this.noise = new WorldNoise(value, modRegistry.noiseChannels);
+            }
+        });
         // Screen-space panels for open machine menus; fed by the inspect heartbeat state.
         this.inspectPanelLayer = new InspectPanelLayer(app, this.cache);
         // Rotate controls, toggled with the active tool by the host.

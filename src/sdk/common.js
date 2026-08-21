@@ -162,6 +162,14 @@ export {formatCount} from "@/common/util.js";
 // can compute where an object's ports/geometry land from its ObjectType.
 export {rotate} from "@/common/util.js";
 
+// ---- World noise ----
+// Mods declare NoiseChannels (declaration.noiseChannels); `game.noise` on the sim and `client.noise`
+// on the client sample them by channelId, both seeded by GameSettingsKey.SEED so terrain derives
+// identically on either side.
+export {NoiseChannel} from "@/common/NoiseChannel.js";
+export {WorldNoise} from "@/common/WorldNoise.js";
+export {GameSettingsKey} from "@/common/constants.js";
+
 // ---- Chunk ids ----
 // A chunk is identified by an integer ordinal id (its index within the region);
 // `chunkId(tileX, tileY)` computes that id in JS.

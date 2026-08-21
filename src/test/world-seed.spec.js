@@ -5,7 +5,7 @@ import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {migrateSnapshot} from "@/common/saveMigrations.js";
-import {assertWorldSeed, randomWorldSeed} from "@/sim/Rng.js";
+import {assertWorldSeed, randomWorldSeed} from "@/common/WorldNoise.js";
 import {DEFAULT_TICK_MS, GameSettingsKey, WORLD_SEED_MAX} from "@/common/constants.js";
 
 /**
@@ -72,4 +72,15 @@ test("a format-1 save migrates to seed 0", async () => {
     restored.seed = 5;
     restored.deserialize(migrated);
     assert.equal(restored.seed, 0);
+});
+
+test("game.noise follows the seed through load", async () => {
+    const store = new NodeSaveStore(":memory:");
+    const saved = await makeSeededGame(store, 4242);
+    await saved.save();
+
+    const loaded = await makeSeededGame(store, 1);
+    await loaded.load();
+    assert.equal(loaded.noise.seed, 4242);
+    assert.equal(loaded.noise.channels, loaded.modRegistry.noiseChannels);
 });
