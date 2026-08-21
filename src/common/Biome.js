@@ -29,11 +29,16 @@ export class Biome {
      * @param {string} name unique across the loadout
      * @param {number} color 0xRRGGBB
      * @param {NoiseRange[]} [ranges] all must hold; none = matches every tile
+     * @param {number} [shadeStrength] multiplier on the client's per-tile shade variation
      */
-    constructor(name, color, ranges = []) {
+    constructor(name, color, ranges = [], shadeStrength = 1) {
+        if (!(shadeStrength >= 0)) {
+            throw new RangeError(`Biome "${name}": shadeStrength must be >= 0, got ${shadeStrength}`);
+        }
         this.name = name;
         this.color = color;
         this.ranges = ranges;
+        this.shadeStrength = shadeStrength;
         this._biomeId = null;
     }
 

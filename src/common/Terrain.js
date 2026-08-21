@@ -4,8 +4,8 @@ import {NoiseChannel} from "@/common/NoiseChannel.js";
 
 // Blending: a tile within BLEND_WIDTH of a threshold mixes toward the biome across it, up to 50/50
 // at the line, in BLEND_LEVELS steps so the palette stays stepped.
-export const BLEND_WIDTH = 0.03;
-export const BLEND_LEVELS = 4;
+export const BLEND_WIDTH = 0.04;
+export const BLEND_LEVELS = 6;
 const BLEND_MAX = 0.5;
 
 /**
@@ -44,7 +44,7 @@ export class TileBiome {
 }
 
 // The engine's own channel: smooth patches that shade tiles within a biome (client rendering).
-export const SHADE_CHANNEL = new NoiseChannel("shade", 0.03, 2);
+export const SHADE_CHANNEL = new NoiseChannel("shade", 0.02, 2);
 export const CORE_NOISE_CHANNELS = [SHADE_CHANNEL];
 
 const TILES_PER_CHUNK = CHUNK_SIZE * CHUNK_SIZE;

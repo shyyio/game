@@ -81,6 +81,8 @@ test("freeze assigns biomeIds in order and validates names, channels, fallback",
         /must be unconditional/,
     );
     assert.throws(() => new NoiseRange(height, 0.6, 0.5), RangeError);
+    assert.throws(() => new Biome("x", 0, [], -1), RangeError);
+    assert.equal(new Biome("x", 0).shadeStrength, 1);
     assert.throws(() => new Biome("x", 0).biomeId, /freeze/);
 });
 
