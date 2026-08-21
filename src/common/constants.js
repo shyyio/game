@@ -133,7 +133,12 @@ export const GameSettingsKey = {
     CHUNK_SIZE: 0,
     // Real-time length of one sim tick, ms.
     TICK_MS: 1,
+    // World seed for terrain generation; see WORLD_SEED_MAX.
+    SEED: 2,
 };
+
+// World seeds are non-negative int32 so they fit a game-setting value.
+export const WORLD_SEED_MAX = 0x7fffffff;
 
 // Shared default so server/GameBootstrap/Game tick-ms configs can't drift apart.
 export const DEFAULT_TICK_MS = 600;

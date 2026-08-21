@@ -27,6 +27,7 @@ import {PlayerRegistry, PLAYER_RECORD, FRIEND_RECORD} from "@/sim/PlayerRegistry
 import {CHUNK_SIZE, DEFAULT_TICK_MS, GameSettingsKey, PLAYER_ID_NONE} from "@/common/constants.js";
 import {GameMetrics} from "@/sim/GameMetrics.js";
 import {migrateSnapshot} from "@/common/saveMigrations.js";
+import {assertWorldSeed} from "@/sim/Rng.js";
 
 export class Game {
 
@@ -36,8 +37,10 @@ export class Game {
      * @param {AbstractSaveStore} [saveStore] - persists/restores the world; omitted when saving is off
      * @param {AbstractMetricsStore} [metricsStore] - persists metrics facts; omitted when metrics is off
      * @param {number} [tickMs] - real-time length of one sim tick, published as GameSettingsKey.TICK_MS
+     * @param {number} [seed] - world seed for a fresh world; a loaded save's seed replaces it
      */
-    constructor(modRegistry, simEngine, saveStore, metricsStore, tickMs = DEFAULT_TICK_MS) {
+    constructor(modRegistry, simEngine, saveStore, metricsStore, tickMs = DEFAULT_TICK_MS, seed = 0) {
+        assertWorldSeed(seed);
         this.modRegistry = modRegistry;
         this.saveStore = saveStore;
 
@@ -71,6 +74,8 @@ export class Game {
         this.gameSettings = new SettingsCache();
         this.gameSettings.set(GameSettingsKey.CHUNK_SIZE, CHUNK_SIZE);
         this.gameSettings.set(GameSettingsKey.TICK_MS, tickMs);
+        this.simEngine.seed = seed;
+        this.gameSettings.set(GameSettingsKey.SEED, seed);
 
         /**
          * @type {PlayerSettingsCache}
@@ -135,6 +140,13 @@ export class Game {
         await this.simEngine.init();
     }
 
+    /**
+     * @returns {number} the world seed
+     */
+    get seed() {
+        return this.simEngine.seed;
+    }
+
     // ---- Persistence ----
 
     /**
@@ -175,6 +187,7 @@ export class Game {
         }
         const snapshot = migrateSnapshot(stored);
         this.simEngine.deserialize(snapshot);
+        this.gameSettings.set(GameSettingsKey.SEED, this.simEngine.seed);
         const records = snapshot.records === undefined ? [] : snapshot.records;
         const byName = new Map(records.map(table => [table.name, table]));
         this.players.deserializeRecords(byName.get(PLAYER_RECORD), byName.get(FRIEND_RECORD));

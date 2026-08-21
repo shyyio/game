@@ -1,5 +1,5 @@
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
-export const SAVE_FORMAT = 1;
+export const SAVE_FORMAT = 2;
 
 // What a save written before the stamp counts as.
 const UNSTAMPED_FORMAT = 0;
@@ -13,6 +13,8 @@ const UNSTAMPED_FORMAT = 0;
 export const SAVE_MIGRATIONS = new Map([
     // Format 1 holds the same content as an unstamped save, so stamping is the whole migration.
     [UNSTAMPED_FORMAT, snapshot => ({...snapshot, saveFormat: UNSTAMPED_FORMAT + 1, gameVersion: null})],
+    // Format 2 adds the world seed global; worlds saved before it had none, so they keep seed 0.
+    [1, snapshot => ({...snapshot, saveFormat: 2, globals: {...snapshot.globals, seed: 0}})],
 ]);
 
 /**

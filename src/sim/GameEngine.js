@@ -397,6 +397,9 @@ export class GameEngine {
         // A stable per-tick seed component for deterministic per-craft rolls (see MachineBehavior).
         this.clock = 0;
 
+        // World seed for terrain generation; set by Game, restored from a save.
+        this.seed = 0;
+
         // Flat global counters that survive a save (mods stash their own here, e.g. beltNextRunId).
         this.globals = {};
 
@@ -1934,7 +1937,7 @@ export class GameEngine {
         });
         // Component values are Int32Array-backed, so always safe; only the unbounded globals (id
         // counters) can overflow past 2^53, where Number silently loses precision.
-        const globals = {nextObjectId: this._nextObjectId, clock: this.clock, ...this.globals};
+        const globals = {nextObjectId: this._nextObjectId, clock: this.clock, seed: this.seed, ...this.globals};
         for (const key of Object.keys(globals)) {
             if (!Number.isSafeInteger(globals[key])) {
                 throw new RangeError(`GameEngine.serialize: global "${key}" is not a safe integer: ${globals[key]}`);
@@ -2122,8 +2125,9 @@ export class GameEngine {
 
         this._nextObjectId = snapshot.globals.nextObjectId;
         this.clock = snapshot.globals.clock === undefined ? 0 : snapshot.globals.clock;
+        this.seed = snapshot.globals.seed;
         for (const key of Object.keys(snapshot.globals)) {
-            if (key !== "nextObjectId" && key !== "clock") {
+            if (key !== "nextObjectId" && key !== "clock" && key !== "seed") {
                 this.globals[key] = snapshot.globals[key];
             }
         }
