@@ -1,5 +1,6 @@
 import Mouse from "@/client/input/Mouse.js";
 import {TextureRegistry} from "@/client/layers/TextureRegistry.js";
+import {SpriteOverrideStore} from "@/client/spriteEditor/SpriteOverrideStore.js";
 import {DrawLayerRegistry} from "@/client/layers/DrawLayerRegistry.js";
 import {InspectPanelLayer} from "@/client/hud/InspectPanelLayer.js";
 import {RotateButtonsLayer} from "@/client/hud/RotateButtonsLayer.js";
@@ -89,6 +90,7 @@ import {BottomActionBarLayer} from "@/client/hud/BottomActionBarLayer.js";
 import {SettingsButtonLayer} from "@/client/hud/SettingsButtonLayer.js";
 import {FriendsButtonLayer} from "@/client/hud/FriendsButtonLayer.js";
 import {ProductionButtonLayer} from "@/client/hud/ProductionButtonLayer.js";
+import {ArtButtonLayer} from "@/client/hud/ArtButtonLayer.js";
 import {ProductionPanelLayer} from "@/client/hud/ProductionPanelLayer.js";
 import {FriendsPanelLayer} from "@/client/hud/FriendsPanelLayer.js";
 import {ChunkActionsLayer} from "@/client/hud/ChunkActionsLayer.js";
@@ -161,6 +163,8 @@ export class Client {
         this.modRegistry = modRegistry;
 
         this.textureRegistry = new TextureRegistry();
+        // Artist edits from the sprite editor, painted over the atlases once they load.
+        this.spriteOverrideStore = new SpriteOverrideStore();
         this.drawLayerRegistry = new DrawLayerRegistry();
         // The shared plain-data state tree: every namespace registers schema + writer + view,
         // every event fans out to every writer, and readers subscribe by path or query the views.
@@ -274,6 +278,8 @@ export class Client {
             modRegistry.items,
         );
         this.productionButtonLayer.onPress(() => this.productionPanelLayer.toggle());
+        // Opens the sprite editor (Game.vue owns it); sits left of production.
+        this.artButtonLayer = new ArtButtonLayer(app);
         this.productionPanelLayer.onSubscribe((metricsType, scope, tier, windowTicks) => this.sendMessage(
             new MetricsSubscribeMessage(metricsType, scope, tier, windowTicks),
         ));
@@ -292,6 +298,7 @@ export class Client {
             this.settingsButtonLayer.setTopOffset(offset);
             this.friendsButtonLayer.setTopOffset(offset);
             this.productionButtonLayer.setTopOffset(offset);
+            this.artButtonLayer.setTopOffset(offset);
             this.statusLayer.setTopOffset(offset);
             this._topBarHeight = height;
             this._layoutTopLeft();
@@ -361,6 +368,7 @@ export class Client {
             this.friendsPanelLayer,
             this.productionButtonLayer,
             this.productionPanelLayer,
+            this.artButtonLayer,
             this.noticeLayer,
             this.confirmDialogLayer,
             this.mapButtonsLayer,
@@ -601,6 +609,12 @@ export class Client {
      */
     async init() {
         await this.textureRegistry.load(this.modRegistry.textureAtlases);
+        // Storage can be off (private mode, policy); art edits are optional, the game is not.
+        try {
+            await this.spriteOverrideStore.applyTo(this.textureRegistry);
+        } catch (error) {
+            console.warn(`Sprite overrides unavailable: ${error.message}`);
+        }
 
         for (const layer of this.drawLayerRegistry.layers) {
             layer.textureRegistry = this.textureRegistry;
@@ -647,6 +661,7 @@ export class Client {
         this.app.stage.addChild(this.settingsButtonLayer);
         this.app.stage.addChild(this.friendsButtonLayer);
         this.app.stage.addChild(this.productionButtonLayer);
+        this.app.stage.addChild(this.artButtonLayer);
         // Panels sit above every other HUD layer.
         this.app.stage.addChild(this.inspectPanelLayer);
         this.app.stage.addChild(this.friendsPanelLayer);
