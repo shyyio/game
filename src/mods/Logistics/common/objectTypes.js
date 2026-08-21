@@ -118,8 +118,8 @@ export const BeltUndergroundDefinition = new BeltObjectType({
     overworldVisible: false,
 });
 
-// A 1x2 router; each item flows in_X -> int_X -> out_Y, resting a tick in int_X so it crosses at
-// belt speed.
+// A 1x2 router; each item flows in_X -> int_X -> out_Y, resting a tick in int_X and a visible
+// tick in out_Y.
 export const SplitterDefinition = new ObjectType({
     name: "Splitter",
     toolId: 4,
