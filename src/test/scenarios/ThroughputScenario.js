@@ -1,8 +1,11 @@
 // A throughput probe, not game content: a Trading Terminal buying from the NPC feeds two 0-tick
 // machines in series, ending in a Sink that drains whatever reaches it. Every stage is 1x1 and sits
-// in one column, so `belts` (tiles of belt between stages) is the only variable: 0 wires each
+// in one column, with `belts` (tiles of belt between stages) the main variable: 0 wires each
 // stage's output port straight into the next stage's input port, which is the same port entity, and
-// the belt-less variant falls out of the same layout code.
+// the belt-less variant falls out of the same layout code. When the Press->Pack run has room
+// (belts >= 2), a Splitter replaces its second belt tile and routes out_b onto a mirror column one
+// tile east: its own belts, machine, and Sink, so the splitter itself sits under throughput load.
+// The whole chain is tiled `n` times in a near-square grid, one tile of gap between copies.
 //
 // The object types below are a scenario-local mod, injected into the loadout only when this
 // scenario is selected (see modPackages) — nothing here is real game content, so none of it belongs
@@ -29,7 +32,7 @@ import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {chunkOrdinal} from "@/common/util.js";
 import {AbstractScenario} from "@/test/scenarios/AbstractScenario.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
+import {BeltDefinition, SplitterDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {TradingTerminalType} from "@/mods/Market/common/objectTypes.js";
 import {ConfigureTradingTerminalMessage} from "@/mods/Market/common/messages.js";
 import {MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "@/mods/Market/common/constants.js";
@@ -187,16 +190,20 @@ const ORIGIN_Y = 24;
 const DEFAULT_BELT_LENGTH = 4;
 const BELT_LENGTH_PARAM = "belts";
 
+// Chain copies tiled in a near-square grid, separated by one empty tile.
+const DEFAULT_COPY_COUNT = 100;
+const COPY_COUNT_PARAM = "n";
+const COPY_GAP = 1;
+
 // Long enough for the longest default chain to fill and settle into its steady rate.
 const WARMUP_TICKS = 120;
 
-// The player the chain is built for: pre-claimed and pre-funded, so the buy terminal is live from
-// tick one (a terminal on an unclaimed chunk caches a 0 balance and never buys).
+// The player the chains are built for: pre-claimed and pre-funded, so the buy terminals are live
+// from tick one (a terminal on an unclaimed chunk caches a 0 balance and never buys).
 export const THROUGHPUT_PLAYER_ID = 1;
-const STARTING_BALANCE = 1000000;
 
-// Stages, south to north; the terminal at ORIGIN_Y is stage 0.
-const STAGE_COUNT = 4;
+// Runway per chain copy; the granted balance scales with `n`.
+const STARTING_BALANCE_PER_COPY = 1000000;
 
 /**
  * Parses a non-negative integer query param, falling back when absent or unparsable.
@@ -228,19 +235,65 @@ export function sinkConsumedTotal(engine) {
 }
 
 /**
- * Claims every chunk the chain touches, before anything is placed: PlacedObject.ownerId is cached
- * from the chunk's owner at spawn time, so a later claim would leave the terminal ownerless.
+ * Claims every chunk the tiled grid touches, before anything is placed: PlacedObject.ownerId is
+ * cached from the chunk's owner at spawn time, so a later claim would leave terminals ownerless.
+ * Row-major order keeps every claim adjacent to an owned chunk.
  * @param {Game} game
- * @param {number} northY the chain's northernmost tile
+ * @param {number} minX
+ * @param {number} maxX
+ * @param {number} minY
+ * @param {number} maxY
  * @returns {void}
  */
-function claimColumn(game, northY) {
-    const chunkX = Math.floor(ORIGIN_X / CHUNK_SIZE);
-    const minChunkY = Math.floor(northY / CHUNK_SIZE);
-    const maxChunkY = Math.floor(ORIGIN_Y / CHUNK_SIZE);
-    const maxChunks = maxChunkY - minChunkY + 1;
-    for (let chunkY = maxChunkY; chunkY >= minChunkY; chunkY -= 1) {
-        game.claims.claim(THROUGHPUT_PLAYER_ID, chunkOrdinal(chunkX, chunkY), maxChunks);
+function claimRect(game, minX, maxX, minY, maxY) {
+    const minChunkX = Math.floor(minX / CHUNK_SIZE);
+    const maxChunkX = Math.floor(maxX / CHUNK_SIZE);
+    const minChunkY = Math.floor(minY / CHUNK_SIZE);
+    const maxChunkY = Math.floor(maxY / CHUNK_SIZE);
+    const maxChunks = (maxChunkX - minChunkX + 1) * (maxChunkY - minChunkY + 1);
+    for (let chunkY = minChunkY; chunkY <= maxChunkY; chunkY += 1) {
+        for (let chunkX = minChunkX; chunkX <= maxChunkX; chunkX += 1) {
+            game.claims.claim(THROUGHPUT_PLAYER_ID, chunkOrdinal(chunkX, chunkY), maxChunks);
+        }
+    }
+}
+
+/**
+ * Builds one terminal -> press -> [splitter] -> pack -> sink chain running north from its origin.
+ * @param {GameEngine} engine
+ * @param {number} originX
+ * @param {number} originY
+ * @param {number} beltLength
+ * @returns {void}
+ */
+function buildChain(engine, originX, originY, beltLength) {
+    const stride = beltLength + 1;
+    const pressY = originY - stride;
+    const packY = originY - 2 * stride;
+    const sinkY = originY - 3 * stride;
+    const splitterFits = beltLength >= 2;
+
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, originX, originY, Direction.UP));
+    layBelts(engine, originX, originY, beltLength);
+    engine.applyMessage(new CreateObjectMessage(ThroughputPressType.typeId, originX, pressY, Direction.UP));
+    if (splitterFits) {
+        layBelts(engine, originX, pressY, 1);
+        engine.applyMessage(new CreateObjectMessage(SplitterDefinition.typeId, originX, pressY - 2, Direction.UP));
+        layBelts(engine, originX, pressY - 2, beltLength - 2);
+    } else {
+        layBelts(engine, originX, pressY, beltLength);
+    }
+    engine.applyMessage(new CreateObjectMessage(ThroughputPackType.typeId, originX, packY, Direction.UP));
+    layBelts(engine, originX, packY, beltLength);
+    engine.applyMessage(new CreateObjectMessage(ThroughputSinkType.typeId, originX, sinkY, Direction.UP));
+
+    if (splitterFits) {
+        // Splitter out_b lands here; a second Press fed parts crafts its fallback unit.
+        const branchX = originX + 1;
+        layBelts(engine, branchX, pressY - 2, beltLength - 2);
+        engine.applyMessage(new CreateObjectMessage(ThroughputPressType.typeId, branchX, packY, Direction.UP));
+        layBelts(engine, branchX, packY, beltLength);
+        engine.applyMessage(new CreateObjectMessage(ThroughputSinkType.typeId, branchX, sinkY, Direction.UP));
     }
 }
 
@@ -249,18 +302,21 @@ function claimColumn(game, northY) {
  * the producer's own output-landing tile (one north of it) and ends on the tile immediately south of
  * the consumer's input port. A zero-length run leaves the two stages sharing one port entity.
  * @param {GameEngine} engine
+ * @param {number} x
  * @param {number} fromY
  * @param {number} beltLength
  * @returns {void}
  */
-function layBelts(engine, fromY, beltLength) {
+function layBelts(engine, x, fromY, beltLength) {
     for (let step = 1; step <= beltLength; step += 1) {
-        engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, ORIGIN_X, fromY - step, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, x, fromY - step, Direction.UP));
     }
 }
 
 /**
- * Trade terminal -> two 0-tick machines in series -> sink, with `belts` belt tiles between stages.
+ * Trade terminal -> two 0-tick machines in series -> sink, with `belts` belt tiles between stages
+ * and, when it fits, a Splitter after the Press feeding a mirror column of machine and sink.
+ * `n` copies of the chain tile a near-square rectangle.
  */
 export class ThroughputScenario extends AbstractScenario {
 
@@ -285,26 +341,35 @@ export class ThroughputScenario extends AbstractScenario {
      */
     async apply(game, params) {
         const beltLength = intParam(params.get(BELT_LENGTH_PARAM), DEFAULT_BELT_LENGTH);
+        const copies = Math.max(1, intParam(params.get(COPY_COUNT_PARAM), DEFAULT_COPY_COUNT));
         const stride = beltLength + 1;
         const engine = game.simEngine;
-        claimColumn(game, ORIGIN_Y - (STAGE_COUNT - 1) * stride);
-        game.playerSettings.set(THROUGHPUT_PLAYER_ID, MARKET_SETTING_BALANCE, STARTING_BALANCE);
 
-        const stages = [TradingTerminalType, ThroughputPressType, ThroughputPackType, ThroughputSinkType];
-        for (const [index, type] of stages.entries()) {
-            const y = ORIGIN_Y - index * stride;
-            engine.applyMessage(new CreateObjectMessage(type.typeId, ORIGIN_X, y, Direction.UP));
-            if (index < stages.length - 1) {
-                layBelts(engine, y, beltLength);
-            }
+        const columns = Math.ceil(Math.sqrt(copies));
+        const rows = Math.ceil(copies / columns);
+        const copyWidth = beltLength >= 2 ? 2 : 1;
+        const pitchX = copyWidth + COPY_GAP;
+        const pitchY = 3 * stride + 1 + COPY_GAP;
+        claimRect(
+            game,
+            ORIGIN_X, ORIGIN_X + (columns - 1) * pitchX + copyWidth - 1,
+            ORIGIN_Y - 3 * stride, ORIGIN_Y + (rows - 1) * pitchY,
+        );
+        game.playerSettings.set(THROUGHPUT_PLAYER_ID, MARKET_SETTING_BALANCE, STARTING_BALANCE_PER_COPY * copies);
+
+        for (let copy = 0; copy < copies; copy += 1) {
+            const originX = ORIGIN_X + (copy % columns) * pitchX;
+            const originY = ORIGIN_Y + Math.floor(copy / columns) * pitchY;
+            buildChain(engine, originX, originY, beltLength);
         }
 
-        const terminalEid = engine.placed.eidsOf(TradingTerminalType.typeId).at(-1);
         const session = new CapturingSession(THROUGHPUT_PLAYER_ID);
-        game.dispatchMessage(new ConfigureTradingTerminalMessage(
-            engine.placed.objectIdOf(terminalEid), MARKET_MODE_BUY,
-            ITEM_TYPE_THROUGHPUT_FEED, NPC_PRICE_THROUGHPUT_FEED,
-        ), session);
+        for (const terminalEid of engine.placed.eidsOf(TradingTerminalType.typeId)) {
+            game.dispatchMessage(new ConfigureTradingTerminalMessage(
+                engine.placed.objectIdOf(terminalEid), MARKET_MODE_BUY,
+                ITEM_TYPE_THROUGHPUT_FEED, NPC_PRICE_THROUGHPUT_FEED,
+            ), session);
+        }
 
         for (let tick = 0; tick < WARMUP_TICKS; tick += 1) {
             game.runTick();
