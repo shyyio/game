@@ -35,10 +35,11 @@ function shadeFor(noise) {
 /**
  * @param {number} channel 0-255
  * @param {number} shade level in [0, SHADE_COUNT)
+ * @param {number} strength the biome's multiplier on the step
  * @returns {number} the channel stepped toward black (below the base) or white (above it)
  */
-function shadeChannel(channel, shade) {
-    const offset = (shade - SHADE_BASE) * SHADE_STEP;
+function shadeChannel(channel, shade, strength) {
+    const offset = (shade - SHADE_BASE) * SHADE_STEP * strength;
     if (offset < 0) {
         return Math.round(channel * (1 + offset));
     }
@@ -58,9 +59,9 @@ export class TerrainPalette {
         for (const [index, biome] of biomes.entries()) {
             for (let shade = 0; shade < SHADE_COUNT; shade++) {
                 const at = (index * SHADE_COUNT + shade) * BYTES_PER_PIXEL;
-                this._bytes[at] = shadeChannel((biome.color >> 16) & COLOR_CHANNEL_MASK, shade);
-                this._bytes[at + 1] = shadeChannel((biome.color >> 8) & COLOR_CHANNEL_MASK, shade);
-                this._bytes[at + 2] = shadeChannel(biome.color & COLOR_CHANNEL_MASK, shade);
+                this._bytes[at] = shadeChannel((biome.color >> 16) & COLOR_CHANNEL_MASK, shade, biome.shadeStrength);
+                this._bytes[at + 1] = shadeChannel((biome.color >> 8) & COLOR_CHANNEL_MASK, shade, biome.shadeStrength);
+                this._bytes[at + 2] = shadeChannel(biome.color & COLOR_CHANNEL_MASK, shade, biome.shadeStrength);
                 this._bytes[at + 3] = ALPHA_OPAQUE;
             }
         }
