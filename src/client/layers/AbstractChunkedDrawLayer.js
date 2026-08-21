@@ -28,13 +28,11 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Swaps presentation on map-mode change.
+     * Swaps presentation on every view-mode change: setViewMode restores base visibility even when
+     * the map flag itself is unchanged (overworld to map), so the hook must always re-apply.
      * @param {boolean} value
      */
     set mapMode(value) {
-        if (value === this._mapMode) {
-            return;
-        }
         this._mapMode = value;
         this._applyMapMode();
     }
