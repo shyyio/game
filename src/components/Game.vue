@@ -38,6 +38,47 @@ const dialogTransition = computed(() => {
   }
   return "dialog-bottom-transition";
 });
+// The sprite editor is its own chunk, fetched on first open, and runs in its own window.
+let spriteEditorSession = null;
+let spriteEditorModule = null;
+let closeSpriteEditorWindow = null;
+let editorClient = null;
+
+async function openSpriteEditor() {
+  if (editorClient === null || closeSpriteEditorWindow !== null) {
+    return;
+  }
+  if (spriteEditorModule === null) {
+    spriteEditorModule = await import("@/client/spriteEditor/spriteEditor.js");
+  }
+  if (spriteEditorSession === null) {
+    spriteEditorSession = new spriteEditorModule.SpriteEditorSession(editorClient.textureRegistry, editorClient.spriteOverrideStore);
+  }
+  try {
+    closeSpriteEditorWindow = spriteEditorModule.openSpriteEditorWindow(spriteEditorSession, () => {
+      closeSpriteEditorWindow = null;
+    });
+  } catch (error) {
+    window.alert(error.message);
+  }
+}
+
+function closeSpriteEditor() {
+  if (closeSpriteEditorWindow !== null) {
+    const close = closeSpriteEditorWindow;
+    closeSpriteEditorWindow = null;
+    close();
+  }
+}
+
+function toggleSpriteEditor() {
+  if (closeSpriteEditorWindow !== null) {
+    closeSpriteEditor();
+  } else {
+    openSpriteEditor();
+  }
+}
+
 // Before the HUD builds, so the first paint is in the chosen palette.
 applyTheme(DeviceSettings.getNumber(DEVICE_SETTING_THEME, THEME_DEFAULT));
 
@@ -92,10 +133,18 @@ onMounted(async () => {
 
   bindSettingsMenu(client);
   client.settingsButtonLayer.onPress(() => settingsOpen.value = true);
+  client.artButtonLayer.onPress(toggleSpriteEditor);
 
+  editorClient = client;
   const unbindKeyboard = bindGameKeyboardShortcuts(client, game, client.toolbarLayer);
 
   teardown = () => {
+    closeSpriteEditor();
+    if (spriteEditorSession !== null) {
+      spriteEditorSession.destroy();
+      spriteEditorSession = null;
+    }
+    editorClient = null;
     unbindKeyboard();
     inputHandler.destroy();
     unsubMobile();

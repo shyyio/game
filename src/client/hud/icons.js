@@ -122,6 +122,27 @@ export function drawChartIcon(face, color = PANEL_TEXT, width = ICON_STROKE) {
 }
 
 /**
+ * The art icon: a paintbrush, handle top-right to tip bottom-left.
+ * @param {Graphics} face
+ * @param {number} [color]
+ * @param {number} [width]
+ * @returns {void}
+ */
+export function drawBrushIcon(face, color = PANEL_TEXT, width = ICON_STROKE) {
+    face
+        .moveTo(9, -9)
+        .lineTo(-2, 2)
+        .stroke({color, width, cap: "round"});
+    face
+        .moveTo(-2, 2)
+        .lineTo(-5, 7)
+        .lineTo(-9, 9)
+        .lineTo(-7, 5)
+        .lineTo(-2, 2)
+        .fill({color});
+}
+
+/**
  * The settings icon: three sliders, each a horizontal line with a knob.
  * @param {Graphics} face
  * @returns {void}
