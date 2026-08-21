@@ -141,3 +141,31 @@ test("a mod-emptied port refilled the same tick emits clear then set", async () 
     assert.ok(events[1] instanceof PortItemSetEvent);
     assert.equal(events[1].itemType, ITEM);
 });
+
+// The splitter's seam eats from its in-port like any consumer, so the rendered feed item glides
+// into the splitter instead of vanishing in place.
+test("a splitter draining its rendered in-port emits a consumed clear", async () => {
+    const engine = new GameEngine();
+    await engine.init();
+    const collector = new EventCollector(engine);
+    const splitter = new SplitterBehavior();
+    splitter.install(engine);
+    const s = splitter.addSplitter(engine);
+    engine.registerRenderedPort(s.in_a, 5, 4);
+    // Jam the splitter so the fed item rests in the in-port for a tick.
+    engine.setPortItem(s.int_a, ITEM);
+    engine.setPortItem(s.out_a, ITEM);
+    engine.setPortItem(s.out_b, ITEM);
+    engine.setPortItem(s.in_a, ITEM);
+    engine.tickAll();
+    collector.drain();
+
+    // Unjam: the internal hop frees, the seam eats the resting in-port item.
+    engine.setPortItem(s.out_a, EMPTY);
+    engine.tickAll();
+    const events = collector.drain();
+    assert.equal(events.length, 1);
+    assert.ok(events[0] instanceof PortItemClearEvent);
+    assert.equal(events[0].portId, s.in_a);
+    assert.equal(events[0].consumed, 1);
+});

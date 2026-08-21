@@ -183,7 +183,7 @@ export class SplitterBehavior extends AbstractBehavior {
             engine.setPortItem(record.intPort, EMPTY);
         }
         for (const record of stage1) {
-            engine.setPortItem(record.inPort, EMPTY);
+            engine.consumePortItem(record.inPort);
         }
         for (const record of stage1) {
             engine.setPortItem(record.intPort, record.item);
