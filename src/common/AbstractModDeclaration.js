@@ -67,6 +67,15 @@ export class AbstractModDeclaration {
     }
 
     /**
+     * Terrain biomes this mod adds, tested in registration order (first match wins); the loadout's
+     * last biome must be unconditional. Names must be unique across the loadout.
+     * @returns {Biome[]}
+     */
+    get biomes() {
+        return [];
+    }
+
+    /**
      * Item types this mod adds to the market's tradable catalog; item types must be unique across
      * the loadout.
      * @returns {MarketListingEntry[]}

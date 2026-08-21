@@ -77,14 +77,13 @@ export class GridDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * The chunk outline, origin-relative.
+     * The chunk outline, origin-relative; the ground under it is the terrain layer's.
      * @private
      * @returns {GraphicsContext}
      */
     static _buildMajorContext() {
         return new GraphicsContext()
             .rect(0, 0, TILE_SIZE * CHUNK_SIZE, TILE_SIZE * CHUNK_SIZE)
-            .fill("white")
             .stroke({color: 0x000000, pixelLine: true, alpha: 0.2});
     }
 

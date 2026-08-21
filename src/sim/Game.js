@@ -28,6 +28,7 @@ import {CHUNK_SIZE, DEFAULT_TICK_MS, GameSettingsKey, PLAYER_ID_NONE} from "@/co
 import {GameMetrics} from "@/sim/GameMetrics.js";
 import {migrateSnapshot} from "@/common/saveMigrations.js";
 import {WorldNoise} from "@/common/WorldNoise.js";
+import {Terrain} from "@/common/Terrain.js";
 
 export class Game {
 
@@ -79,6 +80,12 @@ export class Game {
          * @type {WorldNoise}
          */
         this.noise = null;
+
+        /**
+         * Tile -> biome over the noise; the client derives the same from its twin.
+         * @type {Terrain}
+         */
+        this.terrain = null;
         this._applySeed(seed);
 
         /**
@@ -158,6 +165,7 @@ export class Game {
      */
     _applySeed(seed) {
         this.noise = new WorldNoise(seed, this.modRegistry.noiseChannels);
+        this.terrain = new Terrain(this.noise, this.modRegistry.biomes);
         this.simEngine.seed = seed;
         this.gameSettings.set(GameSettingsKey.SEED, seed);
     }
