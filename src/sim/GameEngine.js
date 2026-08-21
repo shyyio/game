@@ -1584,11 +1584,10 @@ export class GameEngine {
 
     /**
      * Empties a port a consumer ate from, so its clear renders as a glide into the consumer.
-     * @private
      * @param {number} eid
      * @returns {void}
      */
-    _consumePortItem(eid) {
+    consumePortItem(eid) {
         this.Port.item[eid] = EMPTY;
         this._portEmptied[eid] = PORT_EMPTIED_CONSUMED;
         this._markPortDirty(eid);
@@ -1843,7 +1842,7 @@ export class GameEngine {
      */
     flushSinks() {
         for (let index = 0; index < this._sinkCount; index += 1) {
-            this._consumePortItem(this._sinks[index]);
+            this.consumePortItem(this._sinks[index]);
         }
     }
 
@@ -1856,7 +1855,7 @@ export class GameEngine {
         for (let row = 0; row < this._resolvedCount; row += 1) {
             const source = this._resolvedSource[row];
             if (this._resolvedManaged[row] === 1 && source !== EMPTY) {
-                this._consumePortItem(source);
+                this.consumePortItem(source);
             }
         }
         for (let row = 0; row < this._resolvedCount; row += 1) {
