@@ -15,6 +15,7 @@ import {loadPackagedMods} from "@/server/ModLoader.js";
 import {bindShutdownSignals} from "@/server/cliShutdown.js";
 import {installCrashReporter, reportError, reportFatal} from "@/server/crashReporter.js";
 import {DEFAULT_TICK_MS} from "@/common/constants.js";
+import {randomWorldSeed} from "@/sim/Rng.js";
 
 const {values: args} = parseArgs({
     options: {
@@ -24,6 +25,7 @@ const {values: args} = parseArgs({
         "port": {type: "string", default: "27500"},
         "tick-ms": {type: "string", default: String(DEFAULT_TICK_MS)},
         "save-ms": {type: "string", default: "60000"},
+        "seed": {type: "string"},
         "auth-server": {type: "string", default: "https://auth.spupgame.com"},
         "origin": {type: "string", default: "ws://localhost:27500"},
         "name": {type: "string", default: "Shy's Power-Up Factory"},
@@ -37,6 +39,8 @@ const host = args["host"];
 const port = Number(args["port"]);
 const tickMs = Number(args["tick-ms"]);
 const saveMs = Number(args["save-ms"]);
+// Absent: a fresh world draws a random seed, a loaded one keeps its own.
+const seedArg = args["seed"] === undefined ? null : Number(args["seed"]);
 const authServerUrl = args["auth-server"];
 const origin = args["origin"];
 const name = args["name"];
@@ -69,16 +73,23 @@ modRegistry.freeze();
 
 const game = new Game(
     modRegistry, new GameEngine(modRegistry), new NodeSaveStore(dbPath), new NodeMetricsStore(metricsDbPath), tickMs,
+    seedArg === null ? randomWorldSeed() : seedArg,
 );
 await game.init();
 try {
     if (await game.load()) {
-        console.log(`Loaded world from ${dbPath}`);
+        console.log(`Loaded world from ${dbPath} (seed ${game.seed})`);
     } else {
-        console.log(`Fresh world; saving to ${dbPath}`);
+        console.log(`Fresh world; saving to ${dbPath} (seed ${game.seed})`);
     }
 } catch (error) {
     await reportFatal(error, `Refusing to start: ${dbPath} is incompatible with the current build`);
+}
+if (seedArg !== null && game.seed !== seedArg) {
+    await reportFatal(
+        new Error(`--seed ${seedArg} does not match the saved world seed ${game.seed}`),
+        `Refusing to start: ${dbPath} was generated with a different seed`,
+    );
 }
 
 const jwksVerifier = new JwksVerifier(authServerUrl);
