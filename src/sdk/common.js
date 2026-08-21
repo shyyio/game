@@ -171,7 +171,7 @@ export {WorldNoise, tileHash} from "@/common/WorldNoise.js";
 
 // Mods declare Biomes (declaration.biomes) selected by NoiseRanges over their channels;
 // `game.terrain` / `client.terrain` resolve tile -> biomeId and bake chunks (docs/terrain-rendering.md).
-export {Biome, NoiseRange} from "@/common/Biome.js";
+export {Biome, NoiseRange, TerrainDetail} from "@/common/Biome.js";
 export {Terrain, TerrainBake, TileBiome} from "@/common/Terrain.js";
 export {GameSettingsKey} from "@/common/constants.js";
 

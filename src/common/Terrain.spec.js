@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Terrain, SHADE_CHANNEL, BLEND_LEVELS, BLEND_WIDTH, OVERWORLD_CELLS_PER_AXIS, OVERWORLD_CELL_TILES} from "@/common/Terrain.js";
 import {WorldNoise} from "@/common/WorldNoise.js";
 import {NoiseChannel} from "@/common/NoiseChannel.js";
-import {Biome, NoiseRange} from "@/common/Biome.js";
+import {Biome, NoiseRange, TerrainDetail} from "@/common/Biome.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
@@ -83,6 +83,11 @@ test("freeze assigns biomeIds in order and validates names, channels, fallback",
     assert.throws(() => new NoiseRange(height, 0.6, 0.5), RangeError);
     assert.throws(() => new Biome("x", 0, [], -1), RangeError);
     assert.equal(new Biome("x", 0).shadeStrength, 1);
+    assert.deepEqual(new Biome("x", 0).details, []);
+    assert.throws(() => new TerrainDetail("t", 1.5), RangeError);
+    assert.throws(() => new TerrainDetail("t", 0.1, true, 0), RangeError);
+    assert.equal(new TerrainDetail("t", 0.1).scale, 1);
+    assert.throws(() => new Biome("x", 0, [], 1, [new TerrainDetail("a", 0.6), new TerrainDetail("b", 0.5)]), RangeError);
     assert.throws(() => new Biome("x", 0).biomeId, /freeze/);
 });
 
@@ -170,6 +175,53 @@ test("classify blends toward the biome across the nearest threshold", () => {
         }
     }
     assert.ok(checked >= 30);
+});
+
+test("detailFor scatters a biome's details by density, deterministically", () => {
+    const registry = standardLoadout();
+    const rock = new TerrainDetail("rock", 0.05, false);
+    const tuft = new TerrainDetail("tuft", 0.1);
+    const decorated = new Biome("decorated", 0x123456, [], 1, [rock, tuft]);
+    const bare = new Biome("bare", 0);
+    const a = new Terrain(new WorldNoise(77, registry.noiseChannels), registry.biomes);
+    const b = new Terrain(new WorldNoise(77, registry.noiseChannels), registry.biomes);
+    const counts = new Map([[rock, 0], [tuft, 0], [null, 0]]);
+    for (let tileX = 0; tileX < 200; tileX++) {
+        for (let tileY = 0; tileY < 100; tileY++) {
+            const detail = a.detailFor(decorated, tileX, tileY);
+            assert.equal(detail, b.detailFor(decorated, tileX, tileY));
+            assert.equal(a.detailFor(bare, tileX, tileY), null);
+            counts.set(detail, counts.get(detail) + 1);
+        }
+    }
+    const total = 200 * 100;
+    assert.ok(Math.abs(counts.get(rock) / total - 0.05) < 0.01);
+    assert.ok(Math.abs(counts.get(tuft) / total - 0.1) < 0.01);
+    const other = new Terrain(new WorldNoise(78, registry.noiseChannels), registry.biomes);
+    let differs = 0;
+    for (let tileX = 0; tileX < 200; tileX++) {
+        if (other.detailFor(decorated, tileX, 0) !== a.detailFor(decorated, tileX, 0)) {
+            differs++;
+        }
+    }
+    assert.ok(differs > 0);
+});
+
+test("a range edge at 0 or 1 never blends", () => {
+    const humidity = new NoiseChannel("humidity", 0.004);
+    const registry = freezeLoadout([humidity], [
+        new Biome("dry", 0, [new NoiseRange(humidity, 0, 0.5)]),
+        new Biome("wet", 0),
+    ]);
+    const terrain = new Terrain(new WorldNoise(3, registry.noiseChannels), registry.biomes);
+    for (let i = 0; i < 20000; i++) {
+        const tileX = (i * 13) % 900;
+        const tileY = (i * 7) % 900;
+        const m = terrain.noise.get(tileX, tileY, humidity.channelId);
+        if (Math.abs(m - 0.5) > BLEND_WIDTH) {
+            assert.equal(terrain.classify(tileX, tileY).level, 0, `tile ${tileX},${tileY} humidity ${m}`);
+        }
+    }
 });
 
 test("a loadout without biomes refuses to classify", () => {
