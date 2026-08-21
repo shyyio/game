@@ -167,7 +167,12 @@ export {rotate} from "@/common/util.js";
 // on the client sample them by channelId, both seeded by GameSettingsKey.SEED so terrain derives
 // identically on either side.
 export {NoiseChannel} from "@/common/NoiseChannel.js";
-export {WorldNoise} from "@/common/WorldNoise.js";
+export {WorldNoise, tileHash} from "@/common/WorldNoise.js";
+
+// Mods declare Biomes (declaration.biomes) selected by NoiseRanges over their channels;
+// `game.terrain` / `client.terrain` resolve tile -> biomeId and bake chunks (docs/terrain-rendering.md).
+export {Biome, NoiseRange} from "@/common/Biome.js";
+export {Terrain, TerrainBake, TileBiome} from "@/common/Terrain.js";
 export {GameSettingsKey} from "@/common/constants.js";
 
 // ---- Chunk ids ----

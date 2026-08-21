@@ -59,6 +59,18 @@ function splitmix32(state) {
 }
 
 /**
+ * A seeded per-tile hash for deterministic scatter (shade variants, detail placement): same seed
+ * and tile, same value, on sim and client alike.
+ * @param {number} seed
+ * @param {number} tileX
+ * @param {number} tileY
+ * @returns {number} uint32
+ */
+export function tileHash(seed, tileX, tileY) {
+    return mix32(mix32(seed ^ Math.imul(tileX, MIX_A)) ^ Math.imul(tileY, MIX_B));
+}
+
+/**
  * @param {string} text
  * @returns {number} a uint32 hash of the string (FNV-1a)
  */

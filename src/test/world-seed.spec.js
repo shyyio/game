@@ -84,3 +84,11 @@ test("game.noise follows the seed through load", async () => {
     assert.equal(loaded.noise.seed, 4242);
     assert.equal(loaded.noise.channels, loaded.modRegistry.noiseChannels);
 });
+
+test("game.terrain classifies the standard loadout's tiles", async () => {
+    const game = await makeSeededGame(undefined, 31337);
+    assert.equal(game.terrain.noise, game.noise);
+    assert.ok(game.modRegistry.biomes.length > 0);
+    const bake = game.terrain.bakeChunk(0);
+    assert.ok(bake.biomes.every(biomeId => biomeId < game.modRegistry.biomes.length));
+});

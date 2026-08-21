@@ -30,6 +30,7 @@ import {
     NPC_PRICE_SOYBEAN_SEEDS,
     NPC_PRICE_MUSHROOM_SPORE,
 } from "./common/constants.js";
+import {NOISE_CHANNELS, BIOMES} from "./common/terrain.js";
 
 /**
  * The real game content: the whole production chain, from primary extraction through the
@@ -78,6 +79,14 @@ export class BaseGameDeclaration extends AbstractModDeclaration {
             [ITEM_TYPE_EMPTY_SYRINGE]: new ItemDefinition("Empty Syringe", "items/1-gray", 0xD9D9D9),
             [ITEM_TYPE_STIMPACK]: new ItemDefinition("Stimpack", "items/1-gray", 0xE63946),
         };
+    }
+
+    get noiseChannels() {
+        return NOISE_CHANNELS;
+    }
+
+    get biomes() {
+        return BIOMES;
     }
 
     get marketListings() {

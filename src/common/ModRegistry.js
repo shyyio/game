@@ -1,5 +1,9 @@
 import {CORE_PLAYER_SETTING_ENTRIES} from "@/common/PlayerSettingEntry.js";
 import {ItemRegistry} from "@/common/ItemRegistry.js";
+import {CORE_NOISE_CHANNELS} from "@/common/Terrain.js";
+
+// Terrain bakes store one byte per tile.
+const BIOME_LIMIT = 255;
 
 /**
  * The declarative register of loaded mods. Mods are registered as ModPackages, then freeze()
@@ -38,6 +42,10 @@ export class ModRegistry {
          * @type {NoiseChannel[]}
          */
         this._noiseChannels = [];
+        /**
+         * @type {Biome[]}
+         */
+        this._biomes = [];
         /**
          * @type {MarketListingEntry[]}
          */
@@ -123,6 +131,11 @@ export class ModRegistry {
         }
 
         const channelNames = new Set();
+        for (const channel of CORE_NOISE_CHANNELS) {
+            channelNames.add(channel.name);
+            channel._assignChannelId(this._noiseChannels.length);
+            this._noiseChannels.push(channel);
+        }
         for (const pkg of this._packages) {
             for (const channel of pkg.declaration.noiseChannels) {
                 if (channelNames.has(channel.name)) {
@@ -132,6 +145,29 @@ export class ModRegistry {
                 channel._assignChannelId(this._noiseChannels.length);
                 this._noiseChannels.push(channel);
             }
+        }
+
+        const biomeNames = new Set();
+        for (const pkg of this._packages) {
+            for (const biome of pkg.declaration.biomes) {
+                if (biomeNames.has(biome.name)) {
+                    throw new Error(`Duplicate biome "${biome.name}"`);
+                }
+                for (const range of biome.ranges) {
+                    if (!this._noiseChannels.includes(range.channel)) {
+                        throw new Error(`Biome "${biome.name}" ranges over undeclared noise channel "${range.channel.name}"`);
+                    }
+                }
+                biomeNames.add(biome.name);
+                biome._assignBiomeId(this._biomes.length);
+                this._biomes.push(biome);
+            }
+        }
+        if (this._biomes.length > BIOME_LIMIT) {
+            throw new Error(`${this._biomes.length} biomes declared; a terrain bake holds at most ${BIOME_LIMIT}`);
+        }
+        if (this._biomes.length > 0 && this._biomes[this._biomes.length - 1].ranges.length > 0) {
+            throw new Error(`Last biome "${this._biomes[this._biomes.length - 1].name}" must be unconditional (no ranges)`);
         }
 
         const listedItemTypes = new Set();
@@ -261,12 +297,21 @@ export class ModRegistry {
     }
 
     /**
-     * Every noise channel across the loadout, in channelId order.
+     * Every noise channel, the engine's first then the loadout's, in channelId order.
      * @returns {NoiseChannel[]}
      */
     get noiseChannels() {
         this._assertFrozen();
         return this._noiseChannels;
+    }
+
+    /**
+     * Every biome across the loadout, in biomeId order.
+     * @returns {Biome[]}
+     */
+    get biomes() {
+        this._assertFrozen();
+        return this._biomes;
     }
 
     /**
