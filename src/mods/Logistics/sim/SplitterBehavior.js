@@ -2,8 +2,8 @@ import {Direction, EMPTY, NO_EID, TickPhase, AbstractBehavior} from "@spup/sdk";
 import {ORDER_BEFORE_TRANSPORT} from "../common/constants.js";
 
 /**
- * 1x2 splitter routing in_X -> int_X -> out_Y through internal buffer ports at belt speed,
- * submitting managed=0 intents so the resolver only links and the POST_RESOLVE seam does the moves.
+ * 1x2 splitter routing in_X -> int_X -> out_Y through internal buffer ports, resting a tick per
+ * hop, submitting managed=0 intents so the resolver only links and the seam does the moves.
  */
 export class SplitterBehavior extends AbstractBehavior {
 
@@ -19,7 +19,10 @@ export class SplitterBehavior extends AbstractBehavior {
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents(engine));
         // Seam must read shared ports before the belt transport writes pops.
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => this._runSeam(engine), ORDER_BEFORE_TRANSPORT);
+        const outputFills = [];
+        engine.registerSystem(TickPhase.POST_RESOLVE, () => this._runSeam(engine, outputFills), ORDER_BEFORE_TRANSPORT);
+        // Out-ports fill after the transport ingested, so a routed item rests a tick in its out-port.
+        engine.registerSystem(TickPhase.PRODUCE_OUTPUTS, () => this._fillOutputs(engine, outputFills));
     }
 
     onSpawn(engine, placed, eid, type, message) {
@@ -145,13 +148,14 @@ export class SplitterBehavior extends AbstractBehavior {
     }
 
     /**
-     * POST_RESOLVE seam: record resolved hops, clear drained sources, then fill destinations — in
-     * that order so items cross at belt speed — and advance routed splitters' round-robin state.
+     * POST_RESOLVE seam: record resolved hops, clear drained sources, fill the internal ports, and
+     * advance routed splitters' round-robin state; out-port fills defer to PRODUCE_OUTPUTS.
      * @private
      * @param {GameEngine} engine
+     * @param {{outPort:number, item:number}[]} outputFills
      * @returns {void}
      */
-    _runSeam(engine) {
+    _runSeam(engine, outputFills) {
         const item = engine.Port.item;
         const def = engine.component("Splitter");
         const splitter = def.store;
@@ -189,7 +193,7 @@ export class SplitterBehavior extends AbstractBehavior {
             engine.setPortItem(record.intPort, record.item);
         }
         for (const record of stage2) {
-            engine.setPortItem(record.outPort, record.item);
+            outputFills.push(record);
         }
 
         for (let row = 0; row < def.count; row += 1) {
@@ -197,5 +201,20 @@ export class SplitterBehavior extends AbstractBehavior {
                 splitter.state[row] = 1 - splitter.state[row];
             }
         }
+    }
+
+    /**
+     * PRODUCE_OUTPUTS: writes the seam's routed items into their out-ports, after the transport
+     * ingested this tick — so each item rests a visible tick in its out-port.
+     * @private
+     * @param {GameEngine} engine
+     * @param {{outPort:number, item:number}[]} outputFills
+     * @returns {void}
+     */
+    _fillOutputs(engine, outputFills) {
+        for (const record of outputFills) {
+            engine.setPortItem(record.outPort, record.item);
+        }
+        outputFills.length = 0;
     }
 }
