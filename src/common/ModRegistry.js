@@ -35,6 +35,10 @@ export class ModRegistry {
          */
         this._playerSettingEntries = new Map();
         /**
+         * @type {NoiseChannel[]}
+         */
+        this._noiseChannels = [];
+        /**
          * @type {MarketListingEntry[]}
          */
         this._marketListings = [];
@@ -115,6 +119,18 @@ export class ModRegistry {
                     throw new Error(`Duplicate player setting key ${entry.key}`);
                 }
                 this._playerSettingEntries.set(entry.key, entry);
+            }
+        }
+
+        const channelNames = new Set();
+        for (const pkg of this._packages) {
+            for (const channel of pkg.declaration.noiseChannels) {
+                if (channelNames.has(channel.name)) {
+                    throw new Error(`Duplicate noise channel "${channel.name}"`);
+                }
+                channelNames.add(channel.name);
+                channel._assignChannelId(this._noiseChannels.length);
+                this._noiseChannels.push(channel);
             }
         }
 
@@ -242,6 +258,15 @@ export class ModRegistry {
     playerSettingEntry(key) {
         this._assertFrozen();
         return this._playerSettingEntries.get(key);
+    }
+
+    /**
+     * Every noise channel across the loadout, in channelId order.
+     * @returns {NoiseChannel[]}
+     */
+    get noiseChannels() {
+        this._assertFrozen();
+        return this._noiseChannels;
     }
 
     /**

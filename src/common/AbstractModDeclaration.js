@@ -58,6 +58,15 @@ export class AbstractModDeclaration {
     }
 
     /**
+     * Terrain noise channels this mod samples; registration order across the loadout assigns each
+     * its channelId at ModRegistry.freeze(). Names must be unique across the loadout.
+     * @returns {NoiseChannel[]}
+     */
+    get noiseChannels() {
+        return [];
+    }
+
+    /**
      * Item types this mod adds to the market's tradable catalog; item types must be unique across
      * the loadout.
      * @returns {MarketListingEntry[]}
