@@ -234,7 +234,7 @@ test("bakeOverworldRows fills the region at cell resolution, row by row", () => 
     const registry = standardLoadout();
     const terrain = new Terrain(new WorldNoise(11, registry.noiseChannels), registry.biomes);
     assert.equal(terrain.overworldBake.biomes.length, OVERWORLD_CELLS_PER_AXIS * OVERWORLD_CELLS_PER_AXIS);
-    assert.equal(terrain.overworldBake.levels, null);
+    assert.equal(terrain.overworldBake.levels.length, OVERWORLD_CELLS_PER_AXIS * OVERWORLD_CELLS_PER_AXIS);
     assert.equal(terrain.overworldBaked, false);
 
     assert.equal(terrain.bakeOverworldRows(100), 0);
@@ -252,6 +252,10 @@ test("bakeOverworldRows fills the region at cell resolution, row by row", () => 
     for (const [column, row] of [[0, 0], [Math.floor(OVERWORLD_CELLS_PER_AXIS / 2) + 5, 33], [OVERWORLD_CELLS_PER_AXIS - 1, OVERWORLD_CELLS_PER_AXIS - 1]]) {
         const tileX = originTile + column * OVERWORLD_CELL_TILES + OVERWORLD_CELL_TILES / 2;
         const tileY = originTile + row * OVERWORLD_CELL_TILES + OVERWORLD_CELL_TILES / 2;
-        assert.equal(terrain.overworldBake.biomes[row * OVERWORLD_CELLS_PER_AXIS + column], terrain.biomeAt(tileX, tileY));
+        const cell = row * OVERWORLD_CELLS_PER_AXIS + column;
+        const tile = terrain.classify(tileX, tileY);
+        assert.equal(terrain.overworldBake.biomes[cell], tile.biomeId);
+        assert.equal(terrain.overworldBake.others[cell], tile.otherId);
+        assert.equal(terrain.overworldBake.levels[cell], tile.level);
     }
 });
