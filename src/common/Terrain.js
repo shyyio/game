@@ -13,7 +13,7 @@ const BLEND_MAX = 0.5;
 
 /**
  * A baked grid of biome ids, with the blend toward each cell's nearest competing biome when baked
- * with blending (chunks); the overworld bakes flat.
+ * with blending.
  */
 export class TerrainBake {
 
@@ -79,10 +79,10 @@ export class Terrain {
          */
         this._bakes = new Map();
         /**
-         * The region at overworld resolution, flat, filled row by row by {@link bakeOverworldRows}.
+         * The region at overworld resolution, filled row by row by {@link bakeOverworldRows}.
          * @type {TerrainBake}
          */
-        this.overworldBake = new TerrainBake(OVERWORLD_CELLS_PER_AXIS * OVERWORLD_CELLS_PER_AXIS, false);
+        this.overworldBake = new TerrainBake(OVERWORLD_CELLS_PER_AXIS * OVERWORLD_CELLS_PER_AXIS, true);
         this._overworldRowsBaked = 0;
         // Scratch: the channel samples and per-biome margins of the tile under evaluation.
         this._samples = new Float64Array(noise.channels.length);
@@ -218,7 +218,7 @@ export class Terrain {
     }
 
     /**
-     * Bakes the next rows of {@link overworldBake}, one biome sample per cell center, so a caller
+     * Bakes the next rows of {@link overworldBake}, one classification per cell center, so a caller
      * can spread the region over several frames.
      * @param {number} rowCount
      * @returns {number} the first row baked (rows [first, first + rowCount) are now current)
@@ -231,7 +231,10 @@ export class Terrain {
             let index = row * OVERWORLD_CELLS_PER_AXIS;
             for (let column = 0; column < OVERWORLD_CELLS_PER_AXIS; column++) {
                 const tileX = OVERWORLD_ORIGIN_TILE + column * OVERWORLD_CELL_TILES + OVERWORLD_CELL_CENTER;
-                this.overworldBake.biomes[index] = this.biomeAt(tileX, tileY);
+                const tile = this.classify(tileX, tileY);
+                this.overworldBake.biomes[index] = tile.biomeId;
+                this.overworldBake.others[index] = tile.otherId;
+                this.overworldBake.levels[index] = tile.level;
                 index++;
             }
         }
