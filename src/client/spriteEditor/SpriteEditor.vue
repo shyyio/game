@@ -3,8 +3,10 @@ import {computed, nextTick, onMounted, onUnmounted, ref, watch} from "vue";
 import FrameThumb from "@/client/spriteEditor/FrameThumb.vue";
 import HslPicker from "@/client/spriteEditor/HslPicker.vue";
 import {
-  SOURCE_BLOCK, TOOL_ERASER, TOOL_EYEDROPPER, TOOL_FILL, TOOL_LINE, TOOL_PENCIL, TOOL_RECT,
+  NO_TINT_HEX, SOURCE_BLOCK, TOOL_ERASER, TOOL_EYEDROPPER, TOOL_FILL, TOOL_LINE, TOOL_PENCIL,
+  TOOL_RECT,
 } from "@/client/spriteEditor/SpriteEditorSession.js";
+import {applyTint, fromHex} from "@/client/spriteEditor/PixelOps.js";
 
 // Eraser cursor: a tilted block with its wiping edge at the hotspot (bottom-left).
 const ERASER_CURSOR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">`
@@ -47,6 +49,8 @@ const sequence = computed(() => {
   return props.session.sequence;
 });
 const atlases = computed(() => [...props.session.textureRegistry.atlases.values()]);
+// The picked tint as pixi takes it in code.
+const tintValue = computed(() => `0x${state.tintHex.slice(1).toUpperCase()}`);
 
 const groups = computed(() => {
   const filter = state.filter.trim().toLowerCase();
@@ -247,13 +251,46 @@ function stepSequence(delta) {
   select(frames[(index + delta + frames.length) % frames.length].name);
 }
 
+// Scratch canvas for the tint pass: the frame multiplies at native size, then scales up.
+let tintCanvas = null;
+
+/**
+ * The frame's pixels under the picked tint, at native size.
+ */
+function tintedFrame(entry) {
+  const {rect, atlas} = entry;
+  if (tintCanvas === null) {
+    tintCanvas = root.value.ownerDocument.createElement("canvas");
+  }
+  tintCanvas.width = rect.w;
+  tintCanvas.height = rect.h;
+  const context = tintCanvas.getContext("2d", {willReadFrequently: true});
+  context.drawImage(atlas.canvas, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h);
+  const pixels = context.getImageData(0, 0, rect.w, rect.h);
+  applyTint(pixels, fromHex(state.tintHex, 255));
+  context.putImageData(pixels, 0, 0);
+  return tintCanvas;
+}
+
+/**
+ * Draws one frame, tinted when a tint is picked, scaled to fill the target context.
+ */
+function blit(context, entry, width, height) {
+  const {rect, atlas} = entry;
+  if (state.tintHex === NO_TINT_HEX) {
+    context.drawImage(atlas.canvas, rect.x, rect.y, rect.w, rect.h, 0, 0, width, height);
+    return;
+  }
+  context.drawImage(tintedFrame(entry), 0, 0, rect.w, rect.h, 0, 0, width, height);
+}
+
 function draw() {
   const current = frame.value;
   const element = canvas.value;
   if (current === null || element === null) {
     return;
   }
-  const {rect, atlas} = current;
+  const {rect} = current;
   const zoom = state.zoom;
   element.width = rect.w * zoom;
   element.height = rect.h * zoom;
@@ -265,11 +302,11 @@ function draw() {
     if (frames.length > 1) {
       const previous = frames[(index - 1 + frames.length) % frames.length];
       context.globalAlpha = 0.35;
-      context.drawImage(atlas.canvas, previous.rect.x, previous.rect.y, previous.rect.w, previous.rect.h, 0, 0, element.width, element.height);
+      blit(context, previous, element.width, element.height);
       context.globalAlpha = 1;
     }
   }
-  context.drawImage(atlas.canvas, rect.x, rect.y, rect.w, rect.h, 0, 0, element.width, element.height);
+  blit(context, current, element.width, element.height);
   const step = SOURCE_BLOCK * zoom;
   if (state.grid && step >= 4) {
     context.strokeStyle = "rgba(255, 255, 255, 0.18)";
@@ -298,7 +335,7 @@ function drawPreview() {
   element.height = shown.rect.h * PREVIEW_SCALE;
   const context = element.getContext("2d");
   context.imageSmoothingEnabled = false;
-  context.drawImage(shown.atlas.canvas, shown.rect.x, shown.rect.y, shown.rect.w, shown.rect.h, 0, 0, element.width, element.height);
+  blit(context, shown, element.width, element.height);
 }
 
 let playTimer = null;
@@ -316,8 +353,8 @@ function syncPlayback() {
   }
 }
 
-watch(() => [state.paintVersion, state.zoom, state.grid, state.onion, state.frameName], draw, {flush: "post"});
-watch(() => [state.paintVersion, state.playIndex, state.frameName], drawPreview, {flush: "post"});
+watch(() => [state.paintVersion, state.zoom, state.grid, state.onion, state.frameName, state.tintHex], draw, {flush: "post"});
+watch(() => [state.paintVersion, state.playIndex, state.frameName, state.tintHex], drawPreview, {flush: "post"});
 watch(() => [state.playing, state.frameName], syncPlayback);
 
 onMounted(() => {
@@ -485,6 +522,16 @@ async function resetAll() {
               :title="`${swatch.hex} α${swatch.alpha}`"
               @click="pickSwatch(swatch)"
           ></button>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-title">Tint</div>
+        <HslPicker v-model="state.tintHex"/>
+        <div class="row tint-row">
+          <span class="tint-swatch" :style="{background: state.tintHex}"></span>
+          <code class="tint-value">{{ tintValue }}</code>
+          <button :disabled="state.tintHex === NO_TINT_HEX" @click="state.tintHex = NO_TINT_HEX">Clear</button>
         </div>
       </section>
 
@@ -726,6 +773,21 @@ async function resetAll() {
   height: 20px;
   padding: 0;
   border: 1px solid rgba(0, 0, 0, 0.4);
+}
+
+.tint-row {
+  margin-top: 6px;
+}
+
+.tint-swatch {
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+}
+
+.tint-value {
+  flex: 1;
+  font-family: ui-monospace, monospace;
 }
 
 .strip {

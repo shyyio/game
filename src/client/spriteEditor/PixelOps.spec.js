@@ -1,6 +1,6 @@
 import {describe, it} from "node:test";
 import assert from "node:assert/strict";
-import {drawLine, drawRect, floodFill, getPixel, paletteOf, setBlock, fromHex, toHex} from "@/client/spriteEditor/PixelOps.js";
+import {applyTint, drawLine, drawRect, floodFill, getPixel, paletteOf, setBlock, fromHex, toHex} from "@/client/spriteEditor/PixelOps.js";
 
 const RED = [255, 0, 0, 255];
 const BLUE = [0, 0, 255, 255];
@@ -57,6 +57,17 @@ describe("PixelOps", () => {
         setBlock(b, 2, 0, BLUE, 1);
         assert.deepEqual(paletteOf(b, 8), [BLUE, RED]);
         assert.deepEqual(paletteOf(b, 1), [BLUE]);
+    });
+
+    it("applyTint multiplies the channels and keeps alpha", () => {
+        const b = buffer(2, 1);
+        setBlock(b, 0, 0, [255, 128, 64, 200], 1);
+        applyTint(b, fromHex("#ff8000", 255));
+        assert.deepEqual(getPixel(b, 0, 0), [255, 64, 0, 200]);
+        // White is pixi's untinted tint.
+        setBlock(b, 1, 0, [10, 20, 30, 40], 1);
+        applyTint(b, fromHex("#ffffff", 255));
+        assert.deepEqual(getPixel(b, 1, 0), [10, 20, 30, 40]);
     });
 
     it("hex round-trips", () => {
