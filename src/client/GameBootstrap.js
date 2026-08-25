@@ -12,6 +12,8 @@ import {RemoteSession} from "@/client/RemoteSession.js";
 import {WireRegistry} from "@/common/wire.js";
 import {Client} from "@/client/Client.js";
 import {createInputHandler} from "@/client/input/GameInputWiring.js";
+import {DITHER_PATTERNS, setActiveDither, setDitherEnabled, ditherOn, setDitherScale, ditherScale} from "@/client/layers/DitherPatterns.js";
+import {setBlendLevels, blendLevelCount} from "@/client/layers/TerrainSprite.js";
 import {mintReconnectToken, enterServerContext} from "@/client/AuthClient.js";
 import WindowFocus from "@/client/WindowFocus.js";
 import {DEFAULT_TICK_MS} from "@/common/constants.js";
@@ -143,6 +145,33 @@ export async function createClient(app, viewport, props) {
         return JSON.stringify(snapshot);
     };
 
+    // Console helper for comparing the ground's dither: setTerrainDither("r2") repaints in place.
+    window.setTerrainDither = name => {
+        const pattern = setActiveDither(name);
+        client.terrainLayer.repaint();
+        return pattern.name;
+    };
+    window.terrainDithers = () => DITHER_PATTERNS.map(pattern => pattern.name);
+    // setTerrainBlending(n) bands a biome edge into n mixed steps; at 0 nothing mixes, so the edge
+    // stipples the two flat colors instead. setTerrainDithering(false) drops the stipple, leaving
+    // flat bands or a hard step.
+    window.setTerrainBlending = levels => {
+        setBlendLevels(levels);
+        client.terrainLayer.repaint();
+        return blendLevelCount();
+    };
+    window.setTerrainDithering = enabled => {
+        setDitherEnabled(enabled);
+        client.terrainLayer.repaint();
+        return ditherOn();
+    };
+    // Only the "noise" pattern reads this: bigger scale = finer grain, smaller = broader patches.
+    window.setTerrainDitherScale = scale => {
+        setDitherScale(scale);
+        client.terrainLayer.repaint();
+        return ditherScale();
+    };
+
     const inputHandler = createInputHandler(client);
 
     const renderToolbar = () => client.toolbarLayer.setTools(client.coreTools(), client.modTools());
@@ -159,6 +188,11 @@ export async function createClient(app, viewport, props) {
      */
     function destroy() {
         delete window.dumpGameState;
+        delete window.setTerrainDither;
+        delete window.terrainDithers;
+        delete window.setTerrainBlending;
+        delete window.setTerrainDithering;
+        delete window.setTerrainDitherScale;
         session.disconnect();
         if (unsubWindowFocus !== null) {
             unsubWindowFocus();

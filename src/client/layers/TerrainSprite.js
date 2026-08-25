@@ -2,14 +2,49 @@ import {BufferImageSource, Sprite, Texture} from "pixi.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {CHUNK_SIZE, REGION_SIZE} from "@/common/constants.js";
 import {chunkOrigin} from "@/common/util.js";
-import {OVERWORLD_CELLS_PER_AXIS, BLEND_LEVELS} from "@/common/Terrain.js";
+import {BLEND_LEVELS, BLEND_WEIGHT_SCALE, OVERWORLD_CELLS_PER_AXIS} from "@/common/Terrain.js";
+import {ditherThreshold} from "@/client/layers/DitherPatterns.js";
 
-// Blend level -> weight of the other biome's color.
-const BLEND_WEIGHT_PER_LEVEL = 1 / (2 * BLEND_LEVELS);
+// A blend tops out at a 50/50 mix on the biome line, so one baked unit is this share of the other
+// biome, whatever the level count.
+const WEIGHT_PER_BAKED_UNIT = 0.5 / BLEND_WEIGHT_SCALE;
+
+// Comparison switch: how many steps the blend is banded into. At 0 no cell mixes a new color, so a
+// dithered edge stipples the two biomes' flat colors and an undithered one steps hard.
+let blendLevels = BLEND_LEVELS;
+let weightPerLevel = 1 / (2 * BLEND_LEVELS);
+let levelsPerBakedWeight = BLEND_LEVELS / BLEND_WEIGHT_SCALE;
+
+/**
+ * @param {number} levels bands between a biome and its blend biome; 0 mixes nothing
+ * @returns {number} the level count now in force
+ * @throws {RangeError} unless levels is an integer in [0, BLEND_WEIGHT_SCALE]
+ */
+export function setBlendLevels(levels) {
+    if (!Number.isInteger(levels) || levels < 0 || levels > BLEND_WEIGHT_SCALE) {
+        throw new RangeError(`Blend levels must be an integer in [0, ${BLEND_WEIGHT_SCALE}], got ${levels}`);
+    }
+    blendLevels = levels;
+    // No levels means no mixing at all; leaving the divisor at zero would seed a NaN weight.
+    if (levels > 0) {
+        weightPerLevel = 1 / (2 * levels);
+        levelsPerBakedWeight = levels / BLEND_WEIGHT_SCALE;
+    }
+    return blendLevels;
+}
+
+/**
+ * @returns {number}
+ */
+export function blendLevelCount() {
+    return blendLevels;
+}
 
 const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
 const REGION_PX = REGION_SIZE * CHUNK_PX;
 const REGION_HALF_PX = REGION_PX / 2;
+// Ground color while the terrain is off.
+const BLANK_TINT = 0xffffff;
 const BYTES_PER_PIXEL = 4;
 const COLOR_CHANNEL_MASK = 0xff;
 const ALPHA_OPAQUE = 0xff;
@@ -70,32 +105,44 @@ export class TerrainPalette {
     /**
      * @param {TerrainBake} bake
      * @param {function(number): number} shadeAt cell index -> shade variant
+     * @param {function(number): number} ditherAt cell index -> dither threshold
      * @returns {Uint8Array} RGBA per cell, same order
      */
-    paint(bake, shadeAt) {
+    paint(bake, shadeAt, ditherAt) {
         const pixels = new Uint8Array(bake.biomes.length * BYTES_PER_PIXEL);
-        this.paintInto(bake, pixels, 0, bake.biomes.length, shadeAt);
+        this.paintInto(bake, pixels, 0, bake.biomes.length, shadeAt, ditherAt);
         return pixels;
     }
 
     /**
-     * Paints each cell its shaded biome color, mixed toward its blend biome by its blend level.
+     * Paints each cell its shaded biome color, mixed toward its blend biome by its blend level, the
+     * level dithered so neighboring cells straddle the band edge rather than stepping together.
+     * With blending off the dither instead decides the cell's biome outright, stippling the two.
      * @param {TerrainBake} bake
      * @param {Uint8Array} pixels RGBA per cell, same order
      * @param {number} fromCell
      * @param {number} toCell exclusive
      * @param {function(number): number} shadeAt cell index -> shade variant
+     * @param {function(number): number} ditherAt cell index -> dither threshold
      * @returns {void}
      */
-    paintInto(bake, pixels, fromCell, toCell, shadeAt) {
+    paintInto(bake, pixels, fromCell, toCell, shadeAt, ditherAt) {
         for (let cell = fromCell; cell < toCell; cell++) {
             const shade = shadeAt(cell);
-            const from = (bake.biomes[cell] * SHADE_COUNT + shade) * BYTES_PER_PIXEL;
-            const to = cell * BYTES_PER_PIXEL;
+            let biome = bake.biomes[cell];
             let weight = 0;
+            if (bake.weights !== null && bake.weights[cell] > 0) {
+                if (blendLevels > 0) {
+                    weight = this._blendWeight(bake.weights[cell], ditherAt(cell));
+                } else if (bake.weights[cell] * WEIGHT_PER_BAKED_UNIT > ditherAt(cell)) {
+                    // Nothing to mix, so the cell takes the other biome whole instead.
+                    biome = bake.others[cell];
+                }
+            }
+            const from = (biome * SHADE_COUNT + shade) * BYTES_PER_PIXEL;
+            const to = cell * BYTES_PER_PIXEL;
             let other = from;
-            if (bake.levels !== null && bake.levels[cell] > 0) {
-                weight = bake.levels[cell] * BLEND_WEIGHT_PER_LEVEL;
+            if (weight > 0) {
                 other = (bake.others[cell] * SHADE_COUNT + shade) * BYTES_PER_PIXEL;
             }
             pixels[to] = this._bytes[from] + (this._bytes[other] - this._bytes[from]) * weight;
@@ -103,6 +150,23 @@ export class TerrainPalette {
             pixels[to + 2] = this._bytes[from + 2] + (this._bytes[other + 2] - this._bytes[from + 2]) * weight;
             pixels[to + 3] = ALPHA_OPAQUE;
         }
+    }
+
+    /**
+     * The baked weight banded into the active level count, rounded up when the part-level beats the
+     * cell's dither threshold.
+     * @private
+     * @param {number} baked the cell's baked blend weight
+     * @param {number} threshold the cell's dither threshold
+     * @returns {number} the other biome's share of the cell's color
+     */
+    _blendWeight(baked, threshold) {
+        const scaled = baked * levelsPerBakedWeight;
+        let level = Math.floor(scaled);
+        if (scaled - level > threshold) {
+            level += 1;
+        }
+        return level * weightPerLevel;
     }
 }
 
@@ -121,19 +185,19 @@ export class TerrainSprite extends Sprite {
 
     /**
      * @param {TerrainPalette} palette
-     * @param {TerrainBake} bake row-major, cellsPerAxis² cells
-     * @param {number} cellsPerAxis
+     * @param {TerrainBake} bake row-major, square
      * @param {number} left world px
      * @param {number} top world px
      * @param {number} sidePx world px the bake spans
      * @param {function(number): number} shadeAt cell index -> shade variant
+     * @param {function(number): number} ditherAt cell index -> dither threshold
      */
-    constructor(palette, bake, cellsPerAxis, left, top, sidePx, shadeAt) {
-        const pixels = palette.paint(bake, shadeAt);
+    constructor(palette, bake, left, top, sidePx, shadeAt, ditherAt) {
+        const pixels = palette.paint(bake, shadeAt, ditherAt);
         const source = new BufferImageSource({
             resource: pixels,
-            width: cellsPerAxis,
-            height: cellsPerAxis,
+            width: bake.cellsPerAxis,
+            height: bake.cellsPerAxis,
             format: "rgba8unorm",
             scaleMode: "nearest",
             alphaMode: "premultiply-alpha-on-upload",
@@ -143,8 +207,9 @@ export class TerrainSprite extends Sprite {
         this.setSize(sidePx, sidePx);
         this._palette = palette;
         this._pixels = pixels;
-        this._cellsPerAxis = cellsPerAxis;
+        this._cellsPerAxis = bake.cellsPerAxis;
         this._shadeAt = shadeAt;
+        this._ditherAt = ditherAt;
     }
 
     /**
@@ -157,7 +222,7 @@ export class TerrainSprite extends Sprite {
     updateRows(bake, fromRow, rowCount) {
         const fromCell = fromRow * this._cellsPerAxis;
         const toCell = Math.min(fromCell + rowCount * this._cellsPerAxis, bake.biomes.length);
-        this._palette.paintInto(bake, this._pixels, fromCell, toCell, this._shadeAt);
+        this._palette.paintInto(bake, this._pixels, fromCell, toCell, this._shadeAt, this._ditherAt);
         this.texture.source.update();
     }
 
@@ -171,7 +236,9 @@ export class TerrainSprite extends Sprite {
     static forChunk(palette, chunk, bake, terrain) {
         const origin = chunkOrigin(chunk);
         const shadeAt = cell => shadeFor(terrain.shadeAt(origin.x + cell % CHUNK_SIZE, origin.y + Math.floor(cell / CHUNK_SIZE)));
-        return new TerrainSprite(palette, bake, CHUNK_SIZE, origin.x * TILE_SIZE, origin.y * TILE_SIZE, CHUNK_PX, shadeAt);
+        // World tile, not chunk-local, so a pattern without a 64-tile period still tiles seamlessly.
+        const ditherAt = cell => ditherThreshold(origin.x + cell % CHUNK_SIZE, origin.y + Math.floor(cell / CHUNK_SIZE));
+        return new TerrainSprite(palette, bake, origin.x * TILE_SIZE, origin.y * TILE_SIZE, CHUNK_PX, shadeAt, ditherAt);
     }
 
     /**
@@ -180,7 +247,8 @@ export class TerrainSprite extends Sprite {
      * @returns {TerrainSprite} one texel per overworld cell over the region
      */
     static forOverworld(palette, bake) {
-        return new TerrainSprite(palette, bake, OVERWORLD_CELLS_PER_AXIS, -REGION_HALF_PX, -REGION_HALF_PX, REGION_PX, flatShade);
+        const ditherAt = cell => ditherThreshold(cell % OVERWORLD_CELLS_PER_AXIS, Math.floor(cell / OVERWORLD_CELLS_PER_AXIS));
+        return new TerrainSprite(palette, bake, -REGION_HALF_PX, -REGION_HALF_PX, REGION_PX, flatShade, ditherAt);
     }
 
     /**
@@ -193,4 +261,34 @@ export class TerrainSprite extends Sprite {
         super.destroy(options);
         texture.destroy(true);
     }
+}
+
+/**
+ * @param {number} chunk
+ * @returns {Sprite} flat white ground over the chunk, for when the terrain is off
+ */
+export function blankChunkSprite(chunk) {
+    const origin = chunkOrigin(chunk);
+    return blankSprite(origin.x * TILE_SIZE, origin.y * TILE_SIZE, CHUNK_PX);
+}
+
+/**
+ * @returns {Sprite} flat white ground over the region, for when the terrain is off
+ */
+export function blankOverworldSprite() {
+    return blankSprite(-REGION_HALF_PX, -REGION_HALF_PX, REGION_PX);
+}
+
+/**
+ * @param {number} left world px
+ * @param {number} top world px
+ * @param {number} sidePx world px the sprite spans
+ * @returns {Sprite}
+ */
+function blankSprite(left, top, sidePx) {
+    const sprite = new Sprite(Texture.WHITE);
+    sprite.tint = BLANK_TINT;
+    sprite.position.set(left, top);
+    sprite.setSize(sidePx, sidePx);
+    return sprite;
 }

@@ -25,9 +25,9 @@ import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
 import {PlayerSettingToggle} from "@/client/hud/PlayerSettingToggle.js";
 import {DeviceSettingToggle} from "@/client/hud/DeviceSettingToggle.js";
 import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
-import {
+import DeviceSettings, {
     DEVICE_SETTING_FULLSCREEN, DEVICE_SETTING_REDUCED_MOTION, DEVICE_SETTING_MOBILE,
-    DEVICE_SETTING_THEME,
+    DEVICE_SETTING_THEME, DEVICE_SETTING_TERRAIN,
 } from "@/client/state/DeviceSettings.js";
 import {applyTheme, onThemeChange, THEME_NAMES, THEME_DEFAULT} from "@/client/Theme.js";
 import Fullscreen from "@/client/Fullscreen.js";
@@ -123,6 +123,9 @@ const LOG_BATCH_ITEMS = 5;
 // Settings-menu placement of the "Display" section.
 const DISPLAY_CATEGORY_ORDER = 0;
 
+// Terrain rendering while the device setting is unset.
+const TERRAIN_ENABLED_DEFAULT = false;
+
 /**
  * A console view of an event: a batch event's columns cut to their first {@link LOG_BATCH_ITEMS}
  * entries, a sync bundle's inner events mapped the same way; other events log as-is.
@@ -201,6 +204,7 @@ export class Client {
         // The ground, repainted from the terrain once the seed arrives.
         this.terrainLayer = new TerrainDrawLayer(modRegistry.biomes);
         this.terrainDetailLayer = new TerrainDetailLayer(modRegistry.biomes);
+        this.setTerrainEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_TERRAIN, TERRAIN_ENABLED_DEFAULT));
         this.cache.subscribe("gameSettings.values", (key, value) => {
             if (key === GameSettingsKey.SEED) {
                 this.noise = new WorldNoise(value, modRegistry.noiseChannels);
@@ -1303,9 +1307,20 @@ export class Client {
                 new DeviceSettingToggle(DEVICE_SETTING_FULLSCREEN, "Fullscreen", false, on => Fullscreen.setEnabled(on)),
                 new DeviceSettingToggle(DEVICE_SETTING_REDUCED_MOTION, "Reduced motion", ReducedMotion.devicePrefers(), on => ReducedMotion.setEnabled(on)),
                 new DeviceSettingToggle(DEVICE_SETTING_MOBILE, "Touchscreen input", Mobile.devicePrefers(), on => Mobile.setEnabled(on)),
+                new DeviceSettingToggle(DEVICE_SETTING_TERRAIN, "Terrain", TERRAIN_ENABLED_DEFAULT, on => this.setTerrainEnabled(on)),
                 new DeviceSettingChoice(DEVICE_SETTING_THEME, "Theme", THEME_NAMES, THEME_DEFAULT, index => applyTheme(index)),
             ]),
         ];
+    }
+
+    /**
+     * Shows or hides the ground and its scattered details.
+     * @param {boolean} enabled
+     * @returns {void}
+     */
+    setTerrainEnabled(enabled) {
+        this.terrainLayer.setEnabled(enabled);
+        this.terrainDetailLayer.setEnabled(enabled);
     }
 
     /**
