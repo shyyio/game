@@ -1,17 +1,19 @@
 // Global sprite-animation clock.
 //
-// Convention: every animated spritesheet sequence has exactly 8 frames, named
-// "<base>/0" .. "<base>/7", and is played by showing "<base>/" plus the current
-// frame. The Pixi ticker is capped at the game's frame rate (see Game.vue), so
-// every tick advances exactly one frame. The frame is a single global counter, so
-// every animated sprite, across every mod, shows the same frame at the same instant
-// without any per-sprite state or phase. Mods animate simply by following this
-// naming convention and reading currentAnimationFrame().
+// Convention: every animated sequence has exactly 8 frames, named "<base>/0" .. "<base>/7",
+// played by showing "<base>/" plus the current frame. The art is drawn for ANIMATION_FPS while
+// the renderer runs at the display's refresh rate, so the frame steps off elapsed time. One
+// global counter, so every animated sprite across every mod shows the same frame at the same
+// instant. Mods animate by following the naming convention and reading currentAnimationFrame().
 
 import ReducedMotion from "@/client/ReducedMotion.js";
 
 // 8 frames per sequence.
 export const ANIMATION_FRAME_COUNT = 8;
+
+// The cadence the art is drawn for.
+const ANIMATION_FPS = 24;
+const ANIMATION_FRAME_MS = 1000 / ANIMATION_FPS;
 
 /**
  * The current global animation frame.
@@ -20,16 +22,31 @@ export const ANIMATION_FRAME_COUNT = 8;
 let frame = 0;
 
 /**
- * Advances to the next frame, called once per ticker tick.
- * @returns {number} the new frame, in [0, 8)
+ * Carried since the last frame step, always under one frame.
+ * @type {number}
  */
-export function advanceAnimationFrame() {
+let elapsedMS = 0;
+
+/**
+ * Advances the clock by a rendered frame's elapsed time.
+ * @param {number} deltaMS elapsed time since the previous rendered frame, in ms
+ * @returns {number} the current frame, in [0, 8)
+ */
+export function advanceAnimationFrame(deltaMS) {
     if (ReducedMotion.enabled) {
         // Every sequence holds its base frame: no belt scroll, no cycling machines.
+        elapsedMS = 0;
         frame = 0;
         return frame;
     }
-    frame = (frame + 1) % ANIMATION_FRAME_COUNT;
+    elapsedMS += deltaMS;
+    if (elapsedMS < ANIMATION_FRAME_MS) {
+        return frame;
+    }
+    // A slow frame spans several animation frames; stepping the whole count keeps the phase.
+    const steps = Math.floor(elapsedMS / ANIMATION_FRAME_MS);
+    elapsedMS -= steps * ANIMATION_FRAME_MS;
+    frame = (frame + steps) % ANIMATION_FRAME_COUNT;
     return frame;
 }
 

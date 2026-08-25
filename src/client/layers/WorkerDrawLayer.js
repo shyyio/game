@@ -25,8 +25,12 @@ const HOUSING_PAUSE_JITTER_MS = 1600;
 // How far a figure wanders off the path center, world px each side.
 const LATERAL_RANGE = 7;
 
-// Route BFS runs per rebuilt machine each tick; capped so a loading burst can't stall the frame.
-const ROUTE_REBUILDS_PER_TICK = 50;
+// Route BFS runs per rebuilt machine each frame; capped so a loading burst can't stall the frame.
+const ROUTE_REBUILDS_PER_TICK = 20;
+
+// Figures are cosmetic, so they advance at this cadence rather than every frame; each pass repacks
+// the layer's batch.
+const WORKER_ADVANCE_INTERVAL_MS = 1000 / 12;
 
 // At most this many figures render, nearest the viewport center first; the rest freeze invisible
 // so the layer's per-frame repack stays bounded however many machines are manned.
@@ -75,7 +79,7 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
             WORKER_RENDER_CAP,
         ));
         // Routes re-derive after any worker-relevant cache change, spread over ticks and drained
-        // ROUTE_REBUILDS_PER_TICK per tick: assignment changes queue their machine as urgent; the
+        // ROUTE_REBUILDS_PER_TICK per frame: assignment changes queue their machine as urgent; the
         // flag requeues every assignment as background work, served only with leftover budget so
         // a world-wide refresh never delays freshly visible machines.
         this._routesStale = false;
@@ -84,8 +88,7 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
         // Machines whose assignment arrived via chunk sync: their fresh figure scatters
         // mid-commute; a live-manned machine's figure departs from its housing instead.
         this._scatterMachines = new Set();
-        // Figures advance on alternate ticks, carrying the skipped tick's elapsed time.
-        this._skipTick = false;
+        // Carried since the last figure advance.
         this._pendingDeltaMS = 0;
         // Counts down to the next cull pass.
         this._cullCountdownMS = 0;
@@ -177,11 +180,8 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
             this._cullCountdownMS = WORKER_CULL_INTERVAL_MS;
             this._cull();
         }
-        // Half rate: figures are cosmetic, so advancing them every other tick is invisible but
-        // halves this layer's per-frame batch repack.
         this._pendingDeltaMS += deltaMS;
-        this._skipTick = !this._skipTick;
-        if (this._skipTick) {
+        if (this._pendingDeltaMS < WORKER_ADVANCE_INTERVAL_MS) {
             return;
         }
         for (const worker of this._workers.values()) {

@@ -66,9 +66,9 @@ export async function createPixiApp() {
         roundPixels: true
     });
 
-    // The whole game runs at a fixed 24fps, so one ticker tick is exactly one
-    // animation frame (see animation.js).
-    app.ticker.maxFPS = 24;
+    // Uncapped: the ticker rides requestAnimationFrame, so frames land on vsync. A cap below the
+    // refresh rate paces them unevenly; sprite sequences keep their own clock (see animation.js).
+    app.ticker.maxFPS = 0;
 
     // Load the game font before pixi rasterizes any text; a Text drawn before the face
     // is ready caches at the fallback and never re-rasterizes on its own.
