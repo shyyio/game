@@ -174,3 +174,17 @@ export function toHex(rgba) {
 export function fromHex(hex, alpha) {
     return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16), alpha];
 }
+
+/**
+ * Multiplies every pixel's channels by the tint's, pixi's tint math; alpha untouched.
+ * @param {PixelBuffer} buffer
+ * @param {number[]} rgb tint channels, 0-255
+ * @returns {void}
+ */
+export function applyTint(buffer, rgb) {
+    for (let i = 0; i < buffer.data.length; i += 4) {
+        buffer.data[i] = buffer.data[i] * rgb[0] / 255;
+        buffer.data[i + 1] = buffer.data[i + 1] * rgb[1] / 255;
+        buffer.data[i + 2] = buffer.data[i + 2] * rgb[2] / 255;
+    }
+}

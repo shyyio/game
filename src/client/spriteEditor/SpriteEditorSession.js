@@ -13,6 +13,8 @@ const PALETTE_LIMIT = 48;
 // Source art is 1x, packed 2x into the atlas: the default brush paints 2x2 atlas pixels.
 export const SOURCE_BLOCK = 2;
 const TRANSPARENT = [0, 0, 0, 0];
+// pixi's untinted tint (0xffffff), so a white pick means "no tint".
+export const NO_TINT_HEX = "#ffffff";
 
 /**
  * One paintable frame of a loaded atlas.
@@ -90,6 +92,8 @@ export class SpriteEditorSession {
             tool: TOOL_PENCIL,
             colorHex: "#000000",
             alpha: 255,
+            // Preview-only pixi tint over the frame; never painted into the pixels.
+            tintHex: NO_TINT_HEX,
             zoom: 12,
             grid: true,
             onion: false,
