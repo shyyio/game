@@ -62,7 +62,18 @@ export function viewportChunks(viewport) {
     const top = snapToChunk(viewport.top / TILE_SIZE) - CHUNK_SIZE;
     const right = snapToChunk(viewport.right / TILE_SIZE) + CHUNK_SIZE;
     const bottom = snapToChunk(viewport.bottom / TILE_SIZE) + CHUNK_SIZE;
+    return chunksOver(left, top, right, bottom);
+}
 
+/**
+ * The chunk ids in a snapped tile rect, both ends inclusive.
+ * @param {number} left snapped tile x
+ * @param {number} top snapped tile y
+ * @param {number} right snapped tile x
+ * @param {number} bottom snapped tile y
+ * @returns {Set<number>}
+ */
+function chunksOver(left, top, right, bottom) {
     const chunks = new Set();
     for (let x = left; x <= right; x += CHUNK_SIZE) {
         for (let y = top; y <= bottom; y += CHUNK_SIZE) {
@@ -70,6 +81,42 @@ export function viewportChunks(viewport) {
         }
     }
     return chunks;
+}
+
+/**
+ * The viewport's covered chunks, rebuilt only when the covered rect moves. Every frame asks for the
+ * set, so holding one instance saves an allocation and lets layers reconcile on identity.
+ */
+export class ViewportChunkWindow {
+
+    constructor() {
+        this._left = null;
+        this._top = null;
+        this._right = null;
+        this._bottom = null;
+        this._chunks = new Set();
+    }
+
+    /**
+     * @param {ClientViewport} viewport
+     * @returns {Set<number>} the same instance until the rect moves
+     */
+    chunks(viewport) {
+        const left = snapToChunk(viewport.left / TILE_SIZE) - CHUNK_SIZE;
+        const top = snapToChunk(viewport.top / TILE_SIZE) - CHUNK_SIZE;
+        const right = snapToChunk(viewport.right / TILE_SIZE) + CHUNK_SIZE;
+        const bottom = snapToChunk(viewport.bottom / TILE_SIZE) + CHUNK_SIZE;
+        if (left === this._left && top === this._top && right === this._right && bottom === this._bottom) {
+            return this._chunks;
+        }
+        this._left = left;
+        this._top = top;
+        this._right = right;
+        this._bottom = bottom;
+        // A fresh Set, never a mutation: layers hold the instance they last reconciled against.
+        this._chunks = chunksOver(left, top, right, bottom);
+        return this._chunks;
+    }
 }
 
 /**

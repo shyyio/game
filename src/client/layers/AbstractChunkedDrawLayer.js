@@ -88,7 +88,13 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _reconcileViewport(visible) {
+        // A settled viewport hands back the same instance every frame.
+        if (visible === this._visibleChunks) {
+            return;
+        }
         if (sameChunks(visible, this._visibleChunks)) {
+            // Adopted so later frames take the identity path.
+            this._visibleChunks = visible;
             return;
         }
 

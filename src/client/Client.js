@@ -49,7 +49,7 @@ import {INSPECT_SCHEMA, InspectWriter, InspectView} from "@/client/state/Inspect
 import {
     TILE_SIZE,
     snapToChunk,
-    viewportChunks,
+    ViewportChunkWindow,
     ViewMode,
     MAP_MODE_SCALE_THRESHOLD,
     OVERWORLD_SCALE_THRESHOLD,
@@ -110,8 +110,8 @@ import {
     SESSION_STATUS_REJECTED,
 } from "@/client/RemoteSession.js";
 
-// Frame time spent applying queued sync events; the rest wait for the next frame.
-const DRAIN_BUDGET_MS = 6;
+// Frame time spent applying queued sync events; about a sixth of a 60fps frame.
+const DRAIN_BUDGET_MS = 2.5;
 
 // Handed to the layer tick in overworld mode, where no chunks are mounted: building the real
 // visible-chunk set at overworld scale would enumerate thousands of chunks per frame.
@@ -413,6 +413,8 @@ export class Client {
         // chunk -> its queued event count; a chunk with an entry gates its later events.
         this._queuedCountByChunk = new Map();
         this._lastVisibleKey = null;
+        // Rebuilds the visible-chunk set only when the covered rect moves.
+        this._chunkWindow = new ViewportChunkWindow();
         this._viewMode = ViewMode.WORLD;
         this._onViewModeChange = null;
         this._lastOverworldRefreshMs = 0;
@@ -702,11 +704,11 @@ export class Client {
     }
 
     /**
-     * Drives sprite animation off the render loop, one frame per ticker tick. Passes
-     * the frame's elapsed time so layers can interpolate continuous motion.
+     * Drives sprite animation off the render loop, passing the frame's elapsed time.
      * @private
      */
     _tickAnimations() {
+        const deltaMS = this.app.ticker.deltaMS;
         this._drainPendingEvents();
         // Derived once here rather than per layer: every chunk-culled layer needs the same set, and
         // rebuilding it per layer costs a chunkId per visible chunk each.
@@ -714,11 +716,11 @@ export class Client {
         if (this._viewMode === ViewMode.OVERWORLD) {
             visibleChunks = NO_VISIBLE_CHUNKS;
         } else {
-            visibleChunks = viewportChunks(this.viewport);
+            visibleChunks = this._chunkWindow.chunks(this.viewport);
         }
         this.drawLayerRegistry.tick(
-            advanceAnimationFrame(),
-            this.app.ticker.deltaMS,
+            advanceAnimationFrame(deltaMS),
+            deltaMS,
             visibleChunks,
         );
     }

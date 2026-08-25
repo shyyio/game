@@ -6,8 +6,8 @@ import {ViewMode} from "@/client/constants.js";
 import {OVERWORLD_CELLS_PER_AXIS} from "@/common/Terrain.js";
 import {setDitherTerrain} from "@/client/layers/DitherPatterns.js";
 
-// Overworld cells baked per tick (~10 ms of sampling), as whole rows.
-const OVERWORLD_SAMPLES_PER_TICK = 32768;
+// Overworld cells baked per frame (~2.5 ms of sampling), as whole rows.
+const OVERWORLD_SAMPLES_PER_TICK = 8192;
 const OVERWORLD_ROWS_PER_TICK = Math.max(1, Math.floor(OVERWORLD_SAMPLES_PER_TICK / OVERWORLD_CELLS_PER_AXIS));
 
 /**
