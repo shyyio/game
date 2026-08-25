@@ -6,6 +6,8 @@ export const DEVICE_SETTING_REDUCED_MOTION = "spup.reduced-motion";
 export const DEVICE_SETTING_MOBILE = "spup.mobile";
 // localStorage key for the color-theme preference.
 export const DEVICE_SETTING_THEME = "spup.theme";
+// localStorage key for the terrain-rendering preference.
+export const DEVICE_SETTING_TERRAIN = "spup.terrain";
 
 /**
  * Singleton for per-device preferences persisted in localStorage, never in saves.

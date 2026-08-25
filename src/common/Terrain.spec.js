@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {Terrain, SHADE_CHANNEL, BLEND_LEVELS, BLEND_WIDTH, OVERWORLD_CELLS_PER_AXIS, OVERWORLD_CELL_TILES} from "@/common/Terrain.js";
+import {Terrain, SHADE_CHANNEL, DITHER_CHANNEL, CORE_NOISE_CHANNELS, BLEND_WEIGHT_SCALE, BLEND_WIDTH, OVERWORLD_CELLS_PER_AXIS, OVERWORLD_CELL_TILES} from "@/common/Terrain.js";
 import {WorldNoise} from "@/common/WorldNoise.js";
 import {NoiseChannel} from "@/common/NoiseChannel.js";
 import {Biome, NoiseRange, TerrainDetail} from "@/common/Biome.js";
@@ -94,7 +94,7 @@ test("freeze assigns biomeIds in order and validates names, channels, fallback",
 test("biomeAt is deterministic and honors first-match order", () => {
     const registry = standardLoadout();
     const [peak, dry, grass] = registry.biomes;
-    const [height, humidity] = registry.noiseChannels.slice(1);
+    const [height, humidity] = registry.noiseChannels.slice(CORE_NOISE_CHANNELS.length);
     const a = new Terrain(new WorldNoise(99, registry.noiseChannels), registry.biomes);
     const b = new Terrain(new WorldNoise(99, registry.noiseChannels), registry.biomes);
     const seen = new Set();
@@ -125,23 +125,30 @@ test("bakeChunk lays tiles out row-major and caches the array", () => {
     assert.equal(bake.biomes.length, CHUNK_SIZE * CHUNK_SIZE);
     assert.equal(bake.biomes[5 * CHUNK_SIZE + 7], terrain.biomeAt(CHUNK_SIZE * 2 + 7, CHUNK_SIZE * -3 + 5));
     assert.equal(terrain.bakeChunk(chunk), bake);
-    assert.ok(bake.levels.some(level => level > 0), "some tiles blend");
+    assert.ok(bake.weights.some(weight => weight > 0), "some tiles blend");
     for (let index = 0; index < bake.biomes.length; index++) {
-        assert.ok(bake.levels[index] <= BLEND_LEVELS);
-        if (bake.levels[index] === 0) {
+        assert.ok(bake.weights[index] <= BLEND_WEIGHT_SCALE);
+        if (bake.weights[index] === 0) {
             continue;
         }
         assert.notEqual(bake.others[index], bake.biomes[index]);
     }
 });
 
-test("the engine's shade channel is registered first and its name is reserved", () => {
+test("the engine's channels are registered first and their names are reserved", () => {
     const registry = standardLoadout();
-    assert.equal(registry.noiseChannels[0], SHADE_CHANNEL);
+    assert.deepEqual(registry.noiseChannels.slice(0, CORE_NOISE_CHANNELS.length), CORE_NOISE_CHANNELS);
     assert.equal(SHADE_CHANNEL.channelId, 0);
+    assert.equal(DITHER_CHANNEL.channelId, 1);
     const terrain = new Terrain(new WorldNoise(4, registry.noiseChannels), registry.biomes);
     const shade = terrain.shadeAt(12, 34);
     assert.ok(shade >= 0 && shade <= 1);
+    const dither = terrain.ditherAt(12, 34);
+    assert.ok(dither >= 0 && dither <= 1);
+    assert.throws(
+        () => freezeLoadout([new NoiseChannel("dither", 0.1)], []),
+        /Duplicate noise channel "dither"/,
+    );
     assert.throws(
         () => freezeLoadout([new NoiseChannel("shade", 0.1)], []),
         /Duplicate noise channel "shade"/,
@@ -151,7 +158,7 @@ test("the engine's shade channel is registered first and its name is reserved", 
 test("classify blends toward the biome across the nearest threshold", () => {
     const registry = standardLoadout();
     const [peak, dry, grass] = registry.biomes;
-    const [height, humidity] = registry.noiseChannels.slice(1);
+    const [height, humidity] = registry.noiseChannels.slice(CORE_NOISE_CHANNELS.length);
     const terrain = new Terrain(new WorldNoise(21, registry.noiseChannels), registry.biomes);
     let checked = 0;
     for (let i = 0; i < 40000 && checked < 30; i++) {
@@ -166,11 +173,11 @@ test("classify blends toward the biome across the nearest threshold", () => {
         const gap = Math.abs(m - 0.4);
         if (gap < BLEND_WIDTH / 4) {
             // Right at the savanna/grass line: whichever side it fell, it blends toward the other.
-            assert.ok(tile.level > 0);
+            assert.ok(tile.weight > 0);
             assert.deepEqual([tile.biomeId, tile.otherId].sort(), [dry.biomeId, grass.biomeId]);
             checked++;
         } else if (gap > BLEND_WIDTH) {
-            assert.equal(tile.level, 0);
+            assert.equal(tile.weight, 0);
             assert.notEqual(tile.biomeId, peak.biomeId);
         }
     }
@@ -219,7 +226,7 @@ test("a range edge at 0 or 1 never blends", () => {
         const tileY = (i * 7) % 900;
         const m = terrain.noise.get(tileX, tileY, humidity.channelId);
         if (Math.abs(m - 0.5) > BLEND_WIDTH) {
-            assert.equal(terrain.classify(tileX, tileY).level, 0, `tile ${tileX},${tileY} humidity ${m}`);
+            assert.equal(terrain.classify(tileX, tileY).weight, 0, `tile ${tileX},${tileY} humidity ${m}`);
         }
     }
 });
@@ -234,7 +241,7 @@ test("bakeOverworldRows fills the region at cell resolution, row by row", () => 
     const registry = standardLoadout();
     const terrain = new Terrain(new WorldNoise(11, registry.noiseChannels), registry.biomes);
     assert.equal(terrain.overworldBake.biomes.length, OVERWORLD_CELLS_PER_AXIS * OVERWORLD_CELLS_PER_AXIS);
-    assert.equal(terrain.overworldBake.levels.length, OVERWORLD_CELLS_PER_AXIS * OVERWORLD_CELLS_PER_AXIS);
+    assert.equal(terrain.overworldBake.weights.length, OVERWORLD_CELLS_PER_AXIS * OVERWORLD_CELLS_PER_AXIS);
     assert.equal(terrain.overworldBaked, false);
 
     assert.equal(terrain.bakeOverworldRows(100), 0);
@@ -256,6 +263,6 @@ test("bakeOverworldRows fills the region at cell resolution, row by row", () => 
         const tile = terrain.classify(tileX, tileY);
         assert.equal(terrain.overworldBake.biomes[cell], tile.biomeId);
         assert.equal(terrain.overworldBake.others[cell], tile.otherId);
-        assert.equal(terrain.overworldBake.levels[cell], tile.level);
+        assert.equal(terrain.overworldBake.weights[cell], tile.weight);
     }
 });

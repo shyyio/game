@@ -1,7 +1,10 @@
 import {AbstractChunkedDrawLayer} from "@/client/layers/AbstractChunkedDrawLayer.js";
-import {TerrainSprite, TerrainPalette} from "@/client/layers/TerrainSprite.js";
+import {
+    TerrainSprite, TerrainPalette, blankChunkSprite, blankOverworldSprite,
+} from "@/client/layers/TerrainSprite.js";
 import {ViewMode} from "@/client/constants.js";
 import {OVERWORLD_CELLS_PER_AXIS} from "@/common/Terrain.js";
+import {setDitherTerrain} from "@/client/layers/DitherPatterns.js";
 
 // Overworld cells baked per tick (~10 ms of sampling), as whole rows.
 const OVERWORLD_SAMPLES_PER_TICK = 32768;
@@ -10,8 +13,9 @@ const OVERWORLD_ROWS_PER_TICK = Math.max(1, Math.floor(OVERWORLD_SAMPLES_PER_TIC
 /**
  * Paints the ground off the client's seeded Terrain: one {@link TerrainSprite} per chunk the
  * viewport covers in world and map mode, one region-wide chunk-resolution sprite in overworld mode.
- * Needs no chunk subscription and no wire data; inert until the seed arrives. Chunks drop as they
- * leave the viewport, so only on-screen chunks hold a texture.
+ * Needs no chunk subscription and no wire data; inert until the seed arrives, and flat white while
+ * the terrain is off. Chunks drop as they leave the viewport, so only on-screen chunks hold a
+ * texture.
  */
 export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
 
@@ -32,6 +36,7 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
          */
         this._overworld = null;
         this._overworldShown = false;
+        this._enabled = true;
     }
 
     // The ground: everything else draws over it.
@@ -45,10 +50,32 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     setTerrain(terrain) {
+        this._terrain = terrain;
+        setDitherTerrain(terrain);
+        this.repaint();
+    }
+
+    /**
+     * Paints the real terrain, or flat white ground while off; off needs no seed and bakes nothing.
+     * @param {boolean} enabled
+     * @returns {void}
+     */
+    setEnabled(enabled) {
+        if (this._enabled === enabled) {
+            return;
+        }
+        this._enabled = enabled;
+        this.repaint();
+    }
+
+    /**
+     * Drops every baked sprite so the next tick rebuilds it: a new terrain, or a dither swap.
+     * @returns {void}
+     */
+    repaint() {
         for (const chunk of [...this._chunks.keys()]) {
             this._dropChunk(chunk);
         }
-        this._terrain = terrain;
         // Forces the next tick's reconcile to remount what is on screen.
         this._visibleChunks = new Set();
         if (this._overworld !== null) {
@@ -86,17 +113,33 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     _syncOverworld() {
-        if (!this._overworldShown || this._terrain === null || this._biomes.length === 0) {
+        if (!this._overworldShown || !this._ready) {
             if (this._overworld !== null) {
                 this._overworld.visible = false;
             }
             return;
         }
         if (this._overworld === null) {
-            this._overworld = TerrainSprite.forOverworld(this._palette, this._terrain.overworldBake);
+            if (this._enabled) {
+                this._overworld = TerrainSprite.forOverworld(this._palette, this._terrain.overworldBake);
+            } else {
+                this._overworld = blankOverworldSprite();
+            }
             this.addChild(this._overworld);
         }
         this._overworld.visible = true;
+    }
+
+    /**
+     * Whether ground can be painted: blank ground needs nothing, the real terrain needs the seed.
+     * @private
+     * @returns {boolean}
+     */
+    get _ready() {
+        if (!this._enabled) {
+            return true;
+        }
+        return this._terrain !== null && this._biomes.length > 0;
     }
 
     /**
@@ -107,10 +150,10 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     tick(frame, deltaMS, visibleChunks) {
-        if (this._terrain === null || this._biomes.length === 0) {
+        if (!this._ready) {
             return;
         }
-        if (this._overworldShown) {
+        if (this._enabled && this._overworldShown) {
             this._bakeOverworldStep();
         }
         this._reconcileViewport(visibleChunks);
@@ -146,9 +189,13 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     _initChunkNode(node, chunk) {
-        node.sprites.addChild(TerrainSprite.forChunk(
-            this._palette, chunk, this._terrain.bakeChunk(chunk), this._terrain,
-        ));
+        if (this._enabled) {
+            node.sprites.addChild(TerrainSprite.forChunk(
+                this._palette, chunk, this._terrain.bakeChunk(chunk), this._terrain,
+            ));
+        } else {
+            node.sprites.addChild(blankChunkSprite(chunk));
+        }
         node.showSprites();
     }
 

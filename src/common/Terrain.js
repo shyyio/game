@@ -6,9 +6,11 @@ import {tileHash} from "@/common/WorldNoise.js";
 const UINT32_RANGE = 0x100000000;
 
 // Blending: a tile within BLEND_WIDTH of a threshold mixes toward the biome across it, up to 50/50
-// at the line, in BLEND_LEVELS steps so the palette stays stepped.
+// at the line. A bake carries the weight at BLEND_WEIGHT_SCALE resolution; the client bands it into
+// BLEND_LEVELS steps so the palette stays stepped.
 export const BLEND_WIDTH = 0.04;
-export const BLEND_LEVELS = 6;
+export const BLEND_LEVELS = 3;
+export const BLEND_WEIGHT_SCALE = 255;
 const BLEND_MAX = 0.5;
 
 /**
@@ -18,19 +20,21 @@ const BLEND_MAX = 0.5;
 export class TerrainBake {
 
     /**
-     * @param {number} cellCount
+     * @param {number} cellsPerAxis the bake is square
      * @param {boolean} blended
      */
-    constructor(cellCount, blended) {
+    constructor(cellsPerAxis, blended) {
+        const cellCount = cellsPerAxis * cellsPerAxis;
+        this.cellsPerAxis = cellsPerAxis;
         this.biomes = new Uint8Array(cellCount);
         /**
          * @type {Uint8Array|null} the biome each cell blends toward
          */
         this.others = blended ? new Uint8Array(cellCount) : null;
         /**
-         * @type {Uint8Array|null} blend level in [0, BLEND_LEVELS]; level / (2 * BLEND_LEVELS) = weight
+         * @type {Uint8Array|null} blend weight in [0, BLEND_WEIGHT_SCALE]; the scale is a 50/50 mix
          */
-        this.levels = blended ? new Uint8Array(cellCount) : null;
+        this.weights = blended ? new Uint8Array(cellCount) : null;
     }
 }
 
@@ -42,15 +46,15 @@ export class TileBiome {
     constructor() {
         this.biomeId = 0;
         this.otherId = 0;
-        this.level = 0;
+        this.weight = 0;
     }
 }
 
-// The engine's own channel: smooth patches that shade tiles within a biome (client rendering).
+// The engine's own channels, both for client rendering: smooth patches that shade tiles within a
+// biome, and the field the noise dither thresholds a blend against.
 export const SHADE_CHANNEL = new NoiseChannel("shade", 0.02, 2);
-export const CORE_NOISE_CHANNELS = [SHADE_CHANNEL];
-
-const TILES_PER_CHUNK = CHUNK_SIZE * CHUNK_SIZE;
+export const DITHER_CHANNEL = new NoiseChannel("dither", 0.17);
+export const CORE_NOISE_CHANNELS = [SHADE_CHANNEL, DITHER_CHANNEL];
 
 // The overworld bake's resolution: one cell per OVERWORLD_CELL_TILES² tiles, sampled at the center.
 export const OVERWORLD_CELL_TILES = 16;
@@ -82,7 +86,7 @@ export class Terrain {
          * The region at overworld resolution, filled row by row by {@link bakeOverworldRows}.
          * @type {TerrainBake}
          */
-        this.overworldBake = new TerrainBake(OVERWORLD_CELLS_PER_AXIS * OVERWORLD_CELLS_PER_AXIS, true);
+        this.overworldBake = new TerrainBake(OVERWORLD_CELLS_PER_AXIS, true);
         this._overworldRowsBaked = 0;
         // Scratch: the channel samples and per-biome margins of the tile under evaluation.
         this._samples = new Float64Array(noise.channels.length);
@@ -149,7 +153,7 @@ export class Terrain {
                 tile.otherId = next;
             }
         }
-        tile.level = Math.round(weight / BLEND_MAX * BLEND_LEVELS);
+        tile.weight = Math.round(weight / BLEND_MAX * BLEND_WEIGHT_SCALE);
         return tile;
     }
 
@@ -163,14 +167,14 @@ export class Terrain {
             return bake;
         }
         const origin = chunkOrigin(chunk);
-        bake = new TerrainBake(TILES_PER_CHUNK, true);
+        bake = new TerrainBake(CHUNK_SIZE, true);
         let index = 0;
         for (let localY = 0; localY < CHUNK_SIZE; localY++) {
             for (let localX = 0; localX < CHUNK_SIZE; localX++) {
                 const tile = this.classify(origin.x + localX, origin.y + localY);
                 bake.biomes[index] = tile.biomeId;
                 bake.others[index] = tile.otherId;
-                bake.levels[index] = tile.level;
+                bake.weights[index] = tile.weight;
                 index++;
             }
         }
@@ -211,6 +215,15 @@ export class Terrain {
     }
 
     /**
+     * @param {number} x bake cell, a tile in world and map mode
+     * @param {number} y bake cell, a tile in world and map mode
+     * @returns {number} the dither noise in [0, 1]
+     */
+    ditherAt(x, y) {
+        return this.noise.get(x, y, DITHER_CHANNEL.channelId);
+    }
+
+    /**
      * @returns {boolean} whether every overworld row is baked
      */
     get overworldBaked() {
@@ -234,7 +247,7 @@ export class Terrain {
                 const tile = this.classify(tileX, tileY);
                 this.overworldBake.biomes[index] = tile.biomeId;
                 this.overworldBake.others[index] = tile.otherId;
-                this.overworldBake.levels[index] = tile.level;
+                this.overworldBake.weights[index] = tile.weight;
                 index++;
             }
         }

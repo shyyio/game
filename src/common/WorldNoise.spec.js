@@ -5,6 +5,7 @@ import {NoiseChannel} from "@/common/NoiseChannel.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
+import {CORE_NOISE_CHANNELS} from "@/common/Terrain.js";
 
 class ChannelsDeclaration extends AbstractModDeclaration {
 
@@ -28,7 +29,7 @@ class ChannelsDeclaration extends AbstractModDeclaration {
 }
 
 /**
- * @returns {NoiseChannel[]} frozen: the engine shade channel, then these at channelIds 1..3
+ * @returns {NoiseChannel[]} frozen: the engine's core channels, then these
  */
 function makeChannels() {
     const channels = [
@@ -45,8 +46,9 @@ function makeChannels() {
 
 test("freeze assigns channelIds in registration order and rejects duplicate names", () => {
     const channels = makeChannels();
-    assert.deepEqual(channels.map(channel => channel.channelId), [0, 1, 2, 3]);
-    assert.deepEqual(channels.map(channel => channel.name), ["shade", "height", "temperature", "humidity"]);
+    assert.deepEqual(channels.map(channel => channel.channelId), channels.map((channel, index) => index));
+    const core = CORE_NOISE_CHANNELS.map(channel => channel.name);
+    assert.deepEqual(channels.map(channel => channel.name), [...core, "height", "temperature", "humidity"]);
 
     const registry = new ModRegistry();
     registry.register(new ModPackage(new ChannelsDeclaration("A", [new NoiseChannel("height", 0.01)])));
@@ -110,8 +112,8 @@ test("a channel's field is seeded by name, not by its position in the loadout", 
     second.register(new ModPackage(new ChannelsDeclaration("A", [new NoiseChannel("moisture", 0.05)])));
     second.register(new ModPackage(new ChannelsDeclaration("B", [heightSecond])));
     second.freeze();
-    assert.equal(heightFirst.channelId, 1);
-    assert.equal(heightSecond.channelId, 2);
+    assert.equal(heightFirst.channelId, CORE_NOISE_CHANNELS.length);
+    assert.equal(heightSecond.channelId, CORE_NOISE_CHANNELS.length + 1);
 
     const a = new WorldNoise(5, first.noiseChannels);
     const b = new WorldNoise(5, second.noiseChannels);
@@ -124,7 +126,7 @@ test("rejects bad seeds and unknown channels", () => {
     const channels = makeChannels();
     assert.throws(() => new WorldNoise(-1, channels), RangeError);
     const noise = new WorldNoise(0, channels);
-    assert.throws(() => noise.get(0, 0, 4), /No noise channel 4/);
+    assert.throws(() => noise.get(0, 0, channels.length), new RegExp(`No noise channel ${channels.length}`));
     assert.throws(() => noise.get(0, 0, -1), /No noise channel -1/);
 });
 

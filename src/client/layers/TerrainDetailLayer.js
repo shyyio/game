@@ -46,6 +46,7 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
          * @type {Terrain|null}
          */
         this._terrain = null;
+        this._enabled = true;
         /**
          * Texture name -> texture, resolved on first use (the registry arrives after construction).
          * @type {Map<string, Texture>}
@@ -80,6 +81,24 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
     }
 
     /**
+     * Shows or hides the details; while off every scattered sprite returns to the pool.
+     * @param {boolean} enabled
+     * @returns {void}
+     */
+    setEnabled(enabled) {
+        if (this._enabled === enabled) {
+            return;
+        }
+        this._enabled = enabled;
+        for (const chunk of [...this._chunks.keys()]) {
+            this._unmountChunk(chunk);
+            this._dropChunk(chunk);
+        }
+        // Forces the next tick's reconcile to remount what is on screen.
+        this._visibleChunks = new Set();
+    }
+
+    /**
      * Map mode hides the details outright; no pooled geometry swap.
      * @param {boolean} value
      */
@@ -90,14 +109,14 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
 
     /**
      * Mounts and drops chunks with the viewport and rescatters chunks whose objects changed; nothing
-     * to do while hidden, before the seed, or without any declared details.
+     * to do while off or hidden, before the seed, or without any declared details.
      * @param {number} frame animation frame, in [0, 8)
      * @param {number} deltaMS elapsed time since the previous tick, in ms
      * @param {Set<number>} visibleChunks the chunks the viewport covers this frame
      * @returns {void}
      */
     tick(frame, deltaMS, visibleChunks) {
-        if (this._mapMode || this._terrain === null || !this._hasDetails) {
+        if (!this._enabled || this._mapMode || this._terrain === null || !this._hasDetails) {
             return;
         }
         this._reconcileViewport(visibleChunks);
