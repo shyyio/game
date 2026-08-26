@@ -40,6 +40,7 @@
     "bench:lines": "node --expose-gc --import ./src/test/test-loader.js src/test/production-line-benchmark.js"
   },
   "dependencies": {
+    "@noble/hashes": "^2.3.0",
     "better-sqlite3": "^12.11.1",
     "d3-axis": "^3.0.0",
     "d3-format": "^3.1.2",

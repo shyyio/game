@@ -8,6 +8,8 @@ import {ModPackage} from "@/common/ModPackage.js";
 import {ModManifest, SDK_VERSION, MOD_PART_SIM, MOD_PART_CLIENT} from "@/common/ModManifest.js";
 import {MANIFEST_FILE} from "@/common/ModLockfile.js";
 import {formatIntegrity, integrityHex, contentName} from "@/common/ModIntegrity.js";
+import {sha256} from "@noble/hashes/sha2.js";
+import {bytesToHex} from "@noble/hashes/utils.js";
 import * as sdk from "@/sdk/client.js";
 
 const DB_NAME = "spup-mods";
@@ -17,11 +19,12 @@ const DB_VERSION = 1;
 
 /**
  * @param {Uint8Array} bytes
- * @returns {Promise<string>} lowercase hex sha-256
+ * @returns {string} lowercase hex sha-256
  */
-export async function sha256Hex(bytes) {
-    const digest = await crypto.subtle.digest("SHA-256", bytes);
-    return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+export function sha256Hex(bytes) {
+    // Not crypto.subtle: it exists only in a secure context, so the dev server reached by LAN IP
+    // over plain http has no digest at all. Two files per mod, on cache miss — native buys nothing.
+    return bytesToHex(sha256(bytes));
 }
 
 /**
@@ -112,7 +115,7 @@ export async function fetchPinnedFile(store, url, cacheKey, expectedHex) {
         return cached;
     }
     const bytes = await fetchModFile(url);
-    const hex = await sha256Hex(bytes);
+    const hex = sha256Hex(bytes);
     if (hex !== expectedHex) {
         throw new Error(
             `${url} hashes to ${formatIntegrity(hex)}, but it is pinned to ${formatIntegrity(expectedHex)}`,
