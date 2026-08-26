@@ -1,6 +1,6 @@
 {
   "name": "shys-power-up-factory",
-  "version": "2.10.0",
+  "version": "2.10.1",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -16,6 +16,7 @@
     "mods:base": "node --import ./src/server/loader.js tools/publish-base-mods.js",
     "mods:registry": "node --import ./src/server/loader.js tools/publish-registry.js",
     "check:mod": "node --import ./src/server/loader.js tools/mod-check.js",
+    "check:mods": "node --import ./src/server/loader.js tools/check-base-mods.js",
     "pack:builder": "node --import ./src/server/loader.js tools/pack-builder.js",
     "pack:client": "node tools/pack-game-client.js",
     "pack:sdk": "node --import ./src/server/loader.js tools/pack-sdk.js",
