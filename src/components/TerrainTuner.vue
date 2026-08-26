@@ -1,5 +1,5 @@
 <script setup>
-import {computed, reactive, ref, watch} from "vue";
+import {computed, markRaw, reactive, ref, watch} from "vue";
 import {DITHER_PATTERNS, activeDither, setActiveDither, setDitherEnabled, ditherOn, setDitherScale, ditherScale} from "@/client/layers/DitherPatterns.js";
 import {setBlendLevels, blendLevelCount, setShadeStep, shadeStep, setShadeBand, shadeBand} from "@/client/layers/TerrainSprite.js";
 import {setBlendWidth, blendWidth} from "@/common/Terrain.js";
@@ -82,10 +82,10 @@ function registry() {
  */
 function biomeRow(biome) {
   return {
-    biome,
+    biome: markRaw(biome),
     color: toHex(biome.color),
     shadeStrength: biome.shadeStrength,
-    ranges: biome.ranges.map(range => ({range, min: range.min, max: range.max})),
+    ranges: biome.ranges.map(range => ({range: markRaw(range), min: range.min, max: range.max})),
   };
 }
 
@@ -96,7 +96,7 @@ function biomeRow(biome) {
 function load() {
   biomes.value = registry().biomes.map(biomeRow);
   channels.value = registry().noiseChannels.map(channel => ({
-    channel,
+    channel: markRaw(channel),
     frequency: Math.log(channel.frequency) / Math.log(LOG_BASE),
     octaves: channel.octaves,
     lacunarity: channel.lacunarity,
@@ -114,9 +114,15 @@ function load() {
     defaults = {
       biomes: biomes.value.map(entry => ({
         biome: entry.biome,
+        name: entry.biome.name,
         color: entry.color,
         shadeStrength: entry.shadeStrength,
-        ranges: entry.ranges.map(row => ({range: row.range, min: row.min, max: row.max})),
+        ranges: entry.ranges.map(row => ({
+          range: row.range,
+          channel: row.range.channel,
+          min: row.min,
+          max: row.max,
+        })),
       })),
       channels: channels.value.map(entry => ({
         channel: entry.channel,
@@ -252,7 +258,7 @@ function removeBiome(entry) {
  * @returns {void}
  */
 function addRange(entry) {
-  const range = new NoiseRange(defaultChannel(), NEW_BIOME_MIN, NEW_BIOME_MAX);
+  const range = markRaw(new NoiseRange(defaultChannel(), NEW_BIOME_MIN, NEW_BIOME_MAX));
   entry.biome.ranges = [...entry.biome.ranges, range];
   entry.ranges.push({range, min: range.min, max: range.max});
   retune();
@@ -331,9 +337,11 @@ function applyShade() {
  */
 function reset() {
   for (const entry of defaults.biomes) {
+    entry.biome.name = entry.name;
     entry.biome.color = fromHex(entry.color);
     entry.biome.shadeStrength = entry.shadeStrength;
     entry.biome.ranges = entry.ranges.map(row => {
+      row.range.channel = row.channel;
       row.range.min = row.min;
       row.range.max = row.max;
       return row.range;
