@@ -5,6 +5,7 @@ import {
     Mobile,
     OVERWRITE_TILE_COLOR,
     claimColor,
+    startDelay,
     tileId,
 } from "@spup/sdk/client";
 import {NotePin} from "./NotePin.js";
@@ -47,7 +48,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
         this._toolTile = null;
         // The tile currently ringed, so a change touches two pins instead of every one.
         this._highlightedTile = null;
-        this._hoverTimer = null;
+        this._cancelHover = null;
         const pool = new DisplayPool(
             () => this._buildPin(),
             pin => {
@@ -65,7 +66,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
             if (note === undefined) {
                 if (this._pointerTile === tile) {
                     this._pointerTile = null;
-                    this._clearHoverTimer();
+                    this._cancelPendingHover();
                 }
                 if (this._highlightedTile === tile) {
                     this._highlightedTile = null;
@@ -176,15 +177,15 @@ export class NotesDrawLayer extends AbstractDrawLayer {
         }
         this._pointerTile = tile;
         this._applyHighlight();
-        this._clearHoverTimer();
+        this._cancelPendingHover();
         // A tooltip is for resting on a marker, not for sweeping past one.
-        this._hoverTimer = setTimeout(() => {
-            this._hoverTimer = null;
+        this._cancelHover = startDelay(HOVER_DELAY_MS, () => {
+            this._cancelHover = null;
             const note = this._state.mapGet("notes.byTile", tile);
             if (note !== undefined && this._pointerTile === tile) {
                 this._notes.setHover(note);
             }
-        }, HOVER_DELAY_MS);
+        });
     }
 
     /**
@@ -198,7 +199,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
         }
         this._pointerTile = null;
         this._applyHighlight();
-        this._clearHoverTimer();
+        this._cancelPendingHover();
         this._notes.setHover(null);
     }
 
@@ -206,10 +207,10 @@ export class NotesDrawLayer extends AbstractDrawLayer {
      * @private
      * @returns {void}
      */
-    _clearHoverTimer() {
-        if (this._hoverTimer !== null) {
-            clearTimeout(this._hoverTimer);
-            this._hoverTimer = null;
+    _cancelPendingHover() {
+        if (this._cancelHover !== null) {
+            this._cancelHover();
+            this._cancelHover = null;
         }
     }
 

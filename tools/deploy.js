@@ -207,6 +207,18 @@ function assertRemotesAt(head) {
 }
 
 /**
+ * Catches a base mod that cannot be packaged, before anything is built or pushed. The registry's CI
+ * runs these same checks over these same bundles, and refuses the whole release over any one of them.
+ * @returns {void}
+ */
+function assertModsPublishable() {
+    runStep("mod checks", "node", [...NODE_WITH_LOADER, "tools/check-base-mods.js"], {
+        cwd: ROOT,
+        hint: `A base mod would be refused by the registry, and by anyone's \`mods add\`. ${NOTHING_PUSHED}`,
+    });
+}
+
+/**
  * Catches a registry that could not take this release before anything is built or pushed — a name
  * with no listing yet, or a version already published from a different commit. Only checks; the
  * listing itself is written after the deploy is live.
@@ -241,6 +253,7 @@ function main() {
     assertVersionsSynced();
     assertPeerRangeSynced();
     assertVersionTag(false);
+    assertModsPublishable();
     if (registry) {
         assertRegistryReady();
     }
