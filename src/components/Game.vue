@@ -17,7 +17,7 @@ import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
 import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
 import {applyTheme, onThemeChange, THEME_DEFAULT} from "@/client/Theme.js";
 import {vuetifyThemeName} from "@/client/vuetifyTheme.js";
-import {gameStart, startError} from "@/client/GameStart.js";
+import {gameStart, startError, GAME_MODE_REMOTE} from "@/client/GameStart.js";
 import {useRouter} from "vue-router";
 
 const router = useRouter();
@@ -79,6 +79,23 @@ function toggleSpriteEditor() {
   }
 }
 
+/**
+ * What went wrong, in a form the screen we bounce to can show. Mod code throws whatever it likes, so
+ * a bare `.message` is not enough: an object with none leaves the player staring at a blank line.
+ * @param {*} error whatever was thrown
+ * @returns {string}
+ */
+function reasonOf(error) {
+  if (error instanceof Error && error.message !== "") {
+    return error.message;
+  }
+  const text = `${error}`;
+  if (text !== "") {
+    return text;
+  }
+  return "no reason given, see the browser console";
+}
+
 // Before the HUD builds, so the first paint is in the chosen palette.
 applyTheme(DeviceSettings.getNumber(DEVICE_SETTING_THEME, THEME_DEFAULT));
 
@@ -101,15 +118,23 @@ onMounted(async () => {
   }
   const {app, viewport, syncMobileTouchInput, destroy: destroyPixiApp} = pixiApp;
 
-  // A failed join (unreachable server, mods that will not load) goes back to the server list with
-  // the reason, instead of leaving an empty canvas mounted.
+  // A failed start (unreachable server, mods that will not load) goes back with the reason instead
+  // of leaving an empty canvas mounted: to the server list for a join, and to the mods screen for a
+  // local game, since that is where its loadout was chosen and where it can be fixed. A mod can
+  // throw anything at all, so the reason has to survive a throw that is not an Error.
   let bootstrap;
   try {
     bootstrap = await createClient(app, viewport, gameStart.value);
   } catch (error) {
     destroyPixiApp();
-    startError.value = error.message;
-    router.push({name: "servers"});
+    // The stack is worth having in the console; the screen we bounce to only gets the message.
+    console.error(error);
+    startError.value = reasonOf(error);
+    if (gameStart.value.mode === GAME_MODE_REMOTE) {
+      router.push({name: "servers"});
+    } else {
+      router.push({name: "mods"});
+    }
     return;
   }
   if (disposed) {

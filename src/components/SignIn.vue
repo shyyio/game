@@ -1,10 +1,11 @@
 <script setup>
-import {ref, watch} from "vue";
+import {computed, ref, watch} from "vue";
 import {useRoute, useRouter} from "vue-router";
 import {ORIGIN_PATTERN, USERNAME_PATTERN, USERNAME_PATTERN_HINT} from "@/common/constants.js";
 import ServerList from "@/components/ServerList.vue";
 import {hasSessionToken, login as authClientLogin, mintJoinToken} from "@/client/AuthClient.js";
 import {GAME_MODE_LOCAL, GAME_MODE_REMOTE, startGame, startError} from "@/client/GameStart.js";
+import {readLocalLoadout} from "@/client/LocalLoadout.js";
 
 const STORAGE_USERNAME = "spup.username";
 const LOCAL_SERVER_URL = "ws://localhost:27500";
@@ -17,12 +18,36 @@ const error = ref(startError.value);
 startError.value = "";
 const connecting = ref(false);
 const connectingOrigin = ref("");
+// A stored list that no longer parses is the mods screen's problem to report, not a reason the
+// login screen cannot render.
+const localModCount = ref(countLocalMods());
 
-watch(() => route.name, () => error.value = "");
+watch(() => route.name, () => {
+  error.value = "";
+  localModCount.value = countLocalMods();
+});
 
 function usernameValid() {
   return USERNAME_PATTERN.test(username.value);
 }
+
+/**
+ * @returns {number}
+ */
+function countLocalMods() {
+  try {
+    return readLocalLoadout().mods.length;
+  } catch {
+    return 0;
+  }
+}
+
+const localModsLabel = computed(() => {
+  if (localModCount.value === 0) {
+    return "Mods";
+  }
+  return `Mods (${localModCount.value})`;
+});
 
 function browseMods() {
   router.push({name: "mods"});
@@ -30,7 +55,10 @@ function browseMods() {
 
 function playLocal() {
   startGame({mode: GAME_MODE_LOCAL, username: username.value, serverUrl: LOCAL_SERVER_URL});
-  router.push({name: "play"});
+  // A full page load, not a route change: mod packages register into module-level state that is
+  // assigned once and cannot be rebuilt, so a second start in the same document runs against
+  // whatever the first one left behind. startGame() kept the params across the reload.
+  window.location.assign(router.resolve({name: "play"}).href);
 }
 
 async function login() {
@@ -102,7 +130,7 @@ function back() {
       </v-card-text>
       <v-card-actions>
         <v-btn variant="text" @click="playLocal">Play local</v-btn>
-        <v-btn variant="text" @click="browseMods">Mods</v-btn>
+        <v-btn variant="text" @click="browseMods">{{ localModsLabel }}</v-btn>
         <v-spacer/>
         <v-btn color="primary" variant="flat" :disabled="!usernameValid() || connecting" :loading="connecting" @click="login">Log in</v-btn>
       </v-card-actions>

@@ -9,7 +9,8 @@
 
 import {parseArgs} from "node:util";
 import {existsSync} from "node:fs";
-import {ModLockfile} from "@/server/ModLockfile.js";
+import {ModLockfile} from "@/common/ModLockfile.js";
+import {readLockfile, writeLockfile} from "@/server/modLockfileFile.js";
 import {ModCache, resolvePackage} from "@/server/ModCache.js";
 import {ModCatalog, DEFAULT_REGISTRY_URL} from "@/server/ModCatalog.js";
 
@@ -43,7 +44,7 @@ function readLockfile(path) {
     if (!existsSync(path)) {
         return new ModLockfile([]);
     }
-    return ModLockfile.read(path);
+    return readLockfile(path);
 }
 
 /**
@@ -107,7 +108,7 @@ async function add(lockfile, target) {
     } else {
         lockfile.mods[lockfile.mods.indexOf(existing)] = entry;
     }
-    lockfile.write(args["mods"]);
+    writeLockfile(lockfile, args["mods"]);
     printEntry(entry);
     console.log(`Pinned in ${args["mods"]}`);
 }
@@ -160,7 +161,7 @@ async function update(lockfile, name) {
         return;
     }
     lockfile.mods[lockfile.mods.indexOf(existing)] = resolved;
-    lockfile.write(args["mods"]);
+    writeLockfile(lockfile, args["mods"]);
     console.log(`Updated ${args["mods"]}`);
 }
 

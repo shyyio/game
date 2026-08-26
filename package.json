@@ -14,6 +14,7 @@
     "build": "vite build",
     "build:mod": "node --import ./src/server/loader.js tools/build-mod.js",
     "mods:base": "node --import ./src/server/loader.js tools/publish-base-mods.js",
+    "mods:registry": "node --import ./src/server/loader.js tools/publish-registry.js",
     "check:mod": "node --import ./src/server/loader.js tools/mod-check.js",
     "pack:builder": "node --import ./src/server/loader.js tools/pack-builder.js",
     "pack:client": "node tools/pack-game-client.js",
@@ -57,6 +58,7 @@
     "vuetify": "^3.9.5"
   },
   "devDependencies": {
+    "@mdi/js": "^7.4.47",
     "@vitejs/plugin-vue": "^6.0.1",
     "acorn": "^8.18.0",
     "acorn-walk": "^8.3.5",

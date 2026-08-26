@@ -1,8 +1,10 @@
-// The operator's mod config: an ordered, hash-pinned list of packaged mods. Order is loadout order
-// (it assigns the positional typeIds/wireIds), so reordering is a save-breaking change. Nothing
-// updates a pin implicitly — only the `mods` CLI rewrites this file.
+// An ordered, hash-pinned list of packaged mods. Order is loadout order (it assigns the positional
+// typeIds/wireIds), so reordering is a save-breaking change. Nothing updates a pin implicitly — on a
+// server only the `mods` CLI rewrites mods.json, in the browser only the local-loadout editor.
+//
+// Model only: reading and writing the operator's file lives in @/server/modLockfileFile.js, so the
+// browser can pin packages in exactly this format without dragging node:fs along.
 
-import {readFileSync, writeFileSync} from "node:fs";
 import {integrityHex} from "@/common/ModIntegrity.js";
 
 const ENTRY_KEYS = ["url", "name", "version", "integrity"];
@@ -63,11 +65,11 @@ export class ModLockEntry {
      */
     static parse(json) {
         if (json === null || typeof json !== "object" || Array.isArray(json)) {
-            throw new Error("A mods.json entry must be an object");
+            throw new Error("A pinned mod entry must be an object");
         }
         for (const key of Object.keys(json)) {
             if (!ENTRY_KEYS.includes(key)) {
-                throw new Error(`Unknown key "${key}" in a mods.json entry`);
+                throw new Error(`Unknown key "${key}" in a pinned mod entry`);
             }
         }
         if (typeof json.url !== "string" || !json.url.endsWith("/")) {
@@ -120,37 +122,21 @@ export class ModLockfile {
     }
 
     /**
-     * @param {string} path
-     * @returns {void}
-     */
-    write(path) {
-        writeFileSync(path, `${JSON.stringify(this.toJSON(), null, 4)}\n`);
-    }
-
-    /**
      * @param {object} json
      * @returns {ModLockfile}
      */
     static parse(json) {
         if (json === null || typeof json !== "object" || !Array.isArray(json.mods)) {
-            throw new Error("mods.json must hold a `mods` array");
+            throw new Error("A pinned loadout must hold a `mods` array");
         }
         const mods = json.mods.map(entry => ModLockEntry.parse(entry));
         const names = new Set();
         for (const entry of mods) {
             if (names.has(entry.name)) {
-                throw new Error(`mods.json lists "${entry.name}" twice`);
+                throw new Error(`A pinned loadout lists "${entry.name}" twice`);
             }
             names.add(entry.name);
         }
         return new ModLockfile(mods);
-    }
-
-    /**
-     * @param {string} path
-     * @returns {ModLockfile}
-     */
-    static read(path) {
-        return ModLockfile.parse(JSON.parse(readFileSync(path, "utf8")));
     }
 }

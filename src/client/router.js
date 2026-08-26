@@ -24,7 +24,7 @@ export const router = createRouter({
 // A scenario or ?mod= URL skips straight to the game; a bare "/play" without a set-up session
 // (e.g. a refresh) bounces back to the server list rather than mounting Game with nothing to join;
 // "/servers" without (or no longer with) a valid session token bounces back to the login screen.
-// "/mods" browses the public registry and needs no session at all.
+// "/mods" browses the public registry and picks what local play loads, and needs no session at all.
 router.beforeEach((to) => {
     if (to.name === "login" && startsLocalGame) {
         return {name: "play"};

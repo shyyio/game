@@ -8,7 +8,7 @@ import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {NodeMetricsStore} from "@/server/NodeMetricsStore.js";
 import {JwksVerifier} from "@/server/JwksVerifier.js";
 import {GameServer} from "@/server/GameServer.js";
-import {ModLockfile} from "@/server/ModLockfile.js";
+import {readLockfile} from "@/server/modLockfileFile.js";
 import {ModCache} from "@/server/ModCache.js";
 import {ModHost} from "@/server/ModHost.js";
 import {loadPackagedMods} from "@/server/ModLoader.js";
@@ -56,7 +56,7 @@ let packages;
 if (modsPath === undefined) {
     packages = simLoadout();
 } else {
-    const lockfile = ModLockfile.read(modsPath);
+    const lockfile = readLockfile(modsPath);
     const cache = new ModCache(modsCachePath);
     const downloaded = await cache.populate(lockfile);
     const loaded = await loadPackagedMods(lockfile, cache);

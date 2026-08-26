@@ -10,14 +10,13 @@ import {pathToFileURL} from "node:url";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {formatIntegrity} from "@/common/ModIntegrity.js";
 import {SDK_VERSION} from "@/common/ModManifest.js";
-import {ModLockfile} from "@/server/ModLockfile.js";
+import {ModLockfile} from "@/common/ModLockfile.js";
+import {readLockfile, writeLockfile} from "@/server/modLockfileFile.js";
 import {ModCache, resolvePackage, sha256Hex} from "@/server/ModCache.js";
 import {loadPackagedMods} from "@/server/ModLoader.js";
 import {ModHost} from "@/server/ModHost.js";
-import {simLoadout} from "@/mods/loadout.js";
+import {simLoadout, BASE_MOD_DIRS} from "@/mods/loadout.js";
 import {buildMod} from "../../tools/build-mod.js";
-
-const MOD_DIRS = ["BaseTextures", "Logistics", "BaseGame", "Fluids", "CursorSync", "Market"];
 
 /**
  * Builds every in-repo mod into `root/packages` and pins them into a lockfile, in loadout order.
@@ -26,7 +25,7 @@ const MOD_DIRS = ["BaseTextures", "Logistics", "BaseGame", "Fluids", "CursorSync
  */
 async function buildAndPin(root) {
     const entries = [];
-    for (const dir of MOD_DIRS) {
+    for (const dir of BASE_MOD_DIRS) {
         const outDir = join(root, "packages", dir);
         await buildMod(resolve("src/mods", dir), outDir, {version: "1.0.0"});
         entries.push(await resolvePackage(pathToFileURL(outDir).href));
@@ -73,7 +72,7 @@ test("a pinned loadout caches, loads, and registers like the static one", async 
         staticRegistry.objectTypes.map(type => [type.name, type.typeId]),
     );
     assert.deepEqual(mods.map(mod => mod.manifest.name), [
-        "base-textures", "logistics", "base-game", "fluids", "cursor-sync", "market",
+        "base-textures", "logistics", "base-game", "fluids", "cursor-sync", "market", "notes",
     ]);
 });
 
@@ -125,8 +124,8 @@ test("mods.json round-trips through parse and write", async (t) => {
     const root = tempRoot(t);
     const lockfile = await buildAndPin(root);
     const path = join(root, "mods.json");
-    lockfile.write(path);
+    writeLockfile(lockfile, path);
 
-    assert.deepEqual(ModLockfile.read(path).toJSON(), lockfile.toJSON());
+    assert.deepEqual(readLockfile(path).toJSON(), lockfile.toJSON());
     assert.throws(() => ModLockfile.parse({mods: [{name: "x"}]}), /must end in/);
 });

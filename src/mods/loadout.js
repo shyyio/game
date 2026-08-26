@@ -1,4 +1,5 @@
 import {ModPackage} from "@/common/ModPackage.js";
+import {BASE_MOD_DIRS} from "@/mods/baseMods.js";
 import {BaseTexturesDeclaration} from "@/mods/BaseTextures/declaration.js";
 import {LogisticsDeclaration} from "@/mods/Logistics/declaration.js";
 import {BaseGameDeclaration} from "@/mods/BaseGame/declaration.js";
@@ -9,6 +10,8 @@ import {MarketDeclaration} from "@/mods/Market/declaration.js";
 import {MarketSimMod} from "@/mods/Market/sim.js";
 import {NotesDeclaration} from "@/mods/Notes/declaration.js";
 import {NotesSimMod} from "@/mods/Notes/sim.js";
+
+export {BASE_MOD_DIRS};
 
 // The canonical mod loadout. Both build sites register the same declarations in the same order, so
 // the positional typeIds/wireIds assigned at freeze() match between sim and client. The client
