@@ -36,10 +36,13 @@ const VERSIONED_PACKAGES = ["sdk", "game-server", "game-client"];
 
 const NOTHING_PUSHED = "Nothing has been pushed, so the live servers are untouched.";
 
+// The registry tool reaches src/mods/loadout.js, so it needs the @/ alias hook the npm scripts pass.
+const NODE_WITH_LOADER = ["--import", "./src/server/loader.js"];
+
 const REGISTRY_HINT = [
     "Everything else is already live — this step only lists the release in the mod registry, and the",
     "listing is what `mods add` and local play's mod picker resolve against. Fix it and re-run just",
-    "that step: `node tools/publish-registry.js --push`.",
+    "that step: `npm run mods:registry -- --push`.",
 ].join("\n");
 
 const RELEASE_HINT = [
@@ -210,7 +213,7 @@ function assertRemotesAt(head) {
  * @returns {void}
  */
 function assertRegistryReady() {
-    runStep("registry check", "node", ["tools/publish-registry.js", "--check"], {
+    runStep("registry check", "node", [...NODE_WITH_LOADER, "tools/publish-registry.js", "--check"], {
         cwd: ROOT,
         hint: `The registry cannot take ${GAME_VERSION} yet; its reason is above. ${NOTHING_PUSHED}\n`
             + "Deploy without touching the listing with `npm run deploy -- --skip-registry`.",
@@ -269,7 +272,7 @@ function main() {
     // has to be on the public mirror before the listing points at it.
     if (registry) {
         steps.begin("list this version in the mod registry");
-        runStep("registry publish", "node", ["tools/publish-registry.js", "--push"], {cwd: ROOT, hint: REGISTRY_HINT});
+        runStep("registry publish", "node", [...NODE_WITH_LOADER, "tools/publish-registry.js", "--push"], {cwd: ROOT, hint: REGISTRY_HINT});
     }
     console.log(`\n${GAME_VERSION} is live — check https://ca1.spupgame.com/status and /mods/index.json`);
 }

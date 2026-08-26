@@ -2,8 +2,8 @@
 // source at a pinned commit, so publishing a version is a commit to the registry repo naming this
 // repo's release tag — no bundles are uploaded from here.
 //
-//   node tools/publish-registry.js --repo ../spup-mods --check   # would it apply cleanly?
-//   node tools/publish-registry.js --repo ../spup-mods --push    # apply, commit, push
+//   npm run mods:registry -- --repo ../spup-mods --check   # would it apply cleanly?
+//   npm run mods:registry -- --repo ../spup-mods --push    # apply, commit, push
 //
 // `npm run deploy` runs both: --check in its pre-flight, --push after every service is live. The
 // separation matters, because a failure here leaves the game running and only the listing behind.
@@ -23,7 +23,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 // Where a listed mod's registry manifest lives, relative to the registry repo.
 const LISTING_DIR = "mods";
-const LISTING_FILE = "listing.json";
+const LISTING_FILE = "registry.json";
 
 // Cloned by hand, once; a deploy only reads and commits into it.
 const DEFAULT_REPO = resolve(ROOT, "../spup-mods");
@@ -47,18 +47,27 @@ function git(cwd, args) {
 /**
  * The commit a release tag names, which is what the registry builds each artifact from.
  * @param {string} version
+ * @param {boolean} mustExist whether the tag has to be there already, rather than HEAD standing in
  * @returns {string}
  */
-function taggedCommit(version) {
+function taggedCommit(version, mustExist) {
     const tag = `v${version}`;
     const {status, stdout} = git(ROOT, ["rev-list", "-n", "1", tag]);
-    if (status !== 0) {
+    if (status === 0) {
+        return stdout;
+    }
+    if (mustExist) {
         throw new StepError(
             `this repo has no ${tag} tag, so there is no commit for the registry to build ${version} from`,
             "The release tags it. Run the deploy through `npm run deploy`, which releases before it publishes.",
         );
     }
-    return stdout;
+    // A pre-flight check runs before the release tags anything, and the release tags HEAD.
+    const {status: headStatus, stdout: head} = git(ROOT, ["rev-parse", "HEAD"]);
+    if (headStatus !== 0) {
+        throw new StepError(`could not read HEAD in ${ROOT}`, "Run this from a checkout with a commit on it.");
+    }
+    return head;
 }
 
 /**
@@ -154,7 +163,7 @@ export function publishRegistry({repo, version, write}) {
     if (!existsSync(join(repo, LISTING_DIR))) {
         throw new StepError(`${repo} does not look like the mod registry (no ${LISTING_DIR}/ in it)`, CLONE_HINT);
     }
-    const commit = taggedCommit(version);
+    const commit = taggedCommit(version, write);
     const toolchain = toolchainVersion();
     const changed = [];
     const listings = [];
