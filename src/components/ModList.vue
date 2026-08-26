@@ -380,10 +380,11 @@ async function copyLockfile() {
  * @returns {string}
  */
 function versionMeta(version) {
+  const sdk = `SDK ${version.sdkVersion}`;
   if (!version.publishedAt) {
-    return "";
+    return sdk;
   }
-  return formatPastDate(version.publishedAt);
+  return `${sdk} · ${formatPastDate(version.publishedAt)}`;
 }
 
 /**
