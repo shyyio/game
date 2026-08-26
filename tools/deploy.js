@@ -8,11 +8,16 @@
 // It does not bump the version, commit, or install deploy hooks. Bump the root package.json, commit,
 // then run this. A change to deploy/post-receive* or deploy/*.service still has to be installed onto
 // the host by hand — a push re-runs whatever hook is already there.
+//
+// Last of all it lists this version's base mods in the public registry, so operators can `mods add`
+// them and local play can pin them. That needs a registry checkout beside this repo; pass
+// --skip-registry to deploy the game without touching the listing.
 
 import {readFileSync} from "node:fs";
 import {spawnSync} from "node:child_process";
 import {join, resolve, dirname} from "node:path";
 import {fileURLToPath} from "node:url";
+import {parseArgs} from "node:util";
 import {GAME_VERSION} from "../src/common/constants.js";
 import {StepError, StepLog, runStep, fail} from "./steps.js";
 
@@ -30,6 +35,12 @@ const DEPLOY_REMOTES = ["ca1", "de1", "auth", "spup-reporting-ca1", "mirror", "p
 const VERSIONED_PACKAGES = ["sdk", "game-server", "game-client"];
 
 const NOTHING_PUSHED = "Nothing has been pushed, so the live servers are untouched.";
+
+const REGISTRY_HINT = [
+    "Everything else is already live — this step only lists the release in the mod registry, and the",
+    "listing is what `mods add` and local play's mod picker resolve against. Fix it and re-run just",
+    "that step: `node tools/publish-registry.js --push`.",
+].join("\n");
 
 const RELEASE_HINT = [
     "The release printed its own reason above (it stops on a failing test, a stale package, or an",
@@ -193,12 +204,33 @@ function assertRemotesAt(head) {
 }
 
 /**
+ * Catches a registry that could not take this release before anything is built or pushed — a name
+ * with no listing yet, or a version already published from a different commit. Only checks; the
+ * listing itself is written after the deploy is live.
+ * @returns {void}
+ */
+function assertRegistryReady() {
+    runStep("registry check", "node", ["tools/publish-registry.js", "--check"], {
+        cwd: ROOT,
+        hint: `The registry cannot take ${GAME_VERSION} yet; its reason is above. ${NOTHING_PUSHED}\n`
+            + "Deploy without touching the listing with `npm run deploy -- --skip-registry`.",
+    });
+}
+
+/**
  * @returns {void}
  */
 function main() {
-    // The four pre-flight checks count as one step, then the builds, the release, the tag check, the
-    // push, and the remote check.
-    const steps = new StepLog(BUILDS.length + 5);
+    const {values: args} = parseArgs({options: {"skip-registry": {type: "boolean", default: false}}});
+    const registry = !args["skip-registry"];
+
+    // The pre-flight checks count as one step, then the builds, the release, the tag check, the
+    // push, the remote check, and the registry listing.
+    let stepCount = BUILDS.length + 5;
+    if (registry) {
+        stepCount += 1;
+    }
+    const steps = new StepLog(stepCount);
 
     steps.begin("pre-flight checks");
     assertOnMain();
@@ -206,6 +238,9 @@ function main() {
     assertVersionsSynced();
     assertPeerRangeSynced();
     assertVersionTag(false);
+    if (registry) {
+        assertRegistryReady();
+    }
     console.log(`deploying ${GAME_VERSION}`);
 
     for (const script of BUILDS) {
@@ -229,6 +264,13 @@ function main() {
     steps.begin("check every remote took it");
     const {stdout: head} = capture("git", ["rev-parse", "main"]);
     assertRemotesAt(head);
+
+    // Last, because the registry's CI builds each mod from the tag it was just pushed: the commit
+    // has to be on the public mirror before the listing points at it.
+    if (registry) {
+        steps.begin("list this version in the mod registry");
+        runStep("registry publish", "node", ["tools/publish-registry.js", "--push"], {cwd: ROOT, hint: REGISTRY_HINT});
+    }
     console.log(`\n${GAME_VERSION} is live — check https://ca1.spupgame.com/status and /mods/index.json`);
 }
 

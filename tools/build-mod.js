@@ -230,7 +230,7 @@ async function buildPart(entryPath, coreModuleIds) {
  * @param {string} modDir
  * @returns {string}
  */
-function packageName(modDir) {
+export function packageName(modDir) {
     return basename(modDir)
         .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
         .toLowerCase();

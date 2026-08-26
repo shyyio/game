@@ -1,6 +1,11 @@
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {fetchModLoadout} from "@/client/ModFetcher.js";
-import {fetchSideloadedMods, sideloadedModUrls} from "@/client/ModSideload.js";
+import {sideloadedModUrls} from "@/client/ModSideload.js";
+import {
+    LocalLoadout, LocalMod, BASE_MOD_NAMES, readLocalLoadout, writeLocalLoadout, refreshLoadout,
+} from "@/client/LocalLoadout.js";
+import {listMods} from "@/client/ModRegistryClient.js";
+import {loadLocalMods} from "@/client/LocalModLoader.js";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {randomWorldSeed} from "@/common/WorldNoise.js";
@@ -27,24 +32,69 @@ const LOCAL_TICK_INTERVAL_MS = DEFAULT_TICK_MS;
  * The packages to register. A remote server's own pinned loadout is fetched from it — the client
  * ships no game content for remote play, which is also what keeps the positional wire ids in sync.
  * Local mode has no server to ask, so it registers the loadout built into this client, imported
- * lazily so a remote join never loads it, then the side-loaded packages a `?mod=` URL asks for, then
- * whatever mod the selected `?scenario=` brings of its own. Both extras append, leaving the built-in
- * packages' positional ids untouched.
+ * lazily so a remote join never loads it, then the player's own chosen mods, then whatever mod the
+ * selected `?scenario=` brings of its own. Both extras append, leaving the built-in packages'
+ * positional ids untouched.
  * @param {{mode: string, serverUrl: string}} props
- * @param {string[]} sideloadUrls package base URLs, empty in remote mode
+ * @param {LocalLoadout} localLoadout the player's chosen mods, empty in remote mode
  * @returns {Promise<ModPackage[]>}
  */
-async function loadoutFor(props, sideloadUrls) {
+async function loadoutFor(props, localLoadout) {
     if (props.mode === GAME_MODE_REMOTE) {
         return await fetchModLoadout(props.serverUrl);
     }
     const {clientLoadout} = await import("@/mods/clientLoadout.js");
-    const packages = [...clientLoadout(), ...await fetchSideloadedMods(sideloadUrls)];
+    // clientLoadout() registers in BASE_MOD_NAMES order (src/test/loadout-order.spec.js holds the two
+    // together), so a base mod the player turned off drops out by position.
+    const base = clientLoadout().filter((pkg, at) => localLoadout.baseEnabled(BASE_MOD_NAMES[at]));
+    const packages = [...base, ...await loadLocalMods(localLoadout)];
     if (scenarioSelected()) {
         const {scenarioModPackages} = await import("@/test/scenarios/index.js");
         packages.push(...scenarioModPackages());
     }
     return packages;
+}
+
+/**
+ * The mods a local game runs on top of the base loadout: what the player picked, unless a `?mod=`
+ * URL names packages instead — a dev link is an explicit override, so it replaces the stored list
+ * for that page load rather than stacking on top of it. Each side-loaded package's manifest is read
+ * here so a bad URL fails before any of the loadout is registered.
+ * @param {string[]} sideloadUrls package base URLs, empty in remote mode
+ * @returns {Promise<LocalLoadout>}
+ */
+async function localLoadoutFor(sideloadUrls) {
+    if (sideloadUrls.length === 0) {
+        return await refreshedLoadout(readLocalLoadout());
+    }
+    const mods = [];
+    for (const url of sideloadUrls) {
+        mods.push(await LocalMod.fromUrl(url));
+    }
+    return new LocalLoadout(mods);
+}
+
+/**
+ * Moves every version-tracking mod onto the newest version the registry publishes for it, and
+ * remembers the result. An unreachable registry falls back to the versions already stored: those are
+ * a real resolution that already worked, and a catalog host being down is not a reason a local game
+ * cannot start.
+ * @param {LocalLoadout} stored
+ * @returns {Promise<LocalLoadout>}
+ */
+async function refreshedLoadout(stored) {
+    if (!stored.tracksLatest) {
+        return stored;
+    }
+    let refreshed;
+    try {
+        refreshed = refreshLoadout(stored, await listMods());
+    } catch (error) {
+        console.warn(`Could not check the mod registry for newer versions: ${error.message}`);
+        return stored;
+    }
+    writeLocalLoadout(refreshed);
+    return refreshed;
 }
 
 /**
@@ -68,14 +118,14 @@ export async function createClient(app, viewport, props) {
         enterServerContext();
     }
 
-    // A server's loadout is exactly what it pins, so only local play side-loads.
-    let sideloadUrls = [];
+    // A server's loadout is exactly what it pins, so only local play picks its own mods.
+    let localLoadout = new LocalLoadout([]);
     if (props.mode !== GAME_MODE_REMOTE) {
-        sideloadUrls = sideloadedModUrls();
+        localLoadout = await localLoadoutFor(sideloadedModUrls());
     }
 
     const modRegistry = new ModRegistry();
-    for (const pkg of await loadoutFor(props, sideloadUrls)) {
+    for (const pkg of await loadoutFor(props, localLoadout)) {
         modRegistry.register(pkg);
     }
     modRegistry.freeze();

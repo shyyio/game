@@ -12,15 +12,13 @@ import {fileURLToPath, pathToFileURL} from "node:url";
 import {parseArgs} from "node:util";
 import {buildMod} from "./build-mod.js";
 import {resolvePackage} from "../src/server/ModCache.js";
-import {ModLockfile} from "../src/server/ModLockfile.js";
+import {ModLockfile} from "../src/common/ModLockfile.js";
+import {readLockfile, writeLockfile} from "../src/server/modLockfileFile.js";
 import {GAME_VERSION} from "../src/common/constants.js";
+import {BASE_MOD_DIRS} from "../src/mods/loadout.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MODS_DIR = join(REPO_ROOT, "src/mods");
-
-// The loadout order src/mods/loadout.js registers in; the lockfile's order assigns the positional
-// ids, so it has to match or existing saves stop loading.
-const LOADOUT = ["BaseTextures", "Logistics", "BaseGame", "Fluids", "CursorSync", "Market", "Notes"];
 
 /**
  * Builds the whole loadout and returns its lockfile.
@@ -32,13 +30,13 @@ export async function publishBaseMods(outDir, version) {
     const known = readdirSync(MODS_DIR, {withFileTypes: true})
         .filter(entry => entry.isDirectory())
         .map(entry => entry.name);
-    const missing = known.filter(name => !LOADOUT.includes(name));
+    const missing = known.filter(name => !BASE_MOD_DIRS.includes(name));
     if (missing.length > 0) {
-        throw new Error(`src/mods has ${missing.join(", ")}, which this tool's loadout order does not list`);
+        throw new Error(`src/mods has ${missing.join(", ")}, which src/mods/loadout.js's BASE_MOD_DIRS does not list`);
     }
     mkdirSync(outDir, {recursive: true});
     const entries = [];
-    for (const dir of LOADOUT) {
+    for (const dir of BASE_MOD_DIRS) {
         const packageDir = join(outDir, dir);
         const manifest = await buildMod(join(MODS_DIR, dir), packageDir, {version});
         entries.push(await resolvePackage(pathToFileURL(packageDir).href));
@@ -60,7 +58,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (existsSync(args.lockfile)) {
         // Keep the pinned order of an existing lockfile honest: this tool only ever writes the
         // in-repo loadout, so a hand-edited file with extra mods must not be silently replaced.
-        const current = ModLockfile.read(args.lockfile);
+        const current = readLockfile(args.lockfile);
         const extra = current.mods.filter(entry => lockfile.find(entry.name) === null);
         if (extra.length > 0) {
             throw new Error(
@@ -69,6 +67,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
             );
         }
     }
-    lockfile.write(args.lockfile);
+    writeLockfile(lockfile, args.lockfile);
     console.log(`${args.lockfile}: ${lockfile.mods.length} mods pinned`);
 }

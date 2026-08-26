@@ -18,12 +18,9 @@ import {Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {MOD_PART_SIM, MOD_PART_CLIENT} from "@/common/ModManifest.js";
-import {simLoadout} from "@/mods/loadout.js";
+import {simLoadout, BASE_MOD_DIRS} from "@/mods/loadout.js";
 import * as sdk from "@/sdk/common.js";
 import {buildMod} from "../../tools/build-mod.js";
-
-// Mirrors simLoadout's order, which is what assigns the positional ids.
-const MOD_DIRS = ["BaseTextures", "Logistics", "BaseGame", "Fluids", "CursorSync", "Market", "Notes"];
 
 /**
  * Builds every in-repo mod and registers the built bundles into a frozen registry.
@@ -34,7 +31,7 @@ async function packagedRegistry(outRoot) {
     const registry = new ModRegistry();
     const manifests = [];
     const bundles = [];
-    for (const dir of MOD_DIRS) {
+    for (const dir of BASE_MOD_DIRS) {
         const outDir = join(outRoot, dir);
         const manifest = await buildMod(resolve("src/mods", dir), outDir, {version: "1.0.0"});
         const bundle = await import(pathToFileURL(join(outDir, manifest.entry)).href);

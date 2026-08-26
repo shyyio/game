@@ -9,7 +9,7 @@ import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {formatIntegrity, integrityHex, contentName} from "@/common/ModIntegrity.js";
 import {ModManifest, SDK_VERSION} from "@/common/ModManifest.js";
-import {ModLockEntry, MANIFEST_FILE} from "@/server/ModLockfile.js";
+import {ModLockEntry, MANIFEST_FILE} from "@/common/ModLockfile.js";
 
 /**
  * @param {Uint8Array} bytes

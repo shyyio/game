@@ -19,9 +19,7 @@ import {NotesSimMod} from "@/mods/Notes/sim.js";
  * The loadout for a browser client (which also runs the local sim): declarations + client parts,
  * registered in the same order as loadout.js's simLoadout so positional ids match. Market also
  * needs its sim part here (unlike CursorSync's, which only relays to OTHER sessions and is a
- * genuine no-op solo) — local mode hosts an in-process Game off this same registry, and without
- * MarketSimMod that Game never handles ConfigureTradingTerminalMessage/MarketSnapshotRequestMessage
- * or runs onTick settlement/balance-refresh at all.
+ * no-op solo) — local mode hosts an in-process Game off this same registry.
  * @returns {ModPackage[]}
  */
 export function clientLoadout() {
