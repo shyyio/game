@@ -161,3 +161,16 @@ export function drawSettingsIcon(face) {
         face.circle(knobX[i], y, 2.5).fill({color: PANEL_TEXT});
     }
 }
+
+/**
+ * The terrain icon: a two-peak mountain range.
+ * @param {Graphics} face
+ * @param {number} [color]
+ * @param {number} [width]
+ * @returns {void}
+ */
+export function drawMountainIcon(face, color = PANEL_TEXT, width = ICON_STROKE) {
+    face
+        .poly([-11, 8, -4, -7, 1, 1, 4, -3, 11, 8], true)
+        .stroke({color, width, join: "round"});
+}

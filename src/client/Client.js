@@ -67,6 +67,7 @@ import {chunkCenter, chunkId, formatBytes, REGION_HALF} from "@/common/util.js";
 import {OVERWORLD_SCHEMA, OverworldRect, OverworldWriter, OverworldView} from "@/client/state/OverworldState.js";
 import {OverworldDrawLayer} from "@/client/layers/OverworldDrawLayer.js";
 import {GridDrawLayer} from "@/client/layers/GridDrawLayer.js";
+import {TerrainButtonLayer} from "@/client/hud/TerrainButtonLayer.js";
 import {TerrainDrawLayer} from "@/client/layers/TerrainDrawLayer.js";
 import {TerrainDetailLayer} from "@/client/layers/TerrainDetailLayer.js";
 import {PlacementFeedbackLayer} from "@/client/layers/PlacementFeedbackLayer.js";
@@ -287,6 +288,8 @@ export class Client {
         this.productionButtonLayer.onPress(() => this.productionPanelLayer.toggle());
         // Opens the sprite editor (Game.vue owns it); sits left of production.
         this.artButtonLayer = new ArtButtonLayer(app);
+        // Opens the terrain tuner (Game.vue owns it); sits left of art.
+        this.terrainButtonLayer = new TerrainButtonLayer(app);
         this.productionPanelLayer.onSubscribe((metricsType, scope, tier, windowTicks) => this.sendMessage(
             new MetricsSubscribeMessage(metricsType, scope, tier, windowTicks),
         ));
@@ -306,6 +309,7 @@ export class Client {
             this.friendsButtonLayer.setTopOffset(offset);
             this.productionButtonLayer.setTopOffset(offset);
             this.artButtonLayer.setTopOffset(offset);
+            this.terrainButtonLayer.setTopOffset(offset);
             this.statusLayer.setTopOffset(offset);
             this._topBarHeight = height;
             this._layoutTopLeft();
@@ -376,6 +380,7 @@ export class Client {
             this.productionButtonLayer,
             this.productionPanelLayer,
             this.artButtonLayer,
+            this.terrainButtonLayer,
             this.noticeLayer,
             this.confirmDialogLayer,
             this.mapButtonsLayer,
@@ -671,6 +676,7 @@ export class Client {
         this.app.stage.addChild(this.friendsButtonLayer);
         this.app.stage.addChild(this.productionButtonLayer);
         this.app.stage.addChild(this.artButtonLayer);
+        this.app.stage.addChild(this.terrainButtonLayer);
         // Panels sit above every other HUD layer.
         this.app.stage.addChild(this.inspectPanelLayer);
         this.app.stage.addChild(this.friendsPanelLayer);
@@ -1326,6 +1332,28 @@ export class Client {
      */
     setFpsCap(index) {
         this.app.ticker.maxFPS = FPS_CAP_VALUES[index];
+    }
+
+    /**
+     * Rebakes the ground's palette and rescatters its details, keeping the biome classification: a
+     * retuned color, shade or dither.
+     * @returns {void}
+     */
+    repaintTerrain() {
+        this.terrainLayer.repaint();
+        this.terrainDetailLayer.repaint();
+    }
+
+    /**
+     * Reclassifies as well as repaints: a retuned noise channel, biome range or blend width changes
+     * which biome a tile is, which the cached bakes would otherwise keep answering.
+     * @returns {void}
+     */
+    retuneTerrain() {
+        if (this.terrain !== null) {
+            this.terrain.invalidate();
+        }
+        this.repaintTerrain();
     }
 
     /**

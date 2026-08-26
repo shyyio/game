@@ -97,4 +97,13 @@ export class Biome {
         }
         this._biomeId = biomeId;
     }
+
+    /**
+     * Called by ModRegistry.setBiomes(); unlike the freeze assignment this one may move a biome.
+     * @param {number} biomeId
+     * @returns {void}
+     */
+    _renumber(biomeId) {
+        this._biomeId = biomeId;
+    }
 }

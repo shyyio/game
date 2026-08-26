@@ -1,5 +1,5 @@
 <script setup>
-import {computed, onMounted, onUnmounted, ref} from "vue";
+import {computed, onMounted, onUnmounted, ref, shallowRef} from "vue";
 import {useTheme} from "vuetify";
 import {createPixiApp} from "@/client/PixiApp.js";
 import {createClient} from "@/client/GameBootstrap.js";
@@ -19,9 +19,13 @@ import {applyTheme, onThemeChange, THEME_DEFAULT} from "@/client/Theme.js";
 import {vuetifyThemeName} from "@/client/vuetifyTheme.js";
 import {gameStart, startError, GAME_MODE_REMOTE} from "@/client/GameStart.js";
 import {useRouter} from "vue-router";
+import TerrainTuner from "@/components/TerrainTuner.vue";
 
 const router = useRouter();
 const settingsOpen = ref(false);
+// Temporary terrain-tuning dialog; shallow so the client never becomes a reactive proxy.
+const terrainOpen = ref(false);
+const terrainClient = shallowRef(null);
 
 const {settingsCategories, settingValues, bindSettingsMenu} = useSettingsMenu();
 
@@ -159,11 +163,15 @@ onMounted(async () => {
   bindSettingsMenu(client);
   client.settingsButtonLayer.onPress(() => settingsOpen.value = true);
   client.artButtonLayer.onPress(toggleSpriteEditor);
+  client.terrainButtonLayer.onPress(() => terrainOpen.value = true);
+  terrainClient.value = client;
 
   editorClient = client;
   const unbindKeyboard = bindGameKeyboardShortcuts(client, game, client.toolbarLayer);
 
   teardown = () => {
+    terrainOpen.value = false;
+    terrainClient.value = null;
     closeSpriteEditor();
     if (spriteEditorSession !== null) {
       spriteEditorSession.destroy();
@@ -232,6 +240,7 @@ export default defineComponent({
       </v-card-text>
     </v-card>
   </v-dialog>
+  <TerrainTuner v-model="terrainOpen" :client="terrainClient" />
 </template>
 
 <style scoped>
