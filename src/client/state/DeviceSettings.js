@@ -8,6 +8,8 @@ export const DEVICE_SETTING_MOBILE = "spup.mobile";
 export const DEVICE_SETTING_THEME = "spup.theme";
 // localStorage key for the terrain-rendering preference.
 export const DEVICE_SETTING_TERRAIN = "spup.terrain";
+// localStorage key for the frame-rate cap preference.
+export const DEVICE_SETTING_FPS_CAP = "spup.fps-cap";
 
 /**
  * Singleton for per-device preferences persisted in localStorage, never in saves.

@@ -27,7 +27,7 @@ import {DeviceSettingToggle} from "@/client/hud/DeviceSettingToggle.js";
 import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
 import DeviceSettings, {
     DEVICE_SETTING_FULLSCREEN, DEVICE_SETTING_REDUCED_MOTION, DEVICE_SETTING_MOBILE,
-    DEVICE_SETTING_THEME, DEVICE_SETTING_TERRAIN,
+    DEVICE_SETTING_THEME, DEVICE_SETTING_TERRAIN, DEVICE_SETTING_FPS_CAP,
 } from "@/client/state/DeviceSettings.js";
 import {applyTheme, onThemeChange, THEME_NAMES, THEME_DEFAULT} from "@/client/Theme.js";
 import Fullscreen from "@/client/Fullscreen.js";
@@ -56,6 +56,9 @@ import {
     OVERWORLD_CHUNK_TTL_MS,
     OVERWORLD_REFRESH_THROTTLE_MS,
     FRIENDS_PANEL_REFRESH_THROTTLE_MS,
+    FPS_CAP_NAMES,
+    FPS_CAP_VALUES,
+    FPS_CAP_DEFAULT,
 } from "@/client/constants.js";
 import {CHUNK_SIZE, REGION_SIZE, Direction, GameSettingsKey} from "@/common/constants.js";
 import {WorldNoise} from "@/common/WorldNoise.js";
@@ -1311,8 +1314,18 @@ export class Client {
                 new DeviceSettingToggle(DEVICE_SETTING_MOBILE, "Touchscreen input", Mobile.devicePrefers(), on => Mobile.setEnabled(on)),
                 new DeviceSettingToggle(DEVICE_SETTING_TERRAIN, "Terrain", TERRAIN_ENABLED_DEFAULT, on => this.setTerrainEnabled(on)),
                 new DeviceSettingChoice(DEVICE_SETTING_THEME, "Theme", THEME_NAMES, THEME_DEFAULT, index => applyTheme(index)),
+                new DeviceSettingChoice(DEVICE_SETTING_FPS_CAP, "Frame rate cap", FPS_CAP_NAMES, FPS_CAP_DEFAULT, index => this.setFpsCap(index)),
             ]),
         ];
+    }
+
+    /**
+     * Paces the render ticker to the chosen frame-rate option.
+     * @param {number} index into FPS_CAP_VALUES
+     * @returns {void}
+     */
+    setFpsCap(index) {
+        this.app.ticker.maxFPS = FPS_CAP_VALUES[index];
     }
 
     /**

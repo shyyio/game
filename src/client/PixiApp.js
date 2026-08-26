@@ -5,7 +5,8 @@ import Fullscreen from "@/client/Fullscreen.js";
 import WindowFocus from "@/client/WindowFocus.js";
 import Mobile from "@/client/Mobile.js";
 import {MobileTouchInput} from "@/client/input/MobileTouchInput.js";
-import {GAME_FONT, MIN_VIEWPORT_SCALE} from "@/client/constants.js";
+import {GAME_FONT, MIN_VIEWPORT_SCALE, FPS_CAP_VALUES, FPS_CAP_DEFAULT} from "@/client/constants.js";
+import DeviceSettings, {DEVICE_SETTING_FPS_CAP} from "@/client/state/DeviceSettings.js";
 
 const gameWidth = () => window.innerWidth;
 const gameHeight = () => window.innerHeight + 64;
@@ -51,6 +52,19 @@ function createShadowOverlay(width, height) {
 }
 
 /**
+ * The stored frame-rate cap option, falling back when localStorage holds an index this build
+ * no longer offers.
+ * @returns {number}
+ */
+export function fpsCapIndex() {
+    const stored = DeviceSettings.getNumber(DEVICE_SETTING_FPS_CAP, FPS_CAP_DEFAULT);
+    if (stored < 0 || stored >= FPS_CAP_VALUES.length) {
+        return FPS_CAP_DEFAULT;
+    }
+    return stored;
+}
+
+/**
  * Boots the pixi Application and world viewport: canvas mount, resize handling, drag/wheel/zoom,
  * and live touch-input toggling off the "Touchscreen input" device setting.
  * @returns {Promise<{app: Application, viewport: ClientViewport, syncMobileTouchInput: function(): void, destroy: function(): void}>}
@@ -66,9 +80,9 @@ export async function createPixiApp() {
         roundPixels: true
     });
 
-    // Uncapped: the ticker rides requestAnimationFrame, so frames land on vsync. A cap below the
+    // Default 0: the ticker rides requestAnimationFrame, so frames land on vsync. A cap below the
     // refresh rate paces them unevenly; sprite sequences keep their own clock (see animation.js).
-    app.ticker.maxFPS = 0;
+    app.ticker.maxFPS = FPS_CAP_VALUES[fpsCapIndex()];
 
     // Load the game font before pixi rasterizes any text; a Text drawn before the face
     // is ready caches at the fallback and never re-rasterizes on its own.
