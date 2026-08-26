@@ -158,27 +158,11 @@ export class ModRegistry {
             }
         }
 
-        const biomeNames = new Set();
-        for (const pkg of this._packages) {
-            for (const biome of pkg.declaration.biomes) {
-                if (biomeNames.has(biome.name)) {
-                    throw new Error(`Duplicate biome "${biome.name}"`);
-                }
-                for (const range of biome.ranges) {
-                    if (!this._noiseChannels.includes(range.channel)) {
-                        throw new Error(`Biome "${biome.name}" ranges over undeclared noise channel "${range.channel.name}"`);
-                    }
-                }
-                biomeNames.add(biome.name);
-                biome._assignBiomeId(this._biomes.length);
-                this._biomes.push(biome);
-            }
-        }
-        if (this._biomes.length > BIOME_LIMIT) {
-            throw new Error(`${this._biomes.length} biomes declared; a terrain bake holds at most ${BIOME_LIMIT}`);
-        }
-        if (this._biomes.length > 0 && this._biomes[this._biomes.length - 1].ranges.length > 0) {
-            throw new Error(`Last biome "${this._biomes[this._biomes.length - 1].name}" must be unconditional (no ranges)`);
+        const declaredBiomes = this._packages.flatMap(pkg => pkg.declaration.biomes);
+        this._validateBiomes(declaredBiomes);
+        for (const biome of declaredBiomes) {
+            biome._assignBiomeId(this._biomes.length);
+            this._biomes.push(biome);
         }
 
         const listedItemTypes = new Set();
@@ -323,6 +307,50 @@ export class ModRegistry {
     get biomes() {
         this._assertFrozen();
         return this._biomes;
+    }
+
+    /**
+     * Replaces the loadout's biome set and renumbers it, for a client tuning terrain live. The array
+     * itself is mutated in place, so every holder of {@link biomes} (the Terrain, the ground layers)
+     * sees the new set without being rebuilt. The invariants freeze checks apply here too.
+     * @param {Biome[]} biomes in the order they are tested; the last must be unconditional
+     * @returns {void}
+     */
+    setBiomes(biomes) {
+        this._assertFrozen();
+        this._validateBiomes(biomes);
+        this._biomes.length = 0;
+        for (const [index, biome] of biomes.entries()) {
+            biome._renumber(index);
+            this._biomes.push(biome);
+        }
+    }
+
+    /**
+     * @private
+     * @param {Biome[]} biomes
+     * @returns {void}
+     * @throws {Error} on a duplicate name, an unknown channel, too many biomes, or a conditional last
+     */
+    _validateBiomes(biomes) {
+        const names = new Set();
+        for (const biome of biomes) {
+            if (names.has(biome.name)) {
+                throw new Error(`Duplicate biome "${biome.name}"`);
+            }
+            for (const range of biome.ranges) {
+                if (!this._noiseChannels.includes(range.channel)) {
+                    throw new Error(`Biome "${biome.name}" ranges over undeclared noise channel "${range.channel.name}"`);
+                }
+            }
+            names.add(biome.name);
+        }
+        if (biomes.length > BIOME_LIMIT) {
+            throw new Error(`${biomes.length} biomes declared; a terrain bake holds at most ${BIOME_LIMIT}`);
+        }
+        if (biomes.length > 0 && biomes[biomes.length - 1].ranges.length > 0) {
+            throw new Error(`Last biome "${biomes[biomes.length - 1].name}" must be unconditional (no ranges)`);
+        }
     }
 
     /**

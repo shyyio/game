@@ -71,11 +71,19 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     setTerrain(terrain) {
+        this._terrain = terrain;
+        this.repaint();
+    }
+
+    /**
+     * Drops every scattered chunk so the next tick rescatters it: a new terrain, or a biome retune.
+     * @returns {void}
+     */
+    repaint() {
         for (const chunk of [...this._chunks.keys()]) {
             this._unmountChunk(chunk);
             this._dropChunk(chunk);
         }
-        this._terrain = terrain;
         // Forces the next tick's reconcile to remount what is on screen.
         this._visibleChunks = new Set();
     }

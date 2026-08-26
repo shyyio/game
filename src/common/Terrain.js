@@ -5,13 +5,36 @@ import {tileHash} from "@/common/WorldNoise.js";
 
 const UINT32_RANGE = 0x100000000;
 
-// Blending: a tile within BLEND_WIDTH of a threshold mixes toward the biome across it, up to 50/50
-// at the line. A bake carries the weight at BLEND_WEIGHT_SCALE resolution; the client bands it into
-// BLEND_LEVELS steps so the palette stays stepped.
+// Blending: a tile within the blend width of a threshold mixes toward the biome across it, up to
+// 50/50 at the line. A bake carries the weight at BLEND_WEIGHT_SCALE resolution; the client bands it
+// into BLEND_LEVELS steps so the palette stays stepped.
 export const BLEND_WIDTH = 0.04;
 export const BLEND_LEVELS = 3;
 export const BLEND_WEIGHT_SCALE = 255;
 const BLEND_MAX = 0.5;
+
+// Retuned by the terrain tuner; a change invalidates every bake.
+let activeBlendWidth = BLEND_WIDTH;
+
+/**
+ * @param {number} width how close to a threshold a tile starts blending
+ * @returns {number} the width now in force
+ * @throws {RangeError} unless width is > 0
+ */
+export function setBlendWidth(width) {
+    if (!(width > 0)) {
+        throw new RangeError(`Blend width must be > 0, got ${width}`);
+    }
+    activeBlendWidth = width;
+    return activeBlendWidth;
+}
+
+/**
+ * @returns {number}
+ */
+export function blendWidth() {
+    return activeBlendWidth;
+}
 
 /**
  * A baked grid of biome ids, with the blend toward each cell's nearest competing biome when baked
@@ -116,6 +139,10 @@ export class Terrain {
         }
         const samples = this._samples;
         samples.fill(NaN);
+        // The biome set is mutable (the terrain tuner adds and removes biomes); resize to match.
+        if (this._margins.length !== this.biomes.length) {
+            this._margins = new Float64Array(this.biomes.length);
+        }
         const margins = this._margins;
         let winner = -1;
         for (const [index, biome] of this.biomes.entries()) {
@@ -131,19 +158,20 @@ export class Terrain {
         const tile = this._tile;
         tile.biomeId = winner;
         tile.otherId = winner;
+        const width = activeBlendWidth;
         let weight = 0;
         for (let index = 0; index < winner; index++) {
             const missedBy = -margins[index];
-            if (missedBy < BLEND_WIDTH) {
-                const candidate = BLEND_MAX * (1 - missedBy / BLEND_WIDTH);
+            if (missedBy < width) {
+                const candidate = BLEND_MAX * (1 - missedBy / width);
                 if (candidate > weight) {
                     weight = candidate;
                     tile.otherId = index;
                 }
             }
         }
-        if (margins[winner] < BLEND_WIDTH) {
-            const candidate = BLEND_MAX * (1 - margins[winner] / BLEND_WIDTH);
+        if (margins[winner] < width) {
+            const candidate = BLEND_MAX * (1 - margins[winner] / width);
             if (candidate > weight) {
                 let next = winner + 1;
                 while (margins[next] < 0) {
@@ -180,6 +208,15 @@ export class Terrain {
         }
         this._bakes.set(chunk, bake);
         return bake;
+    }
+
+    /**
+     * Drops every cached bake so the next paint reclassifies: a channel, biome or blend retune.
+     * @returns {void}
+     */
+    invalidate() {
+        this._bakes.clear();
+        this._overworldRowsBaked = 0;
     }
 
     /**

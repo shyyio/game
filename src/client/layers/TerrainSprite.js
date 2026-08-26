@@ -58,12 +58,56 @@ const SHADE_STEP = 0.02;
 const SHADE_BAND = 0.1;
 const SHADE_NOISE_CENTER = 0.5;
 
+// Retuned by the terrain tuner; the step is baked into the palette, so a change needs a rebuild.
+let activeShadeStep = SHADE_STEP;
+let activeShadeBand = SHADE_BAND;
+
+/**
+ * @param {number} step how far each shade level moves from the biome's base color
+ * @returns {number} the step now in force
+ * @throws {RangeError} unless step is >= 0
+ */
+export function setShadeStep(step) {
+    if (!(step >= 0)) {
+        throw new RangeError(`Shade step must be >= 0, got ${step}`);
+    }
+    activeShadeStep = step;
+    return activeShadeStep;
+}
+
+/**
+ * @returns {number}
+ */
+export function shadeStep() {
+    return activeShadeStep;
+}
+
+/**
+ * @param {number} band how much shade noise one level spans; wider = fewer tiles off the base
+ * @returns {number} the band now in force
+ * @throws {RangeError} unless band is > 0
+ */
+export function setShadeBand(band) {
+    if (!(band > 0)) {
+        throw new RangeError(`Shade band must be > 0, got ${band}`);
+    }
+    activeShadeBand = band;
+    return activeShadeBand;
+}
+
+/**
+ * @returns {number}
+ */
+export function shadeBand() {
+    return activeShadeBand;
+}
+
 /**
  * @param {number} noise the shade noise, in [0, 1]
  * @returns {number} the shade level it selects, in [0, SHADE_COUNT)
  */
 function shadeFor(noise) {
-    const level = Math.floor((noise - SHADE_NOISE_CENTER) / SHADE_BAND + SHADE_COUNT / 2);
+    const level = Math.floor((noise - SHADE_NOISE_CENTER) / activeShadeBand + SHADE_COUNT / 2);
     return Math.min(SHADE_COUNT - 1, Math.max(0, level));
 }
 
@@ -74,7 +118,7 @@ function shadeFor(noise) {
  * @returns {number} the channel stepped toward black (below the base) or white (above it)
  */
 function shadeChannel(channel, shade, strength) {
-    const offset = (shade - SHADE_BASE) * SHADE_STEP * strength;
+    const offset = (shade - SHADE_BASE) * activeShadeStep * strength;
     if (offset < 0) {
         return Math.round(channel * (1 + offset));
     }

@@ -2,7 +2,9 @@ import {NoiseChannel, Biome, NoiseRange, TerrainDetail} from "@spup/sdk";
 
 // ---- Noise channels ----
 export const HUMIDITY = new NoiseChannel("humidity", 0.002, 2);
-export const NOISE_CHANNELS = [HUMIDITY];
+// Broader than humidity, so the two rarely draw the same edge.
+export const TEMPERATURE = new NoiseChannel("temperature", 0.0015, 2);
+export const NOISE_CHANNELS = [HUMIDITY, TEMPERATURE];
 
 // ---- Palette: few flat colors, for the blocky look ----
 export const PALETTE_GRASS = 0x7FA16A;

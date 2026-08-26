@@ -69,10 +69,12 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
     }
 
     /**
-     * Drops every baked sprite so the next tick rebuilds it: a new terrain, or a dither swap.
+     * Drops every baked sprite so the next tick rebuilds it: a new terrain, or a dither swap. The
+     * palette is rebuilt too, so a retuned biome color or shade step takes effect here.
      * @returns {void}
      */
     repaint() {
+        this._palette = new TerrainPalette(this._biomes);
         for (const chunk of [...this._chunks.keys()]) {
             this._dropChunk(chunk);
         }
