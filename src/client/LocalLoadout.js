@@ -257,6 +257,13 @@ export class LocalLoadout {
      * @param {string[]} [excludedBase] base mod names the player has turned off
      */
     constructor(mods, excludedBase=[]) {
+        for (const mod of mods) {
+            // A name is one mod. The built-in copy registers first whatever this list says, so a
+            // second package under the same name is that mod loaded twice, not another mod.
+            if (BASE_MOD_NAMES.includes(mod.name)) {
+                throw new Error(`Mod "${mod.name}" is built into the client, so a package may not carry that name`);
+            }
+        }
         this.mods = mods;
         this.excludedBase = excludedBase;
     }

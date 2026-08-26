@@ -78,6 +78,17 @@ export class ModRegistry {
         }
         this._frozen = true;
 
+        const modNames = new Set();
+        for (const pkg of this._packages) {
+            const name = pkg.declaration.name;
+            // One name is one mod: the same mod registered twice collides on everything it declares,
+            // and reports it as whichever of those collisions is checked first.
+            if (modNames.has(name)) {
+                throw new Error(`Mod "${name}" is in this loadout twice`);
+            }
+            modNames.add(name);
+        }
+
         const typeNames = new Set();
         for (const pkg of this._packages) {
             for (const type of pkg.declaration.objectTypes) {

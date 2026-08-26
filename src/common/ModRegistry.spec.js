@@ -45,6 +45,13 @@ test("a duplicate key across mods throws at freeze", () => {
     assert.throws(() => registry.freeze(), /Duplicate player setting key/);
 });
 
+test("the same mod registered twice throws at freeze, naming it", () => {
+    const registry = new ModRegistry();
+    registry.register(new ModPackage(new EntriesDeclaration("A", [new PlayerSettingEntry(MOD_KEY, true, 2)])));
+    registry.register(new ModPackage(new EntriesDeclaration("A", [new PlayerSettingEntry(MOD_KEY, true, 2)])));
+    assert.throws(() => registry.freeze(), /Mod "A" is in this loadout twice/);
+});
+
 test("the entry accessor throws before freeze", () => {
     const registry = new ModRegistry();
     assert.throws(() => registry.playerSettingEntry(MOD_KEY), /not frozen/);

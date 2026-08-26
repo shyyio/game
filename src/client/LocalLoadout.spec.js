@@ -350,3 +350,17 @@ test("a mod loaded off a bare URL is reported as skipped, not silently dropped",
     assert.deepEqual(skipped, ["widgets"]);
     assert.deepEqual(lockfile.mods.map(entry => entry.name), BASE_MOD_NAMES);
 });
+
+test("a package named after a built-in mod is refused, however it got into the list", () => {
+    const clash = chosen(BASE_MOD_NAMES[4]);
+
+    assert.throws(() => new LocalLoadout([clash]), /is built into the client/);
+    assert.throws(() => new LocalLoadout([]).with(clash), /is built into the client/);
+    assert.throws(() => LocalLoadout.parse({mods: [clash.toJSON()]}), /is built into the client/);
+});
+
+test("turning a built-in mod off does not make its name available to a package", () => {
+    const off = new LocalLoadout([]).withBase(BASE_MOD_NAMES[4], false);
+
+    assert.throws(() => off.with(chosen(BASE_MOD_NAMES[4])), /is built into the client/);
+});
