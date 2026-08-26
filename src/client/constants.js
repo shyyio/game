@@ -21,10 +21,10 @@ export const OVERWORLD_SCALE_THRESHOLD = 0.03;
 export const MIN_VIEWPORT_SCALE = 1024 / (REGION_SIZE * CHUNK_SIZE * TILE_SIZE);
 
 // Frame-rate cap options; the stored device setting is an index into these.
-export const FPS_CAP_NAMES = ["Unlimited", "30 FPS", "45 FPS", "60 FPS", "90 FPS", "120 FPS", "144 FPS"];
+export const FPS_CAP_NAMES = ["Unlimited", "20 FPS", "30 FPS", "45 FPS", "60 FPS", "90 FPS", "120 FPS", "144 FPS"];
 
 // pixi ticker maxFPS per option; 0 rides vsync.
-export const FPS_CAP_VALUES = [0, 30, 45, 60, 90, 120, 144];
+export const FPS_CAP_VALUES = [0, 20, 30, 45, 60, 90, 120, 144];
 
 export const FPS_CAP_DEFAULT = 0;
 
