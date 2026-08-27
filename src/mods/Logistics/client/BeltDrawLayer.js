@@ -10,11 +10,11 @@ import {chunkId, getOrCreate, removeFromGroup} from "@spup/sdk";
 import {
     BeltBend,
     BELT_NORMAL,
-    BELT_RAMP_DOWN,
-    BELT_RAMP_UP,
+    BELT_TUNNEL_DOWN,
+    BELT_TUNNEL_UP,
     BELT_UNDERGROUND,
     MAP_COLOR_BELT,
-    MAP_COLOR_BELT_RAMP,
+    MAP_COLOR_BELT_TUNNEL,
 } from "../common/constants.js";
 import {inferBeltParent} from "../common/geometry.js";
 
@@ -23,8 +23,8 @@ const BELT_SEQUENCES = [
     "belt-straight",
     "belt-left",
     "belt-right",
-    "belt-ramp-up",
-    "belt-ramp-down",
+    "belt-tunnel-up",
+    "belt-tunnel-down",
 ];
 
 /**
@@ -37,11 +37,11 @@ export function beltFrameBase(bend, type) {
     if (type === BELT_UNDERGROUND) {
         return "belt-underground";
     }
-    if (type === BELT_RAMP_UP) {
-        return "belt-ramp-up";
+    if (type === BELT_TUNNEL_UP) {
+        return "belt-tunnel-up";
     }
-    if (type === BELT_RAMP_DOWN) {
-        return "belt-ramp-down";
+    if (type === BELT_TUNNEL_DOWN) {
+        return "belt-tunnel-down";
     }
     if (bend === BeltBend.LEFT) {
         return "belt-left";
@@ -139,10 +139,10 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
      * @returns {void}
      */
     _drawChunkGeometry(chunk, graphics) {
-        for (const color of [MAP_COLOR_BELT, MAP_COLOR_BELT_RAMP]) {
+        for (const color of [MAP_COLOR_BELT, MAP_COLOR_BELT_TUNNEL]) {
             let drew = false;
             for (const belt of this._beltsIn(chunk)) {
-                const beltColor = belt.type === BELT_NORMAL ? MAP_COLOR_BELT : MAP_COLOR_BELT_RAMP;
+                const beltColor = belt.type === BELT_NORMAL ? MAP_COLOR_BELT : MAP_COLOR_BELT_TUNNEL;
                 if (beltColor !== color) {
                     continue;
                 }

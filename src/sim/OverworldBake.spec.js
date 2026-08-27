@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import {CHUNK_SIZE, Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {BeltDefinition, BeltRampDownDefinition, BeltRampUpDefinition, HousingDefinition} from "@/mods/Logistics/common/objectTypes.js";
+import {BeltDefinition, BeltTunnelDownDefinition, BeltTunnelUpDefinition, HousingDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {WaterResourceType, ExtractorType} from "@/mods/BaseGame/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 
@@ -62,16 +62,16 @@ test("a deleted object's chunk drops out of the snapshot", async () => {
     assert.equal(event.chunks.length, 0);
 });
 
-test("undergrounds stay out of the bake; ramps stay in", async () => {
+test("undergrounds stay out of the bake; mouths stay in", async () => {
     const engine = await makeGameEngine();
-    // Ramp-down at (0,4), ramp-up at (0,1) auto-fills undergrounds at (0,3) and (0,2).
-    engine.applyMessage(new CreateObjectMessage(BeltRampDownDefinition.typeId, 0, 4, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(BeltRampUpDefinition.typeId, 0, 1, Direction.UP));
+    // Tunnel-down at (0,4), tunnel-up at (0,1) auto-fills undergrounds at (0,3) and (0,2).
+    engine.applyMessage(new CreateObjectMessage(BeltTunnelDownDefinition.typeId, 0, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltTunnelUpDefinition.typeId, 0, 1, Direction.UP));
 
     const event = engine.overworldBake.snapshot(0, 0, 1, 1);
     assert.deepEqual(runsFor(event, event.chunks[0]), [
-        {start: 1 * CHUNK_SIZE, length: 1, typeId: BeltRampUpDefinition.typeId},
-        {start: 4 * CHUNK_SIZE, length: 1, typeId: BeltRampDownDefinition.typeId},
+        {start: 1 * CHUNK_SIZE, length: 1, typeId: BeltTunnelUpDefinition.typeId},
+        {start: 4 * CHUNK_SIZE, length: 1, typeId: BeltTunnelDownDefinition.typeId},
     ]);
 });
 

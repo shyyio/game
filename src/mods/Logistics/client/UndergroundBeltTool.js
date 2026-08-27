@@ -1,11 +1,11 @@
 import {AbstractTool, Direction, Haptics, LAYER_SURFACE, CreateObjectMessage, DeleteObjectMessage} from "@spup/sdk/client";
-import {BeltBend, MAX_UNDERGROUND_LENGTH, BELT_NORMAL, BELT_RAMP_DOWN, BELT_RAMP_UP} from "../common/constants.js";
-import {BeltDefinition, BeltRampDownDefinition, BeltRampUpDefinition, isBeltType} from "../common/objectTypes.js";
+import {BeltBend, MAX_UNDERGROUND_LENGTH, BELT_NORMAL, BELT_TUNNEL_DOWN, BELT_TUNNEL_UP} from "../common/constants.js";
+import {BeltDefinition, BeltTunnelDownDefinition, BeltTunnelUpDefinition, isBeltType} from "../common/objectTypes.js";
 import {Belt} from "./BeltDrawLayer.js";
-import {getUndergroundBeltsToCreate, surfaceBeltAt, inferBeltParent, findRampPartner} from "../common/geometry.js";
+import {getUndergroundBeltsToCreate, surfaceBeltAt, inferBeltParent, findTunnelPartner} from "../common/geometry.js";
 
 /**
- * Rotatable single-ramp tool that drops one ramp per tap, pairing it with the ramp it tunnels to.
+ * Rotatable single-mouth tool that drops one mouth per tap, pairing it with the mouth it tunnels to.
  */
 export class UndergroundBeltTool extends AbstractTool {
 
@@ -23,7 +23,7 @@ export class UndergroundBeltTool extends AbstractTool {
     }
 
     get label() {
-        return "Ramp";
+        return "Tunnel";
     }
 
     get id() {
@@ -31,17 +31,17 @@ export class UndergroundBeltTool extends AbstractTool {
     }
 
     get textureName() {
-        return "belt-ramp-down/0";
+        return "belt-tunnel-down/0";
     }
 
     onTap(tileX, tileY) {
-        this._placeRamp(tileX, tileY, this._rotation.direction);
+        this._placeTunnelMouth(tileX, tileY, this._rotation.direction);
     }
 
     onTileEnter(tileX, tileY) {
         const placement = this._resolvePlacement(tileX, tileY, this._rotation.direction);
         const blocked = this._blocked(tileX, tileY, placement.direction);
-        // An overwritable same-axis belt is deleted before the ramp lands.
+        // An overwritable same-axis belt is deleted before the mouth lands.
         const overwrite = !blocked && this._surfaceBeltAt(tileX, tileY) !== null;
         const tile = [{x: tileX, y: tileY}];
         let blockedTiles = [];
@@ -83,11 +83,11 @@ export class UndergroundBeltTool extends AbstractTool {
     }
 
     onDragTile(tileX, tileY, direction) {
-        // No-op: ramps place by tap only.
+        // No-op: mouths place by tap only.
     }
 
     /**
-     * Every belt at a tile (surface or underground), as ramp-partner-scan candidates.
+     * Every belt at a tile (surface or underground), as mouth-partner-scan candidates.
      * @private
      * @returns {{id: number, type: BeltType, direction: Direction}[]}
      */
@@ -118,7 +118,7 @@ export class UndergroundBeltTool extends AbstractTool {
     }
 
     /**
-     * Whether a ramp facing `direction` can overwrite the belt: only a straight normal belt on the ramp's axis.
+     * Whether a mouth facing `direction` can overwrite the belt: only a straight normal belt on the mouth's axis.
      * @private
      * @returns {boolean}
      */
@@ -130,7 +130,7 @@ export class UndergroundBeltTool extends AbstractTool {
     }
 
     /**
-     * Whether the tile sits outside buildable chunks, or a surface belt blocks a ramp facing
+     * Whether the tile sits outside buildable chunks, or a surface belt blocks a mouth facing
      * `direction` (unless it's an overwritable same-axis belt).
      * @private
      * @returns {boolean}
@@ -149,10 +149,10 @@ export class UndergroundBeltTool extends AbstractTool {
     }
 
     /**
-     * Places one ramp, pairing it with the ramp the tool faces, then flips the facing 180° for the next tap.
+     * Places one mouth, pairing it with the mouth the tool faces, then flips the facing 180° for the next tap.
      * @private
      */
-    _placeRamp(tileX, tileY, direction) {
+    _placeTunnelMouth(tileX, tileY, direction) {
         // The server would drop an ungated placement anyway.
         if (!this._client.canBuildAt(tileX, tileY)) {
             return;
@@ -164,14 +164,14 @@ export class UndergroundBeltTool extends AbstractTool {
             if (!this._overwritable(existing, placement.direction)) {
                 return;
             }
-            // Client removes the same-axis belt before laying the ramp.
+            // Client removes the same-axis belt before laying the mouth.
             this.session.sendMessage(new DeleteObjectMessage(existing.id));
         }
 
-        // Tunnel span is derived sim-side; only the ramp is sent.
-        const rampType = placement.type === BELT_RAMP_UP ? BeltRampUpDefinition : BeltRampDownDefinition;
+        // Tunnel span is derived sim-side; only the mouth is sent.
+        const mouthType = placement.type === BELT_TUNNEL_UP ? BeltTunnelUpDefinition : BeltTunnelDownDefinition;
         this.session.sendMessage(new CreateObjectMessage(
-            rampType.typeId,
+            mouthType.typeId,
             tileX,
             tileY,
             placement.direction,
@@ -180,8 +180,8 @@ export class UndergroundBeltTool extends AbstractTool {
 
         this._rotation.invert();
         // Advance the center-lock crosshair: a lone entrance two tiles, a completed tunnel one.
-        const completesTunnel = placement.type === BELT_RAMP_UP && placement.parentId !== null;
-        const loneEntrance = placement.type === BELT_RAMP_DOWN && placement.parentId === null;
+        const completesTunnel = placement.type === BELT_TUNNEL_UP && placement.parentId !== null;
+        const loneEntrance = placement.type === BELT_TUNNEL_DOWN && placement.parentId === null;
         if (loneEntrance) {
             this._client.advanceCenterLock(tileX, tileY, placement.direction, 2);
         }
@@ -192,30 +192,30 @@ export class UndergroundBeltTool extends AbstractTool {
     }
 
     /**
-     * Decides what a tap places: a RAMP_DOWN into a downstream exit, a RAMP_UP back to an upstream entrance, or a lone entrance.
+     * Decides what a tap places: a TUNNEL_DOWN into a downstream exit, a TUNNEL_UP back to an upstream entrance, or a lone entrance.
      * @private
      * @returns {{type: BeltType, parentId: number|null, direction: Direction}}
      */
     _resolvePlacement(tileX, tileY, direction) {
-        const downstreamExit = this._findRampParent(tileX, tileY, direction, BELT_RAMP_DOWN);
+        const downstreamExit = this._findTunnelParent(tileX, tileY, direction, BELT_TUNNEL_DOWN);
         if (downstreamExit !== null) {
-            return {type: BELT_RAMP_DOWN, parentId: downstreamExit, direction};
+            return {type: BELT_TUNNEL_DOWN, parentId: downstreamExit, direction};
         }
         const inverted = Direction.invert(direction);
-        const upstreamEntrance = this._findRampParent(tileX, tileY, inverted, BELT_RAMP_UP);
+        const upstreamEntrance = this._findTunnelParent(tileX, tileY, inverted, BELT_TUNNEL_UP);
         if (upstreamEntrance !== null) {
-            return {type: BELT_RAMP_UP, parentId: upstreamEntrance, direction: inverted};
+            return {type: BELT_TUNNEL_UP, parentId: upstreamEntrance, direction: inverted};
         }
-        return {type: BELT_RAMP_DOWN, parentId: null, direction};
+        return {type: BELT_TUNNEL_DOWN, parentId: null, direction};
     }
 
     /**
-     * Scans along the facing axis for the opposite ramp a `type` ramp here would tunnel to.
+     * Scans along the facing axis for the opposite mouth a `type` mouth here would tunnel to.
      * @private
-     * @returns {number|null} the paired ramp's id
+     * @returns {number|null} the paired mouth's id
      */
-    _findRampParent(tileX, tileY, direction, type) {
-        const belt = findRampPartner(tileX, tileY, direction, type, (x, y) => this._beltCandidatesAt(x, y));
+    _findTunnelParent(tileX, tileY, direction, type) {
+        const belt = findTunnelPartner(tileX, tileY, direction, type, (x, y) => this._beltCandidatesAt(x, y));
         if (belt === null) {
             return null;
         }
@@ -223,7 +223,7 @@ export class UndergroundBeltTool extends AbstractTool {
     }
 
     /**
-     * The buried belts laid between the new ramp and its matched `parentId` (empty when adjacent).
+     * The buried belts laid between the new mouth and its matched `parentId` (empty when adjacent).
      * @private
      * @returns {{x: number, y: number}[]}
      */

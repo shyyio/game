@@ -1,8 +1,8 @@
 import {AbstractModDeclaration, ItemDefinition} from "@spup/sdk";
 import {
     BeltDefinition,
-    BeltRampDownDefinition,
-    BeltRampUpDefinition,
+    BeltTunnelDownDefinition,
+    BeltTunnelUpDefinition,
     BeltUndergroundDefinition,
     SplitterDefinition,
     RoadDefinition,
@@ -28,14 +28,14 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
     }
 
     get objectTypes() {
-        // The ramp/underground kinds append after the originals, keeping prior typeIds stable.
+        // The mouth/underground kinds append after the originals, keeping prior typeIds stable.
         return [
             BeltDefinition,
             SplitterDefinition,
             RoadDefinition,
             HousingDefinition,
-            BeltRampDownDefinition,
-            BeltRampUpDefinition,
+            BeltTunnelDownDefinition,
+            BeltTunnelUpDefinition,
             BeltUndergroundDefinition,
         ];
     }

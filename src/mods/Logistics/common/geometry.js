@@ -2,21 +2,21 @@ import {Direction} from "@spup/sdk";
 import {BeltDefinition, isBeltType} from "./objectTypes.js";
 import {
     BELT_NORMAL,
-    BELT_RAMP_UP,
-    BELT_RAMP_DOWN,
+    BELT_TUNNEL_UP,
+    BELT_TUNNEL_DOWN,
     BELT_UNDERGROUND,
     MAX_UNDERGROUND_LENGTH,
     tunnelStep,
 } from "./constants.js";
 
 /**
- * Whether a feeder feeds forward on the surface: ramp entrances/undergrounds bury the flow, any non-belt feeds forward.
+ * Whether a feeder feeds forward on the surface: tunnel entrances/undergrounds bury the flow, any non-belt feeds forward.
  * @param {object} data - a feeder record's data
  * @returns {boolean}
  */
 function feedsForward(data) {
     if (isBeltType(data.type)) {
-        return data.type.beltKind === BELT_NORMAL || data.type.beltKind === BELT_RAMP_UP;
+        return data.type.beltKind === BELT_NORMAL || data.type.beltKind === BELT_TUNNEL_UP;
     }
     return true;
 }
@@ -68,32 +68,32 @@ export function surfaceBeltAt(index, tileX, tileY) {
 }
 
 /**
- * Walks `ramp`'s tunnel along its axis, returning the buried tiles and the paired opposite ramp (or null).
+ * Walks `mouth`'s tunnel along its axis, returning the buried tiles and the paired opposite mouth (or null).
  * @param {ObjectsView} index
- * @param {CacheEntry} ramp
+ * @param {CacheEntry} mouth
  * @returns {{tiles: {x: number, y: number}[], pair: CacheEntry|null}}
  */
-export function walkTunnel(index, ramp) {
-    const {dx, dy} = tunnelStep(ramp.data.type.beltKind, ramp.data.direction);
-    const pairType = ramp.data.type.beltKind === BELT_RAMP_UP ? BELT_RAMP_DOWN : BELT_RAMP_UP;
+export function walkTunnel(index, mouth) {
+    const {dx, dy} = tunnelStep(mouth.data.type.beltKind, mouth.data.direction);
+    const pairType = mouth.data.type.beltKind === BELT_TUNNEL_UP ? BELT_TUNNEL_DOWN : BELT_TUNNEL_UP;
 
-    let x = ramp.tileX;
-    let y = ramp.tileY;
+    let x = mouth.tileX;
+    let y = mouth.tileY;
     const tiles = [];
     for (let i = 0; i < MAX_UNDERGROUND_LENGTH + 1; i += 1) {
         x += dx;
         y += dy;
         const records = index.getAtTile(x, y);
-        // A tunnel's undergrounds face its ramps' direction, so skip a crossing tunnel's.
+        // A tunnel's undergrounds face its mouths' direction, so skip a crossing tunnel's.
         const underground = records.find(record =>
-            record.data.type.beltKind === BELT_UNDERGROUND && record.data.direction === ramp.data.direction
+            record.data.type.beltKind === BELT_UNDERGROUND && record.data.direction === mouth.data.direction
         );
         if (underground !== undefined) {
             tiles.push({x, y});
             continue;
         }
         const pair = records.find(record =>
-            record.data.type.beltKind === pairType && record.data.direction === ramp.data.direction
+            record.data.type.beltKind === pairType && record.data.direction === mouth.data.direction
         );
         if (pair === undefined) {
             return {tiles, pair: null};
@@ -106,28 +106,28 @@ export function walkTunnel(index, ramp) {
 // ---- Underground belt helpers ----
 
 /**
- * Whether a belt type is a ramp entrance or exit.
+ * Whether a belt type is a tunnel entrance or exit.
  * @param {number} type
  * @returns {boolean}
  */
-export function isRamp(type) {
-    return type === BELT_RAMP_UP || type === BELT_RAMP_DOWN;
+export function isTunnelMouth(type) {
+    return type === BELT_TUNNEL_UP || type === BELT_TUNNEL_DOWN;
 }
 
 /**
- * Scans from (x, y) along a `kind` ramp's tunnel axis for its partner ramp; a same-kind ramp in
- * between blocks the pairing. Shared by the sim (`Belts.rampPartner`) and the client tool
+ * Scans from (x, y) along a `kind` mouth's tunnel axis for its partner mouth; a same-kind mouth in
+ * between blocks the pairing. Shared by the sim (`Belts.tunnelPartner`) and the client tool
  * (`UndergroundBeltTool`), each supplying its own belt lookup.
  * @param {number} x
  * @param {number} y
  * @param {Direction} direction
- * @param {BeltType} kind - BELT_RAMP_DOWN or BELT_RAMP_UP
+ * @param {BeltType} kind - BELT_TUNNEL_DOWN or BELT_TUNNEL_UP
  * @param {function(number, number): {type: BeltType, direction: Direction}[]} beltsAt - candidates on a tile
  * @returns {object|null} the matched partner-kind belt (whatever shape `beltsAt` returns), or null
  */
-export function findRampPartner(x, y, direction, kind, beltsAt) {
+export function findTunnelPartner(x, y, direction, kind, beltsAt) {
     const {dx, dy} = tunnelStep(kind, direction);
-    const partnerKind = kind === BELT_RAMP_UP ? BELT_RAMP_DOWN : BELT_RAMP_UP;
+    const partnerKind = kind === BELT_TUNNEL_UP ? BELT_TUNNEL_DOWN : BELT_TUNNEL_UP;
     let cx = x;
     let cy = y;
     for (let i = 1; i < MAX_UNDERGROUND_LENGTH + 2; i += 1) {
@@ -146,21 +146,21 @@ export function findRampPartner(x, y, direction, kind, beltsAt) {
 }
 
 /**
- * @param rampParent {{x: number, y: number, type: number, direction: Direction}}
+ * @param tunnelParent {{x: number, y: number, type: number, direction: Direction}}
  * @param options {{x: number, y: number, type: number, direction: Direction}}
  * @returns {{x: number, y: number}[]}
  */
-export function getUndergroundBeltsToCreate(rampParent, options) {
-    if (rampParent === null || rampParent.direction !== options.direction
-        || !isRamp(rampParent.type)
-        || (rampParent.x !== options.x && rampParent.y !== options.y)) {
-        throw new Error("Invalid ramp parent for underground belt creation");
+export function getUndergroundBeltsToCreate(tunnelParent, options) {
+    if (tunnelParent === null || tunnelParent.direction !== options.direction
+        || !isTunnelMouth(tunnelParent.type)
+        || (tunnelParent.x !== options.x && tunnelParent.y !== options.y)) {
+        throw new Error("Invalid tunnel parent for underground belt creation");
     }
 
-    const x1 = rampParent.type === BELT_RAMP_UP ? options.x : rampParent.x;
-    const y1 = rampParent.type === BELT_RAMP_UP ? options.y : rampParent.y;
-    let x2 = rampParent.type === BELT_RAMP_UP ? rampParent.x : options.x;
-    let y2 = rampParent.type === BELT_RAMP_UP ? rampParent.y : options.y;
+    const x1 = tunnelParent.type === BELT_TUNNEL_UP ? options.x : tunnelParent.x;
+    const y1 = tunnelParent.type === BELT_TUNNEL_UP ? options.y : tunnelParent.y;
+    let x2 = tunnelParent.type === BELT_TUNNEL_UP ? tunnelParent.x : options.x;
+    let y2 = tunnelParent.type === BELT_TUNNEL_UP ? tunnelParent.y : options.y;
 
     let dx = 0;
     if (x2 !== x1) {

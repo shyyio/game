@@ -1,10 +1,10 @@
 import {AbstractBehavior, CreateObjectMessage, DeleteObjectMessage} from "@spup/sdk";
 import {Belts} from "./Belts.js";
 import {BeltUndergroundDefinition} from "../common/objectTypes.js";
-import {getUndergroundBeltsToCreate, isRamp} from "../common/geometry.js";
+import {getUndergroundBeltsToCreate, isTunnelMouth} from "../common/geometry.js";
 
 /**
- * A belt cell of one kind: spawn/despawn feed the shared Belts path engine; a ramp pair's tunnel
+ * A belt cell of one kind: spawn/despawn feed the shared Belts path engine; a mouth pair's tunnel
  * is derived sim-side (spawn fills the span, despawn collapses it).
  */
 export class BeltBehavior extends AbstractBehavior {
@@ -24,7 +24,7 @@ export class BeltBehavior extends AbstractBehavior {
 
     onSpawn(engine, placed, eid, type, message) {
         const belts = engine.resolve(Belts);
-        if (isRamp(this.beltKind)) {
+        if (isTunnelMouth(this.beltKind)) {
             this._fillTunnel(engine, belts, message);
         }
         belts.placeBelt(message.x, message.y, message.direction, this.beltKind, placed.objectIdOf(eid));
@@ -36,8 +36,8 @@ export class BeltBehavior extends AbstractBehavior {
         if (belt === null) {
             return;
         }
-        if (isRamp(belt.type)) {
-            // Buried undergrounds go first, while the ramp's run is still intact to walk.
+        if (isTunnelMouth(belt.type)) {
+            // Buried undergrounds go first, while the mouth's run is still intact to walk.
             for (const underground of belts.tunnelUndergrounds(belt)) {
                 engine.applyMessage(new DeleteObjectMessage(underground.id));
             }
@@ -46,8 +46,8 @@ export class BeltBehavior extends AbstractBehavior {
     }
 
     /**
-     * Spawns the undergrounds between a just-placed ramp and its partner; a span past the maximum
-     * length stays unfilled, leaving the ramps unlinked, and occupied cells are skipped.
+     * Spawns the undergrounds between a just-placed mouth and its partner; a span past the maximum
+     * length stays unfilled, leaving the mouths unlinked, and occupied cells are skipped.
      * @private
      * @param {GameEngine} engine
      * @param {Belts} belts
@@ -55,7 +55,7 @@ export class BeltBehavior extends AbstractBehavior {
      * @returns {void}
      */
     _fillTunnel(engine, belts, message) {
-        const partner = belts.rampPartner(message.x, message.y, message.direction, this.beltKind);
+        const partner = belts.tunnelPartner(message.x, message.y, message.direction, this.beltKind);
         if (partner === null) {
             return;
         }

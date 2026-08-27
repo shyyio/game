@@ -7,8 +7,8 @@ export const MAX_UNDERGROUND_LENGTH = 4;
 
 // ---- Belt types ----
 export const BELT_NORMAL = 0;
-export const BELT_RAMP_DOWN = 1;
-export const BELT_RAMP_UP = 2;
+export const BELT_TUNNEL_DOWN = 1;
+export const BELT_TUNNEL_UP = 2;
 export const BELT_UNDERGROUND = 3;
 
 /**
@@ -34,13 +34,13 @@ export function beltPositionLayer(type, direction) {
 }
 
 /**
- * Per-step (dx, dy) for walking a ramp's tunnel: RAMP_UP steps against its facing, RAMP_DOWN along it.
- * @param {number} rampType BELT_RAMP_UP or BELT_RAMP_DOWN
- * @param {Direction} direction the ramp's facing
+ * Per-step (dx, dy) for walking a mouth's tunnel: TUNNEL_UP steps against its facing, TUNNEL_DOWN along it.
+ * @param {number} mouthType BELT_TUNNEL_UP or BELT_TUNNEL_DOWN
+ * @param {Direction} direction the mouth's facing
  * @returns {{dx: number, dy: number}}
  */
-export function tunnelStep(rampType, direction) {
-    const sign = rampType === BELT_RAMP_UP ? -1 : 1;
+export function tunnelStep(mouthType, direction) {
+    const sign = mouthType === BELT_TUNNEL_UP ? -1 : 1;
     return {dx: sign * Direction.dx(direction), dy: sign * Direction.dy(direction)};
 }
 
@@ -63,7 +63,7 @@ export const HOUSING_WORKER_SUPPLY = 5;
 export const MAP_COLOR_HOUSING = 0x55a355;
 export const MAP_COLOR_ROAD = 0xFFBF00;
 export const MAP_COLOR_BELT = 0xf7df9e;
-export const MAP_COLOR_BELT_RAMP = 0xc8a16e;
+export const MAP_COLOR_BELT_TUNNEL = 0xc8a16e;
 
 // Roads draw below the worker figures (19) and the default object sprites (20).
 export const DRAW_LAYER_ROAD = 18;

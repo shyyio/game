@@ -42,7 +42,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
     set mapMode(value) {}
 
     /**
-     * Shows a single ghost belt/ramp at the tile facing `direction`.
+     * Shows a single ghost belt/mouth at the tile facing `direction`.
      * @param {number} tileX
      * @param {number} tileY
      * @param {Direction} direction
@@ -61,19 +61,19 @@ export class BeltGhostLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Shows the ramp at the hover tile plus the buried belts back to its pair.
-     * @param {number} rampTileX
-     * @param {number} rampTileY
+     * Shows the mouth at the hover tile plus the buried belts back to its pair.
+     * @param {number} mouthTileX
+     * @param {number} mouthTileY
      * @param {Direction} direction
-     * @param {BeltType} rampType RAMP_DOWN / RAMP_UP
+     * @param {BeltType} mouthType TUNNEL_DOWN / TUNNEL_UP
      * @param {{x: number, y: number}[]} undergroundTiles tunnel tiles between the pair
      * @param {boolean} atMax tints the buried belts amber at maximum tunnel length
      */
-    showTunnelPreview(rampTileX, rampTileY, direction, rampType, undergroundTiles, atMax) {
+    showTunnelPreview(mouthTileX, mouthTileY, direction, mouthType, undergroundTiles, atMax) {
         this.clear();
-        this._anchorTileX = rampTileX;
-        this._anchorTileY = rampTileY;
-        this._addSprite(this._floatingContainer, rampTileX, rampTileY, direction, rampType, GHOST_TINT, BeltBend.STRAIGHT);
+        this._anchorTileX = mouthTileX;
+        this._anchorTileY = mouthTileY;
+        this._addSprite(this._floatingContainer, mouthTileX, mouthTileY, direction, mouthType, GHOST_TINT, BeltBend.STRAIGHT);
         const undergroundTint = atMax ? GHOST_AT_MAX_TINT : GHOST_TINT;
         for (const tile of undergroundTiles) {
             this._addSprite(this._gridContainer, tile.x, tile.y, direction, BELT_UNDERGROUND, undergroundTint, BeltBend.STRAIGHT);

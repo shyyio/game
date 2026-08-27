@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {BeltDefinition, BeltRampDownDefinition, BeltRampUpDefinition} from "@/mods/Logistics/common/objectTypes.js";
+import {BeltDefinition, BeltTunnelDownDefinition, BeltTunnelUpDefinition} from "@/mods/Logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
 
@@ -12,9 +12,9 @@ const BLUE = 3;
 test("a vertical tunnel and a horizontal belt cross on the same tile and flow independently", async () => {
     const engine = await makeGameEngine();
 
-    // Vertical UP tunnel down column x=0: ramp-down (0,4), ramp-up (0,1) -> undergrounds (0,3),(0,2); feeder (0,5).
-    engine.applyMessage(new CreateObjectMessage(BeltRampDownDefinition.typeId, 0, 4, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(BeltRampUpDefinition.typeId, 0, 1, Direction.UP));
+    // Vertical UP tunnel down column x=0: tunnel-down (0,4), tunnel-up (0,1) -> undergrounds (0,3),(0,2); feeder (0,5).
+    engine.applyMessage(new CreateObjectMessage(BeltTunnelDownDefinition.typeId, 0, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltTunnelUpDefinition.typeId, 0, 1, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, 0, 5, Direction.UP));
 
     // Horizontal RIGHT belt across row y=3, passing over the underground at (0,3).

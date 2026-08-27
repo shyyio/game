@@ -4,7 +4,7 @@ import {Direction, CHUNK_SIZE} from "@/common/constants.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {Belts} from "@/mods/Logistics/sim/Belts.js";
 import {PortDefinition} from "@/sdk/common.js";
-import {BELT_RAMP_DOWN, BELT_RAMP_UP, BELT_UNDERGROUND} from "@/mods/Logistics/common/constants.js";
+import {BELT_TUNNEL_DOWN, BELT_TUNNEL_UP, BELT_UNDERGROUND} from "@/mods/Logistics/common/constants.js";
 
 const RED = 1;
 const EMPTY = -1;
@@ -77,10 +77,10 @@ test("a tunnel crossing under a bend belt's head keeps its own in-port", async (
     belts.placeBelt(seam, 5, Direction.UP);
     // A tunnel running RIGHT across the seam: its far segment's head is the buried (seam,5) tile,
     // whose in-port is that same RIGHT edge.
-    belts.placeBelt(seam - 2, 5, Direction.RIGHT, BELT_RAMP_DOWN);
+    belts.placeBelt(seam - 2, 5, Direction.RIGHT, BELT_TUNNEL_DOWN);
     belts.placeBelt(seam - 1, 5, Direction.RIGHT, BELT_UNDERGROUND);
     belts.placeBelt(seam, 5, Direction.RIGHT, BELT_UNDERGROUND);
-    belts.placeBelt(seam + 1, 5, Direction.RIGHT, BELT_RAMP_UP);
+    belts.placeBelt(seam + 1, 5, Direction.RIGHT, BELT_TUNNEL_UP);
 
     const tunnel = belts.paths.find(path => path.headX === seam && path.headY === 5
         && belts.beltById(path.beltIds[0]).type === BELT_UNDERGROUND);

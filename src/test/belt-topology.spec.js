@@ -4,7 +4,7 @@ import {Direction} from "@/common/constants.js";
 import {tileId} from "@/common/util.js";
 import {GameEngine, EMPTY} from "@/sim/GameEngine.js";
 import {Belts} from "@/mods/Logistics/sim/Belts.js";
-import {BELT_RAMP_DOWN} from "@/mods/Logistics/common/constants.js";
+import {BELT_TUNNEL_DOWN} from "@/mods/Logistics/common/constants.js";
 
 const RED = 1;
 
@@ -192,20 +192,20 @@ test("a cross-chunk feeder stays its own path when a deletion orphans its child"
     }
 });
 
-// A ramp-down's output is buried, so it is not a valid surface feeder even with a higher id: it can't
+// A tunnel-down's output is buried, so it is not a valid surface feeder even with a higher id: it can't
 // steal a junction from a normal belt. (Belt.spec: "Heals a loop seam past an incompatible higher-id belt".)
-test("a higher-id ramp-down does not steal a surface junction", async () => {
+test("a higher-id tunnel-down does not steal a surface junction", async () => {
     const {belts} = await module();
     belts.placeBelt(0, 0, Direction.UP);   // flows into (0,-1)
     belts.placeBelt(0, 1, Direction.UP);   // feeds (0,0) from the south
-    // A ramp-down at (0,1)'s... place one pointing into (0,0) with a higher id; its buried output must
+    // A tunnel-down at (0,1)'s... place one pointing into (0,0) with a higher id; its buried output must
     // not connect to the surface belt, so (0,0) keeps its normal feeder.
     belts.placeBelt(-1, 0, Direction.RIGHT); // normal feeder into (0,0), higher id — this one wins
-    const beforeRamp = pathThrough(belts, 0, 0).belts.slice();
+    const beforeBelts = pathThrough(belts, 0, 0).belts.slice();
 
-    belts.placeBelt(1, 0, Direction.LEFT, BELT_RAMP_DOWN);
-    // The ramp-down at (1,0) faces LEFT into (0,0) but its output is buried, so (0,0)'s run is unchanged.
-    assert.deepEqual(pathThrough(belts, 0, 0).belts, beforeRamp, "the ramp-down did not steal the junction");
+    belts.placeBelt(1, 0, Direction.LEFT, BELT_TUNNEL_DOWN);
+    // The tunnel-down at (1,0) faces LEFT into (0,0) but its output is buried, so (0,0)'s run is unchanged.
+    assert.deepEqual(pathThrough(belts, 0, 0).belts, beforeBelts, "the tunnel-down did not steal the junction");
 });
 
 // The half-tile items on the surviving belts are kept when a belt is deleted (the path splits or
