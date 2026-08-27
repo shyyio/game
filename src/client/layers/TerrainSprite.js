@@ -134,15 +134,37 @@ export class TerrainPalette {
      * @param {Biome[]} biomes in biomeId order
      */
     constructor(biomes) {
-        this._bytes = new Uint8Array(biomes.length * SHADE_COUNT * BYTES_PER_PIXEL);
+        this._through = new Int16Array(biomes.length).fill(-1);
+        const throughBiomes = [];
         for (const [index, biome] of biomes.entries()) {
-            for (let shade = 0; shade < SHADE_COUNT; shade++) {
-                const at = (index * SHADE_COUNT + shade) * BYTES_PER_PIXEL;
-                this._bytes[at] = shadeChannel((biome.color >> 16) & COLOR_CHANNEL_MASK, shade, biome.shadeStrength);
-                this._bytes[at + 1] = shadeChannel((biome.color >> 8) & COLOR_CHANNEL_MASK, shade, biome.shadeStrength);
-                this._bytes[at + 2] = shadeChannel(biome.color & COLOR_CHANNEL_MASK, shade, biome.shadeStrength);
-                this._bytes[at + 3] = ALPHA_OPAQUE;
+            if (biome.blendColor !== null) {
+                this._through[index] = biomes.length + throughBiomes.length;
+                throughBiomes.push(biome);
             }
+        }
+        this._bytes = new Uint8Array((biomes.length + throughBiomes.length) * SHADE_COUNT * BYTES_PER_PIXEL);
+        for (const [index, biome] of biomes.entries()) {
+            this._fillEntry(index, biome.color, biome.shadeStrength);
+        }
+        for (const [index, biome] of throughBiomes.entries()) {
+            this._fillEntry(biomes.length + index, biome.blendColor, biome.shadeStrength);
+        }
+    }
+
+    /**
+     * @private
+     * @param {number} entry palette slot
+     * @param {number} color 0xRRGGBB
+     * @param {number} strength the biome's shade multiplier
+     * @returns {void}
+     */
+    _fillEntry(entry, color, strength) {
+        for (let shade = 0; shade < SHADE_COUNT; shade++) {
+            const at = (entry * SHADE_COUNT + shade) * BYTES_PER_PIXEL;
+            this._bytes[at] = shadeChannel((color >> 16) & COLOR_CHANNEL_MASK, shade, strength);
+            this._bytes[at + 1] = shadeChannel((color >> 8) & COLOR_CHANNEL_MASK, shade, strength);
+            this._bytes[at + 2] = shadeChannel(color & COLOR_CHANNEL_MASK, shade, strength);
+            this._bytes[at + 3] = ALPHA_OPAQUE;
         }
     }
 
@@ -175,9 +197,20 @@ export class TerrainPalette {
             const shade = shadeAt(cell);
             let biome = bake.biomes[cell];
             let weight = 0;
+            let mixEntry = biome;
             if (bake.weights !== null && bake.weights[cell] > 0) {
                 if (blendLevels > 0) {
                     weight = this._blendWeight(bake.weights[cell], ditherAt(cell));
+                    // A shore blends one-way: the shore biome's edge runs to its own edge color at
+                    // the line, and the neighbor keeps its color whole.
+                    if (this._through[biome] !== -1) {
+                        mixEntry = this._through[biome];
+                        weight *= 2;
+                    } else if (this._through[bake.others[cell]] !== -1) {
+                        weight = 0;
+                    } else {
+                        mixEntry = bake.others[cell];
+                    }
                 } else if (bake.weights[cell] * WEIGHT_PER_BAKED_UNIT > ditherAt(cell)) {
                     // Nothing to mix, so the cell takes the other biome whole instead.
                     biome = bake.others[cell];
@@ -187,7 +220,7 @@ export class TerrainPalette {
             const to = cell * BYTES_PER_PIXEL;
             let other = from;
             if (weight > 0) {
-                other = (bake.others[cell] * SHADE_COUNT + shade) * BYTES_PER_PIXEL;
+                other = (mixEntry * SHADE_COUNT + shade) * BYTES_PER_PIXEL;
             }
             pixels[to] = this._bytes[from] + (this._bytes[other] - this._bytes[from]) * weight;
             pixels[to + 1] = this._bytes[from + 1] + (this._bytes[other + 1] - this._bytes[from + 1]) * weight;

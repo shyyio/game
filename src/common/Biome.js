@@ -56,8 +56,10 @@ export class Biome {
      * @param {NoiseRange[]} [ranges] all must hold; none = matches every tile
      * @param {number} [shadeStrength] multiplier on the client's per-tile shade variation
      * @param {TerrainDetail[]} [details] decorations scattered over its tiles; densities sum to <= 1
+     * @param {number|null} [blendColor] its own edge cells gradient to this color while the neighbor stays whole (a shore); null mixes the neighbor's color
+     * @param {number|null} [blendWidth] its own blend width; null takes the global width, a pair uses the narrower
      */
-    constructor(name, color, ranges = [], shadeStrength = 1, details = []) {
+    constructor(name, color, ranges = [], shadeStrength = 1, details = [], blendColor = null, blendWidth = null) {
         if (!(shadeStrength >= 0)) {
             throw new RangeError(`Biome "${name}": shadeStrength must be >= 0, got ${shadeStrength}`);
         }
@@ -68,11 +70,19 @@ export class Biome {
         if (totalDensity > 1) {
             throw new RangeError(`Biome "${name}": detail densities sum to ${totalDensity}, above 1`);
         }
+        if (blendColor !== null && !Number.isInteger(blendColor)) {
+            throw new RangeError(`Biome "${name}": blendColor must be an integer color or null, got ${blendColor}`);
+        }
+        if (blendWidth !== null && !(blendWidth > 0)) {
+            throw new RangeError(`Biome "${name}": blendWidth must be > 0 or null, got ${blendWidth}`);
+        }
         this.name = name;
         this.color = color;
         this.ranges = ranges;
         this.shadeStrength = shadeStrength;
         this.details = details;
+        this.blendColor = blendColor;
+        this.blendWidth = blendWidth;
         this._biomeId = null;
     }
 
