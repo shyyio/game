@@ -1,5 +1,5 @@
 import {TickPhase, Direction, EMPTY, NO_EID, chunkId, chunkOrigin, tileId, getOrCreate, removeFromGroup} from "@spup/sdk";
-import {findRampPartner} from "../common/geometry.js";
+import {findTunnelPartner} from "../common/geometry.js";
 import {
     BeltPathBatchEvent,
     BeltPathRecalculateEvent,
@@ -9,8 +9,8 @@ import {
 } from "../common/events.js";
 import {
     BELT_NORMAL,
-    BELT_RAMP_DOWN,
-    BELT_RAMP_UP,
+    BELT_TUNNEL_DOWN,
+    BELT_TUNNEL_UP,
     BELT_UNDERGROUND,
     LAYERS_UNDERGROUND_AXIS,
     beltPositionLayer,
@@ -161,10 +161,10 @@ export class Belts {
         const ax = belt.x + Direction.dx(belt.direction);
         const ay = belt.y + Direction.dy(belt.direction);
         const ahead = this._beltsAt(ax, ay);
-        // A tunnel continues on its own axis into an underground or ramp-up; everything else feeds a surface belt.
-        if (belt.type === BELT_UNDERGROUND || belt.type === BELT_RAMP_DOWN) {
+        // A tunnel continues on its own axis into an underground or tunnel-up; everything else feeds a surface belt.
+        if (belt.type === BELT_UNDERGROUND || belt.type === BELT_TUNNEL_DOWN) {
             return ahead.find(candidate =>
-                (candidate.type === BELT_UNDERGROUND || candidate.type === BELT_RAMP_UP)
+                (candidate.type === BELT_UNDERGROUND || candidate.type === BELT_TUNNEL_UP)
                 && Direction.axis(candidate.direction) === Direction.axis(belt.direction));
         }
         return ahead.find(candidate => candidate.type !== BELT_UNDERGROUND);
@@ -268,15 +268,15 @@ export class Belts {
     }
 
     /**
-     * The ramp this placement would tunnel to; a same-kind ramp in between blocks the pairing.
+     * The mouth this placement would tunnel to; a same-kind mouth in between blocks the pairing.
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
-     * @param {BeltType} kind - BELT_RAMP_DOWN or BELT_RAMP_UP
+     * @param {BeltType} kind - BELT_TUNNEL_DOWN or BELT_TUNNEL_UP
      * @returns {{x:number, y:number, direction:number, type:number}|null}
      */
-    rampPartner(x, y, direction, kind) {
-        const belt = findRampPartner(x, y, direction, kind, (cx, cy) => this._beltsAt(cx, cy));
+    tunnelPartner(x, y, direction, kind) {
+        const belt = findTunnelPartner(x, y, direction, kind, (cx, cy) => this._beltsAt(cx, cy));
         if (belt === null) {
             return null;
         }
@@ -567,16 +567,16 @@ export class Belts {
     }
 
     /**
-     * The undergrounds buried in `ramp`'s tunnel (not the paired ramp).
-     * @param {object} ramp
+     * The undergrounds buried in `mouth`'s tunnel (not the paired mouth).
+     * @param {object} mouth
      * @returns {object[]}
      */
-    tunnelUndergrounds(ramp) {
+    tunnelUndergrounds(mouth) {
         const undergrounds = [];
-        const step = ramp.type === BELT_RAMP_DOWN
+        const step = mouth.type === BELT_TUNNEL_DOWN
             ? belt => this._flowInto(belt)
             : belt => this._chosenUpstream(belt);
-        let current = step(ramp);
+        let current = step(mouth);
         while (current !== undefined && current.type === BELT_UNDERGROUND) {
             undergrounds.push(current);
             current = step(current);

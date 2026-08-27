@@ -5,7 +5,7 @@ import Haptics from "@/client/Haptics.js";
 
 /**
  * Paint-eraser: a tap or drag deletes every surface object on each tile touched, any type. Only
- * surface objects, so buried undergrounds are untouched (their ramp is the deletable surface).
+ * surface objects, so buried undergrounds are untouched (their mouth is the deletable surface).
  */
 export class EraserTool extends AbstractTool {
 

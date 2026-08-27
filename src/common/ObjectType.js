@@ -258,7 +258,7 @@ export class ObjectType {
 
     /**
      * The subset of this object's `portKind` ports the sim links. The default is all of them;
-     * objects that bury a port (a belt ramp) override this.
+     * objects that bury a port (a belt mouth) override this.
      * @param {("inputPorts"|"outputPorts")} portKind
      * @returns {PortDefinition[]}
      */

@@ -13,8 +13,8 @@ import {
     BeltItemDeleteEvent,
     BeltItemResetEvent,
 } from "./common/events.js";
-import {tunnelStep, BELT_RAMP_DOWN, BELT_RAMP_UP, BELT_UNDERGROUND} from "./common/constants.js";
-import {walkTunnel, isRamp, inferBeltParent} from "./common/geometry.js";
+import {tunnelStep, BELT_TUNNEL_DOWN, BELT_TUNNEL_UP, BELT_UNDERGROUND} from "./common/constants.js";
+import {walkTunnel, isTunnelMouth, inferBeltParent} from "./common/geometry.js";
 import {
     AbstractClientMod,
     ObjectInsertEvent,
@@ -51,7 +51,7 @@ export class LogisticsClientMod extends AbstractClientMod {
         this._ghostLayer = new BeltGhostLayer();
         // Driven imperatively by onEvent.
         this._beltLayer = new BeltDrawLayer();
-        // Reveals buried tunnel belts under a hovered ramp.
+        // Reveals buried tunnel belts under a hovered mouth.
         this._overlayLayer = new BeltOverlayDrawLayer();
         // Head id → belt ids in path order (head last).
         this._pathParts = new Map();
@@ -438,28 +438,28 @@ export class LogisticsClientMod extends AbstractClientMod {
             tileY: record.tileY,
             sourceDirection: sourceDirection,
             halfTile: halfTile,
-            // Boundary half slots: a ramp-up's is still buried; the first buried tile's renders under the occluders.
+            // Boundary half slots: a tunnel-up's is still buried; the first buried tile's renders under the occluders.
             hidden: (record.data.type.beltKind === BELT_UNDERGROUND
-                    && !(halfTile && this._rampDownBehind(client, record)))
-                || (record.data.type.beltKind === BELT_RAMP_UP && halfTile),
+                    && !(halfTile && this._tunnelDownBehind(client, record)))
+                || (record.data.type.beltKind === BELT_TUNNEL_UP && halfTile),
         };
     }
 
     /**
-     * Whether the tile behind a buried belt holds the tunnel's entrance ramp (first buried tile).
+     * Whether the tile behind a buried belt holds the tunnel's entrance mouth (first buried tile).
      * @param {Client} client
      * @param {CacheEntry} record - underground belt cache entry
      * @returns {boolean}
      * @private
      */
-    _rampDownBehind(client, record) {
+    _tunnelDownBehind(client, record) {
         const direction = record.data.direction;
         const behind = client.objects.getAtTile(
             record.tileX - Direction.dx(direction),
             record.tileY - Direction.dy(direction),
         );
         return behind.some(neighbor =>
-            neighbor.data.type.beltKind === BELT_RAMP_DOWN && neighbor.data.direction === direction);
+            neighbor.data.type.beltKind === BELT_TUNNEL_DOWN && neighbor.data.direction === direction);
     }
 
     /**
@@ -497,7 +497,7 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Adds a cached belt entry to the draw layer; a ramp also masks the item layer with its roof.
+     * Adds a cached belt entry to the draw layer; a mouth also masks the item layer with its roof.
      * @param {Client} client
      * @param {CacheEntry} entry
      * @private
@@ -506,8 +506,8 @@ export class LogisticsClientMod extends AbstractClientMod {
         const kind = entry.data.type.beltKind;
         // Added straight; the belt layer re-derives the bend on structural cache changes.
         this._beltLayer.addBelt(entry.id, entry.tileX, entry.tileY, entry.data.direction, kind);
-        if (isRamp(kind)) {
-            this._addRampMasks(client, entry);
+        if (isTunnelMouth(kind)) {
+            this._addTunnelMasks(client, entry);
         }
     }
 
@@ -520,8 +520,8 @@ export class LogisticsClientMod extends AbstractClientMod {
     _onBeltRemoved(client, entry) {
         const id = entry.id;
         this._beltLayer.removeBelt(id);
-        if (isRamp(entry.data.type.beltKind)) {
-            this._removeRampMasks(client, id);
+        if (isTunnelMouth(entry.data.type.beltKind)) {
+            this._removeTunnelMasks(client, id);
         }
         this._clearPathItems(client, id);
         // Sprite goes when the removed belt renders the port item or heads the path; mapping goes only with the head.
@@ -542,38 +542,38 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Adds a ramp's item occluders: a roof on its own tile and a threshold strip on the buried neighbor.
+     * Adds a mouth's item occluders: a roof on its own tile and a threshold strip on the buried neighbor.
      * @param {Client} client
      * @param {CacheEntry} entry
      * @private
      */
-    _addRampMasks(client, entry) {
+    _addTunnelMasks(client, entry) {
         const kind = entry.data.type.beltKind;
         const direction = entry.data.direction;
-        // RAMP_DOWN roofs its up edge (tunnel mouth), RAMP_UP its down edge (where items surface).
-        const roofY = kind === BELT_RAMP_UP ? TILE_SIZE - 36 : 0;
+        // TUNNEL_DOWN roofs its up edge (tunnel mouth), TUNNEL_UP its down edge (where items surface).
+        const roofY = kind === BELT_TUNNEL_UP ? TILE_SIZE - 36 : 0;
         const roof = new Rectangle(0, roofY, TILE_SIZE, 36);
         client.itemLayer.addMask(`roof:${entry.id}`, entry.tileX, entry.tileY, roof, direction);
         const step = tunnelStep(kind, direction);
-        // Rotating by the direction back toward the ramp lands the band on the shared edge.
+        // Rotating by the direction back toward the mouth lands the band on the shared edge.
         const edgeDirection = Direction.fromDelta(-step.dx, -step.dy);
         const threshold = new Rectangle(0, 0, TILE_SIZE, TILE_SIZE / 4);
         client.itemLayer.addMask(`threshold:${entry.id}`, entry.tileX + step.dx, entry.tileY + step.dy, threshold, edgeDirection);
     }
 
     /**
-     * Removes a ramp's roof and threshold occluders.
+     * Removes a mouth's roof and threshold occluders.
      * @param {Client} client
-     * @param {number} id - the ramp's belt id
+     * @param {number} id - the mouth's belt id
      * @private
      */
-    _removeRampMasks(client, id) {
+    _removeTunnelMasks(client, id) {
         client.itemLayer.removeMask(`roof:${id}`);
         client.itemLayer.removeMask(`threshold:${id}`);
     }
 
     /**
-     * Tool-less hover: reveal the buried tunnel under a hovered ramp and highlight both its ends.
+     * Tool-less hover: reveal the buried tunnel under a hovered mouth and highlight both its ends.
      * Plain belts draw no highlight.
      * @param {number|null} tileX
      * @param {number|null} tileY
@@ -586,18 +586,18 @@ export class LogisticsClientMod extends AbstractClientMod {
             return [];
         }
         const records = client.objects.getAtTile(tileX, tileY);
-        const ramp = records.find(record => isBeltType(record.data.type) && isRamp(record.data.type.beltKind));
-        const tunnel = ramp === undefined ? null : walkTunnel(client.objects, ramp);
+        const mouth = records.find(record => isBeltType(record.data.type) && isTunnelMouth(record.data.type.beltKind));
+        const tunnel = mouth === undefined ? null : walkTunnel(client.objects, mouth);
         if (tunnel === null) {
             this._overlayLayer.clearUndergroundReveal();
         } else {
-            this._overlayLayer.showUndergroundReveal(tunnel.tiles, ramp.data.direction);
+            this._overlayLayer.showUndergroundReveal(tunnel.tiles, mouth.data.direction);
         }
-        if (ramp === undefined) {
+        if (mouth === undefined) {
             return [];
         }
-        // The hovered ramp, plus the ramp it tunnels to (alternate highlight).
-        const highlights = [new InspectHighlight(ramp.tileX, ramp.tileY, ramp.data.direction, ramp.data.type)];
+        // The hovered mouth, plus the mouth it tunnels to (alternate highlight).
+        const highlights = [new InspectHighlight(mouth.tileX, mouth.tileY, mouth.data.direction, mouth.data.type)];
         if (tunnel !== null && tunnel.pair !== null) {
             highlights.push(new InspectHighlight(
                 tunnel.pair.tileX,

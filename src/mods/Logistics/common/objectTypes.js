@@ -8,15 +8,15 @@ import {
 } from "@spup/sdk";
 import {
     BELT_NORMAL,
-    BELT_RAMP_DOWN,
-    BELT_RAMP_UP,
+    BELT_TUNNEL_DOWN,
+    BELT_TUNNEL_UP,
     BELT_UNDERGROUND,
     beltPositionLayer,
     HOUSING_WORKER_SUPPLY,
     MAP_COLOR_HOUSING,
     MAP_COLOR_ROAD,
     MAP_COLOR_BELT,
-    MAP_COLOR_BELT_RAMP,
+    MAP_COLOR_BELT_TUNNEL,
     DRAW_LAYER_ROAD,
 } from "./constants.js";
 import {SplitterBehavior} from "../sim/SplitterBehavior.js";
@@ -54,7 +54,7 @@ class BeltObjectType extends ObjectType {
         return [{layer: beltPositionLayer(this.beltKind, direction), cells: this.geometry.tiles(direction)}];
     }
 
-    // A ramp/underground never merges from the side: only its straight-axis input (local UP)
+    // A mouth/underground never merges from the side: only its straight-axis input (local UP)
     // stays active; outputs are unchanged.
     activePorts(portKind) {
         if (portKind === "inputPorts" && this.beltKind !== BELT_NORMAL) {
@@ -63,16 +63,16 @@ class BeltObjectType extends ObjectType {
         return this[portKind];
     }
 
-    // Ports a surface neighbor can connect to: a ramp buries one end, so RAMP_DOWN exposes only
-    // its input, RAMP_UP only its output, and an underground nothing (fully buried).
+    // Ports a surface neighbor can connect to: a mouth buries one end, so TUNNEL_DOWN exposes only
+    // its input, TUNNEL_UP only its output, and an underground nothing (fully buried).
     surfacePorts(portKind) {
-        if (this.beltKind === BELT_RAMP_DOWN) {
+        if (this.beltKind === BELT_TUNNEL_DOWN) {
             if (portKind === "inputPorts") {
                 return this.activePorts(portKind);
             }
             return [];
         }
-        if (this.beltKind === BELT_RAMP_UP) {
+        if (this.beltKind === BELT_TUNNEL_UP) {
             if (portKind === "outputPorts") {
                 return this.outputPorts;
             }
@@ -100,16 +100,16 @@ export const BeltDefinition = new BeltObjectType({
     mapColor: MAP_COLOR_BELT,
 });
 
-export const BeltRampDownDefinition = new BeltObjectType({
-    name: "BeltRampDown",
-    beltKind: BELT_RAMP_DOWN,
-    mapColor: MAP_COLOR_BELT_RAMP,
+export const BeltTunnelDownDefinition = new BeltObjectType({
+    name: "BeltTunnelDown",
+    beltKind: BELT_TUNNEL_DOWN,
+    mapColor: MAP_COLOR_BELT_TUNNEL,
 });
 
-export const BeltRampUpDefinition = new BeltObjectType({
-    name: "BeltRampUp",
-    beltKind: BELT_RAMP_UP,
-    mapColor: MAP_COLOR_BELT_RAMP,
+export const BeltTunnelUpDefinition = new BeltObjectType({
+    name: "BeltTunnelUp",
+    beltKind: BELT_TUNNEL_UP,
+    mapColor: MAP_COLOR_BELT_TUNNEL,
 });
 
 export const BeltUndergroundDefinition = new BeltObjectType({
