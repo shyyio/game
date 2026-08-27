@@ -158,10 +158,11 @@ export class Terrain {
         const tile = this._tile;
         tile.biomeId = winner;
         tile.otherId = winner;
-        const width = activeBlendWidth;
+        const winnerWidth = this._blendWidthOf(winner);
         let weight = 0;
         for (let index = 0; index < winner; index++) {
             const missedBy = -margins[index];
+            const width = Math.min(winnerWidth, this._blendWidthOf(index));
             if (missedBy < width) {
                 const candidate = BLEND_MAX * (1 - missedBy / width);
                 if (candidate > weight) {
@@ -170,19 +171,36 @@ export class Terrain {
                 }
             }
         }
-        if (margins[winner] < width) {
-            const candidate = BLEND_MAX * (1 - margins[winner] / width);
-            if (candidate > weight) {
-                let next = winner + 1;
-                while (margins[next] < 0) {
-                    next++;
+        // winnerWidth bounds the pair width, so a margin at or past it cannot blend.
+        if (margins[winner] < winnerWidth) {
+            let next = winner + 1;
+            while (margins[next] < 0) {
+                next++;
+            }
+            const width = Math.min(winnerWidth, this._blendWidthOf(next));
+            if (margins[winner] < width) {
+                const candidate = BLEND_MAX * (1 - margins[winner] / width);
+                if (candidate > weight) {
+                    weight = candidate;
+                    tile.otherId = next;
                 }
-                weight = candidate;
-                tile.otherId = next;
             }
         }
         tile.weight = Math.round(weight / BLEND_MAX * BLEND_WEIGHT_SCALE);
         return tile;
+    }
+
+    /**
+     * @private
+     * @param {number} index into the biome list
+     * @returns {number} the biome's blend width, or the global width when it declares none
+     */
+    _blendWidthOf(index) {
+        const width = this.biomes[index].blendWidth;
+        if (width === null) {
+            return activeBlendWidth;
+        }
+        return width;
     }
 
     /**
