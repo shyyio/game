@@ -7,6 +7,7 @@ import {
     SplitterDefinition,
     RoadDefinition,
     HousingDefinition,
+    GateDefinition,
 } from "./common/objectTypes.js";
 import {
     BeltPathRecalculateEvent,
@@ -16,7 +17,10 @@ import {
     BeltItemResetEvent,
     BeltItemBatchEvent,
     BeltPathBatchEvent,
+    GateSetEvent,
+    GateSetBatchEvent,
 } from "./common/events.js";
+import {SetGateOpenMessage} from "./common/messages.js";
 
 export class LogisticsDeclaration extends AbstractModDeclaration {
 
@@ -37,6 +41,7 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
             BeltTunnelDownDefinition,
             BeltTunnelUpDefinition,
             BeltUndergroundDefinition,
+            GateDefinition,
         ];
     }
 
@@ -49,6 +54,9 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
             BeltItemResetEvent,
             BeltItemBatchEvent,
             BeltPathBatchEvent,
+            GateSetEvent,
+            GateSetBatchEvent,
+            SetGateOpenMessage,
         ];
     }
 

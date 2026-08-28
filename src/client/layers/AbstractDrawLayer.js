@@ -70,6 +70,9 @@ export class AbstractDrawLayer extends Container {
         if (this.onCacheStructuralChange !== AbstractDrawLayer.prototype.onCacheStructuralChange) {
             cache.onStructuralChange(() => this.onCacheStructuralChange());
         }
+        if (this.onCacheUpdate !== AbstractDrawLayer.prototype.onCacheUpdate) {
+            cache.onUpdate(entry => this.onCacheUpdate(entry));
+        }
     }
 
     /**
@@ -99,6 +102,14 @@ export class AbstractDrawLayer extends Container {
      * @returns {void}
      */
     onCacheStructuralChange() {}
+
+    /**
+     * Optional hook: an entry's `data` was patched, for layers with state-dependent art;
+     * registered only when overridden.
+     * @param {CacheEntry} entry
+     * @returns {void}
+     */
+    onCacheUpdate(entry) {}
 
     /**
      * Handles an event whose class matches {@link eventClasses}; never called otherwise, so only

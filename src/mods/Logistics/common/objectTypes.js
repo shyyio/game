@@ -5,6 +5,7 @@ import {
     Direction,
     RoadBehavior,
     HousingBehavior,
+    CONVEYS_ITEM,
 } from "@spup/sdk";
 import {
     BELT_NORMAL,
@@ -21,6 +22,7 @@ import {
 } from "./constants.js";
 import {SplitterBehavior} from "../sim/SplitterBehavior.js";
 import {BeltBehavior} from "../sim/BeltBehavior.js";
+import {GateBehavior} from "../sim/GateBehavior.js";
 
 // One ObjectType per belt kind (the typeId carries the kind on the wire); `bespokeClient` opts
 // out of the derived bundles since BeltDrawLayer/BeltTool stay bespoke.
@@ -36,6 +38,7 @@ class BeltObjectType extends ObjectType {
             geometry: "1x1",
             behavior: new BeltBehavior({beltKind}),
             bespokeClient: true,
+            conveys: CONVEYS_ITEM,
             placement: new PlacementRule({conveyor: beltKind === BELT_NORMAL}),
             inputPorts: [
                 new PortDefinition("virtual_left", {x: 0, y: 0, direction: Direction.RIGHT}),
@@ -140,6 +143,7 @@ export const SplitterDefinition = new ObjectType({
     textureName: "splitter/1",
     label: "Splitter",
     behavior: new SplitterBehavior(),
+    conveys: CONVEYS_ITEM,
 });
 
 // A road cell of the worker network; workers walk it from Housing to machines.
@@ -154,6 +158,58 @@ export const RoadDefinition = new ObjectType({
     label: "Road",
     behavior: new RoadBehavior(),
     placement: new PlacementRule({replaceSameKind: true, dragToPlace: true}),
+});
+
+/**
+ * Whether an ObjectType is the gate.
+ * @param {ObjectType} type
+ * @returns {boolean}
+ */
+export function isGateType(type) {
+    return type.behavior instanceof GateBehavior;
+}
+
+const toggleGate = (record, session, client) => client.cache.writer("logistics").toggleGate(record.id);
+
+// `data.gateOpen`/`data.gateFluid` pick among four frames; the base texture is the open item
+// frame (also the tool icon and ghost).
+class GateObjectType extends ObjectType {
+
+    /**
+     * @param {object} config - ObjectType config plus the closed/fluid texture names
+     */
+    constructor(config) {
+        const {closedTextureName, fluidTextureName, fluidClosedTextureName, ...base} = config;
+        super(base);
+        this.closedTextureName = closedTextureName;
+        this.fluidTextureName = fluidTextureName;
+        this.fluidClosedTextureName = fluidClosedTextureName;
+    }
+
+    textureFor(data) {
+        if (data.gateFluid === true) {
+            return data.gateOpen === false ? this.fluidClosedTextureName : this.fluidTextureName;
+        }
+        return data.gateOpen === false ? this.closedTextureName : this.textureName;
+    }
+}
+
+// A click-to-toggle flow stop facing the flow direction; adopts the kind of the first transport
+// coupled to it.
+export const GateDefinition = new GateObjectType({
+    name: "Gate",
+    toolId: 28,
+    inputPorts: [new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP})],
+    outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
+    geometry: "1x1",
+    renderConnections: true,
+    textureName: "gate/open",
+    closedTextureName: "gate/closed",
+    fluidTextureName: "gate/pipe-open",
+    fluidClosedTextureName: "gate/pipe-closed",
+    label: "Gate",
+    behavior: new GateBehavior(),
+    tapAction: toggleGate,
 });
 
 export const HousingDefinition = new ObjectType({

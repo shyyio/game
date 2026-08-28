@@ -36,7 +36,7 @@ export class BeltTool extends AbstractTool {
 
     onTap(tileX, tileY) {
         const direction = this._rotation.direction;
-        const blocked = this._blocked(tileX, tileY);
+        const blocked = this._blocked(tileX, tileY, direction);
         this._place(tileX, tileY, direction);
         if (!blocked) {
             // Advance the center-lock crosshair one tile so consecutive taps lay a line.
@@ -54,7 +54,7 @@ export class BeltTool extends AbstractTool {
      */
     _showGhost(tileX, tileY, direction) {
         const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
-        const blocked = this._blocked(tileX, tileY);
+        const blocked = this._blocked(tileX, tileY, direction);
         const overwrite = occupant !== null && !blocked;
         const tile = [{x: tileX, y: tileY}];
         let blockedTiles = [];
@@ -90,12 +90,16 @@ export class BeltTool extends AbstractTool {
     }
 
     /**
-     * Whether the tile sits outside buildable chunks or holds something the tool can't overwrite.
+     * Whether the tile sits outside buildable chunks, a mod vetoes the placement, or an occupant
+     * can't be overwritten.
      * @private
      * @returns {boolean}
      */
-    _blocked(tileX, tileY) {
+    _blocked(tileX, tileY, direction) {
         if (!this._client.canBuildAt(tileX, tileY)) {
+            return true;
+        }
+        if (!this._client.modsAllowPlacement(BeltDefinition, tileX, tileY, direction)) {
             return true;
         }
         const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
@@ -126,8 +130,9 @@ export class BeltTool extends AbstractTool {
      * @private
      */
     _placeBelt(tileX, tileY, direction) {
-        // The server would drop an ungated placement anyway.
-        if (!this._client.canBuildAt(tileX, tileY)) {
+        // The server would drop an ungated or mod-vetoed placement anyway.
+        if (!this._client.canBuildAt(tileX, tileY)
+            || !this._client.modsAllowPlacement(BeltDefinition, tileX, tileY, direction)) {
             return;
         }
         const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);

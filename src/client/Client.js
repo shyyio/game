@@ -525,6 +525,18 @@ export class Client {
     }
 
     /**
+     * Whether every client mod's canPlace allows the placement.
+     * @param {ObjectType} type
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Direction} direction
+     * @returns {boolean}
+     */
+    modsAllowPlacement(type, tileX, tileY, direction) {
+        return this.modRegistry.clientMods.every(mod => mod.canPlace(type, tileX, tileY, direction, this));
+    }
+
+    /**
      * The world-pixel centroid of the player's claimed chunks, or null with none.
      * @returns {{x: number, y: number}|null}
      */

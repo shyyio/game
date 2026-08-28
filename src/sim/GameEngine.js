@@ -284,6 +284,7 @@ export class GameEngine {
         this._messageHandlers = [];
         this._chunkSyncers = [];
         this._inspectors = [];
+        this._placementGuards = [];
 
         // Decides whether a player may modify a chunk; without one every change is allowed.
         this._placementGate = null;
@@ -2194,6 +2195,27 @@ export class GameEngine {
      */
     registerChunkSync(contributor) {
         this._chunkSyncers.push(contributor);
+    }
+
+    /**
+     * A mod registers a cross-object placement veto, consulted for every placed-object spawn.
+     * @param {function(ObjectType, number, number, Direction): boolean} guard - returns false to veto
+     * @returns {void}
+     */
+    registerPlacementGuard(guard) {
+        this._placementGuards.push(guard);
+    }
+
+    /**
+     * Whether every registered placement guard allows spawning `type` at (x, y).
+     * @param {ObjectType} type
+     * @param {number} x
+     * @param {number} y
+     * @param {Direction} direction
+     * @returns {boolean}
+     */
+    placementGuardsAllow(type, x, y, direction) {
+        return this._placementGuards.every(guard => guard(type, x, y, direction));
     }
 
     /**

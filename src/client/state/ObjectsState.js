@@ -248,6 +248,11 @@ export class ObjectsView extends AbstractCacheView {
          * @private
          */
         this._structuralListeners = new ListenerList();
+        /**
+         * @type {ListenerList}
+         * @private
+         */
+        this._updateListeners = new ListenerList();
     }
 
     /**
@@ -298,6 +303,15 @@ export class ObjectsView extends AbstractCacheView {
      */
     onStructuralChange(listener) {
         return this._structuralListeners.add(listener);
+    }
+
+    /**
+     * Registers a callback invoked with each entry whose `data` was patched via {@link update}.
+     * @param {function(CacheEntry): void} listener
+     * @returns {function(): void} unsubscribe
+     */
+    onUpdate(listener) {
+        return this._updateListeners.add(listener);
     }
 
     /**
@@ -381,7 +395,7 @@ export class ObjectsView extends AbstractCacheView {
     }
 
     /**
-     * Merges `patch` into an entry's `data`; no-op for unknown ids.
+     * Merges `patch` into an entry's `data` and notifies update listeners; no-op for unknown ids.
      * @param {number} id
      * @param {object} patch
      */
@@ -391,6 +405,7 @@ export class ObjectsView extends AbstractCacheView {
             return;
         }
         Object.assign(entry.data, patch);
+        this._updateListeners.notify(entry);
     }
 
     /**

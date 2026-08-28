@@ -288,8 +288,7 @@ export class ObjectTool extends AbstractTool {
 
         // An unbuildable chunk or a mod veto blocks the whole placement.
         const vetoed = !this._client.canBuildAt(tileX, tileY)
-            || this._client.modRegistry.clientMods
-                .some(mod => !mod.canPlace(this._type, tileX, tileY, direction, this._client));
+            || !this._client.modsAllowPlacement(this._type, tileX, tileY, direction);
         if (vetoed) {
             blockedCells.push(...overwriteCells, ...clearCells);
             return {blockedCells, overwriteCells: [], clearCells: [], overwriteIds: []};

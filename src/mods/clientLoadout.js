@@ -3,6 +3,7 @@ import {BaseTexturesDeclaration} from "@/mods/BaseTextures/declaration.js";
 import {BaseTexturesClientMod} from "@/mods/BaseTextures/client.js";
 import {LogisticsDeclaration} from "@/mods/Logistics/declaration.js";
 import {LogisticsClientMod} from "@/mods/Logistics/client.js";
+import {LogisticsSimMod} from "@/mods/Logistics/sim.js";
 import {BaseGameDeclaration} from "@/mods/BaseGame/declaration.js";
 import {FluidsDeclaration} from "@/mods/Fluids/declaration.js";
 import {FluidsClientMod} from "@/mods/Fluids/client.js";
@@ -25,7 +26,7 @@ import {NotesSimMod} from "@/mods/Notes/sim.js";
 export function clientLoadout() {
     return [
         new ModPackage(new BaseTexturesDeclaration(), {client: new BaseTexturesClientMod()}),
-        new ModPackage(new LogisticsDeclaration(), {client: new LogisticsClientMod()}),
+        new ModPackage(new LogisticsDeclaration(), {sim: new LogisticsSimMod(), client: new LogisticsClientMod()}),
         new ModPackage(new BaseGameDeclaration()),
         new ModPackage(new FluidsDeclaration(), {client: new FluidsClientMod()}),
         new ModPackage(new CursorSyncDeclaration(), {client: new CursorSyncClientMod()}),

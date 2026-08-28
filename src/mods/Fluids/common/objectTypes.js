@@ -3,6 +3,7 @@ import {
     PortDefinition,
     PlacementRule,
     Direction,
+    CONVEYS_FLUID,
 } from "@spup/sdk";
 import {TANK_CAPACITY} from "./constants.js";
 import {PipeBehavior} from "../sim/PipeBehavior.js";
@@ -18,6 +19,7 @@ export const PipeDefinition = new ObjectType({
     label: "Pipe",
     behavior: new PipeBehavior(),
     placement: new PlacementRule({dragToPlace: true}),
+    conveys: CONVEYS_FLUID,
 });
 
 /**

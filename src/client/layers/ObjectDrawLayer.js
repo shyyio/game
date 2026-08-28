@@ -43,7 +43,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
             entry.tileX,
             entry.tileY,
             entry.data.direction,
-            this.textureRegistry.get(this._type.textureName),
+            this.textureRegistry.get(this._type.textureFor(entry.data)),
             this._type,
         ));
     }
@@ -54,6 +54,22 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
      */
     onCacheRemove(entry) {
         this.removeObject(entry.id);
+    }
+
+    /**
+     * Re-resolves a patched entry's state-dependent texture.
+     * @param {CacheEntry} entry
+     * @returns {void}
+     */
+    onCacheUpdate(entry) {
+        if (!(entry.data instanceof ObjectClientData) || entry.data.type.typeId !== this._type.typeId) {
+            return;
+        }
+        const sprite = this._objects.get(entry.id);
+        if (sprite === undefined) {
+            return;
+        }
+        sprite.texture = this.textureRegistry.get(this._type.textureFor(entry.data));
     }
 
     /**

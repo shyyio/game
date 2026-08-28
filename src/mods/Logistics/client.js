@@ -5,7 +5,8 @@ import {BeltGhostLayer} from "./client/BeltGhostLayer.js";
 import {PathDebugDrawLayer} from "./client/PathDebugDrawLayer.js";
 import {BeltTool} from "./client/BeltTool.js";
 import {UndergroundBeltTool} from "./client/UndergroundBeltTool.js";
-import {isBeltType} from "./common/objectTypes.js";
+import {LOGISTICS_SCHEMA, GatesWriter} from "./client/GateState.js";
+import {isBeltType, isGateType} from "./common/objectTypes.js";
 import {
     BeltPathRecalculateEvent,
     BeltItemUpsertEvent,
@@ -15,6 +16,7 @@ import {
 } from "./common/events.js";
 import {tunnelStep, BELT_TUNNEL_DOWN, BELT_TUNNEL_UP, BELT_UNDERGROUND} from "./common/constants.js";
 import {walkTunnel, isTunnelMouth, inferBeltParent} from "./common/geometry.js";
+import {placementBlockedByGate, gateConnections} from "./common/gateConnections.js";
 import {
     AbstractClientMod,
     ObjectInsertEvent,
@@ -26,6 +28,9 @@ import {
     InspectHighlight,
     Rectangle,
     TILE_SIZE,
+    LAYER_SURFACE,
+    CONVEYS_ITEM,
+    CONVEYS_FLUID,
 } from "@spup/sdk/client";
 
 /**
@@ -92,16 +97,115 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @returns {void}
      */
     setup(client) {
+        client.cache.register("logistics", LOGISTICS_SCHEMA, new GatesWriter(client.cache, client.session));
+        // Patching the entry swaps the sprite through the derived layer's onCacheUpdate.
+        client.cache.subscribe("logistics.openById", (id, open) => {
+            client.objects.update(id, {gateOpen: open !== 0});
+        });
+        client.cache.subscribe("logistics.fluidById", (id, fluid) => {
+            client.objects.update(id, {gateFluid: fluid === 1});
+        });
         client.objects.onSet(entry => {
             if (isBeltType(entry.data.type)) {
                 this._onBeltSet(client, entry);
+            }
+            if (isGateType(entry.data.type)) {
+                // A re-set entry's data starts fresh; re-apply any cached off-default state.
+                const open = client.cache.mapGet("logistics.openById", entry.id);
+                const fluid = client.cache.mapGet("logistics.fluidById", entry.id);
+                if (open !== undefined || fluid !== undefined) {
+                    client.objects.update(entry.id, {gateOpen: open !== 0, gateFluid: fluid === 1});
+                }
+                this._predictGateMode(client, entry);
+            }
+            if (entry.data.type.conveys !== null) {
+                this._predictNeighborGateModes(client, entry);
             }
         });
         client.objects.onRemove(entry => {
             if (isBeltType(entry.data.type)) {
                 this._onBeltRemoved(client, entry);
             }
+            if (isGateType(entry.data.type)) {
+                client.cache.writer("logistics").forget(entry.id);
+            }
         });
+    }
+
+    /**
+     * Mirrors the sim's gate placement guard.
+     * @param {ObjectType} type
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Direction} direction
+     * @param {Client} client
+     * @returns {boolean}
+     */
+    canPlace(type, tileX, tileY, direction, client) {
+        return !placementBlockedByGate(
+            this._occupantAt(client),
+            occupant => isGateType(occupant.type),
+            type, tileX, tileY, direction,
+        );
+    }
+
+    /**
+     * The SURFACE occupant resolver the shared connection rules use.
+     * @private
+     * @param {Client} client
+     * @returns {function(number, number): ({type: ObjectType, direction: Direction}|null)}
+     */
+    _occupantAt(client) {
+        return (x, y) => {
+            const entry = client.objects.at(x, y, LAYER_SURFACE);
+            if (entry === null) {
+                return null;
+            }
+            return {type: entry.data.type, direction: entry.data.direction};
+        };
+    }
+
+    /**
+     * Predicts a gate's mode from its coupled transports, a tick ahead of the sim's review.
+     * @private
+     * @param {Client} client
+     * @param {CacheEntry} entry - the gate's entry
+     * @returns {void}
+     */
+    _predictGateMode(client, entry) {
+        const kinds = gateConnections(this._occupantAt(client), entry.tileX, entry.tileY, entry.data.direction);
+        const hasItem = kinds.behind === CONVEYS_ITEM || kinds.front === CONVEYS_ITEM;
+        const hasFluid = kinds.behind === CONVEYS_FLUID || kinds.front === CONVEYS_FLUID;
+        if (hasFluid && !hasItem) {
+            client.cache.writer("logistics").predictFluid(entry.id, 1);
+        } else if (hasItem && !hasFluid) {
+            client.cache.writer("logistics").predictFluid(entry.id, 0);
+        }
+    }
+
+    /**
+     * Re-predicts the mode of every gate a set transport entry touches.
+     * @private
+     * @param {Client} client
+     * @param {CacheEntry} entry - the transport's entry
+     * @returns {void}
+     */
+    _predictNeighborGateModes(client, entry) {
+        for (const cell of entry.cells) {
+            if (cell.layer !== LAYER_SURFACE) {
+                continue;
+            }
+            for (let direction = 0; direction < 4; direction += 1) {
+                const neighbor = client.objects.at(
+                    cell.x + Direction.dx(direction),
+                    cell.y + Direction.dy(direction),
+                    LAYER_SURFACE,
+                );
+                if (neighbor !== null && isGateType(neighbor.data.type)) {
+                    this._predictGateMode(client, neighbor);
+                }
+            }
+        }
     }
 
     /**
