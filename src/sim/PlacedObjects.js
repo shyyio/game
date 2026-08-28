@@ -205,6 +205,9 @@ export class PlacedObjects {
         if (!type.behavior.canSpawn(engine, this, type, message)) {
             return true;
         }
+        if (!engine.placementGuardsAllow(type, message.x, message.y, message.direction)) {
+            return true;
+        }
         const footprint = engine.footprint(type, message.x, message.y, message.direction);
         if (type.placement.solid && !engine.cellsFree(footprint)) {
             return true;

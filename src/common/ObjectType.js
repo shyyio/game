@@ -88,6 +88,10 @@ export class PlacementRule {
     }
 }
 
+// What a transport type carries, for adjacency rules.
+export const CONVEYS_ITEM = 1;
+export const CONVEYS_FLUID = 2;
+
 export class ObjectType {
 
     /**
@@ -125,6 +129,8 @@ export class ObjectType {
      * @param [config.toolId] {number|null} hand-authored stable identity for this type's derived
      *     placement tool (see AbstractTool#id); required unless bespokeClient, or the type never
      *     reaches Client._buildBundles (a sim-only test fixture)
+     * @param [config.conveys] {number|null} what this transport carries (CONVEYS_ITEM/CONVEYS_FLUID);
+     *     null for non-transport types
      */
     constructor({
         name,
@@ -146,6 +152,7 @@ export class ObjectType {
         tapAction=null,
         bespokeClient=false,
         toolId=null,
+        conveys=null,
     }) {
         if (ObjectGeometries[geometry] === undefined) {
             throw new Error(`Unknown object geometry "${geometry}"`);
@@ -171,6 +178,7 @@ export class ObjectType {
         this.placement = placement === undefined ? new PlacementRule() : placement;
         this.bespokeClient = bespokeClient;
         this.toolId = toolId;
+        this.conveys = conveys;
         this.inspectable = inspectable;
         if (tapAction !== null) {
             this.tapAction = tapAction;
@@ -205,6 +213,15 @@ export class ObjectType {
             throw new Error(`ObjectType "${this.name}" typeId reassigned: ${this._typeId} -> ${typeId}`);
         }
         this._typeId = typeId;
+    }
+
+    /**
+     * Client hook: the texture for an entry's current data; state-dependent art overrides this.
+     * @param {ObjectClientData} data
+     * @returns {string}
+     */
+    textureFor(data) {
+        return this.textureName;
     }
 
     /**

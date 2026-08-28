@@ -276,3 +276,75 @@ export class BeltPathBatchEvent extends AbstractBatchEvent {
         return events;
     }
 }
+
+/**
+ * A gate's state changed; also the chunk-sync payload for off-default gates.
+ */
+export class GateSetEvent extends AbstractChunkRoutedEvent {
+
+    static wireFields = {
+        objectId: "int64",
+        open: "int32",
+        fluid: "int32",
+    };
+
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {number} objectId
+     * @param {number} open - 1 open, 0 closed
+     * @param {number} fluid - 1 fluid mode, 0 item mode
+     */
+    constructor(x, y, objectId, open, fluid) {
+        super(x, y);
+        this.objectId = objectId;
+        this.open = open;
+        this.fluid = fluid;
+    }
+}
+
+/**
+ * One chunk's gate-state deltas for a tick, as parallel columns.
+ */
+export class GateSetBatchEvent extends AbstractBatchEvent {
+
+    static wireFields = {
+        objectIds: "int64[]",
+        opens: "int32[]",
+        fluids: "int32[]",
+    };
+
+    /**
+     * @param {number} x - a member gate's tile in the batched chunk, routes the batch to that topic
+     * @param {number} y
+     */
+    constructor(x, y) {
+        super(x, y);
+        this.objectIds = [];
+        this.opens = [];
+        this.fluids = [];
+    }
+
+    /**
+     * @param {number} objectId
+     * @param {number} open
+     * @param {number} fluid
+     * @returns {void}
+     */
+    add(objectId, open, fluid) {
+        this.objectIds.push(objectId);
+        this.opens.push(open);
+        this.fluids.push(fluid);
+    }
+
+    /**
+     * @returns {GateSetEvent[]}
+     */
+    explode() {
+        const events = [];
+        for (let i = 0; i < this.objectIds.length; i += 1) {
+            events.push(new GateSetEvent(this.x, this.y, this.objectIds[i], this.opens[i], this.fluids[i]));
+        }
+        return events;
+    }
+}

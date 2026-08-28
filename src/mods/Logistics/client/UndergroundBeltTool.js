@@ -40,7 +40,7 @@ export class UndergroundBeltTool extends AbstractTool {
 
     onTileEnter(tileX, tileY) {
         const placement = this._resolvePlacement(tileX, tileY, this._rotation.direction);
-        const blocked = this._blocked(tileX, tileY, placement.direction);
+        const blocked = this._blocked(tileX, tileY, placement);
         // An overwritable same-axis belt is deleted before the mouth lands.
         const overwrite = !blocked && this._surfaceBeltAt(tileX, tileY) !== null;
         const tile = [{x: tileX, y: tileY}];
@@ -130,13 +130,28 @@ export class UndergroundBeltTool extends AbstractTool {
     }
 
     /**
-     * Whether the tile sits outside buildable chunks, or a surface belt blocks a mouth facing
-     * `direction` (unless it's an overwritable same-axis belt).
+     * The ObjectType a resolved placement's mouth sends.
+     * @private
+     * @returns {ObjectType}
+     */
+    _mouthDefinition(placement) {
+        if (placement.type === BELT_TUNNEL_UP) {
+            return BeltTunnelUpDefinition;
+        }
+        return BeltTunnelDownDefinition;
+    }
+
+    /**
+     * Whether the tile sits outside buildable chunks, a mod vetoes the mouth, or a surface belt
+     * blocks it (unless it's an overwritable same-axis belt).
      * @private
      * @returns {boolean}
      */
-    _blocked(tileX, tileY, direction) {
+    _blocked(tileX, tileY, placement) {
         if (!this._client.canBuildAt(tileX, tileY)) {
+            return true;
+        }
+        if (!this._client.modsAllowPlacement(this._mouthDefinition(placement), tileX, tileY, placement.direction)) {
             return true;
         }
         // A non-belt surface object blocks outright.
@@ -145,7 +160,7 @@ export class UndergroundBeltTool extends AbstractTool {
             return true;
         }
         const belt = this._surfaceBeltAt(tileX, tileY);
-        return belt !== null && !this._overwritable(belt, direction);
+        return belt !== null && !this._overwritable(belt, placement.direction);
     }
 
     /**
@@ -153,11 +168,14 @@ export class UndergroundBeltTool extends AbstractTool {
      * @private
      */
     _placeTunnelMouth(tileX, tileY, direction) {
-        // The server would drop an ungated placement anyway.
+        // The server would drop an ungated or mod-vetoed placement anyway.
         if (!this._client.canBuildAt(tileX, tileY)) {
             return;
         }
         const placement = this._resolvePlacement(tileX, tileY, direction);
+        if (!this._client.modsAllowPlacement(this._mouthDefinition(placement), tileX, tileY, placement.direction)) {
+            return;
+        }
 
         const existing = this._surfaceBeltAt(tileX, tileY);
         if (existing !== null) {
@@ -169,7 +187,7 @@ export class UndergroundBeltTool extends AbstractTool {
         }
 
         // Tunnel span is derived sim-side; only the mouth is sent.
-        const mouthType = placement.type === BELT_TUNNEL_UP ? BeltTunnelUpDefinition : BeltTunnelDownDefinition;
+        const mouthType = this._mouthDefinition(placement);
         this.session.sendMessage(new CreateObjectMessage(
             mouthType.typeId,
             tileX,

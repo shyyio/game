@@ -52,6 +52,8 @@ export {
     RecipeDefinition, // one recipe: a consumed input set mapping to an output item
     RecipeByproduct,  // a recipe's chance-driven secondary output
     PlacementRule,    // how an object type may be placed (overwrite/advance/placeOn/solid)
+    CONVEYS_ITEM,     // transport kinds for ObjectType.conveys adjacency rules
+    CONVEYS_FLUID,
 } from "@/common/ObjectType.js";
 
 // ---- Sim behaviors ----

@@ -2,6 +2,7 @@ import {ModPackage} from "@/common/ModPackage.js";
 import {BASE_MOD_DIRS} from "@/mods/baseMods.js";
 import {BaseTexturesDeclaration} from "@/mods/BaseTextures/declaration.js";
 import {LogisticsDeclaration} from "@/mods/Logistics/declaration.js";
+import {LogisticsSimMod} from "@/mods/Logistics/sim.js";
 import {BaseGameDeclaration} from "@/mods/BaseGame/declaration.js";
 import {FluidsDeclaration} from "@/mods/Fluids/declaration.js";
 import {CursorSyncDeclaration} from "@/mods/CursorSync/declaration.js";
@@ -25,7 +26,7 @@ export {BASE_MOD_DIRS};
 export function simLoadout() {
     return [
         new ModPackage(new BaseTexturesDeclaration()),
-        new ModPackage(new LogisticsDeclaration()),
+        new ModPackage(new LogisticsDeclaration(), {sim: new LogisticsSimMod()}),
         new ModPackage(new BaseGameDeclaration()),
         new ModPackage(new FluidsDeclaration()),
         new ModPackage(new CursorSyncDeclaration(), {sim: new CursorSyncSimMod()}),
