@@ -72,6 +72,8 @@ export {SettingCategory} from "@/client/hud/SettingCategory.js";
 export {PlayerSettingToggle} from "@/client/hud/PlayerSettingToggle.js";
 export {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
 export {DeviceSettingToggle} from "@/client/hud/DeviceSettingToggle.js";
+export {DeviceSettingSlider} from "@/client/hud/DeviceSettingSlider.js";
+export {default as DeviceSettings} from "@/client/state/DeviceSettings.js";
 
 // ---- Input ----
 // Base class for a placement/interaction tool shown in the toolbar.

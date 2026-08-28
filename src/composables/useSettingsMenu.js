@@ -4,6 +4,7 @@ import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
 import {PlayerSettingToggle} from "@/client/hud/PlayerSettingToggle.js";
 import {DeviceSettingToggle} from "@/client/hud/DeviceSettingToggle.js";
 import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
+import {DeviceSettingSlider} from "@/client/hud/DeviceSettingSlider.js";
 import DeviceSettings from "@/client/state/DeviceSettings.js";
 import {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
 
@@ -58,6 +59,7 @@ export function useSettingsMenu() {
         const controls = categories.flatMap(category => category.controls);
         const deviceToggles = controls.filter(control => control instanceof DeviceSettingToggle);
         const deviceChoices = controls.filter(control => control instanceof DeviceSettingChoice);
+        const deviceSliders = controls.filter(control => control instanceof DeviceSettingSlider);
         const playerControls = controls.filter(control => control instanceof AbstractPlayerSettingControl);
         const controlByKey = new Map(playerControls.map(control => [control.key, control]));
         client.cache.subscribe("playerSettings.values", (key, value) => {
@@ -86,6 +88,18 @@ export function useSettingsMenu() {
             mirror(control, initial, index => {
                 DeviceSettings.setNumber(control.key, index);
                 control.apply(index);
+            });
+        }
+        for (const control of deviceSliders) {
+            const stored = DeviceSettings.getFloat(control.key, control.fallback);
+            let initial = stored;
+            if (initial < control.min || initial > control.max) {
+                initial = control.fallback;
+            }
+            control.apply(initial);
+            mirror(control, initial, value => {
+                DeviceSettings.setNumber(control.key, value);
+                control.apply(value);
             });
         }
         for (const control of playerControls) {

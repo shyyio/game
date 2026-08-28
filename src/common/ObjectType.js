@@ -131,6 +131,8 @@ export class ObjectType {
      *     reaches Client._buildBundles (a sim-only test fixture)
      * @param [config.conveys] {number|null} what this transport carries (CONVEYS_ITEM/CONVEYS_FLUID);
      *     null for non-transport types
+     * @param [config.wireAnchor] {{x: number, y: number}|null} where a control wire attaches, in
+     *     tiles from the origin tile's top-left corner; null = not wireable
      */
     constructor({
         name,
@@ -153,6 +155,7 @@ export class ObjectType {
         bespokeClient=false,
         toolId=null,
         conveys=null,
+        wireAnchor=null,
     }) {
         if (ObjectGeometries[geometry] === undefined) {
             throw new Error(`Unknown object geometry "${geometry}"`);
@@ -179,6 +182,7 @@ export class ObjectType {
         this.bespokeClient = bespokeClient;
         this.toolId = toolId;
         this.conveys = conveys;
+        this.wireAnchor = wireAnchor;
         this.inspectable = inspectable;
         if (tapAction !== null) {
             this.tapAction = tapAction;

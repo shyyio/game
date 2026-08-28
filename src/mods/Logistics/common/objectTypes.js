@@ -23,6 +23,7 @@ import {
 import {SplitterBehavior} from "../sim/SplitterBehavior.js";
 import {BeltBehavior} from "../sim/BeltBehavior.js";
 import {GateBehavior} from "../sim/GateBehavior.js";
+import {PoleBehavior} from "../sim/PoleBehavior.js";
 
 // One ObjectType per belt kind (the typeId carries the kind on the wire); `bespokeClient` opts
 // out of the derived bundles since BeltDrawLayer/BeltTool stay bespoke.
@@ -210,6 +211,28 @@ export const GateDefinition = new GateObjectType({
     label: "Gate",
     behavior: new GateBehavior(),
     tapAction: toggleGate,
+    wireAnchor: {x: 0.5, y: 0.2},
+});
+
+/**
+ * Whether an ObjectType is the pole.
+ * @param {ObjectType} type
+ * @returns {boolean}
+ */
+export function isPoleType(type) {
+    return type.behavior instanceof PoleBehavior;
+}
+
+// A control-network pole; wires draw as catenaries above objects.
+export const PoleDefinition = new ObjectType({
+    name: "Pole",
+    toolId: 30,
+    geometry: "1x1",
+    textureName: "pole/0",
+    directional: false,
+    label: "Pole",
+    behavior: new PoleBehavior(),
+    wireAnchor: {x: 0.5, y: 0.2},
 });
 
 export const HousingDefinition = new ObjectType({
