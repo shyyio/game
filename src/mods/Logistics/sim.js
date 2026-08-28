@@ -1,8 +1,13 @@
 import {AbstractSimMod, chunkId} from "@spup/sdk";
-import {SetGateOpenMessage, WireLinkMessage, WireUnlinkMessage} from "./common/messages.js";
-import {GateSetEvent} from "./common/events.js";
-import {isGateType, isPoleType} from "./common/objectTypes.js";
-import {withinPoleRange, CONTROL_WIRE_RECORD} from "./common/constants.js";
+import {
+    SetGateOpenMessage,
+    WireLinkMessage,
+    WireUnlinkMessage,
+    ControlSnapshotRequestMessage,
+} from "./common/messages.js";
+import {GateSetEvent, ControlSnapshotEvent} from "./common/events.js";
+import {isGateType, isPoleType, isTerminalType} from "./common/objectTypes.js";
+import {withinPoleRange, CONTROL_WIRE_RECORD, POLE_NONE} from "./common/constants.js";
 import {ControlNetworks} from "./sim/ControlNetworks.js";
 
 /**
@@ -51,6 +56,10 @@ export class LogisticsSimMod extends AbstractSimMod {
         }
         if (message instanceof WireUnlinkMessage) {
             this._handleWireUnlink(message, session, game);
+            return true;
+        }
+        if (message instanceof ControlSnapshotRequestMessage) {
+            this._sendControlSnapshot(message, session, game);
             return true;
         }
         return false;
@@ -151,6 +160,9 @@ export class LogisticsSimMod extends AbstractSimMod {
         }
         const engine = game.simEngine;
         const networks = engine.resolve(ControlNetworks);
+        if (this._wireBreaksTerminalRule(engine, networks, endpoints)) {
+            return;
+        }
         if (endpoints.otherIsPole) {
             networks.wirePoles(
                 engine.placed.objectIdOf(endpoints.poleEid),
@@ -159,6 +171,61 @@ export class LogisticsSimMod extends AbstractSimMod {
             return;
         }
         networks.link(endpoints.otherEid, engine.placed.objectIdOf(endpoints.poleEid));
+    }
+
+    /**
+     * Whether the wire would leave a network with more than one terminal: a terminal joining a
+     * terminal'd component, or a pole-pole wire merging two terminal'd components.
+     * @param {GameEngine} engine
+     * @param {ControlNetworks} networks
+     * @param {{poleEid: number, otherEid: number, otherIsPole: boolean}} endpoints
+     * @returns {boolean}
+     * @private
+     */
+    _wireBreaksTerminalRule(engine, networks, endpoints) {
+        const poleObjectId = engine.placed.objectIdOf(endpoints.poleEid);
+        const otherObjectId = engine.placed.objectIdOf(endpoints.otherEid);
+        if (endpoints.otherIsPole) {
+            const poleNetwork = networks.networkOf(poleObjectId);
+            const otherNetwork = networks.networkOf(otherObjectId);
+            if (poleNetwork === null || otherNetwork === null || poleNetwork.id === otherNetwork.id) {
+                return false;
+            }
+            return this._hasTerminal(engine, poleNetwork, POLE_NONE)
+                && this._hasTerminal(engine, otherNetwork, POLE_NONE);
+        }
+        const otherType = engine.placed.typeFor(engine.placed.typeIdOf(endpoints.otherEid));
+        if (!isTerminalType(otherType)) {
+            return false;
+        }
+        const network = networks.networkOf(poleObjectId);
+        // Excluding the terminal itself keeps a relink within its own network legal.
+        return network !== null && this._hasTerminal(engine, network, otherObjectId);
+    }
+
+    /**
+     * Whether the network holds a live terminal other than `excludeObjectId`.
+     * @param {GameEngine} engine
+     * @param {ControlNetwork} network
+     * @param {number} excludeObjectId - a device to skip, or POLE_NONE
+     * @returns {boolean}
+     * @private
+     */
+    _hasTerminal(engine, network, excludeObjectId) {
+        for (const deviceId of network.deviceIds) {
+            if (deviceId === excludeObjectId) {
+                continue;
+            }
+            const eid = engine.placed.eidByObjectId(deviceId);
+            if (eid === undefined) {
+                continue;
+            }
+            const type = engine.placed.typeFor(engine.placed.typeIdOf(eid));
+            if (type !== undefined && isTerminalType(type)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -185,5 +252,54 @@ export class LogisticsSimMod extends AbstractSimMod {
         if (networks.poleOf(endpoints.otherEid) === engine.placed.objectIdOf(endpoints.poleEid)) {
             networks.unlink(endpoints.otherEid);
         }
+    }
+
+    /**
+     * Answers a terminal's network snapshot directly to the requesting session.
+     * @param {ControlSnapshotRequestMessage} message
+     * @param {AbstractSession} session
+     * @param {Game} game
+     * @private
+     */
+    _sendControlSnapshot(message, session, game) {
+        const engine = game.simEngine;
+        const eid = engine.placed.eidByObjectId(message.objectId);
+        if (eid === undefined) {
+            return;
+        }
+        const type = engine.placed.typeFor(engine.placed.typeIdOf(eid));
+        if (type === undefined || !isTerminalType(type)) {
+            return;
+        }
+        const def = engine.component("ControlTerminal");
+        const tier = def.store.tier[def.row(eid)];
+        const networks = engine.resolve(ControlNetworks);
+        const poleObjectId = networks.poleOf(eid);
+        const deviceObjectIds = [];
+        const deviceTypeIds = [];
+        const deviceTileXs = [];
+        const deviceTileYs = [];
+        let linked = 0;
+        const network = poleObjectId === POLE_NONE ? null : networks.networkOf(poleObjectId);
+        if (network !== null) {
+            linked = 1;
+            const position = engine.Position;
+            for (const deviceId of network.deviceIds) {
+                if (deviceId === message.objectId) {
+                    continue;
+                }
+                const deviceEid = engine.placed.eidByObjectId(deviceId);
+                if (deviceEid === undefined) {
+                    continue;
+                }
+                deviceObjectIds.push(deviceId);
+                deviceTypeIds.push(engine.placed.typeIdOf(deviceEid));
+                deviceTileXs.push(position.x[deviceEid]);
+                deviceTileYs.push(position.y[deviceEid]);
+            }
+        }
+        game.bus.publishTo(session.id, new ControlSnapshotEvent(
+            message.objectId, linked, tier, deviceObjectIds, deviceTypeIds, deviceTileXs, deviceTileYs,
+        ));
     }
 }

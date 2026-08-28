@@ -1,6 +1,11 @@
-import {AbstractCacheWriter, schemaMap} from "@spup/sdk/client";
-import {GateSetEvent, ControlLinkSetEvent, ControlLinkClearEvent} from "../common/events.js";
-import {SetGateOpenMessage} from "../common/messages.js";
+import {AbstractCacheWriter, schemaMap, schemaScalar} from "@spup/sdk/client";
+import {
+    GateSetEvent,
+    ControlLinkSetEvent,
+    ControlLinkClearEvent,
+    ControlSnapshotEvent,
+} from "../common/events.js";
+import {SetGateOpenMessage, ControlSnapshotRequestMessage} from "../common/messages.js";
 
 export const LOGISTICS_SCHEMA = {
     // Gate objectId -> open (1/0); absent means open (only off-default gates sync).
@@ -9,6 +14,10 @@ export const LOGISTICS_SCHEMA = {
     fluidById: schemaMap(),
     // Device objectId -> wired pole objectId; absent means unwired.
     linkPoleById: schemaMap(),
+    // objectId of the terminal the config panel is open for, or null when closed.
+    configTarget: schemaScalar(null),
+    // Last ControlSnapshotEvent, or null before first response.
+    controlSnapshot: schemaScalar(null),
 };
 
 /**
@@ -41,7 +50,29 @@ export class LogisticsWriter extends AbstractCacheWriter {
         }
         if (event instanceof ControlLinkClearEvent) {
             this._state.mapDelete("logistics.linkPoleById", event.deviceObjectId);
+            return;
         }
+        if (event instanceof ControlSnapshotEvent && event.objectId === this._state.get("logistics.configTarget")) {
+            this._state.set("logistics.controlSnapshot", event);
+        }
+    }
+
+    /**
+     * Opens the config panel for a placed terminal and requests its network snapshot.
+     * @param {number} objectId
+     * @returns {void}
+     */
+    openTerminalConfig(objectId) {
+        this._state.set("logistics.configTarget", objectId);
+        this._state.set("logistics.controlSnapshot", null);
+        this._session.sendMessage(new ControlSnapshotRequestMessage(objectId));
+    }
+
+    /**
+     * @returns {void}
+     */
+    closeTerminalConfig() {
+        this._state.set("logistics.configTarget", null);
     }
 
     /**

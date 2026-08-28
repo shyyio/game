@@ -92,3 +92,31 @@ export class WireUnlinkMessage extends AbstractMessage {
         return Number.isInteger(this.aObjectId) && Number.isInteger(this.bObjectId);
     }
 }
+
+/**
+ * Requests a terminal's network snapshot, sent when its config panel opens.
+ */
+export class ControlSnapshotRequestMessage extends AbstractMessage {
+
+    static wireFields = {
+        objectId: "int64",
+    };
+
+    /**
+     * @param {number} objectId
+     */
+    constructor(objectId) {
+        super();
+        this.objectId = objectId;
+    }
+
+    /**
+     * Shape only; the target's existence and type are checked server-side.
+     * @param {GameAPI} api
+     * @param {AbstractSession} session
+     * @returns {boolean}
+     */
+    validate(api, session) {
+        return Number.isInteger(this.objectId);
+    }
+}

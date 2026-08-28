@@ -1,4 +1,4 @@
-import {AbstractChunkRoutedEvent, AbstractBatchEvent} from "@spup/sdk";
+import {AbstractChunkRoutedEvent, AbstractBatchEvent, AbstractEvent} from "@spup/sdk";
 
 // Sentinel for a path feeding nothing, keeping `outPortIds` a plain int column; per-path events use null.
 const NO_OUT_PORT = 0;
@@ -435,5 +435,42 @@ export class ControlWireClearEvent extends AbstractChunkRoutedEvent {
         super(x, y);
         this.aObjectId = aObjectId;
         this.bObjectId = bObjectId;
+    }
+}
+
+/**
+ * A terminal's network snapshot, answered directly to the requesting session: the devices wired
+ * to the terminal's network (the terminal itself excluded), parallel-array style.
+ */
+export class ControlSnapshotEvent extends AbstractEvent {
+
+    static wireFields = {
+        objectId: "int64",
+        linked: "int32",
+        tier: "int32",
+        deviceObjectIds: "int64[]",
+        deviceTypeIds: "int32[]",
+        deviceTileXs: "sint32[]",
+        deviceTileYs: "sint32[]",
+    };
+
+    /**
+     * @param {number} objectId - the requested terminal
+     * @param {number} linked - 1 when the terminal is wired to a pole
+     * @param {number} tier
+     * @param {number[]} deviceObjectIds
+     * @param {number[]} deviceTypeIds
+     * @param {number[]} deviceTileXs
+     * @param {number[]} deviceTileYs
+     */
+    constructor(objectId, linked, tier, deviceObjectIds, deviceTypeIds, deviceTileXs, deviceTileYs) {
+        super();
+        this.objectId = objectId;
+        this.linked = linked;
+        this.tier = tier;
+        this.deviceObjectIds = deviceObjectIds;
+        this.deviceTypeIds = deviceTypeIds;
+        this.deviceTileXs = deviceTileXs;
+        this.deviceTileYs = deviceTileYs;
     }
 }

@@ -8,7 +8,8 @@ import {UndergroundBeltTool} from "./client/UndergroundBeltTool.js";
 import {LOGISTICS_SCHEMA, LogisticsWriter} from "./client/LogisticsState.js";
 import {WireDrawLayer} from "./client/WireDrawLayer.js";
 import {WireTool} from "./client/WireTool.js";
-import {isBeltType, isGateType, isPoleType} from "./common/objectTypes.js";
+import {ControlTerminalConfigLayer} from "./client/ControlTerminalConfigLayer.js";
+import {isBeltType, isGateType, isPoleType, isTerminalType} from "./common/objectTypes.js";
 import {
     BeltPathRecalculateEvent,
     BeltItemUpsertEvent,
@@ -78,6 +79,8 @@ export class LogisticsClientMod extends AbstractClientMod {
         this._pathDebugLayer = new PathDebugDrawLayer(this._pathParts);
         // Catenary overlay for the control network, fed in setup.
         this._wireLayer = new WireDrawLayer();
+        // Screen-space terminal panel, built in setup.
+        this._terminalConfigLayer = null;
     }
 
     drawLayers(client) {
@@ -106,6 +109,7 @@ export class LogisticsClientMod extends AbstractClientMod {
      */
     setup(client) {
         client.cache.register("logistics", LOGISTICS_SCHEMA, new LogisticsWriter(client.cache, client.session));
+        this._terminalConfigLayer = new ControlTerminalConfigLayer(client.app, client.cache, client.modRegistry);
         this._wireLayer.bindObjects(client.objects);
         client.cache.subscribe("logistics.linkPoleById", (id, poleId) => this._wireLayer.setLink(id, poleId));
         // Patching the entry swaps the sprite through the derived layer's onCacheUpdate.
@@ -148,7 +152,18 @@ export class LogisticsClientMod extends AbstractClientMod {
             if (entry.data.type.wireAnchor !== null && !isPoleType(entry.data.type)) {
                 client.cache.writer("logistics").forgetLink(entry.id);
             }
+            if (isTerminalType(entry.data.type) && client.cache.get("logistics.configTarget") === entry.id) {
+                client.cache.writer("logistics").closeTerminalConfig();
+            }
         });
+    }
+
+    /**
+     * @param {Client} client
+     * @returns {Container[]}
+     */
+    hudLayers(client) {
+        return [this._terminalConfigLayer];
     }
 
     /**
