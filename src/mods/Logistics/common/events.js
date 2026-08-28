@@ -348,3 +348,92 @@ export class GateSetBatchEvent extends AbstractBatchEvent {
         return events;
     }
 }
+
+/**
+ * A device was wired to a pole; also the chunk-sync payload for wired devices.
+ */
+export class ControlLinkSetEvent extends AbstractChunkRoutedEvent {
+
+    static wireFields = {
+        deviceObjectId: "int64",
+        poleObjectId: "int64",
+    };
+
+    /**
+     * @param {number} x - the device's tile
+     * @param {number} y
+     * @param {number} deviceObjectId
+     * @param {number} poleObjectId
+     */
+    constructor(x, y, deviceObjectId, poleObjectId) {
+        super(x, y);
+        this.deviceObjectId = deviceObjectId;
+        this.poleObjectId = poleObjectId;
+    }
+}
+
+/**
+ * A device's wire was removed.
+ */
+export class ControlLinkClearEvent extends AbstractChunkRoutedEvent {
+
+    static wireFields = {
+        deviceObjectId: "int64",
+    };
+
+    /**
+     * @param {number} x - the device's tile
+     * @param {number} y
+     * @param {number} deviceObjectId
+     */
+    constructor(x, y, deviceObjectId) {
+        super(x, y);
+        this.deviceObjectId = deviceObjectId;
+    }
+}
+
+/**
+ * A pole-pole wire was added; also the chunk-sync payload, emitted at both endpoints' chunks.
+ */
+export class ControlWireSetEvent extends AbstractChunkRoutedEvent {
+
+    static wireFields = {
+        aObjectId: "int64",
+        bObjectId: "int64",
+    };
+
+    /**
+     * @param {number} x - one endpoint's tile
+     * @param {number} y
+     * @param {number} aObjectId
+     * @param {number} bObjectId
+     */
+    constructor(x, y, aObjectId, bObjectId) {
+        super(x, y);
+        this.aObjectId = aObjectId;
+        this.bObjectId = bObjectId;
+    }
+}
+
+/**
+ * A pole-pole wire was removed.
+ */
+export class ControlWireClearEvent extends AbstractChunkRoutedEvent {
+
+    static wireFields = {
+        aObjectId: "int64",
+        bObjectId: "int64",
+    };
+
+    /**
+     * @param {number} x - one endpoint's tile
+     * @param {number} y
+     * @param {number} aObjectId
+     * @param {number} bObjectId
+     */
+    constructor(x, y, aObjectId, bObjectId) {
+        super(x, y);
+        this.aObjectId = aObjectId;
+        this.bObjectId = bObjectId;
+    }
+}

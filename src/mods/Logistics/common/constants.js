@@ -68,6 +68,31 @@ export const MAP_COLOR_BELT_TUNNEL = 0xc8a16e;
 // Roads draw below the worker figures (19) and the default object sprites (20).
 export const DRAW_LAYER_ROAD = 18;
 
+// Wire catenaries draw above objects and fills.
+export const DRAW_LAYER_WIRES = 30;
+
+// ---- Control network ----
+// Poles auto-link to poles within this chebyshev range; device wires obey the same reach.
+export const POLE_LINK_RANGE = 10;
+
+// ControlLink.pole value for an unwired device.
+export const POLE_NONE = 0;
+
+// Save-record table of pole-pole wires.
+export const CONTROL_WIRE_RECORD = "ControlWire";
+
+/**
+ * Whether two tiles are within wire reach of each other.
+ * @param {number} x1
+ * @param {number} y1
+ * @param {number} x2
+ * @param {number} y2
+ * @returns {boolean}
+ */
+export function withinPoleRange(x1, y1, x2, y2) {
+    return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2)) <= POLE_LINK_RANGE;
+}
+
 // ---- System ordering ----
 // Splitter's POST_RESOLVE seam reads shared ports before belt transport (default order 0) writes pops.
 export const ORDER_BEFORE_TRANSPORT = -10;

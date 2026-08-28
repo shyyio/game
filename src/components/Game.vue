@@ -15,6 +15,7 @@ import DeviceSettings, {
 } from "@/client/state/DeviceSettings.js";
 import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
 import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
+import {DeviceSettingSlider} from "@/client/hud/DeviceSettingSlider.js";
 import {applyTheme, onThemeChange, THEME_DEFAULT} from "@/client/Theme.js";
 import {vuetifyThemeName} from "@/client/vuetifyTheme.js";
 import {gameStart, startError, GAME_MODE_REMOTE} from "@/client/GameStart.js";
@@ -223,6 +224,18 @@ export default defineComponent({
                   :label="control.label"
                   :items="control.items"
                   variant="solo"
+                  density="compact"
+                  hide-details
+              />
+              <v-slider
+                  v-else-if="control instanceof DeviceSettingSlider"
+                  v-model="settingValues[control.key]"
+                  :label="control.label"
+                  :min="control.min"
+                  :max="control.max"
+                  :step="control.step"
+                  thumb-label
+                  color="primary"
                   density="compact"
                   hide-details
               />

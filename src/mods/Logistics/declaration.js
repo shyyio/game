@@ -8,6 +8,7 @@ import {
     RoadDefinition,
     HousingDefinition,
     GateDefinition,
+    PoleDefinition,
 } from "./common/objectTypes.js";
 import {
     BeltPathRecalculateEvent,
@@ -19,8 +20,12 @@ import {
     BeltPathBatchEvent,
     GateSetEvent,
     GateSetBatchEvent,
+    ControlLinkSetEvent,
+    ControlLinkClearEvent,
+    ControlWireSetEvent,
+    ControlWireClearEvent,
 } from "./common/events.js";
-import {SetGateOpenMessage} from "./common/messages.js";
+import {SetGateOpenMessage, WireLinkMessage, WireUnlinkMessage} from "./common/messages.js";
 
 export class LogisticsDeclaration extends AbstractModDeclaration {
 
@@ -42,6 +47,7 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
             BeltTunnelUpDefinition,
             BeltUndergroundDefinition,
             GateDefinition,
+            PoleDefinition,
         ];
     }
 
@@ -57,6 +63,12 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
             GateSetEvent,
             GateSetBatchEvent,
             SetGateOpenMessage,
+            ControlLinkSetEvent,
+            ControlLinkClearEvent,
+            ControlWireSetEvent,
+            ControlWireClearEvent,
+            WireLinkMessage,
+            WireUnlinkMessage,
         ];
     }
 

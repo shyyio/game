@@ -5,14 +5,18 @@ import {BeltGhostLayer} from "./client/BeltGhostLayer.js";
 import {PathDebugDrawLayer} from "./client/PathDebugDrawLayer.js";
 import {BeltTool} from "./client/BeltTool.js";
 import {UndergroundBeltTool} from "./client/UndergroundBeltTool.js";
-import {LOGISTICS_SCHEMA, GatesWriter} from "./client/GateState.js";
-import {isBeltType, isGateType} from "./common/objectTypes.js";
+import {LOGISTICS_SCHEMA, LogisticsWriter} from "./client/LogisticsState.js";
+import {WireDrawLayer} from "./client/WireDrawLayer.js";
+import {WireTool} from "./client/WireTool.js";
+import {isBeltType, isGateType, isPoleType} from "./common/objectTypes.js";
 import {
     BeltPathRecalculateEvent,
     BeltItemUpsertEvent,
     BeltItemSyncEvent,
     BeltItemDeleteEvent,
     BeltItemResetEvent,
+    ControlWireSetEvent,
+    ControlWireClearEvent,
 } from "./common/events.js";
 import {tunnelStep, BELT_TUNNEL_DOWN, BELT_TUNNEL_UP, BELT_UNDERGROUND} from "./common/constants.js";
 import {walkTunnel, isTunnelMouth, inferBeltParent} from "./common/geometry.js";
@@ -72,6 +76,8 @@ export class LogisticsClientMod extends AbstractClientMod {
         this._pendingPops = new Map();
         // Debug overlay of belt paths.
         this._pathDebugLayer = new PathDebugDrawLayer(this._pathParts);
+        // Catenary overlay for the control network, fed in setup.
+        this._wireLayer = new WireDrawLayer();
     }
 
     drawLayers(client) {
@@ -80,6 +86,7 @@ export class LogisticsClientMod extends AbstractClientMod {
             this._overlayLayer,
             this._ghostLayer,
             this._pathDebugLayer,
+            this._wireLayer,
         ];
     }
 
@@ -88,6 +95,7 @@ export class LogisticsClientMod extends AbstractClientMod {
         return [
             new BeltTool(client, this._ghostLayer),
             new UndergroundBeltTool(client, this._ghostLayer),
+            new WireTool(client, this._wireLayer),
         ];
     }
 
@@ -97,7 +105,9 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @returns {void}
      */
     setup(client) {
-        client.cache.register("logistics", LOGISTICS_SCHEMA, new GatesWriter(client.cache, client.session));
+        client.cache.register("logistics", LOGISTICS_SCHEMA, new LogisticsWriter(client.cache, client.session));
+        this._wireLayer.bindObjects(client.objects);
+        client.cache.subscribe("logistics.linkPoleById", (id, poleId) => this._wireLayer.setLink(id, poleId));
         // Patching the entry swaps the sprite through the derived layer's onCacheUpdate.
         client.cache.subscribe("logistics.openById", (id, open) => {
             client.objects.update(id, {gateOpen: open !== 0});
@@ -121,6 +131,9 @@ export class LogisticsClientMod extends AbstractClientMod {
             if (entry.data.type.conveys !== null) {
                 this._predictNeighborGateModes(client, entry);
             }
+            if (isPoleType(entry.data.type)) {
+                this._wireLayer.addPole(entry);
+            }
         });
         client.objects.onRemove(entry => {
             if (isBeltType(entry.data.type)) {
@@ -128,6 +141,12 @@ export class LogisticsClientMod extends AbstractClientMod {
             }
             if (isGateType(entry.data.type)) {
                 client.cache.writer("logistics").forget(entry.id);
+            }
+            if (isPoleType(entry.data.type)) {
+                this._wireLayer.removePole(entry.id);
+            }
+            if (entry.data.type.wireAnchor !== null && !isPoleType(entry.data.type)) {
+                client.cache.writer("logistics").forgetLink(entry.id);
             }
         });
     }
@@ -223,6 +242,14 @@ export class LogisticsClientMod extends AbstractClientMod {
         if (event instanceof ObjectInsertEvent && isBeltType(client.modRegistry.typeById(event.typeId))) {
             // A live insert's recalc precedes the belt, so repaint once it is cached.
             this._pathDebugLayer.markStale();
+            return;
+        }
+        if (event instanceof ControlWireSetEvent) {
+            this._wireLayer.setEdge(event.aObjectId, event.bObjectId);
+            return;
+        }
+        if (event instanceof ControlWireClearEvent) {
+            this._wireLayer.removeEdge(event.aObjectId, event.bObjectId);
             return;
         }
         if (event instanceof BeltPathRecalculateEvent) {

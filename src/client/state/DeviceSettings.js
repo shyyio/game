@@ -57,6 +57,23 @@ class DeviceSettings {
 
     /**
      * @param {string} key
+     * @param {number} fallback - also used when the stored value is not a finite number
+     * @returns {number}
+     */
+    getFloat(key, fallback) {
+        const stored = localStorage.getItem(key);
+        if (stored === null) {
+            return fallback;
+        }
+        const value = Number(stored);
+        if (!Number.isFinite(value)) {
+            return fallback;
+        }
+        return value;
+    }
+
+    /**
+     * @param {string} key
      * @param {number} value
      * @returns {void}
      */

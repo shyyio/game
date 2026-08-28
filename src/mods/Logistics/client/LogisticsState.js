@@ -1,5 +1,5 @@
 import {AbstractCacheWriter, schemaMap} from "@spup/sdk/client";
-import {GateSetEvent} from "../common/events.js";
+import {GateSetEvent, ControlLinkSetEvent, ControlLinkClearEvent} from "../common/events.js";
 import {SetGateOpenMessage} from "../common/messages.js";
 
 export const LOGISTICS_SCHEMA = {
@@ -7,12 +7,14 @@ export const LOGISTICS_SCHEMA = {
     openById: schemaMap(),
     // Gate objectId -> mode (1 fluid, 0 item); absent means item.
     fluidById: schemaMap(),
+    // Device objectId -> wired pole objectId; absent means unwired.
+    linkPoleById: schemaMap(),
 };
 
 /**
- * Feeds the "logistics" namespace: gate open states.
+ * Feeds the "logistics" namespace: gate states and device wires.
  */
-export class GatesWriter extends AbstractCacheWriter {
+export class LogisticsWriter extends AbstractCacheWriter {
 
     /**
      * @param {ClientCache} state
@@ -31,6 +33,14 @@ export class GatesWriter extends AbstractCacheWriter {
         if (event instanceof GateSetEvent) {
             this._state.mapSet("logistics.openById", event.objectId, event.open);
             this._state.mapSet("logistics.fluidById", event.objectId, event.fluid);
+            return;
+        }
+        if (event instanceof ControlLinkSetEvent) {
+            this._state.mapSet("logistics.linkPoleById", event.deviceObjectId, event.poleObjectId);
+            return;
+        }
+        if (event instanceof ControlLinkClearEvent) {
+            this._state.mapDelete("logistics.linkPoleById", event.deviceObjectId);
         }
     }
 
@@ -64,5 +74,14 @@ export class GatesWriter extends AbstractCacheWriter {
     forget(objectId) {
         this._state.mapDelete("logistics.openById", objectId);
         this._state.mapDelete("logistics.fluidById", objectId);
+    }
+
+    /**
+     * Drops a removed device's wire.
+     * @param {number} objectId
+     * @returns {void}
+     */
+    forgetLink(objectId) {
+        this._state.mapDelete("logistics.linkPoleById", objectId);
     }
 }
