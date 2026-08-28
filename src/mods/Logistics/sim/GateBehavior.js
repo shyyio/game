@@ -2,6 +2,7 @@ import {AbstractBehavior, TickPhase, EMPTY, NO_EID, chunkId, getOrCreate, LAYER_
 import {ORDER_BEFORE_TRANSPORT} from "../common/constants.js";
 import {GateSetBatchEvent} from "../common/events.js";
 import {gateConnections, placementBlockedByGate} from "../common/gateConnections.js";
+import {ControlNetworks} from "./ControlNetworks.js";
 
 // Buffered toggles land first, then mode review, then the gate's own intents.
 const ORDER_APPLY_PENDING = -30;
@@ -76,6 +77,8 @@ export class GateBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, placed, eid) {
+        // Drops the wire (and marks the network graph dirty) before the link row is destroyed.
+        engine.resolve(ControlNetworks).unlink(eid);
         const def = engine.component("Gate");
         const gate = def.store;
         const row = def.row(eid);

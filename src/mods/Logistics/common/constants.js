@@ -81,6 +81,9 @@ export const POLE_NONE = 0;
 // Save-record table of pole-pole wires.
 export const CONTROL_WIRE_RECORD = "ControlWire";
 
+// A terminal's starting tier.
+export const CONTROL_TIER_BASE = 1;
+
 /**
  * Whether two tiles are within wire reach of each other.
  * @param {number} x1

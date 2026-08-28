@@ -24,6 +24,7 @@ import {SplitterBehavior} from "../sim/SplitterBehavior.js";
 import {BeltBehavior} from "../sim/BeltBehavior.js";
 import {GateBehavior} from "../sim/GateBehavior.js";
 import {PoleBehavior} from "../sim/PoleBehavior.js";
+import {ControlTerminalBehavior} from "../sim/ControlTerminalBehavior.js";
 
 // One ObjectType per belt kind (the typeId carries the kind on the wire); `bespokeClient` opts
 // out of the derived bundles since BeltDrawLayer/BeltTool stay bespoke.
@@ -232,6 +233,30 @@ export const PoleDefinition = new ObjectType({
     directional: false,
     label: "Pole",
     behavior: new PoleBehavior(),
+    wireAnchor: {x: 0.5, y: 0.2},
+});
+
+/**
+ * Whether an ObjectType is the control terminal.
+ * @param {ObjectType} type
+ * @returns {boolean}
+ */
+export function isTerminalType(type) {
+    return type.behavior instanceof ControlTerminalBehavior;
+}
+
+const openTerminalConfig = (record, session, client) => client.cache.writer("logistics").openTerminalConfig(record.id);
+
+// The config surface of a control network; portless, wired to a pole like any device.
+export const ControlTerminalDefinition = new ObjectType({
+    name: "ControlTerminal",
+    toolId: 29,
+    geometry: "1x1",
+    textureName: "terminal/0",
+    directional: false,
+    label: "Control Terminal",
+    behavior: new ControlTerminalBehavior(),
+    tapAction: openTerminalConfig,
     wireAnchor: {x: 0.5, y: 0.2},
 });
 
