@@ -21,10 +21,10 @@ export class MarketSimMod extends AbstractSimMod {
      * All this mod's ECS content (the MarketTerminal component, its systems, and the engine-scoped
      * MarketBook) is installed by TradingTerminalBehavior.install, since it's shared with the client
      * bundle via the ObjectType — nothing further to register here.
-     * @param {GameEngine} sim
+     * @param {GameEngine} engine
      * @returns {void}
      */
-    setup(sim) {}
+    setup(engine) {}
 
     /**
      * Grants a first-time player their starting balance. An unset key means never granted and never
@@ -100,7 +100,7 @@ export class MarketSimMod extends AbstractSimMod {
         if (!isFixed && message.price <= 0) {
             return;
         }
-        const def = engine.component("MarketTerminal");
+        const def = engine.components.get("MarketTerminal");
         const terminal = def.store;
         const row = def.row(eid);
         book.removeBuy(eid);
@@ -158,7 +158,7 @@ export class MarketSimMod extends AbstractSimMod {
         let currentPrice = MARKET_SNAPSHOT_NONE;
         const eid = engine.placed.eidByObjectId(message.objectId);
         if (eid !== undefined && engine.placed.typeIdOf(eid) === TradingTerminalType.typeId) {
-            const def = engine.component("MarketTerminal");
+            const def = engine.components.get("MarketTerminal");
             const terminal = def.store;
             const row = def.row(eid);
             currentMode = terminal.mode[row];
@@ -290,7 +290,7 @@ export class MarketSimMod extends AbstractSimMod {
      * @returns {void}
      */
     _refreshBalances(engine, game, owners) {
-        const def = engine.component("MarketTerminal");
+        const def = engine.components.get("MarketTerminal");
         const terminal = def.store;
         const eids = def.eids;
         const count = def.count;

@@ -4,9 +4,9 @@ import {Belts} from "./Belts.js";
 
 /**
  * The engine's belt transport.
- * @param {GameEngine} sim
+ * @param {GameEngine} engine
  * @returns {Belts}
  */
-export function beltsOf(sim) {
-    return sim.resolve(Belts);
+export function beltsOf(engine) {
+    return engine.resolve(Belts);
 }

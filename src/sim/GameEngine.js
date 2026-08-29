@@ -7,6 +7,7 @@ import {PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlacedObjects} from "@/sim/PlacedObjects.js";
 import {OverworldBake} from "@/sim/OverworldBake.js";
 import {WorkerNetworks} from "@/sim/WorkerNetworks.js";
+import {ComponentRegistry} from "@/sim/ComponentRegistry.js";
 
 /**
  * @enum
@@ -73,12 +74,6 @@ export const EMPTY = -1;
 // Field sentinel for an eid-reference field with no target (a fresh port, an absent seam).
 export const NO_EID = -1;
 
-// Initial column length for every component store; grows by doubling when an eid exceeds it.
-const PORT_CAPACITY = 1024;
-
-// Column slot for a row a sparse component does not hold.
-const NO_ROW = -1;
-
 // Initial row count for the per-tick intent/resolved columns; grows by doubling.
 const INTENT_CAPACITY = 1024;
 
@@ -91,118 +86,6 @@ const INTENT_MANAGED = 2;
 const PORT_EMPTIED_NONE = 0;
 const PORT_EMPTIED_MOD = 1;
 const PORT_EMPTIED_CONSUMED = 2;
-
-/**
- * A component column for a field kind: Float32Array for "f32", Int32Array otherwise ("i32"/"eid").
- * @param {string} kind
- * @param {number} capacity
- * @param {number} fill
- * @returns {Int32Array|Float32Array}
- */
-function columnFor(kind, capacity, fill) {
-    const column = kind === "f32" ? new Float32Array(capacity) : new Int32Array(capacity);
-    return column.fill(fill);
-}
-
-
-/**
- * A registered component: its SoA Int32Array columns plus how they are indexed.
- *
- * A dense component's columns are indexed by eid and sized to the whole eid range — right for
- * components nearly every entity carries (Position, Port). A sparse one's are indexed by a row
- * number and sized to how many entities actually carry it, so a component held by a small slice of
- * the world costs a small slice of the memory. Rows come from the world's membership set, and a
- * removal swaps the last row down into the freed slot, so row numbers are stable only within a tick.
- */
-class ComponentDef {
-
-    /**
-     * @param {string} name
-     * @param {{name:string, kind:string, fill:number}[]} fields
-     * @param {boolean} snapshotOnly
-     * @param {boolean} sparse
-     */
-    constructor(
-        name,
-        fields,
-        snapshotOnly,
-        sparse,
-    ) {
-        this.name = name;
-        this.fields = fields;
-        this.snapshotOnly = snapshotOnly;
-        this.sparse = sparse;
-        this.capacity = PORT_CAPACITY;
-        /**
-         * Column per field, indexed by {@link slot}.
-         * @type {Object<string, Int32Array|Float32Array>}
-         */
-        this.store = {};
-        for (const field of fields) {
-            this.store[field.name] = columnFor(field.kind, PORT_CAPACITY, field.fill);
-        }
-
-        /**
-         * The world's membership set, adopted as row numbering; null for a dense component.
-         * @type {?ComponentSet}
-         */
-        this.set = null;
-    }
-
-    /**
-     * How many entities carry this component; sparse components only.
-     * @returns {number}
-     */
-    get count() {
-        return this.set.count;
-    }
-
-    /**
-     * The eid of each live row, valid up to {@link count}; sparse components only.
-     * @returns {Int32Array}
-     */
-    get eids() {
-        return this.set.dense;
-    }
-
-    /**
-     * The column row holding `eid`'s values, or NO_ROW when it does not carry this component;
-     * sparse components only.
-     * @param {number} eid
-     * @returns {number}
-     */
-    row(eid) {
-        if (eid < this.set.sparse.length) {
-            return this.set.sparse[eid];
-        }
-        return NO_ROW;
-    }
-
-    /**
-     * The slot `eid`'s values live at: its row when sparse, the eid itself when dense.
-     * @param {number} eid
-     * @returns {number}
-     */
-    slot(eid) {
-        if (this.sparse) {
-            return this.row(eid);
-        }
-        return eid;
-    }
-
-    /**
-     * The entity whose values live at `slot`.
-     * @param {number} slot
-     * @returns {number}
-     */
-    eidAt(slot) {
-        if (this.sparse) {
-            return this.set.dense[slot];
-        }
-        return slot;
-    }
-}
-
 
 /**
  * An Int32Array column indexed by port eid, owned by a module but grown by the engine with the Port
@@ -256,10 +139,11 @@ export class GameEngine {
         this.modRegistry = modRegistry;
         this._initHostSlots();
 
-        // Registered components in definition order. The generic serializer walks these, so any state
-        // kept here round-trips for free (see serialize).
-        this._components = [];
-        this._componentByName = new Map();
+        /**
+         * Every component the loadout registers, and the entity operations over them.
+         * @type {ComponentRegistry}
+         */
+        this.components = new ComponentRegistry(this);
         this._initPortState();
         this._initSpatialState();
         this._initSaveState();
@@ -328,13 +212,13 @@ export class GameEngine {
         // Port component: item type per port eid (EMPTY when unoccupied). An edge port also carries
         // Position for the edge it sits on, so _portsByEdge rebuilds from the world; a port with no
         // Position is not an edge port.
-        this._portDef = this.defineComponent("Port", [
+        this._portDef = this.components.define("Port", [
             {name: "item", fill: EMPTY},
         ]);
         this.Port = this._portDef.store;
 
         // Last emitted item per rendered port, so EMIT_RENDER emits only changes; EMPTY means nothing
-        // drawn. Sized with the Port columns (see _growComponent).
+        // drawn. Sized with the Port columns (see _growPortColumns).
         this._portShadow = new Int32Array(this._portDef.capacity).fill(EMPTY);
         // Ports belonging to fluid machinery (pipe network and tank edges); belts refuse to link
         // with one. Marked by the owning module, re-marked on rebuild.
@@ -364,7 +248,7 @@ export class GameEngine {
         this._portObserved = new Uint8Array(this._portDef.capacity);
         this._portObservedGen = new Int32Array(this._portDef.capacity);
 
-        // Module-owned columns indexed by port eid; grown with the Port component (see _growComponent).
+        // Module-owned columns indexed by port eid; grown with the Port component (see _growPortColumns).
         this._portColumns = [];
 
         // Per-port scratch for resolvePortTransfer, sized with the Port columns and persisting through
@@ -379,6 +263,7 @@ export class GameEngine {
         this._bestBySource = new Int32Array(this._portDef.capacity).fill(EMPTY);
         this._draining = new Uint8Array(this._portDef.capacity);
 
+        this.components.onGrow(this._portDef, capacity => this._growPortColumns(capacity));
         this._initIntentColumns();
     }
 
@@ -398,7 +283,7 @@ export class GameEngine {
         // Position component: where an entity sits. Carried by placed objects (their anchor tile), by
         // edge ports (the seam flow crosses), and by every occupied cell. `direction` is NO_EID for
         // things with no facing (cells).
-        this._positionDef = this.defineComponent("Position", [
+        this._positionDef = this.components.define("Position", [
             {name: "x"},
             {name: "y"},
             {name: "direction", fill: NO_EID},
@@ -410,7 +295,7 @@ export class GameEngine {
         // (0 for plain footprints; e.g. resource cover stores its resource type). Objects on the same
         // layer collide; different layers coexist. Always paired with Position — cells are the entities
         // carrying both.
-        this._occupancyDef = this.defineComponent("Occupancy", [
+        this._occupancyDef = this.components.define("Occupancy", [
             {name: "layer"},
             {name: "owner", fill: NO_EID},
             {name: "userData"},
@@ -817,9 +702,7 @@ export class GameEngine {
      */
     async init() {
         this.world = new World();
-        for (const def of this._components) {
-            this._bindComponent(def);
-        }
+        this.components.bindAll();
         if (this.modRegistry !== null) {
             // The registry must be frozen (typeIds assigned) before content wires up; the accessors
             // throw otherwise. The generic entity host installs every derived type's behavior first,
@@ -1036,136 +919,32 @@ export class GameEngine {
     }
 
     /**
-     * Registers a component store: SoA typed-array columns grown by doubling, tracked for generic
-     * serialization. `fields` are {name, kind?, fill?} — kind "eid" marks an entity-reference column
-     * remapped on deserialize, "f32" a float column (default "i32"); fill is the empty-slot value
-     * (default 0). Modules call this so their state round-trips with no bespoke save code.
-     * @param {string} name
-     * @param {{name:string, kind?:string, fill?:number}[]} fieldSpecs
-     * @param {{snapshotOnly?:boolean, sparse?:boolean}} [options] - snapshotOnly components hold state
-     *     materialized at save (belt paths), not kept in sync during play, so the port sweep ignores
-     *     their eid fields (the module's live pin hook is authoritative instead); sparse components
-     *     index their columns by row instead of by eid, so a component only a slice of the world
-     *     carries is sized to that slice (see {@link ComponentDef})
-     * @returns {ComponentDef}
-     */
-    defineComponent(name, fieldSpecs, {snapshotOnly=false, sparse=false}={}) {
-        const fields = fieldSpecs.map(spec => {
-            let kind = spec.kind;
-            if (kind === undefined) {
-                kind = "i32";
-            }
-            let fill = spec.fill;
-            if (fill === undefined) {
-                fill = 0;
-            }
-            return {name: spec.name, kind, fill};
-        });
-        const def = new ComponentDef(name, fields, snapshotOnly, sparse);
-        this._components.push(def);
-        this._componentByName.set(name, def);
-        if (this.world !== null) {
-            this._bindComponent(def);
-        }
-        return def;
-    }
-
-    /**
-     * Adopts the world's membership set as a sparse component's row numbering. Called for every
-     * component whenever a world is created, since the components outlive it.
+     * Grows the port-indexed state kept outside the Port component itself, so every column stays
+     * addressable by port eid. Registered with the component registry as the Port component's
+     * grow listener.
      * @private
-     * @param {ComponentDef} def
+     * @param {number} capacity
      * @returns {void}
      */
-    _bindComponent(def) {
-        if (!def.sparse) {
-            return;
+    _growPortColumns(capacity) {
+        for (const name of ["_renderX", "_renderY", "_portObservedGen"]) {
+            const grown = new Int32Array(capacity);
+            grown.set(this[name]);
+            this[name] = grown;
         }
-        def.set = this.world.trackRows(def.store, (fromRow, toRow) => {
-            for (const field of def.fields) {
-                const column = def.store[field.name];
-                column[toRow] = column[fromRow];
-            }
-        });
-    }
-
-    /**
-     * Grows a component's columns so `slot` is addressable.
-     * @private
-     * @param {ComponentDef} def
-     * @param {number} slot - an eid when dense, a row when sparse
-     * @returns {void}
-     */
-    _growComponent(def, slot) {
-        if (slot < def.capacity) {
-            return;
+        for (const name of ["_portShadow", "_destBySource", "_winnerByDest", "_bestBySource", "_portFluidSource"]) {
+            const grown = new Int32Array(capacity).fill(EMPTY);
+            grown.set(this[name]);
+            this[name] = grown;
         }
-        let capacity = def.capacity;
-        while (capacity <= slot) {
-            capacity *= 2;
+        for (const name of ["_portDirty", "_portEmptied", "_rendered", "_portFluid", "_portObserved", "_portResolved", "_portResolvedUnmanaged", "_draining"]) {
+            const grown = new Uint8Array(capacity);
+            grown.set(this[name]);
+            this[name] = grown;
         }
-        for (const field of def.fields) {
-            const grown = columnFor(field.kind, capacity, field.fill);
-            grown.set(def.store[field.name]);
-            def.store[field.name] = grown;
+        for (const portColumn of this._portColumns) {
+            portColumn.grow(capacity);
         }
-        def.capacity = capacity;
-        if (def === this._portDef) {
-            this.Port = def.store;
-            for (const name of ["_renderX", "_renderY", "_portObservedGen"]) {
-                const grown = new Int32Array(capacity);
-                grown.set(this[name]);
-                this[name] = grown;
-            }
-            for (const name of ["_portShadow", "_destBySource", "_winnerByDest", "_bestBySource", "_portFluidSource"]) {
-                const grown = new Int32Array(capacity).fill(EMPTY);
-                grown.set(this[name]);
-                this[name] = grown;
-            }
-            for (const name of ["_portDirty", "_portEmptied", "_rendered", "_portFluid", "_portObserved", "_portResolved", "_portResolvedUnmanaged", "_draining"]) {
-                const grown = new Uint8Array(capacity);
-                grown.set(this[name]);
-                this[name] = grown;
-            }
-            for (const portColumn of this._portColumns) {
-                portColumn.grow(capacity);
-            }
-        }
-        if (def === this._positionDef) {
-            this.Position = def.store;
-        }
-    }
-
-    /**
-     * Attaches a component to `eid`, growing its columns first. A sparse component's new row is
-     * cleared, since a prior tenant's values may still sit there.
-     * @private
-     * @param {ComponentDef} def
-     * @param {number} eid
-     * @returns {void}
-     */
-    _addComponent(def, eid) {
-        if (!def.sparse) {
-            this._growComponent(def, eid);
-            this.world.addComponent(eid, def.store);
-            return;
-        }
-        this.world.addComponent(eid, def.store);
-        const row = def.row(eid);
-        this._growComponent(def, row);
-        for (const field of def.fields) {
-            def.store[field.name][row] = field.fill;
-        }
-    }
-
-    /**
-     * Attaches a component to an existing entity (a behavior wiring its columns onto a placed eid).
-     * @param {ComponentDef} def
-     * @param {number} eid
-     * @returns {void}
-     */
-    attachComponent(def, eid) {
-        this._addComponent(def, eid);
     }
 
     /**
@@ -1181,26 +960,13 @@ export class GameEngine {
     }
 
     /**
-     * The component descriptor registered under `name`; throws on an unknown name.
-     * @param {string} name
-     * @returns {ComponentDef}
-     */
-    component(name) {
-        const def = this._componentByName.get(name);
-        if (def === undefined) {
-            throw new Error(`Unknown component "${name}"`);
-        }
-        return def;
-    }
-
-    /**
      * Creates a port carrying `item` (EMPTY for an empty port).
      * @param {number} [item]
      * @returns {number} the port eid
      */
     createPort(item=EMPTY) {
         const eid = this.world.addEntity();
-        this._addComponent(this._portDef, eid);
+        this.components.attach(this._portDef, eid);
         // The world recycles eids, so clear any shadow/flag the previous tenant left behind.
         this._portShadow[eid] = EMPTY;
         this._portFluid[eid] = 0;
@@ -1317,7 +1083,7 @@ export class GameEngine {
      * @returns {void}
      */
     setPosition(eid, x, y, direction=NO_EID) {
-        this._addComponent(this._positionDef, eid);
+        this.components.attach(this._positionDef, eid);
         this.Position.x[eid] = x;
         this.Position.y[eid] = y;
         this.Position.direction[eid] = direction;
@@ -1401,7 +1167,7 @@ export class GameEngine {
             }
             const eid = this.world.addEntity();
             this.setPosition(eid, cell.x, cell.y);
-            this._addComponent(this._occupancyDef, eid);
+            this.components.attach(this._occupancyDef, eid);
             occupancy.layer[eid] = this._layerCodes.get(cell.layer);
             occupancy.owner[eid] = owner;
             occupancy.userData[eid] = userData;
@@ -1489,7 +1255,7 @@ export class GameEngine {
      */
     collectUnreferencedPorts() {
         const referenced = new Set();
-        for (const def of this._components) {
+        for (const def of this.components.defs) {
             if (def.snapshotOnly) {
                 continue;
             }
@@ -1497,7 +1263,7 @@ export class GameEngine {
             if (eidFields.length === 0) {
                 continue;
             }
-            for (const slot of this._slotsOf(def)) {
+            for (const slot of this.components.slotsOf(def)) {
                 for (const field of eidFields) {
                     const target = def.store[field.name][slot];
                     if (target !== NO_EID) {
@@ -1536,58 +1302,6 @@ export class GameEngine {
         for (const batch of batches.values()) {
             this.emitEvent(batch);
         }
-    }
-
-    /**
-     * Creates an entity carrying `def`'s component.
-     * @param {ComponentDef} def
-     * @returns {number} the entity id
-     */
-    createEntity(def) {
-        const eid = this.world.addEntity();
-        this._addComponent(def, eid);
-        return eid;
-    }
-
-    /**
-     * Removes an entity (and all its components) from the world; a no-op for an already-destroyed eid.
-     * @param {number} eid
-     * @returns {void}
-     */
-    destroyEntity(eid) {
-        if (this.world.entityExists(eid)) {
-            this.world.removeEntity(eid);
-        }
-    }
-
-    /**
-     * The entities currently carrying `def`'s component.
-     * @param {ComponentDef} def
-     * @returns {Int32Array}
-     */
-    entitiesWith(def) {
-        if (def.sparse) {
-            return def.eids.slice(0, def.count);
-        }
-        return this.world.query([def.store]);
-    }
-
-    /**
-     * Every live slot of `def`'s columns: its rows when sparse, its entity ids when dense. Lets the
-     * generic passes (the port sweep, serialize) read any component without knowing which it is.
-     * @private
-     * @param {ComponentDef} def
-     * @returns {Int32Array}
-     */
-    _slotsOf(def) {
-        if (!def.sparse) {
-            return this.world.query([def.store]);
-        }
-        const slots = new Int32Array(def.count);
-        for (let row = 0; row < def.count; row += 1) {
-            slots[row] = row;
-        }
-        return slots;
     }
 
     /**
@@ -1967,9 +1681,9 @@ export class GameEngine {
         for (const hook of this._serializeHooks) {
             hook();
         }
-        const components = this._components.map(def => {
+        const components = this.components.defs.map(def => {
             const rows = [];
-            for (const slot of this._slotsOf(def)) {
+            for (const slot of this.components.slotsOf(def)) {
                 const row = {eid: def.eidAt(slot)};
                 for (const field of def.fields) {
                     row[field.name] = def.store[field.name][slot];
@@ -2073,7 +1787,7 @@ export class GameEngine {
         const savedNames = new Set();
         for (const component of snapshot.components) {
             savedNames.add(component.name);
-            const def = this._componentByName.get(component.name);
+            const def = this.components.find(component.name);
             if (def === undefined) {
                 mismatches.push(`component "${component.name}" is in the save but no longer registered`);
                 continue;
@@ -2095,7 +1809,7 @@ export class GameEngine {
                 }
             }
         }
-        for (const def of this._components) {
+        for (const def of this.components.defs) {
             if (!savedNames.has(def.name)) {
                 mismatches.push(`component "${def.name}" is registered but missing from the save`);
             }
@@ -2120,14 +1834,8 @@ export class GameEngine {
         this._assertLoadoutCompatible(snapshot);
         this._assertComponentsCompatible(snapshot);
         this.world = new World();
-        for (const def of this._components) {
-            this._bindComponent(def);
-        }
-        for (const def of this._components) {
-            for (const field of def.fields) {
-                def.store[field.name].fill(field.fill);
-            }
-        }
+        this.components.bindAll();
+        this.components.clearAll();
         this._portsByEdge = new Map();
         this._cellByKey = new Map();
         // Drop the prior world's render/tick state so its stale eids never leak into the new world.
@@ -2161,10 +1869,10 @@ export class GameEngine {
         const translate = value => (value === NO_EID ? NO_EID : remap.get(value));
 
         for (const component of snapshot.components) {
-            const def = this._componentByName.get(component.name);
+            const def = this.components.find(component.name);
             for (const row of component.rows) {
                 const eid = remap.get(row.eid);
-                this._addComponent(def, eid);
+                this.components.attach(def, eid);
                 const slot = def.slot(eid);
                 for (const field of def.fields) {
                     const raw = row[field.name];

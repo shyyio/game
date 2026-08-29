@@ -92,7 +92,7 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     install(engine, placed) {
-        engine.defineComponent("Machine", [
+        engine.components.define("Machine", [
             {name: "out", kind: "eid", fill: NO_EID},
             // Byproduct port; NO_EID unless the object type declares a second output port.
             {name: "out2", kind: "eid", fill: NO_EID},
@@ -128,8 +128,8 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, placed, eid, type, message) {
-        const def = engine.component("Machine");
-        engine.attachComponent(def, eid);
+        const def = engine.components.get("Machine");
+        engine.components.attach(def, eid);
         const machine = def.store;
         const row = def.row(eid);
         machine.inputCount[row] = this.inputCount;
@@ -158,7 +158,7 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, placed, eid) {
-        const def = engine.component("Machine");
+        const def = engine.components.get("Machine");
         const machine = def.store;
         const row = def.row(eid);
         for (const [i, port] of this.type.inputPorts.entries()) {
@@ -179,12 +179,12 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     setWorkers(engine, placed, eid, granted) {
-        const def = engine.component("Machine");
+        const def = engine.components.get("Machine");
         def.store.workerStep[def.row(eid)] = 1 + (MANNED_SPEED_MULTIPLIER - 1) * (granted / this.workerCost);
     }
 
     syncData(engine, placed, eid) {
-        const def = engine.component("Machine");
+        const def = engine.components.get("Machine");
         const row = def.row(eid);
         const last = def.store.lastOutput[row];
         let lastOutput = last;
@@ -199,7 +199,7 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     resyncRenderedPorts(engine, placed, eid) {
-        const def = engine.component("Machine");
+        const def = engine.components.get("Machine");
         const row = def.row(eid);
         const out = def.store.out[row];
         engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
@@ -218,7 +218,7 @@ export class MachineBehavior extends AbstractBehavior {
      */
     inspect(engine, placed, eid, objectId) {
         const item = engine.Port.item;
-        const def = engine.component("Machine");
+        const def = engine.components.get("Machine");
         const machine = def.store;
         const row = def.row(eid);
         const inCols = columns(machine, IN_COLS);
@@ -300,7 +300,7 @@ export class MachineBehavior extends AbstractBehavior {
      * @returns {void}
      */
     onRebuild(engine, placed) {
-        const def = engine.component("Machine");
+        const def = engine.components.get("Machine");
         const machine = def.store;
         const eids = def.eids;
         for (let row = 0; row < def.count; row += 1) {
@@ -315,7 +315,7 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     logicRead(engine, placed, eid, key) {
-        const def = engine.component("Machine");
+        const def = engine.components.get("Machine");
         const row = def.row(eid);
         if (key === LOGIC_KEY_ENABLED) {
             return def.store.enabled[row];
@@ -334,7 +334,7 @@ export class MachineBehavior extends AbstractBehavior {
         if (key !== LOGIC_KEY_ENABLED) {
             return false;
         }
-        const def = engine.component("Machine");
+        const def = engine.components.get("Machine");
         if (value === 0) {
             def.store.enabled[def.row(eid)] = 0;
         } else {
@@ -433,7 +433,7 @@ export class MachineBehavior extends AbstractBehavior {
      */
     static _submitIntents(engine, placed) {
         const item = engine.Port.item;
-        const def = engine.component("Machine");
+        const def = engine.components.get("Machine");
         const machine = def.store;
         const inCols = columns(machine, IN_COLS);
         const slotCols = columns(machine, SLOT_COLS);
@@ -545,7 +545,7 @@ export class MachineBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _finish(engine, placed) {
-        const def = engine.component("Machine");
+        const def = engine.components.get("Machine");
         const machine = def.store;
         const processingCols = columns(machine, PROCESSING_COLS);
         const count = def.count;

@@ -21,7 +21,7 @@ export class PlacedObjects {
     constructor(engine, registry) {
         this.engine = engine;
         // Where a placed object sits lives on the shared Position component, not here.
-        this.def = engine.defineComponent("PlacedObject", [
+        this.def = engine.components.define("PlacedObject", [
             {name: "typeId"},
             {name: "objectId", fill: NO_EID},
             // The chunk's owner at spawn time, cached so per-tick behaviors never need Game access.
@@ -212,7 +212,7 @@ export class PlacedObjects {
         if (type.placement.solid && !engine.cellsFree(footprint)) {
             return true;
         }
-        const eid = engine.createEntity(this.def);
+        const eid = engine.components.createEntity(this.def);
         const objectId = engine.createObjectId();
         const row = this.def.row(eid);
         this.def.store.typeId[row] = type.typeId;
@@ -256,7 +256,7 @@ export class PlacedObjects {
         engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_DESPAWNED, playerId, type.typeId, 1);
         // Before the destroy, which recycles the eid and may clear its position.
         this._unindexChunk(eid, x, y);
-        engine.destroyEntity(eid);
+        engine.components.destroyEntity(eid);
         this._eidByObjectId.delete(objectId);
         this._notifyChunkChanged(chunkId(x, y));
         return true;

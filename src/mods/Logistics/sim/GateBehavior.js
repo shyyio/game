@@ -20,7 +20,7 @@ const PENDING_NONE = -1;
 export class GateBehavior extends AbstractBehavior {
 
     install(engine, placed) {
-        engine.defineComponent("Gate", [
+        engine.components.define("Gate", [
             {name: "in", kind: "eid", fill: NO_EID},
             {name: "out", kind: "eid", fill: NO_EID},
             // Item mode's internal port; NO_EID in fluid mode.
@@ -54,8 +54,8 @@ export class GateBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, placed, eid, type, message) {
-        const def = engine.component("Gate");
-        engine.attachComponent(def, eid);
+        const def = engine.components.get("Gate");
+        engine.components.attach(def, eid);
         const gate = def.store;
         const row = def.row(eid);
         gate.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;
@@ -76,7 +76,7 @@ export class GateBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, placed, eid) {
-        const def = engine.component("Gate");
+        const def = engine.components.get("Gate");
         const gate = def.store;
         const row = def.row(eid);
         if (gate.fluid[row] === 1) {
@@ -95,7 +95,7 @@ export class GateBehavior extends AbstractBehavior {
         if (key !== LOGIC_KEY_OPEN) {
             return null;
         }
-        const def = engine.component("Gate");
+        const def = engine.components.get("Gate");
         return def.store.open[def.row(eid)];
     }
 
@@ -123,7 +123,7 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     requestOpen(engine, eid, open) {
-        const def = engine.component("Gate");
+        const def = engine.components.get("Gate");
         def.store.pendingOpen[def.row(eid)] = open ? 1 : 0;
     }
 
@@ -146,7 +146,7 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {boolean} whether the state changed
      */
     static _applyOpen(engine, eid, open) {
-        const def = engine.component("Gate");
+        const def = engine.components.get("Gate");
         const gate = def.store;
         const row = def.row(eid);
         const flag = open ? 1 : 0;
@@ -173,7 +173,7 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {{portIds:number[], lastOutput:number|null}}
      */
     syncData(engine, placed, eid) {
-        const def = engine.component("Gate");
+        const def = engine.components.get("Gate");
         const gate = def.store;
         const row = def.row(eid);
         let lastOutput = null;
@@ -184,7 +184,7 @@ export class GateBehavior extends AbstractBehavior {
     }
 
     resyncRenderedPorts(engine, placed, eid) {
-        const def = engine.component("Gate");
+        const def = engine.components.get("Gate");
         const gate = def.store;
         const row = def.row(eid);
         if (gate.fluid[row] === 1) {
@@ -201,7 +201,7 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     onRebuild(engine, placed) {
-        const def = engine.component("Gate");
+        const def = engine.components.get("Gate");
         const gate = def.store;
         for (let row = 0; row < def.count; row += 1) {
             if (gate.fluid[row] === 0) {
@@ -249,7 +249,7 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _applyPending(engine) {
-        const def = engine.component("Gate");
+        const def = engine.components.get("Gate");
         const gate = def.store;
         for (let row = 0; row < def.count; row += 1) {
             const pending = gate.pendingOpen[row];
@@ -269,7 +269,7 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _review(engine, placed) {
-        const def = engine.component("Gate");
+        const def = engine.components.get("Gate");
         const gate = def.store;
         const position = engine.Position;
         for (let row = 0; row < def.count; row += 1) {
@@ -302,7 +302,7 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _setMode(engine, placed, eid, fluid) {
-        const def = engine.component("Gate");
+        const def = engine.components.get("Gate");
         const gate = def.store;
         const row = def.row(eid);
         engine.setPortItem(gate.in[row], EMPTY);
@@ -333,7 +333,7 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _emitDeltas(engine, placed) {
-        const def = engine.component("Gate");
+        const def = engine.components.get("Gate");
         const gate = def.store;
         const position = engine.Position;
         const batches = new Map();
@@ -395,7 +395,7 @@ export class GateBehavior extends AbstractBehavior {
      */
     static _submitIntents(engine) {
         const item = engine.Port.item;
-        const def = engine.component("Gate");
+        const def = engine.components.get("Gate");
         const gate = def.store;
         for (let row = 0; row < def.count; row += 1) {
             if (gate.open[row] === 0) {
@@ -431,7 +431,7 @@ export class GateBehavior extends AbstractBehavior {
      */
     static _runSeam(engine, outputFills) {
         const item = engine.Port.item;
-        const def = engine.component("Gate");
+        const def = engine.components.get("Gate");
         const gate = def.store;
         const stage1 = [];
         const stage2 = [];
@@ -489,7 +489,7 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {GateSetBatchEvent[]}
      */
     static _chunkSync(engine, placed, chunk) {
-        const def = engine.component("Gate");
+        const def = engine.components.get("Gate");
         const gate = def.store;
         const position = engine.Position;
         let batch = null;

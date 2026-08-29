@@ -59,7 +59,7 @@ test("a chance=1 byproduct lands in the second output port alongside the main ou
     const engine = await engineWithFixture();
     engine.applyMessage(new CreateObjectMessage(AlwaysByproductType.typeId, 5, 5, Direction.UP));
     const [eid] = engine.placed.eidsOf(AlwaysByproductType.typeId);
-    const def = engine.component("Machine");
+    const def = engine.components.get("Machine");
     const row = def.row(eid);
     const inPort = def.store.in0[row];
     const outPort = def.store.out[row];
@@ -78,7 +78,7 @@ test("a chance=0 recipe never produces a byproduct", async () => {
     const engine = await engineWithFixture();
     engine.applyMessage(new CreateObjectMessage(NeverByproductType.typeId, 5, 5, Direction.UP));
     const [eid] = engine.placed.eidsOf(NeverByproductType.typeId);
-    const def = engine.component("Machine");
+    const def = engine.components.get("Machine");
     const row = def.row(eid);
     const inPort = def.store.in0[row];
     const outPort = def.store.out[row];
@@ -101,7 +101,7 @@ test("a machine with no byproduct-configured recipe never touches the second por
     const engine = await engineWithFixture();
     engine.applyMessage(new CreateObjectMessage(NeverByproductType.typeId, 5, 5, Direction.UP));
     const [eid] = engine.placed.eidsOf(NeverByproductType.typeId);
-    const def = engine.component("Machine");
+    const def = engine.components.get("Machine");
     const row = def.row(eid);
     assert.notEqual(def.store.out2[row], EMPTY, "the second port was still wired (declared on the object type)");
 });

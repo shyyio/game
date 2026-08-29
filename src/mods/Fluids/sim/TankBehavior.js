@@ -18,7 +18,7 @@ export class TankBehavior extends AbstractBehavior {
     }
 
     install(engine, placed) {
-        engine.defineComponent("Tank", [
+        engine.components.define("Tank", [
             {name: "in", kind: "eid", fill: NO_EID},
             {name: "out", kind: "eid", fill: NO_EID},
             {name: "fluidType", fill: EMPTY},
@@ -33,8 +33,8 @@ export class TankBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, placed, eid, type, message) {
-        const def = engine.component("Tank");
-        engine.attachComponent(def, eid);
+        const def = engine.components.get("Tank");
+        engine.components.attach(def, eid);
         const tank = def.store;
         const row = def.row(eid);
         tank.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;
@@ -45,7 +45,7 @@ export class TankBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, placed, eid) {
-        const def = engine.component("Tank");
+        const def = engine.components.get("Tank");
         const row = def.row(eid);
         const tank = def.store;
         engine.unmarkFluidPort(tank.in[row]);
@@ -58,7 +58,7 @@ export class TankBehavior extends AbstractBehavior {
         if (key !== LOGIC_KEY_AMOUNT) {
             return null;
         }
-        const def = engine.component("Tank");
+        const def = engine.components.get("Tank");
         return def.store.amount[def.row(eid)];
     }
 
@@ -67,7 +67,7 @@ export class TankBehavior extends AbstractBehavior {
     }
 
     logicStored(engine, placed, eid) {
-        const def = engine.component("Tank");
+        const def = engine.components.get("Tank");
         const row = def.row(eid);
         if (def.store.fluidType[row] === EMPTY) {
             return null;
@@ -83,7 +83,7 @@ export class TankBehavior extends AbstractBehavior {
      * @returns {{portIds:number[], lastOutput:number|null}}
      */
     syncData(engine, placed, eid) {
-        const def = engine.component("Tank");
+        const def = engine.components.get("Tank");
         const row = def.row(eid);
         let lastOutput = null;
         if (def.store.amount[row] > 0) {
@@ -99,7 +99,7 @@ export class TankBehavior extends AbstractBehavior {
      * @returns {void}
      */
     onRebuild(engine, placed) {
-        const def = engine.component("Tank");
+        const def = engine.components.get("Tank");
         const tank = def.store;
         const eids = def.eids;
         for (let row = 0; row < def.count; row += 1) {
@@ -121,7 +121,7 @@ export class TankBehavior extends AbstractBehavior {
      */
     static _submitIntents(engine) {
         const item = engine.Port.item;
-        const def = engine.component("Tank");
+        const def = engine.components.get("Tank");
         const tank = def.store;
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
@@ -149,7 +149,7 @@ export class TankBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _finish(engine, placed) {
-        const def = engine.component("Tank");
+        const def = engine.components.get("Tank");
         const tank = def.store;
         const position = engine.Position;
         const count = def.count;

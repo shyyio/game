@@ -25,7 +25,7 @@ const RED = 3;
  */
 function placeGate(engine, x, y, direction) {
     assert.equal(engine.applyMessage(new CreateObjectMessage(GateDefinition.typeId, x, y, direction)), true);
-    const def = engine.component("Gate");
+    const def = engine.components.get("Gate");
     const eid = def.eids[def.count - 1];
     const row = def.row(eid);
     return {eid, in: def.store.in[row], out: def.store.out[row]};
@@ -43,7 +43,7 @@ function gateBehavior(engine) {
 }
 
 function gateMode(engine, eid) {
-    const def = engine.component("Gate");
+    const def = engine.components.get("Gate");
     return def.store.fluid[def.row(eid)];
 }
 
@@ -231,7 +231,7 @@ test("a toggle applies at the next tick, batches the change, and syncs to late j
     game.dispatchMessage(new SetViewportMessage([chunk]), player);
     game.dispatchMessage(new CreateObjectMessage(GateDefinition.typeId, 5, 5, Direction.UP), player);
     const engine = game.simEngine;
-    const def = engine.component("Gate");
+    const def = engine.components.get("Gate");
     const eid = def.eids[def.count - 1];
     const objectId = engine.placed.objectIdOf(eid);
 
@@ -271,7 +271,7 @@ test("a toggle without build rights is refused with a corrective event", async (
     game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), owner);
     game.dispatchMessage(new CreateObjectMessage(GateDefinition.typeId, 5, 5, Direction.UP), owner);
     const engine = game.simEngine;
-    const def = engine.component("Gate");
+    const def = engine.components.get("Gate");
     const eid = def.eids[def.count - 1];
     const objectId = engine.placed.objectIdOf(eid);
 
@@ -295,7 +295,7 @@ test("gate state survives a save/load", async () => {
     game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), player);
     game.dispatchMessage(new CreateObjectMessage(GateDefinition.typeId, 5, 5, Direction.UP), player);
     const engine = game.simEngine;
-    const def = engine.component("Gate");
+    const def = engine.components.get("Gate");
     const eid = def.eids[def.count - 1];
     const objectId = engine.placed.objectIdOf(eid);
     game.dispatchMessage(new SetGateOpenMessage(objectId, 0), player);
@@ -304,7 +304,7 @@ test("gate state survives a save/load", async () => {
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
-    const restoredDef = restored.simEngine.component("Gate");
+    const restoredDef = restored.simEngine.components.get("Gate");
     assert.equal(restoredDef.count, 1);
     assert.equal(restoredDef.store.open[0], 0, "the closed state came back");
     assert.equal(restoredDef.store.fluid[0], 0, "the mode column persisted");

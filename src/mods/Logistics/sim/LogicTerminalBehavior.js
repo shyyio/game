@@ -17,7 +17,7 @@ const ORDER_RULES = -40;
 export class LogicTerminalBehavior extends AbstractBehavior {
 
     install(engine, placed) {
-        engine.defineComponent("LogicTerminal", [
+        engine.components.define("LogicTerminal", [
             {name: "tier", fill: LOGIC_TIER_BASE},
         ], {sparse: true});
         engine.provide(LogicRules, new LogicRules());
@@ -29,7 +29,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, placed, eid, type, message) {
-        engine.attachComponent(engine.component("LogicTerminal"), eid);
+        engine.components.attach(engine.components.get("LogicTerminal"), eid);
     }
 
     onDespawn(engine, placed, eid) {
@@ -49,7 +49,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
     static _evaluate(engine, placed) {
         const networks = engine.resolve(LogicNetworks);
         const rulesService = engine.resolve(LogicRules);
-        const def = engine.component("LogicTerminal");
+        const def = engine.components.get("LogicTerminal");
         const eids = def.eids;
         for (let row = 0; row < def.count; row += 1) {
             const eid = eids[row];

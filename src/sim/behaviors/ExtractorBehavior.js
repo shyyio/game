@@ -23,7 +23,7 @@ export class ExtractorBehavior extends AbstractBehavior {
     }
 
     install(engine, placed) {
-        engine.defineComponent("Extractor", [
+        engine.components.define("Extractor", [
             {name: "out", kind: "eid", fill: NO_EID},
             {name: "resourceType", fill: EMPTY},
             {name: "remaining", kind: "f32", fill: EMPTY},
@@ -48,8 +48,8 @@ export class ExtractorBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, placed, eid, type, message) {
-        const def = engine.component("Extractor");
-        engine.attachComponent(def, eid);
+        const def = engine.components.get("Extractor");
+        engine.components.attach(def, eid);
         const extractor = def.store;
         const row = def.row(eid);
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
@@ -72,7 +72,7 @@ export class ExtractorBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, placed, eid) {
-        const def = engine.component("Extractor");
+        const def = engine.components.get("Extractor");
         const out = def.store.out[def.row(eid)];
         engine.unregisterRenderedPort(out);
         // The port may outlive the extractor (an adjacent pipe pins it); it no longer produces.
@@ -80,7 +80,7 @@ export class ExtractorBehavior extends AbstractBehavior {
     }
 
     syncData(engine, placed, eid) {
-        const def = engine.component("Extractor");
+        const def = engine.components.get("Extractor");
         const row = def.row(eid);
         const last = def.store.lastOutput[row];
         let lastOutput = last;
@@ -98,7 +98,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         if (!this.type.outputPorts[0].render) {
             return;
         }
-        const def = engine.component("Extractor");
+        const def = engine.components.get("Extractor");
         const out = def.store.out[def.row(eid)];
         engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
@@ -108,7 +108,7 @@ export class ExtractorBehavior extends AbstractBehavior {
      * @returns {InspectHeartbeatEvent}
      */
     inspect(engine, placed, eid, objectId) {
-        const def = engine.component("Extractor");
+        const def = engine.components.get("Extractor");
         const extractor = def.store;
         const row = def.row(eid);
         const resource = extractor.resourceType[row];
@@ -148,7 +148,7 @@ export class ExtractorBehavior extends AbstractBehavior {
      * @returns {void}
      */
     onRebuild(engine, placed) {
-        const def = engine.component("Extractor");
+        const def = engine.components.get("Extractor");
         const extractor = def.store;
         const eids = def.eids;
         for (let row = 0; row < def.count; row += 1) {
@@ -171,7 +171,7 @@ export class ExtractorBehavior extends AbstractBehavior {
      */
     static _submitIntents(engine, placed) {
         const item = engine.Port.item;
-        const def = engine.component("Extractor");
+        const def = engine.components.get("Extractor");
         const extractor = def.store;
         const eids = def.eids;
         const count = def.count;
@@ -217,7 +217,7 @@ export class ExtractorBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _finish(engine, placed) {
-        const def = engine.component("Extractor");
+        const def = engine.components.get("Extractor");
         const extractor = def.store;
         const eids = def.eids;
         const count = def.count;

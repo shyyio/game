@@ -10,7 +10,7 @@
 //       with a behavior (a component+system bundle) and the engine derives the whole sim and
 //       client surface from it.
 //   sim.js (optional) — an AbstractSimMod for bespoke sim content, in ECS terms: define components
-//       (sim.defineComponent), register per-phase systems (sim.registerSystem(phase, fn, order)),
+//       (sim.components.define), register per-phase systems (sim.registerSystem(phase, fn, order)),
 //       handle spawn/despawn messages (sim.registerMessageHandler). Share instances across mods
 //       via sim.provide(ServiceKey, instance) / sim.resolve(ServiceKey).
 //   client.js (optional) — an AbstractClientMod for bespoke rendering/input (see @/sdk/client.js).

@@ -30,10 +30,10 @@ export class CursorSyncSimMod extends AbstractSimMod {
 
     /**
      * No ECS content; the mod lives entirely at the session level.
-     * @param {GameEngine} sim
+     * @param {GameEngine} engine
      * @returns {void}
      */
-    setup(sim) {}
+    setup(engine) {}
 
     /**
      * @param {AbstractMessage} message

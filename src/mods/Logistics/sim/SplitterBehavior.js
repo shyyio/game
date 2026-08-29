@@ -8,7 +8,7 @@ import {ORDER_BEFORE_TRANSPORT} from "../common/constants.js";
 export class SplitterBehavior extends AbstractBehavior {
 
     install(engine, placed) {
-        engine.defineComponent("Splitter", [
+        engine.components.define("Splitter", [
             {name: "in_a", kind: "eid", fill: NO_EID},
             {name: "in_b", kind: "eid", fill: NO_EID},
             {name: "out_a", kind: "eid", fill: NO_EID},
@@ -36,20 +36,20 @@ export class SplitterBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, placed, eid) {
-        const def = engine.component("Splitter");
+        const def = engine.components.get("Splitter");
         const row = def.row(eid);
         engine.unregisterRenderedPort(def.store.out_a[row]);
         engine.unregisterRenderedPort(def.store.out_b[row]);
     }
 
     syncData(engine, placed, eid) {
-        const def = engine.component("Splitter");
+        const def = engine.components.get("Splitter");
         const row = def.row(eid);
         return {portIds: [def.store.out_a[row], def.store.out_b[row]], lastOutput: null};
     }
 
     resyncRenderedPorts(engine, placed, eid) {
-        const def = engine.component("Splitter");
+        const def = engine.components.get("Splitter");
         const row = def.row(eid);
         for (const out of [def.store.out_a[row], def.store.out_b[row]]) {
             engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
@@ -67,8 +67,8 @@ export class SplitterBehavior extends AbstractBehavior {
     _wire(engine, eid, ports) {
         const int_a = engine.createPort();
         const int_b = engine.createPort();
-        const def = engine.component("Splitter");
-        engine.attachComponent(def, eid);
+        const def = engine.components.get("Splitter");
+        engine.components.attach(def, eid);
         const splitter = def.store;
         const row = def.row(eid);
         splitter.in_a[row] = ports.in_a;
@@ -96,7 +96,7 @@ export class SplitterBehavior extends AbstractBehavior {
             out_a: port(wiring.out_a),
             out_b: port(wiring.out_b),
         };
-        const eid = engine.createEntity(engine.component("Splitter"));
+        const eid = engine.components.createEntity(engine.components.get("Splitter"));
         return this._wire(engine, eid, ports);
     }
 
@@ -125,7 +125,7 @@ export class SplitterBehavior extends AbstractBehavior {
      */
     _submitIntents(engine) {
         const item = engine.Port.item;
-        const def = engine.component("Splitter");
+        const def = engine.components.get("Splitter");
         const splitter = def.store;
         for (let row = 0; row < def.count; row += 1) {
             if (item[splitter.in_a[row]] !== EMPTY) {
@@ -157,7 +157,7 @@ export class SplitterBehavior extends AbstractBehavior {
      */
     _runSeam(engine, outputFills) {
         const item = engine.Port.item;
-        const def = engine.component("Splitter");
+        const def = engine.components.get("Splitter");
         const splitter = def.store;
         const stage1 = [];
         const stage2 = [];

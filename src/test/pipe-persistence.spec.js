@@ -25,7 +25,7 @@ async function populated() {
 }
 
 function tankState(engine) {
-    const def = engine.component("Tank");
+    const def = engine.components.get("Tank");
     const row = def.row(engine.placed.eidsOf(TankDefinition.typeId)[0]);
     return {fluidType: def.store.fluidType[row], amount: def.store.amount[row]};
 }

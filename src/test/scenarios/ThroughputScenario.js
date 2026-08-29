@@ -89,7 +89,7 @@ class SinkBehavior extends AbstractBehavior {
      * @returns {void}
      */
     install(engine, placed) {
-        engine.defineComponent("ThroughputSink", [
+        engine.components.define("ThroughputSink", [
             {name: "in", kind: "eid", fill: NO_EID},
             {name: "consumed"},
             {name: "lastConsumed", fill: EMPTY},
@@ -106,8 +106,8 @@ class SinkBehavior extends AbstractBehavior {
      * @returns {void}
      */
     onSpawn(engine, placed, eid, type, message) {
-        const def = engine.component("ThroughputSink");
-        engine.attachComponent(def, eid);
+        const def = engine.components.get("ThroughputSink");
+        engine.components.attach(def, eid);
         const row = def.row(eid);
         def.store.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;
     }
@@ -121,7 +121,7 @@ class SinkBehavior extends AbstractBehavior {
      */
     static _submitIntents(engine) {
         const item = engine.Port.item;
-        const def = engine.component("ThroughputSink");
+        const def = engine.components.get("ThroughputSink");
         const sink = def.store;
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
@@ -225,7 +225,7 @@ function intParam(raw, fallback) {
  * @returns {number}
  */
 export function sinkConsumedTotal(engine) {
-    const def = engine.component("ThroughputSink");
+    const def = engine.components.get("ThroughputSink");
     const consumed = def.store.consumed;
     let total = 0;
     for (let row = 0; row < def.count; row += 1) {

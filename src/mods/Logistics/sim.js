@@ -30,11 +30,11 @@ export class LogisticsSimMod extends AbstractSimMod {
 
     /**
      * No engine content; everything installs through the behaviors.
-     * @param {GameEngine} sim
+     * @param {GameEngine} engine
      * @returns {void}
      */
-    setup(sim) {
-        this._sim = sim;
+    setup(engine) {
+        this._engine = engine;
     }
 
     /**
@@ -42,8 +42,8 @@ export class LogisticsSimMod extends AbstractSimMod {
      */
     serializeRecords() {
         return [
-            ...this._sim.resolve(LogicNetworks).serializeRecords(),
-            ...this._sim.resolve(LogicRules).serializeRecords(),
+            ...this._engine.resolve(LogicNetworks).serializeRecords(),
+            ...this._engine.resolve(LogicRules).serializeRecords(),
         ];
     }
 
@@ -52,8 +52,8 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @returns {void}
      */
     deserializeRecords(tablesByName) {
-        this._sim.resolve(LogicNetworks).deserializeRecords(tablesByName.get(LOGIC_WIRE_RECORD));
-        this._sim.resolve(LogicRules).deserializeRecords(
+        this._engine.resolve(LogicNetworks).deserializeRecords(tablesByName.get(LOGIC_WIRE_RECORD));
+        this._engine.resolve(LogicRules).deserializeRecords(
             tablesByName.get(LOGIC_RULE_RECORD),
             tablesByName.get(LOGIC_CONDITION_RECORD),
         );
@@ -112,7 +112,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         // Mod messages bypass the core placement gate, so gates check build rights themselves.
         if (!engine.placementAllowed(session.playerId, chunkId(x, y))) {
             // Correct the sender's optimistic flip with the authoritative state.
-            const def = engine.component("Gate");
+            const def = engine.components.get("Gate");
             const row = def.row(eid);
             game.bus.publishTo(session.id, new GateSetEvent(x, y, message.objectId, def.store.open[row], def.store.fluid[row]));
             return;
@@ -354,7 +354,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         if (type === undefined || !isTerminalType(type)) {
             return;
         }
-        const def = engine.component("LogicTerminal");
+        const def = engine.components.get("LogicTerminal");
         const tier = def.store.tier[def.row(eid)];
         const networks = engine.resolve(LogicNetworks);
         const deviceObjectIds = [];
