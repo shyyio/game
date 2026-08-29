@@ -5,7 +5,7 @@ import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {chunkId} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
-import {EMPTY} from "@/sim/GameEngine.js";
+import {EMPTY} from "@/sim/sentinels.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {makeGameEngine, makeGame} from "@/test/ecsSim.js";
@@ -196,7 +196,7 @@ test("connecting a transport to an unconnected gate transforms its mode", async 
     assert.equal(gateMode(engine, gate.eid), 1, "the coupled pipe transformed the gate");
 
     // Pipe gone, belt in front: back to item mode.
-    engine.applyMessage(new DeleteObjectMessage(engine.occupantOwnerAt(5, 6, LAYER_SURFACE)));
+    engine.applyMessage(new DeleteObjectMessage(engine.space.ownerAt(5, 6, LAYER_SURFACE)));
     engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, 5, 4, Direction.UP));
     engine.tickAll();
     assert.equal(gateMode(engine, gate.eid), 0, "the coupled belt transformed the gate back");
@@ -210,7 +210,7 @@ test("the guard rejects coupling one transport kind while the other side holds t
 
     // A pipe in front must be rejected.
     placePipe(engine, 5, 4);
-    assert.equal(engine.occupantOwnerAt(5, 4, LAYER_SURFACE), null, "the conflicting pipe was not placed");
+    assert.equal(engine.space.ownerAt(5, 4, LAYER_SURFACE), null, "the conflicting pipe was not placed");
 
     // The reverse: pipe behind, belt in front rejected.
     const pipes = engine.resolve(Pipes);
@@ -218,7 +218,7 @@ test("the guard rejects coupling one transport kind while the other side holds t
     const other = placeGate(engine, 10, 5, Direction.DOWN);
     assert.equal(gateMode(engine, other.eid), 1, "pipe-fed gate is fluid");
     engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, 10, 4, Direction.DOWN));
-    assert.equal(engine.occupantOwnerAt(10, 4, LAYER_SURFACE), null, "the conflicting belt was not placed");
+    assert.equal(engine.space.ownerAt(10, 4, LAYER_SURFACE), null, "the conflicting belt was not placed");
     assert.equal(pipes.networkAt(10, 6).size, 1, "the pipe network is untouched");
 });
 

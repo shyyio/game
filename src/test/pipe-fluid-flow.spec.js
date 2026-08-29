@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {EMPTY} from "@/sim/GameEngine.js";
+import {EMPTY} from "@/sim/sentinels.js";
 import {makePipes} from "@/test/pipeFixture.js";
 import {pipesOf} from "@/mods/Fluids/sim/testHelpers.js";
 import {FLUID_TYPE_WATER, FLUID_TYPE_OIL} from "@/mods/Fluids/common/constants.js";

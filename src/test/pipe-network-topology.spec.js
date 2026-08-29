@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {EMPTY} from "@/sim/GameEngine.js";
+import {EMPTY} from "@/sim/sentinels.js";
 import {makePipes} from "@/test/pipeFixture.js";
 import {FLUID_TYPE_WATER, FLUID_TYPE_OIL} from "@/mods/Fluids/common/constants.js";
 

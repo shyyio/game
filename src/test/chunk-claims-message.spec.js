@@ -270,11 +270,11 @@ test("deleting in a foreign chunk is rejected and leaves occupancy intact", asyn
 
     game.dispatchMessage(new DeleteObjectMessage(objectId), bob);
     assert.equal(machineCount(game), 1, "stranger's delete rejected");
-    assert.equal(engine.cellsFree(footprint), false, "occupancy untouched by the rejected delete");
+    assert.equal(engine.space.cellsFree(footprint), false, "occupancy untouched by the rejected delete");
 
     game.dispatchMessage(new DeleteObjectMessage(objectId), alice);
     assert.equal(machineCount(game), 0, "owner deletes freely");
-    assert.equal(engine.cellsFree(footprint), true);
+    assert.equal(engine.space.cellsFree(footprint), true);
 });
 
 test("unclaiming a non-empty chunk needs the clear confirmation, which deletes the objects", async () => {

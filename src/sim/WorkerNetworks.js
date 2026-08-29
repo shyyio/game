@@ -192,7 +192,7 @@ export class WorkerNetworks {
      * @returns {{objectId: number, remaining: number, cells: {x: number, y: number}[]}|null}
      */
     _housingAt(x, y) {
-        const owner = this.engine.occupantOwnerAt(x, y, LAYER_SURFACE);
+        const owner = this.engine.space.ownerAt(x, y, LAYER_SURFACE);
         if (owner === null) {
             return null;
         }
@@ -493,7 +493,7 @@ export class WorkerNetworks {
      * @returns {void}
      */
     _attach(x, y, component, machines, next, affected, contested) {
-        const owner = this.engine.occupantOwnerAt(x, y, LAYER_SURFACE);
+        const owner = this.engine.space.ownerAt(x, y, LAYER_SURFACE);
         if (owner === null || machines.has(owner) || next.has(owner)) {
             return;
         }
