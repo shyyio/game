@@ -44,7 +44,7 @@ export class WorkerNetworks {
         this._assignmentsByComponent = new Map();
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this.ensureFresh(), ORDER_WORKER_RECOMPUTE);
         engine.registerChunkSync(chunk => this._chunkSync(chunk));
-        engine.registerRebuildHook(() => this._rebuild());
+        engine.snapshots.registerRebuildHook(() => this._rebuild());
     }
 
     /**

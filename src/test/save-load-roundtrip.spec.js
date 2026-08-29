@@ -29,10 +29,10 @@ async function populated() {
 
 test("the whole world round-trips through the engine serializer", async () => {
     const {engine, splitterId, beltPaths} = await populated();
-    const snapshot = engine.serialize();
+    const snapshot = engine.snapshots.serialize();
 
     const restored = await makeGameEngine();
-    restored.deserialize(snapshot);
+    restored.snapshots.deserialize(snapshot);
 
     assert.equal(restored.placed.eidsOf(ExtractorType.typeId).length, 1, "extractor restored");
     assert.equal(restored.placed.eidsOf(BlenderType.typeId).length, 1, "machine restored");
@@ -58,10 +58,10 @@ test("the whole world round-trips through the engine serializer", async () => {
 
 test("a snapshot survives a JSON blob round-trip (the client save path)", async () => {
     const {engine, splitterId} = await populated();
-    const snapshot = JSON.parse(JSON.stringify(engine.serialize()));
+    const snapshot = JSON.parse(JSON.stringify(engine.snapshots.serialize()));
 
     const restored = await makeGameEngine();
-    restored.deserialize(snapshot);
+    restored.snapshots.deserialize(snapshot);
 
     assert.equal(restored.placed.eidsOf(BlenderType.typeId).length, 1);
     assert.notEqual(restored.placed.eidByObjectId(splitterId), undefined);
@@ -70,7 +70,7 @@ test("a snapshot survives a JSON blob round-trip (the client save path)", async 
 test("a snapshot round-trips through structured SQLite (the node save path)", async () => {
     const {engine} = await populated();
     const store = new NodeSaveStore(":memory:");
-    await store.save(engine.serialize());
+    await store.save(engine.snapshots.serialize());
 
     const loaded = await store.load();
     const names = loaded.components.map(component => component.name);
@@ -79,7 +79,7 @@ test("a snapshot round-trips through structured SQLite (the node save path)", as
     }
 
     const restored = await makeGameEngine();
-    restored.deserialize(loaded);
+    restored.snapshots.deserialize(loaded);
     assert.equal(restored.placed.eidsOf(ExtractorType.typeId).length, 1);
     assert.equal(restored.placed.eidsOf(BlenderType.typeId).length, 1);
 });

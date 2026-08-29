@@ -196,7 +196,7 @@ export class Game {
      * @returns {object}
      */
     serialize() {
-        const snapshot = this.simEngine.serialize();
+        const snapshot = this.simEngine.snapshots.serialize();
         snapshot.records = [
             ...this.players.serializeRecords(),
             this.claims.serializeRecords(),
@@ -228,7 +228,7 @@ export class Game {
             return false;
         }
         const snapshot = migrateSnapshot(stored);
-        this.simEngine.deserialize(snapshot);
+        this.simEngine.snapshots.deserialize(snapshot);
         this._applySeed(this.simEngine.seed);
         const records = snapshot.records === undefined ? [] : snapshot.records;
         const byName = new Map(records.map(table => [table.name, table]));

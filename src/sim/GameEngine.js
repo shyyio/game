@@ -1,7 +1,6 @@
 import {World} from "@/sim/World.js";
 import {rotate, chunkId} from "@/common/util.js";
-import {GAME_VERSION, PLAYER_ID_NONE} from "@/common/constants.js";
-import {SAVE_FORMAT} from "@/common/saveMigrations.js";
+import {PLAYER_ID_NONE} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PlacedObjects} from "@/sim/PlacedObjects.js";
 import {OverworldBake} from "@/sim/OverworldBake.js";
@@ -11,6 +10,7 @@ import {SpatialIndex} from "@/sim/SpatialIndex.js";
 import {TransferResolver} from "@/sim/TransferResolver.js";
 import {RenderDiff} from "@/sim/RenderDiff.js";
 import {PortIndex} from "@/sim/PortIndex.js";
+import {SnapshotSerializer} from "@/sim/SnapshotSerializer.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 
 /**
@@ -195,7 +195,7 @@ export class GameEngine {
     }
 
     /**
-     * Initializes the persisted globals and the hooks serialize and deserialize run through.
+     * Initializes the persisted globals and the serializer that carries them into a save.
      * @private
      * @returns {void}
      */
@@ -213,11 +213,11 @@ export class GameEngine {
         // Flat global counters that survive a save (mods stash their own here, e.g. beltNextRunId).
         this.globals = {};
 
-        // Hooks a module registers to rebuild its derived indexes after deserialize repopulates the world.
-        this._rebuildHooks = [];
-        // Hooks run at the start of serialize, letting a bespoke module (belts) flush JS-only runtime
-        // state into its registered components so the generic reflection captures it.
-        this._serializeHooks = [];
+        /**
+         * The save format: the whole world to a snapshot and back.
+         * @type {SnapshotSerializer}
+         */
+        this.snapshots = new SnapshotSerializer(this);
     }
 
     /**
@@ -446,6 +446,30 @@ export class GameEngine {
     }
 
     /**
+     * The persisted globals as one flat object: the engine's own counters plus whatever mods stashed.
+     * @returns {object}
+     */
+    saveGlobals() {
+        return {nextObjectId: this._nextObjectId, clock: this.clock, seed: this.seed, ...this.globals};
+    }
+
+    /**
+     * Restores what {@link saveGlobals} wrote; a pre-clock save reads as tick 0.
+     * @param {object} globals
+     * @returns {void}
+     */
+    restoreGlobals(globals) {
+        this._nextObjectId = globals.nextObjectId;
+        this.clock = globals.clock === undefined ? 0 : globals.clock;
+        this.seed = globals.seed;
+        for (const key of Object.keys(globals)) {
+            if (key !== "nextObjectId" && key !== "clock" && key !== "seed") {
+                this.globals[key] = globals[key];
+            }
+        }
+    }
+
+    /**
      * Creates the next global client-facing object id.
      * @returns {number}
      */
@@ -453,242 +477,6 @@ export class GameEngine {
         const id = this._nextObjectId;
         this._nextObjectId += 1;
         return id;
-    }
-
-    /**
-     * A module registers a hook run after {@link deserialize} repopulates the world, to rebuild its own
-     * derived indexes from the restored components. Receives the old-eid -> new-eid remap.
-     * @param {function(Map<number,number>): void} hook
-     * @returns {void}
-     */
-    registerRebuildHook(hook) {
-        this._rebuildHooks.push(hook);
-    }
-
-    /**
-     * A bespoke module registers a hook run at the start of {@link serialize}, to materialize any
-     * JS-only runtime state into its registered components before reflection reads them.
-     * @param {function(): void} hook
-     * @returns {void}
-     */
-    registerSerializeHook(hook) {
-        this._serializeHooks.push(hook);
-    }
-
-    /**
-     * A serializable snapshot of the whole world: every registered component as a table of rows (one
-     * per entity holding it), plus the global counters. Reflection over the component registry, so a
-     * module storing its state in components round-trips with no bespoke save code.
-     * @returns {{saveFormat:number, gameVersion:string, components:object[], globals:object}}
-     */
-    serialize() {
-        for (const hook of this._serializeHooks) {
-            hook();
-        }
-        const components = this.components.defs.map(def => {
-            const rows = [];
-            for (const slot of this.components.slotsOf(def)) {
-                const row = {eid: def.eidAt(slot)};
-                for (const field of def.fields) {
-                    row[field.name] = def.store[field.name][slot];
-                }
-                rows.push(row);
-            }
-            // A sparse component's rows shuffle as entities come and go, so order them here: the same
-            // world then serializes to the same bytes however it was built.
-            rows.sort((a, b) => a.eid - b.eid);
-            return {
-                name: def.name,
-                fields: def.fields.map(field => ({name: field.name, kind: field.kind})),
-                rows: rows,
-            };
-        });
-        // Component values are Int32Array-backed, so always safe; only the unbounded globals (id
-        // counters) can overflow past 2^53, where Number silently loses precision.
-        const globals = {nextObjectId: this._nextObjectId, clock: this.clock, seed: this.seed, ...this.globals};
-        for (const key of Object.keys(globals)) {
-            if (!Number.isSafeInteger(globals[key])) {
-                throw new RangeError(`GameEngine.serialize: global "${key}" is not a safe integer: ${globals[key]}`);
-            }
-        }
-        // Every object type's name, in typeId order — deserialize compares this against the current
-        // loadout so a stale save (object types added/removed/reordered since) fails loudly at load
-        // time instead of resolving a component row's typeId to the wrong behavior mid-tick.
-        let objectTypeNames = null;
-        if (this.modRegistry !== null) {
-            objectTypeNames = this.modRegistry.objectTypes.map(type => type.name);
-        }
-        // gameVersion is for humans; load decides on saveFormat.
-        return {
-            saveFormat: SAVE_FORMAT,
-            gameVersion: GAME_VERSION,
-            components: components,
-            globals: globals,
-            objectTypeNames: objectTypeNames,
-        };
-    }
-
-    /**
-     * Throws when `snapshot` was written against a different object-type layout than the current
-     * loadout: typeIds are positional (assigned by registration order at ModRegistry.freeze()), so
-     * adding/removing/reordering a mod's object types shifts every typeId after the change, and a
-     * component row's saved typeId would silently resolve to the wrong ObjectType/behavior — a crash
-     * deep in an unrelated tick, far from the real cause. A pure append (current has every saved name
-     * as a prefix, plus new ones after) is fine; anything else is not. No-op when this engine has no
-     * modRegistry (synthetic test engines never persist for real).
-     * @private
-     * @param {{objectTypeNames: string[]|null|undefined}} snapshot
-     * @returns {void}
-     */
-    _assertLoadoutCompatible(snapshot) {
-        if (this.modRegistry === null) {
-            return;
-        }
-        const current = this.modRegistry.objectTypes.map(type => type.name);
-        const saved = snapshot.objectTypeNames;
-        const prefixMatches = saved !== null && saved !== undefined && saved.length <= current.length
-            && saved.every((name, i) => name === current[i]);
-        if (!prefixMatches) {
-            throw new Error(
-                "Save is incompatible with the current mod loadout: object types were added, removed, "
-                + "or reordered since this save was written, so typeIds no longer mean the same thing. "
-                + `Saved: [${saved === null || saved === undefined ? "unknown (pre-dates this check)" : saved.join(", ")}]. `
-                + `Current: [${current.join(", ")}]. Delete or migrate the save file.`
-            );
-        }
-    }
-
-    /**
-     * Throws when `snapshot` is not at the format this build reads.
-     * @private
-     * @param {{saveFormat: number|undefined}} snapshot
-     * @returns {void}
-     */
-    _assertSnapshotFormat(snapshot) {
-        if (snapshot.saveFormat === SAVE_FORMAT) {
-            return;
-        }
-        let found = snapshot.saveFormat;
-        if (found === undefined || found === null) {
-            found = "unstamped (pre-dates save formats)";
-        }
-        throw new Error(
-            `Save is format ${found}, this build reads ${SAVE_FORMAT}: `
-            + "run it through migrateSnapshot() before deserializing."
-        );
-    }
-
-    /**
-     * Throws when `snapshot`'s components no longer match the ones this build registers.
-     * Rows restore by name against the current ComponentDefs: a dropped component crashes mid-restore,
-     * and a drifted field restores silently as a zero-filled column or an i32 read as an eid.
-     * @private
-     * @param {{components: object[]}} snapshot
-     * @returns {void}
-     */
-    _assertComponentsCompatible(snapshot) {
-        const mismatches = [];
-        const savedNames = new Set();
-        for (const component of snapshot.components) {
-            savedNames.add(component.name);
-            const def = this.components.find(component.name);
-            if (def === undefined) {
-                mismatches.push(`component "${component.name}" is in the save but no longer registered`);
-                continue;
-            }
-            const savedKinds = new Map(component.fields.map(field => [field.name, field.kind]));
-            for (const field of def.fields) {
-                const savedKind = savedKinds.get(field.name);
-                if (savedKind === undefined) {
-                    mismatches.push(`${component.name}.${field.name} is registered but missing from the save`);
-                }
-                else if (savedKind !== field.kind) {
-                    mismatches.push(`${component.name}.${field.name} was saved as "${savedKind}", now "${field.kind}"`);
-                }
-            }
-            const currentNames = new Set(def.fields.map(field => field.name));
-            for (const name of savedKinds.keys()) {
-                if (!currentNames.has(name)) {
-                    mismatches.push(`${component.name}.${name} is in the save but no longer registered`);
-                }
-            }
-        }
-        for (const def of this.components.defs) {
-            if (!savedNames.has(def.name)) {
-                mismatches.push(`component "${def.name}" is registered but missing from the save`);
-            }
-        }
-        if (mismatches.length > 0) {
-            throw new Error(
-                "Save is incompatible with this build's components: "
-                + `${mismatches.join("; ")}. Add a save migration, or delete the save file.`
-            );
-        }
-    }
-
-    /**
-     * Rebuilds the world from a {@link serialize} snapshot: fresh entities for every saved eid (eid
-     * columns remapped so references stay consistent), then the engine's derived indexes and each
-     * module's via its rebuild hook.
-     * @param {{components:object[], globals:object}} snapshot
-     * @returns {void}
-     */
-    deserialize(snapshot) {
-        this._assertSnapshotFormat(snapshot);
-        this._assertLoadoutCompatible(snapshot);
-        this._assertComponentsCompatible(snapshot);
-        this.world = new World();
-        this.components.bindAll();
-        this.components.clearAll();
-        // Drop the prior world's render/tick state so its stale eids never leak into the new world.
-        this.render.reset();
-        this.transfers.resetTick();
-
-        // Every eid that appears (as a row's own eid or an eid-field target) needs a fresh entity.
-        const referenced = new Set();
-        for (const component of snapshot.components) {
-            for (const row of component.rows) {
-                referenced.add(row.eid);
-                for (const field of component.fields) {
-                    if (field.kind === "eid" && row[field.name] !== NO_EID) {
-                        referenced.add(row[field.name]);
-                    }
-                }
-            }
-        }
-        const remap = new Map();
-        for (const old of [...referenced].sort((a, b) => a - b)) {
-            remap.set(old, this.world.addEntity());
-        }
-        const translate = value => (value === NO_EID ? NO_EID : remap.get(value));
-
-        for (const component of snapshot.components) {
-            const def = this.components.find(component.name);
-            for (const row of component.rows) {
-                const eid = remap.get(row.eid);
-                this.components.attach(def, eid);
-                const slot = def.slot(eid);
-                for (const field of def.fields) {
-                    const raw = row[field.name];
-                    def.store[field.name][slot] = field.kind === "eid" ? translate(raw) : raw;
-                }
-            }
-        }
-
-        this._nextObjectId = snapshot.globals.nextObjectId;
-        this.clock = snapshot.globals.clock === undefined ? 0 : snapshot.globals.clock;
-        this.seed = snapshot.globals.seed;
-        for (const key of Object.keys(snapshot.globals)) {
-            if (key !== "nextObjectId" && key !== "clock" && key !== "seed") {
-                this.globals[key] = snapshot.globals[key];
-            }
-        }
-
-        this.space.rebuild();
-        this.ports.rebuild();
-        for (const hook of this._rebuildHooks) {
-            hook(remap);
-        }
     }
 
     /**

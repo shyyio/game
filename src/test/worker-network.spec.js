@@ -295,11 +295,11 @@ test("worker assignments and banked progress survive a save/load", async () => {
 
     // Through the structured SQLite store, so the float columns round-trip as REAL.
     const store = new NodeSaveStore(":memory:");
-    await store.save(engine.serialize());
+    await store.save(engine.snapshots.serialize());
     const snapshot = await store.load();
 
     const restored = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
-    restored.deserialize(snapshot);
+    restored.snapshots.deserialize(snapshot);
 
     assert.equal(restored.workers.roadAt(5, 5), true, "road tiles rebuilt");
     assert.equal(restored.inspectSnapshot(nearId).workers, TEST_MACHINE_WORKER_COST, "allocation recomputed after load");

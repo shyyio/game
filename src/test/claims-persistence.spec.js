@@ -66,7 +66,7 @@ test("a snapshot without tables loads with empty registries", async () => {
     const store = new NodeSaveStore(":memory:");
     const seed = await makeGame([], store);
     // A pre-tables save: the raw engine snapshot, no tables section.
-    await store.save(seed.simEngine.serialize());
+    await store.save(seed.simEngine.snapshots.serialize());
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);

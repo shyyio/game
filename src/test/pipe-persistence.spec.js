@@ -35,10 +35,10 @@ test("pipe networks and fluid state round-trip through the engine serializer", a
     const pipes = pipesOf(engine);
     const netBefore = pipes.networkAt(0, 2);
     const tankBefore = tankState(engine);
-    const snapshot = JSON.parse(JSON.stringify(engine.serialize()));
+    const snapshot = JSON.parse(JSON.stringify(engine.snapshots.serialize()));
 
     const restored = await makeGameEngine();
-    restored.deserialize(snapshot);
+    restored.snapshots.deserialize(snapshot);
     const restoredPipes = pipesOf(restored);
 
     const net = restoredPipes.networkAt(0, 2);

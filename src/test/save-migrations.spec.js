@@ -9,7 +9,7 @@ import {BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
 
 test("a fresh snapshot carries the current format and the writing version", async () => {
     const engine = await makeGameEngine();
-    const snapshot = engine.serialize();
+    const snapshot = engine.snapshots.serialize();
 
     assert.equal(snapshot.saveFormat, SAVE_FORMAT);
     assert.equal(snapshot.gameVersion, GAME_VERSION);
@@ -17,14 +17,14 @@ test("a fresh snapshot carries the current format and the writing version", asyn
 
 test("a snapshot already at the current format passes through untouched", async () => {
     const engine = await makeGameEngine();
-    const snapshot = engine.serialize();
+    const snapshot = engine.snapshots.serialize();
 
     assert.equal(migrateSnapshot(snapshot), snapshot);
 });
 
 test("an unstamped save is upgraded to the current format", async () => {
     const engine = await makeGameEngine();
-    const snapshot = engine.serialize();
+    const snapshot = engine.snapshots.serialize();
     delete snapshot.saveFormat;
     delete snapshot.gameVersion;
 
@@ -33,7 +33,7 @@ test("an unstamped save is upgraded to the current format", async () => {
     assert.equal(migrated.gameVersion, null);
 
     const restored = await makeGameEngine();
-    assert.doesNotThrow(() => restored.deserialize(migrated));
+    assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
 });
 
 test("migrations run in order, each handing its output to the next", () => {
@@ -80,12 +80,12 @@ test("a nonsense format is rejected", () => {
 
 test("deserialize refuses a snapshot that has not been migrated", async () => {
     const engine = await makeGameEngine();
-    const snapshot = engine.serialize();
+    const snapshot = engine.snapshots.serialize();
     delete snapshot.saveFormat;
 
     const restored = await makeGameEngine();
     assert.throws(
-        () => restored.deserialize(snapshot),
+        () => restored.snapshots.deserialize(snapshot),
         /unstamped \(pre-dates save formats\)/,
     );
 });
@@ -93,7 +93,7 @@ test("deserialize refuses a snapshot that has not been migrated", async () => {
 test("a format-2 save gains Machine.enabled, and every machine loads switched on", async () => {
     const engine = await makeGameEngine();
     assert.equal(engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 4, 4, Direction.UP)), true);
-    const snapshot = engine.serialize();
+    const snapshot = engine.snapshots.serialize();
     snapshot.saveFormat = 2;
     const machine = snapshot.components.find(component => component.name === "Machine");
     assert.equal(machine.rows.length, 1);
@@ -110,13 +110,13 @@ test("a format-2 save gains Machine.enabled, and every machine loads switched on
     }
 
     const restored = await makeGameEngine();
-    assert.doesNotThrow(() => restored.deserialize(migrated));
+    assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
 });
 
 test("NodeSaveStore round-trips the format stamp", async () => {
     const engine = await makeGameEngine();
     const store = new NodeSaveStore(":memory:");
-    await store.save(engine.serialize());
+    await store.save(engine.snapshots.serialize());
     const loaded = await store.load();
 
     assert.equal(loaded.saveFormat, SAVE_FORMAT);
@@ -126,12 +126,12 @@ test("NodeSaveStore round-trips the format stamp", async () => {
 test("NodeSaveStore reads a save written before the stamp as unstamped", async () => {
     const engine = await makeGameEngine();
     const store = new NodeSaveStore(":memory:");
-    await store.save(engine.serialize());
+    await store.save(engine.snapshots.serialize());
     store.db.exec('DROP TABLE "_Meta"');
 
     const loaded = await store.load();
     assert.equal(loaded.saveFormat, undefined);
 
     const restored = await makeGameEngine();
-    assert.doesNotThrow(() => restored.deserialize(migrateSnapshot(loaded)));
+    assert.doesNotThrow(() => restored.snapshots.deserialize(migrateSnapshot(loaded)));
 });
