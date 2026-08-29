@@ -2,6 +2,7 @@ import {Container, Graphics, Rectangle, Sprite} from "pixi.js";
 import {ScrollView} from "@/client/hud/ScrollView.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {PANEL_TINT, ACTIVE_ACCENT} from "@/client/Theme.js";
+import {trackTap} from "@/client/layers/pixiUtils.js";
 
 const CELL_SIZE = 44;
 const CELL_GAP = 4;
@@ -9,8 +10,6 @@ const ICON_INSET = 6;
 const PADDING = 6;
 const SELECTED_ALPHA = 0.35;
 const HOVER_ALPHA = 0.15;
-// Pointer movement past this turns a cell press into a scroll drag, not a pick (matches ScrollView).
-const CELL_TAP_THRESHOLD = 6;
 const DEFAULT_COLUMNS = 6;
 const DEFAULT_VISIBLE_ROWS = 4;
 
@@ -122,25 +121,8 @@ export class IconPicker extends Container {
                 backdrop.alpha = 0;
             }
         });
-        let press = null;
-        cell.on("pointerdown", (event) => {
-            if (event.button !== 0) {
-                return;
-            }
-            press = {x: event.global.x, y: event.global.y};
-        });
-        cell.on("pointerup", (event) => {
-            if (press === null) {
-                return;
-            }
-            const moved = Math.abs(event.global.x - press.x) + Math.abs(event.global.y - press.y);
-            press = null;
-            if (moved < CELL_TAP_THRESHOLD) {
-                onPick(entry.id);
-            }
-        });
-        cell.on("pointerupoutside", () => press = null);
-        cell.on("pointercancel", () => press = null);
+        // Propagation left alone, so a scroll drag starting on a cell still scrolls the grid.
+        trackTap(cell, () => onPick(entry.id), {stopPropagation: false});
         return cell;
     }
 }

@@ -1,6 +1,7 @@
 import {Container, Graphics, Rectangle} from "pixi.js";
 import {panelText, TextRole} from "@/client/hud/PanelText.js";
 import {buildPanelButton, BUTTON_HEIGHT} from "@/client/hud/panelButton.js";
+import {trackTap} from "@/client/layers/pixiUtils.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {ScrollView} from "@/client/hud/ScrollView.js";
 import {ACTIVE_ACCENT, PANEL_TINT} from "@/client/Theme.js";
@@ -21,8 +22,6 @@ const SWATCH_RADIUS = 3;
 const SWATCH_GAP = 8;
 const SELECTED_RADIUS = 4;
 const SELECTED_ALPHA = 0.25;
-// Pointer movement past this turns a row press into a scroll drag, not a row tap (matches ScrollView).
-const ROW_TAP_THRESHOLD = 6;
 
 /**
  * Declarative panel-body builder: appends header/text/row/scrollSection content top to bottom.
@@ -257,8 +256,8 @@ export class PanelStack extends Container {
     }
 
     /**
-     * Row-wide tap wiring: fires only when the pointer barely moved, so a scroll drag starting on
-     * the row still scrolls (propagation stays untouched, unlike a button's trackTap).
+     * Row-wide tap wiring; propagation is left alone, so a scroll drag starting on the row still
+     * scrolls it.
      * @private
      * @param {Container} row
      * @param {number} width
@@ -266,28 +265,9 @@ export class PanelStack extends Container {
      * @returns {void}
      */
     _wireRowTap(row, width, onRowClick) {
-        row.eventMode = "static";
         row.cursor = "pointer";
         row.hitArea = new Rectangle(0, 0, width, ROW_HEIGHT);
-        let press = null;
-        row.on("pointerdown", (event) => {
-            if (event.button !== 0) {
-                return;
-            }
-            press = {x: event.global.x, y: event.global.y};
-        });
-        row.on("pointerup", (event) => {
-            if (press === null) {
-                return;
-            }
-            const moved = Math.abs(event.global.x - press.x) + Math.abs(event.global.y - press.y);
-            press = null;
-            if (moved < ROW_TAP_THRESHOLD) {
-                onRowClick();
-            }
-        });
-        row.on("pointerupoutside", () => press = null);
-        row.on("pointercancel", () => press = null);
+        trackTap(row, onRowClick, {stopPropagation: false});
     }
 }
 
