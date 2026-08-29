@@ -31,6 +31,21 @@ export class TapRecognizer {
     }
 
     /**
+     * @returns {number|null} the pointer holding the press, for a caller reading that pointer's travel
+     */
+    get pointerId() {
+        return this._pointerId;
+    }
+
+    /**
+     * Whether the press has travelled past the threshold: the drag claimed it, and no tap follows.
+     * @returns {boolean}
+     */
+    get dragging() {
+        return this._dragged;
+    }
+
+    /**
      * Claims the press for `pointerId`, unless another pointer already holds it or this is not the
      * primary button.
      * @param {number} pointerId
