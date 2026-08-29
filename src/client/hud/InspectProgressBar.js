@@ -3,8 +3,8 @@ import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_TINT, PROGRESS_BAR_TINT, PROGRESS_TEXT_COLOR, PROGRESS_TEXT_STROKE} from "@/client/Theme.js";
 import {nineSlice} from "@/client/layers/pixiUtils.js";
 import {SLOT_FRAME_INSET, TX_SLOT} from "@/client/hud/slotFrame.js";
+import {BUTTON_HEIGHT} from "@/client/hud/UiScale.js";
 
-export const PROGRESS_HEIGHT = 34;
 const TEXT_SIZE = 15;
 const TEXT_STROKE_WIDTH = 1;
 // 9-slice inset (atlas px) for the fill blocks (keeps their end caps fixed).
@@ -39,7 +39,7 @@ export class InspectProgressBar extends Container {
         this._steps = total + 1;
         this._width = width;
 
-        this._background = nineSlice(textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, width, PROGRESS_HEIGHT);
+        this._background = nineSlice(textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, width, BUTTON_HEIGHT);
         this._background.tint = PANEL_TINT;
         this.addChild(this._background);
 
@@ -48,7 +48,7 @@ export class InspectProgressBar extends Container {
         if (total > 0) {
             const usable = width - FILL_INSET_LEFT - FILL_INSET_RIGHT;
             const blockWidth = usable / this._steps;
-            const fillHeight = PROGRESS_HEIGHT - FILL_INSET_TOP - FILL_INSET_BOTTOM;
+            const fillHeight = BUTTON_HEIGHT - FILL_INSET_TOP - FILL_INSET_BOTTOM;
             for (let i = 0; i < this._steps; i++) {
                 const block = nineSlice(textureRegistry, TX_BARFILL, BARFILL_INSET, BARFILL_INSET, blockWidth, fillHeight);
                 block.tint = PROGRESS_BAR_TINT;
@@ -116,6 +116,6 @@ export class InspectProgressBar extends Container {
      */
     _centerLabel() {
         this._label.x = (this._width - this._label.width) / 2;
-        this._label.y = (PROGRESS_HEIGHT - this._label.height) / 2;
+        this._label.y = (BUTTON_HEIGHT - this._label.height) / 2;
     }
 }
