@@ -5,6 +5,10 @@
 export const UI_SCALE_NORMAL = 1;
 // Big UI clears WCAG 2.5.5 (44px targets) on every control; the smallest target sets the floor.
 export const UI_SCALE_BIG = 1.6;
+// The slider's range: never below the normal size, never past what clears AAA.
+export const UI_SCALE_MIN = UI_SCALE_NORMAL;
+export const UI_SCALE_MAX = UI_SCALE_BIG;
+export const UI_SCALE_STEP = 0.1;
 
 // The unscaled sizes. Each is a target a pointer has to hit, so each is audited.
 const BASE = {
@@ -33,12 +37,28 @@ export let ROW_GAP = BASE.ROW_GAP;
 export let ROW_INDENT = BASE.ROW_INDENT;
 
 let current = UI_SCALE_NORMAL;
+const scaleListeners = [];
 
 /**
  * @returns {number} the scale currently applied
  */
 export function uiScale() {
     return current;
+}
+
+/**
+ * Registers a listener fired after every scale change, for repainting and relaying out.
+ * @param {function(): void} listener
+ * @returns {function(): void} unsubscribe
+ */
+export function onUiScaleChange(listener) {
+    scaleListeners.push(listener);
+    return () => {
+        const index = scaleListeners.indexOf(listener);
+        if (index >= 0) {
+            scaleListeners.splice(index, 1);
+        }
+    };
 }
 
 /**
@@ -55,6 +75,9 @@ export function applyUiScale(scale) {
     TOOLBAR_SLOT_SIZE = Math.round(BASE.TOOLBAR_SLOT_SIZE * scale);
     ROW_GAP = Math.round(BASE.ROW_GAP * scale);
     ROW_INDENT = Math.round(BASE.ROW_INDENT * scale);
+    for (const listener of scaleListeners) {
+        listener();
+    }
 }
 
 /**

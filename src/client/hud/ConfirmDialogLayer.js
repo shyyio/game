@@ -2,7 +2,8 @@ import {Container, Graphics, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_TINT_TEXT, ACTIVE_ACCENT, BLOCKED_TILE_COLOR, PANEL_TINT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
-import {buildPanelButton, BUTTON_HEIGHT} from "@/client/hud/panelButton.js";
+import {buildPanelButton} from "@/client/hud/panelButton.js";
+import {BUTTON_HEIGHT} from "@/client/hud/UiScale.js";
 import {HudLayer} from "@/client/hud/HudLayer.js";
 
 const PANEL_WIDTH = 360;
