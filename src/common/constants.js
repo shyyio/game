@@ -140,6 +140,12 @@ export const GameSettingsKey = {
 // World seeds are non-negative int32 so they fit a game-setting value.
 export const WORLD_SEED_MAX = 0x7fffffff;
 
+// Logic-network keys: flat shared integers like game settings, each device behavior owning its
+// own (LOGIC_KEY_OPEN in Logistics, LOGIC_KEY_AMOUNT in Fluids); no registry.
+export const LOGIC_KEY_ENABLED = 1;
+// Read-only: whether a craft is actually in flight, which a machine's switch alone doesn't say.
+export const LOGIC_KEY_PROCESSING = 4;
+
 // Shared default so server/GameBootstrap/Game tick-ms configs can't drift apart.
 export const DEFAULT_TICK_MS = 600;
 

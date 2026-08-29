@@ -85,6 +85,15 @@ export class AbstractModDeclaration {
     }
 
     /**
+     * Logic key -> player-visible name for this mod's device behaviors; keys must be unique
+     * across the loadout.
+     * @returns {Object.<number, string>}
+     */
+    get logicKeys() {
+        return {};
+    }
+
+    /**
      * Metrics types this mod opens to GLOBAL-scope queries; metrics types must be unique across
      * the loadout.
      * @returns {MetricsGlobalQueryEntry[]}

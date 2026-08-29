@@ -131,7 +131,7 @@ export class ObjectType {
      *     reaches Client._buildBundles (a sim-only test fixture)
      * @param [config.conveys] {number|null} what this transport carries (CONVEYS_ITEM/CONVEYS_FLUID);
      *     null for non-transport types
-     * @param [config.wireAnchor] {{x: number, y: number}|null} where a control wire attaches, in
+     * @param [config.wireAnchor] {{x: number, y: number}|null} where a logic wire attaches, in
      *     tiles from the origin tile's top-left corner; null = not wireable
      */
     constructor({

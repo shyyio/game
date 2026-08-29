@@ -1,4 +1,5 @@
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
+import {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
 import {EMPTY, NO_EID, TickPhase} from "@/sim/GameEngine.js";
 import {deterministicRoll} from "@/sim/Rng.js";
 import {METRICS_FACT_TYPE_ITEM_PRODUCED} from "@/common/MetricsFact.js";
@@ -119,6 +120,8 @@ export class MachineBehavior extends AbstractBehavior {
             // Per-tick processing progress (1 unstaffed, MANNED_SPEED_MULTIPLIER fully staffed;
             // grants are full-crew-or-nothing); written by WorkerNetworks via setWorkers.
             {name: "workerStep", kind: "f32", fill: 1},
+            // Logic-network switch; a disabled machine pauses whole (no gather, craft, or output).
+            {name: "enabled", fill: 1},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => MachineBehavior._submitIntents(engine, placed));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => MachineBehavior._finish(engine, placed));
@@ -145,8 +148,9 @@ export class MachineBehavior extends AbstractBehavior {
             machine.out2[row] = byproductOutput.port;
             engine.registerRenderedPort(byproductOutput.port, byproductOutput.tile.x, byproductOutput.tile.y);
         }
-        // Explicit: a recycled row may hold a stale step from a previous occupant.
+        // Explicit: a recycled row may hold stale state from a previous occupant.
         machine.workerStep[row] = 1;
+        machine.enabled[row] = 1;
         engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
         if (this.workerCost > 0) {
             engine.workers.markDirty(engine.footprint(type, message.x, message.y, message.direction));
@@ -310,6 +314,43 @@ export class MachineBehavior extends AbstractBehavior {
         }
     }
 
+    logicRead(engine, placed, eid, key) {
+        const def = engine.component("Machine");
+        const row = def.row(eid);
+        if (key === LOGIC_KEY_ENABLED) {
+            return def.store.enabled[row];
+        }
+        if (key === LOGIC_KEY_PROCESSING) {
+            // A held product is a craft in flight; a switched-off machine is frozen, not working.
+            if (def.store.enabled[row] === 0 || def.store.output[row] === EMPTY) {
+                return 0;
+            }
+            return 1;
+        }
+        return null;
+    }
+
+    logicWrite(engine, placed, eid, key, value) {
+        if (key !== LOGIC_KEY_ENABLED) {
+            return false;
+        }
+        const def = engine.component("Machine");
+        if (value === 0) {
+            def.store.enabled[def.row(eid)] = 0;
+        } else {
+            def.store.enabled[def.row(eid)] = 1;
+        }
+        return true;
+    }
+
+    logicReadKeys() {
+        return [LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING];
+    }
+
+    logicWriteKeys() {
+        return [LOGIC_KEY_ENABLED];
+    }
+
     /**
      * The recipe product inferred from the gathered/consumed memory, or null when nothing is gathered.
      * @private
@@ -406,11 +447,15 @@ export class MachineBehavior extends AbstractBehavior {
         const inputCounts = machine.inputCount;
         const processingTicks = machine.processingTicks;
         const workerStep = machine.workerStep;
+        const enabled = machine.enabled;
         // Hoisted: `count` and `eids` reach through the descriptor into the world's membership set, and
         // this loop runs once per machine per tick.
         const eids = def.eids;
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
+            if (enabled[row] === 0) {
+                continue;
+            }
             const step = workerStep[row];
             // Mid-craft with the product still held: the countdown is the only state that moves, so
             // skip the behavior lookup and the per-slot passes below, which would all no-op.

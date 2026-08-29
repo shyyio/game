@@ -132,4 +132,56 @@ export class AbstractBehavior {
     onRebuild(engine, placed) {
 
     }
+
+    /**
+     * The entity's value for a logic key (LOGIC_KEY_*), or null when it does not expose it.
+     * @param {GameEngine} engine
+     * @param {PlacedObjects} placed
+     * @param {number} eid
+     * @param {number} key
+     * @returns {number|null}
+     */
+    logicRead(engine, placed, eid, key) {
+        return null;
+    }
+
+    /**
+     * Applies a logic write to the entity; false when the key is not writable.
+     * @param {GameEngine} engine
+     * @param {PlacedObjects} placed
+     * @param {number} eid
+     * @param {number} key
+     * @param {number} value
+     * @returns {boolean}
+     */
+    logicWrite(engine, placed, eid, key, value) {
+        return false;
+    }
+
+    /**
+     * The entity's stored stock, summed into network "stored" totals; null when it stores nothing.
+     * @param {GameEngine} engine
+     * @param {PlacedObjects} placed
+     * @param {number} eid
+     * @returns {{itemType: number, amount: number}|null}
+     */
+    logicStored(engine, placed, eid) {
+        return null;
+    }
+
+    /**
+     * The logic keys logicRead answers for this type.
+     * @returns {number[]}
+     */
+    logicReadKeys() {
+        return [];
+    }
+
+    /**
+     * The logic keys logicWrite accepts for this type.
+     * @returns {number[]}
+     */
+    logicWriteKeys() {
+        return [];
+    }
 }

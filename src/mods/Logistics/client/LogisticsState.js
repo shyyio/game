@@ -1,27 +1,24 @@
 import {AbstractCacheWriter, schemaMap, schemaScalar} from "@spup/sdk/client";
+import {GateSetEvent, LogicSnapshotEvent} from "../common/events.js";
 import {
-    GateSetEvent,
-    ControlLinkSetEvent,
-    ControlLinkClearEvent,
-    ControlSnapshotEvent,
-} from "../common/events.js";
-import {SetGateOpenMessage, ControlSnapshotRequestMessage} from "../common/messages.js";
+    SetGateOpenMessage,
+    LogicSnapshotRequestMessage,
+    ConfigureLogicRulesMessage,
+} from "../common/messages.js";
 
 export const LOGISTICS_SCHEMA = {
     // Gate objectId -> open (1/0); absent means open (only off-default gates sync).
     openById: schemaMap(),
     // Gate objectId -> mode (1 fluid, 0 item); absent means item.
     fluidById: schemaMap(),
-    // Device objectId -> wired pole objectId; absent means unwired.
-    linkPoleById: schemaMap(),
     // objectId of the terminal the config panel is open for, or null when closed.
     configTarget: schemaScalar(null),
-    // Last ControlSnapshotEvent, or null before first response.
-    controlSnapshot: schemaScalar(null),
+    // Last LogicSnapshotEvent, or null before first response.
+    logicSnapshot: schemaScalar(null),
 };
 
 /**
- * Feeds the "logistics" namespace: gate states and device wires.
+ * Feeds the "logistics" namespace: gate states and the terminal config panel.
  */
 export class LogisticsWriter extends AbstractCacheWriter {
 
@@ -44,16 +41,8 @@ export class LogisticsWriter extends AbstractCacheWriter {
             this._state.mapSet("logistics.fluidById", event.objectId, event.fluid);
             return;
         }
-        if (event instanceof ControlLinkSetEvent) {
-            this._state.mapSet("logistics.linkPoleById", event.deviceObjectId, event.poleObjectId);
-            return;
-        }
-        if (event instanceof ControlLinkClearEvent) {
-            this._state.mapDelete("logistics.linkPoleById", event.deviceObjectId);
-            return;
-        }
-        if (event instanceof ControlSnapshotEvent && event.objectId === this._state.get("logistics.configTarget")) {
-            this._state.set("logistics.controlSnapshot", event);
+        if (event instanceof LogicSnapshotEvent && event.objectId === this._state.get("logistics.configTarget")) {
+            this._state.set("logistics.logicSnapshot", event);
         }
     }
 
@@ -64,8 +53,8 @@ export class LogisticsWriter extends AbstractCacheWriter {
      */
     openTerminalConfig(objectId) {
         this._state.set("logistics.configTarget", objectId);
-        this._state.set("logistics.controlSnapshot", null);
-        this._session.sendMessage(new ControlSnapshotRequestMessage(objectId));
+        this._state.set("logistics.logicSnapshot", null);
+        this._session.sendMessage(new LogicSnapshotRequestMessage(objectId));
     }
 
     /**
@@ -73,6 +62,30 @@ export class LogisticsWriter extends AbstractCacheWriter {
      */
     closeTerminalConfig() {
         this._state.set("logistics.configTarget", null);
+    }
+
+    /**
+     * Replaces a terminal's whole rule list, then refreshes the snapshot the panel renders from.
+     * @param {number} objectId
+     * @param {LogicRule[]} rules
+     * @returns {void}
+     */
+    configureLogicRules(objectId, rules) {
+        const conditions = rules.flatMap(rule => rule.conditions);
+        this._session.sendMessage(new ConfigureLogicRulesMessage(
+            objectId,
+            rules.map(rule => rule.actionDeviceId),
+            rules.map(rule => rule.actionKey),
+            rules.map(rule => rule.actionValue),
+            rules.map(rule => rule.conditions.length),
+            conditions.map(condition => condition.kind),
+            conditions.map(condition => condition.deviceId),
+            conditions.map(condition => condition.itemType),
+            conditions.map(condition => condition.key),
+            conditions.map(condition => condition.comparator),
+            conditions.map(condition => condition.value),
+        ));
+        this._session.sendMessage(new LogicSnapshotRequestMessage(objectId));
     }
 
     /**
@@ -105,14 +118,5 @@ export class LogisticsWriter extends AbstractCacheWriter {
     forget(objectId) {
         this._state.mapDelete("logistics.openById", objectId);
         this._state.mapDelete("logistics.fluidById", objectId);
-    }
-
-    /**
-     * Drops a removed device's wire.
-     * @param {number} objectId
-     * @returns {void}
-     */
-    forgetLink(objectId) {
-        this._state.mapDelete("logistics.linkPoleById", objectId);
     }
 }

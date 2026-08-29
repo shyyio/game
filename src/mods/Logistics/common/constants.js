@@ -71,18 +71,60 @@ export const DRAW_LAYER_ROAD = 18;
 // Wire catenaries draw above objects and fills.
 export const DRAW_LAYER_WIRES = 30;
 
-// ---- Control network ----
-// Poles auto-link to poles within this chebyshev range; device wires obey the same reach.
-export const POLE_LINK_RANGE = 10;
+// ---- Logic network ----
+// Maximum chebyshev length of a wire.
+export const WIRE_LINK_RANGE = 10;
 
-// ControlLink.pole value for an unwired device.
-export const POLE_NONE = 0;
-
-// Save-record table of pole-pole wires.
-export const CONTROL_WIRE_RECORD = "ControlWire";
+// Save-record table of wires (any wireable endpoint pair).
+export const LOGIC_WIRE_RECORD = "LogicWire";
 
 // A terminal's starting tier.
-export const CONTROL_TIER_BASE = 1;
+export const LOGIC_TIER_BASE = 1;
+
+// The gate's logic key (flat shared keyspace, see LOGIC_KEY_ENABLED in the engine).
+export const LOGIC_KEY_OPEN = 2;
+
+// ---- Rule comparators ----
+export const LOGIC_COMPARATOR_AT_LEAST = 0;
+export const LOGIC_COMPARATOR_AT_MOST = 1;
+export const LOGIC_COMPARATOR_EXACTLY = 2;
+export const LOGIC_COMPARATOR_NOT = 3;
+
+/**
+ * Whether a rule condition holds.
+ * @param {number} comparator - a LOGIC_COMPARATOR_* value
+ * @param {number} value - the device's read value
+ * @param {number} target - the rule's threshold
+ * @returns {boolean}
+ */
+export function logicComparatorMatches(comparator, value, target) {
+    if (comparator === LOGIC_COMPARATOR_AT_LEAST) {
+        return value >= target;
+    }
+    if (comparator === LOGIC_COMPARATOR_AT_MOST) {
+        return value <= target;
+    }
+    if (comparator === LOGIC_COMPARATOR_EXACTLY) {
+        return value === target;
+    }
+    if (comparator === LOGIC_COMPARATOR_NOT) {
+        return value !== target;
+    }
+    throw new Error(`Unknown logic comparator ${comparator}`);
+}
+
+// Rules one terminal may hold, and conditions one rule may AND together.
+export const LOGIC_RULE_CAP = 16;
+export const LOGIC_CONDITION_CAP = 4;
+
+// ---- Condition kinds ----
+// DEVICE reads one device's key; STORED sums logicStored across the network for an item type.
+export const LOGIC_CONDITION_KIND_DEVICE = 0;
+export const LOGIC_CONDITION_KIND_STORED = 1;
+
+// Save-record tables of terminal rules and their conditions.
+export const LOGIC_RULE_RECORD = "LogicRule";
+export const LOGIC_CONDITION_RECORD = "LogicRuleCondition";
 
 /**
  * Whether two tiles are within wire reach of each other.
@@ -92,8 +134,8 @@ export const CONTROL_TIER_BASE = 1;
  * @param {number} y2
  * @returns {boolean}
  */
-export function withinPoleRange(x1, y1, x2, y2) {
-    return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2)) <= POLE_LINK_RANGE;
+export function withinWireRange(x1, y1, x2, y2) {
+    return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2)) <= WIRE_LINK_RANGE;
 }
 
 // ---- System ordering ----

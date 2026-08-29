@@ -1,5 +1,5 @@
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
-export const SAVE_FORMAT = 2;
+export const SAVE_FORMAT = 3;
 
 // What a save written before the stamp counts as.
 const UNSTAMPED_FORMAT = 0;
@@ -15,7 +15,32 @@ export const SAVE_MIGRATIONS = new Map([
     [UNSTAMPED_FORMAT, snapshot => ({...snapshot, saveFormat: UNSTAMPED_FORMAT + 1, gameVersion: null})],
     // Format 2 adds the world seed global; worlds saved before it had none, so they keep seed 0.
     [1, snapshot => ({...snapshot, saveFormat: 2, globals: {...snapshot.globals, seed: 0}})],
+    // Format 3 adds Machine.enabled, the logic-network switch; machines saved before it run.
+    [2, snapshot => ({...snapshot, saveFormat: 3, components: addField(snapshot.components, "Machine", "enabled", 1)})],
 ]);
+
+/**
+ * Returns `components` with `fieldName` appended to `componentName`, set to `value` on every row.
+ * A snapshot missing that component, or already carrying the field, is returned untouched.
+ * @param {object[]} components
+ * @param {string} componentName
+ * @param {string} fieldName
+ * @param {number} value
+ * @returns {object[]}
+ */
+function addField(components, componentName, fieldName, value) {
+    return components.map(component => {
+        if (component.name !== componentName
+            || component.fields.some(field => field.name === fieldName)) {
+            return component;
+        }
+        return {
+            ...component,
+            fields: [...component.fields, {name: fieldName, kind: "i32"}],
+            rows: component.rows.map(row => ({...row, [fieldName]: value})),
+        };
+    });
+}
 
 /**
  * Upgrades a loaded snapshot to {@link SAVE_FORMAT} by running each migration in turn.

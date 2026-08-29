@@ -1,4 +1,5 @@
-import {AbstractModDeclaration, ItemDefinition} from "@spup/sdk";
+import {AbstractModDeclaration, ItemDefinition, LogicKeyEntry, LogicKeyState} from "@spup/sdk";
+import {LOGIC_KEY_OPEN} from "./common/constants.js";
 import {
     BeltDefinition,
     BeltTunnelDownDefinition,
@@ -9,7 +10,7 @@ import {
     HousingDefinition,
     GateDefinition,
     PoleDefinition,
-    ControlTerminalDefinition,
+    LogicTerminalDefinition,
 } from "./common/objectTypes.js";
 import {
     BeltPathRecalculateEvent,
@@ -21,17 +22,16 @@ import {
     BeltPathBatchEvent,
     GateSetEvent,
     GateSetBatchEvent,
-    ControlLinkSetEvent,
-    ControlLinkClearEvent,
-    ControlWireSetEvent,
-    ControlWireClearEvent,
-    ControlSnapshotEvent,
+    LogicWireSetEvent,
+    LogicWireClearEvent,
+    LogicSnapshotEvent,
 } from "./common/events.js";
 import {
     SetGateOpenMessage,
     WireLinkMessage,
     WireUnlinkMessage,
-    ControlSnapshotRequestMessage,
+    LogicSnapshotRequestMessage,
+    ConfigureLogicRulesMessage,
 } from "./common/messages.js";
 
 export class LogisticsDeclaration extends AbstractModDeclaration {
@@ -55,7 +55,7 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
             BeltUndergroundDefinition,
             GateDefinition,
             PoleDefinition,
-            ControlTerminalDefinition,
+            LogicTerminalDefinition,
         ];
     }
 
@@ -71,18 +71,24 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
             GateSetEvent,
             GateSetBatchEvent,
             SetGateOpenMessage,
-            ControlLinkSetEvent,
-            ControlLinkClearEvent,
-            ControlWireSetEvent,
-            ControlWireClearEvent,
+            LogicWireSetEvent,
+            LogicWireClearEvent,
             WireLinkMessage,
             WireUnlinkMessage,
-            ControlSnapshotEvent,
-            ControlSnapshotRequestMessage,
+            LogicSnapshotEvent,
+            LogicSnapshotRequestMessage,
+            ConfigureLogicRulesMessage,
         ];
     }
 
     get items() {
         return {3: new ItemDefinition("Cargo", "items/1")};
+    }
+
+    get logicKeys() {
+        return {[LOGIC_KEY_OPEN]: new LogicKeyEntry("Open", [
+            new LogicKeyState(1, "Open", "is open"),
+            new LogicKeyState(0, "Close", "is closed"),
+        ], "Gate state")};
     }
 }

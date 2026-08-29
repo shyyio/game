@@ -147,6 +147,7 @@ function machine(name, label, {toolId, inputPorts, outputPorts, recipes, process
         inspectable: true,
         placement: new PlacementRule({replaceSameKind: true}),
         behavior: new MachineBehavior({processingTicks, recipes, fallback: ITEM_TYPE_WASTE, workerCost}),
+        wireAnchor: {x: 0.5, y: 0.2},
     });
 }
 

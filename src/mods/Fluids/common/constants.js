@@ -44,6 +44,9 @@ export const PIPE_SEGMENT_CAPACITY = 2;
 // Units one tank holds.
 export const TANK_CAPACITY = 40;
 
+// The tank's logic key (flat shared keyspace, see LOGIC_KEY_ENABLED in the engine).
+export const LOGIC_KEY_AMOUNT = 3;
+
 // Map-mode / fill colors by fluid type.
 const FLUID_COLORS = {
     [FLUID_TYPE_WATER]: 0x3f8fd2,

@@ -3,12 +3,25 @@ import {
     SetGateOpenMessage,
     WireLinkMessage,
     WireUnlinkMessage,
-    ControlSnapshotRequestMessage,
+    LogicSnapshotRequestMessage,
+    ConfigureLogicRulesMessage,
 } from "./common/messages.js";
-import {GateSetEvent, ControlSnapshotEvent} from "./common/events.js";
-import {isGateType, isPoleType, isTerminalType} from "./common/objectTypes.js";
-import {withinPoleRange, CONTROL_WIRE_RECORD, POLE_NONE} from "./common/constants.js";
-import {ControlNetworks} from "./sim/ControlNetworks.js";
+import {GateSetEvent, LogicSnapshotEvent} from "./common/events.js";
+import {isGateType, isTerminalType} from "./common/objectTypes.js";
+import {
+    withinWireRange,
+    LOGIC_WIRE_RECORD,
+    LOGIC_RULE_RECORD,
+    LOGIC_CONDITION_RECORD,
+    LOGIC_RULE_CAP,
+    LOGIC_CONDITION_CAP,
+    LOGIC_COMPARATOR_AT_LEAST,
+    LOGIC_COMPARATOR_NOT,
+    LOGIC_CONDITION_KIND_DEVICE,
+    LOGIC_CONDITION_KIND_STORED,
+} from "./common/constants.js";
+import {LogicNetworks} from "./sim/LogicNetworks.js";
+import {LogicRule, LogicRules, LogicCondition} from "./sim/LogicRules.js";
 
 /**
  * Handles the Logistics mod's session messages; all tick logic lives in the behaviors.
@@ -28,7 +41,10 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @returns {object[]}
      */
     serializeRecords() {
-        return this._sim.resolve(ControlNetworks).serializeRecords();
+        return [
+            ...this._sim.resolve(LogicNetworks).serializeRecords(),
+            ...this._sim.resolve(LogicRules).serializeRecords(),
+        ];
     }
 
     /**
@@ -36,7 +52,11 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @returns {void}
      */
     deserializeRecords(tablesByName) {
-        this._sim.resolve(ControlNetworks).deserializeRecords(tablesByName.get(CONTROL_WIRE_RECORD));
+        this._sim.resolve(LogicNetworks).deserializeRecords(tablesByName.get(LOGIC_WIRE_RECORD));
+        this._sim.resolve(LogicRules).deserializeRecords(
+            tablesByName.get(LOGIC_RULE_RECORD),
+            tablesByName.get(LOGIC_CONDITION_RECORD),
+        );
     }
 
     /**
@@ -58,8 +78,12 @@ export class LogisticsSimMod extends AbstractSimMod {
             this._handleWireUnlink(message, session, game);
             return true;
         }
-        if (message instanceof ControlSnapshotRequestMessage) {
-            this._sendControlSnapshot(message, session, game);
+        if (message instanceof LogicSnapshotRequestMessage) {
+            this._sendLogicSnapshot(message, session, game);
+            return true;
+        }
+        if (message instanceof ConfigureLogicRulesMessage) {
+            this._configureRules(message, session, game);
             return true;
         }
         return false;
@@ -97,12 +121,12 @@ export class LogisticsSimMod extends AbstractSimMod {
     }
 
     /**
-     * Resolves a wire message's endpoints into pole/device eids; null when the pair is not a
-     * pole-pole or device-pole combination, is out of range, or the sender lacks build rights.
+     * Resolves a wire message's endpoints into eids; null when either endpoint is missing or not
+     * wireable, the wire is out of range, or the sender lacks build rights.
      * @param {WireLinkMessage|WireUnlinkMessage} message
      * @param {AbstractSession} session
      * @param {Game} game
-     * @returns {{poleEid: number, otherEid: number, otherIsPole: boolean}|null}
+     * @returns {{aEid: number, bEid: number}|null}
      * @private
      */
     _resolveWireEndpoints(message, session, game) {
@@ -112,42 +136,27 @@ export class LogisticsSimMod extends AbstractSimMod {
         if (aEid === undefined || bEid === undefined || aEid === bEid) {
             return null;
         }
-        const isPole = eid => {
+        const wireable = eid => {
             const type = engine.placed.typeFor(engine.placed.typeIdOf(eid));
-            return type !== undefined && isPoleType(type);
+            return type !== undefined && type.wireAnchor !== null;
         };
-        let poleEid = null;
-        let otherEid = null;
-        if (isPole(aEid)) {
-            poleEid = aEid;
-            otherEid = bEid;
-        } else if (isPole(bEid)) {
-            poleEid = bEid;
-            otherEid = aEid;
-        } else {
+        if (!wireable(aEid) || !wireable(bEid)) {
             return null;
         }
-        const otherIsPole = isPole(otherEid);
-        if (!otherIsPole) {
-            const otherType = engine.placed.typeFor(engine.placed.typeIdOf(otherEid));
-            if (otherType === undefined || otherType.wireAnchor === null) {
-                return null;
-            }
-        }
         const position = engine.Position;
-        if (!withinPoleRange(position.x[poleEid], position.y[poleEid], position.x[otherEid], position.y[otherEid])) {
+        if (!withinWireRange(position.x[aEid], position.y[aEid], position.x[bEid], position.y[bEid])) {
             return null;
         }
         // Mod messages bypass the core placement gate, so wires check build rights themselves.
-        if (!engine.placementAllowed(session.playerId, chunkId(position.x[poleEid], position.y[poleEid]))
-            || !engine.placementAllowed(session.playerId, chunkId(position.x[otherEid], position.y[otherEid]))) {
+        if (!engine.placementAllowed(session.playerId, chunkId(position.x[aEid], position.y[aEid]))
+            || !engine.placementAllowed(session.playerId, chunkId(position.x[bEid], position.y[bEid]))) {
             return null;
         }
-        return {poleEid, otherEid, otherIsPole};
+        return {aEid, bEid};
     }
 
     /**
-     * Adds a wire: pole-pole into the wire set, device-pole into the device's link.
+     * Adds a wire between two wireable endpoints.
      * @param {WireLinkMessage} message
      * @param {AbstractSession} session
      * @param {Game} game
@@ -159,69 +168,75 @@ export class LogisticsSimMod extends AbstractSimMod {
             return;
         }
         const engine = game.simEngine;
-        const networks = engine.resolve(ControlNetworks);
+        const networks = engine.resolve(LogicNetworks);
         if (this._wireBreaksTerminalRule(engine, networks, endpoints)) {
             return;
         }
-        if (endpoints.otherIsPole) {
-            networks.wirePoles(
-                engine.placed.objectIdOf(endpoints.poleEid),
-                engine.placed.objectIdOf(endpoints.otherEid),
-            );
-            return;
-        }
-        networks.link(endpoints.otherEid, engine.placed.objectIdOf(endpoints.poleEid));
+        networks.wire(engine.placed.objectIdOf(endpoints.aEid), engine.placed.objectIdOf(endpoints.bEid));
     }
 
     /**
-     * Whether the wire would leave a network with more than one terminal: a terminal joining a
-     * terminal'd component, or a pole-pole wire merging two terminal'd components.
+     * Whether the wire would leave a network with more than one terminal: it merges two sides
+     * (components, or still-unwired single endpoints) that each hold one.
      * @param {GameEngine} engine
-     * @param {ControlNetworks} networks
-     * @param {{poleEid: number, otherEid: number, otherIsPole: boolean}} endpoints
+     * @param {LogicNetworks} networks
+     * @param {{aEid: number, bEid: number}} endpoints
      * @returns {boolean}
      * @private
      */
     _wireBreaksTerminalRule(engine, networks, endpoints) {
-        const poleObjectId = engine.placed.objectIdOf(endpoints.poleEid);
-        const otherObjectId = engine.placed.objectIdOf(endpoints.otherEid);
-        if (endpoints.otherIsPole) {
-            const poleNetwork = networks.networkOf(poleObjectId);
-            const otherNetwork = networks.networkOf(otherObjectId);
-            if (poleNetwork === null || otherNetwork === null || poleNetwork.id === otherNetwork.id) {
-                return false;
-            }
-            return this._hasTerminal(engine, poleNetwork, POLE_NONE)
-                && this._hasTerminal(engine, otherNetwork, POLE_NONE);
-        }
-        const otherType = engine.placed.typeFor(engine.placed.typeIdOf(endpoints.otherEid));
-        if (!isTerminalType(otherType)) {
+        const aObjectId = engine.placed.objectIdOf(endpoints.aEid);
+        const bObjectId = engine.placed.objectIdOf(endpoints.bEid);
+        const aNetwork = networks.networkOf(aObjectId);
+        const bNetwork = networks.networkOf(bObjectId);
+        if (aNetwork !== null && bNetwork !== null && aNetwork.id === bNetwork.id) {
             return false;
         }
-        const network = networks.networkOf(poleObjectId);
-        // Excluding the terminal itself keeps a relink within its own network legal.
-        return network !== null && this._hasTerminal(engine, network, otherObjectId);
+        return this._sideHasTerminal(engine, aNetwork, aObjectId)
+            && this._sideHasTerminal(engine, bNetwork, bObjectId);
     }
 
     /**
-     * Whether the network holds a live terminal other than `excludeObjectId`.
+     * Whether a wire endpoint's side holds a terminal: its network when it has one, else the
+     * endpoint itself.
      * @param {GameEngine} engine
-     * @param {ControlNetwork} network
-     * @param {number} excludeObjectId - a device to skip, or POLE_NONE
+     * @param {LogicNetwork|null} network
+     * @param {number} objectId
      * @returns {boolean}
      * @private
      */
-    _hasTerminal(engine, network, excludeObjectId) {
+    _sideHasTerminal(engine, network, objectId) {
+        if (network === null) {
+            return this._isTerminalObject(engine, objectId);
+        }
+        return this._hasTerminal(engine, network);
+    }
+
+    /**
+     * @param {GameEngine} engine
+     * @param {number} objectId
+     * @returns {boolean}
+     * @private
+     */
+    _isTerminalObject(engine, objectId) {
+        const eid = engine.placed.eidByObjectId(objectId);
+        if (eid === undefined) {
+            return false;
+        }
+        const type = engine.placed.typeFor(engine.placed.typeIdOf(eid));
+        return type !== undefined && isTerminalType(type);
+    }
+
+    /**
+     * Whether the network holds a live terminal.
+     * @param {GameEngine} engine
+     * @param {LogicNetwork} network
+     * @returns {boolean}
+     * @private
+     */
+    _hasTerminal(engine, network) {
         for (const deviceId of network.deviceIds) {
-            if (deviceId === excludeObjectId) {
-                continue;
-            }
-            const eid = engine.placed.eidByObjectId(deviceId);
-            if (eid === undefined) {
-                continue;
-            }
-            const type = engine.placed.typeFor(engine.placed.typeIdOf(eid));
-            if (type !== undefined && isTerminalType(type)) {
+            if (this._isTerminalObject(engine, deviceId)) {
                 return true;
             }
         }
@@ -229,7 +244,7 @@ export class LogisticsSimMod extends AbstractSimMod {
     }
 
     /**
-     * Removes the wire between the endpoints; a device detaches only from its own pole.
+     * Removes the wire between the endpoints.
      * @param {WireUnlinkMessage} message
      * @param {AbstractSession} session
      * @param {Game} game
@@ -241,27 +256,21 @@ export class LogisticsSimMod extends AbstractSimMod {
             return;
         }
         const engine = game.simEngine;
-        const networks = engine.resolve(ControlNetworks);
-        if (endpoints.otherIsPole) {
-            networks.unwirePoles(
-                engine.placed.objectIdOf(endpoints.poleEid),
-                engine.placed.objectIdOf(endpoints.otherEid),
-            );
-            return;
-        }
-        if (networks.poleOf(endpoints.otherEid) === engine.placed.objectIdOf(endpoints.poleEid)) {
-            networks.unlink(endpoints.otherEid);
-        }
+        engine.resolve(LogicNetworks).unwire(
+            engine.placed.objectIdOf(endpoints.aEid),
+            engine.placed.objectIdOf(endpoints.bEid),
+        );
     }
 
     /**
-     * Answers a terminal's network snapshot directly to the requesting session.
-     * @param {ControlSnapshotRequestMessage} message
+     * Replaces a terminal's rule list for anyone with build rights on its chunk; an over-cap or
+     * malformed list is dropped whole.
+     * @param {ConfigureLogicRulesMessage} message
      * @param {AbstractSession} session
      * @param {Game} game
      * @private
      */
-    _sendControlSnapshot(message, session, game) {
+    _configureRules(message, session, game) {
         const engine = game.simEngine;
         const eid = engine.placed.eidByObjectId(message.objectId);
         if (eid === undefined) {
@@ -271,16 +280,89 @@ export class LogisticsSimMod extends AbstractSimMod {
         if (type === undefined || !isTerminalType(type)) {
             return;
         }
-        const def = engine.component("ControlTerminal");
+        // Mod messages bypass the core placement gate, so rules check build rights themselves.
+        const x = engine.Position.x[eid];
+        const y = engine.Position.y[eid];
+        if (!engine.placementAllowed(session.playerId, chunkId(x, y))) {
+            return;
+        }
+        const ruleCount = message.actionDeviceIds.length;
+        if (ruleCount > LOGIC_RULE_CAP) {
+            return;
+        }
+        // Unregistered keys survive into the snapshot and blow up the panel's throwing lookups.
+        const registry = engine.modRegistry;
+        const rules = [];
+        let conditionAt = 0;
+        for (let i = 0; i < ruleCount; i += 1) {
+            if (!registry.hasLogicKey(message.actionKeys[i])) {
+                return;
+            }
+            const conditionCount = message.conditionCounts[i];
+            if (conditionCount < 0 || conditionCount > LOGIC_CONDITION_CAP) {
+                return;
+            }
+            const conditions = [];
+            for (let c = conditionAt; c < conditionAt + conditionCount; c += 1) {
+                if (message.condKinds[c] !== LOGIC_CONDITION_KIND_DEVICE
+                    && message.condKinds[c] !== LOGIC_CONDITION_KIND_STORED) {
+                    return;
+                }
+                if (message.condComparators[c] < LOGIC_COMPARATOR_AT_LEAST
+                    || message.condComparators[c] > LOGIC_COMPARATOR_NOT) {
+                    return;
+                }
+                // A stored condition leaves its key at 0; a device condition names a real one.
+                if (message.condKinds[c] === LOGIC_CONDITION_KIND_DEVICE
+                    && !registry.hasLogicKey(message.condKeys[c])) {
+                    return;
+                }
+                conditions.push(new LogicCondition(
+                    message.condKinds[c],
+                    message.condDeviceIds[c],
+                    message.condItemTypes[c],
+                    message.condKeys[c],
+                    message.condComparators[c],
+                    message.condValues[c],
+                ));
+            }
+            conditionAt += conditionCount;
+            rules.push(new LogicRule(
+                message.actionDeviceIds[i],
+                message.actionKeys[i],
+                message.actionValues[i],
+                conditions,
+            ));
+        }
+        engine.resolve(LogicRules).setRules(message.objectId, rules);
+    }
+
+    /**
+     * Answers a terminal's network snapshot directly to the requesting session.
+     * @param {LogicSnapshotRequestMessage} message
+     * @param {AbstractSession} session
+     * @param {Game} game
+     * @private
+     */
+    _sendLogicSnapshot(message, session, game) {
+        const engine = game.simEngine;
+        const eid = engine.placed.eidByObjectId(message.objectId);
+        if (eid === undefined) {
+            return;
+        }
+        const type = engine.placed.typeFor(engine.placed.typeIdOf(eid));
+        if (type === undefined || !isTerminalType(type)) {
+            return;
+        }
+        const def = engine.component("LogicTerminal");
         const tier = def.store.tier[def.row(eid)];
-        const networks = engine.resolve(ControlNetworks);
-        const poleObjectId = networks.poleOf(eid);
+        const networks = engine.resolve(LogicNetworks);
         const deviceObjectIds = [];
         const deviceTypeIds = [];
         const deviceTileXs = [];
         const deviceTileYs = [];
         let linked = 0;
-        const network = poleObjectId === POLE_NONE ? null : networks.networkOf(poleObjectId);
+        const network = networks.networkOf(message.objectId);
         if (network !== null) {
             linked = 1;
             const position = engine.Position;
@@ -298,8 +380,21 @@ export class LogisticsSimMod extends AbstractSimMod {
                 deviceTileYs.push(position.y[deviceEid]);
             }
         }
-        game.bus.publishTo(session.id, new ControlSnapshotEvent(
+        const rules = engine.resolve(LogicRules).rulesOf(message.objectId);
+        const conditions = rules.flatMap(rule => rule.conditions);
+        game.bus.publishTo(session.id, new LogicSnapshotEvent(
             message.objectId, linked, tier, deviceObjectIds, deviceTypeIds, deviceTileXs, deviceTileYs,
+            rules.map(rule => rule.actionDeviceId),
+            rules.map(rule => rule.actionKey),
+            rules.map(rule => rule.actionValue),
+            rules.map(rule => Number(rule.suspended)),
+            rules.map(rule => rule.conditions.length),
+            conditions.map(condition => condition.kind),
+            conditions.map(condition => condition.deviceId),
+            conditions.map(condition => condition.itemType),
+            conditions.map(condition => condition.key),
+            conditions.map(condition => condition.comparator),
+            conditions.map(condition => condition.value),
         ));
     }
 }

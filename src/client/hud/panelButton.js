@@ -1,4 +1,4 @@
-import {Container, Graphics, Text} from "pixi.js";
+import {Container, Graphics, Sprite, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {textOn, SLOT_HIGHLIGHT_COLOR} from "@/client/Theme.js";
 import {nineSlice, trackTap} from "@/client/layers/pixiUtils.js";
@@ -60,6 +60,40 @@ export function buildPanelButton(textureRegistry, label, borderColor, onClick, d
         button.alpha = 0.45;
         return button;
     }
+    button.cursor = "pointer";
+    button.on("pointerover", () => hover.alpha = HOVER_ALPHA);
+    button.on("pointerout", () => hover.alpha = 0);
+    trackTap(button, onClick);
+    return button;
+}
+
+/**
+ * A square 9-slice HUD button showing a tinted icon instead of a label; tap fires onClick.
+ * @param {TextureRegistry} textureRegistry
+ * @param {string} iconTextureName
+ * @param {number} iconTint
+ * @param {number} borderColor
+ * @param {function(): void} onClick
+ * @returns {Container}
+ */
+export function buildIconButton(textureRegistry, iconTextureName, iconTint, borderColor, onClick) {
+    const button = new Container();
+    const bg = nineSlice(textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, BUTTON_HEIGHT, BUTTON_HEIGHT);
+    bg.tint = borderColor;
+    button.addChild(bg);
+
+    const hover = new Graphics().rect(0, 0, BUTTON_HEIGHT, BUTTON_HEIGHT).fill(SLOT_HIGHLIGHT_COLOR);
+    hover.alpha = 0;
+    button.addChild(hover);
+
+    const icon = new Sprite(textureRegistry.get(iconTextureName));
+    icon.tint = iconTint;
+    const box = BUTTON_HEIGHT - SLOT_FRAME_INSET * 2;
+    icon.scale.set(Math.min(box / icon.texture.width, box / icon.texture.height));
+    icon.x = (BUTTON_HEIGHT - icon.width) / 2;
+    icon.y = (BUTTON_HEIGHT - icon.height) / 2;
+    button.addChild(icon);
+
     button.cursor = "pointer";
     button.on("pointerover", () => hover.alpha = HOVER_ALPHA);
     button.on("pointerout", () => hover.alpha = 0);

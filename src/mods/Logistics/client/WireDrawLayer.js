@@ -2,7 +2,7 @@ import {AbstractDrawLayer, Graphics, Mouse, TILE_SIZE} from "@spup/sdk/client";
 import {DRAW_LAYER_WIRES} from "../common/constants.js";
 
 /**
- * The canonical key of a pole-pole wire.
+ * The canonical key of a wire.
  * @param {number} a
  * @param {number} b
  * @returns {string}
@@ -24,8 +24,8 @@ const SAG_MAX = 22;
 const SAG_TILT = 1;
 
 /**
- * Catenary overlay: pole-pole wires from the synced wire set, device-pole wires from the synced
- * link map. Redraws whole on any change.
+ * Catenary overlay: wires from the synced edge set, endpoints resolved through the objects view.
+ * Redraws whole on any change.
  */
 export class WireDrawLayer extends AbstractDrawLayer {
 
@@ -39,17 +39,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
         this._previewFrom = null;
         this._previewSnap = null;
         /**
-         * Pole objectId -> its cache entry.
-         * @type {Map<number, CacheEntry>}
-         */
-        this._poles = new Map();
-        /**
-         * Device objectId -> wired pole objectId.
-         * @type {Map<number, number>}
-         */
-        this._links = new Map();
-        /**
-         * Wire key -> its {a, b} pole objectIds.
+         * Wire key -> its {a, b} endpoint objectIds.
          * @type {Map<string, {a: number, b: number}>}
          */
         this._edges = new Map();
@@ -73,31 +63,35 @@ export class WireDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {CacheEntry} entry
+     * A cached endpoint appeared or changed; repaint if a wire hangs off it.
+     * @param {number} id - the endpoint's objectId
      * @returns {void}
      */
-    addPole(entry) {
-        this._poles.set(entry.id, entry);
-        this._stale = true;
+    touchEndpoint(id) {
+        for (const edge of this._edges.values()) {
+            if (edge.a === id || edge.b === id) {
+                this._stale = true;
+                return;
+            }
+        }
     }
 
     /**
-     * A removed pole drops its edges too; re-subscribing re-syncs them.
-     * @param {number} id
+     * A removed endpoint drops its edges; re-subscribing re-syncs them.
+     * @param {number} id - the endpoint's objectId
      * @returns {void}
      */
-    removePole(id) {
-        this._poles.delete(id);
+    removeEndpoint(id) {
         for (const [key, edge] of [...this._edges]) {
             if (edge.a === id || edge.b === id) {
                 this._edges.delete(key);
+                this._stale = true;
             }
         }
-        this._stale = true;
     }
 
     /**
-     * @param {number} a - pole objectId
+     * @param {number} a - endpoint objectId
      * @param {number} b
      * @returns {void}
      */
@@ -107,7 +101,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {number} a - pole objectId
+     * @param {number} a - endpoint objectId
      * @param {number} b
      * @returns {void}
      */
@@ -118,38 +112,12 @@ export class WireDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {number} a - pole objectId
+     * @param {number} a - endpoint objectId
      * @param {number} b
      * @returns {boolean}
      */
     hasEdge(a, b) {
         return this._edges.has(wireKey(a, b));
-    }
-
-    /**
-     * Sets or clears (poleId undefined) a device's wire.
-     * @param {number} deviceId
-     * @param {number|undefined} poleId
-     * @returns {void}
-     */
-    setLink(deviceId, poleId) {
-        if (poleId === undefined) {
-            this._links.delete(deviceId);
-        } else {
-            this._links.set(deviceId, poleId);
-        }
-        this._stale = true;
-    }
-
-    /**
-     * A removed device drops its wire.
-     * @param {number} deviceId
-     * @returns {void}
-     */
-    removeDevice(deviceId) {
-        if (this._links.delete(deviceId)) {
-            this._stale = true;
-        }
     }
 
     tick(frame, deltaMS, visibleChunks) {
@@ -183,10 +151,11 @@ export class WireDrawLayer extends AbstractDrawLayer {
             return;
         }
         this._preview.clear();
-        let to = {x: Mouse.currentX, y: Mouse.currentY};
+        // aimPoint: the crosshair under center-lock (mobile), the pointer otherwise.
+        let to = Mouse.aimPoint();
         if (this._previewSnap !== null) {
             to = WireDrawLayer._anchor(this._previewSnap);
-        } else if (to.x === undefined || to.x === null) {
+        } else if (to === null) {
             return;
         }
         this._drawWireInto(this._preview, WireDrawLayer._anchor(this._previewFrom), to);
@@ -232,20 +201,12 @@ export class WireDrawLayer extends AbstractDrawLayer {
         const graphics = this._graphics;
         graphics.clear();
         for (const edge of this._edges.values()) {
-            const a = this._poles.get(edge.a);
-            const b = this._poles.get(edge.b);
-            if (a === undefined || b === undefined) {
+            const a = this._objects.get(edge.a);
+            const b = this._objects.get(edge.b);
+            if (a === null || b === null) {
                 continue;
             }
             this._drawWire(WireDrawLayer._anchor(a), WireDrawLayer._anchor(b));
-        }
-        for (const [deviceId, poleId] of this._links) {
-            const pole = this._poles.get(poleId);
-            const device = this._objects.get(deviceId);
-            if (pole === undefined || device === null) {
-                continue;
-            }
-            this._drawWire(WireDrawLayer._anchor(pole), WireDrawLayer._anchor(device));
         }
         graphics.stroke({width: WIRE_WIDTH, color: WIRE_COLOR, alpha: WIRE_ALPHA});
     }

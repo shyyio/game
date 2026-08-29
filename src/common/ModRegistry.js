@@ -1,9 +1,23 @@
 import {CORE_PLAYER_SETTING_ENTRIES} from "@/common/PlayerSettingEntry.js";
+import {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
+import {LogicKeyEntry, LogicKeyState} from "@/common/LogicKeys.js";
 import {ItemRegistry} from "@/common/ItemRegistry.js";
 import {CORE_NOISE_CHANNELS} from "@/common/Terrain.js";
 
 // Terrain bakes store one byte per tile.
 const BIOME_LIMIT = 255;
+
+// Logic keys the engine's own behaviors expose; mods add theirs via declaration.logicKeys.
+const CORE_LOGIC_KEYS = {
+    [LOGIC_KEY_ENABLED]: new LogicKeyEntry("Enabled", [
+        new LogicKeyState(1, "Enable", "is enabled"),
+        new LogicKeyState(0, "Disable", "is disabled"),
+    ], "Enabled state"),
+    [LOGIC_KEY_PROCESSING]: new LogicKeyEntry("Processing", [
+        new LogicKeyState(1, null, "is processing"),
+        new LogicKeyState(0, null, "is idle"),
+    ], "Processing state"),
+};
 
 /**
  * The declarative register of loaded mods. Mods are registered as ModPackages, then freeze()
@@ -54,6 +68,10 @@ export class ModRegistry {
          * @type {Map<number, MetricsGlobalQueryEntry>}
          */
         this._metricsGlobalQueries = new Map();
+        /**
+         * @type {Map<number, LogicKeyEntry>}
+         */
+        this._logicKeyEntries = new Map();
     }
 
     /**
@@ -165,6 +183,18 @@ export class ModRegistry {
             this._biomes.push(biome);
         }
 
+        for (const [key, entry] of Object.entries(CORE_LOGIC_KEYS)) {
+            this._logicKeyEntries.set(Number(key), entry);
+        }
+        for (const pkg of this._packages) {
+            for (const [key, entry] of Object.entries(pkg.declaration.logicKeys)) {
+                if (this._logicKeyEntries.has(Number(key))) {
+                    throw new Error(`Duplicate logic key ${key}`);
+                }
+                this._logicKeyEntries.set(Number(key), entry);
+            }
+        }
+
         const listedItemTypes = new Set();
         for (const pkg of this._packages) {
             for (const entry of pkg.declaration.marketListings) {
@@ -212,6 +242,40 @@ export class ModRegistry {
     get objectTypes() {
         this._assertFrozen();
         return this._objectTypes;
+    }
+
+    /**
+     * A logic key's UI metadata; throws on an unknown key.
+     * @param {number} key
+     * @returns {LogicKeyEntry}
+     */
+    logicKeyEntry(key) {
+        this._assertFrozen();
+        const entry = this._logicKeyEntries.get(key);
+        if (entry === undefined) {
+            throw new Error(`Unknown logic key ${key}`);
+        }
+        return entry;
+    }
+
+    /**
+     * Whether a logic key is registered. For validating untrusted wire input before it reaches
+     * the throwing accessors.
+     * @param {number} key
+     * @returns {boolean}
+     */
+    hasLogicKey(key) {
+        this._assertFrozen();
+        return this._logicKeyEntries.has(key);
+    }
+
+    /**
+     * The player-visible name of a logic key; throws on an unknown key.
+     * @param {number} key
+     * @returns {string}
+     */
+    logicKeyName(key) {
+        return this.logicKeyEntry(key).name;
     }
 
     /**

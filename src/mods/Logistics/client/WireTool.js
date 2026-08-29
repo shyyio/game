@@ -1,12 +1,12 @@
-import {AbstractTool, Haptics, LAYER_SURFACE} from "@spup/sdk/client";
-import {withinPoleRange} from "../common/constants.js";
-import {isPoleType} from "../common/objectTypes.js";
+import {AbstractTool, Haptics, Mobile, LAYER_SURFACE} from "@spup/sdk/client";
+import {withinWireRange} from "../common/constants.js";
 import {WireLinkMessage, WireUnlinkMessage} from "../common/messages.js";
 
 /**
- * Two-click wiring, toggle semantics: tap an endpoint (pole or wireable device), then tap a
- * second endpoint — an existing wire between them is removed, otherwise one is added. At least
- * one endpoint must be a pole. Tapping the selection again or empty ground clears it.
+ * Two-click wiring, toggle semantics: tap a wireable endpoint, then tap a second one — an
+ * existing wire between them is removed, otherwise one is added. Tapping the selection again
+ * clears it; so does empty ground, except on mobile, where the crosshair aims and a miss keeps
+ * the selection.
  */
 export class WireTool extends AbstractTool {
 
@@ -44,8 +44,10 @@ export class WireTool extends AbstractTool {
 
     onTap(tileX, tileY) {
         const entry = this._cache.at(tileX, tileY, LAYER_SURFACE);
-        if (entry === null || (!isPoleType(entry.data.type) && !WireTool._wireableDevice(entry))) {
-            this._select(null);
+        if (entry === null || !WireTool._wireable(entry)) {
+            if (!Mobile.enabled) {
+                this._select(null);
+            }
             return;
         }
         if (entry.id === this._selectedId) {
@@ -57,7 +59,7 @@ export class WireTool extends AbstractTool {
             return;
         }
         const selected = this._cache.get(this._selectedId);
-        if (selected === null || !WireTool._pairable(selected, entry)) {
+        if (selected === null) {
             this._select(entry.id);
             return;
         }
@@ -108,24 +110,13 @@ export class WireTool extends AbstractTool {
     }
 
     /**
-     * Whether the entry is a device the network accepts.
+     * Whether the entry can carry a wire.
      * @private
      * @param {CacheEntry} entry
      * @returns {boolean}
      */
-    static _wireableDevice(entry) {
+    static _wireable(entry) {
         return entry.data.type.wireAnchor !== null;
-    }
-
-    /**
-     * Whether two endpoints can carry a wire: at least one must be a pole.
-     * @private
-     * @param {CacheEntry} a
-     * @param {CacheEntry} b
-     * @returns {boolean}
-     */
-    static _pairable(a, b) {
-        return isPoleType(a.data.type) || isPoleType(b.data.type);
     }
 
     /**
@@ -135,7 +126,7 @@ export class WireTool extends AbstractTool {
      * @returns {boolean}
      */
     _inRange(a, b) {
-        return withinPoleRange(a.tileX, a.tileY, b.tileX, b.tileY);
+        return withinWireRange(a.tileX, a.tileY, b.tileX, b.tileY);
     }
 
     /**
@@ -146,12 +137,7 @@ export class WireTool extends AbstractTool {
      * @returns {boolean}
      */
     _hasWire(a, b) {
-        if (isPoleType(a.data.type) && isPoleType(b.data.type)) {
-            return this._wireLayer.hasEdge(a.id, b.id);
-        }
-        const device = isPoleType(a.data.type) ? b : a;
-        const pole = isPoleType(a.data.type) ? a : b;
-        return this._client.cache.mapGet("logistics.linkPoleById", device.id) === pole.id;
+        return this._wireLayer.hasEdge(a.id, b.id);
     }
 
     /**
@@ -190,9 +176,7 @@ export class WireTool extends AbstractTool {
         }
         const entry = this._cache.at(tileX, tileY, LAYER_SURFACE);
         let snap = null;
-        if (entry !== null && entry.id !== selected.id
-            && (isPoleType(entry.data.type) || WireTool._wireableDevice(entry))
-            && WireTool._pairable(selected, entry)) {
+        if (entry !== null && entry.id !== selected.id && WireTool._wireable(entry)) {
             snap = entry;
         }
         this._wireLayer.showPreview(selected, snap);
@@ -206,14 +190,14 @@ export class WireTool extends AbstractTool {
      * @returns {boolean}
      */
     _actionable(entry) {
-        if (!isPoleType(entry.data.type) && !WireTool._wireableDevice(entry)) {
+        if (!WireTool._wireable(entry)) {
             return false;
         }
         if (this._selectedId === null || entry.id === this._selectedId) {
             return true;
         }
         const selected = this._cache.get(this._selectedId);
-        if (selected === null || !WireTool._pairable(selected, entry)) {
+        if (selected === null) {
             return true;
         }
         return this._inRange(selected, entry);

@@ -134,6 +134,13 @@ export {
 // The unowned/anonymous player id: no session owns the action.
 export {PLAYER_ID_NONE} from "@/common/constants.js";
 
+// ---- Logic network ----
+// Machine on/off, readable and writable through AbstractBehavior.logicRead/logicWrite;
+// LOGIC_KEY_PROCESSING reads whether a craft is in flight and is never writable.
+export {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
+// UI metadata a declaration's logicKeys map carries per key (name + optional on/off states).
+export {LogicKeyEntry, LogicKeyState} from "@/common/LogicKeys.js";
+
 // ---- Player settings ----
 // Per-key player-setting config a declaration contributes (playerSettingEntries); only
 // clientWritable keys accept a SetPlayerSettingMessage, holding an integer in

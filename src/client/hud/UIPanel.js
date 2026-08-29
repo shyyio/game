@@ -2,9 +2,13 @@ import {Container, Sprite, Text, NineSliceSprite, TilingSprite, Rectangle} from 
 import {GAME_FONT} from "@/client/constants.js";
 import {debugOutlines, swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
 import {PanelStack} from "@/client/hud/PanelStack.js";
+import Mobile from "@/client/Mobile.js";
 
 const TITLE_ROW_HEIGHT = 40;
 const PADDING = 8;
+const SCREEN_MARGIN = 12;
+// On touch the on-screen keyboard covers the lower screen, so panels sit in the top third.
+const KEYBOARD_CLEAR_FRACTION = 1 / 3;
 // Gap between the outer frame and the inset body, so the outer border shows around it.
 const BODY_MARGIN = 8;
 const CLOSE_SIZE = 25;
@@ -242,8 +246,22 @@ export class UIPanel extends Container {
     static centerPosition(app, width) {
         return (height) => ({
             x: (app.screen.width - width) / 2,
-            y: (app.screen.height - height) / 2,
+            y: clamp((app.screen.height - height) / 2, SCREEN_MARGIN, UIPanel.maxTop(app, height)),
         });
+    }
+
+    /**
+     * The lowest a panel's top may sit: clear of the on-screen keyboard on touch, clear of the
+     * bottom edge otherwise.
+     * @param {Application} app
+     * @param {number} height
+     * @returns {number}
+     */
+    static maxTop(app, height) {
+        if (Mobile.enabled) {
+            return app.screen.height * KEYBOARD_CLEAR_FRACTION - height;
+        }
+        return app.screen.height - height - SCREEN_MARGIN;
     }
 
     /**
@@ -640,4 +658,16 @@ export class ManagedPanel {
         this.panel.destroy({children: true});
         this.panel = null;
     }
+}
+
+/**
+ * `value` held between the bounds; an inverted range (a panel taller than its allowance) collapses
+ * to `low`, so it top-aligns instead of hanging off the top edge.
+ * @param {number} value
+ * @param {number} low
+ * @param {number} high
+ * @returns {number}
+ */
+function clamp(value, low, high) {
+    return Math.min(Math.max(value, low), Math.max(low, high));
 }
