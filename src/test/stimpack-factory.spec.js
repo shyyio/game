@@ -73,7 +73,7 @@ test("the Stimpack factory actually produces a Stimpack when ticked", async () =
     let produced = false;
     for (let i = 0; i < 2000 && !produced; i += 1) {
         game.runTick();
-        produced = engine.portItem(outPort) === ITEM_TYPE_STIMPACK;
+        produced = engine.ports.item(outPort) === ITEM_TYPE_STIMPACK;
     }
     assert.ok(produced, "a Stimpack came out of Fill within the tick budget");
 });

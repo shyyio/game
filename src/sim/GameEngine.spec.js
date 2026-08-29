@@ -15,7 +15,7 @@ async function setup(count, filledIds) {
         if (filledIds.includes(i + 1)) {
             item = 1;
         }
-        ports.push(engine.createPort(item));
+        ports.push(engine.ports.create(item));
     }
     return {engine, ports};
 }
@@ -55,8 +55,8 @@ test("Translates the item type on a managed transfer via output_item", async () 
 
     settle(engine);
 
-    assert.equal(engine.portItem(ports[0]), EMPTY);
-    assert.equal(engine.portItem(ports[1]), 99);
+    assert.equal(engine.ports.item(ports[0]), EMPTY);
+    assert.equal(engine.ports.item(ports[1]), 99);
 });
 
 test("Creates a brand-new item with a source-less managed intent", async () => {
@@ -65,7 +65,7 @@ test("Creates a brand-new item with a source-less managed intent", async () => {
 
     settle(engine);
 
-    assert.equal(engine.portItem(ports[0]), 55);
+    assert.equal(engine.ports.item(ports[0]), 55);
 });
 
 test("Sinks (consumes) the source item on a managed destination-less intent", async () => {
@@ -74,7 +74,7 @@ test("Sinks (consumes) the source item on a managed destination-less intent", as
 
     settle(engine);
 
-    assert.equal(engine.portItem(ports[0]), EMPTY);
+    assert.equal(engine.ports.item(ports[0]), EMPTY);
 });
 
 test("Leaves an unmanaged destination-less intent (self-drain) untouched", async () => {
@@ -83,21 +83,21 @@ test("Leaves an unmanaged destination-less intent (self-drain) untouched", async
 
     settle(engine);
 
-    assert.equal(engine.portItem(ports[0]), 1);
+    assert.equal(engine.ports.item(ports[0]), 1);
 });
 
 test("An edge port shares a tile with a cell without occupying it", async () => {
     const engine = new GameEngine();
     await engine.init();
-    const port = engine.portAt(4, 7, 0);
+    const port = engine.ports.at(4, 7, 0);
 
     assert.equal(engine.space.cellsFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), true, "a port claims no cell");
 
     engine.space.occupy([{x: 4, y: 7, layer: LAYER_SURFACE}], 99);
     assert.equal(engine.space.cellsFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), false);
-    assert.equal(engine.portAt(4, 7, 0), port, "the shared edge port survives the cell");
+    assert.equal(engine.ports.at(4, 7, 0), port, "the shared edge port survives the cell");
 
     engine.space.destroyOwnerCells(99);
     assert.equal(engine.space.cellsFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), true);
-    assert.equal(engine.portAt(4, 7, 0), port, "releasing the cell leaves the port alone");
+    assert.equal(engine.ports.at(4, 7, 0), port, "releasing the cell leaves the port alone");
 });

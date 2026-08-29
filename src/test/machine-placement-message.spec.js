@@ -26,12 +26,12 @@ test("a machine placed via message adopts a belt, cooks its input, and deletes",
 
     const belt = beltsOf(engine).placeBelt(5, 6, Direction.UP);
     // Feed the machine's recipe input; it should produce the cooked output.
-    engine.setPortItem(belt.inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
-    const outPort = engine.portAt(5, 4, Direction.UP);
+    engine.ports.setItem(belt.inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
+    const outPort = engine.ports.at(5, 4, Direction.UP);
     let cooked = false;
     for (let i = 0; i < 16 && !cooked; i += 1) {
         engine.tickAll();
-        cooked = engine.portItem(outPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
+        cooked = engine.ports.item(outPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
     }
     assert.ok(cooked, "the belt-fed input was cooked to the machine's output");
 

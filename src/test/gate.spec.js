@@ -58,11 +58,11 @@ test("an item flows through an open belt gate", async () => {
     assert.equal(gate.in, feed.outPort, "the gate adopted the feeding belt's out-port");
     assert.equal(gate.out, onward.inPort, "the onward belt adopted the gate's out-port");
 
-    engine.setPortItem(feed.inPort, RED);
+    engine.ports.setItem(feed.inPort, RED);
     let arrived = false;
     for (let i = 0; i < 12 && !arrived; i += 1) {
         engine.tickAll();
-        arrived = engine.portItem(onward.outPort) === RED;
+        arrived = engine.ports.item(onward.outPort) === RED;
     }
     assert.ok(arrived, "the item passed the open gate onto the onward belt");
 });
@@ -74,20 +74,20 @@ test("an item rests one tick inside the gate between the in- and out-port", asyn
     const gate = placeGate(engine, 5, 5, Direction.UP);
     belts.placeBelt(5, 4, Direction.UP);
 
-    engine.setPortItem(feed.inPort, RED);
+    engine.ports.setItem(feed.inPort, RED);
     let atMouth = false;
     for (let i = 0; i < 8 && !atMouth; i += 1) {
         engine.tickAll();
-        atMouth = engine.portItem(gate.in) === RED;
+        atMouth = engine.ports.item(gate.in) === RED;
     }
     assert.ok(atMouth, "the item reached the gate's in-port");
 
     engine.tickAll();
-    assert.equal(engine.portItem(gate.in), EMPTY, "the item entered the gate");
-    assert.equal(engine.portItem(gate.out), EMPTY, "the item rests inside, not on the out-port yet");
+    assert.equal(engine.ports.item(gate.in), EMPTY, "the item entered the gate");
+    assert.equal(engine.ports.item(gate.out), EMPTY, "the item rests inside, not on the out-port yet");
 
     engine.tickAll();
-    assert.equal(engine.portItem(gate.out), RED, "the item surfaced on the out-port a tick later");
+    assert.equal(engine.ports.item(gate.out), RED, "the item surfaced on the out-port a tick later");
 });
 
 test("a closed belt gate jams the upstream belt and releases on open", async () => {
@@ -98,19 +98,19 @@ test("a closed belt gate jams the upstream belt and releases on open", async () 
     const onward = belts.placeBelt(5, 4, Direction.UP);
 
     gateBehavior(engine).setOpen(engine, gate.eid, false);
-    engine.setPortItem(feed.inPort, RED);
+    engine.ports.setItem(feed.inPort, RED);
     for (let i = 0; i < 12; i += 1) {
         engine.tickAll();
     }
-    assert.equal(engine.portItem(gate.in), RED, "the lead item rests on the closed gate's in-port");
-    assert.equal(engine.portItem(gate.out), EMPTY, "nothing passed the closed gate");
-    assert.equal(engine.portItem(onward.outPort), EMPTY);
+    assert.equal(engine.ports.item(gate.in), RED, "the lead item rests on the closed gate's in-port");
+    assert.equal(engine.ports.item(gate.out), EMPTY, "nothing passed the closed gate");
+    assert.equal(engine.ports.item(onward.outPort), EMPTY);
 
     gateBehavior(engine).setOpen(engine, gate.eid, true);
     let arrived = false;
     for (let i = 0; i < 12 && !arrived; i += 1) {
         engine.tickAll();
-        arrived = engine.portItem(onward.outPort) === RED;
+        arrived = engine.ports.item(onward.outPort) === RED;
     }
     assert.ok(arrived, "opening the gate released the jam");
 });
@@ -124,11 +124,11 @@ test("a belt gate works across a chunk seam", async () => {
     const onward = belts.placeBelt(0, 62, Direction.UP);
     assert.notEqual(chunkId(0, 64), chunkId(0, 63), "the gate sits across the seam from its feed");
 
-    engine.setPortItem(feed.inPort, RED);
+    engine.ports.setItem(feed.inPort, RED);
     let arrived = false;
     for (let i = 0; i < 12 && !arrived; i += 1) {
         engine.tickAll();
-        arrived = engine.portItem(onward.outPort) === RED;
+        arrived = engine.ports.item(onward.outPort) === RED;
     }
     assert.ok(arrived, "the item crossed the seam through the gate");
 });

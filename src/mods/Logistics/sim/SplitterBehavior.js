@@ -65,8 +65,8 @@ export class SplitterBehavior extends AbstractBehavior {
      * @returns {{id:number, in_a:number, in_b:number, out_a:number, out_b:number, int_a:number, int_b:number}}
      */
     _wire(engine, eid, ports) {
-        const int_a = engine.createPort();
-        const int_b = engine.createPort();
+        const int_a = engine.ports.create();
+        const int_b = engine.ports.create();
         const def = engine.components.get("Splitter");
         engine.components.attach(def, eid);
         const splitter = def.store;
@@ -88,7 +88,7 @@ export class SplitterBehavior extends AbstractBehavior {
      * @returns {{id:number, in_a:number, in_b:number, out_a:number, out_b:number, int_a:number, int_b:number}}
      */
     addSplitter(engine, wiring={}) {
-        const port = given => given === undefined ? engine.createPort() : given;
+        const port = given => given === undefined ? engine.ports.create() : given;
         // Ports first so their eids stay contiguous from 1.
         const ports = {
             in_a: port(wiring.in_a),
@@ -109,10 +109,10 @@ export class SplitterBehavior extends AbstractBehavior {
      */
     placeSplitter(engine, x, y) {
         return this.addSplitter(engine, {
-            in_a: engine.portAt(x, y, Direction.UP),
-            in_b: engine.portAt(x + 1, y, Direction.UP),
-            out_a: engine.portAt(x, y - 1, Direction.UP),
-            out_b: engine.portAt(x + 1, y - 1, Direction.UP),
+            in_a: engine.ports.at(x, y, Direction.UP),
+            in_b: engine.ports.at(x + 1, y, Direction.UP),
+            out_a: engine.ports.at(x, y - 1, Direction.UP),
+            out_b: engine.ports.at(x + 1, y - 1, Direction.UP),
         });
     }
 
@@ -184,13 +184,13 @@ export class SplitterBehavior extends AbstractBehavior {
         }
 
         for (const record of stage2) {
-            engine.setPortItem(record.intPort, EMPTY);
+            engine.ports.setItem(record.intPort, EMPTY);
         }
         for (const record of stage1) {
-            engine.consumePortItem(record.inPort);
+            engine.ports.consumeItem(record.inPort);
         }
         for (const record of stage1) {
-            engine.setPortItem(record.intPort, record.item);
+            engine.ports.setItem(record.intPort, record.item);
         }
         for (const record of stage2) {
             outputFills.push(record);
@@ -213,7 +213,7 @@ export class SplitterBehavior extends AbstractBehavior {
      */
     _fillOutputs(engine, outputFills) {
         for (const record of outputFills) {
-            engine.setPortItem(record.outPort, record.item);
+            engine.ports.setItem(record.outPort, record.item);
         }
         outputFills.length = 0;
     }

@@ -1,5 +1,5 @@
 import {World} from "@/sim/World.js";
-import {rotate, chunkId, tileId, tileVariantId} from "@/common/util.js";
+import {rotate, chunkId} from "@/common/util.js";
 import {GAME_VERSION, PLAYER_ID_NONE} from "@/common/constants.js";
 import {SAVE_FORMAT} from "@/common/saveMigrations.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
@@ -10,6 +10,7 @@ import {ComponentRegistry} from "@/sim/ComponentRegistry.js";
 import {SpatialIndex} from "@/sim/SpatialIndex.js";
 import {TransferResolver} from "@/sim/TransferResolver.js";
 import {RenderDiff} from "@/sim/RenderDiff.js";
+import {PortIndex} from "@/sim/PortIndex.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 
 /**
@@ -70,42 +71,6 @@ export const TICK_PHASE_ORDER = [
     TickPhase.EMIT_RENDER,
     TickPhase.EMIT_INSPECT,
 ];
-
-/**
- * An Int32Array column indexed by port eid, owned by a module but grown by the engine with the Port
- * component. The engine replaces {@link column} on growth, so a caller reads it fresh each pass
- * (hoisting it for the body of one loop is fine).
- */
-class PortColumn {
-
-    /**
-     * @param {number} capacity
-     * @param {number} fill - the value an unwritten port reads as
-     */
-    constructor(capacity, fill) {
-        this.fill = fill;
-        this.column = new Int32Array(capacity).fill(fill);
-    }
-
-    /**
-     * @param {number} capacity
-     * @returns {void}
-     */
-    grow(capacity) {
-        const grown = new Int32Array(capacity).fill(this.fill);
-        grown.set(this.column);
-        this.column = grown;
-    }
-
-    /**
-     * Resets every port to the column's fill.
-     * @returns {void}
-     */
-    clear() {
-        this.column.fill(this.fill);
-    }
-}
-
 
 /**
  * The simulation engine Game drives: the port-transfer core over typed-array component
@@ -193,43 +158,30 @@ export class GameEngine {
      * @returns {void}
      */
     _initPortState() {
-        // Port component: item type per port eid (EMPTY when unoccupied). An edge port also carries
-        // Position for the edge it sits on, so _portsByEdge rebuilds from the world; a port with no
-        // Position is not an edge port.
-        this._portDef = this.components.define("Port", [
-            {name: "item", fill: EMPTY},
-        ]);
-        this.Port = this._portDef.store;
-
-        // Ports belonging to fluid machinery (pipe network and tank edges); belts refuse to link
-        // with one. Marked by the owning module, re-marked on rebuild.
-        this._portFluid = new Uint8Array(this._portDef.capacity);
-        // The fluid type a producer emits into a port (EMPTY for none/solid), so a pipe network
-        // adopting the edge binds its type before the first payload. The generation bumps on every
-        // write, so an idle consumer re-scans its sources only when one could have changed.
-        this._portFluidSource = new Int32Array(this._portDef.capacity).fill(EMPTY);
-        this._fluidSourceGeneration = 1;
+        /**
+         * The ports items flow through, and the shared edge index over them.
+         * @type {PortIndex}
+         */
+        this.ports = new PortIndex(this);
+        this.Port = this.ports.Port;
 
         /**
          * What the client is told about resting port items.
          * @type {RenderDiff}
          */
-        this.render = new RenderDiff(this, this._portDef.capacity);
-
-        // Module-owned columns indexed by port eid; grown with the Port component (see _growPortColumns).
-        this._portColumns = [];
+        this.render = new RenderDiff(this, this.ports.capacity);
 
         /**
          * The port-transfer protocol: submitted intents, this tick's resolutions, and the commit.
          * @type {TransferResolver}
          */
-        this.transfers = new TransferResolver(this, this._portDef.capacity);
+        this.transfers = new TransferResolver(this, this.ports.capacity);
 
-        this.components.onGrow(this._portDef, capacity => this._growPortColumns(capacity));
+        this.components.onGrow(this.ports.def, capacity => this.ports.growColumns(capacity));
     }
 
     /**
-     * Builds the spatial index (positions, layers, occupied cells) and the port edge index over it.
+     * Builds the spatial index: positions, layers, and the occupied cells over them.
      * @private
      * @returns {void}
      */
@@ -240,10 +192,6 @@ export class GameEngine {
          */
         this.space = new SpatialIndex(this);
         this.Position = this.space.Position;
-
-        // Shared ports by edge key "x,y,direction" — a derived index over Port + Position, rebuilt
-        // from the world on deserialize.
-        this._portsByEdge = new Map();
     }
 
     /**
@@ -265,9 +213,6 @@ export class GameEngine {
         // Flat global counters that survive a save (mods stash their own here, e.g. beltNextRunId).
         this.globals = {};
 
-        // Hooks returning the port eids a module still references in JS-only runtime state (belt paths),
-        // so the port sweep keeps them alive — object ports are found by scanning component eid fields.
-        this._portPins = [];
         // Hooks a module registers to rebuild its derived indexes after deserialize repopulates the world.
         this._rebuildHooks = [];
         // Hooks run at the start of serialize, letting a bespoke module (belts) flush JS-only runtime
@@ -493,213 +438,11 @@ export class GameEngine {
     }
 
     /**
-     * Grows the port-indexed state kept outside the Port component itself, so every column stays
-     * addressable by port eid. Registered with the component registry as the Port component's
-     * grow listener.
-     * @private
-     * @param {number} capacity
-     * @returns {void}
-     */
-    _growPortColumns(capacity) {
-        const fluidSource = new Int32Array(capacity).fill(EMPTY);
-        fluidSource.set(this._portFluidSource);
-        this._portFluidSource = fluidSource;
-        const fluid = new Uint8Array(capacity);
-        fluid.set(this._portFluid);
-        this._portFluid = fluid;
-        for (const portColumn of this._portColumns) {
-            portColumn.grow(capacity);
-        }
-        this.transfers.growPortColumns(capacity);
-        this.render.growPortColumns(capacity);
-    }
-
-    /**
-     * Registers a module column indexed by port eid, which the engine grows with the Port component.
-     * Lets a module index per-port state the way the engine does, instead of keying a Map on port eids.
-     * @param {number} [fill] - the value an unwritten port reads as
-     * @returns {PortColumn}
-     */
-    registerPortColumn(fill=0) {
-        const portColumn = new PortColumn(this._portDef.capacity, fill);
-        this._portColumns.push(portColumn);
-        return portColumn;
-    }
-
-    /**
-     * Creates a port carrying `item` (EMPTY for an empty port).
-     * @param {number} [item]
-     * @returns {number} the port eid
-     */
-    createPort(item=EMPTY) {
-        const eid = this.world.addEntity();
-        this.components.attach(this._portDef, eid);
-        // The world recycles eids, so clear any shadow/flag the previous tenant left behind.
-        this.render.forgetPort(eid);
-        this._portFluid[eid] = 0;
-        this._portFluidSource[eid] = EMPTY;
-        this.setPortItem(eid, item);
-        return eid;
-    }
-
-    /**
-     * Declares the fluid type a producer emits into `eid` (EMPTY to clear).
-     * @param {number} eid
-     * @param {number} fluidType
-     * @returns {void}
-     */
-    setPortFluidSource(eid, fluidType) {
-        this._portFluidSource[eid] = fluidType;
-        this._fluidSourceGeneration += 1;
-    }
-
-    /**
-     * @returns {number} the current fluid-source generation; a cache stamped with it is still valid
-     */
-    get fluidSourceGeneration() {
-        return this._fluidSourceGeneration;
-    }
-
-    /**
-     * @param {number} eid
-     * @returns {number} the fluid type produced into the port, or EMPTY
-     */
-    portFluidSource(eid) {
-        return this._portFluidSource[eid];
-    }
-
-    /**
-     * Claims a port for fluid machinery (a pipe network edge or tank port); a port may be claimed
-     * by more than one owner when a pipe and a tank share an edge, so {@link isFluidPort} only
-     * clears once every owner has called {@link unmarkFluidPort}.
-     * @param {number} eid
-     * @returns {void}
-     */
-    markFluidPort(eid) {
-        this._portFluid[eid] += 1;
-    }
-
-    /**
-     * Releases one fluid-machinery claim taken by {@link markFluidPort}.
-     * @param {number} eid
-     * @returns {void}
-     */
-    unmarkFluidPort(eid) {
-        this._portFluid[eid] -= 1;
-    }
-
-    /**
-     * @param {number} eid
-     * @returns {boolean} whether the port is claimed by any fluid machinery
-     */
-    isFluidPort(eid) {
-        return this._portFluid[eid] > 0;
-    }
-
-    /**
      * @param {number} item
      * @returns {boolean} whether `item` is a declared fluid payload
      */
     isFluid(item) {
         return this._fluidTypes.has(item);
-    }
-
-    /**
-     * The shared port on the edge "flow entering tile (x, y) going `direction`", created once and
-     * reused. Both the upstream producer (whose output lands here) and the downstream consumer (whose
-     * input is here) resolve the same port, so belts, chunk seams, and objects adopt each other's ports.
-     * @param {number} x
-     * @param {number} y
-     * @param {number} direction
-     * @returns {number} the port eid
-     */
-    portAt(x, y, direction) {
-        const key = tileVariantId(tileId(x, y), direction);
-        let eid = this._portsByEdge.get(key);
-        if (eid === undefined) {
-            eid = this.createPort();
-            this.space.setPosition(eid, x, y, direction);
-            this._portsByEdge.set(key, eid);
-        }
-        return eid;
-    }
-
-    /**
-     * The existing port on the edge "flow entering tile (x, y) going `direction`", or null —
-     * {@link portAt} without the create, for an emitter that must not strand a payload in a port
-     * nothing consumes.
-     * @param {number} x
-     * @param {number} y
-     * @param {number} direction
-     * @returns {number|null} the port eid
-     */
-    peekPortAt(x, y, direction) {
-        const eid = this._portsByEdge.get(tileVariantId(tileId(x, y), direction));
-        if (eid === undefined) {
-            return null;
-        }
-        return eid;
-    }
-
-    /**
-     * A module registers a hook returning the port eids its JS-only runtime state still references
-     * (belt paths hold their end ports outside any component), so {@link collectUnreferencedPorts}
-     * keeps them.
-     * @param {function(): Iterable<number>} hook
-     * @returns {void}
-     */
-    registerPortPin(hook) {
-        this._portPins.push(hook);
-    }
-
-    /**
-     * Destroys every port no live entity or module references: scans all component eid fields (object
-     * ports) plus the pin hooks (belt runtime ports), then removes any port outside that set — destroying
-     * the edges a deleted object or belt left behind.
-     * @returns {void}
-     */
-    collectUnreferencedPorts() {
-        const referenced = new Set();
-        for (const def of this.components.defs) {
-            if (def.snapshotOnly) {
-                continue;
-            }
-            const eidFields = def.fields.filter(field => field.kind === "eid");
-            if (eidFields.length === 0) {
-                continue;
-            }
-            for (const slot of this.components.slotsOf(def)) {
-                for (const field of eidFields) {
-                    const target = def.store[field.name][slot];
-                    if (target !== NO_EID) {
-                        referenced.add(target);
-                    }
-                }
-            }
-        }
-        for (const hook of this._portPins) {
-            for (const eid of hook()) {
-                referenced.add(eid);
-            }
-        }
-
-        const doomed = [];
-        for (const eid of this.world.query([this._portDef.store])) {
-            if (!referenced.has(eid)) {
-                doomed.push(eid);
-            }
-        }
-        // Before the entities go: the edge key reads their Position, and a port dying with a drawn
-        // item owes the client a clear no later diff would send.
-        for (const eid of doomed) {
-            if (this.world.hasComponent(eid, this.space.positionDef.store)) {
-                this._portsByEdge.delete(this._edgeKey(eid));
-            }
-        }
-        this.render.retirePorts(doomed);
-        for (const eid of doomed) {
-            this.world.removeEntity(eid);
-        }
     }
 
     /**
@@ -710,38 +453,6 @@ export class GameEngine {
         const id = this._nextObjectId;
         this._nextObjectId += 1;
         return id;
-    }
-
-    /**
-     * @param {number} eid
-     * @returns {number} the port's item, or EMPTY
-     */
-    portItem(eid) {
-        return this.Port.item[eid];
-    }
-
-    /**
-     * @param {number} eid
-     * @param {number} item
-     * @returns {void}
-     */
-    setPortItem(eid, item) {
-        if (item === EMPTY && this.Port.item[eid] !== EMPTY) {
-            this.render.noteCleared(eid);
-        }
-        this.Port.item[eid] = item;
-        this.render.markDirty(eid);
-    }
-
-    /**
-     * Empties a port a consumer ate from, so its clear renders as a glide into the consumer.
-     * @param {number} eid
-     * @returns {void}
-     */
-    consumePortItem(eid) {
-        this.Port.item[eid] = EMPTY;
-        this.render.noteConsumed(eid);
-        this.render.markDirty(eid);
     }
 
     /**
@@ -929,10 +640,7 @@ export class GameEngine {
         this.world = new World();
         this.components.bindAll();
         this.components.clearAll();
-        this._portsByEdge = new Map();
         // Drop the prior world's render/tick state so its stale eids never leak into the new world.
-        this._portFluid.fill(0);
-        this._portFluidSource.fill(EMPTY);
         this.render.reset();
         this.transfers.resetTick();
 
@@ -976,40 +684,11 @@ export class GameEngine {
             }
         }
 
-        this._rebuildPortEdges();
         this.space.rebuild();
+        this.ports.rebuild();
         for (const hook of this._rebuildHooks) {
             hook(remap);
         }
-    }
-
-    /**
-     * @private
-     * @returns {void}
-     */
-    _rebuildPortEdges() {
-        for (const eid of this._edgePortEids()) {
-            this._portsByEdge.set(this._edgeKey(eid), eid);
-        }
-    }
-
-    /**
-     * The edge ports: those carrying Position (a port with none sits on no edge).
-     * @private
-     * @returns {Int32Array}
-     */
-    _edgePortEids() {
-        return this.world.query([this._portDef.store, this.space.positionDef.store]);
-    }
-
-    /**
-     * @private
-     * @param {number} eid - an edge port
-     * @returns {number} its index key
-     */
-    _edgeKey(eid) {
-        const tile = tileId(this.Position.x[eid], this.Position.y[eid]);
-        return tileVariantId(tile, this.Position.direction[eid]);
     }
 
     /**
@@ -1145,7 +824,7 @@ export class GameEngine {
             this.untrack(message.id);
             handled = this._messageHandlers.some(handler => handler(message, playerId));
             // A delete (and any belt relink it triggered) can strand ports; destroy them now.
-            this.collectUnreferencedPorts();
+            this.ports.collectUnreferenced();
         } else {
             handled = this._messageHandlers.some(handler => handler(message, playerId));
         }
@@ -1205,7 +884,7 @@ export class GameEngine {
     portFor(portVec, x, y, direction) {
         const r = rotate(portVec, direction);
         const tile = {x: x + r.x, y: y + r.y};
-        return {port: this.portAt(tile.x, tile.y, r.direction), tile};
+        return {port: this.ports.at(tile.x, tile.y, r.direction), tile};
     }
 
     /**

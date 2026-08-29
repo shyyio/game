@@ -81,11 +81,11 @@ export class GateBehavior extends AbstractBehavior {
         const row = def.row(eid);
         if (gate.fluid[row] === 1) {
             if (gate.open[row] === 1) {
-                engine.unmarkFluidPort(gate.in[row]);
+                engine.ports.unmarkFluid(gate.in[row]);
             }
-            engine.unmarkFluidPort(gate.out[row]);
+            engine.ports.unmarkFluid(gate.out[row]);
             // The port may outlive the gate (an adjacent pipe pins it); it no longer produces.
-            engine.setPortFluidSource(gate.out[row], EMPTY);
+            engine.ports.setFluidSource(gate.out[row], EMPTY);
         } else {
             engine.render.unregisterPort(gate.out[row]);
         }
@@ -157,9 +157,9 @@ export class GateBehavior extends AbstractBehavior {
         // Unmarking the closed in-port makes the upstream network's out-edge skip it.
         if (gate.fluid[row] === 1) {
             if (flag === 1) {
-                engine.markFluidPort(gate.in[row]);
+                engine.ports.markFluid(gate.in[row]);
             } else {
-                engine.unmarkFluidPort(gate.in[row]);
+                engine.ports.unmarkFluid(gate.in[row]);
             }
         }
         return true;
@@ -208,11 +208,11 @@ export class GateBehavior extends AbstractBehavior {
                 continue;
             }
             if (gate.open[row] === 1) {
-                engine.markFluidPort(gate.in[row]);
+                engine.ports.markFluid(gate.in[row]);
             }
-            engine.markFluidPort(gate.out[row]);
+            engine.ports.markFluid(gate.out[row]);
             if (gate.buffered[row] !== EMPTY) {
-                engine.setPortFluidSource(gate.out[row], gate.buffered[row]);
+                engine.ports.setFluidSource(gate.out[row], gate.buffered[row]);
             }
         }
     }
@@ -305,20 +305,20 @@ export class GateBehavior extends AbstractBehavior {
         const def = engine.components.get("Gate");
         const gate = def.store;
         const row = def.row(eid);
-        engine.setPortItem(gate.in[row], EMPTY);
-        engine.setPortItem(gate.out[row], EMPTY);
+        engine.ports.setItem(gate.in[row], EMPTY);
+        engine.ports.setItem(gate.out[row], EMPTY);
         if (fluid) {
-            engine.setPortItem(gate.int[row], EMPTY);
+            engine.ports.setItem(gate.int[row], EMPTY);
             gate.int[row] = NO_EID;
             engine.render.unregisterPort(gate.out[row]);
             gate.fluid[row] = 1;
             GateBehavior._enterFluidMode(engine, gate, row);
         } else {
             if (gate.open[row] === 1) {
-                engine.unmarkFluidPort(gate.in[row]);
+                engine.ports.unmarkFluid(gate.in[row]);
             }
-            engine.unmarkFluidPort(gate.out[row]);
-            engine.setPortFluidSource(gate.out[row], EMPTY);
+            engine.ports.unmarkFluid(gate.out[row]);
+            engine.ports.setFluidSource(gate.out[row], EMPTY);
             gate.buffered[row] = EMPTY;
             gate.fluid[row] = 0;
             GateBehavior._enterItemMode(engine, gate, row);
@@ -366,7 +366,7 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _enterItemMode(engine, gate, row) {
-        gate.int[row] = engine.createPort();
+        gate.int[row] = engine.ports.create();
         const out = gate.out[row];
         engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
@@ -381,9 +381,9 @@ export class GateBehavior extends AbstractBehavior {
      */
     static _enterFluidMode(engine, gate, row) {
         if (gate.open[row] === 1) {
-            engine.markFluidPort(gate.in[row]);
+            engine.ports.markFluid(gate.in[row]);
         }
-        engine.markFluidPort(gate.out[row]);
+        engine.ports.markFluid(gate.out[row]);
     }
 
     /**
@@ -406,7 +406,7 @@ export class GateBehavior extends AbstractBehavior {
                 if (resting !== EMPTY && gate.buffered[row] === EMPTY) {
                     engine.transfers.submitDrain(gate.in[row], true);
                     gate.buffered[row] = resting;
-                    engine.setPortFluidSource(gate.out[row], resting);
+                    engine.ports.setFluidSource(gate.out[row], resting);
                 }
                 if (gate.buffered[row] !== EMPTY) {
                     engine.transfers.submitCreate(gate.out[row], gate.buffered[row], item[gate.out[row]] === EMPTY);
@@ -439,7 +439,7 @@ export class GateBehavior extends AbstractBehavior {
             if (gate.fluid[row] === 1) {
                 if (gate.buffered[row] !== EMPTY && engine.transfers.wasDest(gate.out[row])) {
                     gate.buffered[row] = EMPTY;
-                    engine.setPortFluidSource(gate.out[row], EMPTY);
+                    engine.ports.setFluidSource(gate.out[row], EMPTY);
                 }
                 continue;
             }
@@ -453,13 +453,13 @@ export class GateBehavior extends AbstractBehavior {
             }
         }
         for (const record of stage2) {
-            engine.setPortItem(record.intPort, EMPTY);
+            engine.ports.setItem(record.intPort, EMPTY);
         }
         for (const record of stage1) {
-            engine.consumePortItem(record.inPort);
+            engine.ports.consumeItem(record.inPort);
         }
         for (const record of stage1) {
-            engine.setPortItem(record.intPort, record.item);
+            engine.ports.setItem(record.intPort, record.item);
         }
         for (const record of stage2) {
             outputFills.push(record);
@@ -475,7 +475,7 @@ export class GateBehavior extends AbstractBehavior {
      */
     static _fillOutputs(engine, outputFills) {
         for (const record of outputFills) {
-            engine.setPortItem(record.outPort, record.item);
+            engine.ports.setItem(record.outPort, record.item);
         }
         outputFills.length = 0;
     }

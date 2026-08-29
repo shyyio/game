@@ -30,14 +30,14 @@ test("a Game on GameEngine places and ticks belts via messages", async () => {
     const path = beltsOf(engine).pathAt(HEAD.x, HEAD.y);
     const stream = [];
     for (let i = 0; i < 10; i += 1) {
-        engine.setPortItem(path.outPort, EMPTY);
+        engine.ports.setItem(path.outPort, EMPTY);
         if (i < 2) {
-            engine.setPortItem(path.inPort, RED);
+            engine.ports.setItem(path.inPort, RED);
         }
         for (const phase of TICK_PHASE_ORDER) {
             game.tick(phase);
         }
-        stream.push(engine.portItem(path.outPort));
+        stream.push(engine.ports.item(path.outPort));
     }
     assert.deepEqual(stream, EXPECTED);
 });

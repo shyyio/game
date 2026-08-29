@@ -27,16 +27,16 @@ test("a volcano feeds a primary extractor (sulfur) and a deep extractor (brine) 
     assert.equal(engine.placed.eidsOf(TestExtractorType.typeId).length, 1);
     assert.equal(engine.placed.eidsOf(TestDeepExtractorType.typeId).length, 1);
 
-    const sulfurOut = engine.portAt(5, 3, Direction.UP);
-    const brineOut = engine.portAt(6, 3, Direction.UP);
+    const sulfurOut = engine.ports.at(5, 3, Direction.UP);
+    const brineOut = engine.ports.at(6, 3, Direction.UP);
     let sulfur = false;
     let brine = false;
     for (let i = 0; i < 12; i += 1) {
         engine.tickAll();
-        if (engine.portItem(sulfurOut) === ITEM_TYPE_TEST_SULFUR) {
+        if (engine.ports.item(sulfurOut) === ITEM_TYPE_TEST_SULFUR) {
             sulfur = true;
         }
-        if (engine.portItem(brineOut) === ITEM_TYPE_TEST_BRINE) {
+        if (engine.ports.item(brineOut) === ITEM_TYPE_TEST_BRINE) {
             brine = true;
         }
     }

@@ -23,12 +23,12 @@ test("a belt bending out of a machine's output ingests it", async () => {
     belts.placeBelt(5, 4, Direction.UP);
     belts.placeBelt(5, 5, Direction.UP);
     const machineOut = engine.portFor(OUT_PORT, 4, 5, Direction.RIGHT).port;
-    engine.setPortItem(machineOut, RED);
+    engine.ports.setItem(machineOut, RED);
 
     let drained = false;
     for (let i = 0; i < 8 && !drained; i += 1) {
         engine.tickAll();
-        drained = engine.portItem(machineOut) === EMPTY;
+        drained = engine.ports.item(machineOut) === EMPTY;
     }
     assert.ok(drained, "the machine's output port emptied into the belt");
     const path = belts.paths.find(candidate => candidate.headX === 5 && candidate.headY === 5);
@@ -53,7 +53,7 @@ test("a run bending on a chunk seam carries items across it", async () => {
     const downstream = belts.paths.find(path => path.headX === seam && path.headY === 5);
     assert.ok(upstream !== undefined && downstream !== undefined, "the seam split the run in two");
 
-    engine.setPortItem(upstream.inPort, RED);
+    engine.ports.setItem(upstream.inPort, RED);
     let carried = false;
     for (let i = 0; i < 16 && !carried; i += 1) {
         engine.tickAll();
@@ -88,18 +88,18 @@ test("a tunnel crossing under a bend belt's head keeps its own in-port", async (
         && belts.beltById(path.beltIds[0]).type !== BELT_UNDERGROUND);
     assert.ok(tunnel !== undefined && surface !== undefined, "both paths start on the seam tile");
 
-    engine.setPortItem(tunnel.inPort, RED);
+    engine.ports.setItem(tunnel.inPort, RED);
     let delivered = 0;
     let stolen = 0;
     for (let i = 0; i < 12; i += 1) {
         engine.tickAll();
-        if (engine.portItem(tunnel.outPort) === RED) {
+        if (engine.ports.item(tunnel.outPort) === RED) {
             delivered += 1;
-            engine.setPortItem(tunnel.outPort, EMPTY);
+            engine.ports.setItem(tunnel.outPort, EMPTY);
         }
-        if (engine.portItem(surface.outPort) === RED) {
+        if (engine.ports.item(surface.outPort) === RED) {
             stolen += 1;
-            engine.setPortItem(surface.outPort, EMPTY);
+            engine.ports.setItem(surface.outPort, EMPTY);
         }
     }
     assert.equal(stolen, 0, "the surface belt never copied the buried item");

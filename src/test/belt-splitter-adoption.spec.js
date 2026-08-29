@@ -22,11 +22,11 @@ test("a splitter adopts an adjacent belt's port and receives its items", async (
 
     assert.equal(s.in_a, belt.outPort, "splitter in_a adopted the belt's out-port");
 
-    engine.setPortItem(belt.inPort, RED);
+    engine.ports.setItem(belt.inPort, RED);
     let arrived = false;
     for (let i = 0; i < 8 && !arrived; i += 1) {
         engine.tickAll();
-        arrived = engine.portItem(s.out_a) === RED || engine.portItem(s.out_b) === RED;
+        arrived = engine.ports.item(s.out_a) === RED || engine.ports.item(s.out_b) === RED;
     }
     assert.ok(arrived, "the item flowed from the belt through the splitter to an output");
 });

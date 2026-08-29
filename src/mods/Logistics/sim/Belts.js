@@ -44,7 +44,7 @@ export class Belts {
         // Path records; `items` is held only while a path is not live (seed before tracking, snapshot after drop).
         this.paths = [];
         // Port eid -> slot of the path it feeds, so a path finds its downstream across a shared seam port.
-        this._slotByInPort = this.engine.registerPortColumn(NO_SLOT);
+        this._slotByInPort = this.engine.ports.registerColumn(NO_SLOT);
         // Tile key -> covering paths, and belt id -> its path; keeps edits off a scan of every path.
         this._pathsByTile = new Map();
         this._pathByBeltId = new Map();
@@ -118,7 +118,7 @@ export class Belts {
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._move());
         engine.registerSerializeHook(() => this._materialize());
         engine.registerRebuildHook(() => this._reconstruct());
-        engine.registerPortPin(() => this._pinnedPorts());
+        engine.ports.registerPin(() => this._pinnedPorts());
         engine.registerChunkSync(chunk => this.chunkSync(chunk));
     }
 
@@ -699,14 +699,14 @@ export class Belts {
             const tail = newIndex.get(path.beltIds[path.beltIds.length - 1]);
             if (outItem !== EMPTY && tail !== undefined && tail + 1 < run.length) {
                 occ[2 * (tail + 1) - 1] = outItem;
-                this.engine.setPortItem(path.outPort, EMPTY);
+                this.engine.ports.setItem(path.outPort, EMPTY);
             }
             // A resting in-port item buried by the merge re-enters at the head belt's input half.
             const inItem = this.engine.Port.item[path.inPort];
             const head = newIndex.get(path.beltIds[0]);
             if (inItem !== EMPTY && head !== undefined && head > 0) {
                 occ[2 * head - 1] = inItem;
-                this.engine.setPortItem(path.inPort, EMPTY);
+                this.engine.ports.setItem(path.inPort, EMPTY);
             }
         }
 
@@ -801,8 +801,8 @@ export class Belts {
         const head = runBelts[0];
         const tail = runBelts[runBelts.length - 1];
         return {
-            inPort: this.engine.portAt(head.x, head.y, head.direction),
-            outPort: this.engine.portAt(
+            inPort: this.engine.ports.at(head.x, head.y, head.direction),
+            outPort: this.engine.ports.at(
                 tail.x + Direction.dx(tail.direction),
                 tail.y + Direction.dy(tail.direction),
                 tail.direction,
@@ -823,7 +823,7 @@ export class Belts {
             return [NO_EID, NO_EID];
         }
         return [Direction.rotate(head.direction, 1), Direction.rotate(head.direction, 3)]
-            .map(direction => this.engine.portAt(head.x, head.y, direction));
+            .map(direction => this.engine.ports.at(head.x, head.y, direction));
     }
 
     /**
@@ -859,7 +859,7 @@ export class Belts {
                     items = [{id: this._nextItemId, type: resting, gap: 1}, ...carried];
                     this._nextItemId += 1;
                     headGap = old.initialHeadGap;
-                    this.engine.setPortItem(old.outPort, EMPTY);
+                    this.engine.ports.setItem(old.outPort, EMPTY);
                 } else if (carried.length === 0) {
                     // Empty path: all the new space is headroom.
                     items = [];
@@ -1384,7 +1384,7 @@ export class Belts {
             const outPort = outPortCol[slot];
             const leadIsItem = leadGapCol[slot] === 0;
             // A fluid port ahead never links: the path holds its lead instead of stranding an item there.
-            if (leadIsItem && !engine.isFluidPort(outPort)) {
+            if (leadIsItem && !engine.ports.isFluidClaimed(outPort)) {
                 // Free if empty or the downstream can ingest, so the resolver's chain shifts a packed run at once.
                 const downstream = slotByInPort[outPort];
                 const downstreamCanIngest = downstream !== NO_SLOT
@@ -1506,12 +1506,12 @@ export class Belts {
             }
             this._bufferItemAt(batches, slot, cell);
             headGapCol[slot] = 0;
-            engine.setPortItem(inPort, EMPTY);
+            engine.ports.setItem(inPort, EMPTY);
         }
 
         // Phase 3: write this tick's pops into their out-ports.
         for (let i = 0; i < popCount; i += 1) {
-            engine.setPortItem(this._popPorts[i], this._popTypes[i]);
+            engine.ports.setItem(this._popPorts[i], this._popTypes[i]);
         }
 
         for (const batch of batches.values()) {
@@ -1695,7 +1695,7 @@ export class Belts {
      */
     debugInsertItem() {
         if (this.paths.length > 0) {
-            this.engine.setPortItem(this.paths[0].inPort, 1);
+            this.engine.ports.setItem(this.paths[0].inPort, 1);
         }
     }
 }

@@ -30,18 +30,18 @@ test("a vertical tunnel and a horizontal belt cross on the same tile and flow in
     assert.notEqual(tunnel.id, horizontal.id, "distinct paths");
 
     // Feed both; each output receives its own item, uncrossed.
-    engine.setPortItem(tunnel.inPort, RED);
-    engine.setPortItem(horizontal.inPort, BLUE);
+    engine.ports.setItem(tunnel.inPort, RED);
+    engine.ports.setItem(horizontal.inPort, BLUE);
     let tunnelOut = false;
     let horizOut = false;
     for (let i = 0; i < 20; i += 1) {
-        engine.setPortItem(tunnel.outPort, -1);
-        engine.setPortItem(horizontal.outPort, -1);
+        engine.ports.setItem(tunnel.outPort, -1);
+        engine.ports.setItem(horizontal.outPort, -1);
         engine.tickAll();
-        if (engine.portItem(tunnel.outPort) === RED) {
+        if (engine.ports.item(tunnel.outPort) === RED) {
             tunnelOut = true;
         }
-        if (engine.portItem(horizontal.outPort) === BLUE) {
+        if (engine.ports.item(horizontal.outPort) === BLUE) {
             horizOut = true;
         }
     }

@@ -79,7 +79,7 @@ test("a player-market trade pays the seller and charges the buyer, at the buyer'
     game.playerSettings.set(buyer.playerId, MARKET_SETTING_BALANCE, 1000);
 
     const inPort = game.simEngine.components.get("MarketTerminal").store.in[game.simEngine.components.get("MarketTerminal").row(sellerEid)];
-    game.simEngine.setPortItem(inPort, ITEM);
+    game.simEngine.ports.setItem(inPort, ITEM);
     // Cached balance refreshes only at tick end; second tick needed to see funding take effect.
     game.runTick();
     game.runTick();
@@ -95,11 +95,11 @@ test("a buyer with insufficient balance never wins a trade", async () => {
 
     const def = game.simEngine.components.get("MarketTerminal");
     const inPort = def.store.in[def.row(sellerEid)];
-    game.simEngine.setPortItem(inPort, ITEM);
+    game.simEngine.ports.setItem(inPort, ITEM);
     // Run past ownership-cache warm-up tick so seller is confirmed enabled.
     game.runTick();
     game.runTick();
-    assert.equal(game.simEngine.portItem(inPort), ITEM, "nothing to sell to, since the buyer can't afford it");
+    assert.equal(game.simEngine.ports.item(inPort), ITEM, "nothing to sell to, since the buyer can't afford it");
     assert.equal(balanceOf(game, seller.playerId), 0);
 });
 
@@ -121,11 +121,11 @@ test("an unclaimed chunk's terminal never trades", async () => {
 
     const def = game.simEngine.components.get("MarketTerminal");
     const inPort = def.store.in[def.row(sellerEid)];
-    game.simEngine.setPortItem(inPort, ITEM);
+    game.simEngine.ports.setItem(inPort, ITEM);
     game.runTick();
     game.runTick();
 
-    assert.equal(game.simEngine.portItem(inPort), ITEM, "an unowned seller has nobody to be paid, so it never sells");
+    assert.equal(game.simEngine.ports.item(inPort), ITEM, "an unowned seller has nobody to be paid, so it never sells");
 });
 
 test("an NPC-priced item trades without any buy terminal, crediting the seller's chunk owner", async () => {
@@ -133,7 +133,7 @@ test("an NPC-priced item trades without any buy terminal, crediting the seller's
     const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, PRICE);
     const def = game.simEngine.components.get("MarketTerminal");
     const inPort = def.store.in[def.row(sellerEid)];
-    game.simEngine.setPortItem(inPort, ITEM);
+    game.simEngine.ports.setItem(inPort, ITEM);
     // sellEnabled refreshes only at tick end; first tick runs on stale cache.
     game.runTick();
     game.runTick();
@@ -152,7 +152,7 @@ test("a buy terminal on an NPC-priced item purchases from the NPC, no seller nee
     game.runTick();
     game.runTick();
 
-    assert.equal(game.simEngine.portItem(outPort), ITEM, "the NPC delivered straight into the terminal's output");
+    assert.equal(game.simEngine.ports.item(outPort), ITEM, "the NPC delivered straight into the terminal's output");
     assert.equal(balanceOf(game, buyer.playerId), 1000 - PRICE);
     assert.ok(balanceUpdates(buyer).some(event => event.value === 1000 - PRICE));
 });
@@ -166,7 +166,7 @@ test("a buy terminal on an NPC-priced item never purchases without enough balanc
     game.runTick();
     game.runTick();
 
-    assert.equal(game.simEngine.portItem(outPort), EMPTY, "no balance, nothing bought");
+    assert.equal(game.simEngine.ports.item(outPort), EMPTY, "no balance, nothing bought");
     assert.equal(balanceOf(game, buyer.playerId), 0);
 });
 
@@ -180,8 +180,8 @@ test("a buy terminal keeps purchasing from the NPC every tick its output is free
     game.runTick();
     for (let i = 0; i < 5; i += 1) {
         game.runTick();
-        assert.equal(game.simEngine.portItem(outPort), ITEM, `tick ${i}: bought`);
-        game.simEngine.setPortItem(outPort, EMPTY);
+        assert.equal(game.simEngine.ports.item(outPort), ITEM, `tick ${i}: bought`);
+        game.simEngine.ports.setItem(outPort, EMPTY);
     }
     assert.equal(balanceOf(game, buyer.playerId), 1000 - PRICE * 5);
 });
@@ -235,14 +235,14 @@ test("a sustained trade keeps settling every tick (full throughput, end to end)"
     const outPort = def.store.out[def.row(buyerEid)];
 
     // Tick 1: cached balance still 0 (refreshed only in postTick), nothing trades yet.
-    game.simEngine.setPortItem(inPort, ITEM);
+    game.simEngine.ports.setItem(inPort, ITEM);
     game.runTick();
     // Cache now reflects funded balance; every following tick should trade.
     for (let i = 0; i < 5; i += 1) {
-        game.simEngine.setPortItem(inPort, ITEM);
+        game.simEngine.ports.setItem(inPort, ITEM);
         game.runTick();
-        assert.equal(game.simEngine.portItem(outPort), ITEM, `tick ${i}: delivered`);
-        game.simEngine.setPortItem(outPort, EMPTY);
+        assert.equal(game.simEngine.ports.item(outPort), ITEM, `tick ${i}: delivered`);
+        game.simEngine.ports.setItem(outPort, EMPTY);
     }
     assert.equal(balanceOf(game, seller.playerId), PRICE * 5);
     assert.equal(balanceOf(game, buyer.playerId), 1000 - PRICE * 5);

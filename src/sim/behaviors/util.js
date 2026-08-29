@@ -10,8 +10,8 @@ import {EMPTY} from "@/sim/sentinels.js";
  */
 export function syncFluidSource(engine, port, item) {
     if (item !== EMPTY && engine.isFluid(item)) {
-        engine.setPortFluidSource(port, item);
+        engine.ports.setFluidSource(port, item);
     } else {
-        engine.setPortFluidSource(port, EMPTY);
+        engine.ports.setFluidSource(port, EMPTY);
     }
 }

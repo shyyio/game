@@ -23,12 +23,12 @@ test("a belt line placed and ticked via messages on GameEngine flows two items t
     const path = beltsOf(engine).pathAt(HEAD.x, HEAD.y);
     const stream = [];
     for (let i = 0; i < 10; i += 1) {
-        engine.setPortItem(path.outPort, EMPTY);
+        engine.ports.setItem(path.outPort, EMPTY);
         if (i < 2) {
-            engine.setPortItem(path.inPort, RED);
+            engine.ports.setItem(path.inPort, RED);
         }
         engine.tickAll();
-        stream.push(engine.portItem(path.outPort));
+        stream.push(engine.ports.item(path.outPort));
     }
     assert.deepEqual(stream, EXPECTED);
 });

@@ -72,15 +72,15 @@ test("a split hands a resting out-port item to the stolen downstream path", asyn
     belts.placeBelt(0, 0, Direction.RIGHT);
     belts.placeBelt(1, 0, Direction.RIGHT);
     const run = belts.placeBelt(2, 0, Direction.RIGHT);
-    engine.setPortItem(run.outPort, RED);
+    engine.ports.setItem(run.outPort, RED);
 
     belts.placeBelt(1, 2, Direction.UP);
     belts.placeBelt(1, 1, Direction.UP);
 
     const stolen = pathThrough(belts, 2, 0);
     const upstream = pathThrough(belts, 0, 0);
-    assert.equal(engine.portItem(stolen.outPort), RED, "the item stays in the tail's out-port, now owned by the stolen path");
-    assert.equal(engine.portItem(upstream.outPort), EMPTY, "the shortened upstream path's out-port is empty");
+    assert.equal(engine.ports.item(stolen.outPort), RED, "the item stays in the tail's out-port, now owned by the stolen path");
+    assert.equal(engine.ports.item(upstream.outPort), EMPTY, "the shortened upstream path's out-port is empty");
 });
 
 // Prepending an upstream belt is a head extension: the out-port doesn't move, so a resting item stays.
@@ -88,13 +88,13 @@ test("a split hands a resting out-port item to the stolen downstream path", asyn
 test("prepending an upstream belt keeps a resting out-port item", async () => {
     const {engine, belts} = await module();
     const run = belts.placeBelt(1, 0, Direction.RIGHT);
-    engine.setPortItem(run.outPort, RED);
+    engine.ports.setItem(run.outPort, RED);
 
     belts.placeBelt(0, 0, Direction.RIGHT);
 
     const path = pathThrough(belts, 1, 0);
     assert.deepEqual(path.belts, [tileId(0, 0), tileId(1, 0)]);
-    assert.equal(engine.portItem(path.outPort), RED, "the out-port item survives the prepend");
+    assert.equal(engine.ports.item(path.outPort), RED, "the out-port item survives the prepend");
 });
 
 // A bent path is one contiguous run through the corner; an item flows around the bend to the out-port.
@@ -106,12 +106,12 @@ test("an item flows around a bend to the out-port", async () => {
     const path = pathThrough(belts, 0, 0);
     assert.deepEqual(path.belts, [tileId(0, 0), tileId(1, 0), tileId(2, 0)], "the corner belt joins the same path");
 
-    engine.setPortItem(path.inPort, RED);
+    engine.ports.setItem(path.inPort, RED);
     let delivered = 0;
     for (let i = 0; i < 12; i += 1) {
-        engine.setPortItem(path.outPort, EMPTY);
+        engine.ports.setItem(path.outPort, EMPTY);
         engine.tickAll();
-        if (engine.portItem(path.outPort) === RED) {
+        if (engine.ports.item(path.outPort) === RED) {
             delivered += 1;
         }
     }
@@ -133,11 +133,11 @@ test("a closed loop is one path sharing one port, and an item circulates", async
 
     // Seed one item and let it lap with no external feed; it is never lost and rests in the port on
     // more than one lap.
-    engine.setPortItem(belts.paths[0].outPort, RED);
+    engine.ports.setItem(belts.paths[0].outPort, RED);
     let rests = 0;
     for (let i = 0; i < 16; i += 1) {
         engine.tickAll();
-        const inPort = engine.portItem(belts.paths[0].outPort) === RED ? 1 : 0;
+        const inPort = engine.ports.item(belts.paths[0].outPort) === RED ? 1 : 0;
         const onBelt = belts.itemCountOf(belts.paths[0]);
         assert.equal(inPort + onBelt, 1, "exactly one item exists at all times");
         rests += inPort;
@@ -225,7 +225,7 @@ test("an in-flight item survives deletion of a downstream belt and is still deli
         belts.placeBelt(0, y, Direction.UP);
     }
     let path = belts.pathAt(0, 4);
-    engine.setPortItem(path.inPort, RED);
+    engine.ports.setItem(path.inPort, RED);
     engine.tickAll();
     engine.tickAll();
     assert.equal(itemCells(belts), 1, "the item is in flight on an upstream belt");
@@ -237,9 +237,9 @@ test("an in-flight item survives deletion of a downstream belt and is still deli
     path = belts.pathAt(0, 4);
     let delivered = 0;
     for (let i = 0; i < 12; i += 1) {
-        engine.setPortItem(path.outPort, EMPTY);
+        engine.ports.setItem(path.outPort, EMPTY);
         engine.tickAll();
-        if (engine.portItem(path.outPort) === RED) {
+        if (engine.ports.item(path.outPort) === RED) {
             delivered += 1;
         }
     }
@@ -252,7 +252,7 @@ test("an in-flight item survives deletion of an upstream belt", async () => {
         belts.placeBelt(0, y, Direction.UP);
     }
     const path = belts.pathAt(0, 4);
-    engine.setPortItem(path.inPort, RED);
+    engine.ports.setItem(path.inPort, RED);
     // Move the item well downstream of the head before deleting the head.
     for (let i = 0; i < 5; i += 1) {
         engine.tickAll();
@@ -271,7 +271,7 @@ test("filling a gap to merge two paths keeps the source's in-flight item", async
     belts.placeBelt(12, 6, Direction.UP); // source
     belts.placeBelt(12, 4, Direction.UP); // detached downstream, gap at (12,5)
     const source = belts.pathAt(12, 6);
-    engine.setPortItem(source.inPort, RED);
+    engine.ports.setItem(source.inPort, RED);
     engine.tickAll();
     assert.equal(itemCells(belts), 1, "the item rests on the source belt");
 
@@ -282,9 +282,9 @@ test("filling a gap to merge two paths keeps the source's in-flight item", async
     const path = pathThrough(belts, 12, 6);
     let delivered = 0;
     for (let i = 0; i < 10; i += 1) {
-        engine.setPortItem(path.outPort, EMPTY);
+        engine.ports.setItem(path.outPort, EMPTY);
         engine.tickAll();
-        if (engine.portItem(path.outPort) === RED) {
+        if (engine.ports.item(path.outPort) === RED) {
             delivered += 1;
         }
     }
@@ -297,7 +297,7 @@ test("filling a gap to merge two paths keeps an item resting in the sink's in-po
     const {engine, belts} = await module();
     belts.placeBelt(12, 6, Direction.UP);
     const sink = belts.placeBelt(12, 4, Direction.UP);
-    engine.setPortItem(sink.inPort, RED);
+    engine.ports.setItem(sink.inPort, RED);
 
     belts.placeBelt(12, 5, Direction.UP);
 
@@ -305,9 +305,9 @@ test("filling a gap to merge two paths keeps an item resting in the sink's in-po
     const path = pathThrough(belts, 12, 6);
     let delivered = 0;
     for (let i = 0; i < 10; i += 1) {
-        engine.setPortItem(path.outPort, EMPTY);
+        engine.ports.setItem(path.outPort, EMPTY);
         engine.tickAll();
-        if (engine.portItem(path.outPort) === RED) {
+        if (engine.ports.item(path.outPort) === RED) {
             delivered += 1;
         }
     }
@@ -322,18 +322,18 @@ test("a tail merge re-ingests a resting out-port item onto the connecting belt",
     belts.placeBelt(1, 0, Direction.RIGHT);
     const run = belts.placeBelt(2, 0, Direction.RIGHT);
     belts.placeBelt(4, 0, Direction.RIGHT); // detached downstream, gap at (3,0)
-    engine.setPortItem(run.outPort, RED);
+    engine.ports.setItem(run.outPort, RED);
 
     belts.placeBelt(3, 0, Direction.RIGHT); // connects (2,0) -> (3,0) -> (4,0)
 
-    assert.equal(engine.portItem(run.outPort), EMPTY, "the old out-port is cleared (not carried a tile forward)");
+    assert.equal(engine.ports.item(run.outPort), EMPTY, "the old out-port is cleared (not carried a tile forward)");
     assert.equal(itemCells(belts), 1, "the item re-ingests onto the belt line, not lost");
     const path = pathThrough(belts, 0, 0);
     let delivered = 0;
     for (let i = 0; i < 12; i += 1) {
-        engine.setPortItem(path.outPort, EMPTY);
+        engine.ports.setItem(path.outPort, EMPTY);
         engine.tickAll();
-        if (engine.portItem(path.outPort) === RED) {
+        if (engine.ports.item(path.outPort) === RED) {
             delivered += 1;
         }
     }

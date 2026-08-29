@@ -55,9 +55,9 @@ test("pipe networks and fluid state round-trip through the engine serializer", a
         restored.tickAll();
     }
     assert.equal(restoredPipes.networkAt(0, 2).amount, 0, "restored network still flows");
-    const outPort = restored.portAt(1, -1, Direction.UP);
+    const outPort = restored.ports.at(1, -1, Direction.UP);
     assert.equal(tankState(restored).amount + 1, 4, "all units end in the tank plus its out-port payload");
-    assert.equal(restored.portItem(outPort), FLUID_TYPE_WATER);
+    assert.equal(restored.ports.item(outPort), FLUID_TYPE_WATER);
 });
 
 test("deleting a pipe through the generic path relinks the networks", async () => {

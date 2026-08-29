@@ -399,7 +399,7 @@ export class TransferResolver {
      */
     flushSinks() {
         for (let index = 0; index < this._sinkCount; index += 1) {
-            this.engine.consumePortItem(this._sinks[index]);
+            this.engine.ports.consumeItem(this._sinks[index]);
         }
     }
 
@@ -413,7 +413,7 @@ export class TransferResolver {
         for (let row = 0; row < this._resolvedCount; row += 1) {
             const source = this._resolvedSource[row];
             if (this._resolvedManaged[row] === 1 && source !== EMPTY) {
-                engine.consumePortItem(source);
+                engine.ports.consumeItem(source);
             }
         }
         for (let row = 0; row < this._resolvedCount; row += 1) {

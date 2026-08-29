@@ -80,7 +80,7 @@ test("deleting the down mouth collapses the tunnel, leaving the up mouth", async
 test("a tunnel item is kept on the surviving mouth when a mouth is deleted", async () => {
     const {engine, upId} = await tunnel(1);
     const path = beltsOf(engine).pathAt(1, 1);
-    engine.setPortItem(path.inPort, RED);
+    engine.ports.setItem(path.inPort, RED);
     engine.tickAll(); // ingest the item into the tunnel
     assert.equal(itemCells(engine), 1, "the item is in the tunnel");
 

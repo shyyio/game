@@ -87,7 +87,7 @@ export class Pipes {
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._apply());
         engine.registerSerializeHook(() => this._materialize());
         engine.registerRebuildHook(() => this._reconstruct());
-        engine.registerPortPin(() => this._pinnedPorts());
+        engine.ports.registerPin(() => this._pinnedPorts());
         engine.registerChunkSync(chunk => this.chunkSync(chunk));
     }
 
@@ -144,9 +144,9 @@ export class Pipes {
                     candidates.push(net.fluidType);
                 }
             }
-            const port = this.engine.peekPortAt(x, y, Direction.invert(direction));
+            const port = this.engine.ports.peekAt(x, y, Direction.invert(direction));
             if (port !== null) {
-                candidates.push(this.engine.portFluidSource(port));
+                candidates.push(this.engine.ports.fluidSource(port));
             }
             return candidates;
         }) !== null;
@@ -321,8 +321,8 @@ export class Pipes {
                 if (tiles.has(tileId(nx, ny))) {
                     continue;
                 }
-                const inPort = this.engine.portAt(pipe.x, pipe.y, Direction.invert(direction));
-                this.engine.markFluidPort(inPort);
+                const inPort = this.engine.ports.at(pipe.x, pipe.y, Direction.invert(direction));
+                this.engine.ports.markFluid(inPort);
                 inPorts.push(inPort);
                 outEdges.push({x: nx, y: ny, direction, neighborKey: tileId(nx, ny)});
             }
@@ -347,7 +347,7 @@ export class Pipes {
         }
         getOrCreate(this._networksByChunk, net.chunk, () => new Set()).add(net);
         // An adopted producer out-port binds the type before the first payload.
-        net.sourceGen = this.engine.fluidSourceGeneration;
+        net.sourceGen = this.engine.ports.fluidSourceGeneration;
         if (net.fluidType === EMPTY) {
             const bound = this._boundarySourceType(net);
             net.fluidType = bound;
@@ -364,7 +364,7 @@ export class Pipes {
      */
     _boundarySourceType(net) {
         for (const port of net.inPorts) {
-            const source = this.engine.portFluidSource(port);
+            const source = this.engine.ports.fluidSource(port);
             if (source !== EMPTY) {
                 return source;
             }
@@ -384,7 +384,7 @@ export class Pipes {
         }
         removeFromGroup(this._networksByChunk, net.chunk, net);
         for (const port of net.inPorts) {
-            this.engine.unmarkFluidPort(port);
+            this.engine.ports.unmarkFluid(port);
         }
     }
 
@@ -448,8 +448,8 @@ export class Pipes {
                     break;
                 }
                 // Only fluid-flagged ports receive payloads.
-                const dest = engine.peekPortAt(edge.x, edge.y, edge.direction);
-                if (dest === null || !engine.isFluidPort(dest)) {
+                const dest = engine.ports.peekAt(edge.x, edge.y, edge.direction);
+                if (dest === null || !engine.ports.isFluidClaimed(dest)) {
                     continue;
                 }
                 const neighborNet = this._networkByTile.get(edge.neighborKey);
@@ -483,7 +483,7 @@ export class Pipes {
             }
         }
         const batches = new Map();
-        const sourceGen = engine.fluidSourceGeneration;
+        const sourceGen = engine.ports.fluidSourceGeneration;
         for (const net of this.networks) {
             // A drained network re-binds to a connected producer's type (EMPTY when none) — only
             // when just drained or a source changed, so idle networks skip the port scan.
