@@ -192,7 +192,7 @@ test("a mod's own spec runs against the real engine, with no game checkout", (t)
             for (let tick = 0; tick < 5; tick += 1) {
                 engine.tickAll();
             }
-            assert.equal(engine.portItem(out), 900);
+            assert.equal(engine.ports.item(out), 900);
         });
     `);
 

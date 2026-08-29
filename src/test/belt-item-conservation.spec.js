@@ -23,7 +23,7 @@ test("packed same-type items survive a split and each still pops", async () => {
         handle = belts.placeBelt(cell.x, cell.y, Direction.UP);
     }
     for (let i = 0; i < 12; i += 1) {
-        engine.setPortItem(handle.inPort, RED);
+        engine.ports.setItem(handle.inPort, RED);
         engine.tickAll();
     }
 

@@ -46,13 +46,13 @@ function placeObject(engine, type, x, y) {
 function producedOver(engine, inPort, outPort, ticks) {
     let produced = 0;
     for (let i = 0; i < ticks; i += 1) {
-        if (engine.portItem(inPort) === EMPTY) {
-            engine.setPortItem(inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
+        if (engine.ports.item(inPort) === EMPTY) {
+            engine.ports.setItem(inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
         }
         engine.tickAll();
-        if (engine.portItem(outPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT) {
+        if (engine.ports.item(outPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT) {
             produced += 1;
-            engine.setPortItem(outPort, EMPTY);
+            engine.ports.setItem(outPort, EMPTY);
         }
     }
     return produced;
@@ -99,29 +99,29 @@ test("a machine road-connected to housing is manned and sustains a faster rate",
 
     // The 1.3x multiplier shows up as sustained throughput (fractional progress carries over).
     const TICKS = 60;
-    const mannedCount = producedOver(engine, engine.portAt(5, 4, Direction.UP), engine.portAt(5, 3, Direction.UP), TICKS);
-    const controlCount = producedOver(engine, engine.portAt(30, 10, Direction.UP), engine.portAt(30, 9, Direction.UP), TICKS);
+    const mannedCount = producedOver(engine, engine.ports.at(5, 4, Direction.UP), engine.ports.at(5, 3, Direction.UP), TICKS);
+    const controlCount = producedOver(engine, engine.ports.at(30, 10, Direction.UP), engine.ports.at(30, 9, Direction.UP), TICKS);
     assert.ok(mannedCount > controlCount, `manned ${mannedCount} items vs unmanned ${controlCount} over ${TICKS} ticks`);
 });
 
 test("fractional progress banks past a craft and shortens the next", async () => {
     const {engine, nearId} = await mannedSetup();
-    const inPort = engine.portAt(5, 4, Direction.UP);
-    const outPort = engine.portAt(5, 3, Direction.UP);
+    const inPort = engine.ports.at(5, 4, Direction.UP);
+    const outPort = engine.ports.at(5, 3, Direction.UP);
 
     // First craft (processingTicks 2 at 1.3/tick) overshoots by 0.6, banked as carry.
-    engine.setPortItem(inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
+    engine.ports.setItem(inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
         engine.tickAll();
-        produced = engine.portItem(outPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
+        produced = engine.ports.item(outPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
     }
     assert.ok(produced, "first craft completed");
     assert.ok(Math.abs(carryOf(engine, nearId) - 0.6) < 1e-3, `carry ${carryOf(engine, nearId)}`);
 
     // The next craft consumes the bank: it loads with remaining 1.4, not 2.
-    engine.setPortItem(outPort, EMPTY);
-    engine.setPortItem(inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
+    engine.ports.setItem(outPort, EMPTY);
+    engine.ports.setItem(inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
     engine.tickAll();
     assert.equal(carryOf(engine, nearId), 0, "bank consumed at load");
     const def = engine.components.get("Machine");
@@ -283,11 +283,11 @@ test("a non-directional type spawns facing UP whatever the message says", async 
 test("worker assignments and banked progress survive a save/load", async () => {
     const {engine, nearId} = await mannedSetup();
     // Craft once (a single fed input) so the machine banks fractional progress, then idles.
-    engine.setPortItem(engine.portAt(5, 4, Direction.UP), ITEM_TYPE_TEST_MACHINE_INPUT);
+    engine.ports.setItem(engine.ports.at(5, 4, Direction.UP), ITEM_TYPE_TEST_MACHINE_INPUT);
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
         engine.tickAll();
-        produced = engine.portItem(engine.portAt(5, 3, Direction.UP)) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
+        produced = engine.ports.item(engine.ports.at(5, 3, Direction.UP)) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
     }
     assert.ok(produced, "crafted before save");
     const carryBefore = carryOf(engine, nearId);

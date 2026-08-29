@@ -66,20 +66,20 @@ async function setup() {
 test("a single seller and a single buyer trade every tick, at full throughput", async () => {
     const {engine, sellerInPort, buyerOutPort} = await setup();
     for (let tick = 0; tick < 10; tick += 1) {
-        engine.setPortItem(sellerInPort, ITEM);
+        engine.ports.setItem(sellerInPort, ITEM);
         engine.tickAll();
-        assert.equal(engine.portItem(buyerOutPort), ITEM, `tick ${tick}: the buyer received a unit this tick`);
+        assert.equal(engine.ports.item(buyerOutPort), ITEM, `tick ${tick}: the buyer received a unit this tick`);
         // A belt would pull it away immediately; simulate that so the next tick isn't blocked.
-        engine.setPortItem(buyerOutPort, EMPTY);
+        engine.ports.setItem(buyerOutPort, EMPTY);
     }
 });
 
 test("a sell terminal never drains the wrong item type", async () => {
     const {engine, sellerInPort, buyerOutPort} = await setup();
-    engine.setPortItem(sellerInPort, ITEM + 1);
+    engine.ports.setItem(sellerInPort, ITEM + 1);
     engine.tickAll();
-    assert.equal(engine.portItem(sellerInPort), ITEM + 1, "the wrong-type item is left resting");
-    assert.equal(engine.portItem(buyerOutPort), EMPTY);
+    assert.equal(engine.ports.item(sellerInPort), ITEM + 1, "the wrong-type item is left resting");
+    assert.equal(engine.ports.item(buyerOutPort), EMPTY);
 });
 
 test("a sell terminal does not drain without a matching buyer", async () => {
@@ -94,9 +94,9 @@ test("a sell terminal does not drain without a matching buyer", async () => {
     terminal.price[row] = PRICE;
     terminal.sellEnabled[row] = 1;
 
-    engine.setPortItem(terminal.in[row], ITEM);
+    engine.ports.setItem(terminal.in[row], ITEM);
     engine.tickAll();
-    assert.equal(engine.portItem(terminal.in[row]), ITEM, "nothing to sell to, so the item stays resting");
+    assert.equal(engine.ports.item(terminal.in[row]), ITEM, "nothing to sell to, so the item stays resting");
 });
 
 test("a sell terminal with sellEnabled=0 never sells, even with an eligible buyer", async () => {
@@ -105,10 +105,10 @@ test("a sell terminal with sellEnabled=0 never sells, even with an eligible buye
     const [sellerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
     def.store.sellEnabled[def.row(sellerEid)] = 0;
 
-    engine.setPortItem(sellerInPort, ITEM);
+    engine.ports.setItem(sellerInPort, ITEM);
     engine.tickAll();
-    assert.equal(engine.portItem(sellerInPort), ITEM, "an unowned chunk's terminal must not sell");
-    assert.equal(engine.portItem(buyerOutPort), EMPTY);
+    assert.equal(engine.ports.item(sellerInPort), ITEM, "an unowned chunk's terminal must not sell");
+    assert.equal(engine.ports.item(buyerOutPort), EMPTY);
 });
 
 test("an NPC-priced sell terminal always has a counterparty, no buy terminal needed", async () => {
@@ -123,9 +123,9 @@ test("an NPC-priced sell terminal always has a counterparty, no buy terminal nee
     terminal.price[row] = PRICE;
     terminal.sellEnabled[row] = 1;
 
-    engine.setPortItem(terminal.in[row], ITEM);
+    engine.ports.setItem(terminal.in[row], ITEM);
     engine.tickAll();
-    assert.equal(engine.portItem(terminal.in[row]), EMPTY, "the NPC always buys, no player counterparty posted");
+    assert.equal(engine.ports.item(terminal.in[row]), EMPTY, "the NPC always buys, no player counterparty posted");
 });
 
 test("an NPC-priced buy terminal purchases every tick, at full throughput", async () => {
@@ -142,9 +142,9 @@ test("an NPC-priced buy terminal purchases every tick, at full throughput", asyn
     const outPort = terminal.out[row];
     for (let tick = 0; tick < 10; tick += 1) {
         engine.tickAll();
-        assert.equal(engine.portItem(outPort), ITEM, `tick ${tick}: the NPC purchase landed this tick`);
+        assert.equal(engine.ports.item(outPort), ITEM, `tick ${tick}: the NPC purchase landed this tick`);
         // A belt would pull it away immediately; simulate that so the next tick isn't blocked.
-        engine.setPortItem(outPort, EMPTY);
+        engine.ports.setItem(outPort, EMPTY);
     }
 });
 
@@ -164,7 +164,7 @@ test("an NPC-priced buy terminal keeps buying while a consumer drains its port t
     const outPort = terminal.out[row];
     let drained = 0;
     engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => {
-        if (engine.portItem(outPort) !== EMPTY) {
+        if (engine.ports.item(outPort) !== EMPTY) {
             drained += 1;
             engine.transfers.submitDrain(outPort, true);
         }
@@ -201,12 +201,12 @@ test("two sellers racing for one buyer: the loser's item stays resting, no doubl
     terminal.balance[buyerRow] = 1_000_000;
     engine.resolve(MarketBook).postBuy(buyerEid, ITEM, PRICE, terminal.out[buyerRow]);
 
-    engine.setPortItem(terminal.in[sellerARow], ITEM);
-    engine.setPortItem(terminal.in[sellerBRow], ITEM);
+    engine.ports.setItem(terminal.in[sellerARow], ITEM);
+    engine.ports.setItem(terminal.in[sellerBRow], ITEM);
     engine.tickAll();
 
-    const aDrained = engine.portItem(terminal.in[sellerARow]) === EMPTY;
-    const bDrained = engine.portItem(terminal.in[sellerBRow]) === EMPTY;
+    const aDrained = engine.ports.item(terminal.in[sellerARow]) === EMPTY;
+    const bDrained = engine.ports.item(terminal.in[sellerBRow]) === EMPTY;
     assert.notEqual(aDrained, bDrained, "exactly one seller wins the buyer's single port this tick");
-    assert.equal(engine.portItem(terminal.out[buyerRow]), ITEM, "the buyer received exactly one unit");
+    assert.equal(engine.ports.item(terminal.out[buyerRow]), ITEM, "the buyer received exactly one unit");
 });

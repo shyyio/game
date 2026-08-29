@@ -143,8 +143,8 @@ async function main() {
         if (!jammed) {
             // Consume each line's output, so the lines keep flowing instead of backing up.
             for (const port of sinkPorts) {
-                if (engine.portItem(port) !== EMPTY) {
-                    engine.setPortItem(port, EMPTY);
+                if (engine.ports.item(port) !== EMPTY) {
+                    engine.ports.setItem(port, EMPTY);
                 }
             }
         }

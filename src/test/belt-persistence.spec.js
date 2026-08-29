@@ -34,9 +34,9 @@ test("belt state survives a serialize -> deserialize round-trip mid-flight", asy
         a.engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP));
     }
     const aPorts = networkPorts(a.belts);
-    a.engine.setPortItem(aPorts.inPort, RED);
+    a.engine.ports.setItem(aPorts.inPort, RED);
     for (let i = 0; i < 4; i += 1) {
-        a.engine.setPortItem(aPorts.outPort, EMPTY);
+        a.engine.ports.setItem(aPorts.outPort, EMPTY);
         a.engine.tickAll();
     }
 
@@ -53,12 +53,12 @@ test("belt state survives a serialize -> deserialize round-trip mid-flight", asy
     const aStream = [];
     const bStream = [];
     for (let i = 0; i < 12; i += 1) {
-        a.engine.setPortItem(aPorts.outPort, EMPTY);
-        b.engine.setPortItem(bPorts.outPort, EMPTY);
+        a.engine.ports.setItem(aPorts.outPort, EMPTY);
+        b.engine.ports.setItem(bPorts.outPort, EMPTY);
         a.engine.tickAll();
         b.engine.tickAll();
-        aStream.push(a.engine.portItem(aPorts.outPort));
-        bStream.push(b.engine.portItem(bPorts.outPort));
+        aStream.push(a.engine.ports.item(aPorts.outPort));
+        bStream.push(b.engine.ports.item(bPorts.outPort));
     }
 
     assert.deepEqual(bStream, aStream, `\nrestored: ${JSON.stringify(bStream)}\noriginal: ${JSON.stringify(aStream)}`);
@@ -71,7 +71,7 @@ test("belt state persists through a structured SQLite save store and reloads", a
         a.engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP));
     }
     const ports = networkPorts(a.belts);
-    a.engine.setPortItem(ports.inPort, RED);
+    a.engine.ports.setItem(ports.inPort, RED);
     a.engine.tickAll();
 
     const store = new NodeSaveStore(":memory:");
@@ -85,9 +85,9 @@ test("belt state persists through a structured SQLite save store and reloads", a
     const bPorts = networkPorts(b.belts);
     let delivered = false;
     for (let i = 0; i < 12 && !delivered; i += 1) {
-        b.engine.setPortItem(bPorts.outPort, EMPTY);
+        b.engine.ports.setItem(bPorts.outPort, EMPTY);
         b.engine.tickAll();
-        delivered = b.engine.portItem(bPorts.outPort) === RED;
+        delivered = b.engine.ports.item(bPorts.outPort) === RED;
     }
     assert.ok(delivered, "the reloaded item flows to the output");
 });

@@ -36,13 +36,13 @@ test("a Blender pumps Nutrient Slop into an adjacent pipe network", async () => 
     const [eid] = engine.placed.eidsOf(BlenderType.typeId);
     const def = engine.components.get("Machine");
     const row = def.row(eid);
-    engine.setPortItem(def.store.in0[row], ITEM_TYPE_SOYBEAN);
+    engine.ports.setItem(def.store.in0[row], ITEM_TYPE_SOYBEAN);
     engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 5, 4, Direction.UP));
     const pipes = pipesOf(engine);
 
     for (let i = 0; i < 40; i += 1) {
         engine.tickAll();
-        engine.setPortItem(def.store.in0[row], ITEM_TYPE_SOYBEAN);
+        engine.ports.setItem(def.store.in0[row], ITEM_TYPE_SOYBEAN);
     }
 
     const net = pipes.networkAt(5, 4);
@@ -76,9 +76,9 @@ test("a pipe delivers Water into a Greenhouse's fluid input, completing the reci
 
     let produced = false;
     for (let i = 0; i < 200 && !produced; i += 1) {
-        engine.setPortItem(def.store.in0[row], ITEM_TYPE_SOYBEAN_SEEDS);
+        engine.ports.setItem(def.store.in0[row], ITEM_TYPE_SOYBEAN_SEEDS);
         engine.tickAll();
-        produced = engine.portItem(outPort) !== EMPTY;
+        produced = engine.ports.item(outPort) !== EMPTY;
     }
     assert.ok(produced, "Water reached the Greenhouse through the pipe and the craft completed");
 });
@@ -92,11 +92,11 @@ test("Blast Furnace produces Raw Steel from Iron Ore + Coke + Oxygen in one craf
 
     let produced = false;
     for (let i = 0; i < 40 && !produced; i += 1) {
-        engine.setPortItem(def.store.in0[row], ITEM_TYPE_IRON_ORE);
-        engine.setPortItem(def.store.in1[row], ITEM_TYPE_COKE);
-        engine.setPortItem(def.store.in2[row], ITEM_TYPE_OXYGEN);
+        engine.ports.setItem(def.store.in0[row], ITEM_TYPE_IRON_ORE);
+        engine.ports.setItem(def.store.in1[row], ITEM_TYPE_COKE);
+        engine.ports.setItem(def.store.in2[row], ITEM_TYPE_OXYGEN);
         engine.tickAll();
-        produced = engine.portItem(def.store.out[row]) === ITEM_TYPE_RAW_STEEL;
+        produced = engine.ports.item(def.store.out[row]) === ITEM_TYPE_RAW_STEEL;
     }
     assert.ok(produced, "Blast Furnace produces Raw Steel from Iron Ore + Coke + Oxygen");
 });
@@ -115,36 +115,36 @@ test("Brew produces both Basic Potion Base and Overload Mix, one machine", async
     // let the machine pipeline-gather a second Mushroom+Water craft before this one's even read.
     let basicPotionBase = false;
     for (let i = 0; i < 40 && !basicPotionBase; i += 1) {
-        if (engine.portItem(in0Port) === EMPTY) {
-            engine.setPortItem(in0Port, ITEM_TYPE_MUSHROOM);
+        if (engine.ports.item(in0Port) === EMPTY) {
+            engine.ports.setItem(in0Port, ITEM_TYPE_MUSHROOM);
         }
-        if (engine.portItem(in1Port) === EMPTY) {
-            engine.setPortItem(in1Port, ITEM_TYPE_WATER);
+        if (engine.ports.item(in1Port) === EMPTY) {
+            engine.ports.setItem(in1Port, ITEM_TYPE_WATER);
         }
         engine.tickAll();
-        basicPotionBase = engine.portItem(outPort) === ITEM_TYPE_BASIC_POTION_BASE;
+        basicPotionBase = engine.ports.item(outPort) === ITEM_TYPE_BASIC_POTION_BASE;
     }
     assert.ok(basicPotionBase, "Brew produces Basic Potion Base from Mushroom + Water");
     // The machine pipeline-gathers its NEXT craft's inputs on the same tick this one completes (once
     // remaining hits 0, gathering starts even before idle formally flips) — by the time we observe
     // completion, a second Mushroom+Water set is already sitting in slot0/slot1, queued. Clearing the
     // ports alone doesn't touch that internal state, so reset it directly for a truly blank machine.
-    engine.setPortItem(outPort, EMPTY);
-    engine.setPortItem(in0Port, EMPTY);
-    engine.setPortItem(in1Port, EMPTY);
+    engine.ports.setItem(outPort, EMPTY);
+    engine.ports.setItem(in0Port, EMPTY);
+    engine.ports.setItem(in1Port, EMPTY);
     def.store.slot0[row] = EMPTY;
     def.store.slot1[row] = EMPTY;
 
     let overloadMix = false;
     for (let i = 0; i < 40 && !overloadMix; i += 1) {
-        if (engine.portItem(in0Port) === EMPTY) {
-            engine.setPortItem(in0Port, ITEM_TYPE_ADRENOCHROME);
+        if (engine.ports.item(in0Port) === EMPTY) {
+            engine.ports.setItem(in0Port, ITEM_TYPE_ADRENOCHROME);
         }
-        if (engine.portItem(in1Port) === EMPTY) {
-            engine.setPortItem(in1Port, ITEM_TYPE_BASIC_POTION_BASE);
+        if (engine.ports.item(in1Port) === EMPTY) {
+            engine.ports.setItem(in1Port, ITEM_TYPE_BASIC_POTION_BASE);
         }
         engine.tickAll();
-        overloadMix = engine.portItem(outPort) === ITEM_TYPE_OVERLOAD_MIX;
+        overloadMix = engine.ports.item(outPort) === ITEM_TYPE_OVERLOAD_MIX;
     }
     assert.ok(overloadMix, "the same Brew also produces Overload Mix from Adrenochrome + Basic Potion Base");
 });

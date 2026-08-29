@@ -8,10 +8,10 @@ import {Belts} from "@/mods/Logistics/sim/Belts.js";
 test("portAt shares one port per tile-edge", async () => {
     const engine = new GameEngine();
     await engine.init();
-    const a = engine.portAt(3, 4, Direction.UP);
-    assert.equal(engine.portAt(3, 4, Direction.UP), a, "same edge -> same port");
-    assert.notEqual(engine.portAt(3, 4, Direction.RIGHT), a, "different direction -> different port");
-    assert.notEqual(engine.portAt(3, 5, Direction.UP), a, "different tile -> different port");
+    const a = engine.ports.at(3, 4, Direction.UP);
+    assert.equal(engine.ports.at(3, 4, Direction.UP), a, "same edge -> same port");
+    assert.notEqual(engine.ports.at(3, 4, Direction.RIGHT), a, "different direction -> different port");
+    assert.notEqual(engine.ports.at(3, 5, Direction.UP), a, "different tile -> different port");
 });
 
 test("a belt's in/out ports are the shared edge ports an object would adopt", async () => {
@@ -24,6 +24,6 @@ test("a belt's in/out ports are the shared edge ports an object would adopt", as
     }
 
     // Head = (0,2) (most upstream, UP); tail = (0,0), feeding (0,-1).
-    assert.equal(handle.inPort, engine.portAt(0, 2, Direction.UP), "in-port = head-tile edge");
-    assert.equal(handle.outPort, engine.portAt(0, -1, Direction.UP), "out-port = tail-downstream edge (an object at (0,-1) shares it)");
+    assert.equal(handle.inPort, engine.ports.at(0, 2, Direction.UP), "in-port = head-tile edge");
+    assert.equal(handle.outPort, engine.ports.at(0, -1, Direction.UP), "out-port = tail-downstream edge (an object at (0,-1) shares it)");
 });

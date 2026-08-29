@@ -76,10 +76,10 @@ export class GeneratorBehavior extends AbstractBehavior {
         const def = engine.components.get("Generator");
         const row = def.row(eid);
         engine.render.unregisterPort(def.store.out[row]);
-        engine.setPortFluidSource(def.store.out[row], EMPTY);
+        engine.ports.setFluidSource(def.store.out[row], EMPTY);
         if (this.hasSecondaryPort) {
             engine.render.unregisterPort(def.store.out2[row]);
-            engine.setPortFluidSource(def.store.out2[row], EMPTY);
+            engine.ports.setFluidSource(def.store.out2[row], EMPTY);
         }
     }
 

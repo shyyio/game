@@ -139,7 +139,7 @@ export class MachineBehavior extends AbstractBehavior {
             const inPort = engine.portFor(port, message.x, message.y, message.direction).port;
             machine[IN_COLS[i]][row] = inPort;
             if (port.fluid) {
-                engine.markFluidPort(inPort);
+                engine.ports.markFluid(inPort);
             }
         }
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
@@ -164,14 +164,14 @@ export class MachineBehavior extends AbstractBehavior {
         const row = def.row(eid);
         for (const [i, port] of this.type.inputPorts.entries()) {
             if (port.fluid) {
-                engine.unmarkFluidPort(machine[IN_COLS[i]][row]);
+                engine.ports.unmarkFluid(machine[IN_COLS[i]][row]);
             }
         }
         engine.render.unregisterPort(def.store.out[row]);
-        engine.setPortFluidSource(def.store.out[row], EMPTY);
+        engine.ports.setFluidSource(def.store.out[row], EMPTY);
         if (this.hasByproductPort) {
             engine.render.unregisterPort(def.store.out2[row]);
-            engine.setPortFluidSource(def.store.out2[row], EMPTY);
+            engine.ports.setFluidSource(def.store.out2[row], EMPTY);
         }
         if (this.workerCost > 0) {
             const position = engine.Position;

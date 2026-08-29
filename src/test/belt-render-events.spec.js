@@ -20,7 +20,7 @@ test("a belt emits a port-item set when an item pops to its out-port", async () 
     }
     collector.drain(); // discard placement events
 
-    engine.setPortItem(handle.inPort, RED);
+    engine.ports.setItem(handle.inPort, RED);
     const sets = [];
     for (let i = 0; i < 8; i += 1) {
         engine.tickAll();
@@ -47,7 +47,7 @@ test("deleting the output belt emits a port-item clear for the stranded out-port
     for (const cell of [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}]) {
         handle = belts.placeBelt(cell.x, cell.y, Direction.UP);
     }
-    engine.setPortItem(handle.inPort, RED);
+    engine.ports.setItem(handle.inPort, RED);
     for (let i = 0; i < 8; i += 1) {
         engine.tickAll();
     }
@@ -55,7 +55,7 @@ test("deleting the output belt emits a port-item clear for the stranded out-port
 
     // The tail belt at (0, 0); its removal relinks the run, then the sweep destroys the old out-port.
     belts.removeBelt(0, 0, Direction.UP);
-    engine.collectUnreferencedPorts();
+    engine.ports.collectUnreferenced();
 
     const clears = collector.drain().filter(event => event instanceof PortItemClearEvent);
     assert.equal(clears.length, 1);

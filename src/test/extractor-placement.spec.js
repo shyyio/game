@@ -24,11 +24,11 @@ test("an extractor on water produces the water item into its output port", async
         event instanceof ObjectInsertEvent && event.typeId === ExtractorType.typeId);
     assert.equal(insert.lastOutput, ITEM_TYPE_WATER, "lastOutput seeded at placement");
 
-    const outPort = engine.portAt(5, 4, Direction.UP);
+    const outPort = engine.ports.at(5, 4, Direction.UP);
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
         engine.tickAll();
-        produced = engine.portItem(outPort) === ITEM_TYPE_WATER;
+        produced = engine.ports.item(outPort) === ITEM_TYPE_WATER;
     }
     assert.ok(produced, "the extractor produced a water item");
 });

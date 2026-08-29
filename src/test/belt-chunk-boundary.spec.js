@@ -27,12 +27,12 @@ test("a belt line splits at the chunk boundary and items flow across the seam", 
 
     const outStream = [];
     for (let i = 0; i < 24; i += 1) {
-        engine.setPortItem(handle.outPort, EMPTY);
+        engine.ports.setItem(handle.outPort, EMPTY);
         if (i < 3) {
-            engine.setPortItem(handle.inPort, RED);
+            engine.ports.setItem(handle.inPort, RED);
         }
         engine.tickAll();
-        outStream.push(engine.portItem(handle.outPort));
+        outStream.push(engine.ports.item(handle.outPort));
     }
 
     assert.equal(outStream.filter(item => item === RED).length, 3, "all three items delivered across the seam");

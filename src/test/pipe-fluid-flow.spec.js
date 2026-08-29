@@ -26,8 +26,8 @@ import {makeGameEngine} from "@/test/ecsSim.js";
 // Units in flight at the two ports of the y=63/64 seam (one payload = one unit).
 function seamUnits(engine) {
     let units = 0;
-    for (const port of [engine.portAt(0, 64, Direction.DOWN), engine.portAt(0, 63, Direction.UP)]) {
-        if (engine.portItem(port) !== EMPTY) {
+    for (const port of [engine.ports.at(0, 64, Direction.DOWN), engine.ports.at(0, 63, Direction.UP)]) {
+        if (engine.ports.item(port) !== EMPTY) {
             units += 1;
         }
     }
@@ -102,11 +102,11 @@ test("a pipe network drains into a tank through the shared edge port", async () 
 
     const def = engine.components.get("Tank");
     const row = def.row(engine.placed.eidsOf(TankDefinition.typeId)[0]);
-    const outPort = engine.portAt(1, -1, Direction.UP);
+    const outPort = engine.ports.at(1, -1, Direction.UP);
     assert.equal(pipes.networkAt(0, 2).amount, 0, "the network drained fully");
     assert.equal(def.store.fluidType[row], FLUID_TYPE_WATER);
     // One payload rests in the tank's out-port (its unconsumed output).
-    assert.equal(engine.portItem(outPort), FLUID_TYPE_WATER);
+    assert.equal(engine.ports.item(outPort), FLUID_TYPE_WATER);
     assert.equal(def.store.amount[row] + 1, 4, "everything the network lost the tank (plus its out-port) holds");
 });
 
@@ -213,7 +213,7 @@ test("a belt refuses a fluid payload resting in its in-port", async () => {
     const path = belts.paths[0];
     assert.equal(belts.itemCountOf(path), 0, "no fluid item ever boards the belt");
     // The refused payload rests in the shared edge port; the extractor is backed up behind it.
-    assert.equal(engine.portItem(engine.portAt(0, 4, Direction.UP)), ITEM_TYPE_WATER);
+    assert.equal(engine.ports.item(engine.ports.at(0, 4, Direction.UP)), ITEM_TYPE_WATER);
 });
 
 test("a belt never pops an item into a fluid port", async () => {
@@ -223,13 +223,13 @@ test("a belt never pops an item into a fluid port", async () => {
     const belts = beltsOf(engine);
     const pipes = pipesOf(engine);
     const path = belts.pathAt(0, 1);
-    engine.setPortItem(path.inPort, ITEM_TYPE_IRON_ORE);
+    engine.ports.setItem(path.inPort, ITEM_TYPE_IRON_ORE);
 
     for (let i = 0; i < 20; i += 1) {
         engine.tickAll();
     }
 
     assert.equal(pipes.networkAt(0, 0).amount, 0, "no solid item enters the network");
-    assert.equal(engine.portItem(path.outPort), EMPTY, "the shared edge port stays untouched");
+    assert.equal(engine.ports.item(path.outPort), EMPTY, "the shared edge port stays untouched");
     assert.equal(belts.itemCountOf(belts.paths[0]), 1, "the item waits at the belt's end");
 });

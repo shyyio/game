@@ -25,7 +25,7 @@ test("extending a belt path downstream preserves an in-flight item", async () =>
 
     let path = belts.pathAt(0, 5);
     // Feed one item and let it travel partway down the path.
-    engine.setPortItem(path.inPort, RED);
+    engine.ports.setItem(path.inPort, RED);
     engine.tickAll();
     engine.tickAll();
 
@@ -40,9 +40,9 @@ test("extending a belt path downstream preserves an in-flight item", async () =>
     path = belts.pathAt(0, 5);
     let delivered = 0;
     for (let i = 0; i < 16; i += 1) {
-        engine.setPortItem(path.outPort, EMPTY);
+        engine.ports.setItem(path.outPort, EMPTY);
         engine.tickAll();
-        if (engine.portItem(path.outPort) === RED) {
+        if (engine.ports.item(path.outPort) === RED) {
             delivered += 1;
         }
     }
@@ -63,11 +63,11 @@ test("extending a belt path downstream preserves an item resting in the out-port
 
     let path = belts.pathAt(0, 5);
     // Feed one item and let it travel all the way to rest in the out-port (never drained).
-    engine.setPortItem(path.inPort, RED);
-    for (let i = 0; i < 10 && engine.portItem(path.outPort) !== RED; i += 1) {
+    engine.ports.setItem(path.inPort, RED);
+    for (let i = 0; i < 10 && engine.ports.item(path.outPort) !== RED; i += 1) {
         engine.tickAll();
     }
-    assert.equal(engine.portItem(path.outPort), RED, "the item is resting in the out-port before the extension");
+    assert.equal(engine.ports.item(path.outPort), RED, "the item is resting in the out-port before the extension");
 
     // Extend the tail downstream, mid-rest.
     belts.placeBelt(0, 2, Direction.UP);
@@ -75,9 +75,9 @@ test("extending a belt path downstream preserves an item resting in the out-port
     path = belts.pathAt(0, 5);
     let delivered = 0;
     for (let i = 0; i < 16; i += 1) {
-        engine.setPortItem(path.outPort, EMPTY);
+        engine.ports.setItem(path.outPort, EMPTY);
         engine.tickAll();
-        if (engine.portItem(path.outPort) === RED) {
+        if (engine.ports.item(path.outPort) === RED) {
             delivered += 1;
         }
     }
@@ -100,8 +100,8 @@ test("downstream extension emits recalc before item rows and clears the old out-
     const path = belts.pathAt(0, 5);
     const oldOutPort = path.outPort;
 
-    engine.setPortItem(path.inPort, RED);
-    for (let i = 0; i < 10 && engine.portItem(path.outPort) !== RED; i += 1) {
+    engine.ports.setItem(path.inPort, RED);
+    for (let i = 0; i < 10 && engine.ports.item(path.outPort) !== RED; i += 1) {
         engine.tickAll();
     }
     collector.drain();
@@ -134,7 +134,7 @@ test("a tail extension keeps item-row ids ascending output-to-input", async () =
         belts.placeBelt(cell.x, cell.y, Direction.UP);
     }
     const path = belts.pathAt(0, 5);
-    engine.setPortItem(path.inPort, RED);
+    engine.ports.setItem(path.inPort, RED);
     engine.tickAll();
     engine.tickAll();
 
@@ -159,11 +159,11 @@ test("extending a path upstream leaves a resting out-port item static", async ()
     }
     const path = belts.pathAt(0, 5);
     const outPort = path.outPort;
-    engine.setPortItem(path.inPort, RED);
-    for (let i = 0; i < 10 && engine.portItem(outPort) !== RED; i += 1) {
+    engine.ports.setItem(path.inPort, RED);
+    for (let i = 0; i < 10 && engine.ports.item(outPort) !== RED; i += 1) {
         engine.tickAll();
     }
-    assert.equal(engine.portItem(outPort), RED, "the item rests in the out-port");
+    assert.equal(engine.ports.item(outPort), RED, "the item rests in the out-port");
     collector.drain();
 
     belts.placeBelt(0, 6, Direction.UP); // prepend upstream (head extension), out-port unchanged
@@ -171,7 +171,7 @@ test("extending a path upstream leaves a resting out-port item static", async ()
     engine.tickAll();
     const tickEvents = collector.drain();
 
-    assert.equal(engine.portItem(outPort), RED, "the item is still in the out-port after the edit");
+    assert.equal(engine.ports.item(outPort), RED, "the item is still in the out-port after the edit");
     const churned = [...editEvents, ...tickEvents].some(event =>
         (event instanceof PortItemClearEvent || event instanceof PortItemSetEvent)
         && event.portId === outPort);

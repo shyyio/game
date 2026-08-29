@@ -65,11 +65,11 @@ test("a chance=1 byproduct lands in the second output port alongside the main ou
     const outPort = def.store.out[row];
     const byproductPort = def.store.out2[row];
 
-    engine.setPortItem(inPort, ITEM_INPUT);
+    engine.ports.setItem(inPort, ITEM_INPUT);
     let delivered = false;
     for (let i = 0; i < 8 && !delivered; i += 1) {
         engine.tickAll();
-        delivered = engine.portItem(outPort) === ITEM_OUTPUT && engine.portItem(byproductPort) === ITEM_BYPRODUCT;
+        delivered = engine.ports.item(outPort) === ITEM_OUTPUT && engine.ports.item(byproductPort) === ITEM_BYPRODUCT;
     }
     assert.ok(delivered, "both the main output and the byproduct landed");
 });
@@ -85,15 +85,15 @@ test("a chance=0 recipe never produces a byproduct", async () => {
     const byproductPort = def.store.out2[row];
 
     for (let craft = 0; craft < 10; craft += 1) {
-        engine.setPortItem(inPort, ITEM_INPUT);
+        engine.ports.setItem(inPort, ITEM_INPUT);
         let delivered = false;
         for (let i = 0; i < 8 && !delivered; i += 1) {
             engine.tickAll();
-            delivered = engine.portItem(outPort) === ITEM_OUTPUT;
+            delivered = engine.ports.item(outPort) === ITEM_OUTPUT;
         }
         assert.ok(delivered, `craft ${craft}: main output delivered`);
-        assert.equal(engine.portItem(byproductPort), EMPTY, `craft ${craft}: byproduct port stayed empty`);
-        engine.setPortItem(outPort, EMPTY);
+        assert.equal(engine.ports.item(byproductPort), EMPTY, `craft ${craft}: byproduct port stayed empty`);
+        engine.ports.setItem(outPort, EMPTY);
     }
 });
 

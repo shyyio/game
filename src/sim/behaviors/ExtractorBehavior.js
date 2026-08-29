@@ -64,7 +64,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         if (product !== undefined) {
             extractor.lastOutput[row] = product;
             if (engine.isFluid(product)) {
-                engine.setPortFluidSource(output.port, product);
+                engine.ports.setFluidSource(output.port, product);
             }
         }
         if (type.outputPorts[0].render) {
@@ -77,7 +77,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         const out = def.store.out[def.row(eid)];
         engine.render.unregisterPort(out);
         // The port may outlive the extractor (an adjacent pipe pins it); it no longer produces.
-        engine.setPortFluidSource(out, EMPTY);
+        engine.ports.setFluidSource(out, EMPTY);
     }
 
     syncData(engine, placed, eid) {
@@ -157,7 +157,7 @@ export class ExtractorBehavior extends AbstractBehavior {
             extractor.processingTicks[row] = behavior.processingTicks;
             const product = behavior.recipes.get(extractor.resourceType[row]);
             if (product !== undefined && engine.isFluid(product)) {
-                engine.setPortFluidSource(extractor.out[row], product);
+                engine.ports.setFluidSource(extractor.out[row], product);
             }
         }
     }

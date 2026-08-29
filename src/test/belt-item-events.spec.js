@@ -26,7 +26,7 @@ test("a belt item emits an upsert on ingest and a delete on pop", async () => {
     }
     collector.drain(); // discard placement events
 
-    engine.setPortItem(handle.inPort, RED);
+    engine.ports.setItem(handle.inPort, RED);
     const items = [];
     for (let i = 0; i < 8; i += 1) {
         engine.tickAll();
@@ -64,7 +64,7 @@ test("a move pass emits one belt item batch per chunk", async () => {
 
     engine.setEventSink(event => emitted.push(event));
     for (const handle of handles) {
-        engine.setPortItem(handle.inPort, RED);
+        engine.ports.setItem(handle.inPort, RED);
     }
     engine.tickAll();
 

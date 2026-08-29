@@ -32,11 +32,11 @@ async function streamWithRegistration(beltsFirst) {
     const path = belts.pathAt(5, 7);
     const stream = [];
     for (let i = 0; i < 16; i += 1) {
-        engine.setPortItem(path.inPort, RED);
-        engine.setPortItem(s.out_a, EMPTY);
-        engine.setPortItem(s.out_b, EMPTY);
+        engine.ports.setItem(path.inPort, RED);
+        engine.ports.setItem(s.out_a, EMPTY);
+        engine.ports.setItem(s.out_b, EMPTY);
         engine.tickAll();
-        stream.push(`${engine.portItem(s.out_a)},${engine.portItem(s.out_b)}`);
+        stream.push(`${engine.ports.item(s.out_a)},${engine.ports.item(s.out_b)}`);
     }
     return stream;
 }

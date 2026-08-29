@@ -26,12 +26,12 @@ test("an item tunnels through a tunnel-down / underground / tunnel-up run", asyn
     assert.ok(beltsOf(engine).pathAt(0, 5).id === path.id && beltsOf(engine).pathAt(0, 1).id === path.id, "the whole tunnel is one path");
 
     // An item injected at the top flows through the tunnel to the output.
-    engine.setPortItem(path.inPort, RED);
+    engine.ports.setItem(path.inPort, RED);
     let arrived = false;
     for (let i = 0; i < 20 && !arrived; i += 1) {
-        engine.setPortItem(path.outPort, -1);
+        engine.ports.setItem(path.outPort, -1);
         engine.tickAll();
-        arrived = engine.portItem(path.outPort) === RED;
+        arrived = engine.ports.item(path.outPort) === RED;
     }
     assert.ok(arrived, "the item tunneled through to the output");
 });

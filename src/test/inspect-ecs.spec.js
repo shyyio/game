@@ -105,7 +105,7 @@ test("heartbeat tracks the processing countdown, consumed batch, and output", as
         return heartbeats(session)[0];
     };
 
-    game.simEngine.setPortItem(machine.inPort, ITEM_TYPE_SOYBEAN);
+    game.simEngine.ports.setItem(machine.inPort, ITEM_TYPE_SOYBEAN);
     const started = tick();
     assert.equal(started.processingRemaining, 2);
     assert.deepEqual(started.inputMemory, [ITEM_TYPE_SOYBEAN]);

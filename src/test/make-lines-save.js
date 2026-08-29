@@ -54,8 +54,8 @@ async function main() {
     for (let i = 0; i < warmupTicks; i += 1) {
         engine.tickAll();
         for (const port of sinkPorts) {
-            if (engine.portItem(port) !== EMPTY) {
-                engine.setPortItem(port, EMPTY);
+            if (engine.ports.item(port) !== EMPTY) {
+                engine.ports.setItem(port, EMPTY);
             }
         }
     }

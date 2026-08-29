@@ -64,9 +64,9 @@ test("a generator with no input port produces its main output on its own cadence
     let produced = 0;
     for (let tick = 0; tick < 10; tick += 1) {
         engine.tickAll();
-        if (engine.portItem(outPort) === ITEM_MAIN) {
+        if (engine.ports.item(outPort) === ITEM_MAIN) {
             produced += 1;
-            engine.setPortItem(outPort, EMPTY);
+            engine.ports.setItem(outPort, EMPTY);
         }
     }
     assert.ok(produced >= 5, `expected repeated production with no input at all, got ${produced} over 10 ticks`);
@@ -86,13 +86,13 @@ test("main and secondary outputs run independent cadences into their own ports",
     let secondaryDelivered = 0;
     for (let tick = 0; tick < 10; tick += 1) {
         engine.tickAll();
-        if (engine.portItem(outPort) === ITEM_MAIN) {
+        if (engine.ports.item(outPort) === ITEM_MAIN) {
             mainDelivered += 1;
-            engine.setPortItem(outPort, EMPTY);
+            engine.ports.setItem(outPort, EMPTY);
         }
-        if (engine.portItem(secondaryPort) === ITEM_SECONDARY) {
+        if (engine.ports.item(secondaryPort) === ITEM_SECONDARY) {
             secondaryDelivered += 1;
-            engine.setPortItem(secondaryPort, EMPTY);
+            engine.ports.setItem(secondaryPort, EMPTY);
         }
     }
     assert.ok(mainDelivered >= 5, `main should fire nearly every tick, got ${mainDelivered}/10`);

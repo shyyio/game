@@ -23,7 +23,7 @@ test("items on belts orphaned by a junction steal survive the rebuild", async ()
         handle = belts.placeBelt(cell.x, cell.y, Direction.UP);
     }
     for (let i = 0; i < 16; i += 1) {
-        engine.setPortItem(handle.inPort, RED);
+        engine.ports.setItem(handle.inPort, RED);
         engine.tickAll();
     }
 

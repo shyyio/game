@@ -39,7 +39,7 @@ test("a Game on GameEngine routes belt render events only to sessions watching t
 
     // Feed an item; do not drain, so it pops and rests at the out-port (tail tile 0,0).
     const path = beltsOf(engine).pathAt(0, 2);
-    engine.setPortItem(path.inPort, RED);
+    engine.ports.setItem(path.inPort, RED);
     for (let i = 0; i < 8; i += 1) {
         for (const phase of TICK_PHASE_ORDER) {
             game.tick(phase);

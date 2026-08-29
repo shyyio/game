@@ -65,7 +65,7 @@ export function lineOrigin(k) {
 export function lineSinkPort(engine, ox, oy) {
     const ports = [];
     for (let lane = 0; lane < LANES_PER_LINE; lane += 1) {
-        ports.push(engine.portAt(ox + lane, oy - BAKE_DY - 1, Direction.UP));
+        ports.push(engine.ports.at(ox + lane, oy - BAKE_DY - 1, Direction.UP));
     }
     return ports;
 }
