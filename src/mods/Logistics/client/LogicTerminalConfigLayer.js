@@ -1,4 +1,4 @@
-import {ManagedPanel, UIPanel, ConnectedPanelLayer, TextRole, TILE_SIZE, buildPanelButton, buildIconButton, panelText, PanelStack, ScrollView, IconPicker, IconPickerEntry, ROW_HEIGHT, Container, Graphics, Rectangle, TextInput} from "@spup/sdk/client";
+import {ManagedPanel, UIPanel, ConnectedPanelLayer, TextRole, TILE_SIZE, buildPanelButton, buildIconButton, panelText, PanelStack, ScrollView, IconPicker, IconPickerEntry, ROW_HEIGHT, Graphics, TextInput} from "@spup/sdk/client";
 import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT, HudLayer} from "@spup/sdk/client";
 import {
     LOGIC_RULE_CAP,
@@ -28,9 +28,6 @@ const VALUE_INPUT_WIDTH = 80;
 const VALUE_INPUT_MAX_DIGITS = 7;
 // The rules box scrolls past this height instead of growing the panel.
 const RULES_VIEWPORT_HEIGHT = 220;
-// Clearance between a dropdown and its button / the screen edge.
-const DROPDOWN_GAP = 4;
-const DROPDOWN_MARGIN = 8;
 
 /**
  * One entry of a dropdown list: its label and what picking it does.
@@ -128,15 +125,6 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         // carried across so opening a dropdown or adding a rule never scrolls the box away.
         this._rulesScroll = null;
         this._rulesScrollY = 0;
-        /**
-         * The open dropdown: {kind: "list", options} or {kind: "icons", entries, selectedId,
-         * onPick}, or null.
-         * @type {object|null}
-         */
-        this._dropdown = null;
-        // The opening button's screen rect, so the list drops from it.
-        this._dropdownAnchor = null;
-        this._overlay = null;
 
         this._connectors.set("terminal", () => this._managed.panel, () => {
             const objectId = this._targetObjectId();
@@ -152,7 +140,6 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 this._hide();
             } else {
                 this._rules = [];
-                this._dropdown = null;
                 this._rulesScroll = null;
                 this._rulesScrollY = 0;
                 this._show();
@@ -207,9 +194,8 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      */
     _hide() {
         this.visible = false;
-        this._dropdown = null;
         this._rulesScroll = null;
-        this._clearOverlay();
+        this.popovers.close();
         this._managed.hide();
     }
 
@@ -282,7 +268,6 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             onClose: () => this._cache.writer("logistics").closeTerminalConfig(),
         }, UIPanel.centerPosition(this._app, PANEL_WIDTH), (stack) => this._buildBody(stack, snapshot));
         this.addChild(panel);
-        this._buildOverlay();
     }
 
     /**
@@ -361,9 +346,16 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _openDropdown(options, button) {
-        this._anchorTo(button);
-        this._dropdown = {kind: "list", options};
-        this._rebuild();
+        const list = new PanelStack(this.textureRegistry, DROPDOWN_WIDTH);
+        list.scrollSection(this.viewport, options, (option) => ({
+            label: option.label,
+            onRowClick: () => {
+                this.popovers.close();
+                option.pick();
+                this._rebuild();
+            },
+        }), "Nothing available.", {visibleRows: DROPDOWN_ROWS});
+        this.popovers.open({content: list, height: list.contentHeight, anchorTo: button});
     }
 
     /**
@@ -376,19 +368,12 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _openIconPicker(entries, selectedId, onPick, button) {
-        this._anchorTo(button);
-        this._dropdown = {kind: "icons", entries, selectedId, onPick};
-        this._rebuild();
-    }
-
-    /**
-     * @private
-     * @param {Container} button
-     * @returns {void}
-     */
-    _anchorTo(button) {
-        const bounds = button.getBounds();
-        this._dropdownAnchor = {x: bounds.x, top: bounds.y, bottom: bounds.y + bounds.height};
+        const picker = new IconPicker(this.textureRegistry, this.viewport, DROPDOWN_WIDTH, entries, (id) => {
+            this.popovers.close();
+            onPick(id);
+            this._rebuild();
+        }, {selectedId});
+        this.popovers.open({content: picker, height: picker.pickerHeight, anchorTo: button});
     }
 
     /**
@@ -622,76 +607,6 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      */
     _removeButton(onClick) {
         return buildPanelButton(this.textureRegistry, "X", INACTIVE_TINT, onClick);
-    }
-
-    /**
-     * The pop-up option list over the panel, when a dropdown is open.
-     * @private
-     * @returns {void}
-     */
-    _buildOverlay() {
-        this._clearOverlay();
-        if (this._dropdown === null) {
-            return;
-        }
-        // An invisible full-screen catcher: tapping outside the list closes it (no dim).
-        const catcher = new Container();
-        catcher.eventMode = "static";
-        catcher.hitArea = new Rectangle(0, 0, this._app.screen.width, this._app.screen.height);
-        catcher.on("pointerdown", () => {
-            this._dropdown = null;
-            this._rebuild();
-        });
-        this.addChild(catcher);
-
-        let list;
-        let listHeight;
-        if (this._dropdown.kind === "icons") {
-            list = new IconPicker(this.textureRegistry, this.viewport, DROPDOWN_WIDTH,
-                this._dropdown.entries, (id) => {
-                    const onPick = this._dropdown.onPick;
-                    this._dropdown = null;
-                    onPick(id);
-                    this._rebuild();
-                }, {selectedId: this._dropdown.selectedId});
-            listHeight = list.pickerHeight;
-        } else {
-            list = new PanelStack(this.textureRegistry, DROPDOWN_WIDTH);
-            list.scrollSection(this.viewport, this._dropdown.options, (option) => ({
-                label: option.label,
-                onRowClick: () => {
-                    this._dropdown = null;
-                    option.pick();
-                    this._rebuild();
-                },
-            }), "Nothing available.", {visibleRows: DROPDOWN_ROWS});
-            listHeight = list.contentHeight;
-        }
-        const anchor = this._dropdownAnchor;
-        list.x = Math.max(DROPDOWN_MARGIN,
-            Math.min(anchor.x, this._app.screen.width - DROPDOWN_WIDTH - DROPDOWN_MARGIN));
-        // Below the button; flipped above it when the list would leave the screen.
-        list.y = anchor.bottom + DROPDOWN_GAP;
-        if (list.y + listHeight > this._app.screen.height - DROPDOWN_MARGIN) {
-            list.y = Math.max(DROPDOWN_MARGIN, anchor.top - DROPDOWN_GAP - listHeight);
-        }
-        list.eventMode = "static";
-        this.addChild(list);
-        this._overlay = [catcher, list];
-    }
-
-    /**
-     * @private
-     * @returns {void}
-     */
-    _clearOverlay() {
-        if (this._overlay === null) {
-            return;
-        }
-        for (const child of this._overlay) {
-            child.destroy({children: true});
-        }
-        this._overlay = null;
     }
 
     /**

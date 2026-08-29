@@ -14,6 +14,7 @@ const ORDER = [
     "OVERLAY_BUTTON",
     "TOOLTIP",
     "PANEL",
+    "POPOVER",
     "STATUS",
     "NOTICE",
     "DIALOG",
