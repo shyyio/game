@@ -13,6 +13,7 @@ import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {NoticeLayer} from "@/client/hud/NoticeLayer.js";
 import {ConfirmDialogLayer} from "@/client/hud/ConfirmDialogLayer.js";
+import {PopoverHost} from "@/client/hud/PopoverHost.js";
 import {ClaimResultFeedback} from "@/client/hud/ClaimResultFeedback.js";
 import {
     AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage, SetPlayerSettingMessage,
@@ -388,6 +389,8 @@ export class Client {
         this.noticeLayer = new NoticeLayer(this.app);
         // Centered confirm/cancel dialog, currently only the destructive unclaim confirm.
         this.confirmDialogLayer = new ConfirmDialogLayer(this.app);
+        // The single host every panel's dropdowns and pickers open into.
+        this.popoverHost = new PopoverHost(this.app);
         // Center-lock aim point for claim selection (mobile).
         this.centerMarkerLayer = new CenterMarkerLayer(this.app, this.viewport);
         // Contextual map-mode buttons (bottom-right): chunk administration entry and home.
@@ -809,9 +812,11 @@ export class Client {
         for (const layer of this._modHudLayers) {
             layer.textureRegistry = this.textureRegistry;
             layer.viewport = this.viewport;
+            layer.popovers = this.popoverHost;
             this.app.stage.addChild(layer);
         }
-        // Toast and confirm dialog sit above every other HUD layer, including panels.
+        // Popovers clear the panels that open them; toast and confirm dialog clear everything.
+        this.app.stage.addChild(this.popoverHost);
         this.app.stage.addChild(this.noticeLayer);
         this.app.stage.addChild(this.confirmDialogLayer);
 

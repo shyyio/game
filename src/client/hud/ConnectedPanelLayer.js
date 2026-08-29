@@ -13,6 +13,11 @@ export class ConnectedPanelLayer extends Container {
         super();
         this._app = app;
         this._viewport = null;
+        /**
+         * Where this layer's dropdowns and pickers open; set by the host.
+         * @type {PopoverHost|null}
+         */
+        this.popovers = null;
         this._connectors = new PanelConnectorController(app);
         this.addChild(this._connectors.graphics);
     }

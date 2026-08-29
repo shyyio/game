@@ -52,6 +52,11 @@ export const HudLayer = {
     PANEL: 9600,
 
     /**
+     * The dropdowns and pickers a panel opens, which have to clear the panel that opened them.
+     */
+    POPOVER: 9700,
+
+    /**
      * The status message strip, over the panels.
      */
     STATUS: 10000,
