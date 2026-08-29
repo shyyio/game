@@ -67,6 +67,19 @@ test("a release without a press is not a tap", () => {
     assert.equal(recognizer.release(POINTER), false);
 });
 
+test("dragging latches past the threshold and reports the pointer holding the press", () => {
+    const recognizer = new TapRecognizer();
+    assert.equal(recognizer.pointerId, null);
+    recognizer.press(POINTER, PRIMARY, 100, 100);
+    assert.equal(recognizer.pointerId, POINTER);
+    assert.equal(recognizer.dragging, false);
+    recognizer.move(POINTER, 100, 100 + TAP_MOVE_THRESHOLD);
+    assert.equal(recognizer.dragging, true);
+    recognizer.release(POINTER);
+    assert.equal(recognizer.pointerId, null);
+    assert.equal(recognizer.dragging, false);
+});
+
 test("the recognizer rearms after a canceled tap", () => {
     const recognizer = new TapRecognizer();
     recognizer.press(POINTER, PRIMARY, 100, 100);

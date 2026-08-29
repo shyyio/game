@@ -4,7 +4,7 @@ import {trackWindowDrag} from "@/client/layers/pixiUtils.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 // The travel that ends a tap is exactly the travel that starts this drag, so one of the two claims
 // any given press.
-import {TAP_MOVE_THRESHOLD} from "@/client/input/TapRecognizer.js";
+import {TapRecognizer} from "@/client/input/TapRecognizer.js";
 
 const SCROLLBAR_WIDTH = 14;
 const SCROLLBAR_GAP = 4;
@@ -54,9 +54,9 @@ export class ScrollView extends Container {
         this._scrollY = 0;
         // Touch/mouse drag directly on the content (not the scrollbar thumb) — the primary way
         // to scroll on mobile, where there's no wheel and the thumb is too thin to grab reliably.
-        this._contentDragStartY = null;
-        this._contentDragStartScroll = null;
-        this._contentDragging = false;
+        this._contentDrag = new TapRecognizer();
+        this._contentDragStartY = 0;
+        this._contentDragStartScroll = 0;
 
         this.content = new Container();
         this.addChild(this.content);
@@ -91,30 +91,34 @@ export class ScrollView extends Container {
             this._setScroll(this._scrollY + this._wheelDeltaPixels(event) * WHEEL_STEP_SCALE);
         });
 
+        const onContentMove = (event) => {
+            if (this._contentDrag.pointerId !== event.pointerId) {
+                return;
+            }
+            this._contentDrag.move(event.pointerId, event.global.x, event.global.y);
+            // Past the threshold: a real drag, not a tap on a row's button underneath.
+            if (!this._contentDrag.dragging) {
+                return;
+            }
+            this._setScroll(this._contentDragStartScroll - (event.global.y - this._contentDragStartY));
+        };
+        const endContentDrag = (event) => {
+            this._contentDrag.cancel(event.pointerId);
+            if (!this._contentDrag.pressed) {
+                this.off("globalpointermove", onContentMove);
+            }
+        };
         this.on("pointerdown", (event) => {
             if (this._contentHeight <= this._height) {
                 return;
             }
-            this._contentDragStartY = event.global.y;
-            this._contentDragStartScroll = this._scrollY;
-            this._contentDragging = false;
-        });
-        this.on("globalpointermove", (event) => {
-            if (this._contentDragStartY === null) {
-                return;
+            // Travel is watched only while pressed, so an idle view costs nothing per move.
+            if (this._contentDrag.press(event.pointerId, event.button, event.global.x, event.global.y)) {
+                this._contentDragStartY = event.global.y;
+                this._contentDragStartScroll = this._scrollY;
+                this.on("globalpointermove", onContentMove);
             }
-            const deltaY = event.global.y - this._contentDragStartY;
-            if (!this._contentDragging && Math.abs(deltaY) < TAP_MOVE_THRESHOLD) {
-                return;
-            }
-            // Past the threshold: a real drag, not a tap on a row's button underneath.
-            this._contentDragging = true;
-            this._setScroll(this._contentDragStartScroll - deltaY);
         });
-        const endContentDrag = () => {
-            this._contentDragStartY = null;
-            this._contentDragging = false;
-        };
         this.on("pointerup", endContentDrag);
         this.on("pointerupoutside", endContentDrag);
         this.on("pointercancel", endContentDrag);
