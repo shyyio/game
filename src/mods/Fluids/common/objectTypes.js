@@ -56,4 +56,5 @@ export const TankDefinition = new ObjectType({
     textureName: "tank/0",
     label: "Tank",
     behavior: new TankBehavior({capacity: TANK_CAPACITY}),
+    wireAnchor: {x: 0.5, y: 0.2},
 });

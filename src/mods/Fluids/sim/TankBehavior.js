@@ -1,5 +1,6 @@
 import {AbstractBehavior, TickPhase, EMPTY, NO_EID} from "@spup/sdk";
 import {TankFluidSetEvent} from "../common/events.js";
+import {LOGIC_KEY_AMOUNT} from "../common/constants.js";
 
 /**
  * A fluid buffer: drains type-matching in-port payloads into an amount counter and creates one
@@ -51,6 +52,27 @@ export class TankBehavior extends AbstractBehavior {
         engine.unmarkFluidPort(tank.out[row]);
         // The port may outlive the tank (an adjacent pipe pins it); it no longer produces.
         engine.setPortFluidSource(tank.out[row], EMPTY);
+    }
+
+    logicRead(engine, placed, eid, key) {
+        if (key !== LOGIC_KEY_AMOUNT) {
+            return null;
+        }
+        const def = engine.component("Tank");
+        return def.store.amount[def.row(eid)];
+    }
+
+    logicReadKeys() {
+        return [LOGIC_KEY_AMOUNT];
+    }
+
+    logicStored(engine, placed, eid) {
+        const def = engine.component("Tank");
+        const row = def.row(eid);
+        if (def.store.fluidType[row] === EMPTY) {
+            return null;
+        }
+        return {itemType: def.store.fluidType[row], amount: def.store.amount[row]};
     }
 
     /**

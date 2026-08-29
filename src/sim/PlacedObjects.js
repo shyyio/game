@@ -249,6 +249,7 @@ export class PlacedObjects {
         const position = engine.Position;
         const type = this._types.get(this.typeIdOf(eid));
         type.behavior.onDespawn(engine, this, eid);
+        engine.notifyDespawn(eid, objectId);
         const x = position.x[eid];
         const y = position.y[eid];
         engine.emitEvent(new ObjectDeleteEvent(type.typeId, objectId, x, y));

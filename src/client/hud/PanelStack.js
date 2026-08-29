@@ -85,6 +85,18 @@ export class PanelStack extends Container {
     }
 
     /**
+     * Appends a pre-built container of the given height at the current y.
+     * @param {Container} container
+     * @param {number} height
+     * @returns {void}
+     */
+    block(container, height) {
+        container.y = this._y;
+        this.addChild(container);
+        this._y += height;
+    }
+
+    /**
      * A row-height Container at the current y; `build` fills it, returned as a handle for later mutation.
      * @param {function(Container): void} build
      * @returns {Container}

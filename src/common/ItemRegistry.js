@@ -52,6 +52,14 @@ export class ItemRegistry {
     }
 
     /**
+     * Every registered (itemType, definition) pair.
+     * @returns {IterableIterator<[number, ItemDefinition]>}
+     */
+    entries() {
+        return this._byType.entries();
+    }
+
+    /**
      * The definition for an item type, or {@link DEFAULT_ITEM_DEFINITION} for an unmapped one.
      * @param {number} itemType
      * @returns {ItemDefinition}

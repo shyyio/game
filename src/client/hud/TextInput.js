@@ -24,8 +24,9 @@ export class TextInput extends Container {
      * @param {number} height
      * @param {number} maxLength
      * @param {string} [placeholder]
+     * @param {boolean} [numeric] - raises the numeric keyboard on touch devices
      */
-    constructor(app, width, height, maxLength, placeholder = "") {
+    constructor(app, width, height, maxLength, placeholder = "", numeric = false) {
         super();
         this._app = app;
         this._width = width;
@@ -33,6 +34,10 @@ export class TextInput extends Container {
         this._focused = false;
         this._onSubmit = null;
         this._onInput = null;
+        this._onBlur = null;
+        // Screen rect the DOM input is clipped to (a host ScrollView's viewport); null = unclipped.
+        this._clipProvider = null;
+        this._domShown = true;
         // Last screen rect actually written to the DOM input; skips the style writes on the
         // (overwhelming majority of) ticks where nothing moved.
         this._lastLeft = null;
@@ -45,6 +50,9 @@ export class TextInput extends Container {
         this._domInput.maxLength = maxLength;
         this._domInput.placeholder = placeholder;
         this._domInput.autocomplete = "off";
+        if (numeric) {
+            this._domInput.inputMode = "numeric";
+        }
         this._domInput.autocapitalize = "off";
         this._domInput.spellcheck = false;
         Object.assign(this._domInput.style, {
@@ -88,6 +96,9 @@ export class TextInput extends Container {
         this._domInput.addEventListener("blur", () => {
             this._focused = false;
             this._render();
+            if (this._onBlur !== null) {
+                this._onBlur(this._domInput.value);
+            }
         });
 
         this._box = new Graphics();
@@ -129,6 +140,23 @@ export class TextInput extends Container {
     }
 
     /**
+     * @param {function(value: string): void} callback fired when the input loses focus
+     */
+    onBlur(callback) {
+        this._onBlur = callback;
+    }
+
+    /**
+     * Clips the DOM input to the screen rect `provider` returns each tick, mirroring a pixi mask
+     * (which cannot clip DOM) - e.g. a host ScrollView's bounds.
+     * @param {function(): {x: number, y: number, width: number, height: number}} provider
+     * @returns {void}
+     */
+    setClip(provider) {
+        this._clipProvider = provider;
+    }
+
+    /**
      * @returns {void}
      */
     focus() {
@@ -166,6 +194,24 @@ export class TextInput extends Container {
      * @returns {void}
      */
     _positionDomInput() {
+        // The DOM input floats over every pixi layer, so a hidden widget (a dropdown covering the
+        // panel, a collapsed section) must take its input with it. Walked by hand: pixi v8 has no
+        // worldVisible.
+        let shown = this.visible;
+        for (let node = this.parent; shown && node !== null; node = node.parent) {
+            shown = node.visible;
+        }
+        if (shown !== this._domShown) {
+            this._domShown = shown;
+            if (shown) {
+                this._domInput.style.display = "block";
+            } else {
+                this._domInput.style.display = "none";
+            }
+        }
+        if (!shown) {
+            return;
+        }
         const bounds = this.getBounds();
         const canvasRect = this._app.canvas.getBoundingClientRect();
         const left = canvasRect.left + bounds.x;
@@ -183,6 +229,36 @@ export class TextInput extends Container {
         this._domInput.style.top = `${top}px`;
         this._domInput.style.width = `${width}px`;
         this._domInput.style.height = `${height}px`;
+        this._applyClip(bounds, canvasRect);
+    }
+
+    /**
+     * Mirrors the host's pixi mask onto the DOM input: fully outside hides it, partially outside
+     * clips it with a CSS inset.
+     * @private
+     * @param {Bounds} bounds - this widget's canvas-space bounds
+     * @param {DOMRect} canvasRect
+     * @returns {void}
+     */
+    _applyClip(bounds, canvasRect) {
+        if (this._clipProvider === null) {
+            return;
+        }
+        const clip = this._clipProvider();
+        const top = Math.max(0, clip.y - bounds.y);
+        const bottom = Math.max(0, (bounds.y + bounds.height) - (clip.y + clip.height));
+        const left = Math.max(0, clip.x - bounds.x);
+        const right = Math.max(0, (bounds.x + bounds.width) - (clip.x + clip.width));
+        if (top >= bounds.height || bottom >= bounds.height || left >= bounds.width || right >= bounds.width) {
+            this._domInput.style.visibility = "hidden";
+            return;
+        }
+        this._domInput.style.visibility = "visible";
+        if (top === 0 && bottom === 0 && left === 0 && right === 0) {
+            this._domInput.style.clipPath = "none";
+            return;
+        }
+        this._domInput.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px)`;
     }
 
     /**

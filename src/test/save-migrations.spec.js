@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {migrateSnapshot, SAVE_FORMAT} from "@/common/saveMigrations.js";
-import {GAME_VERSION} from "@/common/constants.js";
+import {GAME_VERSION, Direction} from "@/common/constants.js";
+import {CreateObjectMessage} from "@/common/CoreMessages.js";
+import {BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
 
 test("a fresh snapshot carries the current format and the writing version", async () => {
     const engine = await makeGameEngine();
@@ -86,6 +88,29 @@ test("deserialize refuses a snapshot that has not been migrated", async () => {
         () => restored.deserialize(snapshot),
         /unstamped \(pre-dates save formats\)/,
     );
+});
+
+test("a format-2 save gains Machine.enabled, and every machine loads switched on", async () => {
+    const engine = await makeGameEngine();
+    assert.equal(engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 4, 4, Direction.UP)), true);
+    const snapshot = engine.serialize();
+    snapshot.saveFormat = 2;
+    const machine = snapshot.components.find(component => component.name === "Machine");
+    assert.equal(machine.rows.length, 1);
+    machine.fields = machine.fields.filter(field => field.name !== "enabled");
+    for (const row of machine.rows) {
+        delete row.enabled;
+    }
+
+    const migrated = migrateSnapshot(snapshot);
+    const upgraded = migrated.components.find(component => component.name === "Machine");
+    assert.ok(upgraded.fields.some(field => field.name === "enabled"));
+    for (const row of upgraded.rows) {
+        assert.equal(row.enabled, 1);
+    }
+
+    const restored = await makeGameEngine();
+    assert.doesNotThrow(() => restored.deserialize(migrated));
 });
 
 test("NodeSaveStore round-trips the format stamp", async () => {

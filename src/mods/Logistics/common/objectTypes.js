@@ -24,7 +24,7 @@ import {SplitterBehavior} from "../sim/SplitterBehavior.js";
 import {BeltBehavior} from "../sim/BeltBehavior.js";
 import {GateBehavior} from "../sim/GateBehavior.js";
 import {PoleBehavior} from "../sim/PoleBehavior.js";
-import {ControlTerminalBehavior} from "../sim/ControlTerminalBehavior.js";
+import {LogicTerminalBehavior} from "../sim/LogicTerminalBehavior.js";
 
 // One ObjectType per belt kind (the typeId carries the kind on the wire); `bespokeClient` opts
 // out of the derived bundles since BeltDrawLayer/BeltTool stay bespoke.
@@ -215,16 +215,7 @@ export const GateDefinition = new GateObjectType({
     wireAnchor: {x: 0.5, y: 0.2},
 });
 
-/**
- * Whether an ObjectType is the pole.
- * @param {ObjectType} type
- * @returns {boolean}
- */
-export function isPoleType(type) {
-    return type.behavior instanceof PoleBehavior;
-}
-
-// A control-network pole; wires draw as catenaries above objects.
+// A logic-network pole; wires draw as catenaries above objects.
 export const PoleDefinition = new ObjectType({
     name: "Pole",
     toolId: 30,
@@ -237,25 +228,25 @@ export const PoleDefinition = new ObjectType({
 });
 
 /**
- * Whether an ObjectType is the control terminal.
+ * Whether an ObjectType is the logic terminal.
  * @param {ObjectType} type
  * @returns {boolean}
  */
 export function isTerminalType(type) {
-    return type.behavior instanceof ControlTerminalBehavior;
+    return type.behavior instanceof LogicTerminalBehavior;
 }
 
 const openTerminalConfig = (record, session, client) => client.cache.writer("logistics").openTerminalConfig(record.id);
 
-// The config surface of a control network; portless, wired to a pole like any device.
-export const ControlTerminalDefinition = new ObjectType({
-    name: "ControlTerminal",
+// The config surface of a logic network; portless, wired to a pole like any device.
+export const LogicTerminalDefinition = new ObjectType({
+    name: "LogicTerminal",
     toolId: 29,
     geometry: "1x1",
     textureName: "terminal/0",
     directional: false,
-    label: "Control Terminal",
-    behavior: new ControlTerminalBehavior(),
+    label: "Logic Terminal",
+    behavior: new LogicTerminalBehavior(),
     tapAction: openTerminalConfig,
     wireAnchor: {x: 0.5, y: 0.2},
 });

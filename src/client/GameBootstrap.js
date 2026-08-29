@@ -180,6 +180,10 @@ export async function createClient(app, viewport, props) {
     }
     await client.init();
 
+    // Console handles for dev tooling and headless UI checks.
+    window.spupClient = client;
+    window.spupGame = game;
+
     // Console helper for bug reports: copy(dumpGameState()) puts a paste-able world snapshot
     // (the save format plus a debug block) on the clipboard.
     window.dumpGameState = () => {

@@ -147,6 +147,21 @@ export class ScrollView extends Container {
     }
 
     /**
+     * @returns {number}
+     */
+    get scrollY() {
+        return this._scrollY;
+    }
+
+    /**
+     * Clamped to the content; a host carries the offset across a rebuild with it.
+     * @param {number} value
+     */
+    set scrollY(value) {
+        this._setScroll(value);
+    }
+
+    /**
      * Unfreezes wheel-zoom if this is torn down while the pointer is still over it (a rebuild
      * mid-hover, say), so the viewport is never left stuck ignoring the wheel.
      * @param {object} [options]

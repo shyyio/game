@@ -285,6 +285,7 @@ export class GameEngine {
         this._chunkSyncers = [];
         this._inspectors = [];
         this._placementGuards = [];
+        this._despawnListeners = [];
 
         // Decides whether a player may modify a chunk; without one every change is allowed.
         this._placementGate = null;
@@ -2216,6 +2217,27 @@ export class GameEngine {
      */
     placementGuardsAllow(type, x, y, direction) {
         return this._placementGuards.every(guard => guard(type, x, y, direction));
+    }
+
+    /**
+     * A mod registers a despawn listener, called for every placed-object delete before the entity
+     * is destroyed.
+     * @param {function(number, number): void} listener - (eid, objectId)
+     * @returns {void}
+     */
+    registerDespawnListener(listener) {
+        this._despawnListeners.push(listener);
+    }
+
+    /**
+     * @param {number} eid
+     * @param {number} objectId
+     * @returns {void}
+     */
+    notifyDespawn(eid, objectId) {
+        for (const listener of this._despawnListeners) {
+            listener(eid, objectId);
+        }
     }
 
     /**

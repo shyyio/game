@@ -8,16 +8,16 @@ import {UndergroundBeltTool} from "./client/UndergroundBeltTool.js";
 import {LOGISTICS_SCHEMA, LogisticsWriter} from "./client/LogisticsState.js";
 import {WireDrawLayer} from "./client/WireDrawLayer.js";
 import {WireTool} from "./client/WireTool.js";
-import {ControlTerminalConfigLayer} from "./client/ControlTerminalConfigLayer.js";
-import {isBeltType, isGateType, isPoleType, isTerminalType} from "./common/objectTypes.js";
+import {LogicTerminalConfigLayer} from "./client/LogicTerminalConfigLayer.js";
+import {isBeltType, isGateType, isTerminalType} from "./common/objectTypes.js";
 import {
     BeltPathRecalculateEvent,
     BeltItemUpsertEvent,
     BeltItemSyncEvent,
     BeltItemDeleteEvent,
     BeltItemResetEvent,
-    ControlWireSetEvent,
-    ControlWireClearEvent,
+    LogicWireSetEvent,
+    LogicWireClearEvent,
 } from "./common/events.js";
 import {tunnelStep, BELT_TUNNEL_DOWN, BELT_TUNNEL_UP, BELT_UNDERGROUND} from "./common/constants.js";
 import {walkTunnel, isTunnelMouth, inferBeltParent} from "./common/geometry.js";
@@ -77,7 +77,7 @@ export class LogisticsClientMod extends AbstractClientMod {
         this._pendingPops = new Map();
         // Debug overlay of belt paths.
         this._pathDebugLayer = new PathDebugDrawLayer(this._pathParts);
-        // Catenary overlay for the control network, fed in setup.
+        // Catenary overlay for the logic network, fed in setup.
         this._wireLayer = new WireDrawLayer();
         // Screen-space terminal panel, built in setup.
         this._terminalConfigLayer = null;
@@ -109,9 +109,8 @@ export class LogisticsClientMod extends AbstractClientMod {
      */
     setup(client) {
         client.cache.register("logistics", LOGISTICS_SCHEMA, new LogisticsWriter(client.cache, client.session));
-        this._terminalConfigLayer = new ControlTerminalConfigLayer(client.app, client.cache, client.modRegistry);
+        this._terminalConfigLayer = new LogicTerminalConfigLayer(client.app, client.cache, client.modRegistry);
         this._wireLayer.bindObjects(client.objects);
-        client.cache.subscribe("logistics.linkPoleById", (id, poleId) => this._wireLayer.setLink(id, poleId));
         // Patching the entry swaps the sprite through the derived layer's onCacheUpdate.
         client.cache.subscribe("logistics.openById", (id, open) => {
             client.objects.update(id, {gateOpen: open !== 0});
@@ -135,8 +134,8 @@ export class LogisticsClientMod extends AbstractClientMod {
             if (entry.data.type.conveys !== null) {
                 this._predictNeighborGateModes(client, entry);
             }
-            if (isPoleType(entry.data.type)) {
-                this._wireLayer.addPole(entry);
+            if (entry.data.type.wireAnchor !== null) {
+                this._wireLayer.touchEndpoint(entry.id);
             }
         });
         client.objects.onRemove(entry => {
@@ -146,11 +145,8 @@ export class LogisticsClientMod extends AbstractClientMod {
             if (isGateType(entry.data.type)) {
                 client.cache.writer("logistics").forget(entry.id);
             }
-            if (isPoleType(entry.data.type)) {
-                this._wireLayer.removePole(entry.id);
-            }
-            if (entry.data.type.wireAnchor !== null && !isPoleType(entry.data.type)) {
-                client.cache.writer("logistics").forgetLink(entry.id);
+            if (entry.data.type.wireAnchor !== null) {
+                this._wireLayer.removeEndpoint(entry.id);
             }
             if (isTerminalType(entry.data.type) && client.cache.get("logistics.configTarget") === entry.id) {
                 client.cache.writer("logistics").closeTerminalConfig();
@@ -259,11 +255,11 @@ export class LogisticsClientMod extends AbstractClientMod {
             this._pathDebugLayer.markStale();
             return;
         }
-        if (event instanceof ControlWireSetEvent) {
+        if (event instanceof LogicWireSetEvent) {
             this._wireLayer.setEdge(event.aObjectId, event.bObjectId);
             return;
         }
-        if (event instanceof ControlWireClearEvent) {
+        if (event instanceof LogicWireClearEvent) {
             this._wireLayer.removeEdge(event.aObjectId, event.bObjectId);
             return;
         }

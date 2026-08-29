@@ -350,52 +350,9 @@ export class GateSetBatchEvent extends AbstractBatchEvent {
 }
 
 /**
- * A device was wired to a pole; also the chunk-sync payload for wired devices.
- */
-export class ControlLinkSetEvent extends AbstractChunkRoutedEvent {
-
-    static wireFields = {
-        deviceObjectId: "int64",
-        poleObjectId: "int64",
-    };
-
-    /**
-     * @param {number} x - the device's tile
-     * @param {number} y
-     * @param {number} deviceObjectId
-     * @param {number} poleObjectId
-     */
-    constructor(x, y, deviceObjectId, poleObjectId) {
-        super(x, y);
-        this.deviceObjectId = deviceObjectId;
-        this.poleObjectId = poleObjectId;
-    }
-}
-
-/**
- * A device's wire was removed.
- */
-export class ControlLinkClearEvent extends AbstractChunkRoutedEvent {
-
-    static wireFields = {
-        deviceObjectId: "int64",
-    };
-
-    /**
-     * @param {number} x - the device's tile
-     * @param {number} y
-     * @param {number} deviceObjectId
-     */
-    constructor(x, y, deviceObjectId) {
-        super(x, y);
-        this.deviceObjectId = deviceObjectId;
-    }
-}
-
-/**
  * A pole-pole wire was added; also the chunk-sync payload, emitted at both endpoints' chunks.
  */
-export class ControlWireSetEvent extends AbstractChunkRoutedEvent {
+export class LogicWireSetEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         aObjectId: "int64",
@@ -418,7 +375,7 @@ export class ControlWireSetEvent extends AbstractChunkRoutedEvent {
 /**
  * A pole-pole wire was removed.
  */
-export class ControlWireClearEvent extends AbstractChunkRoutedEvent {
+export class LogicWireClearEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         aObjectId: "int64",
@@ -440,9 +397,10 @@ export class ControlWireClearEvent extends AbstractChunkRoutedEvent {
 
 /**
  * A terminal's network snapshot, answered directly to the requesting session: the devices wired
- * to the terminal's network (the terminal itself excluded), parallel-array style.
+ * to the terminal's network (the terminal itself excluded) and the terminal's rules, both
+ * parallel-array style.
  */
-export class ControlSnapshotEvent extends AbstractEvent {
+export class LogicSnapshotEvent extends AbstractEvent {
 
     static wireFields = {
         objectId: "int64",
@@ -452,6 +410,17 @@ export class ControlSnapshotEvent extends AbstractEvent {
         deviceTypeIds: "int32[]",
         deviceTileXs: "sint32[]",
         deviceTileYs: "sint32[]",
+        ruleActionDeviceIds: "int64[]",
+        ruleActionKeys: "int32[]",
+        ruleActionValues: "sint32[]",
+        ruleSuspended: "int32[]",
+        ruleConditionCounts: "int32[]",
+        condKinds: "int32[]",
+        condDeviceIds: "int64[]",
+        condItemTypes: "int32[]",
+        condKeys: "int32[]",
+        condComparators: "int32[]",
+        condValues: "sint32[]",
     };
 
     /**
@@ -462,8 +431,19 @@ export class ControlSnapshotEvent extends AbstractEvent {
      * @param {number[]} deviceTypeIds
      * @param {number[]} deviceTileXs
      * @param {number[]} deviceTileYs
+     * @param {number[]} ruleActionDeviceIds
+     * @param {number[]} ruleActionKeys
+     * @param {number[]} ruleActionValues
+     * @param {number[]} ruleSuspended - 1 where the rule is currently suspended
+     * @param {number[]} ruleConditionCounts - rule i owns the next ruleConditionCounts[i] cond* entries
+     * @param {number[]} condKinds
+     * @param {number[]} condDeviceIds
+     * @param {number[]} condItemTypes
+     * @param {number[]} condKeys
+     * @param {number[]} condComparators
+     * @param {number[]} condValues
      */
-    constructor(objectId, linked, tier, deviceObjectIds, deviceTypeIds, deviceTileXs, deviceTileYs) {
+    constructor(objectId, linked, tier, deviceObjectIds, deviceTypeIds, deviceTileXs, deviceTileYs, ruleActionDeviceIds, ruleActionKeys, ruleActionValues, ruleSuspended, ruleConditionCounts, condKinds, condDeviceIds, condItemTypes, condKeys, condComparators, condValues) {
         super();
         this.objectId = objectId;
         this.linked = linked;
@@ -472,5 +452,16 @@ export class ControlSnapshotEvent extends AbstractEvent {
         this.deviceTypeIds = deviceTypeIds;
         this.deviceTileXs = deviceTileXs;
         this.deviceTileYs = deviceTileYs;
+        this.ruleActionDeviceIds = ruleActionDeviceIds;
+        this.ruleActionKeys = ruleActionKeys;
+        this.ruleActionValues = ruleActionValues;
+        this.ruleSuspended = ruleSuspended;
+        this.ruleConditionCounts = ruleConditionCounts;
+        this.condKinds = condKinds;
+        this.condDeviceIds = condDeviceIds;
+        this.condItemTypes = condItemTypes;
+        this.condKeys = condKeys;
+        this.condComparators = condComparators;
+        this.condValues = condValues;
     }
 }
