@@ -17,9 +17,6 @@ const LIST_GAP = 12;
 const formatRate = format(",.1f");
 // Keep the panel this far clear of both screen edges on narrow (mobile) viewports.
 const SCREEN_MARGIN = 16;
-// Default open position: right edge under the button row, clear of it by this much.
-const ANCHOR_MARGIN_RIGHT = 16;
-const ANCHOR_GAP = 12;
 
 /**
  * Production-rate panel: a draggable {@link UIPanel} with a sunken inset placeholder that a real
@@ -155,10 +152,7 @@ export class ProductionPanelLayer extends Container {
             return {x: this._savedX, y: this._savedY};
         }
         if (this.anchorButton !== null) {
-            return {
-                x: this._app.screen.width - ANCHOR_MARGIN_RIGHT - width,
-                y: this.anchorButton.bottomY + ANCHOR_GAP,
-            };
+            return UIPanel.anchoredPosition(this._app, this.anchorButton, width);
         }
         return UIPanel.centerPosition(this._app, width)(height);
     }

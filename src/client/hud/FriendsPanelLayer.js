@@ -11,9 +11,6 @@ import {isValidFriendCode} from "@/common/FriendCode.js";
 import {AddFriendByCodeResultEvent, WelcomeEvent} from "@/common/PlayerEvents.js";
 
 const PANEL_WIDTH = 360;
-// Default open position: right edge under the button row, clear of it by this much.
-const ANCHOR_MARGIN_RIGHT = 16;
-const ANCHOR_GAP = 12;
 const INPUT_HEIGHT = ROW_HEIGHT;
 const INPUT_GAP = 8;
 const MAX_CODE_LENGTH = 9; // "XXXX-XXXX"
@@ -170,10 +167,7 @@ export class FriendsPanelLayer extends Container {
      */
     _defaultPosition(height) {
         if (this.anchorButton !== null) {
-            return {
-                x: this._app.screen.width - ANCHOR_MARGIN_RIGHT - PANEL_WIDTH,
-                y: this.anchorButton.bottomY + ANCHOR_GAP,
-            };
+            return UIPanel.anchoredPosition(this._app, this.anchorButton, PANEL_WIDTH);
         }
         return UIPanel.centerPosition(this._app, PANEL_WIDTH)(height);
     }
