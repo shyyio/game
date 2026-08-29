@@ -41,9 +41,9 @@ test("belt state survives a serialize -> deserialize round-trip mid-flight", asy
     }
 
     // Snapshot through JSON (proves it is serializable), restore into a fresh engine.
-    const serialized = JSON.parse(JSON.stringify(a.engine.serialize()));
+    const serialized = JSON.parse(JSON.stringify(a.engine.snapshots.serialize()));
     const b = await newModule();
-    b.engine.deserialize(serialized);
+    b.engine.snapshots.deserialize(serialized);
 
     // Structural check: same path count, item still in the system.
     assert.equal(b.belts.paths.length, a.belts.paths.length);
@@ -75,11 +75,11 @@ test("belt state persists through a structured SQLite save store and reloads", a
     a.engine.tickAll();
 
     const store = new NodeSaveStore(":memory:");
-    await store.save(a.engine.serialize());
+    await store.save(a.engine.snapshots.serialize());
     const loaded = await store.load();
 
     const b = await newModule();
-    b.engine.deserialize(loaded);
+    b.engine.snapshots.deserialize(loaded);
 
     assert.equal(b.belts.paths.length, a.belts.paths.length);
     const bPorts = networkPorts(b.belts);

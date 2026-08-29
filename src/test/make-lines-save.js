@@ -63,7 +63,7 @@ async function main() {
     printHeapUsage("After warmup");
 
     const store = new NodeSaveStore(path);
-    await store.save(engine.serialize());
+    await store.save(engine.snapshots.serialize());
     console.log(`wrote lines save: ${path}`);
 }
 

@@ -116,8 +116,8 @@ export class Belts {
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._move());
-        engine.registerSerializeHook(() => this._materialize());
-        engine.registerRebuildHook(() => this._reconstruct());
+        engine.snapshots.registerSerializeHook(() => this._materialize());
+        engine.snapshots.registerRebuildHook(() => this._reconstruct());
         engine.ports.registerPin(() => this._pinnedPorts());
         engine.registerChunkSync(chunk => this.chunkSync(chunk));
     }

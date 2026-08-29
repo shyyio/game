@@ -61,7 +61,7 @@ test("the seed survives save and load, replacing the fresh-world seed", async ()
 
 test("a format-1 save migrates to seed 0", async () => {
     const engine = await makeGameEngine();
-    const snapshot = engine.serialize();
+    const snapshot = engine.snapshots.serialize();
     snapshot.saveFormat = 1;
     delete snapshot.globals.seed;
 
@@ -70,7 +70,7 @@ test("a format-1 save migrates to seed 0", async () => {
 
     const restored = await makeGameEngine();
     restored.seed = 5;
-    restored.deserialize(migrated);
+    restored.snapshots.deserialize(migrated);
     assert.equal(restored.seed, 0);
 });
 

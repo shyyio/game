@@ -33,7 +33,7 @@ export class OverworldBake {
         this._chunks = new Map();
         placed.registerChunkObserver(chunk => this._repaintChunk(chunk));
         // After PlacedObjects' own hook (construction order), so _eidsByChunk is rebuilt.
-        engine.registerRebuildHook(() => this._rebuildAll());
+        engine.snapshots.registerRebuildHook(() => this._rebuildAll());
     }
 
     /**

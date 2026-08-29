@@ -93,7 +93,7 @@ test("the bake survives a serialize/deserialize round-trip", async () => {
     const before = engine.overworldBake.snapshot(-2, -2, 4, 4);
 
     const restored = await makeGameEngine();
-    restored.deserialize(engine.serialize());
+    restored.snapshots.deserialize(engine.snapshots.serialize());
     const after = restored.overworldBake.snapshot(-2, -2, 4, 4);
 
     assert.deepEqual(after.chunks, before.chunks);

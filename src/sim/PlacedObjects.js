@@ -46,7 +46,7 @@ export class PlacedObjects {
         engine.registerMessageHandler((message, playerId) => this._message(message, playerId));
         engine.registerChunkSync(chunk => this._chunkSync(chunk));
         engine.registerInspector(objectId => this._inspect(objectId));
-        engine.registerRebuildHook(() => this._rebuild());
+        engine.snapshots.registerRebuildHook(() => this._rebuild());
 
         const installed = new Set();
         for (const type of registry.objectTypes) {
