@@ -131,7 +131,7 @@ class SinkBehavior extends AbstractBehavior {
             }
             sink.lastConsumed[row] = item[inPort];
             sink.consumed[row] += 1;
-            engine.submitDrain(inPort, true);
+            engine.transfers.submitDrain(inPort, true);
         }
     }
 }

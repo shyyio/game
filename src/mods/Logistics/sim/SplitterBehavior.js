@@ -129,20 +129,20 @@ export class SplitterBehavior extends AbstractBehavior {
         const splitter = def.store;
         for (let row = 0; row < def.count; row += 1) {
             if (item[splitter.in_a[row]] !== EMPTY) {
-                engine.submitTransfer(splitter.in_a[row], splitter.int_a[row], item[splitter.int_a[row]] === EMPTY, false);
+                engine.transfers.submitTransfer(splitter.in_a[row], splitter.int_a[row], item[splitter.int_a[row]] === EMPTY, false);
             }
             if (item[splitter.in_b[row]] !== EMPTY) {
-                engine.submitTransfer(splitter.in_b[row], splitter.int_b[row], item[splitter.int_b[row]] === EMPTY, false);
+                engine.transfers.submitTransfer(splitter.in_b[row], splitter.int_b[row], item[splitter.int_b[row]] === EMPTY, false);
             }
             const preferA = splitter.state[row] === 0 ? 1 : 2;
             const preferB = splitter.state[row] === 0 ? 2 : 1;
             if (item[splitter.int_a[row]] !== EMPTY) {
-                engine.submitTransfer(splitter.int_a[row], splitter.out_a[row], item[splitter.out_a[row]] === EMPTY, false, preferA);
-                engine.submitTransfer(splitter.int_a[row], splitter.out_b[row], item[splitter.out_b[row]] === EMPTY, false, preferB);
+                engine.transfers.submitTransfer(splitter.int_a[row], splitter.out_a[row], item[splitter.out_a[row]] === EMPTY, false, preferA);
+                engine.transfers.submitTransfer(splitter.int_a[row], splitter.out_b[row], item[splitter.out_b[row]] === EMPTY, false, preferB);
             }
             if (item[splitter.int_b[row]] !== EMPTY) {
-                engine.submitTransfer(splitter.int_b[row], splitter.out_b[row], item[splitter.out_b[row]] === EMPTY, false, preferA);
-                engine.submitTransfer(splitter.int_b[row], splitter.out_a[row], item[splitter.out_a[row]] === EMPTY, false, preferB);
+                engine.transfers.submitTransfer(splitter.int_b[row], splitter.out_b[row], item[splitter.out_b[row]] === EMPTY, false, preferA);
+                engine.transfers.submitTransfer(splitter.int_b[row], splitter.out_a[row], item[splitter.out_a[row]] === EMPTY, false, preferB);
             }
         }
     }
@@ -167,7 +167,7 @@ export class SplitterBehavior extends AbstractBehavior {
                 if (item[intPort] === EMPTY) {
                     continue;
                 }
-                const dest = engine.resolvedDestFor(intPort);
+                const dest = engine.transfers.destFor(intPort);
                 if (dest !== EMPTY) {
                     stage2.push({outPort: dest, item: item[intPort], intPort: intPort});
                 }
@@ -176,7 +176,7 @@ export class SplitterBehavior extends AbstractBehavior {
                 if (item[inPort] === EMPTY) {
                     continue;
                 }
-                const dest = engine.resolvedDestFor(inPort);
+                const dest = engine.transfers.destFor(inPort);
                 if (dest !== EMPTY) {
                     stage1.push({intPort: dest, item: item[inPort], inPort: inPort});
                 }
@@ -197,7 +197,7 @@ export class SplitterBehavior extends AbstractBehavior {
         }
 
         for (let row = 0; row < def.count; row += 1) {
-            if (engine.resolvedDestFor(splitter.int_a[row]) !== EMPTY || engine.resolvedDestFor(splitter.int_b[row]) !== EMPTY) {
+            if (engine.transfers.destFor(splitter.int_a[row]) !== EMPTY || engine.transfers.destFor(splitter.int_b[row]) !== EMPTY) {
                 splitter.state[row] = 1 - splitter.state[row];
             }
         }

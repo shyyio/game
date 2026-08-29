@@ -1389,7 +1389,7 @@ export class Belts {
                 const downstream = slotByInPort[outPort];
                 const downstreamCanIngest = downstream !== NO_SLOT
                     && (headGapCol[downstream] > 0 || firstGapCol[downstream] !== -1);
-                engine.submitTransfer(
+                engine.transfers.submitTransfer(
                     inPort,
                     outPort,
                     P[outPort] === EMPTY || downstreamCanIngest,
@@ -1398,7 +1398,7 @@ export class Belts {
             }
             // A resting fluid payload is refused, so its producer backs up.
             if (P[inPort] !== EMPTY && !engine.isFluid(P[inPort]) && (headGapCol[slot] > 0 || firstGap !== -1)) {
-                engine.submitDrain(inPort, false);
+                engine.transfers.submitDrain(inPort, false);
             }
         }
     }
@@ -1433,7 +1433,7 @@ export class Belts {
 
         for (let slot = 0; slot < count; slot += 1) {
             const firstGap = firstGapCol[slot];
-            const canPop = leadGapCol[slot] === 0 && engine.resolvedUnmanagedDest(outPortCol[slot]);
+            const canPop = leadGapCol[slot] === 0 && engine.transfers.wasUnmanagedDest(outPortCol[slot]);
             if (!canPop && firstGap === -1) {
                 continue;
             }

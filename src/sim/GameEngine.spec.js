@@ -22,36 +22,36 @@ async function setup(count, filledIds) {
 
 // Runs the resolve + commit phases so a move (or sink) lands in Port.
 function settle(engine) {
-    engine.resolvePortTransfer();
-    engine.flushSinks();
-    engine.commitTransfers();
+    engine.transfers.resolve();
+    engine.transfers.flushSinks();
+    engine.transfers.commit();
 }
 
 test("Resolves a packed transfer chain as a single shift when the end drains", async () => {
     const {engine, ports} = await setup(4, [1, 2, 3]);
-    engine.submitTransfer(ports[0], ports[1], false, true);
-    engine.submitTransfer(ports[1], ports[2], false, true);
-    engine.submitTransfer(ports[2], ports[3], true, true);
+    engine.transfers.submitTransfer(ports[0], ports[1], false, true);
+    engine.transfers.submitTransfer(ports[1], ports[2], false, true);
+    engine.transfers.submitTransfer(ports[2], ports[3], true, true);
 
-    engine.resolvePortTransfer();
+    engine.transfers.resolve();
 
-    assert.equal(engine.resolvedEdges(), `${ports[0]}->${ports[1]}, ${ports[1]}->${ports[2]}, ${ports[2]}->${ports[3]}`);
+    assert.equal(engine.transfers.resolvedEdges(), `${ports[0]}->${ports[1]}, ${ports[1]}->${ports[2]}, ${ports[2]}->${ports[3]}`);
 });
 
 test("Resolves no transfer when the chain's end is blocked", async () => {
     const {engine, ports} = await setup(4, [1, 2, 3, 4]);
-    engine.submitTransfer(ports[0], ports[1], false, true);
-    engine.submitTransfer(ports[1], ports[2], false, true);
-    engine.submitTransfer(ports[2], ports[3], false, true);
+    engine.transfers.submitTransfer(ports[0], ports[1], false, true);
+    engine.transfers.submitTransfer(ports[1], ports[2], false, true);
+    engine.transfers.submitTransfer(ports[2], ports[3], false, true);
 
-    engine.resolvePortTransfer();
+    engine.transfers.resolve();
 
-    assert.equal(engine.resolvedEdges(), "");
+    assert.equal(engine.transfers.resolvedEdges(), "");
 });
 
 test("Translates the item type on a managed transfer via output_item", async () => {
     const {engine, ports} = await setup(2, [1]);
-    engine.submitTransfer(ports[0], ports[1], true, true, EMPTY, 99);
+    engine.transfers.submitTransfer(ports[0], ports[1], true, true, EMPTY, 99);
 
     settle(engine);
 
@@ -61,7 +61,7 @@ test("Translates the item type on a managed transfer via output_item", async () 
 
 test("Creates a brand-new item with a source-less managed intent", async () => {
     const {engine, ports} = await setup(1, []);
-    engine.submitCreate(ports[0], 55, true);
+    engine.transfers.submitCreate(ports[0], 55, true);
 
     settle(engine);
 
@@ -70,7 +70,7 @@ test("Creates a brand-new item with a source-less managed intent", async () => {
 
 test("Sinks (consumes) the source item on a managed destination-less intent", async () => {
     const {engine, ports} = await setup(1, [1]);
-    engine.submitDrain(ports[0], true);
+    engine.transfers.submitDrain(ports[0], true);
 
     settle(engine);
 
@@ -79,7 +79,7 @@ test("Sinks (consumes) the source item on a managed destination-less intent", as
 
 test("Leaves an unmanaged destination-less intent (self-drain) untouched", async () => {
     const {engine, ports} = await setup(1, [1]);
-    engine.submitDrain(ports[0], false);
+    engine.transfers.submitDrain(ports[0], false);
 
     settle(engine);
 

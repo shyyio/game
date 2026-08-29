@@ -205,7 +205,7 @@ export class ExtractorBehavior extends AbstractBehavior {
                 }
             }
             if (extractor.remaining[row] === 0) {
-                engine.submitCreate(extractor.out[row], extractor.output[row], item[extractor.out[row]] === EMPTY);
+                engine.transfers.submitCreate(extractor.out[row], extractor.output[row], item[extractor.out[row]] === EMPTY);
             }
         }
     }
@@ -223,7 +223,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         const eids = def.eids;
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
-            if (engine.wasResolvedDest(extractor.out[row])) {
+            if (engine.transfers.wasDest(extractor.out[row])) {
                 const eid = eids[row];
                 engine.emitMetrics(
                     METRICS_FACT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), extractor.output[row], 1,

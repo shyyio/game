@@ -129,13 +129,13 @@ export class TankBehavior extends AbstractBehavior {
             if (resting !== EMPTY
                 && tank.amount[row] < tank.capacity[row]
                 && (tank.amount[row] === 0 || resting === tank.fluidType[row])) {
-                engine.submitDrain(tank.in[row], true);
+                engine.transfers.submitDrain(tank.in[row], true);
                 tank.fluidType[row] = resting;
                 tank.amount[row] += 1;
                 engine.setPortFluidSource(tank.out[row], resting);
             }
             if (tank.amount[row] > 0) {
-                engine.submitCreate(tank.out[row], tank.fluidType[row], item[tank.out[row]] === EMPTY);
+                engine.transfers.submitCreate(tank.out[row], tank.fluidType[row], item[tank.out[row]] === EMPTY);
             }
         }
     }
@@ -154,7 +154,7 @@ export class TankBehavior extends AbstractBehavior {
         const position = engine.Position;
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
-            if (engine.wasResolvedDest(tank.out[row])) {
+            if (engine.transfers.wasDest(tank.out[row])) {
                 tank.amount[row] -= 1;
                 if (tank.amount[row] === 0) {
                     tank.fluidType[row] = EMPTY;
