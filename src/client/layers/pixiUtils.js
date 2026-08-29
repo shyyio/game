@@ -1,5 +1,6 @@
 import {CanvasTextMetrics, Container, Graphics, NineSliceSprite} from "pixi.js";
 import {DEBUG_OUTLINE_COLOR, PANEL_FILL, PANEL_FILL_ALPHA, PANEL_BORDER, PANEL_HOVER_FILL} from "@/client/Theme.js";
+import {TapRecognizer} from "@/client/input/TapRecognizer.js";
 
 /**
  * A NineSliceSprite of `name` at the given on-screen size, with equal edge insets per axis.
@@ -82,43 +83,57 @@ export function swallowClicks(target, {pixi = true, native = false} = {}) {
 }
 
 /**
- * Wires a tap gesture on `target`: only a release matching the primary-button press that began here counts.
+ * Wires a tap gesture on `target`: only a release matching the primary-button press that began
+ * here, and that did not travel far enough to be a drag, counts.
  * @param {Container} target
  * @param {function(): void} onTap
- * @param {{suppressTouchGhostClick: boolean, stopNativePropagation: boolean}} [options] - blocks touch ghost click / window-level listeners
+ * @param {{suppressTouchGhostClick: boolean, stopNativePropagation: boolean, stopPropagation: boolean}} [options] -
+ *     blocks touch ghost click / window-level listeners; stopPropagation false leaves a press
+ *     reaching an ancestor, so a scrolling container above still gets its drag
  * @returns {void}
  */
-export function trackTap(target, onTap, {suppressTouchGhostClick = false, stopNativePropagation = false} = {}) {
-    let pressPointerId = null;
+export function trackTap(target, onTap, {
+    suppressTouchGhostClick = false,
+    stopNativePropagation = false,
+    stopPropagation = true,
+} = {}) {
+    const recognizer = new TapRecognizer();
     target.eventMode = "static";
+    const onMove = (e) => recognizer.move(e.pointerId, e.global.x, e.global.y);
+    const detachIfIdle = () => {
+        if (!recognizer.pressed) {
+            target.off("globalpointermove", onMove);
+        }
+    };
     target.on("pointerdown", (e) => {
-        e.stopPropagation();
+        if (stopPropagation) {
+            e.stopPropagation();
+        }
         if (stopNativePropagation) {
             e.nativeEvent.stopPropagation();
         }
         if (suppressTouchGhostClick && e.pointerType !== "mouse") {
             e.nativeEvent.preventDefault();
         }
-        if (e.button !== 0) {
-            return;
-        }
-        // A second concurrent pointer (e.g. a fat-finger touch) must not steal the tap from
-        // whichever pointer pressed first.
-        if (pressPointerId === null) {
-            pressPointerId = e.pointerId;
+        // Travel is watched only while pressed, so an idle target costs nothing per move.
+        if (recognizer.press(e.pointerId, e.button, e.global.x, e.global.y)) {
+            target.on("globalpointermove", onMove);
         }
     });
     target.on("pointerup", (e) => {
-        const pressed = pressPointerId === e.pointerId;
-        if (pressed) {
-            pressPointerId = null;
+        const tapped = recognizer.release(e.pointerId);
+        detachIfIdle();
+        if (tapped) {
             onTap();
         }
     });
     target.on("pointerupoutside", (e) => {
-        if (pressPointerId === e.pointerId) {
-            pressPointerId = null;
-        }
+        recognizer.cancel(e.pointerId);
+        detachIfIdle();
+    });
+    target.on("pointercancel", (e) => {
+        recognizer.cancel(e.pointerId);
+        detachIfIdle();
     });
 }
 

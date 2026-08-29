@@ -2,6 +2,9 @@ import {Container, Graphics, Rectangle} from "pixi.js";
 import {SCROLLBAR_TRACK_TINT, ACTIVE_ACCENT} from "@/client/Theme.js";
 import {trackWindowDrag} from "@/client/layers/pixiUtils.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
+// The travel that ends a tap is exactly the travel that starts this drag, so one of the two claims
+// any given press.
+import {TAP_MOVE_THRESHOLD} from "@/client/input/TapRecognizer.js";
 
 const SCROLLBAR_WIDTH = 14;
 const SCROLLBAR_GAP = 4;
@@ -9,9 +12,6 @@ const SCROLLBAR_GAP = 4;
 const THUMB_INSET = 2;
 const THUMB_RADIUS = 3;
 const MIN_THUMB_HEIGHT = 24;
-// Pointer movement past this before a press-and-move counts as a scroll drag, not a tap on
-// whatever's underneath (a row's button, say).
-const CONTENT_DRAG_THRESHOLD = 6;
 // Pixels per line for line-mode (Firefox) wheel deltas.
 const WHEEL_LINE_PIXELS = 16;
 // Scales down the large per-notch wheel delta (~120px) for finer steps.
@@ -104,7 +104,7 @@ export class ScrollView extends Container {
                 return;
             }
             const deltaY = event.global.y - this._contentDragStartY;
-            if (!this._contentDragging && Math.abs(deltaY) < CONTENT_DRAG_THRESHOLD) {
+            if (!this._contentDragging && Math.abs(deltaY) < TAP_MOVE_THRESHOLD) {
                 return;
             }
             // Past the threshold: a real drag, not a tap on a row's button underneath.
