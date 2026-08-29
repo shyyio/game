@@ -2,6 +2,7 @@ import {
     ACTIVE_ACCENT,
     ConnectedPanelLayer,
     ManagedPanel,
+    PANEL_SCREEN_MARGIN,
     PANEL_TINT,
     PANEL_TITLE_TEXT,
     ROW_HEIGHT,
@@ -19,9 +20,8 @@ import {clamp, noteAnchor} from "./layout.js";
 const PANEL_WIDTH = 280;
 // The connector aims at the marker itself, not at the whole tile under it.
 const MARKER_SIZE_TILES = 0.4;
-// Clearance the panel keeps from the marker it belongs to, and from the screen edges.
+// Clearance the panel keeps from the marker it belongs to.
 const MARKER_GAP = 40;
-const SCREEN_MARGIN = 12;
 
 /**
  * The note editor: writes a new note, rewrites the player's own, or removes another player's from
@@ -162,13 +162,13 @@ export class NotePanelLayer extends ConnectedPanelLayer {
         const marker = this.viewport.toScreen(world.x, world.y);
         return (height) => {
             let x = marker.x + MARKER_GAP;
-            if (x + PANEL_WIDTH > this._app.screen.width - SCREEN_MARGIN) {
+            if (x + PANEL_WIDTH > this._app.screen.width - PANEL_SCREEN_MARGIN) {
                 x = marker.x - MARKER_GAP - PANEL_WIDTH;
             }
             const y = marker.y - height / 2;
             return {
-                x: clamp(x, SCREEN_MARGIN, this._app.screen.width - PANEL_WIDTH - SCREEN_MARGIN),
-                y: clamp(y, SCREEN_MARGIN, UIPanel.maxTop(this._app, height)),
+                x: clamp(x, PANEL_SCREEN_MARGIN, this._app.screen.width - PANEL_WIDTH - PANEL_SCREEN_MARGIN),
+                y: clamp(y, PANEL_SCREEN_MARGIN, UIPanel.maxTop(this._app, height)),
             };
         };
     }

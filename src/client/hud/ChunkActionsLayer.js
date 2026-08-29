@@ -6,11 +6,10 @@ import {ClaimResult, ChunkPermission} from "@/common/ClaimEvents.js";
 import {ACTIVE_ACCENT, PANEL_BORDER} from "@/client/Theme.js";
 import {buildPanelButton, buildToggleRow, hotkeyLabel} from "@/client/hud/panelButton.js";
 import {swallowClicks} from "@/client/layers/pixiUtils.js";
+import {PANEL_SCREEN_MARGIN} from "@/client/hud/UIPanel.js";
 
 // Key hint on the Claim button, matching the shift-click shortcut.
 const CLAIM_SHORTCUT_HINT = "Shift+🖰";
-// Clearance kept from every screen edge.
-const SCREEN_MARGIN = 8;
 // Vertical gap between stacked rows.
 const ROW_GAP = 8;
 // Gap between the permission row's segments.
@@ -273,9 +272,9 @@ export class ChunkActionsLayer extends Container {
         const height = this._stackHeight;
         const screen = this._app.screen;
         let x = center.x - width / 2;
-        x = Math.min(Math.max(x, SCREEN_MARGIN), screen.width - width - SCREEN_MARGIN);
+        x = Math.min(Math.max(x, PANEL_SCREEN_MARGIN), screen.width - width - PANEL_SCREEN_MARGIN);
         let y = center.y - height / 2;
-        y = Math.min(Math.max(y, SCREEN_MARGIN), screen.height - height - SCREEN_MARGIN);
+        y = Math.min(Math.max(y, PANEL_SCREEN_MARGIN), screen.height - height - PANEL_SCREEN_MARGIN);
         this._stack.x = Math.round(x);
         this._stack.y = Math.round(y);
     }

@@ -7,7 +7,8 @@ import Mobile from "@/client/Mobile.js";
 
 const TITLE_ROW_HEIGHT = 40;
 const PADDING = 8;
-const SCREEN_MARGIN = 12;
+// Clearance every HUD panel keeps from the screen edges.
+export const PANEL_SCREEN_MARGIN = 12;
 // On touch the on-screen keyboard covers the lower screen, so panels sit in the top third.
 const KEYBOARD_CLEAR_FRACTION = 1 / 3;
 // Gap between the outer frame and the inset body, so the outer border shows around it.
@@ -252,7 +253,7 @@ export class UIPanel extends Container {
     static centerPosition(app, width) {
         return (height) => ({
             x: (app.screen.width - width) / 2,
-            y: clamp((app.screen.height - height) / 2, SCREEN_MARGIN, UIPanel.maxTop(app, height)),
+            y: clamp((app.screen.height - height) / 2, PANEL_SCREEN_MARGIN, UIPanel.maxTop(app, height)),
         });
     }
 
@@ -281,7 +282,7 @@ export class UIPanel extends Container {
         if (Mobile.enabled) {
             return app.screen.height * KEYBOARD_CLEAR_FRACTION - height;
         }
-        return app.screen.height - height - SCREEN_MARGIN;
+        return app.screen.height - height - PANEL_SCREEN_MARGIN;
     }
 
     /**

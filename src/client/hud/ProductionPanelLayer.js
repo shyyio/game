@@ -1,6 +1,6 @@
 import {Container} from "pixi.js";
 import {format} from "d3-format";
-import {UIPanel} from "@/client/hud/UIPanel.js";
+import {PANEL_SCREEN_MARGIN, UIPanel} from "@/client/hud/UIPanel.js";
 import {PanelStack, PanelRowDescriptor} from "@/client/hud/PanelStack.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT} from "@/client/Theme.js";
 import {MetricsLineChart} from "@/client/hud/MetricsLineChart.js";
@@ -15,8 +15,6 @@ const CHART_HEIGHT = 280;
 const LIST_GAP = 12;
 
 const formatRate = format(",.1f");
-// Keep the panel this far clear of both screen edges on narrow (mobile) viewports.
-const SCREEN_MARGIN = 16;
 
 /**
  * Production-rate panel: a draggable {@link UIPanel} with a sunken inset placeholder that a real
@@ -137,7 +135,7 @@ export class ProductionPanelLayer extends Container {
      * @returns {number}
      */
     _panelWidth() {
-        return Math.min(PANEL_WIDTH, this._app.screen.width - SCREEN_MARGIN * 2);
+        return Math.min(PANEL_WIDTH, this._app.screen.width - PANEL_SCREEN_MARGIN * 2);
     }
 
     /**
