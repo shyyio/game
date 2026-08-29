@@ -1,5 +1,5 @@
 import {CanvasTextMetrics, Container, Graphics, NineSliceSprite} from "pixi.js";
-import {DEBUG_OUTLINE_COLOR, PANEL_FILL, PANEL_FILL_ALPHA, PANEL_BORDER, PANEL_HOVER_FILL} from "@/client/Theme.js";
+import {PANEL_FILL, PANEL_FILL_ALPHA, PANEL_BORDER, PANEL_HOVER_FILL} from "@/client/Theme.js";
 import {TapRecognizer} from "@/client/input/TapRecognizer.js";
 
 /**
@@ -185,35 +185,6 @@ export function trackWindowDrag(startEvent, onMove, onEnd = () => {}) {
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     return detach;
-}
-
-/**
- * A Container of 1px outlines around each leaf under `roots`, mapped into `localTarget`'s space.
- * @param {Container[]} roots
- * @param {Container} localTarget
- * @returns {Container}
- */
-export function debugOutlines(roots, localTarget) {
-    const outlines = new Container();
-    const visit = (node) => {
-        if (node.children !== undefined && node.children.length > 0) {
-            for (const child of node.children.slice()) {
-                visit(child);
-            }
-            return;
-        }
-        const bounds = node.getBounds();
-        const topLeft = localTarget.toLocal({x: bounds.minX, y: bounds.minY});
-        const bottomRight = localTarget.toLocal({x: bounds.maxX, y: bounds.maxY});
-        const outline = new Graphics();
-        outline.rect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y)
-            .stroke({width: 1, color: DEBUG_OUTLINE_COLOR, alignment: 0});
-        outlines.addChild(outline);
-    };
-    for (const root of roots.slice()) {
-        visit(root);
-    }
-    return outlines;
 }
 
 export function drawLine(g, x1, y1, x2, y2, color = 0xFF00FF) {

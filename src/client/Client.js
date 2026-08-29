@@ -740,9 +740,6 @@ export class Client {
     toggleDebugMode() {
         this._debugMode = !this._debugMode;
         this.drawLayerRegistry.setDebugMode(this._debugMode);
-        this.inspectPanelLayer.setDebug(this._debugMode);
-        this.toolbarLayer.setDebug(this._debugMode);
-        this.counterListLayer.setDebug(this._debugMode);
     }
 
     /**

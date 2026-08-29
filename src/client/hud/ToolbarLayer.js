@@ -8,7 +8,7 @@ import Mobile from "@/client/Mobile.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/hud/slotFrame.js";
 import {addSlotHighlight} from "@/client/hud/slotHighlight.js";
-import {debugOutlines, nineSlice, swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
+import {nineSlice, swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
 import {TOOLBAR_SLOT_SIZE as SLOT_SIZE} from "@/client/hud/UiScale.js";
 
 // Inset of the icon sprite from the slot's edges.
@@ -112,8 +112,6 @@ export class ToolbarLayer extends Container {
         // Panel background (UIPanel frame), rebuilt in _drawPanel once the size is known.
         this._panelBg = null;
         this._inset = null;
-        // Magenta layout-debug outlines (setDebug), a child of _panel so it slides with it.
-        this._debugOutlines = null;
 
         this._panel.eventMode = "static";
 
@@ -218,24 +216,6 @@ export class ToolbarLayer extends Container {
      */
     toggleDrawer() {
         this._toggleDrawer();
-    }
-
-    /**
-     * Toggles a 1px outline around each leaf element, for layout debugging (matches UIPanel).
-     * @param {boolean} on
-     * @returns {void}
-     */
-    setDebug(on) {
-        if (this._debugOutlines !== null) {
-            this._debugOutlines.destroy({children: true});
-            this._debugOutlines = null;
-        }
-        if (!on) {
-            return;
-        }
-        const outlines = debugOutlines(this._panel.children, this._panel);
-        this._debugOutlines = outlines;
-        this._panel.addChild(outlines);
     }
 
     /**

@@ -54,19 +54,6 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
         // The hovered slot's item name, above every panel.
         this._tooltip = new SlotTooltip(app);
         this.addChild(this._tooltip);
-        this.debug = false;
-    }
-
-    /**
-     * Toggles the debug element outlines on every open panel.
-     * @param {boolean} on
-     * @returns {void}
-     */
-    setDebug(on) {
-        this.debug = on;
-        for (const record of this._panels.values()) {
-            record.panel.setDebug(on);
-        }
     }
 
     /**
@@ -92,8 +79,6 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
             const panel = this._createPanel(event.objectId, UIPanel.heightForContent(inspectContentHeight(event)), title);
             const content = new InspectContent(event, panel.contentWidth, this.textureRegistry, this.items, this._tooltip);
             panel.addContent(content);
-            // Outlines snapshot the children, so they are drawn once the body is in.
-            panel.setDebug(this.debug);
             record = new InspectPanelRecord(panel, content);
             this._panels.set(key, record);
             this._connectors.set(key, () => record.panel, () => {
@@ -157,7 +142,6 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
                 }
             },
         });
-        panel.setDebug(this.debug);
         // First panel centered; rest cascade down-right, zig-zagging back before off-screen (per axis).
         const screen = this._app.screen;
         const maxX = screen.width - PANEL_WIDTH - SPAWN_MARGIN;
