@@ -1,10 +1,9 @@
 import {CONFIRM_HOTKEY} from "@/client/constants.js";
 import {PANEL_TINT, ACTIVE_ACCENT} from "@/client/Theme.js";
-import {UIPanel} from "@/client/hud/UIPanel.js";
+import {FRAME_MARGIN, UIPanel} from "@/client/hud/UIPanel.js";
 import {buildPanelButton, hotkeyLabel} from "@/client/hud/panelButton.js";
 import {
     AbstractEdgeBarLayer,
-    FRAME_MARGIN,
     MIN_TEXT_WIDTH,
     PATTERN_GAP,
     TEXT_PADDING,

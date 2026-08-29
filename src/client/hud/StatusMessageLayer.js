@@ -3,15 +3,13 @@ import {ChunkSubscribeEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js
 import {GAME_FONT} from "@/client/constants.js";
 import {HudLayer} from "@/client/hud/HudLayer.js";
 import {PANEL_TINT, PANEL_TINT_TEXT} from "@/client/Theme.js";
-import {UIPanel} from "@/client/hud/UIPanel.js";
+import {FRAME_MARGIN, UIPanel} from "@/client/hud/UIPanel.js";
 import SafeArea from "@/client/SafeArea.js";
 
 // Screen-pixel inset of the panel from the left edge.
 const MARGIN = 12;
 const PADDING_X = 12;
 const PADDING_Y = 8;
-// Gap between the outer frame and the sunken inset body.
-const FRAME_MARGIN = 6;
 
 // Loading counts can change several times a frame while syncs drain, and every Text write
 // re-rasterizes its canvas; message writes coalesce to one per interval.
@@ -280,7 +278,7 @@ export class StatusMessageLayer extends Container {
         }
         const width = this._text.width + (PADDING_X + FRAME_MARGIN) * 2;
         const height = this._text.height + (PADDING_Y + FRAME_MARGIN) * 2;
-        this._box = UIPanel.rebuildFramedBox(this._panel, this._box, this.textureRegistry, width, height, PANEL_TINT, FRAME_MARGIN);
+        this._box = UIPanel.rebuildFramedBox(this._panel, this._box, this.textureRegistry, width, height, PANEL_TINT);
     }
 
     /**
