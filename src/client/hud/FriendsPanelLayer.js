@@ -3,7 +3,7 @@ import {ManagedPanel, UIPanel} from "@/client/hud/UIPanel.js";
 import {TextInput} from "@/client/hud/TextInput.js";
 import {SelectableText} from "@/client/hud/SelectableText.js";
 import {buildPanelButton} from "@/client/hud/panelButton.js";
-import {ROW_HEIGHT} from "@/client/hud/PanelStack.js";
+import {ROW_HEIGHT} from "@/client/hud/PanelRow.js";
 import {panelText, TextRole} from "@/client/hud/PanelText.js";
 import {ViewMode, viewportChunks} from "@/client/constants.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT} from "@/client/Theme.js";
@@ -233,7 +233,7 @@ export class FriendsPanelLayer extends Container {
             ownCode = "(connecting...)";
         }
         stack.row((row) => this._fillOwnCodeRow(row, ownCode));
-        stack.row((row) => this._fillCodeRow(row, stack.contentWidth));
+        stack.row((row) => this._fillCodeRow(row));
     }
 
     /**
@@ -264,32 +264,22 @@ export class FriendsPanelLayer extends Container {
      * rebuilds (re-parented into the fresh row) rather than recreated, so its real DOM element
      * doesn't get torn down and flicker on every viewport-triggered refresh.
      * @private
-     * @param {Container} row
-     * @param {number} contentWidth
+     * @param {PanelRow} row
      * @returns {void}
      */
-    _fillCodeRow(row, contentWidth) {
-        const addButtonWidth = 70;
-        let input = this._codeInput;
-        if (input === null) {
-            input = new TextInput(
-                this._app,
-                contentWidth - addButtonWidth - INPUT_GAP,
-                INPUT_HEIGHT,
-                MAX_CODE_LENGTH,
-                "Code",
-            );
-            input.value = this._pendingCode;
-            this._codeInput = input;
-        }
-        const submit = () => this._submitCode(input);
-        input.onInput(value => this._pendingCode = value);
-        input.onSubmit(submit);
-        row.addChild(input);
-
-        const button = buildPanelButton(this.textureRegistry, "Add", ACTIVE_ACCENT, submit);
-        button.x = input.x + input.width + INPUT_GAP;
-        row.addChild(button);
+    _fillCodeRow(row) {
+        const submit = () => this._submitCode(this._codeInput);
+        row.trailing(buildPanelButton(this.textureRegistry, "Add", ACTIVE_ACCENT, submit), INPUT_GAP);
+        // Sized against the button actually built, so a relabeled button can never crowd the input.
+        row.fill((width) => {
+            if (this._codeInput === null) {
+                this._codeInput = new TextInput(this._app, width, INPUT_HEIGHT, MAX_CODE_LENGTH, "Code");
+                this._codeInput.value = this._pendingCode;
+            }
+            this._codeInput.onInput(value => this._pendingCode = value);
+            this._codeInput.onSubmit(submit);
+            return this._codeInput;
+        });
     }
 
     /**
@@ -302,14 +292,9 @@ export class FriendsPanelLayer extends Container {
      * @returns {void}
      */
     _fillOwnCodeRow(row, ownCode) {
-        const label = panelText("Your code: ", TextRole.BODY);
-        label.y = (ROW_HEIGHT - label.height) / 2;
-        row.addChild(label);
-
-        const code = panelText(ownCode, TextRole.BODY);
-        code.x = label.width;
-        code.y = (ROW_HEIGHT - code.height) / 2;
-        row.addChild(code);
+        // The label carries its own trailing space, so the two sit flush.
+        row.leading(panelText("Your code: ", TextRole.BODY), 0);
+        const code = row.leading(panelText(ownCode, TextRole.BODY));
 
         if (this._ownCodeSelection === null) {
             this._ownCodeSelection = new SelectableText(this._app, code);

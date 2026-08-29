@@ -1,4 +1,4 @@
-import {ManagedPanel, UIPanel, buildPanelButton, buildToggleRow, ConnectedPanelLayer, ROW_HEIGHT, ROW_GAP, panelText, TextRole} from "@spup/sdk/client";
+import {ManagedPanel, UIPanel, buildPanelButton, buildToggleRow, ConnectedPanelLayer, ROW_GAP, panelText, TextRole} from "@spup/sdk/client";
 import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT} from "@spup/sdk/client";
 import {ConfigureTradingTerminalMessage} from "../common/messages.js";
 import {MARKET_SNAPSHOT_NONE} from "../common/events.js";
@@ -219,7 +219,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
         stack.gap();
 
         stack.header("Price");
-        stack.row((row) => this._fillPriceRow(row, stack.contentWidth, snapshot));
+        stack.row((row) => this._fillPriceRow(row, snapshot));
         stack.gap();
 
         stack.row((row) => this._fillConfirmRow(row, objectId, snapshot));
@@ -254,7 +254,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
                 this._mode = mode;
             });
         }, {activeTint: ACTIVE_ACCENT, inactiveTint: INACTIVE_TINT, gap: ROW_GAP});
-        row.addChild(toggle);
+        row.leading(toggle);
     }
 
     /**
@@ -287,23 +287,17 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
 
     /**
      * @private
-     * @param {Container} row
-     * @param {number} contentWidth
+     * @param {PanelRow} row
      * @param {MarketSnapshotEvent} snapshot
      * @returns {void}
      */
-    _fillPriceRow(row, contentWidth, snapshot) {
+    _fillPriceRow(row, snapshot) {
         const npcSelected = snapshot.itemTypes.length > 0 && snapshot.npcPrices[this._itemIndex] !== MARKET_SNAPSHOT_NONE;
         this._priceText = panelText(this._priceLabel(npcSelected), TextRole.BODY);
-        this._priceText.y = (ROW_HEIGHT - this._priceText.height) / 2;
-        row.addChild(this._priceText);
+        row.leading(this._priceText);
         if (!npcSelected) {
-            const plus = buildPanelButton(this.textureRegistry, "+", ACTIVE_ACCENT, () => this._stepPrice(1));
-            plus.x = contentWidth - plus.width;
-            row.addChild(plus);
-            const minus = buildPanelButton(this.textureRegistry, "-", ACTIVE_ACCENT, () => this._stepPrice(-1));
-            minus.x = plus.x - minus.width - ROW_GAP;
-            row.addChild(minus);
+            row.trailing(buildPanelButton(this.textureRegistry, "+", ACTIVE_ACCENT, () => this._stepPrice(1)));
+            row.trailing(buildPanelButton(this.textureRegistry, "-", ACTIVE_ACCENT, () => this._stepPrice(-1)));
         }
     }
 
@@ -345,6 +339,6 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
             this._session.sendMessage(new ConfigureTradingTerminalMessage(objectId, this._mode, itemType, this._price));
             this._cache.writer("market").closeConfig();
         }, !canConfirm);
-        row.addChild(confirm);
+        row.leading(confirm);
     }
 }

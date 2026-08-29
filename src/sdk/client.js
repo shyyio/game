@@ -46,7 +46,8 @@ export {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT, PANEL_TINT_TEXT, PANEL_BORD
 // A curved line from a HUD panel to the tile it targets (used by the core Inspect panel).
 export {rectEdgePoint, drawPanelConnector, CONNECTOR_PANEL_INSET} from "@/client/hud/PanelConnector.js";
 // Declarative panel-body builder (header/text/row/scrollSection) for use with UIPanel.managed.
-export {PanelStack, PanelRowDescriptor, ROW_HEIGHT, ROW_GAP} from "@/client/hud/PanelStack.js";
+export {PanelStack, PanelRowDescriptor} from "@/client/hud/PanelStack.js";
+export {PanelRow, ROW_HEIGHT, ROW_GAP, ROW_INDENT} from "@/client/hud/PanelRow.js";
 // A scrollable grid of tappable icons (items, marker glyphs); scales to hundreds of entries.
 export {IconPicker, IconPickerEntry} from "@/client/hud/IconPicker.js";
 export {panelText, TextRole} from "@/client/hud/PanelText.js";
