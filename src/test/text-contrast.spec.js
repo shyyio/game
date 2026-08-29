@@ -4,6 +4,7 @@ import {readdirSync, readFileSync, statSync} from "node:fs";
 import {contrastRatio, requiredRatio, tinted, composited, LEVEL_AA, LEVEL_AAA} from "@/client/contrast.js";
 import {centerPixel} from "@/test/png.js";
 import * as Theme from "@/client/Theme.js";
+import * as TextInput from "@/client/hud/TextInput.js";
 
 const UI_SPRITES = "src/mods/BaseTextures/sprites/main/ui/";
 
@@ -39,6 +40,8 @@ function themedTexts() {
     // Circular buttons are a translucent dark fill over the world; a white backdrop is the worst
     // case, lightening the fill most under light text.
     const circleButton = composited(Theme.PANEL_FILL, Theme.PANEL_FILL_ALPHA, 0xffffff);
+    // A text input's box is its own near-opaque fill over the inset it sits in.
+    const inputBox = composited(TextInput.BOX_FILL, TextInput.BOX_FILL_ALPHA, inset);
     return [
         {where: "UIPanel title", fill: Theme.PANEL_TITLE_TEXT, background: frame, fontSize: 18, bold: true},
         {where: "ConfirmDialogLayer title", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 18, bold: true},
@@ -61,6 +64,9 @@ function themedTexts() {
         {where: "InspectProgressBar label (empty)", fill: Theme.PROGRESS_TEXT_COLOR, background: slot, fontSize: 15, bold: true},
         {where: "InspectContent worker row (staffed)", fill: Theme.WORKER_OK_TEXT, background: slot, fontSize: 15, bold: true},
         {where: "InspectContent worker row (missing)", fill: Theme.WORKER_MISSING_TEXT, background: slot, fontSize: 15, bold: true},
+        // A text input's own near-opaque white box, whatever panel surface it sits on.
+        {where: "TextInput value", fill: TextInput.TEXT_COLOR, background: inputBox, fontSize: TextInput.FONT_SIZE, bold: false},
+        {where: "TextInput placeholder", fill: TextInput.PLACEHOLDER_COLOR, background: inputBox, fontSize: TextInput.FONT_SIZE, bold: false},
         // The slot and note tooltips are flat filled boxes, not tinted 9-slices.
         {where: "SlotTooltip name", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
         {where: "CounterTooltip text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
@@ -80,6 +86,7 @@ const CHECKED_TEXTS = {
     "src/client/hud/PanelText.js": 1,
     "src/client/hud/RotateButtonsLayer.js": 1,
     "src/client/hud/StatusMessageLayer.js": 1,
+    "src/client/hud/TextInput.js": 2,
     "src/client/hud/ToolbarLayer.js": 2,
     "src/client/hud/UIPanel.js": 1,
     "src/client/hud/panelButton.js": 1,
