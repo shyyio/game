@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Container, Rectangle} from "pixi.js";
 import {PointerHarness} from "@/test/PointerHarness.js";
-import {trackTap} from "@/client/layers/pixiUtils.js";
+import {trackTap, isTopmostAt} from "@/client/layers/pixiUtils.js";
 import {TAP_MOVE_THRESHOLD} from "@/client/input/TapRecognizer.js";
 
 const BUTTON_WIDTH = 100;
@@ -102,6 +102,65 @@ test("stopPropagation false lets the press reach the container behind", () => {
 
     harness.down(INSIDE_X, INSIDE_Y);
     assert.equal(presses.length, 1);
+});
+
+/**
+ * A hit-testable box on the harness at the standard button rect.
+ * @param {PointerHarness} harness
+ * @param {number} [width]
+ * @param {number} [height]
+ * @returns {Container}
+ */
+function buildBox(harness, width = BUTTON_WIDTH, height = BUTTON_HEIGHT) {
+    const box = new Container();
+    box.eventMode = "static";
+    box.hitArea = new Rectangle(0, 0, width, height);
+    return harness.add(box, BUTTON_X, BUTTON_Y);
+}
+
+test("an uncovered target is topmost at its own center", () => {
+    const harness = new PointerHarness();
+    const box = buildBox(harness);
+    harness.sync();
+
+    assert.equal(isTopmostAt(harness.boundary, box, INSIDE_X, INSIDE_Y), true);
+});
+
+test("a target covered by a later sibling is not topmost", () => {
+    const harness = new PointerHarness();
+    const box = buildBox(harness);
+    // A dropdown's full-screen catcher, mounted over everything.
+    const cover = new Container();
+    cover.eventMode = "static";
+    cover.hitArea = new Rectangle(0, 0, 800, 600);
+    harness.add(cover);
+    harness.sync();
+
+    assert.equal(isTopmostAt(harness.boundary, box, INSIDE_X, INSIDE_Y), false);
+});
+
+test("a target is topmost where the cover does not reach", () => {
+    const harness = new PointerHarness();
+    const box = buildBox(harness);
+    const cover = new Container();
+    cover.eventMode = "static";
+    cover.hitArea = new Rectangle(0, 0, 20, 20);
+    harness.add(cover, 0, 0);
+    harness.sync();
+
+    assert.equal(isTopmostAt(harness.boundary, box, INSIDE_X, INSIDE_Y), true);
+});
+
+test("a target is topmost when the hit lands on its own child", () => {
+    const harness = new PointerHarness();
+    const box = buildBox(harness);
+    const child = new Container();
+    child.eventMode = "static";
+    child.hitArea = new Rectangle(0, 0, 20, 20);
+    box.addChild(child);
+    harness.sync();
+
+    assert.equal(isTopmostAt(harness.boundary, box, BUTTON_X + 10, BUTTON_Y + 10), true);
 });
 
 test("a second pointer does not steal the press from the first", () => {

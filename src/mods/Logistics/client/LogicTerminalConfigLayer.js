@@ -599,8 +599,6 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      */
     _buildValueInput(condition) {
         const input = new TextInput(this._app, VALUE_INPUT_WIDTH, ROW_HEIGHT, VALUE_INPUT_MAX_DIGITS, "", true);
-        // An open dropdown covers the panel; the DOM box must not float through it.
-        input.visible = this._dropdown === null;
         this._valueInputs.push(input);
         input.value = `${condition.value}`;
         const commit = (raw) => {

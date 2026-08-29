@@ -1,7 +1,8 @@
-import {CanvasTextMetrics, Container, Graphics, Text, TextStyle} from "pixi.js";
+import {CanvasTextMetrics, Container, Graphics, Rectangle, Text, TextStyle} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_BORDER, ACTIVE_ACCENT} from "@/client/Theme.js";
 import {HUD_DOM_Z_INDEX} from "@/client/hud/HudLayer.js";
+import {isTopmostAt} from "@/client/layers/pixiUtils.js";
 
 // Exported for the contrast audit, which reads what the box really paints rather than restating it.
 export const FONT_SIZE = 15;
@@ -183,6 +184,11 @@ export class TextInput extends Container {
      * @returns {void}
      */
     _buildContent(placeholder) {
+        // Hit-testable so pixi can be asked whether anything is drawn over this input; the DOM
+        // element above the canvas takes itself out of hit-testing whenever something is.
+        this.eventMode = "static";
+        this.hitArea = new Rectangle(0, 0, this._width, this._height);
+
         this._box = new Graphics();
         this.addChild(this._box);
 
@@ -368,6 +374,8 @@ export class TextInput extends Container {
             return;
         }
         const bounds = this.getBounds();
+        // Every tick, not just on a move: what covers this input can change while it sits still.
+        this._deferToCover(bounds);
         const canvasRect = this._app.canvas.getBoundingClientRect();
         const left = canvasRect.left + bounds.x;
         const top = canvasRect.top + bounds.y;
@@ -385,6 +393,28 @@ export class TextInput extends Container {
         this._domInput.style.width = `${width}px`;
         this._domInput.style.height = `${height}px`;
         this._applyClip(bounds, canvasRect);
+    }
+
+    /**
+     * Gives pixi the last word on whether this input is reachable: anything drawn over it (a
+     * dropdown, a dialog) wins the pointer, which a DOM element floating above the canvas would
+     * otherwise take for itself. Sampled at the box's center, the point a cover always covers.
+     * @private
+     * @param {Bounds} bounds - this widget's canvas-space bounds
+     * @returns {void}
+     */
+    _deferToCover(bounds) {
+        const covered = !isTopmostAt(
+            this._app.renderer.events.rootBoundary,
+            this,
+            bounds.x + bounds.width / 2,
+            bounds.y + bounds.height / 2,
+        );
+        this._domInput.style.pointerEvents = covered ? "none" : "auto";
+        // Keystrokes must not keep reaching a box the player can no longer see; the blur commits it.
+        if (covered && this._focused) {
+            this.blur();
+        }
     }
 
     /**
