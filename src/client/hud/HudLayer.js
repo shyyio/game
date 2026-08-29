@@ -3,8 +3,7 @@
  * `zIndex` from here rather than stamping a number, so the whole order reads in one place.
  *
  * Layers sharing a band are drawn in the order they are added to the stage, pixi's sort being
- * stable. That is deliberate for {@link HudLayer.PANEL}: any number of panels, mod-contributed ones
- * included, sit at one height, and which of two overlapping panels wins is the mount order.
+ * stable.
  * @enum
  */
 export const HudLayer = {
@@ -47,7 +46,8 @@ export const HudLayer = {
     TOOLTIP: 9550,
 
     /**
-     * Panels: inspect, config, chunk administration, and every mod's own.
+     * The {@link PanelHost} holding every panel layer: inspect, config, chunk administration, and
+     * every mod's own. The layers inside it are ranked by press, so this is the band's only holder.
      */
     PANEL: 9600,
 

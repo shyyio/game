@@ -1,5 +1,5 @@
 import {ManagedPanel, UIPanel, ConnectedPanelLayer, TextRole, TILE_SIZE, buildPanelButton, buildIconButton, panelText, PanelStack, ScrollView, IconPicker, IconPickerEntry, ROW_HEIGHT, Graphics, TextInput} from "@spup/sdk/client";
-import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT, HudLayer} from "@spup/sdk/client";
+import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT} from "@spup/sdk/client";
 import {
     LOGIC_RULE_CAP,
     LOGIC_CONDITION_CAP,
@@ -113,7 +113,6 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         this._modRegistry = modRegistry;
         this._objects = cache.view("objects");
         this.textureRegistry = null;
-        this.zIndex = HudLayer.PANEL;
         this.visible = false;
         this._managed = new ManagedPanel();
 

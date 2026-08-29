@@ -7,7 +7,7 @@ import {MetricsLineChart} from "@/client/hud/MetricsLineChart.js";
 import {CHART_METRIC_COUNT, seriesRates} from "@/client/hud/MetricsChartData.js";
 import {metricsRollupKey} from "@/common/MetricsFact.js";
 import {GameSettingsKey} from "@/common/constants.js";
-import {HudLayer, HUD_DOM_Z_INDEX} from "@/client/hud/HudLayer.js";
+import {HUD_DOM_Z_INDEX} from "@/client/hud/HudLayer.js";
 
 const PANEL_WIDTH = 640;
 const CHART_HEIGHT = 280;
@@ -57,7 +57,6 @@ export class ProductionPanelLayer extends Container {
         this.anchorButton = null;
         // The game viewport, frozen against wheel-zoom while the list scrollbar is hovered (set by the host).
         this.viewport = null;
-        this.zIndex = HudLayer.PANEL;
         this.visible = false;
 
         this._panel = null;

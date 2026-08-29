@@ -4,7 +4,6 @@ import {TextInput} from "@/client/hud/TextInput.js";
 import {SelectableText} from "@/client/hud/SelectableText.js";
 import {buildPanelButton} from "@/client/hud/panelButton.js";
 import {ROW_HEIGHT} from "@/client/hud/PanelRow.js";
-import {HudLayer} from "@/client/hud/HudLayer.js";
 import {panelText, TextRole} from "@/client/hud/PanelText.js";
 import {ViewMode, viewportChunks} from "@/client/constants.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT} from "@/client/Theme.js";
@@ -40,8 +39,6 @@ export class FriendsPanelLayer extends Container {
         this.anchorButton = null;
         // Overworld zoom shows too many claimed chunks at once for a meaningful roster.
         this._viewMode = ViewMode.WORLD;
-        // Above the always-visible settings/friends buttons (9500), below toasts/dialogs.
-        this.zIndex = HudLayer.PANEL;
         this.visible = false;
         this._managed = new ManagedPanel();
         this._codeInput = null;
