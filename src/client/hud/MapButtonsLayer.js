@@ -2,8 +2,8 @@ import {Container, Graphics} from "pixi.js";
 import {HUD_BOTTOM_OFFSET, ViewMode} from "@/client/constants.js";
 import {drawCircleButtonFace, trackTap} from "@/client/layers/pixiUtils.js";
 import {HudLayer} from "@/client/hud/HudLayer.js";
+import {CIRCLE_BUTTON_RADIUS as BUTTON_RADIUS} from "@/client/hud/UiScale.js";
 
-const BUTTON_RADIUS = 24;
 const BUTTON_GAP = 10;
 const MARGIN = 16;
 

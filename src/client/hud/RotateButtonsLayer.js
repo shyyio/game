@@ -4,8 +4,8 @@ import {GAME_FONT, HUD_BOTTOM_OFFSET} from "@/client/constants.js";
 import {PANEL_TEXT} from "@/client/Theme.js";
 import {centerGlyph, drawCircleButtonFace, trackTap} from "@/client/layers/pixiUtils.js";
 import {HudLayer} from "@/client/hud/HudLayer.js";
+import {CIRCLE_BUTTON_RADIUS as BUTTON_RADIUS} from "@/client/hud/UiScale.js";
 
-const BUTTON_RADIUS = 24;
 const MARGIN_RIGHT = 16;
 const ICON_SIZE = 28;
 

@@ -3,8 +3,8 @@ import {ScrollView} from "@/client/hud/ScrollView.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {PANEL_TINT, ACTIVE_ACCENT} from "@/client/Theme.js";
 import {trackTap} from "@/client/layers/pixiUtils.js";
+import {ICON_CELL_SIZE as CELL_SIZE} from "@/client/hud/UiScale.js";
 
-const CELL_SIZE = 44;
 const CELL_GAP = 4;
 const ICON_INSET = 6;
 const PADDING = 6;

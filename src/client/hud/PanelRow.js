@@ -1,10 +1,7 @@
 import {Container} from "pixi.js";
-import {BUTTON_HEIGHT} from "@/client/hud/panelButton.js";
-
-export const ROW_HEIGHT = BUTTON_HEIGHT;
-export const ROW_GAP = 6;
-// One step of nesting, for a row that reads as subordinate to the one above it.
-export const ROW_INDENT = 16;
+import {BUTTON_HEIGHT as ROW_HEIGHT, ROW_GAP, ROW_INDENT} from "@/client/hud/UiScale.js";
+// Re-exported, not copied: a copy would freeze at the scale in force when this module loaded.
+export {BUTTON_HEIGHT as ROW_HEIGHT, ROW_GAP, ROW_INDENT} from "@/client/hud/UiScale.js";
 
 /**
  * One row of panel content, laid out rather than hand-placed: items flow in from the left, pin to
