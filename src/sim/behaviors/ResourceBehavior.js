@@ -20,7 +20,7 @@ export class ResourceBehavior extends AbstractBehavior {
     }
 
     install(engine, placed) {
-        engine.registerPositionLayer(LAYER_RESOURCE);
+        engine.space.registerLayer(LAYER_RESOURCE);
     }
 
     onSpawn(engine, placed, eid, type, message) {
@@ -30,6 +30,6 @@ export class ResourceBehavior extends AbstractBehavior {
             y: message.y + offset.y,
             layer: LAYER_RESOURCE,
         }));
-        engine.occupy(cells, objectId, this.resourceType);
+        engine.space.occupy(cells, objectId, this.resourceType);
     }
 }

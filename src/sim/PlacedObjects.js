@@ -2,7 +2,7 @@ import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js
 import {ObjectInsertEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
 import {Direction, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkId, chunkOrigin} from "@/common/util.js";
-import {NO_EID} from "@/sim/GameEngine.js";
+import {NO_EID} from "@/sim/sentinels.js";
 import {METRICS_FACT_TYPE_OBJECT_PLACED, METRICS_FACT_TYPE_OBJECT_DESPAWNED} from "@/common/MetricsFact.js";
 
 const EMPTY_EIDS = new Set();
@@ -209,7 +209,7 @@ export class PlacedObjects {
             return true;
         }
         const footprint = engine.footprint(type, message.x, message.y, message.direction);
-        if (type.placement.solid && !engine.cellsFree(footprint)) {
+        if (type.placement.solid && !engine.space.cellsFree(footprint)) {
             return true;
         }
         const eid = engine.components.createEntity(this.def);
@@ -218,7 +218,7 @@ export class PlacedObjects {
         this.def.store.typeId[row] = type.typeId;
         this.def.store.objectId[row] = objectId;
         this.def.store.ownerId[row] = engine.chunkOwnerOf(chunkId(message.x, message.y));
-        engine.setPosition(eid, message.x, message.y, message.direction);
+        engine.space.setPosition(eid, message.x, message.y, message.direction);
         type.behavior.onSpawn(engine, this, eid, type, message);
         if (type.placement.solid) {
             engine.track(objectId, footprint);

@@ -111,7 +111,7 @@ export class Belts {
 
         // Underground axis layers, so crossing tunnels and a surface belt coexist on a tile.
         for (const layer of LAYERS_UNDERGROUND_AXIS) {
-            engine.registerPositionLayer(layer);
+            engine.space.registerLayer(layer);
         }
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
@@ -246,11 +246,11 @@ export class Belts {
     placeBelt(x, y, direction, type=BELT_NORMAL, id=undefined) {
         // An underground occupies its axis layer, so it can cross under a surface belt.
         const layer = beltPositionLayer(type, direction);
-        if (!this.engine.cellsFree([{x, y, layer}])) {
+        if (!this.engine.space.cellsFree([{x, y, layer}])) {
             return null;
         }
         const placed = {x, y, direction, type, id: id === undefined ? this.engine.createObjectId() : id};
-        this.engine.occupy([{x, y, layer}], placed.id);
+        this.engine.space.occupy([{x, y, layer}], placed.id);
 
         this._addBelt(placed);
 
@@ -505,7 +505,7 @@ export class Belts {
             return;
         }
         const removedId = belt.id;
-        this.engine.destroyCells([{x, y, layer: beltPositionLayer(belt.type, direction)}]);
+        this.engine.space.destroyCells([{x, y, layer: beltPositionLayer(belt.type, direction)}]);
 
         // Anchors for the surviving runs, captured while the flow links are intact.
         const neighbors = [];

@@ -1,6 +1,7 @@
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
-import {EMPTY, NO_EID, TickPhase} from "@/sim/GameEngine.js";
+import {TickPhase} from "@/sim/GameEngine.js";
+import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {deterministicRoll} from "@/sim/Rng.js";
 import {METRICS_FACT_TYPE_ITEM_PRODUCED} from "@/common/MetricsFact.js";
 import {AbstractBehavior} from "@/sim/behaviors/AbstractBehavior.js";

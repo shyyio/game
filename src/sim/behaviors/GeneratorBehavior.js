@@ -1,5 +1,6 @@
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
-import {EMPTY, NO_EID, TickPhase} from "@/sim/GameEngine.js";
+import {TickPhase} from "@/sim/GameEngine.js";
+import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {METRICS_FACT_TYPE_ITEM_PRODUCED} from "@/common/MetricsFact.js";
 import {AbstractBehavior} from "@/sim/behaviors/AbstractBehavior.js";
 import {syncFluidSource} from "@/sim/behaviors/util.js";

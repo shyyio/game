@@ -1,5 +1,6 @@
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
-import {EMPTY, NO_EID, TickPhase} from "@/sim/GameEngine.js";
+import {TickPhase} from "@/sim/GameEngine.js";
+import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {METRICS_FACT_TYPE_ITEM_PRODUCED} from "@/common/MetricsFact.js";
 import {AbstractBehavior} from "@/sim/behaviors/AbstractBehavior.js";
 import {LAYER_RESOURCE} from "@/sim/behaviors/ResourceBehavior.js";
@@ -44,7 +45,7 @@ export class ExtractorBehavior extends AbstractBehavior {
      * @returns {boolean}
      */
     canSpawn(engine, placed, type, message) {
-        return engine.occupantUserDataAt(message.x, message.y, LAYER_RESOURCE) !== null;
+        return engine.space.userDataAt(message.x, message.y, LAYER_RESOURCE) !== null;
     }
 
     onSpawn(engine, placed, eid, type, message) {
@@ -55,7 +56,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         extractor.out[row] = output.port;
         extractor.processingTicks[row] = this.processingTicks;
-        const resource = engine.occupantUserDataAt(message.x, message.y, LAYER_RESOURCE);
+        const resource = engine.space.userDataAt(message.x, message.y, LAYER_RESOURCE);
         extractor.resourceType[row] = resource;
         // The product is fixed by the bound resource, so show it before the first cycle delivers;
         // a fluid product also types the out-port so an adopting pipe network binds immediately.

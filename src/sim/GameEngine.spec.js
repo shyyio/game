@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {GameEngine, EMPTY} from "@/sim/GameEngine.js";
+import {GameEngine} from "@/sim/GameEngine.js";
+import {EMPTY} from "@/sim/sentinels.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 
 // Boots an engine with `count` ports; the eids in `filledIds` (1-based, matching creation order)
@@ -90,13 +91,13 @@ test("An edge port shares a tile with a cell without occupying it", async () => 
     await engine.init();
     const port = engine.portAt(4, 7, 0);
 
-    assert.equal(engine.cellsFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), true, "a port claims no cell");
+    assert.equal(engine.space.cellsFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), true, "a port claims no cell");
 
-    engine.occupy([{x: 4, y: 7, layer: LAYER_SURFACE}], 99);
-    assert.equal(engine.cellsFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), false);
+    engine.space.occupy([{x: 4, y: 7, layer: LAYER_SURFACE}], 99);
+    assert.equal(engine.space.cellsFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), false);
     assert.equal(engine.portAt(4, 7, 0), port, "the shared edge port survives the cell");
 
-    engine.destroyOwnerCells(99);
-    assert.equal(engine.cellsFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), true);
+    engine.space.destroyOwnerCells(99);
+    assert.equal(engine.space.cellsFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), true);
     assert.equal(engine.portAt(4, 7, 0), port, "releasing the cell leaves the port alone");
 });

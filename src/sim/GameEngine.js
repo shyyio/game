@@ -1,6 +1,6 @@
 import {World} from "@/sim/World.js";
-import {rotate, chunkId, tileId, tileVariantId, TILE_VARIANT_LIMIT} from "@/common/util.js";
-import {GAME_VERSION, LAYER_SURFACE, PLAYER_ID_NONE} from "@/common/constants.js";
+import {rotate, chunkId, tileId, tileVariantId} from "@/common/util.js";
+import {GAME_VERSION, PLAYER_ID_NONE} from "@/common/constants.js";
 import {SAVE_FORMAT} from "@/common/saveMigrations.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PortItemBatchEvent} from "@/common/PortItemEvents.js";
@@ -8,6 +8,8 @@ import {PlacedObjects} from "@/sim/PlacedObjects.js";
 import {OverworldBake} from "@/sim/OverworldBake.js";
 import {WorkerNetworks} from "@/sim/WorkerNetworks.js";
 import {ComponentRegistry} from "@/sim/ComponentRegistry.js";
+import {SpatialIndex} from "@/sim/SpatialIndex.js";
+import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 
 /**
  * @enum
@@ -67,12 +69,6 @@ export const TICK_PHASE_ORDER = [
     TickPhase.EMIT_RENDER,
     TickPhase.EMIT_INSPECT,
 ];
-
-// Port.item sentinel for an empty port
-export const EMPTY = -1;
-
-// Field sentinel for an eid-reference field with no target (a fresh port, an absent seam).
-export const NO_EID = -1;
 
 // Initial row count for the per-tick intent/resolved columns; grows by doubling.
 const INTENT_CAPACITY = 1024;
@@ -268,43 +264,21 @@ export class GameEngine {
     }
 
     /**
-     * Defines the position layers, the Position/Occupancy components, and their derived indexes.
+     * Builds the spatial index (positions, layers, occupied cells) and the port edge index over it.
      * @private
      * @returns {void}
      */
     _initSpatialState() {
-        // Layer name <-> int code; the surface layer is code 0, mods register the rest (see
-        // registerPositionLayer). Registration order is deterministic per loadout, so codes are stable
-        // across save/load.
-        this._layerCodes = new Map();
-        this._layerNames = [];
-        this.registerPositionLayer(LAYER_SURFACE);
+        /**
+         * Where things sit: the Position/Occupancy components and the cell index over them.
+         * @type {SpatialIndex}
+         */
+        this.space = new SpatialIndex(this);
+        this.Position = this.space.Position;
 
-        // Position component: where an entity sits. Carried by placed objects (their anchor tile), by
-        // edge ports (the seam flow crosses), and by every occupied cell. `direction` is NO_EID for
-        // things with no facing (cells).
-        this._positionDef = this.components.define("Position", [
-            {name: "x"},
-            {name: "y"},
-            {name: "direction", fill: NO_EID},
-        ]);
-        this.Position = this._positionDef.store;
-
-        // Occupancy component: the cell claim on a Position, tagged with its owner object id (so a
-        // delete releases all its cells by query) and per-cell userData read via occupantUserDataAt
-        // (0 for plain footprints; e.g. resource cover stores its resource type). Objects on the same
-        // layer collide; different layers coexist. Always paired with Position — cells are the entities
-        // carrying both.
-        this._occupancyDef = this.components.define("Occupancy", [
-            {name: "layer"},
-            {name: "owner", fill: NO_EID},
-            {name: "userData"},
-        ]);
-
-        // Shared ports by edge key "x,y,direction" and occupied cells by "x,y,layer" — derived indexes
-        // over the two components above, rebuilt from the world on deserialize.
+        // Shared ports by edge key "x,y,direction" — a derived index over Port + Position, rebuilt
+        // from the world on deserialize.
         this._portsByEdge = new Map();
-        this._cellByKey = new Map();
     }
 
     /**
@@ -1051,7 +1025,7 @@ export class GameEngine {
         let eid = this._portsByEdge.get(key);
         if (eid === undefined) {
             eid = this.createPort();
-            this.setPosition(eid, x, y, direction);
+            this.space.setPosition(eid, x, y, direction);
             this._portsByEdge.set(key, eid);
         }
         return eid;
@@ -1072,168 +1046,6 @@ export class GameEngine {
             return null;
         }
         return eid;
-    }
-
-    /**
-     * Places `eid` at (x, y) facing `direction`, attaching Position if it has none.
-     * @param {number} eid
-     * @param {number} x
-     * @param {number} y
-     * @param {number} [direction] - NO_EID for something with no facing
-     * @returns {void}
-     */
-    setPosition(eid, x, y, direction=NO_EID) {
-        this.components.attach(this._positionDef, eid);
-        this.Position.x[eid] = x;
-        this.Position.y[eid] = y;
-        this.Position.direction[eid] = direction;
-    }
-
-    /**
-     * Registers a position layer name, returning its stable int code (idempotent).
-     * @param {string} name
-     * @returns {number}
-     */
-    registerPositionLayer(name) {
-        let code = this._layerCodes.get(name);
-        if (code === undefined) {
-            code = this._layerNames.length;
-            if (code >= TILE_VARIANT_LIMIT) {
-                throw new RangeError(`Position layer "${name}" exceeds the ${TILE_VARIANT_LIMIT} the cell index keys on`);
-            }
-            this._layerCodes.set(name, code);
-            this._layerNames.push(name);
-        }
-        return code;
-    }
-
-    /**
-     * Whether every cell {x, y, layer} is free.
-     * @param {{x:number, y:number, layer:string}[]} cells
-     * @returns {boolean}
-     */
-    cellsFree(cells) {
-        return cells.every(cell => !this._cellByKey.has(this._cellKeyAt(cell.x, cell.y, cell.layer)));
-    }
-
-    /**
-     * The userData stored at cell {x, y, layer}, or null when the cell is free.
-     * @param {number} x
-     * @param {number} y
-     * @param {string} layer
-     * @returns {number|null}
-     */
-    occupantUserDataAt(x, y, layer) {
-        const eid = this._cellByKey.get(this._cellKeyAt(x, y, layer));
-        if (eid === undefined) {
-            return null;
-        }
-        return this._occupancyDef.store.userData[eid];
-    }
-
-    /**
-     * The object id owning the cell at {x, y, layer}, or null when the cell is free or unowned.
-     * @param {number} x
-     * @param {number} y
-     * @param {string} layer
-     * @returns {number|null}
-     */
-    occupantOwnerAt(x, y, layer) {
-        const eid = this._cellByKey.get(this._cellKeyAt(x, y, layer));
-        if (eid === undefined) {
-            return null;
-        }
-        const owner = this._occupancyDef.store.owner[eid];
-        if (owner === NO_EID) {
-            return null;
-        }
-        return owner;
-    }
-
-    /**
-     * Marks each cell occupied, one Position+Occupancy entity per newly taken cell, tagged with `owner`
-     * so {@link destroyOwnerCells} can destroy them all on delete.
-     * @param {{x:number, y:number, layer:string}[]} cells
-     * @param {number} [owner] - the owning object id
-     * @param {number} [userData] - per-cell value read back via {@link occupantUserDataAt}
-     * @returns {void}
-     */
-    occupy(cells, owner=NO_EID, userData=0) {
-        const occupancy = this._occupancyDef.store;
-        for (const cell of cells) {
-            const key = this._cellKeyAt(cell.x, cell.y, cell.layer);
-            if (this._cellByKey.has(key)) {
-                continue;
-            }
-            const eid = this.world.addEntity();
-            this.setPosition(eid, cell.x, cell.y);
-            this.components.attach(this._occupancyDef, eid);
-            occupancy.layer[eid] = this._layerCodes.get(cell.layer);
-            occupancy.owner[eid] = owner;
-            occupancy.userData[eid] = userData;
-            this._cellByKey.set(key, eid);
-        }
-    }
-
-    /**
-     * Destroys each cell.
-     * @param {{x:number, y:number, layer:string}[]} cells
-     * @returns {void}
-     */
-    destroyCells(cells) {
-        for (const cell of cells) {
-            const key = this._cellKeyAt(cell.x, cell.y, cell.layer);
-            const eid = this._cellByKey.get(key);
-            if (eid !== undefined) {
-                this.world.removeEntity(eid);
-                this._cellByKey.delete(key);
-            }
-        }
-    }
-
-    /**
-     * Destroys every cell an object occupied, keyed by the owner id passed to {@link occupy}.
-     * @param {number} owner
-     * @returns {void}
-     */
-    destroyOwnerCells(owner) {
-        const occupancy = this._occupancyDef.store;
-        for (const eid of this._cellEids()) {
-            if (occupancy.owner[eid] === owner) {
-                this._cellByKey.delete(this._cellKey(eid));
-                this.world.removeEntity(eid);
-            }
-        }
-    }
-
-    /**
-     * The cell entities: those carrying both Position and Occupancy (an edge port has Position alone).
-     * @private
-     * @returns {Int32Array}
-     */
-    _cellEids() {
-        return this.world.query([this._positionDef.store, this._occupancyDef.store]);
-    }
-
-    /**
-     * @private
-     * @param {number} eid - a cell entity
-     * @returns {number} its index key
-     */
-    _cellKey(eid) {
-        const tile = tileId(this.Position.x[eid], this.Position.y[eid]);
-        return tileVariantId(tile, this._occupancyDef.store.layer[eid]);
-    }
-
-    /**
-     * @private
-     * @param {number} x
-     * @param {number} y
-     * @param {string} layer
-     * @returns {number} the index key of cell {x, y, layer}
-     */
-    _cellKeyAt(x, y, layer) {
-        return tileVariantId(tileId(x, y), this._layerCodes.get(layer));
     }
 
     /**
@@ -1283,7 +1095,7 @@ export class GameEngine {
             if (referenced.has(eid)) {
                 continue;
             }
-            if (this.world.hasComponent(eid, this._positionDef.store)) {
+            if (this.world.hasComponent(eid, this.space.positionDef.store)) {
                 this._portsByEdge.delete(this._edgeKey(eid));
             }
             const pending = this._pendingClear.get(eid);
@@ -1837,7 +1649,6 @@ export class GameEngine {
         this.components.bindAll();
         this.components.clearAll();
         this._portsByEdge = new Map();
-        this._cellByKey = new Map();
         // Drop the prior world's render/tick state so its stale eids never leak into the new world.
         this._rendered.fill(0);
         this._portFluid.fill(0);
@@ -1891,7 +1702,7 @@ export class GameEngine {
         }
 
         this._rebuildPortEdges();
-        this._rebuildPositions();
+        this.space.rebuild();
         for (const hook of this._rebuildHooks) {
             hook(remap);
         }
@@ -1913,7 +1724,7 @@ export class GameEngine {
      * @returns {Int32Array}
      */
     _edgePortEids() {
-        return this.world.query([this._portDef.store, this._positionDef.store]);
+        return this.world.query([this._portDef.store, this.space.positionDef.store]);
     }
 
     /**
@@ -1924,16 +1735,6 @@ export class GameEngine {
     _edgeKey(eid) {
         const tile = tileId(this.Position.x[eid], this.Position.y[eid]);
         return tileVariantId(tile, this.Position.direction[eid]);
-    }
-
-    /**
-     * @private
-     * @returns {void}
-     */
-    _rebuildPositions() {
-        for (const eid of this._cellEids()) {
-            this._cellByKey.set(this._cellKey(eid), eid);
-        }
     }
 
     /**
@@ -2178,7 +1979,7 @@ export class GameEngine {
      * @returns {void}
      */
     track(objectId, footprint) {
-        this.occupy(footprint, objectId);
+        this.space.occupy(footprint, objectId);
     }
 
     /**
@@ -2187,6 +1988,6 @@ export class GameEngine {
      * @returns {void}
      */
     untrack(objectId) {
-        this.destroyOwnerCells(objectId);
+        this.space.destroyOwnerCells(objectId);
     }
 }

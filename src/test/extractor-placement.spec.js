@@ -51,5 +51,5 @@ test("resource and extractor delete", async () => {
     assert.equal(engine.applyMessage(new DeleteObjectMessage(extractorId)), true);
     assert.equal(engine.placed.eidsOf(ExtractorType.typeId).length, 0);
     assert.equal(engine.applyMessage(new DeleteObjectMessage(resourceId)), true);
-    assert.equal(engine.occupantUserDataAt(5, 5, "R"), null, "resource cover cleared");
+    assert.equal(engine.space.userDataAt(5, 5, "R"), null, "resource cover cleared");
 });

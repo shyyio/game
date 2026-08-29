@@ -68,7 +68,8 @@ export {GeneratorBehavior} from "@/sim/behaviors/GeneratorBehavior.js";
 export {ResourceBehavior} from "@/sim/behaviors/ResourceBehavior.js";
 export {RoadBehavior} from "@/sim/behaviors/RoadBehavior.js";
 export {HousingBehavior} from "@/sim/behaviors/HousingBehavior.js";
-export {TickPhase, EMPTY, NO_EID} from "@/sim/GameEngine.js";
+export {TickPhase} from "@/sim/GameEngine.js";
+export {EMPTY, NO_EID} from "@/sim/sentinels.js";
 
 // ---- Engine events ----
 // Chunk subscribe/unsubscribe events, so a mod's client side can react to chunks
