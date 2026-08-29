@@ -20,6 +20,12 @@ export const Direction = {
         return ["Up", "Right", "Down", "Left"][direction];
     },
 
+    /**
+     * A direction turned by a number of quarter turns clockwise.
+     * @param {Direction} direction
+     * @param {number} rotation
+     * @returns {Direction}
+     */
     rotate(direction, rotation) {
         return (direction + rotation) % 4;
     },
@@ -34,7 +40,7 @@ export const Direction = {
     },
 
     /**
-     * @param direction {Direction}
+     * @param {Direction} direction
      * @returns {number}
      */
     dx(direction) {
@@ -49,7 +55,7 @@ export const Direction = {
     },
 
     /**
-     * @param direction {Direction}
+     * @param {Direction} direction
      * @returns {number}
      */
     dy(direction) {
@@ -64,7 +70,7 @@ export const Direction = {
     },
 
     /**
-     * @param direction {Direction}
+     * @param {Direction} direction
      * @returns {number}
      */
     angle(direction) {

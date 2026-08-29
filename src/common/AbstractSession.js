@@ -44,7 +44,7 @@ export class AbstractSession {
     }
 
     /**
-     * @param sessionId {number}
+     * @param {number} sessionId
      * @returns {void}
      */
     setId(sessionId) {

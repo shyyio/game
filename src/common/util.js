@@ -28,8 +28,8 @@ export function fixNegativeZero(n) {
 /**
  * The ordinal id of a chunk from its chunk coordinate: its index within the region,
  * counted left-to-right, top-to-bottom from the top-left chunk (id 0).
- * @param chunkX {number}
- * @param chunkY {number}
+ * @param {number} chunkX
+ * @param {number} chunkY
  * @returns {number}
  */
 export function chunkOrdinal(chunkX, chunkY) {
@@ -38,8 +38,8 @@ export function chunkOrdinal(chunkX, chunkY) {
 
 /**
  * The ordinal id of the chunk containing tile (x, y).
- * @param x {number} tile x
- * @param y {number} tile y
+ * @param {number} x tile x
+ * @param {number} y tile y
  * @returns {number}
  */
 export function chunkId(x, y) {
@@ -50,8 +50,8 @@ export function chunkId(x, y) {
  * The id of tile (x, y): its index in the world grid, counted left-to-right, top-to-bottom. The
  * spatial indexes key on this rather than on an "x,y" string — a tile lookup then costs no string
  * to build and no string to keep.
- * @param x {number} tile x
- * @param y {number} tile y
+ * @param {number} x tile x
+ * @param {number} y tile y
  * @returns {number}
  */
 export function tileId(x, y) {
@@ -66,8 +66,8 @@ export function tileId(x, y) {
 /**
  * A tile id qualified by `variant` (a position layer, a direction), so one index can hold several
  * entries per tile.
- * @param tile {number} a {@link tileId}
- * @param variant {number} below {@link TILE_VARIANT_LIMIT}
+ * @param {number} tile a {@link tileId}
+ * @param {number} variant below {@link TILE_VARIANT_LIMIT}
  * @returns {number}
  */
 export function tileVariantId(tile, variant) {
@@ -76,8 +76,8 @@ export function tileVariantId(tile, variant) {
 
 /**
  * Whether chunk coordinate (chunkX, chunkY) lies inside the region.
- * @param chunkX {number}
- * @param chunkY {number}
+ * @param {number} chunkX
+ * @param {number} chunkY
  * @returns {boolean}
  */
 export function inRegion(chunkX, chunkY) {
@@ -86,7 +86,7 @@ export function inRegion(chunkX, chunkY) {
 
 /**
  * The chunk's edge neighbors, clipped to the region.
- * @param chunk {number}
+ * @param {number} chunk
  * @returns {number[]}
  */
 export function chunkNeighbors(chunk) {
@@ -104,7 +104,7 @@ export function chunkNeighbors(chunk) {
 
 /**
  * Inverse of {@link chunkId}: the chunk coordinate (chunkX, chunkY) of a chunk id.
- * @param chunk {number}
+ * @param {number} chunk
  * @returns {{x: number, y: number}}
  */
 export function chunkPosition(chunk) {
@@ -117,7 +117,7 @@ export function chunkPosition(chunk) {
 /**
  * The tile position of a chunk's top-left corner, the origin chunk-relative tile coordinates count
  * from.
- * @param chunk {number}
+ * @param {number} chunk
  * @returns {{x: number, y: number}}
  */
 export function chunkOrigin(chunk) {
@@ -127,7 +127,7 @@ export function chunkOrigin(chunk) {
 
 /**
  * The tile position of a chunk's center.
- * @param chunk {number}
+ * @param {number} chunk
  * @returns {{x: number, y: number}}
  */
 export function chunkCenter(chunk) {
@@ -241,9 +241,9 @@ export function httpOriginFor(wsOrigin) {
 
 /**
  * The map's value under a key, created and stored on first use.
- * @param map {Map}
- * @param key {*}
- * @param create {function(): *}
+ * @param {Map} map
+ * @param {*} key
+ * @param {function(): *} create
  * @returns {*}
  */
 export function getOrCreate(map, key, create) {
@@ -258,9 +258,9 @@ export function getOrCreate(map, key, create) {
 /**
  * Drops `member` from the Set at `key`, deleting the key once its set empties; pairs with
  * `getOrCreate(map, key, () => new Set())` for the add side.
- * @param map {Map<*, Set>}
- * @param key {*}
- * @param member {*}
+ * @param {Map<*, Set>} map
+ * @param {*} key
+ * @param {*} member
  * @returns {void}
  */
 export function removeFromGroup(map, key, member) {
@@ -289,15 +289,15 @@ export function* cellNeighbors(cells) {
 
 
 /**
- * @typedef Vec {Object}
+ * @typedef {Object} Vec
  * @property direction {Direction}
  * @property x {number}
  * @property y {number}
  */
 
 /**
- * @param point {Vec}
- * @param direction {Direction}
+ * @param {Vec} point
+ * @param {Direction} direction
  * @returns {Vec}
  */
 export function rotate(point, direction) {
