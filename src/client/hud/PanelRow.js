@@ -141,17 +141,19 @@ export class PanelRow extends Container {
     }
 
     /**
-     * The gaps a fill child adds: one against whatever sits on each side of it.
+     * The gaps a fill child adds: the one each neighbor declares against it. The leading item it
+     * follows is the last one added; the trailing item it runs up against is the leftmost, which is
+     * the last one added there too.
      * @private
      * @returns {number}
      */
     _fillGaps() {
         let gaps = 0;
         if (this._leading.length > 0) {
-            gaps += ROW_GAP;
+            gaps += this._leading[this._leading.length - 1].gap;
         }
         if (this._trailing.length > 0) {
-            gaps += ROW_GAP;
+            gaps += this._trailing[this._trailing.length - 1].gap;
         }
         return gaps;
     }

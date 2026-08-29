@@ -465,9 +465,12 @@ export class TextInput extends Container {
      * @returns {void}
      */
     _renderBox() {
+        // The stroke centers on its path, so the rect is inset by half of it: the box then measures
+        // exactly the size it was built at, and a row laying it out gets the width it asked for.
+        const inset = BORDER_WIDTH / 2;
         this._box.clear();
         this._box
-            .roundRect(0, 0, this._width, this._height, CORNER_RADIUS)
+            .roundRect(inset, inset, this._width - BORDER_WIDTH, this._height - BORDER_WIDTH, CORNER_RADIUS)
             .fill({color: BOX_FILL, alpha: BOX_FILL_ALPHA})
             .stroke({color: this._focused ? ACTIVE_ACCENT : PANEL_BORDER, width: BORDER_WIDTH});
     }

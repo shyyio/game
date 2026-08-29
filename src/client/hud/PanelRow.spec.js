@@ -119,6 +119,30 @@ test("a fill sits between the leading flow and the trailing items", () => {
     assert.equal(filled, undefined);
 });
 
+test("a fill measures against the gap its trailing neighbor declares", () => {
+    const row = new PanelRow(ROW_WIDTH);
+    row.trailing(block(70), 20);
+    let given = null;
+    row.fill((width) => {
+        given = width;
+        return block(width);
+    });
+    row.layout();
+
+    assert.equal(given, ROW_WIDTH - 70 - 20);
+    assert.equal(row.overflow, 0);
+});
+
+test("a fill child wider than it was offered reports overflow", () => {
+    const row = new PanelRow(ROW_WIDTH);
+    row.trailing(block(70));
+    // A widget whose drawn bounds exceed the size it was built at, a stroke bleeding outward say.
+    row.fill((width) => block(width + 2));
+    row.layout();
+
+    assert.equal(row.overflow, 2);
+});
+
 test("a row that fits reports no overflow", () => {
     const row = new PanelRow(ROW_WIDTH);
     row.leading(block(200));
