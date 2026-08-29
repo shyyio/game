@@ -2,6 +2,7 @@ import {Container, Sprite, Text, NineSliceSprite, TilingSprite, Rectangle} from 
 import {GAME_FONT} from "@/client/constants.js";
 import {debugOutlines, swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
 import {PanelStack} from "@/client/hud/PanelStack.js";
+import {CLOSE_SIZE} from "@/client/hud/UiScale.js";
 import Mobile from "@/client/Mobile.js";
 
 const TITLE_ROW_HEIGHT = 40;
@@ -11,7 +12,6 @@ const SCREEN_MARGIN = 12;
 const KEYBOARD_CLEAR_FRACTION = 1 / 3;
 // Gap between the outer frame and the inset body, so the outer border shows around it.
 const BODY_MARGIN = 8;
-const CLOSE_SIZE = 25;
 const TITLE_FONT_SIZE = 18;
 // Close button icon shrinks to this fraction of its size while pressed.
 const CLOSE_PRESS_SCALE = 0.9;

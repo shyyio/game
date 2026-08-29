@@ -2,8 +2,9 @@ import {Container, Graphics} from "pixi.js";
 import {drawCircleButtonFace, trackTap} from "@/client/layers/pixiUtils.js";
 import SafeArea from "@/client/SafeArea.js";
 import {HudLayer} from "@/client/hud/HudLayer.js";
+import {CIRCLE_BUTTON_RADIUS} from "@/client/hud/UiScale.js";
 
-export const CIRCLE_BUTTON_RADIUS = 24;
+export {CIRCLE_BUTTON_RADIUS} from "@/client/hud/UiScale.js";
 export const CIRCLE_BUTTON_MARGIN = 16;
 export const CIRCLE_BUTTON_GAP = 12;
 

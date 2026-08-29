@@ -9,8 +9,8 @@ import {UIPanel} from "@/client/hud/UIPanel.js";
 import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/hud/slotFrame.js";
 import {addSlotHighlight} from "@/client/hud/slotHighlight.js";
 import {debugOutlines, nineSlice, swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
+import {TOOLBAR_SLOT_SIZE as SLOT_SIZE} from "@/client/hud/UiScale.js";
 
-const SLOT_SIZE = 56;
 // Inset of the icon sprite from the slot's edges.
 const ICON_PADDING = 7;
 const LABEL_GAP = 0;
