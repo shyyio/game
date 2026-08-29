@@ -96,6 +96,24 @@ export class ModRegistry {
         }
         this._frozen = true;
 
+        this._assertUniqueModNames();
+        this._assignObjectTypeIds();
+        this._assignWireIds();
+        this._collectModParts();
+        this._collectPlayerSettings();
+        this._collectNoiseChannels();
+        this._collectBiomes();
+        this._collectLogicKeys();
+        this._collectMarketListings();
+        this._collectMetricsQueries();
+    }
+
+    /**
+     * Rejects a loadout that lists the same mod twice.
+     * @private
+     * @returns {void}
+     */
+    _assertUniqueModNames() {
         const modNames = new Set();
         for (const pkg of this._packages) {
             const name = pkg.declaration.name;
@@ -106,7 +124,14 @@ export class ModRegistry {
             }
             modNames.add(name);
         }
+    }
 
+    /**
+     * Assigns each object type its positional typeId, in loadout order.
+     * @private
+     * @returns {void}
+     */
+    _assignObjectTypeIds() {
         const typeNames = new Set();
         for (const pkg of this._packages) {
             for (const type of pkg.declaration.objectTypes) {
@@ -119,7 +144,14 @@ export class ModRegistry {
                 this._objectTypes.push(type);
             }
         }
+    }
 
+    /**
+     * Collects the loadout's wire classes, in loadout order.
+     * @private
+     * @returns {void}
+     */
+    _assignWireIds() {
         const wireClasses = new Set();
         for (const pkg of this._packages) {
             for (const cls of pkg.declaration.wireClasses) {
@@ -130,7 +162,14 @@ export class ModRegistry {
                 this._wireClasses.push(cls);
             }
         }
+    }
 
+    /**
+     * Collects each package's sim and client parts, its atlases, items, and fluid types.
+     * @private
+     * @returns {void}
+     */
+    _collectModParts() {
         for (const pkg of this._packages) {
             if (pkg.sim !== null) {
                 this._simMods.push(pkg.sim);
@@ -146,7 +185,14 @@ export class ModRegistry {
                 this._fluidTypes.add(fluidType);
             }
         }
+    }
 
+    /**
+     * Collects the core player setting entries, then each mod's.
+     * @private
+     * @returns {void}
+     */
+    _collectPlayerSettings() {
         for (const entry of CORE_PLAYER_SETTING_ENTRIES) {
             this._playerSettingEntries.set(entry.key, entry);
         }
@@ -158,7 +204,14 @@ export class ModRegistry {
                 this._playerSettingEntries.set(entry.key, entry);
             }
         }
+    }
 
+    /**
+     * Assigns each noise channel its channelId, core channels first.
+     * @private
+     * @returns {void}
+     */
+    _collectNoiseChannels() {
         const channelNames = new Set();
         for (const channel of CORE_NOISE_CHANNELS) {
             channelNames.add(channel.name);
@@ -175,14 +228,28 @@ export class ModRegistry {
                 this._noiseChannels.push(channel);
             }
         }
+    }
 
+    /**
+     * Validates the declared biomes, then assigns each its biomeId.
+     * @private
+     * @returns {void}
+     */
+    _collectBiomes() {
         const declaredBiomes = this._packages.flatMap(pkg => pkg.declaration.biomes);
         this._validateBiomes(declaredBiomes);
         for (const biome of declaredBiomes) {
             biome._assignBiomeId(this._biomes.length);
             this._biomes.push(biome);
         }
+    }
 
+    /**
+     * Collects the core logic keys, then each mod's.
+     * @private
+     * @returns {void}
+     */
+    _collectLogicKeys() {
         for (const [key, entry] of Object.entries(CORE_LOGIC_KEYS)) {
             this._logicKeyEntries.set(Number(key), entry);
         }
@@ -194,7 +261,14 @@ export class ModRegistry {
                 this._logicKeyEntries.set(Number(key), entry);
             }
         }
+    }
 
+    /**
+     * Collects the market listings, at most one per item type.
+     * @private
+     * @returns {void}
+     */
+    _collectMarketListings() {
         const listedItemTypes = new Set();
         for (const pkg of this._packages) {
             for (const entry of pkg.declaration.marketListings) {
@@ -205,7 +279,14 @@ export class ModRegistry {
                 this._marketListings.push(entry);
             }
         }
+    }
 
+    /**
+     * Collects the global metrics queries, at most one per metrics type.
+     * @private
+     * @returns {void}
+     */
+    _collectMetricsQueries() {
         for (const pkg of this._packages) {
             for (const entry of pkg.declaration.metricsGlobalQueries) {
                 if (this._metricsGlobalQueries.has(entry.metricsType)) {
