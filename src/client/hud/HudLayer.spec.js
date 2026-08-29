@@ -12,6 +12,7 @@ const ORDER = [
     "ROTATE_CONTROL",
     "EDGE_BAR",
     "OVERLAY_BUTTON",
+    "TOOLTIP",
     "PANEL",
     "STATUS",
     "NOTICE",

@@ -35,9 +35,16 @@ export const HudLayer = {
     EDGE_BAR: 9000,
 
     /**
-     * Circular overlay buttons, and the tooltips describing what the cursor is over.
+     * Circular overlay buttons.
      */
     OVERLAY_BUTTON: 9500,
+
+    /**
+     * Tooltips describing whatever the cursor rests on, which have to clear the buttons and
+     * counters they describe. A tooltip parented to a panel instead of the stage is ranked against
+     * that panel's own children, where this still puts it over the panel body.
+     */
+    TOOLTIP: 9550,
 
     /**
      * Panels: inspect, config, chunk administration, and every mod's own.

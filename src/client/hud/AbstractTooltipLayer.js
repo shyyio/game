@@ -29,7 +29,7 @@ export class AbstractTooltipLayer extends Container {
         this._app = app;
         // The game viewport, for mapping the target to the screen (set by the host).
         this.viewport = null;
-        this.zIndex = HudLayer.OVERLAY_BUTTON;
+        this.zIndex = HudLayer.TOOLTIP;
         this.visible = false;
         this.eventMode = "none";
         // The box's drawn size, so following it per frame costs no bounds walk.
