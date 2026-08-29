@@ -147,12 +147,12 @@ export class MachineBehavior extends AbstractBehavior {
         if (this.hasByproductPort) {
             const byproductOutput = engine.portFor(type.outputPorts[1], message.x, message.y, message.direction);
             machine.out2[row] = byproductOutput.port;
-            engine.registerRenderedPort(byproductOutput.port, byproductOutput.tile.x, byproductOutput.tile.y);
+            engine.render.registerPort(byproductOutput.port, byproductOutput.tile.x, byproductOutput.tile.y);
         }
         // Explicit: a recycled row may hold stale state from a previous occupant.
         machine.workerStep[row] = 1;
         machine.enabled[row] = 1;
-        engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
+        engine.render.registerPort(output.port, output.tile.x, output.tile.y);
         if (this.workerCost > 0) {
             engine.workers.markDirty(engine.footprint(type, message.x, message.y, message.direction));
         }
@@ -167,10 +167,10 @@ export class MachineBehavior extends AbstractBehavior {
                 engine.unmarkFluidPort(machine[IN_COLS[i]][row]);
             }
         }
-        engine.unregisterRenderedPort(def.store.out[row]);
+        engine.render.unregisterPort(def.store.out[row]);
         engine.setPortFluidSource(def.store.out[row], EMPTY);
         if (this.hasByproductPort) {
-            engine.unregisterRenderedPort(def.store.out2[row]);
+            engine.render.unregisterPort(def.store.out2[row]);
             engine.setPortFluidSource(def.store.out2[row], EMPTY);
         }
         if (this.workerCost > 0) {
@@ -203,10 +203,10 @@ export class MachineBehavior extends AbstractBehavior {
         const def = engine.components.get("Machine");
         const row = def.row(eid);
         const out = def.store.out[row];
-        engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
+        engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
         if (this.hasByproductPort) {
             const out2 = def.store.out2[row];
-            engine.registerRenderedPort(out2, engine.Position.x[out2], engine.Position.y[out2]);
+            engine.render.registerPort(out2, engine.Position.x[out2], engine.Position.y[out2]);
         }
     }
 

@@ -420,7 +420,7 @@ export class TransferResolver {
             const dest = this._resolvedDest[row];
             if (this._resolvedManaged[row] === 1 && dest !== EMPTY) {
                 engine.Port.item[dest] = this._resolvedItem[row];
-                engine.markPortDirty(dest);
+                engine.render.markDirty(dest);
             }
         }
     }

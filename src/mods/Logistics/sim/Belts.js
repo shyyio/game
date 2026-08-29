@@ -1019,7 +1019,7 @@ export class Belts {
         this._pushPath(path);
         this._slotByInPort.column[path.inPort] = path.slot;
         this._indexPath(path);
-        this.engine.registerRenderedPort(path.outPort, path.tailX, path.tailY);
+        this.engine.render.registerPort(path.outPort, path.tailX, path.tailY);
     }
 
     /**
@@ -1330,7 +1330,7 @@ export class Belts {
         this._popPath(path);
         this._slotByInPort.column[path.inPort] = NO_SLOT;
         this._unindexPath(path);
-        this.engine.unregisterRenderedPort(path.outPort);
+        this.engine.render.unregisterPort(path.outPort);
         // Clear the client's item sprites for the stale path id.
         this._emitItemReset(path);
         this.engine.components.destroyEntity(path.id);

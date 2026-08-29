@@ -87,7 +87,7 @@ export class GateBehavior extends AbstractBehavior {
             // The port may outlive the gate (an adjacent pipe pins it); it no longer produces.
             engine.setPortFluidSource(gate.out[row], EMPTY);
         } else {
-            engine.unregisterRenderedPort(gate.out[row]);
+            engine.render.unregisterPort(gate.out[row]);
         }
     }
 
@@ -191,7 +191,7 @@ export class GateBehavior extends AbstractBehavior {
             return;
         }
         const out = gate.out[row];
-        engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
+        engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
 
     /**
@@ -310,7 +310,7 @@ export class GateBehavior extends AbstractBehavior {
         if (fluid) {
             engine.setPortItem(gate.int[row], EMPTY);
             gate.int[row] = NO_EID;
-            engine.unregisterRenderedPort(gate.out[row]);
+            engine.render.unregisterPort(gate.out[row]);
             gate.fluid[row] = 1;
             GateBehavior._enterFluidMode(engine, gate, row);
         } else {
@@ -368,7 +368,7 @@ export class GateBehavior extends AbstractBehavior {
     static _enterItemMode(engine, gate, row) {
         gate.int[row] = engine.createPort();
         const out = gate.out[row];
-        engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
+        engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
 
     /**

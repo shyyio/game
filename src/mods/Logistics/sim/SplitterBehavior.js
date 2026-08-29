@@ -31,15 +31,15 @@ export class SplitterBehavior extends AbstractBehavior {
         const outA = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         const outB = engine.portFor(type.outputPorts[1], message.x, message.y, message.direction);
         this._wire(engine, eid, {in_a: inA.port, in_b: inB.port, out_a: outA.port, out_b: outB.port});
-        engine.registerRenderedPort(outA.port, outA.tile.x, outA.tile.y);
-        engine.registerRenderedPort(outB.port, outB.tile.x, outB.tile.y);
+        engine.render.registerPort(outA.port, outA.tile.x, outA.tile.y);
+        engine.render.registerPort(outB.port, outB.tile.x, outB.tile.y);
     }
 
     onDespawn(engine, placed, eid) {
         const def = engine.components.get("Splitter");
         const row = def.row(eid);
-        engine.unregisterRenderedPort(def.store.out_a[row]);
-        engine.unregisterRenderedPort(def.store.out_b[row]);
+        engine.render.unregisterPort(def.store.out_a[row]);
+        engine.render.unregisterPort(def.store.out_b[row]);
     }
 
     syncData(engine, placed, eid) {
@@ -52,7 +52,7 @@ export class SplitterBehavior extends AbstractBehavior {
         const def = engine.components.get("Splitter");
         const row = def.row(eid);
         for (const out of [def.store.out_a[row], def.store.out_b[row]]) {
-            engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
+            engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
         }
     }
 

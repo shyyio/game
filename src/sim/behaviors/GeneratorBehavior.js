@@ -61,13 +61,13 @@ export class GeneratorBehavior extends AbstractBehavior {
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         generator.out[row] = output.port;
         generator.processingTicks[row] = this.processingTicks;
-        engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
+        engine.render.registerPort(output.port, output.tile.x, output.tile.y);
         syncFluidSource(engine, output.port, this.output);
         if (this.hasSecondaryPort) {
             const secondary = engine.portFor(type.outputPorts[1], message.x, message.y, message.direction);
             generator.out2[row] = secondary.port;
             generator.processingTicks2[row] = this.secondaryOutput.processingTicks;
-            engine.registerRenderedPort(secondary.port, secondary.tile.x, secondary.tile.y);
+            engine.render.registerPort(secondary.port, secondary.tile.x, secondary.tile.y);
             syncFluidSource(engine, secondary.port, this.secondaryOutput.itemType);
         }
     }
@@ -75,10 +75,10 @@ export class GeneratorBehavior extends AbstractBehavior {
     onDespawn(engine, placed, eid) {
         const def = engine.components.get("Generator");
         const row = def.row(eid);
-        engine.unregisterRenderedPort(def.store.out[row]);
+        engine.render.unregisterPort(def.store.out[row]);
         engine.setPortFluidSource(def.store.out[row], EMPTY);
         if (this.hasSecondaryPort) {
-            engine.unregisterRenderedPort(def.store.out2[row]);
+            engine.render.unregisterPort(def.store.out2[row]);
             engine.setPortFluidSource(def.store.out2[row], EMPTY);
         }
     }
@@ -102,10 +102,10 @@ export class GeneratorBehavior extends AbstractBehavior {
         const def = engine.components.get("Generator");
         const row = def.row(eid);
         const out = def.store.out[row];
-        engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
+        engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
         if (this.hasSecondaryPort) {
             const out2 = def.store.out2[row];
-            engine.registerRenderedPort(out2, engine.Position.x[out2], engine.Position.y[out2]);
+            engine.render.registerPort(out2, engine.Position.x[out2], engine.Position.y[out2]);
         }
     }
 

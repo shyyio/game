@@ -68,14 +68,14 @@ export class ExtractorBehavior extends AbstractBehavior {
             }
         }
         if (type.outputPorts[0].render) {
-            engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
+            engine.render.registerPort(output.port, output.tile.x, output.tile.y);
         }
     }
 
     onDespawn(engine, placed, eid) {
         const def = engine.components.get("Extractor");
         const out = def.store.out[def.row(eid)];
-        engine.unregisterRenderedPort(out);
+        engine.render.unregisterPort(out);
         // The port may outlive the extractor (an adjacent pipe pins it); it no longer produces.
         engine.setPortFluidSource(out, EMPTY);
     }
@@ -101,7 +101,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         }
         const def = engine.components.get("Extractor");
         const out = def.store.out[def.row(eid)];
-        engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
+        engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
 
     /**
