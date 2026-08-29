@@ -221,7 +221,9 @@ async function buildPart(entryPath, coreModuleIds) {
     }
     const externalIds = new Set(coreModuleIds);
     const globals = new Map([[SDK_ID, SDK_GLOBAL]]);
-    coreModuleIds.forEach((id, index) => globals.set(id, `__c${index}`));
+    for (let index = 0; index < coreModuleIds.length; index++) {
+        globals.set(coreModuleIds[index], `__c${index}`);
+    }
     return await bundlePart(entryPath, externalIds, globals);
 }
 

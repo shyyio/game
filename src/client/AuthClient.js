@@ -104,7 +104,7 @@ export async function login(username) {
             if (!retryable) {
                 throw error;
             }
-            await new Promise(resolve => setTimeout(resolve, error.retryAfterMs));
+            await new Promise(resolve => window.setTimeout(resolve, error.retryAfterMs));
         }
     }
 }

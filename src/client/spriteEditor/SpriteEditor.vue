@@ -396,7 +396,7 @@ function downloadBlob(blob, filename) {
   doc.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 async function downloadPng(atlas) {

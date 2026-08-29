@@ -173,6 +173,27 @@ export class Client {
         // Artist edits from the sprite editor, painted over the atlases once they load.
         this.spriteOverrideStore = new SpriteOverrideStore();
         this.drawLayerRegistry = new DrawLayerRegistry();
+        this._buildStateCache();
+        this._buildTerrain();
+        this._buildToolHud();
+        this._buildSharedWorldLayers();
+        this._buildStatusHud();
+        this._buildTopBarHud();
+        this._buildOverlayHud();
+        this._buildChunkLayers();
+        this._buildModSurface();
+        this._collectThemedLayers();
+        this._registerWorldLayers();
+        this._initStreamingState();
+        this._buildInputModes();
+    }
+
+    /**
+     * Registers every state namespace on the shared cache.
+     * @private
+     * @returns {void}
+     */
+    _buildStateCache() {
         // The shared plain-data state tree: every namespace registers schema + writer + view,
         // every event fans out to every writer, and readers subscribe by path or query the views.
         // The objects writer registers first so object state lands before any reader; mods
@@ -180,8 +201,8 @@ export class Client {
         // spatial index (`client.objects`), queried by tools/layers for tile lookups, placement
         // collision, and connection rendering.
         this.cache = new ClientCache();
-        this.objects = new ObjectsView(modRegistry);
-        this.cache.register("objects", OBJECTS_SCHEMA, new ObjectsWriter(modRegistry, this.cache), this.objects);
+        this.objects = new ObjectsView(this.modRegistry);
+        this.cache.register("objects", OBJECTS_SCHEMA, new ObjectsWriter(this.modRegistry, this.cache), this.objects);
         this.cache.register("chunkClaims", CHUNK_CLAIMS_SCHEMA, new ChunkClaimsWriter(this.cache), new ChunkClaimsView());
         this.cache.register("players", PLAYERS_SCHEMA, new PlayersWriter(this.cache), new PlayersView());
         this.cache.register("gameSettings", GAME_SETTINGS_SCHEMA, new GameSettingsWriter(this.cache), new GameSettingsView());
@@ -193,7 +214,14 @@ export class Client {
         this.cache.register("clock", CLOCK_SCHEMA, new ClockWriter(this.cache), new ClockView());
         // The open-menu set rides to the sim as the inspect subscription, whoever changes it.
         this.cache.subscribe("inspect.openObjects", () => this._sendInspectedObjects());
+    }
 
+    /**
+     * Builds the terrain twin and its ground layers, repainted once the seed syncs.
+     * @private
+     * @returns {void}
+     */
+    _buildTerrain() {
         /**
          * Seeded terrain noise, the sim's twin; null until the game settings sync arrives.
          * @type {WorldNoise|null}
@@ -206,23 +234,31 @@ export class Client {
          */
         this.terrain = null;
         // The ground, repainted from the terrain once the seed arrives.
-        this.terrainLayer = new TerrainDrawLayer(modRegistry.biomes);
-        this.terrainDetailLayer = new TerrainDetailLayer(modRegistry.biomes);
+        this.terrainLayer = new TerrainDrawLayer(this.modRegistry.biomes);
+        this.terrainDetailLayer = new TerrainDetailLayer(this.modRegistry.biomes);
         this.setTerrainEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_TERRAIN, TERRAIN_ENABLED_DEFAULT));
         this.cache.subscribe("gameSettings.values", (key, value) => {
             if (key === GameSettingsKey.SEED) {
-                this.noise = new WorldNoise(value, modRegistry.noiseChannels);
-                this.terrain = new Terrain(this.noise, modRegistry.biomes);
+                this.noise = new WorldNoise(value, this.modRegistry.noiseChannels);
+                this.terrain = new Terrain(this.noise, this.modRegistry.biomes);
                 this.terrainLayer.setTerrain(this.terrain);
                 this.terrainDetailLayer.setTerrain(this.terrain);
             }
         });
+    }
+
+    /**
+     * Builds the tool-facing HUD and the shared placement state tools read.
+     * @private
+     * @returns {void}
+     */
+    _buildToolHud() {
         // Screen-space panels for open machine menus; fed by the inspect heartbeat state.
-        this.inspectPanelLayer = new InspectPanelLayer(app, this.cache);
+        this.inspectPanelLayer = new InspectPanelLayer(this.app, this.cache);
         // Rotate controls, toggled with the active tool by the host.
-        this.rotateButtonsLayer = new RotateButtonsLayer(app, viewport);
+        this.rotateButtonsLayer = new RotateButtonsLayer(this.app, this.viewport);
         // Bottom-center tool bar; the host feeds it the tool list and reacts to selection.
-        this.toolbarLayer = new ToolbarLayer(app, viewport);
+        this.toolbarLayer = new ToolbarLayer(this.app, this.viewport);
         this.toolbarLayer.onReorder(tools => this.setModToolOrder(tools));
         // Shared placement-feedback layer, driven by whichever tool is active.
         this.placementFeedbackLayer = new PlacementFeedbackLayer();
@@ -231,15 +267,23 @@ export class Client {
         this._coreTools = [new EraserTool(this)];
         // Shared placement facing, so orientation persists across tool switches.
         this.toolRotation = new ToolRotation();
+    }
+
+    /**
+     * Builds the world layers shared across mods (items, inspect, connections, workers).
+     * @private
+     * @returns {void}
+     */
+    _buildSharedWorldLayers() {
         // The single shared item layer: belts drive their computed-position items imperatively;
         // resting out-port items render here automatically from the port-item events.
-        this.itemLayer = new ItemDrawLayer(modRegistry.items);
+        this.itemLayer = new ItemDrawLayer(this.modRegistry.items);
         // Shared hover-highlight layer, driven by mods' inspect hover.
         this.inspectLayer = new InspectLayer();
         // The hovered item's bracket, drawn between the items and the objects carrying them.
         this.itemInspectLayer = new ItemInspectLayer(this.itemLayer, this.inspectLayer);
         // The bracketed item's name, docked above its bracket.
-        this.inspectTooltipLayer = new InspectTooltipLayer(app, this.itemInspectLayer, modRegistry.items);
+        this.inspectTooltipLayer = new InspectTooltipLayer(this.app, this.itemInspectLayer, this.modRegistry.items);
         // The single shared connection-stub layer, derived from the cache as objects change.
         this.connectionLayer = new ConnectionDrawLayer();
         // Commuting worker figures for manned machines, routed over the cached road tiles.
@@ -248,48 +292,64 @@ export class Client {
         this.workerDebugLayer = new WorkerDebugLayer(this.cache);
         // Staffing dots over manned machines (one per consumed worker).
         this.workerBadgeLayer = new WorkerBadgeLayer(this.cache);
+    }
+
+    /**
+     * Builds the top-left status message and counter stack.
+     * @private
+     * @returns {void}
+     */
+    _buildStatusHud() {
         // Top-left connection/chunk-loading status overlay. A static screen-space HUD on
         // app.stage (sibling of the viewport), so it never pans or zooms with the world.
-        this.statusLayer = new StatusMessageLayer(app);
+        this.statusLayer = new StatusMessageLayer(this.app);
         this.statusLayer.setConnecting();
         // The top bar's height, so the counter list knows whether the bar owns the top-left corner.
         this._topBarHeight = 0;
         // The status message's height, so the counter list stacks under it rather than behind it.
         this._statusHeight = 0;
+        // The hovered counter's label and exact amount.
+        this.counterTooltip = new CounterTooltip(this.app);
         // Top-left running counts (currency balance, and whatever else contributes a counter),
         // stacked under the status message and hidden while the top bar owns the edge.
-        // The hovered counter's label and exact amount.
-        this.counterTooltip = new CounterTooltip(app);
-        this.counterListLayer = new CounterListLayer(app, this.counterTooltip);
+        this.counterListLayer = new CounterListLayer(this.app, this.counterTooltip);
         this.statusLayer.onChange((height) => {
             this._statusHeight = height;
             this._layoutTopLeft();
         });
+    }
+
+    /**
+     * Builds the top bar, its corner buttons, and the panels they open.
+     * @private
+     * @returns {void}
+     */
+    _buildTopBarHud() {
         // Full-width top status bar: core systems and mods each own a section by id (text +
         // buttons), e.g. claim mode's claim count and exit button.
-        this.topStatusBar = new TopStatusBarLayer(app);
+        this.topStatusBar = new TopStatusBarLayer(this.app);
         // Full-width bottom bar holding the active mode's forward action (its text + Confirm).
-        this.bottomActionBar = new BottomActionBarLayer(app);
+        this.bottomActionBar = new BottomActionBarLayer(this.app);
         // Always-visible top-right settings button; stays clear of the bar above via its height.
-        this.settingsButtonLayer = new SettingsButtonLayer(app);
+        this.settingsButtonLayer = new SettingsButtonLayer(this.app);
         // Friend management (account-wide, not gated behind claim mode); sits left of settings.
-        this.friendsButtonLayer = new FriendsButtonLayer(app);
-        this.friendsPanelLayer = new FriendsPanelLayer(app, this.cache);
+        this.friendsButtonLayer = new FriendsButtonLayer(this.app);
+        this.friendsPanelLayer = new FriendsPanelLayer(this.app, this.cache);
         this.friendsButtonLayer.onPress(() => this.friendsPanelLayer.toggle());
         // Opens the production metrics panel; sits left of friends.
-        this.productionButtonLayer = new ProductionButtonLayer(app);
+        this.productionButtonLayer = new ProductionButtonLayer(this.app);
         this.productionPanelLayer = new ProductionPanelLayer(
-            app,
+            this.app,
             this.cache,
             METRICS_FACT_TYPE_ITEM_PRODUCED,
             METRICS_QUERY_SCOPE_OWN,
-            modRegistry.items,
+            this.modRegistry.items,
         );
         this.productionButtonLayer.onPress(() => this.productionPanelLayer.toggle());
         // Opens the sprite editor (Game.vue owns it); sits left of production.
-        this.artButtonLayer = new ArtButtonLayer(app);
+        this.artButtonLayer = new ArtButtonLayer(this.app);
         // Opens the terrain tuner (Game.vue owns it); sits left of art.
-        this.terrainButtonLayer = new TerrainButtonLayer(app);
+        this.terrainButtonLayer = new TerrainButtonLayer(this.app);
         this.productionPanelLayer.onSubscribe((metricsType, scope, tier, windowTicks) => this.sendMessage(
             new MetricsSubscribeMessage(metricsType, scope, tier, windowTicks),
         ));
@@ -314,19 +374,34 @@ export class Client {
             this._topBarHeight = height;
             this._layoutTopLeft();
         });
+    }
+
+    /**
+     * Builds the watermark, toast, dialog, center marker, and map buttons.
+     * @private
+     * @returns {void}
+     */
+    _buildOverlayHud() {
         // Bottom-left build watermark (desktop only).
-        this.versionWatermarkLayer = new VersionWatermarkLayer(app);
+        this.versionWatermarkLayer = new VersionWatermarkLayer(this.app);
         // Bottom-center toast (claim rejections, session disconnects).
-        this.noticeLayer = new NoticeLayer(app);
+        this.noticeLayer = new NoticeLayer(this.app);
         // Centered confirm/cancel dialog, currently only the destructive unclaim confirm.
-        this.confirmDialogLayer = new ConfirmDialogLayer(app);
+        this.confirmDialogLayer = new ConfirmDialogLayer(this.app);
         // Center-lock aim point for claim selection (mobile).
-        this.centerMarkerLayer = new CenterMarkerLayer(app, viewport);
+        this.centerMarkerLayer = new CenterMarkerLayer(this.app, this.viewport);
         // Contextual map-mode buttons (bottom-right): chunk administration entry and home.
-        this.mapButtonsLayer = new MapButtonsLayer(app);
+        this.mapButtonsLayer = new MapButtonsLayer(this.app);
         this.mapButtonsLayer.addButton("claimSelection", drawClaimIcon, () => this.claimSelection.toggle());
         this.mapButtonsLayer.addButton("home", drawHomeIcon, () => this.glideHome());
+    }
 
+    /**
+     * Builds the chunk claim/selection layers and the selected chunk's action stack.
+     * @private
+     * @returns {void}
+     */
+    _buildChunkLayers() {
         // Ownership borders for claimed chunks (map/overworld mode).
         this.chunkClaimsLayer = new ChunkClaimsDrawLayer(this.cache);
         this.drawLayerRegistry.add(this.chunkClaimsLayer);
@@ -337,7 +412,7 @@ export class Client {
         this.claimFrontierLayer = new ClaimFrontierDrawLayer(this.cache);
         this.drawLayerRegistry.add(this.claimFrontierLayer);
         // The selected chunk's action stack, anchored beside the chunk (map mode).
-        this.chunkActionsLayer = new ChunkActionsLayer(app, viewport, this.cache.view("chunkClaims"), this.cache.view("players"));
+        this.chunkActionsLayer = new ChunkActionsLayer(this.app, this.viewport, this.cache.view("chunkClaims"), this.cache.view("players"));
         this.chunkActionsLayer.onClaim(chunk => this.sendMessage(new ClaimChunkMessage(chunk)));
         this.chunkActionsLayer.onUnclaim(chunk => this.sendMessage(new UnclaimChunkMessage(chunk)));
         this.chunkActionsLayer.onAddFriend(playerId => this.sendMessage(new AddFriendMessage(playerId)));
@@ -345,7 +420,14 @@ export class Client {
         this.chunkActionsLayer.onSetPermission(
             (chunk, permission) => this.sendMessage(new SetChunkPermissionMessage(chunk, permission)),
         );
+    }
 
+    /**
+     * Builds the per-type client bundles, then lets every client mod set itself up.
+     * @private
+     * @returns {void}
+     */
+    _buildModSurface() {
         // The derived client surface (draw layer + ghost + tool) of every behavior-driven type;
         // bespokeClient types (belts) bring their own through their client mod.
         this.bundles = this._buildBundles();
@@ -364,6 +446,14 @@ export class Client {
         }
         // Screen-space HUD layers (unlike drawLayers, mounted straight onto app.stage in init()).
         this._modHudLayers = this.modRegistry.clientMods.flatMap(mod => mod.hudLayers(this));
+    }
+
+    /**
+     * Collects the HUD layers that repaint on a theme change.
+     * @private
+     * @returns {void}
+     */
+    _collectThemedLayers() {
         // Layers holding themed pixels; world layers draw from the non-themed placement palette.
         // A mod HUD layer opts in by defining restyle.
         this._themedLayers = [
@@ -390,8 +480,16 @@ export class Client {
             ...this._modHudLayers.filter(layer => layer.restyle !== undefined),
         ];
         onThemeChange(() => this._restyleHud());
+    }
+
+    /**
+     * Registers the remaining world layers, then binds every layer to the cache.
+     * @private
+     * @returns {void}
+     */
+    _registerWorldLayers() {
         // The overworld renderer, active below the overworld zoom threshold.
-        this.overworldLayer = new OverworldDrawLayer(modRegistry, this.cache);
+        this.overworldLayer = new OverworldDrawLayer(this.modRegistry, this.cache);
         this.drawLayerRegistry.add(this.overworldLayer);
         this.drawLayerRegistry.add(this.terrainLayer);
         this.drawLayerRegistry.add(this.terrainDetailLayer);
@@ -410,7 +508,14 @@ export class Client {
         for (const layer of this.drawLayerRegistry.layers) {
             layer.bindCache(this.objects);
         }
+    }
 
+    /**
+     * Initializes chunk subscription, the event queue, and view-mode state.
+     * @private
+     * @returns {void}
+     */
+    _initStreamingState() {
         // Chunks currently subscribed on the server: the visible chunks.
         this._requestedChunks = new Set();
         // Per-delta events awaiting the budgeted per-frame drain: a chunk-sync bundle explodes to
@@ -431,6 +536,14 @@ export class Client {
         this._debugMode = false;
         // Host event listeners, the last stop of the event fan-out.
         this._eventListeners = new ListenerList();
+    }
+
+    /**
+     * Builds the chunk-picking input modes and the claim feedback that listens with them.
+     * @private
+     * @returns {void}
+     */
+    _buildInputModes() {
         // The selected chunk, shared by the chunk-picking modes below.
         this.chunkCursor = new ChunkCursor(this);
         // Chunk administration input mode controller.

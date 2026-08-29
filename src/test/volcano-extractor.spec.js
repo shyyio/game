@@ -33,8 +33,12 @@ test("a volcano feeds a primary extractor (sulfur) and a deep extractor (brine) 
     let brine = false;
     for (let i = 0; i < 12; i += 1) {
         engine.tickAll();
-        if (engine.portItem(sulfurOut) === ITEM_TYPE_TEST_SULFUR) sulfur = true;
-        if (engine.portItem(brineOut) === ITEM_TYPE_TEST_BRINE) brine = true;
+        if (engine.portItem(sulfurOut) === ITEM_TYPE_TEST_SULFUR) {
+            sulfur = true;
+        }
+        if (engine.portItem(brineOut) === ITEM_TYPE_TEST_BRINE) {
+            brine = true;
+        }
     }
     assert.ok(sulfur, "primary extractor produced sulfur");
     assert.ok(brine, "deep extractor produced brine");

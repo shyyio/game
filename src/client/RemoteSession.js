@@ -81,7 +81,7 @@ export class RemoteSession extends AbstractSession {
         if (this._retryTimer === null) {
             return;
         }
-        clearTimeout(this._retryTimer);
+        window.clearTimeout(this._retryTimer);
         this._retryNow();
     }
 
@@ -139,7 +139,7 @@ export class RemoteSession extends AbstractSession {
         this._closed = true;
         this._onStatusChange = null;
         if (this._retryTimer !== null) {
-            clearTimeout(this._retryTimer);
+            window.clearTimeout(this._retryTimer);
             this._retryTimer = null;
         }
         if (this._ws !== null) {
@@ -226,7 +226,7 @@ export class RemoteSession extends AbstractSession {
     _scheduleRetry() {
         const backoff = Math.min(RETRY_BASE_MS * 2 ** (this._retryAttempt - 1), RETRY_MAX_MS);
         const delay = backoff + Math.random() * RETRY_JITTER_MS;
-        this._retryTimer = setTimeout(() => this._retryNow(), delay);
+        this._retryTimer = window.setTimeout(() => this._retryNow(), delay);
     }
 
     /**

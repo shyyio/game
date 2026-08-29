@@ -32,7 +32,7 @@ function refresh() {
     return;
   }
   refreshCoolingDown.value = true;
-  setTimeout(() => {
+  window.setTimeout(() => {
     refreshCoolingDown.value = false;
   }, REFRESH_COOLDOWN_MS);
   loadServers();
@@ -131,14 +131,14 @@ function observeNetworkDurationMs(url) {
   const normalizedUrl = new URL(url).href;
   let stop = () => {};
   const durationMs = new Promise((resolve) => {
-    const timeout = setTimeout(() => {
+    const timeout = window.setTimeout(() => {
       observer.disconnect();
       resolve(null);
     }, RESOURCE_TIMING_TIMEOUT_MS);
     const observer = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
         if (entry.name === normalizedUrl) {
-          clearTimeout(timeout);
+          window.clearTimeout(timeout);
           observer.disconnect();
           resolve(Math.round(entry.duration));
           return;
@@ -147,7 +147,7 @@ function observeNetworkDurationMs(url) {
     });
     observer.observe({type: "resource"});
     stop = () => {
-      clearTimeout(timeout);
+      window.clearTimeout(timeout);
       observer.disconnect();
       resolve(null);
     };
