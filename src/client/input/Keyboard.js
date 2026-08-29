@@ -14,8 +14,8 @@ class Keyboard {
     }
 
     /**
-     * @param key {string}
-     * @param callback {keyboardCallback}
+     * @param {string} key
+     * @param {keyboardCallback} callback
      */
     on(key, callback) {
         if (!(key in this._listeners)) {
@@ -26,8 +26,8 @@ class Keyboard {
     }
 
     /**
-     * @param key {string}
-     * @param callback {keyboardCallback}
+     * @param {string} key
+     * @param {keyboardCallback} callback
      */
     off(key, callback) {
         const listeners = this._listeners[key];
@@ -41,7 +41,7 @@ class Keyboard {
     }
 
     /**
-     * @param event {KeyboardEvent}
+     * @param {KeyboardEvent} event
      * @private
      */
     _keyDown(event) {
@@ -56,7 +56,7 @@ class Keyboard {
     }
 
     /**
-     * @param event {KeyboardEvent}
+     * @param {KeyboardEvent} event
      * @private
      */
     _keyUp(event) {

@@ -11,7 +11,7 @@ const STORAGE_GAME_MODE = "spup.game-mode";
 const STORAGE_LOCAL_START = "spup.local-start";
 
 /**
- * @typedef GameStartParams {Object}
+ * @typedef {Object} GameStartParams
  * @property {string} mode
  * @property {string} username
  * @property {string} token

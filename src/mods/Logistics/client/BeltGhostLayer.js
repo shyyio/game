@@ -83,11 +83,11 @@ export class BeltGhostLayer extends AbstractDrawLayer {
 
     /**
      * Builds one ghost sprite and adds it to `container`.
-     * @param container {Container} floating or grid-aligned
-     * @param tileX {number}
-     * @param tileY {number}
-     * @param direction {Direction}
-     * @param beltType {BeltType}
+     * @param {Container} container floating or grid-aligned
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Direction} direction
+     * @param {BeltType} beltType
      * @param {number} tint
      * @param {BeltBend} bend
      * @param {number} [alpha]

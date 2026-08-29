@@ -4,7 +4,7 @@ import {StaticBehavior} from "@/sim/behaviors/StaticBehavior.js";
 
 export class PortDefinition {
     /**
-     * @param name {string}
+     * @param {string} name
      * @param [vec] {Vec|null}
      * @param [render] {boolean} the engine captures this out-port's resting item into ViewedPortItem;
      *     opt out for virtual ports or out-ports captured manually
@@ -97,7 +97,7 @@ export class ObjectType {
     /**
      * The entity blueprint for one placeable object: its geometry/ports (read by engine and client),
      * its sim behavior (a component+system bundle), and its placement/menu rules.
-     * @param config {object}
+     * @param {object} config
      * @param config.name {string} the object type name (unique across the loadout)
      * @param [config.inputPorts] {PortDefinition[]}
      * @param [config.outputPorts] {PortDefinition[]}

@@ -122,6 +122,25 @@ export class Game {
          * @type {GameMetrics}
          */
         this.metrics = new GameMetrics(metricsStore, modRegistry, this.bus, this.simEngine);
+
+        /**
+         * Core message class -> its handler; anything absent falls through to metrics, then mods.
+         * @type {Map<Function, function(AbstractSession, AbstractMessage): void>}
+         * @private
+         */
+        this._coreMessageHandlers = new Map([
+            [SetViewportMessage, (session, message) => this._setSessionViewport(session, message.chunks)],
+            [SetInspectedObjectsMessage, (session, message) => this._setSessionInspect(session, message.objectIds)],
+            [OverworldRequestMessage, (session, message) => this._sendOverworldSnapshot(session, message)],
+            [ClaimChunkMessage, (session, message) => this._handleClaim(session, message.chunk)],
+            [UnclaimChunkMessage, (session, message) => this._handleUnclaim(session, message.chunk, message.clear === 1)],
+            [SetChunkPermissionMessage, (session, message) => this._handleSetPermission(session, message.chunk, message.permission)],
+            [AddFriendMessage, (session, message) => this._handleAddFriend(session, message.playerId)],
+            [AddFriendByCodeMessage, (session, message) => this._handleAddFriendByCode(session, message.code)],
+            [RemoveFriendMessage, (session, message) => this._handleRemoveFriend(session, message.playerId)],
+            [SetPlayerSettingMessage, (session, message) => this._handleSetPlayerSetting(session, message.key, message.value)],
+            [SetPlayerSettingsToolOrderMessage, (session, message) => this._handleSetToolOrder(session, message.toolIds)],
+        ]);
     }
 
     /**
@@ -294,7 +313,7 @@ export class Game {
     }
 
     /**
-     * @param session {AbstractSession}
+     * @param {AbstractSession} session
      * @private
      */
     _syncPlayerSettings(session) {
@@ -302,7 +321,7 @@ export class Game {
     }
 
     /**
-     * @param session {AbstractSession}
+     * @param {AbstractSession} session
      * @private
      */
     _syncToolOrder(session) {
@@ -334,80 +353,9 @@ export class Game {
     dispatchMessage(message, session) {
         // Core messages are handled here; the rest go to the mods' session handlers, then the
         // engine's registered handlers.
-        if (message instanceof SetViewportMessage) {
-            this._setSessionViewport(session, message.chunks);
-            return;
-        }
-
-        if (message instanceof SetInspectedObjectsMessage) {
-            this._setSessionInspect(session, message.objectIds);
-            return;
-        }
-
-        if (message instanceof OverworldRequestMessage) {
-            this._sendOverworldSnapshot(session, message);
-            return;
-        }
-
-        if (message instanceof ClaimChunkMessage) {
-            this._handleClaim(session, message.chunk);
-            return;
-        }
-
-        if (message instanceof UnclaimChunkMessage) {
-            this._handleUnclaim(session, message.chunk, message.clear === 1);
-            return;
-        }
-
-        if (message instanceof SetChunkPermissionMessage) {
-            this._handleSetPermission(session, message.chunk, message.permission);
-            return;
-        }
-
-        if (message instanceof AddFriendMessage) {
-            this._handleAddFriend(session, message.playerId);
-            return;
-        }
-
-        if (message instanceof AddFriendByCodeMessage) {
-            const target = this.players.byFriendCode(message.code);
-            const playerId = target === undefined ? PLAYER_ID_NONE : target.playerId;
-            const found = playerId !== PLAYER_ID_NONE && playerId !== session.playerId;
-            this._handleAddFriend(session, playerId);
-            this.bus.publishTo(session.id, new AddFriendByCodeResultEvent(message.code, found));
-            return;
-        }
-
-        if (message instanceof RemoveFriendMessage) {
-            this.players.removeFriend(session.playerId, message.playerId);
-            this._syncFriendLists(session, message.playerId);
-            for (const mod of this.modRegistry.simMods) {
-                mod.onFriendRemoved(session.playerId, message.playerId, this);
-            }
-            return;
-        }
-
-        if (message instanceof SetPlayerSettingMessage) {
-            const entry = this.modRegistry.playerSettingEntry(message.key);
-            // Unknown keys and server-authoritative keys (progress, unlocks) are never
-            // client-writable; hostile input drops silently, like a failed validate.
-            if (entry === undefined || !entry.clientWritable) {
-                return;
-            }
-            if (message.value < 0 || message.value >= entry.optionCount) {
-                return;
-            }
-            this.playerSettings.set(session.playerId, message.key, message.value);
-            this.bus.publishTo(session.id, new PlayerSettingsUpdateEvent(message.key, message.value));
-            for (const mod of this.modRegistry.simMods) {
-                mod.onPlayerSettingWritten(session, message.key, message.value, this);
-            }
-            return;
-        }
-
-        if (message instanceof SetPlayerSettingsToolOrderMessage) {
-            this.toolOrder.set(session.playerId, message.toolIds);
-            this.bus.publishTo(session.id, new PlayerSettingsToolOrderSyncEvent(message.toolIds));
+        const handler = this._coreMessageHandlers.get(message.constructor);
+        if (handler !== undefined) {
+            handler(session, message);
             return;
         }
 
@@ -558,6 +506,34 @@ export class Game {
     }
 
     /**
+     * Befriends by friend code, telling the asking session whether the code matched anyone.
+     * @param {AbstractSession} session
+     * @param {string} code
+     * @private
+     */
+    _handleAddFriendByCode(session, code) {
+        const target = this.players.byFriendCode(code);
+        const playerId = target === undefined ? PLAYER_ID_NONE : target.playerId;
+        const found = playerId !== PLAYER_ID_NONE && playerId !== session.playerId;
+        this._handleAddFriend(session, playerId);
+        this.bus.publishTo(session.id, new AddFriendByCodeResultEvent(code, found));
+    }
+
+    /**
+     * Unfriends by playerId, resyncing both sides and letting mods react to the lost build rights.
+     * @param {AbstractSession} session
+     * @param {number} playerId
+     * @private
+     */
+    _handleRemoveFriend(session, playerId) {
+        this.players.removeFriend(session.playerId, playerId);
+        this._syncFriendLists(session, playerId);
+        for (const mod of this.modRegistry.simMods) {
+            mod.onFriendRemoved(session.playerId, playerId, this);
+        }
+    }
+
+    /**
      * Resyncs both sides of a friendship change: the acting session, and every connected
      * session of the (un)friended player, whose build rights just changed.
      * @param {AbstractSession} session
@@ -582,6 +558,40 @@ export class Game {
         const grantedByIds = this.players.grantedBy(playerId);
         this.syncUsernames(sessionId, friendIds.concat(grantedByIds));
         this.bus.publishTo(sessionId, new FriendListEvent(friendIds, grantedByIds));
+    }
+
+    /**
+     * Writes one client-writable player setting. Unknown keys, server-authoritative keys
+     * (progress, unlocks), and out-of-range values drop silently, like a failed validate.
+     * @param {AbstractSession} session
+     * @param {number} key
+     * @param {number} value
+     * @private
+     */
+    _handleSetPlayerSetting(session, key, value) {
+        const entry = this.modRegistry.playerSettingEntry(key);
+        if (entry === undefined || !entry.clientWritable) {
+            return;
+        }
+        if (value < 0 || value >= entry.optionCount) {
+            return;
+        }
+        this.playerSettings.set(session.playerId, key, value);
+        this.bus.publishTo(session.id, new PlayerSettingsUpdateEvent(key, value));
+        for (const mod of this.modRegistry.simMods) {
+            mod.onPlayerSettingWritten(session, key, value, this);
+        }
+    }
+
+    /**
+     * Stores the player's toolbar order and echoes it back to the session that set it.
+     * @param {AbstractSession} session
+     * @param {number[]} toolIds
+     * @private
+     */
+    _handleSetToolOrder(session, toolIds) {
+        this.toolOrder.set(session.playerId, toolIds);
+        this.bus.publishTo(session.id, new PlayerSettingsToolOrderSyncEvent(toolIds));
     }
 
     // ---- Viewport ----

@@ -146,8 +146,8 @@ export function findTunnelPartner(x, y, direction, kind, beltsAt) {
 }
 
 /**
- * @param tunnelParent {{x: number, y: number, type: number, direction: Direction}}
- * @param options {{x: number, y: number, type: number, direction: Direction}}
+ * @param {{x: number, y: number, type: number, direction: Direction} tunnelParent}
+ * @param {{x: number, y: number, type: number, direction: Direction} options}
  * @returns {{x: number, y: number}[]}
  */
 export function getUndergroundBeltsToCreate(tunnelParent, options) {
