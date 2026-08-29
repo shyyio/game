@@ -4,7 +4,7 @@
 
 export const UI_SCALE_NORMAL = 1;
 // Big UI clears WCAG 2.5.5 (44px targets) on every control; the smallest target sets the floor.
-export const UI_SCALE_BIG = 1.8;
+export const UI_SCALE_BIG = 1.6;
 
 // The unscaled sizes. Each is a target a pointer has to hit, so each is audited.
 const BASE = {
@@ -14,8 +14,8 @@ const BASE = {
     CIRCLE_BUTTON_RADIUS: 24,
     // One cell of the icon picker grid.
     ICON_CELL_SIZE: 44,
-    // A panel's title-bar close button.
-    CLOSE_SIZE: 25,
+    // A panel's title-bar close button, the smallest target and so the one setting UI_SCALE_BIG.
+    CLOSE_SIZE: 28,
     // A toolbar slot.
     TOOLBAR_SLOT_SIZE: 56,
     // Spacing between items in a row, and one step of row nesting; scaled so a bigger UI is not
