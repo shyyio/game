@@ -2,7 +2,6 @@ import {Container, Graphics, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {activeTheme, PROGRESS_TEXT_STROKE, THEME_HIGH_CONTRAST} from "@/client/Theme.js";
 import {formatCount, formatExactCount} from "@/common/util.js";
-import {debugOutlines} from "@/client/layers/pixiUtils.js";
 import SafeArea from "@/client/SafeArea.js";
 import {HudLayer} from "@/client/hud/HudLayer.js";
 
@@ -125,9 +124,6 @@ export class CounterListLayer extends Container {
         this._suppressed = false;
         // Counter id -> its row, in insertion order.
         this._rows = new Map();
-        this._debug = false;
-        // Magenta layout-debug outlines (setDebug), rebuilt with the rows.
-        this._debugOutlines = null;
         this._layout();
         app.renderer.on("resize", () => this._layout());
     }
@@ -192,34 +188,6 @@ export class CounterListLayer extends Container {
     }
 
     /**
-     * Shows or hides the layout-debug outlines.
-     * @param {boolean} on
-     * @returns {void}
-     */
-    setDebug(on) {
-        this._debug = on;
-        this._refreshDebug();
-    }
-
-    /**
-     * Rebuilds the outlines for the rows as they stand.
-     * @private
-     * @returns {void}
-     */
-    _refreshDebug() {
-        if (this._debugOutlines !== null) {
-            this._debugOutlines.destroy({children: true});
-            this._debugOutlines = null;
-        }
-        if (!this._debug || !this.visible) {
-            return;
-        }
-        const outlines = debugOutlines(this.children, this);
-        this._debugOutlines = outlines;
-        this.addChild(outlines);
-    }
-
-    /**
      * Re-stacks the rows clear of the left safe-area inset.
      * @private
      * @returns {void}
@@ -233,6 +201,5 @@ export class CounterListLayer extends Container {
             row.y = y;
             y += ROW_HEIGHT;
         }
-        this._refreshDebug();
     }
 }

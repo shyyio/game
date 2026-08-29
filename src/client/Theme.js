@@ -175,9 +175,6 @@ export function textOn(background) {
     return PANEL_TINT_TEXT;
 }
 
-// ---- Layout debug ----
-export const DEBUG_OUTLINE_COLOR = 0xff00ff;
-
 // ---- Placement-preview ghost palette (used by every tool's ghost layer) ----
 export const GHOST_TINT = 0xFFFFFF;
 export const GHOST_ALPHA = 0.9; // ghosts are always semi-transparent

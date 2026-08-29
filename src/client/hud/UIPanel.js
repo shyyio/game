@@ -1,6 +1,6 @@
 import {Container, Sprite, Text, NineSliceSprite, TilingSprite, Rectangle} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {debugOutlines, swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
+import {swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
 import {PanelStack} from "@/client/hud/PanelStack.js";
 import {CLOSE_SIZE} from "@/client/hud/UiScale.js";
 import Mobile from "@/client/Mobile.js";
@@ -77,7 +77,6 @@ export class UIPanel extends Container {
 
         // Title bar container, exposed so the host can attach drag handlers.
         this.dragHandle = null;
-        this._debugOutlines = null;
         this._shadow = null;
 
         this._build();
@@ -422,24 +421,6 @@ export class UIPanel extends Container {
      */
     get outerHeight() {
         return this._height;
-    }
-
-    /**
-     * Toggles a 1px outline around each element (background and content), for layout debugging.
-     * @param {boolean} on
-     * @returns {void}
-     */
-    setDebug(on) {
-        if (this._debugOutlines !== null) {
-            this._debugOutlines.destroy({children: true});
-            this._debugOutlines = null;
-        }
-        if (!on) {
-            return;
-        }
-        const outlines = debugOutlines(this.children, this);
-        this._debugOutlines = outlines;
-        this.addChild(outlines);
     }
 
     /**
