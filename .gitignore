@@ -151,6 +151,7 @@ auth-signing-key.json
 auth-secret.json
 docs/
 .backup/
+.claude/
 
 # Markdown files (keep README.md)
 *.md
