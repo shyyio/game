@@ -34,7 +34,7 @@ export class PointerHarness {
         this.root.hitArea = new Rectangle(0, 0, width, height);
         // Hit testing reads world transforms, which only a render group computes.
         this.root.enableRenderGroup();
-        this._boundary = new EventBoundary(this.root);
+        this.boundary = new EventBoundary(this.root);
         // Mouse unless a gesture says otherwise; touch is the interesting case, so it is explicit.
         this._pointerType = "mouse";
     }
@@ -52,6 +52,14 @@ export class PointerHarness {
         child.y = y;
         this.root.addChild(child);
         return child;
+    }
+
+    /**
+     * Pushes whatever moved since the last event into the world transforms hit testing reads.
+     * @returns {void}
+     */
+    sync() {
+        updateRenderGroupTransforms(this.root.renderGroup, true);
     }
 
     /**
@@ -131,9 +139,8 @@ export class PointerHarness {
      * @returns {void}
      */
     _dispatch(type, x, y, options) {
-        // Whatever a handler moved since the last event has to reach the world transforms first.
-        updateRenderGroupTransforms(this.root.renderGroup, true);
-        const event = new FederatedPointerEvent(this._boundary);
+        this.sync();
+        const event = new FederatedPointerEvent(this.boundary);
         event.type = type;
         event.pointerId = options.pointerId === undefined ? DEFAULT_POINTER_ID : options.pointerId;
         event.pointerType = options.pointerType === undefined ? this._pointerType : options.pointerType;
@@ -146,7 +153,7 @@ export class PointerHarness {
         event.page.set(x, y);
         // The boundary reads through to the native event for propagation control.
         event.nativeEvent = new NativePointerEventStub(type, event.pointerId);
-        this._boundary.mapEvent(event);
+        this.boundary.mapEvent(event);
     }
 }
 

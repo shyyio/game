@@ -138,6 +138,32 @@ export function trackTap(target, onTap, {
 }
 
 /**
+ * Whether `target` is what a pointer at (x, y) would reach, rather than something drawn over it.
+ * Lets a DOM widget overlaid on the canvas defer to pixi's own stacking order, which it otherwise
+ * floats above regardless of z-index.
+ * @param {EventBoundary} boundary
+ * @param {Container} target
+ * @param {number} x - canvas space
+ * @param {number} y
+ * @returns {boolean}
+ */
+export function isTopmostAt(boundary, target, x, y) {
+    if (boundary.rootTarget === null || boundary.rootTarget === undefined) {
+        return false;
+    }
+    const hit = boundary.hitTest(x, y);
+    if (hit === null || hit === undefined) {
+        return false;
+    }
+    for (let node = hit; node !== null; node = node.parent) {
+        if (node === target) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * Tracks a native pointer drag through window-level pointermove/pointerup, from `startEvent`'s position.
  * @param {PointerEvent} startEvent
  * @param {function(deltaX: number, deltaY: number): void} onMove
