@@ -1,7 +1,7 @@
 import {Container, Graphics, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_TINT_TEXT, ACTIVE_ACCENT, BLOCKED_TILE_COLOR, PANEL_TINT} from "@/client/Theme.js";
-import {UIPanel} from "@/client/hud/UIPanel.js";
+import {FRAME_MARGIN, UIPanel} from "@/client/hud/UIPanel.js";
 import {buildPanelButton} from "@/client/hud/panelButton.js";
 import {BUTTON_HEIGHT} from "@/client/hud/UiScale.js";
 import {HudLayer} from "@/client/hud/HudLayer.js";
@@ -13,8 +13,6 @@ const MESSAGE_FONT_SIZE = 15;
 const MESSAGE_GAP = 16;
 const BUTTON_GAP = 10;
 const BACKDROP_ALPHA = 0.5;
-// Gap between the outer frame and the sunken inset body.
-const FRAME_MARGIN = 6;
 
 /**
  * Full-screen centered confirm/cancel dialog with a dimmed backdrop; a screen-space HUD on

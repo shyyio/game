@@ -30,6 +30,13 @@ const PATTERN_TILE = 16 * PATTERN_SCALE;
 const FRAME_INSET = 12;
 const FRAME_SCALE = 0.70;
 
+// Gap between an outer frame and its content (buttons, pattern, inset), for every framed HUD box.
+export const FRAME_MARGIN = 6;
+
+// A panel anchored under an overlay button hangs this far in from the right edge, this far below it.
+const ANCHOR_MARGIN_RIGHT = 16;
+const ANCHOR_GAP = 12;
+
 // Keep a dragged panel at least this far from the screen edges.
 const EDGE_MARGIN = 3;
 
@@ -250,6 +257,20 @@ export class UIPanel extends Container {
     }
 
     /**
+     * Where a panel opened by an overlay button sits: right-aligned, hanging below the button.
+     * @param {Application} app
+     * @param {CircleButtonLayer} anchorButton
+     * @param {number} width
+     * @returns {{x: number, y: number}}
+     */
+    static anchoredPosition(app, anchorButton, width) {
+        return {
+            x: app.screen.width - ANCHOR_MARGIN_RIGHT - width,
+            y: anchorButton.bottomY + ANCHOR_GAP,
+        };
+    }
+
+    /**
      * The lowest a panel's top may sit: clear of the on-screen keyboard on touch, clear of the
      * bottom edge otherwise.
      * @param {Application} app
@@ -265,19 +286,18 @@ export class UIPanel extends Container {
 
     /**
      * Rebuilds a content-sized frame+inset pair (compact HUD boxes like NoticeLayer/StatusMessageLayer,
-     * not a full draggable {@link UIPanel}); inset is inset by `frameMargin` on every side.
+     * not a full draggable {@link UIPanel}); inset is inset by {@link FRAME_MARGIN} on every side.
      * @param {Container} container
      * @param {{frame: NineSliceSprite|null, inset: NineSliceSprite|null}} previous
      * @param {TextureRegistry} textureRegistry
      * @param {number} width
      * @param {number} height
      * @param {number} tint
-     * @param {number} frameMargin
      * @returns {{frame: NineSliceSprite, inset: NineSliceSprite}}
      */
-    static rebuildFramedBox(container, previous, textureRegistry, width, height, tint, frameMargin) {
+    static rebuildFramedBox(container, previous, textureRegistry, width, height, tint) {
         const inset = UIPanel.rebuildInset(container, previous.inset, textureRegistry,
-            width - frameMargin * 2, height - frameMargin * 2, tint, {x: frameMargin, y: frameMargin});
+            width - FRAME_MARGIN * 2, height - FRAME_MARGIN * 2, tint, {x: FRAME_MARGIN, y: FRAME_MARGIN});
         const frame = UIPanel.rebuildFrame(container, previous.frame, textureRegistry, width, height, tint);
         return {frame, inset};
     }

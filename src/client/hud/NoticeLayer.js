@@ -1,14 +1,12 @@
 import {Container, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_TINT_TEXT, PANEL_TINT} from "@/client/Theme.js";
-import {UIPanel} from "@/client/hud/UIPanel.js";
+import {FRAME_MARGIN, UIPanel} from "@/client/hud/UIPanel.js";
 import {HudLayer} from "@/client/hud/HudLayer.js";
 
 const MARGIN = 24;
 const PADDING_X = 16;
 const PADDING_Y = 12;
-// Gap between the outer frame and the sunken inset body.
-const FRAME_MARGIN = 6;
 
 // How long a notice stays up; a new notify() call restarts this from the current message.
 const NOTICE_DURATION_MS = 3000;
@@ -98,7 +96,7 @@ export class NoticeLayer extends Container {
      * @returns {void}
      */
     _rebuildBackground(width, height) {
-        this._box = UIPanel.rebuildFramedBox(this._panel, this._box, this.textureRegistry, width, height, PANEL_TINT, FRAME_MARGIN);
+        this._box = UIPanel.rebuildFramedBox(this._panel, this._box, this.textureRegistry, width, height, PANEL_TINT);
     }
 
     /**
