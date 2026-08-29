@@ -1,5 +1,5 @@
 import {Container, Graphics, Rectangle} from "pixi.js";
-import {panelText, TextRole} from "@/client/hud/PanelText.js";
+import {panelText, fittedPanelText, TextRole} from "@/client/hud/PanelText.js";
 import {buildPanelButton} from "@/client/hud/panelButton.js";
 import {PanelRow, ROW_HEIGHT, ROW_GAP} from "@/client/hud/PanelRow.js";
 import {trackTap} from "@/client/layers/pixiUtils.js";
@@ -236,7 +236,6 @@ export class PanelStack extends Container {
                     .roundRect(0, 0, SWATCH_SIZE, SWATCH_SIZE, SWATCH_RADIUS)
                     .fill(descriptor.swatchColor), SWATCH_GAP);
             }
-            row.leading(panelText(descriptor.label, TextRole.BODY));
             if (descriptor.trailingLabel !== undefined) {
                 row.trailing(panelText(descriptor.trailingLabel, TextRole.BODY));
             }
@@ -247,6 +246,9 @@ export class PanelStack extends Container {
                 }
                 row.trailing(buildPanelButton(this._textureRegistry, descriptor.buttonLabel, tint, descriptor.onClick));
             }
+            // The label takes what the trailing items leave: it comes from data, so its length is
+            // nobody's to promise.
+            row.fill(available => fittedPanelText(descriptor.label, TextRole.BODY, available));
             row.layout();
             this._overflow = Math.max(this._overflow, row.overflow);
             if (descriptor.onRowClick !== undefined) {
