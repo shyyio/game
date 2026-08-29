@@ -2,7 +2,8 @@ import {Container, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {PROGRESS_TEXT_STROKE, WORKER_MISSING_TEXT, WORKER_OK_TEXT} from "@/client/Theme.js";
 import {InspectSlot, SLOT_SIZE} from "@/client/hud/InspectSlot.js";
-import {InspectProgressBar, PROGRESS_HEIGHT} from "@/client/hud/InspectProgressBar.js";
+import {InspectProgressBar} from "@/client/hud/InspectProgressBar.js";
+import {BUTTON_HEIGHT} from "@/client/hud/UiScale.js";
 
 const SLOT_MARGIN_Y = 10;
 const SLOT_MARGIN_X = 10;
@@ -71,7 +72,7 @@ export class InspectContent extends Container {
         }
 
         this._progressBar = new InspectProgressBar(textureRegistry, outputX - SLOT_MARGIN_X, event.processingTotal);
-        this._progressBar.y = secondRowY + (SLOT_SIZE - PROGRESS_HEIGHT) / 2;
+        this._progressBar.y = secondRowY + (SLOT_SIZE - BUTTON_HEIGHT) / 2;
         this.addChild(this._progressBar);
 
         this._outputSlot = new InspectSlot(textureRegistry, items, tooltip);
