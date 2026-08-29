@@ -3,13 +3,13 @@ import {rotate, chunkId, tileId, tileVariantId} from "@/common/util.js";
 import {GAME_VERSION, PLAYER_ID_NONE} from "@/common/constants.js";
 import {SAVE_FORMAT} from "@/common/saveMigrations.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {PlacedObjects} from "@/sim/PlacedObjects.js";
 import {OverworldBake} from "@/sim/OverworldBake.js";
 import {WorkerNetworks} from "@/sim/WorkerNetworks.js";
 import {ComponentRegistry} from "@/sim/ComponentRegistry.js";
 import {SpatialIndex} from "@/sim/SpatialIndex.js";
 import {TransferResolver} from "@/sim/TransferResolver.js";
+import {RenderDiff} from "@/sim/RenderDiff.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 
 /**
@@ -70,12 +70,6 @@ export const TICK_PHASE_ORDER = [
     TickPhase.EMIT_RENDER,
     TickPhase.EMIT_INSPECT,
 ];
-
-// How a port lost its item this tick, so the render diff re-emits a refilled port (the client
-// animates the swap) and flags engine-drained clears consumed (the item glides into the consumer).
-const PORT_EMPTIED_NONE = 0;
-const PORT_EMPTIED_MOD = 1;
-const PORT_EMPTIED_CONSUMED = 2;
 
 /**
  * An Int32Array column indexed by port eid, owned by a module but grown by the engine with the Port
@@ -207,9 +201,6 @@ export class GameEngine {
         ]);
         this.Port = this._portDef.store;
 
-        // Last emitted item per rendered port, so EMIT_RENDER emits only changes; EMPTY means nothing
-        // drawn. Sized with the Port columns (see _growPortColumns).
-        this._portShadow = new Int32Array(this._portDef.capacity).fill(EMPTY);
         // Ports belonging to fluid machinery (pipe network and tank edges); belts refuse to link
         // with one. Marked by the owning module, re-marked on rebuild.
         this._portFluid = new Uint8Array(this._portDef.capacity);
@@ -218,25 +209,12 @@ export class GameEngine {
         // write, so an idle consumer re-scans its sources only when one could have changed.
         this._portFluidSource = new Int32Array(this._portDef.capacity).fill(EMPTY);
         this._fluidSourceGeneration = 1;
-        // Out-ports whose resting item is drawn, and the tile it is drawn at. Modules register theirs;
-        // re-registration is idempotent and a removed path's port can be unregistered (paths churn).
-        this._rendered = new Uint8Array(this._portDef.capacity);
-        this._renderX = new Int32Array(this._portDef.capacity);
-        this._renderY = new Int32Array(this._portDef.capacity);
-        // chunk -> Set of rendered port eids, so chunk sync walks only the chunk's ports.
-        this._renderedByChunk = new Map();
-        // Ports written since the last render diff, and a per-eid flag so a port enters the list once.
-        // EMIT_RENDER walks this instead of every rendered port in the world.
-        this._dirtyPorts = [];
-        this._portDirty = new Uint8Array(this._portDef.capacity);
-        // How each port lost its item this tick (PORT_EMPTIED_*), driving the render diff's
-        // forced clear/set and the clear's consumed flag.
-        this._portEmptied = new Uint8Array(this._portDef.capacity);
-        // Whether a rendered port's tile has a watcher, and the observation generation that answer was
-        // computed at (0 = never). The render diff would otherwise hash the chunk and call through the
-        // subscription predicate for every port written this tick.
-        this._portObserved = new Uint8Array(this._portDef.capacity);
-        this._portObservedGen = new Int32Array(this._portDef.capacity);
+
+        /**
+         * What the client is told about resting port items.
+         * @type {RenderDiff}
+         */
+        this.render = new RenderDiff(this, this._portDef.capacity);
 
         // Module-owned columns indexed by port eid; grown with the Port component (see _growPortColumns).
         this._portColumns = [];
@@ -316,19 +294,15 @@ export class GameEngine {
         this.registerSystem(TickPhase.RESOLVE_TRANSFERS, () => this.transfers.resolve());
         this.registerSystem(TickPhase.CONSUME_INPUTS, () => this.transfers.flushSinks());
         this.registerSystem(TickPhase.COMMIT_TRANSFERS, () => this.transfers.commit());
-        this.registerSystem(TickPhase.EMIT_RENDER, () => this._emitRender());
+        this.registerSystem(TickPhase.EMIT_RENDER, () => this.render.emit());
     }
 
     /**
-     * Initializes the render diff's pending clears and the event, metrics, and observation sinks.
+     * Initializes the event, metrics, and observation sinks.
      * @private
      * @returns {void}
      */
     _initRenderSinks() {
-        // Ports unregistered while holding a rendered item (eid -> {x, y}): a pending clear, cancelled if
-        // the port is re-registered in the same edit (so a churned-but-surviving port stays static, no
-        // clear+set glide). Flushed by the render diff.
-        this._pendingClear = new Map();
         // Sink for domain events (placement/path/delete + port-item render deltas). Game broadcasts each
         // synchronously by chunk; tests install an EventCollector. Null until one is installed.
         this._eventSink = null;
@@ -463,201 +437,6 @@ export class GameEngine {
     }
 
     /**
-     * Registers an out-port whose resting item is drawn at tile (x, y); EMIT_RENDER emits a set/clear
-     * event whenever its item changes.
-     * @param {number} eid
-     * @param {number} x
-     * @param {number} y
-     * @returns {void}
-     */
-    registerRenderedPort(eid, x, y) {
-        if (this._rendered[eid] === 1) {
-            // Re-registered at a possibly different tile: drop the old chunk-index slot first.
-            this._unindexRenderedPort(eid);
-        }
-        this._rendered[eid] = 1;
-        this._portObservedGen[eid] = 0;
-        this._renderX[eid] = x;
-        this._renderY[eid] = y;
-        this._indexRenderedPort(eid);
-        // A re-registered port survives the edit: cancel any pending clear so its sprite stays put
-        // (item unchanged -> the diff emits nothing) instead of a clear+set that glides in a new sprite.
-        this._pendingClear.delete(eid);
-        this.markPortDirty(eid);
-    }
-
-    /**
-     * The tile a rendered port's resting item is drawn at, or null if the port is not rendered.
-     * @param {number} eid
-     * @returns {{x:number, y:number}|null}
-     */
-    renderedPortTile(eid) {
-        if (this._rendered[eid] === 0) {
-            return null;
-        }
-        return {x: this._renderX[eid], y: this._renderY[eid]};
-    }
-
-    /**
-     * Queues a port for the next render diff. The diff walks only these, so every write to Port.item
-     * must come through here (see setPortItem).
-     * @param {number} eid
-     * @returns {void}
-     */
-    markPortDirty(eid) {
-        if (this._portDirty[eid] === 1) {
-            return;
-        }
-        this._portDirty[eid] = 1;
-        this._dirtyPorts.push(eid);
-    }
-
-    /**
-     * Stops drawing a port (its path was removed). If it held a rendered item, the clear is deferred to
-     * the next render diff so a same-edit re-registration can cancel it (keeping a surviving port static).
-     * @param {number} eid
-     * @returns {void}
-     */
-    unregisterRenderedPort(eid) {
-        if (this._rendered[eid] === 1) {
-            if (this._portShadow[eid] !== EMPTY) {
-                this._pendingClear.set(eid, {x: this._renderX[eid], y: this._renderY[eid]});
-            }
-            this._unindexRenderedPort(eid);
-        }
-        this._rendered[eid] = 0;
-    }
-
-    /**
-     * Adds a rendered port to its tile's chunk index.
-     * @private
-     * @param {number} eid
-     * @returns {void}
-     */
-    _indexRenderedPort(eid) {
-        const chunk = chunkId(this._renderX[eid], this._renderY[eid]);
-        let eids = this._renderedByChunk.get(chunk);
-        if (eids === undefined) {
-            eids = new Set();
-            this._renderedByChunk.set(chunk, eids);
-        }
-        eids.add(eid);
-    }
-
-    /**
-     * Removes a rendered port from its tile's chunk index.
-     * @private
-     * @param {number} eid
-     * @returns {void}
-     */
-    _unindexRenderedPort(eid) {
-        const chunk = chunkId(this._renderX[eid], this._renderY[eid]);
-        const eids = this._renderedByChunk.get(chunk);
-        if (eids === undefined) {
-            return;
-        }
-        eids.delete(eid);
-        if (eids.size === 0) {
-            this._renderedByChunk.delete(chunk);
-        }
-    }
-
-    /**
-     * Whether the port's render tile has a watcher, cached until the observation generation moves.
-     * @private
-     * @param {number} eid
-     * @returns {boolean}
-     */
-    _portObservedAt(eid) {
-        const generation = this._observerGeneration;
-        if (this._portObservedGen[eid] === generation) {
-            return this._portObserved[eid] === 1;
-        }
-        const observed = this._chunkObserved(chunkId(this._renderX[eid], this._renderY[eid]));
-        this._portObservedGen[eid] = generation;
-        this._portObserved[eid] = observed ? 1 : 0;
-        return observed;
-    }
-
-    /**
-     * EMIT_RENDER: flush deferred clears (ports unregistered for good), then diff each port written
-     * since the last render against the shadow, buffering a set (item appeared or changed) or clear
-     * (item left) event.
-     * @private
-     * @returns {void}
-     */
-    _emitRender() {
-        // One batch per chunk, flushed at the end of the pass so the pass stays ordered against
-        // everything emitted outside it.
-        const batches = new Map();
-
-        for (const [eid, position] of this._pendingClear) {
-            this._portBatch(batches, position.x, position.y).addClear(eid);
-            this._portShadow[eid] = EMPTY;
-        }
-        this._pendingClear.clear();
-
-        const item = this.Port.item;
-        for (const eid of this._dirtyPorts) {
-            this._portDirty[eid] = 0;
-            const emptied = this._portEmptied[eid];
-            this._portEmptied[eid] = PORT_EMPTIED_NONE;
-            if (this._rendered[eid] === 0) {
-                continue;
-            }
-            // A fluid payload draws no item sprite, so it diffs as an empty port.
-            let displayed = item[eid];
-            if (this.isFluid(displayed)) {
-                displayed = EMPTY;
-            }
-            // An emptied port's shown item is cleared even when a new one refills it the same tick
-            // (a silent same-type swap would leave the client's sprite standing still).
-            const emptiedShown = emptied !== PORT_EMPTIED_NONE && this._portShadow[eid] !== EMPTY;
-            if (displayed === this._portShadow[eid] && !emptiedShown) {
-                continue;
-            }
-            this._portShadow[eid] = displayed;
-            if (!this._portObservedAt(eid)) {
-                continue;
-            }
-            const x = this._renderX[eid];
-            const y = this._renderY[eid];
-            const batch = this._portBatch(batches, x, y);
-            if (emptiedShown || displayed === EMPTY) {
-                const consumed = emptied === PORT_EMPTIED_CONSUMED ? 1 : 0;
-                batch.addClear(eid, consumed);
-            }
-            if (displayed !== EMPTY) {
-                batch.addSet(eid, displayed);
-            }
-        }
-        this._dirtyPorts.length = 0;
-
-        for (const batch of batches.values()) {
-            this.emitEvent(batch);
-        }
-    }
-
-    /**
-     * The batch collecting (x, y)'s chunk, created on first use.
-     * @private
-     * @param {Map<number, PortItemBatchEvent>} batches
-     * @param {number} x
-     * @param {number} y
-     * @returns {PortItemBatchEvent}
-     */
-    _portBatch(batches, x, y) {
-        const chunk = chunkId(x, y);
-        const existing = batches.get(chunk);
-        if (existing !== undefined) {
-            return existing;
-        }
-        const batch = new PortItemBatchEvent(x, y);
-        batches.set(chunk, batch);
-        return batch;
-    }
-
-    /**
      * @returns {Promise<void>}
      */
     async init() {
@@ -722,25 +501,17 @@ export class GameEngine {
      * @returns {void}
      */
     _growPortColumns(capacity) {
-        for (const name of ["_renderX", "_renderY", "_portObservedGen"]) {
-            const grown = new Int32Array(capacity);
-            grown.set(this[name]);
-            this[name] = grown;
-        }
-        for (const name of ["_portShadow", "_portFluidSource"]) {
-            const grown = new Int32Array(capacity).fill(EMPTY);
-            grown.set(this[name]);
-            this[name] = grown;
-        }
-        for (const name of ["_portDirty", "_portEmptied", "_rendered", "_portFluid", "_portObserved"]) {
-            const grown = new Uint8Array(capacity);
-            grown.set(this[name]);
-            this[name] = grown;
-        }
+        const fluidSource = new Int32Array(capacity).fill(EMPTY);
+        fluidSource.set(this._portFluidSource);
+        this._portFluidSource = fluidSource;
+        const fluid = new Uint8Array(capacity);
+        fluid.set(this._portFluid);
+        this._portFluid = fluid;
         for (const portColumn of this._portColumns) {
             portColumn.grow(capacity);
         }
         this.transfers.growPortColumns(capacity);
+        this.render.growPortColumns(capacity);
     }
 
     /**
@@ -764,7 +535,7 @@ export class GameEngine {
         const eid = this.world.addEntity();
         this.components.attach(this._portDef, eid);
         // The world recycles eids, so clear any shadow/flag the previous tenant left behind.
-        this._portShadow[eid] = EMPTY;
+        this.render.forgetPort(eid);
         this._portFluid[eid] = 0;
         this._portFluidSource[eid] = EMPTY;
         this.setPortItem(eid, item);
@@ -912,29 +683,22 @@ export class GameEngine {
             }
         }
 
-        const batches = new Map();
+        const doomed = [];
         for (const eid of this.world.query([this._portDef.store])) {
-            if (referenced.has(eid)) {
-                continue;
+            if (!referenced.has(eid)) {
+                doomed.push(eid);
             }
+        }
+        // Before the entities go: the edge key reads their Position, and a port dying with a drawn
+        // item owes the client a clear no later diff would send.
+        for (const eid of doomed) {
             if (this.world.hasComponent(eid, this.space.positionDef.store)) {
                 this._portsByEdge.delete(this._edgeKey(eid));
             }
-            const pending = this._pendingClear.get(eid);
-            if (pending !== undefined) {
-                // The port dies for good: emit its deferred clear now, no later diff will.
-                this._portBatch(batches, pending.x, pending.y).addClear(eid);
-                this._pendingClear.delete(eid);
-            }
-            if (this._rendered[eid] === 1) {
-                this._unindexRenderedPort(eid);
-            }
-            this._rendered[eid] = 0;
-            this._portShadow[eid] = EMPTY;
-            this.world.removeEntity(eid);
         }
-        for (const batch of batches.values()) {
-            this.emitEvent(batch);
+        this.render.retirePorts(doomed);
+        for (const eid of doomed) {
+            this.world.removeEntity(eid);
         }
     }
 
@@ -962,11 +726,11 @@ export class GameEngine {
      * @returns {void}
      */
     setPortItem(eid, item) {
-        if (item === EMPTY && this.Port.item[eid] !== EMPTY && this._portEmptied[eid] === PORT_EMPTIED_NONE) {
-            this._portEmptied[eid] = PORT_EMPTIED_MOD;
+        if (item === EMPTY && this.Port.item[eid] !== EMPTY) {
+            this.render.noteCleared(eid);
         }
         this.Port.item[eid] = item;
-        this.markPortDirty(eid);
+        this.render.markDirty(eid);
     }
 
     /**
@@ -976,8 +740,8 @@ export class GameEngine {
      */
     consumePortItem(eid) {
         this.Port.item[eid] = EMPTY;
-        this._portEmptied[eid] = PORT_EMPTIED_CONSUMED;
-        this.markPortDirty(eid);
+        this.render.noteConsumed(eid);
+        this.render.markDirty(eid);
     }
 
     /**
@@ -1167,15 +931,9 @@ export class GameEngine {
         this.components.clearAll();
         this._portsByEdge = new Map();
         // Drop the prior world's render/tick state so its stale eids never leak into the new world.
-        this._rendered.fill(0);
         this._portFluid.fill(0);
         this._portFluidSource.fill(EMPTY);
-        this._renderedByChunk = new Map();
-        this._portShadow.fill(EMPTY);
-        this._portDirty.fill(0);
-        this._portEmptied.fill(PORT_EMPTIED_NONE);
-        this._dirtyPorts.length = 0;
-        this._pendingClear = new Map();
+        this.render.reset();
         this.transfers.resetTick();
 
         // Every eid that appears (as a row's own eid or an eid-field target) needs a fresh entity.
@@ -1428,36 +1186,11 @@ export class GameEngine {
         }
         // After the contributors: the client resolves a port item against the object/path
         // the contributors' events just recreated.
-        const portItems = this._portItemSync(chunk);
+        const portItems = this.render.chunkSync(chunk);
         if (portItems !== null) {
             events.push(portItems);
         }
         return events;
-    }
-
-    /**
-     * The chunk's resting rendered-port items as one set-only batch, or null when it has none.
-     * @private
-     * @param {number} chunk
-     * @returns {PortItemBatchEvent|null}
-     */
-    _portItemSync(chunk) {
-        const eids = this._renderedByChunk.get(chunk);
-        if (eids === undefined) {
-            return null;
-        }
-        const item = this.Port.item;
-        let batch = null;
-        for (const eid of eids) {
-            if (item[eid] === EMPTY || this.isFluid(item[eid])) {
-                continue;
-            }
-            if (batch === null) {
-                batch = new PortItemBatchEvent(this._renderX[eid], this._renderY[eid]);
-            }
-            batch.addSet(eid, item[eid]);
-        }
-        return batch;
     }
 
     /**

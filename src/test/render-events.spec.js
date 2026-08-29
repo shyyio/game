@@ -19,8 +19,8 @@ test("rendered out-ports emit port-item set/clear deltas on change only", async 
     const splitter = new SplitterBehavior();
     splitter.install(engine);
     const s = splitter.addSplitter(engine);
-    engine.registerRenderedPort(s.out_a, 5, 4);
-    engine.registerRenderedPort(s.out_b, 6, 4);
+    engine.render.registerPort(s.out_a, 5, 4);
+    engine.render.registerPort(s.out_b, 6, 4);
 
     engine.setPortItem(s.out_a, ITEM);
     engine.tickAll();
@@ -52,9 +52,9 @@ test("a render pass emits one port-item batch per chunk", async () => {
     const s = splitter.addSplitter(engine);
     const far = splitter.addSplitter(engine);
     // Two ports in one chunk, a third far enough out to land in another.
-    engine.registerRenderedPort(s.out_a, 5, 4);
-    engine.registerRenderedPort(s.out_b, 6, 4);
-    engine.registerRenderedPort(far.out_a, 5 + CHUNK_SIZE, 4);
+    engine.render.registerPort(s.out_a, 5, 4);
+    engine.render.registerPort(s.out_b, 6, 4);
+    engine.render.registerPort(far.out_a, 5 + CHUNK_SIZE, 4);
 
     engine.setPortItem(s.out_a, ITEM);
     engine.setPortItem(s.out_b, ITEM);
@@ -77,7 +77,7 @@ async function riggedPort() {
     await engine.init();
     const collector = new EventCollector(engine);
     const port = engine.createPort(ITEM);
-    engine.registerRenderedPort(port, 5, 4);
+    engine.render.registerPort(port, 5, 4);
     engine.tickAll();
     collector.drain();
     return {engine, collector, port};
@@ -152,7 +152,7 @@ test("a splitter draining its rendered in-port emits a consumed clear", async ()
     const splitter = new SplitterBehavior();
     splitter.install(engine);
     const s = splitter.addSplitter(engine);
-    engine.registerRenderedPort(s.in_a, 5, 4);
+    engine.render.registerPort(s.in_a, 5, 4);
     // Jam the splitter so the fed item rests in the in-port for a tick.
     engine.setPortItem(s.int_a, ITEM);
     engine.setPortItem(s.out_a, ITEM);

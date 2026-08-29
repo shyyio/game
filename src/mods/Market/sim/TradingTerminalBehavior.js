@@ -51,13 +51,13 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         terminal.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         terminal.out[row] = output.port;
-        engine.registerRenderedPort(output.port, output.tile.x, output.tile.y);
+        engine.render.registerPort(output.port, output.tile.x, output.tile.y);
     }
 
     onDespawn(engine, placed, eid) {
         const def = engine.components.get("MarketTerminal");
         const row = def.row(eid);
-        engine.unregisterRenderedPort(def.store.out[row]);
+        engine.render.unregisterPort(def.store.out[row]);
         const book = engine.resolve(MarketBook);
         book.removeBuy(eid);
         book.removeSell(eid);
@@ -77,7 +77,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
     resyncRenderedPorts(engine, placed, eid) {
         const def = engine.components.get("MarketTerminal");
         const out = def.store.out[def.row(eid)];
-        engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
+        engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
 
     /**
