@@ -14,6 +14,7 @@ import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from 
 import {NoticeLayer} from "@/client/hud/NoticeLayer.js";
 import {ConfirmDialogLayer} from "@/client/hud/ConfirmDialogLayer.js";
 import {PopoverHost} from "@/client/hud/PopoverHost.js";
+import {PanelHost} from "@/client/hud/PanelHost.js";
 import {ClaimResultFeedback} from "@/client/hud/ClaimResultFeedback.js";
 import {
     AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage, SetPlayerSettingMessage,
@@ -397,6 +398,8 @@ export class Client {
         this.confirmDialogLayer = new ConfirmDialogLayer(this.app);
         // The single host every panel's dropdowns and pickers open into.
         this.popoverHost = new PopoverHost(this.app);
+        // The single host every panel layer mounts into, which raises the pressed one.
+        this.panelHost = new PanelHost();
         // Center-lock aim point for claim selection (mobile).
         this.centerMarkerLayer = new CenterMarkerLayer(this.app, this.viewport);
         // Contextual map-mode buttons (bottom-right): chunk administration entry and home.
@@ -794,7 +797,6 @@ export class Client {
         this.app.stage.addChild(this.versionWatermarkLayer);
         this.app.stage.addChild(this.centerMarkerLayer);
         this.app.stage.addChild(this.mapButtonsLayer);
-        this.app.stage.addChild(this.chunkActionsLayer);
         this.app.stage.addChild(this.rotateButtonsLayer);
         this.app.stage.addChild(this.toolbarLayer);
         this.app.stage.addChild(this.statusLayer);
@@ -809,16 +811,18 @@ export class Client {
         this.app.stage.addChild(this.productionButtonLayer);
         this.app.stage.addChild(this.artButtonLayer);
         this.app.stage.addChild(this.terrainButtonLayer);
-        // Panels sit above every other HUD layer.
-        this.app.stage.addChild(this.inspectPanelLayer);
-        this.app.stage.addChild(this.friendsPanelLayer);
-        this.app.stage.addChild(this.productionPanelLayer);
+        // Panels sit above every other HUD layer, and are ranked against each other by the host.
+        this.panelHost.add(this.chunkActionsLayer);
+        this.panelHost.add(this.inspectPanelLayer);
+        this.panelHost.add(this.friendsPanelLayer);
+        this.panelHost.add(this.productionPanelLayer);
         for (const layer of this._modHudLayers) {
             layer.textureRegistry = this.textureRegistry;
             layer.viewport = this.viewport;
             layer.popovers = this.popoverHost;
-            this.app.stage.addChild(layer);
+            this.panelHost.add(layer);
         }
+        this.app.stage.addChild(this.panelHost);
         // Popovers clear the panels that open them; toast and confirm dialog clear everything.
         this.app.stage.addChild(this.popoverHost);
         this.app.stage.addChild(this.noticeLayer);

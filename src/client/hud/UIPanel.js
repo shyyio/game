@@ -44,7 +44,8 @@ const TX_CLOSE = "ui/IconCross01a";
 const TX_PATTERN = "ui/PlusPattern";
 
 /**
- * A framed HUD panel: raised outer frame + sunken inset body + draggable title bar with a close button.
+ * A framed HUD panel: raised outer frame + sunken inset body + draggable title bar with a close
+ * button. A press on it raises it over the other panels through its {@link PanelHost}.
  */
 export class UIPanel extends Container {
 
@@ -140,7 +141,6 @@ export class UIPanel extends Container {
      * @private
      */
     _startDrag(event) {
-        this._raise();
         const originX = this.x;
         const originY = this.y;
         const screen = this._app.screen;
@@ -450,7 +450,6 @@ export class UIPanel extends Container {
         // Swallows clicks so they don't pass through to the map; explicit hit area (mesh sprite has none by default).
         bg.hitArea = new Rectangle(0, 0, this._width / FRAME_SCALE, this._height / FRAME_SCALE);
         swallowClicks(bg, {native: true});
-        bg.on("pointerdown", () => this._raise());
         this.addChild(bg);
 
         // Inset body below the title row.
@@ -470,17 +469,6 @@ export class UIPanel extends Container {
         this.dragHandle = this._buildTitleBar(close.x);
         this.addChild(this.dragHandle);
         this.addChild(close);
-    }
-
-    /**
-     * Raises this panel above its siblings in the parent.
-     * @returns {void}
-     * @private
-     */
-    _raise() {
-        if (this.parent !== null) {
-            this.parent.addChild(this);
-        }
     }
 
     /**

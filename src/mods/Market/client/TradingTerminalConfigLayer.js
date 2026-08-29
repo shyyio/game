@@ -1,5 +1,5 @@
 import {ManagedPanel, UIPanel, buildPanelButton, buildToggleRow, ConnectedPanelLayer, ROW_GAP, panelText, TextRole} from "@spup/sdk/client";
-import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT, HudLayer} from "@spup/sdk/client";
+import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT} from "@spup/sdk/client";
 import {ConfigureTradingTerminalMessage} from "../common/messages.js";
 import {MARKET_SNAPSHOT_NONE} from "../common/events.js";
 import {MARKET_MODE_SELL, MARKET_MODE_BUY} from "../common/constants.js";
@@ -32,7 +32,6 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
         this._items = items;
         this._objects = cache.view("objects");
         this.textureRegistry = null;
-        this.zIndex = HudLayer.PANEL;
         this.visible = false;
         this._managed = new ManagedPanel();
 
