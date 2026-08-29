@@ -491,7 +491,7 @@ export class MachineBehavior extends AbstractBehavior {
                     const inPort = inCols[i][row];
                     const resting = item[inPort];
                     if (resting !== EMPTY) {
-                        engine.submitDrain(inPort, true);
+                        engine.transfers.submitDrain(inPort, true);
                         slot = resting;
                         slotCol[row] = resting;
                     }
@@ -529,9 +529,9 @@ export class MachineBehavior extends AbstractBehavior {
             }
 
             if (remaining[row] === 0) {
-                engine.submitCreate(out[row], output[row], item[out[row]] === EMPTY);
+                engine.transfers.submitCreate(out[row], output[row], item[out[row]] === EMPTY);
                 if (byproduct[row] !== EMPTY) {
-                    engine.submitCreate(out2[row], byproduct[row], item[out2[row]] === EMPTY);
+                    engine.transfers.submitCreate(out2[row], byproduct[row], item[out2[row]] === EMPTY);
                 }
             }
         }
@@ -553,8 +553,8 @@ export class MachineBehavior extends AbstractBehavior {
         const eids = def.eids;
         for (let row = 0; row < count; row += 1) {
             const byproductPending = machine.byproduct[row] !== EMPTY;
-            const byproductDelivered = !byproductPending || engine.wasResolvedDest(machine.out2[row]);
-            if (engine.wasResolvedDest(machine.out[row]) && byproductDelivered) {
+            const byproductDelivered = !byproductPending || engine.transfers.wasDest(machine.out2[row]);
+            if (engine.transfers.wasDest(machine.out[row]) && byproductDelivered) {
                 const eid = eids[row];
                 engine.emitMetrics(
                     METRICS_FACT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), machine.output[row], 1,

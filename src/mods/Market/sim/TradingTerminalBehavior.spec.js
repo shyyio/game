@@ -166,7 +166,7 @@ test("an NPC-priced buy terminal keeps buying while a consumer drains its port t
     engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => {
         if (engine.portItem(outPort) !== EMPTY) {
             drained += 1;
-            engine.submitDrain(outPort, true);
+            engine.transfers.submitDrain(outPort, true);
         }
     });
 

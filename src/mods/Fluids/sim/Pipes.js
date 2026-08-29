@@ -434,7 +434,7 @@ export class Pipes {
                 if (net.fluidType !== EMPTY && resting !== net.fluidType) {
                     continue;
                 }
-                engine.submitDrain(port, true);
+                engine.transfers.submitDrain(port, true);
                 net.fluidType = resting;
                 net.amount += 1;
             }
@@ -461,7 +461,7 @@ export class Pipes {
                         continue;
                     }
                 }
-                engine.submitCreate(dest, net.fluidType, P[dest] === EMPTY);
+                engine.transfers.submitCreate(dest, net.fluidType, P[dest] === EMPTY);
                 this._emittedPorts.push(dest);
                 this._emittedNets.push(net);
                 budget -= 1;
@@ -478,7 +478,7 @@ export class Pipes {
     _apply() {
         const engine = this.engine;
         for (let i = 0; i < this._emittedPorts.length; i += 1) {
-            if (engine.wasResolvedDest(this._emittedPorts[i])) {
+            if (engine.transfers.wasDest(this._emittedPorts[i])) {
                 this._emittedNets[i].amount -= 1;
             }
         }

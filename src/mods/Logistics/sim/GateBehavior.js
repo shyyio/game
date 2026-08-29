@@ -404,20 +404,20 @@ export class GateBehavior extends AbstractBehavior {
             if (gate.fluid[row] === 1) {
                 const resting = item[gate.in[row]];
                 if (resting !== EMPTY && gate.buffered[row] === EMPTY) {
-                    engine.submitDrain(gate.in[row], true);
+                    engine.transfers.submitDrain(gate.in[row], true);
                     gate.buffered[row] = resting;
                     engine.setPortFluidSource(gate.out[row], resting);
                 }
                 if (gate.buffered[row] !== EMPTY) {
-                    engine.submitCreate(gate.out[row], gate.buffered[row], item[gate.out[row]] === EMPTY);
+                    engine.transfers.submitCreate(gate.out[row], gate.buffered[row], item[gate.out[row]] === EMPTY);
                 }
                 continue;
             }
             if (item[gate.in[row]] !== EMPTY) {
-                engine.submitTransfer(gate.in[row], gate.int[row], item[gate.int[row]] === EMPTY, false);
+                engine.transfers.submitTransfer(gate.in[row], gate.int[row], item[gate.int[row]] === EMPTY, false);
             }
             if (item[gate.int[row]] !== EMPTY) {
-                engine.submitTransfer(gate.int[row], gate.out[row], item[gate.out[row]] === EMPTY, false);
+                engine.transfers.submitTransfer(gate.int[row], gate.out[row], item[gate.out[row]] === EMPTY, false);
             }
         }
     }
@@ -437,18 +437,18 @@ export class GateBehavior extends AbstractBehavior {
         const stage2 = [];
         for (let row = 0; row < def.count; row += 1) {
             if (gate.fluid[row] === 1) {
-                if (gate.buffered[row] !== EMPTY && engine.wasResolvedDest(gate.out[row])) {
+                if (gate.buffered[row] !== EMPTY && engine.transfers.wasDest(gate.out[row])) {
                     gate.buffered[row] = EMPTY;
                     engine.setPortFluidSource(gate.out[row], EMPTY);
                 }
                 continue;
             }
             const intPort = gate.int[row];
-            if (item[intPort] !== EMPTY && engine.resolvedDestFor(intPort) !== EMPTY) {
+            if (item[intPort] !== EMPTY && engine.transfers.destFor(intPort) !== EMPTY) {
                 stage2.push({outPort: gate.out[row], item: item[intPort], intPort});
             }
             const inPort = gate.in[row];
-            if (item[inPort] !== EMPTY && engine.resolvedDestFor(inPort) !== EMPTY) {
+            if (item[inPort] !== EMPTY && engine.transfers.destFor(inPort) !== EMPTY) {
                 stage1.push({intPort, item: item[inPort], inPort});
             }
         }

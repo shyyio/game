@@ -138,8 +138,8 @@ async function main() {
             engine.tick(phase);
             phaseTotals[phase] += performance.now() - phaseStart;
         }
-        intents += engine.intentCount;
-        resolved += engine.resolvedCount;
+        intents += engine.transfers.intentCount;
+        resolved += engine.transfers.resolvedCount;
         if (!jammed) {
             // Consume each line's output, so the lines keep flowing instead of backing up.
             for (const port of sinkPorts) {

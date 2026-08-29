@@ -88,9 +88,9 @@ async function riggedPort() {
 test("a drained rendered port's clear is flagged consumed", async () => {
     const {engine, collector, port} = await riggedPort();
 
-    engine.submitDrain(port, true);
-    engine.resolvePortTransfer();
-    engine.flushSinks();
+    engine.transfers.submitDrain(port, true);
+    engine.transfers.resolve();
+    engine.transfers.flushSinks();
     engine.tickAll();
     const events = collector.drain();
     assert.equal(events.length, 1);
@@ -114,9 +114,9 @@ test("a consumed port refilled the same tick emits clear then set", async () => 
     const {engine, collector, port} = await riggedPort();
 
     const NEXT_ITEM = 8;
-    engine.submitDrain(port, true);
-    engine.resolvePortTransfer();
-    engine.flushSinks();
+    engine.transfers.submitDrain(port, true);
+    engine.transfers.resolve();
+    engine.transfers.flushSinks();
     engine.setPortItem(port, NEXT_ITEM);
     engine.tickAll();
     const events = collector.drain();

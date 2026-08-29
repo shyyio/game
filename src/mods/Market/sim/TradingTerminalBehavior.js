@@ -131,10 +131,10 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             }
             terminal.pendingPrice[row] = match.price;
             if (match.npc) {
-                engine.submitDrain(inPort, true);
+                engine.transfers.submitDrain(inPort, true);
                 terminal.pendingIsNpc[row] = 1;
             } else {
-                engine.submitTransfer(inPort, match.outPort, true, true, EMPTY, terminal.itemType[row]);
+                engine.transfers.submitTransfer(inPort, match.outPort, true, true, EMPTY, terminal.itemType[row]);
                 terminal.pendingBuyer[row] = match.eid;
                 const owner = terminal.owner[def.row(match.eid)];
                 const remaining = TradingTerminalBehavior._remainingBalance(def, terminal, match.eid, reservedBalance);
@@ -176,7 +176,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         // the resolver lands the create when that port drains this same tick, so a terminal feeding a
         // belt buys every tick instead of every other one. The spend is reserved here either way — a
         // create that loses its port for the tick only over-reserves this pass, never overspends.
-        engine.submitCreate(outPort, itemType, item[outPort] === EMPTY);
+        engine.transfers.submitCreate(outPort, itemType, item[outPort] === EMPTY);
         terminal.pendingPrice[row] = fixedPrice;
         terminal.pendingIsNpc[row] = 1;
         reservedBalance.set(owner, remaining - fixedPrice);
@@ -222,7 +222,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
             if (terminal.mode[row] === MARKET_MODE_BUY) {
-                if (engine.wasResolvedDest(terminal.out[row])) {
+                if (engine.transfers.wasDest(terminal.out[row])) {
                     terminal.lastOutput[row] = terminal.itemType[row];
                     if (terminal.pendingPrice[row] !== EMPTY) {
                         book.recordPurchase(eids[row], terminal.itemType[row], terminal.pendingPrice[row]);
@@ -234,7 +234,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
                 continue;
             }
             const npc = terminal.pendingIsNpc[row] === 1;
-            const confirmed = npc || engine.resolvedDestFor(terminal.in[row]) !== EMPTY;
+            const confirmed = npc || engine.transfers.destFor(terminal.in[row]) !== EMPTY;
             if (!confirmed) {
                 continue;
             }

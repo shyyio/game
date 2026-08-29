@@ -192,7 +192,7 @@ export class GeneratorBehavior extends AbstractBehavior {
         }
         if (remaining[row] === 0) {
             const item = engine.Port.item;
-            engine.submitCreate(outPort[row], output[row], item[outPort[row]] === EMPTY);
+            engine.transfers.submitCreate(outPort[row], output[row], item[outPort[row]] === EMPTY);
         }
     }
 
@@ -246,7 +246,7 @@ export class GeneratorBehavior extends AbstractBehavior {
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
             const eid = eids[row];
-            if (engine.wasResolvedDest(generator.out[row])) {
+            if (engine.transfers.wasDest(generator.out[row])) {
                 engine.emitMetrics(
                     METRICS_FACT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), generator.output[row], 1,
                 );
@@ -254,7 +254,7 @@ export class GeneratorBehavior extends AbstractBehavior {
                 generator.output[row] = EMPTY;
                 generator.remaining[row] = EMPTY;
             }
-            if (generator.out2[row] !== NO_EID && engine.wasResolvedDest(generator.out2[row])) {
+            if (generator.out2[row] !== NO_EID && engine.transfers.wasDest(generator.out2[row])) {
                 engine.emitMetrics(
                     METRICS_FACT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), generator.output2[row], 1,
                 );
