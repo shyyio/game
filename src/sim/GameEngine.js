@@ -254,7 +254,27 @@ export class GameEngine {
      */
     constructor(modRegistry=null) {
         this.modRegistry = modRegistry;
+        this._initHostSlots();
 
+        // Registered components in definition order. The generic serializer walks these, so any state
+        // kept here round-trips for free (see serialize).
+        this._components = [];
+        this._componentByName = new Map();
+        this._initPortState();
+        this._initSpatialState();
+        this._initSaveState();
+        this._registerCoreSystems();
+        this._initRenderSinks();
+
+        this._resetTick();
+    }
+
+    /**
+     * Nulls the collaborators, service map, and mod-registered hook lists that init fills in.
+     * @private
+     * @returns {void}
+     */
+    _initHostSlots() {
         /**
          * The generic entity host for derived object types; built in init when a registry is given.
          * @type {PlacedObjects|null}
@@ -297,12 +317,14 @@ export class GameEngine {
          * @type {World|null}
          */
         this.world = null;
+    }
 
-        // Registered components in definition order. The generic serializer walks these, so any state
-        // kept here round-trips for free (see serialize).
-        this._components = [];
-        this._componentByName = new Map();
-
+    /**
+     * Defines the Port component and every column indexed by port eid.
+     * @private
+     * @returns {void}
+     */
+    _initPortState() {
         // Port component: item type per port eid (EMPTY when unoccupied). An edge port also carries
         // Position for the edge it sits on, so _portsByEdge rebuilds from the world; a port with no
         // Position is not an edge port.
@@ -342,12 +364,12 @@ export class GameEngine {
         this._portObserved = new Uint8Array(this._portDef.capacity);
         this._portObservedGen = new Int32Array(this._portDef.capacity);
 
-        // Per-port scratch for resolvePortTransfer, indexed by port eid and sized with the Port columns.
-        // The resolver clears only the slots it touched, so no pass costs the width of the world.
-        // Persist through the tick (mods query them in POST_RESOLVE):
         // Module-owned columns indexed by port eid; grown with the Port component (see _growComponent).
         this._portColumns = [];
 
+        // Per-port scratch for resolvePortTransfer, sized with the Port columns and persisting through
+        // the tick (mods query them in POST_RESOLVE). The resolver clears only the slots it touched, so
+        // no pass costs the width of the world.
         this._destBySource = new Int32Array(this._portDef.capacity).fill(EMPTY);
         this._portResolved = new Uint8Array(this._portDef.capacity);
         this._portResolvedUnmanaged = new Uint8Array(this._portDef.capacity);
@@ -358,7 +380,14 @@ export class GameEngine {
         this._draining = new Uint8Array(this._portDef.capacity);
 
         this._initIntentColumns();
+    }
 
+    /**
+     * Defines the position layers, the Position/Occupancy components, and their derived indexes.
+     * @private
+     * @returns {void}
+     */
+    _initSpatialState() {
         // Layer name <-> int code; the surface layer is code 0, mods register the rest (see
         // registerPositionLayer). Registration order is deterministic per loadout, so codes are stable
         // across save/load.
@@ -391,11 +420,18 @@ export class GameEngine {
         // over the two components above, rebuilt from the world on deserialize.
         this._portsByEdge = new Map();
         this._cellByKey = new Map();
+    }
 
+    /**
+     * Initializes the persisted globals and the hooks serialize and deserialize run through.
+     * @private
+     * @returns {void}
+     */
+    _initSaveState() {
         // Global client-facing object id, shared across all object types so ids never collide.
         this._nextObjectId = 1;
 
-        // Whole ticks elapsed, incremented once per tick (see the SUBMIT_INTENTS registration below).
+        // Whole ticks elapsed, incremented once per tick (see _registerCoreSystems).
         // A stable per-tick seed component for deterministic per-craft rolls (see MachineBehavior).
         this.clock = 0;
 
@@ -413,7 +449,14 @@ export class GameEngine {
         // Hooks run at the start of serialize, letting a bespoke module (belts) flush JS-only runtime
         // state into its registered components so the generic reflection captures it.
         this._serializeHooks = [];
+    }
 
+    /**
+     * Registers the engine-owned systems that bracket every tick.
+     * @private
+     * @returns {void}
+     */
+    _registerCoreSystems() {
         // Per-phase system entries {order, seq, system}, kept sorted and run in order by tick(phase).
         this._systemSeq = 0;
         this.systems = {};
@@ -428,7 +471,14 @@ export class GameEngine {
         this.registerSystem(TickPhase.CONSUME_INPUTS, () => this.flushSinks());
         this.registerSystem(TickPhase.COMMIT_TRANSFERS, () => this.commitTransfers());
         this.registerSystem(TickPhase.EMIT_RENDER, () => this._emitRender());
+    }
 
+    /**
+     * Initializes the render diff's pending clears and the event, metrics, and observation sinks.
+     * @private
+     * @returns {void}
+     */
+    _initRenderSinks() {
         // Ports unregistered while holding a rendered item (eid -> {x, y}): a pending clear, cancelled if
         // the port is re-registered in the same edit (so a churned-but-surviving port stays static, no
         // clear+set glide). Flushed by the render diff.
@@ -445,8 +495,6 @@ export class GameEngine {
         // "is this thing watched" per entity can revalidate on an integer compare instead of asking
         // again every tick. Starts at 1, leaving 0 as "never computed" for those caches.
         this._observerGeneration = 1;
-
-        this._resetTick();
     }
 
     /**

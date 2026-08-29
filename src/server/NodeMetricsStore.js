@@ -65,6 +65,36 @@ export class NodeMetricsStore extends AbstractMetricsStore {
         this.db.pragma("journal_mode = WAL");
         // Metrics are worth a lost tail on power loss, not an fsync per tick.
         this.db.pragma("synchronous = NORMAL");
+        this._createSchema();
+        this._prepareWrites();
+        this._prepareQueries();
+        this._prepareFold();
+
+        this._discardForeignBuckets();
+
+        const bounds = this.db.prepare(`
+            SELECT
+                (SELECT MAX(bucket_tick) FROM "MetricsBucket" WHERE tier = @tier) AS baked,
+                (SELECT MIN(tick) FROM "MetricsFact") AS oldest_fact,
+                (SELECT MAX(tick) FROM "MetricsFact") AS latest_fact
+        `).get({tier: METRICS_FOLD_TIER});
+        /**
+         * First tick no bucket covers yet; every fold window before it is complete. With no buckets
+         * it starts at the oldest fact, so backfill doesn't walk empty ticks to reach the history.
+         * @type {number}
+         * @private
+         */
+        this._foldedThrough = this._startOfFolding(bounds);
+        // Folds what an existing file holds ahead of its buckets, at open rather than inside a tick.
+        this._foldThrough(bounds.latest_fact);
+    }
+
+    /**
+     * Creates the fact and bucket tables with the indexes served queries walk.
+     * @private
+     * @returns {void}
+     */
+    _createSchema() {
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS "MetricsFact" (
                 metrics_fact_id INTEGER PRIMARY KEY,
@@ -115,7 +145,14 @@ export class NodeMetricsStore extends AbstractMetricsStore {
             CREATE INDEX IF NOT EXISTS "idx_MetricsBucket_tier_tick"
                 ON "MetricsBucket" (tier, bucket_tick)
         `);
+    }
 
+    /**
+     * Prepares the fact insert and its batching transaction.
+     * @private
+     * @returns {void}
+     */
+    _prepareWrites() {
         this._insert = this.db.prepare(`
             INSERT INTO "MetricsFact" (type, tick, player_id, category, amount, tag)
             VALUES (@type, @tick, @player_id, @category, @amount, @tag)
@@ -128,14 +165,28 @@ export class NodeMetricsStore extends AbstractMetricsStore {
                 });
             }
         });
+    }
 
+    /**
+     * Prepares the rollup reads, one per player scope.
+     * @private
+     * @returns {void}
+     */
+    _prepareQueries() {
         // Baked rows cover whole buckets, so an answer starts at the bucket @from_bucket names
         // rather than mid-bucket.
         this._queryRollupAllPlayers = this.db.prepare(
             rollupSql("", `INDEXED BY "idx_MetricsBucket_tier_type_tick_agg"`),
         );
         this._queryRollupForPlayer = this.db.prepare(rollupSql(" AND player_id = @player_id", ""));
+    }
 
+    /**
+     * Prepares the fold and prune statements, and the transaction that runs them together.
+     * @private
+     * @returns {void}
+     */
+    _prepareFold() {
         this._foldFacts = this.db.prepare(`
             INSERT INTO "MetricsBucket" (tier, type, player_id, bucket_tick, category, tag, count, sum)
             SELECT
@@ -198,24 +249,6 @@ export class NodeMetricsStore extends AbstractMetricsStore {
                 }
             }
         });
-
-        this._discardForeignBuckets();
-
-        const bounds = this.db.prepare(`
-            SELECT
-                (SELECT MAX(bucket_tick) FROM "MetricsBucket" WHERE tier = @tier) AS baked,
-                (SELECT MIN(tick) FROM "MetricsFact") AS oldest_fact,
-                (SELECT MAX(tick) FROM "MetricsFact") AS latest_fact
-        `).get({tier: METRICS_FOLD_TIER});
-        /**
-         * First tick no bucket covers yet; every fold window before it is complete. With no buckets
-         * it starts at the oldest fact, so backfill doesn't walk empty ticks to reach the history.
-         * @type {number}
-         * @private
-         */
-        this._foldedThrough = this._startOfFolding(bounds);
-        // Folds what an existing file holds ahead of its buckets, at open rather than inside a tick.
-        this._foldThrough(bounds.latest_fact);
     }
 
     /**
