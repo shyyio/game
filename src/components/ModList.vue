@@ -370,7 +370,7 @@ function selectJson(event) {
 async function copyLockfile() {
   await navigator.clipboard.writeText(lockfileJson.value);
   copied.value = true;
-  setTimeout(() => {
+  window.setTimeout(() => {
     copied.value = false;
   }, 1500);
 }

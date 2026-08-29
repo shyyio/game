@@ -339,7 +339,7 @@ export class SpriteEditorSession {
      */
     flushPersist() {
         if (this._persistTimer !== null) {
-            clearTimeout(this._persistTimer);
+            window.clearTimeout(this._persistTimer);
             this._persistTimer = null;
             this._persistFrame(this.frame);
         }
@@ -407,9 +407,9 @@ export class SpriteEditorSession {
         this._refreshPalette();
         this.state.commitVersion++;
         if (this._persistTimer !== null) {
-            clearTimeout(this._persistTimer);
+            window.clearTimeout(this._persistTimer);
         }
-        this._persistTimer = setTimeout(() => {
+        this._persistTimer = window.setTimeout(() => {
             this._persistTimer = null;
             this._persistFrame(this.frame);
         }, 300);

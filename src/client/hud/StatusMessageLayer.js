@@ -246,7 +246,7 @@ export class StatusMessageLayer extends Container {
      * @returns {void}
      */
     _armTextTimer() {
-        this._textTimer = setTimeout(() => {
+        this._textTimer = window.setTimeout(() => {
             this._textTimer = null;
             const pending = this._pendingMessage;
             this._pendingMessage = null;

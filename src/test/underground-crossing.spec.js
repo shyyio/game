@@ -38,8 +38,12 @@ test("a vertical tunnel and a horizontal belt cross on the same tile and flow in
         engine.setPortItem(tunnel.outPort, -1);
         engine.setPortItem(horizontal.outPort, -1);
         engine.tickAll();
-        if (engine.portItem(tunnel.outPort) === RED) tunnelOut = true;
-        if (engine.portItem(horizontal.outPort) === BLUE) horizOut = true;
+        if (engine.portItem(tunnel.outPort) === RED) {
+            tunnelOut = true;
+        }
+        if (engine.portItem(horizontal.outPort) === BLUE) {
+            horizOut = true;
+        }
     }
     assert.ok(tunnelOut, "tunnel delivered its item");
     assert.ok(horizOut, "horizontal belt delivered its item");

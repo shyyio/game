@@ -82,9 +82,9 @@ export class NoticeLayer extends Container {
         this._center();
         this.visible = true;
         if (this._timer !== null) {
-            clearTimeout(this._timer);
+            window.clearTimeout(this._timer);
         }
-        this._timer = setTimeout(() => {
+        this._timer = window.setTimeout(() => {
             this._timer = null;
             this.visible = false;
         }, NOTICE_DURATION_MS);
