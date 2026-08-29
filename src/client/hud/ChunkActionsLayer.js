@@ -2,6 +2,7 @@ import {Container} from "pixi.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {CHUNK_SIZE, PLAYER_ID_NONE} from "@/common/constants.js";
 import {chunkOrigin} from "@/common/util.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 import {ClaimResult, ChunkPermission} from "@/common/ClaimEvents.js";
 import {ACTIVE_ACCENT, PANEL_BORDER} from "@/client/Theme.js";
 import {buildPanelButton, buildToggleRow, hotkeyLabel} from "@/client/hud/panelButton.js";
@@ -47,7 +48,7 @@ export class ChunkActionsLayer extends Container {
         this._players = players;
         this.textureRegistry = null;
         // Above the always-visible settings/friends buttons (9500), below toasts/dialogs.
-        this.zIndex = 9600;
+        this.zIndex = HudLayer.PANEL;
         this.visible = false;
         this._chunk = null;
         this._statusText = null;

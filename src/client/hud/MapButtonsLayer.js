@@ -1,6 +1,7 @@
 import {Container, Graphics} from "pixi.js";
 import {HUD_BOTTOM_OFFSET, ViewMode} from "@/client/constants.js";
 import {drawCircleButtonFace, trackTap} from "@/client/layers/pixiUtils.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 
 const BUTTON_RADIUS = 24;
 const BUTTON_GAP = 10;
@@ -41,7 +42,7 @@ export class MapButtonsLayer extends Container {
     constructor(app) {
         super();
         this._app = app;
-        this.zIndex = 900;
+        this.zIndex = HudLayer.CONTROL;
         this.visible = false;
         this._zoomedOut = false;
         /**

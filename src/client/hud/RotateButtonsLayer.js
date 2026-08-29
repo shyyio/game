@@ -3,6 +3,7 @@ import Haptics from "@/client/Haptics.js";
 import {GAME_FONT, HUD_BOTTOM_OFFSET} from "@/client/constants.js";
 import {PANEL_TEXT} from "@/client/Theme.js";
 import {centerGlyph, drawCircleButtonFace, trackTap} from "@/client/layers/pixiUtils.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 
 const BUTTON_RADIUS = 24;
 const MARGIN_RIGHT = 16;
@@ -27,7 +28,7 @@ export class RotateButtonsLayer extends Container {
         // Set by _createButton; restyle re-applies its fill.
         this._icon = null;
         this.visible = false;
-        this.zIndex = 1000;
+        this.zIndex = HudLayer.ROTATE_CONTROL;
 
         this._button = this._createButton();
         this.addChild(this._button);

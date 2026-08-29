@@ -1,6 +1,7 @@
 import {
     ACTIVE_ACCENT,
     ConnectedPanelLayer,
+    HudLayer,
     ManagedPanel,
     PANEL_TINT,
     PANEL_TITLE_TEXT,
@@ -48,7 +49,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
         this._notes = cache.writer("notes");
         this._players = cache.view("players");
         this.textureRegistry = null;
-        this.zIndex = 9600;
+        this.zIndex = HudLayer.PANEL;
         this._editor = new ManagedPanel();
         // The DOM-backed input the editor owns while writing; absent in delete mode.
         this._input = null;

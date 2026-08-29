@@ -1,6 +1,7 @@
 import {Container, Graphics} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_BORDER, ACTIVE_ACCENT} from "@/client/Theme.js";
+import {HUD_DOM_Z_INDEX} from "@/client/hud/HudLayer.js";
 
 const FONT_SIZE = 15;
 const PADDING_X = 8;
@@ -57,7 +58,7 @@ export class TextInput extends Container {
         this._domInput.spellcheck = false;
         Object.assign(this._domInput.style, {
             position: "fixed",
-            zIndex: "1000",
+            zIndex: HUD_DOM_Z_INDEX,
             left: "0px",
             top: "0px",
             width: "1px",

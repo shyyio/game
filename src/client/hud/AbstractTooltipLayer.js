@@ -1,5 +1,6 @@
 import {Container, Graphics} from "pixi.js";
 import {PANEL_TINT, PANEL_TINT_TEXT} from "@/client/Theme.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 
 // Gap between the box's edges and its content.
 export const TOOLTIP_PADDING = 8;
@@ -28,7 +29,7 @@ export class AbstractTooltipLayer extends Container {
         this._app = app;
         // The game viewport, for mapping the target to the screen (set by the host).
         this.viewport = null;
-        this.zIndex = 9500;
+        this.zIndex = HudLayer.OVERLAY_BUTTON;
         this.visible = false;
         this.eventMode = "none";
         // The box's drawn size, so following it per frame costs no bounds walk.

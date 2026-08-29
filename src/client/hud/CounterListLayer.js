@@ -4,6 +4,7 @@ import {activeTheme, PROGRESS_TEXT_STROKE, THEME_HIGH_CONTRAST} from "@/client/T
 import {formatCount, formatExactCount} from "@/common/util.js";
 import {debugOutlines} from "@/client/layers/pixiUtils.js";
 import SafeArea from "@/client/SafeArea.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 
 // Screen-pixel inset of the list from the left edge, and from whatever sits above it.
 const MARGIN = 16;
@@ -117,7 +118,7 @@ export class CounterListLayer extends Container {
         this._tooltip = tooltip;
         // Passive, not none: the rows themselves are the hover targets.
         this.eventMode = "passive";
-        this.zIndex = 900;
+        this.zIndex = HudLayer.CONTROL;
         this.visible = false;
         this._topOffset = 0;
         // Set while the top status bar occupies the top edge: the list stays out of its way.

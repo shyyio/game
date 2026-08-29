@@ -1,4 +1,5 @@
 import {Container, Graphics} from "pixi.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 
 const DOT_RADIUS = 3;
 const MARKER_COLOR = 0x222222; // dark: must read on the white map background
@@ -19,7 +20,7 @@ export class CenterMarkerLayer extends Container {
         this._viewport = viewport;
         // Display-only: never a hit target (the stage is interactive for mobile pinch).
         this.eventMode = "none";
-        this.zIndex = 800;
+        this.zIndex = HudLayer.WORLD_MARKER;
         this.visible = false;
         const dot = new Graphics()
             .circle(0, 0, DOT_RADIUS)

@@ -1,3 +1,5 @@
+import {HUD_DOM_Z_INDEX} from "@/client/hud/HudLayer.js";
+
 /**
  * Makes a pixi Text natively selectable/copyable without changing how it looks: an invisible
  * (transparent) readonly DOM `<input>` holding the same string, kept exactly overlaid on the
@@ -27,7 +29,7 @@ export class SelectableText {
         this._dom.readOnly = true;
         Object.assign(this._dom.style, {
             position: "fixed",
-            zIndex: "1000",
+            zIndex: HUD_DOM_Z_INDEX,
             left: "0px",
             top: "0px",
             width: "1px",

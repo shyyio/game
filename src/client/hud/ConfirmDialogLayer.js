@@ -3,6 +3,7 @@ import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_TINT_TEXT, ACTIVE_ACCENT, BLOCKED_TILE_COLOR, PANEL_TINT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {buildPanelButton, BUTTON_HEIGHT} from "@/client/hud/panelButton.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 
 const PANEL_WIDTH = 360;
 const PADDING = 20;
@@ -27,7 +28,7 @@ export class ConfirmDialogLayer extends Container {
         super();
         this._app = app;
         this.textureRegistry = null;
-        this.zIndex = 12000;
+        this.zIndex = HudLayer.DIALOG;
         this.visible = false;
         this.eventMode = "none";
 

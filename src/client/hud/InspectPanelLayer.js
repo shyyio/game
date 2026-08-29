@@ -3,6 +3,7 @@ import {InspectContent, inspectContentHeight} from "@/client/hud/InspectContent.
 import {SlotTooltip} from "@/client/hud/SlotTooltip.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT} from "@/client/Theme.js";
 import {ConnectedPanelLayer} from "@/client/hud/ConnectedPanelLayer.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 
 const PANEL_WIDTH = 375;
 // Down-right cascade of each successive panel's default spawn position.
@@ -22,7 +23,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
     constructor(app, cache) {
         super(app);
         // Above the always-visible settings/friends buttons (9500), below toasts/dialogs.
-        this.zIndex = 9600;
+        this.zIndex = HudLayer.PANEL;
         const objects = cache.view("objects");
         cache.subscribe("inspect.heartbeatByObject", (objectId, heartbeat) => {
             if (heartbeat === undefined) {
