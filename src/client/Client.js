@@ -29,7 +29,13 @@ import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
 import DeviceSettings, {
     DEVICE_SETTING_FULLSCREEN, DEVICE_SETTING_REDUCED_MOTION, DEVICE_SETTING_MOBILE,
     DEVICE_SETTING_THEME, DEVICE_SETTING_TERRAIN, DEVICE_SETTING_FPS_CAP,
+    DEVICE_SETTING_UI_SCALE,
 } from "@/client/state/DeviceSettings.js";
+import {DeviceSettingSlider} from "@/client/hud/DeviceSettingSlider.js";
+import {
+    applyUiScale, onUiScaleChange,
+    UI_SCALE_NORMAL, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_STEP,
+} from "@/client/hud/UiScale.js";
 import {applyTheme, onThemeChange, THEME_NAMES, THEME_DEFAULT} from "@/client/Theme.js";
 import Fullscreen from "@/client/Fullscreen.js";
 import ReducedMotion from "@/client/ReducedMotion.js";
@@ -483,6 +489,7 @@ export class Client {
             ...this._modHudLayers.filter(layer => layer.restyle !== undefined),
         ];
         onThemeChange(() => this._restyleHud());
+        onUiScaleChange(() => this._rescaleHud());
     }
 
     /**
@@ -1438,6 +1445,17 @@ export class Client {
     }
 
     /**
+     * Repaints and relays out the HUD at a new UI scale. The sizes every layer lays out against
+     * changed, which is what a resize means to them.
+     * @private
+     * @returns {void}
+     */
+    _rescaleHud() {
+        this._restyleHud();
+        this.app.renderer.emit("resize", this.app.screen.width, this.app.screen.height);
+    }
+
+    /**
      * The engine's own settings section: device toggles and the theme picker.
      * @private
      * @returns {SettingCategory[]}
@@ -1451,6 +1469,7 @@ export class Client {
                 new DeviceSettingToggle(DEVICE_SETTING_TERRAIN, "Terrain", TERRAIN_ENABLED_DEFAULT, on => this.setTerrainEnabled(on)),
                 new DeviceSettingChoice(DEVICE_SETTING_THEME, "Theme", THEME_NAMES, THEME_DEFAULT, index => applyTheme(index)),
                 new DeviceSettingChoice(DEVICE_SETTING_FPS_CAP, "Frame rate cap", FPS_CAP_NAMES, FPS_CAP_DEFAULT, index => this.setFpsCap(index)),
+                new DeviceSettingSlider(DEVICE_SETTING_UI_SCALE, "UI Scale", UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_STEP, UI_SCALE_NORMAL, scale => applyUiScale(scale)),
             ]),
         ];
     }

@@ -12,7 +12,9 @@ import DeviceSettings, {
   DEVICE_SETTING_MOBILE,
   DEVICE_SETTING_REDUCED_MOTION,
   DEVICE_SETTING_THEME,
+  DEVICE_SETTING_UI_SCALE,
 } from "@/client/state/DeviceSettings.js";
+import {applyUiScale, UI_SCALE_NORMAL} from "@/client/hud/UiScale.js";
 import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
 import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
 import {DeviceSettingSlider} from "@/client/hud/DeviceSettingSlider.js";
@@ -103,6 +105,9 @@ function reasonOf(error) {
 
 // Before the HUD builds, so the first paint is in the chosen palette.
 applyTheme(DeviceSettings.getNumber(DEVICE_SETTING_THEME, THEME_DEFAULT));
+
+// Likewise before the HUD builds, so it is laid out at the chosen size from the first frame.
+applyUiScale(DeviceSettings.getFloat(DEVICE_SETTING_UI_SCALE, UI_SCALE_NORMAL));
 
 // The menus are Vuetify, not pixi: same setting, their own theme.
 const vuetifyTheme = useTheme();

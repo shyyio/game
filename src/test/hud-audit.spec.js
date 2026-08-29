@@ -60,6 +60,27 @@ test("the big scale is no larger than the smallest target requires", () => {
     });
 });
 
+test("a scale change notifies its listeners", () => {
+    let scales = [];
+    const stop = UiScale.onUiScaleChange(() => scales.push(UiScale.uiScale()));
+    atScale(UiScale.UI_SCALE_BIG, () => {});
+    stop();
+    // The change into the big scale, and the restore back out of it.
+    assert.deepEqual(scales, [UiScale.UI_SCALE_BIG, UiScale.UI_SCALE_NORMAL]);
+
+    scales = [];
+    atScale(UiScale.UI_SCALE_BIG, () => {});
+    assert.deepEqual(scales, [], "unsubscribing must stop the notifications");
+});
+
+test("the slider's range spans normal to big", () => {
+    assert.equal(UiScale.UI_SCALE_MIN, UiScale.UI_SCALE_NORMAL);
+    assert.equal(UiScale.UI_SCALE_MAX, UiScale.UI_SCALE_BIG);
+    // A step the range divides into, so the slider can reach both ends exactly.
+    const steps = (UiScale.UI_SCALE_MAX - UiScale.UI_SCALE_MIN) / UiScale.UI_SCALE_STEP;
+    assert.ok(Math.abs(steps - Math.round(steps)) < 1e-9, `range is ${steps} steps`);
+});
+
 test("applying a scale and returning restores every size", () => {
     const before = UiScale.tapTargets();
     atScale(UiScale.UI_SCALE_BIG, () => {});
@@ -67,11 +88,8 @@ test("applying a scale and returning restores every size", () => {
 });
 
 // A module-scope `const X = <scaled size> ...` freezes at the scale in force when that module
-// loaded, so it would not follow a runtime scale change. Each one here has to become a function
-// (or move into a render path) before a big-UI toggle can ship.
-const KNOWN_FROZEN_DERIVATIONS = [
-    "src/client/hud/ToolbarLayer.js: const CELL_HEIGHT = SLOT_SIZE + LABEL_GAP + LABEL_HEIGHT;",
-];
+// loaded, so it does not follow a scale change. Such a size belongs in a function instead.
+const KNOWN_FROZEN_DERIVATIONS = [];
 
 test("no new module-scope constant is derived from a scaled size", () => {
     const found = [];

@@ -55,7 +55,13 @@ const DRAG_LIFT_DURATION_MS = 150;
 const OPEN_OVERSHOOT = 0.2;
 const DRAWER_BOTTOM_PAD = 12;
 
-const CELL_HEIGHT = SLOT_SIZE + LABEL_GAP + LABEL_HEIGHT;
+/**
+ * A slot cell's full height, recomputed per call so it follows the UI scale.
+ * @returns {number}
+ */
+function cellHeight() {
+    return SLOT_SIZE + LABEL_GAP + LABEL_HEIGHT;
+}
 
 /**
  * Static bottom-center tool toolbar: one panel grid, top row visible, overflow rows in a slide-out drawer.
@@ -270,7 +276,7 @@ export class ToolbarLayer extends Container {
         }
 
         this._panelWidth = GRID_LEFT + this._columns * SLOT_SIZE + (this._columns - 1) * CELL_GAP + PANEL_PADDING;
-        this._slideDistance = (this._rowCount - 1) * (CELL_HEIGHT + ROW_GAP);
+        this._slideDistance = (this._rowCount - 1) * (cellHeight() + ROW_GAP);
         // Snap to the resting position for the current open/closed state under the rebuilt geometry.
         this._slide.reset(this._drawerOpen ? this._slideDistance : 0);
         this._drawPanel();
@@ -281,7 +287,7 @@ export class ToolbarLayer extends Container {
      * @private
      */
     _drawPanel() {
-        const content = this._rowCount * CELL_HEIGHT + (this._rowCount - 1) * ROW_GAP;
+        const content = this._rowCount * cellHeight() + (this._rowCount - 1) * ROW_GAP;
         const bottomBleed = MARGIN_BOTTOM + DRAWER_BOTTOM_PAD + this._slideDistance * OPEN_OVERSHOOT;
         const height = PANEL_PADDING + content + bottomBleed;
         if (this._panelBg !== null) {
@@ -430,7 +436,7 @@ export class ToolbarLayer extends Container {
     _slotPosition(flatIndex) {
         return {
             x: GRID_LEFT + (flatIndex % this._columns) * (SLOT_SIZE + CELL_GAP),
-            y: PANEL_PADDING + Math.floor(flatIndex / this._columns) * (CELL_HEIGHT + ROW_GAP),
+            y: PANEL_PADDING + Math.floor(flatIndex / this._columns) * (cellHeight() + ROW_GAP),
         };
     }
 
@@ -818,7 +824,7 @@ export class ToolbarLayer extends Container {
             this._dragState.icon.scale.set(this._dragState.iconBaseScale * scale);
         }
         // Collapsed panel top: its top row sits above the bottom margin, rows below spill off-screen.
-        const collapsedTop = this._app.screen.height - MARGIN_BOTTOM - PANEL_PADDING - CELL_HEIGHT;
+        const collapsedTop = this._app.screen.height - MARGIN_BOTTOM - PANEL_PADDING - cellHeight();
         const offset = this._slide.advance(this._app.ticker.deltaMS);
 
         // Center the panel.
