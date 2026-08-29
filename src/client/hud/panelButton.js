@@ -8,6 +8,42 @@ import Mobile from "@/client/Mobile.js";
 
 const BUTTON_PADDING_X = 16;
 const HOVER_ALPHA = 0.2;
+const BUTTON_FONT_SIZE = 15;
+// Grays a disabled button, which also drops its interactivity.
+const DISABLED_ALPHA = 0.45;
+
+/**
+ * A button's tinted 9-slice background and the hover wash over it, sized to `width`.
+ * @param {TextureRegistry} textureRegistry
+ * @param {number} width
+ * @param {number} borderColor
+ * @returns {{button: Container, hover: Graphics}}
+ */
+function buildButtonFace(textureRegistry, width, borderColor) {
+    const button = new Container();
+    const bg = nineSlice(textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, width, BUTTON_HEIGHT);
+    bg.tint = borderColor;
+    button.addChild(bg);
+
+    const hover = new Graphics().rect(0, 0, width, BUTTON_HEIGHT).fill(SLOT_HIGHLIGHT_COLOR);
+    hover.alpha = 0;
+    button.addChild(hover);
+    return {button, hover};
+}
+
+/**
+ * Makes a built face respond: pointer cursor, hover wash, and a tap firing `onClick`.
+ * @param {Container} button
+ * @param {Graphics} hover
+ * @param {function(): void} onClick
+ * @returns {void}
+ */
+function wireButtonPress(button, hover, onClick) {
+    button.cursor = "pointer";
+    button.on("pointerover", () => hover.alpha = HOVER_ALPHA);
+    button.on("pointerout", () => hover.alpha = 0);
+    trackTap(button, onClick);
+}
 
 /**
  * A button label carrying its keyboard hint in brackets (docs/ux-conventions.md), dropped on
@@ -39,31 +75,21 @@ export function hotkeyLabel(label, key) {
 export function buildPanelButton(textureRegistry, label, borderColor, onClick, disabled = false) {
     const text = new Text({
         text: label,
-        style: {fontFamily: GAME_FONT, fontSize: 15, fill: textOn(borderColor), fontWeight: "bold"},
+        style: {fontFamily: GAME_FONT, fontSize: BUTTON_FONT_SIZE, fill: textOn(borderColor), fontWeight: "bold"},
     });
     const width = text.width + BUTTON_PADDING_X * 2;
 
-    const button = new Container();
-    const bg = nineSlice(textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, width, BUTTON_HEIGHT);
-    bg.tint = borderColor;
-    button.addChild(bg);
-
-    const hover = new Graphics().rect(0, 0, width, BUTTON_HEIGHT).fill(SLOT_HIGHLIGHT_COLOR);
-    hover.alpha = 0;
-    button.addChild(hover);
+    const {button, hover} = buildButtonFace(textureRegistry, width, borderColor);
 
     text.x = BUTTON_PADDING_X;
     text.y = (BUTTON_HEIGHT - text.height) / 2;
     button.addChild(text);
 
     if (disabled) {
-        button.alpha = 0.45;
+        button.alpha = DISABLED_ALPHA;
         return button;
     }
-    button.cursor = "pointer";
-    button.on("pointerover", () => hover.alpha = HOVER_ALPHA);
-    button.on("pointerout", () => hover.alpha = 0);
-    trackTap(button, onClick);
+    wireButtonPress(button, hover, onClick);
     return button;
 }
 
@@ -77,14 +103,7 @@ export function buildPanelButton(textureRegistry, label, borderColor, onClick, d
  * @returns {Container}
  */
 export function buildIconButton(textureRegistry, iconTextureName, iconTint, borderColor, onClick) {
-    const button = new Container();
-    const bg = nineSlice(textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, BUTTON_HEIGHT, BUTTON_HEIGHT);
-    bg.tint = borderColor;
-    button.addChild(bg);
-
-    const hover = new Graphics().rect(0, 0, BUTTON_HEIGHT, BUTTON_HEIGHT).fill(SLOT_HIGHLIGHT_COLOR);
-    hover.alpha = 0;
-    button.addChild(hover);
+    const {button, hover} = buildButtonFace(textureRegistry, BUTTON_HEIGHT, borderColor);
 
     const icon = new Sprite(textureRegistry.get(iconTextureName));
     icon.tint = iconTint;
@@ -94,10 +113,7 @@ export function buildIconButton(textureRegistry, iconTextureName, iconTint, bord
     icon.y = (BUTTON_HEIGHT - icon.height) / 2;
     button.addChild(icon);
 
-    button.cursor = "pointer";
-    button.on("pointerover", () => hover.alpha = HOVER_ALPHA);
-    button.on("pointerout", () => hover.alpha = 0);
-    trackTap(button, onClick);
+    wireButtonPress(button, hover, onClick);
     return button;
 }
 
