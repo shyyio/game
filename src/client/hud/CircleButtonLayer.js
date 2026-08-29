@@ -1,6 +1,7 @@
 import {Container, Graphics} from "pixi.js";
 import {drawCircleButtonFace, trackTap} from "@/client/layers/pixiUtils.js";
 import SafeArea from "@/client/SafeArea.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 
 export const CIRCLE_BUTTON_RADIUS = 24;
 export const CIRCLE_BUTTON_MARGIN = 16;
@@ -19,7 +20,7 @@ export class CircleButtonLayer extends Container {
         super();
         this._app = app;
         this._drawIcon = drawIcon;
-        this.zIndex = 9500;
+        this.zIndex = HudLayer.OVERLAY_BUTTON;
         this._topOffset = 0;
         this._hovered = false;
         this._onPress = null;

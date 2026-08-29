@@ -1,6 +1,7 @@
 import {Container, Text} from "pixi.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {GAME_FONT} from "@/client/constants.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 import {PANEL_TINT, PANEL_TINT_TEXT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import SafeArea from "@/client/SafeArea.js";
@@ -29,7 +30,7 @@ export class StatusMessageLayer extends Container {
         this.textureRegistry = null;
         // Display-only: never a hit target (the stage is interactive for mobile pinch).
         this.eventMode = "none";
-        this.zIndex = 10000;
+        this.zIndex = HudLayer.STATUS;
         this.visible = false;
         this._topOffset = 0;
         this._connecting = false;

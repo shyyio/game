@@ -7,6 +7,7 @@ import {MetricsLineChart} from "@/client/hud/MetricsLineChart.js";
 import {CHART_METRIC_COUNT, seriesRates} from "@/client/hud/MetricsChartData.js";
 import {metricsRollupKey} from "@/common/MetricsFact.js";
 import {GameSettingsKey} from "@/common/constants.js";
+import {HudLayer, HUD_DOM_Z_INDEX} from "@/client/hud/HudLayer.js";
 
 const PANEL_WIDTH = 640;
 const CHART_HEIGHT = 280;
@@ -19,10 +20,6 @@ const SCREEN_MARGIN = 16;
 // Default open position: right edge under the button row, clear of it by this much.
 const ANCHOR_MARGIN_RIGHT = 16;
 const ANCHOR_GAP = 12;
-// Above the always-visible settings/friends/production buttons (9500), below toasts/dialogs.
-const Z_INDEX = 9600;
-// Matches TextInput/SelectableText's DOM-overlay convention.
-const DOM_Z_INDEX = "1000";
 
 /**
  * Production-rate panel: a draggable {@link UIPanel} with a sunken inset placeholder that a real
@@ -60,7 +57,7 @@ export class ProductionPanelLayer extends Container {
         this.anchorButton = null;
         // The game viewport, frozen against wheel-zoom while the list scrollbar is hovered (set by the host).
         this.viewport = null;
-        this.zIndex = Z_INDEX;
+        this.zIndex = HudLayer.PANEL;
         this.visible = false;
 
         this._panel = null;
@@ -205,7 +202,7 @@ export class ProductionPanelLayer extends Container {
 
         this._chartRoot = document.createElement("div");
         Object.assign(this._chartRoot.style, {
-            position: "fixed", zIndex: DOM_Z_INDEX, left: "0px", top: "0px", width: "1px", height: "1px",
+            position: "fixed", zIndex: HUD_DOM_Z_INDEX, left: "0px", top: "0px", width: "1px", height: "1px",
             overflow: "hidden", pointerEvents: "auto",
         });
         document.body.appendChild(this._chartRoot);

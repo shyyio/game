@@ -1,6 +1,7 @@
 import {Container, Text} from "pixi.js";
 import {APP_VERSION, BUILD_DATE} from "@/common/env.js";
 import {GAME_FONT} from "@/client/constants.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 import Mobile from "@/client/Mobile.js";
 import SafeArea from "@/client/SafeArea.js";
 
@@ -37,7 +38,7 @@ export class VersionWatermarkLayer extends Container {
         this._app = app;
         // Display-only: never a hit target (the stage is interactive for mobile pinch).
         this.eventMode = "none";
-        this.zIndex = 100;
+        this.zIndex = HudLayer.WATERMARK;
         this.alpha = WATERMARK_ALPHA;
         this._text = new Text({
             text: watermarkText(),

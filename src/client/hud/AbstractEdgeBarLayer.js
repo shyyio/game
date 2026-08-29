@@ -4,6 +4,7 @@ import {PANEL_TINT, PANEL_TINT_TEXT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {swallowClicks} from "@/client/layers/pixiUtils.js";
 import {NotImplementedError} from "@/common/error.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 
 // Gap between the outer frame and its content (buttons, pattern, inset).
 export const FRAME_MARGIN = 6;
@@ -34,7 +35,7 @@ export class AbstractEdgeBarLayer extends Container {
         super();
         this._app = app;
         this.textureRegistry = null;
-        this.zIndex = 9000;
+        this.zIndex = HudLayer.EDGE_BAR;
         this.visible = false;
         this._panel = new Container();
         // Presses on the bar must not fall through to the viewport (pan/tap).

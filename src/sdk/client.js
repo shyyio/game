@@ -48,6 +48,7 @@ export {rectEdgePoint, drawPanelConnector, CONNECTOR_PANEL_INSET} from "@/client
 // Declarative panel-body builder (header/text/row/scrollSection) for use with UIPanel.managed.
 export {PanelStack, PanelRowDescriptor} from "@/client/hud/PanelStack.js";
 export {PanelRow, ROW_HEIGHT, ROW_GAP, ROW_INDENT} from "@/client/hud/PanelRow.js";
+export {HudLayer} from "@/client/hud/HudLayer.js";
 // A scrollable grid of tappable icons (items, marker glyphs); scales to hundreds of entries.
 export {IconPicker, IconPickerEntry} from "@/client/hud/IconPicker.js";
 export {panelText, TextRole} from "@/client/hud/PanelText.js";

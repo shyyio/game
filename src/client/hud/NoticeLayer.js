@@ -2,6 +2,7 @@ import {Container, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_TINT_TEXT, PANEL_TINT} from "@/client/Theme.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 
 const MARGIN = 24;
 const PADDING_X = 16;
@@ -28,7 +29,7 @@ export class NoticeLayer extends Container {
         this._pendingText = null;
         // Display-only: never a hit target (the stage is interactive for mobile pinch).
         this.eventMode = "none";
-        this.zIndex = 11000;
+        this.zIndex = HudLayer.NOTICE;
         this.visible = false;
         this._timer = null;
 
