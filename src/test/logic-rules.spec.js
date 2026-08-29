@@ -76,7 +76,7 @@ function rulesMessage(terminalId, rules) {
  * A component column value for a placed objectId.
  */
 function columnOf(engine, componentName, column, objectId) {
-    const def = engine.component(componentName);
+    const def = engine.components.get(componentName);
     return def.store[column][def.row(engine.placed.eidByObjectId(objectId))];
 }
 
@@ -84,7 +84,7 @@ function columnOf(engine, componentName, column, objectId) {
  * Fills a placed tank directly.
  */
 function fillTank(engine, tankId, fluidType, amount) {
-    const def = engine.component("Tank");
+    const def = engine.components.get("Tank");
     const row = def.row(engine.placed.eidByObjectId(tankId));
     def.store.fluidType[row] = fluidType;
     def.store.amount[row] = amount;
@@ -148,7 +148,7 @@ test("the processing key reads real activity, not the enable switch", async () =
     assert.equal(behavior.logicRead(engine, engine.placed, eid, LOGIC_KEY_PROCESSING), 0,
         "enabled but holding nothing reads idle");
 
-    const def = engine.component("Machine");
+    const def = engine.components.get("Machine");
     def.store.output[def.row(eid)] = ITEM_TYPE_NUTRIENT_SLOP;
     assert.equal(behavior.logicRead(engine, engine.placed, eid, LOGIC_KEY_PROCESSING), 1,
         "a held product is a craft in flight");

@@ -66,7 +66,7 @@ test("the Stimpack factory places every object with no tile collisions", async (
 test("the Stimpack factory actually produces a Stimpack when ticked", async () => {
     const {game, root} = await buildFactory();
     const engine = game.simEngine;
-    const def = engine.component("Machine");
+    const def = engine.components.get("Machine");
     const row = def.row(engine.placed.eidsOf(FillType.typeId)[0]);
     const outPort = def.store.out[row];
 

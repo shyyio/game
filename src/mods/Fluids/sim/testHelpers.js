@@ -4,9 +4,9 @@ import {Pipes} from "./Pipes.js";
 
 /**
  * The engine's pipe transport.
- * @param {GameEngine} sim
+ * @param {GameEngine} engine
  * @returns {Pipes}
  */
-export function pipesOf(sim) {
-    return sim.resolve(Pipes);
+export function pipesOf(engine) {
+    return engine.resolve(Pipes);
 }

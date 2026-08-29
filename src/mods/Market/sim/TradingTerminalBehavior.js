@@ -21,7 +21,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             }
         }
         engine.provide(MarketBook, new MarketBook(fixedPrices));
-        engine.defineComponent("MarketTerminal", [
+        engine.components.define("MarketTerminal", [
             {name: "mode"},
             {name: "itemType", fill: EMPTY},
             {name: "price"},
@@ -44,8 +44,8 @@ export class TradingTerminalBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, placed, eid, type, message) {
-        const def = engine.component("MarketTerminal");
-        engine.attachComponent(def, eid);
+        const def = engine.components.get("MarketTerminal");
+        engine.components.attach(def, eid);
         const terminal = def.store;
         const row = def.row(eid);
         terminal.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;
@@ -55,7 +55,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, placed, eid) {
-        const def = engine.component("MarketTerminal");
+        const def = engine.components.get("MarketTerminal");
         const row = def.row(eid);
         engine.unregisterRenderedPort(def.store.out[row]);
         const book = engine.resolve(MarketBook);
@@ -64,7 +64,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
     }
 
     syncData(engine, placed, eid) {
-        const def = engine.component("MarketTerminal");
+        const def = engine.components.get("MarketTerminal");
         const row = def.row(eid);
         const last = def.store.lastOutput[row];
         let lastOutput = last;
@@ -75,7 +75,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
     }
 
     resyncRenderedPorts(engine, placed, eid) {
-        const def = engine.component("MarketTerminal");
+        const def = engine.components.get("MarketTerminal");
         const out = def.store.out[def.row(eid)];
         engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
@@ -100,7 +100,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
      */
     static _submitIntents(engine) {
         const item = engine.Port.item;
-        const def = engine.component("MarketTerminal");
+        const def = engine.components.get("MarketTerminal");
         const terminal = def.store;
         const book = engine.resolve(MarketBook);
         const count = def.count;
@@ -215,7 +215,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _finish(engine) {
-        const def = engine.component("MarketTerminal");
+        const def = engine.components.get("MarketTerminal");
         const terminal = def.store;
         const eids = def.eids;
         const book = engine.resolve(MarketBook);

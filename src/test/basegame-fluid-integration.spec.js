@@ -34,7 +34,7 @@ test("a Blender pumps Nutrient Slop into an adjacent pipe network", async () => 
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP));
     const [eid] = engine.placed.eidsOf(BlenderType.typeId);
-    const def = engine.component("Machine");
+    const def = engine.components.get("Machine");
     const row = def.row(eid);
     engine.setPortItem(def.store.in0[row], ITEM_TYPE_SOYBEAN);
     engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 5, 4, Direction.UP));
@@ -70,7 +70,7 @@ test("a pipe delivers Water into a Greenhouse's fluid input, completing the reci
     engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 7, 8, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(GreenhouseType.typeId, 5, 5, Direction.UP));
     const [eid] = engine.placed.eidsOf(GreenhouseType.typeId);
-    const def = engine.component("Machine");
+    const def = engine.components.get("Machine");
     const row = def.row(eid);
     const outPort = def.store.out[row];
 
@@ -87,7 +87,7 @@ test("Blast Furnace produces Raw Steel from Iron Ore + Coke + Oxygen in one craf
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(BlastFurnaceType.typeId, 5, 5, Direction.UP));
     const [eid] = engine.placed.eidsOf(BlastFurnaceType.typeId);
-    const def = engine.component("Machine");
+    const def = engine.components.get("Machine");
     const row = def.row(eid);
 
     let produced = false;
@@ -105,7 +105,7 @@ test("Brew produces both Basic Potion Base and Overload Mix, one machine", async
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(BrewType.typeId, 5, 5, Direction.UP));
     const [eid] = engine.placed.eidsOf(BrewType.typeId);
-    const def = engine.component("Machine");
+    const def = engine.components.get("Machine");
     const row = def.row(eid);
     const in0Port = def.store.in0[row];
     const in1Port = def.store.in1[row];

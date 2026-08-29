@@ -88,19 +88,19 @@ export class Belts {
         this._nextItemId = 1;
 
         // Runtime state lives in the JS maps above; these snapshotOnly components mirror it only at save/load.
-        this._pathDef = engine.defineComponent("BeltPath", [
+        this._pathDef = engine.components.define("BeltPath", [
             {name: "inPort", kind: "eid", fill: NO_EID},
             {name: "outPort", kind: "eid", fill: NO_EID},
             {name: "headGap"},
             {name: "length"},
         ], {snapshotOnly: true});
         // Path membership only; a belt's position/direction/kind ride the PlacedObject snapshot.
-        this._beltDef = engine.defineComponent("BeltPathMember", [
+        this._beltDef = engine.components.define("BeltPathMember", [
             {name: "path", kind: "eid", fill: NO_EID},
             {name: "seq"},
             {name: "objectId", fill: NO_EID},
         ], {snapshotOnly: true});
-        this._itemDef = engine.defineComponent("BeltItem", [
+        this._itemDef = engine.components.define("BeltItem", [
             {name: "path", kind: "eid", fill: NO_EID},
             {name: "seq"},
             {name: "gap"},
@@ -1333,7 +1333,7 @@ export class Belts {
         this.engine.unregisterRenderedPort(path.outPort);
         // Clear the client's item sprites for the stale path id.
         this._emitItemReset(path);
-        this.engine.destroyEntity(path.id);
+        this.engine.components.destroyEntity(path.id);
     }
 
     /**
@@ -1578,8 +1578,8 @@ export class Belts {
      */
     _materialize() {
         for (const def of [this._itemDef, this._beltDef, this._pathDef]) {
-            for (const eid of this.engine.entitiesWith(def)) {
-                this.engine.destroyEntity(eid);
+            for (const eid of this.engine.components.entitiesWith(def)) {
+                this.engine.components.destroyEntity(eid);
             }
         }
 
@@ -1587,21 +1587,21 @@ export class Belts {
         const B = this._beltDef.store;
         const I = this._itemDef.store;
         for (const path of this.paths) {
-            const pathEid = this.engine.createEntity(this._pathDef);
+            const pathEid = this.engine.components.createEntity(this._pathDef);
             BP.inPort[pathEid] = path.inPort;
             BP.outPort[pathEid] = path.outPort;
             BP.headGap[pathEid] = this._colHeadGap[path.slot];
             BP.length[pathEid] = path.length;
 
             for (const [index, beltId] of path.beltIds.entries()) {
-                const memberEid = this.engine.createEntity(this._beltDef);
+                const memberEid = this.engine.components.createEntity(this._beltDef);
                 B.path[memberEid] = pathEid;
                 B.seq[memberEid] = index;
                 B.objectId[memberEid] = beltId;
             }
 
             for (const [seq, item] of this._unloadItems(path.slot).entries()) {
-                const itemEid = this.engine.createEntity(this._itemDef);
+                const itemEid = this.engine.components.createEntity(this._itemDef);
                 I.path[itemEid] = pathEid;
                 I.seq[itemEid] = seq;
                 I.gap[itemEid] = item.gap;
@@ -1649,7 +1649,7 @@ export class Belts {
         const I = this._itemDef.store;
 
         const beltsByPath = new Map();
-        for (const eid of this.engine.entitiesWith(this._beltDef)) {
+        for (const eid of this.engine.components.entitiesWith(this._beltDef)) {
             const belt = this.beltById(B.objectId[eid]);
             const pathEid = B.path[eid];
             if (!beltsByPath.has(pathEid)) {
@@ -1659,7 +1659,7 @@ export class Belts {
         }
 
         const itemsByPath = new Map();
-        for (const eid of this.engine.entitiesWith(this._itemDef)) {
+        for (const eid of this.engine.components.entitiesWith(this._itemDef)) {
             const pathEid = I.path[eid];
             if (!itemsByPath.has(pathEid)) {
                 itemsByPath.set(pathEid, []);
@@ -1667,7 +1667,7 @@ export class Belts {
             itemsByPath.get(pathEid).push({seq: I.seq[eid], item: {id: I.itemId[eid], type: I.type[eid], gap: I.gap[eid]}});
         }
 
-        for (const pathEid of this.engine.entitiesWith(this._pathDef)) {
+        for (const pathEid of this.engine.components.entitiesWith(this._pathDef)) {
             const belts = (beltsByPath.get(pathEid) || []).sort((a, b) => a.seq - b.seq).map(entry => entry.belt);
             const items = (itemsByPath.get(pathEid) || []).sort((a, b) => a.seq - b.seq).map(entry => entry.item);
             const path = {

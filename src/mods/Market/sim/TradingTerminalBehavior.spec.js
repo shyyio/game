@@ -37,7 +37,7 @@ async function setup() {
     engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 10, 10, Direction.UP));
     const [sellerEid, buyerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
 
-    const def = engine.component("MarketTerminal");
+    const def = engine.components.get("MarketTerminal");
     const terminal = def.store;
     const sellerRow = def.row(sellerEid);
     const buyerRow = def.row(buyerEid);
@@ -86,7 +86,7 @@ test("a sell terminal does not drain without a matching buyer", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
     const [sellerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
-    const def = engine.component("MarketTerminal");
+    const def = engine.components.get("MarketTerminal");
     const terminal = def.store;
     const row = def.row(sellerEid);
     terminal.mode[row] = MARKET_MODE_SELL;
@@ -101,7 +101,7 @@ test("a sell terminal does not drain without a matching buyer", async () => {
 
 test("a sell terminal with sellEnabled=0 never sells, even with an eligible buyer", async () => {
     const {engine, sellerInPort, buyerOutPort} = await setup();
-    const def = engine.component("MarketTerminal");
+    const def = engine.components.get("MarketTerminal");
     const [sellerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
     def.store.sellEnabled[def.row(sellerEid)] = 0;
 
@@ -115,7 +115,7 @@ test("an NPC-priced sell terminal always has a counterparty, no buy terminal nee
     const engine = await makeGameEngine([new ModPackage(new NpcPriceFixtureDeclaration())]);
     engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
     const [sellerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
-    const def = engine.component("MarketTerminal");
+    const def = engine.components.get("MarketTerminal");
     const terminal = def.store;
     const row = def.row(sellerEid);
     terminal.mode[row] = MARKET_MODE_SELL;
@@ -132,7 +132,7 @@ test("an NPC-priced buy terminal purchases every tick, at full throughput", asyn
     const engine = await makeGameEngine([new ModPackage(new NpcPriceFixtureDeclaration())]);
     engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
     const [buyerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
-    const def = engine.component("MarketTerminal");
+    const def = engine.components.get("MarketTerminal");
     const terminal = def.store;
     const row = def.row(buyerEid);
     terminal.mode[row] = MARKET_MODE_BUY;
@@ -152,7 +152,7 @@ test("an NPC-priced buy terminal keeps buying while a consumer drains its port t
     const engine = await makeGameEngine([new ModPackage(new NpcPriceFixtureDeclaration())]);
     engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
     const [buyerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
-    const def = engine.component("MarketTerminal");
+    const def = engine.components.get("MarketTerminal");
     const terminal = def.store;
     const row = def.row(buyerEid);
     terminal.mode[row] = MARKET_MODE_BUY;
@@ -183,7 +183,7 @@ test("two sellers racing for one buyer: the loser's item stays resting, no doubl
     engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 20, 20, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 10, 10, Direction.UP));
     const [sellerAEid, sellerBEid, buyerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
-    const def = engine.component("MarketTerminal");
+    const def = engine.components.get("MarketTerminal");
     const terminal = def.store;
     const sellerARow = def.row(sellerAEid);
     const sellerBRow = def.row(sellerBEid);

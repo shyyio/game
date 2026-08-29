@@ -100,7 +100,7 @@ test("a pipe network drains into a tank through the shared edge port", async () 
     assert.equal(tankDeltas.length, 1, "amount changes emit nothing");
     assert.equal(tankDeltas[0].fluidType, FLUID_TYPE_WATER);
 
-    const def = engine.component("Tank");
+    const def = engine.components.get("Tank");
     const row = def.row(engine.placed.eidsOf(TankDefinition.typeId)[0]);
     const outPort = engine.portAt(1, -1, Direction.UP);
     assert.equal(pipes.networkAt(0, 2).amount, 0, "the network drained fully");

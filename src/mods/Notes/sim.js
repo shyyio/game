@@ -19,11 +19,11 @@ export class NotesSimMod extends AbstractSimMod {
 
     /**
      * No ECS content; notes coexist with objects instead of occupying tiles.
-     * @param {GameEngine} sim
+     * @param {GameEngine} engine
      * @returns {void}
      */
-    setup(sim) {
-        sim.registerChunkSync(chunk => this._store.notesIn(chunk).map(note => this._setEvent(note)));
+    setup(engine) {
+        engine.registerChunkSync(chunk => this._store.notesIn(chunk).map(note => this._setEvent(note)));
     }
 
     /**

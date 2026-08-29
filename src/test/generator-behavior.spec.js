@@ -58,7 +58,7 @@ test("a generator with no input port produces its main output on its own cadence
     const engine = await engineWithFixture();
     engine.applyMessage(new CreateObjectMessage(SingleOutputGeneratorType.typeId, 5, 5, Direction.UP));
     const [eid] = engine.placed.eidsOf(SingleOutputGeneratorType.typeId);
-    const def = engine.component("Generator");
+    const def = engine.components.get("Generator");
     const outPort = def.store.out[def.row(eid)];
 
     let produced = 0;
@@ -76,7 +76,7 @@ test("main and secondary outputs run independent cadences into their own ports",
     const engine = await engineWithFixture();
     engine.applyMessage(new CreateObjectMessage(DualOutputGeneratorType.typeId, 5, 5, Direction.UP));
     const [eid] = engine.placed.eidsOf(DualOutputGeneratorType.typeId);
-    const def = engine.component("Generator");
+    const def = engine.components.get("Generator");
     const row = def.row(eid);
     const outPort = def.store.out[row];
     const secondaryPort = def.store.out2[row];
@@ -103,7 +103,7 @@ test("a generator with a single output port never wires or touches the second po
     const engine = await engineWithFixture();
     engine.applyMessage(new CreateObjectMessage(SingleOutputGeneratorType.typeId, 5, 5, Direction.UP));
     const [eid] = engine.placed.eidsOf(SingleOutputGeneratorType.typeId);
-    const def = engine.component("Generator");
+    const def = engine.components.get("Generator");
     const row = def.row(eid);
     assert.equal(def.store.out2[row], EMPTY, "no second port was wired");
     engine.tickAll();

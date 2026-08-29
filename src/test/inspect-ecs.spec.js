@@ -23,7 +23,7 @@ function createMachine(game, x, y) {
     const placed = game.simEngine.placed;
     const eids = placed.eidsOf(BlenderType.typeId);
     const eid = eids[eids.length - 1];
-    const machine = game.simEngine.component("Machine");
+    const machine = game.simEngine.components.get("Machine");
     return {id: placed.objectIdOf(eid), inPort: machine.store.in0[machine.row(eid)]};
 }
 

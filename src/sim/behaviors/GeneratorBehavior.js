@@ -33,7 +33,7 @@ export class GeneratorBehavior extends AbstractBehavior {
     }
 
     install(engine, placed) {
-        engine.defineComponent("Generator", [
+        engine.components.define("Generator", [
             {name: "out", kind: "eid", fill: NO_EID},
             {name: "remaining", kind: "f32", fill: EMPTY},
             {name: "carry", kind: "f32"},
@@ -53,8 +53,8 @@ export class GeneratorBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, placed, eid, type, message) {
-        const def = engine.component("Generator");
-        engine.attachComponent(def, eid);
+        const def = engine.components.get("Generator");
+        engine.components.attach(def, eid);
         const generator = def.store;
         const row = def.row(eid);
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
@@ -72,7 +72,7 @@ export class GeneratorBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, placed, eid) {
-        const def = engine.component("Generator");
+        const def = engine.components.get("Generator");
         const row = def.row(eid);
         engine.unregisterRenderedPort(def.store.out[row]);
         engine.setPortFluidSource(def.store.out[row], EMPTY);
@@ -83,7 +83,7 @@ export class GeneratorBehavior extends AbstractBehavior {
     }
 
     syncData(engine, placed, eid) {
-        const def = engine.component("Generator");
+        const def = engine.components.get("Generator");
         const row = def.row(eid);
         const last = def.store.lastOutput[row];
         let lastOutput = last;
@@ -98,7 +98,7 @@ export class GeneratorBehavior extends AbstractBehavior {
     }
 
     resyncRenderedPorts(engine, placed, eid) {
-        const def = engine.component("Generator");
+        const def = engine.components.get("Generator");
         const row = def.row(eid);
         const out = def.store.out[row];
         engine.registerRenderedPort(out, engine.Position.x[out], engine.Position.y[out]);
@@ -116,7 +116,7 @@ export class GeneratorBehavior extends AbstractBehavior {
      * @returns {InspectHeartbeatEvent}
      */
     inspect(engine, placed, eid, objectId) {
-        const def = engine.component("Generator");
+        const def = engine.components.get("Generator");
         const generator = def.store;
         const row = def.row(eid);
         let remaining = null;
@@ -138,7 +138,7 @@ export class GeneratorBehavior extends AbstractBehavior {
      * @returns {void}
      */
     onRebuild(engine, placed) {
-        const def = engine.component("Generator");
+        const def = engine.components.get("Generator");
         const generator = def.store;
         const eids = def.eids;
         for (let row = 0; row < def.count; row += 1) {
@@ -204,7 +204,7 @@ export class GeneratorBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _submitIntents(engine, placed) {
-        const def = engine.component("Generator");
+        const def = engine.components.get("Generator");
         const generator = def.store;
         const eids = def.eids;
         const count = def.count;
@@ -239,7 +239,7 @@ export class GeneratorBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _finish(engine, placed) {
-        const def = engine.component("Generator");
+        const def = engine.components.get("Generator");
         const generator = def.store;
         const eids = def.eids;
         const count = def.count;

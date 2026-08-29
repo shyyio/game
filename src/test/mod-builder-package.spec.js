@@ -187,7 +187,7 @@ test("a mod's own spec runs against the real engine, with no game checkout", (t)
             const engine = await makeGameEngine([new ModPackage(new Declaration())]);
             engine.applyMessage(new CreateObjectMessage(WidgetType.typeId, 5, 5, Direction.UP));
             const [eid] = engine.placed.eidsOf(WidgetType.typeId);
-            const def = engine.component("Generator");
+            const def = engine.components.get("Generator");
             const out = def.store.out[def.row(eid)];
             for (let tick = 0; tick < 5; tick += 1) {
                 engine.tickAll();

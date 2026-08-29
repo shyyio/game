@@ -65,7 +65,7 @@ function producedOver(engine, inPort, outPort, ticks) {
  * @returns {number}
  */
 function carryOf(engine, objectId) {
-    const def = engine.component("Machine");
+    const def = engine.components.get("Machine");
     return def.store.carry[def.row(engine.placed.eidByObjectId(objectId))];
 }
 
@@ -124,7 +124,7 @@ test("fractional progress banks past a craft and shortens the next", async () =>
     engine.setPortItem(inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
     engine.tickAll();
     assert.equal(carryOf(engine, nearId), 0, "bank consumed at load");
-    const def = engine.component("Machine");
+    const def = engine.components.get("Machine");
     const remaining = def.store.remaining[def.row(engine.placed.eidByObjectId(nearId))];
     assert.ok(Math.abs(remaining - 1.4) < 1e-3, `remaining ${remaining}`);
 });

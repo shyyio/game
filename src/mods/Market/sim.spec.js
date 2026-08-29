@@ -78,7 +78,7 @@ test("a player-market trade pays the seller and charges the buyer, at the buyer'
     placeTerminal(game, buyer, 5 + CHUNK_SIZE * 4, 5, MARKET_MODE_BUY, ITEM, PRICE);
     game.playerSettings.set(buyer.playerId, MARKET_SETTING_BALANCE, 1000);
 
-    const inPort = game.simEngine.component("MarketTerminal").store.in[game.simEngine.component("MarketTerminal").row(sellerEid)];
+    const inPort = game.simEngine.components.get("MarketTerminal").store.in[game.simEngine.components.get("MarketTerminal").row(sellerEid)];
     game.simEngine.setPortItem(inPort, ITEM);
     // Cached balance refreshes only at tick end; second tick needed to see funding take effect.
     game.runTick();
@@ -93,7 +93,7 @@ test("a buyer with insufficient balance never wins a trade", async () => {
     const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, PRICE);
     placeTerminal(game, buyer, 5 + CHUNK_SIZE * 4, 5, MARKET_MODE_BUY, ITEM, PRICE);
 
-    const def = game.simEngine.component("MarketTerminal");
+    const def = game.simEngine.components.get("MarketTerminal");
     const inPort = def.store.in[def.row(sellerEid)];
     game.simEngine.setPortItem(inPort, ITEM);
     // Run past ownership-cache warm-up tick so seller is confirmed enabled.
@@ -119,7 +119,7 @@ test("an unclaimed chunk's terminal never trades", async () => {
     // Fund buyer directly, isolating the case to seller's missing ownership.
     game.playerSettings.set(buyer.playerId, MARKET_SETTING_BALANCE, 1000);
 
-    const def = game.simEngine.component("MarketTerminal");
+    const def = game.simEngine.components.get("MarketTerminal");
     const inPort = def.store.in[def.row(sellerEid)];
     game.simEngine.setPortItem(inPort, ITEM);
     game.runTick();
@@ -131,7 +131,7 @@ test("an unclaimed chunk's terminal never trades", async () => {
 test("an NPC-priced item trades without any buy terminal, crediting the seller's chunk owner", async () => {
     const {game, seller} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
     const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, PRICE);
-    const def = game.simEngine.component("MarketTerminal");
+    const def = game.simEngine.components.get("MarketTerminal");
     const inPort = def.store.in[def.row(sellerEid)];
     game.simEngine.setPortItem(inPort, ITEM);
     // sellEnabled refreshes only at tick end; first tick runs on stale cache.
@@ -145,7 +145,7 @@ test("a buy terminal on an NPC-priced item purchases from the NPC, no seller nee
     const {game, buyer} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
     const buyerEid = placeTerminal(game, buyer, 5, 5, MARKET_MODE_BUY, ITEM, PRICE);
     game.playerSettings.set(buyer.playerId, MARKET_SETTING_BALANCE, 1000);
-    const def = game.simEngine.component("MarketTerminal");
+    const def = game.simEngine.components.get("MarketTerminal");
     const outPort = def.store.out[def.row(buyerEid)];
 
     // Cached balance refreshes only at tick end; second tick needed to see funding take effect.
@@ -160,7 +160,7 @@ test("a buy terminal on an NPC-priced item purchases from the NPC, no seller nee
 test("a buy terminal on an NPC-priced item never purchases without enough balance", async () => {
     const {game, buyer} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
     const buyerEid = placeTerminal(game, buyer, 5, 5, MARKET_MODE_BUY, ITEM, PRICE);
-    const def = game.simEngine.component("MarketTerminal");
+    const def = game.simEngine.components.get("MarketTerminal");
     const outPort = def.store.out[def.row(buyerEid)];
 
     game.runTick();
@@ -174,7 +174,7 @@ test("a buy terminal keeps purchasing from the NPC every tick its output is free
     const {game, buyer} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
     const buyerEid = placeTerminal(game, buyer, 5, 5, MARKET_MODE_BUY, ITEM, PRICE);
     game.playerSettings.set(buyer.playerId, MARKET_SETTING_BALANCE, 1000);
-    const def = game.simEngine.component("MarketTerminal");
+    const def = game.simEngine.components.get("MarketTerminal");
     const outPort = def.store.out[def.row(buyerEid)];
 
     game.runTick();
@@ -220,7 +220,7 @@ test("configuring with a non-positive price on a player-market item is rejected"
     const eid = game.simEngine.placed.eidsOf(TradingTerminalType.typeId).at(-1);
     const objectId = game.simEngine.placed.objectIdOf(eid);
     game.dispatchMessage(new ConfigureTradingTerminalMessage(objectId, MARKET_MODE_SELL, ITEM, 0), seller);
-    const def = game.simEngine.component("MarketTerminal");
+    const def = game.simEngine.components.get("MarketTerminal");
     assert.equal(def.store.mode[def.row(eid)], 0, "the rejected configure never wrote MARKET_MODE_SELL");
 });
 
@@ -230,7 +230,7 @@ test("a sustained trade keeps settling every tick (full throughput, end to end)"
     const buyerEid = placeTerminal(game, buyer, 5 + CHUNK_SIZE * 4, 5, MARKET_MODE_BUY, ITEM, PRICE);
     game.playerSettings.set(buyer.playerId, MARKET_SETTING_BALANCE, 1000);
 
-    const def = game.simEngine.component("MarketTerminal");
+    const def = game.simEngine.components.get("MarketTerminal");
     const inPort = def.store.in[def.row(sellerEid)];
     const outPort = def.store.out[def.row(buyerEid)];
 
