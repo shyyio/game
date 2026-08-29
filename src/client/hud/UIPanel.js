@@ -353,6 +353,9 @@ export class UIPanel extends Container {
     static managed(previous, options, buildBody) {
         const stack = new PanelStack(options.textureRegistry, UIPanel.contentWidthFor(options.width));
         buildBody(stack);
+        if (stack.overflow > 0) {
+            throw new Error(`Panel "${options.title}" has a row overflowing by ${stack.overflow}px`);
+        }
 
         const height = UIPanel.heightForContent(stack.contentHeight);
         let x;

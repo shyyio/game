@@ -1,14 +1,13 @@
 import {Container, Graphics, Rectangle} from "pixi.js";
 import {panelText, TextRole} from "@/client/hud/PanelText.js";
-import {buildPanelButton, BUTTON_HEIGHT} from "@/client/hud/panelButton.js";
+import {buildPanelButton} from "@/client/hud/panelButton.js";
+import {PanelRow, ROW_HEIGHT, ROW_GAP} from "@/client/hud/PanelRow.js";
 import {trackTap} from "@/client/layers/pixiUtils.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {ScrollView} from "@/client/hud/ScrollView.js";
 import {ACTIVE_ACCENT, PANEL_TINT} from "@/client/Theme.js";
 import Mobile from "@/client/Mobile.js";
 
-export const ROW_HEIGHT = BUTTON_HEIGHT;
-export const ROW_GAP = 6;
 const HEADER_HEIGHT = 22;
 const SECTION_GAP = 14;
 // Clearance between a scroll section's rows and its inset sprite's top/left edges.
@@ -37,6 +36,7 @@ export class PanelStack extends Container {
         this._textureRegistry = textureRegistry;
         this._contentWidth = contentWidth;
         this._y = 0;
+        this._overflow = 0;
     }
 
     /** @returns {number} width available inside the panel */
@@ -47,6 +47,15 @@ export class PanelStack extends Container {
     /** @returns {number} total content height so far */
     get contentHeight() {
         return this._y;
+    }
+
+    /**
+     * The worst overflow among the rows built so far, in pixels; anything above 0 means a row draws
+     * its items on top of each other.
+     * @returns {number}
+     */
+    get overflow() {
+        return this._overflow;
     }
 
     /**
@@ -96,14 +105,17 @@ export class PanelStack extends Container {
     }
 
     /**
-     * A row-height Container at the current y; `build` fills it, returned as a handle for later mutation.
-     * @param {function(Container): void} build
-     * @returns {Container}
+     * A row at the current y; `build` fills it through the row's leading/trailing/fill slots,
+     * returned as a handle for later mutation.
+     * @param {function(PanelRow): void} build
+     * @returns {PanelRow}
      */
     row(build) {
-        const row = new Container();
+        const row = new PanelRow(this._contentWidth);
         row.y = this._y;
         build(row);
+        row.layout();
+        this._overflow = Math.max(this._overflow, row.overflow);
         this.addChild(row);
         this._y += ROW_HEIGHT + ROW_GAP;
         return row;
@@ -211,41 +223,32 @@ export class PanelStack extends Container {
         let y = 0;
         for (const [index, item] of items.entries()) {
             const descriptor = describe(item, index);
-            const row = new Container();
+            const row = new PanelRow(width);
             row.y = y;
             if (descriptor.selected === true) {
-                const background = new Graphics()
+                // Behind the flow, spanning the row, so it is drawn rather than laid out.
+                row.addChild(new Graphics()
                     .roundRect(0, 0, width, ROW_HEIGHT, SELECTED_RADIUS)
-                    .fill({color: ACTIVE_ACCENT, alpha: SELECTED_ALPHA});
-                row.addChild(background);
+                    .fill({color: ACTIVE_ACCENT, alpha: SELECTED_ALPHA}));
             }
-            let textX = 0;
             if (descriptor.swatchColor !== undefined) {
-                const swatch = new Graphics()
-                    .roundRect(0, (ROW_HEIGHT - SWATCH_SIZE) / 2, SWATCH_SIZE, SWATCH_SIZE, SWATCH_RADIUS)
-                    .fill(descriptor.swatchColor);
-                row.addChild(swatch);
-                textX = SWATCH_SIZE + SWATCH_GAP;
+                row.leading(new Graphics()
+                    .roundRect(0, 0, SWATCH_SIZE, SWATCH_SIZE, SWATCH_RADIUS)
+                    .fill(descriptor.swatchColor), SWATCH_GAP);
             }
-            const text = panelText(descriptor.label, TextRole.BODY);
-            text.x = textX;
-            text.y = (ROW_HEIGHT - text.height) / 2;
-            row.addChild(text);
+            row.leading(panelText(descriptor.label, TextRole.BODY));
             if (descriptor.trailingLabel !== undefined) {
-                const trailing = panelText(descriptor.trailingLabel, TextRole.BODY);
-                trailing.x = width - trailing.width;
-                trailing.y = (ROW_HEIGHT - trailing.height) / 2;
-                row.addChild(trailing);
+                row.trailing(panelText(descriptor.trailingLabel, TextRole.BODY));
             }
             if (descriptor.buttonLabel !== null && descriptor.buttonLabel !== undefined) {
                 let tint = descriptor.buttonTint;
                 if (tint === undefined) {
                     tint = ACTIVE_ACCENT;
                 }
-                const button = buildPanelButton(this._textureRegistry, descriptor.buttonLabel, tint, descriptor.onClick);
-                button.x = width - button.width;
-                row.addChild(button);
+                row.trailing(buildPanelButton(this._textureRegistry, descriptor.buttonLabel, tint, descriptor.onClick));
             }
+            row.layout();
+            this._overflow = Math.max(this._overflow, row.overflow);
             if (descriptor.onRowClick !== undefined) {
                 this._wireRowTap(row, width, descriptor.onRowClick);
             }

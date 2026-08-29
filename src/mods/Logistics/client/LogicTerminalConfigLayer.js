@@ -1,4 +1,4 @@
-import {ManagedPanel, UIPanel, ConnectedPanelLayer, TextRole, TILE_SIZE, buildPanelButton, buildIconButton, panelText, PanelStack, ScrollView, IconPicker, IconPickerEntry, ROW_HEIGHT, ROW_GAP, Container, Graphics, Rectangle, TextInput} from "@spup/sdk/client";
+import {ManagedPanel, UIPanel, ConnectedPanelLayer, TextRole, TILE_SIZE, buildPanelButton, buildIconButton, panelText, PanelStack, ScrollView, IconPicker, IconPickerEntry, ROW_HEIGHT, Container, Graphics, Rectangle, TextInput} from "@spup/sdk/client";
 import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT} from "@spup/sdk/client";
 import {
     LOGIC_RULE_CAP,
@@ -14,8 +14,8 @@ const PANEL_WIDTH = 400;
 const MAX_DEVICE_ROWS = 4;
 const DROPDOWN_WIDTH = 300;
 const DROPDOWN_ROWS = 8;
-// Conditions indent under their rule's action row.
-const CONDITION_INDENT = 16;
+// The slot the "when"/"and" conjunction sits in, ahead of a condition's editors.
+const CONJUNCTION_COLUMN_WIDTH = 50;
 // Comparator glyphs indexed by LOGIC_COMPARATOR_* value.
 const COMPARATOR_LABELS = ["≥", "≤", "=", "≠"];
 // Suspended rules mark red (blocked).
@@ -316,7 +316,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             const add = buildPanelButton(this.textureRegistry, "Add action", ACTIVE_ACCENT, () => {
                 this._openDropdown(actions, add);
             }, this._rules.length >= LOGIC_RULE_CAP || actions.length === 0);
-            row.addChild(add);
+            row.leading(add);
         });
     }
 
@@ -402,13 +402,10 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      */
     _buildRuleRows(stack, snapshot, rule, index) {
         stack.row((row) => {
-            let x = 0;
             if (rule.suspended) {
-                const swatch = new Graphics()
-                    .roundRect(0, (ROW_HEIGHT - SWATCH_SIZE) / 2, SWATCH_SIZE, SWATCH_SIZE, 3)
-                    .fill(SUSPENDED_TINT);
-                row.addChild(swatch);
-                x = SWATCH_SIZE + ROW_GAP;
+                row.leading(new Graphics()
+                    .roundRect(0, 0, SWATCH_SIZE, SWATCH_SIZE, 3)
+                    .fill(SUSPENDED_TINT));
             }
             const verb = buildPanelButton(
                 this.textureRegistry,
@@ -416,8 +413,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 ACTIVE_ACCENT,
                 () => this._openDropdown(this._actionVerbOptionsFor(snapshot, rule), verb),
             );
-            verb.x = x;
-            row.addChild(verb);
+            row.leading(verb);
             const device = this._deviceById(snapshot, rule.actionDeviceId);
             let deviceTexture = LogicTerminalDefinition.textureName;
             if (device !== undefined) {
@@ -430,9 +426,8 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                         rule.actionDeviceId = held.objectId;
                         this._sendRules();
                     })), target));
-            target.x = verb.x + verb.width + ROW_GAP;
-            row.addChild(target);
-            row.addChild(this._removeButton(stack.contentWidth, () => {
+            row.leading(target);
+            row.trailing(this._removeButton(() => {
                 this._rules.splice(index, 1);
                 this._sendRules();
             }));
@@ -445,8 +440,8 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             const add = buildPanelButton(this.textureRegistry, "+ condition", INACTIVE_TINT, () => {
                 this._openDropdown(conditionTypes, add);
             }, rule.conditions.length >= LOGIC_CONDITION_CAP || conditionTypes.length === 0);
-            add.x = CONDITION_INDENT;
-            row.addChild(add);
+            row.indent();
+            row.leading(add);
         });
     }
 
@@ -468,15 +463,11 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             if (conditionIndex === 0) {
                 word = "when";
             }
-            const prefix = panelText(word, TextRole.MUTED);
-            prefix.x = CONDITION_INDENT;
-            prefix.y = (ROW_HEIGHT - prefix.height) / 2;
-            row.addChild(prefix);
-            let x = CONDITION_INDENT + 50;
+            row.indent();
+            // A fixed slot, so "when" and "and" rows line their editors up down the rule.
+            row.column(panelText(word, TextRole.MUTED), CONJUNCTION_COLUMN_WIDTH);
             for (const button of this._conditionButtons(snapshot, condition)) {
-                button.x = x;
-                row.addChild(button);
-                x += button.width + ROW_GAP;
+                row.leading(button);
             }
             if (this._conditionIsNumeric(condition)) {
                 const comparator = buildPanelButton(
@@ -488,11 +479,10 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                         this._sendRules();
                     })), comparator),
                 );
-                comparator.x = x;
-                row.addChild(comparator);
-                this._fillValueInput(row, comparator.x + comparator.width + ROW_GAP, condition);
+                row.leading(comparator);
+                row.leading(this._buildValueInput(condition));
             }
-            row.addChild(this._removeButton(stack.contentWidth, () => {
+            row.trailing(this._removeButton(() => {
                 rule.conditions.splice(conditionIndex, 1);
                 this._sendRules();
             }));
@@ -584,9 +574,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         buttons.push(deviceButton);
         const entry = this._modRegistry.logicKeyEntry(condition.key);
         if (entry.states === null) {
-            const name = panelText(entry.name, TextRole.MUTED);
-            name.y = (ROW_HEIGHT - name.height) / 2;
-            buttons.push(name);
+            buttons.push(panelText(entry.name, TextRole.MUTED));
             return buttons;
         }
         let stateLabel = this._statedValueLabel(condition);
@@ -604,14 +592,12 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
     }
 
     /**
-     * The condition's number box at `x`; Enter or leaving the box commits and sends.
+     * The condition's number box; Enter or leaving the box commits and sends.
      * @private
-     * @param {Container} row
-     * @param {number} x
      * @param {LogicCondition} condition
-     * @returns {void}
+     * @returns {TextInput}
      */
-    _fillValueInput(row, x, condition) {
+    _buildValueInput(condition) {
         const input = new TextInput(this._app, VALUE_INPUT_WIDTH, ROW_HEIGHT, VALUE_INPUT_MAX_DIGITS, "", true);
         // An open dropdown covers the panel; the DOM box must not float through it.
         input.visible = this._dropdown === null;
@@ -628,21 +614,16 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         };
         input.onSubmit(commit);
         input.onBlur(commit);
-        input.x = x;
-        row.addChild(input);
+        return input;
     }
 
     /**
-     * A right-aligned X button.
      * @private
-     * @param {number} contentWidth
      * @param {function(): void} onClick
      * @returns {Container}
      */
-    _removeButton(contentWidth, onClick) {
-        const button = buildPanelButton(this.textureRegistry, "X", INACTIVE_TINT, onClick);
-        button.x = contentWidth - button.width;
-        return button;
+    _removeButton(onClick) {
+        return buildPanelButton(this.textureRegistry, "X", INACTIVE_TINT, onClick);
     }
 
     /**

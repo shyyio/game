@@ -5,7 +5,6 @@ import {
     PANEL_TINT,
     PANEL_TITLE_TEXT,
     ROW_HEIGHT,
-    ROW_GAP,
     TILE_SIZE,
     TextInput,
     TextRole,
@@ -203,7 +202,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
                 stack.text(this._players.usernameOf(target.authorId), TextRole.MUTED);
             }
         } else {
-            stack.row(row => row.addChild(this._input));
+            stack.row(row => row.leading(this._input));
         }
         stack.gap();
         stack.row(row => this._fillButtons(row, target));
@@ -216,24 +215,17 @@ export class NotePanelLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _fillButtons(row, target) {
-        const back = buildPanelButton(this.textureRegistry, "Back", PANEL_TINT, () => this._notes.closeEditor());
-        row.addChild(back);
-        let next = back.width + ROW_GAP;
+        row.leading(buildPanelButton(this.textureRegistry, "Back", PANEL_TINT, () => this._notes.closeEditor()));
         if (target.mode !== NOTE_EDITOR_MODE_PLACE) {
-            const remove = buildPanelButton(this.textureRegistry, "Delete", PANEL_TINT, () => {
+            row.leading(buildPanelButton(this.textureRegistry, "Delete", PANEL_TINT, () => {
                 this._session.sendMessage(new NoteDeleteMessage(target.tileX, target.tileY));
                 this._notes.closeEditor();
-            });
-            remove.x = next;
-            row.addChild(remove);
-            next = remove.x + remove.width + ROW_GAP;
+            }));
         }
         if (this._input === null) {
             return;
         }
-        const save = buildPanelButton(this.textureRegistry, "Save", ACTIVE_ACCENT, () => this._save(target));
-        save.x = next;
-        row.addChild(save);
+        row.leading(buildPanelButton(this.textureRegistry, "Save", ACTIVE_ACCENT, () => this._save(target)));
     }
 
     /**
