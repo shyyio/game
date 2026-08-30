@@ -8,7 +8,7 @@ import Mobile from "@/client/Mobile.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/hud/slotFrame.js";
 import {addSlotHighlight} from "@/client/hud/slotHighlight.js";
-import {nineSlice, swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
+import {fitIcon, nineSlice, swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
 import {TOOLBAR_SLOT_SIZE as SLOT_SIZE} from "@/client/hud/UiScale.js";
 import {ToolGrid} from "@/client/hud/ToolGrid.js";
 import {ToolReorderDrag} from "@/client/hud/ToolReorderDrag.js";
@@ -674,12 +674,8 @@ export class ToolbarLayer extends Container {
      * @param {string} textureName
      */
     _addSprite(slot, textureName) {
-        const texture = this.textureRegistry.get(textureName);
-        const icon = new Sprite(texture);
-        icon.anchor = 0.5;
-        const fit = SLOT_SIZE - ICON_PADDING * 2;
-        icon.scale = Math.min(fit / texture.width, fit / texture.height);
-        icon.position.set(SLOT_SIZE / 2, SLOT_SIZE / 2);
+        const icon = new Sprite(this.textureRegistry.get(textureName));
+        fitIcon(icon, SLOT_SIZE, ICON_PADDING);
         slot.addChild(icon);
         slot._icon = icon;
     }

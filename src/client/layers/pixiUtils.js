@@ -26,6 +26,21 @@ export function nineSlice(textureRegistry, name, insetX, insetY, width, height) 
 }
 
 /**
+ * Scales `icon` to fit a square of `size` inset by `inset` on every side, centered in it; the
+ * limiting dimension fills the box and the other keeps its aspect ratio.
+ * @param {Sprite} icon
+ * @param {number} size - the square the icon sits in, measured from its own (0, 0)
+ * @param {number} inset
+ * @returns {void}
+ */
+export function fitIcon(icon, size, inset) {
+    const box = size - inset * 2;
+    icon.anchor = 0.5;
+    icon.scale = Math.min(box / icon.texture.width, box / icon.texture.height);
+    icon.position.set(size / 2, size / 2);
+}
+
+/**
  * Centers a single-glyph Text's drawn ink on (0, 0), instead of its text box.
  * The box carries the font's full ascent/descent, which for a glyph the game font lacks (drawn
  * from an unknown system fallback) sits visibly off-center.

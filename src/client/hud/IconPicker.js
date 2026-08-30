@@ -2,7 +2,7 @@ import {Container, Graphics, Rectangle, Sprite} from "pixi.js";
 import {ScrollView} from "@/client/hud/ScrollView.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {PANEL_TINT, ACTIVE_ACCENT} from "@/client/Theme.js";
-import {trackTap} from "@/client/layers/pixiUtils.js";
+import {fitIcon, trackTap} from "@/client/layers/pixiUtils.js";
 import {ICON_CELL_SIZE as CELL_SIZE} from "@/client/hud/UiScale.js";
 
 const CELL_GAP = 4;
@@ -102,10 +102,7 @@ export class IconPicker extends Container {
 
         const icon = new Sprite(textureRegistry.get(entry.textureName));
         icon.tint = entry.tint;
-        const box = CELL_SIZE - ICON_INSET * 2;
-        icon.scale.set(Math.min(box / icon.texture.width, box / icon.texture.height));
-        icon.x = (CELL_SIZE - icon.width) / 2;
-        icon.y = (CELL_SIZE - icon.height) / 2;
+        fitIcon(icon, CELL_SIZE, ICON_INSET);
         cell.addChild(icon);
 
         cell.eventMode = "static";
