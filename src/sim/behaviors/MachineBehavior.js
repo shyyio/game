@@ -154,7 +154,7 @@ export class MachineBehavior extends AbstractBehavior {
         machine.enabled[row] = 1;
         engine.render.registerPort(output.port, output.tile.x, output.tile.y);
         if (this.workerCost > 0) {
-            engine.workers.markDirty(engine.footprint(type, message.x, message.y, message.direction));
+            engine.workers.roads.markDirty(engine.footprint(type, message.x, message.y, message.direction));
         }
     }
 
@@ -175,7 +175,7 @@ export class MachineBehavior extends AbstractBehavior {
         }
         if (this.workerCost > 0) {
             const position = engine.Position;
-            engine.workers.markDirty(engine.footprint(this.type, position.x[eid], position.y[eid], position.direction[eid]));
+            engine.workers.roads.markDirty(engine.footprint(this.type, position.x[eid], position.y[eid], position.direction[eid]));
         }
     }
 

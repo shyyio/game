@@ -1,7 +1,7 @@
 import {cellNeighbors, tileId, chunkOrigin} from "@/common/util.js";
-import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
+import {LAYER_SURFACE} from "@/common/constants.js";
 import {TickPhase} from "@/sim/GameEngine.js";
-import {RoadBehavior} from "@/sim/behaviors/RoadBehavior.js";
+import {RoadNetwork} from "@/sim/RoadNetwork.js";
 import {WorkerAssignment, WorkerAssignments} from "@/sim/WorkerAssignments.js";
 import {WorkerAssignmentEvent, WorkerAssignmentBatchEvent, NO_HOUSING} from "@/common/WorkerEvents.js";
 
@@ -25,16 +25,11 @@ export class WorkerNetworks {
     constructor(engine, placed) {
         this.engine = engine;
         this.placed = placed;
-        // tileId -> {x, y, objectId, component} per occupied road tile; component is the id
-        // (minTile) of the road component the tile belonged to at the last recompute.
-        this._roadTiles = new Map();
-        // A full recompute pending (load/rebuild); the cell/component sets below cover edits.
-        this._dirtyAll = false;
-        // tileId -> {x, y} cells edited since the last recompute.
-        this._dirtyCells = new Map();
-        // Prior component ids affected by an edit (e.g. a removed road tile's), so their
-        // assignments rediff even when no surviving road tile leads back to them.
-        this._dirtyComponents = new Set();
+        /**
+         * The road tiles, the housings bridging them, and the edits staling their connectivity.
+         * @type {RoadNetwork}
+         */
+        this.roads = new RoadNetwork(engine, placed);
         /**
          * Every road-attached machine's standing allocation.
          * @type {WorkerAssignments}
@@ -43,64 +38,6 @@ export class WorkerNetworks {
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this.ensureFresh(), ORDER_WORKER_RECOMPUTE);
         engine.registerChunkSync(chunk => this._chunkSync(chunk));
         engine.snapshots.registerRebuildHook(() => this._rebuild());
-    }
-
-    /**
-     * Registers a road cell.
-     * @param {number} x
-     * @param {number} y
-     * @param {number} objectId
-     * @returns {void}
-     */
-    addRoad(x, y, objectId) {
-        this._roadTiles.set(tileId(x, y), {x, y, objectId, component: null});
-        this._markCellDirty(x, y);
-    }
-
-    /**
-     * Releases a road cell.
-     * @param {number} x
-     * @param {number} y
-     * @returns {void}
-     */
-    removeRoad(x, y) {
-        const tile = tileId(x, y);
-        const road = this._roadTiles.get(tile);
-        if (road !== undefined && road.component !== null) {
-            this._dirtyComponents.add(road.component);
-        }
-        this._roadTiles.delete(tile);
-        this._markCellDirty(x, y);
-    }
-
-    /**
-     * Marks the allocation stale around a placed or removed worker source/consumer's footprint.
-     * @param {{x: number, y: number}[]} cells
-     * @returns {void}
-     */
-    markDirty(cells) {
-        for (const cell of cells) {
-            this._markCellDirty(cell.x, cell.y);
-        }
-    }
-
-    /**
-     * @private
-     * @param {number} x
-     * @param {number} y
-     * @returns {void}
-     */
-    _markCellDirty(x, y) {
-        this._dirtyCells.set(tileId(x, y), {x, y});
-    }
-
-    /**
-     * @param {number} x
-     * @param {number} y
-     * @returns {boolean}
-     */
-    roadAt(x, y) {
-        return this._roadTiles.has(tileId(x, y));
     }
 
     /**
@@ -122,91 +59,11 @@ export class WorkerNetworks {
      * @returns {void}
      */
     ensureFresh() {
-        if (this._dirtyAll) {
-            this._dirtyAll = false;
-            this._dirtyCells.clear();
-            this._dirtyComponents.clear();
-            this._recompute(this._roadTiles.values(), null);
+        const dirty = this.roads.takeDirty();
+        if (dirty === null) {
             return;
         }
-        if (this._dirtyCells.size === 0 && this._dirtyComponents.size === 0) {
-            return;
-        }
-        const affected = this._dirtyComponents;
-        this._dirtyComponents = new Set();
-        const seeds = this._dirtySeeds();
-        this._dirtyCells.clear();
-        this._recompute(seeds, affected);
-    }
-
-    /**
-     * The road tiles at, beside, or housing-bridged from the dirty cells: fill seeds reaching
-     * every component an edit touched (each fragment of a split component borders a removed tile,
-     * and a housing chain leads to the roads it bridges).
-     * @private
-     * @returns {{x: number, y: number, objectId: number, component: number|null}[]}
-     */
-    _dirtySeeds() {
-        const seeds = [];
-        const seenRoads = new Set();
-        const seenHousings = new Set();
-        const housingQueue = [];
-        const consider = (x, y) => {
-            const tile = tileId(x, y);
-            const road = this._roadTiles.get(tile);
-            if (road !== undefined) {
-                if (!seenRoads.has(tile)) {
-                    seenRoads.add(tile);
-                    seeds.push(road);
-                }
-                return;
-            }
-            const housing = this._housingAt(x, y);
-            if (housing !== null && !seenHousings.has(housing.objectId)) {
-                seenHousings.add(housing.objectId);
-                housingQueue.push(housing);
-            }
-        };
-        for (const cell of this._dirtyCells.values()) {
-            consider(cell.x, cell.y);
-            for (const delta of NEIGHBOR_DELTAS) {
-                consider(cell.x + delta.dx, cell.y + delta.dy);
-            }
-        }
-        while (housingQueue.length > 0) {
-            const housing = housingQueue.pop();
-            for (const {x, y} of cellNeighbors(housing.cells)) {
-                consider(x, y);
-            }
-        }
-        return seeds;
-    }
-
-    /**
-     * The housing occupying (x, y) as an allocation record, or null when the tile holds none.
-     * @private
-     * @param {number} x
-     * @param {number} y
-     * @returns {{objectId: number, remaining: number, cells: {x: number, y: number}[]}|null}
-     */
-    _housingAt(x, y) {
-        const owner = this.engine.space.ownerAt(x, y, LAYER_SURFACE);
-        if (owner === null) {
-            return null;
-        }
-        const eid = this.placed.eidByObjectId(owner);
-        if (eid === undefined) {
-            return null;
-        }
-        const behavior = this.placed.behaviorFor(this.placed.typeIdOf(eid));
-        if (behavior.workerSupply <= 0) {
-            return null;
-        }
-        return {
-            objectId: owner,
-            remaining: behavior.workerSupply,
-            cells: this._footprintOf(behavior, eid),
-        };
+        this._recompute(dirty.seeds, dirty.affected);
     }
 
     /**
@@ -217,7 +74,7 @@ export class WorkerNetworks {
      * claim order of a full recompute); a pass that moves a machine into or out of an untouched
      * component reruns with that component included, so partial results match a full recompute.
      * @private
-     * @param {Iterable<object>} seeds
+     * @param {RoadTile[]} seeds
      * @param {Set<number>|null} affected - accumulates the prior component ids being replaced
      * @returns {void}
      */
@@ -225,7 +82,7 @@ export class WorkerNetworks {
         let seedList = seeds;
         let next;
         for (;;) {
-            const components = this._collectComponents(seedList, affected);
+            const components = this.roads.componentsFrom(seedList, affected);
             next = new Map();
             const contested = new Set();
             for (const component of components) {
@@ -237,7 +94,7 @@ export class WorkerNetworks {
             seedList = [...seedList];
             for (const id of contested) {
                 affected.add(id);
-                seedList.push(this._roadTiles.get(id));
+                seedList.push(this.roads.tileByKey(id));
             }
         }
         const previous = this.assignments.within(affected);
@@ -252,96 +109,11 @@ export class WorkerNetworks {
     }
 
     /**
-     * The connected components reachable from the seeds — road tiles plus the housings bridging
-     * them — each ordered by its smallest road tileId so the allocation is deterministic across
-     * rebuilds. Stamps each visited road tile's component id, gathering the prior ids into
-     * `affected`.
-     * @private
-     * @param {Iterable<object>} seeds
-     * @param {Set<number>|null} affected
-     * @returns {{minTile: number, tiles: object[], housings: object[]}[]}
-     */
-    _collectComponents(seeds, affected) {
-        const seen = new Set();
-        const seenHousings = new Set();
-        const components = [];
-        for (const seed of seeds) {
-            const seedTile = tileId(seed.x, seed.y);
-            if (seen.has(seedTile)) {
-                continue;
-            }
-            seen.add(seedTile);
-            this._notePriorComponent(seed, affected);
-            let minTile = seedTile;
-            const tiles = [seed];
-            const housings = [];
-            const roadQueue = [seed];
-            const housingQueue = [];
-            const visit = (x, y) => {
-                const neighborTile = tileId(x, y);
-                const road = this._roadTiles.get(neighborTile);
-                if (road !== undefined) {
-                    if (seen.has(neighborTile)) {
-                        return;
-                    }
-                    seen.add(neighborTile);
-                    this._notePriorComponent(road, affected);
-                    if (neighborTile < minTile) {
-                        minTile = neighborTile;
-                    }
-                    tiles.push(road);
-                    roadQueue.push(road);
-                    return;
-                }
-                const housing = this._housingAt(x, y);
-                if (housing !== null && !seenHousings.has(housing.objectId)) {
-                    seenHousings.add(housing.objectId);
-                    housings.push(housing);
-                    housingQueue.push(housing);
-                }
-            };
-            while (roadQueue.length > 0 || housingQueue.length > 0) {
-                if (roadQueue.length > 0) {
-                    const current = roadQueue.pop();
-                    for (const delta of NEIGHBOR_DELTAS) {
-                        visit(current.x + delta.dx, current.y + delta.dy);
-                    }
-                } else {
-                    const housing = housingQueue.pop();
-                    for (const {x, y} of cellNeighbors(housing.cells)) {
-                        visit(x, y);
-                    }
-                }
-            }
-            components.push({minTile, tiles, housings});
-        }
-        components.sort((a, b) => a.minTile - b.minTile);
-        for (const component of components) {
-            for (const road of component.tiles) {
-                road.component = component.minTile;
-            }
-        }
-        return components;
-    }
-
-    /**
-     * @private
-     * @param {{component: number|null}} road
-     * @param {Set<number>|null} affected
-     * @returns {void}
-     */
-    _notePriorComponent(road, affected) {
-        if (affected !== null && road.component !== null) {
-            affected.add(road.component);
-        }
-    }
-
-    /**
      * Allocates one component: gathers attached machines off the road tiles' neighbors, then
      * grants each its full workerCost by ascending (distance, objectId) while the component's
      * housing supply lasts.
      * @private
-     * @param {{minTile: number, tiles: object[], housings: object[]}} component
+     * @param {RoadComponent} component
      * @param {Map<number, WorkerAssignment>} next
      * @param {Set<number>|null} affected
      * @param {Set<number>|null} contested
@@ -350,7 +122,7 @@ export class WorkerNetworks {
     _allocate(component, next, affected, contested) {
         const machines = new Map();
         for (const {x, y} of cellNeighbors(component.tiles)) {
-            if (this._roadTiles.has(tileId(x, y))) {
+            if (this.roads.roadAt(x, y)) {
                 continue;
             }
             this._attach(x, y, component, machines, next, affected, contested);
@@ -422,7 +194,7 @@ export class WorkerNetworks {
      * @private
      * @param {number} x
      * @param {number} y
-     * @param {{minTile: number}} component
+     * @param {RoadComponent} component
      * @param {Map<number, object>} machines
      * @param {Map<number, WorkerAssignment>} next - machines already claimed by an earlier component
      * @param {Set<number>|null} affected
@@ -442,7 +214,7 @@ export class WorkerNetworks {
         if (behavior.workerCost <= 0) {
             return;
         }
-        const cells = this._footprintOf(behavior, eid);
+        const cells = this.roads.footprintOf(behavior, eid);
         if (affected !== null && !this._claims(component, owner, cells, affected, contested)) {
             return;
         }
@@ -462,7 +234,7 @@ export class WorkerNetworks {
      * component id claims. An untouched component gaining or losing the machine lands in
      * `contested`, forcing a rerun that recomputes it too.
      * @private
-     * @param {{minTile: number}} component
+     * @param {RoadComponent} component
      * @param {number} owner
      * @param {{x: number, y: number}[]} cells
      * @param {Set<number>} affected
@@ -472,7 +244,7 @@ export class WorkerNetworks {
     _claims(component, owner, cells, affected, contested) {
         let winner = component.minTile;
         for (const {x, y} of cellNeighbors(cells)) {
-            const road = this._roadTiles.get(tileId(x, y));
+            const road = this.roads.tileByKey(tileId(x, y));
             if (road !== undefined && road.component !== null && road.component < winner) {
                 winner = road.component;
             }
@@ -488,17 +260,6 @@ export class WorkerNetworks {
             contested.add(existing.component);
         }
         return true;
-    }
-
-    /**
-     * @private
-     * @param {AbstractBehavior} behavior
-     * @param {number} eid
-     * @returns {{x: number, y: number}[]}
-     */
-    _footprintOf(behavior, eid) {
-        const position = this.engine.Position;
-        return this.engine.footprint(behavior.type, position.x[eid], position.y[eid], position.direction[eid]);
     }
 
     /**
@@ -623,22 +384,8 @@ export class WorkerNetworks {
      * @returns {void}
      */
     _rebuild() {
-        this._roadTiles = new Map();
         this.assignments.clear();
-        const def = this.placed.def;
-        const position = this.engine.Position;
-        for (let row = 0; row < def.count; row += 1) {
-            const eid = def.eids[row];
-            const behavior = this.placed.behaviorFor(def.store.typeId[row]);
-            if (!(behavior instanceof RoadBehavior)) {
-                continue;
-            }
-            const objectId = def.store.objectId[row];
-            for (const cell of this._footprintOf(behavior, eid)) {
-                this.addRoad(cell.x, cell.y, objectId);
-            }
-        }
-        this._dirtyAll = true;
+        this.roads.rebuild();
         this.ensureFresh();
     }
 }

@@ -301,7 +301,7 @@ test("worker assignments and banked progress survive a save/load", async () => {
     const restored = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
     restored.snapshots.deserialize(snapshot);
 
-    assert.equal(restored.workers.roadAt(5, 5), true, "road tiles rebuilt");
+    assert.equal(restored.workers.roads.roadAt(5, 5), true, "road tiles rebuilt");
     assert.equal(restored.inspectSnapshot(nearId).workers, TEST_MACHINE_WORKER_COST, "allocation recomputed after load");
     assert.equal(carryOf(restored, nearId), carryBefore, "banked fractional progress restored");
 });
