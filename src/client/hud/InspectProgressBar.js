@@ -2,7 +2,7 @@ import {Container, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_TINT, PROGRESS_BAR_TINT, PROGRESS_TEXT_COLOR, PROGRESS_TEXT_STROKE} from "@/client/Theme.js";
 import {nineSlice} from "@/client/layers/pixiUtils.js";
-import {SLOT_FRAME_INSET, TX_SLOT} from "@/client/hud/slotFrame.js";
+import {slotFrameSprite} from "@/client/hud/slotFrame.js";
 import {BUTTON_HEIGHT} from "@/client/hud/UiScale.js";
 
 const TEXT_SIZE = 15;
@@ -39,8 +39,7 @@ export class InspectProgressBar extends Container {
         this._steps = total + 1;
         this._width = width;
 
-        this._background = nineSlice(textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, width, BUTTON_HEIGHT);
-        this._background.tint = PANEL_TINT;
+        this._background = slotFrameSprite(textureRegistry, width, BUTTON_HEIGHT, PANEL_TINT);
         this.addChild(this._background);
 
         this._blocks = [];

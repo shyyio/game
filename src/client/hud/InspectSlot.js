@@ -1,8 +1,8 @@
 import {Container, Sprite} from "pixi.js";
 import {PANEL_TINT} from "@/client/Theme.js";
 import {addSlotHighlight} from "@/client/hud/slotHighlight.js";
-import {fitIcon, nineSlice} from "@/client/layers/pixiUtils.js";
-import {SLOT_FRAME_INSET, TX_SLOT} from "@/client/hud/slotFrame.js";
+import {fitIcon} from "@/client/layers/pixiUtils.js";
+import {slotFrameSprite} from "@/client/hud/slotFrame.js";
 
 export const SLOT_SIZE = 60;
 const ITEM_INSET = 6;
@@ -30,8 +30,7 @@ export class InspectSlot extends Container {
         this._item = 0;
         this._present = false;
 
-        this._frame = nineSlice(textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, SLOT_SIZE, SLOT_SIZE);
-        this._frame.tint = PANEL_TINT;
+        this._frame = slotFrameSprite(textureRegistry, SLOT_SIZE, SLOT_SIZE, PANEL_TINT);
         this.addChild(this._frame);
 
         // Hover highlight (no active state on inspect slots).

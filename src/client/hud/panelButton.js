@@ -1,8 +1,8 @@
 import {Container, Graphics, Sprite, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {textOn, SLOT_HIGHLIGHT_COLOR} from "@/client/Theme.js";
-import {fitIcon, nineSlice, trackTap} from "@/client/layers/pixiUtils.js";
-import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/hud/slotFrame.js";
+import {fitIcon, trackTap} from "@/client/layers/pixiUtils.js";
+import {SLOT_FRAME_INSET, slotFrameSprite} from "@/client/hud/slotFrame.js";
 import {BUTTON_HEIGHT} from "@/client/hud/UiScale.js";
 import Mobile from "@/client/Mobile.js";
 
@@ -21,9 +21,7 @@ const DISABLED_ALPHA = 0.45;
  */
 function buildButtonFace(textureRegistry, width, borderColor) {
     const button = new Container();
-    const bg = nineSlice(textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, width, BUTTON_HEIGHT);
-    bg.tint = borderColor;
-    button.addChild(bg);
+    button.addChild(slotFrameSprite(textureRegistry, width, BUTTON_HEIGHT, borderColor));
 
     const hover = new Graphics().rect(0, 0, width, BUTTON_HEIGHT).fill(SLOT_HIGHLIGHT_COLOR);
     hover.alpha = 0;

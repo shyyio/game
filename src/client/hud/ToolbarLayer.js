@@ -6,9 +6,9 @@ import {Tween, easeOutBack, easeInCubic} from "@/client/layers/Tween.js";
 import ReducedMotion from "@/client/ReducedMotion.js";
 import Mobile from "@/client/Mobile.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
-import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/hud/slotFrame.js";
+import {slotFrameSprite} from "@/client/hud/slotFrame.js";
 import {addSlotHighlight} from "@/client/hud/slotHighlight.js";
-import {fitIcon, nineSlice, swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
+import {fitIcon, swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
 import {TOOLBAR_SLOT_SIZE as SLOT_SIZE} from "@/client/hud/UiScale.js";
 import {ToolGrid} from "@/client/hud/ToolGrid.js";
 import {ToolReorderDrag} from "@/client/hud/ToolReorderDrag.js";
@@ -347,8 +347,7 @@ export class ToolbarLayer extends Container {
         const slot = new Container();
         slot.cursor = "pointer";
 
-        slot._bg = nineSlice(this.textureRegistry, TX_SLOT, SLOT_FRAME_INSET, SLOT_FRAME_INSET, SLOT_SIZE, SLOT_SIZE);
-        slot._bg.tint = PANEL_TINT;
+        slot._bg = slotFrameSprite(this.textureRegistry, SLOT_SIZE, SLOT_SIZE, PANEL_TINT);
         slot.addChild(slot._bg);
 
         // Active/hover highlight: filled rect inset in the slot, solid-ish when active, faint on hover.
