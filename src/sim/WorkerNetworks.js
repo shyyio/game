@@ -1,7 +1,8 @@
-import {cellNeighbors, getOrCreate, tileId, chunkId, chunkOrigin} from "@/common/util.js";
+import {cellNeighbors, tileId, chunkOrigin} from "@/common/util.js";
 import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
 import {TickPhase} from "@/sim/GameEngine.js";
 import {RoadBehavior} from "@/sim/behaviors/RoadBehavior.js";
+import {WorkerAssignment, WorkerAssignments} from "@/sim/WorkerAssignments.js";
 import {WorkerAssignmentEvent, WorkerAssignmentBatchEvent, NO_HOUSING} from "@/common/WorkerEvents.js";
 
 // Worker recompute runs before any machine countdown reads the manned flags.
@@ -34,14 +35,11 @@ export class WorkerNetworks {
         // Prior component ids affected by an edit (e.g. a removed road tile's), so their
         // assignments rediff even when no surviving road tile leads back to them.
         this._dirtyComponents = new Set();
-        // machineObjectId -> {housingObjectId, granted, cost, x, y, supply, demand, component};
-        // every road-attached machine, housingObjectId null while no workers are granted.
-        // supply/demand are its component's totals.
-        this._assignments = new Map();
-        // chunk -> Set<machineObjectId>, so chunk sync walks only the chunk's assignments.
-        this._assignmentsByChunk = new Map();
-        // component -> Set<machineObjectId>, so a partial recompute diffs only its components.
-        this._assignmentsByComponent = new Map();
+        /**
+         * Every road-attached machine's standing allocation.
+         * @type {WorkerAssignments}
+         */
+        this.assignments = new WorkerAssignments();
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this.ensureFresh(), ORDER_WORKER_RECOMPUTE);
         engine.registerChunkSync(chunk => this._chunkSync(chunk));
         engine.snapshots.registerRebuildHook(() => this._rebuild());
@@ -112,11 +110,11 @@ export class WorkerNetworks {
      */
     inspectFor(objectId) {
         this.ensureFresh();
-        const entry = this._assignments.get(objectId);
-        if (entry === undefined) {
+        const assignment = this.assignments.get(objectId);
+        if (assignment === undefined) {
             return null;
         }
-        return {granted: entry.granted, supply: entry.supply, demand: entry.demand};
+        return {granted: assignment.granted, supply: assignment.supply, demand: assignment.demand};
     }
 
     /**
@@ -242,73 +240,14 @@ export class WorkerNetworks {
                 seedList.push(this._roadTiles.get(id));
             }
         }
-        const previous = this._affectedAssignments(affected);
+        const previous = this.assignments.within(affected);
         this._applyGrants(previous, next);
         this._emitDeltas(previous, next);
         for (const objectId of previous.keys()) {
-            this._dropAssignment(objectId);
+            this.assignments.drop(objectId);
         }
-        for (const [objectId, entry] of next) {
-            this._storeAssignment(objectId, entry);
-        }
-    }
-
-    /**
-     * The prior assignments a recompute replaces: all of them, or the affected components' share.
-     * @private
-     * @param {Set<number>|null} affected
-     * @returns {Map<number, object>}
-     */
-    _affectedAssignments(affected) {
-        if (affected === null) {
-            return new Map(this._assignments);
-        }
-        const previous = new Map();
-        for (const component of affected) {
-            const objectIds = this._assignmentsByComponent.get(component);
-            if (objectIds === undefined) {
-                continue;
-            }
-            for (const objectId of objectIds) {
-                previous.set(objectId, this._assignments.get(objectId));
-            }
-        }
-        return previous;
-    }
-
-    /**
-     * @private
-     * @param {number} objectId
-     * @param {object} entry
-     * @returns {void}
-     */
-    _storeAssignment(objectId, entry) {
-        this._assignments.set(objectId, entry);
-        getOrCreate(this._assignmentsByChunk, chunkId(entry.x, entry.y), () => new Set()).add(objectId);
-        getOrCreate(this._assignmentsByComponent, entry.component, () => new Set()).add(objectId);
-    }
-
-    /**
-     * @private
-     * @param {number} objectId
-     * @returns {void}
-     */
-    _dropAssignment(objectId) {
-        const entry = this._assignments.get(objectId);
-        if (entry === undefined) {
-            return;
-        }
-        this._assignments.delete(objectId);
-        const chunk = chunkId(entry.x, entry.y);
-        const chunkSet = this._assignmentsByChunk.get(chunk);
-        chunkSet.delete(objectId);
-        if (chunkSet.size === 0) {
-            this._assignmentsByChunk.delete(chunk);
-        }
-        const componentSet = this._assignmentsByComponent.get(entry.component);
-        componentSet.delete(objectId);
-        if (componentSet.size === 0) {
-            this._assignmentsByComponent.delete(entry.component);
+        for (const assignment of next.values()) {
+            this.assignments.store(assignment);
         }
     }
 
@@ -403,7 +342,7 @@ export class WorkerNetworks {
      * housing supply lasts.
      * @private
      * @param {{minTile: number, tiles: object[], housings: object[]}} component
-     * @param {Map<number, object>} next
+     * @param {Map<number, WorkerAssignment>} next
      * @param {Set<number>|null} affected
      * @param {Set<number>|null} contested
      * @returns {void}
@@ -433,16 +372,14 @@ export class WorkerNetworks {
         const machineList = [...machines.values()];
         for (const machine of machineList) {
             machine.distance = this._minDistance(machine.cells, housingList);
-            next.set(machine.objectId, {
-                housingObjectId: null,
-                granted: 0,
-                cost: machine.cost,
+            next.set(machine.objectId, new WorkerAssignment({
+                objectId: machine.objectId,
                 x: machine.x,
                 y: machine.y,
                 supply,
                 demand,
                 component: component.minTile,
-            });
+            }));
         }
         machineList.sort((a, b) => a.distance - b.distance || a.objectId - b.objectId);
 
@@ -459,12 +396,12 @@ export class WorkerNetworks {
             }
             const granted = machine.cost;
             supplyLeft -= granted;
-            const entry = next.get(machine.objectId);
-            entry.granted = granted;
+            const assignment = next.get(machine.objectId);
+            assignment.granted = granted;
             while (housingList[cursor].remaining === 0) {
                 cursor += 1;
             }
-            entry.housingObjectId = housingList[cursor].objectId;
+            assignment.housingObjectId = housingList[cursor].objectId;
             let cost = granted;
             while (cost > 0) {
                 const housing = housingList[cursor];
@@ -487,7 +424,7 @@ export class WorkerNetworks {
      * @param {number} y
      * @param {{minTile: number}} component
      * @param {Map<number, object>} machines
-     * @param {Map<number, object>} next - machines already claimed by an earlier component
+     * @param {Map<number, WorkerAssignment>} next - machines already claimed by an earlier component
      * @param {Set<number>|null} affected
      * @param {Set<number>|null} contested
      * @returns {void}
@@ -540,7 +477,7 @@ export class WorkerNetworks {
                 winner = road.component;
             }
         }
-        const existing = this._assignments.get(owner);
+        const existing = this.assignments.get(owner);
         if (winner !== component.minTile) {
             if (!affected.has(winner) && (existing === undefined || existing.component !== winner)) {
                 contested.add(winner);
@@ -589,20 +526,20 @@ export class WorkerNetworks {
     /**
      * Writes each machine's granted workers through its behavior, clearing machines that lost them.
      * @private
-     * @param {Map<number, object>} previous
-     * @param {Map<number, object>} next
+     * @param {Map<number, WorkerAssignment>} previous
+     * @param {Map<number, WorkerAssignment>} next
      * @returns {void}
      */
     _applyGrants(previous, next) {
-        for (const [objectId, entry] of previous) {
-            if (entry.granted > 0 && !next.has(objectId)) {
+        for (const [objectId, assignment] of previous) {
+            if (assignment.granted > 0 && !next.has(objectId)) {
                 this._setGranted(objectId, 0);
             }
         }
-        for (const [objectId, entry] of next) {
+        for (const [objectId, assignment] of next) {
             const before = previous.get(objectId);
-            if (before === undefined || before.granted !== entry.granted) {
-                this._setGranted(objectId, entry.granted);
+            if (before === undefined || before.granted !== assignment.granted) {
+                this._setGranted(objectId, assignment.granted);
             }
         }
     }
@@ -626,28 +563,28 @@ export class WorkerNetworks {
      * Emits one WorkerAssignmentEvent per changed machine: grant/housing changes for attached
      * machines, and a detach event for machines that left the network.
      * @private
-     * @param {Map<number, object>} previous
-     * @param {Map<number, object>} next
+     * @param {Map<number, WorkerAssignment>} previous
+     * @param {Map<number, WorkerAssignment>} next
      * @returns {void}
      */
     _emitDeltas(previous, next) {
-        for (const [objectId, entry] of next) {
+        for (const [objectId, assignment] of next) {
             const before = previous.get(objectId);
             if (before !== undefined
-                && before.housingObjectId === entry.housingObjectId
-                && before.granted === entry.granted) {
+                && before.housingObjectId === assignment.housingObjectId
+                && before.granted === assignment.granted) {
                 continue;
             }
-            let housingId = entry.housingObjectId;
+            let housingId = assignment.housingObjectId;
             if (housingId === null) {
                 housingId = NO_HOUSING;
             }
             this.engine.emitEvent(new WorkerAssignmentEvent(
-                entry.x,
-                entry.y,
+                assignment.x,
+                assignment.y,
                 objectId,
                 housingId,
-                entry.granted,
+                assignment.granted,
                 1,
             ));
         }
@@ -666,16 +603,16 @@ export class WorkerNetworks {
      */
     _chunkSync(chunk) {
         this.ensureFresh();
-        const objectIds = this._assignmentsByChunk.get(chunk);
+        const objectIds = this.assignments.inChunk(chunk);
         if (objectIds === undefined) {
             return [];
         }
         const origin = chunkOrigin(chunk);
         const batch = new WorkerAssignmentBatchEvent(origin.x, origin.y);
         for (const objectId of objectIds) {
-            const entry = this._assignments.get(objectId);
-            const housingId = entry.housingObjectId === null ? NO_HOUSING : entry.housingObjectId;
-            batch.add(objectId, housingId, entry.granted, entry.x, entry.y);
+            const assignment = this.assignments.get(objectId);
+            const housingId = assignment.housingObjectId === null ? NO_HOUSING : assignment.housingObjectId;
+            batch.add(objectId, housingId, assignment.granted, assignment.x, assignment.y);
         }
         return [batch];
     }
@@ -687,9 +624,7 @@ export class WorkerNetworks {
      */
     _rebuild() {
         this._roadTiles = new Map();
-        this._assignments = new Map();
-        this._assignmentsByChunk = new Map();
-        this._assignmentsByComponent = new Map();
+        this.assignments.clear();
         const def = this.placed.def;
         const position = this.engine.Position;
         for (let row = 0; row < def.count; row += 1) {
