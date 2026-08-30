@@ -1,8 +1,8 @@
-import {cellNeighbors, tileId, chunkOrigin} from "@/common/util.js";
-import {LAYER_SURFACE} from "@/common/constants.js";
+import {chunkOrigin} from "@/common/util.js";
 import {TickPhase} from "@/sim/GameEngine.js";
 import {RoadNetwork} from "@/sim/RoadNetwork.js";
-import {WorkerAssignment, WorkerAssignments} from "@/sim/WorkerAssignments.js";
+import {WorkerAllocation} from "@/sim/WorkerAllocation.js";
+import {WorkerAssignments} from "@/sim/WorkerAssignments.js";
 import {WorkerAssignmentEvent, WorkerAssignmentBatchEvent, NO_HOUSING} from "@/common/WorkerEvents.js";
 
 // Worker recompute runs before any machine countdown reads the manned flags.
@@ -35,6 +35,11 @@ export class WorkerNetworks {
          * @type {WorkerAssignments}
          */
         this.assignments = new WorkerAssignments();
+        /**
+         * The pass handing each component's housing supply to the machines on it.
+         * @type {WorkerAllocation}
+         */
+        this.allocation = new WorkerAllocation(engine, placed, this.roads, this.assignments);
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this.ensureFresh(), ORDER_WORKER_RECOMPUTE);
         engine.registerChunkSync(chunk => this._chunkSync(chunk));
         engine.snapshots.registerRebuildHook(() => this._rebuild());
@@ -67,36 +72,15 @@ export class WorkerNetworks {
     }
 
     /**
-     * Recomputes the allocation over the components reachable from the seed road tiles: flood-fill,
-     * attach neighbors, allocate supply, apply the manned flags, and emit the assignment deltas.
-     * `affected` null recomputes the whole world; otherwise only the seeds' components rediff.
-     * A machine bordering several components belongs to the one with the smallest id (the sorted
-     * claim order of a full recompute); a pass that moves a machine into or out of an untouched
-     * component reruns with that component included, so partial results match a full recompute.
+     * Reallocates the components the seeds reach, then applies the manned flags and emits the
+     * assignment deltas. `affected` null recomputes the whole world.
      * @private
      * @param {RoadTile[]} seeds
      * @param {Set<number>|null} affected - accumulates the prior component ids being replaced
      * @returns {void}
      */
     _recompute(seeds, affected) {
-        let seedList = seeds;
-        let next;
-        for (;;) {
-            const components = this.roads.componentsFrom(seedList, affected);
-            next = new Map();
-            const contested = new Set();
-            for (const component of components) {
-                this._allocate(component, next, affected, contested);
-            }
-            if (contested.size === 0) {
-                break;
-            }
-            seedList = [...seedList];
-            for (const id of contested) {
-                affected.add(id);
-                seedList.push(this.roads.tileByKey(id));
-            }
-        }
+        const next = this.allocation.run(seeds, affected);
         const previous = this.assignments.within(affected);
         this._applyGrants(previous, next);
         this._emitDeltas(previous, next);
@@ -106,182 +90,6 @@ export class WorkerNetworks {
         for (const assignment of next.values()) {
             this.assignments.store(assignment);
         }
-    }
-
-    /**
-     * Allocates one component: gathers attached machines off the road tiles' neighbors, then
-     * grants each its full workerCost by ascending (distance, objectId) while the component's
-     * housing supply lasts.
-     * @private
-     * @param {RoadComponent} component
-     * @param {Map<number, WorkerAssignment>} next
-     * @param {Set<number>|null} affected
-     * @param {Set<number>|null} contested
-     * @returns {void}
-     */
-    _allocate(component, next, affected, contested) {
-        const machines = new Map();
-        for (const {x, y} of cellNeighbors(component.tiles)) {
-            if (this.roads.roadAt(x, y)) {
-                continue;
-            }
-            this._attach(x, y, component, machines, next, affected, contested);
-        }
-        if (machines.size === 0) {
-            return;
-        }
-
-        const housingList = [...component.housings].sort((a, b) => a.objectId - b.objectId);
-        let supply = 0;
-        for (const housing of housingList) {
-            supply += housing.remaining;
-        }
-        let demand = 0;
-        for (const machine of machines.values()) {
-            demand += machine.cost;
-        }
-
-        const machineList = [...machines.values()];
-        for (const machine of machineList) {
-            machine.distance = this._minDistance(machine.cells, housingList);
-            next.set(machine.objectId, new WorkerAssignment({
-                objectId: machine.objectId,
-                x: machine.x,
-                y: machine.y,
-                supply,
-                demand,
-                component: component.minTile,
-            }));
-        }
-        machineList.sort((a, b) => a.distance - b.distance || a.objectId - b.objectId);
-
-        let supplyLeft = supply;
-        let cursor = 0;
-        for (const machine of machineList) {
-            if (supplyLeft === 0) {
-                break;
-            }
-            if (machine.cost > supplyLeft) {
-                // Full crew or nothing: a machine the remaining supply can't fully staff stays
-                // unmanned; a cheaper machine further down may still fit.
-                continue;
-            }
-            const granted = machine.cost;
-            supplyLeft -= granted;
-            const assignment = next.get(machine.objectId);
-            assignment.granted = granted;
-            while (housingList[cursor].remaining === 0) {
-                cursor += 1;
-            }
-            assignment.housingObjectId = housingList[cursor].objectId;
-            let cost = granted;
-            while (cost > 0) {
-                const housing = housingList[cursor];
-                if (housing.remaining === 0) {
-                    cursor += 1;
-                    continue;
-                }
-                const take = housing.remaining < cost ? housing.remaining : cost;
-                housing.remaining -= take;
-                cost -= take;
-            }
-        }
-    }
-
-    /**
-     * Records the machine occupying (x, y) as attached to the component; housings were already
-     * gathered by the component fill.
-     * @private
-     * @param {number} x
-     * @param {number} y
-     * @param {RoadComponent} component
-     * @param {Map<number, object>} machines
-     * @param {Map<number, WorkerAssignment>} next - machines already claimed by an earlier component
-     * @param {Set<number>|null} affected
-     * @param {Set<number>|null} contested
-     * @returns {void}
-     */
-    _attach(x, y, component, machines, next, affected, contested) {
-        const owner = this.engine.space.ownerAt(x, y, LAYER_SURFACE);
-        if (owner === null || machines.has(owner) || next.has(owner)) {
-            return;
-        }
-        const eid = this.placed.eidByObjectId(owner);
-        if (eid === undefined) {
-            return;
-        }
-        const behavior = this.placed.behaviorFor(this.placed.typeIdOf(eid));
-        if (behavior.workerCost <= 0) {
-            return;
-        }
-        const cells = this.roads.footprintOf(behavior, eid);
-        if (affected !== null && !this._claims(component, owner, cells, affected, contested)) {
-            return;
-        }
-        const position = this.engine.Position;
-        machines.set(owner, {
-            objectId: owner,
-            cost: behavior.workerCost,
-            x: position.x[eid],
-            y: position.y[eid],
-            cells,
-            distance: 0,
-        });
-    }
-
-    /**
-     * Whether this component wins the machine in a partial recompute: the smallest adjacent
-     * component id claims. An untouched component gaining or losing the machine lands in
-     * `contested`, forcing a rerun that recomputes it too.
-     * @private
-     * @param {RoadComponent} component
-     * @param {number} owner
-     * @param {{x: number, y: number}[]} cells
-     * @param {Set<number>} affected
-     * @param {Set<number>} contested
-     * @returns {boolean}
-     */
-    _claims(component, owner, cells, affected, contested) {
-        let winner = component.minTile;
-        for (const {x, y} of cellNeighbors(cells)) {
-            const road = this.roads.tileByKey(tileId(x, y));
-            if (road !== undefined && road.component !== null && road.component < winner) {
-                winner = road.component;
-            }
-        }
-        const existing = this.assignments.get(owner);
-        if (winner !== component.minTile) {
-            if (!affected.has(winner) && (existing === undefined || existing.component !== winner)) {
-                contested.add(winner);
-            }
-            return false;
-        }
-        if (existing !== undefined && !affected.has(existing.component)) {
-            contested.add(existing.component);
-        }
-        return true;
-    }
-
-    /**
-     * The smallest Manhattan distance between the machine's cells and any housing cell.
-     * @private
-     * @param {{x: number, y: number}[]} machineCells
-     * @param {{cells: {x: number, y: number}[]}[]} housingList
-     * @returns {number}
-     */
-    _minDistance(machineCells, housingList) {
-        let best = Number.MAX_SAFE_INTEGER;
-        for (const housing of housingList) {
-            for (const housingCell of housing.cells) {
-                for (const machineCell of machineCells) {
-                    const distance = Math.abs(housingCell.x - machineCell.x) + Math.abs(housingCell.y - machineCell.y);
-                    if (distance < best) {
-                        best = distance;
-                    }
-                }
-            }
-        }
-        return best;
     }
 
     /**
