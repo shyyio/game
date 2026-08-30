@@ -10,9 +10,7 @@ import {
     AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage, SetPlayerSettingMessage,
     SetPlayerSettingsToolOrderMessage,
 } from "@/common/PlayerMessages.js";
-import {
-    WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByCodeResultEvent,
-} from "@/common/PlayerEvents.js";
+import {WelcomeEvent} from "@/common/PlayerEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {
     OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult, ChunkPermission,
@@ -24,6 +22,7 @@ import {SettingsCache, PlayerSettingsCache, PLAYER_SETTING_RECORD} from "@/commo
 import {PlayerSettingsToolOrderCache, PLAYER_SETTINGS_TOOL_ORDER_RECORD} from "@/common/PlayerSettingsToolOrderCache.js";
 import {ChunkClaims, CHUNK_CLAIM_RECORD} from "@/sim/ChunkClaims.js";
 import {PlayerRegistry, PLAYER_RECORD, FRIEND_RECORD} from "@/sim/PlayerRegistry.js";
+import {PlayerDirectory} from "@/sim/PlayerDirectory.js";
 import {CHUNK_SIZE, DEFAULT_TICK_MS, GameSettingsKey, PLAYER_ID_NONE} from "@/common/constants.js";
 import {GameMetrics} from "@/sim/GameMetrics.js";
 import {migrateSnapshot} from "@/common/saveMigrations.js";
@@ -111,11 +110,10 @@ export class Game {
         this.simEngine.setChunkOwnerResolver(chunk => this.claims.ownerOf(chunk));
 
         /**
-         * sessionId -> playerIds whose usernames the session already received.
-         * @type {Map<number, Set<number>>}
-         * @private
+         * Username disclosure and the friendships that widen it.
+         * @type {PlayerDirectory}
          */
-        this._knownPlayersBySession = new Map();
+        this.playerDirectory = new PlayerDirectory(this);
 
         /**
          * The whole metrics surface: fact recording, session lengths, queries, live pushes.
@@ -135,9 +133,9 @@ export class Game {
             [ClaimChunkMessage, (session, message) => this._handleClaim(session, message.chunk)],
             [UnclaimChunkMessage, (session, message) => this._handleUnclaim(session, message.chunk, message.clear === 1)],
             [SetChunkPermissionMessage, (session, message) => this._handleSetPermission(session, message.chunk, message.permission)],
-            [AddFriendMessage, (session, message) => this._handleAddFriend(session, message.playerId)],
-            [AddFriendByCodeMessage, (session, message) => this._handleAddFriendByCode(session, message.code)],
-            [RemoveFriendMessage, (session, message) => this._handleRemoveFriend(session, message.playerId)],
+            [AddFriendMessage, (session, message) => this.playerDirectory.addFriend(session, message.playerId)],
+            [AddFriendByCodeMessage, (session, message) => this.playerDirectory.addFriendByCode(session, message.code)],
+            [RemoveFriendMessage, (session, message) => this.playerDirectory.removeFriend(session, message.playerId)],
             [SetPlayerSettingMessage, (session, message) => this._handleSetPlayerSetting(session, message.key, message.value)],
             [SetPlayerSettingsToolOrderMessage, (session, message) => this._handleSetToolOrder(session, message.toolIds)],
         ]);
@@ -250,7 +248,7 @@ export class Game {
     connect(session) {
         const sessionId = this.bus.addSession(session);
         session.setId(sessionId);
-        this._knownPlayersBySession.set(sessionId, new Set());
+        this.playerDirectory.connect(sessionId);
         // Local and test sessions carry ids the registry has never seen; the server registers its
         // players before connecting them, so this is a no-op there.
         this.players.ensure(session.playerId);
@@ -276,36 +274,11 @@ export class Game {
     _syncPlayerState(session) {
         const record = this.players.byId(session.playerId);
         this.bus.publishTo(session.id, new WelcomeEvent(record.playerId, record.maxChunks, record.friendCode));
-        this.syncUsernames(session.id, [session.playerId]);
+        this.playerDirectory.syncUsernames(session.id, [session.playerId]);
         const ownChunks = [...this.claims.chunksOf(session.playerId)];
         const ownPermissions = ownChunks.map(chunk => this.claims.permissionOf(chunk));
         this.bus.publishTo(session.id, new OwnClaimsSyncEvent(ownChunks, ownPermissions));
-        this._syncFriendList(session.id, session.playerId);
-    }
-
-    /**
-     * Sends a session the usernames of the given players it has not seen yet. Usernames travel
-     * on a need-to-know basis; every send of a player-bearing event routes its ids through here
-     * first.
-     * @param {number} sessionId
-     * @param {Iterable<number>} playerIds
-     * @returns {void}
-     */
-    syncUsernames(sessionId, playerIds) {
-        const known = this._knownPlayersBySession.get(sessionId);
-        const ids = [];
-        const usernames = [];
-        for (const playerId of playerIds) {
-            if (playerId === PLAYER_ID_NONE || known.has(playerId)) {
-                continue;
-            }
-            known.add(playerId);
-            ids.push(playerId);
-            usernames.push(this.players.byId(playerId).username);
-        }
-        if (ids.length > 0) {
-            this.bus.publishTo(sessionId, new PlayerNamesEvent(ids, usernames));
-        }
+        this.playerDirectory.syncFriendList(session.id, session.playerId);
     }
 
     _syncGameSettings(session) {
@@ -336,7 +309,7 @@ export class Game {
         this.metrics.onDisconnect(sessionId);
 
         this.bus.removeSession(sessionId);
-        this._knownPlayersBySession.delete(sessionId);
+        this.playerDirectory.disconnect(sessionId);
         // After the removal, so mod farewells fan out to the remaining sessions alone.
         for (const mod of this.modRegistry.simMods) {
             mod.onSessionDisconnect(sessionId, this);
@@ -423,7 +396,7 @@ export class Game {
         const subscribers = this.bus.chunkSubscribers(chunk);
         if (subscribers !== undefined) {
             for (const sessionId of subscribers) {
-                this.syncUsernames(sessionId, [owner]);
+                this.playerDirectory.syncUsernames(sessionId, [owner]);
             }
         }
         this.bus.publish(event);
@@ -491,76 +464,6 @@ export class Game {
     }
 
     /**
-     * Befriends by playerId; an unknown id or self just re-sends the unchanged list.
-     * @param {AbstractSession} session
-     * @param {number} playerId
-     * @private
-     */
-    _handleAddFriend(session, playerId) {
-        if (this.players.has(playerId) && playerId !== session.playerId) {
-            this.players.addFriend(session.playerId, playerId);
-            this._syncFriendLists(session, playerId);
-            return;
-        }
-        this._syncFriendList(session.id, session.playerId);
-    }
-
-    /**
-     * Befriends by friend code, telling the asking session whether the code matched anyone.
-     * @param {AbstractSession} session
-     * @param {string} code
-     * @private
-     */
-    _handleAddFriendByCode(session, code) {
-        const target = this.players.byFriendCode(code);
-        const playerId = target === undefined ? PLAYER_ID_NONE : target.playerId;
-        const found = playerId !== PLAYER_ID_NONE && playerId !== session.playerId;
-        this._handleAddFriend(session, playerId);
-        this.bus.publishTo(session.id, new AddFriendByCodeResultEvent(code, found));
-    }
-
-    /**
-     * Unfriends by playerId, resyncing both sides and letting mods react to the lost build rights.
-     * @param {AbstractSession} session
-     * @param {number} playerId
-     * @private
-     */
-    _handleRemoveFriend(session, playerId) {
-        this.players.removeFriend(session.playerId, playerId);
-        this._syncFriendLists(session, playerId);
-        for (const mod of this.modRegistry.simMods) {
-            mod.onFriendRemoved(session.playerId, playerId, this);
-        }
-    }
-
-    /**
-     * Resyncs both sides of a friendship change: the acting session, and every connected
-     * session of the (un)friended player, whose build rights just changed.
-     * @param {AbstractSession} session
-     * @param {number} friendId
-     * @private
-     */
-    _syncFriendLists(session, friendId) {
-        this._syncFriendList(session.id, session.playerId);
-        for (const sessionId of this.bus.sessionIdsOf(friendId)) {
-            this._syncFriendList(sessionId, friendId);
-        }
-    }
-
-    /**
-     * Sends one session a player's friend lists, both sides' names first.
-     * @param {number} sessionId
-     * @param {number} playerId
-     * @private
-     */
-    _syncFriendList(sessionId, playerId) {
-        const friendIds = [...this.players.byId(playerId).friends];
-        const grantedByIds = this.players.grantedBy(playerId);
-        this.syncUsernames(sessionId, friendIds.concat(grantedByIds));
-        this.bus.publishTo(sessionId, new FriendListEvent(friendIds, grantedByIds));
-    }
-
-    /**
      * Writes one client-writable player setting. Unknown keys, server-authoritative keys
      * (progress, unlocks), and out-of-range values drop silently, like a failed validate.
      * @param {AbstractSession} session
@@ -617,7 +520,7 @@ export class Game {
             // Seed the chunk's claim (the client evicted it on unsubscribe), owner name first.
             const owner = this.claims.ownerOf(chunk);
             if (owner !== PLAYER_ID_NONE) {
-                this.syncUsernames(session.id, [owner]);
+                this.playerDirectory.syncUsernames(session.id, [owner]);
                 const permission = this.claims.permissionOf(chunk);
                 this.bus.publishTo(session.id, new ChunkClaimUpdateEvent(chunk, owner, permission));
             }
@@ -657,7 +560,7 @@ export class Game {
             message.chunkWidth,
             message.chunkHeight,
         );
-        this.syncUsernames(session.id, claims.playerIds);
+        this.playerDirectory.syncUsernames(session.id, claims.playerIds);
         snapshot.claimedChunks = claims.chunks;
         snapshot.claimOwners = claims.playerIds;
         snapshot.claimPermissions = claims.permissions;

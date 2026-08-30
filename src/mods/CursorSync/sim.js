@@ -146,7 +146,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
                 continue;
             }
             // The cursor label needs its owner's name; first sight of a player sends it.
-            game.syncUsernames(viewerSessionId, [session.playerId]);
+            game.playerDirectory.syncUsernames(viewerSessionId, [session.playerId]);
             game.bus.publishTo(viewerSessionId, event);
         }
     }

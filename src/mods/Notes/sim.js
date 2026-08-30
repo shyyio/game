@@ -34,7 +34,7 @@ export class NotesSimMod extends AbstractSimMod {
      * @returns {void}
      */
     onChunkSubscribed(session, chunk, game) {
-        game.syncUsernames(session.id, this._store.authorIdsIn(chunk));
+        game.playerDirectory.syncUsernames(session.id, this._store.authorIdsIn(chunk));
     }
 
     /**
@@ -171,7 +171,7 @@ export class NotesSimMod extends AbstractSimMod {
         }
         const authorIds = [event.authorId];
         for (const sessionId of subscribers) {
-            game.syncUsernames(sessionId, authorIds);
+            game.playerDirectory.syncUsernames(sessionId, authorIds);
         }
         game.bus.publish(event);
     }
