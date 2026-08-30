@@ -160,19 +160,6 @@ export class FriendsPanelLayer extends Container {
     }
 
     /**
-     * Anchor below the friends button, or center on first-ever show.
-     * @private
-     * @param {number} height
-     * @returns {{x: number, y: number}}
-     */
-    _defaultPosition(height) {
-        if (this.anchorButton !== null) {
-            return UIPanel.anchoredPosition(this._app, this.anchorButton, PANEL_WIDTH);
-        }
-        return UIPanel.centerPosition(this._app, PANEL_WIDTH)(height);
-    }
-
-    /**
      * @private
      * @returns {void}
      */
@@ -186,7 +173,7 @@ export class FriendsPanelLayer extends Container {
             tint: PANEL_TINT,
             width: PANEL_WIDTH,
             onClose: () => this.hide(),
-        }, (height) => this._defaultPosition(height), (stack) => this._buildBody(stack, friendIds));
+        }, UIPanel.anchoredPosition(this._app, this.anchorButton, PANEL_WIDTH), (stack) => this._buildBody(stack, friendIds));
         this.addChild(panel);
     }
 
