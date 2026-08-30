@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Container, Rectangle} from "pixi.js";
 import {PointerHarness} from "@/test/PointerHarness.js";
-import {trackTap, isTopmostAt} from "@/client/layers/pixiUtils.js";
+import {trackTap, isTopmostAt, fitIcon} from "@/client/layers/pixiUtils.js";
 import {TAP_MOVE_THRESHOLD} from "@/client/input/TapRecognizer.js";
 
 const BUTTON_WIDTH = 100;
@@ -172,4 +172,58 @@ test("a second pointer does not steal the press from the first", () => {
     assert.equal(taps.length, 0);
     harness.up(INSIDE_X, INSIDE_Y, {pointerId: 1});
     assert.equal(taps.length, 1);
+});
+
+const SLOT_SIZE = 60;
+const ICON_INSET = 6;
+// The square the icon has to fit inside SLOT_SIZE once inset on every side.
+const ICON_BOX = SLOT_SIZE - ICON_INSET * 2;
+
+/**
+ * A stand-in for the icon sprite, carrying only what {@link fitIcon} reads and writes.
+ * @param {number} width - the source texture's width
+ * @param {number} height
+ * @returns {object}
+ */
+function stubIcon(width, height) {
+    return {
+        texture: {width, height},
+        anchor: 0,
+        scale: 1,
+        position: {x: 0, y: 0, set(x, y) {
+            this.x = x;
+            this.y = y;
+        }},
+    };
+}
+
+test("a square icon scales to fill the inset box", () => {
+    const icon = stubIcon(ICON_BOX * 2, ICON_BOX * 2);
+    fitIcon(icon, SLOT_SIZE, ICON_INSET);
+    assert.equal(icon.scale, 0.5);
+});
+
+test("a wide icon fits by its width, so it never spills sideways", () => {
+    const icon = stubIcon(ICON_BOX * 4, ICON_BOX * 2);
+    fitIcon(icon, SLOT_SIZE, ICON_INSET);
+    assert.equal(icon.scale, 0.25);
+});
+
+test("a tall icon fits by its height", () => {
+    const icon = stubIcon(ICON_BOX * 2, ICON_BOX * 4);
+    fitIcon(icon, SLOT_SIZE, ICON_INSET);
+    assert.equal(icon.scale, 0.25);
+});
+
+test("an icon smaller than the box scales up to it", () => {
+    const icon = stubIcon(ICON_BOX / 2, ICON_BOX / 2);
+    fitIcon(icon, SLOT_SIZE, ICON_INSET);
+    assert.equal(icon.scale, 2);
+});
+
+test("a fitted icon is anchor-centered on the square's center, not on the inset box", () => {
+    const icon = stubIcon(ICON_BOX, ICON_BOX * 2);
+    fitIcon(icon, SLOT_SIZE, ICON_INSET);
+    assert.equal(icon.anchor, 0.5);
+    assert.deepEqual({x: icon.position.x, y: icon.position.y}, {x: SLOT_SIZE / 2, y: SLOT_SIZE / 2});
 });

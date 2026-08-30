@@ -1,7 +1,7 @@
 import {Container, Sprite} from "pixi.js";
 import {PANEL_TINT} from "@/client/Theme.js";
 import {addSlotHighlight} from "@/client/hud/slotHighlight.js";
-import {nineSlice} from "@/client/layers/pixiUtils.js";
+import {fitIcon, nineSlice} from "@/client/layers/pixiUtils.js";
 import {SLOT_FRAME_INSET, TX_SLOT} from "@/client/hud/slotFrame.js";
 
 export const SLOT_SIZE = 60;
@@ -97,10 +97,7 @@ export class InspectSlot extends Container {
         const definition = this._items.definitionFor(this._item);
         this._icon.texture = this._textureRegistry.get(definition.texture);
         this._icon.tint = definition.tint;
-        const box = SLOT_SIZE - ITEM_INSET * 2;
-        this._icon.scale.set(Math.min(box / this._icon.texture.width, box / this._icon.texture.height));
-        this._icon.x = (SLOT_SIZE - this._icon.width) / 2;
-        this._icon.y = (SLOT_SIZE - this._icon.height) / 2;
+        fitIcon(this._icon, SLOT_SIZE, ITEM_INSET);
         this._icon.visible = true;
         if (this._present) {
             this._icon.alpha = 1;

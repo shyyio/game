@@ -1,7 +1,7 @@
 import {Container, Graphics, Sprite, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {textOn, SLOT_HIGHLIGHT_COLOR} from "@/client/Theme.js";
-import {nineSlice, trackTap} from "@/client/layers/pixiUtils.js";
+import {fitIcon, nineSlice, trackTap} from "@/client/layers/pixiUtils.js";
 import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/hud/slotFrame.js";
 import {BUTTON_HEIGHT} from "@/client/hud/UiScale.js";
 import Mobile from "@/client/Mobile.js";
@@ -107,10 +107,7 @@ export function buildIconButton(textureRegistry, iconTextureName, iconTint, bord
 
     const icon = new Sprite(textureRegistry.get(iconTextureName));
     icon.tint = iconTint;
-    const box = BUTTON_HEIGHT - SLOT_FRAME_INSET * 2;
-    icon.scale.set(Math.min(box / icon.texture.width, box / icon.texture.height));
-    icon.x = (BUTTON_HEIGHT - icon.width) / 2;
-    icon.y = (BUTTON_HEIGHT - icon.height) / 2;
+    fitIcon(icon, BUTTON_HEIGHT, SLOT_FRAME_INSET);
     button.addChild(icon);
 
     wireButtonPress(button, hover, onClick);
