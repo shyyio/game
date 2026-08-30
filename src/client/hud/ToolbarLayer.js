@@ -67,6 +67,36 @@ function cellHeight() {
 }
 
 /**
+ * How many tools the visible top row holds at `screenWidth`: fixed on touch, else as many cells as
+ * fit beside the none cell, within the desktop bounds.
+ * @param {number} screenWidth
+ * @param {boolean} mobile
+ * @returns {number}
+ */
+export function barToolCapacity(screenWidth, mobile) {
+    if (mobile) {
+        return MIN_BAR_TOOLS;
+    }
+    const maxWidth = screenWidth - SIDE_MARGIN * 2;
+    const columns = Math.floor((maxWidth - GRID_LEFT - PANEL_PADDING + CELL_GAP) / (SLOT_SIZE + CELL_GAP));
+    // One column goes to the none cell, so the tools get what is left.
+    return Math.max(MIN_BAR_TOOLS, Math.min(MAX_BAR_TOOLS_DESKTOP, columns - 1));
+}
+
+/**
+ * The number-key badge for the mod tool at `index` among mod tools, or null past the
+ * shortcut-eligible range (also null for a negative/not-found index).
+ * @param {number} index
+ * @returns {string|null}
+ */
+export function toolShortcut(index) {
+    if (index < 0 || index >= TOOL_SHORTCUT_COUNT) {
+        return null;
+    }
+    return String(index + 1);
+}
+
+/**
  * Static bottom-center tool toolbar: one panel grid, top row visible, overflow rows in a slide-out drawer.
  */
 export class ToolbarLayer extends Container {
@@ -404,21 +434,7 @@ export class ToolbarLayer extends Container {
         if (tool.hotkey !== null) {
             return tool.hotkey.toUpperCase();
         }
-        return this._shortcutForIndex(this._modTools.indexOf(tool));
-    }
-
-    /**
-     * The number-key badge for a mod tool at `index` among mod tools, or null past the
-     * shortcut-eligible range (also null for a negative/not-found index).
-     * @private
-     * @param {number} index
-     * @returns {string|null}
-     */
-    _shortcutForIndex(index) {
-        if (index < 0 || index >= TOOL_SHORTCUT_COUNT) {
-            return null;
-        }
-        return String(index + 1);
+        return toolShortcut(this._modTools.indexOf(tool));
     }
 
     /**
@@ -604,7 +620,7 @@ export class ToolbarLayer extends Container {
             if (badge == null) {
                 continue;
             }
-            const shortcut = this._shortcutForIndex(i);
+            const shortcut = toolShortcut(i);
             badge.text = shortcut === null ? "" : shortcut;
         }
     }
@@ -762,12 +778,7 @@ export class ToolbarLayer extends Container {
      * @returns {number}
      */
     _computeBarTools() {
-        if (Mobile.enabled) {
-            return MIN_BAR_TOOLS;
-        }
-        const maxWidth = this._viewport.screenWidth - SIDE_MARGIN * 2;
-        const columns = Math.floor((maxWidth - GRID_LEFT - PANEL_PADDING + CELL_GAP) / (SLOT_SIZE + CELL_GAP));
-        return Math.max(MIN_BAR_TOOLS, Math.min(MAX_BAR_TOOLS_DESKTOP, columns - 1));
+        return barToolCapacity(this._viewport.screenWidth, Mobile.enabled);
     }
 
     /**
