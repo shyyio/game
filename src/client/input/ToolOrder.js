@@ -26,3 +26,23 @@ export function applyToolOrder(tools, orderedIds) {
     ordered.push(...byId.values());
     return ordered;
 }
+
+/**
+ * Moves `item` to `toIndex` within `order`, in place, closing the gap it left. Throws if the item
+ * is not in the order.
+ * @param {*[]} order
+ * @param {*} item
+ * @param {number} toIndex
+ * @returns {void}
+ */
+export function moveWithin(order, item, toIndex) {
+    const from = order.indexOf(item);
+    if (from < 0) {
+        throw new Error("Cannot move an item that is not in the order");
+    }
+    if (toIndex < 0 || toIndex >= order.length) {
+        throw new Error(`Move target ${toIndex} is outside the order`);
+    }
+    order.splice(from, 1);
+    order.splice(toIndex, 0, item);
+}

@@ -10,6 +10,9 @@ import {TX_SLOT, SLOT_FRAME_INSET} from "@/client/hud/slotFrame.js";
 import {addSlotHighlight} from "@/client/hud/slotHighlight.js";
 import {nineSlice, swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
 import {TOOLBAR_SLOT_SIZE as SLOT_SIZE} from "@/client/hud/UiScale.js";
+import {ToolGrid} from "@/client/hud/ToolGrid.js";
+import {TapRecognizer} from "@/client/input/TapRecognizer.js";
+import {moveWithin} from "@/client/input/ToolOrder.js";
 
 // Inset of the icon sprite from the slot's edges.
 const ICON_PADDING = 7;
@@ -98,6 +101,8 @@ export class ToolbarLayer extends Container {
         // Grid dimensions, computed on setTools and consumed by _layout for sizing/positioning.
         this._columns = 0;
         this._rowCount = 1;
+        // Cell geometry for the current column count; rebuilt with the cells in setTools.
+        this._grid = null;
         this._panelWidth = 0;
         // Top-row tool capacity, recomputed from screen width; triggers a rebuild when it changes.
         this._barTools = this._computeBarTools();
@@ -248,8 +253,17 @@ export class ToolbarLayer extends Container {
         const slots = [this._noneCell, ...this._cells];
         this._columns = this._barTools + 1;
         this._rowCount = Math.ceil(slots.length / this._columns);
+        this._grid = new ToolGrid({
+            columns: this._columns,
+            left: GRID_LEFT,
+            top: PANEL_PADDING,
+            slotSize: SLOT_SIZE,
+            cellHeight: cellHeight(),
+            columnGap: CELL_GAP,
+            rowGap: ROW_GAP,
+        });
         for (const [i, slot] of slots.entries()) {
-            const position = this._slotPosition(i);
+            const position = this._grid.slotPosition(i);
             slot.x = position.x;
             slot.y = position.y;
             this._panel.addChild(slot);
@@ -408,19 +422,6 @@ export class ToolbarLayer extends Container {
     }
 
     /**
-     * The rest position of the flat slot at `flatIndex` (0 = none cell, then tools in bar order).
-     * @private
-     * @param {number} flatIndex
-     * @returns {{x: number, y: number}}
-     */
-    _slotPosition(flatIndex) {
-        return {
-            x: GRID_LEFT + (flatIndex % this._columns) * (SLOT_SIZE + CELL_GAP),
-            y: PANEL_PADDING + Math.floor(flatIndex / this._columns) * (cellHeight() + ROW_GAP),
-        };
-    }
-
-    /**
      * Wires a mod-tool cell's combined gesture: a plain tap fires `onPress`; holding past
      * {@link REORDER_HOLD_MS} without drifting past {@link REORDER_MOVE_CANCEL_PX} picks the cell
      * up for a reorder drag instead.
@@ -431,9 +432,9 @@ export class ToolbarLayer extends Container {
      */
     _wireDraggableCell(slot, tool, onPress) {
         slot.eventMode = "static";
-        let pointerId = null;
-        let startX = 0;
-        let startY = 0;
+        // Travel past the reorder threshold ends the press, so the same recognizer decides both
+        // whether the hold may fire and whether the release is still a tap.
+        const recognizer = new TapRecognizer(REORDER_MOVE_CANCEL_PX);
         let holdTimer = null;
 
         const cancelHold = () => {
@@ -446,12 +447,9 @@ export class ToolbarLayer extends Container {
         slot.on("pointerdown", (e) => {
             e.stopPropagation();
             e.nativeEvent.stopPropagation();
-            if (e.button !== 0 || pointerId !== null) {
+            if (!recognizer.press(e.pointerId, e.button, e.global.x, e.global.y)) {
                 return;
             }
-            pointerId = e.pointerId;
-            startX = e.global.x;
-            startY = e.global.y;
             holdTimer = window.setTimeout(() => {
                 holdTimer = null;
                 // Reordering needs the drawer open (every mod-tool slot visible to drag into);
@@ -461,27 +459,23 @@ export class ToolbarLayer extends Container {
                 }
                 // Once the drag starts, window-level tracking (trackWindowDrag) takes over the
                 // gesture; this pointer's tap detection is done.
-                pointerId = null;
+                recognizer.cancel(e.pointerId);
                 this._beginDrag(slot, tool, e);
             }, REORDER_HOLD_MS);
         });
 
         slot.on("globalpointermove", (e) => {
-            if (pointerId === null || e.pointerId !== pointerId) {
-                return;
-            }
-            if (Math.hypot(e.global.x - startX, e.global.y - startY) > REORDER_MOVE_CANCEL_PX) {
+            recognizer.move(e.pointerId, e.global.x, e.global.y);
+            if (recognizer.dragging) {
                 cancelHold();
-                pointerId = null;
             }
         });
 
         const endPress = (e) => {
-            if (pointerId === null || e.pointerId !== pointerId) {
+            if (!recognizer.release(e.pointerId)) {
                 return;
             }
             cancelHold();
-            pointerId = null;
             Haptics.tap();
             onPress();
         };
@@ -545,10 +539,8 @@ export class ToolbarLayer extends Container {
         drag.icon.y = y;
 
         const nearest = this._nearestModToolIndex(x, y);
-        const currentIndex = drag.order.indexOf(drag.tool);
-        if (nearest !== currentIndex) {
-            drag.order.splice(currentIndex, 1);
-            drag.order.splice(nearest, 0, drag.tool);
+        if (nearest !== drag.order.indexOf(drag.tool)) {
+            moveWithin(drag.order, drag.tool, nearest);
             this._layoutDragOrder(drag);
             this._refreshDragBadges(drag);
         }
@@ -573,19 +565,16 @@ export class ToolbarLayer extends Container {
      * @returns {number}
      */
     _nearestModToolIndex(centerX, centerY) {
-        let best = 0;
-        let bestDistance = Infinity;
-        for (let i = 0; i < this._modTools.length; i += 1) {
-            const position = this._slotPosition(1 + this._coreTools.length + i);
-            const dx = (position.x + SLOT_SIZE / 2) - centerX;
-            const dy = (position.y + SLOT_SIZE / 2) - centerY;
-            const distance = dx * dx + dy * dy;
-            if (distance < bestDistance) {
-                bestDistance = distance;
-                best = i;
-            }
-        }
-        return best;
+        return this._grid.nearestSlot(centerX, centerY, this._firstModToolSlot(), this._modTools.length);
+    }
+
+    /**
+     * The flat slot index of the first mod tool: past the none cell and every core tool.
+     * @private
+     * @returns {number}
+     */
+    _firstModToolSlot() {
+        return 1 + this._coreTools.length;
     }
 
     /**
@@ -597,7 +586,7 @@ export class ToolbarLayer extends Container {
     _layoutDragOrder(drag) {
         for (const [i, tool] of drag.order.entries()) {
             const cell = this._cellForModTool(tool);
-            const position = this._slotPosition(1 + this._coreTools.length + i);
+            const position = this._grid.slotPosition(this._firstModToolSlot() + i);
             cell.x = position.x;
             cell.y = position.y;
         }
