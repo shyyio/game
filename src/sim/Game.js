@@ -1,8 +1,6 @@
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent, TickEndEvent} from "@/common/CoreEvents.js";
 import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
 import {InspectClosedEvent} from "@/common/InspectEvents.js";
-import {ObjectSyncEvent} from "@/common/ObjectEvents.js";
-import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {PlayerSettingsToolOrderSyncEvent} from "@/common/PlayerSettingsToolOrderEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
@@ -12,9 +10,7 @@ import {
 } from "@/common/PlayerMessages.js";
 import {WelcomeEvent} from "@/common/PlayerEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
-import {
-    OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult, ChunkPermission,
-} from "@/common/ClaimEvents.js";
+import {ChunkClaimUpdateEvent} from "@/common/ClaimEvents.js";
 import {WireRegistry} from "@/common/wire.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
 import {EventBus} from "@/sim/EventBus.js";
@@ -23,6 +19,7 @@ import {PlayerSettingsToolOrderCache, PLAYER_SETTINGS_TOOL_ORDER_RECORD} from "@
 import {ChunkClaims, CHUNK_CLAIM_RECORD} from "@/sim/ChunkClaims.js";
 import {PlayerRegistry, PLAYER_RECORD, FRIEND_RECORD} from "@/sim/PlayerRegistry.js";
 import {PlayerDirectory} from "@/sim/PlayerDirectory.js";
+import {ClaimAdmin} from "@/sim/ClaimAdmin.js";
 import {CHUNK_SIZE, DEFAULT_TICK_MS, GameSettingsKey, PLAYER_ID_NONE} from "@/common/constants.js";
 import {GameMetrics} from "@/sim/GameMetrics.js";
 import {migrateSnapshot} from "@/common/saveMigrations.js";
@@ -106,14 +103,20 @@ export class Game {
          * @type {ChunkClaims}
          */
         this.claims = new ChunkClaims();
-        this.simEngine.setPlacementGate((playerId, chunk) => this._canBuildIn(playerId, chunk));
-        this.simEngine.setChunkOwnerResolver(chunk => this.claims.ownerOf(chunk));
 
         /**
          * Username disclosure and the friendships that widen it.
          * @type {PlayerDirectory}
          */
         this.playerDirectory = new PlayerDirectory(this);
+
+        /**
+         * The claim, unclaim and permission requests over those claims.
+         * @type {ClaimAdmin}
+         */
+        this.claimAdmin = new ClaimAdmin(this);
+        this.simEngine.setPlacementGate((playerId, chunk) => this.claimAdmin.canBuildIn(playerId, chunk));
+        this.simEngine.setChunkOwnerResolver(chunk => this.claims.ownerOf(chunk));
 
         /**
          * The whole metrics surface: fact recording, session lengths, queries, live pushes.
@@ -130,38 +133,15 @@ export class Game {
             [SetViewportMessage, (session, message) => this._setSessionViewport(session, message.chunks)],
             [SetInspectedObjectsMessage, (session, message) => this._setSessionInspect(session, message.objectIds)],
             [OverworldRequestMessage, (session, message) => this._sendOverworldSnapshot(session, message)],
-            [ClaimChunkMessage, (session, message) => this._handleClaim(session, message.chunk)],
-            [UnclaimChunkMessage, (session, message) => this._handleUnclaim(session, message.chunk, message.clear === 1)],
-            [SetChunkPermissionMessage, (session, message) => this._handleSetPermission(session, message.chunk, message.permission)],
+            [ClaimChunkMessage, (session, message) => this.claimAdmin.claim(session, message.chunk)],
+            [UnclaimChunkMessage, (session, message) => this.claimAdmin.unclaim(session, message.chunk, message.clear === 1)],
+            [SetChunkPermissionMessage, (session, message) => this.claimAdmin.setPermission(session, message.chunk, message.permission)],
             [AddFriendMessage, (session, message) => this.playerDirectory.addFriend(session, message.playerId)],
             [AddFriendByCodeMessage, (session, message) => this.playerDirectory.addFriendByCode(session, message.code)],
             [RemoveFriendMessage, (session, message) => this.playerDirectory.removeFriend(session, message.playerId)],
             [SetPlayerSettingMessage, (session, message) => this._handleSetPlayerSetting(session, message.key, message.value)],
             [SetPlayerSettingsToolOrderMessage, (session, message) => this._handleSetToolOrder(session, message.toolIds)],
         ]);
-    }
-
-    /**
-     * Whether a player may modify a chunk: the owner always may; unclaimed is off limits;
-     * everyone else is gated by the chunk's permission. Mirrored client-side by
-     * ChunkClaimsView.canBuildIn; keep both in sync.
-     * @param {number} playerId
-     * @param {number} chunk
-     * @returns {boolean}
-     * @private
-     */
-    _canBuildIn(playerId, chunk) {
-        const owner = this.claims.ownerOf(chunk);
-        if (owner === PLAYER_ID_NONE) {
-            return false;
-        }
-        if (owner === playerId) {
-            return true;
-        }
-        if (this.claims.permissionOf(chunk) === ChunkPermission.PERMISSION_ONLY_ME) {
-            return false;
-        }
-        return this.players.isFriend(owner, playerId);
     }
 
     async init() {
@@ -275,9 +255,7 @@ export class Game {
         const record = this.players.byId(session.playerId);
         this.bus.publishTo(session.id, new WelcomeEvent(record.playerId, record.maxChunks, record.friendCode));
         this.playerDirectory.syncUsernames(session.id, [session.playerId]);
-        const ownChunks = [...this.claims.chunksOf(session.playerId)];
-        const ownPermissions = ownChunks.map(chunk => this.claims.permissionOf(chunk));
-        this.bus.publishTo(session.id, new OwnClaimsSyncEvent(ownChunks, ownPermissions));
+        this.claimAdmin.syncOwnClaims(session);
         this.playerDirectory.syncFriendList(session.id, session.playerId);
     }
 
@@ -348,119 +326,6 @@ export class Game {
         if (message instanceof DeleteObjectMessage) {
             this._closeInspect(message.id);
         }
-    }
-
-    // ---- Claims and friends ----
-
-    /**
-     * @param {AbstractSession} session
-     * @param {number} chunk
-     * @private
-     */
-    _handleClaim(session, chunk) {
-        const record = this.players.byId(session.playerId);
-        const result = this.claims.claim(session.playerId, chunk, record.maxChunks);
-        if (result === ClaimResult.CLAIM_RESULT_OK) {
-            this._publishClaimUpdate(session, chunk, session.playerId, this.claims.permissionOf(chunk));
-        }
-        this.bus.publishTo(session.id, new ClaimResultEvent(chunk, result));
-    }
-
-    /**
-     * Sets a claimed chunk's permission; silently ignored if the sender does not own it (a stale
-     * panel racing a concurrent unclaim), same as any other invariant the client already gates on.
-     * @param {AbstractSession} session
-     * @param {number} chunk
-     * @param {number} permission - a ChunkPermission
-     * @private
-     */
-    _handleSetPermission(session, chunk, permission) {
-        const result = this.claims.setPermission(session.playerId, chunk, permission);
-        if (result === ClaimResult.CLAIM_RESULT_OK) {
-            this._publishClaimUpdate(session, chunk, session.playerId, permission);
-        }
-    }
-
-    /**
-     * Publishes a claim change to the chunk's viewers (owner name first, so the label resolves)
-     * and targets it at the acting player's remaining sessions, which track their own claims
-     * everywhere.
-     * @param {AbstractSession} session
-     * @param {number} chunk
-     * @param {number} owner - the new owner, or PLAYER_ID_NONE for an unclaim
-     * @param {number} permission - the chunk's ChunkPermission; meaningless for an unclaim
-     * @private
-     */
-    _publishClaimUpdate(session, chunk, owner, permission) {
-        const event = new ChunkClaimUpdateEvent(chunk, owner, permission);
-        const subscribers = this.bus.chunkSubscribers(chunk);
-        if (subscribers !== undefined) {
-            for (const sessionId of subscribers) {
-                this.playerDirectory.syncUsernames(sessionId, [owner]);
-            }
-        }
-        this.bus.publish(event);
-        for (const sessionId of this.bus.sessionIdsOf(session.playerId)) {
-            if (subscribers === undefined || !subscribers.has(sessionId)) {
-                this.bus.publishTo(sessionId, event);
-            }
-        }
-    }
-
-    /**
-     * @param {AbstractSession} session
-     * @param {number} chunk
-     * @private
-     */
-    _handleUnclaim(session, chunk, clear) {
-        // A doomed unclaim (not owner, would split) rejects before the not-empty confirmation.
-        const check = this.claims.unclaimCheck(session.playerId, chunk);
-        if (check !== ClaimResult.CLAIM_RESULT_OK) {
-            this.bus.publishTo(session.id, new ClaimResultEvent(chunk, check));
-            return;
-        }
-        const solidIds = this._solidObjectIdsIn(chunk);
-        // An unclaim must empty the chunk; without the clear confirmation it is rejected.
-        if (solidIds.length > 0 && !clear) {
-            this.bus.publishTo(session.id, new ClaimResultEvent(chunk, ClaimResult.CLAIM_RESULT_NOT_EMPTY));
-            return;
-        }
-        const result = this.claims.unclaim(session.playerId, chunk);
-        if (result === ClaimResult.CLAIM_RESULT_OK) {
-            // Engine-originated deletes bypass the placement gate the now-unclaimed chunk holds.
-            for (const objectId of solidIds) {
-                this.simEngine.applyMessage(new DeleteObjectMessage(objectId), PLAYER_ID_NONE);
-            }
-            this._publishClaimUpdate(session, chunk, PLAYER_ID_NONE, ChunkPermission.PERMISSION_FRIENDS);
-        }
-        this.bus.publishTo(session.id, new ClaimResultEvent(chunk, result));
-    }
-
-    /**
-     * The object ids of every solid object in a chunk; non-solid ground cover
-     * (resources, water) stays out.
-     * @private
-     * @param {number} chunk
-     * @returns {number[]}
-     */
-    _solidObjectIdsIn(chunk) {
-        const ids = [];
-        for (const event of this.simEngine.chunkSync(chunk)) {
-            let inner = [event];
-            if (event instanceof AbstractBatchEvent) {
-                inner = event.explode();
-            }
-            for (const single of inner) {
-                if (!(single instanceof ObjectSyncEvent)) {
-                    continue;
-                }
-                const type = this.modRegistry.typeById(single.typeId);
-                if (type.placement.solid) {
-                    ids.push(single.id);
-                }
-            }
-        }
-        return ids;
     }
 
     /**
