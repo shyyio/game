@@ -1,7 +1,7 @@
 import {CanvasTextMetrics, Container, Graphics, Rectangle, Text, TextStyle} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_BORDER, ACTIVE_ACCENT} from "@/client/Theme.js";
-import {HUD_DOM_Z_INDEX} from "@/client/hud/HudLayer.js";
+import {DomOverlay} from "@/client/hud/DomOverlay.js";
 import {isTopmostAt} from "@/client/layers/pixiUtils.js";
 
 // Exported for the contrast audit, which reads what the box really paints rather than restating it.
@@ -54,12 +54,6 @@ export class TextInput extends Container {
         // The input paints nothing, so this clips what it can still capture: pointer events.
         this._clipProvider = null;
         this._domShown = true;
-        // Last screen rect actually written to the DOM input; skips the style writes on the
-        // (overwhelming majority of) ticks where nothing moved.
-        this._lastLeft = null;
-        this._lastTop = null;
-        this._lastWidth = null;
-        this._lastHeight = null;
         // Last painted selection, so the tick repaints only when the caret actually moved.
         this._lastSelectionStart = null;
         this._lastSelectionEnd = null;
@@ -106,13 +100,8 @@ export class TextInput extends Container {
         }
         this._domInput.autocapitalize = "off";
         this._domInput.spellcheck = false;
-        Object.assign(this._domInput.style, {
-            position: "fixed",
-            zIndex: HUD_DOM_Z_INDEX,
-            left: "0px",
-            top: "0px",
-            width: "1px",
-            height: "1px",
+        document.body.appendChild(this._domInput);
+        this._overlay = new DomOverlay(this._domInput, {
             boxSizing: "border-box",
             background: "transparent",
             border: "none",
@@ -124,7 +113,6 @@ export class TextInput extends Container {
             color: "transparent",
             caretColor: "transparent",
         });
-        document.body.appendChild(this._domInput);
         this._placeholder = placeholder;
 
         this._domInput.addEventListener("input", () => {
@@ -310,7 +298,7 @@ export class TextInput extends Container {
      */
     destroy(options) {
         this._app.ticker.remove(this._tick);
-        this._domInput.remove();
+        this._overlay.remove();
         super.destroy(options);
     }
 
@@ -377,22 +365,9 @@ export class TextInput extends Container {
         // Every tick, not just on a move: what covers this input can change while it sits still.
         this._deferToCover(bounds);
         const canvasRect = this._app.canvas.getBoundingClientRect();
-        const left = canvasRect.left + bounds.x;
-        const top = canvasRect.top + bounds.y;
-        const width = Math.max(bounds.width, 1);
-        const height = Math.max(bounds.height, 1);
-        if (left === this._lastLeft && top === this._lastTop && width === this._lastWidth && height === this._lastHeight) {
-            return;
+        if (this._overlay.sync(bounds, canvasRect)) {
+            this._applyClip(bounds, canvasRect);
         }
-        this._lastLeft = left;
-        this._lastTop = top;
-        this._lastWidth = width;
-        this._lastHeight = height;
-        this._domInput.style.left = `${left}px`;
-        this._domInput.style.top = `${top}px`;
-        this._domInput.style.width = `${width}px`;
-        this._domInput.style.height = `${height}px`;
-        this._applyClip(bounds, canvasRect);
     }
 
     /**

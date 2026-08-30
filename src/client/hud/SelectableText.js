@@ -1,4 +1,4 @@
-import {HUD_DOM_Z_INDEX} from "@/client/hud/HudLayer.js";
+import {DomOverlay} from "@/client/hud/DomOverlay.js";
 
 /**
  * Makes a pixi Text natively selectable/copyable without changing how it looks: an invisible
@@ -19,21 +19,12 @@ export class SelectableText {
     constructor(app, target) {
         this._app = app;
         this._target = target;
-        this._lastLeft = null;
-        this._lastTop = null;
-        this._lastWidth = null;
-        this._lastHeight = null;
 
-        this._dom = document.createElement("input");
-        this._dom.type = "text";
-        this._dom.readOnly = true;
-        Object.assign(this._dom.style, {
-            position: "fixed",
-            zIndex: HUD_DOM_Z_INDEX,
-            left: "0px",
-            top: "0px",
-            width: "1px",
-            height: "1px",
+        const element = document.createElement("input");
+        element.type = "text";
+        element.readOnly = true;
+        document.body.appendChild(element);
+        this._overlay = new DomOverlay(element, {
             boxSizing: "border-box",
             padding: "0",
             background: "transparent",
@@ -45,7 +36,6 @@ export class SelectableText {
             fontFamily: target.style.fontFamily,
             fontSize: `${target.style.fontSize}px`,
         });
-        document.body.appendChild(this._dom);
 
         this._tick = () => this._position();
         app.ticker.add(this._tick);
@@ -58,7 +48,7 @@ export class SelectableText {
      */
     setTarget(target) {
         this._target = target;
-        this._lastLeft = null;
+        this._overlay.invalidate();
         this._position();
     }
 
@@ -67,7 +57,7 @@ export class SelectableText {
      * @returns {void}
      */
     setText(text) {
-        this._dom.value = text;
+        this._overlay.element.value = text;
     }
 
     /**
@@ -75,7 +65,7 @@ export class SelectableText {
      */
     destroy() {
         this._app.ticker.remove(this._tick);
-        this._dom.remove();
+        this._overlay.remove();
     }
 
     /**
@@ -83,22 +73,6 @@ export class SelectableText {
      * @returns {void}
      */
     _position() {
-        const bounds = this._target.getBounds();
-        const canvasRect = this._app.canvas.getBoundingClientRect();
-        const left = canvasRect.left + bounds.x;
-        const top = canvasRect.top + bounds.y;
-        const width = Math.max(bounds.width, 1);
-        const height = Math.max(bounds.height, 1);
-        if (left === this._lastLeft && top === this._lastTop && width === this._lastWidth && height === this._lastHeight) {
-            return;
-        }
-        this._lastLeft = left;
-        this._lastTop = top;
-        this._lastWidth = width;
-        this._lastHeight = height;
-        this._dom.style.left = `${left}px`;
-        this._dom.style.top = `${top}px`;
-        this._dom.style.width = `${width}px`;
-        this._dom.style.height = `${height}px`;
+        this._overlay.sync(this._target.getBounds(), this._app.canvas.getBoundingClientRect());
     }
 }

@@ -7,7 +7,7 @@ import {MetricsLineChart} from "@/client/hud/MetricsLineChart.js";
 import {CHART_METRIC_COUNT, seriesRates} from "@/client/hud/MetricsChartData.js";
 import {metricsRollupKey} from "@/common/MetricsFact.js";
 import {GameSettingsKey} from "@/common/constants.js";
-import {HUD_DOM_Z_INDEX} from "@/client/hud/HudLayer.js";
+import {DomOverlay} from "@/client/hud/DomOverlay.js";
 
 const PANEL_WIDTH = 640;
 const CHART_HEIGHT = 280;
@@ -55,6 +55,7 @@ export class ProductionPanelLayer extends Container {
         this._managed = new ManagedPanel();
         this._chartInset = null;
         this._chartRoot = null;
+        this._chartOverlay = null;
         this._chart = null;
         this._tick = null;
         this._unbindRollup = null;
@@ -163,11 +164,8 @@ export class ProductionPanelLayer extends Container {
         this.addChild(panel);
 
         this._chartRoot = document.createElement("div");
-        Object.assign(this._chartRoot.style, {
-            position: "fixed", zIndex: HUD_DOM_Z_INDEX, left: "0px", top: "0px", width: "1px", height: "1px",
-            overflow: "hidden", pointerEvents: "auto",
-        });
         document.body.appendChild(this._chartRoot);
+        this._chartOverlay = new DomOverlay(this._chartRoot, {overflow: "hidden", pointerEvents: "auto"});
 
         this._chart = new MetricsLineChart(this._chartRoot, {
             metric: CHART_METRIC_COUNT,
@@ -325,7 +323,8 @@ export class ProductionPanelLayer extends Container {
         this._unbindClock = null;
         this._chart.destroy();
         this._chart = null;
-        this._chartRoot.remove();
+        this._chartOverlay.remove();
+        this._chartOverlay = null;
         this._chartRoot = null;
         this._chartInset = null;
         this._listHandle = null;
@@ -333,16 +332,12 @@ export class ProductionPanelLayer extends Container {
     }
 
     /**
-     * Glues _chartRoot to the placeholder inset's current on-screen rect, so dragging the panel drags the chart with it.
+     * Glues the chart root to the placeholder inset's current on-screen rect, so dragging the panel
+     * drags the chart with it.
      * @private
      * @returns {void}
      */
     _positionChartRoot() {
-        const bounds = this._chartInset.getBounds();
-        const canvasRect = this._app.canvas.getBoundingClientRect();
-        this._chartRoot.style.left = `${canvasRect.left + bounds.x}px`;
-        this._chartRoot.style.top = `${canvasRect.top + bounds.y}px`;
-        this._chartRoot.style.width = `${Math.max(bounds.width, 1)}px`;
-        this._chartRoot.style.height = `${Math.max(bounds.height, 1)}px`;
+        this._chartOverlay.sync(this._chartInset.getBounds(), this._app.canvas.getBoundingClientRect());
     }
 }
