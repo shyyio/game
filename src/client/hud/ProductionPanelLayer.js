@@ -1,7 +1,7 @@
 import {Container} from "pixi.js";
 import {format} from "d3-format";
-import {PANEL_SCREEN_MARGIN, UIPanel} from "@/client/hud/UIPanel.js";
-import {PanelStack, PanelRowDescriptor} from "@/client/hud/PanelStack.js";
+import {ManagedPanel, PANEL_SCREEN_MARGIN, UIPanel} from "@/client/hud/UIPanel.js";
+import {PanelRowDescriptor} from "@/client/hud/PanelStack.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT} from "@/client/Theme.js";
 import {MetricsLineChart} from "@/client/hud/MetricsLineChart.js";
 import {CHART_METRIC_COUNT, seriesRates} from "@/client/hud/MetricsChartData.js";
@@ -11,8 +11,6 @@ import {HUD_DOM_Z_INDEX} from "@/client/hud/HudLayer.js";
 
 const PANEL_WIDTH = 640;
 const CHART_HEIGHT = 280;
-// Vertical space between the chart inset and the item list below it.
-const LIST_GAP = 12;
 
 const formatRate = format(",.1f");
 
@@ -54,7 +52,7 @@ export class ProductionPanelLayer extends Container {
         this.viewport = null;
         this.visible = false;
 
-        this._panel = null;
+        this._managed = new ManagedPanel();
         this._chartInset = null;
         this._chartRoot = null;
         this._chart = null;
@@ -62,8 +60,6 @@ export class ProductionPanelLayer extends Container {
         this._unbindRollup = null;
         this._unbindTickMs = null;
         this._unbindClock = null;
-        this._savedX = null;
-        this._savedY = null;
         this._onSubscribe = null;
         this._onUnsubscribe = null;
         this._rollup = undefined;
@@ -139,23 +135,6 @@ export class ProductionPanelLayer extends Container {
     }
 
     /**
-     * Below the production button by default, or centered on first-ever show.
-     * @private
-     * @param {number} width
-     * @param {number} height
-     * @returns {{x: number, y: number}}
-     */
-    _defaultPosition(width, height) {
-        if (this._savedX !== null) {
-            return {x: this._savedX, y: this._savedY};
-        }
-        if (this.anchorButton !== null) {
-            return UIPanel.anchoredPosition(this._app, this.anchorButton, width);
-        }
-        return UIPanel.centerPosition(this._app, width)(height);
-    }
-
-    /**
      * @private
      * @returns {void}
      */
@@ -163,32 +142,24 @@ export class ProductionPanelLayer extends Container {
         const width = this._panelWidth();
         const contentWidth = UIPanel.contentWidthFor(width);
 
-        // Fixed-height list section, so pushes can swap the row set without resizing the panel.
-        const stack = new PanelStack(this.textureRegistry, contentWidth);
-        this._listHandle = stack.scrollSection(this.viewport, [], entry => this._describeEntry(entry),
-            "No production yet", {fixedHeight: true});
-        stack.y = CHART_HEIGHT + LIST_GAP;
+        // Placeholder the real DOM/SVG chart overlay sits on top of every frame (see _positionChartRoot()).
+        this._chartInset = UIPanel.insetSprite(this.textureRegistry, contentWidth, CHART_HEIGHT, PANEL_TINT);
 
-        const height = UIPanel.heightForContent(CHART_HEIGHT + LIST_GAP + stack.contentHeight);
-        const panel = new UIPanel({
+        const panel = this._managed.show({
             app: this._app,
             textureRegistry: this.textureRegistry,
             title: "Production",
             titleColor: PANEL_TITLE_TEXT,
             tint: PANEL_TINT,
             width,
-            height,
             onClose: () => this.hide(),
+        }, UIPanel.anchoredPosition(this._app, this.anchorButton, width), (stack) => {
+            stack.block(this._chartInset, CHART_HEIGHT);
+            stack.gap();
+            // Fixed-height list section, so pushes can swap the row set without resizing the panel.
+            this._listHandle = stack.scrollSection(this.viewport, [], entry => this._describeEntry(entry),
+                "No production yet", {fixedHeight: true});
         });
-        const {x, y} = this._defaultPosition(width, height);
-        panel.x = x;
-        panel.y = y;
-        this._panel = panel;
-
-        // Placeholder the real DOM/SVG chart overlay sits on top of every frame (see _positionChartRoot()).
-        this._chartInset = UIPanel.insetSprite(this.textureRegistry, panel.contentWidth, CHART_HEIGHT, PANEL_TINT);
-        panel.addContent(this._chartInset);
-        panel.addContent(stack);
         this.addChild(panel);
 
         this._chartRoot = document.createElement("div");
@@ -200,7 +171,7 @@ export class ProductionPanelLayer extends Container {
 
         this._chart = new MetricsLineChart(this._chartRoot, {
             metric: CHART_METRIC_COUNT,
-            width: panel.contentWidth,
+            width: contentWidth,
             height: CHART_HEIGHT,
             onWindowChange: (tier, windowTicks) => {
                 if (this._onSubscribe !== null) {
@@ -341,8 +312,6 @@ export class ProductionPanelLayer extends Container {
      * @returns {void}
      */
     _teardown() {
-        this._savedX = this._panel.x;
-        this._savedY = this._panel.y;
         if (this._onUnsubscribe !== null) {
             this._onUnsubscribe(this._metricsType, this._scope);
         }
@@ -360,8 +329,7 @@ export class ProductionPanelLayer extends Container {
         this._chartRoot = null;
         this._chartInset = null;
         this._listHandle = null;
-        this._panel.destroy({children: true});
-        this._panel = null;
+        this._managed.hide();
     }
 
     /**

@@ -258,17 +258,21 @@ export class UIPanel extends Container {
     }
 
     /**
-     * Where a panel opened by an overlay button sits: right-aligned, hanging below the button.
+     * Where a panel opened by an overlay button sits: right-aligned, hanging below the button, or
+     * centered while the button that opens it is not yet wired up.
      * @param {Application} app
-     * @param {CircleButtonLayer} anchorButton
+     * @param {CircleButtonLayer|null} anchorButton
      * @param {number} width
-     * @returns {{x: number, y: number}}
+     * @returns {function(height: number): {x: number, y: number}}
      */
     static anchoredPosition(app, anchorButton, width) {
-        return {
+        if (anchorButton === null) {
+            return UIPanel.centerPosition(app, width);
+        }
+        return () => ({
             x: app.screen.width - ANCHOR_MARGIN_RIGHT - width,
             y: anchorButton.bottomY + ANCHOR_GAP,
-        };
+        });
     }
 
     /**
