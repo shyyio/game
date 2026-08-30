@@ -11,8 +11,8 @@ import {addSlotHighlight} from "@/client/hud/slotHighlight.js";
 import {nineSlice, swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
 import {TOOLBAR_SLOT_SIZE as SLOT_SIZE} from "@/client/hud/UiScale.js";
 import {ToolGrid} from "@/client/hud/ToolGrid.js";
+import {ToolReorderDrag} from "@/client/hud/ToolReorderDrag.js";
 import {TapRecognizer} from "@/client/input/TapRecognizer.js";
-import {moveWithin} from "@/client/input/ToolOrder.js";
 
 // Inset of the icon sprite from the slot's edges.
 const ICON_PADDING = 7;
@@ -51,9 +51,6 @@ const SLIDE_DURATION_MS = 230;
 const REORDER_HOLD_MS = 400;
 // Movement past this many px before the hold timer fires cancels the pickup (and the tap).
 const REORDER_MOVE_CANCEL_PX = 8;
-// How large the picked-up cell grows, and how long it takes to get there.
-const DRAG_LIFT_SCALE = 1.12;
-const DRAG_LIFT_DURATION_MS = 150;
 // Open-slide overshoot as a fraction of the slide; panel bottom is bled by this much to cover it.
 const OPEN_OVERSHOOT = 0.2;
 const DRAWER_BOTTOM_PAD = 12;
@@ -117,7 +114,7 @@ export class ToolbarLayer extends Container {
         this._onChange = null;
         this._onReorder = null;
         // Set only while a mod-tool cell is picked up for a reorder drag.
-        this._dragState = null;
+        this._drag = null;
         // One cell Container per tool, parallel to _tools, so highlights update in place.
         this._cells = [];
         // Always-present top-row cell that selects "no tool" (activeTool null).
@@ -267,7 +264,7 @@ export class ToolbarLayer extends Container {
      */
     _rebuild() {
         // An in-progress reorder drag's slot is about to be destroyed below; abort it rather than
-        // leaving _dragState pointing at a dead Container.
+        // leaving _drag pointing at a dead Container.
         this._cancelDrag();
 
         for (const slot of [this._noneCell, ...this._cells]) {
@@ -503,7 +500,6 @@ export class ToolbarLayer extends Container {
      * Picks a mod-tool cell's icon up for a reorder drag: haptic pulse, detaches the icon sprite
      * to the panel (front, above every slot) so only the icon lifts and follows the pointer,
      * while the slot's background/label/badge stay put and reflow in place like any other cell.
-     * Starts a working copy of the mod-tool order that live-reorders as the drag crosses slots.
      * Movement/release tracking is handed off to {@link trackWindowDrag} for the rest of the
      * gesture.
      * @private
@@ -515,31 +511,16 @@ export class ToolbarLayer extends Container {
         Haptics.tap();
 
         const icon = slot._icon;
-        const iconBaseScale = icon.scale.x;
         const originX = slot.x + icon.x;
         const originY = slot.y + icon.y;
         icon.position.set(originX, originY);
         this._panel.addChild(icon);
 
-        const scaleTween = new Tween(1, DRAG_LIFT_DURATION_MS);
-        if (ReducedMotion.enabled) {
-            scaleTween.reset(DRAG_LIFT_SCALE);
-        } else {
-            scaleTween.to(DRAG_LIFT_SCALE, easeOutBack);
-        }
-
         const detachDrag = trackWindowDrag(e.nativeEvent, (deltaX, deltaY) => {
             this._updateDrag(originX + deltaX, originY + deltaY);
         }, () => this._endDrag());
 
-        this._dragState = {
-            tool,
-            icon,
-            iconBaseScale,
-            scaleTween,
-            order: [...this._modTools],
-            detachDrag,
-        };
+        this._drag = new ToolReorderDrag(tool, icon, this._modTools, detachDrag);
     }
 
     /**
@@ -550,13 +531,11 @@ export class ToolbarLayer extends Container {
      * @param {number} y
      */
     _updateDrag(x, y) {
-        const drag = this._dragState;
+        const drag = this._drag;
         drag.icon.x = x;
         drag.icon.y = y;
 
-        const nearest = this._nearestModToolIndex(x, y);
-        if (nearest !== drag.order.indexOf(drag.tool)) {
-            moveWithin(drag.order, drag.tool, nearest);
+        if (drag.moveTo(this._nearestModToolIndex(x, y))) {
             this._layoutDragOrder(drag);
             this._refreshDragBadges(drag);
         }
@@ -597,7 +576,7 @@ export class ToolbarLayer extends Container {
      * Snaps every mod-tool cell, including the dragged one's now-icon-less slot, to its rest
      * position under the working order.
      * @private
-     * @param {object} drag
+     * @param {ToolReorderDrag} drag
      */
     _layoutDragOrder(drag) {
         for (const [i, tool] of drag.order.entries()) {
@@ -612,7 +591,7 @@ export class ToolbarLayer extends Container {
      * Live-updates every mod-tool cell's number badge (including the dragged one) to match the
      * working order's current hotkey slots, so the badges track the drag in real time.
      * @private
-     * @param {object} drag
+     * @param {ToolReorderDrag} drag
      */
     _refreshDragBadges(drag) {
         for (const [i, tool] of drag.order.entries()) {
@@ -631,13 +610,12 @@ export class ToolbarLayer extends Container {
      * @private
      */
     _endDrag() {
-        const drag = this._dragState;
-        this._dragState = null;
-        drag.icon.scale.set(drag.iconBaseScale);
+        const drag = this._drag;
+        this._drag = null;
+        drag.settleIcon();
         drag.icon.position.set(SLOT_SIZE / 2, SLOT_SIZE / 2);
         this._cellForModTool(drag.tool).addChild(drag.icon);
-        const changed = drag.order.some((tool, i) => tool !== this._modTools[i]);
-        if (changed && this._onReorder !== null) {
+        if (drag.reordered && this._onReorder !== null) {
             this._onReorder(drag.order);
         }
     }
@@ -649,12 +627,11 @@ export class ToolbarLayer extends Container {
      * @private
      */
     _cancelDrag() {
-        if (this._dragState === null) {
+        if (this._drag === null) {
             return;
         }
-        this._dragState.detachDrag();
-        this._dragState.icon.destroy();
-        this._dragState = null;
+        this._drag.cancel();
+        this._drag = null;
     }
 
     /**
@@ -799,9 +776,8 @@ export class ToolbarLayer extends Container {
             this._refreshHighlights();
         }
         // Grows the picked-up icon into its lifted scale while a reorder drag is in progress.
-        if (this._dragState !== null) {
-            const scale = this._dragState.scaleTween.advance(this._app.ticker.deltaMS);
-            this._dragState.icon.scale.set(this._dragState.iconBaseScale * scale);
+        if (this._drag !== null) {
+            this._drag.advanceLift(this._app.ticker.deltaMS);
         }
         // Collapsed panel top: its top row sits above the bottom margin, rows below spill off-screen.
         const collapsedTop = this._app.screen.height - MARGIN_BOTTOM - PANEL_PADDING - cellHeight();
