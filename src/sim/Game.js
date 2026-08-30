@@ -1,6 +1,5 @@
-import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent, TickEndEvent} from "@/common/CoreEvents.js";
+import {TickEndEvent} from "@/common/CoreEvents.js";
 import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
-import {InspectClosedEvent} from "@/common/InspectEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {PlayerSettingsToolOrderSyncEvent} from "@/common/PlayerSettingsToolOrderEvents.js";
 import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
@@ -10,7 +9,6 @@ import {
 } from "@/common/PlayerMessages.js";
 import {WelcomeEvent} from "@/common/PlayerEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
-import {ChunkClaimUpdateEvent} from "@/common/ClaimEvents.js";
 import {WireRegistry} from "@/common/wire.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
 import {EventBus} from "@/sim/EventBus.js";
@@ -20,7 +18,8 @@ import {ChunkClaims, CHUNK_CLAIM_RECORD} from "@/sim/ChunkClaims.js";
 import {PlayerRegistry, PLAYER_RECORD, FRIEND_RECORD} from "@/sim/PlayerRegistry.js";
 import {PlayerDirectory} from "@/sim/PlayerDirectory.js";
 import {ClaimAdmin} from "@/sim/ClaimAdmin.js";
-import {CHUNK_SIZE, DEFAULT_TICK_MS, GameSettingsKey, PLAYER_ID_NONE} from "@/common/constants.js";
+import {SessionViews} from "@/sim/SessionViews.js";
+import {CHUNK_SIZE, DEFAULT_TICK_MS, GameSettingsKey} from "@/common/constants.js";
 import {GameMetrics} from "@/sim/GameMetrics.js";
 import {migrateSnapshot} from "@/common/saveMigrations.js";
 import {WorldNoise} from "@/common/WorldNoise.js";
@@ -119,6 +118,12 @@ export class Game {
         this.simEngine.setChunkOwnerResolver(chunk => this.claims.ownerOf(chunk));
 
         /**
+         * The chunks, overworld and inspect menus each session is looking at.
+         * @type {SessionViews}
+         */
+        this.sessionViews = new SessionViews(this);
+
+        /**
          * The whole metrics surface: fact recording, session lengths, queries, live pushes.
          * @type {GameMetrics}
          */
@@ -130,9 +135,9 @@ export class Game {
          * @private
          */
         this._coreMessageHandlers = new Map([
-            [SetViewportMessage, (session, message) => this._setSessionViewport(session, message.chunks)],
-            [SetInspectedObjectsMessage, (session, message) => this._setSessionInspect(session, message.objectIds)],
-            [OverworldRequestMessage, (session, message) => this._sendOverworldSnapshot(session, message)],
+            [SetViewportMessage, (session, message) => this.sessionViews.setViewport(session, message.chunks)],
+            [SetInspectedObjectsMessage, (session, message) => this.sessionViews.setInspects(session, message.objectIds)],
+            [OverworldRequestMessage, (session, message) => this.sessionViews.sendOverworldSnapshot(session, message)],
             [ClaimChunkMessage, (session, message) => this.claimAdmin.claim(session, message.chunk)],
             [UnclaimChunkMessage, (session, message) => this.claimAdmin.unclaim(session, message.chunk, message.clear === 1)],
             [SetChunkPermissionMessage, (session, message) => this.claimAdmin.setPermission(session, message.chunk, message.permission)],
@@ -324,7 +329,7 @@ export class Game {
 
         // Close menus after the object is actually deleted, never before.
         if (message instanceof DeleteObjectMessage) {
-            this._closeInspect(message.id);
+            this.sessionViews.closeInspect(message.id);
         }
     }
 
@@ -362,115 +367,6 @@ export class Game {
         this.bus.publishTo(session.id, new PlayerSettingsToolOrderSyncEvent(toolIds));
     }
 
-    // ---- Viewport ----
-
-    /**
-     * Diffs the session's viewport against the requested chunks so a pan only syncs the delta.
-     * @param {AbstractSession} session
-     * @param {number[]} chunks
-     */
-    _setSessionViewport(session, chunks) {
-        const {added, removed} = this.bus.setViewport(session.id, chunks);
-        if (added.length > 0 || removed.length > 0) {
-            this.simEngine.invalidateObservers();
-        }
-
-        for (const chunk of removed) {
-            this.bus.publishTo(session.id, new ChunkUnsubscribeEvent(chunk));
-        }
-
-        for (const chunk of added) {
-            this.bus.publishTo(session.id, new ChunkSubscribeEvent(chunk));
-
-            // Seed the chunk's claim (the client evicted it on unsubscribe), owner name first.
-            const owner = this.claims.ownerOf(chunk);
-            if (owner !== PLAYER_ID_NONE) {
-                this.playerDirectory.syncUsernames(session.id, [owner]);
-                const permission = this.claims.permissionOf(chunk);
-                this.bus.publishTo(session.id, new ChunkClaimUpdateEvent(chunk, owner, permission));
-            }
-
-            // Before the bundle, so a mod's own per-chunk sync lands ahead of it.
-            for (const mod of this.modRegistry.simMods) {
-                mod.onChunkSubscribed(session, chunk, this);
-            }
-
-            // Bundle the chunk's recreate events into one ChunkSyncEvent; the client unwraps it.
-            const events = this.simEngine.chunkSync(chunk);
-            if (events.length > 0) {
-                this.bus.publishTo(session.id, new ChunkSyncEvent(chunk, events));
-            }
-        }
-    }
-
-    // ---- Overworld ----
-
-    /**
-     * Answers an overworld request from the hot bake, straight to the asking session.
-     * @param {AbstractSession} session
-     * @param {OverworldRequestMessage} message
-     * @returns {void}
-     */
-    _sendOverworldSnapshot(session, message) {
-        const snapshot = this.simEngine.overworldBake.snapshot(
-            message.chunkX,
-            message.chunkY,
-            message.chunkWidth,
-            message.chunkHeight,
-        );
-        // The bake knows tiles only; claims join here, owner names first so labels resolve.
-        const claims = this.claims.claimsIn(
-            message.chunkX,
-            message.chunkY,
-            message.chunkWidth,
-            message.chunkHeight,
-        );
-        this.playerDirectory.syncUsernames(session.id, claims.playerIds);
-        snapshot.claimedChunks = claims.chunks;
-        snapshot.claimOwners = claims.playerIds;
-        snapshot.claimPermissions = claims.permissions;
-        this.bus.publishTo(session.id, snapshot);
-    }
-
-    // ---- Inspect ----
-
-    /**
-     * Diffs the session's inspected-object set against the requested ids.
-     * @param {AbstractSession} session
-     * @param {number[]} objectIds
-     * @returns {void}
-     */
-    _setSessionInspect(session, objectIds) {
-        const {added} = this.bus.setInspects(session.id, objectIds);
-        // Fill each new menu now, not on the next heartbeat.
-        for (const objectId of added) {
-            this._syncInspect(session, objectId);
-        }
-    }
-
-    /**
-     * Sends a session one object's current snapshot when its menu opens.
-     * @param {AbstractSession} session
-     * @param {number} objectId
-     * @returns {void}
-     */
-    _syncInspect(session, objectId) {
-        const snapshot = this.simEngine.inspectSnapshot(objectId);
-        if (snapshot !== null) {
-            this.bus.publishTo(session.id, snapshot);
-        }
-    }
-
-    /**
-     * Closes a deleted object's menu on every session inspecting it, then drops its subscriptions.
-     * @param {number} objectId
-     * @returns {void}
-     */
-    _closeInspect(objectId) {
-        this.bus.publish(new InspectClosedEvent(objectId));
-        this.bus.clearObject(objectId);
-    }
-
     // ---- Tick ----
 
     /**
@@ -497,25 +393,9 @@ export class Game {
         for (const mod of this.modRegistry.simMods) {
             mod.onTick(this);
         }
-        this._dispatchInspectEvents();
+        this.sessionViews.dispatchInspectEvents();
         // Last thing in the tick: every client learns the clock it just reached, so nothing on the
         // client has to time ticks for itself.
         this.bus.publishToAll(new TickEndEvent(this.simEngine.clock));
-    }
-
-    /**
-     * Publishes this tick's snapshot of every inspected object to its topic (fanning to all sessions
-     * inspecting it), closing menus for any object that has since been removed.
-     * @private
-     */
-    _dispatchInspectEvents() {
-        for (const objectId of this.bus.subscribedObjects()) {
-            const snapshot = this.simEngine.inspectSnapshot(objectId);
-            if (snapshot === null) {
-                this._closeInspect(objectId);
-                continue;
-            }
-            this.bus.publish(snapshot);
-        }
     }
 }
