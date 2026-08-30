@@ -15,11 +15,11 @@ export class HousingBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, placed, eid, type, message) {
-        engine.workers.markDirty(engine.footprint(type, message.x, message.y, message.direction));
+        engine.workers.roads.markDirty(engine.footprint(type, message.x, message.y, message.direction));
     }
 
     onDespawn(engine, placed, eid) {
         const position = engine.Position;
-        engine.workers.markDirty(engine.footprint(this.type, position.x[eid], position.y[eid], position.direction[eid]));
+        engine.workers.roads.markDirty(engine.footprint(this.type, position.x[eid], position.y[eid], position.direction[eid]));
     }
 }

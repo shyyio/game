@@ -8,14 +8,14 @@ export class RoadBehavior extends AbstractBehavior {
     onSpawn(engine, placed, eid, type, message) {
         const objectId = placed.objectIdOf(eid);
         for (const cell of engine.footprint(type, message.x, message.y, message.direction)) {
-            engine.workers.addRoad(cell.x, cell.y, objectId);
+            engine.workers.roads.addRoad(cell.x, cell.y, objectId);
         }
     }
 
     onDespawn(engine, placed, eid) {
         const position = engine.Position;
         for (const cell of engine.footprint(this.type, position.x[eid], position.y[eid], position.direction[eid])) {
-            engine.workers.removeRoad(cell.x, cell.y);
+            engine.workers.roads.removeRoad(cell.x, cell.y);
         }
     }
 }
