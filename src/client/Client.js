@@ -1,4 +1,3 @@
-import Mouse from "@/client/input/Mouse.js";
 import {TextureRegistry} from "@/client/layers/TextureRegistry.js";
 import {SpriteOverrideStore} from "@/client/spriteEditor/SpriteOverrideStore.js";
 import {DrawLayerRegistry} from "@/client/layers/DrawLayerRegistry.js";
@@ -44,6 +43,7 @@ import {ChunkClaimsDrawLayer} from "@/client/layers/ChunkClaimsDrawLayer.js";
 import {ChunkSubscription} from "@/client/ChunkSubscription.js";
 import {EventQueue} from "@/client/EventQueue.js";
 import {Camera} from "@/client/Camera.js";
+import {CenterLock} from "@/client/CenterLock.js";
 import {ClientCache} from "@/client/state/ClientCache.js";
 import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/state/ChunkClaimsState.js";
 import {PLAYERS_SCHEMA, PlayersWriter, PlayersView} from "@/client/state/PlayersState.js";
@@ -108,7 +108,6 @@ import {ClaimFrontierDrawLayer} from "@/client/layers/ClaimFrontierDrawLayer.js"
 import {ClaimSelectionMode} from "@/client/input/ClaimSelectionMode.js";
 import {SettleFlow} from "@/client/input/SettleFlow.js";
 import {ChunkCursor} from "@/client/input/ChunkCursor.js";
-import {CenterMarkerLayer} from "@/client/layers/CenterMarkerLayer.js";
 import {MapButtonsLayer} from "@/client/hud/MapButtonsLayer.js";
 import {drawClaimIcon, drawHomeIcon} from "@/client/hud/icons.js";
 import {advanceAnimationFrame} from "@/client/layers/animation.js";
@@ -149,6 +148,7 @@ export class Client {
         this.subscription = new ChunkSubscription(this.viewport, this.cache, this.session, this.statusLayer);
         this.events = new EventQueue(this);
         this.camera = new Camera(this);
+        this.centerLock = new CenterLock(this);
         this._buildTopBarHud();
         this._buildOverlayHud();
         this._buildChunkLayers();
@@ -363,8 +363,6 @@ export class Client {
         this.popoverHost = new PopoverHost(this.app);
         // The single host every panel layer mounts into, which raises the pressed one.
         this.panelHost = new PanelHost();
-        // Center-lock aim point for claim selection (mobile).
-        this.centerMarkerLayer = new CenterMarkerLayer(this.app, this.viewport);
         // Contextual map-mode buttons (bottom-right): chunk administration entry and home.
         this.mapButtonsLayer = new MapButtonsLayer(this.app);
         this.mapButtonsLayer.addButton("claimSelection", drawClaimIcon, () => this.claimSelection.toggle());
@@ -495,7 +493,6 @@ export class Client {
         this._viewMode = ViewMode.WORLD;
         this._onViewModeChange = null;
         this._lastFriendsPanelRefreshMs = 0;
-        this._centerLock = false;
         this._debugMode = false;
     }
 
@@ -692,7 +689,7 @@ export class Client {
         this.productionPanelLayer.anchorButton = this.productionButtonLayer;
         this.productionPanelLayer.viewport = this.viewport;
         this.app.stage.addChild(this.versionWatermarkLayer);
-        this.app.stage.addChild(this.centerMarkerLayer);
+        this.app.stage.addChild(this.centerLock.markerLayer);
         this.app.stage.addChild(this.mapButtonsLayer);
         this.app.stage.addChild(this.rotateButtonsLayer);
         this.app.stage.addChild(this.toolbarLayer);
@@ -820,28 +817,6 @@ export class Client {
     }
 
     /**
-     * @returns {boolean} whether center-lock (mobile mode) is active
-     */
-    get centerLock() {
-        return this._centerLock;
-    }
-
-    /**
-     * Toggles center-lock (mobile mode): pins hover/placement and the preview to the screen center.
-     * @param {boolean} enabled
-     */
-    setCenterLock(enabled) {
-        if (enabled === this._centerLock) {
-            return;
-        }
-        this._centerLock = enabled;
-        // Draw layers before the input layer, so a hover Mouse emits renders with center-lock on.
-        this.drawLayerRegistry.setCenterLock(enabled);
-        Mouse.setCenterLock(enabled);
-        this.refreshCenterMarker();
-    }
-
-    /**
      * The chunk-picking mode holding the map: the settle flow until the player owns a chunk,
      * chunk administration after (itself inert while off).
      * @returns {SettleFlow|ClaimSelectionMode}
@@ -851,37 +826,6 @@ export class Client {
             return this.settleFlow;
         }
         return this.claimSelection;
-    }
-
-    /**
-     * The center aim dot follows whichever chunk-picking mode is on, center-lock only.
-     * @returns {void}
-     */
-    refreshCenterMarker() {
-        const picking = this.chunkMode.active;
-        this.centerMarkerLayer.setActive(this._centerLock && picking && this._viewMode !== ViewMode.WORLD);
-    }
-
-    /**
-     * Eases the center-lock viewport `tiles` tiles from (tileX, tileY) along `direction` so
-     * consecutive taps lay a line; a no-op off center-lock.
-     * @param {number} tileX
-     * @param {number} tileY
-     * @param {Direction} direction
-     * @param {number} [tiles] - how many tiles to advance (default 1)
-     * @returns {void}
-     */
-    advanceCenterLock(tileX, tileY, direction, tiles = 1) {
-        if (!this._centerLock) {
-            return;
-        }
-        // Absolute next-tile center so rapid taps don't drift.
-        const targetTileX = tileX + Direction.dx(direction) * tiles;
-        const targetTileY = tileY + Direction.dy(direction) * tiles;
-        this.viewport.glideTo({
-            x: targetTileX * TILE_SIZE + TILE_SIZE / 2,
-            y: targetTileY * TILE_SIZE + TILE_SIZE / 2,
-        });
     }
 
     /**

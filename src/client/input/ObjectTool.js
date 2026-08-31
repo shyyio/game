@@ -65,9 +65,9 @@ export class ObjectTool extends AbstractTool {
         if (!this._placeAt(base.x, base.y, direction)) {
             return;
         }
-        if (this._client.centerLock && this._advanceOnPlace) {
+        if (this._client.centerLock.enabled && this._advanceOnPlace) {
             // Advances the center-lock crosshair one tile so consecutive taps lay a line.
-            this._client.advanceCenterLock(tileX, tileY, direction);
+            this._client.centerLock.advance(tileX, tileY, direction);
         }
     }
 

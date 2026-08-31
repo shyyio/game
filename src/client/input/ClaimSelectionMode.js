@@ -112,7 +112,7 @@ export class ClaimSelectionMode {
      * @returns {void}
      */
     updateIndicators() {
-        this._client.refreshCenterMarker();
+        this._client.centerLock.refreshMarker();
         this._client.claimFrontierLayer.setModeActive(this.active);
         // Entry buttons only show outside the mode; inside, the bars own entry and exit.
         const showButtons = this._hasClaims() && !this.active;

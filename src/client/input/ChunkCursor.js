@@ -38,7 +38,7 @@ export class ChunkCursor {
             return;
         }
         const chunk = this.chunkAt(tileX, tileY);
-        if (this._client.centerLock) {
+        if (this._client.centerLock.enabled) {
             this.select(chunk);
         } else {
             this._client.chunkSelectionLayer.setHoverChunk(chunk);

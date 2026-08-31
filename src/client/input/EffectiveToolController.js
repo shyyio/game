@@ -74,7 +74,7 @@ export class EffectiveToolController {
         this.client.topStatusBar.setSection(SECTION_ID, this._statusBarSection(tool));
         const mobile = Mobile.enabled;
         // Map mode locks the "cursor" to the screen center too.
-        this.client.setCenterLock(mobile && (this.mapMode || (tool != null && tool.usesCenterLock)));
+        this.client.centerLock.setEnabled(mobile && (this.mapMode || (tool != null && tool.usesCenterLock)));
         if (mobile) {
             return;
         }

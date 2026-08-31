@@ -201,10 +201,10 @@ export class UndergroundBeltTool extends AbstractTool {
         const completesTunnel = placement.type === BELT_TUNNEL_UP && placement.parentId !== null;
         const loneEntrance = placement.type === BELT_TUNNEL_DOWN && placement.parentId === null;
         if (loneEntrance) {
-            this._client.advanceCenterLock(tileX, tileY, placement.direction, 2);
+            this._client.centerLock.advance(tileX, tileY, placement.direction, 2);
         }
         else if (completesTunnel) {
-            this._client.advanceCenterLock(tileX, tileY, placement.direction);
+            this._client.centerLock.advance(tileX, tileY, placement.direction);
         }
         this.onTileEnter(tileX, tileY);
     }
