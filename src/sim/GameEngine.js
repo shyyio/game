@@ -1,5 +1,6 @@
 import {World} from "@/sim/World.js";
-import {rotate, chunkId} from "@/common/util.js";
+import {chunkId} from "@/common/util.js";
+import {portAt} from "@/common/portGeometry.js";
 import {PLAYER_ID_NONE} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PlacedObjects} from "@/sim/PlacedObjects.js";
@@ -670,9 +671,9 @@ export class GameEngine {
      * @returns {{port:number, tile:{x:number, y:number}}}
      */
     portFor(portVec, x, y, direction) {
-        const r = rotate(portVec, direction);
-        const tile = {x: x + r.x, y: y + r.y};
-        return {port: this.ports.at(tile.x, tile.y, r.direction), tile};
+        const placed = portAt(portVec, x, y, direction);
+        const tile = {x: placed.x, y: placed.y};
+        return {port: this.ports.at(placed.x, placed.y, placed.direction), tile};
     }
 
     /**
