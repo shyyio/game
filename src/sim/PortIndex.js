@@ -1,4 +1,4 @@
-import {tileId, tileVariantId} from "@/common/util.js";
+import {edgeKey} from "@/common/portGeometry.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 
 /**
@@ -182,7 +182,7 @@ export class PortIndex {
      * @returns {number} the port eid
      */
     at(x, y, direction) {
-        const key = tileVariantId(tileId(x, y), direction);
+        const key = edgeKey(x, y, direction);
         let eid = this._byEdge.get(key);
         if (eid === undefined) {
             eid = this.create();
@@ -202,7 +202,7 @@ export class PortIndex {
      * @returns {number|null} the port eid
      */
     peekAt(x, y, direction) {
-        const eid = this._byEdge.get(tileVariantId(tileId(x, y), direction));
+        const eid = this._byEdge.get(edgeKey(x, y, direction));
         if (eid === undefined) {
             return null;
         }
@@ -347,6 +347,6 @@ export class PortIndex {
      */
     _edgeKey(eid) {
         const position = this.engine.space.Position;
-        return tileVariantId(tileId(position.x[eid], position.y[eid]), position.direction[eid]);
+        return edgeKey(position.x[eid], position.y[eid], position.direction[eid]);
     }
 }

@@ -1,6 +1,7 @@
 import {ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
-import {TILE_VARIANT_LIMIT, chunkId, rotate, tileId, tileVariantId} from "@/common/util.js";
+import {TILE_VARIANT_LIMIT, chunkId, tileId, tileVariantId} from "@/common/util.js";
+import {portAt, edgeKey} from "@/common/portGeometry.js";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {DEV} from "@/common/env.js";
 import {AbstractCacheWriter, AbstractCacheView, schemaMap} from "@/client/state/ClientCache.js";
@@ -595,7 +596,7 @@ export class ObjectsView extends AbstractCacheView {
 
     /**
      * The entry with an input port at (tileX, tileY) facing `direction`, or null. The consumer
-     * sits on its own input cell. Mirrors the server's input-port lookup.
+     * sits on its own input cell.
      * @param {number} tileX
      * @param {number} tileY
      * @param {Direction} direction
@@ -611,7 +612,7 @@ export class ObjectsView extends AbstractCacheView {
 
     /**
      * The entry with an output port reaching (tileX, tileY) facing `direction`, or null. The feeder
-     * sits one tile back (its output reaches forward). Mirrors the server's GetOutPort{direction}.
+     * sits one tile back (its output reaches forward).
      * @param {number} tileX
      * @param {number} tileY
      * @param {Direction} direction
@@ -639,16 +640,14 @@ export class ObjectsView extends AbstractCacheView {
      * @private
      */
     _portMatch(entry, portKind, portX, portY, facing) {
-        const port = entry.data.type.surfacePorts(portKind).find(candidate => {
-            const rotated = rotate(candidate, entry.data.direction);
-            return entry.tileX + rotated.x === portX
-                && entry.tileY + rotated.y === portY
-                && rotated.direction === facing;
-        });
-        if (port === undefined) {
-            return null;
+        const target = edgeKey(portX, portY, facing);
+        for (const candidate of entry.data.type.surfacePorts(portKind)) {
+            const placed = portAt(candidate, entry.tileX, entry.tileY, entry.data.direction);
+            if (edgeKey(placed.x, placed.y, placed.direction) === target) {
+                return {entry, portName: candidate.name};
+            }
         }
-        return {entry, portName: port.name};
+        return null;
     }
 
     /**
@@ -665,36 +664,34 @@ export class ObjectsView extends AbstractCacheView {
         const connections = [];
 
         for (const port of type.surfacePorts("outputPorts")) {
-            const rotated = rotate(port, direction);
-            const portX = record.tileX + rotated.x;
-            const portY = record.tileY + rotated.y;
-            const consumer = this.inPortAt(portX, portY, rotated.direction);
+            const placed = portAt(port, record.tileX, record.tileY, direction);
+            const consumer = this.inPortAt(placed.x, placed.y, placed.direction);
             if (consumer !== null) {
+                // An out-port's stub sits on the emitting tile; the cell it reaches is the neighbor's.
                 connections.push({
                     key: port.name,
                     isOutput: true,
-                    tileX: portX - Direction.dx(rotated.direction),
-                    tileY: portY - Direction.dy(rotated.direction),
-                    neighborX: portX,
-                    neighborY: portY,
+                    tileX: placed.x - Direction.dx(placed.direction),
+                    tileY: placed.y - Direction.dy(placed.direction),
+                    neighborX: placed.x,
+                    neighborY: placed.y,
                     neighbor: consumer.entry,
                 });
             }
         }
 
         for (const port of type.surfacePorts("inputPorts")) {
-            const rotated = rotate(port, direction);
-            const portX = record.tileX + rotated.x;
-            const portY = record.tileY + rotated.y;
-            const feeder = this.outPortAt(portX, portY, rotated.direction);
+            const placed = portAt(port, record.tileX, record.tileY, direction);
+            const feeder = this.outPortAt(placed.x, placed.y, placed.direction);
             if (feeder !== null) {
+                // An in-port's stub sits on its own cell; the feeder is the tile behind it.
                 connections.push({
                     key: port.name,
                     isOutput: false,
-                    tileX: portX,
-                    tileY: portY,
-                    neighborX: portX - Direction.dx(rotated.direction),
-                    neighborY: portY - Direction.dy(rotated.direction),
+                    tileX: placed.x,
+                    tileY: placed.y,
+                    neighborX: placed.x - Direction.dx(placed.direction),
+                    neighborY: placed.y - Direction.dy(placed.direction),
                     neighbor: feeder.entry,
                 });
             }
