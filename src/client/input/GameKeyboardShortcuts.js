@@ -1,6 +1,5 @@
 import Keyboard from "@/client/input/Keyboard.js";
 import {CONFIRM_HOTKEY, EXIT_HOTKEY} from "@/client/constants.js";
-import {Belts} from "@/mods/Logistics/sim/Belts.js";
 import {DEV} from "@/common/env.js";
 
 /**
@@ -39,12 +38,6 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
 
     // The local sim also auto-ticks (GameBootstrap.js); "t" forces an extra tick for debugging.
     if (game !== null) {
-        // Debug keybindings (moved off the number keys, which now select tools).
-        // Insert an item of value 1 onto the lowest-id belt path via its in-port.
-        on("b", () => {
-            game.simEngine.resolve(Belts).debugInsertItem();
-        });
-
         on("t", () => {
             game.runTick();
         });

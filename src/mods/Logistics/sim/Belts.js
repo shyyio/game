@@ -1687,15 +1687,4 @@ export class Belts {
             this._trackPath(path);
         }
     }
-
-
-    /**
-     * Debug helper: drops an item onto the first belt path's in-port.
-     * @returns {void}
-     */
-    debugInsertItem() {
-        if (this.paths.length > 0) {
-            this.engine.ports.setItem(this.paths[0].inPort, 1);
-        }
-    }
 }
