@@ -2,7 +2,7 @@ import {parseArgs} from "node:util";
 import {NodeErrorReportStore} from "@/reportingserver/NodeErrorReportStore.js";
 import {Symbolicator} from "@/reportingserver/Symbolicator.js";
 import {ReportingHttpServer} from "@/reportingserver/ReportingHttpServer.js";
-import {bindShutdownSignals} from "@/server/cliShutdown.js";
+import {bindShutdownSignals} from "@/nodeservice/cliShutdown.js";
 
 const {values: args} = parseArgs({
     options: {

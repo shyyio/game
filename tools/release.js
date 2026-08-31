@@ -34,9 +34,9 @@ const PACKAGES = [
 
 // Each pack script re-checks its own staged output; the game repo's tests cover the rest.
 const CHECKS = [
-    ["--import", "./src/server/loader.js", "tools/pack-builder.js", "--check"],
-    ["--import", "./src/server/loader.js", "tools/pack-sdk.js", "--check"],
-    ["--import", "./src/server/loader.js", "tools/pack-game-server.js", "--check"],
+    ["--import", "./src/nodeservice/loader.js", "tools/pack-builder.js", "--check"],
+    ["--import", "./src/nodeservice/loader.js", "tools/pack-sdk.js", "--check"],
+    ["--import", "./src/nodeservice/loader.js", "tools/pack-game-server.js", "--check"],
     ["tools/pack-game-client.js", "--check"],
 ];
 

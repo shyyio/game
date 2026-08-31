@@ -1,7 +1,7 @@
 // Stages packages/game-server/ from this repo: the server bundle, the base-mod packages a dev
 // server needs for real content, and the test harness a mod's specs run against.
 //
-//   node --import ./src/server/loader.js tools/pack-game-server.js [--check]
+//   node --import ./src/nodeservice/loader.js tools/pack-game-server.js [--check]
 //
 // --check only verifies that what is staged was built from this commit, so a stale bundle fails CI.
 

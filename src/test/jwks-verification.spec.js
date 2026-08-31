@@ -1,3 +1,6 @@
+// Cross-service: boots a real auth server and verifies the game server's JwksVerifier against its
+// JWKS, so it sits here rather than beside either service.
+
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {randomBytes} from "node:crypto";

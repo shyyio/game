@@ -6,7 +6,7 @@ import {loadOrCreateAuthSecret} from "@/authserver/AuthSecret.js";
 import {JoinTokenService} from "@/authserver/JoinTokenService.js";
 import {AuthHttpServer} from "@/authserver/AuthHttpServer.js";
 import {ServerDirectory} from "@/authserver/ServerDirectory.js";
-import {bindShutdownSignals} from "@/server/cliShutdown.js";
+import {bindShutdownSignals} from "@/nodeservice/cliShutdown.js";
 
 const {values: args} = parseArgs({
     options: {

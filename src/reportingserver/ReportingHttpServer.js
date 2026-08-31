@@ -2,7 +2,7 @@ import {createHash} from "node:crypto";
 import {formatUptime} from "@/common/util.js";
 import {GAME_VERSION} from "@/common/constants.js";
 import {BUILD_COMMIT, BUILD_DATE} from "@/common/env.js";
-import {AbstractHttpServer} from "@/server/AbstractHttpServer.js";
+import {AbstractHttpServer} from "@/nodeservice/AbstractHttpServer.js";
 
 const MESSAGE_MAX_BYTES = 1024;
 const STACK_MAX_BYTES = 8192;

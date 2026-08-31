@@ -12,7 +12,7 @@ import {readLockfile} from "@/server/modLockfileFile.js";
 import {ModCache} from "@/server/ModCache.js";
 import {ModHost} from "@/server/ModHost.js";
 import {loadPackagedMods} from "@/server/ModLoader.js";
-import {bindShutdownSignals} from "@/server/cliShutdown.js";
+import {bindShutdownSignals} from "@/nodeservice/cliShutdown.js";
 import {installCrashReporter, reportError, reportFatal} from "@/server/crashReporter.js";
 import {DEFAULT_TICK_MS} from "@/common/constants.js";
 import {randomWorldSeed} from "@/common/WorldNoise.js";
