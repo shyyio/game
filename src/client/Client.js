@@ -44,6 +44,7 @@ import {ChunkSubscription} from "@/client/ChunkSubscription.js";
 import {EventQueue} from "@/client/EventQueue.js";
 import {Camera} from "@/client/Camera.js";
 import {CenterLock} from "@/client/CenterLock.js";
+import {ViewModeController} from "@/client/ViewModeController.js";
 import {ClientCache} from "@/client/state/ClientCache.js";
 import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/state/ChunkClaimsState.js";
 import {PLAYERS_SCHEMA, PlayersWriter, PlayersView} from "@/client/state/PlayersState.js";
@@ -56,10 +57,7 @@ import {MetricsSubscribeMessage, MetricsUnsubscribeMessage} from "@/common/Metri
 import {OBJECTS_SCHEMA, ObjectsWriter} from "@/client/state/ObjectsState.js";
 import {INSPECT_SCHEMA, InspectWriter, InspectView} from "@/client/state/InspectState.js";
 import {
-    TILE_SIZE,
     ViewMode,
-    MAP_MODE_SCALE_THRESHOLD,
-    OVERWORLD_SCALE_THRESHOLD,
     FRIENDS_PANEL_REFRESH_THROTTLE_MS,
     FPS_CAP_NAMES,
     FPS_CAP_VALUES,
@@ -149,6 +147,7 @@ export class Client {
         this.events = new EventQueue(this);
         this.camera = new Camera(this);
         this.centerLock = new CenterLock(this);
+        this.viewMode = new ViewModeController(this);
         this._buildTopBarHud();
         this._buildOverlayHud();
         this._buildChunkLayers();
@@ -490,8 +489,6 @@ export class Client {
      * @returns {void}
      */
     _initStreamingState() {
-        this._viewMode = ViewMode.WORLD;
-        this._onViewModeChange = null;
         this._lastFriendsPanelRefreshMs = 0;
         this._debugMode = false;
     }
@@ -524,7 +521,7 @@ export class Client {
      */
     refreshToolbarVisibility() {
         const hasClaims = this.cache.view("chunkClaims").hasOwnClaims();
-        this.toolbarLayer.visible = hasClaims && this._viewMode === ViewMode.WORLD;
+        this.toolbarLayer.visible = hasClaims && this.viewMode.current === ViewMode.WORLD;
     }
 
     /**
@@ -568,13 +565,6 @@ export class Client {
         this.statusLayer.reset();
         this.subscription.resync();
         this.notify("Reconnected");
-    }
-
-    /**
-     * @returns {ViewMode}
-     */
-    get viewMode() {
-        return this._viewMode;
     }
 
     /**
@@ -637,14 +627,6 @@ export class Client {
         this._debugMode = !this._debugMode;
         this.drawLayerRegistry.setDebugMode(this._debugMode);
         this.events.setLogging(this._debugMode);
-    }
-
-    /**
-     * Registers the handler invoked when the zoom-driven view mode changes.
-     * @param {function(mode: ViewMode)} callback
-     */
-    onViewModeChange(callback) {
-        this._onViewModeChange = callback;
     }
 
     /**
@@ -728,7 +710,7 @@ export class Client {
         // that aren't really on screen. The chunk update rides "moved", which fires after the
         // clamp with the settled scale, so only the view mode (thresholds well inside the zoom
         // limits, never mid-clamp) keys off "zoomed".
-        this.viewport.on("zoomed", () => this._updateViewMode());
+        this.viewport.on("zoomed", () => this.viewMode.update());
         // Scale-only glides emit "zoomed" but never "moved"; the settled zoom (post-clamp)
         // catches the data feed up here.
         this.viewport.on("zoomed-end", () => this.viewportMoved());
@@ -738,7 +720,7 @@ export class Client {
         this.viewport.on("drag-end", () => this.rotateButtonsLayer.setInteractive(true));
         this.app.ticker.add(() => this._tickAnimations());
         this.subscription.viewportMoved();
-        this._updateViewMode();
+        this.viewMode.update();
         for (const mod of this.modRegistry.clientMods) {
             mod.onReady(this);
         }
@@ -774,45 +756,6 @@ export class Client {
         if (now - this._lastFriendsPanelRefreshMs >= FRIENDS_PANEL_REFRESH_THROTTLE_MS) {
             this._lastFriendsPanelRefreshMs = now;
             this.friendsPanelLayer.refresh();
-        }
-    }
-
-    /**
-     * Switches the view mode when the viewport scale crosses {@link MAP_MODE_SCALE_THRESHOLD}
-     * or {@link OVERWORLD_SCALE_THRESHOLD}, transitioning the data feeds with it.
-     * @private
-     */
-    _updateViewMode() {
-        const scale = this.viewport.scale.x;
-        let mode;
-        if (scale < OVERWORLD_SCALE_THRESHOLD) {
-            mode = ViewMode.OVERWORLD;
-        } else if (scale < MAP_MODE_SCALE_THRESHOLD) {
-            mode = ViewMode.MAP;
-        } else {
-            mode = ViewMode.WORLD;
-        }
-        if (mode === this._viewMode) {
-            return;
-        }
-        const previous = this._viewMode;
-        this._viewMode = mode;
-        this.drawLayerRegistry.setViewMode(mode);
-        this.mapButtonsLayer.setViewMode(mode);
-        this.friendsPanelLayer.setViewMode(mode);
-        this.refreshToolbarVisibility();
-        for (const mod of this.modRegistry.clientMods) {
-            mod.setViewMode(mode, this);
-        }
-        if (this._onViewModeChange != null) {
-            this._onViewModeChange(mode);
-        }
-        this.claimSelection.onViewMode(previous);
-        this.settleFlow.onViewMode(previous);
-        if (mode === ViewMode.OVERWORLD) {
-            this.subscription.enterOverworld();
-        } else if (previous === ViewMode.OVERWORLD) {
-            this.subscription.leaveOverworld();
         }
     }
 

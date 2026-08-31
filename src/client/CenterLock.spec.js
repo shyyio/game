@@ -47,7 +47,7 @@ class FakeClient {
             ticker: {add: () => {}},
             canvas: {addEventListener: () => {}},
         };
-        this.viewMode = ViewMode.MAP;
+        this.viewMode = {current: ViewMode.MAP};
         this.chunkMode = {active: true};
         this.layerCenterLock = null;
         this.drawLayerRegistry = {setCenterLock: enabled => {
@@ -93,11 +93,11 @@ test("the marker shows only while locked, picking chunks, and out of world view"
     centerLock.setEnabled(true);
     assert.equal(centerLock.markerLayer.visible, true);
 
-    client.viewMode = ViewMode.WORLD;
+    client.viewMode.current = ViewMode.WORLD;
     centerLock.refreshMarker();
     assert.equal(centerLock.markerLayer.visible, false, "world view aims with the cursor");
 
-    client.viewMode = ViewMode.MAP;
+    client.viewMode.current = ViewMode.MAP;
     client.chunkMode.active = false;
     centerLock.refreshMarker();
     assert.equal(centerLock.markerLayer.visible, false, "nothing is being picked");

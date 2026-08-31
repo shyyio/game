@@ -41,10 +41,10 @@ export class EffectiveToolController {
      */
     init() {
         this.toolbar.onChange(() => this._onToolbarChange());
-        this.client.onViewModeChange((mode) => this._onViewMode(mode));
+        this.client.viewMode.onChange((mode) => this._onViewMode(mode));
         // The connect-time zoom (map mode with no claims, home with them) can settle the view mode
         // before this controller exists, so its change never reaches here; adopt the current one.
-        this._onViewMode(this.client.viewMode);
+        this._onViewMode(this.client.viewMode.current);
     }
 
     /**

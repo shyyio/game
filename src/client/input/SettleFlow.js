@@ -67,7 +67,7 @@ export class SettleFlow {
         if (!this._active) {
             return;
         }
-        if (this._client.viewMode === ViewMode.WORLD) {
+        if (this._client.viewMode.current === ViewMode.WORLD) {
             this._cursor.clear();
         } else if (previous === ViewMode.WORLD) {
             this._cursor.selectCenterChunk();
@@ -116,7 +116,7 @@ export class SettleFlow {
         }
         this._active = active;
         if (active) {
-            if (this._client.viewMode !== ViewMode.WORLD) {
+            if (this._client.viewMode.current !== ViewMode.WORLD) {
                 this._cursor.selectCenterChunk();
             }
         } else {
@@ -147,7 +147,7 @@ export class SettleFlow {
         if (!this._active) {
             return null;
         }
-        if (this._client.viewMode === ViewMode.WORLD) {
+        if (this._client.viewMode.current === ViewMode.WORLD) {
             return new StatusBarSection(WORLD_PROMPT);
         }
         return new StatusBarSection(MAP_PROMPT);

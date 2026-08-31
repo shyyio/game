@@ -48,7 +48,7 @@ export class CenterLock {
      */
     refreshMarker() {
         const picking = this._client.chunkMode.active;
-        this.markerLayer.setActive(this._enabled && picking && this._client.viewMode !== ViewMode.WORLD);
+        this.markerLayer.setActive(this._enabled && picking && this._client.viewMode.current !== ViewMode.WORLD);
     }
 
     /**

@@ -97,7 +97,7 @@ export class ClaimSelectionMode {
      * @returns {void}
      */
     onViewMode(previous) {
-        if (this._client.viewMode === ViewMode.WORLD) {
+        if (this._client.viewMode.current === ViewMode.WORLD) {
             this.set(false);
             return;
         }
@@ -203,7 +203,7 @@ export class ClaimSelectionMode {
         };
         this._entering = true;
         const center = this._client.camera.ownClaimsCenter();
-        if (this._client.viewMode === ViewMode.WORLD) {
+        if (this._client.viewMode.current === ViewMode.WORLD) {
             this._client.viewport.glideTo({x: center.x, y: center.y, scale: CHUNK_PICK_ZOOM_SCALE}, done);
             return;
         }
