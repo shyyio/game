@@ -27,13 +27,13 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
     });
     // Confirm fires the bottom action bar's forward action (a no-op while the bar is hidden).
     on(CONFIRM_HOTKEY, () => {
-        client.bottomActionBar.pressConfirm();
+        client.hud.bottomActionBar.pressConfirm();
     });
     on("h", () => {
         client.camera.glideHome();
     });
     on("p", () => {
-        client.productionPanelLayer.toggle();
+        client.hud.productionPanelLayer.toggle();
     });
 
     // The local sim also auto-ticks (GameBootstrap.js); "t" forces an extra tick for debugging.

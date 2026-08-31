@@ -119,7 +119,7 @@ export class NoteTool extends AbstractTool {
             return;
         }
         if (!this._client.canBuildAt(tileX, tileY)) {
-            this._client.notify("You cannot leave a note here");
+            this._client.hud.notify("You cannot leave a note here");
             return;
         }
         const aim = Mouse.aimPoint();
@@ -150,7 +150,7 @@ export class NoteTool extends AbstractTool {
         let mode = NOTE_EDITOR_MODE_EDIT;
         if (note.authorId !== this._claims.ownPlayerId) {
             if (!this._client.canBuildAt(note.tileX, note.tileY)) {
-                this._client.notify("That note belongs to someone else");
+                this._client.hud.notify("That note belongs to someone else");
                 return;
             }
             mode = NOTE_EDITOR_MODE_DELETE;

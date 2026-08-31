@@ -52,9 +52,9 @@ export class ViewModeController {
         const previous = this._current;
         this._current = mode;
         this._client.drawLayerRegistry.setViewMode(mode);
-        this._client.mapButtonsLayer.setViewMode(mode);
-        this._client.friendsPanelLayer.setViewMode(mode);
-        this._client.refreshToolbarVisibility();
+        this._client.hud.mapButtonsLayer.setViewMode(mode);
+        this._client.hud.friendsPanelLayer.setViewMode(mode);
+        this._client.hud.refreshToolbarVisibility();
         for (const mod of this._client.modRegistry.clientMods) {
             mod.setViewMode(mode, this._client);
         }

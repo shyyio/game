@@ -74,7 +74,7 @@ export class ClaimSelectionMode {
      */
     onEvent(event) {
         if (event instanceof FriendListEvent) {
-            this._client.chunkActionsLayer.refresh();
+            this._client.hud.chunkActionsLayer.refresh();
             this.updateIndicators();
             return;
         }
@@ -84,8 +84,8 @@ export class ClaimSelectionMode {
         if (!this._hasClaims()) {
             this.set(false);
         }
-        this._client.refreshToolbarVisibility();
-        this._client.chunkActionsLayer.refresh();
+        this._client.hud.refreshToolbarVisibility();
+        this._client.hud.chunkActionsLayer.refresh();
         this._client.chunkSelectionLayer.refresh();
         this.updateIndicators();
     }
@@ -116,10 +116,10 @@ export class ClaimSelectionMode {
         this._client.claimFrontierLayer.setModeActive(this.active);
         // Entry buttons only show outside the mode; inside, the bars own entry and exit.
         const showButtons = this._hasClaims() && !this.active;
-        this._client.mapButtonsLayer.setButtonVisible(MODE_ID, showButtons);
-        this._client.mapButtonsLayer.setButtonVisible("home", showButtons);
-        this._client.topStatusBar.setSection(MODE_ID, this._statusBarSection());
-        this._client.bottomActionBar.set(this._bottomBarAction());
+        this._client.hud.mapButtonsLayer.setButtonVisible(MODE_ID, showButtons);
+        this._client.hud.mapButtonsLayer.setButtonVisible("home", showButtons);
+        this._client.hud.topStatusBar.setSection(MODE_ID, this._statusBarSection());
+        this._client.hud.bottomActionBar.set(this._bottomBarAction());
     }
 
     /**
@@ -146,7 +146,7 @@ export class ClaimSelectionMode {
         if (!this.active) {
             return null;
         }
-        let text = this._client.chunkActionsLayer.statusText;
+        let text = this._client.hud.chunkActionsLayer.statusText;
         if (text === null) {
             text = "Select a chunk";
         }

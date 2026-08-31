@@ -70,8 +70,8 @@ export class EffectiveToolController {
         this.inputHandler.clearToolPreview();
         this.inputHandler.clearInspect();
         this.inputHandler.refreshHover();
-        this.client.rotateButtonsLayer.setVisible(tool != null && tool.orientable);
-        this.client.topStatusBar.setSection(SECTION_ID, this._statusBarSection(tool));
+        this.client.hud.rotateButtonsLayer.setVisible(tool != null && tool.orientable);
+        this.client.hud.topStatusBar.setSection(SECTION_ID, this._statusBarSection(tool));
         const mobile = Mobile.enabled;
         // Map mode locks the "cursor" to the screen center too.
         this.client.centerLock.setEnabled(mobile && (this.mapMode || (tool != null && tool.usesCenterLock)));

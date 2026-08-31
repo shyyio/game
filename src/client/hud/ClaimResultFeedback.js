@@ -32,7 +32,7 @@ export class ClaimResultFeedback {
             return;
         }
         if (event.result === ClaimResult.CLAIM_RESULT_NOT_EMPTY) {
-            this.client.confirmDialogLayer.open({
+            this.client.hud.confirmDialogLayer.open({
                 title: "Unclaim chunk?",
                 message: "This chunk still contains buildings. Unclaiming will permanently delete everything in it.",
                 confirmLabel: "Delete and unclaim",
@@ -42,7 +42,7 @@ export class ClaimResultFeedback {
         }
         const notice = CLAIM_RESULT_NOTICES[event.result];
         if (notice !== undefined) {
-            this.client.notify(notice);
+            this.client.hud.notify(notice);
         }
     }
 }
