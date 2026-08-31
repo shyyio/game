@@ -37,7 +37,7 @@ const VERSIONED_PACKAGES = ["sdk", "game-server", "game-client"];
 const NOTHING_PUSHED = "Nothing has been pushed, so the live servers are untouched.";
 
 // The registry tool reaches src/mods/loadout.js, so it needs the @/ alias hook the npm scripts pass.
-const NODE_WITH_LOADER = ["--import", "./src/server/loader.js"];
+const NODE_WITH_LOADER = ["--import", "./src/nodeservice/loader.js"];
 
 const REGISTRY_HINT = [
     "Everything else is already live — this step only lists the release in the mod registry, and the",

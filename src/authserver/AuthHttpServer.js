@@ -1,7 +1,7 @@
 import {randomBytes} from "node:crypto";
 import {GAME_VERSION, ORIGIN_PATTERN, USERNAME_PATTERN} from "@/common/constants.js";
 import {formatUptime} from "@/common/util.js";
-import {AbstractHttpServer} from "@/server/AbstractHttpServer.js";
+import {AbstractHttpServer} from "@/nodeservice/AbstractHttpServer.js";
 
 const SESSION_TOKEN_BYTES = 32;
 const BEARER_PREFIX = "Bearer ";
