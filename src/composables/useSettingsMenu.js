@@ -55,7 +55,7 @@ export function useSettingsMenu() {
      * @returns {void}
      */
     function bindSettingsMenu(client) {
-        const categories = client.settingsCategories();
+        const categories = client.settingsMenu.categories();
         const controls = categories.flatMap(category => category.controls);
         const deviceToggles = controls.filter(control => control instanceof DeviceSettingToggle);
         const deviceChoices = controls.filter(control => control instanceof DeviceSettingChoice);

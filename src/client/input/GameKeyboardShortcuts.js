@@ -50,7 +50,7 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
 
     // Toggle debug mode
     on("d", () => {
-        client.toggleDebugMode();
+        client.settingsMenu.toggleDebugMode();
     });
 
     return () => {
