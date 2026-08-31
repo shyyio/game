@@ -194,7 +194,7 @@ export class EventQueue {
         }
         this._client.drawLayerRegistry.dispatchEvent(event);
         // The status HUD isn't a viewport draw layer, so feed it chunk events directly.
-        this._client.statusLayer.onEvent(event);
+        this._client.hud.statusLayer.onEvent(event);
         this._eventListeners.notify(event);
     }
 

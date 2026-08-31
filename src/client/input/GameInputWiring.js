@@ -7,7 +7,7 @@ import {InputHandler} from "@/client/input/InputHandler.js";
  * @returns {InputHandler}
  */
 export function createInputHandler(client) {
-    const inputHandler = new InputHandler(client.toolbarLayer);
+    const inputHandler = new InputHandler(client.hud.toolbarLayer);
     inputHandler.onObjectTap((tileX, tileY) => {
         client.handleObjectTap(tileX, tileY);
     });
@@ -25,7 +25,7 @@ export function createInputHandler(client) {
     });
     inputHandler.init();
 
-    client.rotateButtonsLayer.onRotate(() => inputHandler.rotateRight());
+    client.hud.rotateButtonsLayer.onRotate(() => inputHandler.rotateRight());
 
     return inputHandler;
 }

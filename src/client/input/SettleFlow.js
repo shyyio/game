@@ -81,7 +81,7 @@ export class SettleFlow {
      */
     updateIndicators() {
         this._client.centerLock.refreshMarker();
-        this._client.topStatusBar.setSection(FLOW_ID, this._statusBarSection());
+        this._client.hud.topStatusBar.setSection(FLOW_ID, this._statusBarSection());
     }
 
     /**

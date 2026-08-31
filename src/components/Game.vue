@@ -155,7 +155,7 @@ onMounted(async () => {
   }
   const {client, game, inputHandler, destroy: destroyClient} = bootstrap;
 
-  const toolController = new EffectiveToolController(client, viewport, client.toolbarLayer, inputHandler);
+  const toolController = new EffectiveToolController(client, viewport, client.hud.toolbarLayer, inputHandler);
   toolController.init();
 
   // Installs/tears down touch input and recomputes center-lock/pan-freeze when the
@@ -163,17 +163,17 @@ onMounted(async () => {
   const unsubMobile = Mobile.onChange(() => {
     syncMobileTouchInput();
     toolController.applyEffectiveTool();
-    client.versionWatermarkLayer.refresh();
+    client.hud.versionWatermarkLayer.refresh();
   });
 
   bindSettingsMenu(client);
-  client.settingsButtonLayer.onPress(() => settingsOpen.value = true);
-  client.artButtonLayer.onPress(toggleSpriteEditor);
-  client.terrainButtonLayer.onPress(() => terrainOpen.value = true);
+  client.hud.settingsButtonLayer.onPress(() => settingsOpen.value = true);
+  client.hud.artButtonLayer.onPress(toggleSpriteEditor);
+  client.hud.terrainButtonLayer.onPress(() => terrainOpen.value = true);
   terrainClient.value = client;
 
   editorClient = client;
-  const unbindKeyboard = bindGameKeyboardShortcuts(client, game, client.toolbarLayer);
+  const unbindKeyboard = bindGameKeyboardShortcuts(client, game, client.hud.toolbarLayer);
 
   teardown = () => {
     terrainOpen.value = false;

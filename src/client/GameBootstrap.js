@@ -228,7 +228,7 @@ export async function createClient(app, viewport, props) {
 
     const inputHandler = createInputHandler(client);
 
-    const renderToolbar = () => client.toolbarLayer.setTools(client.coreTools(), client.modTools());
+    const renderToolbar = () => client.hud.toolbarLayer.setTools(client.coreTools(), client.modTools());
     renderToolbar();
     // Re-renders the toolbar once the player's custom order syncs (or after a local reorder);
     // wired only after the toolbar's first render, so an in-flight sync racing client.init()

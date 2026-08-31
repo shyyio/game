@@ -54,7 +54,7 @@ export {HudLayer} from "@/client/hud/HudLayer.js";
 export {IconPicker, IconPickerEntry} from "@/client/hud/IconPicker.js";
 export {panelText, TextRole} from "@/client/hud/PanelText.js";
 
-// One counter's look in the core top-left counter list (client.counterListLayer).
+// One counter's look in the core top-left counter list (client.hud.counterListLayer).
 export {CounterEntry} from "@/client/hud/CounterListLayer.js";
 // Base for a tooltip box anchored beside a world point, with its shared metrics.
 export {

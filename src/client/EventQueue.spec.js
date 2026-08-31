@@ -61,7 +61,7 @@ class FakeClient {
         this.applied = [];
         this.cache = {onEvent: event => this.applied.push(["cache", event])};
         this.drawLayerRegistry = {dispatchEvent: event => this.applied.push(["layers", event])};
-        this.statusLayer = {onEvent: event => this.applied.push(["status", event])};
+        this.hud = {statusLayer: {onEvent: event => this.applied.push(["status", event])}};
         this.modRegistry = {
             clientMods: [{onEvent: (event, client) => this.applied.push(["mod", event, client])}],
         };

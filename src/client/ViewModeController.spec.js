@@ -19,8 +19,11 @@ class FakeClient {
         this.previous = [];
         this.subscribed = [];
         this.drawLayerRegistry = {setViewMode: mode => this.told.push(["layers", mode])};
-        this.mapButtonsLayer = {setViewMode: mode => this.told.push(["mapButtons", mode])};
-        this.friendsPanelLayer = {setViewMode: mode => this.told.push(["friends", mode])};
+        this.hud = {
+            mapButtonsLayer: {setViewMode: mode => this.told.push(["mapButtons", mode])},
+            friendsPanelLayer: {setViewMode: mode => this.told.push(["friends", mode])},
+            refreshToolbarVisibility: () => this.told.push(["toolbar", null]),
+        };
         this.modRegistry = {clientMods: [{setViewMode: mode => this.told.push(["mod", mode])}]};
         this.claimSelection = {onViewMode: previous => this.previous.push(["claimSelection", previous])};
         this.settleFlow = {onViewMode: previous => this.previous.push(["settleFlow", previous])};
@@ -28,10 +31,6 @@ class FakeClient {
             enterOverworld: () => this.subscribed.push("enter"),
             leaveOverworld: () => this.subscribed.push("leave"),
         };
-    }
-
-    refreshToolbarVisibility() {
-        this.told.push(["toolbar", null]);
     }
 }
 

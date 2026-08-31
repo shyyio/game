@@ -32,14 +32,14 @@ export class MarketClientMod extends AbstractClientMod {
                 return;
             }
             if (value === undefined) {
-                client.counterListLayer.removeCounter(BALANCE_COUNTER);
+                client.hud.counterListLayer.removeCounter(BALANCE_COUNTER);
                 return;
             }
-            client.counterListLayer.setCounter(BALANCE_COUNTER, BALANCE_ENTRY, value);
+            client.hud.counterListLayer.setCounter(BALANCE_COUNTER, BALANCE_ENTRY, value);
         });
         const balance = client.cache.view("playerSettings").get(MARKET_SETTING_BALANCE);
         if (balance !== undefined) {
-            client.counterListLayer.setCounter(BALANCE_COUNTER, BALANCE_ENTRY, balance);
+            client.hud.counterListLayer.setCounter(BALANCE_COUNTER, BALANCE_ENTRY, balance);
         }
     }
 

@@ -79,9 +79,9 @@ export class ChunkCursor {
         this._client.chunkClaimsLayer.setSelectedChunk(chunk);
         this._client.claimFrontierLayer.setSelectedChunk(chunk);
         if (chunk === null) {
-            this._client.chunkActionsLayer.hide();
+            this._client.hud.chunkActionsLayer.hide();
         } else {
-            this._client.chunkActionsLayer.showChunk(chunk);
+            this._client.hud.chunkActionsLayer.showChunk(chunk);
         }
         // The active mode surfaces the new selection in its bars.
         this._client.chunkMode.updateIndicators();
