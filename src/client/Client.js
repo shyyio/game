@@ -43,6 +43,7 @@ import SafeArea from "@/client/SafeArea.js";
 import {ChunkClaimsDrawLayer} from "@/client/layers/ChunkClaimsDrawLayer.js";
 import {ChunkSubscription} from "@/client/ChunkSubscription.js";
 import {EventQueue} from "@/client/EventQueue.js";
+import {Camera} from "@/client/Camera.js";
 import {ClientCache} from "@/client/state/ClientCache.js";
 import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/state/ChunkClaimsState.js";
 import {PLAYERS_SCHEMA, PlayersWriter, PlayersView} from "@/client/state/PlayersState.js";
@@ -67,7 +68,7 @@ import {
 import {Direction, GameSettingsKey} from "@/common/constants.js";
 import {WorldNoise} from "@/common/WorldNoise.js";
 import {Terrain} from "@/common/Terrain.js";
-import {chunkCenter, chunkId} from "@/common/util.js";
+import {chunkId} from "@/common/util.js";
 import {OVERWORLD_SCHEMA, OverworldWriter, OverworldView} from "@/client/state/OverworldState.js";
 import {OverworldDrawLayer} from "@/client/layers/OverworldDrawLayer.js";
 import {GridDrawLayer} from "@/client/layers/GridDrawLayer.js";
@@ -147,6 +148,7 @@ export class Client {
         this._buildStatusHud();
         this.subscription = new ChunkSubscription(this.viewport, this.cache, this.session, this.statusLayer);
         this.events = new EventQueue(this);
+        this.camera = new Camera(this);
         this._buildTopBarHud();
         this._buildOverlayHud();
         this._buildChunkLayers();
@@ -366,7 +368,7 @@ export class Client {
         // Contextual map-mode buttons (bottom-right): chunk administration entry and home.
         this.mapButtonsLayer = new MapButtonsLayer(this.app);
         this.mapButtonsLayer.addButton("claimSelection", drawClaimIcon, () => this.claimSelection.toggle());
-        this.mapButtonsLayer.addButton("home", drawHomeIcon, () => this.glideHome());
+        this.mapButtonsLayer.addButton("home", drawHomeIcon, () => this.camera.glideHome());
     }
 
     /**
@@ -602,51 +604,6 @@ export class Client {
     }
 
     /**
-     * The world-pixel centroid of the player's claimed chunks, or null with none.
-     * @returns {{x: number, y: number}|null}
-     */
-    ownClaimsCenter() {
-        const chunks = this.cache.view("chunkClaims").ownChunks();
-        if (chunks.length === 0) {
-            return null;
-        }
-        let sumX = 0;
-        let sumY = 0;
-        for (const chunk of chunks) {
-            const center = chunkCenter(chunk);
-            sumX += center.x * TILE_SIZE;
-            sumY += center.y * TILE_SIZE;
-        }
-        return {x: sumX / chunks.length, y: sumY / chunks.length};
-    }
-
-    /**
-     * Glides the viewport to the claims centroid at the current zoom; a no-op with no claims.
-     * @returns {void}
-     */
-    glideHome() {
-        const center = this.ownClaimsCenter();
-        if (center === null) {
-            return;
-        }
-        this.viewport.glideTo({x: center.x, y: center.y});
-    }
-
-    /**
-     * Snaps the viewport to the claims centroid with no glide; a no-op with no claims.
-     * @returns {void}
-     */
-    startAtHome() {
-        const center = this.ownClaimsCenter();
-        if (center === null) {
-            return;
-        }
-        this.viewport.moveCenter(center.x, center.y);
-        // moveCenter emits no "moved"; refresh the data feed directly.
-        this._onViewportMoved();
-    }
-
-    /**
      * Opens a machine's menu: subscribes to its per-tick inspect snapshots.
      * @param {number} objectId
      * @returns {void}
@@ -768,7 +725,7 @@ export class Client {
         this.app.stage.addChild(this.noticeLayer);
         this.app.stage.addChild(this.confirmDialogLayer);
 
-        this.viewport.on("moved", () => this._onViewportMoved());
+        this.viewport.on("moved", () => this.viewportMoved());
         // "zoomed" fires mid-wheel with the over-zoomed scale, before clampZoom restores it;
         // reading the viewport here would briefly see an expanded area and subscribe chunks
         // that aren't really on screen. The chunk update rides "moved", which fires after the
@@ -777,7 +734,7 @@ export class Client {
         this.viewport.on("zoomed", () => this._updateViewMode());
         // Scale-only glides emit "zoomed" but never "moved"; the settled zoom (post-clamp)
         // catches the data feed up here.
-        this.viewport.on("zoomed-end", () => this._onViewportMoved());
+        this.viewport.on("zoomed-end", () => this.viewportMoved());
         // While a pan is in progress, drop the rotate buttons out of hit-testing so
         // a finger that crosses one keeps panning instead of being captured by it.
         this.viewport.on("drag-start", () => this.rotateButtonsLayer.setInteractive(false));
@@ -807,9 +764,9 @@ export class Client {
     /**
      * Routes viewport movement to the mode's data feed: chunk subscriptions, or overworld
      * snapshot refreshes when zoomed past the map band.
-     * @private
+     * @returns {void}
      */
-    _onViewportMoved() {
+    viewportMoved() {
         this.subscription.viewportMoved();
         // The nearby-in-view roster reads the current viewport directly; the claims mirror it
         // draws from may already hold every chunk in the new view, so no cache event would

@@ -52,7 +52,7 @@ export class SettleFlow {
             if (this._active) {
                 this._client.viewport.glideTo({scale: CHUNK_PICK_ZOOM_SCALE});
             } else {
-                this._client.startAtHome();
+                this._client.camera.startAtHome();
             }
         }
     }
@@ -131,7 +131,7 @@ export class SettleFlow {
      * @returns {void}
      */
     _land() {
-        const center = this._client.ownClaimsCenter();
+        const center = this._client.camera.ownClaimsCenter();
         if (center === null) {
             return;
         }

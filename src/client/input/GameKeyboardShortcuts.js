@@ -30,7 +30,7 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
         client.bottomActionBar.pressConfirm();
     });
     on("h", () => {
-        client.glideHome();
+        client.camera.glideHome();
     });
     on("p", () => {
         client.productionPanelLayer.toggle();
