@@ -1,6 +1,6 @@
 {
     "name": "@spup/game-client",
-    "version": "2.10.3",
+    "version": "3.0.0",
     "description": "The Shy's Power-Up Factory client, and a dev server that runs a mod in it",
     "keywords": [
         "spup",
@@ -32,10 +32,10 @@
         "node": "^20.19.0 || >=22.12.0"
     },
     "dependencies": {
-        "@spup/mod-builder": "^2.0.0"
+        "@spup/mod-builder": "^3.0.0"
     },
     "peerDependencies": {
-        "@spup/game-server": "^2.10.3"
+        "@spup/game-server": "^3.0.0"
     },
     "peerDependenciesMeta": {
         "@spup/game-server": {
