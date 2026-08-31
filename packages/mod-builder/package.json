@@ -1,6 +1,6 @@
 {
     "name": "@spup/mod-builder",
-    "version": "2.0.0",
+    "version": "3.0.0",
     "description": "Builds and checks a mod for Shy's Power-Up Factory",
     "keywords": [
         "spup",
