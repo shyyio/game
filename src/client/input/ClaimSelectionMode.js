@@ -202,7 +202,7 @@ export class ClaimSelectionMode {
             this.updateIndicators();
         };
         this._entering = true;
-        const center = this._client.ownClaimsCenter();
+        const center = this._client.camera.ownClaimsCenter();
         if (this._client.viewMode === ViewMode.WORLD) {
             this._client.viewport.glideTo({x: center.x, y: center.y, scale: CHUNK_PICK_ZOOM_SCALE}, done);
             return;
