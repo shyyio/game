@@ -40,7 +40,7 @@ export class BeltTool extends AbstractTool {
         this._place(tileX, tileY, direction);
         if (!blocked) {
             // Advance the center-lock crosshair one tile so consecutive taps lay a line.
-            this._client.advanceCenterLock(tileX, tileY, direction);
+            this._client.centerLock.advance(tileX, tileY, direction);
         }
     }
 
