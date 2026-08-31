@@ -17,12 +17,12 @@ export class LocalSession extends AbstractSession {
             return;
         }
         if (!DEV) {
-            this.client.publishEvent(event);
+            this.client.events.publish(event);
             return;
         }
         // Round-trip through the wire codec, so a codec break surfaces in single-player too.
         const encoded = this.api.wire.encode(event);
-        this.client.publishEvent(this.api.wire.decode(encoded), encoded.length);
+        this.client.events.publish(this.api.wire.decode(encoded), encoded.length);
     }
 
     get playerId() {
