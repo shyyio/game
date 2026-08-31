@@ -7,7 +7,7 @@ import {RotateButtonsLayer} from "@/client/hud/RotateButtonsLayer.js";
 import {ToolbarLayer} from "@/client/hud/ToolbarLayer.js";
 import {ToolRotation} from "@/client/input/ToolRotation.js";
 import {EraserTool} from "@/client/input/EraserTool.js";
-import {SetViewportMessage, SetInspectedObjectsMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
+import {SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
 import {ChunkSyncEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
@@ -43,6 +43,7 @@ import ReducedMotion from "@/client/ReducedMotion.js";
 import Mobile from "@/client/Mobile.js";
 import SafeArea from "@/client/SafeArea.js";
 import {ChunkClaimsDrawLayer} from "@/client/layers/ChunkClaimsDrawLayer.js";
+import {ChunkSubscription} from "@/client/ChunkSubscription.js";
 import {ClientCache} from "@/client/state/ClientCache.js";
 import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/state/ChunkClaimsState.js";
 import {PLAYERS_SCHEMA, PlayersWriter, PlayersView} from "@/client/state/PlayersState.js";
@@ -56,23 +57,19 @@ import {OBJECTS_SCHEMA, ObjectsWriter} from "@/client/state/ObjectsState.js";
 import {INSPECT_SCHEMA, InspectWriter, InspectView} from "@/client/state/InspectState.js";
 import {
     TILE_SIZE,
-    snapToChunk,
-    ViewportChunkWindow,
     ViewMode,
     MAP_MODE_SCALE_THRESHOLD,
     OVERWORLD_SCALE_THRESHOLD,
-    OVERWORLD_CHUNK_TTL_MS,
-    OVERWORLD_REFRESH_THROTTLE_MS,
     FRIENDS_PANEL_REFRESH_THROTTLE_MS,
     FPS_CAP_NAMES,
     FPS_CAP_VALUES,
     FPS_CAP_DEFAULT,
 } from "@/client/constants.js";
-import {CHUNK_SIZE, REGION_SIZE, Direction, GameSettingsKey} from "@/common/constants.js";
+import {Direction, GameSettingsKey} from "@/common/constants.js";
 import {WorldNoise} from "@/common/WorldNoise.js";
 import {Terrain} from "@/common/Terrain.js";
-import {chunkCenter, chunkId, formatBytes, REGION_HALF} from "@/common/util.js";
-import {OVERWORLD_SCHEMA, OverworldRect, OverworldWriter, OverworldView} from "@/client/state/OverworldState.js";
+import {chunkCenter, chunkId, formatBytes} from "@/common/util.js";
+import {OVERWORLD_SCHEMA, OverworldWriter, OverworldView} from "@/client/state/OverworldState.js";
 import {OverworldDrawLayer} from "@/client/layers/OverworldDrawLayer.js";
 import {GridDrawLayer} from "@/client/layers/GridDrawLayer.js";
 import {TerrainButtonLayer} from "@/client/hud/TerrainButtonLayer.js";
@@ -124,10 +121,6 @@ import {
 
 // Frame time spent applying queued sync events; about a sixth of a 60fps frame.
 const DRAIN_BUDGET_MS = 2.5;
-
-// Handed to the layer tick in overworld mode, where no chunks are mounted: building the real
-// visible-chunk set at overworld scale would enumerate thousands of chunks per frame.
-const NO_VISIBLE_CHUNKS = new Set();
 
 // Leading entries shown per column when logging a columnar batch event.
 const LOG_BATCH_ITEMS = 5;
@@ -186,6 +179,7 @@ export class Client {
         this._buildToolHud();
         this._buildSharedWorldLayers();
         this._buildStatusHud();
+        this.subscription = new ChunkSubscription(this.viewport, this.cache, this.session, this.statusLayer);
         this._buildTopBarHud();
         this._buildOverlayHud();
         this._buildChunkLayers();
@@ -529,8 +523,6 @@ export class Client {
      * @returns {void}
      */
     _initStreamingState() {
-        // Chunks currently subscribed on the server: the visible chunks.
-        this._requestedChunks = new Set();
         // Per-delta events awaiting the budgeted per-frame drain: a chunk-sync bundle explodes to
         // hundreds of cache writes + sprite builds. Later events queue only when their own chunk
         // still has queued sync (per-chunk order); everything else applies on arrival, so live
@@ -538,12 +530,8 @@ export class Client {
         this._pendingEvents = [];
         // chunk -> its queued event count; a chunk with an entry gates its later events.
         this._queuedCountByChunk = new Map();
-        this._lastVisibleKey = null;
-        // Rebuilds the visible-chunk set only when the covered rect moves.
-        this._chunkWindow = new ViewportChunkWindow();
         this._viewMode = ViewMode.WORLD;
         this._onViewModeChange = null;
-        this._lastOverworldRefreshMs = 0;
         this._lastFriendsPanelRefreshMs = 0;
         this._centerLock = false;
         this._debugMode = false;
@@ -621,14 +609,7 @@ export class Client {
     _resync() {
         this.cache.reset();
         this.statusLayer.reset();
-        this._lastVisibleKey = null;
-        if (this._viewMode === ViewMode.OVERWORLD) {
-            this._lastOverworldRefreshMs = 0;
-            this._refreshOverworld(true);
-        } else {
-            this._requestedChunks.clear();
-            this._updateViewportChunks();
-        }
+        this.subscription.resync();
         this.notify("Reconnected");
     }
 
@@ -843,7 +824,7 @@ export class Client {
         this.viewport.on("drag-start", () => this.rotateButtonsLayer.setInteractive(false));
         this.viewport.on("drag-end", () => this.rotateButtonsLayer.setInteractive(true));
         this.app.ticker.add(() => this._tickAnimations());
-        this._updateViewportChunks();
+        this.subscription.viewportMoved();
         this._updateViewMode();
         for (const mod of this.modRegistry.clientMods) {
             mod.onReady(this);
@@ -857,18 +838,10 @@ export class Client {
     _tickAnimations() {
         const deltaMS = this.app.ticker.deltaMS;
         this._drainPendingEvents();
-        // Derived once here rather than per layer: every chunk-culled layer needs the same set, and
-        // rebuilding it per layer costs a chunkId per visible chunk each.
-        let visibleChunks;
-        if (this._viewMode === ViewMode.OVERWORLD) {
-            visibleChunks = NO_VISIBLE_CHUNKS;
-        } else {
-            visibleChunks = this._chunkWindow.chunks(this.viewport);
-        }
         this.drawLayerRegistry.tick(
             advanceAnimationFrame(deltaMS),
             deltaMS,
-            visibleChunks,
+            this.subscription.visibleChunks(),
         );
     }
 
@@ -878,14 +851,10 @@ export class Client {
      * @private
      */
     _onViewportMoved() {
-        if (this._viewMode === ViewMode.OVERWORLD) {
-            this._refreshOverworld(false);
-        } else {
-            this._updateViewportChunks();
-        }
+        this.subscription.viewportMoved();
         // The nearby-in-view roster reads the current viewport directly; the claims mirror it
         // draws from may already hold every chunk in the new view, so no cache event would
-        // otherwise tell it to recompute. Throttled like _refreshOverworld: "moved" fires on
+        // otherwise tell it to recompute. Throttled like the overworld refresh: "moved" fires on
         // every step of a drag, and a rebuild here tears down and recreates the add-by-name
         // field's real DOM input, not just some pixi Graphics.
         const now = Date.now();
@@ -928,144 +897,10 @@ export class Client {
         this.claimSelection.onViewMode(previous);
         this.settleFlow.onViewMode(previous);
         if (mode === ViewMode.OVERWORLD) {
-            this._enterOverworld();
+            this.subscription.enterOverworld();
         } else if (previous === ViewMode.OVERWORLD) {
-            this._leaveOverworld();
+            this.subscription.leaveOverworld();
         }
-    }
-
-    /**
-     * Drops every chunk subscription at once (the teardown is invisible behind the overworld
-     * layer) and requests the first snapshot.
-     * @private
-     */
-    _enterOverworld() {
-        this._requestedChunks.clear();
-        this._sendViewport(false);
-        this._lastVisibleKey = null;
-        this._refreshOverworld(true);
-    }
-
-    /**
-     * Resubscribes the visible chunks through the normal viewport path.
-     * @private
-     */
-    _leaveOverworld() {
-        this._lastVisibleKey = null;
-        this._updateViewportChunks();
-    }
-
-    /**
-     * Requests the visible overworld rect when any of its chunks is missing or stale, then
-     * evicts stale entries outside it. Throttled while panning; `force` bypasses.
-     * @private
-     * @param {boolean} force
-     */
-    _refreshOverworld(force) {
-        const now = Date.now();
-        if (!force && now - this._lastOverworldRefreshMs < OVERWORLD_REFRESH_THROTTLE_MS) {
-            return;
-        }
-        this._lastOverworldRefreshMs = now;
-        const rect = this._visibleOverworldRect();
-        if (rect === null) {
-            return;
-        }
-        if (this.cache.view("overworld").needsFetch(rect, now, OVERWORLD_CHUNK_TTL_MS)) {
-            this.sendMessage(new OverworldRequestMessage(rect.chunkX, rect.chunkY, rect.chunkWidth, rect.chunkHeight));
-        }
-        this.cache.writer("overworld").evictOutside(rect, now, OVERWORLD_CHUNK_TTL_MS);
-    }
-
-    /**
-     * The viewport's chunk rect clamped to the region, or null when fully outside it.
-     * @private
-     * @returns {OverworldRect|null}
-     */
-    _visibleOverworldRect() {
-        const chunkPx = CHUNK_SIZE * TILE_SIZE;
-        const left = Math.max(Math.floor(this.viewport.left / chunkPx), -REGION_HALF);
-        const top = Math.max(Math.floor(this.viewport.top / chunkPx), -REGION_HALF);
-        const right = Math.min(Math.floor(this.viewport.right / chunkPx), REGION_HALF - 1);
-        const bottom = Math.min(Math.floor(this.viewport.bottom / chunkPx), REGION_HALF - 1);
-        if (right < left || bottom < top) {
-            return null;
-        }
-        return new OverworldRect(left, top, right - left + 1, bottom - top + 1);
-    }
-
-    /**
-     * @private
-     * @param {number} [marginChunks] - extra chunk rings beyond the viewport
-     */
-    _visibleChunks(marginChunks = 0) {
-        const margin = marginChunks * CHUNK_SIZE;
-        const x1 = this.viewport.left / TILE_SIZE - margin;
-        const y1 = this.viewport.top / TILE_SIZE - margin;
-        const x2 = this.viewport.right / TILE_SIZE + margin;
-        const y2 = this.viewport.bottom / TILE_SIZE + margin;
-
-        const chunks = [];
-        for (let x = snapToChunk(x1) - CHUNK_SIZE; x <= snapToChunk(x2); x += CHUNK_SIZE) {
-            for (let y = snapToChunk(y1) - CHUNK_SIZE; y <= snapToChunk(y2); y += CHUNK_SIZE) {
-                chunks.push(chunkId(x, y));
-            }
-        }
-        return chunks;
-    }
-
-    /**
-     * @private
-     */
-    _updateViewportChunks() {
-        if (this._viewMode === ViewMode.OVERWORLD) {
-            // No chunk subscriptions in overworld; enumerating the visible chunks at overworld
-            // scale would also walk thousands of ids.
-            return;
-        }
-        const visible = this._visibleChunks();
-        const visibleKey = visible.slice().sort().join(";");
-        if (visibleKey === this._lastVisibleKey) {
-            return;
-        }
-        this._lastVisibleKey = visibleKey;
-
-        // Unsubscribe only past a one-chunk hysteresis ring, so a pan grazing a boundary
-        // never re-syncs the chunk.
-        let changed = false;
-        const retained = new Set(this._visibleChunks(1));
-        for (const chunk of [...this._requestedChunks]) {
-            if (!retained.has(chunk)) {
-                this._requestedChunks.delete(chunk);
-                changed = true;
-            }
-        }
-        let added = false;
-        for (const chunk of visible) {
-            if (!this._requestedChunks.has(chunk)) {
-                this._requestedChunks.add(chunk);
-                added = true;
-                changed = true;
-            }
-        }
-        if (changed) {
-            this._sendViewport(added);
-        }
-    }
-
-    /**
-     * Sends the current requested-chunk set to the server.
-     * @private
-     * @param {boolean} loading - whether to drive the loading status (only when subscribing)
-     */
-    _sendViewport(loading) {
-        const chunks = [...this._requestedChunks];
-        if (loading) {
-            // Track the request before sending: single-player replies with the
-            // ChunkSubscribeEvents synchronously, so the layer must already be counting.
-            this.statusLayer.beginChunkLoad(chunks);
-        }
-        this.sendMessage(new SetViewportMessage(chunks));
     }
 
     /**
