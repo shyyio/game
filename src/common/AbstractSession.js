@@ -40,7 +40,7 @@ export class AbstractSession {
         if (this.client == null) {
             return;
         }
-        this.client.publishEvent(event);
+        this.client.events.publish(event);
     }
 
     /**

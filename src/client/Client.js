@@ -8,8 +8,6 @@ import {ToolbarLayer} from "@/client/hud/ToolbarLayer.js";
 import {ToolRotation} from "@/client/input/ToolRotation.js";
 import {EraserTool} from "@/client/input/EraserTool.js";
 import {SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
-import {ChunkSyncEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
-import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {NoticeLayer} from "@/client/hud/NoticeLayer.js";
 import {ConfirmDialogLayer} from "@/client/hud/ConfirmDialogLayer.js";
@@ -44,6 +42,7 @@ import Mobile from "@/client/Mobile.js";
 import SafeArea from "@/client/SafeArea.js";
 import {ChunkClaimsDrawLayer} from "@/client/layers/ChunkClaimsDrawLayer.js";
 import {ChunkSubscription} from "@/client/ChunkSubscription.js";
+import {EventQueue} from "@/client/EventQueue.js";
 import {ClientCache} from "@/client/state/ClientCache.js";
 import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/state/ChunkClaimsState.js";
 import {PLAYERS_SCHEMA, PlayersWriter, PlayersView} from "@/client/state/PlayersState.js";
@@ -68,7 +67,7 @@ import {
 import {Direction, GameSettingsKey} from "@/common/constants.js";
 import {WorldNoise} from "@/common/WorldNoise.js";
 import {Terrain} from "@/common/Terrain.js";
-import {chunkCenter, chunkId, formatBytes} from "@/common/util.js";
+import {chunkCenter, chunkId} from "@/common/util.js";
 import {OVERWORLD_SCHEMA, OverworldWriter, OverworldView} from "@/client/state/OverworldState.js";
 import {OverworldDrawLayer} from "@/client/layers/OverworldDrawLayer.js";
 import {GridDrawLayer} from "@/client/layers/GridDrawLayer.js";
@@ -112,49 +111,16 @@ import {CenterMarkerLayer} from "@/client/layers/CenterMarkerLayer.js";
 import {MapButtonsLayer} from "@/client/hud/MapButtonsLayer.js";
 import {drawClaimIcon, drawHomeIcon} from "@/client/hud/icons.js";
 import {advanceAnimationFrame} from "@/client/layers/animation.js";
-import {DEV, BROWSER} from "@/common/env.js";
-import {ListenerList} from "@/common/ListenerList.js";
 import {
     SESSION_STATUS_CONNECTED, SESSION_STATUS_RECONNECTING, SESSION_STATUS_SERVER_SHUTDOWN, SESSION_STATUS_SUPERSEDED,
     SESSION_STATUS_REJECTED,
 } from "@/client/RemoteSession.js";
-
-// Frame time spent applying queued sync events; about a sixth of a 60fps frame.
-const DRAIN_BUDGET_MS = 2.5;
-
-// Leading entries shown per column when logging a columnar batch event.
-const LOG_BATCH_ITEMS = 5;
 
 // Settings-menu placement of the "Display" section.
 const DISPLAY_CATEGORY_ORDER = 0;
 
 // Terrain rendering while the device setting is unset.
 const TERRAIN_ENABLED_DEFAULT = false;
-
-/**
- * A console view of an event: a batch event's columns cut to their first {@link LOG_BATCH_ITEMS}
- * entries, a sync bundle's inner events mapped the same way; other events log as-is.
- * @param {AbstractEvent} event
- * @returns {object}
- */
-function eventLogView(event) {
-    if (event instanceof ChunkSyncEvent) {
-        return {event: event.constructor.name, chunk: event.chunk, events: event.events.map(eventLogView)};
-    }
-    if (!(event instanceof AbstractBatchEvent)) {
-        return event;
-    }
-    const view = {event: event.constructor.name};
-    for (const [field, type] of Object.entries(event.constructor.wireFields)) {
-        const value = event[field];
-        if (type.endsWith("[]") && value.length > LOG_BATCH_ITEMS) {
-            view[field] = `[${value.slice(0, LOG_BATCH_ITEMS).join(", ")}, … ${value.length} total]`;
-        } else {
-            view[field] = value;
-        }
-    }
-    return view;
-}
 
 export class Client {
 
@@ -180,6 +146,7 @@ export class Client {
         this._buildSharedWorldLayers();
         this._buildStatusHud();
         this.subscription = new ChunkSubscription(this.viewport, this.cache, this.session, this.statusLayer);
+        this.events = new EventQueue(this);
         this._buildTopBarHud();
         this._buildOverlayHud();
         this._buildChunkLayers();
@@ -523,20 +490,11 @@ export class Client {
      * @returns {void}
      */
     _initStreamingState() {
-        // Per-delta events awaiting the budgeted per-frame drain: a chunk-sync bundle explodes to
-        // hundreds of cache writes + sprite builds. Later events queue only when their own chunk
-        // still has queued sync (per-chunk order); everything else applies on arrival, so live
-        // tick traffic for already-synced chunks can never pile up behind a loading burst.
-        this._pendingEvents = [];
-        // chunk -> its queued event count; a chunk with an entry gates its later events.
-        this._queuedCountByChunk = new Map();
         this._viewMode = ViewMode.WORLD;
         this._onViewModeChange = null;
         this._lastFriendsPanelRefreshMs = 0;
         this._centerLock = false;
         this._debugMode = false;
-        // Host event listeners, the last stop of the event fan-out.
-        this._eventListeners = new ListenerList();
     }
 
     /**
@@ -549,14 +507,14 @@ export class Client {
         this.chunkCursor = new ChunkCursor(this);
         // Chunk administration input mode controller.
         this.claimSelection = new ClaimSelectionMode(this);
-        this.onEvent(event => this.claimSelection.onEvent(event));
+        this.events.onEvent(event => this.claimSelection.onEvent(event));
         // The first-claim flow, owning the state before the player holds any chunk.
         this.settleFlow = new SettleFlow(this);
-        this.onEvent(event => this.settleFlow.onEvent(event));
+        this.events.onEvent(event => this.settleFlow.onEvent(event));
         // Toast/confirm-dialog feedback for claim/unclaim rejections.
         this.claimResultFeedback = new ClaimResultFeedback(this);
-        this.onEvent(event => this.claimResultFeedback.onEvent(event));
-        this.onEvent(event => this.friendsPanelLayer.onEvent(event));
+        this.events.onEvent(event => this.claimResultFeedback.onEvent(event));
+        this.events.onEvent(event => this.friendsPanelLayer.onEvent(event));
     }
 
     /**
@@ -724,6 +682,7 @@ export class Client {
     toggleDebugMode() {
         this._debugMode = !this._debugMode;
         this.drawLayerRegistry.setDebugMode(this._debugMode);
+        this.events.setLogging(this._debugMode);
     }
 
     /**
@@ -837,7 +796,7 @@ export class Client {
      */
     _tickAnimations() {
         const deltaMS = this.app.ticker.deltaMS;
-        this._drainPendingEvents();
+        this.events.drain();
         this.drawLayerRegistry.tick(
             advanceAnimationFrame(deltaMS),
             deltaMS,
@@ -1000,137 +959,6 @@ export class Client {
         const toolIds = tools.map(tool => tool.id);
         this.cache.writer("playerSettings").setToolOrder(toolIds);
         this.sendMessage(new SetPlayerSettingsToolOrderMessage(toolIds));
-    }
-
-    /**
-     * @param {AbstractEvent} event
-     * @param {number} [bytes] - protobuf bytes this event arrived as (dev only; 0 for the
-     *     inner events of a re-published bundle, already counted in the bundle)
-     */
-    publishEvent(event, bytes=0) {
-        if (DEV && BROWSER) {
-            this._bytesReceived = (this._bytesReceived || 0) + bytes;
-            // Logging every event costs a DevTools stack capture each and retains the payloads;
-            // only in debug mode, and batch events cut to their leading column entries.
-            if (bytes > 0 && this._debugMode) {
-                // this event's size, then the session total
-                console.log(`↓ [${formatBytes(bytes).padStart(6)} / ${formatBytes(this._bytesReceived).padStart(6)}]`, event.constructor.name, eventLogView(event));
-            }
-        }
-        if (event instanceof ChunkSyncEvent) {
-            // A chunk-sync bundle: queue each inner event, exploded to its per-delta events so
-            // the drain budget counts real applications, not envelopes. Sync events are distinct
-            // types (e.g. ObjectSyncEvent vs ObjectInsertEvent), so handlers can already tell a load
-            // from a live change.
-            for (const inner of event.events) {
-                let deltas;
-                if (inner instanceof AbstractBatchEvent) {
-                    deltas = inner.explode();
-                } else {
-                    deltas = [inner];
-                }
-                for (const delta of deltas) {
-                    this._queueEvent(delta);
-                }
-            }
-            return;
-        }
-        if (event instanceof ChunkUnsubscribeEvent) {
-            if (this._queuedCountByChunk.has(event.chunk)) {
-                // The chunk left the viewport before its queued sync applied: the unsubscribe
-                // wipes that state anyway, so drop the queue's share of it first.
-                this._pendingEvents = this._pendingEvents.filter(pending => pending.chunk !== event.chunk);
-                this._queuedCountByChunk.delete(event.chunk);
-            }
-            // Tearing down a chunk's entries and sprites is heavy too: a prune pass drops many
-            // chunks at once, so unsubscribes ride the budgeted drain, one chunk per event.
-            this._queueEvent(event);
-            return;
-        }
-        if (event.chunk !== undefined && this._queuedCountByChunk.has(event.chunk)) {
-            // The event's chunk still has queued sync: apply behind it, keeping per-chunk order.
-            this._queueEvent(event);
-            return;
-        }
-        this._applyEvent(event);
-    }
-
-    /**
-     * Queues one event for the budgeted drain, gating its chunk's later events behind it.
-     * @private
-     * @param {AbstractEvent} event
-     * @returns {void}
-     */
-    _queueEvent(event) {
-        this._pendingEvents.push(event);
-        const count = this._queuedCountByChunk.get(event.chunk);
-        let nextCount;
-        if (count === undefined) {
-            nextCount = 1;
-        } else {
-            nextCount = count + 1;
-        }
-        this._queuedCountByChunk.set(event.chunk, nextCount);
-    }
-
-    /**
-     * Applies queued events for up to {@link DRAIN_BUDGET_MS} per frame.
-     * @private
-     * @returns {void}
-     */
-    _drainPendingEvents() {
-        if (this._pendingEvents.length === 0) {
-            return;
-        }
-        const started = performance.now();
-        let applied = 0;
-        while (applied < this._pendingEvents.length && performance.now() - started < DRAIN_BUDGET_MS) {
-            const event = this._pendingEvents[applied];
-            applied += 1;
-            const count = this._queuedCountByChunk.get(event.chunk);
-            if (count === 1) {
-                this._queuedCountByChunk.delete(event.chunk);
-            } else {
-                this._queuedCountByChunk.set(event.chunk, count - 1);
-            }
-            this._applyEvent(event);
-        }
-        this._pendingEvents.splice(0, applied);
-    }
-
-    /**
-     * Fans one event out to every client consumer: the cache writers first (readers see settled
-     * state), then the mods, layers, and host listeners. State reactions ride cache subscriptions.
-     * @private
-     * @param {AbstractEvent} event
-     * @returns {void}
-     */
-    _applyEvent(event) {
-        if (event instanceof AbstractBatchEvent) {
-            // A chunk's packed deltas: replay each as the per-delta event handlers already expect.
-            for (const inner of event.explode()) {
-                this._applyEvent(inner);
-            }
-            return;
-        }
-        this.cache.onEvent(event);
-        for (const mod of this.modRegistry.clientMods) {
-            mod.onEvent(event, this);
-        }
-        this.drawLayerRegistry.dispatchEvent(event);
-        // The status HUD isn't a viewport draw layer, so feed it chunk events directly.
-        this.statusLayer.onEvent(event);
-        this._eventListeners.notify(event);
-    }
-
-    /**
-     * Registers a host event listener, called with every applied event; the listener filters by
-     * instanceof (transient outcomes like ClaimResultEvent never enter the state tree).
-     * @param {function(AbstractEvent): void} listener
-     * @returns {function(): void} unsubscribe
-     */
-    onEvent(listener) {
-        return this._eventListeners.add(listener);
     }
 
     /**
