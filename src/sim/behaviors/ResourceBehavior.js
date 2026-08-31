@@ -1,4 +1,4 @@
-import {AbstractBehavior} from "@/sim/behaviors/AbstractBehavior.js";
+import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 
 // Position layer for resource cover: an extraction tile stores its resource type as the cell userData.
 export const LAYER_RESOURCE = "R";

@@ -1,4 +1,4 @@
-import {AbstractBehavior} from "@/sim/behaviors/AbstractBehavior.js";
+import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 
 /**
  * A bare spawn-managed entity: no components beyond PlacedObject, no systems. Decorative/blocking

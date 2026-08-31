@@ -1,6 +1,6 @@
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {ObjectGeometries} from "@/common/ObjectGeometry.js";
-import {StaticBehavior} from "@/sim/behaviors/StaticBehavior.js";
+import {StaticBehavior} from "@/common/behaviors/StaticBehavior.js";
 
 export class PortDefinition {
     /**
