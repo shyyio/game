@@ -18,26 +18,8 @@ import {
     SetPlayerSettingsToolOrderMessage,
 } from "@/common/PlayerMessages.js";
 import {applyToolOrder} from "@/client/input/ToolOrder.js";
-import {SettingCategory} from "@/client/hud/SettingCategory.js";
-import {AbstractPlayerSettingControl} from "@/client/hud/AbstractPlayerSettingControl.js";
-import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
-import {PlayerSettingToggle} from "@/client/hud/PlayerSettingToggle.js";
-import {DeviceSettingToggle} from "@/client/hud/DeviceSettingToggle.js";
-import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
-import DeviceSettings, {
-    DEVICE_SETTING_FULLSCREEN, DEVICE_SETTING_REDUCED_MOTION, DEVICE_SETTING_MOBILE,
-    DEVICE_SETTING_THEME, DEVICE_SETTING_TERRAIN, DEVICE_SETTING_FPS_CAP,
-    DEVICE_SETTING_UI_SCALE,
-} from "@/client/state/DeviceSettings.js";
-import {DeviceSettingSlider} from "@/client/hud/DeviceSettingSlider.js";
-import {
-    applyUiScale, onUiScaleChange,
-    UI_SCALE_NORMAL, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_STEP,
-} from "@/client/hud/UiScale.js";
-import {applyTheme, onThemeChange, THEME_NAMES, THEME_DEFAULT} from "@/client/Theme.js";
-import Fullscreen from "@/client/Fullscreen.js";
-import ReducedMotion from "@/client/ReducedMotion.js";
-import Mobile from "@/client/Mobile.js";
+import {onUiScaleChange} from "@/client/hud/UiScale.js";
+import {onThemeChange} from "@/client/Theme.js";
 import SafeArea from "@/client/SafeArea.js";
 import {ChunkClaimsDrawLayer} from "@/client/layers/ChunkClaimsDrawLayer.js";
 import {ChunkSubscription} from "@/client/ChunkSubscription.js";
@@ -45,6 +27,7 @@ import {EventQueue} from "@/client/EventQueue.js";
 import {Camera} from "@/client/Camera.js";
 import {CenterLock} from "@/client/CenterLock.js";
 import {ViewModeController} from "@/client/ViewModeController.js";
+import {SettingsMenu} from "@/client/SettingsMenu.js";
 import {ClientCache} from "@/client/state/ClientCache.js";
 import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/state/ChunkClaimsState.js";
 import {PLAYERS_SCHEMA, PlayersWriter, PlayersView} from "@/client/state/PlayersState.js";
@@ -56,13 +39,7 @@ import {METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN} from "@/common
 import {MetricsSubscribeMessage, MetricsUnsubscribeMessage} from "@/common/MetricsMessages.js";
 import {OBJECTS_SCHEMA, ObjectsWriter} from "@/client/state/ObjectsState.js";
 import {INSPECT_SCHEMA, InspectWriter, InspectView} from "@/client/state/InspectState.js";
-import {
-    ViewMode,
-    FRIENDS_PANEL_REFRESH_THROTTLE_MS,
-    FPS_CAP_NAMES,
-    FPS_CAP_VALUES,
-    FPS_CAP_DEFAULT,
-} from "@/client/constants.js";
+import {ViewMode, FRIENDS_PANEL_REFRESH_THROTTLE_MS} from "@/client/constants.js";
 import {Direction, GameSettingsKey} from "@/common/constants.js";
 import {WorldNoise} from "@/common/WorldNoise.js";
 import {Terrain} from "@/common/Terrain.js";
@@ -114,12 +91,6 @@ import {
     SESSION_STATUS_REJECTED,
 } from "@/client/RemoteSession.js";
 
-// Settings-menu placement of the "Display" section.
-const DISPLAY_CATEGORY_ORDER = 0;
-
-// Terrain rendering while the device setting is unset.
-const TERRAIN_ENABLED_DEFAULT = false;
-
 export class Client {
 
     /**
@@ -148,6 +119,7 @@ export class Client {
         this.camera = new Camera(this);
         this.centerLock = new CenterLock(this);
         this.viewMode = new ViewModeController(this);
+        this.settingsMenu = new SettingsMenu(this);
         this._buildTopBarHud();
         this._buildOverlayHud();
         this._buildChunkLayers();
@@ -206,7 +178,6 @@ export class Client {
         // The ground, repainted from the terrain once the seed arrives.
         this.terrainLayer = new TerrainDrawLayer(this.modRegistry.biomes);
         this.terrainDetailLayer = new TerrainDetailLayer(this.modRegistry.biomes);
-        this.setTerrainEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_TERRAIN, TERRAIN_ENABLED_DEFAULT));
         this.cache.subscribe("gameSettings.values", (key, value) => {
             if (key === GameSettingsKey.SEED) {
                 this.noise = new WorldNoise(value, this.modRegistry.noiseChannels);
@@ -490,7 +461,6 @@ export class Client {
      */
     _initStreamingState() {
         this._lastFriendsPanelRefreshMs = 0;
-        this._debugMode = false;
     }
 
     /**
@@ -617,16 +587,6 @@ export class Client {
      */
     coreTools() {
         return this._coreTools;
-    }
-
-    /**
-     * Toggles debug mode, showing or hiding debug-only draw layers.
-     * @returns {void}
-     */
-    toggleDebugMode() {
-        this._debugMode = !this._debugMode;
-        this.drawLayerRegistry.setDebugMode(this._debugMode);
-        this.events.setLogging(this._debugMode);
     }
 
     /**
@@ -896,41 +856,6 @@ export class Client {
     }
 
     /**
-     * Gathers and merges every mod's settings categories, validating player control keys.
-     * @returns {SettingCategory[]}
-     */
-    settingsCategories() {
-        const contributions = this._coreSettingsCategories()
-            .concat(this.modRegistry.clientMods.flatMap(mod => mod.settingsCategories(this)));
-        const categories = SettingCategory.merge(contributions);
-        const controls = categories.flatMap(category => category.controls);
-        for (const control of controls) {
-            if (!(control instanceof AbstractPlayerSettingControl)) {
-                continue;
-            }
-            const entry = this.modRegistry.playerSettingEntry(control.key);
-            if (entry === undefined) {
-                throw new Error(`Settings control "${control.label}" targets unregistered player setting key ${control.key}`);
-            }
-            if (!entry.clientWritable) {
-                throw new Error(`Settings control "${control.label}" targets server-authoritative player setting key ${control.key}`);
-            }
-            if (control instanceof PlayerSettingChoice) {
-                if (control.options.length !== entry.optionCount) {
-                    throw new Error(`Settings control "${control.label}" offers ${control.options.length} options but player setting key ${control.key} allows ${entry.optionCount}`);
-                }
-            } else if (control instanceof PlayerSettingToggle) {
-                if (entry.optionCount !== 2) {
-                    throw new Error(`Settings control "${control.label}" toggles player setting key ${control.key}, which allows ${entry.optionCount} values`);
-                }
-            } else {
-                throw new Error(`Settings control "${control.label}" has an unknown control type`);
-            }
-        }
-        return categories;
-    }
-
-    /**
      * Stacks the counter list under the status message, and stands it down while the top bar
      * owns the top edge.
      * @private
@@ -961,66 +886,6 @@ export class Client {
     _rescaleHud() {
         this._restyleHud();
         this.app.renderer.emit("resize", this.app.screen.width, this.app.screen.height);
-    }
-
-    /**
-     * The engine's own settings section: device toggles and the theme picker.
-     * @private
-     * @returns {SettingCategory[]}
-     */
-    _coreSettingsCategories() {
-        return [
-            new SettingCategory("Display", DISPLAY_CATEGORY_ORDER, [
-                new DeviceSettingToggle(DEVICE_SETTING_FULLSCREEN, "Fullscreen", false, on => Fullscreen.setEnabled(on)),
-                new DeviceSettingToggle(DEVICE_SETTING_REDUCED_MOTION, "Reduced motion", ReducedMotion.devicePrefers(), on => ReducedMotion.setEnabled(on)),
-                new DeviceSettingToggle(DEVICE_SETTING_MOBILE, "Touchscreen input", Mobile.devicePrefers(), on => Mobile.setEnabled(on)),
-                new DeviceSettingToggle(DEVICE_SETTING_TERRAIN, "Terrain", TERRAIN_ENABLED_DEFAULT, on => this.setTerrainEnabled(on)),
-                new DeviceSettingChoice(DEVICE_SETTING_THEME, "Theme", THEME_NAMES, THEME_DEFAULT, index => applyTheme(index)),
-                new DeviceSettingChoice(DEVICE_SETTING_FPS_CAP, "Frame rate cap", FPS_CAP_NAMES, FPS_CAP_DEFAULT, index => this.setFpsCap(index)),
-                new DeviceSettingSlider(DEVICE_SETTING_UI_SCALE, "UI Scale", UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_STEP, UI_SCALE_NORMAL, scale => applyUiScale(scale)),
-            ]),
-        ];
-    }
-
-    /**
-     * Paces the render ticker to the chosen frame-rate option.
-     * @param {number} index into FPS_CAP_VALUES
-     * @returns {void}
-     */
-    setFpsCap(index) {
-        this.app.ticker.maxFPS = FPS_CAP_VALUES[index];
-    }
-
-    /**
-     * Rebakes the ground's palette and rescatters its details, keeping the biome classification: a
-     * retuned color, shade or dither.
-     * @returns {void}
-     */
-    repaintTerrain() {
-        this.terrainLayer.repaint();
-        this.terrainDetailLayer.repaint();
-    }
-
-    /**
-     * Reclassifies as well as repaints: a retuned noise channel, biome range or blend width changes
-     * which biome a tile is, which the cached bakes would otherwise keep answering.
-     * @returns {void}
-     */
-    retuneTerrain() {
-        if (this.terrain !== null) {
-            this.terrain.invalidate();
-        }
-        this.repaintTerrain();
-    }
-
-    /**
-     * Shows or hides the ground and its scattered details.
-     * @param {boolean} enabled
-     * @returns {void}
-     */
-    setTerrainEnabled(enabled) {
-        this.terrainLayer.setEnabled(enabled);
-        this.terrainDetailLayer.setEnabled(enabled);
     }
 
     /**

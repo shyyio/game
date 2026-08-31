@@ -172,12 +172,12 @@ function snapshot() {
 
 // Only the ground's colors changed; the biome each tile belongs to still stands.
 function repaint() {
-  props.client.repaintTerrain();
+  props.client.settingsMenu.repaintTerrain();
 }
 
 // A tile's biome may have changed, so every cached bake has to go.
 function retune() {
-  props.client.retuneTerrain();
+  props.client.settingsMenu.retuneTerrain();
 }
 
 function applyColor(entry, hex) {
