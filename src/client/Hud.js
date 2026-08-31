@@ -64,6 +64,20 @@ export function friendsPanelRefreshDue(now, lastRefreshMs) {
     return now - lastRefreshMs >= FRIENDS_PANEL_REFRESH_THROTTLE_MS;
 }
 
+// pixi's default: a layer that named no band of its own.
+const NO_HUD_BAND = 0;
+
+/**
+ * Where a mod's HUD layer mounts. A panel layer carries no band and takes the panel host's, ranked
+ * against the other panels by press; a layer that brought its own {@link HudLayer} band (a tooltip)
+ * wants that band, so it mounts on the stage beside the core layer of the same kind.
+ * @param {Container} layer
+ * @returns {boolean}
+ */
+export function mountsInPanelHost(layer) {
+    return layer.zIndex === NO_HUD_BAND;
+}
+
 /**
  * Every screen-space layer: the bars, buttons, panels and overlays, their layout against each
  * other, and the repaints a theme or UI-scale change triggers.
@@ -362,7 +376,11 @@ export class Hud {
             layer.textureRegistry = textureRegistry;
             layer.viewport = viewport;
             layer.popovers = this.popoverHost;
-            this.panelHost.add(layer);
+            if (mountsInPanelHost(layer)) {
+                this.panelHost.add(layer);
+            } else {
+                app.stage.addChild(layer);
+            }
         }
         app.stage.addChild(this.panelHost);
         // Popovers clear the panels that open them; toast and confirm dialog clear everything.

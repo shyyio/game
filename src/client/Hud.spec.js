@@ -1,7 +1,9 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 
-import {toolbarVisible, counterListTop, friendsPanelRefreshDue} from "@/client/Hud.js";
+import {Container} from "pixi.js";
+import {toolbarVisible, counterListTop, friendsPanelRefreshDue, mountsInPanelHost} from "@/client/Hud.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 import {ViewMode, FRIENDS_PANEL_REFRESH_THROTTLE_MS} from "@/client/constants.js";
 
 // The layers themselves need a renderer, but the decisions they lay out against do not.
@@ -48,4 +50,14 @@ test("the friend roster rebuilds once the throttle window has passed", () => {
 
 test("the first move of a session rebuilds the roster", () => {
     assert.equal(friendsPanelRefreshDue(NOW, 0), true);
+});
+
+test("a mod's band-less panel layer mounts into the panel host", () => {
+    assert.equal(mountsInPanelHost(new Container()), true);
+});
+
+test("a mod's tooltip keeps the band it brought, so it mounts on the stage", () => {
+    const tooltip = new Container();
+    tooltip.zIndex = HudLayer.TOOLTIP;
+    assert.equal(mountsInPanelHost(tooltip), false);
 });
