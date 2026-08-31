@@ -1,8 +1,8 @@
 // Mod SDK — engine-agnostic surface.
 //
 // This is the stable, documented API that mods bind to instead of reaching into
-// engine internals. It imports only from `src/common/`, so it
-// runs identically on client and server. Mods import it as `@/sdk/common.js`.
+// engine internals. It imports from `src/common/` and `src/sim/`, both of which run on client and
+// server alike, so a mod behaves the same in either. Mods import it as `@/sdk/common.js`.
 //
 // Mod anatomy — a mod is a ModPackage of up to three parts:
 //   declaration.js — an AbstractModDeclaration: pure data (objectTypes, wireClasses, items).
@@ -56,12 +56,13 @@ export {
     CONVEYS_FLUID,
 } from "@/common/ObjectType.js";
 
-// ---- Sim behaviors ----
+// ---- Behaviors ----
 // Component+system bundles a declaration plugs into an ObjectType's `behavior` slot; the engine's
-// PlacedObjects host derives the whole entity lifecycle from them. TickPhase is the enum of the
-// per-tick phases systems are scheduled into.
-export {AbstractBehavior} from "@/sim/behaviors/AbstractBehavior.js";
-export {StaticBehavior} from "@/sim/behaviors/StaticBehavior.js";
+// PlacedObjects host derives the whole entity lifecycle from them. The base class and the empty
+// StaticBehavior sit in common/ beside ObjectType; the ones below it reach into the engine.
+// TickPhase is the enum of the per-tick phases systems are scheduled into.
+export {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
+export {StaticBehavior} from "@/common/behaviors/StaticBehavior.js";
 export {MachineBehavior} from "@/sim/behaviors/MachineBehavior.js";
 export {ExtractorBehavior} from "@/sim/behaviors/ExtractorBehavior.js";
 export {GeneratorBehavior} from "@/sim/behaviors/GeneratorBehavior.js";

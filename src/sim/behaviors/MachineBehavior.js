@@ -4,7 +4,7 @@ import {TickPhase} from "@/sim/GameEngine.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {deterministicRoll} from "@/sim/Rng.js";
 import {METRICS_FACT_TYPE_ITEM_PRODUCED} from "@/common/MetricsFact.js";
-import {AbstractBehavior} from "@/sim/behaviors/AbstractBehavior.js";
+import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 import {syncFluidSource} from "@/sim/behaviors/util.js";
 
 // Recipe input keys are always padded to three slots.

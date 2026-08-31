@@ -1,4 +1,4 @@
-import {AbstractBehavior} from "@/sim/behaviors/AbstractBehavior.js";
+import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 
 /**
  * A worker source: contributes workerSupply to the road component its footprint touches.

@@ -1,4 +1,4 @@
-import {AbstractBehavior} from "@/sim/behaviors/AbstractBehavior.js";
+import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 
 /**
  * A road cell: registers its footprint with the worker network; no ports, no tick.
