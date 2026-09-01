@@ -1,8 +1,9 @@
 import {Container, Graphics, Text} from "pixi.js";
 import {AbstractDebugDrawLayer} from "@/client/layers/AbstractDebugDrawLayer.js";
 import {TILE_SIZE, GAME_FONT} from "@/client/constants.js";
-import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
+import {LAYER_SURFACE} from "@/common/constants.js";
 import {cellNeighbors, tileId} from "@/common/util.js";
+import {floodRoadComponent} from "@/common/roadFlood.js";
 import {RoadBehavior, isWorkerBehavior} from "@/sim/behaviors/RoadBehavior.js";
 import {DEBUG_COLOR} from "@/client/Theme.js";
 import {drawLine, drawCircle, drawRect} from "@/client/layers/pixiUtils.js";
@@ -87,45 +88,25 @@ export class WorkerDebugLayer extends AbstractDebugDrawLayer {
             seen.add(tile);
             const component = [road];
             const housings = [];
-            const roadQueue = [road];
-            const housingQueue = [];
-            const visit = (x, y) => {
-                const neighborTile = tileId(x, y);
-                const neighbor = roadTiles.get(neighborTile);
-                if (neighbor !== undefined) {
-                    if (seen.has(neighborTile)) {
-                        return;
+            floodRoadComponent({
+                seed: road,
+                roadTiles,
+                seen,
+                housingAt: (x, y) => {
+                    const entry = this.cache.at(x, y, LAYER_SURFACE);
+                    if (entry === null || seenHousings.has(entry.id)) {
+                        return null;
                     }
-                    seen.add(neighborTile);
-                    component.push(neighbor);
-                    roadQueue.push(neighbor);
-                    return;
-                }
-                const entry = this.cache.at(x, y, LAYER_SURFACE);
-                if (entry === null || seenHousings.has(entry.id)) {
-                    return;
-                }
-                const behavior = entry.behavior;
-                if (behavior === null || behavior.workerSupply <= 0) {
-                    return;
-                }
-                seenHousings.add(entry.id);
-                housings.push(entry);
-                housingQueue.push(entry);
-            };
-            while (roadQueue.length > 0 || housingQueue.length > 0) {
-                if (roadQueue.length > 0) {
-                    const current = roadQueue.pop();
-                    for (const delta of NEIGHBOR_DELTAS) {
-                        visit(current.x + delta.dx, current.y + delta.dy);
+                    const behavior = entry.behavior;
+                    if (behavior === null || behavior.workerSupply <= 0) {
+                        return null;
                     }
-                } else {
-                    const housing = housingQueue.pop();
-                    for (const {x, y} of cellNeighbors(housing.cells)) {
-                        visit(x, y);
-                    }
-                }
-            }
+                    seenHousings.add(entry.id);
+                    return entry;
+                },
+                onRoad: (neighbor) => component.push(neighbor),
+                onHousing: (entry) => housings.push(entry),
+            });
             this._drawComponent(component, housings, roadTiles);
         }
 
