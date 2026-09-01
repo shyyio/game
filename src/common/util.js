@@ -18,6 +18,18 @@ if (TILE_SPAN * TILE_SPAN * TILE_VARIANT_LIMIT >= MAX_SMALL_INTEGER) {
     throw new RangeError(`A ${TILE_SPAN}x${TILE_SPAN} tile box does not fit a small-integer tile id`);
 }
 
+/**
+ * `value` held between the bounds; an inverted range (a panel taller than its allowance) collapses
+ * to `low`, so it top-aligns instead of hanging off the top edge.
+ * @param {number} value
+ * @param {number} low
+ * @param {number} high
+ * @returns {number}
+ */
+export function clamp(value, low, high) {
+    return Math.min(Math.max(value, low), Math.max(low, high));
+}
+
 export function fixNegativeZero(n) {
     if (Object.is(n, -0)) {
         return 0;

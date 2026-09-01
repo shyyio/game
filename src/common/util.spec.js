@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {canonicalOrigin, formatCount, formatExactCount, jwtExpiry} from "@/common/util.js";
+import {canonicalOrigin, clamp, formatCount, formatExactCount, jwtExpiry} from "@/common/util.js";
 import {ORIGIN_PATTERN} from "@/common/constants.js";
 
 /**
@@ -78,4 +78,14 @@ test("formatExactCount groups thousands and rejects the same values formatCount 
     assert.equal(formatExactCount(9_999_999_999), "9,999,999,999");
     assert.throws(() => formatExactCount(-1), RangeError);
     assert.throws(() => formatExactCount(1.5), RangeError);
+});
+
+test("clamp holds a value between its bounds", () => {
+    assert.equal(clamp(5, 0, 10), 5);
+    assert.equal(clamp(-3, 0, 10), 0);
+    assert.equal(clamp(42, 0, 10), 10);
+});
+
+test("clamp collapses an inverted range to its low end", () => {
+    assert.equal(clamp(5, 12, 4), 12);
 });

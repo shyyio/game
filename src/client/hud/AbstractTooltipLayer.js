@@ -1,4 +1,5 @@
 import {Container, Graphics} from "pixi.js";
+import {clamp} from "@/common/util.js";
 import {PANEL_TINT, PANEL_TINT_TEXT} from "@/client/Theme.js";
 import {HudLayer} from "@/client/hud/HudLayer.js";
 
@@ -96,14 +97,4 @@ export class AbstractTooltipLayer extends Container {
         this.x = clamp(screenX + offsetX, TOOLTIP_SCREEN_MARGIN, maxX);
         this.y = clamp(screenY + offsetY, TOOLTIP_SCREEN_MARGIN, maxY);
     }
-}
-
-/**
- * @param {number} value
- * @param {number} low
- * @param {number} high
- * @returns {number}
- */
-function clamp(value, low, high) {
-    return Math.min(Math.max(value, low), high);
 }
