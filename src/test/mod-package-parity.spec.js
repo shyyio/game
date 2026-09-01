@@ -2,7 +2,7 @@
 // the same positional typeIds, same wire order, same items. Builds every in-repo mod through
 // tools/build-mod.js and freezes the result next to the static loadout.
 
-import {test} from "node:test";
+import {test, after} from "node:test";
 import assert from "node:assert/strict";
 import {mkdtempSync, rmSync, readdirSync, readFileSync} from "node:fs";
 import {tmpdir} from "node:os";
@@ -44,6 +44,11 @@ async function packagedRegistry(outRoot) {
     return {registry, manifests, bundles};
 }
 
+// Bundling every mod is this file's expensive step, so one build serves every test over it.
+const outRoot = mkdtempSync(join(tmpdir(), "pipes-mods-"));
+after(() => rmSync(outRoot, {recursive: true, force: true}));
+const {registry, manifests, bundles} = await packagedRegistry(outRoot);
+
 /**
  * @param {ModRegistry} registry
  * @returns {[string, number][]}
@@ -67,11 +72,7 @@ function itemNames(packages) {
     return names.sort();
 }
 
-test("built mod packages register identically to the static loadout", async (t) => {
-    const outRoot = mkdtempSync(join(tmpdir(), "pipes-mods-"));
-    t.after(() => rmSync(outRoot, {recursive: true, force: true}));
-    const {registry, manifests, bundles} = await packagedRegistry(outRoot);
-
+test("built mod packages register identically to the static loadout", () => {
     const staticPackages = simLoadout();
     const staticRegistry = new ModRegistry();
     for (const pkg of staticPackages) {
@@ -106,10 +107,7 @@ test("built mod packages register identically to the static loadout", async (t) 
     }
 });
 
-test("a packaged loadout runs a game", async (t) => {
-    const outRoot = mkdtempSync(join(tmpdir(), "pipes-mods-"));
-    t.after(() => rmSync(outRoot, {recursive: true, force: true}));
-    const {registry} = await packagedRegistry(outRoot);
+test("a packaged loadout runs a game", async () => {
     const game = new Game(registry, new GameEngine(registry));
     await game.init();
     const session = new CapturingSession(1);
@@ -126,17 +124,17 @@ test("a packaged loadout runs a game", async (t) => {
 });
 
 test("a built package is its manifest plus one bundle, art included", async (t) => {
-    const outRoot = mkdtempSync(join(tmpdir(), "pipes-mods-"));
-    t.after(() => rmSync(outRoot, {recursive: true, force: true}));
-    const manifest = await buildMod(resolve("src/mods/BaseTextures"), outRoot, {version: "2.0.0"});
+    const textureRoot = mkdtempSync(join(tmpdir(), "pipes-mods-"));
+    t.after(() => rmSync(textureRoot, {recursive: true, force: true}));
+    const manifest = await buildMod(resolve("src/mods/BaseTextures"), textureRoot, {version: "2.0.0"});
 
     assert.equal(manifest.name, "base-textures");
     assert.equal(manifest.version, "2.0.0");
     assert.deepEqual(manifest.files, ["mod.js"]);
-    assert.deepEqual(readdirSync(outRoot).sort(), ["mod.js", "mod.json"]);
+    assert.deepEqual(readdirSync(textureRoot).sort(), ["mod.js", "mod.json"]);
 
     // The atlases are inside the bundle: both images as data URLs, both frame sets as literals.
-    const bundle = readFileSync(join(outRoot, "mod.js"), "utf8");
+    const bundle = readFileSync(join(textureRoot, "mod.js"), "utf8");
     assert.equal(bundle.match(/data:image\/png;base64,/g).length, 2);
     assert.match(bundle, /"frames"|frames:/);
 });
