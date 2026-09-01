@@ -7,7 +7,7 @@ import {ORDER_BEFORE_TRANSPORT} from "../common/constants.js";
  */
 export class SplitterBehavior extends AbstractBehavior {
 
-    install(engine, placed) {
+    install(engine) {
         engine.components.define("Splitter", [
             {name: "in_a", kind: "eid", fill: NO_EID},
             {name: "in_b", kind: "eid", fill: NO_EID},
@@ -25,7 +25,7 @@ export class SplitterBehavior extends AbstractBehavior {
         engine.registerSystem(TickPhase.PRODUCE_OUTPUTS, () => this._fillOutputs(engine, outputFills));
     }
 
-    onSpawn(engine, placed, eid, type, message) {
+    onSpawn(engine, eid, type, message) {
         const inA = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction);
         const inB = engine.portFor(type.inputPorts[1], message.x, message.y, message.direction);
         const outA = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
@@ -35,20 +35,20 @@ export class SplitterBehavior extends AbstractBehavior {
         engine.render.registerPort(outB.port, outB.tile.x, outB.tile.y);
     }
 
-    onDespawn(engine, placed, eid) {
+    onDespawn(engine, eid) {
         const def = engine.components.get("Splitter");
         const row = def.row(eid);
         engine.render.unregisterPort(def.store.out_a[row]);
         engine.render.unregisterPort(def.store.out_b[row]);
     }
 
-    syncData(engine, placed, eid) {
+    syncData(engine, eid) {
         const def = engine.components.get("Splitter");
         const row = def.row(eid);
         return {portIds: [def.store.out_a[row], def.store.out_b[row]], lastOutput: null};
     }
 
-    resyncRenderedPorts(engine, placed, eid) {
+    resyncRenderedPorts(engine, eid) {
         const def = engine.components.get("Splitter");
         const row = def.row(eid);
         for (const out of [def.store.out_a[row], def.store.out_b[row]]) {

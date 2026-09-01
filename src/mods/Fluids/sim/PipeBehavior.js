@@ -7,31 +7,31 @@ import {Pipes} from "./Pipes.js";
  */
 export class PipeBehavior extends AbstractBehavior {
 
-    install(engine, placed) {
+    install(engine) {
         engine.provide(Pipes, new Pipes(engine));
     }
 
-    canSpawn(engine, placed, type, message) {
+    canSpawn(engine, type, message) {
         return engine.resolve(Pipes).canJoin(message.x, message.y);
     }
 
-    onSpawn(engine, placed, eid, type, message) {
-        engine.resolve(Pipes).placePipe(message.x, message.y, placed.objectIdOf(eid));
+    onSpawn(engine, eid, type, message) {
+        engine.resolve(Pipes).placePipe(message.x, message.y, engine.placed.objectIdOf(eid));
     }
 
-    onDespawn(engine, placed, eid) {
-        engine.resolve(Pipes).removePipe(placed.objectIdOf(eid));
+    onDespawn(engine, eid) {
+        engine.resolve(Pipes).removePipe(engine.placed.objectIdOf(eid));
     }
 
     /**
      * Re-registers every placed pipe with the network engine after a load.
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    onRebuild(engine, placed) {
+    onRebuild(engine) {
         const pipes = engine.resolve(Pipes);
         pipes.resetPipes();
+        const placed = engine.placed;
         const def = placed.def;
         const placedObject = def.store;
         const position = engine.Position;

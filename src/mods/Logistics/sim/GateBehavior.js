@@ -19,7 +19,7 @@ const PENDING_NONE = -1;
  */
 export class GateBehavior extends AbstractBehavior {
 
-    install(engine, placed) {
+    install(engine) {
         engine.components.define("Gate", [
             {name: "in", kind: "eid", fill: NO_EID},
             {name: "out", kind: "eid", fill: NO_EID},
@@ -37,23 +37,23 @@ export class GateBehavior extends AbstractBehavior {
             {name: "lastFluid"},
         ], {sparse: true});
         engine.registerPlacementGuard((type, x, y, direction) => !placementBlockedByGate(
-            (tx, ty) => GateBehavior._occupantAt(engine, placed, tx, ty),
+            (tx, ty) => GateBehavior._occupantAt(engine, tx, ty),
             occupant => occupant.type.behavior instanceof GateBehavior,
             type, x, y, direction,
         ));
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GateBehavior._applyPending(engine), ORDER_APPLY_PENDING);
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GateBehavior._review(engine, placed), ORDER_REVIEW);
+        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GateBehavior._review(engine), ORDER_REVIEW);
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GateBehavior._submitIntents(engine));
         // Seam must read shared ports before the belt transport writes pops.
         const outputFills = [];
         engine.registerSystem(TickPhase.POST_RESOLVE, () => GateBehavior._runSeam(engine, outputFills), ORDER_BEFORE_TRANSPORT);
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => GateBehavior._emitDeltas(engine, placed), ORDER_EMIT);
+        engine.registerSystem(TickPhase.POST_RESOLVE, () => GateBehavior._emitDeltas(engine), ORDER_EMIT);
         // Out-ports fill after the transport ingested, so a passed item rests a visible tick.
         engine.registerSystem(TickPhase.PRODUCE_OUTPUTS, () => GateBehavior._fillOutputs(engine, outputFills));
-        engine.registerChunkSync(chunk => GateBehavior._chunkSync(engine, placed, chunk));
+        engine.registerChunkSync(chunk => GateBehavior._chunkSync(engine, chunk));
     }
 
-    onSpawn(engine, placed, eid, type, message) {
+    onSpawn(engine, eid, type, message) {
         const def = engine.components.get("Gate");
         engine.components.attach(def, eid);
         const gate = def.store;
@@ -62,7 +62,7 @@ export class GateBehavior extends AbstractBehavior {
         gate.out[row] = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction).port;
         gate.open[row] = 1;
         const kinds = gateConnections(
-            (tx, ty) => GateBehavior._occupantAt(engine, placed, tx, ty),
+            (tx, ty) => GateBehavior._occupantAt(engine, tx, ty),
             message.x, message.y, message.direction,
         );
         const wantsFluid = (kinds.behind === CONVEYS_FLUID || kinds.front === CONVEYS_FLUID)
@@ -75,7 +75,7 @@ export class GateBehavior extends AbstractBehavior {
         }
     }
 
-    onDespawn(engine, placed, eid) {
+    onDespawn(engine, eid) {
         const def = engine.components.get("Gate");
         const gate = def.store;
         const row = def.row(eid);
@@ -91,7 +91,7 @@ export class GateBehavior extends AbstractBehavior {
         }
     }
 
-    logicRead(engine, placed, eid, key) {
+    logicRead(engine, eid, key) {
         if (key !== LOGIC_KEY_OPEN) {
             return null;
         }
@@ -99,7 +99,7 @@ export class GateBehavior extends AbstractBehavior {
         return def.store.open[def.row(eid)];
     }
 
-    logicWrite(engine, placed, eid, key, value) {
+    logicWrite(engine, eid, key, value) {
         if (key !== LOGIC_KEY_OPEN) {
             return false;
         }
@@ -168,11 +168,10 @@ export class GateBehavior extends AbstractBehavior {
     /**
      * Fluid mode rides its buffered type in the lastOutput slot for pipe placement checks.
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @param {number} eid
      * @returns {{portIds:number[], lastOutput:number|null}}
      */
-    syncData(engine, placed, eid) {
+    syncData(engine, eid) {
         const def = engine.components.get("Gate");
         const gate = def.store;
         const row = def.row(eid);
@@ -183,7 +182,7 @@ export class GateBehavior extends AbstractBehavior {
         return {portIds: [gate.out[row]], lastOutput};
     }
 
-    resyncRenderedPorts(engine, placed, eid) {
+    resyncRenderedPorts(engine, eid) {
         const def = engine.components.get("Gate");
         const gate = def.store;
         const row = def.row(eid);
@@ -197,10 +196,9 @@ export class GateBehavior extends AbstractBehavior {
     /**
      * Restores the port fluid state after a load.
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    onRebuild(engine, placed) {
+    onRebuild(engine) {
         const def = engine.components.get("Gate");
         const gate = def.store;
         for (let row = 0; row < def.count; row += 1) {
@@ -221,12 +219,12 @@ export class GateBehavior extends AbstractBehavior {
      * The SURFACE occupant at (x, y) as the connection rules see it, or null.
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @param {number} x
      * @param {number} y
      * @returns {{type: ObjectType, direction: Direction}|null}
      */
-    static _occupantAt(engine, placed, x, y) {
+    static _occupantAt(engine, x, y) {
+        const placed = engine.placed;
         const objectId = engine.space.ownerAt(x, y, LAYER_SURFACE);
         if (objectId === null) {
             return null;
@@ -265,17 +263,17 @@ export class GateBehavior extends AbstractBehavior {
      * SUBMIT_INTENTS (before intents): adopts the mode of the coupled transports.
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    static _review(engine, placed) {
+    static _review(engine) {
+        const placed = engine.placed;
         const def = engine.components.get("Gate");
         const gate = def.store;
         const position = engine.Position;
         for (let row = 0; row < def.count; row += 1) {
             const eid = def.eids[row];
             const kinds = gateConnections(
-                (tx, ty) => GateBehavior._occupantAt(engine, placed, tx, ty),
+                (tx, ty) => GateBehavior._occupantAt(engine, tx, ty),
                 position.x[eid], position.y[eid], position.direction[eid],
             );
             const hasItem = kinds.behind === CONVEYS_ITEM || kinds.front === CONVEYS_ITEM;
@@ -287,7 +285,7 @@ export class GateBehavior extends AbstractBehavior {
                 target = 0;
             }
             if (target !== gate.fluid[row]) {
-                GateBehavior._setMode(engine, placed, eid, target === 1);
+                GateBehavior._setMode(engine, eid, target === 1);
             }
         }
     }
@@ -296,12 +294,11 @@ export class GateBehavior extends AbstractBehavior {
      * Flips a gate's mode, discarding stranded cargo.
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @param {number} eid
      * @param {boolean} fluid
      * @returns {void}
      */
-    static _setMode(engine, placed, eid, fluid) {
+    static _setMode(engine, eid, fluid) {
         const def = engine.components.get("Gate");
         const gate = def.store;
         const row = def.row(eid);
@@ -329,10 +326,10 @@ export class GateBehavior extends AbstractBehavior {
      * POST_RESOLVE (last): batches the tick's gate-state changes per observed chunk.
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    static _emitDeltas(engine, placed) {
+    static _emitDeltas(engine) {
+        const placed = engine.placed;
         const def = engine.components.get("Gate");
         const gate = def.store;
         const position = engine.Position;
@@ -484,11 +481,11 @@ export class GateBehavior extends AbstractBehavior {
      * Chunk sync: one batch of the chunk's off-default gates.
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @param {number} chunk
      * @returns {GateSetBatchEvent[]}
      */
-    static _chunkSync(engine, placed, chunk) {
+    static _chunkSync(engine, chunk) {
+        const placed = engine.placed;
         const def = engine.components.get("Gate");
         const gate = def.store;
         const position = engine.Position;

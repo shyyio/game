@@ -125,7 +125,7 @@ export class WorkerNetworks {
             return;
         }
         const behavior = this.placed.behaviorFor(this.placed.typeIdOf(eid));
-        behavior.setWorkers(this.engine, this.placed, eid, granted);
+        behavior.setWorkers(this.engine, eid, granted);
     }
 
     /**

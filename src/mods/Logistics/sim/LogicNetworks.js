@@ -37,11 +37,10 @@ export class LogicNetworks {
 
     /**
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      */
-    constructor(engine, placed) {
+    constructor(engine) {
         this.engine = engine;
-        this.placed = placed;
+        this.placed = engine.placed;
         /**
          * The objectIds of every placed pole (a lone pole is still its own component).
          * @type {Set<number>}

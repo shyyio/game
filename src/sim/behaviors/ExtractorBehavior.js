@@ -23,7 +23,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         this.recipes = new Map(recipes.map(recipe => [recipe.inputs[0], recipe.output]));
     }
 
-    install(engine, placed) {
+    install(engine) {
         engine.components.define("Extractor", [
             {name: "out", kind: "eid", fill: NO_EID},
             {name: "resourceType", fill: EMPTY},
@@ -36,19 +36,19 @@ export class ExtractorBehavior extends AbstractBehavior {
             // while an extractor is merely counting down.
             {name: "processingTicks"},
         ], {sparse: true});
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => ExtractorBehavior._submitIntents(engine, placed));
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => ExtractorBehavior._finish(engine, placed));
+        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => ExtractorBehavior._submitIntents(engine));
+        engine.registerSystem(TickPhase.POST_RESOLVE, () => ExtractorBehavior._finish(engine));
     }
 
     /**
      * Spawns only on a covered extraction tile.
      * @returns {boolean}
      */
-    canSpawn(engine, placed, type, message) {
+    canSpawn(engine, type, message) {
         return engine.space.userDataAt(message.x, message.y, LAYER_RESOURCE) !== null;
     }
 
-    onSpawn(engine, placed, eid, type, message) {
+    onSpawn(engine, eid, type, message) {
         const def = engine.components.get("Extractor");
         engine.components.attach(def, eid);
         const extractor = def.store;
@@ -72,7 +72,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         }
     }
 
-    onDespawn(engine, placed, eid) {
+    onDespawn(engine, eid) {
         const def = engine.components.get("Extractor");
         const out = def.store.out[def.row(eid)];
         engine.render.unregisterPort(out);
@@ -80,7 +80,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         engine.ports.setFluidSource(out, EMPTY);
     }
 
-    syncData(engine, placed, eid) {
+    syncData(engine, eid) {
         const def = engine.components.get("Extractor");
         const row = def.row(eid);
         const last = def.store.lastOutput[row];
@@ -95,7 +95,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         return {portIds, lastOutput};
     }
 
-    resyncRenderedPorts(engine, placed, eid) {
+    resyncRenderedPorts(engine, eid) {
         if (!this.type.outputPorts[0].render) {
             return;
         }
@@ -108,7 +108,7 @@ export class ExtractorBehavior extends AbstractBehavior {
      * The extractor's inspect snapshot; the bound resource shows as the sole (memory) input.
      * @returns {InspectHeartbeatEvent}
      */
-    inspect(engine, placed, eid, objectId) {
+    inspect(engine, eid, objectId) {
         const def = engine.components.get("Extractor");
         const extractor = def.store;
         const row = def.row(eid);
@@ -145,10 +145,10 @@ export class ExtractorBehavior extends AbstractBehavior {
     /**
      * Restores the denormalized countdown length after a load (see MachineBehavior#onRebuild).
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    onRebuild(engine, placed) {
+    onRebuild(engine) {
+        const placed = engine.placed;
         const def = engine.components.get("Extractor");
         const extractor = def.store;
         const eids = def.eids;
@@ -167,10 +167,10 @@ export class ExtractorBehavior extends AbstractBehavior {
      * at zero it creates the output into its port.
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    static _submitIntents(engine, placed) {
+    static _submitIntents(engine) {
+        const placed = engine.placed;
         const item = engine.Port.item;
         const def = engine.components.get("Extractor");
         const extractor = def.store;
@@ -214,10 +214,10 @@ export class ExtractorBehavior extends AbstractBehavior {
      * POST_RESOLVE: a delivered extractor records last_output and goes idle (ready to produce again).
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    static _finish(engine, placed) {
+    static _finish(engine) {
+        const placed = engine.placed;
         const def = engine.components.get("Extractor");
         const extractor = def.store;
         const eids = def.eids;
