@@ -278,7 +278,14 @@ export class StatusMessageLayer extends Container {
         }
         const width = this._text.width + (PADDING_X + FRAME_MARGIN) * 2;
         const height = this._text.height + (PADDING_Y + FRAME_MARGIN) * 2;
-        this._box = UIPanel.rebuildFramedBox(this._panel, this._box, this.textureRegistry, width, height, PANEL_TINT);
+        this._box = UIPanel.rebuildFramedBox({
+            container: this._panel,
+            previous: this._box,
+            textureRegistry: this.textureRegistry,
+            width,
+            height,
+            tint: PANEL_TINT,
+        });
     }
 
     /**
