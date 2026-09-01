@@ -197,6 +197,9 @@ export {tileId} from "@/common/util.js";
 // Half the region's tile span; the world's half-open coordinate box is [-TILE_HALF, TILE_HALF).
 export {TILE_HALF} from "@/common/util.js";
 
+// Holds a value between two bounds; an inverted range collapses to its low end.
+export {clamp} from "@/common/util.js";
+
 // The map value under a key, created on first use.
 export {getOrCreate} from "@/common/util.js";
 

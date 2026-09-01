@@ -19,14 +19,3 @@ export function noteAnchor(note, mapMode) {
         y: (note.tileY + offsetMy / NOTE_OFFSET_UNITS) * TILE_SIZE,
     };
 }
-
-/**
- * Keeps a value inside a range; a range narrower than the value collapses to its low end.
- * @param {number} value
- * @param {number} low
- * @param {number} high
- * @returns {number}
- */
-export function clamp(value, low, high) {
-    return Math.min(Math.max(value, low), Math.max(low, high));
-}

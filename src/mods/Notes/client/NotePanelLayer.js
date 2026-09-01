@@ -11,11 +11,12 @@ import {
     TextRole,
     UIPanel,
     buildPanelButton,
+    clamp,
 } from "@spup/sdk/client";
 import {NOTE_TEXT_MAX_LENGTH} from "../common/constants.js";
 import {NotePlaceMessage, NoteEditMessage, NoteDeleteMessage} from "../common/messages.js";
 import {NOTE_EDITOR_MODE_PLACE, NOTE_EDITOR_MODE_EDIT, NOTE_EDITOR_MODE_DELETE} from "./NotesState.js";
-import {clamp, noteAnchor} from "./layout.js";
+import {noteAnchor} from "./layout.js";
 
 const PANEL_WIDTH = 280;
 // The connector aims at the marker itself, not at the whole tile under it.

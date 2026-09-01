@@ -1,4 +1,5 @@
 import {Container, Sprite, Text, NineSliceSprite, TilingSprite, Rectangle} from "pixi.js";
+import {clamp} from "@/common/util.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
 import {PanelStack} from "@/client/hud/PanelStack.js";
@@ -672,16 +673,4 @@ export class ManagedPanel {
         this.panel.destroy({children: true});
         this.panel = null;
     }
-}
-
-/**
- * `value` held between the bounds; an inverted range (a panel taller than its allowance) collapses
- * to `low`, so it top-aligns instead of hanging off the top edge.
- * @param {number} value
- * @param {number} low
- * @param {number} high
- * @returns {number}
- */
-function clamp(value, low, high) {
-    return Math.min(Math.max(value, low), Math.max(low, high));
 }
