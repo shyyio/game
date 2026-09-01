@@ -2,6 +2,7 @@ import {CORE_PLAYER_SETTING_ENTRIES} from "@/common/PlayerSettingEntry.js";
 import {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
 import {LogicKeyEntry, LogicKeyState} from "@/common/LogicKeys.js";
 import {ItemRegistry} from "@/common/ItemRegistry.js";
+import {ItemCategory} from "@/common/ItemCategory.js";
 import {CORE_NOISE_CHANNELS} from "@/common/Terrain.js";
 
 // Terrain bakes store one byte per tile.
@@ -44,6 +45,10 @@ export class ModRegistry {
          * @type {ItemRegistry}
          */
         this._items = new ItemRegistry();
+        /**
+         * @type {ItemCategory[]}
+         */
+        this._itemCategories = [];
         /**
          * @type {Set<number>}
          */
@@ -178,13 +183,16 @@ export class ModRegistry {
                 this._clientMods.push(pkg.client);
                 this._textureAtlases.push(...pkg.client.textureAtlases());
             }
-            for (const [itemType, definition] of Object.entries(pkg.declaration.items)) {
-                this._items.register(Number(itemType), definition);
+            for (const category of pkg.declaration.items) {
+                for (const [itemType, definition] of Object.entries(category.items)) {
+                    this._items.register(Number(itemType), definition);
+                }
             }
             for (const fluidType of pkg.declaration.fluidTypes) {
                 this._fluidTypes.add(fluidType);
             }
         }
+        this._itemCategories = ItemCategory.merge(this._packages.flatMap(pkg => pkg.declaration.items));
     }
 
     /**
@@ -414,6 +422,15 @@ export class ModRegistry {
     get items() {
         this._assertFrozen();
         return this._items;
+    }
+
+    /**
+     * Every item category across the loadout, merged by name, in display order.
+     * @returns {ItemCategory[]}
+     */
+    get itemCategories() {
+        this._assertFrozen();
+        return this._itemCategories;
     }
 
     /**

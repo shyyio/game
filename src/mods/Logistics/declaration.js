@@ -1,4 +1,4 @@
-import {AbstractModDeclaration, ItemDefinition, LogicKeyEntry, LogicKeyState} from "@spup/sdk";
+import {AbstractModDeclaration, LogicKeyEntry, LogicKeyState} from "@spup/sdk";
 import {LOGIC_KEY_OPEN} from "./common/constants.js";
 import {
     BeltDefinition,
@@ -79,10 +79,6 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
             LogicSnapshotRequestMessage,
             ConfigureLogicRulesMessage,
         ];
-    }
-
-    get items() {
-        return {3: new ItemDefinition("Cargo", "items/1")};
     }
 
     get logicKeys() {

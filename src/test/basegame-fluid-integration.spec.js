@@ -16,11 +16,11 @@ import {
     BrewType,
 } from "@/mods/BaseGame/common/objectTypes.js";
 import {
-    ITEM_TYPE_SOYBEAN,
+    ITEM_TYPE_CABBAGE,
     ITEM_TYPE_NUTRIENT_SLOP,
     ITEM_TYPE_OXYGEN,
     ITEM_TYPE_WATER,
-    ITEM_TYPE_SOYBEAN_SEEDS,
+    ITEM_TYPE_CABBAGE_SEED,
     ITEM_TYPE_IRON_ORE,
     ITEM_TYPE_COKE,
     ITEM_TYPE_RAW_STEEL,
@@ -36,13 +36,13 @@ test("a Blender pumps Nutrient Slop into an adjacent pipe network", async () => 
     const [eid] = engine.placed.eidsOf(BlenderType.typeId);
     const def = engine.components.get("Machine");
     const row = def.row(eid);
-    engine.ports.setItem(def.store.in0[row], ITEM_TYPE_SOYBEAN);
+    engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE);
     engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 5, 4, Direction.UP));
     const pipes = pipesOf(engine);
 
     for (let i = 0; i < 40; i += 1) {
         engine.tickAll();
-        engine.ports.setItem(def.store.in0[row], ITEM_TYPE_SOYBEAN);
+        engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE);
     }
 
     const net = pipes.networkAt(5, 4);
@@ -76,7 +76,7 @@ test("a pipe delivers Water into a Greenhouse's fluid input, completing the reci
 
     let produced = false;
     for (let i = 0; i < 200 && !produced; i += 1) {
-        engine.ports.setItem(def.store.in0[row], ITEM_TYPE_SOYBEAN_SEEDS);
+        engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE_SEED);
         engine.tickAll();
         produced = engine.ports.item(outPort) !== EMPTY;
     }

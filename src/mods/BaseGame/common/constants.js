@@ -8,8 +8,8 @@ export const RESOURCE_QUARTZ = 304;
 // Item types, following the production chain.
 export const ITEM_TYPE_WATER = 310;
 export const ITEM_TYPE_SOUL = 311;
-export const ITEM_TYPE_SOYBEAN_SEEDS = 312;
-export const ITEM_TYPE_SOYBEAN = 313;
+export const ITEM_TYPE_CABBAGE_SEED = 312;
+export const ITEM_TYPE_CABBAGE = 313;
 export const ITEM_TYPE_MUSHROOM_SPORE = 314;
 export const ITEM_TYPE_MUSHROOM = 315;
 export const ITEM_TYPE_NUTRIENT_SLOP = 316;
@@ -32,7 +32,7 @@ export const ITEM_TYPE_STIMPACK = 331;
 export const ITEM_TYPE_WASTE = 399;
 
 // Placeholder NPC prices for Trading Terminal seed items.
-export const NPC_PRICE_SOYBEAN_SEEDS = 5;
+export const NPC_PRICE_CABBAGE_SEED = 5;
 export const NPC_PRICE_MUSHROOM_SPORE = 8;
 
 // Torment Chamber's Soul byproduct roll.

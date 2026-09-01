@@ -161,10 +161,13 @@ export {MarketListingEntry} from "@/common/MarketListingEntry.js";
 export {MetricsGlobalQueryEntry} from "@/common/MetricsGlobalQueryEntry.js";
 
 // ---- Items ----
-// Item type -> definition a declaration contributes (items): a player-visible name plus a texture
-// name and a pixi multiply tint, so shared shapes stay visually distinct per item type. The frozen
-// ModRegistry merges them into its ItemRegistry (modRegistry.items).
+// Item definition a declaration contributes inside an ItemCategory (items): a player-visible name
+// plus a texture name and a pixi multiply tint, so shared shapes stay visually distinct per item
+// type. The frozen ModRegistry merges them into its ItemRegistry (modRegistry.items).
 export {ItemDefinition} from "@/common/ItemDefinition.js";
+// Collection-log section a declaration contributes (items); same-name categories merge across the
+// loadout and sort by displayOrder (modRegistry.itemCategories).
+export {ItemCategory} from "@/common/ItemCategory.js";
 
 // An item count or currency amount as at most five characters (99999, 9999K, 999M, 1B).
 export {formatCount} from "@/common/util.js";
