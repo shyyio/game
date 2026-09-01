@@ -107,6 +107,15 @@ class Mouse {
         this._viewport = null;
         this._app = null;
 
+        this._resetCallbacks();
+    }
+
+    /**
+     * Empties every callback list.
+     * @private
+     * @returns {void}
+     */
+    _resetCallbacks() {
         this._tapCallbacks = [];
         this._pressCallbacks = [];
         this._dragStartCallbacks = [];
@@ -161,13 +170,7 @@ class Mouse {
         this.currentY = null;
         this._hoverTileX = null;
         this._hoverTileY = null;
-        this._tapCallbacks = [];
-        this._pressCallbacks = [];
-        this._dragStartCallbacks = [];
-        this._tileDragCallbacks = [];
-        this._longPressCallbacks = [];
-        this._tileEnterCallbacks = [];
-        this._tileExitCallbacks = [];
+        this._resetCallbacks();
     }
 
     // ---- Callback registration ----
