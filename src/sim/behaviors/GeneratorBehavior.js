@@ -33,7 +33,7 @@ export class GeneratorBehavior extends AbstractBehavior {
         this.hasSecondaryPort = this.secondaryOutput !== null;
     }
 
-    install(engine, placed) {
+    install(engine) {
         engine.components.define("Generator", [
             {name: "out", kind: "eid", fill: NO_EID},
             {name: "remaining", kind: "f32", fill: EMPTY},
@@ -49,11 +49,11 @@ export class GeneratorBehavior extends AbstractBehavior {
             {name: "lastOutput2", fill: EMPTY},
             {name: "processingTicks2"},
         ], {sparse: true});
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GeneratorBehavior._submitIntents(engine, placed));
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => GeneratorBehavior._finish(engine, placed));
+        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GeneratorBehavior._submitIntents(engine));
+        engine.registerSystem(TickPhase.POST_RESOLVE, () => GeneratorBehavior._finish(engine));
     }
 
-    onSpawn(engine, placed, eid, type, message) {
+    onSpawn(engine, eid, type, message) {
         const def = engine.components.get("Generator");
         engine.components.attach(def, eid);
         const generator = def.store;
@@ -72,7 +72,7 @@ export class GeneratorBehavior extends AbstractBehavior {
         }
     }
 
-    onDespawn(engine, placed, eid) {
+    onDespawn(engine, eid) {
         const def = engine.components.get("Generator");
         const row = def.row(eid);
         engine.render.unregisterPort(def.store.out[row]);
@@ -83,7 +83,7 @@ export class GeneratorBehavior extends AbstractBehavior {
         }
     }
 
-    syncData(engine, placed, eid) {
+    syncData(engine, eid) {
         const def = engine.components.get("Generator");
         const row = def.row(eid);
         const last = def.store.lastOutput[row];
@@ -98,7 +98,7 @@ export class GeneratorBehavior extends AbstractBehavior {
         return {portIds, lastOutput};
     }
 
-    resyncRenderedPorts(engine, placed, eid) {
+    resyncRenderedPorts(engine, eid) {
         const def = engine.components.get("Generator");
         const row = def.row(eid);
         const out = def.store.out[row];
@@ -111,12 +111,11 @@ export class GeneratorBehavior extends AbstractBehavior {
 
     /**
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @param {number} eid
      * @param {number} objectId
      * @returns {InspectHeartbeatEvent}
      */
-    inspect(engine, placed, eid, objectId) {
+    inspect(engine, eid, objectId) {
         const def = engine.components.get("Generator");
         const generator = def.store;
         const row = def.row(eid);
@@ -135,10 +134,10 @@ export class GeneratorBehavior extends AbstractBehavior {
     /**
      * Restores the denormalized countdown lengths after a load (see MachineBehavior#onRebuild).
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    onRebuild(engine, placed) {
+    onRebuild(engine) {
+        const placed = engine.placed;
         const def = engine.components.get("Generator");
         const generator = def.store;
         const eids = def.eids;
@@ -201,10 +200,10 @@ export class GeneratorBehavior extends AbstractBehavior {
      * second output port was wired onto (see onSpawn).
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    static _submitIntents(engine, placed) {
+    static _submitIntents(engine) {
+        const placed = engine.placed;
         const def = engine.components.get("Generator");
         const generator = def.store;
         const eids = def.eids;
@@ -236,10 +235,10 @@ export class GeneratorBehavior extends AbstractBehavior {
      * POST_RESOLVE: a delivered cycle (main or secondary) records its last_output and goes idle.
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    static _finish(engine, placed) {
+    static _finish(engine) {
+        const placed = engine.placed;
         const def = engine.components.get("Generator");
         const generator = def.store;
         const eids = def.eids;

@@ -17,7 +17,7 @@ export class TankBehavior extends AbstractBehavior {
         this.capacity = capacity;
     }
 
-    install(engine, placed) {
+    install(engine) {
         engine.components.define("Tank", [
             {name: "in", kind: "eid", fill: NO_EID},
             {name: "out", kind: "eid", fill: NO_EID},
@@ -29,10 +29,10 @@ export class TankBehavior extends AbstractBehavior {
             {name: "lastType", fill: EMPTY},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => TankBehavior._submitIntents(engine));
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => TankBehavior._finish(engine, placed));
+        engine.registerSystem(TickPhase.POST_RESOLVE, () => TankBehavior._finish(engine));
     }
 
-    onSpawn(engine, placed, eid, type, message) {
+    onSpawn(engine, eid, type, message) {
         const def = engine.components.get("Tank");
         engine.components.attach(def, eid);
         const tank = def.store;
@@ -44,7 +44,7 @@ export class TankBehavior extends AbstractBehavior {
         engine.ports.markFluid(tank.out[row]);
     }
 
-    onDespawn(engine, placed, eid) {
+    onDespawn(engine, eid) {
         const def = engine.components.get("Tank");
         const row = def.row(eid);
         const tank = def.store;
@@ -54,7 +54,7 @@ export class TankBehavior extends AbstractBehavior {
         engine.ports.setFluidSource(tank.out[row], EMPTY);
     }
 
-    logicRead(engine, placed, eid, key) {
+    logicRead(engine, eid, key) {
         if (key !== LOGIC_KEY_AMOUNT) {
             return null;
         }
@@ -66,7 +66,7 @@ export class TankBehavior extends AbstractBehavior {
         return [LOGIC_KEY_AMOUNT];
     }
 
-    logicStored(engine, placed, eid) {
+    logicStored(engine, eid) {
         const def = engine.components.get("Tank");
         const row = def.row(eid);
         if (def.store.fluidType[row] === EMPTY) {
@@ -78,11 +78,10 @@ export class TankBehavior extends AbstractBehavior {
     /**
      * The held fluid rides the lastOutput slot, so a subscribing client learns the type.
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @param {number} eid
      * @returns {{portIds:number[], lastOutput:number|null}}
      */
-    syncData(engine, placed, eid) {
+    syncData(engine, eid) {
         const def = engine.components.get("Tank");
         const row = def.row(eid);
         let lastOutput = null;
@@ -95,10 +94,10 @@ export class TankBehavior extends AbstractBehavior {
     /**
      * Restores the denormalized capacity and the port fluid flags after a load.
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    onRebuild(engine, placed) {
+    onRebuild(engine) {
+        const placed = engine.placed;
         const def = engine.components.get("Tank");
         const tank = def.store;
         const eids = def.eids;
@@ -145,10 +144,10 @@ export class TankBehavior extends AbstractBehavior {
      * changes to observed chunks.
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    static _finish(engine, placed) {
+    static _finish(engine) {
+        const placed = engine.placed;
         const def = engine.components.get("Tank");
         const tank = def.store;
         const position = engine.Position;

@@ -48,13 +48,23 @@ export class PlacedObjects {
         engine.registerInspector(objectId => this._inspect(objectId));
         engine.snapshots.registerRebuildHook(() => this._rebuild());
 
-        const installed = new Set();
         for (const type of registry.objectTypes) {
             this._types.set(type.typeId, type);
             this._behaviors[type.typeId] = type.behavior;
+        }
+    }
+
+    /**
+     * Installs each behavior class once; called by the engine once `engine.placed` is this host, so
+     * an installing behavior can reach it.
+     * @returns {void}
+     */
+    installBehaviors() {
+        const installed = new Set();
+        for (const type of this._types.values()) {
             if (!installed.has(type.behavior.constructor)) {
                 installed.add(type.behavior.constructor);
-                type.behavior.install(engine, this);
+                type.behavior.install(this.engine);
             }
         }
     }
@@ -202,7 +212,7 @@ export class PlacedObjects {
         if (type.geometry.spansChunks(message.x, message.y, message.direction)) {
             return true;
         }
-        if (!type.behavior.canSpawn(engine, this, type, message)) {
+        if (!type.behavior.canSpawn(engine, type, message)) {
             return true;
         }
         if (!engine.placementGuardsAllow(type, message.x, message.y, message.direction)) {
@@ -219,7 +229,7 @@ export class PlacedObjects {
         this.def.store.objectId[row] = objectId;
         this.def.store.ownerId[row] = engine.chunkOwnerOf(chunkId(message.x, message.y));
         engine.space.setPosition(eid, message.x, message.y, message.direction);
-        type.behavior.onSpawn(engine, this, eid, type, message);
+        type.behavior.onSpawn(engine, eid, type, message);
         if (type.placement.solid) {
             engine.track(objectId, footprint);
         }
@@ -227,7 +237,7 @@ export class PlacedObjects {
         this._indexChunk(eid, message.x, message.y);
         this._notifyChunkChanged(chunkId(message.x, message.y));
         // One source for the insert payload: the behavior's sync record (ports + seeded lastOutput).
-        const sync = type.behavior.syncData(engine, this, eid);
+        const sync = type.behavior.syncData(engine, eid);
         engine.emitEvent(new ObjectInsertEvent(type.typeId, objectId, message.x, message.y, message.direction, sync.portIds, sync.lastOutput));
         engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_PLACED, playerId, type.typeId, 1);
         return true;
@@ -248,7 +258,7 @@ export class PlacedObjects {
         const engine = this.engine;
         const position = engine.Position;
         const type = this._types.get(this.typeIdOf(eid));
-        type.behavior.onDespawn(engine, this, eid);
+        type.behavior.onDespawn(engine, eid);
         engine.notifyDespawn(eid, objectId);
         const x = position.x[eid];
         const y = position.y[eid];
@@ -318,7 +328,7 @@ export class PlacedObjects {
         for (const eid of eids) {
             const row = this.def.row(eid);
             const type = this._types.get(placedObject.typeId[row]);
-            const sync = type.behavior.syncData(this.engine, this, eid);
+            const sync = type.behavior.syncData(this.engine, eid);
             if (batch === null) {
                 batch = new ObjectSyncBatchEvent(origin.x, origin.y);
             }
@@ -347,7 +357,7 @@ export class PlacedObjects {
         if (!type.inspectable) {
             return null;
         }
-        return type.behavior.inspect(this.engine, this, eid, objectId);
+        return type.behavior.inspect(this.engine, eid, objectId);
     }
 
     /**
@@ -367,13 +377,13 @@ export class PlacedObjects {
             this._eidByObjectId.set(placedObject.objectId[row], eid);
             this._indexChunk(eid, position.x[eid], position.y[eid]);
             const type = this._types.get(placedObject.typeId[row]);
-            type.behavior.resyncRenderedPorts(this.engine, this, eid);
+            type.behavior.resyncRenderedPorts(this.engine, eid);
         }
         const rebuilt = new Set();
         for (const type of this._types.values()) {
             if (!rebuilt.has(type.behavior.constructor)) {
                 rebuilt.add(type.behavior.constructor);
-                type.behavior.onRebuild(this.engine, this);
+                type.behavior.onRebuild(this.engine);
             }
         }
     }

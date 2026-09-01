@@ -14,11 +14,11 @@ export class HousingBehavior extends AbstractBehavior {
         this.workerSupply = workerSupply;
     }
 
-    onSpawn(engine, placed, eid, type, message) {
+    onSpawn(engine, eid, type, message) {
         engine.workers.roads.markDirty(engine.footprint(type, message.x, message.y, message.direction));
     }
 
-    onDespawn(engine, placed, eid) {
+    onDespawn(engine, eid) {
         const position = engine.Position;
         engine.workers.roads.markDirty(engine.footprint(this.type, position.x[eid], position.y[eid], position.direction[eid]));
     }

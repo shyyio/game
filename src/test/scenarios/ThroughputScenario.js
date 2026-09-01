@@ -85,10 +85,9 @@ class SinkBehavior extends AbstractBehavior {
 
     /**
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    install(engine, placed) {
+    install(engine) {
         engine.components.define("ThroughputSink", [
             {name: "in", kind: "eid", fill: NO_EID},
             {name: "consumed"},
@@ -99,13 +98,12 @@ class SinkBehavior extends AbstractBehavior {
 
     /**
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @param {number} eid
      * @param {ObjectType} type
      * @param {CreateObjectMessage} message
      * @returns {void}
      */
-    onSpawn(engine, placed, eid, type, message) {
+    onSpawn(engine, eid, type, message) {
         const def = engine.components.get("ThroughputSink");
         engine.components.attach(def, eid);
         const row = def.row(eid);

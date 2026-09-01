@@ -8,20 +8,21 @@ import {LogicNetworks} from "./LogicNetworks.js";
  */
 export class PoleBehavior extends AbstractBehavior {
 
-    install(engine, placed) {
-        const networks = new LogicNetworks(engine, placed);
+    install(engine) {
+        const networks = new LogicNetworks(engine);
         engine.provide(LogicNetworks, networks);
         engine.registerDespawnListener((eid, objectId) => networks.removeObject(objectId));
-        engine.registerChunkSync(chunk => PoleBehavior._chunkSync(engine, placed, chunk));
+        engine.registerChunkSync(chunk => PoleBehavior._chunkSync(engine, chunk));
     }
 
-    onSpawn(engine, placed, eid, type, message) {
+    onSpawn(engine, eid, type, message) {
         engine.resolve(LogicNetworks).addPole(eid);
     }
 
-    onRebuild(engine, placed) {
+    onRebuild(engine) {
         const networks = engine.resolve(LogicNetworks);
         networks.reset();
+        const placed = engine.placed;
         const def = placed.def;
         const placedObject = def.store;
         for (let row = 0; row < def.count; row += 1) {
@@ -35,11 +36,11 @@ export class PoleBehavior extends AbstractBehavior {
      * Chunk sync: every wire with an endpoint in the chunk, once.
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @param {number} chunk
      * @returns {LogicWireSetEvent[]}
      */
-    static _chunkSync(engine, placed, chunk) {
+    static _chunkSync(engine, chunk) {
+        const placed = engine.placed;
         const position = engine.Position;
         const events = [];
         for (const wire of engine.resolve(LogicNetworks).wires) {

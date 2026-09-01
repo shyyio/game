@@ -144,17 +144,17 @@ test("the processing key reads real activity, not the enable switch", async () =
     const eid = engine.placed.eidByObjectId(machine);
     const behavior = engine.placed.behaviorFor(engine.placed.typeIdOf(eid));
 
-    assert.equal(behavior.logicRead(engine, engine.placed, eid, LOGIC_KEY_ENABLED), 1);
-    assert.equal(behavior.logicRead(engine, engine.placed, eid, LOGIC_KEY_PROCESSING), 0,
+    assert.equal(behavior.logicRead(engine, eid, LOGIC_KEY_ENABLED), 1);
+    assert.equal(behavior.logicRead(engine, eid, LOGIC_KEY_PROCESSING), 0,
         "enabled but holding nothing reads idle");
 
     const def = engine.components.get("Machine");
     def.store.output[def.row(eid)] = ITEM_TYPE_NUTRIENT_SLOP;
-    assert.equal(behavior.logicRead(engine, engine.placed, eid, LOGIC_KEY_PROCESSING), 1,
+    assert.equal(behavior.logicRead(engine, eid, LOGIC_KEY_PROCESSING), 1,
         "a held product is a craft in flight");
 
-    behavior.logicWrite(engine, engine.placed, eid, LOGIC_KEY_ENABLED, 0);
-    assert.equal(behavior.logicRead(engine, engine.placed, eid, LOGIC_KEY_PROCESSING), 0,
+    behavior.logicWrite(engine, eid, LOGIC_KEY_ENABLED, 0);
+    assert.equal(behavior.logicRead(engine, eid, LOGIC_KEY_PROCESSING), 0,
         "a switched-off machine is frozen, not working");
 });
 

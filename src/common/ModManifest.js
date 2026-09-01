@@ -9,7 +9,8 @@ import {GAME_VERSION} from "./constants.js";
 // The game's major version is the SDK version, so there is one number to move: bump the major on a
 // breaking change to the SDK surface (a removed or renamed export, a changed signature) and every
 // mod rebuilds against it. 2 dropped the `@/sdk/*.js` specifiers for the `@spup/sdk` package; 3
-// moved the client's HUD, center-lock, view-mode and settings surface onto collaborator fields.
+// moved the client's HUD, center-lock, view-mode and settings surface onto collaborator fields; 4
+// dropped the PlacedObjects parameter from every behavior hook.
 export const SDK_VERSION = Number(GAME_VERSION.split(".")[0]);
 
 export const MOD_PART_DECLARATION = "declaration";

@@ -18,21 +18,21 @@ export class BeltBehavior extends AbstractBehavior {
         this.beltKind = beltKind;
     }
 
-    install(engine, placed) {
+    install(engine) {
         engine.provide(Belts, new Belts(engine));
     }
 
-    onSpawn(engine, placed, eid, type, message) {
+    onSpawn(engine, eid, type, message) {
         const belts = engine.resolve(Belts);
         if (isTunnelMouth(this.beltKind)) {
             this._fillTunnel(engine, belts, message);
         }
-        belts.placeBelt(message.x, message.y, message.direction, this.beltKind, placed.objectIdOf(eid));
+        belts.placeBelt(message.x, message.y, message.direction, this.beltKind, engine.placed.objectIdOf(eid));
     }
 
-    onDespawn(engine, placed, eid) {
+    onDespawn(engine, eid) {
         const belts = engine.resolve(Belts);
-        const belt = belts.beltById(placed.objectIdOf(eid));
+        const belt = belts.beltById(engine.placed.objectIdOf(eid));
         if (belt === null) {
             return;
         }
@@ -73,12 +73,12 @@ export class BeltBehavior extends AbstractBehavior {
     /**
      * Re-registers every placed belt with the path engine after a load.
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    onRebuild(engine, placed) {
+    onRebuild(engine) {
         const belts = engine.resolve(Belts);
         belts.resetBelts();
+        const placed = engine.placed;
         const def = placed.def;
         const placedObject = def.store;
         const position = engine.Position;

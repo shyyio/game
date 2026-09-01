@@ -16,24 +16,24 @@ const ORDER_RULES = -40;
  */
 export class LogicTerminalBehavior extends AbstractBehavior {
 
-    install(engine, placed) {
+    install(engine) {
         engine.components.define("LogicTerminal", [
             {name: "tier", fill: LOGIC_TIER_BASE},
         ], {sparse: true});
         engine.provide(LogicRules, new LogicRules());
         engine.registerSystem(
             TickPhase.SUBMIT_INTENTS,
-            () => LogicTerminalBehavior._evaluate(engine, placed),
+            () => LogicTerminalBehavior._evaluate(engine),
             ORDER_RULES,
         );
     }
 
-    onSpawn(engine, placed, eid, type, message) {
+    onSpawn(engine, eid, type, message) {
         engine.components.attach(engine.components.get("LogicTerminal"), eid);
     }
 
-    onDespawn(engine, placed, eid) {
-        engine.resolve(LogicRules).dropTerminal(placed.objectIdOf(eid));
+    onDespawn(engine, eid) {
+        engine.resolve(LogicRules).dropTerminal(engine.placed.objectIdOf(eid));
     }
 
     /**
@@ -43,10 +43,10 @@ export class LogicTerminalBehavior extends AbstractBehavior {
      * device priority for the tick.
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    static _evaluate(engine, placed) {
+    static _evaluate(engine) {
+        const placed = engine.placed;
         const networks = engine.resolve(LogicNetworks);
         const rulesService = engine.resolve(LogicRules);
         const def = engine.components.get("LogicTerminal");
@@ -60,7 +60,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
             const network = networks.networkOf(placed.objectIdOf(eid));
             const claimed = new Set();
             for (const rule of rules) {
-                LogicTerminalBehavior._evaluateRule(engine, placed, network, rule, claimed);
+                LogicTerminalBehavior._evaluateRule(engine, network, rule, claimed);
             }
         }
     }
@@ -68,20 +68,20 @@ export class LogicTerminalBehavior extends AbstractBehavior {
     /**
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @param {LogicNetwork|null} network - null when the terminal is unwired
      * @param {LogicRule} rule
      * @param {Set<number>} claimed - device objectIds already written this evaluation
      * @returns {void}
      */
-    static _evaluateRule(engine, placed, network, rule, claimed) {
+    static _evaluateRule(engine, network, rule, claimed) {
+        const placed = engine.placed;
         rule.suspended = false;
         if (network === null) {
             rule.suspended = true;
             return;
         }
         for (const condition of rule.conditions) {
-            const value = LogicTerminalBehavior._conditionValue(engine, placed, network, condition);
+            const value = LogicTerminalBehavior._conditionValue(engine, network, condition);
             if (value === null) {
                 rule.suspended = true;
                 return;
@@ -99,7 +99,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
             return;
         }
         const written = placed.behaviorFor(placed.typeIdOf(actionEid))
-            .logicWrite(engine, placed, actionEid, rule.actionKey, rule.actionValue);
+            .logicWrite(engine, actionEid, rule.actionKey, rule.actionValue);
         if (!written) {
             rule.suspended = true;
             return;
@@ -113,12 +113,12 @@ export class LogicTerminalBehavior extends AbstractBehavior {
      * (dead/unwired device or unexposed key).
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @param {LogicNetwork} network
      * @param {LogicCondition} condition
      * @returns {number|null}
      */
-    static _conditionValue(engine, placed, network, condition) {
+    static _conditionValue(engine, network, condition) {
+        const placed = engine.placed;
         if (condition.kind === LOGIC_CONDITION_KIND_STORED) {
             if (condition.deviceId !== 0 && !network.deviceIds.includes(condition.deviceId)) {
                 return null;
@@ -128,11 +128,11 @@ export class LogicTerminalBehavior extends AbstractBehavior {
                 if (condition.deviceId !== 0 && deviceId !== condition.deviceId) {
                     continue;
                 }
-                const eid = engine.placed.eidByObjectId(deviceId);
+                const eid = placed.eidByObjectId(deviceId);
                 if (eid === undefined) {
                     continue;
                 }
-                const stored = placed.behaviorFor(placed.typeIdOf(eid)).logicStored(engine, placed, eid);
+                const stored = placed.behaviorFor(placed.typeIdOf(eid)).logicStored(engine, eid);
                 if (stored !== null && stored.itemType === condition.itemType) {
                     total += stored.amount;
                 }
@@ -143,7 +143,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
         if (eid === null) {
             return null;
         }
-        return placed.behaviorFor(placed.typeIdOf(eid)).logicRead(engine, placed, eid, condition.key);
+        return placed.behaviorFor(placed.typeIdOf(eid)).logicRead(engine, eid, condition.key);
     }
 
     /**

@@ -394,6 +394,7 @@ export class GameEngine {
             // then bespoke sim mods register theirs.
             this._fluidTypes = this.modRegistry.fluidTypes;
             this.placed = new PlacedObjects(this, this.modRegistry);
+            this.placed.installBehaviors();
             this.overworldBake = new OverworldBake(this, this.placed);
             this.workers = new WorkerNetworks(this, this.placed);
             for (const mod of this.modRegistry.simMods) {

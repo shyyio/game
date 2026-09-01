@@ -92,7 +92,7 @@ export class MachineBehavior extends AbstractBehavior {
         return key;
     }
 
-    install(engine, placed) {
+    install(engine) {
         engine.components.define("Machine", [
             {name: "out", kind: "eid", fill: NO_EID},
             // Byproduct port; NO_EID unless the object type declares a second output port.
@@ -124,11 +124,11 @@ export class MachineBehavior extends AbstractBehavior {
             // Logic-network switch; a disabled machine pauses whole (no gather, craft, or output).
             {name: "enabled", fill: 1},
         ], {sparse: true});
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => MachineBehavior._submitIntents(engine, placed));
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => MachineBehavior._finish(engine, placed));
+        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => MachineBehavior._submitIntents(engine));
+        engine.registerSystem(TickPhase.POST_RESOLVE, () => MachineBehavior._finish(engine));
     }
 
-    onSpawn(engine, placed, eid, type, message) {
+    onSpawn(engine, eid, type, message) {
         const def = engine.components.get("Machine");
         engine.components.attach(def, eid);
         const machine = def.store;
@@ -158,7 +158,7 @@ export class MachineBehavior extends AbstractBehavior {
         }
     }
 
-    onDespawn(engine, placed, eid) {
+    onDespawn(engine, eid) {
         const def = engine.components.get("Machine");
         const machine = def.store;
         const row = def.row(eid);
@@ -179,12 +179,12 @@ export class MachineBehavior extends AbstractBehavior {
         }
     }
 
-    setWorkers(engine, placed, eid, granted) {
+    setWorkers(engine, eid, granted) {
         const def = engine.components.get("Machine");
         def.store.workerStep[def.row(eid)] = 1 + (MANNED_SPEED_MULTIPLIER - 1) * (granted / this.workerCost);
     }
 
-    syncData(engine, placed, eid) {
+    syncData(engine, eid) {
         const def = engine.components.get("Machine");
         const row = def.row(eid);
         const last = def.store.lastOutput[row];
@@ -199,7 +199,7 @@ export class MachineBehavior extends AbstractBehavior {
         return {portIds, lastOutput};
     }
 
-    resyncRenderedPorts(engine, placed, eid) {
+    resyncRenderedPorts(engine, eid) {
         const def = engine.components.get("Machine");
         const row = def.row(eid);
         const out = def.store.out[row];
@@ -212,12 +212,11 @@ export class MachineBehavior extends AbstractBehavior {
 
     /**
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @param {number} eid
      * @param {number} objectId
      * @returns {InspectHeartbeatEvent}
      */
-    inspect(engine, placed, eid, objectId) {
+    inspect(engine, eid, objectId) {
         const item = engine.Port.item;
         const def = engine.components.get("Machine");
         const machine = def.store;
@@ -297,10 +296,10 @@ export class MachineBehavior extends AbstractBehavior {
      * Restores the denormalized behavior constants after a load, so a save written before a machine
      * carried them (or by a build with different constants) still ticks correctly.
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    onRebuild(engine, placed) {
+    onRebuild(engine) {
+        const placed = engine.placed;
         const def = engine.components.get("Machine");
         const machine = def.store;
         const eids = def.eids;
@@ -315,7 +314,7 @@ export class MachineBehavior extends AbstractBehavior {
         }
     }
 
-    logicRead(engine, placed, eid, key) {
+    logicRead(engine, eid, key) {
         const def = engine.components.get("Machine");
         const row = def.row(eid);
         if (key === LOGIC_KEY_ENABLED) {
@@ -331,7 +330,7 @@ export class MachineBehavior extends AbstractBehavior {
         return null;
     }
 
-    logicWrite(engine, placed, eid, key, value) {
+    logicWrite(engine, eid, key, value) {
         if (key !== LOGIC_KEY_ENABLED) {
             return false;
         }
@@ -429,10 +428,10 @@ export class MachineBehavior extends AbstractBehavior {
      * countdown reaches zero. Processed per machine (machines never share ports).
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    static _submitIntents(engine, placed) {
+    static _submitIntents(engine) {
+        const placed = engine.placed;
         const item = engine.Port.item;
         const def = engine.components.get("Machine");
         const machine = def.store;
@@ -542,10 +541,10 @@ export class MachineBehavior extends AbstractBehavior {
      * records last_output/last_byproduct and goes idle.
      * @private
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
      * @returns {void}
      */
-    static _finish(engine, placed) {
+    static _finish(engine) {
+        const placed = engine.placed;
         const def = engine.components.get("Machine");
         const machine = def.store;
         const processingCols = columns(machine, PROCESSING_COLS);

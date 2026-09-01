@@ -13,7 +13,7 @@ import {MarketBook} from "./MarketBook.js";
  */
 export class TradingTerminalBehavior extends AbstractBehavior {
 
-    install(engine, placed) {
+    install(engine) {
         const fixedPrices = new Map();
         for (const listing of engine.modRegistry.marketListings) {
             if (listing.npcPrice !== null) {
@@ -43,7 +43,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         engine.registerSystem(TickPhase.POST_RESOLVE, () => TradingTerminalBehavior._finish(engine));
     }
 
-    onSpawn(engine, placed, eid, type, message) {
+    onSpawn(engine, eid, type, message) {
         const def = engine.components.get("MarketTerminal");
         engine.components.attach(def, eid);
         const terminal = def.store;
@@ -54,7 +54,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         engine.render.registerPort(output.port, output.tile.x, output.tile.y);
     }
 
-    onDespawn(engine, placed, eid) {
+    onDespawn(engine, eid) {
         const def = engine.components.get("MarketTerminal");
         const row = def.row(eid);
         engine.render.unregisterPort(def.store.out[row]);
@@ -63,7 +63,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         book.removeSell(eid);
     }
 
-    syncData(engine, placed, eid) {
+    syncData(engine, eid) {
         const def = engine.components.get("MarketTerminal");
         const row = def.row(eid);
         const last = def.store.lastOutput[row];
@@ -74,7 +74,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         return {portIds: [def.store.out[row]], lastOutput};
     }
 
-    resyncRenderedPorts(engine, placed, eid) {
+    resyncRenderedPorts(engine, eid) {
         const def = engine.components.get("MarketTerminal");
         const out = def.store.out[def.row(eid)];
         engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
