@@ -1,7 +1,7 @@
 // The server path a packaged loadout takes: build -> pin -> cache -> load -> serve. Uses file: URLs
 // so the whole round trip runs without a network.
 
-import {test} from "node:test";
+import {test, after} from "node:test";
 import assert from "node:assert/strict";
 import {mkdtempSync, rmSync, writeFileSync, readFileSync} from "node:fs";
 import {tmpdir} from "node:os";
@@ -18,17 +18,25 @@ import {ModHost} from "@/server/ModHost.js";
 import {simLoadout, BASE_MOD_DIRS} from "@/mods/loadout.js";
 import {buildMod} from "../../tools/build-mod.js";
 
+// Bundling every mod is this file's expensive step, so one build serves every test over it; each
+// test re-pins those same packages, since a lockfile is mutable state a test may tamper with.
+const packageRoot = mkdtempSync(join(tmpdir(), "pipes-packages-"));
+after(() => rmSync(packageRoot, {recursive: true, force: true}));
+const packageUrls = [];
+for (const dir of BASE_MOD_DIRS) {
+    const outDir = join(packageRoot, dir);
+    await buildMod(resolve("src/mods", dir), outDir, {version: "1.0.0"});
+    packageUrls.push(pathToFileURL(outDir).href);
+}
+
 /**
- * Builds every in-repo mod into `root/packages` and pins them into a lockfile, in loadout order.
- * @param {string} root
+ * Pins the built packages into a fresh lockfile, in loadout order.
  * @returns {Promise<ModLockfile>}
  */
-async function buildAndPin(root) {
+async function pinLoadout() {
     const entries = [];
-    for (const dir of BASE_MOD_DIRS) {
-        const outDir = join(root, "packages", dir);
-        await buildMod(resolve("src/mods", dir), outDir, {version: "1.0.0"});
-        entries.push(await resolvePackage(pathToFileURL(outDir).href));
+    for (const url of packageUrls) {
+        entries.push(await resolvePackage(url));
     }
     return new ModLockfile(entries);
 }
@@ -46,7 +54,7 @@ function tempRoot(t) {
 
 test("a pinned loadout caches, loads, and registers like the static one", async (t) => {
     const root = tempRoot(t);
-    const lockfile = await buildAndPin(root);
+    const lockfile = await pinLoadout();
     const cache = new ModCache(join(root, "cache"));
 
     assert.equal(await cache.populate(lockfile), lockfile.mods.reduce((sum, entry) => sum + entry.integrity.size, 0));
@@ -78,7 +86,7 @@ test("a pinned loadout caches, loads, and registers like the static one", async 
 
 test("the served index names every file by its content hash", async (t) => {
     const root = tempRoot(t);
-    const lockfile = await buildAndPin(root);
+    const lockfile = await pinLoadout();
     const cache = new ModCache(join(root, "cache"));
     await cache.populate(lockfile);
     const {mods} = await loadPackagedMods(lockfile, cache);
@@ -98,7 +106,7 @@ test("the served index names every file by its content hash", async (t) => {
 
 test("a tampered file fails the hash check instead of loading", async (t) => {
     const root = tempRoot(t);
-    const lockfile = await buildAndPin(root);
+    const lockfile = await pinLoadout();
     const cache = new ModCache(join(root, "cache"));
     await cache.populate(lockfile);
 
@@ -112,7 +120,7 @@ test("a tampered file fails the hash check instead of loading", async (t) => {
 
 test("a package whose bytes drift from the pin refuses to cache", async (t) => {
     const root = tempRoot(t);
-    const lockfile = await buildAndPin(root);
+    const lockfile = await pinLoadout();
     const entry = lockfile.find("fluids");
     entry.integrity.set("mod.js", formatIntegrity("0".repeat(64)));
 
@@ -122,7 +130,7 @@ test("a package whose bytes drift from the pin refuses to cache", async (t) => {
 
 test("mods.json round-trips through parse and write", async (t) => {
     const root = tempRoot(t);
-    const lockfile = await buildAndPin(root);
+    const lockfile = await pinLoadout();
     const path = join(root, "mods.json");
     writeLockfile(lockfile, path);
 
