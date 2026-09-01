@@ -8,9 +8,7 @@
 //   node src/server/modsCli.js verify
 
 import {parseArgs} from "node:util";
-import {existsSync} from "node:fs";
-import {ModLockfile} from "@/common/ModLockfile.js";
-import {readLockfile, writeLockfile} from "@/server/modLockfileFile.js";
+import {readLockfileOrEmpty, writeLockfile} from "@/server/modLockfileFile.js";
 import {ModCache, resolvePackage} from "@/server/ModCache.js";
 import {ModCatalog, DEFAULT_REGISTRY_URL} from "@/server/ModCatalog.js";
 
@@ -34,18 +32,6 @@ const USAGE = [
     "  mods verify",
     "options: --mods <mods.json> --mods-cache <dir> --registry <index.json url>",
 ].join("\n");
-
-/**
- * Reads the lockfile, treating a missing file as an empty one (the first `add` creates it).
- * @param {string} path
- * @returns {ModLockfile}
- */
-function readLockfile(path) {
-    if (!existsSync(path)) {
-        return new ModLockfile([]);
-    }
-    return readLockfile(path);
-}
 
 /**
  * The package URL a target names: a URL is used as given, a bare name resolves through the
@@ -182,7 +168,7 @@ function verify(lockfile) {
 }
 
 const [verb, target] = positionals;
-const lockfile = readLockfile(args["mods"]);
+const lockfile = readLockfileOrEmpty(args["mods"]);
 try {
     if (verb === "list") {
         list(lockfile);

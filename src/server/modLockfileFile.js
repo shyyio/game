@@ -1,7 +1,7 @@
 // The operator's mods.json on disk. The lockfile model itself is @/common/ModLockfile.js, which the
 // browser shares to pin its own local loadout.
 
-import {readFileSync, writeFileSync} from "node:fs";
+import {existsSync, readFileSync, writeFileSync} from "node:fs";
 import {ModLockfile} from "@/common/ModLockfile.js";
 
 /**
@@ -10,6 +10,18 @@ import {ModLockfile} from "@/common/ModLockfile.js";
  */
 export function readLockfile(path) {
     return ModLockfile.parse(JSON.parse(readFileSync(path, "utf8")));
+}
+
+/**
+ * Reads the lockfile, treating a missing file as an empty one (the first `add` creates it).
+ * @param {string} path
+ * @returns {ModLockfile}
+ */
+export function readLockfileOrEmpty(path) {
+    if (!existsSync(path)) {
+        return new ModLockfile([]);
+    }
+    return readLockfile(path);
 }
 
 /**
