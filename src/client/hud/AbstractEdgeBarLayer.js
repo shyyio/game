@@ -151,7 +151,14 @@ export class AbstractEdgeBarLayer extends Container {
      * @returns {void}
      */
     _rebuildFrame(width, height, bleedTop) {
-        this._frame = UIPanel.rebuildFrame(this._panel, this._frame, this.textureRegistry,
-            width + EDGE_BLEED * 2, height + EDGE_BLEED, PANEL_TINT, {x: -EDGE_BLEED, y: -bleedTop});
+        this._frame = UIPanel.rebuildFrame({
+            container: this._panel,
+            previous: this._frame,
+            textureRegistry: this.textureRegistry,
+            width: width + EDGE_BLEED * 2,
+            height: height + EDGE_BLEED,
+            tint: PANEL_TINT,
+            position: {x: -EDGE_BLEED, y: -bleedTop},
+        });
     }
 }

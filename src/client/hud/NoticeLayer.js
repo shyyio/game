@@ -96,7 +96,14 @@ export class NoticeLayer extends Container {
      * @returns {void}
      */
     _rebuildBackground(width, height) {
-        this._box = UIPanel.rebuildFramedBox(this._panel, this._box, this.textureRegistry, width, height, PANEL_TINT);
+        this._box = UIPanel.rebuildFramedBox({
+            container: this._panel,
+            previous: this._box,
+            textureRegistry: this.textureRegistry,
+            width,
+            height,
+            tint: PANEL_TINT,
+        });
     }
 
     /**

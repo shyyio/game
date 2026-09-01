@@ -292,49 +292,66 @@ export class UIPanel extends Container {
     /**
      * Rebuilds a content-sized frame+inset pair (compact HUD boxes like NoticeLayer/StatusMessageLayer,
      * not a full draggable {@link UIPanel}); inset is inset by {@link FRAME_MARGIN} on every side.
-     * @param {Container} container
-     * @param {{frame: NineSliceSprite|null, inset: NineSliceSprite|null}} previous
-     * @param {TextureRegistry} textureRegistry
-     * @param {number} width
-     * @param {number} height
-     * @param {number} tint
+     * @param {object} options
+     * @param {Container} options.container
+     * @param {{frame: NineSliceSprite|null, inset: NineSliceSprite|null}} options.previous
+     * @param {TextureRegistry} options.textureRegistry
+     * @param {number} options.width
+     * @param {number} options.height
+     * @param {number} options.tint
      * @returns {{frame: NineSliceSprite, inset: NineSliceSprite}}
      */
-    static rebuildFramedBox(container, previous, textureRegistry, width, height, tint) {
-        const inset = UIPanel.rebuildInset(container, previous.inset, textureRegistry,
-            width - FRAME_MARGIN * 2, height - FRAME_MARGIN * 2, tint, {x: FRAME_MARGIN, y: FRAME_MARGIN});
-        const frame = UIPanel.rebuildFrame(container, previous.frame, textureRegistry, width, height, tint);
+    static rebuildFramedBox({container, previous, textureRegistry, width, height, tint}) {
+        const inset = UIPanel.rebuildInset({
+            container,
+            previous: previous.inset,
+            textureRegistry,
+            width: width - FRAME_MARGIN * 2,
+            height: height - FRAME_MARGIN * 2,
+            tint,
+            position: {x: FRAME_MARGIN, y: FRAME_MARGIN},
+        });
+        const frame = UIPanel.rebuildFrame({
+            container,
+            previous: previous.frame,
+            textureRegistry,
+            width,
+            height,
+            tint,
+        });
         return {frame, inset};
     }
 
     /**
      * Replaces `previous` (destroyed if given) with a fresh {@link UIPanel.frameSprite} at index 0; call last so it ends up behind everything else.
-     * @param {Container} container
-     * @param {NineSliceSprite|null} previous
-     * @param {TextureRegistry} textureRegistry
-     * @param {number} width
-     * @param {number} height
-     * @param {number} tint
-     * @param {{x: number, y: number}} [position]
+     * @param {object} options
+     * @param {Container} options.container
+     * @param {NineSliceSprite|null} options.previous
+     * @param {TextureRegistry} options.textureRegistry
+     * @param {number} options.width
+     * @param {number} options.height
+     * @param {number} options.tint
+     * @param {{x: number, y: number}} [options.position]
      * @returns {NineSliceSprite}
      */
-    static rebuildFrame(container, previous, textureRegistry, width, height, tint, position = {x: 0, y: 0}) {
+    static rebuildFrame({container, previous, textureRegistry, width, height, tint, position = {x: 0, y: 0}}) {
         return UIPanel._rebuildSprite(container, previous,
             () => UIPanel.frameSprite(textureRegistry, width, height, tint), position, 0);
     }
 
     /**
      * Replaces `previous` (destroyed if given) with a fresh {@link UIPanel.insetSprite} at index 0; call before {@link UIPanel.rebuildFrame}.
-     * @param {Container} container
-     * @param {NineSliceSprite|null} previous
-     * @param {TextureRegistry} textureRegistry
-     * @param {number} width
-     * @param {number} height
-     * @param {number} tint
-     * @param {{x: number, y: number}} [position]
+     * @param {object} options
+     * @param {Container} options.container
+     * @param {NineSliceSprite|null} options.previous
+     * @param {TextureRegistry} options.textureRegistry
+     * @param {number} options.width
+     * @param {number} options.height
+     * @param {number} options.tint
+     * @param {{x: number, y: number}} [options.position]
      * @returns {NineSliceSprite}
      */
-    static rebuildInset(container, previous, textureRegistry, width, height, tint, position = {x: 0, y: 0}) {
+    static rebuildInset({container, previous, textureRegistry, width, height, tint, position = {x: 0, y: 0}}) {
         return UIPanel._rebuildSprite(container, previous,
             () => UIPanel.insetSprite(textureRegistry, width, height, tint), position, 0);
     }
