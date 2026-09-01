@@ -166,7 +166,7 @@ export {MetricsGlobalQueryEntry} from "@/common/MetricsGlobalQueryEntry.js";
 // type. The frozen ModRegistry merges them into its ItemRegistry (modRegistry.items).
 export {ItemDefinition} from "@/common/ItemDefinition.js";
 // Collection-log section a declaration contributes (items); same-name categories merge across the
-// loadout and sort by displayOrder (modRegistry.itemCategories).
+// loadout and sort by name (modRegistry.itemCategories).
 export {ItemCategory} from "@/common/ItemCategory.js";
 
 // An item count or currency amount as at most five characters (99999, 9999K, 999M, 1B).

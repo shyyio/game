@@ -425,7 +425,7 @@ export class ModRegistry {
     }
 
     /**
-     * Every item category across the loadout, merged by name, in display order.
+     * Every item category across the loadout, merged and sorted by name.
      * @returns {ItemCategory[]}
      */
     get itemCategories() {

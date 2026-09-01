@@ -82,7 +82,7 @@ export class VolcanoFixtureDeclaration extends AbstractModDeclaration {
     }
 
     get items() {
-        return [new ItemCategory("Volcano", 900, {
+        return [new ItemCategory("Volcano", {
             [ITEM_TYPE_TEST_SULFUR]: new ItemDefinition("Test Sulfur", "items/2"),
             [ITEM_TYPE_TEST_BRINE]: new ItemDefinition("Test Brine", "items/1"),
         })];
