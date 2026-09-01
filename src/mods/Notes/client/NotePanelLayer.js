@@ -201,7 +201,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
                 stack.text(this._players.usernameOf(target.authorId), TextRole.MUTED);
             }
         } else {
-            stack.row(row => row.leading(this._input));
+            stack.row(row => row.pushLeft(this._input));
         }
         stack.gap();
         stack.row(row => this._fillButtons(row, target));
@@ -214,9 +214,9 @@ export class NotePanelLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _fillButtons(row, target) {
-        row.leading(buildPanelButton(this.textureRegistry, "Back", PANEL_TINT, () => this._notes.closeEditor()));
+        row.pushLeft(buildPanelButton(this.textureRegistry, "Back", PANEL_TINT, () => this._notes.closeEditor()));
         if (target.mode !== NOTE_EDITOR_MODE_PLACE) {
-            row.leading(buildPanelButton(this.textureRegistry, "Delete", PANEL_TINT, () => {
+            row.pushLeft(buildPanelButton(this.textureRegistry, "Delete", PANEL_TINT, () => {
                 this._session.sendMessage(new NoteDeleteMessage(target.tileX, target.tileY));
                 this._notes.closeEditor();
             }));
@@ -224,7 +224,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
         if (this._input === null) {
             return;
         }
-        row.leading(buildPanelButton(this.textureRegistry, "Save", ACTIVE_ACCENT, () => this._save(target)));
+        row.pushLeft(buildPanelButton(this.textureRegistry, "Save", ACTIVE_ACCENT, () => this._save(target)));
     }
 
     /**

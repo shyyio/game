@@ -248,7 +248,7 @@ export class FriendsPanelLayer extends Container {
      */
     _fillCodeRow(row) {
         const submit = () => this._submitCode(this._codeInput);
-        row.trailing(buildPanelButton(this.textureRegistry, "Add", ACTIVE_ACCENT, submit), INPUT_GAP);
+        row.pushRight(buildPanelButton(this.textureRegistry, "Add", ACTIVE_ACCENT, submit), INPUT_GAP);
         // Sized against the button actually built, so a relabeled button can never crowd the input.
         row.fill((width) => {
             if (this._codeInput === null) {
@@ -272,8 +272,8 @@ export class FriendsPanelLayer extends Container {
      */
     _fillOwnCodeRow(row, ownCode) {
         // The label carries its own trailing space, so the two sit flush.
-        row.leading(panelText("Your code: ", TextRole.BODY), 0);
-        const code = row.leading(panelText(ownCode, TextRole.BODY));
+        row.pushLeft(panelText("Your code: ", TextRole.BODY), 0);
+        const code = row.pushLeft(panelText(ownCode, TextRole.BODY));
 
         if (this._ownCodeSelection === null) {
             this._ownCodeSelection = new SelectableText(this._app, code);

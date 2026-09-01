@@ -20,8 +20,8 @@ export class PanelRow extends Container {
         super();
         this.rowWidth = width;
         this.rowHeight = height;
-        this._leading = [];
-        this._trailing = [];
+        this._left = [];
+        this._right = [];
         this._fill = null;
         this._overflow = 0;
     }
@@ -42,8 +42,8 @@ export class PanelRow extends Container {
      * @param {number} [gap] - the space after this item
      * @returns {T}
      */
-    leading(child, gap = ROW_GAP) {
-        this._leading.push(new RowItem(child, gap));
+    pushLeft(child, gap = ROW_GAP) {
+        this._left.push(new RowItem(child, gap));
         this.addChild(child);
         return child;
     }
@@ -55,8 +55,8 @@ export class PanelRow extends Container {
      * @param {number} [gap] - the space before this item
      * @returns {T}
      */
-    trailing(child, gap = ROW_GAP) {
-        this._trailing.push(new RowItem(child, gap));
+    pushRight(child, gap = ROW_GAP) {
+        this._right.push(new RowItem(child, gap));
         this.addChild(child);
         return child;
     }
@@ -70,8 +70,8 @@ export class PanelRow extends Container {
      * @param {number} [gap] - the space after the slot
      * @returns {T}
      */
-    column(child, width, gap = 0) {
-        this._leading.push(new RowItem(child, gap, width));
+    pushColumn(child, width, gap = 0) {
+        this._left.push(new RowItem(child, gap, width));
         this.addChild(child);
         return child;
     }
@@ -81,8 +81,8 @@ export class PanelRow extends Container {
      * @param {number} width
      * @returns {void}
      */
-    spacer(width) {
-        this._leading.push(new RowItem(null, 0, width));
+    pushSpacer(width) {
+        this._left.push(new RowItem(null, 0, width));
     }
 
     /**
@@ -91,11 +91,11 @@ export class PanelRow extends Container {
      * @returns {void}
      */
     indent(steps = 1) {
-        this.spacer(ROW_INDENT * steps);
+        this.pushSpacer(ROW_INDENT * steps);
     }
 
     /**
-     * Adds the child that takes whatever width the leading and trailing items leave; `build`
+     * Adds the child that takes whatever width the left and right items leave; `build`
      * receives that width and is called during {@link layout}, so it sees every other item.
      * @param {function(number): Container} build
      * @returns {void}
@@ -109,51 +109,51 @@ export class PanelRow extends Container {
      * @returns {void}
      */
     layout() {
-        const leadingWidth = PanelRow._spannedWidth(this._leading);
-        const trailingWidth = PanelRow._spannedWidth(this._trailing);
+        const leftWidth = PanelRow._spannedWidth(this._left);
+        const rightWidth = PanelRow._spannedWidth(this._right);
         let fillWidth = 0;
         if (this._fill !== null) {
             // Measured before the fill child joins the flow, so its own gaps are counted once.
             const gaps = this._fillGaps();
-            const child = this._fill(Math.max(this.rowWidth - leadingWidth - trailingWidth - gaps, 0));
-            this._leading.push(new RowItem(child, ROW_GAP));
+            const child = this._fill(Math.max(this.rowWidth - leftWidth - rightWidth - gaps, 0));
+            this._left.push(new RowItem(child, ROW_GAP));
             this.addChild(child);
             // A fill squeezed to nothing claims no gaps either.
             if (child.width > 0) {
                 fillWidth = child.width + gaps;
             }
         }
-        this._overflow = Math.max(leadingWidth + fillWidth + trailingWidth - this.rowWidth, 0);
-        for (const item of this._leading.concat(this._trailing)) {
+        this._overflow = Math.max(leftWidth + fillWidth + rightWidth - this.rowWidth, 0);
+        for (const item of this._left.concat(this._right)) {
             this._overflow += item.overrun;
         }
 
         let x = 0;
-        for (const item of this._leading) {
+        for (const item of this._left) {
             item.placeAt(x, this.rowHeight);
             x += item.width + item.gap;
         }
         let right = this.rowWidth;
-        for (const item of this._trailing) {
+        for (const item of this._right) {
             item.placeAt(right - item.width, this.rowHeight);
             right -= item.width + item.gap;
         }
     }
 
     /**
-     * The gaps a fill child adds: the one each neighbor declares against it. The leading item it
-     * follows is the last one added; the trailing item it runs up against is the leftmost, which is
+     * The gaps a fill child adds: the one each neighbor declares against it. The left item it
+     * follows is the last one added; the right item it runs up against is the leftmost, which is
      * the last one added there too.
      * @private
      * @returns {number}
      */
     _fillGaps() {
         let gaps = 0;
-        if (this._leading.length > 0) {
-            gaps += this._leading[this._leading.length - 1].gap;
+        if (this._left.length > 0) {
+            gaps += this._left[this._left.length - 1].gap;
         }
-        if (this._trailing.length > 0) {
-            gaps += this._trailing[this._trailing.length - 1].gap;
+        if (this._right.length > 0) {
+            gaps += this._right[this._right.length - 1].gap;
         }
         return gaps;
     }

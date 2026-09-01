@@ -15,20 +15,20 @@ function block(width, height = ROW_HEIGHT) {
     return new Graphics().rect(0, 0, width, height).fill(0xffffff);
 }
 
-test("leading items flow from the left, one gap apart", () => {
+test("left items flow from the left, one gap apart", () => {
     const row = new PanelRow(ROW_WIDTH);
-    const first = row.leading(block(80));
-    const second = row.leading(block(50));
+    const first = row.pushLeft(block(80));
+    const second = row.pushLeft(block(50));
     row.layout();
 
     assert.equal(first.x, 0);
     assert.equal(second.x, 80 + ROW_GAP);
 });
 
-test("trailing items pin to the right and stack leftward", () => {
+test("right items pin to the right and stack leftward", () => {
     const row = new PanelRow(ROW_WIDTH);
-    const first = row.trailing(block(40));
-    const second = row.trailing(block(30));
+    const first = row.pushRight(block(40));
+    const second = row.pushRight(block(30));
     row.layout();
 
     assert.equal(first.x, ROW_WIDTH - 40);
@@ -37,7 +37,7 @@ test("trailing items pin to the right and stack leftward", () => {
 
 test("a short item is centered on the row", () => {
     const row = new PanelRow(ROW_WIDTH);
-    const short = row.leading(block(80, 20));
+    const short = row.pushLeft(block(80, 20));
     row.layout();
 
     assert.equal(short.y, (ROW_HEIGHT - 20) / 2);
@@ -45,7 +45,7 @@ test("a short item is centered on the row", () => {
 
 test("a full-height item sits at the top", () => {
     const row = new PanelRow(ROW_WIDTH);
-    const tall = row.leading(block(80, ROW_HEIGHT));
+    const tall = row.pushLeft(block(80, ROW_HEIGHT));
     row.layout();
 
     assert.equal(tall.y, 0);
@@ -53,26 +53,26 @@ test("a full-height item sits at the top", () => {
 
 test("a spacer advances the flow by exactly its width", () => {
     const row = new PanelRow(ROW_WIDTH);
-    row.spacer(16);
-    const after = row.leading(block(80));
+    row.pushSpacer(16);
+    const after = row.pushLeft(block(80));
     row.layout();
 
     assert.equal(after.x, 16);
 });
 
-test("a leading gap override sets the space after that item", () => {
+test("a left gap override sets the space after that item", () => {
     const row = new PanelRow(ROW_WIDTH);
-    row.leading(block(20), 14);
-    const after = row.leading(block(80));
+    row.pushLeft(block(20), 14);
+    const after = row.pushLeft(block(80));
     row.layout();
 
     assert.equal(after.x, 20 + 14);
 });
 
-test("a trailing gap override sets the space before that item", () => {
+test("a right gap override sets the space before that item", () => {
     const row = new PanelRow(ROW_WIDTH);
-    const first = row.trailing(block(40), 20);
-    const second = row.trailing(block(30));
+    const first = row.pushRight(block(40), 20);
+    const second = row.pushRight(block(30));
     row.layout();
 
     assert.equal(first.x, ROW_WIDTH - 40);
@@ -81,7 +81,7 @@ test("a trailing gap override sets the space before that item", () => {
 
 test("a fill takes the width the other items leave", () => {
     const row = new PanelRow(ROW_WIDTH);
-    row.trailing(block(70));
+    row.pushRight(block(70));
     let given = null;
     row.fill((width) => {
         given = width;
@@ -93,23 +93,23 @@ test("a fill takes the width the other items leave", () => {
     assert.equal(row.overflow, 0);
 });
 
-test("a fill measures against a trailing item added after it", () => {
+test("a fill measures against a right item added after it", () => {
     const row = new PanelRow(ROW_WIDTH);
     let given = null;
     row.fill((width) => {
         given = width;
         return block(width);
     });
-    row.trailing(block(70));
+    row.pushRight(block(70));
     row.layout();
 
     assert.equal(given, ROW_WIDTH - 70 - ROW_GAP);
 });
 
-test("a fill sits between the leading flow and the trailing items", () => {
+test("a fill sits between the left flow and the right items", () => {
     const row = new PanelRow(ROW_WIDTH);
-    row.leading(block(50));
-    row.trailing(block(70));
+    row.pushLeft(block(50));
+    row.pushRight(block(70));
     const filled = row.fill((width) => block(width));
     row.layout();
 
@@ -119,9 +119,9 @@ test("a fill sits between the leading flow and the trailing items", () => {
     assert.equal(filled, undefined);
 });
 
-test("a fill measures against the gap its trailing neighbor declares", () => {
+test("a fill measures against the gap its right neighbor declares", () => {
     const row = new PanelRow(ROW_WIDTH);
-    row.trailing(block(70), 20);
+    row.pushRight(block(70), 20);
     let given = null;
     row.fill((width) => {
         given = width;
@@ -135,7 +135,7 @@ test("a fill measures against the gap its trailing neighbor declares", () => {
 
 test("a fill child wider than it was offered reports overflow", () => {
     const row = new PanelRow(ROW_WIDTH);
-    row.trailing(block(70));
+    row.pushRight(block(70));
     // A widget whose drawn bounds exceed the size it was built at, a stroke bleeding outward say.
     row.fill((width) => block(width + 2));
     row.layout();
@@ -145,8 +145,8 @@ test("a fill child wider than it was offered reports overflow", () => {
 
 test("a row that fits reports no overflow", () => {
     const row = new PanelRow(ROW_WIDTH);
-    row.leading(block(200));
-    row.trailing(block(100));
+    row.pushLeft(block(200));
+    row.pushRight(block(100));
     row.layout();
 
     assert.equal(row.overflow, 0);
@@ -154,8 +154,8 @@ test("a row that fits reports no overflow", () => {
 
 test("a row whose items exceed its width reports the excess", () => {
     const row = new PanelRow(ROW_WIDTH);
-    row.leading(block(300));
-    row.trailing(block(150));
+    row.pushLeft(block(300));
+    row.pushRight(block(150));
     row.layout();
 
     assert.equal(row.overflow, 300 + 150 - ROW_WIDTH);
@@ -163,7 +163,7 @@ test("a row whose items exceed its width reports the excess", () => {
 
 test("a fill squeezed to nothing claims no width or gaps", () => {
     const row = new PanelRow(ROW_WIDTH);
-    row.leading(block(ROW_WIDTH));
+    row.pushLeft(block(ROW_WIDTH));
     row.fill((width) => block(width));
     row.layout();
 

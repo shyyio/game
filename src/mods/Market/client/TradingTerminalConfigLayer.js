@@ -253,7 +253,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
                 this._mode = mode;
             });
         }, {activeTint: ACTIVE_ACCENT, inactiveTint: INACTIVE_TINT, gap: ROW_GAP});
-        row.leading(toggle);
+        row.pushLeft(toggle);
     }
 
     /**
@@ -293,10 +293,10 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
     _fillPriceRow(row, snapshot) {
         const npcSelected = snapshot.itemTypes.length > 0 && snapshot.npcPrices[this._itemIndex] !== MARKET_SNAPSHOT_NONE;
         this._priceText = panelText(this._priceLabel(npcSelected), TextRole.BODY);
-        row.leading(this._priceText);
+        row.pushLeft(this._priceText);
         if (!npcSelected) {
-            row.trailing(buildPanelButton(this.textureRegistry, "+", ACTIVE_ACCENT, () => this._stepPrice(1)));
-            row.trailing(buildPanelButton(this.textureRegistry, "-", ACTIVE_ACCENT, () => this._stepPrice(-1)));
+            row.pushRight(buildPanelButton(this.textureRegistry, "+", ACTIVE_ACCENT, () => this._stepPrice(1)));
+            row.pushRight(buildPanelButton(this.textureRegistry, "-", ACTIVE_ACCENT, () => this._stepPrice(-1)));
         }
     }
 
@@ -338,6 +338,6 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
             this._session.sendMessage(new ConfigureTradingTerminalMessage(objectId, this._mode, itemType, this._price));
             this._cache.writer("market").closeConfig();
         }, !canConfirm);
-        row.leading(confirm);
+        row.pushLeft(confirm);
     }
 }

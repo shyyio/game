@@ -287,7 +287,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         stack.header(`Devices (${snapshot.deviceObjectIds.length})`);
         stack.scrollSection(this.viewport, this._pickerDevices(snapshot), (device) => ({
             label: device.label,
-            trailingLabel: `${device.tileX}, ${device.tileY}`,
+            rightLabel: `${device.tileX}, ${device.tileY}`,
             onRowClick: () => this._glideToDevice(device.tileX, device.tileY),
         }), "No devices wired to this network.", {visibleRows: MAX_DEVICE_ROWS});
         stack.gap();
@@ -300,7 +300,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             const add = buildPanelButton(this.textureRegistry, "Add action", ACTIVE_ACCENT, () => {
                 this._openDropdown(actions, add);
             }, this._rules.length >= LOGIC_RULE_CAP || actions.length === 0);
-            row.leading(add);
+            row.pushLeft(add);
         });
     }
 
@@ -387,7 +387,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
     _buildRuleRows(stack, snapshot, rule, index) {
         stack.row((row) => {
             if (rule.suspended) {
-                row.leading(new Graphics()
+                row.pushLeft(new Graphics()
                     .roundRect(0, 0, SWATCH_SIZE, SWATCH_SIZE, 3)
                     .fill(SUSPENDED_TINT));
             }
@@ -397,7 +397,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 ACTIVE_ACCENT,
                 () => this._openDropdown(this._actionVerbOptionsFor(snapshot, rule), verb),
             );
-            row.leading(verb);
+            row.pushLeft(verb);
             const device = this._deviceById(snapshot, rule.actionDeviceId);
             let deviceTexture = LogicTerminalDefinition.textureName;
             if (device !== undefined) {
@@ -410,8 +410,8 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                         rule.actionDeviceId = held.objectId;
                         this._sendRules();
                     })), target));
-            row.leading(target);
-            row.trailing(this._removeButton(() => {
+            row.pushLeft(target);
+            row.pushRight(this._removeButton(() => {
                 this._rules.splice(index, 1);
                 this._sendRules();
             }));
@@ -425,7 +425,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 this._openDropdown(conditionTypes, add);
             }, rule.conditions.length >= LOGIC_CONDITION_CAP || conditionTypes.length === 0);
             row.indent();
-            row.leading(add);
+            row.pushLeft(add);
         });
     }
 
@@ -449,9 +449,9 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             }
             row.indent();
             // A fixed slot, so "when" and "and" rows line their editors up down the rule.
-            row.column(panelText(word, TextRole.MUTED), CONJUNCTION_COLUMN_WIDTH);
+            row.pushColumn(panelText(word, TextRole.MUTED), CONJUNCTION_COLUMN_WIDTH);
             for (const button of this._conditionButtons(snapshot, condition)) {
-                row.leading(button);
+                row.pushLeft(button);
             }
             if (this._conditionIsNumeric(condition)) {
                 const comparator = buildPanelButton(
@@ -463,10 +463,10 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                         this._sendRules();
                     })), comparator),
                 );
-                row.leading(comparator);
-                row.leading(this._buildValueInput(condition));
+                row.pushLeft(comparator);
+                row.pushLeft(this._buildValueInput(condition));
             }
-            row.trailing(this._removeButton(() => {
+            row.pushRight(this._removeButton(() => {
                 rule.conditions.splice(conditionIndex, 1);
                 this._sendRules();
             }));
