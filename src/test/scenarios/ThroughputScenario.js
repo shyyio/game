@@ -169,7 +169,7 @@ export class ThroughputDeclaration extends AbstractModDeclaration {
     }
 
     get items() {
-        return [new ItemCategory("Throughput", 900, {
+        return [new ItemCategory("Throughput", {
             [ITEM_TYPE_THROUGHPUT_FEED]: new ItemDefinition("Throughput Feed", "items/2-gray", 0xE0C878),
             [ITEM_TYPE_THROUGHPUT_PART]: new ItemDefinition("Throughput Part", "items/1-gray", 0xB0B8C0),
             [ITEM_TYPE_THROUGHPUT_UNIT]: new ItemDefinition("Throughput Unit", "items/4-gray", 0x8FBF5A),
