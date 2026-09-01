@@ -1,4 +1,5 @@
 import {Direction, EMPTY, NO_EID, TickPhase, AbstractBehavior} from "@spup/sdk";
+import {commitStagedHops} from "./portRelay.js";
 import {ORDER_BEFORE_TRANSPORT} from "../common/constants.js";
 
 /**
@@ -183,18 +184,7 @@ export class SplitterBehavior extends AbstractBehavior {
             }
         }
 
-        for (const record of stage2) {
-            engine.ports.setItem(record.intPort, EMPTY);
-        }
-        for (const record of stage1) {
-            engine.ports.consumeItem(record.inPort);
-        }
-        for (const record of stage1) {
-            engine.ports.setItem(record.intPort, record.item);
-        }
-        for (const record of stage2) {
-            outputFills.push(record);
-        }
+        commitStagedHops(engine, stage1, stage2, outputFills);
 
         for (let row = 0; row < def.count; row += 1) {
             if (engine.transfers.destFor(splitter.int_a[row]) !== EMPTY || engine.transfers.destFor(splitter.int_b[row]) !== EMPTY) {
