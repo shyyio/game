@@ -1,6 +1,7 @@
 import {cellNeighbors, tileId} from "@/common/util.js";
 import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
 import {RoadBehavior} from "@/sim/behaviors/RoadBehavior.js";
+import {floodRoadComponent} from "@/common/roadFlood.js";
 
 /**
  * One occupied road tile. `component` is the id of the road component it belonged to at the last
@@ -289,41 +290,24 @@ export class RoadNetwork {
             seen.add(seed.key);
             this._notePriorComponent(seed, affected);
             const component = new RoadComponent(seed);
-            const roadQueue = [seed];
-            const housingQueue = [];
-            const visit = (x, y) => {
-                const neighborTile = tileId(x, y);
-                const road = this._tiles.get(neighborTile);
-                if (road !== undefined) {
-                    if (seen.has(neighborTile)) {
-                        return;
+            floodRoadComponent({
+                seed,
+                roadTiles: this._tiles,
+                seen,
+                housingAt: (x, y) => {
+                    const housing = this.housingAt(x, y);
+                    if (housing === null || seenHousings.has(housing.objectId)) {
+                        return null;
                     }
-                    seen.add(neighborTile);
+                    seenHousings.add(housing.objectId);
+                    return housing;
+                },
+                onRoad: (road) => {
                     this._notePriorComponent(road, affected);
                     component.addTile(road);
-                    roadQueue.push(road);
-                    return;
-                }
-                const housing = this.housingAt(x, y);
-                if (housing !== null && !seenHousings.has(housing.objectId)) {
-                    seenHousings.add(housing.objectId);
-                    component.housings.push(housing);
-                    housingQueue.push(housing);
-                }
-            };
-            while (roadQueue.length > 0 || housingQueue.length > 0) {
-                if (roadQueue.length > 0) {
-                    const current = roadQueue.pop();
-                    for (const delta of NEIGHBOR_DELTAS) {
-                        visit(current.x + delta.dx, current.y + delta.dy);
-                    }
-                } else {
-                    const housing = housingQueue.pop();
-                    for (const {x, y} of cellNeighbors(housing.cells)) {
-                        visit(x, y);
-                    }
-                }
-            }
+                },
+                onHousing: (housing) => component.housings.push(housing),
+            });
             components.push(component);
         }
         components.sort((a, b) => a.minTile - b.minTile);
