@@ -2,6 +2,7 @@ import {AbstractBehavior, TickPhase, EMPTY, NO_EID, chunkId, getOrCreate, LAYER_
 import {ORDER_BEFORE_TRANSPORT, LOGIC_KEY_OPEN} from "../common/constants.js";
 import {GateSetBatchEvent} from "../common/events.js";
 import {gateConnections, placementBlockedByGate} from "../common/gateConnections.js";
+import {commitStagedHops} from "./portRelay.js";
 
 // Buffered toggles land first, then mode review, then the gate's own intents.
 const ORDER_APPLY_PENDING = -30;
@@ -449,18 +450,7 @@ export class GateBehavior extends AbstractBehavior {
                 stage1.push({intPort, item: item[inPort], inPort});
             }
         }
-        for (const record of stage2) {
-            engine.ports.setItem(record.intPort, EMPTY);
-        }
-        for (const record of stage1) {
-            engine.ports.consumeItem(record.inPort);
-        }
-        for (const record of stage1) {
-            engine.ports.setItem(record.intPort, record.item);
-        }
-        for (const record of stage2) {
-            outputFills.push(record);
-        }
+        commitStagedHops(engine, stage1, stage2, outputFills);
     }
 
     /**
