@@ -105,7 +105,7 @@ export class PanelStack extends Container {
     }
 
     /**
-     * A row at the current y; `build` fills it through the row's leading/trailing/fill slots,
+     * A row at the current y; `build` fills it through the row's left/right/fill slots,
      * returned as a handle for later mutation.
      * @param {function(PanelRow): void} build
      * @returns {PanelRow}
@@ -122,7 +122,7 @@ export class PanelStack extends Container {
     }
 
     /**
-     * A row per item — swatch/label/trailing text and per-row or trailing-button actions —
+     * A row per item — swatch/label/right text and per-row or right-button actions —
      * scrolled past `visibleRows` instead of growing the panel.
      * @param {ClientViewport|null} viewport - frozen against wheel-zoom while a resulting scrollbar is hovered
      * @param {Array} items
@@ -232,19 +232,19 @@ export class PanelStack extends Container {
                     .fill({color: ACTIVE_ACCENT, alpha: SELECTED_ALPHA}));
             }
             if (descriptor.swatchColor !== undefined) {
-                row.leading(new Graphics()
+                row.pushLeft(new Graphics()
                     .roundRect(0, 0, SWATCH_SIZE, SWATCH_SIZE, SWATCH_RADIUS)
                     .fill(descriptor.swatchColor), SWATCH_GAP);
             }
-            if (descriptor.trailingLabel !== undefined) {
-                row.trailing(panelText(descriptor.trailingLabel, TextRole.BODY));
+            if (descriptor.rightLabel !== undefined) {
+                row.pushRight(panelText(descriptor.rightLabel, TextRole.BODY));
             }
             if (descriptor.buttonLabel !== null && descriptor.buttonLabel !== undefined) {
                 let tint = descriptor.buttonTint;
                 if (tint === undefined) {
                     tint = ACTIVE_ACCENT;
                 }
-                row.trailing(buildPanelButton(this._textureRegistry, descriptor.buttonLabel, tint, descriptor.onClick));
+                row.pushRight(buildPanelButton(this._textureRegistry, descriptor.buttonLabel, tint, descriptor.onClick));
             }
             // The label takes what the trailing items leave: it comes from data, so its length is
             // nobody's to promise.
@@ -284,18 +284,18 @@ export class PanelRowDescriptor {
     /**
      * @param {object} fields
      * @param {string} fields.label
-     * @param {number} [fields.swatchColor] leading color swatch
-     * @param {string} [fields.trailingLabel] right-aligned text (not combined with a button)
+     * @param {number} [fields.swatchColor] left color swatch
+     * @param {string} [fields.rightLabel] right-aligned text (not combined with a button)
      * @param {boolean} [fields.selected] accent row background
      * @param {function(): void} [fields.onRowClick] fired on a tap anywhere on the row
-     * @param {string} [fields.buttonLabel] trailing button
+     * @param {string} [fields.buttonLabel] right button
      * @param {number} [fields.buttonTint]
-     * @param {function(): void} [fields.onClick] fired by the trailing button
+     * @param {function(): void} [fields.onClick] fired by the right button
      */
-    constructor({label, swatchColor, trailingLabel, selected, onRowClick, buttonLabel, buttonTint, onClick}) {
+    constructor({label, swatchColor, rightLabel, selected, onRowClick, buttonLabel, buttonTint, onClick}) {
         this.label = label;
         this.swatchColor = swatchColor;
-        this.trailingLabel = trailingLabel;
+        this.rightLabel = rightLabel;
         this.selected = selected;
         this.onRowClick = onRowClick;
         this.buttonLabel = buttonLabel;

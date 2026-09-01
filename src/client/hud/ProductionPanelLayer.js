@@ -242,7 +242,7 @@ export class ProductionPanelLayer extends Container {
         return new PanelRowDescriptor({
             label: this._itemName(entry.category),
             swatchColor: this._chart.colorFor(entry.key),
-            trailingLabel: this._rateLabel(entry.ratePerTick),
+            rightLabel: this._rateLabel(entry.ratePerTick),
             selected: entry.key === this._selectedKey,
             onRowClick: () => this._toggleSelect(entry.key),
         });
