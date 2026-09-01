@@ -43,25 +43,7 @@ export class UndergroundBeltTool extends AbstractTool {
         const blocked = this._blocked(tileX, tileY, placement);
         // An overwritable same-axis belt is deleted before the mouth lands.
         const overwrite = !blocked && this._surfaceBeltAt(tileX, tileY) !== null;
-        const tile = [{x: tileX, y: tileY}];
-        let blockedTiles = [];
-        if (blocked) {
-            blockedTiles = tile;
-        }
-        let overwriteTiles = [];
-        if (overwrite) {
-            overwriteTiles = tile;
-        }
-        let clearTiles = tile;
-        if (blocked || overwrite) {
-            clearTiles = [];
-        }
-        this._placementFeedbackLayer.show({
-            blocked: blockedTiles,
-            overwrite: overwriteTiles,
-            clear: clearTiles,
-            showTarget: true,
-        });
+        this._placementFeedbackLayer.showTile({tileX, tileY, blocked, overwrite});
         if (blocked || placement.parentId === null) {
             this._ghostLayer.showGhost(tileX, tileY, placement.direction, placement.type, BeltBend.STRAIGHT, blocked);
             return;
