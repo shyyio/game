@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {ItemRegistry} from "@/common/ItemRegistry.js";
 import {ItemDefinition} from "@/common/ItemDefinition.js";
 
+
 test("require returns a registered definition and throws on an unknown type", () => {
     const registry = new ItemRegistry();
     registry.register(310, new ItemDefinition("Water", "items/1-gray"));

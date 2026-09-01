@@ -5,6 +5,7 @@ import {ModPackage} from "@/common/ModPackage.js";
 import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
 import {PlayerSettingEntry} from "@/common/PlayerSettingEntry.js";
 import {ItemDefinition} from "@/common/ItemDefinition.js";
+import {ItemCategory} from "@/common/ItemCategory.js";
 
 const MOD_KEY = 900;
 const MOD_ITEM_TYPE = 910;
@@ -57,11 +58,14 @@ test("the entry accessor throws before freeze", () => {
     assert.throws(() => registry.playerSettingEntry(MOD_KEY), /not frozen/);
 });
 
+const FLUIDS_ORDER = 5;
+const ORES_ORDER = 10;
+
 class ItemsDeclaration extends AbstractModDeclaration {
 
     /**
      * @param {string} name
-     * @param {Object.<number, ItemDefinition>} items
+     * @param {ItemCategory[]} items
      */
     constructor(name, items) {
         super();
@@ -80,14 +84,43 @@ class ItemsDeclaration extends AbstractModDeclaration {
 
 test("a mod's item definitions collect into the item registry at freeze", () => {
     const registry = new ModRegistry();
-    registry.register(new ModPackage(new ItemsDeclaration("A", {[MOD_ITEM_TYPE]: new ItemDefinition("Water", "items/1-gray")})));
+    const fluids = new ItemCategory("Fluids", FLUIDS_ORDER, {[MOD_ITEM_TYPE]: new ItemDefinition("Water", "items/1-gray")});
+    registry.register(new ModPackage(new ItemsDeclaration("A", [fluids])));
     registry.freeze();
     assert.equal(registry.items.require(MOD_ITEM_TYPE).name, "Water");
 });
 
 test("a duplicate item type across mods throws at freeze", () => {
     const registry = new ModRegistry();
-    registry.register(new ModPackage(new ItemsDeclaration("A", {[MOD_ITEM_TYPE]: new ItemDefinition("Water", "items/1-gray")})));
-    registry.register(new ModPackage(new ItemsDeclaration("B", {[MOD_ITEM_TYPE]: new ItemDefinition("Brine", "items/2-gray")})));
+    const water = new ItemCategory("Fluids", FLUIDS_ORDER, {[MOD_ITEM_TYPE]: new ItemDefinition("Water", "items/1-gray")});
+    const brine = new ItemCategory("Fluids", FLUIDS_ORDER, {[MOD_ITEM_TYPE]: new ItemDefinition("Brine", "items/2-gray")});
+    registry.register(new ModPackage(new ItemsDeclaration("A", [water])));
+    registry.register(new ModPackage(new ItemsDeclaration("B", [brine])));
     assert.throws(() => registry.freeze(), /Duplicate item definition/);
+});
+
+test("same-name item categories across mods merge, sorted by display order", () => {
+    const registry = new ModRegistry();
+    const water = new ItemDefinition("Water", "items/1-gray");
+    const brine = new ItemDefinition("Brine", "items/2-gray");
+    const iron = new ItemDefinition("Iron", "items/3-gray");
+    registry.register(new ModPackage(new ItemsDeclaration("A", [
+        new ItemCategory("Ores", ORES_ORDER, {[MOD_ITEM_TYPE + 2]: iron}),
+        new ItemCategory("Fluids", FLUIDS_ORDER, {[MOD_ITEM_TYPE]: water}),
+    ])));
+    registry.register(new ModPackage(new ItemsDeclaration("B", [
+        new ItemCategory("Fluids", FLUIDS_ORDER, {[MOD_ITEM_TYPE + 1]: brine}),
+    ])));
+    registry.freeze();
+    assert.deepEqual(registry.itemCategories, [
+        new ItemCategory("Fluids", FLUIDS_ORDER, {[MOD_ITEM_TYPE]: water, [MOD_ITEM_TYPE + 1]: brine}),
+        new ItemCategory("Ores", ORES_ORDER, {[MOD_ITEM_TYPE + 2]: iron}),
+    ]);
+});
+
+test("an item category declared with two display orders throws at freeze", () => {
+    const registry = new ModRegistry();
+    registry.register(new ModPackage(new ItemsDeclaration("A", [new ItemCategory("Fluids", FLUIDS_ORDER, {})])));
+    registry.register(new ModPackage(new ItemsDeclaration("B", [new ItemCategory("Fluids", ORES_ORDER, {})])));
+    assert.throws(() => registry.freeze(), /Item category "Fluids" declared with displayOrder/);
 });

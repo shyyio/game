@@ -17,9 +17,6 @@ import ReducedMotion from "@/client/ReducedMotion.js";
 import Mobile from "@/client/Mobile.js";
 import {FPS_CAP_NAMES, FPS_CAP_VALUES, FPS_CAP_DEFAULT} from "@/client/constants.js";
 
-// Settings-menu placement of the "Display" section.
-const DISPLAY_CATEGORY_ORDER = 0;
-
 // Terrain rendering while the device setting is unset.
 const TERRAIN_ENABLED_DEFAULT = false;
 
@@ -132,7 +129,7 @@ export class SettingsMenu {
      */
     _coreCategories() {
         return [
-            new SettingCategory("Display", DISPLAY_CATEGORY_ORDER, [
+            new SettingCategory("Display", 0, [
                 new DeviceSettingToggle(DEVICE_SETTING_FULLSCREEN, "Fullscreen", false, on => Fullscreen.setEnabled(on)),
                 new DeviceSettingToggle(DEVICE_SETTING_REDUCED_MOTION, "Reduced motion", ReducedMotion.devicePrefers(), on => ReducedMotion.setEnabled(on)),
                 new DeviceSettingToggle(DEVICE_SETTING_MOBILE, "Touchscreen input", Mobile.devicePrefers(), on => Mobile.setEnabled(on)),

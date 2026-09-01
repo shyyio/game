@@ -31,9 +31,9 @@ import {
     AirFilterType,
 } from "@/mods/BaseGame/common/objectTypes.js";
 import {
-    ITEM_TYPE_SOYBEAN_SEEDS,
+    ITEM_TYPE_CABBAGE_SEED,
     ITEM_TYPE_MUSHROOM_SPORE,
-    NPC_PRICE_SOYBEAN_SEEDS,
+    NPC_PRICE_CABBAGE_SEED,
     NPC_PRICE_MUSHROOM_SPORE,
 } from "@/mods/BaseGame/common/constants.js";
 import {TradingTerminalType} from "@/mods/Market/common/objectTypes.js";
@@ -102,7 +102,7 @@ function buildTree() {
                 {portIndex: 0, child: machineNode("SpawningPool", SpawningPoolType, [
                     {portIndex: 0, child: machineNode("Blender", BlenderType, [
                         {portIndex: 0, child: machineNode("Greenhouse(Food)", GreenhouseType, [
-                            {portIndex: 0, child: terminalLeaf(ITEM_TYPE_SOYBEAN_SEEDS, NPC_PRICE_SOYBEAN_SEEDS)},
+                            {portIndex: 0, child: terminalLeaf(ITEM_TYPE_CABBAGE_SEED, NPC_PRICE_CABBAGE_SEED)},
                             {portIndex: 1, child: resourceLeaf(WaterResourceType)},
                         ])},
                     ])},

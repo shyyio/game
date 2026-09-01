@@ -18,8 +18,8 @@ import {
     RESOURCE_QUARTZ,
     ITEM_TYPE_WATER,
     ITEM_TYPE_SOUL,
-    ITEM_TYPE_SOYBEAN_SEEDS,
-    ITEM_TYPE_SOYBEAN,
+    ITEM_TYPE_CABBAGE_SEED,
+    ITEM_TYPE_CABBAGE,
     ITEM_TYPE_MUSHROOM_SPORE,
     ITEM_TYPE_MUSHROOM,
     ITEM_TYPE_NUTRIENT_SLOP,
@@ -158,7 +158,7 @@ export const GreenhouseType = machine("Greenhouse", "Greenhouse", {
     geometry: "3x3",
     processingTicks: 6,
     recipes: [
-        new RecipeDefinition([ITEM_TYPE_SOYBEAN_SEEDS, ITEM_TYPE_WATER], ITEM_TYPE_SOYBEAN),
+        new RecipeDefinition([ITEM_TYPE_CABBAGE_SEED, ITEM_TYPE_WATER], ITEM_TYPE_CABBAGE),
         new RecipeDefinition([ITEM_TYPE_MUSHROOM_SPORE, ITEM_TYPE_WATER], ITEM_TYPE_MUSHROOM),
     ],
 });
@@ -169,7 +169,7 @@ export const BlenderType = machine("Blender", "Blender", {
     outputPorts: [OUT2_A],
     geometry: "2x2",
     processingTicks: 2,
-    recipes: [new RecipeDefinition([ITEM_TYPE_SOYBEAN], ITEM_TYPE_NUTRIENT_SLOP)],
+    recipes: [new RecipeDefinition([ITEM_TYPE_CABBAGE], ITEM_TYPE_NUTRIENT_SLOP)],
     workerCost: BLENDER_WORKER_COST,
 });
 

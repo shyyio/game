@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Game} from "@/sim/Game.js";
 import {Direction} from "@/common/constants.js";
 import {BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
-import {ITEM_TYPE_SOYBEAN, ITEM_TYPE_NUTRIENT_SLOP} from "@/mods/BaseGame/common/constants.js";
+import {ITEM_TYPE_CABBAGE, ITEM_TYPE_NUTRIENT_SLOP} from "@/mods/BaseGame/common/constants.js";
 import {SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
@@ -105,15 +105,15 @@ test("heartbeat tracks the processing countdown, consumed batch, and output", as
         return heartbeats(session)[0];
     };
 
-    game.simEngine.ports.setItem(machine.inPort, ITEM_TYPE_SOYBEAN);
+    game.simEngine.ports.setItem(machine.inPort, ITEM_TYPE_CABBAGE);
     const started = tick();
     assert.equal(started.processingRemaining, 2);
-    assert.deepEqual(started.inputMemory, [ITEM_TYPE_SOYBEAN]);
+    assert.deepEqual(started.inputMemory, [ITEM_TYPE_CABBAGE]);
     assert.equal(started.recipeOutput, ITEM_TYPE_NUTRIENT_SLOP);
 
     const midway = tick();
     assert.equal(midway.processingRemaining, 1);
-    assert.deepEqual(midway.inputMemory, [ITEM_TYPE_SOYBEAN]);
+    assert.deepEqual(midway.inputMemory, [ITEM_TYPE_CABBAGE]);
 
     const done = tick();
     assert.equal(done.processingRemaining, null);

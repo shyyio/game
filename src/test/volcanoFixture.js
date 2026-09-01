@@ -8,6 +8,7 @@ import {
     ExtractorBehavior,
     Direction,
     ItemDefinition,
+    ItemCategory,
 } from "@/sdk/common.js";
 
 /**
@@ -81,10 +82,10 @@ export class VolcanoFixtureDeclaration extends AbstractModDeclaration {
     }
 
     get items() {
-        return {
+        return [new ItemCategory("Volcano", 900, {
             [ITEM_TYPE_TEST_SULFUR]: new ItemDefinition("Test Sulfur", "items/2"),
             [ITEM_TYPE_TEST_BRINE]: new ItemDefinition("Test Brine", "items/1"),
-        };
+        })];
     }
 
     get fluidTypes() {

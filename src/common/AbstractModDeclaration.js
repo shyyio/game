@@ -34,11 +34,12 @@ export class AbstractModDeclaration {
     }
 
     /**
-     * Item type -> definition (name, render texture); item types must be unique across the loadout.
-     * @returns {Object.<number, ItemDefinition>}
+     * Item categories with their item definitions; same-name categories merge across the loadout
+     * and item types must be unique across it.
+     * @returns {ItemCategory[]}
      */
     get items() {
-        return {};
+        return [];
     }
 
     /**
