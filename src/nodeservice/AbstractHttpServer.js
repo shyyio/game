@@ -1,7 +1,7 @@
 import uWS from "uWebSockets.js";
 
 /**
- * Shared uWebSockets.js plumbing for this project's HTTP backend services (auth, reporting):
+ * Shared uWebSockets.js plumbing for this project's HTTP front ends (game, auth, reporting):
  * listen/stop lifecycle plus the JSON respond/reject/readBody helpers every route handler uses.
  * Subclasses build their own uWS.App() (via the `app` getter) and register routes in their
  * constructor.
@@ -107,6 +107,33 @@ export class AbstractHttpServer {
                 res.writeHeader("Access-Control-Allow-Origin", "*");
             }
             res.end(message);
+        });
+    }
+
+    /**
+     * Buffers a request body, parses it as JSON, and hands the value to onJson; a body that is not
+     * JSON is rejected here and onJson never runs.
+     * @protected
+     * @param {object} res
+     * @param {(payload: *) => void} onJson
+     * @returns {void}
+     */
+    _readJson(res, onJson) {
+        res.onAborted(() => {
+            res.aborted = true;
+        });
+        this._readBody(res, body => {
+            if (res.aborted) {
+                return;
+            }
+            let payload;
+            try {
+                payload = JSON.parse(body);
+            } catch (error) {
+                this._reject(res, "400 Bad Request", "Malformed JSON body", {cors: true});
+                return;
+            }
+            onJson(payload);
         });
     }
 
