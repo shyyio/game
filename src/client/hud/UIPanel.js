@@ -107,7 +107,7 @@ export class UIPanel extends Container {
             return;
         }
         // Same 9-slice frame as the panel, so the shadow matches its shape.
-        const shadow = this._nineSlice(TX_FRAME, this._width, this._height);
+        const shadow = UIPanel._nineSlice(this._textureRegistry, TX_FRAME, this._width, this._height);
         shadow.tint = 0x000000;
         shadow.alpha = SHADOW_ALPHA;
         shadow.x = SHADOW_OFFSET_X;
@@ -189,16 +189,7 @@ export class UIPanel extends Container {
      * @returns {NineSliceSprite}
      */
     static frameSprite(textureRegistry, width, height, tint) {
-        const sprite = new NineSliceSprite({
-            texture: textureRegistry.get(TX_FRAME),
-            leftWidth: FRAME_INSET,
-            rightWidth: FRAME_INSET,
-            topHeight: FRAME_INSET,
-            bottomHeight: FRAME_INSET,
-        });
-        sprite.width = width / FRAME_SCALE;
-        sprite.height = height / FRAME_SCALE;
-        sprite.scale.set(FRAME_SCALE);
+        const sprite = UIPanel._nineSlice(textureRegistry, TX_FRAME, width, height);
         sprite.tint = tint;
         sprite.hitArea = new Rectangle(0, 0, width / FRAME_SCALE, height / FRAME_SCALE);
         return sprite;
@@ -213,8 +204,23 @@ export class UIPanel extends Container {
      * @returns {NineSliceSprite}
      */
     static insetSprite(textureRegistry, width, height, tint) {
+        const sprite = UIPanel._nineSlice(textureRegistry, TX_FRAME_INSET, width, height);
+        sprite.tint = tint;
+        return sprite;
+    }
+
+    /**
+     * A 9-slice sprite at the given on-screen size, its border rendered at FRAME_SCALE.
+     * @private
+     * @param {TextureRegistry} textureRegistry
+     * @param {string} name
+     * @param {number} width
+     * @param {number} height
+     * @returns {NineSliceSprite}
+     */
+    static _nineSlice(textureRegistry, name, width, height) {
         const sprite = new NineSliceSprite({
-            texture: textureRegistry.get(TX_FRAME_INSET),
+            texture: textureRegistry.get(name),
             leftWidth: FRAME_INSET,
             rightWidth: FRAME_INSET,
             topHeight: FRAME_INSET,
@@ -223,7 +229,6 @@ export class UIPanel extends Container {
         sprite.width = width / FRAME_SCALE;
         sprite.height = height / FRAME_SCALE;
         sprite.scale.set(FRAME_SCALE);
-        sprite.tint = tint;
         return sprite;
     }
 
@@ -303,15 +308,12 @@ export class UIPanel extends Container {
      * @returns {{frame: NineSliceSprite, inset: NineSliceSprite}}
      */
     static rebuildFramedBox({container, previous, textureRegistry, width, height, tint}) {
-        const inset = UIPanel.rebuildInset({
+        const inset = UIPanel._rebuildSprite(
             container,
-            previous: previous.inset,
-            textureRegistry,
-            width: width - FRAME_MARGIN * 2,
-            height: height - FRAME_MARGIN * 2,
-            tint,
-            position: {x: FRAME_MARGIN, y: FRAME_MARGIN},
-        });
+            previous.inset,
+            () => UIPanel.insetSprite(textureRegistry, width - FRAME_MARGIN * 2, height - FRAME_MARGIN * 2, tint),
+            {x: FRAME_MARGIN, y: FRAME_MARGIN},
+        );
         const frame = UIPanel.rebuildFrame({
             container,
             previous: previous.frame,
@@ -337,24 +339,7 @@ export class UIPanel extends Container {
      */
     static rebuildFrame({container, previous, textureRegistry, width, height, tint, position = {x: 0, y: 0}}) {
         return UIPanel._rebuildSprite(container, previous,
-            () => UIPanel.frameSprite(textureRegistry, width, height, tint), position, 0);
-    }
-
-    /**
-     * Replaces `previous` (destroyed if given) with a fresh {@link UIPanel.insetSprite} at index 0; call before {@link UIPanel.rebuildFrame}.
-     * @param {object} options
-     * @param {Container} options.container
-     * @param {NineSliceSprite|null} options.previous
-     * @param {TextureRegistry} options.textureRegistry
-     * @param {number} options.width
-     * @param {number} options.height
-     * @param {number} options.tint
-     * @param {{x: number, y: number}} [options.position]
-     * @returns {NineSliceSprite}
-     */
-    static rebuildInset({container, previous, textureRegistry, width, height, tint, position = {x: 0, y: 0}}) {
-        return UIPanel._rebuildSprite(container, previous,
-            () => UIPanel.insetSprite(textureRegistry, width, height, tint), position, 0);
+            () => UIPanel.frameSprite(textureRegistry, width, height, tint), position);
     }
 
     /**
@@ -364,16 +349,15 @@ export class UIPanel extends Container {
      * @param {Container|null} previous
      * @param {function(): Container} factory
      * @param {{x: number, y: number}} position
-     * @param {number} index
      * @returns {Container}
      */
-    static _rebuildSprite(container, previous, factory, position, index) {
+    static _rebuildSprite(container, previous, factory, position) {
         if (previous !== null) {
             previous.destroy();
         }
         const sprite = factory();
         sprite.position.set(position.x, position.y);
-        container.addChildAt(sprite, index);
+        container.addChildAt(sprite, 0);
         return sprite;
     }
 
@@ -487,7 +471,7 @@ export class UIPanel extends Container {
      */
     _build() {
         // Outer frame: raised border/background spanning the whole panel.
-        const bg = this._nineSlice(TX_FRAME, this._width, this._height);
+        const bg = UIPanel._nineSlice(this._textureRegistry, TX_FRAME, this._width, this._height);
         bg.tint = this._tint;
         this._frameSprite = bg;
         // Swallows clicks so they don't pass through to the map; explicit hit area (mesh sprite has none by default).
@@ -496,7 +480,7 @@ export class UIPanel extends Container {
         this.addChild(bg);
 
         // Inset body below the title row.
-        const body = this._nineSlice(TX_FRAME_INSET, this._width - BODY_MARGIN * 2, this._height - TITLE_ROW_HEIGHT - BODY_MARGIN);
+        const body = UIPanel._nineSlice(this._textureRegistry, TX_FRAME_INSET, this._width - BODY_MARGIN * 2, this._height - TITLE_ROW_HEIGHT - BODY_MARGIN);
         body.x = BODY_MARGIN;
         body.y = TITLE_ROW_HEIGHT;
         body.tint = this._tint;
@@ -512,28 +496,6 @@ export class UIPanel extends Container {
         this.dragHandle = this._buildTitleBar(close.x);
         this.addChild(this.dragHandle);
         this.addChild(close);
-    }
-
-    /**
-     * A 9-slice frame at the given on-screen size, its border rendered at FRAME_SCALE.
-     * @param {string} name
-     * @param {number} width
-     * @param {number} height
-     * @returns {NineSliceSprite}
-     * @private
-     */
-    _nineSlice(name, width, height) {
-        const sprite = new NineSliceSprite({
-            texture: this._textureRegistry.get(name),
-            leftWidth: FRAME_INSET,
-            rightWidth: FRAME_INSET,
-            topHeight: FRAME_INSET,
-            bottomHeight: FRAME_INSET,
-        });
-        sprite.width = width / FRAME_SCALE;
-        sprite.height = height / FRAME_SCALE;
-        sprite.scale.set(FRAME_SCALE);
-        return sprite;
     }
 
     /**
@@ -574,13 +536,11 @@ export class UIPanel extends Container {
      * @private
      */
     _patternStrip(x, width) {
-        const strip = new TilingSprite({
-            texture: this._textureRegistry.get(TX_PATTERN),
-            width: Math.floor(width / PATTERN_TILE) * PATTERN_TILE,
-            height: PATTERN_HEIGHT,
-        });
-        strip.tileScale.set(PATTERN_SCALE);
-        strip.alpha = PATTERN_ALPHA;
+        const strip = UIPanel.patternStrip(
+            this._textureRegistry,
+            Math.floor(width / PATTERN_TILE) * PATTERN_TILE,
+            PATTERN_HEIGHT,
+        );
         strip.x = x;
         strip.y = (TITLE_ROW_HEIGHT - PATTERN_HEIGHT) / 2;
         return strip;
