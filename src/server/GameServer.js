@@ -1,4 +1,5 @@
 import uWS from "uWebSockets.js";
+import {AbstractHttpServer} from "@/nodeservice/AbstractHttpServer.js";
 import {SignInMessage} from "@/common/PlayerMessages.js";
 import {WebSocketSession} from "@/server/WebSocketSession.js";
 import {reportError} from "@/server/crashReporter.js";
@@ -16,7 +17,7 @@ const IDLE_TIMEOUT_S = 120;
  * The uWebSockets.js front end: accepts connections, authenticates the sign-in frame, and pumps
  * decoded messages into the game. One instance per server process.
  */
-export class GameServer {
+export class GameServer extends AbstractHttpServer {
 
     /**
      * @param {Game} game
@@ -27,30 +28,29 @@ export class GameServer {
      * @param {ModHost|null} [modHost] - serves this server's packaged loadout; null on a static build
      */
     constructor(game, api, jwksVerifier, origin, name, modHost=null) {
+        super();
         this._game = game;
         this._api = api;
         this._jwksVerifier = jwksVerifier;
         this._origin = origin;
         this._name = name;
-        this._listenSocket = null;
         this._startedAtMs = Date.now();
         // playerId -> WebSocketSession, to kick a superseded login.
         this._sessionsByPlayer = new Map();
 
-        this._app = uWS.App();
-        this._app.get("/status", (res, req) => {
+        this.app.get("/status", (res, req) => {
             this._onStatus(res);
         });
         if (modHost !== null) {
-            modHost.registerRoutes(this._app);
+            modHost.registerRoutes(this.app);
         }
         // A plain-browser visit gets a text info screen instead of a failed upgrade.
-        this._app.get("/*", (res, req) => {
+        this.app.get("/*", (res, req) => {
             const host = req.getHeader("host");
             const scheme = req.getHeader("x-forwarded-proto") === "https" ? "wss" : "ws";
             res.writeHeader("Content-Type", "text/plain; charset=utf-8").end(this._infoScreen(host, scheme));
         });
-        this._app.ws("/*", {
+        this.app.ws("/*", {
             compression: uWS.SHARED_COMPRESSOR,
             maxPayloadLength: MAX_PAYLOAD_BYTES,
             maxBackpressure: MAX_BACKPRESSURE_BYTES,
@@ -74,35 +74,6 @@ export class GameServer {
     }
 
     /**
-     * @param {string} host
-     * @param {number} port
-     * @returns {Promise<void>} resolves once the port is bound; rejects when taken
-     */
-    listen(host, port) {
-        return new Promise((resolve, reject) => {
-            this._app.listen(host, port, listenSocket => {
-                if (!listenSocket) {
-                    reject(new Error(`Failed to listen on ${host}:${port}`));
-                    return;
-                }
-                this._listenSocket = listenSocket;
-                resolve();
-            });
-        });
-    }
-
-    /**
-     * Stops accepting connections (existing sockets stay up until closed).
-     * @returns {void}
-     */
-    stop() {
-        if (this._listenSocket !== null) {
-            uWS.us_listen_socket_close(this._listenSocket);
-            this._listenSocket = null;
-        }
-    }
-
-    /**
      * Kicks every connected session with a shutdown code, so the client shows a distinct
      * "server restarting" message instead of a generic drop, then stops accepting connections.
      * @returns {void}
@@ -122,19 +93,13 @@ export class GameServer {
      * @returns {string}
      */
     _infoScreen(host, scheme) {
-        const uptime = formatUptime(this._startedAtMs);
-        return [
-            "+==============================================+",
-            "|            SHY'S POWER-UP FACTORY            |",
-            "|                 Game Server                  |",
-            "+==============================================+",
-            "",
+        return this._infoScreenBanner("Game Server", [
             `  version    : ${GAME_VERSION}`,
             `  mods       : ${this._game.modRegistry.modNames.join(", ")}`,
             `  websocket  : ${scheme}://${host}`,
             `  players    : ${this._sessionsByPlayer.size} online`,
-            `  uptime     : ${uptime}`,
-        ].join("\n");
+            `  uptime     : ${formatUptime(this._startedAtMs)}`,
+        ]);
     }
 
     /**
@@ -145,16 +110,12 @@ export class GameServer {
      */
     _onStatus(res) {
         const claimed = this._game.claims.claimedCount();
-        res.cork(() => {
-            res.writeHeader("Content-Type", "application/json")
-                .writeHeader("Access-Control-Allow-Origin", "*")
-                .end(JSON.stringify({
-                    name: this._name,
-                    version: GAME_VERSION,
-                    online: this._sessionsByPlayer.size,
-                    chunksClaimed: claimed,
-                    chunksAvailable: REGION_SIZE * REGION_SIZE - claimed,
-                }));
+        this._respond(res, {
+            name: this._name,
+            version: GAME_VERSION,
+            online: this._sessionsByPlayer.size,
+            chunksClaimed: claimed,
+            chunksAvailable: REGION_SIZE * REGION_SIZE - claimed,
         });
     }
 

@@ -211,20 +211,7 @@ export class ReportingHttpServer extends AbstractHttpServer {
      * @returns {void}
      */
     _onReport(res) {
-        res.onAborted(() => {
-            res.aborted = true;
-        });
-        this._readBody(res, body => {
-            if (res.aborted) {
-                return;
-            }
-            let payload;
-            try {
-                payload = JSON.parse(body);
-            } catch (error) {
-                this._reject(res, "400 Bad Request", "Malformed JSON body", {cors: true});
-                return;
-            }
+        this._readJson(res, payload => {
             const report = this._validateReport(payload);
             if (report === null) {
                 this._reject(res, "400 Bad Request", "Invalid report", {cors: true});

@@ -129,20 +129,7 @@ export class AuthHttpServer extends AbstractHttpServer {
      * @returns {void}
      */
     _onLogin(res) {
-        res.onAborted(() => {
-            res.aborted = true;
-        });
-        this._readBody(res, body => {
-            if (res.aborted) {
-                return;
-            }
-            let payload;
-            try {
-                payload = JSON.parse(body);
-            } catch (error) {
-                this._reject(res, "400 Bad Request", "Malformed JSON body", {cors: true});
-                return;
-            }
+        this._readJson(res, payload => {
             if (typeof payload !== "object" || payload === null) {
                 this._reject(res, "400 Bad Request", "Invalid request body", {cors: true});
                 return;
@@ -166,25 +153,12 @@ export class AuthHttpServer extends AbstractHttpServer {
      * @returns {void}
      */
     _onJoin(res, authHeader) {
-        res.onAborted(() => {
-            res.aborted = true;
-        });
         const accountId = this._accountIdFromAuthHeader(authHeader);
         if (accountId === null) {
             this._reject(res, "401 Unauthorized", "Missing or invalid bearer token", {cors: true});
             return;
         }
-        this._readBody(res, body => {
-            if (res.aborted) {
-                return;
-            }
-            let payload;
-            try {
-                payload = JSON.parse(body);
-            } catch (error) {
-                this._reject(res, "400 Bad Request", "Malformed JSON body", {cors: true});
-                return;
-            }
+        this._readJson(res, payload => {
             if (typeof payload !== "object" || payload === null) {
                 this._reject(res, "400 Bad Request", "Invalid request body", {cors: true});
                 return;
@@ -208,20 +182,7 @@ export class AuthHttpServer extends AbstractHttpServer {
      * @returns {void}
      */
     _onRejoin(res) {
-        res.onAborted(() => {
-            res.aborted = true;
-        });
-        this._readBody(res, body => {
-            if (res.aborted) {
-                return;
-            }
-            let payload;
-            try {
-                payload = JSON.parse(body);
-            } catch (error) {
-                this._reject(res, "400 Bad Request", "Malformed JSON body", {cors: true});
-                return;
-            }
+        this._readJson(res, payload => {
             if (typeof payload !== "object" || payload === null) {
                 this._reject(res, "400 Bad Request", "Invalid request body", {cors: true});
                 return;

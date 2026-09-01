@@ -180,3 +180,22 @@ test("join with a malformed origin is rejected with 400", async () => {
         server.stop();
     }
 });
+
+test("a malformed body is rejected with 400 on join and rejoin too", async () => {
+    const {server, baseUrl} = await startServer();
+    try {
+        const sessionToken = await login(baseUrl, "alice");
+        const join = await fetch(`${baseUrl}/join`, {
+            method: "POST",
+            headers: {authorization: `Bearer ${sessionToken}`},
+            body: "not json",
+        });
+        assert.equal(join.status, 400);
+        assert.equal(await join.text(), "Malformed JSON body");
+        const rejoin = await fetch(`${baseUrl}/rejoin`, {method: "POST", body: "not json"});
+        assert.equal(rejoin.status, 400);
+        assert.equal(await rejoin.text(), "Malformed JSON body");
+    } finally {
+        server.stop();
+    }
+});
