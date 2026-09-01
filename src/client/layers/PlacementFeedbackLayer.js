@@ -66,6 +66,23 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
         this._redraw();
     }
 
+    /**
+     * Shows one tile's feedback: red where blocked, blue where it overwrites, green otherwise.
+     * @param {{tileX: number, tileY: number, blocked: boolean, overwrite: boolean}} feedback
+     */
+    showTile({tileX, tileY, blocked, overwrite}) {
+        const tile = [{x: tileX, y: tileY}];
+        if (blocked) {
+            this.show({blocked: tile, showTarget: true});
+            return;
+        }
+        if (overwrite) {
+            this.show({overwrite: tile, showTarget: true});
+            return;
+        }
+        this.show({clear: tile, showTarget: true});
+    }
+
     setCenterLock(enabled) {
         this._centerLock = enabled;
         this._redraw();

@@ -56,25 +56,7 @@ export class BeltTool extends AbstractTool {
         const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
         const blocked = this._blocked(tileX, tileY, direction);
         const overwrite = occupant !== null && !blocked;
-        const tile = [{x: tileX, y: tileY}];
-        let blockedTiles = [];
-        if (blocked) {
-            blockedTiles = tile;
-        }
-        let overwriteTiles = [];
-        if (overwrite) {
-            overwriteTiles = tile;
-        }
-        let clearTiles = tile;
-        if (blocked || overwrite) {
-            clearTiles = [];
-        }
-        this._placementFeedbackLayer.show({
-            blocked: blockedTiles,
-            overwrite: overwriteTiles,
-            clear: clearTiles,
-            showTarget: true,
-        });
+        this._placementFeedbackLayer.showTile({tileX, tileY, blocked, overwrite});
         const {parentX, parentY} = inferBeltParent(this._cache, tileX, tileY, direction);
         const bend = Belt.getBend(direction, tileX, tileY, parentX, parentY);
         this._ghostLayer.showGhost(tileX, tileY, direction, BELT_NORMAL, bend, blocked);
