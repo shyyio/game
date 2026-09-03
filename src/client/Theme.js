@@ -31,6 +31,7 @@ const DEFAULT_PALETTE = {
     PROGRESS_TEXT_STROKE: 0xffffff,
     WORKER_OK_TEXT: 0x1b5e20,
     WORKER_MISSING_TEXT: 0xa32020,
+    SUCCESS_TEXT: 0x1b5e20,
 };
 
 // Every pairing clears WCAG AAA (see text-contrast.spec.js): white panels, black text, accents
@@ -54,6 +55,7 @@ const HIGH_CONTRAST_PALETTE = {
     PROGRESS_TEXT_STROKE: 0xffffff,
     WORKER_OK_TEXT: 0x00591a,
     WORKER_MISSING_TEXT: 0xa10000,
+    SUCCESS_TEXT: 0x00591a,
 };
 
 const PALETTES = [DEFAULT_PALETTE, HIGH_CONTRAST_PALETTE];
@@ -81,6 +83,7 @@ export let PROGRESS_TEXT_COLOR = DEFAULT_PALETTE.PROGRESS_TEXT_COLOR;
 export let PROGRESS_TEXT_STROKE = DEFAULT_PALETTE.PROGRESS_TEXT_STROKE; // halo behind progress/worker text
 export let WORKER_OK_TEXT = DEFAULT_PALETTE.WORKER_OK_TEXT; // staffed machine's status row
 export let WORKER_MISSING_TEXT = DEFAULT_PALETTE.WORKER_MISSING_TEXT; // understaffed machine's status row
+export let SUCCESS_TEXT = DEFAULT_PALETTE.SUCCESS_TEXT; // a completed goal's text
 
 const themeListeners = [];
 let currentTheme = THEME_DEFAULT;
@@ -122,6 +125,7 @@ export function applyTheme(themeId) {
     PROGRESS_TEXT_STROKE = palette.PROGRESS_TEXT_STROKE;
     WORKER_OK_TEXT = palette.WORKER_OK_TEXT;
     WORKER_MISSING_TEXT = palette.WORKER_MISSING_TEXT;
+    SUCCESS_TEXT = palette.SUCCESS_TEXT;
     for (const listener of themeListeners) {
         listener(themeId);
     }
@@ -206,6 +210,16 @@ export const CHUNK_HOVER_COLOR = 0x444444; // dark: must read on the white map b
 export const CHUNK_HOVER_ALPHA = 0.5;
 
 const CLAIM_COLORS = new Map();
+
+/**
+ * A color with every channel scaled by `factor`, e.g. 0.3 for a dimmed icon.
+ * @param {number} color 0xRRGGBB
+ * @param {number} factor
+ * @returns {number}
+ */
+export function scaleColor(color, factor) {
+    return new Color(color).multiply([factor, factor, factor]).toNumber();
+}
 
 /**
  * A stable, distinct claim color per player, identical on every client: golden-angle hue steps

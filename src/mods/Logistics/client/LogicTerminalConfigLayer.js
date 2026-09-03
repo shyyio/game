@@ -285,7 +285,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             return;
         }
         stack.header(`Devices (${snapshot.deviceObjectIds.length})`);
-        stack.scrollSection(this.viewport, this._pickerDevices(snapshot), (device) => ({
+        stack.scrollSection(this._pickerDevices(snapshot), (device) => ({
             label: device.label,
             rightLabel: `${device.tileX}, ${device.tileY}`,
             onRowClick: () => this._glideToDevice(device.tileX, device.tileY),
@@ -325,7 +325,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             stack.block(rulesStack, height);
             return;
         }
-        const scrollView = new ScrollView(this.textureRegistry, this.viewport, stack.contentWidth, RULES_VIEWPORT_HEIGHT);
+        const scrollView = new ScrollView(this.textureRegistry, stack.contentWidth, RULES_VIEWPORT_HEIGHT);
         scrollView.content.addChild(rulesStack);
         scrollView.setContentHeight(height);
         scrollView.scrollY = this._rulesScrollY;
@@ -346,7 +346,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      */
     _openDropdown(options, button) {
         const list = new PanelStack(this.textureRegistry, DROPDOWN_WIDTH);
-        list.scrollSection(this.viewport, options, (option) => ({
+        list.scrollSection(options, (option) => ({
             label: option.label,
             onRowClick: () => {
                 this.popovers.close();
@@ -367,7 +367,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _openIconPicker(entries, selectedId, onPick, button) {
-        const picker = new IconPicker(this.textureRegistry, this.viewport, DROPDOWN_WIDTH, entries, (id) => {
+        const picker = new IconPicker(this.textureRegistry, DROPDOWN_WIDTH, entries, (id) => {
             this.popovers.close();
             onPick(id);
             this._rebuild();
@@ -799,7 +799,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {IconPickerEntry[]}
      */
     _storableEntries() {
-        return this._storableItems().map(item => new IconPickerEntry(item.itemType, item.texture, item.tint));
+        return this._storableItems().map(item => new IconPickerEntry(item.itemType, item.texture, {tint: item.tint}));
     }
 
     /**

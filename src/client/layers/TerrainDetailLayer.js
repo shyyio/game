@@ -5,6 +5,7 @@ import {TILE_SIZE} from "@/client/constants.js";
 import {CHUNK_SIZE, LAYER_SURFACE} from "@/common/constants.js";
 import {chunkId, chunkOrigin} from "@/common/util.js";
 import {tileHash} from "@/common/WorldNoise.js";
+import {scaleColor} from "@/client/Theme.js";
 
 // Idle sprites kept across chunk churn.
 const POOL_CAPACITY = 4096;
@@ -15,17 +16,6 @@ const TINT_DARKEN = 0.8;
 const QUARTER_TURN = Math.PI / 2;
 const COLOR_CHANNEL_MASK = 0xff;
 const BYTE_RANGE = 256;
-
-/**
- * @param {number} color 0xRRGGBB
- * @returns {number} the color darkened by TINT_DARKEN
- */
-function tintFor(color) {
-    const r = Math.round(((color >> 16) & COLOR_CHANNEL_MASK) * TINT_DARKEN);
-    const g = Math.round(((color >> 8) & COLOR_CHANNEL_MASK) * TINT_DARKEN);
-    const b = Math.round((color & COLOR_CHANNEL_MASK) * TINT_DARKEN);
-    return (r << 16) | (g << 8) | b;
-}
 
 /**
  * Scatters each biome's TerrainDetails (rocks, shrubs, tufts) over the chunks in view: placement
@@ -249,7 +239,7 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
         sprite.rotation = ((hash >>> 16) & 3) * QUARTER_TURN;
         sprite.scale.set(detail.scale, detail.scale);
         if (detail.tinted) {
-            sprite.tint = tintFor(biome.color);
+            sprite.tint = scaleColor(biome.color, TINT_DARKEN);
         } else {
             sprite.tint = 0xffffff;
         }

@@ -36,19 +36,15 @@ export class ScrollView extends Container {
 
     /**
      * @param {TextureRegistry} textureRegistry
-     * @param {ClientViewport|null} viewport - frozen against wheel-zoom while the pointer is
-     *     over this view, so a scroll doesn't also zoom the map underneath
      * @param {number} width
      * @param {number} height - the visible viewport height; content beyond this scrolls
      */
     constructor(
         textureRegistry,
-        viewport,
         width,
         height,
     ) {
         super();
-        this._viewport = viewport;
         this._height = height;
         this._contentHeight = 0;
         this._scrollY = 0;
@@ -75,14 +71,6 @@ export class ScrollView extends Container {
 
         this.eventMode = "static";
         this.hitArea = new Rectangle(0, 0, width, height);
-        // Freezing the viewport's own wheel-zoom plugin while hovered is the same mechanism
-        // EffectiveToolController already uses for pan (freezePan/unfreezePan); pixi-viewport
-        // listens for "wheel" as a raw DOM listener on the canvas, bypassing pixi's hit-testing
-        // entirely, so there's no way to shadow it through pixi's own event system.
-        if (this._viewport !== null) {
-            this.on("pointerover", () => this._viewport.freezeZoom());
-            this.on("pointerout", () => this._viewport.unfreezeZoom());
-        }
         this.on("wheel", (event) => {
             if (this._contentHeight <= this._height) {
                 return;
@@ -163,19 +151,6 @@ export class ScrollView extends Container {
      */
     set scrollY(value) {
         this._setScroll(value);
-    }
-
-    /**
-     * Unfreezes wheel-zoom if this is torn down while the pointer is still over it (a rebuild
-     * mid-hover, say), so the viewport is never left stuck ignoring the wheel.
-     * @param {object} [options]
-     * @returns {void}
-     */
-    destroy(options) {
-        if (this._viewport !== null) {
-            this._viewport.unfreezeZoom();
-        }
-        super.destroy(options);
     }
 
     /**

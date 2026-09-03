@@ -185,7 +185,7 @@ export class FriendsPanelLayer extends Container {
      */
     _buildBody(stack, friendIds) {
         stack.header("Friends");
-        stack.scrollSection(this.viewport, friendIds, (id) => ({
+        stack.scrollSection(friendIds, (id) => ({
             label: this._players.usernameOf(id),
             buttonLabel: "Remove",
             onClick: () => this._onUnfriend(id),
@@ -195,7 +195,7 @@ export class FriendsPanelLayer extends Container {
         if (this._viewMode !== ViewMode.OVERWORLD) {
             const roster = this._sortByUsername(this._nearbyOwners());
             stack.header("Nearby (in view)");
-            stack.scrollSection(this.viewport, roster, (id) => ({
+            stack.scrollSection(roster, (id) => ({
                 label: this._players.usernameOf(id),
                 buttonLabel: "Add",
                 onClick: () => this._onAddFriend(id),

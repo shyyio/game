@@ -45,7 +45,7 @@ class CounterRow extends Container {
 
     /**
      * @param {CounterEntry} entry
-     * @param {CounterTooltip} tooltip - raised while the pointer rests on this row
+     * @param {HoverTooltip} tooltip - raised while the pointer rests on this row
      */
     constructor(entry, tooltip) {
         super();

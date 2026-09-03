@@ -2,6 +2,7 @@ import {World} from "@/sim/World.js";
 import {chunkId} from "@/common/util.js";
 import {portAt} from "@/common/portGeometry.js";
 import {PLAYER_ID_NONE} from "@/common/constants.js";
+import {ListenerList} from "@/common/ListenerList.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PlacedObjects} from "@/sim/PlacedObjects.js";
 import {OverworldBake} from "@/sim/OverworldBake.js";
@@ -254,6 +255,11 @@ export class GameEngine {
         this._eventSink = null;
         // Sink for metrics facts; unlike _eventSink, ignores chunk observation.
         this._metricsSink = null;
+        /**
+         * Notified (playerId, itemType, amount) when a producer's output is delivered.
+         * @type {ListenerList}
+         */
+        this.itemProduced = new ListenerList();
         // Whether any session is watching a chunk. Emitters skip building an event nobody receives; a
         // session that subscribes later gets the state through chunkSync, not the missed deltas.
         this._chunkObserved = () => false;

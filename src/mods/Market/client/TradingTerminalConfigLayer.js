@@ -209,7 +209,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
         stack.gap();
 
         stack.header("Item");
-        stack.scrollSection(this.viewport, snapshot.itemTypes, (itemType, i) => ({
+        stack.scrollSection(snapshot.itemTypes, (itemType, i) => ({
             label: `${this._items.require(itemType).name} (${this._itemDetail(snapshot, i)})`,
             buttonLabel: i === this._itemIndex ? "Selected" : "Select",
             buttonTint: i === this._itemIndex ? ACTIVE_ACCENT : INACTIVE_TINT,

@@ -7,20 +7,33 @@ import {
     TOOLTIP_PADDING,
 } from "@/client/hud/AbstractTooltipLayer.js";
 
-// Clearance from the hovered row.
-const ROW_CLEARANCE = 6;
+// Clearance from the hovered target.
+export const TARGET_CLEARANCE = 6;
 
 /**
- * The hovered counter's label and exact amount ("10,000 × Credits"), in a tooltip box beside the row.
+ * Which edge of the target the tooltip box sits beside.
+ * @enum
  */
-export class CounterTooltip extends AbstractTooltipLayer {
+export const TooltipSide = {
+    RIGHT: 0,
+    BELOW: 1,
+};
+
+/**
+ * A hovered target's `tooltipText`, in a tooltip box beside it once the pointer has rested there.
+ */
+export class HoverTooltip extends AbstractTooltipLayer {
 
     /**
      * @param {Application} app
+     * @param {number} side a TooltipSide
+     * @param {number} zIndex a HudLayer band
      */
-    constructor(app) {
+    constructor(app, side, zIndex) {
         super(app);
-        // The hovered row, and how long it has been held.
+        this.zIndex = zIndex;
+        this._side = side;
+        // The hovered target, and how long it has been held.
         this._target = null;
         this._heldMS = 0;
         this._label = panelText("", TextRole.BODY);
@@ -31,25 +44,25 @@ export class CounterTooltip extends AbstractTooltipLayer {
     }
 
     /**
-     * Points the tooltip at a counter row; a new row restarts the dwell.
-     * @param {CounterRow} row
+     * Points the tooltip at a target; a new target restarts the dwell.
+     * @param {Container} target exposes `tooltipText`
      * @returns {void}
      */
-    setTarget(row) {
-        if (row === this._target) {
+    setTarget(target) {
+        if (target === this._target) {
             return;
         }
-        this._target = row;
+        this._target = target;
         this._heldMS = 0;
     }
 
     /**
-     * Drops a row's tooltip, ignoring a leave from a row that no longer holds it.
-     * @param {CounterRow} row
+     * Drops a target's tooltip, ignoring a leave from a target that no longer holds it.
+     * @param {Container} target
      * @returns {void}
      */
-    clearTarget(row) {
-        if (row === this._target) {
+    clearTarget(target) {
+        if (target === this._target) {
             this._target = null;
         }
     }
@@ -64,13 +77,13 @@ export class CounterTooltip extends AbstractTooltipLayer {
     }
 
     /**
-     * Follows the hovered row once its dwell is served.
+     * Follows the hovered target once its dwell is served.
      * @param {number} deltaMS
      * @returns {void}
      * @private
      */
     _update(deltaMS) {
-        // A removed counter destroys its row without a leave event.
+        // A removed or rebuilt target is destroyed without a leave event.
         if (this._target !== null && (this._target.destroyed || !this._target.visible)) {
             this._target = null;
         }
@@ -86,9 +99,13 @@ export class CounterTooltip extends AbstractTooltipLayer {
         }
         this._setText(this._target.tooltipText);
         this.visible = true;
-        // The layer is the unscaled stage-origin HUD, so a row's global position is its screen one.
+        // The layer is the unscaled stage-origin HUD, so a target's global position is its screen one.
         const anchor = this._target.getGlobalPosition();
-        this.placeAtScreen(anchor.x, anchor.y, this._target.width + ROW_CLEARANCE, 0);
+        if (this._side === TooltipSide.RIGHT) {
+            this.placeAtScreen(anchor.x, anchor.y, this._target.width + TARGET_CLEARANCE, 0);
+        } else {
+            this.placeAtScreen(anchor.x, anchor.y, 0, this._target.height + TARGET_CLEARANCE);
+        }
     }
 
     /**

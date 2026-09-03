@@ -43,7 +43,11 @@ export {ObjectGhostLayer} from "@/client/layers/ObjectGhostLayer.js";
 export {UIPanel, ManagedPanel, PANEL_SCREEN_MARGIN} from "@/client/hud/UIPanel.js";
 export {buildPanelButton, buildIconButton, buildToggleRow} from "@/client/hud/panelButton.js";
 export {BUTTON_HEIGHT} from "@/client/hud/UiScale.js";
-export {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT, PANEL_TINT_TEXT, PANEL_BORDER} from "@/client/Theme.js";
+export {PANEL_TINT, PANEL_TITLE_TEXT, PANEL_TEXT, ACTIVE_ACCENT, PANEL_TINT_TEXT, PANEL_BORDER, SUCCESS_TEXT, scaleColor} from "@/client/Theme.js";
+// The stroke width of the core HUD glyphs, for a mod's own button icon.
+export {ICON_STROKE} from "@/client/hud/icons.js";
+// An always-visible top-right circular button; a subclass paints its glyph and picks its slot.
+export {CircleButtonLayer} from "@/client/hud/CircleButtonLayer.js";
 // A curved line from a HUD panel to the tile it targets (used by the core Inspect panel).
 export {rectEdgePoint, drawPanelConnector, CONNECTOR_PANEL_INSET} from "@/client/hud/PanelConnector.js";
 // Declarative panel-body builder (header/text/row/scrollSection) for use with UIPanel.managed.
@@ -54,8 +58,12 @@ export {HudLayer} from "@/client/hud/HudLayer.js";
 export {IconPicker, IconPickerEntry} from "@/client/hud/IconPicker.js";
 export {panelText, TextRole} from "@/client/hud/PanelText.js";
 
+// One button a client mod offers on another player (playerActions hook), e.g. on a selected chunk's owner.
+export {PlayerAction} from "@/client/hud/PlayerAction.js";
 // One counter's look in the core top-left counter list (client.hud.counterListLayer).
 export {CounterEntry} from "@/client/hud/CounterListLayer.js";
+// A hovered target's `tooltipText` beside it after a dwell (the core counter list's tooltip).
+export {HoverTooltip, TooltipSide} from "@/client/hud/HoverTooltip.js";
 // Base for a tooltip box anchored beside a world point, with its shared metrics.
 export {
     AbstractTooltipLayer,

@@ -338,6 +338,15 @@ export class Client {
     }
 
     /**
+     * Every button the client mods offer on a player.
+     * @param {number} playerId
+     * @returns {PlayerAction[]}
+     */
+    modPlayerActions(playerId) {
+        return this.modRegistry.clientMods.flatMap(mod => mod.playerActions(playerId, this));
+    }
+
+    /**
      * Opens a machine's menu: subscribes to its per-tick inspect snapshots.
      * @param {number} objectId
      * @returns {void}

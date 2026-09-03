@@ -1,8 +1,8 @@
 import {test} from "node:test";
 import assert from "node:assert";
-
+import {wireRegistryFor, assertRoundTrip} from "@/test/wireRoundTrip.js";
 import {
-    ModRegistry, ModPackage, WireRegistry, DeleteObjectMessage, CreateObjectMessage,
+    DeleteObjectMessage, CreateObjectMessage,
     ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent,
 } from "@spup/sdk";
 import {LogisticsDeclaration} from "../declaration.js";
@@ -11,51 +11,26 @@ import {
     BeltItemBatchEvent,
 } from "./events.js";
 
-function registry() {
-    const modRegistry = new ModRegistry();
-    modRegistry.register(new ModPackage(new LogisticsDeclaration()));
-    modRegistry.freeze();
-    return new WireRegistry(modRegistry);
-}
-
-/**
- * Reduces an object to its declared wire fields, mapping undefined → null so
- * absent-on-the-wire fields compare equal to the source.
- */
-function pick(obj, cls) {
-    const out = {};
-    for (const key of Object.keys(cls.wireFields)) {
-        out[key] = obj[key] === undefined ? null : obj[key];
-    }
-    return out;
-}
-
-function roundTrip(reg, instance, cls) {
-    const decoded = reg.decode(reg.encode(instance));
-    assert.ok(decoded instanceof cls, `decoded value is not a ${cls.name}`);
-    assert.deepStrictEqual(pick(decoded, cls), pick(instance, cls));
-}
-
 test("Round-trips belt messages, including null and id fields", () => {
-    const reg = registry();
-    roundTrip(reg, new DeleteObjectMessage(123456789012345), DeleteObjectMessage);
+    const reg = wireRegistryFor(new LogisticsDeclaration());
+    assertRoundTrip(reg, new DeleteObjectMessage(123456789012345), DeleteObjectMessage);
 });
 
 test("Round-trips belt events, preserving exact ids", () => {
-    const reg = registry();
-    roundTrip(reg, new BeltPathRecalculateEvent(1, 2, [1, 2, 999999999999]), BeltPathRecalculateEvent);
+    const reg = wireRegistryFor(new LogisticsDeclaration());
+    assertRoundTrip(reg, new BeltPathRecalculateEvent(1, 2, [1, 2, 999999999999]), BeltPathRecalculateEvent);
 });
 
 test("Round-trips generic object events, preserving exact ids in the port-id array", () => {
-    const reg = registry();
-    roundTrip(reg, new ObjectInsertEvent(1, 99, 5, 6, 1, [7, 999999999999], null), ObjectInsertEvent);
-    roundTrip(reg, new ObjectSyncEvent(2, 100, 5, 6, 2, [123456789012], 42), ObjectSyncEvent);
-    roundTrip(reg, new ObjectDeleteEvent(1, 99, 5, 6), ObjectDeleteEvent);
-    roundTrip(reg, new CreateObjectMessage(1, 5, 6, 1), CreateObjectMessage);
+    const reg = wireRegistryFor(new LogisticsDeclaration());
+    assertRoundTrip(reg, new ObjectInsertEvent(1, 99, 5, 6, 1, [7, 999999999999], null), ObjectInsertEvent);
+    assertRoundTrip(reg, new ObjectSyncEvent(2, 100, 5, 6, 2, [123456789012], 42), ObjectSyncEvent);
+    assertRoundTrip(reg, new ObjectDeleteEvent(1, 99, 5, 6), ObjectDeleteEvent);
+    assertRoundTrip(reg, new CreateObjectMessage(1, 5, 6, 1), CreateObjectMessage);
 });
 
 test("Decoded belt id is a Number, round-tripped exactly", () => {
-    const reg = registry();
+    const reg = wireRegistryFor(new LogisticsDeclaration());
     const id = 123456789012345;
     const decoded = reg.decode(reg.encode(new DeleteObjectMessage(id)));
     assert.strictEqual(typeof decoded.id, "number");
@@ -63,10 +38,10 @@ test("Decoded belt id is a Number, round-tripped exactly", () => {
 });
 
 test("Round-trips a BeltItemBatchEvent's packed columns", () => {
-    const reg = registry();
+    const reg = wireRegistryFor(new LogisticsDeclaration());
     const batch = new BeltItemBatchEvent(12, -5);
     batch.addDelete(999999999999, 41);
     batch.addUpsert(7, 42, 0, 3);
     batch.addUpsert(7, 43, 12, 3);
-    roundTrip(reg, batch, BeltItemBatchEvent);
+    assertRoundTrip(reg, batch, BeltItemBatchEvent);
 });

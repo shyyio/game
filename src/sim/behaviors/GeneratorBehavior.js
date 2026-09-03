@@ -1,7 +1,6 @@
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {TickPhase} from "@/sim/GameEngine.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
-import {METRICS_FACT_TYPE_ITEM_PRODUCED} from "@/common/MetricsFact.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 import {syncFluidSource} from "@/sim/behaviors/util.js";
 
@@ -246,17 +245,13 @@ export class GeneratorBehavior extends AbstractBehavior {
         for (let row = 0; row < count; row += 1) {
             const eid = eids[row];
             if (engine.transfers.wasDest(generator.out[row])) {
-                engine.emitMetrics(
-                    METRICS_FACT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), generator.output[row], 1,
-                );
+                engine.itemProduced.notify(placed.ownerIdOf(eid), generator.output[row], 1);
                 generator.lastOutput[row] = generator.output[row];
                 generator.output[row] = EMPTY;
                 generator.remaining[row] = EMPTY;
             }
             if (generator.out2[row] !== NO_EID && engine.transfers.wasDest(generator.out2[row])) {
-                engine.emitMetrics(
-                    METRICS_FACT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), generator.output2[row], 1,
-                );
+                engine.itemProduced.notify(placed.ownerIdOf(eid), generator.output2[row], 1);
                 generator.lastOutput2[row] = generator.output2[row];
                 generator.output2[row] = EMPTY;
                 generator.remaining2[row] = EMPTY;

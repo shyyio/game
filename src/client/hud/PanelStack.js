@@ -64,10 +64,25 @@ export class PanelStack extends Container {
      * @returns {void}
      */
     header(label) {
-        const text = panelText(label, TextRole.HEADER);
-        text.y = this._y;
-        this.addChild(text);
+        this.headerRow(label, () => {});
+    }
+
+    /**
+     * A bold section header with `build` adding beside it, at header height.
+     * @param {string} label
+     * @param {function(PanelRow): void} build
+     * @returns {Text} the header
+     */
+    headerRow(label, build) {
+        const row = new PanelRow(this._contentWidth, HEADER_HEIGHT);
+        row.y = this._y;
+        const text = row.pushLeft(panelText(label, TextRole.HEADER));
+        build(row);
+        row.layout();
+        this._overflow = Math.max(this._overflow, row.overflow);
+        this.addChild(row);
         this._y += HEADER_HEIGHT;
+        return text;
     }
 
     /**
@@ -124,15 +139,17 @@ export class PanelStack extends Container {
     /**
      * A row per item — swatch/label/right text and per-row or right-button actions —
      * scrolled past `visibleRows` instead of growing the panel.
-     * @param {ClientViewport|null} viewport - frozen against wheel-zoom while a resulting scrollbar is hovered
      * @param {Array} items
      * @param {function(*, number): PanelRowDescriptor} describe
      * @param {string} emptyLabel - shown in place of rows when `items` is empty
-     * @param {{visibleRows: number, fixedHeight: boolean}} [options] - fixedHeight keeps the
-     *     section at `visibleRows` tall regardless of item count, so the row set can change later
+     * @param {object} [options]
+     * @param {number} [options.visibleRows]
+     * @param {boolean} [options.fixedHeight] keeps the section at `visibleRows` tall regardless of
+     *     item count, so the row set can change later
+     * @param {number|null} [options.centerRow] the index of a row to scroll into the middle
      * @returns {ScrollSectionHandle|null} an update handle for a fixedHeight section, null otherwise
      */
-    scrollSection(viewport, items, describe, emptyLabel, {visibleRows, fixedHeight = false} = {}) {
+    scrollSection(items, describe, emptyLabel, {visibleRows, fixedHeight = false, centerRow = null} = {}) {
         const innerWidth = this._contentWidth - SECTION_PADDING_LEFT;
         // Always built at scrollbar-reserved width, so a short list never reflows crossing the threshold.
         const rowsWidth = ScrollView.contentWidthFor(innerWidth);
@@ -160,7 +177,8 @@ export class PanelStack extends Container {
 
         if (fixedHeight) {
             // Always a ScrollView: the row set can grow past the viewport after later updates.
-            const scrollView = this._buildScrollView(viewport, innerWidth, viewportHeight, rows, rowsHeight);
+            const scrollView = this._buildScrollView(innerWidth, viewportHeight, rows, rowsHeight);
+            this._centerRow(scrollView, viewportHeight, centerRow);
             this.addChild(scrollView);
             this._y += insetHeight;
             return new ScrollSectionHandle(scrollView, (container, nextItems) =>
@@ -172,27 +190,43 @@ export class PanelStack extends Container {
             rows.y = this._y + SECTION_PADDING_TOP;
             this.addChild(rows);
         } else {
-            this.addChild(this._buildScrollView(viewport, innerWidth, viewportHeight, rows, rowsHeight));
+            const scrollView = this._buildScrollView(innerWidth, viewportHeight, rows, rowsHeight);
+            this._centerRow(scrollView, viewportHeight, centerRow);
+            this.addChild(scrollView);
         }
         this._y += insetHeight;
         return null;
     }
 
     /**
+     * Scrolls a row into the middle of the section; the ends clamp.
+     * @private
+     * @param {ScrollView} scrollView
+     * @param {number} viewportHeight
+     * @param {number|null} row
+     * @returns {void}
+     */
+    _centerRow(scrollView, viewportHeight, row) {
+        if (row === null) {
+            return;
+        }
+        const rowTop = SECTION_PADDING_TOP + row * (ROW_HEIGHT + ROW_GAP);
+        scrollView.scrollY = rowTop - (viewportHeight - ROW_HEIGHT) / 2;
+    }
+
+    /**
      * A section's ScrollView, spanning the full inset height so the scrollbar runs edge to edge;
      * the rows keep their top clearance inside the scrolled content instead.
      * @private
-     * @param {ClientViewport|null} viewport
      * @param {number} innerWidth
      * @param {number} viewportHeight
      * @param {Container} rows
      * @param {number} rowsHeight
      * @returns {ScrollView}
      */
-    _buildScrollView(viewport, innerWidth, viewportHeight, rows, rowsHeight) {
+    _buildScrollView(innerWidth, viewportHeight, rows, rowsHeight) {
         const scrollView = new ScrollView(
             this._textureRegistry,
-            viewport,
             innerWidth,
             viewportHeight + SECTION_PADDING_TOP,
         );

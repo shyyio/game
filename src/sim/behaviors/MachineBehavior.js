@@ -3,7 +3,6 @@ import {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
 import {TickPhase} from "@/sim/GameEngine.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {deterministicRoll} from "@/sim/Rng.js";
-import {METRICS_FACT_TYPE_ITEM_PRODUCED} from "@/common/MetricsFact.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 import {syncFluidSource} from "@/sim/behaviors/util.js";
 
@@ -555,16 +554,12 @@ export class MachineBehavior extends AbstractBehavior {
             const byproductDelivered = !byproductPending || engine.transfers.wasDest(machine.out2[row]);
             if (engine.transfers.wasDest(machine.out[row]) && byproductDelivered) {
                 const eid = eids[row];
-                engine.emitMetrics(
-                    METRICS_FACT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), machine.output[row], 1,
-                );
+                engine.itemProduced.notify(placed.ownerIdOf(eid), machine.output[row], 1);
                 machine.lastOutput[row] = machine.output[row];
                 machine.output[row] = EMPTY;
                 machine.remaining[row] = EMPTY;
                 if (byproductPending) {
-                    engine.emitMetrics(
-                        METRICS_FACT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), machine.byproduct[row], 1,
-                    );
+                    engine.itemProduced.notify(placed.ownerIdOf(eid), machine.byproduct[row], 1);
                     machine.lastByproduct[row] = machine.byproduct[row];
                     machine.byproduct[row] = EMPTY;
                 }

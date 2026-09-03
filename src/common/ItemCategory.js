@@ -1,8 +1,7 @@
 import {getOrCreate} from "@/common/util.js";
 
 /**
- * A named collection-log section with its item definitions; same-name categories merge and
- * sections sort by name.
+ * A named section of item definitions; same-name categories merge and sections sort by name.
  */
 export class ItemCategory {
 
