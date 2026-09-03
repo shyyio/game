@@ -57,6 +57,7 @@ export class ChunkActionsLayer extends Container {
         this._onAddFriend = null;
         this._onUnfriend = null;
         this._onSetPermission = null;
+        this._playerActions = null;
         this._stack = new Container();
         // Presses on the stack must not fall through to the viewport (pan/tap).
         swallowClicks(this._stack);
@@ -105,6 +106,13 @@ export class ChunkActionsLayer extends Container {
      */
     onSetPermission(callback) {
         this._onSetPermission = callback;
+    }
+
+    /**
+     * @param {function(playerId: number): PlayerAction[]} callback the mods' buttons on a chunk's owner
+     */
+    onPlayerActions(callback) {
+        this._playerActions = callback;
     }
 
     /**
@@ -174,13 +182,16 @@ export class ChunkActionsLayer extends Container {
             } else {
                 status = `${name}'s chunk. You cannot build here`;
             }
-            let row;
+            const rows = [];
             if (claims.isFriend(owner)) {
-                row = this._buildButton(`Unfriend ${name}`, () => this._onUnfriend(owner));
+                rows.push(this._buildButton(`Unfriend ${name}`, () => this._onUnfriend(owner)));
             } else {
-                row = this._buildButton(`Add friend ${name}`, () => this._onAddFriend(owner));
+                rows.push(this._buildButton(`Add friend ${name}`, () => this._onAddFriend(owner)));
             }
-            return {status, rows: [row]};
+            for (const action of this._playerActions(owner)) {
+                rows.push(this._buildButton(action.label, action.onPress));
+            }
+            return {status, rows};
         }
         const check = claims.claimCheck(chunk);
         if (check === ClaimResult.CLAIM_RESULT_OK) {

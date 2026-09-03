@@ -165,12 +165,14 @@ export {MetricsGlobalQueryEntry} from "@/common/MetricsGlobalQueryEntry.js";
 // plus a texture name and a pixi multiply tint, so shared shapes stay visually distinct per item
 // type. The frozen ModRegistry merges them into its ItemRegistry (modRegistry.items).
 export {ItemDefinition} from "@/common/ItemDefinition.js";
-// Collection-log section a declaration contributes (items); same-name categories merge across the
-// loadout and sort by name (modRegistry.itemCategories).
+// A named section of item definitions a declaration contributes (items); same-name categories
+// merge across the loadout and sort by name (modRegistry.itemCategories).
 export {ItemCategory} from "@/common/ItemCategory.js";
 
 // An item count or currency amount as at most five characters (99999, 9999K, 999M, 1B).
 export {formatCount} from "@/common/util.js";
+// The same count in full, thousands-grouped (10,000).
+export {formatExactCount} from "@/common/util.js";
 
 // Rotates a `{x, y}` offset (a port or size vector) by a placement direction, so a mod
 // can compute where an object's ports/geometry land from its ObjectType.

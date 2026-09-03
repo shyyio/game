@@ -25,7 +25,7 @@ const textureRegistry = {get: () => Texture.EMPTY};
  */
 function build() {
     const harness = new PointerHarness();
-    const view = new ScrollView(textureRegistry, null, VIEW_WIDTH, VIEW_HEIGHT);
+    const view = new ScrollView(textureRegistry, VIEW_WIDTH, VIEW_HEIGHT);
     view.setContentHeight(CONTENT_HEIGHT);
     harness.add(view);
     harness.sync();

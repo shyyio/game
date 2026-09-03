@@ -99,6 +99,10 @@ class Mouse {
 
         this._hoverTileX = null;
         this._hoverTileY = null;
+        // The pointer's screen position last frame, and whether HUD sat under it then.
+        this._pointerScreenX = null;
+        this._pointerScreenY = null;
+        this._pointerWasOverInteractive = false;
         // Mobile-mode lock: while a tool is active the "cursor" is pinned to the
         // screen center, so hover and tap-to-place use the center tile and the
         // player pans the map to aim (see setCenterLock).
@@ -170,6 +174,7 @@ class Mouse {
         this.currentY = null;
         this._hoverTileX = null;
         this._hoverTileY = null;
+        this._pointerWasOverInteractive = false;
         this._resetCallbacks();
     }
 
@@ -439,6 +444,24 @@ class Mouse {
         return hit != null && hit !== this._viewport;
     }
 
+    /**
+     * Same as {@link _pointerOverInteractive}, re-tested only once the pointer has moved: HUD
+     * rebuilt under a resting pointer (a panel redrawn by its own button) carries stale transforms
+     * until it renders, so a hit test that frame misses it.
+     * @returns {boolean}
+     * @private
+     */
+    _pointerRestsOverInteractive() {
+        const pointer = this._app.renderer.events.pointer.global;
+        const moved = pointer.x !== this._pointerScreenX || pointer.y !== this._pointerScreenY;
+        this._pointerScreenX = pointer.x;
+        this._pointerScreenY = pointer.y;
+        if (moved || !this._pointerWasOverInteractive) {
+            this._pointerWasOverInteractive = this._pointerOverInteractive();
+        }
+        return this._pointerWasOverInteractive;
+    }
+
     _updateCurrentMousePos() {
         const world = this._viewport.toWorld(
             this._app.renderer.events.pointer.global.x,
@@ -453,7 +476,7 @@ class Mouse {
         // keeps its hover).
         if (this._centerLock) {
             this._updateHoverTile();
-        } else if (this._clickStartX == null && this._pointerOverInteractive()) {
+        } else if (this._clickStartX == null && this._pointerRestsOverInteractive()) {
             this._emitTileExit();
         } else {
             this._updateHoverTile();

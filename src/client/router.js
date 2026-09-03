@@ -27,7 +27,8 @@ export const router = createRouter({
 // "/mods" browses the public registry and picks what local play loads, and needs no session at all.
 router.beforeEach((to) => {
     if (to.name === "login" && startsLocalGame) {
-        return {name: "play"};
+        // The scenario/mod parameters must survive onto the game route, where the bootstrap reads them.
+        return {name: "play", query: to.query};
     }
     if (to.name === "servers" && !hasSessionToken()) {
         return {name: "login"};

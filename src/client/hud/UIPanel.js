@@ -282,6 +282,16 @@ export class UIPanel extends Container {
     }
 
     /**
+     * A panel's width on this screen: the preferred one, or what fits inside the screen margins.
+     * @param {Application} app
+     * @param {number} preferredWidth
+     * @returns {number}
+     */
+    static fitWidth(app, preferredWidth) {
+        return Math.min(preferredWidth, app.screen.width - PANEL_SCREEN_MARGIN * 2);
+    }
+
+    /**
      * The lowest a panel's top may sit: clear of the on-screen keyboard on touch, clear of the
      * bottom edge otherwise.
      * @param {Application} app

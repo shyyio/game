@@ -1,5 +1,5 @@
 import {
-    MetricsFact, METRICS_FACT_TYPE_PLAYER_JOINED, METRICS_FACT_TYPE_PLAYER_LEFT,
+    MetricsFact, METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_FACT_TYPE_PLAYER_JOINED, METRICS_FACT_TYPE_PLAYER_LEFT,
     METRICS_QUERY_SCOPE_GLOBAL, metricsRollupKey,
 } from "@/common/MetricsFact.js";
 import {MetricsRollupEvent, MetricsRollupBucketEvent, compactRollupRows} from "@/common/MetricsEvents.js";
@@ -49,6 +49,9 @@ export class GameMetrics {
 
         simEngine.setMetricsSink(
             (type, playerId, category, amount, tag) => this.record(type, playerId, category, amount, tag),
+        );
+        simEngine.itemProduced.add(
+            (playerId, itemType, amount) => this.record(METRICS_FACT_TYPE_ITEM_PRODUCED, playerId, itemType, amount),
         );
 
         /**

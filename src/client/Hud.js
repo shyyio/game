@@ -6,7 +6,8 @@ import {ConfirmDialogLayer} from "@/client/hud/ConfirmDialogLayer.js";
 import {PopoverHost} from "@/client/hud/PopoverHost.js";
 import {PanelHost} from "@/client/hud/PanelHost.js";
 import {CounterListLayer} from "@/client/hud/CounterListLayer.js";
-import {CounterTooltip} from "@/client/hud/CounterTooltip.js";
+import {HoverTooltip, TooltipSide} from "@/client/hud/HoverTooltip.js";
+import {HudLayer} from "@/client/hud/HudLayer.js";
 import {StatusMessageLayer} from "@/client/hud/StatusMessageLayer.js";
 import {VersionWatermarkLayer} from "@/client/hud/VersionWatermarkLayer.js";
 import {TopStatusBarLayer} from "@/client/hud/TopStatusBarLayer.js";
@@ -134,7 +135,7 @@ export class Hud {
         // The status message's height, so the counter list stacks under it rather than behind it.
         this._statusHeight = 0;
         // The hovered counter's label and exact amount.
-        this.counterTooltip = new CounterTooltip(app);
+        this.counterTooltip = new HoverTooltip(app, TooltipSide.RIGHT, HudLayer.TOOLTIP);
         // Top-left running counts (currency balance, and whatever else contributes a counter),
         // stacked under the status message and hidden while the top bar owns the edge.
         this.counterListLayer = new CounterListLayer(app, this.counterTooltip);
@@ -197,6 +198,11 @@ export class Hud {
             this.artButtonLayer.setTopOffset(offset);
             this.terrainButtonLayer.setTopOffset(offset);
             this.statusLayer.setTopOffset(offset);
+            for (const layer of this._modLayers) {
+                if (layer.setTopOffset !== undefined) {
+                    layer.setTopOffset(offset);
+                }
+            }
             this._topBarHeight = height;
             this._layoutTopLeft();
         });
@@ -242,6 +248,7 @@ export class Hud {
         this.chunkActionsLayer.onSetPermission(
             (chunk, permission) => this._client.sendMessage(new SetChunkPermissionMessage(chunk, permission)),
         );
+        this.chunkActionsLayer.onPlayerActions(playerId => this._client.modPlayerActions(playerId));
     }
 
     /**
@@ -349,7 +356,6 @@ export class Hud {
         this.friendsPanelLayer.anchorButton = this.friendsButtonLayer;
         this.productionPanelLayer.textureRegistry = textureRegistry;
         this.productionPanelLayer.anchorButton = this.productionButtonLayer;
-        this.productionPanelLayer.viewport = viewport;
         app.stage.addChild(this.versionWatermarkLayer);
         app.stage.addChild(this._client.centerLock.markerLayer);
         app.stage.addChild(this.mapButtonsLayer);

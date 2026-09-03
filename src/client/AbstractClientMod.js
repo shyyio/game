@@ -65,6 +65,16 @@ export class AbstractClientMod {
     }
 
     /**
+     * The buttons this mod offers on another player, shown wherever the HUD presents them.
+     * @param {number} playerId
+     * @param {Client} client
+     * @returns {PlayerAction[]}
+     */
+    playerActions(playerId, client) {
+        return [];
+    }
+
+    /**
      * Handles a client-delivered event, updating the mod's own state and draw layers.
      * @param {AbstractEvent} event
      * @param {Client} client

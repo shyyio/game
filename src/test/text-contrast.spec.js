@@ -51,7 +51,10 @@ function themedTexts() {
         {where: "AbstractEdgeBarLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 20, bold: false},
         {where: "PanelText header", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: true},
         {where: "PanelText body", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
-        {where: "PanelText muted", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
+        {where: "PanelText muted", fill: Theme.PANEL_TINT_TEXT, alpha: 0.7, background: inset, fontSize: 15, bold: false},
+        {where: "PanelText caption", fill: Theme.PANEL_TINT_TEXT, alpha: 0.7, background: inset, fontSize: 12, bold: false},
+        {where: "ProductionLogPanelLayer category header (complete)", fill: Theme.SUCCESS_TEXT, background: inset, fontSize: 15, bold: true},
+        {where: "ProductionLogPanelLayer category caption (complete)", fill: Theme.SUCCESS_TEXT, background: inset, fontSize: 12, bold: false},
         {where: "ToolbarLayer slot label", fill: Theme.PANEL_TINT_TEXT, background: slot, fontSize: 15, bold: false},
         {where: "ToolbarLayer shortcut badge", fill: Theme.PANEL_TINT_TEXT, alpha: 0.6, background: slot, fontSize: 45, bold: false},
         // textOn picks each label from its tint. A disabled button fades whole and is AA-exempt,
@@ -69,7 +72,8 @@ function themedTexts() {
         {where: "TextInput placeholder", fill: TextInput.PLACEHOLDER_COLOR, background: inputBox, fontSize: TextInput.FONT_SIZE, bold: false},
         // The slot and note tooltips are flat filled boxes, not tinted 9-slices.
         {where: "SlotTooltip name", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
-        {where: "CounterTooltip text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
+        {where: "HoverTooltip text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
+        {where: "InspectTooltipLayer text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
         {where: "NoteTooltipLayer text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
         {where: "NoteTooltipLayer author", fill: Theme.PANEL_BORDER, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
     ];
@@ -94,6 +98,8 @@ const CHECKED_TEXTS = {
 };
 const UNCHECKED_TEXTS = {
     "src/client/hud/CounterListLayer.js": 1,
+    // The cell label sits over whatever tinted icon the cell holds.
+    "src/client/hud/IconPicker.js": 1,
     "src/client/hud/VersionWatermarkLayer.js": 1,
     "src/client/layers/ChunkClaimsDrawLayer.js": 1,
     "src/client/layers/WorkerDebugLayer.js": 1,

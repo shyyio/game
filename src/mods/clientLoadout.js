@@ -15,6 +15,9 @@ import {MarketSimMod} from "@/mods/Market/sim.js";
 import {NotesDeclaration} from "@/mods/Notes/declaration.js";
 import {NotesClientMod} from "@/mods/Notes/client.js";
 import {NotesSimMod} from "@/mods/Notes/sim.js";
+import {ProductionLogDeclaration} from "@/mods/ProductionLog/declaration.js";
+import {ProductionLogSimMod} from "@/mods/ProductionLog/sim.js";
+import {ProductionLogClientMod} from "@/mods/ProductionLog/client.js";
 
 /**
  * The loadout for a browser client (which also runs the local sim): declarations + client parts,
@@ -32,5 +35,6 @@ export function clientLoadout() {
         new ModPackage(new CursorSyncDeclaration(), {client: new CursorSyncClientMod()}),
         new ModPackage(new MarketDeclaration(), {sim: new MarketSimMod(), client: new MarketClientMod()}),
         new ModPackage(new NotesDeclaration(), {sim: new NotesSimMod(), client: new NotesClientMod()}),
+        new ModPackage(new ProductionLogDeclaration(), {sim: new ProductionLogSimMod(), client: new ProductionLogClientMod()}),
     ];
 }

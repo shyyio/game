@@ -1,6 +1,6 @@
 import {Container} from "pixi.js";
 import {format} from "d3-format";
-import {ManagedPanel, PANEL_SCREEN_MARGIN, UIPanel} from "@/client/hud/UIPanel.js";
+import {ManagedPanel, UIPanel} from "@/client/hud/UIPanel.js";
 import {PanelRowDescriptor} from "@/client/hud/PanelStack.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT} from "@/client/Theme.js";
 import {MetricsLineChart} from "@/client/hud/MetricsLineChart.js";
@@ -48,8 +48,6 @@ export class ProductionPanelLayer extends Container {
         this.textureRegistry = null;
         // The production button, to open below it by default (set by the host).
         this.anchorButton = null;
-        // The game viewport, frozen against wheel-zoom while the list scrollbar is hovered (set by the host).
-        this.viewport = null;
         this.visible = false;
 
         this._managed = new ManagedPanel();
@@ -132,7 +130,7 @@ export class ProductionPanelLayer extends Container {
      * @returns {number}
      */
     _panelWidth() {
-        return Math.min(PANEL_WIDTH, this._app.screen.width - PANEL_SCREEN_MARGIN * 2);
+        return UIPanel.fitWidth(this._app, PANEL_WIDTH);
     }
 
     /**
@@ -158,7 +156,7 @@ export class ProductionPanelLayer extends Container {
             stack.block(this._chartInset, CHART_HEIGHT);
             stack.gap();
             // Fixed-height list section, so pushes can swap the row set without resizing the panel.
-            this._listHandle = stack.scrollSection(this.viewport, [], entry => this._describeEntry(entry),
+            this._listHandle = stack.scrollSection([], entry => this._describeEntry(entry),
                 "No production yet", {fixedHeight: true});
         });
         this.addChild(panel);

@@ -11,6 +11,8 @@ import {MarketDeclaration} from "@/mods/Market/declaration.js";
 import {MarketSimMod} from "@/mods/Market/sim.js";
 import {NotesDeclaration} from "@/mods/Notes/declaration.js";
 import {NotesSimMod} from "@/mods/Notes/sim.js";
+import {ProductionLogDeclaration} from "@/mods/ProductionLog/declaration.js";
+import {ProductionLogSimMod} from "@/mods/ProductionLog/sim.js";
 
 export {BASE_MOD_DIRS};
 
@@ -32,5 +34,6 @@ export function simLoadout() {
         new ModPackage(new CursorSyncDeclaration(), {sim: new CursorSyncSimMod()}),
         new ModPackage(new MarketDeclaration(), {sim: new MarketSimMod()}),
         new ModPackage(new NotesDeclaration(), {sim: new NotesSimMod()}),
+        new ModPackage(new ProductionLogDeclaration(), {sim: new ProductionLogSimMod()}),
     ];
 }

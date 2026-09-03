@@ -8,11 +8,21 @@ const MOVE_MS = 300;
 const MOVE_EASE = "easeOutCubic";
 
 /**
- * The game's pan/zoom {@link Viewport}, with helpers to freeze interaction:
- * panning only (while a tool is active, so cursor drags paint tiles and zoom
- * stays live) or wheel-zoom only (while the pointer is over a scrollable HUD list).
+ * The game's pan/zoom {@link Viewport}: its wheel rides pixi's hit-testing like every other
+ * pointer event, so HUD over the world swallows it the way it swallows a click, and panning can be
+ * frozen while a tool paints on drag.
  */
 export class ClientViewport extends Viewport {
+
+    /**
+     * @param {object} options - pixi-viewport's
+     */
+    constructor(options) {
+        super(options);
+        // pixi-viewport's own raw canvas listener would zoom the map under a panel.
+        this.input.destroy();
+        this.on("wheel", event => this.input.handleWheel(event.nativeEvent));
+    }
 
     /**
      * Glides to a world position and/or scale. `onDone` settles exactly once: arrived=true on
@@ -82,20 +92,5 @@ export class ClientViewport extends Viewport {
         if (Mobile.enabled) {
             this.plugins.resume("pinch");
         }
-    }
-
-    /**
-     * Freezes wheel-zoom (e.g. while the pointer is over a scrollable HUD list, so a scroll
-     * doesn't also zoom the map underneath) while leaving panning available.
-     */
-    freezeZoom() {
-        this.plugins.pause("wheel");
-    }
-
-    /**
-     * Resumes the wheel-zoom frozen by {@link ClientViewport#freezeZoom}.
-     */
-    unfreezeZoom() {
-        this.plugins.resume("wheel");
     }
 }

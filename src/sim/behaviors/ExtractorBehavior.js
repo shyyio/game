@@ -1,7 +1,6 @@
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {TickPhase} from "@/sim/GameEngine.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
-import {METRICS_FACT_TYPE_ITEM_PRODUCED} from "@/common/MetricsFact.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 import {LAYER_RESOURCE} from "@/sim/behaviors/ResourceBehavior.js";
 
@@ -225,9 +224,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         for (let row = 0; row < count; row += 1) {
             if (engine.transfers.wasDest(extractor.out[row])) {
                 const eid = eids[row];
-                engine.emitMetrics(
-                    METRICS_FACT_TYPE_ITEM_PRODUCED, placed.ownerIdOf(eid), extractor.output[row], 1,
-                );
+                engine.itemProduced.notify(placed.ownerIdOf(eid), extractor.output[row], 1);
                 extractor.lastOutput[row] = extractor.output[row];
                 extractor.output[row] = EMPTY;
                 extractor.remaining[row] = EMPTY;

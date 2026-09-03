@@ -18,6 +18,7 @@ export const BASE_MOD_DIRS = [
     "CursorSync",
     "Market",
     "Notes",
+    "ProductionLog",
 ];
 
 /**

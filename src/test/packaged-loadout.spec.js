@@ -81,6 +81,7 @@ test("a pinned loadout caches, loads, and registers like the static one", async 
     );
     assert.deepEqual(mods.map(mod => mod.manifest.name), [
         "base-textures", "logistics", "base-game", "fluids", "cursor-sync", "market", "notes",
+        "production-log",
     ]);
 });
 
