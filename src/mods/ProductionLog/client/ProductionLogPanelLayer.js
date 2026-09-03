@@ -333,7 +333,7 @@ export class ProductionLogPanelLayer extends Container {
                 entries.push(new IconPickerEntry(itemType, definition.texture, {
                     tint: definition.tint,
                     label: this._cellLabel(count, ranks.get(itemType)),
-                    tooltipText: definition.name,
+                    tooltipText: `${definition.name}\n${formatExactCount(count)}`,
                 }));
             }
         }
