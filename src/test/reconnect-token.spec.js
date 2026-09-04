@@ -11,7 +11,7 @@ import {randomBytes} from "node:crypto";
 import {NodeAccountStore} from "@/authserver/NodeAccountStore.js";
 import {AccountRegistry} from "@/authserver/AccountRegistry.js";
 import {SigningKeys} from "@/authserver/SigningKeys.js";
-import {JoinTokenService} from "@/authserver/JoinTokenService.js";
+import {TokenService} from "@/authserver/TokenService.js";
 import {AuthHttpServer} from "@/authserver/AuthHttpServer.js";
 import {ServerDirectory} from "@/authserver/ServerDirectory.js";
 
@@ -20,7 +20,7 @@ const OTHER_ORIGIN = "wss://other.example.com:443";
 
 /**
  * @param {object} t
- * @returns {{joinTokens: JoinTokenService, accounts: AccountRegistry, signingKeys: SigningKeys}}
+ * @returns {{tokens: TokenService, accounts: AccountRegistry, signingKeys: SigningKeys}}
  */
 function services(t) {
     const dir = mkdtempSync(join(tmpdir(), "pipes-reconnect-"));
@@ -29,7 +29,7 @@ function services(t) {
     return {
         signingKeys,
         accounts: new AccountRegistry(new NodeAccountStore()),
-        joinTokens: new JoinTokenService(signingKeys, randomBytes(32)),
+        tokens: new TokenService(signingKeys, randomBytes(32)),
     };
 }
 
@@ -42,47 +42,47 @@ function claimsOf(token) {
 }
 
 test("a reconnect token names the account and the one origin it is good for", (t) => {
-    const {accounts, joinTokens} = services(t);
+    const {accounts, tokens} = services(t);
     const account = accounts.getOrCreate("player");
 
-    const verified = joinTokens.verifyReconnect(joinTokens.mintReconnect(account, ORIGIN));
+    const verified = tokens.verifyReconnect(tokens.mintReconnect(account, ORIGIN));
 
     assert.equal(verified.accountId, account.accountId);
     assert.equal(verified.origin, ORIGIN);
 });
 
 test("a forged or tampered reconnect token verifies to nothing", (t) => {
-    const {accounts, joinTokens} = services(t);
+    const {accounts, tokens} = services(t);
     const account = accounts.getOrCreate("player");
-    const token = joinTokens.mintReconnect(account, ORIGIN);
+    const token = tokens.mintReconnect(account, ORIGIN);
     const [payload, signature] = token.split(".");
     const swapped = Buffer.from(JSON.stringify({
         ...JSON.parse(Buffer.from(payload, "base64url").toString("utf8")),
         aud: OTHER_ORIGIN,
     })).toString("base64url");
 
-    assert.equal(joinTokens.verifyReconnect(`${swapped}.${signature}`), null, "the origin is signed over");
-    assert.equal(joinTokens.verifyReconnect(`${payload}.${"a".repeat(43)}`), null);
-    assert.equal(joinTokens.verifyReconnect("nonsense"), null);
-    assert.equal(joinTokens.verifyReconnect(undefined), null);
+    assert.equal(tokens.verifyReconnect(`${swapped}.${signature}`), null, "the origin is signed over");
+    assert.equal(tokens.verifyReconnect(`${payload}.${"a".repeat(43)}`), null);
+    assert.equal(tokens.verifyReconnect("nonsense"), null);
+    assert.equal(tokens.verifyReconnect(undefined), null);
 });
 
 test("an expired reconnect token stops working", (t) => {
-    const {accounts, joinTokens} = services(t);
+    const {accounts, tokens} = services(t);
     const account = accounts.getOrCreate("player");
     const realNow = Date.now;
     Date.now = () => realNow() - 13 * 60 * 60 * 1000;
-    const stale = joinTokens.mintReconnect(account, ORIGIN);
+    const stale = tokens.mintReconnect(account, ORIGIN);
     Date.now = realNow;
 
-    assert.equal(joinTokens.verifyReconnect(stale), null);
+    assert.equal(tokens.verifyReconnect(stale), null);
 });
 
 test("/join hands out a reconnect token, and /rejoin spends it for this origin only", async (t) => {
-    const {accounts, joinTokens, signingKeys} = services(t);
+    const {accounts, tokens, signingKeys} = services(t);
     const dir = mkdtempSync(join(tmpdir(), "pipes-reconnect-http-"));
     t.after(() => rmSync(dir, {recursive: true, force: true}));
-    const server = new AuthHttpServer(accounts, signingKeys, joinTokens, new ServerDirectory(join(dir, "servers.json")));
+    const server = new AuthHttpServer(accounts, signingKeys, tokens, new ServerDirectory(join(dir, "servers.json")));
     await server.listen("127.0.0.1", 0);
     try {
         const baseUrl = `http://127.0.0.1:${server.port}`;

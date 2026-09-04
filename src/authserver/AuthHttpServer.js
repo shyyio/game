@@ -1,15 +1,8 @@
-import {randomBytes} from "node:crypto";
 import {GAME_VERSION, ORIGIN_PATTERN, USERNAME_PATTERN} from "@/common/constants.js";
 import {formatUptime} from "@/common/util.js";
 import {AbstractHttpServer, guarded, respondJson, rejectRequest, readJson} from "@/nodeservice/AbstractHttpServer.js";
 
-const SESSION_TOKEN_BYTES = 32;
 const BEARER_PREFIX = "Bearer ";
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
-const SESSION_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
-// Concurrent sessions one account may hold; a login loop evicts its own oldest rather than
-// growing the session map without bound.
-export const MAX_SESSIONS_PER_ACCOUNT = 8;
 
 /**
  * The auth server's HTTP front end: dummy username-only login for now, no Steam OpenID yet.
@@ -19,22 +12,16 @@ export class AuthHttpServer extends AbstractHttpServer {
     /**
      * @param {AccountRegistry} accounts
      * @param {SigningKeys} signingKeys
-     * @param {JoinTokenService} joinTokens
+     * @param {TokenService} tokens
      * @param {ServerDirectory} servers
      */
-    constructor(accounts, signingKeys, joinTokens, servers) {
+    constructor(accounts, signingKeys, tokens, servers) {
         super();
         this._accounts = accounts;
         this._signingKeys = signingKeys;
-        this._joinTokens = joinTokens;
+        this._tokens = tokens;
         this._servers = servers;
         this._startedAtMs = Date.now();
-        // sessionToken -> {accountId, expiresAtMs}
-        this._sessionsByToken = new Map();
-        // accountId -> that account's live session tokens, oldest first
-        this._tokensByAccountId = new Map();
-        this._sweepTimer = setInterval(() => this._sweepExpiredSessions(), SESSION_SWEEP_INTERVAL_MS);
-        this._sweepTimer.unref();
 
         this._app.get("/.well-known/jwks.json", guarded(res => {
             respondJson(res, {keys: [this._signingKeys.toJwk()]});
@@ -73,82 +60,6 @@ export class AuthHttpServer extends AbstractHttpServer {
     }
 
     /**
-     * @returns {void}
-     */
-    stop() {
-        super.stop();
-        clearInterval(this._sweepTimer);
-    }
-
-    /**
-     * The accountId behind a bearer session token, or null if unknown or expired.
-     * @param {string} sessionToken
-     * @returns {number|null}
-     */
-    accountIdForSession(sessionToken) {
-        const session = this._sessionsByToken.get(sessionToken);
-        if (session === undefined) {
-            return null;
-        }
-        if (Date.now() >= session.expiresAtMs) {
-            this._closeSession(sessionToken);
-            return null;
-        }
-        return session.accountId;
-    }
-
-    /**
-     * Drops every session token past its TTL, so long-running processes don't accumulate one
-     * entry per login forever.
-     * @private
-     * @returns {void}
-     */
-    _sweepExpiredSessions() {
-        const now = Date.now();
-        for (const [token, session] of this._sessionsByToken) {
-            if (now >= session.expiresAtMs) {
-                this._closeSession(token);
-            }
-        }
-    }
-
-    /**
-     * Registers a session for `accountId`, evicting that account's oldest once it is over the cap.
-     * @private
-     * @param {string} sessionToken
-     * @param {number} accountId
-     * @returns {void}
-     */
-    _openSession(sessionToken, accountId) {
-        this._sessionsByToken.set(sessionToken, {accountId, expiresAtMs: Date.now() + SESSION_TTL_MS});
-        let tokens = this._tokensByAccountId.get(accountId);
-        if (tokens === undefined) {
-            tokens = [];
-            this._tokensByAccountId.set(accountId, tokens);
-        }
-        tokens.push(sessionToken);
-        while (tokens.length > MAX_SESSIONS_PER_ACCOUNT) {
-            this._sessionsByToken.delete(tokens.shift());
-        }
-    }
-
-    /**
-     * Drops a session from both indexes.
-     * @private
-     * @param {string} sessionToken
-     * @returns {void}
-     */
-    _closeSession(sessionToken) {
-        const session = this._sessionsByToken.get(sessionToken);
-        this._sessionsByToken.delete(sessionToken);
-        const tokens = this._tokensByAccountId.get(session.accountId);
-        tokens.splice(tokens.indexOf(sessionToken), 1);
-        if (tokens.length === 0) {
-            this._tokensByAccountId.delete(session.accountId);
-        }
-    }
-
-    /**
      * The plain-text welcome/info screen served to browsers.
      * @private
      * @param {string} host - the request's Host header
@@ -181,8 +92,7 @@ export class AuthHttpServer extends AbstractHttpServer {
                 return;
             }
             const account = this._accounts.getOrCreate(username);
-            const sessionToken = randomBytes(SESSION_TOKEN_BYTES).toString("base64url");
-            this._openSession(sessionToken, account.accountId);
+            const sessionToken = this._tokens.mintSession(account.accountId);
             respondJson(res, {accountId: account.accountId, username: account.username, sessionToken});
         });
     }
@@ -217,8 +127,8 @@ export class AuthHttpServer extends AbstractHttpServer {
                 return;
             }
             respondJson(res, {
-                token: this._joinTokens.mint(account, origin),
-                reconnect: this._joinTokens.mintReconnect(account, origin),
+                token: this._tokens.mint(account, origin),
+                reconnect: this._tokens.mintReconnect(account, origin),
             });
         });
     }
@@ -234,7 +144,7 @@ export class AuthHttpServer extends AbstractHttpServer {
                 rejectRequest(res, "400 Bad Request", "Invalid request body", {cors: true});
                 return;
             }
-            const claims = this._joinTokens.verifyReconnect(payload.reconnect);
+            const claims = this._tokens.verifyReconnect(payload.reconnect);
             if (claims === null) {
                 rejectRequest(res, "401 Unauthorized", "Invalid or expired reconnect token", {cors: true});
                 return;
@@ -247,8 +157,8 @@ export class AuthHttpServer extends AbstractHttpServer {
                 return;
             }
             respondJson(res, {
-                token: this._joinTokens.mint(account, claims.origin),
-                reconnect: this._joinTokens.renewReconnect(claims),
+                token: this._tokens.mint(account, claims.origin),
+                reconnect: this._tokens.renewReconnect(claims),
             });
         });
     }
@@ -277,6 +187,6 @@ export class AuthHttpServer extends AbstractHttpServer {
         if (typeof authHeader !== "string" || !authHeader.startsWith(BEARER_PREFIX)) {
             return null;
         }
-        return this.accountIdForSession(authHeader.slice(BEARER_PREFIX.length));
+        return this._tokens.verifySession(authHeader.slice(BEARER_PREFIX.length));
     }
 }
