@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {mkdtempSync} from "node:fs";
+import {mkdtempSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {randomBytes} from "node:crypto";
@@ -8,20 +8,23 @@ import {NodeAccountStore} from "@/authserver/NodeAccountStore.js";
 import {AccountRegistry} from "@/authserver/AccountRegistry.js";
 import {SigningKeys} from "@/authserver/SigningKeys.js";
 import {JoinTokenService} from "@/authserver/JoinTokenService.js";
-import {AuthHttpServer} from "@/authserver/AuthHttpServer.js";
+import {AuthHttpServer, MAX_SESSIONS_PER_ACCOUNT} from "@/authserver/AuthHttpServer.js";
+import {ServerDirectory} from "@/authserver/ServerDirectory.js";
 
 const SIGNING_KEY_PATH = join(mkdtempSync(join(tmpdir(), "authserver-http-")), "signing-key.json");
 
 /**
- * @returns {Promise<{server: AuthHttpServer, baseUrl: string}>}
+ * @param {string} [serversPath] - the server directory's JSON file; absent means no such file
+ * @returns {Promise<{server: AuthHttpServer, store: NodeAccountStore, baseUrl: string}>}
  */
-async function startServer() {
-    const accounts = new AccountRegistry(new NodeAccountStore());
+async function startServer(serversPath=join(mkdtempSync(join(tmpdir(), "authserver-servers-")), "servers.json")) {
+    const store = new NodeAccountStore();
+    const accounts = new AccountRegistry(store);
     const signingKeys = new SigningKeys(SIGNING_KEY_PATH);
     const joinTokens = new JoinTokenService(signingKeys, randomBytes(32));
-    const server = new AuthHttpServer(accounts, signingKeys, joinTokens);
+    const server = new AuthHttpServer(accounts, signingKeys, joinTokens, new ServerDirectory(serversPath));
     await server.listen("127.0.0.1", 0);
-    return {server, baseUrl: `http://127.0.0.1:${server.port}`};
+    return {server, store, baseUrl: `http://127.0.0.1:${server.port}`};
 }
 
 /**
@@ -195,6 +198,73 @@ test("a malformed body is rejected with 400 on join and rejoin too", async () =>
         const rejoin = await fetch(`${baseUrl}/rejoin`, {method: "POST", body: "not json"});
         assert.equal(rejoin.status, 400);
         assert.equal(await rejoin.text(), "Malformed JSON body");
+    } finally {
+        server.stop();
+    }
+});
+
+test("a malformed server list is served as empty rather than killing the process", async () => {
+    const serversPath = join(mkdtempSync(join(tmpdir(), "authserver-servers-")), "servers.json");
+    writeFileSync(serversPath, "{ not json");
+    const {server, baseUrl} = await startServer(serversPath);
+    try {
+        const sessionToken = await login(baseUrl, "alice");
+        const headers = {authorization: `Bearer ${sessionToken}`};
+
+        const response = await fetch(`${baseUrl}/servers`, {headers});
+        assert.equal(response.status, 200);
+        assert.deepEqual(await response.json(), {servers: []});
+
+        const again = await fetch(`${baseUrl}/servers`, {headers});
+        assert.equal(again.status, 200, "the server is still up");
+    } finally {
+        server.stop();
+    }
+});
+
+test("join on a session whose account is gone is rejected with 401", async () => {
+    const {server, store, baseUrl} = await startServer();
+    try {
+        const sessionToken = await login(baseUrl, "alice");
+        store.db.exec("DELETE FROM \"Account\"");
+
+        const response = await fetch(`${baseUrl}/join`, {
+            method: "POST",
+            headers: {authorization: `Bearer ${sessionToken}`},
+            body: JSON.stringify({origin: "wss://example.com:443"}),
+        });
+
+        assert.equal(response.status, 401);
+    } finally {
+        server.stop();
+    }
+});
+
+test("an account's oldest session is dropped once it is past the per-account cap", async () => {
+    const {server, baseUrl} = await startServer();
+    try {
+        const tokens = [];
+        for (let i = 0; i <= MAX_SESSIONS_PER_ACCOUNT; i++) {
+            tokens.push(await login(baseUrl, "alice"));
+        }
+
+        assert.equal(server.accountIdForSession(tokens[0]), null, "the oldest session is evicted");
+        assert.notEqual(server.accountIdForSession(tokens[1]), null, "the next oldest survives");
+        assert.notEqual(server.accountIdForSession(tokens[tokens.length - 1]), null, "the newest survives");
+    } finally {
+        server.stop();
+    }
+});
+
+test("a session for another account is untouched by one account hitting the cap", async () => {
+    const {server, baseUrl} = await startServer();
+    try {
+        const bob = await login(baseUrl, "bob");
+        for (let i = 0; i <= MAX_SESSIONS_PER_ACCOUNT; i++) {
+            await login(baseUrl, "alice");
+        }
+
+        assert.notEqual(server.accountIdForSession(bob), null);
     } finally {
         server.stop();
     }
