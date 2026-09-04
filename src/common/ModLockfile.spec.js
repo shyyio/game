@@ -13,6 +13,23 @@ function entry(name, version) {
     return new ModLockEntry(`file:///mods/${name}/`, name, version, new Map([["mod.json", HASH]]));
 }
 
+/**
+ * @param {string} url
+ * @returns {object} a pin entry as a config file holds it
+ */
+function pinned(url) {
+    return {url, name: "logistics", version: "1.0.0", integrity: {"mod.json": HASH}};
+}
+
+test("a pin URL naming a bare path is refused: a package is fetched, never read as a path", () => {
+    assert.throws(() => ModLockEntry.parse(pinned("build/mods/logistics/")), /scheme/);
+});
+
+test("a pin URL keeps every scheme a package is fetched over", () => {
+    assert.equal(ModLockEntry.parse(pinned("file:///mods/logistics/")).url, "file:///mods/logistics/");
+    assert.equal(ModLockEntry.parse(pinned("https://mods.example/logistics/")).url, "https://mods.example/logistics/");
+});
+
 test("withUpdated swaps in the built entry for every name it knows, in place", () => {
     const current = new ModLockfile([entry("base-game", "1.0.0"), entry("logistics", "2.1.0"), entry("fluids", "1.0.0")]);
     const built = new ModLockfile([entry("base-game", "1.1.0"), entry("fluids", "1.1.0")]);
