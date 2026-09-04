@@ -10,6 +10,7 @@ import {parseArgs} from "node:util";
 import {buildMod} from "./build-mod.js";
 import {GAME_VERSION} from "../src/common/constants.js";
 import {BASE_MOD_DIRS} from "../src/mods/loadout.js";
+import {ORDER_FILE} from "../vite.build-defines.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MODS_DIR = join(REPO_ROOT, "src/mods");
@@ -35,7 +36,7 @@ export async function publishBaseMods(outDir, version) {
         console.log(`  ${manifest.name} ${manifest.version} -> ${packageDir}`);
     }
     // Loadout order assigns the positional type and wire ids, so the built set carries it.
-    writeFileSync(join(outDir, "order.json"), `${JSON.stringify(BASE_MOD_DIRS, null, 4)}\n`);
+    writeFileSync(join(outDir, ORDER_FILE), `${JSON.stringify(BASE_MOD_DIRS, null, 4)}\n`);
     return BASE_MOD_DIRS;
 }
 

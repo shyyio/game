@@ -9,8 +9,8 @@
 // then run this. A change to deploy/post-receive* or deploy/*.service still has to be installed onto
 // the host by hand — a push re-runs whatever hook is already there.
 //
-// Last of all it lists this version's base mods in the public registry, so operators can `mods add`
-// them and local play can pin them. That needs a registry checkout beside this repo; pass
+// Last of all it lists this version's base mods in the public registry, so the admin page can pin
+// them and local play can too. That needs a registry checkout beside this repo; pass
 // --skip-registry to deploy the game without touching the listing.
 
 import {readFileSync} from "node:fs";
@@ -41,7 +41,7 @@ const NODE_WITH_LOADER = ["--import", "./src/nodeservice/loader.js"];
 
 const REGISTRY_HINT = [
     "Everything else is already live — this step only lists the release in the mod registry, and the",
-    "listing is what `mods add` and local play's mod picker resolve against. Fix it and re-run just",
+    "listing is what the admin page and local play's mod picker resolve against. Fix it and re-run just",
     "that step: `npm run mods:registry -- --push`.",
 ].join("\n");
 
@@ -214,7 +214,7 @@ function assertRemotesAt(head) {
 function assertModsPublishable() {
     runStep("mod checks", "node", [...NODE_WITH_LOADER, "tools/check-base-mods.js"], {
         cwd: ROOT,
-        hint: `A base mod would be refused by the registry, and by anyone's \`mods add\`. ${NOTHING_PUSHED}`,
+        hint: `A base mod would be refused by the registry, and by anyone pinning it. ${NOTHING_PUSHED}`,
     });
 }
 

@@ -1,6 +1,6 @@
 // The published mod catalog, read straight from the registry's static index. Browsing mods needs no
-// session and touches no game server — it is the same index.json a server operator's `mods add`
-// resolves names against.
+// session and touches no game server — it is the same index.json the server admin page pins
+// against.
 
 const MOD_REGISTRY_URL = "https://mods.spupgame.com";
 

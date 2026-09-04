@@ -11,7 +11,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run mods:base && vite build",
     "build:mod": "node --import ./src/nodeservice/loader.js tools/build-mod.js",
     "mods:base": "node --import ./src/nodeservice/loader.js tools/publish-base-mods.js",
     "mods:registry": "node --import ./src/nodeservice/loader.js tools/publish-registry.js",

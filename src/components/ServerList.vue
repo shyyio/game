@@ -3,6 +3,8 @@ import {computed, onMounted, reactive, ref} from "vue";
 import {canonicalOrigin, httpOriginFor} from "@/common/util.js";
 import {DEV_TOOLS} from "@/common/env.js";
 import {hasSessionToken, listServers} from "@/client/AuthClient.js";
+import {UNVERIFIED_MODS_REFUSAL} from "@/client/ModVerification.js";
+import DeviceSettings, {DEVICE_SETTING_UNVERIFIED_MODS} from "@/client/state/DeviceSettings.js";
 
 const props = defineProps({
   connectingOrigin: {type: String, default: ""},
@@ -21,6 +23,19 @@ const servers = ref([]);
 const statusByOrigin = reactive({});
 const refreshing = ref(false);
 const refreshCoolingDown = ref(false);
+const allowUnverifiedMods = ref(DeviceSettings.getBoolean(DEVICE_SETTING_UNVERIFIED_MODS, false));
+
+// The opt-in shows only where the player hit the refusal, not as a standing invitation.
+const modsRefused = computed(() => props.error.startsWith(UNVERIFIED_MODS_REFUSAL));
+
+/**
+ * @param {boolean} value
+ * @returns {void}
+ */
+function setAllowUnverifiedMods(value) {
+  allowUnverifiedMods.value = value;
+  DeviceSettings.setBoolean(DEVICE_SETTING_UNVERIFIED_MODS, value);
+}
 
 onMounted(loadServers);
 
@@ -274,6 +289,14 @@ function connectToCustomOrigin() {
         >Connect</v-btn>
       </div>
       <div v-if="error" class="server-list-error">{{ error }}</div>
+      <v-checkbox
+          v-if="modsRefused"
+          :model-value="allowUnverifiedMods"
+          label="Allow unverified mods"
+          density="compact"
+          hide-details
+          @update:model-value="setAllowUnverifiedMods"
+      />
     </v-card-text>
     <v-card-actions>
       <v-btn variant="text" @click="emit('back')">Back</v-btn>

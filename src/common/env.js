@@ -18,3 +18,8 @@ export const BUILD_COMMIT = typeof __BUILD_COMMIT__ === "undefined" ? "dev" : __
 
 // BUILD_COMMIT's commit date (ISO); null outside a Vite build.
 export const BUILD_DATE = typeof __BUILD_DATE__ === "undefined" ? null : __BUILD_DATE__;
+
+// The sha-256 of every base mod bundle this client was built with, which is how it tells its own
+// base mods from a server's third-party pins. Empty in a dev build and outside Vite, where the mod
+// gate does not run.
+export const BASE_MOD_HASHES = typeof __BASE_MOD_HASHES__ === "undefined" ? [] : __BASE_MOD_HASHES__;
