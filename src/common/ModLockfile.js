@@ -1,9 +1,7 @@
 // An ordered, hash-pinned list of packaged mods. Order is loadout order (it assigns the positional
 // typeIds/wireIds), so reordering is a save-breaking change. Nothing updates a pin implicitly — on a
-// server only the `mods` CLI rewrites mods.json, in the browser only the local-loadout editor.
-//
-// Model only: reading and writing the operator's file lives in @/server/modLockfileFile.js, so the
-// browser can pin packages in exactly this format without dragging node:fs along.
+// server only the admin page and the `mods` CLI rewrite the pins in server.json, in the browser only
+// the local-loadout editor.
 
 import {integrityHex} from "@/common/ModIntegrity.js";
 
@@ -112,6 +110,30 @@ export class ModLockfile {
             return null;
         }
         return found;
+    }
+
+    /**
+     * This list with every entry `built` also names replaced by `built`'s, each in its own position,
+     * and every other `built` entry appended in its own order. Appending keeps the positional ids of
+     * everything already pinned, so a build that ships a new base mod stays loadable.
+     * @param {ModLockfile} built
+     * @returns {ModLockfile}
+     */
+    withUpdated(built) {
+        const mods = this.mods.map(entry => {
+            const replacement = built.find(entry.name);
+            if (replacement === null) {
+                return entry;
+            }
+            return replacement;
+        });
+        const pinned = new Set(this.mods.map(entry => entry.name));
+        for (const entry of built.mods) {
+            if (!pinned.has(entry.name)) {
+                mods.push(entry);
+            }
+        }
+        return new ModLockfile(mods);
     }
 
     /**

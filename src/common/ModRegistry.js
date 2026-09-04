@@ -114,6 +114,18 @@ export class ModRegistry {
     }
 
     /**
+     * Re-stamps this registry's positional typeIds onto its object types. Loadouts share ObjectType
+     * instances, so freezing another one over them leaves those numbers meaning the other loadout;
+     * a world that outlives such a freeze takes its own back with this.
+     * @returns {void}
+     */
+    claimTypeIds() {
+        for (const [typeId, type] of this._typeById) {
+            type._assignTypeId(typeId);
+        }
+    }
+
+    /**
      * Rejects a loadout that lists the same mod twice.
      * @private
      * @returns {void}

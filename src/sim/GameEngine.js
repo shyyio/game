@@ -631,6 +631,22 @@ export class GameEngine {
     }
 
     /**
+     * Deletes every placed object of a type, as the engine rather than a player: no ownership gate.
+     * @param {number} typeId
+     * @returns {number} how many were deleted
+     */
+    removeObjectsOfType(typeId) {
+        const eids = this.placed.eidsOf(typeId);
+        for (const eid of eids) {
+            const message = new DeleteObjectMessage(this.placed.objectIdOf(eid));
+            this.untrack(message.id);
+            this._messageHandlers.some(handler => handler(message, PLAYER_ID_NONE));
+        }
+        this.ports.collectUnreferenced();
+        return eids.length;
+    }
+
+    /**
      * Whether `playerId` may delete the object; unknown ids pass through to the handlers.
      * @private
      * @param {number} objectId

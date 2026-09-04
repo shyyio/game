@@ -29,6 +29,7 @@
         "lib/",
         "dist/",
         "dist-mods/",
+        "dist-admin/",
         "dist-harness/",
         "testHooks.js",
         "testLoader.js",

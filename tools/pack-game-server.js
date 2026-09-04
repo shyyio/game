@@ -1,11 +1,11 @@
-// Stages packages/game-server/ from this repo: the server bundle, the base-mod packages a dev
-// server needs for real content, and the test harness a mod's specs run against.
+// Stages packages/game-server/ from this repo: the server bundle, its admin page, the base-mod
+// packages a dev server needs for real content, and the test harness a mod's specs run against.
 //
 //   node --import ./src/nodeservice/loader.js tools/pack-game-server.js [--check]
 //
 // --check only verifies that what is staged was built from this commit, so a stale bundle fails CI.
 
-import {cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from "node:fs";
+import {cpSync, existsSync, readFileSync, rmSync, writeFileSync} from "node:fs";
 import {spawnSync} from "node:child_process";
 import {basename, join, resolve, dirname} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -19,6 +19,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PACKAGE_DIR = join(ROOT, "packages/game-server");
 const SERVER_DIR = join(PACKAGE_DIR, "dist");
 const MODS_DIR = join(PACKAGE_DIR, "dist-mods");
+const ADMIN_DIR = join(PACKAGE_DIR, "dist-admin");
 const HARNESS_DIR = join(PACKAGE_DIR, "dist-harness");
 const PACKED_FILE = join(PACKAGE_DIR, "packed.json");
 
@@ -39,23 +40,21 @@ function run(script) {
 async function pack() {
     syncPackageVersion(PACKAGE_DIR);
     run("build:server");
+    run("build:admin");
     run("build:harness");
 
     rmSync(SERVER_DIR, {recursive: true, force: true});
-    cpSync(join(ROOT, "dist-server"), SERVER_DIR, {recursive: true});
+    cpSync(join(ROOT, "build/server"), SERVER_DIR, {recursive: true});
     rmSync(HARNESS_DIR, {recursive: true, force: true});
-    cpSync(join(ROOT, "dist-harness"), HARNESS_DIR, {recursive: true});
+    cpSync(join(ROOT, "build/harness"), HARNESS_DIR, {recursive: true});
+    rmSync(ADMIN_DIR, {recursive: true, force: true});
+    cpSync(join(ROOT, "build/admin"), ADMIN_DIR, {recursive: true});
 
     rmSync(MODS_DIR, {recursive: true, force: true});
-    mkdirSync(MODS_DIR, {recursive: true});
-    const lockfile = await publishBaseMods(MODS_DIR, GAME_VERSION);
-    // The dev lockfile is generated per run, but its order is fixed here: it assigns the positional
-    // type and wire ids, and must match the order the game itself registers.
-    const order = lockfile.mods.map(entry => basename(new URL(entry.url).pathname.replace(/\/$/, "")));
-    writeFileSync(join(MODS_DIR, "order.json"), `${JSON.stringify(order, null, 4)}\n`);
+    const order = await publishBaseMods(MODS_DIR, GAME_VERSION);
 
     writeFileSync(PACKED_FILE, `${JSON.stringify({commit: gitBuildInfo().commit, version: GAME_VERSION}, null, 4)}\n`);
-    console.log(`packages/game-server: server bundle, harness, ${order.length} base mods (game ${GAME_VERSION})`);
+    console.log(`packages/game-server: server bundle, admin page, harness, ${order.length} base mods (game ${GAME_VERSION})`);
 }
 
 /**
@@ -73,7 +72,7 @@ function staleReasons() {
     if (packed.version !== GAME_VERSION) {
         reasons.push(`built for game ${packed.version}, this tree is ${GAME_VERSION}`);
     }
-    for (const dir of [SERVER_DIR, HARNESS_DIR, MODS_DIR]) {
+    for (const dir of [SERVER_DIR, HARNESS_DIR, MODS_DIR, ADMIN_DIR]) {
         if (!existsSync(dir)) {
             reasons.push(`${basename(dir)}/ is missing`);
         }

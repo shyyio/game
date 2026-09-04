@@ -1,9 +1,8 @@
-import {fileURLToPath, URL} from "node:url";
-
 import {defineConfig} from "vite";
 import vue from "@vitejs/plugin-vue";
 import vuetify from "vite-plugin-vuetify";
 import {gitBuildInfo, packageVersion} from "./vite.build-defines.js";
+import {ALIASES} from "./vite.aliases.js";
 
 const {commit: BUILD_COMMIT, date: BUILD_DATE} = gitBuildInfo();
 const APP_VERSION = packageVersion();
@@ -13,7 +12,7 @@ export default defineConfig(({mode}) => ({
     plugins: [
         vue(),
         vuetify({
-            autoImport: true,
+            autoImport: {labs: true},
             styles: {configFile: "src/client/vuetify-settings.scss"}
         }),
         // vueDevTools(),
@@ -29,6 +28,7 @@ export default defineConfig(({mode}) => ({
         __BUILD_DATE__: JSON.stringify(BUILD_DATE),
     },
     build: {
+        outDir: "build/client",
         // Public build ships no source; only reportingserver's private build opts in.
         sourcemap: process.env.BUILD_SOURCEMAPS === "1",
     },
@@ -39,10 +39,6 @@ export default defineConfig(({mode}) => ({
         // The SDK entries come first: mods import the engine by its published package name, and in
         // this repo that name resolves to the source it is packed from — never to an installed copy,
         // which would give a mod its own second set of engine classes.
-        alias: [
-            {find: /^@spup\/sdk$/, replacement: fileURLToPath(new URL("./src/sdk/common.js", import.meta.url))},
-            {find: /^@spup\/sdk\/client$/, replacement: fileURLToPath(new URL("./src/sdk/client.js", import.meta.url))},
-            {find: /^@\//, replacement: `${fileURLToPath(new URL("./src", import.meta.url))}/`},
-        ],
+        alias: ALIASES,
     },
 }))

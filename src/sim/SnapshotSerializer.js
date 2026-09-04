@@ -48,6 +48,18 @@ export class SnapshotSerializer {
     }
 
     /**
+     * What a snapshot converts against, see @/sim/snapshotConversion.js.
+     * @returns {{typeNames: string[], itemTypes: Set<number>}}
+     */
+    get loadout() {
+        const registry = this.engine.modRegistry;
+        return {
+            typeNames: registry.objectTypes.map(type => type.name),
+            itemTypes: new Set(Array.from(registry.items.entries(), entry => entry[0])),
+        };
+    }
+
+    /**
      * A serializable snapshot of the whole world: every registered component as a table of rows (one
      * per entity holding it), plus the global counters.
      * @returns {{saveFormat:number, gameVersion:string, components:object[], globals:object}}

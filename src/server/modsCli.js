@@ -1,22 +1,26 @@
-// The operator's mod CLI: resolve a package into a pinned lockfile entry, review an update before
-// taking it, and re-check the local cache. Nothing here runs implicitly — a server only ever loads
-// what this tool wrote.
+// The operator's mod CLI over the pins in server.json: resolve a package into a pinned entry, review
+// an update before taking it, re-check the local cache, and re-pin the base mods a build ships. The
+// admin page does the same by checkbox; this is for scripts and deploys.
 //
 //   node src/server/modsCli.js list
 //   node src/server/modsCli.js add https://mods.spupgame.com/logistics/2.1.0/
 //   node src/server/modsCli.js update logistics --url https://mods.spupgame.com/logistics/2.2.0/ --yes
 //   node src/server/modsCli.js verify
+//   node src/server/modsCli.js sync-base --dist-mods build/mods
 
+import {dirname, resolve} from "node:path";
 import {parseArgs} from "node:util";
-import {readLockfileOrEmpty, writeLockfile} from "@/server/modLockfileFile.js";
+import {pinBuiltMods} from "@/server/builtMods.js";
+import {ServerConfig} from "@/common/ServerConfig.js";
+import {readServerConfigOrDefault, resolveConfigPaths, writeServerConfig} from "@/server/serverConfigFile.js";
 import {ModCache, resolvePackage} from "@/server/ModCache.js";
 import {ModCatalog, DEFAULT_REGISTRY_URL} from "@/server/ModCatalog.js";
 
 const {values: args, positionals} = parseArgs({
     allowPositionals: true,
     options: {
-        "mods": {type: "string", default: "mods.json"},
-        "mods-cache": {type: "string", default: "mods-cache"},
+        "config": {type: "string", default: "server.json"},
+        "dist-mods": {type: "string"},
         "url": {type: "string"},
         "registry": {type: "string", default: DEFAULT_REGISTRY_URL},
         "replace": {type: "boolean", default: false},
@@ -30,7 +34,8 @@ const USAGE = [
     "  mods add <name>[@<version>] | <url> [--replace]",
     "  mods update <name> [--url <url>] --yes",
     "  mods verify",
-    "options: --mods <mods.json> --mods-cache <dir> --registry <index.json url>",
+    "  mods sync-base --dist-mods <dir>",
+    "options: --config <server.json> --registry <index.json url>",
 ].join("\n");
 
 /**
@@ -66,7 +71,7 @@ function printEntry(entry) {
  */
 function list(lockfile) {
     if (lockfile.mods.length === 0) {
-        console.log(`${args["mods"]} pins no mods`);
+        console.log(`${args["config"]} pins no mods`);
         return;
     }
     for (const [index, entry] of lockfile.mods.entries()) {
@@ -80,6 +85,12 @@ function list(lockfile) {
  * @returns {Promise<void>}
  */
 async function add(lockfile, target) {
+    if (config.mods === null) {
+        throw new Error(
+            `${args["config"]} pins no mods, so the server runs the loadout built into it; pinning one ` +
+            "mod here would replace that whole loadout. Run `sync-base --dist-mods <dir>` first.",
+        );
+    }
     const entry = await resolvePackage(await packageUrlFor(target));
     const existing = lockfile.find(entry.name);
     if (existing !== null && !args["replace"]) {
@@ -94,9 +105,9 @@ async function add(lockfile, target) {
     } else {
         lockfile.mods[lockfile.mods.indexOf(existing)] = entry;
     }
-    writeLockfile(lockfile, args["mods"]);
+    writePins(lockfile);
     printEntry(entry);
-    console.log(`Pinned in ${args["mods"]}`);
+    console.log(`Pinned in ${args["config"]}`);
 }
 
 /**
@@ -126,9 +137,10 @@ async function updateUrlFor(existing, name) {
 async function update(lockfile, name) {
     const existing = lockfile.find(name);
     if (existing === null) {
-        throw new Error(`"${name}" is not pinned in ${args["mods"]}`);
+        throw new Error(`"${name}" is not pinned in ${args["config"]}`);
     }
-    const resolved = await resolvePackage(await updateUrlFor(existing, name));
+    const url = await updateUrlFor(existing, name);
+    const resolved = await resolvePackage(url);
     if (resolved.name !== name) {
         throw new Error(`${url} ships "${resolved.name}", not "${name}"`);
     }
@@ -147,8 +159,8 @@ async function update(lockfile, name) {
         return;
     }
     lockfile.mods[lockfile.mods.indexOf(existing)] = resolved;
-    writeLockfile(lockfile, args["mods"]);
-    console.log(`Updated ${args["mods"]}`);
+    writePins(lockfile);
+    console.log(`Updated ${args["config"]}`);
 }
 
 /**
@@ -156,19 +168,57 @@ async function update(lockfile, name) {
  * @returns {void}
  */
 function verify(lockfile) {
-    const problems = new ModCache(args["mods-cache"]).verify(lockfile);
+    const cacheDir = resolveConfigPaths(config, dirname(resolve(args["config"]))).modsCache;
+    const problems = new ModCache(cacheDir).verify(lockfile);
     if (problems.length === 0) {
-        console.log(`Cache matches ${args["mods"]}`);
+        console.log(`${cacheDir} matches ${args["config"]}`);
         return;
     }
+    console.error(`${cacheDir} does not match ${args["config"]}:`);
     for (const problem of problems) {
         console.error(problem);
     }
     process.exitCode = 1;
 }
 
+/**
+ * Pins the base mods a build ships, read in the order its order.json lists them: a config that
+ * already pins keeps every position and every other mod and takes any new base mod at the end, one
+ * that pins nothing starts as the full base list.
+ * @param {ModLockfile} lockfile
+ * @returns {Promise<void>}
+ */
+async function syncBase(lockfile) {
+    const distMods = args["dist-mods"];
+    if (distMods === undefined) {
+        throw new Error("sync-base needs --dist-mods <dir>");
+    }
+    const built = await pinBuiltMods(distMods);
+    if (built === null) {
+        throw new Error(`${distMods} holds no built mods`);
+    }
+    let synced = built;
+    if (lockfile.mods.length > 0) {
+        synced = lockfile.withUpdated(built);
+    }
+    writePins(synced);
+    console.log(`${args["config"]}: ${synced.mods.length} mods pinned, ${built.mods.length} base mods from ${distMods}`);
+}
+
+/**
+ * Writes the pins back into the config, leaving every other setting as it was.
+ * @param {ModLockfile} lockfile
+ * @returns {void}
+ */
+function writePins(lockfile) {
+    const json = config.toJSON();
+    json.mods = lockfile.toJSON().mods;
+    writeServerConfig(ServerConfig.parse(json), args["config"]);
+}
+
 const [verb, target] = positionals;
-const lockfile = readLockfileOrEmpty(args["mods"]);
+const config = readServerConfigOrDefault(args["config"]);
+const lockfile = config.lockfile;
 try {
     if (verb === "list") {
         list(lockfile);
@@ -184,6 +234,8 @@ try {
         await update(lockfile, target);
     } else if (verb === "verify") {
         verify(lockfile);
+    } else if (verb === "sync-base") {
+        await syncBase(lockfile);
     } else {
         console.error(USAGE);
         process.exitCode = 1;

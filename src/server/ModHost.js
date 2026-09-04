@@ -3,18 +3,18 @@
 // host — no third-party CORS or availability dependency, and the hash comes from the same place as
 // the code either way.
 
-const CONTENT_TYPES = {
+import {SDK_VERSION} from "@/common/ModManifest.js";
+
+/** @enum */
+export const MOD_CONTENT_TYPES = {
     ".js": "text/javascript; charset=utf-8",
 };
-
-// Content-addressed files never change under their name.
-const IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
 
 /**
  * @param {string} fileName
  * @returns {string} the extension, including its dot
  */
-function extensionOf(fileName) {
+export function extensionOf(fileName) {
     return fileName.slice(fileName.lastIndexOf("."));
 }
 
@@ -29,7 +29,7 @@ export class ModHost {
         cache,
     ) {
         this._index = JSON.stringify({
-            sdkVersion: mods[0].manifest.sdkVersion,
+            sdkVersion: SDK_VERSION,
             mods: mods.map(mod => ({
                 name: mod.manifest.name,
                 version: mod.manifest.version,
@@ -43,7 +43,7 @@ export class ModHost {
         for (const mod of mods) {
             for (const file of mod.manifest.files) {
                 const name = mod.contentNameOf(file);
-                if (CONTENT_TYPES[extensionOf(name)] === undefined) {
+                if (MOD_CONTENT_TYPES[extensionOf(name)] === undefined) {
                     throw new Error(`Mod "${mod.manifest.name}" ships ${file}, which is not a servable type`);
                 }
                 this._files.set(name, cache.read(name));
@@ -59,44 +59,10 @@ export class ModHost {
     }
 
     /**
-     * Registers the mod routes; call before any catch-all route.
-     * @param {object} app a uWS.App
-     * @returns {void}
+     * @param {string} name a content-addressed file name
+     * @returns {Uint8Array|undefined} the pinned file, or undefined for a name the loadout does not pin
      */
-    registerRoutes(app) {
-        app.get("/mods/index.json", res => {
-            res.cork(() => {
-                res.writeHeader("Content-Type", "application/json")
-                    .writeHeader("Access-Control-Allow-Origin", "*")
-                    .end(this._index);
-            });
-        });
-        app.get("/mods/:name", (res, req) => {
-            this._onFile(res, req.getParameter(0));
-        });
-    }
-
-    /**
-     * @private
-     * @param {object} res
-     * @param {string} name
-     * @returns {void}
-     */
-    _onFile(res, name) {
-        const bytes = this._files.get(name);
-        if (bytes === undefined) {
-            res.cork(() => {
-                res.writeStatus("404 Not Found")
-                    .writeHeader("Access-Control-Allow-Origin", "*")
-                    .end("no such mod file");
-            });
-            return;
-        }
-        res.cork(() => {
-            res.writeHeader("Content-Type", CONTENT_TYPES[extensionOf(name)])
-                .writeHeader("Cache-Control", IMMUTABLE_CACHE)
-                .writeHeader("Access-Control-Allow-Origin", "*")
-                .end(bytes);
-        });
+    fileOf(name) {
+        return this._files.get(name);
     }
 }

@@ -135,3 +135,23 @@ test("NodeSaveStore reads a save written before the stamp as unstamped", async (
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrateSnapshot(loaded)));
 });
+
+test("a format-3 save, whose id columns were plain i32, loads with them retagged", async () => {
+    const engine = await makeGameEngine();
+    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 3, 3, Direction.UP));
+    const snapshot = engine.snapshots.serialize();
+    snapshot.saveFormat = 3;
+    for (const component of snapshot.components) {
+        for (const field of component.fields) {
+            if (field.kind === "type" || field.kind === "item") {
+                field.kind = "i32";
+            }
+        }
+    }
+
+    const migrated = migrateSnapshot(snapshot);
+    assert.equal(migrated.saveFormat, SAVE_FORMAT);
+    const restored = await makeGameEngine();
+    assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
+    assert.equal(restored.placed.eidsOf(BlenderType.typeId).length, 1);
+});

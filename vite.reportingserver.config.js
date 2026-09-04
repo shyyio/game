@@ -11,7 +11,7 @@ export default defineConfig(({mode}) => ({
     publicDir: false,
     build: {
         ssr: "src/reportingserver/main.js",
-        outDir: "dist-reportingserver",
+        outDir: "build/reportingserver",
         target: "node20",
         rollupOptions: {
             // Native addons cannot be inlined into the bundle.

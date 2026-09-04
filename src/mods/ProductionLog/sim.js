@@ -18,6 +18,10 @@ export class ProductionLogSimMod extends AbstractSimMod {
         super();
         this._log = new ProductionLog();
         /**
+         * @type {ItemRegistry|null}
+         */
+        this._items = null;
+        /**
          * playerId -> item types first produced this tick, announced at tick end.
          * @type {Map<number, number[]>}
          */
@@ -30,6 +34,7 @@ export class ProductionLogSimMod extends AbstractSimMod {
      * @returns {void}
      */
     setup(engine) {
+        this._items = engine.modRegistry.items;
         engine.itemProduced.add((playerId, itemType, amount) => this._record(playerId, itemType, amount));
     }
 
@@ -75,7 +80,7 @@ export class ProductionLogSimMod extends AbstractSimMod {
      * @returns {void}
      */
     deserializeRecords(tablesByName) {
-        this._log.deserializeRecords(tablesByName.get(ITEM_PRODUCED_RECORD));
+        this._log.deserializeRecords(tablesByName.get(ITEM_PRODUCED_RECORD), this._items);
     }
 
     /**

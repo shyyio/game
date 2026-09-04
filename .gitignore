@@ -12,22 +12,17 @@ lerna-debug.log*
 
 node_modules
 .DS_Store
-dist
-dist-server
-dist-authserver
-dist-reportingserver
-dist-ssr
-dist-mods
+# Every bundle and staged artifact
+/build
 coverage
 
 # Bundles staged into the published runtime packages
 packages/*/dist/
 packages/*/dist-*/
 packages/*/packed.json
-dist-harness
-dist-devclient
 
-# A server's pinned mod packages and their fetched files
+# A server's config, pinned mod packages and their fetched files
+server.json
 mods.json
 mods-cache
 *.local
@@ -50,7 +45,6 @@ mods-cache
 # See http://help.github.com/ignore-files/ for more about ignoring files.
 
 # compiled output
-/dist
 /tmp
 /out-tsc
 

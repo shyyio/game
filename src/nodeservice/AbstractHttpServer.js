@@ -2,9 +2,9 @@ import uWS from "uWebSockets.js";
 
 /**
  * Shared uWebSockets.js plumbing for this project's HTTP front ends (game, auth, reporting):
- * listen/stop lifecycle plus the JSON respond/reject/readBody helpers every route handler uses.
- * Subclasses build their own uWS.App() (via the `app` getter) and register routes in their
- * constructor.
+ * listen/stop lifecycle. The JSON respond/reject/readBody helpers every route handler uses are the
+ * free functions beside it. Subclasses build their own uWS.App() (via the `app` getter) and
+ * register routes in their constructor.
  */
 export class AbstractHttpServer {
 
@@ -77,91 +77,87 @@ export class AbstractHttpServer {
             ...fields,
         ].join("\n");
     }
+}
 
-    /**
-     * @protected
-     * @param {object} res
-     * @param {object} body
-     * @returns {void}
-     */
-    _respond(res, body) {
-        res.cork(() => {
-            res.writeHeader("Content-Type", "application/json")
-                .writeHeader("Access-Control-Allow-Origin", "*")
-                .end(JSON.stringify(body));
-        });
-    }
+/**
+ * @param {object} res
+ * @param {object} body
+ * @returns {void}
+ */
+export function respondJson(res, body) {
+    res.cork(() => {
+        res.writeHeader("Content-Type", "application/json")
+            .writeHeader("Access-Control-Allow-Origin", "*")
+            .end(JSON.stringify(body));
+    });
+}
 
-    /**
-     * @protected
-     * @param {object} res
-     * @param {string} status - e.g. "400 Bad Request"
-     * @param {string} message
-     * @param {{cors: boolean}} [options]
-     * @returns {void}
-     */
-    _reject(res, status, message, {cors = false} = {}) {
-        res.cork(() => {
-            res.writeStatus(status).writeHeader("Content-Type", "text/plain; charset=utf-8");
-            if (cors) {
-                res.writeHeader("Access-Control-Allow-Origin", "*");
-            }
-            res.end(message);
-        });
-    }
+/**
+ * @param {object} res
+ * @param {string} status - e.g. "400 Bad Request"
+ * @param {string} message
+ * @param {{cors: boolean}} [options]
+ * @returns {void}
+ */
+export function rejectRequest(res, status, message, {cors = false} = {}) {
+    res.cork(() => {
+        res.writeStatus(status).writeHeader("Content-Type", "text/plain; charset=utf-8");
+        if (cors) {
+            res.writeHeader("Access-Control-Allow-Origin", "*");
+        }
+        res.end(message);
+    });
+}
 
-    /**
-     * Buffers a request body, parses it as JSON, and hands the value to onJson; a body that is not
-     * JSON is rejected here and onJson never runs.
-     * @protected
-     * @param {object} res
-     * @param {(payload: *) => void} onJson
-     * @returns {void}
-     */
-    _readJson(res, onJson) {
-        res.onAborted(() => {
-            res.aborted = true;
-        });
-        this._readBody(res, body => {
-            if (res.aborted) {
-                return;
-            }
-            let payload;
-            try {
-                payload = JSON.parse(body);
-            } catch (error) {
-                this._reject(res, "400 Bad Request", "Malformed JSON body", {cors: true});
-                return;
-            }
-            onJson(payload);
-        });
-    }
+/**
+ * Buffers a request body, parses it as JSON, and hands the value to onJson; a body that is not
+ * JSON is rejected here and onJson never runs.
+ * @param {object} res
+ * @param {(payload: *) => void} onJson
+ * @returns {void}
+ */
+export function readJson(res, onJson) {
+    res.onAborted(() => {
+        res.aborted = true;
+    });
+    readBody(res, body => {
+        if (res.aborted) {
+            return;
+        }
+        let payload;
+        try {
+            payload = JSON.parse(body);
+        } catch (error) {
+            rejectRequest(res, "400 Bad Request", "Malformed JSON body", {cors: true});
+            return;
+        }
+        onJson(payload);
+    });
+}
 
-    /**
-     * Buffers a request body and hands the full UTF-8 text to onEnd.
-     * @protected
-     * @param {object} res
-     * @param {(body: string) => void} onEnd
-     * @returns {void}
-     */
-    _readBody(res, onEnd) {
-        let buffer;
-        res.onData((chunk, isLast) => {
-            // Buffer.from(arrayBuffer) is a view, not a copy; uWS detaches chunk right after
-            // this callback returns, so copy it now via slice() before buffering it past that point.
-            const piece = Buffer.from(chunk.slice(0));
+/**
+ * Buffers a request body and hands the full UTF-8 text to onEnd.
+ * @param {object} res
+ * @param {(body: string) => void} onEnd
+ * @returns {void}
+ */
+export function readBody(res, onEnd) {
+    let buffer;
+    res.onData((chunk, isLast) => {
+        // Buffer.from(arrayBuffer) is a view, not a copy; uWS detaches chunk right after
+        // this callback returns, so copy it now via slice() before buffering it past that point.
+        const piece = Buffer.from(chunk.slice(0));
+        if (buffer === undefined) {
+            buffer = piece;
+        } else {
+            buffer = Buffer.concat([buffer, piece]);
+        }
+        if (isLast) {
             if (buffer === undefined) {
-                buffer = piece;
+                onEnd("");
             } else {
-                buffer = Buffer.concat([buffer, piece]);
+                onEnd(buffer.toString("utf8"));
             }
-            if (isLast) {
-                if (buffer === undefined) {
-                    onEnd("");
-                } else {
-                    onEnd(buffer.toString("utf8"));
-                }
-            }
-        });
-    }
+        }
+    });
 }

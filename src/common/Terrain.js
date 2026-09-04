@@ -134,8 +134,13 @@ export class Terrain {
      * @returns {TileBiome} a shared scratch record, valid until the next call
      */
     classify(tileX, tileY) {
+        const tile = this._tile;
         if (this.biomes.length === 0) {
-            throw new Error("Terrain.classify: the loadout declares no biomes");
+            // Nothing declared: every tile is the one ground there is, which the layers draw as nothing.
+            tile.biomeId = 0;
+            tile.otherId = 0;
+            tile.weight = 0;
+            return tile;
         }
         const samples = this._samples;
         samples.fill(NaN);
@@ -155,7 +160,6 @@ export class Terrain {
             // Unreachable: freeze guarantees the last biome is unconditional.
             throw new Error(`Terrain.classify: no biome matches tile ${tileX},${tileY}`);
         }
-        const tile = this._tile;
         tile.biomeId = winner;
         tile.otherId = winner;
         const winnerWidth = this._blendWidthOf(winner);

@@ -2,7 +2,7 @@ import {createHash} from "node:crypto";
 import {formatUptime} from "@/common/util.js";
 import {GAME_VERSION} from "@/common/constants.js";
 import {BUILD_COMMIT, BUILD_DATE} from "@/common/env.js";
-import {AbstractHttpServer} from "@/nodeservice/AbstractHttpServer.js";
+import {AbstractHttpServer, rejectRequest, readJson} from "@/nodeservice/AbstractHttpServer.js";
 
 const MESSAGE_MAX_BYTES = 1024;
 const STACK_MAX_BYTES = 8192;
@@ -164,7 +164,7 @@ const BUILD_BADGE = `<div class="build-badge">
 /**
  * reportingserver's HTTP front end: an anonymous, unauthenticated ingest endpoint for client
  * error reports, plus an admin browse UI. The admin routes carry no app-level auth of their
- * own — nginx gates /admin* with auth_basic in front, per deploy/nginx-reporting.conf.
+ * own; a reverse proxy in front is expected to gate /admin*.
  */
 export class ReportingHttpServer extends AbstractHttpServer {
 
@@ -211,10 +211,10 @@ export class ReportingHttpServer extends AbstractHttpServer {
      * @returns {void}
      */
     _onReport(res) {
-        this._readJson(res, payload => {
+        readJson(res, payload => {
             const report = this._validateReport(payload);
             if (report === null) {
-                this._reject(res, "400 Bad Request", "Invalid report", {cors: true});
+                rejectRequest(res, "400 Bad Request", "Invalid report", {cors: true});
                 return;
             }
             const now = Date.now();
@@ -322,7 +322,7 @@ export class ReportingHttpServer extends AbstractHttpServer {
         });
         const report = this._store.getById(errorReportId);
         if (report === undefined) {
-            this._reject(res, "404 Not Found", "No such report");
+            rejectRequest(res, "404 Not Found", "No such report");
             return;
         }
         if (report.resolved_stack !== null) {

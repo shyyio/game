@@ -25,6 +25,13 @@ export class NodeSaveStore extends AbstractSaveStore {
     }
 
     /**
+     * @returns {void}
+     */
+    close() {
+        this.db.close();
+    }
+
+    /**
      * @param {object} snapshot
      * @returns {Promise<void>}
      */

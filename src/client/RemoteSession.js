@@ -2,7 +2,11 @@ import {AbstractSession} from "@/common/AbstractSession.js";
 import {SignInMessage} from "@/common/PlayerMessages.js";
 import {WelcomeEvent} from "@/common/PlayerEvents.js";
 import {GAME_VERSION} from "@/common/constants.js";
-import {CLOSE_CODE_SUPERSEDED, CLOSE_CODE_SERVER_SHUTDOWN, CLOSE_CODE_BAD_SIGN_IN, CLOSE_CODE_BAD_FRAME} from "@/common/CloseCodes.js";
+import {
+    CLOSE_CODE_SUPERSEDED, CLOSE_CODE_SERVER_SHUTDOWN, CLOSE_CODE_BAD_SIGN_IN, CLOSE_CODE_BAD_FRAME,
+    CLOSE_CODE_LOADOUT_CHANGED,
+} from "@/common/CloseCodes.js";
+import {setRejoin} from "@/client/GameStart.js";
 import {DEV} from "@/common/env.js";
 import {jwtExpiry} from "@/common/util.js";
 
@@ -200,6 +204,13 @@ export class RemoteSession extends AbstractSession {
         }
         if (code === CLOSE_CODE_SUPERSEDED) {
             this._notifyStatus(SESSION_STATUS_SUPERSEDED, code);
+            return;
+        }
+        if (code === CLOSE_CODE_LOADOUT_CHANGED) {
+            // Mod packages register into module state a page keeps for life, so a new loadout
+            // needs a fresh page; the server list rejoins this server on its own.
+            setRejoin(this._url);
+            window.location.reload();
             return;
         }
         if (TERMINAL_CLOSE_CODES.has(code)) {

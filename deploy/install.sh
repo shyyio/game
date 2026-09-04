@@ -20,7 +20,23 @@ install -m 755 -o app -g app "${SCRIPT_DIR}/post-receive" /home/app/spup.git/hoo
 echo "app ALL=(root) NOPASSWD: /usr/bin/systemctl restart spup" > /etc/sudoers.d/app-restart
 chmod 440 /etc/sudoers.d/app-restart
 
-sed -e "s/{{DOMAIN}}/${DOMAIN}/" -e "s/{{NAME}}/${NAME}/" "${SCRIPT_DIR}/spup.service" > /etc/systemd/system/spup.service
+# The server reads everything from this file; the admin page at /admin edits it in place.
+if [[ ! -f /home/app/data/game/server.json ]]; then
+    cat > /home/app/data/game/server.json <<CONFIG
+{
+    "name": "${NAME}",
+    "origin": "wss://${DOMAIN}:443",
+    "host": "127.0.0.1",
+    "port": 27500,
+    "db": "/home/app/data/game/world.sqlite3",
+    "metricsDb": "/home/app/data/game/metrics.sqlite3",
+    "modsCache": "/home/app/data/game/mods-cache"
+}
+CONFIG
+    chown app:app /home/app/data/game/server.json
+fi
+
+install -m 644 "${SCRIPT_DIR}/spup.service" /etc/systemd/system/spup.service
 systemctl daemon-reload
 systemctl enable spup
 

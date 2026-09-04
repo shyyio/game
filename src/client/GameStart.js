@@ -51,6 +51,26 @@ export function startGame(start) {
     sessionStorage.removeItem(STORAGE_LOCAL_START);
 }
 
+// The server to join again after a page reload the server asked for (its mod loadout changed).
+const STORAGE_REJOIN = "spup.rejoin";
+
+/**
+ * @param {string} serverUrl
+ * @returns {void}
+ */
+export function setRejoin(serverUrl) {
+    sessionStorage.setItem(STORAGE_REJOIN, serverUrl);
+}
+
+/**
+ * @returns {string|null} the server to rejoin, cleared once taken
+ */
+export function takeRejoin() {
+    const serverUrl = sessionStorage.getItem(STORAGE_REJOIN);
+    sessionStorage.removeItem(STORAGE_REJOIN);
+    return serverUrl;
+}
+
 /**
  * @returns {string|null} the mode of the last game started in this tab, or null if there was none
  */

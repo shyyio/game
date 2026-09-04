@@ -1,16 +1,17 @@
 // Runs the real game server against the mod being worked on: the base mods this package ships plus
-// that mod, pinned into a lockfile and booted exactly the way an operator's server boots. Nothing
-// here is dev-only engine behavior — it is the shipped server with a generated `mods.json`.
+// that mod, pinned into its server.json and booted exactly the way an operator's server boots.
+// Nothing here is dev-only engine behavior — it is the shipped server with generated pins.
 
-import {spawn} from "node:child_process";
+import {spawn, spawnSync} from "node:child_process";
 import {mkdirSync} from "node:fs";
 import {dirname, join, resolve} from "node:path";
-import {fileURLToPath} from "node:url";
-import {writeDevLockfile} from "./lockfile.js";
+import {fileURLToPath, pathToFileURL} from "node:url";
 
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SERVER_ENTRY = join(PACKAGE_ROOT, "dist/main.js");
+const MODS_CLI = join(PACKAGE_ROOT, "dist/modsCli.js");
 const MODS_DIR = join(PACKAGE_ROOT, "dist-mods");
+const ADMIN_DIR = join(PACKAGE_ROOT, "dist-admin");
 
 export const DEFAULT_GAME_PORT = 27500;
 // Where join tokens are minted and their signing keys published; a dev server verifies against the
@@ -25,7 +26,7 @@ export class DevGameServer {
     /**
      * @param {object} options
      * @param {string} options.modPackageDir the built mod to run
-     * @param {string} options.workDir where the lockfile, mod cache and world database go
+     * @param {string} options.workDir where the config, mod cache and world database go
      * @param {number} options.port
      * @param {string} options.host
      * @param {string} options.origin what a join token must be minted for
@@ -48,15 +49,17 @@ export class DevGameServer {
     }
 
     /**
-     * Pins the current build and starts the server.
+     * Pins the current build and starts the server: the base mods this package ships, then the mod
+     * being worked on, appended the first time and re-pinned in place after.
      * @returns {void}
      */
     start() {
         mkdirSync(this._workDir, {recursive: true});
-        writeDevLockfile(join(this._workDir, "mods.json"), MODS_DIR, this._modPackageDir);
+        const config = join(this._workDir, "server.json");
+        this._runModsCli(["sync-base", "--dist-mods", MODS_DIR, "--config", config]);
+        this._runModsCli(["add", `${pathToFileURL(this._modPackageDir).href}/`, "--replace", "--config", config]);
         const child = spawn(process.execPath, [
             SERVER_ENTRY,
-            "--mods", join(this._workDir, "mods.json"),
             "--mods-cache", join(this._workDir, "mods-cache"),
             "--db", join(this._workDir, "world.sqlite3"),
             "--metrics-db", join(this._workDir, "metrics.sqlite3"),
@@ -64,6 +67,9 @@ export class DevGameServer {
             "--port", String(this._port),
             "--origin", this._origin,
             "--auth-server", this._authServer,
+            "--config", config,
+            "--admin-dir", ADMIN_DIR,
+            "--dist-mods", MODS_DIR,
         ], {stdio: "inherit"});
         this._child = child;
         // A server that died at boot — a port already in use, a missing native dependency — must not
@@ -76,6 +82,18 @@ export class DevGameServer {
             }
             this._died(child, `exited with code ${code}`);
         });
+    }
+
+    /**
+     * @param {string[]} args
+     * @returns {void}
+     * @private
+     */
+    _runModsCli(args) {
+        const result = spawnSync(process.execPath, [MODS_CLI, ...args], {stdio: "inherit"});
+        if (result.status !== 0) {
+            throw new Error(`mods ${args[0]} failed`);
+        }
     }
 
     /**

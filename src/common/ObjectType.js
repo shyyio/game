@@ -207,15 +207,13 @@ export class ObjectType {
     }
 
     /**
-     * Called by ModRegistry.freeze(); reassignment to a different id throws (idempotent for the
-     * repeated same-loadout freezes tests do).
+     * Called by ModRegistry.freeze(). Loadouts share ObjectType instances, so the newest freeze owns
+     * the number; a registry that outlives another loadout's freeze takes its own back through
+     * ModRegistry.claimTypeIds().
      * @param {number} typeId
      * @returns {void}
      */
     _assignTypeId(typeId) {
-        if (this._typeId !== null && this._typeId !== typeId) {
-            throw new Error(`ObjectType "${this.name}" typeId reassigned: ${this._typeId} -> ${typeId}`);
-        }
         this._typeId = typeId;
     }
 

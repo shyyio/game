@@ -52,10 +52,13 @@ test("the record table round-trips every count", () => {
     assert.equal(tables[0].name, ITEM_PRODUCED_RECORD);
     assert.equal(tables[0].rows.length, 2);
 
+    // Stands in for the ItemRegistry: deserializeRecords only asks whether a type is declared.
+    const items = new Map([[IRON, "iron"], [COAL, "coal"]]);
+
     const restored = new ProductionLog();
-    restored.deserializeRecords(tables[0]);
+    restored.deserializeRecords(tables[0], items);
     assert.deepEqual([...restored.countsOf(ALICE)], [[IRON, 5]]);
     assert.deepEqual([...restored.countsOf(BOB)], [[COAL, 1]]);
-    restored.deserializeRecords(undefined);
+    restored.deserializeRecords(undefined, items);
     assert.deepEqual([...restored.countsOf(ALICE)], []);
 });

@@ -231,12 +231,6 @@ test("a range edge at 0 or 1 never blends", () => {
     }
 });
 
-test("a loadout without biomes refuses to classify", () => {
-    const registry = freezeLoadout([], []);
-    const terrain = new Terrain(new WorldNoise(1, registry.noiseChannels), registry.biomes);
-    assert.throws(() => terrain.biomeAt(0, 0), /declares no biomes/);
-});
-
 test("bakeOverworldRows fills the region at cell resolution, row by row", () => {
     const registry = standardLoadout();
     const terrain = new Terrain(new WorldNoise(11, registry.noiseChannels), registry.biomes);
@@ -265,4 +259,15 @@ test("bakeOverworldRows fills the region at cell resolution, row by row", () => 
         assert.equal(terrain.overworldBake.others[cell], tile.otherId);
         assert.equal(terrain.overworldBake.weights[cell], tile.weight);
     }
+});
+
+test("a loadout with no biomes classifies every tile as biome 0 with no blend, and still bakes", () => {
+    const registry = new ModRegistry();
+    registry.freeze();
+    const terrain = new Terrain(new WorldNoise(7, registry.noiseChannels), registry.biomes);
+
+    assert.equal(terrain.biomeAt(3, 4), 0);
+    const tile = terrain.classify(-20, 9);
+    assert.deepEqual([tile.biomeId, tile.otherId, tile.weight], [0, 0, 0]);
+    assert.equal(terrain.bakeChunk(chunkId(0, 0)).biomes.length, CHUNK_SIZE * CHUNK_SIZE);
 });

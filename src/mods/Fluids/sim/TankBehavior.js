@@ -21,15 +21,33 @@ export class TankBehavior extends AbstractBehavior {
         engine.components.define("Tank", [
             {name: "in", kind: "eid", fill: NO_EID},
             {name: "out", kind: "eid", fill: NO_EID},
-            {name: "fluidType", fill: EMPTY},
+            {name: "fluidType", kind: "item", fill: EMPTY},
             {name: "amount"},
             // Denormalized from the behavior so the tick pass stays on the row.
             {name: "capacity"},
             // Last type synced to clients, so the tick emits only type changes.
-            {name: "lastType", fill: EMPTY},
+            {name: "lastType", kind: "item", fill: EMPTY},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => TankBehavior._submitIntents(engine));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => TankBehavior._finish(engine));
+        engine.snapshots.registerRebuildHook(() => TankBehavior._emptyUntyped(engine));
+    }
+
+    /**
+     * Rebuild hook: a loadout change empties the type column and leaves the amount, so a tank can
+     * come back holding units of no fluid. It holds nothing instead.
+     * @private
+     * @param {GameEngine} engine
+     * @returns {void}
+     */
+    static _emptyUntyped(engine) {
+        const def = engine.components.get("Tank");
+        const tank = def.store;
+        for (let row = 0; row < def.count; row += 1) {
+            if (tank.fluidType[row] === EMPTY) {
+                tank.amount[row] = 0;
+            }
+        }
     }
 
     onSpawn(engine, eid, type, message) {

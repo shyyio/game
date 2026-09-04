@@ -107,7 +107,7 @@ export class ProductionLog {
                 name: ITEM_PRODUCED_RECORD,
                 fields: [
                     {name: "player_id", kind: "integer"},
-                    {name: "item_type", kind: "integer"},
+                    {name: "item_type", kind: "item"},
                     {name: "count", kind: "integer"},
                 ],
                 rows: rows,
@@ -117,14 +117,19 @@ export class ProductionLog {
 
     /**
      * @param {object|undefined} table - the ItemProduced record table; undefined clears
+     * @param {ItemRegistry} items - a count for an item type it no longer holds is dropped, so a
+     *     loadout change leaves no unnameable row in the log
      * @returns {void}
      */
-    deserializeRecords(table) {
+    deserializeRecords(table, items) {
         this._byPlayer.clear();
         if (table === undefined) {
             return;
         }
         for (const row of table.rows) {
+            if (items.get(row.item_type) === undefined) {
+                continue;
+            }
             this.add(row.player_id, row.item_type, row.count);
         }
     }

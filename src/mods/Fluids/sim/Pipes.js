@@ -75,7 +75,7 @@ export class Pipes {
 
         // snapshotOnly mirrors of the JS records above, written at save/load.
         this._netDef = engine.components.define("PipeNetwork", [
-            {name: "fluidType", fill: EMPTY},
+            {name: "fluidType", kind: "item", fill: EMPTY},
             {name: "amount"},
         ], {snapshotOnly: true});
         this._memberDef = engine.components.define("PipeNetworkMember", [
@@ -606,7 +606,9 @@ export class Pipes {
             if (pipes === undefined) {
                 throw new Error(`PipeNetwork entity ${netEid} has no members`);
             }
-            this._buildNetwork(pipes.sort((a, b) => a.id - b.id), N.fluidType[netEid], N.amount[netEid]);
+            // A loadout change empties the type column and leaves the amount; untyped is empty.
+            const amount = N.fluidType[netEid] === EMPTY ? 0 : N.amount[netEid];
+            this._buildNetwork(pipes.sort((a, b) => a.id - b.id), N.fluidType[netEid], amount);
         }
     }
 }

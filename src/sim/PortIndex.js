@@ -54,7 +54,7 @@ export class PortIndex {
         // Position for the edge it sits on, so the edge index rebuilds from the world; a port with no
         // Position is not an edge port.
         this.def = engine.components.define("Port", [
-            {name: "item", fill: EMPTY},
+            {name: "item", kind: "item", fill: EMPTY},
         ]);
 
         /**
