@@ -7,22 +7,23 @@ import {randomBytes} from "node:crypto";
 import {NodeAccountStore} from "@/authserver/NodeAccountStore.js";
 import {AccountRegistry} from "@/authserver/AccountRegistry.js";
 import {SigningKeys} from "@/authserver/SigningKeys.js";
-import {JoinTokenService} from "@/authserver/JoinTokenService.js";
-import {AuthHttpServer, MAX_SESSIONS_PER_ACCOUNT} from "@/authserver/AuthHttpServer.js";
+import {TokenService} from "@/authserver/TokenService.js";
+import {AuthHttpServer} from "@/authserver/AuthHttpServer.js";
 import {ServerDirectory} from "@/authserver/ServerDirectory.js";
 
 const SIGNING_KEY_PATH = join(mkdtempSync(join(tmpdir(), "authserver-http-")), "signing-key.json");
 
 /**
  * @param {string} [serversPath] - the server directory's JSON file; absent means no such file
+ * @param {Buffer} [authSecret]
+ * @param {NodeAccountStore} [store]
  * @returns {Promise<{server: AuthHttpServer, store: NodeAccountStore, baseUrl: string}>}
  */
-async function startServer(serversPath=join(mkdtempSync(join(tmpdir(), "authserver-servers-")), "servers.json")) {
-    const store = new NodeAccountStore();
+async function startServer(serversPath=join(mkdtempSync(join(tmpdir(), "authserver-servers-")), "servers.json"), authSecret=randomBytes(32), store=new NodeAccountStore()) {
     const accounts = new AccountRegistry(store);
     const signingKeys = new SigningKeys(SIGNING_KEY_PATH);
-    const joinTokens = new JoinTokenService(signingKeys, randomBytes(32));
-    const server = new AuthHttpServer(accounts, signingKeys, joinTokens, new ServerDirectory(serversPath));
+    const tokens = new TokenService(signingKeys, authSecret);
+    const server = new AuthHttpServer(accounts, signingKeys, tokens, new ServerDirectory(serversPath));
     await server.listen("127.0.0.1", 0);
     return {server, store, baseUrl: `http://127.0.0.1:${server.port}`};
 }
@@ -100,7 +101,8 @@ test("login creates an account and returns a session token", async () => {
         assert.equal(body.accountId, 1);
         assert.equal(body.username, "alice");
         assert.equal(typeof body.sessionToken, "string");
-        assert.equal(server.accountIdForSession(body.sessionToken), 1);
+        const servers = await fetch(`${baseUrl}/servers`, {headers: {authorization: `Bearer ${body.sessionToken}`}});
+        assert.equal(servers.status, 200);
     } finally {
         server.stop();
     }
@@ -123,7 +125,8 @@ test("an invalid username is rejected with 400", async () => {
     try {
         const response = await fetch(`${baseUrl}/login`, {method: "POST", body: JSON.stringify({username: "ab"})});
         assert.equal(response.status, 400);
-        assert.equal(server.accountIdForSession("anything"), null);
+        const servers = await fetch(`${baseUrl}/servers`, {headers: {authorization: "Bearer anything"}});
+        assert.equal(servers.status, 401);
     } finally {
         server.stop();
     }
@@ -240,32 +243,18 @@ test("join on a session whose account is gone is rejected with 401", async () =>
     }
 });
 
-test("an account's oldest session is dropped once it is past the per-account cap", async () => {
-    const {server, baseUrl} = await startServer();
+test("a session token outlives a restart of the auth server", async () => {
+    const authSecret = randomBytes(32);
+    const store = new NodeAccountStore();
+    const first = await startServer(undefined, authSecret, store);
+    const sessionToken = await login(first.baseUrl, "alice");
+    first.server.stop();
+
+    const second = await startServer(undefined, authSecret, store);
     try {
-        const tokens = [];
-        for (let i = 0; i <= MAX_SESSIONS_PER_ACCOUNT; i++) {
-            tokens.push(await login(baseUrl, "alice"));
-        }
-
-        assert.equal(server.accountIdForSession(tokens[0]), null, "the oldest session is evicted");
-        assert.notEqual(server.accountIdForSession(tokens[1]), null, "the next oldest survives");
-        assert.notEqual(server.accountIdForSession(tokens[tokens.length - 1]), null, "the newest survives");
+        const response = await fetch(`${second.baseUrl}/servers`, {headers: {authorization: `Bearer ${sessionToken}`}});
+        assert.equal(response.status, 200);
     } finally {
-        server.stop();
-    }
-});
-
-test("a session for another account is untouched by one account hitting the cap", async () => {
-    const {server, baseUrl} = await startServer();
-    try {
-        const bob = await login(baseUrl, "bob");
-        for (let i = 0; i <= MAX_SESSIONS_PER_ACCOUNT; i++) {
-            await login(baseUrl, "alice");
-        }
-
-        assert.notEqual(server.accountIdForSession(bob), null);
-    } finally {
-        server.stop();
+        second.server.stop();
     }
 });

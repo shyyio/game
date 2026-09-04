@@ -10,27 +10,27 @@ import {join} from "node:path";
 import {NodeAccountStore} from "@/authserver/NodeAccountStore.js";
 import {AccountRegistry} from "@/authserver/AccountRegistry.js";
 import {SigningKeys} from "@/authserver/SigningKeys.js";
-import {JoinTokenService} from "@/authserver/JoinTokenService.js";
+import {TokenService} from "@/authserver/TokenService.js";
 import {AuthHttpServer} from "@/authserver/AuthHttpServer.js";
 import {JwksVerifier} from "@/server/JwksVerifier.js";
 
 const ORIGIN = "wss://example.com:443";
 
 /**
- * @returns {Promise<{server: AuthHttpServer, signingKeys: SigningKeys, joinTokens: JoinTokenService, accounts: AccountRegistry, baseUrl: string}>}
+ * @returns {Promise<{server: AuthHttpServer, signingKeys: SigningKeys, tokens: TokenService, accounts: AccountRegistry, baseUrl: string}>}
  */
 async function startAuthServer() {
     const dir = mkdtempSync(join(tmpdir(), "jwks-verifier-"));
     const accounts = new AccountRegistry(new NodeAccountStore());
     const signingKeys = new SigningKeys(join(dir, "signing-key.json"));
-    const joinTokens = new JoinTokenService(signingKeys, randomBytes(32));
-    const server = new AuthHttpServer(accounts, signingKeys, joinTokens);
+    const tokens = new TokenService(signingKeys, randomBytes(32));
+    const server = new AuthHttpServer(accounts, signingKeys, tokens);
     await server.listen("127.0.0.1", 0);
-    return {server, signingKeys, joinTokens, accounts, baseUrl: `http://127.0.0.1:${server.port}`};
+    return {server, signingKeys, tokens, accounts, baseUrl: `http://127.0.0.1:${server.port}`};
 }
 
 /**
- * Builds a token by hand (bypassing JoinTokenService's fixed TTL) so exp can be forced into the past.
+ * Builds a token by hand (bypassing TokenService's fixed TTL) so exp can be forced into the past.
  * @param {SigningKeys} signingKeys
  * @param {object} payload
  * @returns {string}
@@ -43,12 +43,12 @@ function buildToken(signingKeys, payload) {
 }
 
 test("verifies a real token minted by the auth server", async () => {
-    const {server, joinTokens, accounts, baseUrl} = await startAuthServer();
+    const {server, tokens, accounts, baseUrl} = await startAuthServer();
     try {
         const verifier = new JwksVerifier(baseUrl);
         await verifier.load();
         const account = accounts.getOrCreate("alice");
-        const token = joinTokens.mint(account, ORIGIN);
+        const token = tokens.mint(account, ORIGIN);
         const claims = verifier.verify(token, ORIGIN);
         assert.notEqual(claims, null);
         assert.equal(claims.name, "alice");
@@ -59,12 +59,12 @@ test("verifies a real token minted by the auth server", async () => {
 });
 
 test("rejects a token minted for a different origin", async () => {
-    const {server, joinTokens, accounts, baseUrl} = await startAuthServer();
+    const {server, tokens, accounts, baseUrl} = await startAuthServer();
     try {
         const verifier = new JwksVerifier(baseUrl);
         await verifier.load();
         const account = accounts.getOrCreate("alice");
-        const token = joinTokens.mint(account, "wss://other.example:443");
+        const token = tokens.mint(account, "wss://other.example:443");
         assert.equal(verifier.verify(token, ORIGIN), null);
     } finally {
         server.stop();
@@ -72,12 +72,12 @@ test("rejects a token minted for a different origin", async () => {
 });
 
 test("rejects a tampered signature", async () => {
-    const {server, joinTokens, accounts, baseUrl} = await startAuthServer();
+    const {server, tokens, accounts, baseUrl} = await startAuthServer();
     try {
         const verifier = new JwksVerifier(baseUrl);
         await verifier.load();
         const account = accounts.getOrCreate("alice");
-        const token = joinTokens.mint(account, ORIGIN);
+        const token = tokens.mint(account, ORIGIN);
         const [header, payload, signature] = token.split(".");
         // Flips the first char, not the last: base64url's final char can carry unused padding
         // bits, so tampering it can decode back to the same bytes and the test would flake.

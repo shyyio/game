@@ -1,5 +1,7 @@
 import BetterSqlite3 from "better-sqlite3";
 
+const BUSY_TIMEOUT_MS = 5000;
+
 /**
  * Node account persistence: one row per account, keyed by username for now (the seam a
  * Steam-SSO lookup replaces later).
@@ -11,6 +13,9 @@ export class NodeAccountStore {
      */
     constructor(path=":memory:") {
         this.db = new BetterSqlite3(path);
+        // Readers (the backup's VACUUM INTO) never block a login's INSERT.
+        this.db.pragma("journal_mode = WAL");
+        this.db.pragma(`busy_timeout = ${BUSY_TIMEOUT_MS}`);
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS "Account" (
                 account_id INTEGER PRIMARY KEY,

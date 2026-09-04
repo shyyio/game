@@ -1,4 +1,4 @@
-import {createHmac, timingSafeEqual} from "node:crypto";
+import {createHmac, randomBytes, timingSafeEqual} from "node:crypto";
 
 const JOIN_TOKEN_TTL_S = 300;
 // A reconnect token lives as long as a play session plausibly does; it buys only fresh join tokens
@@ -7,12 +7,16 @@ const RECONNECT_TOKEN_TTL_S = 12 * 60 * 60;
 // A renewal chain ends here however often it is refreshed, so a leaked reconnect token can't be
 // kept alive forever.
 export const RECONNECT_ABSOLUTE_TTL_S = 7 * 24 * 60 * 60;
+const SESSION_TTL_S = 24 * 60 * 60;
+// Makes every login's token distinct.
+const SESSION_NONCE_BYTES = 8;
 
 /**
- * Mints short-lived, Ed25519-signed join tokens; the subject is pairwise per (account, origin)
- * so colluding game servers can't cross-reference players.
+ * Mints the auth server's tokens: Ed25519-signed join tokens whose subject is pairwise per
+ * (account, origin) so colluding game servers can't cross-reference players, and HMAC-signed
+ * session and reconnect tokens the server verifies without keeping any state.
  */
-export class JoinTokenService {
+export class TokenService {
 
     /**
      * @param {SigningKeys} signingKeys
@@ -71,11 +75,55 @@ export class JoinTokenService {
      *     forged, expired, or past the absolute renewal lifetime
      */
     verifyReconnect(token) {
+        const claims = this._verifiedClaims("reconnect", token);
+        if (claims === null || typeof claims.aud !== "string" || typeof claims.iat !== "number") {
+            return null;
+        }
+        if (Math.floor(Date.now() / 1000) >= claims.iat + RECONNECT_ABSOLUTE_TTL_S) {
+            return null;
+        }
+        return {accountId: claims.sub, origin: claims.aud, issuedAtS: claims.iat};
+    }
+
+    /**
+     * The bearer credential /login hands out; stateless, so it outlives a restart.
+     * @param {number} accountId
+     * @returns {string}
+     */
+    mintSession(accountId) {
+        const payload = base64url({
+            sub: accountId,
+            exp: Math.floor(Date.now() / 1000) + SESSION_TTL_S,
+            jti: randomBytes(SESSION_NONCE_BYTES).toString("base64url"),
+        });
+        return `${payload}.${this._hmac(`session:${payload}`)}`;
+    }
+
+    /**
+     * @param {string} token
+     * @returns {number|null} the accountId, or null when malformed, forged, or expired
+     */
+    verifySession(token) {
+        const claims = this._verifiedClaims("session", token);
+        if (claims === null) {
+            return null;
+        }
+        return claims.sub;
+    }
+
+    /**
+     * The claims of an HMAC token with a valid signature, numeric subject, and unexpired `exp`.
+     * @private
+     * @param {string} scope - the domain-separation label the token was signed under
+     * @param {string} token
+     * @returns {object|null}
+     */
+    _verifiedClaims(scope, token) {
         const [payload, signature] = String(token).split(".");
         if (payload === undefined || signature === undefined) {
             return null;
         }
-        const expected = Buffer.from(this._reconnectSignature(payload), "base64url");
+        const expected = Buffer.from(this._hmac(`${scope}:${payload}`), "base64url");
         const given = Buffer.from(signature, "base64url");
         if (expected.length !== given.length || !timingSafeEqual(expected, given)) {
             return null;
@@ -86,17 +134,16 @@ export class JoinTokenService {
         } catch {
             return null;
         }
-        if (typeof claims.sub !== "number" || typeof claims.aud !== "string") {
+        if (typeof claims !== "object" || claims === null) {
             return null;
         }
-        if (typeof claims.exp !== "number" || typeof claims.iat !== "number") {
+        if (typeof claims.sub !== "number" || typeof claims.exp !== "number") {
             return null;
         }
-        const nowS = Math.floor(Date.now() / 1000);
-        if (nowS >= claims.exp || nowS >= claims.iat + RECONNECT_ABSOLUTE_TTL_S) {
+        if (Math.floor(Date.now() / 1000) >= claims.exp) {
             return null;
         }
-        return {accountId: claims.sub, origin: claims.aud, issuedAtS: claims.iat};
+        return claims;
     }
 
     /**
@@ -113,16 +160,16 @@ export class JoinTokenService {
             iat: issuedAtS,
             exp: Math.floor(Date.now() / 1000) + RECONNECT_TOKEN_TTL_S,
         });
-        return `${payload}.${this._reconnectSignature(payload)}`;
+        return `${payload}.${this._hmac(`reconnect:${payload}`)}`;
     }
 
     /**
      * @private
-     * @param {string} payload
-     * @returns {string}
+     * @param {string} input
+     * @returns {string} base64url
      */
-    _reconnectSignature(payload) {
-        return createHmac("sha256", this._authSecret).update(`reconnect:${payload}`).digest("base64url");
+    _hmac(input) {
+        return createHmac("sha256", this._authSecret).update(input).digest("base64url");
     }
 
     /**
@@ -132,7 +179,7 @@ export class JoinTokenService {
      * @returns {string}
      */
     _pairwiseSub(accountId, origin) {
-        return createHmac("sha256", this._authSecret).update(`${accountId}:${origin}`).digest("base64url");
+        return this._hmac(`${accountId}:${origin}`);
     }
 }
 
