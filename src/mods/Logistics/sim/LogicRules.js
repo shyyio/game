@@ -148,7 +148,7 @@ export class LogicRules {
                 {name: "condition_index", kind: "integer"},
                 {name: "kind", kind: "integer"},
                 {name: "device_id", kind: "integer"},
-                {name: "item_type", kind: "integer"},
+                {name: "item_type", kind: "item"},
                 {name: "key", kind: "integer"},
                 {name: "comparator", kind: "integer"},
                 {name: "value", kind: "integer"},

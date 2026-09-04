@@ -4,7 +4,7 @@
 //   node tools/check-base-mods.js
 //
 // `npm run deploy` runs this in its pre-flight. The packages go to a temp directory and are thrown
-// away: nothing here publishes, and `npm run mods:base` is still what writes a servable loadout.
+// away: nothing here publishes, and `npm run mods:base` is still what builds a servable loadout.
 
 import {mkdtempSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";

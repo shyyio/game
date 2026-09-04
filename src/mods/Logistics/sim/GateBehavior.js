@@ -30,7 +30,7 @@ export class GateBehavior extends AbstractBehavior {
             // Current mode, adopted from coupled transports (see _review).
             {name: "fluid"},
             // Fluid mode's one-unit buffer, EMPTY when empty.
-            {name: "buffered", fill: EMPTY},
+            {name: "buffered", kind: "item", fill: EMPTY},
             // Toggle request applied at the next tick; PENDING_NONE when idle.
             {name: "pendingOpen", fill: PENDING_NONE},
             // Last state synced, so the tick emits only changes.

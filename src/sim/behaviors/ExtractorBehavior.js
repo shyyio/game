@@ -29,8 +29,8 @@ export class ExtractorBehavior extends AbstractBehavior {
             {name: "remaining", kind: "f32", fill: EMPTY},
             // Overshot progress banked past a finished cycle; the next cycle starts this far along.
             {name: "carry", kind: "f32"},
-            {name: "output", fill: EMPTY},
-            {name: "lastOutput", fill: EMPTY},
+            {name: "output", kind: "item", fill: EMPTY},
+            {name: "lastOutput", kind: "item", fill: EMPTY},
             // The countdown length, kept on the row so the submit pass reaches no behavior instance
             // while an extractor is merely counting down.
             {name: "processingTicks"},

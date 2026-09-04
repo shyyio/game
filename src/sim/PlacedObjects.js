@@ -22,7 +22,7 @@ export class PlacedObjects {
         this.engine = engine;
         // Where a placed object sits lives on the shared Position component, not here.
         this.def = engine.components.define("PlacedObject", [
-            {name: "typeId"},
+            {name: "typeId", kind: "type"},
             {name: "objectId", fill: NO_EID},
             // The chunk's owner at spawn time, cached so per-tick behaviors never need Game access.
             // An unclaim deletes solid objects first, so this never goes stale for them.

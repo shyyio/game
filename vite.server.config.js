@@ -1,23 +1,26 @@
-import {fileURLToPath, URL} from "node:url";
-
 import {defineConfig} from "vite";
 import {gitBuildInfo} from "./vite.build-defines.js";
+import {ALIASES} from "./vite.aliases.js";
 
 const {commit: BUILD_COMMIT, date: BUILD_DATE} = gitBuildInfo();
 
-// Server CLI bundle: node target, pure-JS deps inlined, native addons external. The deploy
-// artifact is dist-server plus an install of just the external deps; the unbundled
-// `npm run serve` dev path (src/nodeservice/loader.js hooks) is unaffected.
+// Server bundle (main.js plus the operator's modsCli.js): node target, pure-JS deps inlined, native
+// addons external. The deploy artifact is build/server plus an install of just the external deps;
+// the unbundled `npm run serve` dev path (src/nodeservice/loader.js hooks) is unaffected.
 export default defineConfig(({mode}) => ({
     // The public dir (favicon) belongs to the browser build only.
     publicDir: false,
     build: {
-        ssr: "src/server/main.js",
-        outDir: "dist-server",
+        ssr: true,
+        outDir: "build/server",
         target: "node20",
         // Only reportingserver's private build opts in, to symbolicate the stacks this bundle reports.
         sourcemap: process.env.BUILD_SOURCEMAPS === "1",
         rollupOptions: {
+            input: {
+                main: "src/server/main.js",
+                modsCli: "src/server/modsCli.js",
+            },
             // Native addons cannot be inlined into the bundle.
             external: ["better-sqlite3", "uWebSockets.js"],
         },
@@ -35,10 +38,6 @@ export default defineConfig(({mode}) => ({
     },
     resolve: {
         // See vite.config.js: the SDK package name resolves to this repo's own source.
-        alias: [
-            {find: /^@spup\/sdk$/, replacement: fileURLToPath(new URL("./src/sdk/common.js", import.meta.url))},
-            {find: /^@spup\/sdk\/client$/, replacement: fileURLToPath(new URL("./src/sdk/client.js", import.meta.url))},
-            {find: /^@\//, replacement: `${fileURLToPath(new URL("./src", import.meta.url))}/`},
-        ],
+        alias: ALIASES,
     },
 }))

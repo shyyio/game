@@ -1,127 +1,142 @@
+import {dirname, resolve} from "node:path";
 import {parseArgs} from "node:util";
-import {ModRegistry} from "@/common/ModRegistry.js";
-import {simLoadout} from "@/mods/loadout.js";
-import {Game} from "@/sim/Game.js";
-import {GameAPI} from "@/sim/GameAPI.js";
-import {GameEngine} from "@/sim/GameEngine.js";
-import {NodeSaveStore} from "@/server/NodeSaveStore.js";
-import {NodeMetricsStore} from "@/server/NodeMetricsStore.js";
 import {JwksVerifier} from "@/server/JwksVerifier.js";
 import {GameServer} from "@/server/GameServer.js";
-import {readLockfile} from "@/server/modLockfileFile.js";
-import {ModCache} from "@/server/ModCache.js";
-import {ModHost} from "@/server/ModHost.js";
-import {loadPackagedMods} from "@/server/ModLoader.js";
+import {AdminRoutes} from "@/server/AdminRoutes.js";
+import {ServerRuntime} from "@/server/ServerRuntime.js";
+import {World} from "@/server/World.js";
+import {
+    generateAdminToken, readServerConfigOrDefault, resolveConfigPaths, writeServerConfig,
+} from "@/server/serverConfigFile.js";
+import {ServerConfig} from "@/common/ServerConfig.js";
+import {pinBuiltMods} from "@/server/builtMods.js";
 import {bindShutdownSignals} from "@/nodeservice/cliShutdown.js";
 import {installCrashReporter, reportError, reportFatal} from "@/server/crashReporter.js";
-import {DEFAULT_TICK_MS} from "@/common/constants.js";
-import {randomWorldSeed} from "@/common/WorldNoise.js";
 
+// Every setting lives in the config file; a flag given here overrides that one field for this run.
 const {values: args} = parseArgs({
     options: {
-        "db": {type: "string", default: "world.sqlite3"},
-        "metrics-db": {type: "string", default: "metrics.sqlite3"},
-        "host": {type: "string", default: "0.0.0.0"},
-        "port": {type: "string", default: "27500"},
-        "tick-ms": {type: "string", default: String(DEFAULT_TICK_MS)},
-        "save-ms": {type: "string", default: "60000"},
+        "config": {type: "string", default: "server.json"},
+        "admin-dir": {type: "string", default: "build/admin"},
+        "dist-mods": {type: "string", default: "build/mods"},
+        "db": {type: "string"},
+        "metrics-db": {type: "string"},
+        "host": {type: "string"},
+        "port": {type: "string"},
+        "tick-ms": {type: "string"},
+        "save-ms": {type: "string"},
         "seed": {type: "string"},
-        "auth-server": {type: "string", default: "https://auth.spupgame.com"},
-        "origin": {type: "string", default: "ws://localhost:27500"},
-        "name": {type: "string", default: "Shy's Power-Up Factory"},
-        "mods": {type: "string"},
-        "mods-cache": {type: "string", default: "mods-cache"},
+        "auth-server": {type: "string"},
+        "origin": {type: "string"},
+        "name": {type: "string"},
+        "mods-cache": {type: "string"},
     },
 });
-const dbPath = args["db"];
-const metricsDbPath = args["metrics-db"];
-const host = args["host"];
-const port = Number(args["port"]);
-const tickMs = Number(args["tick-ms"]);
-const saveMs = Number(args["save-ms"]);
-// Absent: a fresh world draws a random seed, a loaded one keeps its own.
-const seedArg = args["seed"] === undefined ? null : Number(args["seed"]);
-const authServerUrl = args["auth-server"];
-const origin = args["origin"];
-const name = args["name"];
-const modsPath = args["mods"];
-const modsCachePath = args["mods-cache"];
 
-installCrashReporter(origin);
-
-// Without --mods the server runs the loadout compiled into this build; with it, the loadout is
-// whatever the operator pinned, fetched into the local cache and served to clients from here.
-let modHost = null;
-let packages;
-if (modsPath === undefined) {
-    packages = simLoadout();
-} else {
-    const lockfile = readLockfile(modsPath);
-    const cache = new ModCache(modsCachePath);
-    const downloaded = await cache.populate(lockfile);
-    const loaded = await loadPackagedMods(lockfile, cache);
-    packages = loaded.packages;
-    modHost = new ModHost(loaded.mods, cache);
-    console.log(`Loaded ${packages.length} pinned mods from ${modsPath} (${downloaded} newly downloaded)`);
-}
-
-const modRegistry = new ModRegistry();
-for (const pkg of packages) {
-    modRegistry.register(pkg);
-}
-modRegistry.freeze();
-
-const game = new Game(
-    modRegistry, new GameEngine(modRegistry), new NodeSaveStore(dbPath), new NodeMetricsStore(metricsDbPath), tickMs,
-    seedArg === null ? randomWorldSeed() : seedArg,
-);
-await game.init();
-try {
-    if (await game.load()) {
-        console.log(`Loaded world from ${dbPath} (seed ${game.seed})`);
-    } else {
-        console.log(`Fresh world; saving to ${dbPath} (seed ${game.seed})`);
+/**
+ * @param {string} flag
+ * @returns {number|undefined}
+ */
+function numberFlag(flag) {
+    if (args[flag] === undefined) {
+        return undefined;
     }
-} catch (error) {
-    await reportFatal(error, `Refusing to start: ${dbPath} is incompatible with the current build`);
-}
-if (seedArg !== null && game.seed !== seedArg) {
-    await reportFatal(
-        new Error(`--seed ${seedArg} does not match the saved world seed ${game.seed}`),
-        `Refusing to start: ${dbPath} was generated with a different seed`,
-    );
+    return Number(args[flag]);
 }
 
-const jwksVerifier = new JwksVerifier(authServerUrl);
+/**
+ * A path given on the command line counts from the working directory, as a shell user expects.
+ * @param {string} flag
+ * @returns {string|undefined}
+ */
+function pathFlag(flag) {
+    if (args[flag] === undefined) {
+        return undefined;
+    }
+    return resolve(args[flag]);
+}
+
+const configPath = args["config"];
+let saved = readServerConfigOrDefault(configPath);
+// The first boot mints the admin page's token and keeps it in the file.
+const mintedAdminToken = saved.adminToken === null;
+if (mintedAdminToken) {
+    const json = saved.toJSON();
+    json.adminToken = generateAdminToken();
+    saved = ServerConfig.parse(json);
+    writeServerConfig(saved, configPath);
+}
+// A relative path in the file counts from the file's own directory, so a data directory moves as one.
+const baseDir = dirname(resolve(configPath));
+const {config, pinned} = saved.withOverrides({
+    db: pathFlag("db"),
+    metricsDb: pathFlag("metrics-db"),
+    host: args["host"],
+    port: numberFlag("port"),
+    tickMs: numberFlag("tick-ms"),
+    saveMs: numberFlag("save-ms"),
+    seed: numberFlag("seed"),
+    authServer: args["auth-server"],
+    origin: args["origin"],
+    name: args["name"],
+    modsCache: pathFlag("mods-cache"),
+});
+const adminDir = args["admin-dir"];
+const distMods = args["dist-mods"];
+
+installCrashReporter(config.origin);
+
+let world;
+try {
+    world = await World.boot(resolveConfigPaths(config, baseDir));
+} catch (error) {
+    await reportFatal(error, `Refusing to start: ${error.message}`);
+}
+
+const jwksVerifier = new JwksVerifier(config.authServer);
 await jwksVerifier.load();
 
-const api = new GameAPI(game);
-const server = new GameServer(game, api, jwksVerifier, origin, name, modHost);
-await server.listen(host, port);
-console.log(`Listening on ws://${host}:${port} (tick ${tickMs}ms, save ${saveMs}ms, metrics every tick)`);
-
-const tickInterval = setInterval(() => {
-    try {
-        game.runTick();
-    } catch (error) {
-        // Stop ticking first: reportFatal awaits the POST, and a broken sim would throw again
-        // on every interval in the meantime.
-        clearInterval(tickInterval);
+const server = new GameServer(jwksVerifier, config.origin, config.name);
+server.setWorld(world);
+const runtime = new ServerRuntime({
+    world,
+    gameServer: server,
+    config,
+    baseDir,
+    pinned,
+    onTickError: error => {
         reportFatal(error, "Tick failed");
-    }
-}, tickMs);
-
-const saveInterval = setInterval(() => {
-    game.save().catch(error => {
+    },
+    onSaveError: error => {
         reportError(error, "Save failed");
-    });
-}, saveMs);
+    },
+});
+const builtMods = await pinBuiltMods(distMods);
+if (builtMods === null) {
+    console.warn(`No built mods at ${distMods}: the admin page cannot pin the built-in mods (build them with \`npm run mods:base\`, or pass --dist-mods)`);
+}
+new AdminRoutes({
+    configPath,
+    saved,
+    pinned,
+    runtime,
+    adminDir,
+    builtMods,
+    distMods,
+}).registerRoutes(server.app);
+await server.listen(config.host, config.port);
+runtime.start();
+console.log(`Listening on ws://${config.host}:${config.port} (tick ${config.tickMs}ms, save ${config.saveMs}ms, metrics every tick)`);
+// Printed once, when it is minted: every later boot would put it in the log for good.
+if (mintedAdminToken) {
+    console.log(`Admin page at /admin on that port; token ${config.adminToken}`);
+} else {
+    console.log(`Admin page at /admin on that port; token in ${configPath}`);
+}
 
 bindShutdownSignals(async signal => {
     console.log(`${signal}: saving and shutting down`);
-    clearInterval(tickInterval);
-    clearInterval(saveInterval);
+    runtime.stop();
     server.shutdown();
-    await Promise.all([game.save(), game.metrics.flush()]);
-    await game.metrics.close();
+    await runtime.world.close();
 });

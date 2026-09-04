@@ -34,6 +34,28 @@ const PATH_MARKER = {};
  * Belt path movement on the ECS engine; a path carries a slab of the shared {@link ItemStore},
  * ordered output-edge -> input-edge, each item holding the empty half-tiles ahead of it.
  */
+
+/**
+ * A path's items with those a loadout change emptied (type EMPTY) taken out, each one's cell folded
+ * into the gap of the item behind it. What the input-edge-most emptied items free has no item behind
+ * it, so it comes back separately: it belongs to the path's head gap, where new items enter.
+ * @param {object[]} items head -> tail, each {id, type, gap}
+ * @returns {{items: object[], freed: number}}
+ */
+export function withoutEmptied(items) {
+    const kept = [];
+    let carried = 0;
+    for (const item of items) {
+        if (item.type === EMPTY) {
+            carried += item.gap + 1;
+            continue;
+        }
+        kept.push({id: item.id, type: item.type, gap: item.gap + carried});
+        carried = 0;
+    }
+    return {items: kept, freed: carried};
+}
+
 export class Belts {
 
     /**
@@ -104,7 +126,7 @@ export class Belts {
             {name: "path", kind: "eid", fill: NO_EID},
             {name: "seq"},
             {name: "gap"},
-            {name: "type"},
+            {name: "type", kind: "item", fill: EMPTY},
             {name: "itemId", fill: NO_EID},
         ], {snapshotOnly: true});
         engine.globals.beltNextItemId = this._nextItemId;
@@ -1669,7 +1691,9 @@ export class Belts {
 
         for (const pathEid of this.engine.components.entitiesWith(this._pathDef)) {
             const belts = (beltsByPath.get(pathEid) || []).sort((a, b) => a.seq - b.seq).map(entry => entry.belt);
-            const items = (itemsByPath.get(pathEid) || []).sort((a, b) => a.seq - b.seq).map(entry => entry.item);
+            const {items, freed} = withoutEmptied(
+                (itemsByPath.get(pathEid) || []).sort((a, b) => a.seq - b.seq).map(entry => entry.item),
+            );
             const path = {
                 id: pathEid,
                 belts: belts.map(belt => tileId(belt.x, belt.y)),
@@ -1681,7 +1705,7 @@ export class Belts {
                 inPort: BP.inPort[pathEid],
                 outPort: BP.outPort[pathEid],
                 length: BP.length[pathEid],
-                initialHeadGap: BP.headGap[pathEid],
+                initialHeadGap: BP.headGap[pathEid] + freed,
                 items,
             };
             this._trackPath(path);

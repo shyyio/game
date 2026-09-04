@@ -1,7 +1,6 @@
-import {fileURLToPath, URL} from "node:url";
-
 import {defineConfig} from "vite";
 import {gitBuildInfo} from "./vite.build-defines.js";
+import {ALIASES} from "./vite.aliases.js";
 
 const {commit: BUILD_COMMIT, date: BUILD_DATE} = gitBuildInfo();
 
@@ -12,7 +11,7 @@ export default defineConfig(({mode}) => ({
     publicDir: false,
     build: {
         ssr: "src/test/harness.js",
-        outDir: "dist-harness",
+        outDir: "build/harness",
         target: "node20",
         sourcemap: false,
     },
@@ -26,10 +25,6 @@ export default defineConfig(({mode}) => ({
     },
     resolve: {
         // See vite.config.js: the mods this bundle carries import the SDK by its package name.
-        alias: [
-            {find: /^@spup\/sdk$/, replacement: fileURLToPath(new URL("./src/sdk/common.js", import.meta.url))},
-            {find: /^@spup\/sdk\/client$/, replacement: fileURLToPath(new URL("./src/sdk/client.js", import.meta.url))},
-            {find: /^@\//, replacement: `${fileURLToPath(new URL("./src", import.meta.url))}/`},
-        ],
+        alias: ALIASES,
     },
 }))

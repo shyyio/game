@@ -1,5 +1,5 @@
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
-export const SAVE_FORMAT = 3;
+export const SAVE_FORMAT = 4;
 
 // What a save written before the stamp counts as.
 const UNSTAMPED_FORMAT = 0;
@@ -17,7 +17,69 @@ export const SAVE_MIGRATIONS = new Map([
     [1, snapshot => ({...snapshot, saveFormat: 2, globals: {...snapshot.globals, seed: 0}})],
     // Format 3 adds Machine.enabled, the logic-network switch; machines saved before it run.
     [2, snapshot => ({...snapshot, saveFormat: 3, components: addField(snapshot.components, "Machine", "enabled", 1)})],
+    // Format 4 tags the object-type and item-type columns, which a loadout change carries over by
+    // name; they were plain i32 (records: plain integer) before.
+    [3, snapshot => ({
+        ...snapshot,
+        saveFormat: 4,
+        components: retagFields(snapshot.components, ID_FIELD_KINDS),
+        records: retagFields(snapshot.records === undefined ? [] : snapshot.records, RECORD_ID_FIELD_KINDS),
+    })],
 ]);
+
+// component.field -> kind, for format 4.
+const ID_FIELD_KINDS = new Map([
+    ["PlacedObject.typeId", "type"],
+    ["Port.item", "item"],
+    ["BeltItem.type", "item"],
+    ["Machine.slot0", "item"],
+    ["Machine.slot1", "item"],
+    ["Machine.slot2", "item"],
+    ["Machine.processing0", "item"],
+    ["Machine.processing1", "item"],
+    ["Machine.processing2", "item"],
+    ["Machine.output", "item"],
+    ["Machine.lastOutput", "item"],
+    ["Machine.byproduct", "item"],
+    ["Machine.lastByproduct", "item"],
+    ["Extractor.output", "item"],
+    ["Extractor.lastOutput", "item"],
+    ["Generator.output", "item"],
+    ["Generator.lastOutput", "item"],
+    ["Generator.output2", "item"],
+    ["Generator.lastOutput2", "item"],
+    ["Gate.buffered", "item"],
+    ["PipeNetwork.fluidType", "item"],
+    ["Tank.fluidType", "item"],
+    ["Tank.lastType", "item"],
+    ["MarketTerminal.itemType", "item"],
+    ["MarketTerminal.lastOutput", "item"],
+]);
+
+// record.field -> kind, for format 4.
+const RECORD_ID_FIELD_KINDS = new Map([
+    ["ItemProduced.item_type", "item"],
+    ["LogicRuleCondition.item_type", "item"],
+]);
+
+/**
+ * Returns `components` with the listed fields' kinds replaced; a field not present is skipped.
+ * @param {object[]} components
+ * @param {Map<string, string>} kinds "Component.field" -> kind
+ * @returns {object[]}
+ */
+function retagFields(components, kinds) {
+    return components.map(component => ({
+        ...component,
+        fields: component.fields.map(field => {
+            const kind = kinds.get(`${component.name}.${field.name}`);
+            if (kind === undefined) {
+                return field;
+            }
+            return {...field, kind};
+        }),
+    }));
+}
 
 /**
  * Returns `components` with `fieldName` appended to `componentName`, set to `value` on every row.

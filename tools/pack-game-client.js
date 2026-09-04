@@ -19,7 +19,7 @@ import {syncPackageVersion} from "./packageVersion.js";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // Its own output directory: this build has the dev tools on, and must never be mistaken for the
 // one the site deploys.
-const DIST_DIR = join(ROOT, "dist-devclient");
+const DIST_DIR = join(ROOT, "build/devclient");
 const PACKAGE_DIR = join(ROOT, "packages/game-client");
 const CLIENT_DIR = join(PACKAGE_DIR, "dist");
 const PACKED_FILE = join(PACKAGE_DIR, "packed.json");

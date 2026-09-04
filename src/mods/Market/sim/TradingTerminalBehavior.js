@@ -23,7 +23,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         engine.provide(MarketBook, new MarketBook(fixedPrices));
         engine.components.define("MarketTerminal", [
             {name: "mode"},
-            {name: "itemType", fill: EMPTY},
+            {name: "itemType", kind: "item", fill: EMPTY},
             {name: "price"},
             // Buy only: cached owner balance, refreshed per tick by MarketSimMod.onTick. Not authoritative.
             {name: "balance"},
@@ -37,7 +37,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             {name: "pendingIsNpc", fill: 0},
             {name: "in", kind: "eid", fill: NO_EID},
             {name: "out", kind: "eid", fill: NO_EID},
-            {name: "lastOutput", fill: EMPTY},
+            {name: "lastOutput", kind: "item", fill: EMPTY},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => TradingTerminalBehavior._submitIntents(engine));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => TradingTerminalBehavior._finish(engine));

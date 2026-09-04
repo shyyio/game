@@ -9,10 +9,7 @@ export class TextureAtlas {
      * @param {string} imageUrl
      * @param {object} sheetData parsed atlas JSON
      */
-    constructor(
-        imageUrl,
-        sheetData,
-    ) {
+    constructor(imageUrl, sheetData) {
         this.imageUrl = imageUrl;
         this.sheetData = sheetData;
     }

@@ -1,7 +1,7 @@
 import {randomBytes} from "node:crypto";
 import {GAME_VERSION, ORIGIN_PATTERN, USERNAME_PATTERN} from "@/common/constants.js";
 import {formatUptime} from "@/common/util.js";
-import {AbstractHttpServer} from "@/nodeservice/AbstractHttpServer.js";
+import {AbstractHttpServer, respondJson, rejectRequest, readJson} from "@/nodeservice/AbstractHttpServer.js";
 
 const SESSION_TOKEN_BYTES = 32;
 const BEARER_PREFIX = "Bearer ";
@@ -32,7 +32,7 @@ export class AuthHttpServer extends AbstractHttpServer {
         this._sweepTimer.unref();
 
         this._app.get("/.well-known/jwks.json", (res, req) => {
-            this._respond(res, {keys: [this._signingKeys.toJwk()]});
+            respondJson(res, {keys: [this._signingKeys.toJwk()]});
         });
         this._app.post("/login", (res, req) => {
             this._onLogin(res);
@@ -129,20 +129,20 @@ export class AuthHttpServer extends AbstractHttpServer {
      * @returns {void}
      */
     _onLogin(res) {
-        this._readJson(res, payload => {
+        readJson(res, payload => {
             if (typeof payload !== "object" || payload === null) {
-                this._reject(res, "400 Bad Request", "Invalid request body", {cors: true});
+                rejectRequest(res, "400 Bad Request", "Invalid request body", {cors: true});
                 return;
             }
             const username = payload.username;
             if (typeof username !== "string" || !USERNAME_PATTERN.test(username)) {
-                this._reject(res, "400 Bad Request", "Invalid username", {cors: true});
+                rejectRequest(res, "400 Bad Request", "Invalid username", {cors: true});
                 return;
             }
             const account = this._accounts.getOrCreate(username);
             const sessionToken = randomBytes(SESSION_TOKEN_BYTES).toString("base64url");
             this._sessionsByToken.set(sessionToken, {accountId: account.accountId, expiresAtMs: Date.now() + SESSION_TTL_MS});
-            this._respond(res, {accountId: account.accountId, username: account.username, sessionToken});
+            respondJson(res, {accountId: account.accountId, username: account.username, sessionToken});
         });
     }
 
@@ -155,21 +155,21 @@ export class AuthHttpServer extends AbstractHttpServer {
     _onJoin(res, authHeader) {
         const accountId = this._accountIdFromAuthHeader(authHeader);
         if (accountId === null) {
-            this._reject(res, "401 Unauthorized", "Missing or invalid bearer token", {cors: true});
+            rejectRequest(res, "401 Unauthorized", "Missing or invalid bearer token", {cors: true});
             return;
         }
-        this._readJson(res, payload => {
+        readJson(res, payload => {
             if (typeof payload !== "object" || payload === null) {
-                this._reject(res, "400 Bad Request", "Invalid request body", {cors: true});
+                rejectRequest(res, "400 Bad Request", "Invalid request body", {cors: true});
                 return;
             }
             const origin = payload.origin;
             if (typeof origin !== "string" || !ORIGIN_PATTERN.test(origin)) {
-                this._reject(res, "400 Bad Request", "Invalid origin", {cors: true});
+                rejectRequest(res, "400 Bad Request", "Invalid origin", {cors: true});
                 return;
             }
             const account = this._accounts.byId(accountId);
-            this._respond(res, {
+            respondJson(res, {
                 token: this._joinTokens.mint(account, origin),
                 reconnect: this._joinTokens.mintReconnect(account, origin),
             });
@@ -182,24 +182,24 @@ export class AuthHttpServer extends AbstractHttpServer {
      * @returns {void}
      */
     _onRejoin(res) {
-        this._readJson(res, payload => {
+        readJson(res, payload => {
             if (typeof payload !== "object" || payload === null) {
-                this._reject(res, "400 Bad Request", "Invalid request body", {cors: true});
+                rejectRequest(res, "400 Bad Request", "Invalid request body", {cors: true});
                 return;
             }
             const claims = this._joinTokens.verifyReconnect(payload.reconnect);
             if (claims === null) {
-                this._reject(res, "401 Unauthorized", "Invalid or expired reconnect token", {cors: true});
+                rejectRequest(res, "401 Unauthorized", "Invalid or expired reconnect token", {cors: true});
                 return;
             }
             let account;
             try {
                 account = this._accounts.byId(claims.accountId);
             } catch (error) {
-                this._reject(res, "401 Unauthorized", "Unknown account", {cors: true});
+                rejectRequest(res, "401 Unauthorized", "Unknown account", {cors: true});
                 return;
             }
-            this._respond(res, {
+            respondJson(res, {
                 token: this._joinTokens.mint(account, claims.origin),
                 reconnect: this._joinTokens.mintReconnect(account, claims.origin),
             });
@@ -215,10 +215,10 @@ export class AuthHttpServer extends AbstractHttpServer {
     _onServers(res, authHeader) {
         const accountId = this._accountIdFromAuthHeader(authHeader);
         if (accountId === null) {
-            this._reject(res, "401 Unauthorized", "Missing or invalid bearer token", {cors: true});
+            rejectRequest(res, "401 Unauthorized", "Missing or invalid bearer token", {cors: true});
             return;
         }
-        this._respond(res, {servers: this._servers.list()});
+        respondJson(res, {servers: this._servers.list()});
     }
 
     /**

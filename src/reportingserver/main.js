@@ -7,7 +7,7 @@ import {bindShutdownSignals} from "@/nodeservice/cliShutdown.js";
 const {values: args} = parseArgs({
     options: {
         "db": {type: "string", default: "reporting.sqlite3"},
-        "maps-dir": {type: "string", default: "dist/maps"},
+        "maps-dir": {type: "string", default: "build/client/maps"},
         "host": {type: "string", default: "0.0.0.0"},
         "port": {type: "string", default: "27502"},
     },

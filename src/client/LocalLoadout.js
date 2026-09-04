@@ -1,20 +1,20 @@
 // Local play's own mod list. A local game is its own server, so it gets what an operator gets: an
-// ordered, hash-pinned list, in the same format as a server's mods.json.
+// ordered, hash-pinned list, in the same format as a server's pinned mods.
 //
 // The model and its store only; loading the packages it names is @/client/LocalModLoader.js, which
 // is what pulls the client SDK in.
 //
-// The base loadout the client ships (@/mods/clientLoadout.js) always registers first, in its own
-// fixed order, so a chosen mod only ever appends typeIds after it. Base mods are stored as
-// *exclusions* rather than selections: nothing stored means every base mod loads, which is exactly
-// the loadout local play had before it could be chosen at all.
+// The base loadout the client ships (@/mods/clientLoadout.js) registers first, in its own fixed
+// order, so a chosen mod only ever appends typeIds after it; that is the built-in mode, and what an
+// empty loadout means. With built-in mods off, the base mods are chosen from the registry like any
+// other, version and all.
 //
 // A chosen mod normally tracks the newest published version this client can load. The stored version
 // and hashes are the last resolution of that, kept so a game still starts when the registry is
 // unreachable and refreshed whenever it answers. A player who needs one exact version pins it
 // instead, and then nothing re-resolves it.
 
-import {ModLockEntry, MANIFEST_FILE} from "@/common/ModLockfile.js";
+import {ModLockEntry, ModLockfile, MANIFEST_FILE} from "@/common/ModLockfile.js";
 import {ModManifest, SDK_VERSION} from "@/common/ModManifest.js";
 import {integrityHex} from "@/common/ModIntegrity.js";
 import {DEV_TOOLS} from "@/common/env.js";
@@ -28,6 +28,9 @@ export const LOCAL_MOD_SOURCE_URL = "url";
 const LOCAL_MOD_SOURCES = [LOCAL_MOD_SOURCE_REGISTRY, LOCAL_MOD_SOURCE_URL];
 
 const MOD_KEYS = ["source", "name", "title", "url", "version", "integrity", "pinned"];
+
+// "excludedBase" is what stored loadouts carried before the built-in mods became one choice.
+const LOADOUT_KEYS = ["mods", "builtIn", "excludedBase"];
 
 // localStorage key holding the choices.
 const STORAGE_LOADOUT = "spup.local-loadout";
@@ -235,6 +238,27 @@ export function compatibleVersions(listing) {
 }
 
 /**
+ * Every version a listed mod has published, newest first, loadable or not.
+ * @param {object} listing
+ * @returns {object[]}
+ */
+export function publishedVersions(listing) {
+    if (!Array.isArray(listing.versions)) {
+        return [];
+    }
+    return [...listing.versions].reverse();
+}
+
+/**
+ * Whether a published version was built against this game's SDK, so this client can load it.
+ * @param {object} version
+ * @returns {boolean}
+ */
+export function versionLoadable(version) {
+    return version.sdkVersion === SDK_VERSION;
+}
+
+/**
  * The newest published version this client can load, or null when the listing offers none.
  * @param {object} listing
  * @returns {object|null}
@@ -248,60 +272,40 @@ export function latestCompatibleVersion(listing) {
 }
 
 /**
- * The mods a local game loads after the base loadout, in registration order.
+ * The mods a local game loads, in registration order: the built-in base loadout first when
+ * `builtIn` is on, then `mods`.
  */
 export class LocalLoadout {
 
     /**
      * @param {LocalMod[]} mods
-     * @param {string[]} [excludedBase] base mod names the player has turned off
+     * @param {boolean} [builtIn] whether the base mods run as built into the game
      */
-    constructor(mods, excludedBase=[]) {
-        for (const mod of mods) {
-            // A name is one mod. The built-in copy registers first whatever this list says, so a
-            // second package under the same name is that mod loaded twice, not another mod.
-            if (BASE_MOD_NAMES.includes(mod.name)) {
-                throw new Error(`Mod "${mod.name}" is built into the client, so a package may not carry that name`);
+    constructor(mods, builtIn=true) {
+        if (builtIn) {
+            for (const mod of mods) {
+                // A name is one mod. The built-in copy registers first whatever this list says, so
+                // a second package under the same name is that mod loaded twice, not another mod.
+                if (BASE_MOD_NAMES.includes(mod.name)) {
+                    throw new Error(`Mod "${mod.name}" is built into the client, so a package may not carry that name`);
+                }
             }
         }
         this.mods = mods;
-        this.excludedBase = excludedBase;
+        this.builtIn = builtIn;
     }
 
     /**
-     * Whether a base mod loads. Unknown names answer true: this is a stored preference, and a base
-     * mod renamed or dropped between client versions must not silently turn off a different one.
-     * @param {string} name a base mod's package name
-     * @returns {boolean}
-     */
-    baseEnabled(name) {
-        return !this.excludedBase.includes(name);
-    }
-
-    /**
-     * The base mods that load, in registration order.
-     * @returns {string[]}
-     */
-    get enabledBase() {
-        return BASE_MOD_NAMES.filter(name => this.baseEnabled(name));
-    }
-
-    /**
-     * @param {string} name a base mod's package name
-     * @param {boolean} enabled
+     * Turning built-in mods on drops any base mod chosen from the registry, since the built-in copy
+     * takes its name.
+     * @param {boolean} on
      * @returns {LocalLoadout}
      */
-    withBase(name, enabled) {
-        if (!BASE_MOD_NAMES.includes(name)) {
-            throw new Error(`No base mod called "${name}"`);
+    withBuiltIn(on) {
+        if (!on) {
+            return new LocalLoadout(this.mods, false);
         }
-        if (enabled) {
-            return new LocalLoadout(this.mods, this.excludedBase.filter(excluded => excluded !== name));
-        }
-        if (!this.baseEnabled(name)) {
-            return this;
-        }
-        return new LocalLoadout(this.mods, [...this.excludedBase, name]);
+        return new LocalLoadout(this.mods.filter(mod => !BASE_MOD_NAMES.includes(mod.name)), true);
     }
 
     /**
@@ -333,11 +337,11 @@ export class LocalLoadout {
     with(mod) {
         const at = this.mods.findIndex(candidate => candidate.name === mod.name);
         if (at === -1) {
-            return new LocalLoadout([...this.mods, mod], this.excludedBase);
+            return new LocalLoadout([...this.mods, mod], this.builtIn);
         }
         const mods = [...this.mods];
         mods[at] = mod;
-        return new LocalLoadout(mods, this.excludedBase);
+        return new LocalLoadout(mods, this.builtIn);
     }
 
     /**
@@ -345,14 +349,58 @@ export class LocalLoadout {
      * @returns {LocalLoadout}
      */
     without(name) {
-        return new LocalLoadout(this.mods.filter(mod => mod.name !== name), this.excludedBase);
+        return new LocalLoadout(this.mods.filter(mod => mod.name !== name), this.builtIn);
+    }
+
+    /**
+     * `name` moved `offset` places along the load order (which assigns the positional ids, and
+     * which texture wins a name), clamped to the ends.
+     * @param {string} name
+     * @param {number} offset
+     * @returns {LocalLoadout}
+     */
+    withMoved(name, offset) {
+        const from = this.mods.findIndex(mod => mod.name === name);
+        if (from === -1) {
+            throw new Error(`Mod "${name}" is not chosen, so it has no place in the load order`);
+        }
+        const to = Math.max(0, Math.min(this.mods.length - 1, from + offset));
+        const mods = this.mods.slice();
+        const [moved] = mods.splice(from, 1);
+        mods.splice(to, 0, moved);
+        return new LocalLoadout(mods, this.builtIn);
     }
 
     /**
      * @returns {object}
      */
     toJSON() {
-        return {mods: this.mods.map(mod => mod.toJSON()), excludedBase: this.excludedBase};
+        return {mods: this.mods.map(mod => mod.toJSON()), builtIn: this.builtIn};
+    }
+
+    /**
+     * The loadout a server's pinned mods describe. Base mods pinned to the server's own built copies
+     * (file: URLs) are the built-in mode; base mods pinned anywhere else were chosen from the
+     * registry, and every such pin reads back at exactly its version and URL.
+     * @param {ModLockfile} lockfile
+     * @param {object[]} listings the registry index, for titles
+     * @returns {LocalLoadout}
+     */
+    static fromLockfile(lockfile, listings) {
+        const base = lockfile.mods.filter(entry => BASE_MOD_NAMES.includes(entry.name));
+        const builtIn = base.length > 0 && base.every(entry => entry.url.startsWith("file:"));
+        const mods = [];
+        for (const entry of lockfile.mods) {
+            if (builtIn && BASE_MOD_NAMES.includes(entry.name)) {
+                continue;
+            }
+            const listing = listings.find(candidate => candidate.name === entry.name);
+            const title = listing === undefined ? entry.name : titleOf(listing);
+            mods.push(new LocalMod(
+                LOCAL_MOD_SOURCE_REGISTRY, entry.name, title, entry.url, entry.version, entry.integrity, true,
+            ));
+        }
+        return new LocalLoadout(mods, builtIn);
     }
 
     /**
@@ -363,6 +411,11 @@ export class LocalLoadout {
         if (json === null || typeof json !== "object" || !Array.isArray(json.mods)) {
             throw new Error("A local loadout must hold a `mods` array");
         }
+        for (const key of Object.keys(json)) {
+            if (!LOADOUT_KEYS.includes(key)) {
+                throw new Error(`Unknown key "${key}" in a local loadout`);
+            }
+        }
         const mods = json.mods.map(mod => LocalMod.parse(mod));
         const names = new Set();
         for (const mod of mods) {
@@ -371,22 +424,31 @@ export class LocalLoadout {
             }
             names.add(mod.name);
         }
-        return new LocalLoadout(mods, parseExcludedBase(json.excludedBase));
+        return new LocalLoadout(mods, parseBuiltIn(json));
     }
 }
 
 /**
- * @param {*} value
- * @returns {string[]}
+ * Whether the built-in mods load. A loadout stored before this was one choice instead listed the
+ * base mods the player had turned off: an empty list means the same as the choice on, a non-empty
+ * one names a loadout this build has no way to express.
+ * @param {object} json
+ * @returns {boolean}
  */
-function parseExcludedBase(value) {
-    if (value === undefined) {
-        return [];
+function parseBuiltIn(json) {
+    if (json.excludedBase !== undefined) {
+        if (!Array.isArray(json.excludedBase) || json.excludedBase.length > 0) {
+            throw new Error("This loadout turned off part of the built-in mods, which is no longer a choice.");
+        }
+        return true;
     }
-    if (!Array.isArray(value) || value.some(name => typeof name !== "string")) {
-        throw new Error("A local loadout's `excludedBase` must be an array of base mod names");
+    if (json.builtIn === undefined) {
+        return true;
     }
-    return value;
+    if (typeof json.builtIn !== "boolean") {
+        throw new Error("A local loadout's `builtIn` must be true or false");
+    }
+    return json.builtIn;
 }
 
 /**
@@ -412,47 +474,63 @@ export function refreshLoadout(loadout, listings) {
             return mod;
         }
         return LocalMod.fromListing(listing, latest, false);
-    }), loadout.excludedBase);
+    }), loadout.builtIn);
 }
 
 /**
- * The `mods.json` a server needs in order to run this loadout: every base mod the client ships,
- * pinned to the registry's copy of this game version, then the chosen mods. The order is the order
- * the client registers them in, so a server built from this assigns the same positional ids.
- *
- * A base mod the registry does not publish at this version cannot be pinned, and a partial lockfile
- * would silently hand the server a different loadout, so the whole thing is withheld rather than
- * trimmed. Mods loaded off a bare URL are never in it: they have no hashes, and their URL means
- * nothing to a server.
+ * The pins a server would run this loadout from: with built-in mods on, every base mod pinned as
+ * `current` has it or at this game version from the registry, plus the chosen mods. A name `current`
+ * already pins keeps that pin and its position, so a server's own base-mod builds survive a round
+ * trip through the editor and no mod's positional typeId moves; the rest follow in load order. Base
+ * mods the registry has not published at this version are reported as missing (and nothing is
+ * exported); mods loaded straight off a URL have no hashes to pin and are reported as skipped.
  * @param {LocalLoadout} loadout
- * @param {object[]} listings the registry index's mods
+ * @param {object[]} listings the registry index
  * @param {string} gameVersion
+ * @param {ModLockfile} [current] the server's pins as they are now
  * @returns {{lockfile: object|null, missing: string[], skipped: string[]}}
  */
-export function serverLockfile(loadout, listings, gameVersion) {
+export function serverLockfile(loadout, listings, gameVersion, current=new ModLockfile([])) {
     const missing = [];
     const skipped = [];
-    const entries = [];
-    for (const name of loadout.enabledBase) {
+    const resolved = new Map();
+    const base = loadout.builtIn ? BASE_MOD_NAMES : [];
+    for (const name of base) {
+        const pinned = current.find(name);
+        if (pinned !== null) {
+            resolved.set(name, pinned.toJSON());
+            continue;
+        }
         const listing = listings.find(candidate => candidate.name === name);
         const version = publishedAt(listing, gameVersion);
         if (version === null) {
             missing.push(name);
             continue;
         }
-        entries.push(LocalMod.fromListing(listing, version, true).lockEntry.toJSON());
+        resolved.set(name, LocalMod.fromListing(listing, version, true).lockEntry.toJSON());
     }
     for (const mod of loadout.mods) {
         if (mod.source === LOCAL_MOD_SOURCE_URL) {
             skipped.push(mod.name);
             continue;
         }
-        entries.push(mod.lockEntry.toJSON());
+        const pinned = current.find(mod.name);
+        if (pinned !== null && pinned.version === mod.version) {
+            resolved.set(mod.name, pinned.toJSON());
+            continue;
+        }
+        resolved.set(mod.name, mod.lockEntry.toJSON());
     }
     if (missing.length > 0) {
         return {lockfile: null, missing, skipped};
     }
-    return {lockfile: {mods: entries}, missing, skipped};
+    const order = current.mods.map(entry => entry.name).filter(name => resolved.has(name));
+    for (const name of resolved.keys()) {
+        if (!order.includes(name)) {
+            order.push(name);
+        }
+    }
+    return {lockfile: {mods: order.map(name => resolved.get(name))}, missing, skipped};
 }
 
 /**

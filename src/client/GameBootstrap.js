@@ -2,13 +2,15 @@ import {ModRegistry} from "@/common/ModRegistry.js";
 import {fetchModLoadout} from "@/client/ModFetcher.js";
 import {sideloadedModUrls} from "@/client/ModSideload.js";
 import {
-    LocalLoadout, LocalMod, BASE_MOD_NAMES, readLocalLoadout, writeLocalLoadout, refreshLoadout,
+    LocalLoadout, LocalMod, readLocalLoadout, writeLocalLoadout, refreshLoadout,
 } from "@/client/LocalLoadout.js";
 import {listMods} from "@/client/ModRegistryClient.js";
 import {loadLocalMods} from "@/client/LocalModLoader.js";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {randomWorldSeed} from "@/common/WorldNoise.js";
+import {readLocalConfig} from "@/client/LocalConfig.js";
+import {GameSettingsKey} from "@/common/constants.js";
 import {ClientSaveStore} from "@/client/state/ClientSaveStore.js";
 import {ClientMetricsStore} from "@/client/state/ClientMetricsStore.js";
 import {GameAPI} from "@/sim/GameAPI.js";
@@ -21,12 +23,8 @@ import {DITHER_PATTERNS, setActiveDither, setDitherEnabled, ditherOn, setDitherS
 import {setBlendLevels, blendLevelCount} from "@/client/layers/TerrainSprite.js";
 import {mintReconnectToken, enterServerContext} from "@/client/AuthClient.js";
 import WindowFocus from "@/client/WindowFocus.js";
-import {DEFAULT_TICK_MS} from "@/common/constants.js";
 import {GAME_MODE_REMOTE} from "@/client/GameStart.js";
 import {SCENARIO_PARAM} from "@/test/scenarios/scenarioParam.js";
-
-// Matches the server's --tick-ms default, so local mode runs at the same real-time rate.
-const LOCAL_TICK_INTERVAL_MS = DEFAULT_TICK_MS;
 
 /**
  * The packages to register. A remote server's own pinned loadout is fetched from it — the client
@@ -44,9 +42,8 @@ async function loadoutFor(props, localLoadout) {
         return await fetchModLoadout(props.serverUrl);
     }
     const {clientLoadout} = await import("@/mods/clientLoadout.js");
-    // clientLoadout() registers in BASE_MOD_NAMES order (src/test/loadout-order.spec.js holds the two
-    // together), so a base mod the player turned off drops out by position.
-    const base = clientLoadout().filter((pkg, at) => localLoadout.baseEnabled(BASE_MOD_NAMES[at]));
+    // With built-in mods off, the base mods are among the chosen packages, at the chosen versions.
+    const base = localLoadout.builtIn ? clientLoadout() : [];
     const packages = [...base, ...await loadLocalMods(localLoadout)];
     if (scenarioSelected()) {
         const {scenarioModPackages} = await import("@/test/scenarios/index.js");
@@ -139,9 +136,11 @@ export async function createClient(app, viewport, props) {
             () => mintReconnectToken(props.serverUrl),
         );
     } else {
+        const localConfig = readLocalConfig();
+        const seed = localConfig.seed === null ? randomWorldSeed() : localConfig.seed;
         game = new Game(
             modRegistry, new GameEngine(modRegistry), new ClientSaveStore(), new ClientMetricsStore(),
-            LOCAL_TICK_INTERVAL_MS, randomWorldSeed(),
+            localConfig.tickMs, seed,
         );
         await game.init();
 
@@ -176,7 +175,7 @@ export async function createClient(app, viewport, props) {
     } else {
         game.connect(session);
         // runTick() flushes/pushes metrics itself, piggybacking on this interval.
-        tickInterval = window.setInterval(() => game.runTick(), LOCAL_TICK_INTERVAL_MS);
+        tickInterval = window.setInterval(() => game.runTick(), game.gameSettings.get(GameSettingsKey.TICK_MS));
     }
     await client.init();
 

@@ -99,6 +99,18 @@ test("a sell terminal does not drain without a matching buyer", async () => {
     assert.equal(engine.ports.item(terminal.in[row]), ITEM, "nothing to sell to, so the item stays resting");
 });
 
+test("a terminal whose item a loadout change emptied trades nothing", async () => {
+    const {engine, sellerInPort, buyerOutPort} = await setup();
+    const def = engine.components.get("MarketTerminal");
+    for (const eid of engine.placed.eidsOf(TradingTerminalType.typeId)) {
+        def.store.itemType[def.row(eid)] = EMPTY;
+    }
+
+    engine.ports.setItem(sellerInPort, EMPTY);
+    engine.tickAll();
+    assert.equal(engine.ports.item(buyerOutPort), EMPTY, "an item type no mod declares is not tradable");
+});
+
 test("a sell terminal with sellEnabled=0 never sells, even with an eligible buyer", async () => {
     const {engine, sellerInPort, buyerOutPort} = await setup();
     const def = engine.components.get("MarketTerminal");

@@ -1,3 +1,4 @@
+import {coreTextureAtlases} from "@/client/CoreTextures/assets.js";
 import {TextureRegistry} from "@/client/layers/TextureRegistry.js";
 import {SpriteOverrideStore} from "@/client/spriteEditor/SpriteOverrideStore.js";
 import {DrawLayerRegistry} from "@/client/layers/DrawLayerRegistry.js";
@@ -379,7 +380,7 @@ export class Client {
      * @returns {Promise<void>}
      */
     async init() {
-        await this.textureRegistry.load(this.modRegistry.textureAtlases);
+        await this.textureRegistry.load(coreTextureAtlases.concat(this.modRegistry.textureAtlases));
         // Storage can be off (private mode, policy); art edits are optional, the game is not.
         try {
             await this.spriteOverrideStore.applyTo(this.textureRegistry);

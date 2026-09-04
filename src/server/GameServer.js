@@ -1,5 +1,5 @@
 import uWS from "uWebSockets.js";
-import {AbstractHttpServer} from "@/nodeservice/AbstractHttpServer.js";
+import {AbstractHttpServer, respondJson, rejectRequest} from "@/nodeservice/AbstractHttpServer.js";
 import {SignInMessage} from "@/common/PlayerMessages.js";
 import {WebSocketSession} from "@/server/WebSocketSession.js";
 import {reportError} from "@/server/crashReporter.js";
@@ -7,30 +7,32 @@ import {GAME_VERSION, REGION_SIZE} from "@/common/constants.js";
 import {formatBytes, formatUptime} from "@/common/util.js";
 import {
     CLOSE_CODE_BAD_SIGN_IN, CLOSE_CODE_BAD_FRAME, CLOSE_CODE_SUPERSEDED, CLOSE_CODE_SERVER_SHUTDOWN,
+    CLOSE_CODE_LOADOUT_CHANGED,
 } from "@/common/CloseCodes.js";
+import {MOD_CONTENT_TYPES, extensionOf} from "@/server/ModHost.js";
 
 const MAX_PAYLOAD_BYTES = 64 * 1024;
 const MAX_BACKPRESSURE_BYTES = 1024 * 1024;
 const IDLE_TIMEOUT_S = 120;
 
+// Content-addressed files never change under their name.
+const IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
+
 /**
  * The uWebSockets.js front end: accepts connections, authenticates the sign-in frame, and pumps
- * decoded messages into the game. One instance per server process.
+ * decoded messages into the current world's game. One instance per server process; the world under
+ * it can be swapped. Other route hosts register on `app` before listen(), which adds the catch-alls.
  */
 export class GameServer extends AbstractHttpServer {
 
     /**
-     * @param {Game} game
-     * @param {GameAPI} api
      * @param {JwksVerifier} jwksVerifier
      * @param {string} origin - this server's own canonical origin, checked against a token's aud
      * @param {string} name - the display name shown in the client's server directory
-     * @param {ModHost|null} [modHost] - serves this server's packaged loadout; null on a static build
      */
-    constructor(game, api, jwksVerifier, origin, name, modHost=null) {
+    constructor(jwksVerifier, origin, name) {
         super();
-        this._game = game;
-        this._api = api;
+        this._world = null;
         this._jwksVerifier = jwksVerifier;
         this._origin = origin;
         this._name = name;
@@ -41,9 +43,66 @@ export class GameServer extends AbstractHttpServer {
         this.app.get("/status", (res, req) => {
             this._onStatus(res);
         });
-        if (modHost !== null) {
-            modHost.registerRoutes(this.app);
+        this.app.get("/mods/index.json", (res, req) => {
+            this._onModIndex(res);
+        });
+        this.app.get("/mods/:name", (res, req) => {
+            this._onModFile(res, req.getParameter(0));
+        });
+    }
+
+    /**
+     * @returns {World}
+     */
+    get world() {
+        return this._world;
+    }
+
+    /**
+     * Puts a world under the server. Every session on the previous one is kicked with a code that
+     * makes its client reload and rejoin, since its mod loadout may have changed.
+     * @param {World} world
+     * @returns {void}
+     */
+    setWorld(world) {
+        if (this._world !== null) {
+            for (const session of [...this._sessionsByPlayer.values()]) {
+                session.kick(CLOSE_CODE_LOADOUT_CHANGED);
+            }
         }
+        this._world = world;
+    }
+
+    /**
+     * @param {string} name
+     * @returns {void}
+     */
+    setName(name) {
+        this._name = name;
+    }
+
+    /**
+     * @param {string} origin
+     * @returns {void}
+     */
+    setOrigin(origin) {
+        this._origin = origin;
+    }
+
+    /**
+     * @param {JwksVerifier} jwksVerifier
+     * @returns {void}
+     */
+    setJwksVerifier(jwksVerifier) {
+        this._jwksVerifier = jwksVerifier;
+    }
+
+    /**
+     * @param {string} host
+     * @param {number} port
+     * @returns {Promise<void>}
+     */
+    listen(host, port) {
         // A plain-browser visit gets a text info screen instead of a failed upgrade.
         this.app.get("/*", (res, req) => {
             const host = req.getHeader("host");
@@ -70,6 +129,64 @@ export class GameServer extends AbstractHttpServer {
             close: ws => {
                 this._onClose(ws);
             },
+        });
+        return super.listen(host, port);
+    }
+
+    /**
+     * @private
+     * @returns {Game}
+     */
+    get _game() {
+        return this._world.game;
+    }
+
+    /**
+     * @private
+     * @returns {GameAPI}
+     */
+    get _api() {
+        return this._world.api;
+    }
+
+    /**
+     * @private
+     * @param {object} res
+     * @returns {void}
+     */
+    _onModIndex(res) {
+        const modHost = this._world.modHost;
+        if (modHost === null) {
+            rejectRequest(res, "404 Not Found", "this server runs its built-in mods", {cors: true});
+            return;
+        }
+        res.cork(() => {
+            res.writeHeader("Content-Type", "application/json")
+                .writeHeader("Access-Control-Allow-Origin", "*")
+                .end(modHost.indexJson);
+        });
+    }
+
+    /**
+     * @private
+     * @param {object} res
+     * @param {string} name
+     * @returns {void}
+     */
+    _onModFile(res, name) {
+        let bytes;
+        if (this._world.modHost !== null) {
+            bytes = this._world.modHost.fileOf(name);
+        }
+        if (bytes === undefined) {
+            rejectRequest(res, "404 Not Found", "no such mod file", {cors: true});
+            return;
+        }
+        res.cork(() => {
+            res.writeHeader("Content-Type", MOD_CONTENT_TYPES[extensionOf(name)])
+                .writeHeader("Cache-Control", IMMUTABLE_CACHE)
+                .writeHeader("Access-Control-Allow-Origin", "*")
+                .end(bytes);
         });
     }
 
@@ -110,7 +227,7 @@ export class GameServer extends AbstractHttpServer {
      */
     _onStatus(res) {
         const claimed = this._game.claims.claimedCount();
-        this._respond(res, {
+        respondJson(res, {
             name: this._name,
             version: GAME_VERSION,
             online: this._sessionsByPlayer.size,

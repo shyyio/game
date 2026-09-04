@@ -143,7 +143,7 @@ onMounted(async () => {
     if (gameStart.value.mode === GAME_MODE_REMOTE) {
       router.push({name: "servers"});
     } else {
-      router.push({name: "mods"});
+      router.push({name: "local"});
     }
     return;
   }

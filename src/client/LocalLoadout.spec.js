@@ -13,7 +13,7 @@ import {
 } from "@/client/LocalLoadout.js";
 import {formatIntegrity} from "@/common/ModIntegrity.js";
 import {SDK_VERSION} from "@/common/ModManifest.js";
-import {MANIFEST_FILE} from "@/common/ModLockfile.js";
+import {MANIFEST_FILE, ModLockfile} from "@/common/ModLockfile.js";
 
 const HASH = formatIntegrity("a".repeat(64));
 const OTHER_HASH = formatIntegrity("b".repeat(64));
@@ -231,57 +231,34 @@ test("a stored value that is not a loadout is refused rather than treated as emp
     assert.throws(() => LocalLoadout.parse(null), /must hold a `mods` array/);
 });
 
-test("a fresh loadout loads every base mod, which is the loadout local play had all along", () => {
+test("a fresh loadout runs the built-in base mods, which is the loadout local play had all along", () => {
     const loadout = new LocalLoadout([]);
 
-    assert.deepEqual(loadout.enabledBase, BASE_MOD_NAMES);
-    assert.deepEqual(loadout.excludedBase, []);
-    assert.equal(loadout.baseEnabled(BASE_MOD_NAMES[0]), true);
+    assert.equal(loadout.builtIn, true);
+    assert.equal(LocalLoadout.parse({mods: [chosen("widgets").toJSON()]}).builtIn, true);
 });
 
-test("a stored loadout from before base mods could be turned off still loads all of them", () => {
-    const parsed = LocalLoadout.parse({mods: [chosen("widgets").toJSON()]});
+test("with built-in mods off, a base mod is chosen from the registry like any other", () => {
+    const off = new LocalLoadout([]).withBuiltIn(false).with(chosen(BASE_MOD_NAMES[2], "1.0.0"));
 
-    assert.deepEqual(parsed.enabledBase, BASE_MOD_NAMES);
+    assert.equal(off.builtIn, false);
+    assert.deepEqual(off.mods.map(mod => mod.name), [BASE_MOD_NAMES[2]]);
+    assert.deepEqual(off.withBuiltIn(true).mods, []);
+    assert.equal(off.withBuiltIn(true).builtIn, true);
 });
 
-test("turning a base mod off drops only that one, and keeps the rest in registration order", () => {
-    const off = new LocalLoadout([]).withBase(BASE_MOD_NAMES[2], false);
-
-    assert.equal(off.baseEnabled(BASE_MOD_NAMES[2]), false);
-    assert.deepEqual(off.enabledBase, BASE_MOD_NAMES.filter(name => name !== BASE_MOD_NAMES[2]));
-    assert.deepEqual(off.withBase(BASE_MOD_NAMES[2], true).enabledBase, BASE_MOD_NAMES);
+test("a malformed builtIn is refused", () => {
+    assert.throws(() => LocalLoadout.parse({mods: [], builtIn: "yes"}), /builtIn/);
 });
 
-test("turning a base mod off twice does not list it twice", () => {
-    const off = new LocalLoadout([]).withBase(BASE_MOD_NAMES[0], false).withBase(BASE_MOD_NAMES[0], false);
-
-    assert.deepEqual(off.excludedBase, [BASE_MOD_NAMES[0]]);
-});
-
-test("a base mod that does not exist is refused rather than stored as a dead name", () => {
-    assert.throws(() => new LocalLoadout([]).withBase("not-a-base-mod", false), /No base mod called/);
-});
-
-test("an unknown excluded name is ignored, so a renamed base mod never turns off a different one", () => {
-    const parsed = LocalLoadout.parse({mods: [], excludedBase: ["retired-mod"]});
-
-    assert.deepEqual(parsed.enabledBase, BASE_MOD_NAMES);
-});
-
-test("a malformed excludedBase is refused", () => {
-    assert.throws(() => LocalLoadout.parse({mods: [], excludedBase: "logistics"}), /excludedBase/);
-    assert.throws(() => LocalLoadout.parse({mods: [], excludedBase: [1]}), /excludedBase/);
-});
-
-test("base choices survive JSON, adding, removing, and a refresh", () => {
-    const loadout = new LocalLoadout([chosen("widgets", "1.0.0")]).withBase(BASE_MOD_NAMES[1], false);
+test("the built-in choice survives JSON, adding, removing, and a refresh", () => {
+    const loadout = new LocalLoadout([chosen("widgets", "1.0.0")]).withBuiltIn(false);
     const listings = [listing("widgets", [published("1.0.0"), published("2.0.0")])];
 
-    assert.deepEqual(LocalLoadout.parse(JSON.parse(JSON.stringify(loadout.toJSON()))).excludedBase, [BASE_MOD_NAMES[1]]);
-    assert.deepEqual(loadout.with(chosen("gadgets")).excludedBase, [BASE_MOD_NAMES[1]]);
-    assert.deepEqual(loadout.without("widgets").excludedBase, [BASE_MOD_NAMES[1]]);
-    assert.deepEqual(refreshLoadout(loadout, listings).excludedBase, [BASE_MOD_NAMES[1]]);
+    assert.equal(LocalLoadout.parse(JSON.parse(JSON.stringify(loadout.toJSON()))).builtIn, false);
+    assert.equal(loadout.with(chosen("gadgets")).builtIn, false);
+    assert.equal(loadout.without("widgets").builtIn, false);
+    assert.equal(refreshLoadout(loadout, listings).builtIn, false);
 });
 
 const GAME = "2.9.0";
@@ -305,12 +282,12 @@ test("the exported mods.json pins every base mod at this game version, in regist
     assert.ok(lockfile.mods.every(entry => entry.integrity[MANIFEST_FILE] === HASH));
 });
 
-test("a base mod turned off is left out of the exported mods.json", () => {
-    const loadout = new LocalLoadout([]).withBase(BASE_MOD_NAMES[1], false);
+test("with built-in mods off, only the chosen base mods are exported, at their chosen versions", () => {
+    const loadout = new LocalLoadout([]).withBuiltIn(false).with(chosen(BASE_MOD_NAMES[1], "1.0.0", true));
 
     const {lockfile} = serverLockfile(loadout, publishedAll(), GAME);
 
-    assert.deepEqual(lockfile.mods.map(entry => entry.name), BASE_MOD_NAMES.filter(n => n !== BASE_MOD_NAMES[1]));
+    assert.deepEqual(lockfile.mods.map(entry => [entry.name, entry.version]), [[BASE_MOD_NAMES[1], "1.0.0"]]);
 });
 
 test("a chosen mod is exported at the version it is actually set to, not the newest", () => {
@@ -359,8 +336,104 @@ test("a package named after a built-in mod is refused, however it got into the l
     assert.throws(() => LocalLoadout.parse({mods: [clash.toJSON()]}), /is built into the client/);
 });
 
-test("turning a built-in mod off does not make its name available to a package", () => {
-    const off = new LocalLoadout([]).withBase(BASE_MOD_NAMES[4], false);
+test("turning built-in mods off is what makes a base name available to a package", () => {
+    assert.throws(() => new LocalLoadout([]).with(chosen(BASE_MOD_NAMES[4])), /is built into the client/);
+    assert.doesNotThrow(() => new LocalLoadout([]).withBuiltIn(false).with(chosen(BASE_MOD_NAMES[4])));
+});
 
-    assert.throws(() => off.with(chosen(BASE_MOD_NAMES[4])), /is built into the client/);
+/**
+ * @param {string} name
+ * @param {string} version
+ * @returns {object} a pinned mods.json entry
+ */
+function pinnedEntry(name, version) {
+    return {url: `file:///mods/${name}/`, name: name, version: version, integrity: {[MANIFEST_FILE]: HASH, "mod.js": OTHER_HASH}};
+}
+
+test("a server's mods.json reads back as the base mods it pins plus its other mods, pinned", () => {
+    const lockfile = ModLockfile.parse({mods: [
+        pinnedEntry(BASE_MOD_NAMES[0], GAME),
+        pinnedEntry("widgets", "1.0.0"),
+    ]});
+
+    const loadout = LocalLoadout.fromLockfile(lockfile, publishedAll(["widgets"]));
+
+    assert.equal(loadout.builtIn, true);
+    assert.deepEqual(loadout.mods.map(mod => [mod.name, mod.title, mod.version, mod.pinned, mod.url]), [
+        ["widgets", "The widgets", "1.0.0", true, "file:///mods/widgets/"],
+    ]);
+});
+
+test("a server whose base mods come from the registry reads back with built-in mods off and each one chosen", () => {
+    const lockfile = ModLockfile.parse({mods: [
+        {url: `https://mods.example.com/${BASE_MOD_NAMES[0]}/1.0.0/`, name: BASE_MOD_NAMES[0], version: "1.0.0", integrity: {[MANIFEST_FILE]: HASH}},
+    ]});
+
+    const loadout = LocalLoadout.fromLockfile(lockfile, publishedAll());
+
+    assert.equal(loadout.builtIn, false);
+    assert.deepEqual(loadout.mods.map(mod => [mod.name, mod.version, mod.pinned]), [[BASE_MOD_NAMES[0], "1.0.0", true]]);
+    assert.equal(serverLockfile(loadout, publishedAll(), GAME, lockfile).lockfile.mods.length, 1);
+});
+
+test("a pinned mod the registry no longer lists reads back titled by its name", () => {
+    const lockfile = ModLockfile.parse({mods: [pinnedEntry("widgets", "1.0.0")]});
+
+    assert.equal(LocalLoadout.fromLockfile(lockfile, []).mods[0].title, "widgets");
+});
+
+test("exporting over a current mods.json keeps every pin it already has, and pins the rest anew", () => {
+    const current = ModLockfile.parse({mods: [pinnedEntry(BASE_MOD_NAMES[0], "0.1.0"), pinnedEntry("widgets", "1.0.0")]});
+    const loadout = LocalLoadout.fromLockfile(current, publishedAll(["widgets"]));
+
+    const {lockfile} = serverLockfile(loadout, publishedAll(["widgets"]), GAME, current);
+
+    assert.equal(lockfile.mods.length, BASE_MOD_NAMES.length + 1);
+    assert.deepEqual([lockfile.mods[0].name, lockfile.mods[0].url], [BASE_MOD_NAMES[0], `file:///mods/${BASE_MOD_NAMES[0]}/`]);
+    assert.deepEqual([lockfile.mods[1].name, lockfile.mods[1].url], ["widgets", "file:///mods/widgets/"]);
+    assert.equal(lockfile.mods[2].name, BASE_MOD_NAMES[1]);
+});
+
+test("exporting over a current mods.json leaves every pin where it is, so no typeId moves", () => {
+    const current = ModLockfile.parse({mods: [
+        pinnedEntry(BASE_MOD_NAMES[0], "0.1.0"),
+        pinnedEntry("widgets", "1.0.0"),
+        pinnedEntry(BASE_MOD_NAMES[1], "0.1.0"),
+    ]});
+    const loadout = LocalLoadout.fromLockfile(current, publishedAll(["widgets"]));
+
+    const {lockfile} = serverLockfile(loadout, publishedAll(["widgets"]), GAME, current);
+
+    assert.deepEqual(
+        lockfile.mods.slice(0, 3).map(mod => mod.name),
+        [BASE_MOD_NAMES[0], "widgets", BASE_MOD_NAMES[1]],
+    );
+    assert.deepEqual(lockfile.mods.slice(3).map(mod => mod.name), BASE_MOD_NAMES.slice(2));
+});
+
+test("a loadout stored before built-in mods became one choice reads back with them on", () => {
+    const loadout = LocalLoadout.parse({mods: [chosen("widgets").toJSON()], excludedBase: []});
+    assert.equal(loadout.builtIn, true);
+    assert.deepEqual(loadout.mods.map(mod => mod.name), ["widgets"]);
+});
+
+test("a stored loadout that turned off part of the built-in mods says so rather than turning them on", () => {
+    assert.throws(
+        () => LocalLoadout.parse({mods: [], excludedBase: [BASE_MOD_NAMES[0]]}),
+        /no longer a choice/,
+    );
+});
+
+test("an unknown key in a stored loadout is refused", () => {
+    assert.throws(() => LocalLoadout.parse({mods: [], nonsense: 1}), /Unknown key/);
+});
+
+test("a chosen mod moves up or down the load order, and stops at the ends", () => {
+    const loadout = new LocalLoadout([chosen("a"), chosen("b"), chosen("c")]);
+    assert.deepEqual(loadout.withMoved("c", -1).mods.map(mod => mod.name), ["a", "c", "b"]);
+    assert.deepEqual(loadout.withMoved("a", 1).mods.map(mod => mod.name), ["b", "a", "c"]);
+    assert.deepEqual(loadout.withMoved("a", -1).mods.map(mod => mod.name), ["a", "b", "c"]);
+    assert.deepEqual(loadout.withMoved("c", 1).mods.map(mod => mod.name), ["a", "b", "c"]);
+    assert.equal(loadout.withMoved("a", 1).builtIn, true);
+    assert.throws(() => loadout.withMoved("nope", 1), /not chosen/);
 });

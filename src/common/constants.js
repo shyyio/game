@@ -174,7 +174,7 @@ export const USERNAME_PATTERN_HINT = "3-12 chars: letters, digits, _; single spa
 // under this same version: minor per game release, major reserved for an SDK break.
 export const GAME_VERSION = packageJson.version;
 
-// reportingserver's ingest endpoint, on its own subdomain (see deploy/nginx-reporting.conf).
+// reportingserver's ingest endpoint, on its own subdomain.
 // Both the browser client and the game server POST crashes here.
 export const REPORTING_URL = "https://bugs.spupgame.com/report";
 

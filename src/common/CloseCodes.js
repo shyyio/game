@@ -5,3 +5,5 @@ export const CLOSE_CODE_BAD_SIGN_IN = 4001;
 export const CLOSE_CODE_BAD_FRAME = 4002;
 export const CLOSE_CODE_SUPERSEDED = 4003;
 export const CLOSE_CODE_SERVER_SHUTDOWN = 4004;
+// The world was rebuilt under a new mod loadout; the client reloads its page and rejoins.
+export const CLOSE_CODE_LOADOUT_CHANGED = 4005;

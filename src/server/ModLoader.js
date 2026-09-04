@@ -47,7 +47,7 @@ export async function loadPackagedMods(lockfile, cache) {
         const manifest = ModManifest.parse(cache.manifestJson(entry));
         if (manifest.name !== entry.name || manifest.version !== entry.version) {
             throw new Error(
-                `${entry.url} ships ${manifest.name} ${manifest.version}, but mods.json pins ` +
+                `${entry.url} ships ${manifest.name} ${manifest.version}, but the server pins ` +
                 `${entry.name} ${entry.version}`,
             );
         }

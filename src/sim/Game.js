@@ -2,7 +2,7 @@ import {TickEndEvent} from "@/common/CoreEvents.js";
 import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {PlayerSettingsToolOrderSyncEvent} from "@/common/PlayerSettingsToolOrderEvents.js";
-import {GameSettingsSyncEvent} from "@/common/GameSettingsEvents.js";
+import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {
     AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage, SetPlayerSettingMessage,
     SetPlayerSettingsToolOrderMessage,
@@ -210,7 +210,16 @@ export class Game {
         if (stored === null) {
             return false;
         }
-        const snapshot = migrateSnapshot(stored);
+        this.loadSnapshot(migrateSnapshot(stored));
+        return true;
+    }
+
+    /**
+     * Restores the world from a snapshot at the current format.
+     * @param {object} snapshot
+     * @returns {void}
+     */
+    loadSnapshot(snapshot) {
         this.simEngine.snapshots.deserialize(snapshot);
         this._applySeed(this.simEngine.seed);
         const records = snapshot.records === undefined ? [] : snapshot.records;
@@ -222,10 +231,19 @@ export class Game {
         for (const mod of this.modRegistry.simMods) {
             mod.deserializeRecords(byName);
         }
-        return true;
     }
 
     // ---- Sessions ----
+
+    /**
+     * Changes the real-time length of a tick and tells every client, which read it for rates.
+     * @param {number} tickMs
+     * @returns {void}
+     */
+    setTickMs(tickMs) {
+        this.gameSettings.set(GameSettingsKey.TICK_MS, tickMs);
+        this.bus.publishToAll(new GameSettingsUpdateEvent(GameSettingsKey.TICK_MS, tickMs));
+    }
 
     /**
      * @param {AbstractSession} session

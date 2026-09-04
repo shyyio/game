@@ -11,7 +11,6 @@ import {ModRegistry} from "@/common/ModRegistry.js";
 import {formatIntegrity} from "@/common/ModIntegrity.js";
 import {SDK_VERSION} from "@/common/ModManifest.js";
 import {ModLockfile} from "@/common/ModLockfile.js";
-import {readLockfile, writeLockfile} from "@/server/modLockfileFile.js";
 import {ModCache, resolvePackage, sha256Hex} from "@/server/ModCache.js";
 import {loadPackagedMods} from "@/server/ModLoader.js";
 import {ModHost} from "@/server/ModHost.js";
@@ -129,12 +128,8 @@ test("a package whose bytes drift from the pin refuses to cache", async (t) => {
     await assert.rejects(() => cache.populate(lockfile), /pins sha256-0{64}/);
 });
 
-test("mods.json round-trips through parse and write", async (t) => {
-    const root = tempRoot(t);
+test("a pinned loadout round-trips through JSON", async () => {
     const lockfile = await pinLoadout();
-    const path = join(root, "mods.json");
-    writeLockfile(lockfile, path);
-
-    assert.deepEqual(readLockfile(path).toJSON(), lockfile.toJSON());
+    assert.deepEqual(ModLockfile.parse(lockfile.toJSON()).toJSON(), lockfile.toJSON());
     assert.throws(() => ModLockfile.parse({mods: [{name: "x"}]}), /must end in/);
 });

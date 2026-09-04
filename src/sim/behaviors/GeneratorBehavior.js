@@ -37,15 +37,15 @@ export class GeneratorBehavior extends AbstractBehavior {
             {name: "out", kind: "eid", fill: NO_EID},
             {name: "remaining", kind: "f32", fill: EMPTY},
             {name: "carry", kind: "f32"},
-            {name: "output", fill: EMPTY},
-            {name: "lastOutput", fill: EMPTY},
+            {name: "output", kind: "item", fill: EMPTY},
+            {name: "lastOutput", kind: "item", fill: EMPTY},
             {name: "processingTicks"},
             // Secondary cycle; unused columns stay at fill for a type with no secondary port.
             {name: "out2", kind: "eid", fill: NO_EID},
             {name: "remaining2", kind: "f32", fill: EMPTY},
             {name: "carry2", kind: "f32"},
-            {name: "output2", fill: EMPTY},
-            {name: "lastOutput2", fill: EMPTY},
+            {name: "output2", kind: "item", fill: EMPTY},
+            {name: "lastOutput2", kind: "item", fill: EMPTY},
             {name: "processingTicks2"},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GeneratorBehavior._submitIntents(engine));

@@ -78,39 +78,50 @@ export class TextureRegistry {
     }
 
     /**
+     * Loads the atlases in the order given, so a frame name two of them share belongs to the later
+     * one: the core atlas first, then the mods in load order, and a mod can replace any texture.
      * @param {TextureAtlas[]} atlases
      * @returns {Promise<void>}
      */
     async load(atlases) {
-        await Promise.all(atlases.map(async atlas => {
-            // A packaged mod's atlas arrives as a blob URL, which carries no extension for pixi to
-            // pick a parser from; naming the texture parser makes both that and a plain URL work.
-            const imageTexture = await Assets.load({src: atlas.imageUrl, parser: "texture"});
-            // Frames draw from a canvas copy so the sprite editor can repaint them in place.
-            const canvas = document.createElement("canvas");
-            canvas.width = imageTexture.source.pixelWidth;
-            canvas.height = imageTexture.source.pixelHeight;
-            canvas.getContext("2d", {willReadFrequently: true}).drawImage(imageTexture.source.resource, 0, 0);
-            await Assets.unload(atlas.imageUrl);
-
-            const source = new CanvasSource({resource: canvas, resolution: 1, scaleMode: "nearest"});
-            // TexturePacker sets scale=2 because source art was upscaled 2x; override so Pixi renders frames at actual pixel size.
-            const data = {...atlas.sheetData, meta: {...atlas.sheetData.meta, scale: "1"}};
-            const sheet = new Spritesheet(new Texture({source}), data);
-            await sheet.parse();
-            Object.assign(this.textures, sheet.textures);
-
-            const name = atlasName(atlas.sheetData);
-            if (this.atlases.has(name)) {
-                throw new Error(`Duplicate atlas "${name}"`);
-            }
-            const loaded = new LoadedAtlas(name, atlas.imageUrl, atlas.sheetData, canvas, source);
-            this.atlases.set(name, loaded);
-            for (const frameName of loaded.frameNames) {
-                this._atlasByFrame.set(frameName, loaded);
-            }
-        }));
+        for (const atlas of atlases) {
+            await this._loadAtlas(atlas);
+        }
         this._buildAnimations();
+    }
+
+    /**
+     * @private
+     * @param {TextureAtlas} atlas
+     * @returns {Promise<void>}
+     */
+    async _loadAtlas(atlas) {
+        // A packaged mod's atlas arrives as a blob URL, which carries no extension for pixi to
+        // pick a parser from; naming the texture parser makes both that and a plain URL work.
+        const imageTexture = await Assets.load({src: atlas.imageUrl, parser: "texture"});
+        // Frames draw from a canvas copy so the sprite editor can repaint them in place.
+        const canvas = document.createElement("canvas");
+        canvas.width = imageTexture.source.pixelWidth;
+        canvas.height = imageTexture.source.pixelHeight;
+        canvas.getContext("2d", {willReadFrequently: true}).drawImage(imageTexture.source.resource, 0, 0);
+        await Assets.unload(atlas.imageUrl);
+
+        const source = new CanvasSource({resource: canvas, resolution: 1, scaleMode: "nearest"});
+        // TexturePacker sets scale=2 because source art was upscaled 2x; override so Pixi renders frames at actual pixel size.
+        const data = {...atlas.sheetData, meta: {...atlas.sheetData.meta, scale: "1"}};
+        const sheet = new Spritesheet(new Texture({source}), data);
+        await sheet.parse();
+        Object.assign(this.textures, sheet.textures);
+
+        const name = atlasName(atlas.sheetData);
+        if (this.atlases.has(name)) {
+            throw new Error(`Duplicate atlas "${name}"`);
+        }
+        const loaded = new LoadedAtlas(name, atlas.imageUrl, atlas.sheetData, canvas, source);
+        this.atlases.set(name, loaded);
+        for (const frameName of loaded.frameNames) {
+            this._atlasByFrame.set(frameName, loaded);
+        }
     }
 
     /**

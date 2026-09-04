@@ -6,6 +6,8 @@ import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
 import {PlayerSettingEntry} from "@/common/PlayerSettingEntry.js";
 import {ItemDefinition} from "@/common/ItemDefinition.js";
 import {ItemCategory} from "@/common/ItemCategory.js";
+import {ObjectType, PlacementRule} from "@/common/ObjectType.js";
+import {StaticBehavior} from "@/common/behaviors/StaticBehavior.js";
 
 const MOD_KEY = 900;
 const MOD_ITEM_TYPE = 910;
@@ -113,4 +115,73 @@ test("same-name item categories across mods merge, sorted by name", () => {
         new ItemCategory("Fluids", {[MOD_ITEM_TYPE]: water, [MOD_ITEM_TYPE + 1]: brine}),
         new ItemCategory("Ores", {[MOD_ITEM_TYPE + 2]: iron}),
     ]);
+});
+
+/**
+ * @param {string} name
+ * @returns {ObjectType}
+ */
+function objectType(name) {
+    return new ObjectType({
+        name,
+        geometry: "1x1",
+        textureName: "demo-machine/0",
+        label: name,
+        placement: new PlacementRule({}),
+        behavior: new StaticBehavior(),
+    });
+}
+
+class TypesDeclaration extends AbstractModDeclaration {
+
+    /**
+     * @param {string} name
+     * @param {ObjectType[]} types
+     */
+    constructor(name, types) {
+        super();
+        this._name = name;
+        this._types = types;
+    }
+
+    get name() {
+        return this._name;
+    }
+
+    get objectTypes() {
+        return this._types;
+    }
+}
+
+/**
+ * @param {Array<[string, ObjectType[]]>} mods
+ * @returns {ModRegistry}
+ */
+function frozen(mods) {
+    const registry = new ModRegistry();
+    for (const [name, types] of mods) {
+        registry.register(new ModPackage(new TypesDeclaration(name, types)));
+    }
+    registry.freeze();
+    return registry;
+}
+
+test("a loadout that drops a mod renumbers the object types it keeps", () => {
+    const first = objectType("First");
+    const second = objectType("Second");
+    frozen([["A", [first]], ["B", [second]]]);
+    assert.deepEqual([first.typeId, second.typeId], [0, 1]);
+
+    frozen([["B", [second]]]);
+    assert.equal(second.typeId, 0);
+});
+
+test("a registry takes its own typeIds back after another loadout froze over them", () => {
+    const first = objectType("Third");
+    const second = objectType("Fourth");
+    const registry = frozen([["A", [first]], ["B", [second]]]);
+    frozen([["B", [second]]]);
+
+    registry.claimTypeIds();
+    assert.deepEqual([first.typeId, second.typeId], [0, 1]);
 });

@@ -6,7 +6,7 @@ import {centerPixel} from "@/test/png.js";
 import * as Theme from "@/client/Theme.js";
 import * as TextInput from "@/client/hud/TextInput.js";
 
-const UI_SPRITES = "src/mods/BaseTextures/sprites/main/ui/";
+const UI_SPRITES = "src/client/CoreTextures/sprites/ui/";
 
 // The level each theme is held to: the high-contrast one exists to clear AAA.
 const THEME_LEVELS = [

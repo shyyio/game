@@ -28,7 +28,7 @@ export async function fetchModLoadout(serverUrl) {
         throw new Error("This server runs mods built for a newer game; update your client to join it");
     }
     if (index.sdkVersion !== SDK_VERSION) {
-        throw new Error(`This server runs mods built for game SDK ${index.sdkVersion}; this client speaks ${SDK_VERSION}`);
+        throw new Error(`Incompatible game server, expected SDK ${SDK_VERSION}, got ${index.sdkVersion}`);
     }
 
     // A served file's name is its hash, so the index carries no separate integrity map.

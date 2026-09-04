@@ -4,7 +4,7 @@ import {useRoute, useRouter} from "vue-router";
 import {ORIGIN_PATTERN, USERNAME_PATTERN, USERNAME_PATTERN_HINT} from "@/common/constants.js";
 import ServerList from "@/components/ServerList.vue";
 import {hasSessionToken, login as authClientLogin, mintJoinToken} from "@/client/AuthClient.js";
-import {GAME_MODE_LOCAL, GAME_MODE_REMOTE, startGame, startError} from "@/client/GameStart.js";
+import {GAME_MODE_LOCAL, GAME_MODE_REMOTE, startGame, startError, takeRejoin} from "@/client/GameStart.js";
 import {readLocalLoadout} from "@/client/LocalLoadout.js";
 
 const STORAGE_USERNAME = "spup.username";
@@ -27,6 +27,15 @@ watch(() => route.name, () => {
   localModCount.value = countLocalMods();
 });
 
+// A server that changed its mods reloaded this page; go straight back in. Taken only on the server
+// list, so landing anywhere else keeps the target for when the player gets there.
+if (route.name === "servers") {
+  const rejoin = takeRejoin();
+  if (rejoin !== null) {
+    selectServer(rejoin);
+  }
+}
+
 function usernameValid() {
   return USERNAME_PATTERN.test(username.value);
 }
@@ -44,13 +53,13 @@ function countLocalMods() {
 
 const localModsLabel = computed(() => {
   if (localModCount.value === 0) {
-    return "Mods";
+    return "Settings";
   }
-  return `Mods (${localModCount.value})`;
+  return `Settings (${localModCount.value} mods)`;
 });
 
-function browseMods() {
-  router.push({name: "mods"});
+function localSettings() {
+  router.push({name: "local"});
 }
 
 function playLocal() {
@@ -130,7 +139,7 @@ function back() {
       </v-card-text>
       <v-card-actions>
         <v-btn variant="text" @click="playLocal">Play local</v-btn>
-        <v-btn variant="text" @click="browseMods">{{ localModsLabel }}</v-btn>
+        <v-btn variant="text" @click="localSettings">{{ localModsLabel }}</v-btn>
         <v-spacer/>
         <v-btn color="primary" variant="flat" :disabled="!usernameValid() || connecting" :loading="connecting" @click="login">Log in</v-btn>
       </v-card-actions>
@@ -141,7 +150,7 @@ function back() {
         :error="error"
         @select="selectServer"
         @back="back"
-        @mods="browseMods"
+        @mods="localSettings"
         @unauthorized="unauthorized"
     />
   </div>

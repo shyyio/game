@@ -4,6 +4,13 @@ import {AbstractSaveStore} from "@/common/AbstractSaveStore.js";
 const SAVE_KEY = "spup.save";
 
 /**
+ * @returns {boolean} whether a local world is saved
+ */
+export function hasLocalSave() {
+    return localStorage.getItem(SAVE_KEY) !== null;
+}
+
+/**
  * Browser {@link AbstractSaveStore}: persists the snapshot as one JSON blob in localStorage.
  */
 export class ClientSaveStore extends AbstractSaveStore {
