@@ -20,17 +20,14 @@ export function sha256Hex(bytes) {
 }
 
 /**
- * Downloads one package file. `file:` URLs and plain paths read from disk, so a local build can be
- * pinned and tested without a server.
+ * Downloads one package file. A `file:` URL reads from disk, which is how the base mods a build
+ * ships are pinned without a server.
  * @param {string} url
  * @returns {Promise<Uint8Array>}
  */
 export async function fetchPackageFile(url) {
     if (url.startsWith("file:")) {
         return await readFile(fileURLToPath(url));
-    }
-    if (!url.includes("://")) {
-        return await readFile(url);
     }
     const response = await fetch(url);
     if (!response.ok) {

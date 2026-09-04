@@ -73,6 +73,9 @@ export class ModLockEntry {
         if (typeof json.url !== "string" || !json.url.endsWith("/")) {
             throw new Error(`A mod's url must end in "/": ${JSON.stringify(json.url)}`);
         }
+        if (!json.url.includes("://")) {
+            throw new Error(`A mod's url needs a scheme: ${JSON.stringify(json.url)}`);
+        }
         if (typeof json.name !== "string" || typeof json.version !== "string") {
             throw new Error(`Mod entry for ${json.url} is missing its name or version`);
         }
