@@ -5,7 +5,7 @@ import {mkdtempSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {SigningKeys} from "@/authserver/SigningKeys.js";
-import {JoinTokenService} from "@/authserver/JoinTokenService.js";
+import {JoinTokenService, RECONNECT_ABSOLUTE_TTL_S} from "@/authserver/JoinTokenService.js";
 import {AccountRecord} from "@/authserver/AccountRegistry.js";
 import {ORIGIN_PATTERN} from "@/common/constants.js";
 
@@ -76,4 +76,54 @@ test("origin pattern requires scheme, lowercase host, explicit port", () => {
     assert.equal(ORIGIN_PATTERN.test("wss://Example.com:443"), false, "uppercase host");
     assert.equal(ORIGIN_PATTERN.test("wss://example.com"), false, "missing port");
     assert.equal(ORIGIN_PATTERN.test("wss://example.com:443/"), false, "trailing slash");
+});
+
+test("origin pattern requires a port inside the 1-65535 range", () => {
+    assert.equal(ORIGIN_PATTERN.test("wss://example.com:1"), true);
+    assert.equal(ORIGIN_PATTERN.test("wss://example.com:65535"), true);
+    assert.equal(ORIGIN_PATTERN.test("wss://example.com:65536"), false, "past the range");
+    assert.equal(ORIGIN_PATTERN.test("wss://example.com:99999"), false, "past the range");
+    assert.equal(ORIGIN_PATTERN.test("wss://example.com:0"), false, "port zero");
+    assert.equal(ORIGIN_PATTERN.test("wss://example.com:0443"), false, "leading zero");
+});
+
+test("a fresh reconnect token verifies and carries its issue time", () => {
+    const joinTokens = new JoinTokenService(freshSigningKeys(), randomBytes(32));
+    const nowS = Math.floor(Date.now() / 1000);
+
+    const claims = joinTokens.verifyReconnect(joinTokens.mintReconnect(new AccountRecord(7, "alice", 0), ORIGIN));
+
+    assert.equal(claims.accountId, 7);
+    assert.equal(claims.origin, ORIGIN);
+    assert.ok(Math.abs(claims.issuedAtS - nowS) <= 1);
+});
+
+test("a renewal carries the original issue time forward", () => {
+    const joinTokens = new JoinTokenService(freshSigningKeys(), randomBytes(32));
+    const issuedAtS = Math.floor(Date.now() / 1000) - 3600;
+
+    const renewed = joinTokens.renewReconnect({accountId: 7, origin: ORIGIN, issuedAtS});
+
+    assert.deepEqual(joinTokens.verifyReconnect(renewed), {accountId: 7, origin: ORIGIN, issuedAtS});
+});
+
+test("a renewal chain past the absolute lifetime is refused", () => {
+    const joinTokens = new JoinTokenService(freshSigningKeys(), randomBytes(32));
+    const issuedAtS = Math.floor(Date.now() / 1000) - RECONNECT_ABSOLUTE_TTL_S - 1;
+
+    const renewed = joinTokens.renewReconnect({accountId: 7, origin: ORIGIN, issuedAtS});
+
+    assert.equal(joinTokens.verifyReconnect(renewed), null);
+});
+
+test("a forged reconnect signature is refused", () => {
+    const joinTokens = new JoinTokenService(freshSigningKeys(), randomBytes(32));
+    const [payload] = joinTokens.mintReconnect(new AccountRecord(7, "alice", 0), ORIGIN).split(".");
+    const forger = new JoinTokenService(freshSigningKeys(), randomBytes(32));
+
+    const forged = forger.mintReconnect(new AccountRecord(7, "alice", 0), ORIGIN);
+
+    assert.equal(joinTokens.verifyReconnect(forged), null, "signed with another secret");
+    assert.equal(joinTokens.verifyReconnect(payload), null, "no signature at all");
+    assert.equal(joinTokens.verifyReconnect(`${payload}.deadbeef`), null, "truncated signature");
 });

@@ -110,8 +110,26 @@ export function rejectRequest(res, status, message, {cors = false} = {}) {
 }
 
 /**
+ * Wraps a route handler so a throw answers 500. uWS terminates the process when a handler returns
+ * without responding, which a throw does, so this has to sit inside the handler: a process-level
+ * uncaughtException hook runs too late to stop it.
+ * @param {(res: object, req: object) => void} handler
+ * @returns {(res: object, req: object) => void}
+ */
+export function guarded(handler) {
+    return (res, req) => {
+        try {
+            handler(res, req);
+        } catch (error) {
+            console.error("Request handler threw:", error);
+            rejectRequest(res, "500 Internal Server Error", "Internal error", {cors: true});
+        }
+    };
+}
+
+/**
  * Buffers a request body, parses it as JSON, and hands the value to onJson; a body that is not
- * JSON is rejected here and onJson never runs.
+ * JSON is rejected here and onJson never runs. A throw out of onJson answers 500.
  * @param {object} res
  * @param {(payload: *) => void} onJson
  * @returns {void}
@@ -131,7 +149,12 @@ export function readJson(res, onJson) {
             rejectRequest(res, "400 Bad Request", "Malformed JSON body", {cors: true});
             return;
         }
-        onJson(payload);
+        try {
+            onJson(payload);
+        } catch (error) {
+            console.error("Request handler threw:", error);
+            rejectRequest(res, "500 Internal Server Error", "Internal error", {cors: true});
+        }
     });
 }
 

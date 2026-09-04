@@ -47,6 +47,9 @@ systemctl restart nginx
 # services on this host, overriding the distro default.
 install -m 644 "${SCRIPT_DIR}/logrotate-nginx.conf" /etc/logrotate.d/nginx
 
+# nft -f flushes the ruleset before it parses, so a syntax error would leave the host with a
+# bare drop policy and no way back in.
+nft -c -f "${SCRIPT_DIR}/nftables.conf"
 cp "${SCRIPT_DIR}/nftables.conf" /etc/nftables.conf
 systemctl enable nftables
 systemctl restart nftables

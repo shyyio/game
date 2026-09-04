@@ -8,6 +8,15 @@ import {AuthHttpServer} from "@/authserver/AuthHttpServer.js";
 import {ServerDirectory} from "@/authserver/ServerDirectory.js";
 import {bindShutdownSignals} from "@/nodeservice/cliShutdown.js";
 
+// A throw inside a uWS handler would otherwise take the process down, and a repeatable one
+// exhausts the unit's restart budget and parks it in "failed". Log and keep serving.
+process.on("uncaughtException", error => {
+    console.error("Uncaught exception:", error);
+});
+process.on("unhandledRejection", reason => {
+    console.error("Unhandled rejection:", reason);
+});
+
 const {values: args} = parseArgs({
     options: {
         "db": {type: "string", default: "auth.sqlite3"},

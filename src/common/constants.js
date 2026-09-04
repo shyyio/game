@@ -181,4 +181,4 @@ export const REPORTING_URL = "https://bugs.spupgame.com/report";
 // A game server's canonical origin per docs/auth.md: scheme, lowercase host, explicit port, no
 // trailing slash. Shared by the auth server (validates /join) and the client (normalizes before
 // asking for a token), so the two never disagree on what counts as a valid origin.
-export const ORIGIN_PATTERN = /^wss?:\/\/[a-z0-9.-]+:[0-9]{1,5}$/;
+export const ORIGIN_PATTERN = /^wss?:\/\/[a-z0-9.-]+:(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$/;

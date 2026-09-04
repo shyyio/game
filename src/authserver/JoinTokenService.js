@@ -4,6 +4,9 @@ const JOIN_TOKEN_TTL_S = 300;
 // A reconnect token lives as long as a play session plausibly does; it buys only fresh join tokens
 // for the one origin it was minted for.
 const RECONNECT_TOKEN_TTL_S = 12 * 60 * 60;
+// A renewal chain ends here however often it is refreshed, so a leaked reconnect token can't be
+// kept alive forever.
+export const RECONNECT_ABSOLUTE_TTL_S = 7 * 24 * 60 * 60;
 
 /**
  * Mints short-lived, Ed25519-signed join tokens; the subject is pairwise per (account, origin)
@@ -49,17 +52,23 @@ export class JoinTokenService {
      * @returns {string}
      */
     mintReconnect(account, origin) {
-        const payload = base64url({
-            sub: account.accountId,
-            aud: origin,
-            exp: Math.floor(Date.now() / 1000) + RECONNECT_TOKEN_TTL_S,
-        });
-        return `${payload}.${this._reconnectSignature(payload)}`;
+        return this._signReconnect(account.accountId, origin, Math.floor(Date.now() / 1000));
+    }
+
+    /**
+     * The replacement for a reconnect token being spent, carrying the original issue time so the
+     * renewal chain still ends at the absolute lifetime.
+     * @param {{accountId: number, origin: string, issuedAtS: number}} claims
+     * @returns {string}
+     */
+    renewReconnect({accountId, origin, issuedAtS}) {
+        return this._signReconnect(accountId, origin, issuedAtS);
     }
 
     /**
      * @param {string} token
-     * @returns {{accountId: number, origin: string}|null} null when malformed, forged, or expired
+     * @returns {{accountId: number, origin: string, issuedAtS: number}|null} null when malformed,
+     *     forged, expired, or past the absolute renewal lifetime
      */
     verifyReconnect(token) {
         const [payload, signature] = String(token).split(".");
@@ -77,13 +86,34 @@ export class JoinTokenService {
         } catch {
             return null;
         }
-        if (typeof claims.sub !== "number" || typeof claims.aud !== "string" || typeof claims.exp !== "number") {
+        if (typeof claims.sub !== "number" || typeof claims.aud !== "string") {
             return null;
         }
-        if (Math.floor(Date.now() / 1000) >= claims.exp) {
+        if (typeof claims.exp !== "number" || typeof claims.iat !== "number") {
             return null;
         }
-        return {accountId: claims.sub, origin: claims.aud};
+        const nowS = Math.floor(Date.now() / 1000);
+        if (nowS >= claims.exp || nowS >= claims.iat + RECONNECT_ABSOLUTE_TTL_S) {
+            return null;
+        }
+        return {accountId: claims.sub, origin: claims.aud, issuedAtS: claims.iat};
+    }
+
+    /**
+     * @private
+     * @param {number} accountId
+     * @param {string} origin
+     * @param {number} issuedAtS
+     * @returns {string}
+     */
+    _signReconnect(accountId, origin, issuedAtS) {
+        const payload = base64url({
+            sub: accountId,
+            aud: origin,
+            iat: issuedAtS,
+            exp: Math.floor(Date.now() / 1000) + RECONNECT_TOKEN_TTL_S,
+        });
+        return `${payload}.${this._reconnectSignature(payload)}`;
     }
 
     /**
