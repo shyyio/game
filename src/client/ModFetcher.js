@@ -9,6 +9,7 @@ import {SDK_VERSION} from "@/common/ModManifest.js";
 import {contentNameHex} from "@/common/ModIntegrity.js";
 import {httpOriginFor} from "@/common/util.js";
 import {ModFileStore, fetchPinnedFile, importBundle, instantiatePackage} from "@/client/ModPackageLoader.js";
+import {assertModsVerified} from "@/client/ModVerification.js";
 
 /**
  * The mods a server runs, as ModPackages in the server's order.
@@ -30,6 +31,7 @@ export async function fetchModLoadout(serverUrl) {
     if (index.sdkVersion !== SDK_VERSION) {
         throw new Error(`Incompatible game server, expected SDK ${SDK_VERSION}, got ${index.sdkVersion}`);
     }
+    await assertModsVerified(index.mods);
 
     // A served file's name is its hash, so the index carries no separate integrity map.
     const store = await ModFileStore.open();

@@ -110,14 +110,24 @@ test("sync-base re-pins built base mods in place and keeps the operator's other 
     );
 });
 
-test("add refuses a config still on the built-in loadout, which pinning one mod would replace", (t) => {
+test("add is not a verb: the admin page pins mods", (t) => {
     const path = join(tempDir(t), "server.json");
-    writeFileSync(path, JSON.stringify({name: "Mine"}));
+    writePinned(path);
     assert.throws(
         () => runCli(["add", "https://mods.example/widgets/1.0.0/", "--config", path]),
-        error => /sync-base/.test(error.stderr),
+        error => /usage:/.test(error.stderr) && !/mods add/.test(error.stderr),
     );
-    assert.equal(readServerConfigOrDefault(path).mods, null);
+    assert.deepEqual(readServerConfigOrDefault(path).lockfile.mods.map(mod => mod.version), ["2.1.0"]);
+});
+
+test("update is not a verb: the admin page re-pins mods", (t) => {
+    const path = join(tempDir(t), "server.json");
+    writePinned(path);
+    assert.throws(
+        () => runCli(["update", "logistics", "--config", path]),
+        error => /usage:/.test(error.stderr) && !/mods update/.test(error.stderr),
+    );
+    assert.deepEqual(readServerConfigOrDefault(path).lockfile.mods.map(mod => mod.version), ["2.1.0"]);
 });
 
 test("verify reads the mod cache relative to the config, not the working directory", (t) => {

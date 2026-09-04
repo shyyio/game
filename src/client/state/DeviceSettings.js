@@ -12,6 +12,8 @@ export const DEVICE_SETTING_TERRAIN = "spup.terrain";
 export const DEVICE_SETTING_FPS_CAP = "spup.fps-cap";
 // localStorage key for the UI scale preference.
 export const DEVICE_SETTING_UI_SCALE = "spup.ui-scale";
+// localStorage key for joining servers that pin mods no one has reviewed.
+export const DEVICE_SETTING_UNVERIFIED_MODS = "spup.unverified-mods";
 
 /**
  * Singleton for per-device preferences persisted in localStorage, never in saves.
