@@ -144,7 +144,7 @@ async function startServer(t, {worldLoaded = false, mods = null} = {}) {
     const routes = new AdminRoutes({
         configPath: join(dir, "server.json"),
         saved,
-        pinned: ["port"],
+        overridden: ["port"],
         runtime,
         adminDir: join(dir, "admin"),
     });
@@ -195,7 +195,7 @@ test("the state reports the saved and running configs without the token, the ove
     assert.equal(state.running.port, 2);
     assert.equal(state.saved.adminToken, undefined);
     assert.equal(state.running.adminToken, undefined);
-    assert.deepEqual(state.pinned, ["port"]);
+    assert.deepEqual(state.overridden, ["port"]);
     assert.deepEqual(state.world, {loaded: true, seed: 7});
     assert.equal(state.saved.mods, null);
     assert.equal(state.baseDir, "/srv/game");

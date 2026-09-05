@@ -30,7 +30,7 @@ const USAGE = [
  */
 function list(lockfile) {
     if (lockfile.mods.length === 0) {
-        console.log(`${args["config"]} pins no mods`);
+        console.log(`${args["config"]} lists no mods`);
         return;
     }
     for (const [index, entry] of lockfile.mods.entries()) {

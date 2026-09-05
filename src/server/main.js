@@ -66,7 +66,7 @@ if (mintedAdminToken) {
 }
 // A relative path in the file counts from the file's own directory, so a data directory moves as one.
 const baseDir = dirname(resolve(configPath));
-const {config, pinned} = saved.withOverrides({
+const {config, overridden} = saved.withOverrides({
     db: pathFlag("db"),
     metricsDb: pathFlag("metrics-db"),
     host: args["host"],
@@ -100,7 +100,7 @@ const runtime = new ServerRuntime({
     gameServer: server,
     config,
     baseDir,
-    pinned,
+    overridden,
     onTickError: error => {
         reportFatal(error, "Tick failed");
     },
@@ -111,7 +111,7 @@ const runtime = new ServerRuntime({
 new AdminRoutes({
     configPath,
     saved,
-    pinned,
+    overridden,
     runtime,
     adminDir,
 }).registerRoutes(server.app);

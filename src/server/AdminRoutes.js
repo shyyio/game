@@ -59,7 +59,7 @@ function tokenMatches(given, expected) {
 
 /**
  * The operator's admin page and its JSON API, under /admin on the game server's own port. The API
- * needs the config's admin token; what it saves, pinned mods included, goes live through the
+ * needs the config's admin token; what it saves, its mod list included, goes live through the
  * runtime at once.
  */
 export class AdminRoutes {
@@ -68,19 +68,19 @@ export class AdminRoutes {
      * @param {object} options
      * @param {string} options.configPath where a saved config goes
      * @param {ServerConfig} options.saved the config file as it stands
-     * @param {string[]} options.pinned fields a command-line flag overrode, read-only on the page
+     * @param {string[]} options.overridden fields a command-line flag set, read-only on the page
      * @param {ServerRuntime} options.runtime
      * @param {string} options.adminDir the built admin page
      */
     constructor({
             configPath,
             saved,
-            pinned,
+            overridden,
             runtime,
             adminDir}) {
         this._configPath = configPath;
         this._saved = saved;
-        this._pinned = pinned;
+        this._overridden = overridden;
         this._runtime = runtime;
         this._adminDir = resolve(adminDir);
         /**
@@ -165,7 +165,7 @@ export class AdminRoutes {
         return {
             saved: this._saved.toPublicJSON(),
             running: this._runtime.running.toPublicJSON(),
-            pinned: this._pinned,
+            overridden: this._overridden,
             world: {loaded: this._runtime.world.loaded, seed: this._runtime.world.game.seed},
             baseDir: this._runtime.baseDir,
         };
@@ -196,7 +196,7 @@ export class AdminRoutes {
 
     /**
      * Throws the saved world away and starts a fresh one on the config given, which may change
-     * anything a saved world pins down.
+     * anything a saved world fixes.
      * @private
      * @param {object} res
      * @param {object} json
@@ -229,7 +229,7 @@ export class AdminRoutes {
     }
 
     /**
-     * Fills the cache with any new pins, runs `applyToRuntime`, and writes the config only once
+     * Fills the cache with any new mods, runs `applyToRuntime`, and writes the config only once
      * that succeeded.
      * @private
      * @param {object} res

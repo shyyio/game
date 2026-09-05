@@ -1,4 +1,4 @@
-// Turns the pinned, cached packages into the server's loadout: one ModPackage per lockfile entry,
+// Turns the cached packages into the server's external mods: one ModPackage per lockfile entry,
 // in lockfile order (which is what assigns the positional typeIds and wireIds).
 
 import {pathToFileURL} from "node:url";
@@ -8,7 +8,7 @@ import {integrityHex, contentName} from "@/common/ModIntegrity.js";
 import * as sdk from "@/sdk/common.js";
 
 /**
- * One loaded package: what the lockfile pinned, and what its manifest declares.
+ * One loaded package: the entry that named it, and what its manifest declares.
  */
 export class PackagedMod {
 
@@ -35,7 +35,7 @@ export class PackagedMod {
 }
 
 /**
- * Loads every pinned mod's declaration and sim part.
+ * Loads every listed mod's declaration and sim part.
  * @param {ModLockfile} lockfile
  * @param {ModCache} cache
  * @returns {Promise<{packages: ModPackage[], mods: PackagedMod[]}>}
@@ -47,7 +47,7 @@ export async function loadPackagedMods(lockfile, cache) {
         const manifest = ModManifest.parse(cache.manifestJson(entry));
         if (manifest.name !== entry.name || manifest.version !== entry.version) {
             throw new Error(
-                `${entry.url} ships ${manifest.name} ${manifest.version}, but the server pins ` +
+                `${entry.url} ships ${manifest.name} ${manifest.version}, but the server lists ` +
                 `${entry.name} ${entry.version}`,
             );
         }
@@ -57,7 +57,7 @@ export async function loadPackagedMods(lockfile, cache) {
             );
         }
         const packaged = new PackagedMod(entry, manifest);
-        // Every file the manifest declares must be pinned, and every pinned file re-hashed, before
+        // Every file the manifest declares must be in the entry, and every one re-hashed, before
         // any of it is imported.
         for (const file of manifest.files) {
             cache.read(packaged.contentNameOf(file));

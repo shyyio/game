@@ -1,4 +1,4 @@
-// Content hashes pin every packaged mod file. One algorithm (sha-256, lowercase hex) keeps the
+// Content hashes identify every packaged mod file. One algorithm (sha-256, lowercase hex) keeps the
 // lockfile, the server's cache file names, and the client's verification a single format.
 
 const INTEGRITY_PREFIX = "sha256-";
@@ -9,14 +9,14 @@ const HEX_PATTERN = /^[0-9a-f]{64}$/;
 
 /**
  * @param {string} hex
- * @returns {string} the pinned form, e.g. "sha256-ab12..."
+ * @returns {string} the integrity form, e.g. "sha256-ab12..."
  */
 export function formatIntegrity(hex) {
     return `${INTEGRITY_PREFIX}${hex}`;
 }
 
 /**
- * The hex digest of a pinned integrity string; throws on anything else.
+ * The hex digest of an integrity string; throws on anything else.
  * @param {string} integrity
  * @returns {string}
  */

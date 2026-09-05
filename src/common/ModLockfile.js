@@ -1,6 +1,7 @@
-// An ordered, hash-pinned list of packaged mods. Order is loadout order (it assigns the positional
-// typeIds/wireIds), so reordering is a save-breaking change. Nothing updates a pin implicitly — on a
-// server only the admin page and the `mods` CLI rewrite the pins in server.json, in the browser only
+// An ordered list of packaged mods, each with the hash of every file it consists of. Order is loadout
+// order (it assigns the positional typeIds/wireIds), so reordering is a save-breaking change. Nothing
+// rewrites an entry implicitly — on a server only the admin page and the `mods` CLI rewrite the list
+// in server.json, in the browser only
 // the local-loadout editor.
 
 import {integrityHex} from "@/common/ModIntegrity.js";
@@ -10,7 +11,7 @@ const ENTRY_KEYS = ["url", "name", "version", "integrity"];
 export const MANIFEST_FILE = "mod.json";
 
 /**
- * One pinned mod: where it came from, and the hash of every file the package consists of.
+ * One mod in the list: where it came from, and the hash of every file the package consists of.
  */
 export class ModLockEntry {
 
@@ -33,16 +34,16 @@ export class ModLockEntry {
     }
 
     /**
-     * The pinned hash of a package file; throws when the file is not pinned.
+     * The recorded hash of a package file; throws when the entry records none for it.
      * @param {string} file
      * @returns {string}
      */
     integrityOf(file) {
-        const pinned = this.integrity.get(file);
-        if (pinned === undefined) {
-            throw new Error(`Mod "${this.name}" pins no hash for ${file}`);
+        const hash = this.integrity.get(file);
+        if (hash === undefined) {
+            throw new Error(`Mod "${this.name}" records no hash for ${file}`);
         }
-        return pinned;
+        return hash;
     }
 
     /**
@@ -63,11 +64,11 @@ export class ModLockEntry {
      */
     static parse(json) {
         if (json === null || typeof json !== "object" || Array.isArray(json)) {
-            throw new Error("A pinned mod entry must be an object");
+            throw new Error("A mod entry must be an object");
         }
         for (const key of Object.keys(json)) {
             if (!ENTRY_KEYS.includes(key)) {
-                throw new Error(`Unknown key "${key}" in a pinned mod entry`);
+                throw new Error(`Unknown key "${key}" in a mod entry`);
             }
         }
         if (typeof json.url !== "string" || !json.url.endsWith("/")) {
@@ -88,7 +89,7 @@ export class ModLockEntry {
             integrity.set(file, value);
         }
         if (!integrity.has(MANIFEST_FILE)) {
-            throw new Error(`Mod "${json.name}" does not pin ${MANIFEST_FILE}`);
+            throw new Error(`Mod "${json.name}" records no hash for ${MANIFEST_FILE}`);
         }
         return new ModLockEntry(json.url, json.name, json.version, integrity);
     }

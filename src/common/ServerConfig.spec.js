@@ -26,7 +26,7 @@ test("a config round-trips through JSON with every field present", () => {
     assert.deepEqual(ServerConfig.parse(json).toJSON(), json);
 });
 
-test("the pinned mods are a lockfile, checked as one", () => {
+test("the mod list is a lockfile, checked as one", () => {
     assert.deepEqual(ServerConfig.parse({mods: [PIN]}).lockfile.mods.map(mod => mod.name), ["widgets"]);
     assert.deepEqual(ServerConfig.parse({}).lockfile.mods, []);
     assert.throws(() => ServerConfig.parse({mods: [{name: "x"}]}), /url/);
@@ -34,11 +34,11 @@ test("the pinned mods are a lockfile, checked as one", () => {
     assert.deepEqual(ServerConfig.parse({mods: []}).lockfile.mods, []);
 });
 
-test("a change to the pinned mods counts as a difference, an equal list does not", () => {
-    const pinned = ServerConfig.parse({mods: [PIN]});
-    assert.deepEqual(pinned.diff(ServerConfig.parse({mods: [PIN]})), []);
-    assert.deepEqual(pinned.diff(ServerConfig.parse({mods: [Object.assign({}, PIN, {version: "1.1.0"})]})), ["mods"]);
-    assert.deepEqual(pinned.diff(ServerConfig.parse({})), ["mods"]);
+test("a change to the mod list counts as a difference, an equal list does not", () => {
+    const listed = ServerConfig.parse({mods: [PIN]});
+    assert.deepEqual(listed.diff(ServerConfig.parse({mods: [PIN]})), []);
+    assert.deepEqual(listed.diff(ServerConfig.parse({mods: [Object.assign({}, PIN, {version: "1.1.0"})]})), ["mods"]);
+    assert.deepEqual(listed.diff(ServerConfig.parse({})), ["mods"]);
 });
 
 test("an unknown key, a bad origin, a bad seed, and a bad port are all refused", () => {
@@ -51,13 +51,13 @@ test("an unknown key, a bad origin, a bad seed, and a bad port are all refused",
     assert.throws(() => ServerConfig.parse({name: ""}), /name/);
 });
 
-test("overrides win over the file, and name what they pinned", () => {
+test("overrides win over the file, and name what they set", () => {
     const config = ServerConfig.parse({port: 1234, name: "File"});
-    const {config: overridden, pinned} = config.withOverrides({port: 4321, seed: 9});
-    assert.equal(overridden.port, 4321);
-    assert.equal(overridden.seed, 9);
-    assert.equal(overridden.name, "File");
-    assert.deepEqual(pinned, ["port", "seed"]);
+    const {config: applied, overridden} = config.withOverrides({port: 4321, seed: 9});
+    assert.equal(applied.port, 4321);
+    assert.equal(applied.seed, 9);
+    assert.equal(applied.name, "File");
+    assert.deepEqual(overridden, ["port", "seed"]);
     assert.equal(config.port, 1234);
 });
 

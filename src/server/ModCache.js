@@ -1,6 +1,6 @@
 // The server's content-addressed store of packaged mod files. Every file is re-hashed before it is
 // written and again on demand, and is stored under its own digest — a mismatch anywhere refuses to
-// boot rather than running code the lockfile does not pin.
+// boot rather than running code the mod list does not name.
 
 import {createHash} from "node:crypto";
 import {readFileSync, writeFileSync, existsSync, mkdirSync} from "node:fs";
@@ -21,7 +21,7 @@ export function sha256Hex(bytes) {
 
 /**
  * Downloads one package file. A `file:` URL reads from disk, which is how the base mods a build
- * ships are pinned without a server.
+ * ships are read without a server.
  * @param {string} url
  * @returns {Promise<Uint8Array>}
  */
@@ -37,7 +37,7 @@ export async function fetchPackageFile(url) {
 }
 
 /**
- * Fetches a package and pins the hash of every file it declares, for the CLI to write into the
+ * Fetches a package and records the hash of every file it declares, for the CLI to write into the
  * lockfile.
  * @param {string} url the mod's base URL
  * @param {function(string): Promise<Uint8Array>} [fetchFile]
@@ -101,7 +101,7 @@ export class ModCache {
 
     /**
      * Fills the cache from the lockfile, fetching only what is missing and refusing any file whose
-     * hash differs from its pin.
+     * hash differs from what the entry records.
      * @param {ModLockfile} lockfile
      * @returns {Promise<number>} how many files were downloaded
      */
@@ -118,7 +118,7 @@ export class ModCache {
                 const hex = sha256Hex(bytes);
                 if (formatIntegrity(hex) !== integrity) {
                     throw new Error(
-                        `${entry.url}${file} hashes to ${formatIntegrity(hex)}, but "${entry.name}" pins ${integrity}`,
+                        `${entry.url}${file} hashes to ${formatIntegrity(hex)}, but "${entry.name}" records ${integrity}`,
                     );
                 }
                 writeFileSync(this.pathOf(name), bytes);
@@ -129,7 +129,7 @@ export class ModCache {
     }
 
     /**
-     * Re-hashes every pinned file already in the cache.
+     * Re-hashes every file already in the cache.
      * @param {ModLockfile} lockfile
      * @returns {string[]} the problems found, empty when the cache is intact
      */
@@ -144,7 +144,7 @@ export class ModCache {
                 }
                 const hex = sha256Hex(readFileSync(this.pathOf(name)));
                 if (formatIntegrity(hex) !== integrity) {
-                    problems.push(`${entry.name}: ${file} hashes to ${formatIntegrity(hex)}, pinned ${integrity}`);
+                    problems.push(`${entry.name}: ${file} hashes to ${formatIntegrity(hex)}, recorded ${integrity}`);
                 }
             }
         }
@@ -152,7 +152,7 @@ export class ModCache {
     }
 
     /**
-     * The parsed manifest of a pinned mod.
+     * The parsed manifest of a listed mod.
      * @param {ModLockEntry} entry
      * @returns {object} the raw mod.json payload
      */

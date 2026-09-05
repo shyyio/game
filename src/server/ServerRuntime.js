@@ -45,7 +45,7 @@ export class ServerRuntime {
      * @param {GameServer} options.gameServer
      * @param {ServerConfig} options.config what the process booted with, paths as written
      * @param {string} options.baseDir what a relative path in the config counts from
-     * @param {string[]} [options.pinned] fields a command-line flag overrode; a save never moves them
+     * @param {string[]} [options.overridden] fields a command-line flag set; a save never moves them
      * @param {function(string): Promise<object>} [options.jwksVerifierFor] loads a verifier for an auth server
      * @param {function(ServerConfig, object=): Promise<World>} [options.bootWorld]
      * @param {function(ServerConfig): Promise<object>} [options.loadoutFor] what a config's mods declare
@@ -58,7 +58,7 @@ export class ServerRuntime {
             gameServer,
             config,
             baseDir,
-            pinned = [],
+            overridden = [],
             jwksVerifierFor = loadJwksVerifier,
             bootWorld = World.boot,
             loadoutFor = World.loadoutOf,
@@ -69,7 +69,7 @@ export class ServerRuntime {
         this._gameServer = gameServer;
         this._running = config;
         this._baseDir = baseDir;
-        this._pinned = pinned;
+        this._overridden = overridden;
         this._jwksVerifierFor = jwksVerifierFor;
         this._bootWorld = bootWorld;
         this._loadoutFor = loadoutFor;
@@ -210,7 +210,7 @@ export class ServerRuntime {
      */
     _withHeldFieldsKept(config) {
         const json = config.toJSON();
-        for (const key of RESTART_FIELDS.concat(this._pinned)) {
+        for (const key of RESTART_FIELDS.concat(this._overridden)) {
             json[key] = this._running[key];
         }
         return ServerConfig.parse(json);

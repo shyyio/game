@@ -117,14 +117,14 @@ test("a tampered file fails the hash check instead of loading", async (t) => {
     await assert.rejects(() => loadPackagedMods(lockfile, cache), /does not match its own hash/);
 });
 
-test("a package whose bytes drift from the pin refuses to cache", async (t) => {
+test("a package whose bytes drift from the recorded hash refuses to cache", async (t) => {
     const root = tempRoot(t);
     const lockfile = await lockfileFor();
     const entry = lockfile.find("fluids");
     entry.integrity.set("mod.js", formatIntegrity("0".repeat(64)));
 
     const cache = new ModCache(join(root, "cache"));
-    await assert.rejects(() => cache.populate(lockfile), /pins sha256-0{64}/);
+    await assert.rejects(() => cache.populate(lockfile), /records sha256-0{64}/);
 });
 
 test("a pinned loadout round-trips through JSON", async () => {
