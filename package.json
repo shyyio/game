@@ -19,7 +19,6 @@
     "build:auth": "vite build --config vite.auth.config.js",
     "build:reporting": "vite build --config vite.reporting.config.js",
     "serve": "node --import ./src/nodeservice/loader.js src/server/main.js",
-    "mods": "node --import ./src/nodeservice/loader.js src/server/modsCli.js",
     "serve:watch": "vite build --config vite.admin.config.js --watch & node --watch --import ./src/nodeservice/loader.js src/server/main.js",
     "serve:auth": "node --import ./src/nodeservice/loader.js src/authserver/main.js",
     "serve:auth:watch": "node --watch --import ./src/nodeservice/loader.js src/authserver/main.js",
