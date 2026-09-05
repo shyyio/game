@@ -140,17 +140,17 @@ const lockedSeed = computed(() => {
   return state.value.world.seed;
 });
 const pinnedNote = computed(() => {
-  if (state.value === null || state.value.pinned.length === 0) {
+  if (state.value === null || state.value.overridden.length === 0) {
     return "";
   }
-  return `Set on the command line, not here: ${state.value.pinned.join(", ")}`;
+  return `Set on the command line, not here: ${state.value.overridden.join(", ")}`;
 });
 const restartNote = computed(() => {
   if (state.value === null) {
     return "";
   }
   const changed = ServerConfig.parse(state.value.saved).diff(ServerConfig.parse(state.value.running))
-      .filter(key => !state.value.pinned.includes(key));
+      .filter(key => !state.value.overridden.includes(key));
   if (changed.length === 0) {
     return "";
   }
@@ -161,8 +161,8 @@ const restartNote = computed(() => {
  * @param {Field} field
  * @returns {boolean}
  */
-function pinned(field) {
-  return state.value.pinned.includes(field.key);
+function overridden(field) {
+  return state.value.overridden.includes(field.key);
 }
 
 /**
@@ -381,7 +381,7 @@ export default defineComponent({
             :persistent-hint="field.hint !== ''"
             :rules="field.rules"
             validate-on="input"
-            :disabled="pinned(field)"
+            :disabled="overridden(field)"
             autocomplete="off"
             class="mt-4"
             @update:model-value="setField(field, $event)"
@@ -403,7 +403,7 @@ export default defineComponent({
           />
           <TickMsField
               :model-value="config.tickMs"
-              :disabled="state.pinned.includes('tickMs')"
+              :disabled="state.overridden.includes('tickMs')"
               class="mt-4"
               @update:model-value="setValue('tickMs', $event)"
           />
@@ -412,7 +412,7 @@ export default defineComponent({
               :key="field.key"
               :model-value="fieldText(field)"
               :label="field.label"
-              :disabled="pinned(field)"
+              :disabled="overridden(field)"
               autocomplete="off"
               class="mt-4"
               @update:model-value="setField(field, $event)"
@@ -429,7 +429,7 @@ export default defineComponent({
               :prefix="pathPrefix(field)"
               :hint="field.hint"
               :persistent-hint="field.hint !== ''"
-              :disabled="pinned(field)"
+              :disabled="overridden(field)"
               autocomplete="off"
               class="mt-4"
               @update:model-value="setField(field, $event)"

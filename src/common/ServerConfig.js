@@ -28,7 +28,7 @@ const DEFAULTS = {
     seed: null,
     db: "world.sqlite3",
     metricsDb: "metrics.sqlite3",
-    // The loadout compiled into the build; a pinned list runs packages instead.
+    // The external mods this server runs on top of the loadout compiled into the build.
     mods: null,
     modsCache: "mods-cache",
     // What the admin page signs in with; the server generates one at boot when the file has none.
@@ -98,7 +98,7 @@ export class ServerConfig {
     }
 
     /**
-     * @returns {ModLockfile} the pinned mods, empty on the built-in loadout
+     * @returns {ModLockfile} the external mods, empty when the server runs none
      */
     get lockfile() {
         if (this.mods === null) {
@@ -119,19 +119,19 @@ export class ServerConfig {
     /**
      * This config with `values` on top: the flags an operator passed beside the file.
      * @param {object} values field -> value, only the fields to override
-     * @returns {{config: ServerConfig, pinned: string[]}} pinned names the overridden fields
+     * @returns {{config: ServerConfig, overridden: string[]}} which fields the overrides took
      */
     withOverrides(values) {
         const json = this.toJSON();
-        const pinned = [];
+        const overridden = [];
         for (const key of SERVER_CONFIG_FIELDS) {
             if (values[key] === undefined) {
                 continue;
             }
             json[key] = values[key];
-            pinned.push(key);
+            overridden.push(key);
         }
-        return {config: ServerConfig.parse(json), pinned};
+        return {config: ServerConfig.parse(json), overridden};
     }
 
     /**
@@ -171,7 +171,7 @@ export class ServerConfig {
         let mods = valueOf(json, "mods");
         if (mods !== null) {
             if (!Array.isArray(mods)) {
-                throw new Error("mods must be a list of pinned mods");
+                throw new Error("mods must be a list of mods");
             }
             mods = ModLockfile.parse({mods}).toJSON().mods;
         }

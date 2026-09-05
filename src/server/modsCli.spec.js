@@ -47,12 +47,12 @@ function writePinned(path) {
     writeFileSync(path, JSON.stringify({name: "Mine", mods: PINNED.mods}));
 }
 
-test("list reports a config without pins as pinning nothing", (t) => {
+test("list reports a config that names no mods", (t) => {
     const path = join(tempDir(t), "server.json");
-    assert.match(runCli(["list", "--config", path]), /pins no mods/);
+    assert.match(runCli(["list", "--config", path]), /lists no mods/);
 });
 
-test("list prints every pinned mod", (t) => {
+test("list prints every mod the config names", (t) => {
     const path = join(tempDir(t), "server.json");
     writePinned(path);
     assert.match(runCli(["list", "--config", path]), /0\. logistics 2\.1\.0 {2}https:\/\/mods\.example\/logistics\/2\.1\.0\//);

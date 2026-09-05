@@ -43,7 +43,7 @@ class FakeGameServer {
  * @param {object} [json] config fields
  * @returns {Promise<{runtime: ServerRuntime, game: Game, gameServer: FakeGameServer, loaded: string[]}>}
  */
-async function makeRuntime(t, json = {}, baseDir = process.cwd(), pinned = []) {
+async function makeRuntime(t, json = {}, baseDir = process.cwd(), overridden = []) {
     const game = await makeGame();
     const gameServer = new FakeGameServer();
     const loaded = [];
@@ -57,7 +57,7 @@ async function makeRuntime(t, json = {}, baseDir = process.cwd(), pinned = []) {
         gameServer,
         config: ServerConfig.parse(json),
         baseDir,
-        pinned,
+        overridden,
         jwksVerifierFor: async url => {
             if (url.includes("unreachable")) {
                 throw new Error("no jwks");
@@ -288,7 +288,7 @@ test("a reset onto another save resets that one and leaves the previous save alo
     assert.equal(booted[0].db, "/srv/game/archive.sqlite3");
 });
 
-test("a field the command line pinned keeps its running value through a save", async (t) => {
+test("a field the command line set keeps its running value through a save", async (t) => {
     const {runtime, booted} = await makeRuntime(t, {}, "/srv/game", ["db"]);
     const restart = await runtime.apply(ServerConfig.parse({db: "other.sqlite3", name: "New"}));
     assert.deepEqual(restart, []);

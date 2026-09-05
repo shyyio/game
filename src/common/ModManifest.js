@@ -26,7 +26,7 @@ const FILE_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
 const MANIFEST_KEYS = ["name", "version", "sdkVersion", "title", "entry", "parts", "homepage"];
 
 // A display name is one line of a mod's own choosing; the kebab-case `name` stays the identifier an
-// operator types and a lockfile pins.
+// operator types and a mod list holds.
 const TITLE_MAX_LENGTH = 48;
 const TITLE_PATTERN = /^[^\s\p{Cc}]([^\p{Cc}]*[^\s\p{Cc}])?$/u;
 
