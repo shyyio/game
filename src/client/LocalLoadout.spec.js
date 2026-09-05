@@ -211,91 +211,30 @@ test("a stored value that is not a loadout is refused rather than treated as emp
     assert.throws(() => LocalLoadout.parse(null), /must hold a `mods` array/);
 });
 
-test("a fresh loadout runs the built-in base mods, which is the loadout local play had all along", () => {
-    const loadout = new LocalLoadout([]);
-
-    assert.equal(loadout.builtIn, true);
-    assert.equal(LocalLoadout.parse({mods: [chosen("widgets").toJSON()]}).builtIn, true);
-});
-
-test("with built-in mods off, a base mod is chosen from the registry like any other", () => {
-    const off = new LocalLoadout([]).withBuiltIn(false).with(chosen(BASE_MOD_NAMES[2], "1.0.0"));
-
-    assert.equal(off.builtIn, false);
-    assert.deepEqual(off.mods.map(mod => mod.name), [BASE_MOD_NAMES[2]]);
-    assert.deepEqual(off.withBuiltIn(true).mods, []);
-    assert.equal(off.withBuiltIn(true).builtIn, true);
-});
-
-test("a malformed builtIn is refused", () => {
-    assert.throws(() => LocalLoadout.parse({mods: [], builtIn: "yes"}), /builtIn/);
-});
-
-test("the built-in choice survives JSON, adding, removing, and a refresh", () => {
-    const loadout = new LocalLoadout([chosen("widgets", "1.0.0")]).withBuiltIn(false);
-    const listings = [listing("widgets", [published("1.0.0"), published("2.0.0")])];
-
-    assert.equal(LocalLoadout.parse(JSON.parse(JSON.stringify(loadout.toJSON()))).builtIn, false);
-    assert.equal(loadout.with(chosen("gadgets")).builtIn, false);
-    assert.equal(loadout.without("widgets").builtIn, false);
-    assert.equal(refreshLoadout(loadout, listings).builtIn, false);
-});
-
 const GAME = "2.9.0";
 
 /**
- * @param {string[]} [extra] names of non-base mods to publish alongside every base mod
- * @returns {object[]} a registry index publishing every base mod at GAME
+ * @param {string} name
+ * @param {string} version
+ * @returns {object} an entry of a server's mod list
  */
-function publishedAll(extra=[]) {
-    return [...BASE_MOD_NAMES, ...extra].map((name) => listing(name, [published("9.9.9"), published(GAME)]));
+function listedEntry(name, version) {
+    return {url: `https://mods.example.com/${name}/${version}/`, name, version, integrity: {[MANIFEST_FILE]: HASH, "mod.js": OTHER_HASH}};
 }
 
-test("the exported mods.json pins every base mod at this game version, in registration order", () => {
-    const loadout = new LocalLoadout([chosen("widgets", GAME)]);
+test("the exported mod list holds the chosen mods, in load order", () => {
+    const loadout = new LocalLoadout([chosen("widgets", GAME), chosen("gadgets", GAME)]);
 
-    const {lockfile, missing} = serverLockfile(loadout, publishedAll(["widgets"]), GAME);
+    const lockfile = serverLockfile(loadout);
 
-    assert.deepEqual(missing, []);
-    assert.deepEqual(lockfile.mods.map(entry => entry.name), [...BASE_MOD_NAMES, "widgets"]);
+    assert.deepEqual(lockfile.mods.map(entry => entry.name), ["widgets", "gadgets"]);
     assert.ok(lockfile.mods.every(entry => entry.integrity[MANIFEST_FILE] === HASH));
 });
 
-test("with built-in mods off, only the chosen base mods are exported, at their chosen versions", () => {
-    const loadout = new LocalLoadout([]).withBuiltIn(false).with(chosen(BASE_MOD_NAMES[1], "1.0.0", true));
-
-    const {lockfile} = serverLockfile(loadout, publishedAll(), GAME);
-
-    assert.deepEqual(lockfile.mods.map(entry => [entry.name, entry.version]), [[BASE_MOD_NAMES[1], "1.0.0"]]);
-});
-
 test("a chosen mod is exported at the version it is actually set to, not the newest", () => {
-    const loadout = new LocalLoadout([chosen("widgets", "1.0.0", true)]);
-    const listings = [...publishedAll(), listing("widgets", [published("1.0.0"), published("2.0.0")])];
-
-    const {lockfile} = serverLockfile(loadout, listings, GAME);
+    const lockfile = serverLockfile(new LocalLoadout([chosen("widgets", "1.0.0", true)]));
 
     assert.equal(lockfile.mods.find(entry => entry.name === "widgets").version, "1.0.0");
-});
-
-test("nothing is exported while a base mod has no publication to pin, rather than a partial file", () => {
-    const listings = publishedAll().filter(mod => mod.name !== BASE_MOD_NAMES[0]);
-
-    const {lockfile, missing} = serverLockfile(new LocalLoadout([]), listings, GAME);
-
-    assert.equal(lockfile, null);
-    assert.deepEqual(missing, [BASE_MOD_NAMES[0]]);
-});
-
-test("a base mod published at this version but without file hashes counts as unpinnable", () => {
-    const listings = publishedAll().map((mod) => {
-        if (mod.name !== BASE_MOD_NAMES[0]) {
-            return mod;
-        }
-        return listing(mod.name, [{version: GAME, url: "https://e/", sdkVersion: SDK_VERSION}]);
-    });
-
-    assert.deepEqual(serverLockfile(new LocalLoadout([]), listings, GAME).missing, [BASE_MOD_NAMES[0]]);
 });
 
 test("a package named after a built-in mod is refused, however it got into the list", () => {
@@ -306,92 +245,30 @@ test("a package named after a built-in mod is refused, however it got into the l
     assert.throws(() => LocalLoadout.parse({mods: [clash.toJSON()]}), /is built into the client/);
 });
 
-test("turning built-in mods off is what makes a base name available to a package", () => {
-    assert.throws(() => new LocalLoadout([]).with(chosen(BASE_MOD_NAMES[4])), /is built into the client/);
-    assert.doesNotThrow(() => new LocalLoadout([]).withBuiltIn(false).with(chosen(BASE_MOD_NAMES[4])));
-});
+test("a server's mod list reads back as the mods it runs, each at its exact version", () => {
+    const lockfile = ModLockfile.parse({mods: [listedEntry("widgets", "1.0.0")]});
 
-/**
- * @param {string} name
- * @param {string} version
- * @returns {object} a pinned mods.json entry
- */
-function pinnedEntry(name, version) {
-    return {url: `file:///mods/${name}/`, name: name, version: version, integrity: {[MANIFEST_FILE]: HASH, "mod.js": OTHER_HASH}};
-}
+    const loadout = LocalLoadout.fromLockfile(lockfile, [listing("widgets", [published("1.0.0")])]);
 
-test("a server's mods.json reads back as the base mods it pins plus its other mods, pinned", () => {
-    const lockfile = ModLockfile.parse({mods: [
-        pinnedEntry(BASE_MOD_NAMES[0], GAME),
-        pinnedEntry("widgets", "1.0.0"),
-    ]});
-
-    const loadout = LocalLoadout.fromLockfile(lockfile, publishedAll(["widgets"]));
-
-    assert.equal(loadout.builtIn, true);
-    assert.deepEqual(loadout.mods.map(mod => [mod.name, mod.title, mod.version, mod.pinned, mod.url]), [
-        ["widgets", "The widgets", "1.0.0", true, "file:///mods/widgets/"],
+    assert.deepEqual(loadout.mods.map(mod => [mod.name, mod.title, mod.version, mod.pinned]), [
+        ["widgets", "The widgets", "1.0.0", true],
     ]);
 });
 
-test("a server whose base mods come from the registry reads back with built-in mods off and each one chosen", () => {
-    const lockfile = ModLockfile.parse({mods: [
-        {url: `https://mods.example.com/${BASE_MOD_NAMES[0]}/1.0.0/`, name: BASE_MOD_NAMES[0], version: "1.0.0", integrity: {[MANIFEST_FILE]: HASH}},
-    ]});
-
-    const loadout = LocalLoadout.fromLockfile(lockfile, publishedAll());
-
-    assert.equal(loadout.builtIn, false);
-    assert.deepEqual(loadout.mods.map(mod => [mod.name, mod.version, mod.pinned]), [[BASE_MOD_NAMES[0], "1.0.0", true]]);
-    assert.equal(serverLockfile(loadout, publishedAll(), GAME, lockfile).lockfile.mods.length, 1);
-});
-
-test("a pinned mod the registry no longer lists reads back titled by its name", () => {
-    const lockfile = ModLockfile.parse({mods: [pinnedEntry("widgets", "1.0.0")]});
+test("a mod the registry no longer lists reads back titled by its name", () => {
+    const lockfile = ModLockfile.parse({mods: [listedEntry("widgets", "1.0.0")]});
 
     assert.equal(LocalLoadout.fromLockfile(lockfile, []).mods[0].title, "widgets");
 });
 
-test("exporting over a current mods.json keeps every pin it already has, and pins the rest anew", () => {
-    const current = ModLockfile.parse({mods: [pinnedEntry(BASE_MOD_NAMES[0], "0.1.0"), pinnedEntry("widgets", "1.0.0")]});
-    const loadout = LocalLoadout.fromLockfile(current, publishedAll(["widgets"]));
+test("exporting over a server's current list leaves every entry where it is, so no typeId moves", () => {
+    const current = ModLockfile.parse({mods: [listedEntry("widgets", "1.0.0"), listedEntry("gadgets", "1.0.0")]});
+    const loadout = LocalLoadout.fromLockfile(current, []).with(chosen("sprockets", GAME));
 
-    const {lockfile} = serverLockfile(loadout, publishedAll(["widgets"]), GAME, current);
+    const lockfile = serverLockfile(loadout, current);
 
-    assert.equal(lockfile.mods.length, BASE_MOD_NAMES.length + 1);
-    assert.deepEqual([lockfile.mods[0].name, lockfile.mods[0].url], [BASE_MOD_NAMES[0], `file:///mods/${BASE_MOD_NAMES[0]}/`]);
-    assert.deepEqual([lockfile.mods[1].name, lockfile.mods[1].url], ["widgets", "file:///mods/widgets/"]);
-    assert.equal(lockfile.mods[2].name, BASE_MOD_NAMES[1]);
-});
-
-test("exporting over a current mods.json leaves every pin where it is, so no typeId moves", () => {
-    const current = ModLockfile.parse({mods: [
-        pinnedEntry(BASE_MOD_NAMES[0], "0.1.0"),
-        pinnedEntry("widgets", "1.0.0"),
-        pinnedEntry(BASE_MOD_NAMES[1], "0.1.0"),
-    ]});
-    const loadout = LocalLoadout.fromLockfile(current, publishedAll(["widgets"]));
-
-    const {lockfile} = serverLockfile(loadout, publishedAll(["widgets"]), GAME, current);
-
-    assert.deepEqual(
-        lockfile.mods.slice(0, 3).map(mod => mod.name),
-        [BASE_MOD_NAMES[0], "widgets", BASE_MOD_NAMES[1]],
-    );
-    assert.deepEqual(lockfile.mods.slice(3).map(mod => mod.name), BASE_MOD_NAMES.slice(2));
-});
-
-test("a loadout stored before built-in mods became one choice reads back with them on", () => {
-    const loadout = LocalLoadout.parse({mods: [chosen("widgets").toJSON()], excludedBase: []});
-    assert.equal(loadout.builtIn, true);
-    assert.deepEqual(loadout.mods.map(mod => mod.name), ["widgets"]);
-});
-
-test("a stored loadout that turned off part of the built-in mods says so rather than turning them on", () => {
-    assert.throws(
-        () => LocalLoadout.parse({mods: [], excludedBase: [BASE_MOD_NAMES[0]]}),
-        /no longer a choice/,
-    );
+    assert.deepEqual(lockfile.mods.map(entry => entry.name), ["widgets", "gadgets", "sprockets"]);
+    assert.equal(lockfile.mods[0].url, "https://mods.example.com/widgets/1.0.0/");
 });
 
 test("an unknown key in a stored loadout is refused", () => {
@@ -404,6 +281,5 @@ test("a chosen mod moves up or down the load order, and stops at the ends", () =
     assert.deepEqual(loadout.withMoved("a", 1).mods.map(mod => mod.name), ["b", "a", "c"]);
     assert.deepEqual(loadout.withMoved("a", -1).mods.map(mod => mod.name), ["a", "b", "c"]);
     assert.deepEqual(loadout.withMoved("c", 1).mods.map(mod => mod.name), ["a", "b", "c"]);
-    assert.equal(loadout.withMoved("a", 1).builtIn, true);
     assert.throws(() => loadout.withMoved("nope", 1), /not chosen/);
 });

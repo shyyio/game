@@ -1,21 +1,14 @@
 import {defineConfig} from "vite";
 import vue from "@vitejs/plugin-vue";
 import vuetify from "vite-plugin-vuetify";
-import {builtModHashes, gitBuildInfo, packageVersion} from "./vite.build-defines.js";
+import {gitBuildInfo, packageVersion} from "./vite.build-defines.js";
 import {ALIASES} from "./vite.aliases.js";
 
 const {commit: BUILD_COMMIT, date: BUILD_DATE} = gitBuildInfo();
 const APP_VERSION = packageVersion();
-const DIST_MODS = "build/mods";
 
 // https://vite.dev/config/
 export default defineConfig(({mode}) => {
-    // A production client verifies a server's base mods against these, so a build without them
-    // would refuse every server; a dev build runs no gate and needs none.
-    let baseModHashes = [];
-    if (mode === "production") {
-        baseModHashes = builtModHashes(DIST_MODS);
-    }
     return {
         plugins: [
             vue(),
@@ -34,7 +27,6 @@ export default defineConfig(({mode}) => {
             __APP_VERSION__: JSON.stringify(APP_VERSION),
             __BUILD_COMMIT__: JSON.stringify(BUILD_COMMIT),
             __BUILD_DATE__: JSON.stringify(BUILD_DATE),
-            __BASE_MOD_HASHES__: JSON.stringify(baseModHashes),
         },
         build: {
             outDir: "build/client",

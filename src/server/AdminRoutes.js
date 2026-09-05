@@ -6,12 +6,19 @@ import {ServerConfig} from "@/common/ServerConfig.js";
 import {writeServerConfig} from "@/server/serverConfigFile.js";
 import {LoadoutChangeRefused} from "@/server/ServerRuntime.js";
 import {ModCache} from "@/server/ModCache.js";
-import {extensionOf} from "@/server/ModHost.js";
+
+/**
+ * @param {string} fileName
+ * @returns {string} the extension, including its dot
+ */
+function extensionOf(fileName) {
+    return fileName.slice(fileName.lastIndexOf("."));
+}
 
 const PAGE_FILE = "admin.html";
 const BEARER = "Bearer ";
 
-// What the admin page may be built out of; a mod package's own table is MOD_CONTENT_TYPES.
+// What the admin page may be built out of.
 /** @enum */
 const CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8",
@@ -64,24 +71,18 @@ export class AdminRoutes {
      * @param {string[]} options.pinned fields a command-line flag overrode, read-only on the page
      * @param {ServerRuntime} options.runtime
      * @param {string} options.adminDir the built admin page
-     * @param {ModLockfile|null} options.builtMods the base mods this build ships, pinned; null when none are built
-     * @param {string} options.distMods where those builds are looked for
      */
     constructor({
             configPath,
             saved,
             pinned,
             runtime,
-            adminDir,
-            builtMods,
-            distMods}) {
+            adminDir}) {
         this._configPath = configPath;
         this._saved = saved;
         this._pinned = pinned;
         this._runtime = runtime;
         this._adminDir = resolve(adminDir);
-        this._builtMods = builtMods;
-        this._distMods = resolve(distMods);
         /**
          * Path -> its bytes. The page is static for the life of the process, and reading it off disk
          * on every request reads it on the tick thread.
@@ -161,23 +162,17 @@ export class AdminRoutes {
      * @returns {object}
      */
     _state() {
-        let builtMods = null;
-        if (this._builtMods !== null) {
-            builtMods = this._builtMods.toJSON().mods;
-        }
         return {
             saved: this._saved.toPublicJSON(),
             running: this._runtime.running.toPublicJSON(),
             pinned: this._pinned,
             world: {loaded: this._runtime.world.loaded, seed: this._runtime.world.game.seed},
-            builtMods,
-            distMods: this._distMods,
             baseDir: this._runtime.baseDir,
         };
     }
 
     /**
-     * Fills the cache with any new pins, applies, then writes: a config the runtime refuses never
+     * Fills the cache with any new mods, applies, then writes: a config the runtime refuses never
      * reaches the file. A mod change that would lose part of the world comes back as the losses
      * (409) until the request carries convert=1.
      * @private

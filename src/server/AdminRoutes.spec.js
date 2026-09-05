@@ -147,8 +147,6 @@ async function startServer(t, {worldLoaded = false, mods = null} = {}) {
         pinned: ["port"],
         runtime,
         adminDir: join(dir, "admin"),
-        builtMods: ModLockfile.parse({mods: [writePackage(join(dir, "dist-mods"), "base-game", "1.0.0")]}),
-        distMods: join(dir, "dist-mods"),
     });
     const server = new TestServer();
     routes.registerRoutes(server.app);
@@ -190,7 +188,7 @@ test("the api needs the admin token; the page does not", async (t) => {
     assert.equal((await fetch(`${baseUrl}/admin`)).status, 200);
 });
 
-test("the state reports the saved and running configs without the token, the pinned fields, the world", async (t) => {
+test("the state reports the saved and running configs without the token, the overridden fields, the world", async (t) => {
     const {baseUrl} = await startServer(t, {worldLoaded: true});
     const state = await (await asAdmin(`${baseUrl}/admin/api/state`)).json();
     assert.equal(state.saved.port, 1);
@@ -200,9 +198,7 @@ test("the state reports the saved and running configs without the token, the pin
     assert.deepEqual(state.pinned, ["port"]);
     assert.deepEqual(state.world, {loaded: true, seed: 7});
     assert.equal(state.saved.mods, null);
-    assert.deepEqual(state.builtMods.map(mod => mod.name), ["base-game"]);
     assert.equal(state.baseDir, "/srv/game");
-    assert.match(state.distMods, /dist-mods$/);
 });
 
 test("saving a config applies it, keeps the token, and writes the file", async (t) => {

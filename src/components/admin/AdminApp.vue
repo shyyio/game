@@ -4,8 +4,7 @@ import {listMods} from "@/client/ModRegistryClient.js";
 import {LocalLoadout, serverLockfile} from "@/client/LocalLoadout.js";
 import {ServerConfig, SERVER_CONFIG_FIELDS} from "@/common/ServerConfig.js";
 import {ModLockfile} from "@/common/ModLockfile.js";
-import {GAME_VERSION, ORIGIN_PATTERN} from "@/common/constants.js";
-import {SDK_VERSION} from "@/common/ModManifest.js";
+import {ORIGIN_PATTERN} from "@/common/constants.js";
 import {
   AdminUnauthorizedError, LoadoutChangeError, convertServerConfig, fetchAdminState, resetServerWorld,
   saveServerConfig, storeAdminToken,
@@ -123,7 +122,7 @@ async function signIn() {
 }
 
 /**
- * The picker's view of a config: its pins, or every base mod when it runs the built-in loadout.
+ * The picker's view of a config: the external mods it runs, empty when it runs none.
  * @param {object} json a config's public JSON
  * @returns {LocalLoadout}
  */
@@ -214,31 +213,20 @@ function setValue(key, value) {
   config.value = Object.assign({}, config.value, {[key]: value});
 }
 
-// The pins this page would save: the picker's choices over the pins the server already has, then
-// the base mods it ships, so only a third-party mod ever comes from the registry.
-const exported = computed(() => serverLockfile(loadout.value, listings.value, GAME_VERSION, pinnedNow()));
+// The mod list this page would save: the picker's choices over the list the server already runs.
+const exported = computed(() => serverLockfile(loadout.value, currentModList()));
 
 /**
- * @returns {ModLockfile} the config's pins, and behind them the server's own built base mods
+ * @returns {ModLockfile} the external mods the config runs now
  */
-function pinnedNow() {
-  const entries = [];
-  if (config.value.mods !== null) {
-    for (const entry of config.value.mods) {
-      entries.push(entry);
-    }
+function currentModList() {
+  if (config.value.mods === null) {
+    return new ModLockfile([]);
   }
-  if (state.value.builtMods !== null) {
-    for (const built of state.value.builtMods) {
-      if (!entries.some(entry => entry.name === built.name)) {
-        entries.push(built);
-      }
-    }
-  }
-  return ModLockfile.parse({mods: entries});
+  return ModLockfile.parse({mods: config.value.mods});
 }
 
-// Whether the picker still shows exactly what the config pins, so a built-in loadout stays built in.
+// Whether the picker still shows exactly what the config runs, so an untouched config saves as is.
 const pickerUntouched = computed(() => JSON.stringify(loadoutOf(config.value).toJSON()) === JSON.stringify(loadout.value.toJSON()));
 
 /**
@@ -248,21 +236,7 @@ function configToSave() {
   if (pickerUntouched.value) {
     return config.value;
   }
-  if (exported.value.lockfile === null) {
-    throw new Error(missingNote(exported.value.missing));
-  }
-  return Object.assign({}, config.value, {mods: exported.value.lockfile.mods});
-}
-
-/**
- * @param {string[]} names the base mods no package could be found for
- * @returns {string}
- */
-function missingNote(names) {
-  if (state.value.builtMods === null) {
-    return `No built copy of the base mods at ${state.value.distMods}; run "npm run mods:base" there, or start the server with --dist-mods pointing at one, then reload this page`;
-  }
-  return `No SDK ${SDK_VERSION} package available for ${names.join(", ")}`;
+  return Object.assign({}, config.value, {mods: exported.value.mods});
 }
 
 const asJson = computed(() => {
@@ -472,9 +446,6 @@ export default defineComponent({
               built-in-description="Shipped with this server"
               @update:loadout="loadout = $event"
           />
-          <div v-if="!pickerUntouched && exported.missing.length > 0" class="admin-error">
-            {{ missingNote(exported.missing) }}
-          </div>
         </div>
 
         <div class="admin-section">

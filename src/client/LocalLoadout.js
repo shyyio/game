@@ -25,8 +25,7 @@ import {modName} from "@/mods/modNames.js";
 // dev-mods/, not fetched.
 const MOD_KEYS = ["name", "title", "url", "version", "integrity", "pinned"];
 
-// "excludedBase" is what stored loadouts carried before the built-in mods became one choice.
-const LOADOUT_KEYS = ["mods", "builtIn", "excludedBase"];
+const LOADOUT_KEYS = ["mods"];
 
 // localStorage key holding the choices.
 const STORAGE_LOADOUT = "spup.local-loadout";
@@ -222,40 +221,22 @@ export function latestCompatibleVersion(listing) {
 }
 
 /**
- * The mods a local game loads, in registration order: the built-in base loadout first when
- * `builtIn` is on, then `mods`.
+ * The mods a local game loads on top of the loadout built into the client, in registration order.
  */
 export class LocalLoadout {
 
     /**
      * @param {LocalMod[]} mods
-     * @param {boolean} [builtIn] whether the base mods run as built into the game
      */
-    constructor(mods, builtIn=true) {
-        if (builtIn) {
-            for (const mod of mods) {
-                // A name is one mod. The built-in copy registers first whatever this list says, so
-                // a second package under the same name is that mod loaded twice, not another mod.
-                if (BASE_MOD_NAMES.includes(mod.name)) {
-                    throw new Error(`Mod "${mod.name}" is built into the client, so a package may not carry that name`);
-                }
+    constructor(mods) {
+        for (const mod of mods) {
+            // A name is one mod. The built-in copy registers first whatever this list says, so a
+            // second package under the same name is that mod loaded twice, not another mod.
+            if (BASE_MOD_NAMES.includes(mod.name)) {
+                throw new Error(`Mod "${mod.name}" is built into the client, so a package may not carry that name`);
             }
         }
         this.mods = mods;
-        this.builtIn = builtIn;
-    }
-
-    /**
-     * Turning built-in mods on drops any base mod chosen from the registry, since the built-in copy
-     * takes its name.
-     * @param {boolean} on
-     * @returns {LocalLoadout}
-     */
-    withBuiltIn(on) {
-        if (!on) {
-            return new LocalLoadout(this.mods, false);
-        }
-        return new LocalLoadout(this.mods.filter(mod => !BASE_MOD_NAMES.includes(mod.name)), true);
     }
 
     /**
@@ -287,11 +268,11 @@ export class LocalLoadout {
     with(mod) {
         const at = this.mods.findIndex(candidate => candidate.name === mod.name);
         if (at === -1) {
-            return new LocalLoadout([...this.mods, mod], this.builtIn);
+            return new LocalLoadout([...this.mods, mod]);
         }
         const mods = [...this.mods];
         mods[at] = mod;
-        return new LocalLoadout(mods, this.builtIn);
+        return new LocalLoadout(mods);
     }
 
     /**
@@ -299,7 +280,7 @@ export class LocalLoadout {
      * @returns {LocalLoadout}
      */
     without(name) {
-        return new LocalLoadout(this.mods.filter(mod => mod.name !== name), this.builtIn);
+        return new LocalLoadout(this.mods.filter(mod => mod.name !== name));
     }
 
     /**
@@ -318,37 +299,29 @@ export class LocalLoadout {
         const mods = this.mods.slice();
         const [moved] = mods.splice(from, 1);
         mods.splice(to, 0, moved);
-        return new LocalLoadout(mods, this.builtIn);
+        return new LocalLoadout(mods);
     }
 
     /**
      * @returns {object}
      */
     toJSON() {
-        return {mods: this.mods.map(mod => mod.toJSON()), builtIn: this.builtIn};
+        return {mods: this.mods.map(mod => mod.toJSON())};
     }
 
     /**
-     * The loadout a server's pinned mods describe. Base mods pinned to the server's own built copies
-     * (file: URLs) are the built-in mode; base mods pinned anywhere else were chosen from the
-     * registry, and every such pin reads back at exactly its version and URL.
+     * The loadout a server's own mod list describes. Every entry names an external mod at exactly
+     * its version and URL; the built-in ones are not in there at all.
      * @param {ModLockfile} lockfile
      * @param {object[]} listings the registry index, for titles
      * @returns {LocalLoadout}
      */
     static fromLockfile(lockfile, listings) {
-        const base = lockfile.mods.filter(entry => BASE_MOD_NAMES.includes(entry.name));
-        const builtIn = base.length > 0 && base.every(entry => entry.url.startsWith("file:"));
-        const mods = [];
-        for (const entry of lockfile.mods) {
-            if (builtIn && BASE_MOD_NAMES.includes(entry.name)) {
-                continue;
-            }
+        return new LocalLoadout(lockfile.mods.map(entry => {
             const listing = listings.find(candidate => candidate.name === entry.name);
             const title = listing === undefined ? entry.name : titleOf(listing);
-            mods.push(new LocalMod(entry.name, title, entry.url, entry.version, entry.integrity, true));
-        }
-        return new LocalLoadout(mods, builtIn);
+            return new LocalMod(entry.name, title, entry.url, entry.version, entry.integrity, true);
+        }));
     }
 
     /**
@@ -372,31 +345,8 @@ export class LocalLoadout {
             }
             names.add(mod.name);
         }
-        return new LocalLoadout(mods, parseBuiltIn(json));
+        return new LocalLoadout(mods);
     }
-}
-
-/**
- * Whether the built-in mods load. A loadout stored before this was one choice instead listed the
- * base mods the player had turned off: an empty list means the same as the choice on, a non-empty
- * one names a loadout this build has no way to express.
- * @param {object} json
- * @returns {boolean}
- */
-function parseBuiltIn(json) {
-    if (json.excludedBase !== undefined) {
-        if (!Array.isArray(json.excludedBase) || json.excludedBase.length > 0) {
-            throw new Error("This loadout turned off part of the built-in mods, which is no longer a choice.");
-        }
-        return true;
-    }
-    if (json.builtIn === undefined) {
-        return true;
-    }
-    if (typeof json.builtIn !== "boolean") {
-        throw new Error("A local loadout's `builtIn` must be true or false");
-    }
-    return json.builtIn;
 }
 
 /**
@@ -422,50 +372,25 @@ export function refreshLoadout(loadout, listings) {
             return mod;
         }
         return LocalMod.fromListing(listing, latest, false);
-    }), loadout.builtIn);
+    }));
 }
 
 /**
- * The pins a server would run this loadout from: with built-in mods on, every base mod pinned as
- * `current` has it or at this game version from the registry, plus the chosen mods. A name `current`
- * already pins keeps that pin and its position, so a server's own base-mod builds survive a round
- * trip through the editor and no mod's positional typeId moves; the rest follow in load order. Base
- * mods the registry has not published at this version are reported as missing, and nothing is
- * exported.
+ * The mod list a server would run this loadout from. A name the server already runs keeps its entry
+ * and its position, so no mod's positional typeId moves; the rest follow in load order.
  * @param {LocalLoadout} loadout
- * @param {object[]} listings the registry index
- * @param {string} gameVersion
- * @param {ModLockfile} [current] the server's pins as they are now
- * @returns {{lockfile: object|null, missing: string[]}}
+ * @param {ModLockfile} [current] the server's mods as they are now
+ * @returns {object} a lockfile, as JSON
  */
-export function serverLockfile(loadout, listings, gameVersion, current=new ModLockfile([])) {
-    const missing = [];
+export function serverLockfile(loadout, current=new ModLockfile([])) {
     const resolved = new Map();
-    const base = loadout.builtIn ? BASE_MOD_NAMES : [];
-    for (const name of base) {
-        const pinned = current.find(name);
-        if (pinned !== null) {
-            resolved.set(name, pinned.toJSON());
-            continue;
-        }
-        const listing = listings.find(candidate => candidate.name === name);
-        const version = publishedAt(listing, gameVersion);
-        if (version === null) {
-            missing.push(name);
-            continue;
-        }
-        resolved.set(name, LocalMod.fromListing(listing, version, true).lockEntry.toJSON());
-    }
     for (const mod of loadout.mods) {
-        const pinned = current.find(mod.name);
-        if (pinned !== null && pinned.version === mod.version) {
-            resolved.set(mod.name, pinned.toJSON());
+        const already = current.find(mod.name);
+        if (already !== null && already.version === mod.version) {
+            resolved.set(mod.name, already.toJSON());
             continue;
         }
         resolved.set(mod.name, mod.lockEntry.toJSON());
-    }
-    if (missing.length > 0) {
-        return {lockfile: null, missing};
     }
     const order = current.mods.map(entry => entry.name).filter(name => resolved.has(name));
     for (const name of resolved.keys()) {
@@ -473,25 +398,9 @@ export function serverLockfile(loadout, listings, gameVersion, current=new ModLo
             order.push(name);
         }
     }
-    return {lockfile: {mods: order.map(name => resolved.get(name))}, missing};
+    return {mods: order.map(name => resolved.get(name))};
 }
 
-/**
- * A listing's published version with file hashes to pin, or null when there is none to pin.
- * @param {object|undefined} listing
- * @param {string} version
- * @returns {object|null}
- */
-function publishedAt(listing, version) {
-    if (listing === undefined || !Array.isArray(listing.versions)) {
-        return null;
-    }
-    const found = listing.versions.find(candidate => candidate.version === version);
-    if (found === undefined || found === null || typeof found.artifacts !== "object" || found.artifacts === null) {
-        return null;
-    }
-    return found;
-}
 
 /**
  * The stored local loadout, empty when nothing has been chosen. A stored value that no longer parses

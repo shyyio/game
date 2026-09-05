@@ -9,8 +9,4 @@ cd /home/app/spup
 npm ci
 npm run build:server
 npm run build:admin
-# The server runs its mods as pinned packages, so build this commit's in-repo loadout and re-pin
-# the base mods in the server's config before restarting; the config lives with the world data.
-npm run mods:base -- --out /home/app/spup/build/mods
-node build/server/modsCli.js sync-base --dist-mods /home/app/spup/build/mods --config /home/app/data/game/server.json
 sudo /usr/bin/systemctl restart spup

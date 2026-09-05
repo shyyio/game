@@ -5,6 +5,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {World} from "@/server/World.js";
 import {ServerConfig} from "@/common/ServerConfig.js";
+import {MOD_DIRS} from "@/mods/modDirs.js";
 
 /**
  * @param {object} t
@@ -30,7 +31,7 @@ test("a fresh world boots on the built-in loadout, saves on close, and loads bac
     const first = await World.boot(configIn(dir, {seed: 7}));
     assert.equal(first.loaded, false);
     assert.equal(first.game.seed, 7);
-    assert.equal(first.modHost, null);
+    assert.deepEqual(JSON.parse(first.modListJson).mods.map(mod => mod.name), MOD_DIRS);
     assert.deepEqual(first.lockfile.mods, []);
     await first.close();
 

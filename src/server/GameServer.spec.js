@@ -13,9 +13,9 @@ const ORIGIN = "ws://127.0.0.1:27500";
  * @param {object|null} [modHost]
  * @returns {Promise<World>} a fresh world over an in-memory game
  */
-async function makeWorld(modHost = null) {
+async function makeWorld(modListJson = "{\"mods\": []}") {
     const game = await makeGame();
-    return new World({game, api: new GameAPI(game), modHost, lockfile: new ModLockfile([]), loaded: false});
+    return new World({game, api: new GameAPI(game), modListJson, lockfile: new ModLockfile([]), loaded: false});
 }
 
 /**
@@ -29,16 +29,14 @@ async function startServer() {
     return {server, baseUrl: `http://127.0.0.1:${server.port}`};
 }
 
-test("the mod routes serve whatever world is current", async () => {
+test("the mod list route serves whatever world is current", async () => {
     const {server, baseUrl} = await startServer();
     try {
-        assert.equal((await fetch(`${baseUrl}/mods/index.json`)).status, 404);
-        const modHost = {indexJson: "{\"mods\": []}", fileOf: name => new TextEncoder().encode(`// ${name}`)};
-        const world = await makeWorld(modHost);
+        assert.deepEqual(await (await fetch(`${baseUrl}/mods/index.json`)).json(), {mods: []});
+        const world = await makeWorld("{\"mods\": [{\"name\": \"widgets\"}]}");
         server.setWorld(world);
         assert.equal(server.world, world);
-        assert.deepEqual(await (await fetch(`${baseUrl}/mods/index.json`)).json(), {mods: []});
-        assert.equal(await (await fetch(`${baseUrl}/mods/abc.js`)).text(), "// abc.js");
+        assert.deepEqual(await (await fetch(`${baseUrl}/mods/index.json`)).json(), {mods: [{name: "widgets"}]});
     } finally {
         server.stop();
     }

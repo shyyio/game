@@ -2,13 +2,15 @@ import {existsSync, unlinkSync} from "node:fs";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {conversionLosses, convertSnapshot} from "@/sim/snapshotConversion.js";
 import {simLoadout} from "@/mods/loadout.js";
+import {MOD_DIRS} from "@/mods/modDirs.js";
+import {GAME_VERSION} from "@/common/constants.js";
 import {Game} from "@/sim/Game.js";
 import {GameAPI} from "@/sim/GameAPI.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {NodeMetricsStore} from "@/server/NodeMetricsStore.js";
 import {ModCache} from "@/server/ModCache.js";
-import {ModHost} from "@/server/ModHost.js";
+import {builtInModList, externalModList, modListJson} from "@/server/modList.js";
 import {loadPackagedMods} from "@/server/ModLoader.js";
 import {randomWorldSeed} from "@/common/WorldNoise.js";
 
@@ -22,14 +24,14 @@ export class World {
      * @param {object} parts
      * @param {Game} parts.game
      * @param {GameAPI} parts.api
-     * @param {ModHost|null} parts.modHost null on the built-in loadout
-     * @param {ModLockfile} parts.lockfile the pins it booted with, empty on the built-in loadout
+     * @param {string} parts.modListJson the mod list it serves joining clients
+     * @param {ModLockfile} parts.lockfile the external mods it booted with, empty when it runs none
      * @param {boolean} parts.loaded whether a saved world was loaded rather than started fresh
      */
-    constructor({game, api, modHost, lockfile, loaded}) {
+    constructor({game, api, modListJson, lockfile, loaded}) {
         this.game = game;
         this.api = api;
-        this.modHost = modHost;
+        this.modListJson = modListJson;
         this.lockfile = lockfile;
         this.loaded = loaded;
     }
@@ -126,21 +128,27 @@ export class World {
     }
 
     /**
-     * The packages `config` runs: without pinned mods the loadout compiled into this build; with
-     * them, those packages, fetched into the cache and served to clients from here.
+     * The packages `config` runs: the loadout compiled into this build, then the external mods its
+     * config names, downloaded into the cache and checked against the hashes it records. Order is
+     * what assigns the positional ids, so the build's own mods always come first.
      * @private
      * @param {ServerConfig} config
-     * @returns {Promise<{packages: ModPackage[], modHost: ModHost|null}>}
+     * @returns {Promise<{packages: ModPackage[], modListJson: string}>}
      */
     static async _packagesOf(config) {
+        const packages = simLoadout();
+        const entries = builtInModList(MOD_DIRS, GAME_VERSION);
         if (config.mods === null) {
-            return {packages: simLoadout(), modHost: null};
+            return {packages, modListJson: modListJson(entries)};
         }
         const cache = new ModCache(config.modsCache);
         const downloaded = await cache.populate(config.lockfile);
         const loaded = await loadPackagedMods(config.lockfile, cache);
-        console.log(`Loaded ${loaded.packages.length} pinned mods (${downloaded} newly downloaded)`);
-        return {packages: loaded.packages, modHost: new ModHost(loaded.mods, cache)};
+        console.log(`Loaded ${loaded.packages.length} external mods (${downloaded} newly downloaded)`);
+        return {
+            packages: packages.concat(loaded.packages),
+            modListJson: modListJson(entries.concat(externalModList(loaded.mods))),
+        };
     }
 
     /**
@@ -175,7 +183,7 @@ export class World {
      * @returns {Promise<World>}
      */
     static async boot(config, snapshot = null) {
-        const {packages, modHost} = await World._packagesOf(config);
+        const {packages, modListJson: modList} = await World._packagesOf(config);
         const lockfile = config.lockfile;
         const modRegistry = new ModRegistry();
         for (const pkg of packages) {
@@ -213,6 +221,6 @@ export class World {
         if (config.seed !== null && game.seed !== config.seed) {
             throw new Error(`The configured seed ${config.seed} does not match the saved world seed ${game.seed}`);
         }
-        return new World({game, api: new GameAPI(game), modHost, lockfile, loaded});
+        return new World({game, api: new GameAPI(game), modListJson: modList, lockfile, loaded});
     }
 }

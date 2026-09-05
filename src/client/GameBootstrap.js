@@ -42,7 +42,7 @@ async function loadoutFor(props, localLoadout) {
     }
     const {clientLoadout} = await import("@/mods/clientLoadout.js");
     // With built-in mods off, the base mods are among the chosen packages, at the chosen versions.
-    const base = localLoadout.builtIn ? clientLoadout() : [];
+    const base = clientLoadout();
     const packages = [...base, ...await loadLocalMods(localLoadout)];
     if (scenarioSelected()) {
         const {scenarioModPackages} = await import("@/test/scenarios/index.js");

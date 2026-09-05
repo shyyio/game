@@ -1,10 +1,13 @@
-// Which of a server's pinned mods this client is willing to run. A mod bundle is evaluated from a
-// blob URL, so it runs same-origin with the client and reaches everything the page can — the pin
-// list a server serves is therefore a claim, not a credential. Two hash sets answer it: the base
-// mods this client was built with, and what the registry's maintainer reviewed and published.
+// Which of a server's external mods this client is willing to run. A mod bundle is evaluated from a
+// blob URL, so it runs same-origin with the client and reaches everything the page can — a server
+// naming a bundle is therefore a claim, not a credential. What answers it is the registry: its
+// maintainer reviewed the source each published hash was built from.
+//
+// A built-in entry is not checked here at all. The client runs its own compiled copy for those, so
+// no bytes arrive from anywhere and there is nothing to vouch for.
 
-import {contentNameHex, integrityHex} from "@/common/ModIntegrity.js";
-import {BASE_MOD_HASHES, DEV} from "@/common/env.js";
+import {integrityHex} from "@/common/ModIntegrity.js";
+import {DEV} from "@/common/env.js";
 import {listMods} from "@/client/ModRegistryClient.js";
 import DeviceSettings, {DEVICE_SETTING_UNVERIFIED_MODS} from "@/client/state/DeviceSettings.js";
 
@@ -36,44 +39,26 @@ export function registryModHashes(listings) {
 }
 
 /**
- * Every bundle hash this client will run: what the registry publishes, and the base mods the client
- * was built with, which need no third-party vouching because they are its own code.
- * @param {object[]} listings the registry index's mods
- * @param {string[]} baseModHashes lowercase hex sha-256, from the build
- * @returns {Set<string>}
- */
-export function approvedModHashes(listings, baseModHashes) {
-    const approved = registryModHashes(listings);
-    for (const hash of baseModHashes) {
-        approved.add(hash);
-    }
-    return approved;
-}
-
-/**
- * The mods a server pins that no approved hash covers.
- * @param {object[]} mods the served index's mods
- * @param {Set<string>} approved lowercase hex sha-256
+ * The mods a server names that no published hash covers.
+ * @param {object[]} mods the served list's external mods
+ * @param {Set<string>} published lowercase hex sha-256
  * @returns {string[]} their names
  */
-export function unverifiedMods(mods, approved) {
-    return mods.filter(mod => !approved.has(contentNameHex(mod.entry))).map(mod => mod.name);
+export function unverifiedMods(mods, published) {
+    return mods.filter(mod => !published.has(integrityHex(mod.integrity))).map(mod => mod.name);
 }
 
 /**
- * Refuses a server's loadout before a byte of it is evaluated, unless the player has opted in. A
- * server pinning only this client's own base mods never reaches the registry.
- * @param {object[]} mods the served index's mods
+ * Refuses a server's external mods before a byte of them is evaluated, unless the player has opted
+ * in. A server running only built-in mods never reaches the registry.
+ * @param {object[]} mods the served list's external mods
  * @returns {Promise<void>}
  */
 export async function assertModsVerified(mods) {
-    if (DEV || DeviceSettings.getBoolean(DEVICE_SETTING_UNVERIFIED_MODS, false)) {
+    if (mods.length === 0 || DEV || DeviceSettings.getBoolean(DEVICE_SETTING_UNVERIFIED_MODS, false)) {
         return;
     }
-    if (unverifiedMods(mods, new Set(BASE_MOD_HASHES)).length === 0) {
-        return;
-    }
-    const unverified = unverifiedMods(mods, approvedModHashes(await listMods(), BASE_MOD_HASHES));
+    const unverified = unverifiedMods(mods, registryModHashes(await listMods()));
     if (unverified.length === 0) {
         return;
     }

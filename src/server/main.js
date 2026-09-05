@@ -9,7 +9,6 @@ import {
     generateAdminToken, readServerConfigOrDefault, resolveConfigPaths, writeServerConfig,
 } from "@/server/serverConfigFile.js";
 import {ServerConfig} from "@/common/ServerConfig.js";
-import {pinBuiltMods} from "@/server/builtMods.js";
 import {bindShutdownSignals} from "@/nodeservice/cliShutdown.js";
 import {installCrashReporter, reportError, reportFatal} from "@/server/crashReporter.js";
 
@@ -18,7 +17,6 @@ const {values: args} = parseArgs({
     options: {
         "config": {type: "string", default: "server.json"},
         "admin-dir": {type: "string", default: "build/admin"},
-        "dist-mods": {type: "string", default: "build/mods"},
         "db": {type: "string"},
         "metrics-db": {type: "string"},
         "host": {type: "string"},
@@ -82,7 +80,6 @@ const {config, pinned} = saved.withOverrides({
     modsCache: pathFlag("mods-cache"),
 });
 const adminDir = args["admin-dir"];
-const distMods = args["dist-mods"];
 
 installCrashReporter(config.origin);
 
@@ -111,18 +108,12 @@ const runtime = new ServerRuntime({
         reportError(error, "Save failed");
     },
 });
-const builtMods = await pinBuiltMods(distMods);
-if (builtMods === null) {
-    console.warn(`No built mods at ${distMods}: the admin page cannot pin the built-in mods (build them with \`npm run mods:base\`, or pass --dist-mods)`);
-}
 new AdminRoutes({
     configPath,
     saved,
     pinned,
     runtime,
     adminDir,
-    builtMods,
-    distMods,
 }).registerRoutes(server.app);
 await server.listen(config.host, config.port);
 runtime.start();

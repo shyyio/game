@@ -1,10 +1,10 @@
-// Packages every base mod the way the registry does and runs the publish checks over each one, so a
-// mod that could not be published breaks here rather than in the registry's CI, a deploy later.
+// Builds every base mod as a standalone package and runs the package checks over each one, so a mod
+// that reached outside the SDK, or that no longer bundles, breaks here.
 //
 //   node tools/check-base-mods.js
 //
 // `npm run deploy` runs this in its pre-flight. The packages go to a temp directory and are thrown
-// away: nothing here publishes, and `npm run mods:base` is still what builds a servable loadout.
+// away: a base mod is never distributed as a package, and the client carries it compiled in.
 
 import {mkdtempSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
@@ -17,13 +17,12 @@ import {dirsIn, MODS_ROOT} from "../src/mods/modDirs.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-// The mods this game ships; a checkout's own dev-mods are neither packaged nor listed.
+// The mods this game ships; a checkout's own dev-mods belong to whoever is working on them.
 const BASE_MOD_DIRS = dirsIn(MODS_ROOT);
 
 const HINT = [
-    "That mod cannot be published as a package, so the registry's CI would refuse it too. A bundler",
-    "error is printed above; a disallowed global is usually a browser API the mod names directly",
-    "rather than reaching through the SDK.",
+    "That mod cannot be built as a standalone package. A bundler error is printed above; a disallowed",
+    "global is usually a browser API the mod names directly rather than reaching through the SDK.",
 ].join("\n");
 
 /**

@@ -8,10 +8,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npm run mods:base && vite build",
+    "build": "vite build",
     "build:mod": "node --import ./src/nodeservice/loader.js tools/build-mod.js",
-    "mods:base": "node --import ./src/nodeservice/loader.js tools/publish-base-mods.js",
-    "mods:registry": "node --import ./src/nodeservice/loader.js tools/publish-registry.js",
     "check:mod": "node --import ./src/nodeservice/loader.js tools/mod-check.js",
     "check:mods": "node --import ./src/nodeservice/loader.js tools/check-base-mods.js",
     "deploy": "node --import ./src/nodeservice/loader.js tools/deploy.js",
