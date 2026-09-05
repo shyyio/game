@@ -9,8 +9,8 @@ SCRIPT_DIR="$(dirname "$0")"
 apt-get update -y
 apt-get full-upgrade -y
 
-if ! command -v node >/dev/null || [[ "$(node -v)" != v24.* ]]; then
-    curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+if ! command -v node >/dev/null || [[ "$(node -v)" != v26.* ]]; then
+    curl -fsSL https://deb.nodesource.com/setup_26.x | bash -
     apt-get install -y nodejs
 fi
 
