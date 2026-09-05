@@ -1,4 +1,4 @@
-// One command from a committed main to live: builds every bundle, releases the npm packages, then
+// One command from a committed main to live: builds every bundle, runs the tests, tags, then
 // pushes to `all` so every service redeploys off the same commit.
 //
 //   npm run deploy
@@ -13,9 +13,8 @@
 // them and local play can too. That needs a registry checkout beside this repo; pass
 // --skip-registry to deploy the game without touching the listing.
 
-import {readFileSync} from "node:fs";
 import {spawnSync} from "node:child_process";
-import {join, resolve, dirname} from "node:path";
+import {resolve, dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {parseArgs} from "node:util";
 import {GAME_VERSION} from "../src/common/constants.js";
@@ -31,9 +30,6 @@ const BUILDS = ["build", "build:server", "build:authserver", "build:reportingser
 
 const DEPLOY_REMOTES = ["ca1", "de1", "auth", "spup-reporting-ca1", "mirror", "pages"];
 
-// The pack scripts stamp GAME_VERSION into these three; mod-builder carries its own version.
-const VERSIONED_PACKAGES = ["sdk", "game-server", "game-client"];
-
 const NOTHING_PUSHED = "Nothing has been pushed, so the live servers are untouched.";
 
 // The registry tool reaches src/mods/loadout.js, so it needs the @/ alias hook the npm scripts pass.
@@ -43,12 +39,6 @@ const REGISTRY_HINT = [
     "Everything else is already live — this step only lists the release in the mod registry, and the",
     "listing is what the admin page and local play's mod picker resolve against. Fix it and re-run just",
     "that step: `npm run mods:registry -- --push`.",
-].join("\n");
-
-const RELEASE_HINT = [
-    "The release printed its own reason above (it stops on a failing test, a stale package, or an",
-    `npm refusal). ${NOTHING_PUSHED}`,
-    "Fix it and re-run `npm run deploy`: the builds re-run and any package already on npm is skipped.",
 ].join("\n");
 
 const PUSH_HINT = [
@@ -96,76 +86,35 @@ function assertCommitted() {
 }
 
 /**
- * @param {string} dir a directory under packages/
- * @returns {object} its manifest
- */
-function manifestOf(dir) {
-    return JSON.parse(readFileSync(join(ROOT, "packages", dir, "package.json"), "utf8"));
-}
-
-/**
- * Catches a version bump whose package manifests were never re-packed and committed — the release
- * packs them itself and would otherwise only fail on the dirty tree, a full build later.
- * @returns {void}
- */
-function assertVersionsSynced() {
-    const stale = [];
-    for (const dir of VERSIONED_PACKAGES) {
-        const {version} = manifestOf(dir);
-        if (version !== GAME_VERSION) {
-            stale.push(`  packages/${dir} is ${version}`);
-        }
-    }
-    if (stale.length > 0) {
-        throw new StepError(
-            `package.json says ${GAME_VERSION}, but these staged manifests are still behind:\n${stale.join("\n")}`,
-            "Re-pack them and commit the result:\n"
-            + "  npm run pack:sdk && npm run pack:server && npm run pack:client",
-        );
-    }
-}
-
-/**
- * Catches the one range no pack script writes. Its test would catch it too, but only after four
- * builds, four packs, and the whole suite.
- * @returns {void}
- */
-function assertPeerRangeSynced() {
-    const range = manifestOf("game-client").peerDependencies["@spup/game-server"];
-    if (range !== `^${GAME_VERSION}`) {
-        throw new StepError(
-            `game-client still asks for a ${range} server, but this deploy is ${GAME_VERSION}`,
-            "No pack script writes that range. Set it by hand and commit:\n"
-            + `  packages/game-client/package.json  peerDependencies["@spup/game-server"]: "^${GAME_VERSION}"`,
-        );
-    }
-}
-
-/**
  * Keeps package.json's version and its tag on one commit: a tag left behind on older code would go
  * out naming this deploy something it is not.
- * @param {boolean} mustExist whether the release should have written it by now
  * @returns {void}
  */
-function assertVersionTag(mustExist) {
+function assertVersionTag() {
     const {status, stdout} = capture("git", ["rev-list", "-n", "1", TAG]);
     if (status !== 0) {
-        if (mustExist) {
-            throw new StepError(
-                `the release finished without tagging ${TAG}`,
-                `Tag it by hand (\`git tag ${TAG}\`) and re-run, or check why tools/release.js skipped it.`,
-            );
-        }
         return;
     }
     const {stdout: head} = capture("git", ["rev-parse", "HEAD"]);
     if (stdout !== head) {
         throw new StepError(
             `${TAG} already exists, on ${stdout.slice(0, 8)}, but HEAD is ${head.slice(0, 8)}`,
-            `${GAME_VERSION} has gone out before. Either bump the version in package.json (then re-pack\n`
-            + `and commit), or move the tag onto this commit with \`git tag -f ${TAG}\`.`,
+            `${GAME_VERSION} has gone out before. Either bump the version in package.json and commit,\n`
+            + `or move the tag onto this commit with \`git tag -f ${TAG}\`.`,
         );
     }
+}
+
+/**
+ * Tags this commit, which is what the registry's CI builds each listed mod from.
+ * @returns {void}
+ */
+function tagVersion() {
+    if (capture("git", ["tag", "--list", TAG]).stdout !== "") {
+        console.log(`${TAG} is already on this commit`);
+        return;
+    }
+    runStep(`tag ${TAG}`, "git", ["tag", TAG], {cwd: ROOT, hint: NOTHING_PUSHED});
 }
 
 /**
@@ -239,8 +188,8 @@ function main() {
     const {values: args} = parseArgs({options: {"skip-registry": {type: "boolean", default: false}}});
     const registry = !args["skip-registry"];
 
-    // The pre-flight checks count as one step, then the builds, the release, the tag check, the
-    // push, the remote check, and the registry listing.
+    // The pre-flight checks count as one step, then the builds, the tests, the tag, the push, the
+    // remote check, and the registry listing.
     let stepCount = BUILDS.length + 5;
     if (registry) {
         stepCount += 1;
@@ -250,9 +199,7 @@ function main() {
     steps.begin("pre-flight checks");
     assertOnMain();
     assertCommitted();
-    assertVersionsSynced();
-    assertPeerRangeSynced();
-    assertVersionTag(false);
+    assertVersionTag();
     assertModsPublishable();
     if (registry) {
         assertRegistryReady();
@@ -267,12 +214,14 @@ function main() {
         });
     }
 
-    // The release runs the tests and the staleness checks, publishes what is not on npm yet, and tags.
-    steps.begin("release to npm");
-    runStep("release", "npm", ["run", "release"], {cwd: ROOT, hint: RELEASE_HINT});
+    steps.begin("run the tests");
+    runStep("tests", "npm", ["test"], {
+        cwd: ROOT,
+        hint: `The failing test is named above. ${NOTHING_PUSHED}`,
+    });
 
-    steps.begin(`check ${TAG} is on this commit`);
-    assertVersionTag(true);
+    steps.begin(`tag ${TAG}`);
+    tagVersion();
 
     steps.begin("push to every deploy remote");
     runStep("push", "git", ["push", "all", "main", TAG], {cwd: ROOT, hint: PUSH_HINT});

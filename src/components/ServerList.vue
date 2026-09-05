@@ -209,8 +209,8 @@ function select(server) {
   emit("select", origin);
 }
 
-// A server the directory does not list — an author's own dev server, mainly. Only the client
-// @spup/game-client ships (and a dev build) has this; the public site lists the directory only.
+// A server the directory does not list — an author's own dev server, mainly. Only a dev build has
+// this; the public site lists the directory only.
 const customOrigin = ref("");
 
 // What is actually joined: the typed URL with its port filled in ("" while the field is unusable).

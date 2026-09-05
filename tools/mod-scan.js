@@ -5,8 +5,7 @@
 //   node tools/mod-scan.js <mod.js>
 //
 // This is a lint, not a sandbox: `[].constructor.constructor` is the Function constructor with no
-// free name anywhere, so a scan can never make evaluating a bundle safe. Anything that runs one
-// runs it under node's permission model instead (see packages/mod-builder/evalCheck.js).
+// free name anywhere, so a scan can never make evaluating a bundle safe.
 
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";

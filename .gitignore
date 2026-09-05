@@ -16,11 +16,6 @@ node_modules
 /build
 coverage
 
-# Bundles staged into the published runtime packages
-packages/*/dist/
-packages/*/dist-*/
-packages/*/packed.json
-
 # A server's config, pinned mod packages and their fetched files
 server.json
 mods.json
@@ -157,3 +152,4 @@ profiles/
 
 # DevTools performance traces
 Trace-*.json
+dev-mods/

@@ -6,5 +6,5 @@
       "@spup/sdk/client": ["./src/sdk/client.js"]
     }
   },
-  "exclude": ["node_modules", "build", "packages"]
+  "exclude": ["node_modules", "build"]
 }
