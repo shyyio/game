@@ -9,14 +9,10 @@ import {
     CLOSE_CODE_BAD_SIGN_IN, CLOSE_CODE_BAD_FRAME, CLOSE_CODE_SUPERSEDED, CLOSE_CODE_SERVER_SHUTDOWN,
     CLOSE_CODE_LOADOUT_CHANGED,
 } from "@/common/CloseCodes.js";
-import {MOD_CONTENT_TYPES, extensionOf} from "@/server/ModHost.js";
 
 const MAX_PAYLOAD_BYTES = 64 * 1024;
 const MAX_BACKPRESSURE_BYTES = 1024 * 1024;
 const IDLE_TIMEOUT_S = 120;
-
-// Content-addressed files never change under their name.
-const IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
 
 /**
  * The uWebSockets.js front end: accepts connections, authenticates the sign-in frame, and pumps
@@ -44,10 +40,7 @@ export class GameServer extends AbstractHttpServer {
             this._onStatus(res);
         });
         this.app.get("/mods/index.json", (res, req) => {
-            this._onModIndex(res);
-        });
-        this.app.get("/mods/:name", (res, req) => {
-            this._onModFile(res, req.getParameter(0));
+            this._onModList(res);
         });
     }
 
@@ -154,39 +147,11 @@ export class GameServer extends AbstractHttpServer {
      * @param {object} res
      * @returns {void}
      */
-    _onModIndex(res) {
-        const modHost = this._world.modHost;
-        if (modHost === null) {
-            rejectRequest(res, "404 Not Found", "this server runs its built-in mods", {cors: true});
-            return;
-        }
+    _onModList(res) {
         res.cork(() => {
             res.writeHeader("Content-Type", "application/json")
                 .writeHeader("Access-Control-Allow-Origin", "*")
-                .end(modHost.indexJson);
-        });
-    }
-
-    /**
-     * @private
-     * @param {object} res
-     * @param {string} name
-     * @returns {void}
-     */
-    _onModFile(res, name) {
-        let bytes;
-        if (this._world.modHost !== null) {
-            bytes = this._world.modHost.fileOf(name);
-        }
-        if (bytes === undefined) {
-            rejectRequest(res, "404 Not Found", "no such mod file", {cors: true});
-            return;
-        }
-        res.cork(() => {
-            res.writeHeader("Content-Type", MOD_CONTENT_TYPES[extensionOf(name)])
-                .writeHeader("Cache-Control", IMMUTABLE_CACHE)
-                .writeHeader("Access-Control-Allow-Origin", "*")
-                .end(bytes);
+                .end(this._world.modListJson);
         });
     }
 

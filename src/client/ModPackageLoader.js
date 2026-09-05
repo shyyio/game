@@ -1,7 +1,7 @@
-// Loading a packaged mod in the browser: fetch its files, verify them against the hash they are
-// pinned to, evaluate the bundle, and call its factories. Two callers share this — a remote join
-// (@/client/ModFetcher.js) and local play's own pinned loadout (@/client/LocalLoadout.js) — so there
-// is one place that decides what counts as a verified mod file.
+// Loading a packaged mod in the browser: fetch its files, verify them against the hash the loadout
+// records, evaluate the bundle, and call its factories. Two callers share this — a remote join
+// (@/client/ModFetcher.js) and local play's own mod list (@/client/LocalLoadout.js) — so there is
+// one place that decides what counts as a verified mod file.
 
 import {ModPackage} from "@/common/ModPackage.js";
 import {ModManifest, SDK_VERSION, MOD_PART_SIM, MOD_PART_CLIENT} from "@/common/ModManifest.js";
@@ -100,15 +100,16 @@ export class ModFileStore {
 }
 
 /**
- * One mod file, from cache or from the network, hashed and compared against its pin before it is
- * handed back. The cache is keyed by that same hash, so an entry can never answer for other bytes.
+ * One mod file, from cache or from the network, hashed and compared against what it must be before
+ * it is handed back. The cache is keyed by that same hash, so an entry can never answer for other
+ * bytes.
  * @param {ModFileStore} store
  * @param {string} url where to download it
  * @param {string} cacheKey content-addressed name
  * @param {string} expectedHex lowercase hex sha-256 the bytes must have
  * @returns {Promise<Uint8Array>}
  */
-export async function fetchPinnedFile(store, url, cacheKey, expectedHex) {
+export async function fetchVerifiedFile(store, url, cacheKey, expectedHex) {
     const cached = await store.get(cacheKey);
     if (cached !== null) {
         return cached;
@@ -117,7 +118,7 @@ export async function fetchPinnedFile(store, url, cacheKey, expectedHex) {
     const hex = sha256Hex(bytes);
     if (hex !== expectedHex) {
         throw new Error(
-            `${url} hashes to ${formatIntegrity(hex)}, but it is pinned to ${formatIntegrity(expectedHex)}`,
+            `${url} hashes to ${formatIntegrity(hex)}, but it must be ${formatIntegrity(expectedHex)}`,
         );
     }
     await store.put(cacheKey, bytes);
@@ -187,28 +188,28 @@ function assertSdkVersion(manifest) {
 }
 
 /**
- * Loads a mod pinned by a lockfile entry: its manifest and its bundle, each verified against the
- * hash the entry pins, and the manifest checked against what the entry claims to be pinning.
+ * Loads a mod a lockfile entry names: its manifest and its bundle, each verified against the hash
+ * the entry records, and the manifest checked against what the entry says it is.
  * @param {ModFileStore} store
  * @param {ModLockEntry} entry
  * @param {boolean} withSim
  * @returns {Promise<ModPackage>}
  */
-export async function loadPinnedPackage(store, entry, withSim) {
+export async function loadModPackage(store, entry, withSim) {
     const manifestHex = integrityHex(entry.integrityOf(MANIFEST_FILE));
-    const manifestBytes = await fetchPinnedFile(
+    const manifestBytes = await fetchVerifiedFile(
         store, `${entry.url}${MANIFEST_FILE}`, contentName(manifestHex, MANIFEST_FILE), manifestHex,
     );
     const manifest = ModManifest.parse(JSON.parse(new TextDecoder().decode(manifestBytes)));
     if (manifest.name !== entry.name || manifest.version !== entry.version) {
         throw new Error(
-            `${entry.url} ships ${manifest.name} ${manifest.version}, but it is pinned as ` +
+            `${entry.url} ships ${manifest.name} ${manifest.version}, but the loadout names it ` +
             `${entry.name} ${entry.version}`,
         );
     }
     assertSdkVersion(manifest);
     const entryHex = integrityHex(entry.integrityOf(manifest.entry));
-    const bundleBytes = await fetchPinnedFile(
+    const bundleBytes = await fetchVerifiedFile(
         store, `${entry.url}${manifest.entry}`, contentName(entryHex, manifest.entry), entryHex,
     );
     return instantiatePackage(await importBundle(bundleBytes), manifest.parts, withSim);

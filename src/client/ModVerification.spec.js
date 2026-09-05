@@ -1,7 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {approvedModHashes, registryModHashes, unverifiedMods} from "@/client/ModVerification.js";
-import {contentName} from "@/common/ModIntegrity.js";
+import {registryModHashes, unverifiedMods} from "@/client/ModVerification.js";
 
 const MARKET_HASH = "a1".repeat(32);
 const PEBBLES_HASH = "b2".repeat(32);
@@ -31,10 +30,10 @@ function published(version, hash) {
 /**
  * @param {string} name
  * @param {string} hash
- * @returns {object} an entry of the mod index a server serves
+ * @returns {object} an external entry of the mod list a server serves
  */
-function served(name, hash) {
-    return {name, entry: contentName(hash, "mod.js")};
+function listed(name, hash) {
+    return {name, url: `https://mods.example.com/${name}/1.0.0/`, integrity: `sha256-${hash}`};
 }
 
 test("registry hashes cover every published version of every listed mod", () => {
@@ -50,24 +49,14 @@ test("a listed version publishing no artifacts contributes no hash", () => {
     assert.deepEqual(Array.from(hashes), [MARKET_HASH]);
 });
 
-test("a mod whose bundle no approved hash covers is unverified", () => {
+test("a mod whose bundle the registry does not publish is unverified", () => {
     const approved = new Set([MARKET_HASH]);
-    const mods = [served("market", MARKET_HASH), served("rogue", ROGUE_HASH)];
+    const mods = [listed("market", MARKET_HASH), listed("rogue", ROGUE_HASH)];
     assert.deepEqual(unverifiedMods(mods, approved), ["rogue"]);
 });
 
-test("nothing is unverified when every served bundle is approved", () => {
+test("nothing is unverified when the registry publishes every bundle the server names", () => {
     const approved = new Set([MARKET_HASH, PEBBLES_HASH]);
-    const mods = [served("market", MARKET_HASH), served("pebble-generator", PEBBLES_HASH)];
+    const mods = [listed("market", MARKET_HASH), listed("pebble-generator", PEBBLES_HASH)];
     assert.deepEqual(unverifiedMods(mods, approved), []);
-});
-
-test("the approved set is the registry's hashes plus the base mods this client was built with", () => {
-    const approved = approvedModHashes([listing("market", [published("1.0.0", MARKET_HASH)])], [PEBBLES_HASH]);
-    assert.deepEqual(Array.from(approved).sort(), [MARKET_HASH, PEBBLES_HASH].sort());
-});
-
-test("a client built with no base mods still approves what the registry publishes", () => {
-    const approved = approvedModHashes([listing("market", [published("1.0.0", MARKET_HASH)])], []);
-    assert.deepEqual(Array.from(approved), [MARKET_HASH]);
 });

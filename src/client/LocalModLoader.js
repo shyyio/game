@@ -1,7 +1,7 @@
 // Turns a chosen local loadout into ModPackages, in its order — which is what assigns the positional
 // typeIds after the base loadout's.
 
-import {ModFileStore, loadPinnedPackage} from "@/client/ModPackageLoader.js";
+import {ModFileStore, loadModPackage} from "@/client/ModPackageLoader.js";
 
 /**
  * Loads a local loadout's mods with their sim parts — local play hosts the sim in this page.
@@ -15,7 +15,7 @@ export async function loadLocalMods(loadout) {
     const store = await ModFileStore.open();
     const packages = [];
     for (const mod of loadout.mods) {
-        packages.push(await loadPinnedPackage(store, mod.lockEntry, true));
+        packages.push(await loadModPackage(store, mod.lockEntry, true));
     }
     return packages;
 }

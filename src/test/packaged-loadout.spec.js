@@ -8,12 +8,12 @@ import {tmpdir} from "node:os";
 import {join, resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {ModRegistry} from "@/common/ModRegistry.js";
-import {formatIntegrity} from "@/common/ModIntegrity.js";
+import {formatIntegrity, integrityHex, contentName} from "@/common/ModIntegrity.js";
 import {SDK_VERSION} from "@/common/ModManifest.js";
 import {ModLockfile} from "@/common/ModLockfile.js";
 import {ModCache, resolvePackage, sha256Hex} from "@/server/ModCache.js";
 import {loadPackagedMods} from "@/server/ModLoader.js";
-import {ModHost} from "@/server/ModHost.js";
+import {externalModList, modListJson} from "@/server/modList.js";
 import {simLoadout, MOD_DIRS} from "@/mods/loadout.js";
 import {modName} from "@/mods/modNames.js";
 import {buildMod} from "../../tools/build-mod.js";
@@ -30,10 +30,10 @@ for (const dir of MOD_DIRS) {
 }
 
 /**
- * Pins the built packages into a fresh lockfile, in loadout order.
+ * The built packages as a fresh lockfile, in loadout order.
  * @returns {Promise<ModLockfile>}
  */
-async function pinLoadout() {
+async function lockfileFor() {
     const entries = [];
     for (const url of packageUrls) {
         entries.push(await resolvePackage(url));
@@ -54,7 +54,7 @@ function tempRoot(t) {
 
 test("a pinned loadout caches, loads, and registers like the static one", async (t) => {
     const root = tempRoot(t);
-    const lockfile = await pinLoadout();
+    const lockfile = await lockfileFor();
     const cache = new ModCache(join(root, "cache"));
 
     assert.equal(await cache.populate(lockfile), lockfile.mods.reduce((sum, entry) => sum + entry.integrity.size, 0));
@@ -82,29 +82,30 @@ test("a pinned loadout caches, loads, and registers like the static one", async 
     assert.deepEqual(mods.map(mod => mod.manifest.name), MOD_DIRS.map(dir => modName(dir)));
 });
 
-test("the served index names every file by its content hash", async (t) => {
+test("the served list says where each mod came from and what its bundle must hash to", async (t) => {
     const root = tempRoot(t);
-    const lockfile = await pinLoadout();
+    const lockfile = await lockfileFor();
     const cache = new ModCache(join(root, "cache"));
     await cache.populate(lockfile);
     const {mods} = await loadPackagedMods(lockfile, cache);
 
-    const index = JSON.parse(new ModHost(mods, cache).indexJson);
+    const list = JSON.parse(modListJson(externalModList(mods)));
 
-    assert.equal(index.sdkVersion, SDK_VERSION);
-    assert.deepEqual(index.mods.map(mod => mod.name), lockfile.mods.map(entry => entry.name));
-    for (const mod of index.mods) {
-        // The name a bundle is served under is its own digest, so a client needs nothing else to
-        // verify what it downloaded.
-        assert.equal(sha256Hex(cache.read(mod.entry)), mod.entry.slice(0, 64));
+    assert.equal(list.sdkVersion, SDK_VERSION);
+    assert.deepEqual(list.mods.map(mod => mod.name), lockfile.mods.map(entry => entry.name));
+    for (const mod of list.mods) {
+        // The client downloads the bundle from that URL and checks it against this hash, so the two
+        // have to describe the same bytes.
+        assert.equal(mod.url, lockfile.find(mod.name).url);
+        assert.equal(formatIntegrity(sha256Hex(cache.read(contentName(integrityHex(mod.integrity), "mod.js")))), mod.integrity);
     }
-    assert.ok(index.mods.find(mod => mod.name === "market").parts.includes("sim"));
-    assert.ok(index.mods.find(mod => mod.name === "logistics").parts.includes("client"));
+    assert.ok(list.mods.find(mod => mod.name === "market").parts.includes("sim"));
+    assert.ok(list.mods.find(mod => mod.name === "logistics").parts.includes("client"));
 });
 
 test("a tampered file fails the hash check instead of loading", async (t) => {
     const root = tempRoot(t);
-    const lockfile = await pinLoadout();
+    const lockfile = await lockfileFor();
     const cache = new ModCache(join(root, "cache"));
     await cache.populate(lockfile);
 
@@ -118,7 +119,7 @@ test("a tampered file fails the hash check instead of loading", async (t) => {
 
 test("a package whose bytes drift from the pin refuses to cache", async (t) => {
     const root = tempRoot(t);
-    const lockfile = await pinLoadout();
+    const lockfile = await lockfileFor();
     const entry = lockfile.find("fluids");
     entry.integrity.set("mod.js", formatIntegrity("0".repeat(64)));
 
@@ -127,7 +128,7 @@ test("a package whose bytes drift from the pin refuses to cache", async (t) => {
 });
 
 test("a pinned loadout round-trips through JSON", async () => {
-    const lockfile = await pinLoadout();
+    const lockfile = await lockfileFor();
     assert.deepEqual(ModLockfile.parse(lockfile.toJSON()).toJSON(), lockfile.toJSON());
     assert.throws(() => ModLockfile.parse({mods: [{name: "x"}]}), /must end in/);
 });

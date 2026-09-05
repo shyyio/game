@@ -30,8 +30,8 @@ const baseMods = MOD_DIRS.map((dir) => ({name: modName(dir), title: modTitle(dir
 const baseNames = baseMods.map((mod) => mod.name);
 
 /**
- * One row of the list. With built-in mods off, a base mod is a row like any other, chosen from the
- * registry at a version; with them on, the base mods sit behind the single built-in row.
+ * One row of the list. The base mods sit behind the single built-in row, which is not a choice: the
+ * client runs the copy it was built with.
  */
 class ModRow {
 
@@ -94,13 +94,6 @@ const rows = computed(() => {
   // The chosen mods first, in load order, since that order is what the arrows change.
   const all = props.loadout.mods.map((mod) => rowFor(mod.name));
   const chosen = new Set(props.loadout.mods.map((mod) => mod.name));
-  if (!props.loadout.builtIn) {
-    for (const mod of baseMods) {
-      if (!chosen.has(mod.name)) {
-        all.push(rowFor(mod.name));
-      }
-    }
-  }
   for (const mod of props.listings) {
     if (!baseNames.includes(mod.name) && !chosen.has(mod.name)) {
       all.push(rowFor(mod.name));
@@ -193,13 +186,6 @@ function loadIndex(row) {
  */
 function move(row, offset) {
   commit(props.loadout.withMoved(row.name, offset));
-}
-
-/**
- * @returns {void}
- */
-function toggleBuiltIn() {
-  commit(props.loadout.withBuiltIn(!props.loadout.builtIn));
 }
 
 /**
@@ -350,10 +336,7 @@ export default defineComponent({
     <div v-if="pickError" class="mod-picker-error">{{ pickError }}</div>
     <div v-if="error" class="mod-picker-error">{{ error }}</div>
     <v-list class="mod-rows">
-      <v-list-item @click="toggleBuiltIn">
-        <template #prepend>
-          <v-checkbox-btn :model-value="loadout.builtIn" color="primary" hide-details tabindex="-1" @click.stop="toggleBuiltIn"/>
-        </template>
+      <v-list-item class="mod-row-inert">
         <div class="mod-row-body">
           <div class="mod-row-head">
             <span class="mod-row-name">Built-in mods</span>
