@@ -554,12 +554,12 @@ export class MachineBehavior extends AbstractBehavior {
             const byproductDelivered = !byproductPending || engine.transfers.wasDest(machine.out2[row]);
             if (engine.transfers.wasDest(machine.out[row]) && byproductDelivered) {
                 const eid = eids[row];
-                engine.itemProduced.notify(placed.ownerIdOf(eid), machine.output[row], 1);
+                engine.itemProduced.notify(placed.claimOwnerOf(eid), machine.output[row], 1);
                 machine.lastOutput[row] = machine.output[row];
                 machine.output[row] = EMPTY;
                 machine.remaining[row] = EMPTY;
                 if (byproductPending) {
-                    engine.itemProduced.notify(placed.ownerIdOf(eid), machine.byproduct[row], 1);
+                    engine.itemProduced.notify(placed.claimOwnerOf(eid), machine.byproduct[row], 1);
                     machine.lastByproduct[row] = machine.byproduct[row];
                     machine.byproduct[row] = EMPTY;
                 }

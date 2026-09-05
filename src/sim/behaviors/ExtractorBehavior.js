@@ -224,7 +224,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         for (let row = 0; row < count; row += 1) {
             if (engine.transfers.wasDest(extractor.out[row])) {
                 const eid = eids[row];
-                engine.itemProduced.notify(placed.ownerIdOf(eid), extractor.output[row], 1);
+                engine.itemProduced.notify(placed.claimOwnerOf(eid), extractor.output[row], 1);
                 extractor.lastOutput[row] = extractor.output[row];
                 extractor.output[row] = EMPTY;
                 extractor.remaining[row] = EMPTY;

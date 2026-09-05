@@ -234,9 +234,9 @@ export function sinkConsumedTotal(engine) {
 }
 
 /**
- * Claims every chunk the tiled grid touches, before anything is placed: PlacedObject.ownerId is
- * cached from the chunk's owner at spawn time, so a later claim would leave terminals ownerless.
- * Row-major order keeps every claim adjacent to an owned chunk.
+ * Claims every chunk the tiled grid touches, before anything is placed: production is attributed to
+ * the chunk's current owner, so terminals standing on unclaimed ground count for nobody. Row-major
+ * order keeps every claim adjacent to an owned chunk.
  * @param {Game} game
  * @param {number} minX
  * @param {number} maxX

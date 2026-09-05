@@ -24,9 +24,9 @@ export class PlacedObjects {
         this.def = engine.components.define("PlacedObject", [
             {name: "typeId", kind: "type"},
             {name: "objectId", fill: NO_EID},
-            // The chunk's owner at spawn time, cached so per-tick behaviors never need Game access.
-            // An unclaim deletes solid objects first, so this never goes stale for them.
-            {name: "ownerId", fill: PLAYER_ID_NONE},
+            // Who placed it, for record keeping: a friend building in your chunk is recorded as
+            // themselves. Economics read claimOwnerOf instead, which follows the ground.
+            {name: "placedBy", fill: PLAYER_ID_NONE},
         ], {sparse: true});
 
         // typeId -> ObjectType, derived types only.
@@ -88,12 +88,24 @@ export class PlacedObjects {
     }
 
     /**
-     * The chunk owner at the time this entity was placed.
+     * The player who placed this entity, PLAYER_ID_NONE for an engine-originated spawn.
      * @param {number} eid
      * @returns {number}
      */
-    ownerIdOf(eid) {
-        return this.def.store.ownerId[this.def.row(eid)];
+    placedByOf(eid) {
+        return this.def.store.placedBy[this.def.row(eid)];
+    }
+
+    /**
+     * The current owner of the chunk this entity stands in, PLAYER_ID_NONE when unclaimed. Read live
+     * rather than cached: a stored copy would have to be rewritten at every claim and permission
+     * change, and a missed call site bills the wrong player.
+     * @param {number} eid
+     * @returns {number}
+     */
+    claimOwnerOf(eid) {
+        const position = this.engine.Position;
+        return this.engine.chunkOwnerOf(chunkId(position.x[eid], position.y[eid]));
     }
 
     /**
@@ -227,7 +239,7 @@ export class PlacedObjects {
         const row = this.def.row(eid);
         this.def.store.typeId[row] = type.typeId;
         this.def.store.objectId[row] = objectId;
-        this.def.store.ownerId[row] = engine.chunkOwnerOf(chunkId(message.x, message.y));
+        this.def.store.placedBy[row] = playerId;
         engine.space.setPosition(eid, message.x, message.y, message.direction);
         type.behavior.onSpawn(engine, eid, type, message);
         if (type.placement.solid) {

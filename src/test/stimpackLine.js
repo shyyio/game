@@ -362,8 +362,8 @@ export function buildStimpackFactory(engine, game, originX, originY) {
     assignLanes(tree, {next: 0});
     assignDepth(tree, 0);
 
-    // Claimed before anything is placed: PlacedObject.ownerId is cached from the chunk's owner at
-    // spawn time, so a claim arriving afterward would leave every object attributed to nobody.
+    // Claimed before anything is placed: production is attributed to the chunk's current owner, so
+    // objects standing on unclaimed ground count for nobody.
     let leafCount = 0;
     countLeaves(tree, {count: () => { leafCount += 1; }});
     const maxDepth = maxOf(tree, node => node.depth);

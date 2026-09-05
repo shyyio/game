@@ -113,6 +113,36 @@ test("a format-2 save gains Machine.enabled, and every machine loads switched on
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
 });
 
+test("a format-4 save's PlacedObject.ownerId is renamed to placedBy", async () => {
+    const engine = await makeGameEngine();
+    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 6, 6, Direction.UP));
+    const snapshot = engine.snapshots.serialize();
+    snapshot.saveFormat = 4;
+    const placed = snapshot.components.find(component => component.name === "PlacedObject");
+    assert.equal(placed.rows.length, 1);
+    for (const field of placed.fields) {
+        if (field.name === "placedBy") {
+            field.name = "ownerId";
+        }
+    }
+    for (const row of placed.rows) {
+        row.ownerId = row.placedBy;
+        delete row.placedBy;
+    }
+
+    const migrated = migrateSnapshot(snapshot);
+    const upgraded = migrated.components.find(component => component.name === "PlacedObject");
+    assert.ok(upgraded.fields.some(field => field.name === "placedBy"));
+    assert.ok(!upgraded.fields.some(field => field.name === "ownerId"));
+    for (const row of upgraded.rows) {
+        assert.equal(row.ownerId, undefined);
+    }
+
+    const restored = await makeGameEngine();
+    assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
+    assert.equal(restored.placed.eidsOf(BlenderType.typeId).length, 1);
+});
+
 test("NodeSaveStore round-trips the format stamp", async () => {
     const engine = await makeGameEngine();
     const store = new NodeSaveStore(":memory:");

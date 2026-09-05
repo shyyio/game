@@ -1,5 +1,5 @@
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
-export const SAVE_FORMAT = 4;
+export const SAVE_FORMAT = 5;
 
 // What a save written before the stamp counts as.
 const UNSTAMPED_FORMAT = 0;
@@ -24,6 +24,13 @@ export const SAVE_MIGRATIONS = new Map([
         saveFormat: 4,
         components: retagFields(snapshot.components, ID_FIELD_KINDS),
         records: retagFields(snapshot.records === undefined ? [] : snapshot.records, RECORD_ID_FIELD_KINDS),
+    })],
+    // Format 5 renames PlacedObject.ownerId to placedBy, which now records the placing player. Rows
+    // written before it hold the chunk owner at spawn, the closest thing the old save knows.
+    [4, snapshot => ({
+        ...snapshot,
+        saveFormat: 5,
+        components: renameField(snapshot.components, "PlacedObject", "ownerId", "placedBy"),
     })],
 ]);
 
@@ -100,6 +107,38 @@ function addField(components, componentName, fieldName, value) {
             ...component,
             fields: [...component.fields, {name: fieldName, kind: "i32"}],
             rows: component.rows.map(row => ({...row, [fieldName]: value})),
+        };
+    });
+}
+
+/**
+ * Returns `components` with `componentName`'s `from` field renamed to `to`, on the field list and on
+ * every row. A snapshot missing that component or field is returned untouched.
+ * @param {object[]} components
+ * @param {string} componentName
+ * @param {string} from
+ * @param {string} to
+ * @returns {object[]}
+ */
+function renameField(components, componentName, from, to) {
+    return components.map(component => {
+        if (component.name !== componentName
+            || !component.fields.some(field => field.name === from)) {
+            return component;
+        }
+        return {
+            ...component,
+            fields: component.fields.map(field => {
+                if (field.name !== from) {
+                    return field;
+                }
+                return {...field, name: to};
+            }),
+            rows: component.rows.map(row => {
+                const next = {...row, [to]: row[from]};
+                delete next[from];
+                return next;
+            }),
         };
     });
 }
