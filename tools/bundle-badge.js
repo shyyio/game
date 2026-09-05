@@ -1,13 +1,14 @@
-// Measures a shipped bundle and writes its gzipped size into the matching README badge.
+// Measures a shipped bundle and writes its size into the matching README badge.
 //
 //   node tools/bundle-badge.js client
 //   node tools/bundle-badge.js server
 //
 // `npm run build` and `npm run build:server` each run it last for their own bundle. The client
-// bundle carries the base mods compiled in, so its size is the whole game's download; the server
-// bundle is the operator's, native addons excluded since they install from npm.
+// bundle carries the base mods compiled in, so its gzipped size is the whole game's download; the
+// server bundle is the operator's, measured raw and with the native addons excluded since they
+// install from npm.
 
-import {readdirSync, readFileSync, writeFileSync} from "node:fs";
+import {readdirSync, readFileSync, statSync, writeFileSync} from "node:fs";
 import {gzipSync} from "node:zlib";
 import {join, resolve, dirname} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -26,11 +27,13 @@ class Badge {
      * @param {string} dir - relative to the repo root
      * @param {string} alt
      * @param {string} label
+     * @param {boolean} gzip - measure it compressed, the way a browser downloads it
      */
-    constructor(dir, alt, label) {
+    constructor(dir, alt, label, gzip) {
         this.dir = join(ROOT, dir);
         this.alt = alt;
         this.label = label;
+        this.gzip = gzip;
     }
 
     /**
@@ -47,14 +50,15 @@ class Badge {
      */
     markdown(bytes) {
         const kb = Math.round(bytes / BYTES_PER_KB);
-        return `![${this.alt}](https://img.shields.io/badge/${this.label.replace(/ /g, "%20")}-${kb}%20KB%20gzip-blue)`;
+        const size = this.gzip ? `${kb}%20KB%20gzip` : `${kb}%20KB`;
+        return `![${this.alt}](https://img.shields.io/badge/${this.label.replace(/ /g, "%20")}-${size}-blue)`;
     }
 }
 
 /** @type {Object<string, Badge>} */
 export const BADGES = {
-    client: new Badge("build/client", "bundle size", "client + base mods"),
-    server: new Badge("build/server", "server size", "server bundle"),
+    client: new Badge("build/client", "bundle size", "client + base mods", true),
+    server: new Badge("build/server", "server size", "server", false),
 };
 
 /**
@@ -71,6 +75,24 @@ export function gzippedSize(dir) {
             continue;
         }
         total += gzipSync(readFileSync(path), {level: 9}).length;
+    }
+    return total;
+}
+
+/**
+ * Sums every file under `dir` as it sits on disk.
+ * @param {string} dir
+ * @returns {number}
+ */
+export function rawSize(dir) {
+    let total = 0;
+    for (const entry of readdirSync(dir, {withFileTypes: true})) {
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) {
+            total += rawSize(path);
+            continue;
+        }
+        total += statSync(path).size;
     }
     return total;
 }
@@ -95,6 +117,7 @@ const badge = BADGES[name];
 if (badge === undefined) {
     throw new Error(`unknown badge "${name}": pass one of ${Object.keys(BADGES).join(", ")}`);
 }
-const bytes = gzippedSize(badge.dir);
+const bytes = badge.gzip ? gzippedSize(badge.dir) : rawSize(badge.dir);
+const unit = badge.gzip ? "KB gzip" : "KB";
 writeFileSync(README, withBadge(readFileSync(README, "utf8"), badge, badge.markdown(bytes)));
-console.log(`${name} badge: ${Math.round(bytes / BYTES_PER_KB)} KB gzip`);
+console.log(`${name} badge: ${Math.round(bytes / BYTES_PER_KB)} ${unit}`);
