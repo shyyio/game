@@ -5,7 +5,7 @@ import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {migrateSnapshot, SAVE_FORMAT} from "@/common/saveMigrations.js";
 import {GAME_VERSION, Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
+import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
 
 test("a fresh snapshot carries the current format and the writing version", async () => {
     const engine = await makeGameEngine();

@@ -18,16 +18,12 @@ import {ModLockEntry, ModLockfile, MANIFEST_FILE} from "@/common/ModLockfile.js"
 import {ModManifest, SDK_VERSION} from "@/common/ModManifest.js";
 import {integrityHex} from "@/common/ModIntegrity.js";
 import {DEV_TOOLS} from "@/common/env.js";
-import {BASE_MOD_DIRS, baseModName} from "@/mods/baseMods.js";
+import {MOD_DIRS} from "@/mods/modDirs.js";
+import {modName} from "@/mods/modNames.js";
 
-// Where a mod's code comes from: the public registry, or a bare URL a dev build reloads on every
-// start.
-export const LOCAL_MOD_SOURCE_REGISTRY = "registry";
-export const LOCAL_MOD_SOURCE_URL = "url";
-
-const LOCAL_MOD_SOURCES = [LOCAL_MOD_SOURCE_REGISTRY, LOCAL_MOD_SOURCE_URL];
-
-const MOD_KEYS = ["source", "name", "title", "url", "version", "integrity", "pinned"];
+// Every mod here comes from the registry: one being developed against a checkout is loaded from
+// dev-mods/, not fetched.
+const MOD_KEYS = ["name", "title", "url", "version", "integrity", "pinned"];
 
 // "excludedBase" is what stored loadouts carried before the built-in mods became one choice.
 const LOADOUT_KEYS = ["mods", "builtIn", "excludedBase"];
@@ -36,7 +32,7 @@ const LOADOUT_KEYS = ["mods", "builtIn", "excludedBase"];
 const STORAGE_LOADOUT = "spup.local-loadout";
 
 // Every base mod's package name, in the order clientLoadout() registers them.
-export const BASE_MOD_NAMES = BASE_MOD_DIRS.map(dir => baseModName(dir));
+export const BASE_MOD_NAMES = MOD_DIRS.map(dir => modName(dir));
 
 /**
  * One mod a local game loads on top of the base loadout.
@@ -44,16 +40,14 @@ export const BASE_MOD_NAMES = BASE_MOD_DIRS.map(dir => baseModName(dir));
 export class LocalMod {
 
     /**
-     * @param {string} source one of LOCAL_MOD_SOURCE_*
      * @param {string} name the kebab-case identifier, which is this mod's identity in a loadout
      * @param {string} title the display name
      * @param {string} url the package's base URL, ending in "/"
      * @param {string} version
-     * @param {Map<string, string>|null} integrity package file -> "sha256-...", null off a bare URL
+     * @param {Map<string, string>} integrity package file -> "sha256-..."
      * @param {boolean} pinned whether this exact version was chosen, rather than tracking the newest
      */
     constructor(
-        source,
         name,
         title,
         url,
@@ -61,7 +55,6 @@ export class LocalMod {
         integrity,
         pinned,
     ) {
-        this.source = source;
         this.name = name;
         this.title = title;
         this.url = url;
@@ -75,16 +68,13 @@ export class LocalMod {
      * @returns {boolean}
      */
     get tracksLatest() {
-        return this.source === LOCAL_MOD_SOURCE_REGISTRY && !this.pinned;
+        return !this.pinned;
     }
 
     /**
      * @returns {ModLockEntry}
      */
     get lockEntry() {
-        if (this.integrity === null) {
-            throw new Error(`Mod "${this.name}" has no file hashes, so it has no lockfile entry`);
-        }
         return new ModLockEntry(this.url, this.name, this.version, this.integrity);
     }
 
@@ -92,18 +82,14 @@ export class LocalMod {
      * @returns {object}
      */
     toJSON() {
-        const json = {
-            source: this.source,
+        return {
             name: this.name,
             title: this.title,
             url: this.url,
             version: this.version,
+            integrity: Object.fromEntries(this.integrity),
             pinned: this.pinned,
         };
-        if (this.integrity !== null) {
-            json.integrity = Object.fromEntries(this.integrity);
-        }
-        return json;
     }
 
     /**
@@ -119,9 +105,6 @@ export class LocalMod {
                 throw new Error(`Unknown key "${key}" in a local loadout entry`);
             }
         }
-        if (!LOCAL_MOD_SOURCES.includes(json.source)) {
-            throw new Error(`Unknown local loadout source: ${JSON.stringify(json.source)}`);
-        }
         if (typeof json.name !== "string" || typeof json.title !== "string" || typeof json.version !== "string") {
             throw new Error(`A local loadout entry is missing its name, title, or version: ${JSON.stringify(json)}`);
         }
@@ -131,14 +114,8 @@ export class LocalMod {
         if (typeof json.pinned !== "boolean") {
             throw new Error(`Mod "${json.name}" does not say whether its version is pinned`);
         }
-        let integrity = null;
-        if (json.source === LOCAL_MOD_SOURCE_REGISTRY) {
-            integrity = parseIntegrity(json.integrity, json.name);
-        }
-        else if (json.pinned) {
-            throw new Error(`Mod "${json.name}" is served straight off a URL, which has no version to pin`);
-        }
-        return new LocalMod(json.source, json.name, json.title, json.url, json.version, integrity, json.pinned);
+        const integrity = parseIntegrity(json.integrity, json.name);
+        return new LocalMod(json.name, json.title, json.url, json.version, integrity, json.pinned);
     }
 
     /**
@@ -153,7 +130,6 @@ export class LocalMod {
             throw new Error(`The registry publishes no file hashes for ${listing.name} ${version.version}`);
         }
         return LocalMod.parse({
-            source: LOCAL_MOD_SOURCE_REGISTRY,
             name: listing.name,
             title: titleOf(listing),
             url: version.url,
@@ -163,32 +139,6 @@ export class LocalMod {
         });
     }
 
-    /**
-     * The entry for a package served straight off a URL, read off the manifest it actually serves so
-     * a typo fails while the player is looking at it rather than at the next game start.
-     * @param {string} url the package's base URL
-     * @returns {Promise<LocalMod>}
-     */
-    static async fromUrl(url) {
-        if (!DEV_TOOLS) {
-            throw new Error("Loading a mod straight off a URL needs a build with the dev tools on");
-        }
-        const base = url.endsWith("/") ? url : `${url}/`;
-        const response = await fetch(`${base}${MANIFEST_FILE}`);
-        if (!response.ok) {
-            throw new Error(`No mod package at ${base} (${response.status})`);
-        }
-        const manifest = ModManifest.parse(await response.json());
-        if (manifest.sdkVersion !== SDK_VERSION) {
-            throw new Error(
-                `${manifest.name} ${manifest.version} is built for game SDK ${manifest.sdkVersion}; `
-                + `this client speaks ${SDK_VERSION}`,
-            );
-        }
-        return new LocalMod(
-            LOCAL_MOD_SOURCE_URL, manifest.name, manifest.displayName, base, manifest.version, null, false,
-        );
-    }
 }
 
 /**
@@ -396,9 +346,7 @@ export class LocalLoadout {
             }
             const listing = listings.find(candidate => candidate.name === entry.name);
             const title = listing === undefined ? entry.name : titleOf(listing);
-            mods.push(new LocalMod(
-                LOCAL_MOD_SOURCE_REGISTRY, entry.name, title, entry.url, entry.version, entry.integrity, true,
-            ));
+            mods.push(new LocalMod(entry.name, title, entry.url, entry.version, entry.integrity, true));
         }
         return new LocalLoadout(mods, builtIn);
     }
@@ -482,17 +430,16 @@ export function refreshLoadout(loadout, listings) {
  * `current` has it or at this game version from the registry, plus the chosen mods. A name `current`
  * already pins keeps that pin and its position, so a server's own base-mod builds survive a round
  * trip through the editor and no mod's positional typeId moves; the rest follow in load order. Base
- * mods the registry has not published at this version are reported as missing (and nothing is
- * exported); mods loaded straight off a URL have no hashes to pin and are reported as skipped.
+ * mods the registry has not published at this version are reported as missing, and nothing is
+ * exported.
  * @param {LocalLoadout} loadout
  * @param {object[]} listings the registry index
  * @param {string} gameVersion
  * @param {ModLockfile} [current] the server's pins as they are now
- * @returns {{lockfile: object|null, missing: string[], skipped: string[]}}
+ * @returns {{lockfile: object|null, missing: string[]}}
  */
 export function serverLockfile(loadout, listings, gameVersion, current=new ModLockfile([])) {
     const missing = [];
-    const skipped = [];
     const resolved = new Map();
     const base = loadout.builtIn ? BASE_MOD_NAMES : [];
     for (const name of base) {
@@ -510,10 +457,6 @@ export function serverLockfile(loadout, listings, gameVersion, current=new ModLo
         resolved.set(name, LocalMod.fromListing(listing, version, true).lockEntry.toJSON());
     }
     for (const mod of loadout.mods) {
-        if (mod.source === LOCAL_MOD_SOURCE_URL) {
-            skipped.push(mod.name);
-            continue;
-        }
         const pinned = current.find(mod.name);
         if (pinned !== null && pinned.version === mod.version) {
             resolved.set(mod.name, pinned.toJSON());
@@ -522,7 +465,7 @@ export function serverLockfile(loadout, listings, gameVersion, current=new ModLo
         resolved.set(mod.name, mod.lockEntry.toJSON());
     }
     if (missing.length > 0) {
-        return {lockfile: null, missing, skipped};
+        return {lockfile: null, missing};
     }
     const order = current.mods.map(entry => entry.name).filter(name => resolved.has(name));
     for (const name of resolved.keys()) {
@@ -530,7 +473,7 @@ export function serverLockfile(loadout, listings, gameVersion, current=new ModLo
             order.push(name);
         }
     }
-    return {lockfile: {mods: order.map(name => resolved.get(name))}, missing, skipped};
+    return {lockfile: {mods: order.map(name => resolved.get(name))}, missing};
 }
 
 /**

@@ -1,40 +1,40 @@
-import {ModPackage} from "@/common/ModPackage.js";
-import {BaseTexturesDeclaration} from "@/mods/BaseTextures/declaration.js";
-import {BaseTexturesClientMod} from "@/mods/BaseTextures/client.js";
-import {LogisticsDeclaration} from "@/mods/Logistics/declaration.js";
-import {LogisticsClientMod} from "@/mods/Logistics/client.js";
-import {LogisticsSimMod} from "@/mods/Logistics/sim.js";
-import {BaseGameDeclaration} from "@/mods/BaseGame/declaration.js";
-import {FluidsDeclaration} from "@/mods/Fluids/declaration.js";
-import {FluidsClientMod} from "@/mods/Fluids/client.js";
-import {CursorSyncDeclaration} from "@/mods/CursorSync/declaration.js";
-import {CursorSyncClientMod} from "@/mods/CursorSync/client.js";
-import {MarketDeclaration} from "@/mods/Market/declaration.js";
-import {MarketClientMod} from "@/mods/Market/client.js";
-import {MarketSimMod} from "@/mods/Market/sim.js";
-import {NotesDeclaration} from "@/mods/Notes/declaration.js";
-import {NotesClientMod} from "@/mods/Notes/client.js";
-import {NotesSimMod} from "@/mods/Notes/sim.js";
-import {ProductionLogDeclaration} from "@/mods/ProductionLog/declaration.js";
-import {ProductionLogSimMod} from "@/mods/ProductionLog/sim.js";
-import {ProductionLogClientMod} from "@/mods/ProductionLog/client.js";
+// The browser's loadout: what modSources.js already found, plus each mod's client part.
+//
+// Browser-only, and imported lazily: the client parts pull pixi in, which a remote join and the
+// server bundle must not carry.
+
+import {MOD_ROOTS} from "@/mods/modDirs.js";
+import {MOD_SOURCES} from "@/mods/modSources.js";
+import {clientPackagesFrom} from "@/mods/modPackages.js";
+
+const CLIENTS = Object.assign(
+    {},
+    import.meta.glob("/src/mods/*/client.js", {eager: true}),
+    import.meta.env.DEV ? import.meta.glob("/dev-mods/*/client.js", {eager: true}) : {},
+);
 
 /**
- * The loadout for a browser client (which also runs the local sim): declarations + client parts,
- * registered in the same order as loadout.js's simLoadout so positional ids match. Market also
- * needs its sim part here (unlike CursorSync's, which only relays to OTHER sessions and is a
- * no-op solo) — local mode hosts an in-process Game off this same registry.
+ * @param {string} dir
+ * @returns {object|null} the mod's client part, or null when it has none
+ */
+function clientOf(dir) {
+    const module = CLIENTS[`/${MOD_ROOTS.get(dir)}/${dir}/client.js`];
+    if (module === undefined) {
+        return null;
+    }
+    return module;
+}
+
+/**
+ * The loadout for a browser client, which also runs the local sim: declarations, sim parts and
+ * client parts, in the order modSources.js hands them out.
  * @returns {ModPackage[]}
  */
 export function clientLoadout() {
-    return [
-        new ModPackage(new BaseTexturesDeclaration(), {client: new BaseTexturesClientMod()}),
-        new ModPackage(new LogisticsDeclaration(), {sim: new LogisticsSimMod(), client: new LogisticsClientMod()}),
-        new ModPackage(new BaseGameDeclaration()),
-        new ModPackage(new FluidsDeclaration(), {client: new FluidsClientMod()}),
-        new ModPackage(new CursorSyncDeclaration(), {client: new CursorSyncClientMod()}),
-        new ModPackage(new MarketDeclaration(), {sim: new MarketSimMod(), client: new MarketClientMod()}),
-        new ModPackage(new NotesDeclaration(), {sim: new NotesSimMod(), client: new NotesClientMod()}),
-        new ModPackage(new ProductionLogDeclaration(), {sim: new ProductionLogSimMod(), client: new ProductionLogClientMod()}),
-    ];
+    return clientPackagesFrom(MOD_SOURCES.map(source => ({
+        dir: source.dir,
+        declaration: source.declaration,
+        sim: source.sim,
+        client: clientOf(source.dir),
+    })));
 }

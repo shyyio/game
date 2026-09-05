@@ -1,8 +1,7 @@
 // Loading a packaged mod in the browser: fetch its files, verify them against the hash they are
-// pinned to, evaluate the bundle, and call its factories. Three callers share this — a remote join
-// (@/client/ModFetcher.js), local play's own pinned loadout (@/client/LocalLoadout.js), and the
-// dev-only `?mod=` side-load (@/client/ModSideload.js) — so there is one place that decides what
-// counts as a verified mod file.
+// pinned to, evaluate the bundle, and call its factories. Two callers share this — a remote join
+// (@/client/ModFetcher.js) and local play's own pinned loadout (@/client/LocalLoadout.js) — so there
+// is one place that decides what counts as a verified mod file.
 
 import {ModPackage} from "@/common/ModPackage.js";
 import {ModManifest, SDK_VERSION, MOD_PART_SIM, MOD_PART_CLIENT} from "@/common/ModManifest.js";
@@ -215,19 +214,3 @@ export async function loadPinnedPackage(store, entry, withSim) {
     return instantiatePackage(await importBundle(bundleBytes), manifest.parts, withSim);
 }
 
-/**
- * Loads a mod straight off a URL with nothing pinned and nothing cached — a package still being
- * built, reloaded on every page load. Only the dev-tools side-load path reaches this.
- * @param {string} baseUrl the package directory holding mod.json
- * @param {boolean} withSim
- * @returns {Promise<ModPackage>}
- */
-export async function loadUnpinnedPackage(baseUrl, withSim) {
-    const base = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
-    const manifest = ModManifest.parse(JSON.parse(
-        new TextDecoder().decode(await fetchModFile(`${base}${MANIFEST_FILE}`)),
-    ));
-    assertSdkVersion(manifest);
-    const bundle = await importBundle(await fetchModFile(`${base}${manifest.entry}`));
-    return instantiatePackage(bundle, manifest.parts, withSim);
-}

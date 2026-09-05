@@ -18,7 +18,7 @@ import {Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {MOD_PART_SIM, MOD_PART_CLIENT} from "@/common/ModManifest.js";
-import {simLoadout, BASE_MOD_DIRS} from "@/mods/loadout.js";
+import {simLoadout, MOD_DIRS} from "@/mods/loadout.js";
 import * as sdk from "@/sdk/common.js";
 import {buildMod} from "../../tools/build-mod.js";
 
@@ -31,7 +31,7 @@ async function packagedRegistry(outRoot) {
     const registry = new ModRegistry();
     const manifests = [];
     const bundles = [];
-    for (const dir of BASE_MOD_DIRS) {
+    for (const dir of MOD_DIRS) {
         const outDir = join(outRoot, dir);
         const manifest = await buildMod(resolve("src/mods", dir), outDir, {version: "1.0.0"});
         const bundle = await import(pathToFileURL(join(outDir, manifest.entry)).href);
@@ -126,7 +126,7 @@ test("a packaged loadout runs a game", async () => {
 test("a built package is its manifest plus one bundle, art included", async (t) => {
     const textureRoot = mkdtempSync(join(tmpdir(), "pipes-mods-"));
     t.after(() => rmSync(textureRoot, {recursive: true, force: true}));
-    const manifest = await buildMod(resolve("src/mods/BaseTextures"), textureRoot, {version: "2.0.0"});
+    const manifest = await buildMod(resolve("src/mods/base-textures"), textureRoot, {version: "2.0.0"});
 
     assert.equal(manifest.name, "base-textures");
     assert.equal(manifest.version, "2.0.0");

@@ -2,12 +2,12 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {WaterResourceType, ExtractorType, BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
-import {ITEM_TYPE_WATER} from "@/mods/BaseGame/common/constants.js";
-import {SplitterDefinition, BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
+import {WaterResourceType, ExtractorType, BlenderType} from "@/mods/base-game/common/objectTypes.js";
+import {ITEM_TYPE_WATER} from "@/mods/base-game/common/constants.js";
+import {SplitterDefinition, BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
+import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 
 // Populates an engine with one of every migrated object type and ticks it a few times.
 async function populated() {

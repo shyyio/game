@@ -1,15 +1,15 @@
 import {Direction} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {BeltDefinition, SplitterDefinition} from "@/mods/Logistics/common/objectTypes.js";
-import {WaterResourceType, ExtractorType, BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
+import {BeltDefinition, SplitterDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {WaterResourceType, ExtractorType, BlenderType} from "@/mods/base-game/common/objectTypes.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
-import {PipeDefinition, TankDefinition} from "@/mods/Fluids/common/objectTypes.js";
-import {FLUID_TYPE_WATER} from "@/mods/Fluids/common/constants.js";
-import {Pipes} from "@/mods/Fluids/sim/Pipes.js";
+import {PipeDefinition, TankDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {FLUID_TYPE_WATER} from "@/mods/fluids/common/constants.js";
+import {Pipes} from "@/mods/fluids/sim/Pipes.js";
 
 // Writes a NodeSaveStore SQLite save populated with one of every object type, plus players, a
 // friendship, and a chunk claim, for inspecting the on-disk save format. Output path is argv[2]

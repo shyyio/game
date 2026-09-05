@@ -10,7 +10,7 @@ import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {PlayerNamesEvent} from "@/common/PlayerEvents.js";
 import {chunkId} from "@/common/util.js";
-import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
+import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 

@@ -7,10 +7,10 @@ import {chunkId} from "@/common/util.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine, makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {GateDefinition, PoleDefinition, BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
-import {WireLinkMessage, WireUnlinkMessage} from "@/mods/Logistics/common/messages.js";
-import {LogicWireSetEvent, LogicWireClearEvent} from "@/mods/Logistics/common/events.js";
-import {LogicNetworks} from "@/mods/Logistics/sim/LogicNetworks.js";
+import {GateDefinition, PoleDefinition, BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {WireLinkMessage, WireUnlinkMessage} from "@/mods/logistics/common/messages.js";
+import {LogicWireSetEvent, LogicWireClearEvent} from "@/mods/logistics/common/events.js";
+import {LogicNetworks} from "@/mods/logistics/sim/LogicNetworks.js";
 
 /**
  * Places an object and returns its objectId (the newest placed row's).

@@ -13,10 +13,12 @@ import {fileURLToPath} from "node:url";
 import {buildMod, packageName} from "./build-mod.js";
 import {checkPackage} from "./mod-check.js";
 import {GAME_VERSION} from "../src/common/constants.js";
-import {BASE_MOD_DIRS} from "../src/mods/loadout.js";
-import {StepError, fail} from "./steps.js";
+import {dirsIn, MODS_ROOT} from "../src/mods/modDirs.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+// The mods this game ships; a checkout's own dev-mods are neither packaged nor listed.
+const BASE_MOD_DIRS = dirsIn(MODS_ROOT);
 
 const HINT = [
     "That mod cannot be published as a package, so the registry's CI would refuse it too. A bundler",

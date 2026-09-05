@@ -2,9 +2,9 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {pipesOf} from "@/mods/Fluids/sim/testHelpers.js";
-import {FLUID_TYPE_WATER} from "@/mods/Fluids/common/constants.js";
-import {PipeDefinition, TankDefinition} from "@/mods/Fluids/common/objectTypes.js";
+import {pipesOf} from "@/mods/fluids/sim/testHelpers.js";
+import {FLUID_TYPE_WATER} from "@/mods/fluids/common/constants.js";
+import {PipeDefinition, TankDefinition} from "@/mods/fluids/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 
 async function populated() {

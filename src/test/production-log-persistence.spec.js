@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {ProductionLogRequestMessage} from "@/mods/ProductionLog/common/messages.js";
-import {ProductionLogEvent} from "@/mods/ProductionLog/common/events.js";
+import {ProductionLogRequestMessage} from "@/mods/production-log/common/messages.js";
+import {ProductionLogEvent} from "@/mods/production-log/common/events.js";
 
 const IRON = 321;
 // No mod declares this one, as a loadout change leaves an item type behind.

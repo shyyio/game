@@ -22,9 +22,9 @@ import {
     DelicateAssemblyType,
     FillType,
     AirFilterType,
-} from "@/mods/BaseGame/common/objectTypes.js";
-import {ITEM_TYPE_STIMPACK} from "@/mods/BaseGame/common/constants.js";
-import {TradingTerminalType} from "@/mods/Market/common/objectTypes.js";
+} from "@/mods/base-game/common/objectTypes.js";
+import {ITEM_TYPE_STIMPACK} from "@/mods/base-game/common/constants.js";
+import {TradingTerminalType} from "@/mods/market/common/objectTypes.js";
 
 async function buildFactory() {
     const modRegistry = ecsModRegistry();

@@ -2,10 +2,10 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
+import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
+import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 
 const RED = 1;
 const CELLS = [{x: 0, y: 0}, {x: 0, y: 1}, {x: 0, y: 2}];

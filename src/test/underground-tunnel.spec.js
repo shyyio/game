@@ -1,11 +1,11 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {BELT_TUNNEL_DOWN, BELT_UNDERGROUND} from "@/mods/Logistics/common/constants.js";
+import {BELT_TUNNEL_DOWN, BELT_UNDERGROUND} from "@/mods/logistics/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {BeltDefinition, BeltTunnelDownDefinition, BeltTunnelUpDefinition} from "@/mods/Logistics/common/objectTypes.js";
+import {BeltDefinition, BeltTunnelDownDefinition, BeltTunnelUpDefinition} from "@/mods/logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
+import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 
 const RED = 1;
 

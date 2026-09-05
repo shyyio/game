@@ -2,7 +2,8 @@
 import {computed, ref} from "vue";
 import {mdiPin, mdiChevronDown, mdiChevronUp, mdiArrowUp, mdiArrowDown} from "@mdi/js";
 import {tagsOf, displayNameOf, MOD_TAGS, MOD_LISTING_GUIDE_URL} from "@/client/ModRegistryClient.js";
-import {BASE_MOD_DIRS, baseModName, baseModTitle} from "@/mods/baseMods.js";
+import {MOD_DIRS} from "@/mods/modDirs.js";
+import {modName, modTitle} from "@/mods/modNames.js";
 import {
   LocalMod, compatibleVersions, latestCompatibleVersion, publishedVersions, versionLoadable,
 } from "@/client/LocalLoadout.js";
@@ -25,7 +26,7 @@ const expanded = ref(null);
 const pickError = ref("");
 
 // The mods the game itself ships, in the order it registers them.
-const baseMods = BASE_MOD_DIRS.map((dir) => ({name: baseModName(dir), title: baseModTitle(dir)}));
+const baseMods = MOD_DIRS.map((dir) => ({name: modName(dir), title: modTitle(dir)}));
 const baseNames = baseMods.map((mod) => mod.name);
 
 /**

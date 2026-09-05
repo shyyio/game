@@ -9,8 +9,8 @@ import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {Direction} from "@/common/constants.js";
 import {chunkOrdinal} from "@/common/util.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
-import {PipeDefinition} from "@/mods/Fluids/common/objectTypes.js";
+import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {PipeDefinition} from "@/mods/fluids/common/objectTypes.js";
 import {
     ExtractorType,
     WaterResourceType,
@@ -29,16 +29,16 @@ import {
     DelicateAssemblyType,
     FillType,
     AirFilterType,
-} from "@/mods/BaseGame/common/objectTypes.js";
+} from "@/mods/base-game/common/objectTypes.js";
 import {
     ITEM_TYPE_CABBAGE_SEED,
     ITEM_TYPE_MUSHROOM_SPORE,
     NPC_PRICE_CABBAGE_SEED,
     NPC_PRICE_MUSHROOM_SPORE,
-} from "@/mods/BaseGame/common/constants.js";
-import {TradingTerminalType} from "@/mods/Market/common/objectTypes.js";
-import {ConfigureTradingTerminalMessage} from "@/mods/Market/common/messages.js";
-import {MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "@/mods/Market/common/constants.js";
+} from "@/mods/base-game/common/constants.js";
+import {TradingTerminalType} from "@/mods/market/common/objectTypes.js";
+import {ConfigureTradingTerminalMessage} from "@/mods/market/common/messages.js";
+import {MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "@/mods/market/common/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 
 // Tile spacing between sibling leaf lanes / between depth tiers: generous relative to the largest

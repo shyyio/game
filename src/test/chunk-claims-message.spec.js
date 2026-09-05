@@ -14,7 +14,7 @@ import {
     WelcomeEvent, PlayerNamesEvent, FriendListEvent, AddFriendByCodeResultEvent,
 } from "@/common/PlayerEvents.js";
 import {generateFriendCode} from "@/common/FriendCode.js";
-import {BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
+import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 

@@ -3,8 +3,6 @@ import assert from "node:assert/strict";
 import {
     LocalLoadout,
     LocalMod,
-    LOCAL_MOD_SOURCE_REGISTRY,
-    LOCAL_MOD_SOURCE_URL,
     BASE_MOD_NAMES,
     compatibleVersions,
     latestCompatibleVersion,
@@ -56,7 +54,6 @@ test("a chosen mod round-trips through JSON", () => {
     const parsed = LocalMod.parse(JSON.parse(JSON.stringify(mod.toJSON())));
 
     assert.equal(parsed.name, "widgets");
-    assert.equal(parsed.source, LOCAL_MOD_SOURCE_REGISTRY);
     assert.equal(parsed.pinned, false);
     assert.deepEqual([...parsed.integrity], [...mod.integrity]);
 });
@@ -69,28 +66,14 @@ test("a chosen mod becomes the same lockfile entry a server would pin", () => {
     assert.equal(entry.integrityOf("mod.js"), OTHER_HASH);
 });
 
-test("only an unpinned registry mod tracks the newest version", () => {
+test("only an unpinned mod tracks the newest version", () => {
     assert.equal(chosen("widgets", "1.0.0", false).tracksLatest, true);
     assert.equal(chosen("widgets", "1.0.0", true).tracksLatest, false);
-
-    const fromUrl = new LocalMod(LOCAL_MOD_SOURCE_URL, "widgets", "W", "http://localhost:5050/mod/", "1.0.0", null, false);
-    assert.equal(fromUrl.tracksLatest, false);
-});
-
-test("a mod served off a URL has no lockfile entry and cannot be pinned", () => {
-    const mod = new LocalMod(LOCAL_MOD_SOURCE_URL, "widgets", "W", "http://localhost:5050/mod/", "1.0.0", null, false);
-
-    assert.throws(() => mod.lockEntry, /no file hashes/);
-    assert.equal(mod.toJSON().integrity, undefined);
-    assert.equal(LocalMod.parse(mod.toJSON()).integrity, null);
-    assert.throws(() => LocalMod.parse({...mod.toJSON(), pinned: true}), /no version to pin/);
 });
 
 test("a registry mod without an integrity map is refused", () => {
     assert.throws(
-        () => LocalMod.parse({
-            source: LOCAL_MOD_SOURCE_REGISTRY, name: "x", title: "X", url: "https://e/", version: "1.0.0", pinned: false,
-        }),
+        () => LocalMod.parse({name: "x", title: "X", url: "https://e/", version: "1.0.0", pinned: false}),
         /no integrity map/,
     );
 });
@@ -98,7 +81,6 @@ test("a registry mod without an integrity map is refused", () => {
 test("a registry mod that does not pin its manifest is refused", () => {
     assert.throws(
         () => LocalMod.parse({
-            source: LOCAL_MOD_SOURCE_REGISTRY,
             name: "x",
             title: "X",
             url: "https://e/",
@@ -110,9 +92,8 @@ test("a registry mod that does not pin its manifest is refused", () => {
     );
 });
 
-test("an unknown source, an unknown key, a bad url, and a missing pinned flag are all refused", () => {
+test("an unknown key, a bad url, and a missing pinned flag are all refused", () => {
     const base = {
-        source: LOCAL_MOD_SOURCE_REGISTRY,
         name: "x",
         title: "X",
         url: "https://e/",
@@ -121,7 +102,6 @@ test("an unknown source, an unknown key, a bad url, and a missing pinned flag ar
         integrity: {[MANIFEST_FILE]: HASH},
     };
 
-    assert.throws(() => LocalMod.parse({...base, source: "whatever"}), /Unknown local loadout source/);
     assert.throws(() => LocalMod.parse({...base, extra: 1}), /Unknown key "extra"/);
     assert.throws(() => LocalMod.parse({...base, url: "https://e"}), /must end in/);
     assert.throws(() => LocalMod.parse({...base, pinned: undefined}), /does not say whether/);
@@ -274,10 +254,9 @@ function publishedAll(extra=[]) {
 test("the exported mods.json pins every base mod at this game version, in registration order", () => {
     const loadout = new LocalLoadout([chosen("widgets", GAME)]);
 
-    const {lockfile, missing, skipped} = serverLockfile(loadout, publishedAll(["widgets"]), GAME);
+    const {lockfile, missing} = serverLockfile(loadout, publishedAll(["widgets"]), GAME);
 
     assert.deepEqual(missing, []);
-    assert.deepEqual(skipped, []);
     assert.deepEqual(lockfile.mods.map(entry => entry.name), [...BASE_MOD_NAMES, "widgets"]);
     assert.ok(lockfile.mods.every(entry => entry.integrity[MANIFEST_FILE] === HASH));
 });
@@ -317,15 +296,6 @@ test("a base mod published at this version but without file hashes counts as unp
     });
 
     assert.deepEqual(serverLockfile(new LocalLoadout([]), listings, GAME).missing, [BASE_MOD_NAMES[0]]);
-});
-
-test("a mod loaded off a bare URL is reported as skipped, not silently dropped", () => {
-    const fromUrl = new LocalMod(LOCAL_MOD_SOURCE_URL, "widgets", "W", "http://localhost:5050/mod/", "1.0.0", null, false);
-
-    const {lockfile, skipped} = serverLockfile(new LocalLoadout([fromUrl]), publishedAll(), GAME);
-
-    assert.deepEqual(skipped, ["widgets"]);
-    assert.deepEqual(lockfile.mods.map(entry => entry.name), BASE_MOD_NAMES);
 });
 
 test("a package named after a built-in mod is refused, however it got into the list", () => {

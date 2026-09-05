@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 
 import {CHUNK_SIZE, Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {BeltDefinition, BeltTunnelDownDefinition, BeltTunnelUpDefinition, HousingDefinition} from "@/mods/Logistics/common/objectTypes.js";
-import {WaterResourceType, ExtractorType} from "@/mods/BaseGame/common/objectTypes.js";
+import {BeltDefinition, BeltTunnelDownDefinition, BeltTunnelUpDefinition, HousingDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {WaterResourceType, ExtractorType} from "@/mods/base-game/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 
 /**

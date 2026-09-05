@@ -2,9 +2,9 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction, CHUNK_SIZE} from "@/common/constants.js";
 import {GameEngine} from "@/sim/GameEngine.js";
-import {Belts} from "@/mods/Logistics/sim/Belts.js";
+import {Belts} from "@/mods/logistics/sim/Belts.js";
 import {PortDefinition} from "@/sdk/common.js";
-import {BELT_TUNNEL_DOWN, BELT_TUNNEL_UP, BELT_UNDERGROUND} from "@/mods/Logistics/common/constants.js";
+import {BELT_TUNNEL_DOWN, BELT_TUNNEL_UP, BELT_UNDERGROUND} from "@/mods/logistics/common/constants.js";
 
 const RED = 1;
 const EMPTY = -1;

@@ -1,8 +1,7 @@
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {fetchModLoadout} from "@/client/ModFetcher.js";
-import {sideloadedModUrls} from "@/client/ModSideload.js";
 import {
-    LocalLoadout, LocalMod, readLocalLoadout, writeLocalLoadout, refreshLoadout,
+    LocalLoadout, readLocalLoadout, writeLocalLoadout, refreshLoadout,
 } from "@/client/LocalLoadout.js";
 import {listMods} from "@/client/ModRegistryClient.js";
 import {loadLocalMods} from "@/client/LocalModLoader.js";
@@ -53,25 +52,6 @@ async function loadoutFor(props, localLoadout) {
 }
 
 /**
- * The mods a local game runs on top of the base loadout: what the player picked, unless a `?mod=`
- * URL names packages instead — a dev link is an explicit override, so it replaces the stored list
- * for that page load rather than stacking on top of it. Each side-loaded package's manifest is read
- * here so a bad URL fails before any of the loadout is registered.
- * @param {string[]} sideloadUrls package base URLs, empty in remote mode
- * @returns {Promise<LocalLoadout>}
- */
-async function localLoadoutFor(sideloadUrls) {
-    if (sideloadUrls.length === 0) {
-        return await refreshedLoadout(readLocalLoadout());
-    }
-    const mods = [];
-    for (const url of sideloadUrls) {
-        mods.push(await LocalMod.fromUrl(url));
-    }
-    return new LocalLoadout(mods);
-}
-
-/**
  * Moves every version-tracking mod onto the newest version the registry publishes for it, and
  * remembers the result. An unreachable registry falls back to the versions already stored: those are
  * a real resolution that already worked, and a catalog host being down is not a reason a local game
@@ -118,7 +98,7 @@ export async function createClient(app, viewport, props) {
     // A server's loadout is exactly what it pins, so only local play picks its own mods.
     let localLoadout = new LocalLoadout([]);
     if (props.mode !== GAME_MODE_REMOTE) {
-        localLoadout = await localLoadoutFor(sideloadedModUrls());
+        localLoadout = await refreshedLoadout(readLocalLoadout());
     }
 
     const modRegistry = new ModRegistry();

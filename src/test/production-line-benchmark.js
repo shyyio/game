@@ -21,8 +21,8 @@
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {TickPhase, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
 import {EMPTY} from "@/sim/sentinels.js";
-import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
-import {ExtractorType, BakeType} from "@/mods/BaseGame/common/objectTypes.js";
+import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
+import {ExtractorType, BakeType} from "@/mods/base-game/common/objectTypes.js";
 import {buildLine, lineOrigin, lineSinkPort} from "@/test/productionLine.js";
 import {CpuProfiler, printProfileSummary, printHeapUsage} from "@/test/profiler.js";
 

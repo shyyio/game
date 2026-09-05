@@ -94,7 +94,7 @@ const CHECKED_TEXTS = {
     "src/client/hud/ToolbarLayer.js": 2,
     "src/client/hud/UIPanel.js": 1,
     "src/client/hud/panelButton.js": 1,
-    "src/mods/Notes/client/NoteTooltipLayer.js": 2,
+    "src/mods/notes/client/NoteTooltipLayer.js": 2,
 };
 const UNCHECKED_TEXTS = {
     "src/client/hud/CounterListLayer.js": 1,
@@ -103,8 +103,8 @@ const UNCHECKED_TEXTS = {
     "src/client/hud/VersionWatermarkLayer.js": 1,
     "src/client/layers/ChunkClaimsDrawLayer.js": 1,
     "src/client/layers/WorkerDebugLayer.js": 1,
-    "src/mods/CursorSync/client/RemoteCursorsDrawLayer.js": 1,
-    "src/mods/Fluids/client/NetworkDebugDrawLayer.js": 1,
+    "src/mods/cursor-sync/client/RemoteCursorsDrawLayer.js": 1,
+    "src/mods/fluids/client/NetworkDebugDrawLayer.js": 1,
 };
 
 /**

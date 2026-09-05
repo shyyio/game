@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction, CHUNK_SIZE} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent} from "@/common/ObjectEvents.js";
-import {HousingDefinition} from "@/mods/Logistics/common/objectTypes.js";
+import {HousingDefinition} from "@/mods/logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector} from "@/test/EventCollector.js";
 

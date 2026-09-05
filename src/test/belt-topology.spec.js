@@ -4,8 +4,8 @@ import {Direction} from "@/common/constants.js";
 import {tileId} from "@/common/util.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {EMPTY} from "@/sim/sentinels.js";
-import {Belts} from "@/mods/Logistics/sim/Belts.js";
-import {BELT_TUNNEL_DOWN} from "@/mods/Logistics/common/constants.js";
+import {Belts} from "@/mods/logistics/sim/Belts.js";
+import {BELT_TUNNEL_DOWN} from "@/mods/logistics/common/constants.js";
 
 const RED = 1;
 

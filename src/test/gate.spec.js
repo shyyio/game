@@ -10,13 +10,13 @@ import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {makeGameEngine, makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
-import {GateDefinition, BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
-import {SetGateOpenMessage} from "@/mods/Logistics/common/messages.js";
-import {GateSetEvent, GateSetBatchEvent} from "@/mods/Logistics/common/events.js";
-import {PipeDefinition} from "@/mods/Fluids/common/objectTypes.js";
-import {Pipes} from "@/mods/Fluids/sim/Pipes.js";
-import {FLUID_TYPE_WATER, FLUID_TYPE_OIL} from "@/mods/Fluids/common/constants.js";
+import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
+import {GateDefinition, BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {SetGateOpenMessage} from "@/mods/logistics/common/messages.js";
+import {GateSetEvent, GateSetBatchEvent} from "@/mods/logistics/common/events.js";
+import {PipeDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {Pipes} from "@/mods/fluids/sim/Pipes.js";
+import {FLUID_TYPE_WATER, FLUID_TYPE_OIL} from "@/mods/fluids/common/constants.js";
 
 const RED = 3;
 

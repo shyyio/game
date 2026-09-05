@@ -8,10 +8,10 @@ import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {PortItemSetEvent} from "@/common/PortItemEvents.js";
 import {ObjectSyncEvent} from "@/common/ObjectEvents.js";
-import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
+import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
-import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
+import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 import {flattenBatches} from "@/test/EventCollector.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 

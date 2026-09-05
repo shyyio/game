@@ -7,11 +7,11 @@ import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {chunkOrdinal} from "@/common/util.js";
 import {AbstractScenario} from "@/test/scenarios/AbstractScenario.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {GateDefinition, LogicTerminalDefinition} from "@/mods/Logistics/common/objectTypes.js";
-import {WireLinkMessage} from "@/mods/Logistics/common/messages.js";
-import {TankDefinition} from "@/mods/Fluids/common/objectTypes.js";
-import {BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
-import {ITEM_TYPE_WATER} from "@/mods/BaseGame/common/constants.js";
+import {GateDefinition, LogicTerminalDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {WireLinkMessage} from "@/mods/logistics/common/messages.js";
+import {TankDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
+import {ITEM_TYPE_WATER} from "@/mods/base-game/common/constants.js";
 
 // The player the testbed is claimed for: the local session's own id, so the panel and wire tool
 // work without claiming anything by hand.

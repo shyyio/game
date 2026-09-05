@@ -227,26 +227,25 @@ async function buildPart(entryPath, coreModuleIds) {
     return await bundlePart(entryPath, externalIds, globals);
 }
 
+// A leading number and its separator order a mod in a loadout without naming it.
+const ORDER_PREFIX = /^\d+[-_]/;
+
 /**
- * The kebab-case package name for a mod directory (BaseTextures -> base-textures).
+ * The package name for a mod directory (99-base-textures -> base-textures).
  * @param {string} modDir
  * @returns {string}
  */
 export function packageName(modDir) {
-    return basename(modDir)
-        .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-        .toLowerCase();
+    return basename(modDir).replace(ORDER_PREFIX, "");
 }
 
 /**
- * The display name for a mod directory (BaseTextures and base-textures both -> Base Textures);
- * --title overrides it.
+ * The display name for a mod directory (base-textures -> Base Textures); --title overrides it.
  * @param {string} modDir
  * @returns {string}
  */
-function displayTitle(modDir) {
-    return basename(modDir)
-        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+export function displayTitle(modDir) {
+    return packageName(modDir)
         .split(/[-_\s]+/)
         .filter(word => word !== "")
         .map(word => `${word[0].toUpperCase()}${word.slice(1)}`)

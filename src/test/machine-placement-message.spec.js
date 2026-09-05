@@ -12,7 +12,7 @@ import {
 } from "@/test/machineFixture.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector} from "@/test/EventCollector.js";
-import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
+import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 
 test("a machine placed via message adopts a belt, cooks its input, and deletes", async () => {
     const engine = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);

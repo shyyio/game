@@ -3,11 +3,10 @@ import {computed, onMounted, ref} from "vue";
 import {useRouter} from "vue-router";
 import {listMods} from "@/client/ModRegistryClient.js";
 import {
-  LocalLoadout, LocalMod, LOCAL_MOD_SOURCE_URL, refreshLoadout, readLocalLoadout, writeLocalLoadout,
+  LocalLoadout, refreshLoadout, readLocalLoadout, writeLocalLoadout,
 } from "@/client/LocalLoadout.js";
 import {LocalConfig, readLocalConfig, writeLocalConfig} from "@/client/LocalConfig.js";
 import {hasLocalSave} from "@/client/state/ClientSaveStore.js";
-import {DEV_TOOLS} from "@/common/env.js";
 import {startError} from "@/client/GameStart.js";
 import ModPicker from "@/components/config/ModPicker.vue";
 import SeedField from "@/components/config/SeedField.vue";
@@ -23,9 +22,6 @@ const localError = ref("");
 const loadout = ref(loadStoredLoadout());
 const config = ref(loadStoredConfig());
 const saved = hasLocalSave();
-const url = ref("");
-const urlError = ref("");
-const adding = ref(false);
 // A local game that failed to start comes back here with its reason, since this is where its
 // loadout was chosen.
 const startFailure = ref(startError.value);
@@ -121,35 +117,6 @@ function setTickMs(tickMs) {
   }
 }
 
-const urlMods = computed(() => loadout.value.mods.filter((mod) => mod.source === LOCAL_MOD_SOURCE_URL));
-
-/**
- * @returns {Promise<void>}
- */
-async function addByUrl() {
-  if (url.value.trim() === "" || adding.value) {
-    return;
-  }
-  urlError.value = "";
-  adding.value = true;
-  try {
-    commitLoadout(loadout.value.with(await LocalMod.fromUrl(url.value.trim())));
-    url.value = "";
-  } catch (addError) {
-    urlError.value = addError.message;
-  } finally {
-    adding.value = false;
-  }
-}
-
-/**
- * @param {string} name
- * @returns {void}
- */
-function removeUrlMod(name) {
-  commitLoadout(loadout.value.without(name));
-}
-
 // Everything on this page as one object, for the text block.
 const asJson = computed(() => ({seed: config.value.seed, tickMs: config.value.tickMs, mods: loadout.value.toJSON()}));
 
@@ -211,38 +178,6 @@ export default defineComponent({
               :error="error"
               @update:loadout="commitLoadout"
           />
-        </div>
-
-        <div v-if="DEV_TOOLS" class="local-play-section">
-          <div class="local-play-note">
-            Load a package you are building straight off its URL. Nothing is pinned or cached, so it
-            reloads on every start.
-          </div>
-          <v-list v-if="urlMods.length > 0" density="compact">
-            <v-list-item
-                v-for="mod in urlMods"
-                :key="mod.name"
-                :title="mod.title"
-                :subtitle="`${mod.name} ${mod.version} · ${mod.url}`"
-            >
-              <template #append>
-                <v-btn variant="text" size="small" @click="removeUrlMod(mod.name)">Remove</v-btn>
-              </template>
-            </v-list-item>
-          </v-list>
-          <v-text-field
-              v-model="url"
-              label="Package URL"
-              placeholder="http://localhost:5050/mod/"
-              autocomplete="off"
-              hide-details
-              :disabled="adding"
-              @keyup.enter="addByUrl"
-          />
-          <div v-if="urlError" class="local-play-error">{{ urlError }}</div>
-          <div class="local-play-actions">
-            <v-btn size="small" variant="flat" color="primary" :loading="adding" @click="addByUrl">Add</v-btn>
-          </div>
         </div>
 
         <div class="local-play-section">

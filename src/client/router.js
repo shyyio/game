@@ -5,11 +5,9 @@ import LocalPlay from "@/components/LocalPlay.vue";
 import {GAME_MODE_LOCAL, gameStart, lastGameMode, startGame} from "@/client/GameStart.js";
 import {hasSessionToken} from "@/client/AuthClient.js";
 import {SCENARIO_PARAM} from "@/test/scenarios/scenarioParam.js";
-import {sideloadedModUrls} from "@/client/ModSideload.js";
 
-// Either URL parameter means "start a local game with what the URL says", with no session to set up.
-const startsLocalGame = new URLSearchParams(window.location.search).has(SCENARIO_PARAM)
-    || sideloadedModUrls().length > 0;
+// The parameter means "start a local game with what the URL says", with no session to set up.
+const startsLocalGame = new URLSearchParams(window.location.search).has(SCENARIO_PARAM);
 
 export const router = createRouter({
     history: createWebHistory(),

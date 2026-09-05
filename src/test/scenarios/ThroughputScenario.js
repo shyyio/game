@@ -33,10 +33,10 @@ import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {chunkOrdinal} from "@/common/util.js";
 import {AbstractScenario} from "@/test/scenarios/AbstractScenario.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {BeltDefinition, SplitterDefinition} from "@/mods/Logistics/common/objectTypes.js";
-import {TradingTerminalType} from "@/mods/Market/common/objectTypes.js";
-import {ConfigureTradingTerminalMessage} from "@/mods/Market/common/messages.js";
-import {MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "@/mods/Market/common/constants.js";
+import {BeltDefinition, SplitterDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {TradingTerminalType} from "@/mods/market/common/objectTypes.js";
+import {ConfigureTradingTerminalMessage} from "@/mods/market/common/messages.js";
+import {MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "@/mods/market/common/constants.js";
 
 // Own item range, clear of BaseGame's 3xx and the engine fixtures' 94x.
 export const ITEM_TYPE_THROUGHPUT_FEED = 950;
