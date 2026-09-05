@@ -4,8 +4,8 @@ import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {pipesOf} from "@/mods/Fluids/sim/testHelpers.js";
-import {PipeDefinition} from "@/mods/Fluids/common/objectTypes.js";
+import {pipesOf} from "@/mods/fluids/sim/testHelpers.js";
+import {PipeDefinition} from "@/mods/fluids/common/objectTypes.js";
 import {
     BlenderType,
     AirFilterType,
@@ -14,7 +14,7 @@ import {
     ExtractorType,
     BlastFurnaceType,
     BrewType,
-} from "@/mods/BaseGame/common/objectTypes.js";
+} from "@/mods/base-game/common/objectTypes.js";
 import {
     ITEM_TYPE_CABBAGE,
     ITEM_TYPE_NUTRIENT_SLOP,
@@ -28,7 +28,7 @@ import {
     ITEM_TYPE_MUSHROOM,
     ITEM_TYPE_BASIC_POTION_BASE,
     ITEM_TYPE_OVERLOAD_MIX,
-} from "@/mods/BaseGame/common/constants.js";
+} from "@/mods/base-game/common/constants.js";
 
 test("a Blender pumps Nutrient Slop into an adjacent pipe network", async () => {
     const engine = await makeGameEngine();

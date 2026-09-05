@@ -8,8 +8,8 @@
 
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {Direction} from "@/common/constants.js";
-import {QuartzDepositResourceType, ExtractorType, BakeType} from "@/mods/BaseGame/common/objectTypes.js";
-import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
+import {QuartzDepositResourceType, ExtractorType, BakeType} from "@/mods/base-game/common/objectTypes.js";
+import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
 
 export const LANES_PER_LINE = 3;
 // A lane's vertical extent, relative to its extractor at row 0: the extractor's output lands at

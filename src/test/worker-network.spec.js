@@ -13,8 +13,8 @@ import {
     TEST_MACHINE_WORKER_COST,
     MachineFixtureDeclaration,
 } from "@/test/machineFixture.js";
-import {RoadDefinition, HousingDefinition} from "@/mods/Logistics/common/objectTypes.js";
-import {HOUSING_WORKER_SUPPLY} from "@/mods/Logistics/common/constants.js";
+import {RoadDefinition, HousingDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {HOUSING_WORKER_SUPPLY} from "@/mods/logistics/common/constants.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine} from "@/test/ecsSim.js";

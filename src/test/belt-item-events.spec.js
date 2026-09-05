@@ -4,12 +4,12 @@ import {Direction, CHUNK_SIZE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {EventCollector} from "@/test/EventCollector.js";
-import {Belts} from "@/mods/Logistics/sim/Belts.js";
+import {Belts} from "@/mods/logistics/sim/Belts.js";
 import {
     BeltItemUpsertEvent,
     BeltItemDeleteEvent,
     BeltItemBatchEvent,
-} from "@/mods/Logistics/common/events.js";
+} from "@/mods/logistics/common/events.js";
 
 const RED = 1;
 

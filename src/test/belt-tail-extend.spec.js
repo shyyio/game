@@ -5,8 +5,8 @@ import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {EventCollector} from "@/test/EventCollector.js";
-import {Belts} from "@/mods/Logistics/sim/Belts.js";
-import {BeltPathRecalculateEvent, BeltItemSyncEvent} from "@/mods/Logistics/common/events.js";
+import {Belts} from "@/mods/logistics/sim/Belts.js";
+import {BeltPathRecalculateEvent, BeltItemSyncEvent} from "@/mods/logistics/common/events.js";
 
 const RED = 1;
 

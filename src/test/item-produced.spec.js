@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {PipeDefinition} from "@/mods/Fluids/common/objectTypes.js";
-import {BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
-import {ITEM_TYPE_CABBAGE, ITEM_TYPE_NUTRIENT_SLOP} from "@/mods/BaseGame/common/constants.js";
+import {PipeDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
+import {ITEM_TYPE_CABBAGE, ITEM_TYPE_NUTRIENT_SLOP} from "@/mods/base-game/common/constants.js";
 
 test("a machine's delivered output notifies the engine's itemProduced listeners", async () => {
     const engine = await makeGameEngine();

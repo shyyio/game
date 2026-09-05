@@ -6,8 +6,8 @@ import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {NotePlaceMessage} from "@/mods/Notes/common/messages.js";
-import {NoteSetEvent} from "@/mods/Notes/common/events.js";
+import {NotePlaceMessage} from "@/mods/notes/common/messages.js";
+import {NoteSetEvent} from "@/mods/notes/common/events.js";
 
 const CHUNK = chunkId(0, 0);
 

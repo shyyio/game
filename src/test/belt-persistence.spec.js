@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
-import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
+import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 

@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {BeltDefinition, SplitterDefinition} from "@/mods/Logistics/common/objectTypes.js";
+import {BeltDefinition, SplitterDefinition} from "@/mods/logistics/common/objectTypes.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {
     TestMachineType,
@@ -11,7 +11,7 @@ import {
     MachineFixtureDeclaration,
 } from "@/test/machineFixture.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
+import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 
 async function setup() {
     return makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);

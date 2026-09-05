@@ -9,7 +9,7 @@ import {MetricsRollupEvent, MetricsRollupBucketEvent} from "@/common/MetricsEven
 import {
     METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, METRICS_QUERY_SCOPE_GLOBAL,
 } from "@/common/MetricsFact.js";
-import {METRICS_FACT_TYPE_TRADE_EXECUTED} from "@/mods/Market/common/constants.js";
+import {METRICS_FACT_TYPE_TRADE_EXECUTED} from "@/mods/market/common/constants.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 

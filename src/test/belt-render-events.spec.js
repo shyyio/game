@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {EventCollector} from "@/test/EventCollector.js";
-import {Belts} from "@/mods/Logistics/sim/Belts.js";
+import {Belts} from "@/mods/logistics/sim/Belts.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
 const RED = 1;

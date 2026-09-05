@@ -1,5 +1,5 @@
 import {GameEngine} from "@/sim/GameEngine.js";
-import {Pipes} from "@/mods/Fluids/sim/Pipes.js";
+import {Pipes} from "@/mods/fluids/sim/Pipes.js";
 
 /**
  * A bare engine with a Pipes module, for network-level specs.

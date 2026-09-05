@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {EventCollector} from "@/test/EventCollector.js";
-import {SplitterBehavior} from "@/mods/Logistics/sim/SplitterBehavior.js";
+import {SplitterBehavior} from "@/mods/logistics/sim/SplitterBehavior.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";

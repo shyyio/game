@@ -7,21 +7,21 @@ import {chunkId} from "@/common/util.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGame, ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {GateDefinition, PoleDefinition, LogicTerminalDefinition} from "@/mods/Logistics/common/objectTypes.js";
-import {BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
-import {ITEM_TYPE_NUTRIENT_SLOP} from "@/mods/BaseGame/common/constants.js";
+import {GateDefinition, PoleDefinition, LogicTerminalDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
+import {ITEM_TYPE_NUTRIENT_SLOP} from "@/mods/base-game/common/constants.js";
 import {
     WireLinkMessage,
     ConfigureLogicRulesMessage,
     LogicSnapshotRequestMessage,
-} from "@/mods/Logistics/common/messages.js";
-import {LogicSnapshotEvent} from "@/mods/Logistics/common/events.js";
+} from "@/mods/logistics/common/messages.js";
+import {LogicSnapshotEvent} from "@/mods/logistics/common/events.js";
 import {
     LogicRule,
     LogicRules,
     deviceCondition,
     storedCondition,
-} from "@/mods/Logistics/sim/LogicRules.js";
+} from "@/mods/logistics/sim/LogicRules.js";
 import {
     LOGIC_KEY_OPEN,
     LOGIC_COMPARATOR_AT_LEAST,
@@ -29,9 +29,9 @@ import {
     LOGIC_RULE_CAP,
     LOGIC_CONDITION_CAP,
     LOGIC_CONDITION_KIND_STORED,
-} from "@/mods/Logistics/common/constants.js";
-import {TankDefinition} from "@/mods/Fluids/common/objectTypes.js";
-import {LOGIC_KEY_AMOUNT, FLUID_TYPE_WATER} from "@/mods/Fluids/common/constants.js";
+} from "@/mods/logistics/common/constants.js";
+import {TankDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {LOGIC_KEY_AMOUNT, FLUID_TYPE_WATER} from "@/mods/fluids/common/constants.js";
 
 /**
  * Places an object and returns its objectId (the newest placed row's).

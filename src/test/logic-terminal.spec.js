@@ -10,11 +10,11 @@ import {
     GateDefinition,
     PoleDefinition,
     LogicTerminalDefinition,
-} from "@/mods/Logistics/common/objectTypes.js";
-import {WireLinkMessage, WireUnlinkMessage, LogicSnapshotRequestMessage} from "@/mods/Logistics/common/messages.js";
-import {LogicSnapshotEvent} from "@/mods/Logistics/common/events.js";
-import {LogicNetworks} from "@/mods/Logistics/sim/LogicNetworks.js";
-import {LOGIC_TIER_BASE} from "@/mods/Logistics/common/constants.js";
+} from "@/mods/logistics/common/objectTypes.js";
+import {WireLinkMessage, WireUnlinkMessage, LogicSnapshotRequestMessage} from "@/mods/logistics/common/messages.js";
+import {LogicSnapshotEvent} from "@/mods/logistics/common/events.js";
+import {LogicNetworks} from "@/mods/logistics/sim/LogicNetworks.js";
+import {LOGIC_TIER_BASE} from "@/mods/logistics/common/constants.js";
 
 /**
  * Places an object and returns its objectId (the newest placed row's).

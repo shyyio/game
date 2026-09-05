@@ -4,11 +4,11 @@ import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {makePipes} from "@/test/pipeFixture.js";
-import {pipesOf} from "@/mods/Fluids/sim/testHelpers.js";
-import {FLUID_TYPE_WATER, FLUID_TYPE_OIL} from "@/mods/Fluids/common/constants.js";
-import {PipeDefinition, TankDefinition} from "@/mods/Fluids/common/objectTypes.js";
-import {WaterResourceType, ExtractorType, OxideDepositResourceType} from "@/mods/BaseGame/common/objectTypes.js";
-import {ITEM_TYPE_WATER, ITEM_TYPE_IRON_ORE} from "@/mods/BaseGame/common/constants.js";
+import {pipesOf} from "@/mods/fluids/sim/testHelpers.js";
+import {FLUID_TYPE_WATER, FLUID_TYPE_OIL} from "@/mods/fluids/common/constants.js";
+import {PipeDefinition, TankDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {WaterResourceType, ExtractorType, OxideDepositResourceType} from "@/mods/base-game/common/objectTypes.js";
+import {ITEM_TYPE_WATER, ITEM_TYPE_IRON_ORE} from "@/mods/base-game/common/constants.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {
     TestVolcanoResourceType,
@@ -16,10 +16,10 @@ import {
     ITEM_TYPE_TEST_BRINE,
     VolcanoFixtureDeclaration,
 } from "@/test/volcanoFixture.js";
-import {BeltDefinition} from "@/mods/Logistics/common/objectTypes.js";
-import {beltsOf} from "@/mods/Logistics/sim/testHelpers.js";
+import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 import {PortItemSetEvent} from "@/common/PortItemEvents.js";
-import {TankFluidSetEvent} from "@/mods/Fluids/common/events.js";
+import {TankFluidSetEvent} from "@/mods/fluids/common/events.js";
 import {EventCollector} from "@/test/EventCollector.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 

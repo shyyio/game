@@ -14,7 +14,8 @@ import {ModLockfile} from "@/common/ModLockfile.js";
 import {ModCache, resolvePackage, sha256Hex} from "@/server/ModCache.js";
 import {loadPackagedMods} from "@/server/ModLoader.js";
 import {ModHost} from "@/server/ModHost.js";
-import {simLoadout, BASE_MOD_DIRS} from "@/mods/loadout.js";
+import {simLoadout, MOD_DIRS} from "@/mods/loadout.js";
+import {modName} from "@/mods/modNames.js";
 import {buildMod} from "../../tools/build-mod.js";
 
 // Bundling every mod is this file's expensive step, so one build serves every test over it; each
@@ -22,7 +23,7 @@ import {buildMod} from "../../tools/build-mod.js";
 const packageRoot = mkdtempSync(join(tmpdir(), "pipes-packages-"));
 after(() => rmSync(packageRoot, {recursive: true, force: true}));
 const packageUrls = [];
-for (const dir of BASE_MOD_DIRS) {
+for (const dir of MOD_DIRS) {
     const outDir = join(packageRoot, dir);
     await buildMod(resolve("src/mods", dir), outDir, {version: "1.0.0"});
     packageUrls.push(pathToFileURL(outDir).href);
@@ -78,10 +79,7 @@ test("a pinned loadout caches, loads, and registers like the static one", async 
         registry.objectTypes.map(type => [type.name, type.typeId]),
         staticRegistry.objectTypes.map(type => [type.name, type.typeId]),
     );
-    assert.deepEqual(mods.map(mod => mod.manifest.name), [
-        "base-textures", "logistics", "base-game", "fluids", "cursor-sync", "market", "notes",
-        "production-log",
-    ]);
+    assert.deepEqual(mods.map(mod => mod.manifest.name), MOD_DIRS.map(dir => modName(dir)));
 });
 
 test("the served index names every file by its content hash", async (t) => {

@@ -2,9 +2,9 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {BlenderType} from "@/mods/BaseGame/common/objectTypes.js";
+import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
 import {GameEngine} from "@/sim/GameEngine.js";
-import {Belts} from "@/mods/Logistics/sim/Belts.js";
+import {Belts} from "@/mods/logistics/sim/Belts.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 
 test("a second surface belt cannot occupy the same tile, and delete frees it", async () => {
