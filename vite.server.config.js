@@ -4,8 +4,7 @@ import {ALIASES} from "./vite.aliases.js";
 
 const {commit: BUILD_COMMIT, date: BUILD_DATE} = gitBuildInfo();
 
-// Server bundle (main.js plus the operator's modsCli.js): node target, pure-JS deps inlined, native
-// addons external. The deploy artifact is build/server plus an install of just the external deps;
+// Server bundle: node target, pure-JS deps inlined, native addons external. The deploy artifact is build/server plus an install of just the external deps;
 // the unbundled `npm run serve` dev path (src/nodeservice/loader.js hooks) is unaffected.
 export default defineConfig(({mode}) => ({
     // The public dir (favicon) belongs to the browser build only.
@@ -19,7 +18,6 @@ export default defineConfig(({mode}) => ({
         rollupOptions: {
             input: {
                 main: "src/server/main.js",
-                modsCli: "src/server/modsCli.js",
             },
             // Native addons cannot be inlined into the bundle.
             external: ["better-sqlite3", "uWebSockets.js"],
