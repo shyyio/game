@@ -4,6 +4,7 @@ import {canonicalOrigin, httpOriginFor} from "@/common/util.js";
 import {DEV_TOOLS} from "@/common/env.js";
 import {hasSessionToken, listServers} from "@/client/AuthClient.js";
 import {UNVERIFIED_MODS_REFUSAL} from "@/client/ModVerification.js";
+import {SDK_VERSION} from "@/common/ModManifest.js";
 import DeviceSettings, {DEVICE_SETTING_UNVERIFIED_MODS} from "@/client/state/DeviceSettings.js";
 
 const props = defineProps({
@@ -19,7 +20,7 @@ const DEV_SERVER_NAME = "🧪 DEV";
 const REFRESH_COOLDOWN_MS = 3000;
 
 const servers = ref([]);
-// origin -> {loading, offline, name, online, chunksClaimed, chunksAvailable, pingMs}
+// origin -> {loading, offline, name, online, chunksClaimed, chunksAvailable, pingMs, sdkVersion}
 const statusByOrigin = reactive({});
 const refreshing = ref(false);
 const refreshCoolingDown = ref(false);
@@ -122,6 +123,7 @@ async function fetchStatus(origin) {
       online: body.online,
       chunksClaimed: body.chunksClaimed,
       chunksAvailable: body.chunksAvailable,
+      sdkVersion: body.sdkVersion,
       pingMs: await timing.durationMs,
     };
   } catch {
@@ -170,6 +172,20 @@ function observeNetworkDurationMs(url) {
   return {durationMs, cancel: () => stop()};
 }
 
+/**
+ * A server whose mods this client cannot load. The join would fail on the mod list, so the row
+ * refuses the click instead.
+ * @param {string} origin
+ * @returns {boolean}
+ */
+function incompatible(origin) {
+  const status = statusByOrigin[origin];
+  if (!status || status.loading || status.offline) {
+    return false;
+  }
+  return status.sdkVersion !== SDK_VERSION;
+}
+
 const SCHEME_PATTERN = /^[a-z]+:\/\//;
 
 /**
@@ -203,7 +219,7 @@ function chunkPercent(origin) {
  */
 function select(server) {
   const origin = server.origin;
-  if (props.connectingOrigin || statusByOrigin[origin]?.offline || statusByOrigin[origin]?.loading) {
+  if (props.connectingOrigin || statusByOrigin[origin]?.offline || statusByOrigin[origin]?.loading || incompatible(origin)) {
     return;
   }
   emit("select", origin);
@@ -239,7 +255,7 @@ function connectToCustomOrigin() {
           v-for="server in servers"
           :key="server.origin"
           class="server-row"
-          :class="{'server-row-offline': statusByOrigin[server.origin]?.offline}"
+          :class="{'server-row-offline': statusByOrigin[server.origin]?.offline, 'server-row-blocked': incompatible(server.origin)}"
           @click="select(server)"
       >
         <div class="server-row-main">
@@ -247,12 +263,13 @@ function connectToCustomOrigin() {
           <div class="server-row-detail">
             <template v-if="statusByOrigin[server.origin]?.loading">Pinging…</template>
             <template v-else-if="statusByOrigin[server.origin]?.offline">Offline</template>
+            <template v-else-if="incompatible(server.origin)">Game {{ statusByOrigin[server.origin].sdkVersion }}, you have {{ SDK_VERSION }}</template>
             <template v-else>
               <template v-if="statusByOrigin[server.origin].pingMs !== null">{{ statusByOrigin[server.origin].pingMs }}ms &middot; </template>
               {{ statusByOrigin[server.origin].online }} online
             </template>
           </div>
-          <div v-if="statusByOrigin[server.origin] && !statusByOrigin[server.origin].loading && !statusByOrigin[server.origin].offline" class="server-row-chunks">
+          <div v-if="statusByOrigin[server.origin] && !statusByOrigin[server.origin].loading && !statusByOrigin[server.origin].offline && !incompatible(server.origin)" class="server-row-chunks">
             <v-progress-linear
                 :model-value="chunkPercent(server.origin)"
                 :height="10"
@@ -265,7 +282,7 @@ function connectToCustomOrigin() {
             color="primary"
             variant="flat"
             size="small"
-            :disabled="statusByOrigin[server.origin]?.offline || statusByOrigin[server.origin]?.loading || !!connectingOrigin"
+            :disabled="statusByOrigin[server.origin]?.offline || statusByOrigin[server.origin]?.loading || incompatible(server.origin) || !!connectingOrigin"
             :loading="connectingOrigin === server.origin"
             @click.stop="select(server)"
         >Connect</v-btn>
@@ -338,7 +355,8 @@ function connectToCustomOrigin() {
   border-bottom: none;
 }
 
-.server-row-offline {
+.server-row-offline,
+.server-row-blocked {
   opacity: 0.5;
   cursor: default;
 }

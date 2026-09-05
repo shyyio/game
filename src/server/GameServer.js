@@ -5,6 +5,7 @@ import {WebSocketSession} from "@/server/WebSocketSession.js";
 import {reportError} from "@/server/crashReporter.js";
 import {GAME_VERSION, REGION_SIZE} from "@/common/constants.js";
 import {formatBytes, formatUptime} from "@/common/util.js";
+import {SDK_VERSION} from "@/common/ModManifest.js";
 import {
     CLOSE_CODE_BAD_SIGN_IN, CLOSE_CODE_BAD_FRAME, CLOSE_CODE_SUPERSEDED, CLOSE_CODE_SERVER_SHUTDOWN,
     CLOSE_CODE_LOADOUT_CHANGED,
@@ -195,6 +196,7 @@ export class GameServer extends AbstractHttpServer {
         respondJson(res, {
             name: this._name,
             version: GAME_VERSION,
+            sdkVersion: SDK_VERSION,
             online: this._sessionsByPlayer.size,
             chunksClaimed: claimed,
             chunksAvailable: REGION_SIZE * REGION_SIZE - claimed,

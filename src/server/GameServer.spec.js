@@ -6,6 +6,7 @@ import {World} from "@/server/World.js";
 import {ModLockfile} from "@/common/ModLockfile.js";
 import {makeGame} from "@/test/ecsSim.js";
 import {REGION_SIZE} from "@/common/constants.js";
+import {SDK_VERSION} from "@/common/ModManifest.js";
 
 const ORIGIN = "ws://127.0.0.1:27500";
 
@@ -72,6 +73,16 @@ test("the status endpoint reports the world's chunk counts, CORS-open", async ()
         assert.equal(body.name, "Test Server");
         assert.equal(body.online, 0);
         assert.equal(body.chunksClaimed + body.chunksAvailable, REGION_SIZE * REGION_SIZE);
+    } finally {
+        server.stop();
+    }
+});
+
+test("the status endpoint reports the SDK version, so the directory can gate Connect", async () => {
+    const {server, baseUrl} = await startServer();
+    try {
+        const body = await (await fetch(`${baseUrl}/status`)).json();
+        assert.equal(body.sdkVersion, SDK_VERSION);
     } finally {
         server.stop();
     }
