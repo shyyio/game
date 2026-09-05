@@ -10,7 +10,7 @@ npm ci
 # deployed, so its sourcemaps always match a report's buildVersion (their __BUILD_COMMIT__). Maps
 # are written outside build/ (which `npm run build` empties every run) into the persistent data dir.
 COMMIT="$(git rev-parse HEAD)"
-npm run build:reportingserver &
+npm run build:reporting &
 reportingserver_pid=$!
 BUILD_SOURCEMAPS=1 npm run build &
 client_pid=$!

@@ -21,7 +21,7 @@ const TAG = `v${GAME_VERSION}`;
 
 // Local pre-flight: the hosts rebuild their own service in post-receive, but a build that breaks
 // should break here rather than on the far side of a push.
-const BUILDS = ["build", "build:server", "build:authserver", "build:reportingserver"];
+const BUILDS = ["build", "build:server", "build:auth", "build:reporting"];
 
 const DEPLOY_REMOTES = ["ca1", "de1", "auth", "spup-reporting-ca1", "mirror", "pages"];
 
