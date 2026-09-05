@@ -15,11 +15,13 @@ import {fileURLToPath} from "node:url";
 import {parseArgs} from "node:util";
 import {GAME_VERSION} from "../src/common/constants.js";
 import {SDK_VERSION} from "../src/common/ModManifest.js";
-import {BASE_MOD_DIRS} from "../src/mods/loadout.js";
-import {packageName} from "./build-mod.js";
+import {dirsIn, MODS_ROOT} from "../src/mods/modDirs.js";
 import {StepError, fail} from "./steps.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+// The mods this game ships; a checkout's own dev-mods are neither packaged nor listed.
+const BASE_MOD_DIRS = dirsIn(MODS_ROOT);
 
 // Where a listed mod's registry manifest lives, relative to the registry repo.
 const LISTING_DIR = "mods";
@@ -72,10 +74,11 @@ function taggedCommit(version, mustExist) {
 
 /**
  * The builder version the registry must build these mods with, so its artifacts are reproducible.
+ * The builder ships with the game, so it is whatever the pinned commit holds.
  * @returns {string}
  */
 function toolchainVersion() {
-    return JSON.parse(readFileSync(join(ROOT, "packages/mod-builder/package.json"), "utf8")).version;
+    return GAME_VERSION;
 }
 
 /**

@@ -28,8 +28,8 @@ export default defineConfig(({mode}) => {
         // Literals for src/common/env.js: __DEV__ enables dead-code elimination.
         define: {
             __DEV__: JSON.stringify(mode !== "production"),
-            // On in a dev build, and in the production build @spup/game-client packs (SPUP_DEV_TOOLS=1):
-            // it adds the controls an author needs to reach their own server, which the site does not ship.
+            // On in a dev build, and in a production build run with SPUP_DEV_TOOLS=1: it adds the
+            // controls an author needs to reach their own server, which the site does not ship.
             __DEV_TOOLS__: JSON.stringify(mode !== "production" || process.env.SPUP_DEV_TOOLS === "1"),
             __APP_VERSION__: JSON.stringify(APP_VERSION),
             __BUILD_COMMIT__: JSON.stringify(BUILD_COMMIT),

@@ -3,9 +3,6 @@
   "version": "4.0.0",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
@@ -17,13 +14,7 @@
     "mods:registry": "node --import ./src/nodeservice/loader.js tools/publish-registry.js",
     "check:mod": "node --import ./src/nodeservice/loader.js tools/mod-check.js",
     "check:mods": "node --import ./src/nodeservice/loader.js tools/check-base-mods.js",
-    "pack:builder": "node --import ./src/nodeservice/loader.js tools/pack-builder.js",
-    "pack:client": "node tools/pack-game-client.js",
-    "pack:sdk": "node --import ./src/nodeservice/loader.js tools/pack-sdk.js",
-    "pack:server": "node --import ./src/nodeservice/loader.js tools/pack-game-server.js",
-    "release": "node --import ./src/nodeservice/loader.js tools/release.js",
     "deploy": "node --import ./src/nodeservice/loader.js tools/deploy.js",
-    "build:harness": "vite build --config vite.harness.config.js",
     "scan:mod": "node tools/mod-scan.js",
     "build:server": "vite build --config vite.server.config.js",
     "build:admin": "vite build --config vite.admin.config.js",
