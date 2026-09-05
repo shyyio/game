@@ -1,3 +1,26 @@
+Shy's Power-Up Factory
+Copyright (C) 2025-2026 Shy
+
+This program is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. The full text of version 3 follows this notice.
+
+                     ADDITIONAL PERMISSION FOR MODS
+
+As an additional permission under section 7 of the GNU General Public License
+version 3, you may develop, distribute, and use a mod that reaches this program
+only through the interfaces the mod SDK exposes (src/sdk/common.js and
+src/sdk/client.js) under terms of your choice, and that mod is not required to be
+licensed under the GNU General Public License. The permission covers the mod's
+own source and the bundle a mod build produces from it.
+
+The permission does not extend to this program itself. A mod that copies, embeds,
+or otherwise incorporates code from this program, or that reaches into it other
+than through those interfaces, remains subject to the GNU General Public License
+in full.
+
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
