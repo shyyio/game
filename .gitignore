@@ -120,6 +120,7 @@ Thumbs.db
 *.sqlite
 
 # misc
+temp/
 recipes/
 _research
 debubg_test.js
