@@ -86,9 +86,9 @@ export class AbstractModDeclaration {
     }
 
     /**
-     * Logic key -> player-visible name for this mod's device behaviors; keys must be unique
-     * across the loadout.
-     * @returns {Object.<number, string>}
+     * Logic key -> its UI metadata for this mod's device behaviors; keys must be unique across the
+     * loadout.
+     * @returns {Object.<number, LogicKeyEntry>}
      */
     get logicKeys() {
         return {};

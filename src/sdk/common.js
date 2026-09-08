@@ -71,6 +71,8 @@ export {RoadBehavior} from "@/sim/behaviors/RoadBehavior.js";
 export {HousingBehavior} from "@/sim/behaviors/HousingBehavior.js";
 export {TickPhase} from "@/sim/GameEngine.js";
 export {EMPTY, NO_EID} from "@/sim/sentinels.js";
+// Thrown by a must-override hook a subclass left unimplemented.
+export {NotImplementedError} from "@/common/error.js";
 
 // ---- Engine events ----
 // Chunk subscribe/unsubscribe events, so a mod's client side can react to chunks

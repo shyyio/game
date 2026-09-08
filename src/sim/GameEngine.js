@@ -490,8 +490,10 @@ export class GameEngine {
     }
 
     /**
-     * A mod registers a chunk-sync contributor (chunk -> events).
-     * @param {function(number): object[]} contributor
+     * A mod registers a chunk-sync contributor: the events that recreate its state in a chunk for
+     * a newly subscribed session. They ride inside one ChunkSyncEvent, unrouted, so any wire event
+     * class is legal. Contributors run in registration order, after the core object sync.
+     * @param {function(number): AbstractEvent[]} contributor
      * @returns {void}
      */
     registerChunkSync(contributor) {
@@ -678,16 +680,18 @@ export class GameEngine {
     }
 
     /**
-     * Resolves the shared edge port for a definition's PortDefinition on an object placed at (x, y)
-     * facing `direction` — offset and local direction rotated by the placement.
-     * @param {PortDefinition} portVec
+     * Resolves the shared edge port for a PortDefinition on an object placed with its origin tile
+     * at (x, y) facing `direction`: the definition's UP-frame offset and flow direction rotated by
+     * the placement. `tile` is the tile the flow enters, which is where a rendered port's item is
+     * drawn.
+     * @param {PortDefinition} port
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
      * @returns {{port:number, tile:{x:number, y:number}}}
      */
-    portFor(portVec, x, y, direction) {
-        const placed = portAt(portVec, x, y, direction);
+    portFor(port, x, y, direction) {
+        const placed = portAt(port, x, y, direction);
         const tile = {x: placed.x, y: placed.y};
         return {port: this.ports.at(placed.x, placed.y, placed.direction), tile};
     }

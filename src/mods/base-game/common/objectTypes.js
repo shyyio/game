@@ -109,7 +109,7 @@ const OUT_A = new PortDefinition("out_a", {x: 0, y: -1, direction: Direction.UP}
 const OUT_B = new PortDefinition("out_b", {x: 1, y: -1, direction: Direction.UP});
 
 // 2x2 footprint: bottom row is y=1. `fluid` flag (4th PortDefinition arg) opts a port into
-// engine.markFluidPort (see MachineBehavior.onSpawn/onDespawn).
+// engine.ports.markFluid (see MachineBehavior.onSpawn/onDespawn).
 const IN2_A = new PortDefinition("in_a", {x: 0, y: 1, direction: Direction.UP});
 const IN2_B = new PortDefinition("in_b", {x: 1, y: 1, direction: Direction.UP});
 const IN2_B_FLUID = new PortDefinition("in_b", {x: 1, y: 1, direction: Direction.UP}, true, true);

@@ -153,7 +153,10 @@ export class TransferResolver {
     }
 
     /**
-     * Submits a move of one item from `source` to `dest`.
+     * Submits a move of one item from `source` to `dest`. It resolves when `dest` empties this
+     * tick: either `destEmpty` seeds that, or `dest` is itself the source of a resolving transfer or
+     * drain, so a packed chain shifts as one. A port takes one intent per tick: lowest rank, then
+     * lowest source eid.
      * @param {number} source - the port the item leaves
      * @param {number} dest - the port it lands in
      * @param {boolean} destEmpty - whether `dest` is free to take it right now

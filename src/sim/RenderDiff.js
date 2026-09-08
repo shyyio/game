@@ -123,7 +123,7 @@ export class RenderDiff {
 
     /**
      * Queues a port for the next diff. The diff walks only these, so every write to Port.item must
-     * come through here (see GameEngine#setPortItem).
+     * come through here (see PortIndex#setItem).
      * @param {number} eid
      * @returns {void}
      */
