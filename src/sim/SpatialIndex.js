@@ -75,7 +75,7 @@ export class SpatialIndex {
      * @param {number} eid
      * @param {number} x
      * @param {number} y
-     * @param {number} [direction] - NO_EID for something with no facing
+     * @param {number} [direction] - Direction or NO_EID
      * @returns {void}
      */
     setPosition(eid, x, y, direction=NO_EID) {
@@ -95,7 +95,7 @@ export class SpatialIndex {
     }
 
     /**
-     * The userData stored at cell {x, y, layer}, or null when the cell is free.
+     * userData stored at cell {x, y, layer} or null
      * @param {number} x
      * @param {number} y
      * @param {string} layer
@@ -110,7 +110,7 @@ export class SpatialIndex {
     }
 
     /**
-     * The object id owning the cell at {x, y, layer}, or null when the cell is free or unowned.
+     * object id owning the cell at {x, y, layer}, or null when the cell is free or unowned.
      * @param {number} x
      * @param {number} y
      * @param {string} layer

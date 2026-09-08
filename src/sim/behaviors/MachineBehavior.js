@@ -489,7 +489,7 @@ export class MachineBehavior extends AbstractBehavior {
                     const inPort = inCols[i][row];
                     const resting = item[inPort];
                     if (resting !== EMPTY) {
-                        engine.transfers.submitDrain(inPort, true);
+                        engine.transfers.submitDrain(inPort);
                         slot = resting;
                         slotCol[row] = resting;
                     }

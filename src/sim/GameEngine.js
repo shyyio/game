@@ -26,50 +26,31 @@ export const TickPhase = {
     SUBMIT_INTENTS: 1,
 
     /**
-     * (internal) Resolve the submitted transfer intents into this tick's moves
+     * Executed after the transfer resolution, with every resolved source already emptied; the
+     * resolved destinations fill once the phase closes.
      */
-    RESOLVE_TRANSFERS: 2,
-
-    /**
-     * Clear consumed source ports before the producers (belts) refill them in POST_RESOLVE.
-     */
-    CONSUME_INPUTS: 3,
-
-    /**
-     * Executed after transfer intents
-     */
-    POST_RESOLVE: 4,
-
-    /**
-     * Write resolved items into destination ports after the consumers ingested in POST_RESOLVE.
-     */
-    PRODUCE_OUTPUTS: 5,
-
-    /**
-     * (internal) Commit the resolved moves to the ports
-     */
-    COMMIT_TRANSFERS: 6,
+    POST_RESOLVE: 2,
 
     /**
      * (internal, engine-only) Diff/emit the out-port render events after mods have captured this
-     * tick's watched port items in COMMIT_TRANSFERS. Mods register no ops here.
+     * tick's watched port items. Mods register no ops here.
      */
-    EMIT_RENDER: 7,
+    EMIT_RENDER: 3,
 
     /**
      * Mods snapshot inspected machines here; the engine drains them to sessions in postTick.
      */
-    EMIT_INSPECT: 8,
+    EMIT_INSPECT: 4,
 }
+
+// A mod's system order lies strictly inside ±SYSTEM_ORDER_LIMIT; the resolver's own systems sit at
+// the limits to bracket the phases.
+export const SYSTEM_ORDER_LIMIT = 1000;
 
 // The tick phases run in order each whole tick.
 export const TICK_PHASE_ORDER = [
     TickPhase.SUBMIT_INTENTS,
-    TickPhase.RESOLVE_TRANSFERS,
-    TickPhase.CONSUME_INPUTS,
     TickPhase.POST_RESOLVE,
-    TickPhase.PRODUCE_OUTPUTS,
-    TickPhase.COMMIT_TRANSFERS,
     TickPhase.EMIT_RENDER,
     TickPhase.EMIT_INSPECT,
 ];
@@ -234,13 +215,10 @@ export class GameEngine {
         for (const phase of TICK_PHASE_ORDER) {
             this.systems[phase] = [];
         }
-        this.registerSystem(TickPhase.SUBMIT_INTENTS, () => this.transfers.resetTick());
+        this.transfers.registerSystems();
         this.registerSystem(TickPhase.SUBMIT_INTENTS, () => {
             this.clock += 1;
         });
-        this.registerSystem(TickPhase.RESOLVE_TRANSFERS, () => this.transfers.resolve());
-        this.registerSystem(TickPhase.CONSUME_INPUTS, () => this.transfers.flushSinks());
-        this.registerSystem(TickPhase.COMMIT_TRANSFERS, () => this.transfers.commit());
         this.registerSystem(TickPhase.EMIT_RENDER, () => this.render.emit());
     }
 
@@ -431,14 +409,29 @@ export class GameEngine {
 
     /**
      * Registers a system on a phase. Systems run by ascending `order`, ties by registration order;
-     * a negative order runs before the phase's default-order systems (e.g. a seam that must read
-     * shared ports before the transport writes them).
+     * a negative order runs before the phase's default-order systems (e.g. a mode review that must
+     * settle before the intents it shapes are submitted). `order` lies strictly inside
+     * ±SYSTEM_ORDER_LIMIT.
      * @param {TickPhase} phase
      * @param {function(): void} system
      * @param {number} [order]
      * @returns {void}
      */
     registerSystem(phase, system, order=0) {
+        if (Math.abs(order) >= SYSTEM_ORDER_LIMIT) {
+            throw new Error(`system order ${order} is outside the resolver's brackets`);
+        }
+        this.registerBracketSystem(phase, system, order);
+    }
+
+    /**
+     * Registers one of the resolver's bracket systems, at an order a mod cannot reach.
+     * @param {TickPhase} phase
+     * @param {function(): void} system
+     * @param {number} order
+     * @returns {void}
+     */
+    registerBracketSystem(phase, system, order) {
         const entries = this.systems[phase];
         entries.push({order, seq: this._systemSeq, system});
         this._systemSeq += 1;

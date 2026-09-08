@@ -434,7 +434,7 @@ export class Pipes {
                 if (net.fluidType !== EMPTY && resting !== net.fluidType) {
                     continue;
                 }
-                engine.transfers.submitDrain(port, true);
+                engine.transfers.submitDrain(port);
                 net.fluidType = resting;
                 net.amount += 1;
             }

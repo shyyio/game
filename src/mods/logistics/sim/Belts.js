@@ -84,6 +84,11 @@ export class Belts {
         this._colSideInPortA = new Int32Array(PATH_CAPACITY);
         this._colSideInPortB = new Int32Array(PATH_CAPACITY);
         this._colIngestPort = new Int32Array(PATH_CAPACITY);
+        // The ingest port's item as submitted, since the resolver empties the port before _move.
+        this._colIngestItem = new Int32Array(PATH_CAPACITY);
+        // The intent rows submitted this tick (EMPTY when none): the lead's pop and the in-port drain.
+        this._colPopRow = new Int32Array(PATH_CAPACITY);
+        this._colDrainRow = new Int32Array(PATH_CAPACITY);
         // Whether the path's chunk has a watcher, cached at an observation generation (0 = never).
         this._colObserved = new Uint8Array(PATH_CAPACITY);
         this._colObservedGen = new Int32Array(PATH_CAPACITY);
@@ -91,10 +96,6 @@ export class Belts {
         this._colItemBase = new Int32Array(PATH_CAPACITY);
         this._colItemSlab = new Int32Array(PATH_CAPACITY);
         this._colItemHead = new Int32Array(PATH_CAPACITY);
-        // Out-port writes _move defers to its last phase, reused tick to tick.
-        this._popCapacity = PATH_CAPACITY;
-        this._popPorts = new Int32Array(PATH_CAPACITY);
-        this._popTypes = new Int32Array(PATH_CAPACITY);
         // Placed belts by tile key; a tile can hold belts on different axes/layers, disambiguated by direction.
         this._belts = new Map();
         /**
@@ -1061,6 +1062,7 @@ export class Belts {
         this._colSideInPortA[slot] = path.sideInPorts[0];
         this._colSideInPortB[slot] = path.sideInPorts[1];
         this._colIngestPort[slot] = path.inPort;
+        this._colIngestItem[slot] = EMPTY;
         this._colHeadGap[slot] = path.initialHeadGap;
         this._colObservedGen[slot] = 0;
         this._loadItems(slot, path);
@@ -1151,7 +1153,7 @@ export class Belts {
         while (capacity <= slot) {
             capacity *= 2;
         }
-        for (const name of ["_colInPort", "_colOutPort", "_colHeadGap", "_colCount", "_colLeadGap", "_colFirstGap", "_colSideInPortA", "_colSideInPortB", "_colIngestPort", "_colObservedGen", "_colItemBase", "_colItemSlab", "_colItemHead"]) {
+        for (const name of ["_colInPort", "_colOutPort", "_colHeadGap", "_colCount", "_colLeadGap", "_colFirstGap", "_colSideInPortA", "_colSideInPortB", "_colIngestPort", "_colIngestItem", "_colPopRow", "_colDrainRow", "_colObservedGen", "_colItemBase", "_colItemSlab", "_colItemHead"]) {
             const grown = new Int32Array(capacity);
             grown.set(this[name]);
             this[name] = grown;
@@ -1248,6 +1250,9 @@ export class Belts {
         this._colSideInPortA[slot] = this._colSideInPortA[lastSlot];
         this._colSideInPortB[slot] = this._colSideInPortB[lastSlot];
         this._colIngestPort[slot] = this._colIngestPort[lastSlot];
+        this._colIngestItem[slot] = this._colIngestItem[lastSlot];
+        this._colPopRow[slot] = this._colPopRow[lastSlot];
+        this._colDrainRow[slot] = this._colDrainRow[lastSlot];
         this._colItemBase[slot] = this._colItemBase[lastSlot];
         this._colItemSlab[slot] = this._colItemSlab[lastSlot];
         this._colItemHead[slot] = this._colItemHead[lastSlot];
@@ -1382,7 +1387,8 @@ export class Belts {
     }
 
     /**
-     * SUBMIT_INTENTS: a lead item submits its out-port shift; a path with room declares its in-port drainable.
+     * SUBMIT_INTENTS: a lead item submits its out-port shift; a path with room drains its in-port.
+     * The in-port's item is captured here, since the resolver empties the port before POST_RESOLVE.
      * @private
      * @returns {void}
      */
@@ -1394,33 +1400,50 @@ export class Belts {
         const headGapCol = this._colHeadGap;
         const firstGapCol = this._colFirstGap;
         const leadGapCol = this._colLeadGap;
+        const ingestItemCol = this._colIngestItem;
+        const popRowCol = this._colPopRow;
+        const drainRowCol = this._colDrainRow;
+        const baseCol = this._colItemBase;
+        const headCol = this._colItemHead;
+        const itemTypes = this._items.types;
         const slotByInPort = this._slotByInPort.column;
         const count = this.paths.length;
         for (let slot = 0; slot < count; slot += 1) {
             const firstGap = firstGapCol[slot];
+            popRowCol[slot] = EMPTY;
+            drainRowCol[slot] = EMPTY;
             let inPort = inPortCol[slot];
             if (P[inPort] === EMPTY) {
                 inPort = this._sideFeed(slot, inPort);
             }
             this._colIngestPort[slot] = inPort;
+            // A resting fluid payload is refused, so its producer backs up.
+            const resting = P[inPort];
+            const restingFluid = resting !== EMPTY && engine.isFluid(resting);
+            let ingestItem = resting;
+            if (restingFluid) {
+                ingestItem = EMPTY;
+            }
+            ingestItemCol[slot] = ingestItem;
             const outPort = outPortCol[slot];
-            const leadIsItem = leadGapCol[slot] === 0;
             // A fluid port ahead never links: the path holds its lead instead of stranding an item there.
-            if (leadIsItem && !engine.ports.isFluidClaimed(outPort)) {
+            if (leadGapCol[slot] === 0 && !engine.ports.isFluidClaimed(outPort)) {
                 // Free if empty or the downstream can ingest, so the resolver's chain shifts a packed run at once.
                 const downstream = slotByInPort[outPort];
                 const downstreamCanIngest = downstream !== NO_SLOT
                     && (headGapCol[downstream] > 0 || firstGapCol[downstream] !== -1);
-                engine.transfers.submitTransfer(
-                    inPort,
-                    outPort,
-                    P[outPort] === EMPTY || downstreamCanIngest,
-                    false,
-                );
+                const outEmpty = P[outPort] === EMPTY || downstreamCanIngest;
+                const lead = itemTypes[baseCol[slot] + headCol[slot]];
+                if (restingFluid) {
+                    // The refused fluid stays put, so the pop creates into the out-port instead.
+                    popRowCol[slot] = engine.transfers.submitCreate(outPort, lead, outEmpty);
+                } else {
+                    // Sourced at the in-port: a packed run shifting as one frees it for its feeder.
+                    popRowCol[slot] = engine.transfers.submitTransfer(inPort, outPort, outEmpty, EMPTY, lead);
+                }
             }
-            // A resting fluid payload is refused, so its producer backs up.
-            if (P[inPort] !== EMPTY && !engine.isFluid(P[inPort]) && (headGapCol[slot] > 0 || firstGap !== -1)) {
-                engine.transfers.submitDrain(inPort, false);
+            if (ingestItem !== EMPTY && (headGapCol[slot] > 0 || firstGap !== -1)) {
+                drainRowCol[slot] = engine.transfers.submitDrain(inPort);
             }
         }
     }
@@ -1431,13 +1454,12 @@ export class Belts {
      * @returns {void}
      */
     _move() {
-        const P = this.engine.Port.item;
-
-        // Phase 1: move each path one half-tile; out-port writes deferred so a shared seam still
-        // holds last tick's value.
+        // Phase 1: move each path one half-tile; the resolver writes a popped lead into the out-port.
         const engine = this.engine;
         const ingestPortCol = this._colIngestPort;
-        const outPortCol = this._colOutPort;
+        const ingestItemCol = this._colIngestItem;
+        const popRowCol = this._colPopRow;
+        const drainRowCol = this._colDrainRow;
         const headGapCol = this._colHeadGap;
         const countCol = this._colCount;
         const leadGapCol = this._colLeadGap;
@@ -1448,14 +1470,13 @@ export class Belts {
         const itemTypes = this._items.types;
         const itemGaps = this._items.gaps;
         const count = this.paths.length;
-        // Deferred out-port writes, reused across ticks.
-        let popCount = 0;
         // One batch per chunk, flushed at the end so the pass stays ordered against outside emits.
         const batches = new Map();
 
         for (let slot = 0; slot < count; slot += 1) {
             const firstGap = firstGapCol[slot];
-            const canPop = leadGapCol[slot] === 0 && engine.transfers.wasUnmanagedDest(outPortCol[slot]);
+            const popRow = popRowCol[slot];
+            const canPop = popRow !== EMPTY && engine.transfers.wasResolved(popRow);
             if (!canPop && firstGap === -1) {
                 continue;
             }
@@ -1465,10 +1486,6 @@ export class Belts {
             const slab = slabCol[slot];
             const head = headCol[slot];
             if (canPop) {
-                this._growPops(popCount);
-                this._popPorts[popCount] = outPortCol[slot];
-                this._popTypes[popCount] = itemTypes[base + head];
-                popCount += 1;
                 this._bufferPoppedItem(batches, slot, base + head);
                 // Gaps are relative: dropping the lead advances everything behind it.
                 const nextHead = head + 1 === slab ? 0 : head + 1;
@@ -1497,14 +1514,25 @@ export class Belts {
             headGapCol[slot] += 1;
         }
 
-        // Phase 2: ingest each path's resting in-port item at the input edge; fluids are refused.
+        // Phase 2: ingest the in-port item this path's own drain or pop emptied, at the input edge.
         const itemIds = this._items.ids;
         for (let slot = 0; slot < count; slot += 1) {
-            const inPort = ingestPortCol[slot];
-            if (headGapCol[slot] === 0 || P[inPort] === EMPTY || engine.isFluid(P[inPort])) {
+            const type = ingestItemCol[slot];
+            if (type === EMPTY) {
                 continue;
             }
-            const type = P[inPort];
+            const drainRow = drainRowCol[slot];
+            const popRow = popRowCol[slot];
+            const drained = drainRow !== EMPTY && engine.transfers.wasResolved(drainRow);
+            const popped = popRow !== EMPTY && engine.transfers.wasResolved(popRow);
+            if (!drained && !popped) {
+                continue;
+            }
+            // Phase 1 opened the headroom the item lands with.
+            if (headGapCol[slot] === 0) {
+                throw new Error("belt ingest with no headroom");
+            }
+            const inPort = ingestPortCol[slot];
             // The item lands on the input edge, carrying the headroom ahead of it.
             const gap = headGapCol[slot] - 1;
             const id = this._nextItemId;
@@ -1528,39 +1556,12 @@ export class Belts {
             }
             this._bufferItemAt(batches, slot, cell);
             headGapCol[slot] = 0;
-            engine.ports.setItem(inPort, EMPTY);
-        }
-
-        // Phase 3: write this tick's pops into their out-ports.
-        for (let i = 0; i < popCount; i += 1) {
-            engine.ports.setItem(this._popPorts[i], this._popTypes[i]);
+            engine.render.noteConveyed(inPort);
         }
 
         for (const batch of batches.values()) {
             engine.emitEvent(batch);
         }
-    }
-
-    /**
-     * Grows the deferred-pop columns so row `count` is addressable.
-     * @private
-     * @param {number} count
-     * @returns {void}
-     */
-    _growPops(count) {
-        if (count < this._popCapacity) {
-            return;
-        }
-        let capacity = this._popCapacity;
-        while (capacity <= count) {
-            capacity *= 2;
-        }
-        for (const name of ["_popPorts", "_popTypes"]) {
-            const grown = new Int32Array(capacity);
-            grown.set(this[name]);
-            this[name] = grown;
-        }
-        this._popCapacity = capacity;
     }
 
     /**

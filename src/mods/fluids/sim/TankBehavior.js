@@ -146,7 +146,7 @@ export class TankBehavior extends AbstractBehavior {
             if (resting !== EMPTY
                 && tank.amount[row] < tank.capacity[row]
                 && (tank.amount[row] === 0 || resting === tank.fluidType[row])) {
-                engine.transfers.submitDrain(tank.in[row], true);
+                engine.transfers.submitDrain(tank.in[row]);
                 tank.fluidType[row] = resting;
                 tank.amount[row] += 1;
                 engine.ports.setFluidSource(tank.out[row], resting);

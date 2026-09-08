@@ -1,90 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {GameEngine} from "@/sim/GameEngine.js";
-import {EMPTY} from "@/sim/sentinels.js";
+import {GameEngine, TickPhase, SYSTEM_ORDER_LIMIT} from "@/sim/GameEngine.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
-
-// Boots an engine with `count` ports; the eids in `filledIds` (1-based, matching creation order)
-// carry item type 1.
-async function setup(count, filledIds) {
-    const engine = new GameEngine();
-    await engine.init();
-    const ports = [];
-    for (let i = 0; i < count; i += 1) {
-        let item = EMPTY;
-        if (filledIds.includes(i + 1)) {
-            item = 1;
-        }
-        ports.push(engine.ports.create(item));
-    }
-    return {engine, ports};
-}
-
-// Runs the resolve + commit phases so a move (or sink) lands in Port.
-function settle(engine) {
-    engine.transfers.resolve();
-    engine.transfers.flushSinks();
-    engine.transfers.commit();
-}
-
-test("Resolves a packed transfer chain as a single shift when the end drains", async () => {
-    const {engine, ports} = await setup(4, [1, 2, 3]);
-    engine.transfers.submitTransfer(ports[0], ports[1], false, true);
-    engine.transfers.submitTransfer(ports[1], ports[2], false, true);
-    engine.transfers.submitTransfer(ports[2], ports[3], true, true);
-
-    engine.transfers.resolve();
-
-    assert.equal(engine.transfers.resolvedEdges(), `${ports[0]}->${ports[1]}, ${ports[1]}->${ports[2]}, ${ports[2]}->${ports[3]}`);
-});
-
-test("Resolves no transfer when the chain's end is blocked", async () => {
-    const {engine, ports} = await setup(4, [1, 2, 3, 4]);
-    engine.transfers.submitTransfer(ports[0], ports[1], false, true);
-    engine.transfers.submitTransfer(ports[1], ports[2], false, true);
-    engine.transfers.submitTransfer(ports[2], ports[3], false, true);
-
-    engine.transfers.resolve();
-
-    assert.equal(engine.transfers.resolvedEdges(), "");
-});
-
-test("Translates the item type on a managed transfer via output_item", async () => {
-    const {engine, ports} = await setup(2, [1]);
-    engine.transfers.submitTransfer(ports[0], ports[1], true, true, EMPTY, 99);
-
-    settle(engine);
-
-    assert.equal(engine.ports.item(ports[0]), EMPTY);
-    assert.equal(engine.ports.item(ports[1]), 99);
-});
-
-test("Creates a brand-new item with a source-less managed intent", async () => {
-    const {engine, ports} = await setup(1, []);
-    engine.transfers.submitCreate(ports[0], 55, true);
-
-    settle(engine);
-
-    assert.equal(engine.ports.item(ports[0]), 55);
-});
-
-test("Sinks (consumes) the source item on a managed destination-less intent", async () => {
-    const {engine, ports} = await setup(1, [1]);
-    engine.transfers.submitDrain(ports[0], true);
-
-    settle(engine);
-
-    assert.equal(engine.ports.item(ports[0]), EMPTY);
-});
-
-test("Leaves an unmanaged destination-less intent (self-drain) untouched", async () => {
-    const {engine, ports} = await setup(1, [1]);
-    engine.transfers.submitDrain(ports[0], false);
-
-    settle(engine);
-
-    assert.equal(engine.ports.item(ports[0]), 1);
-});
 
 test("An edge port shares a tile with a cell without occupying it", async () => {
     const engine = new GameEngine();
@@ -100,4 +17,12 @@ test("An edge port shares a tile with a cell without occupying it", async () => 
     engine.space.destroyOwnerCells(99);
     assert.equal(engine.space.cellsFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), true);
     assert.equal(engine.ports.at(4, 7, 0), port, "releasing the cell leaves the port alone");
+});
+
+test("a system order at or past the resolver's brackets is refused", async () => {
+    const engine = new GameEngine();
+    await engine.init();
+    assert.throws(() => engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => {}, SYSTEM_ORDER_LIMIT));
+    assert.throws(() => engine.registerSystem(TickPhase.POST_RESOLVE, () => {}, -SYSTEM_ORDER_LIMIT));
+    engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => {}, SYSTEM_ORDER_LIMIT - 1);
 });

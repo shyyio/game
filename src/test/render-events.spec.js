@@ -88,9 +88,7 @@ async function riggedPort() {
 test("a drained rendered port's clear is flagged consumed", async () => {
     const {engine, collector, port} = await riggedPort();
 
-    engine.transfers.submitDrain(port, true);
-    engine.transfers.resolve();
-    engine.transfers.flushSinks();
+    engine.ports.consumeItem(port);
     engine.tickAll();
     const events = collector.drain();
     assert.equal(events.length, 1);
@@ -108,15 +106,26 @@ test("a drained rendered port's clear is flagged consumed", async () => {
     assert.equal(modCleared[0].consumed, 0);
 });
 
+// A transport that takes a rendered port's item draws it onward itself, so the clear is plain.
+test("a consumed port a transport carried on renders a plain clear", async () => {
+    const {engine, collector, port} = await riggedPort();
+
+    engine.ports.consumeItem(port);
+    engine.render.noteConveyed(port);
+    engine.tickAll();
+    const events = collector.drain();
+    assert.equal(events.length, 1);
+    assert.ok(events[0] instanceof PortItemClearEvent);
+    assert.equal(events[0].consumed, 0);
+});
+
 // A port consumed and refilled in one tick still emits the consumed clear ahead of the set, so
 // the shown item glides out while its replacement glides in.
 test("a consumed port refilled the same tick emits clear then set", async () => {
     const {engine, collector, port} = await riggedPort();
 
     const NEXT_ITEM = 8;
-    engine.transfers.submitDrain(port, true);
-    engine.transfers.resolve();
-    engine.transfers.flushSinks();
+    engine.ports.consumeItem(port);
     engine.ports.setItem(port, NEXT_ITEM);
     engine.tickAll();
     const events = collector.drain();
@@ -143,7 +152,7 @@ test("a mod-emptied port refilled the same tick emits clear then set", async () 
     assert.equal(events[1].itemType, ITEM);
 });
 
-// The splitter's seam eats from its in-port like any consumer, so the rendered feed item glides
+// The splitter transfers out of its in-port like any consumer, so the rendered feed item glides
 // into the splitter instead of vanishing in place.
 test("a splitter draining its rendered in-port emits a consumed clear", async () => {
     const engine = new GameEngine();
@@ -161,7 +170,7 @@ test("a splitter draining its rendered in-port emits a consumed clear", async ()
     engine.tickAll();
     collector.drain();
 
-    // Unjam: the internal hop frees, the seam eats the resting in-port item.
+    // Unjam: the internal hop frees, the resting in-port item transfers into it.
     engine.ports.setItem(s.out_a, EMPTY);
     engine.tickAll();
     const events = collector.drain();

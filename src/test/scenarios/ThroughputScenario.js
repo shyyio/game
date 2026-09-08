@@ -112,8 +112,8 @@ class SinkBehavior extends AbstractBehavior {
     }
 
     /**
-     * SUBMIT_INTENTS: drains whatever rests in the input port. A managed drain has no counterpart to
-     * lose arbitration to, so the count is booked here rather than in a POST_RESOLVE pass.
+     * SUBMIT_INTENTS: drains whatever rests in the input port. A drain resolves outright, so the
+     * count is booked here rather than in a POST_RESOLVE pass.
      * @private
      * @param {GameEngine} engine
      * @returns {void}
@@ -130,7 +130,7 @@ class SinkBehavior extends AbstractBehavior {
             }
             sink.lastConsumed[row] = item[inPort];
             sink.consumed[row] += 1;
-            engine.transfers.submitDrain(inPort, true);
+            engine.transfers.submitDrain(inPort);
         }
     }
 }

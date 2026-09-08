@@ -1,10 +1,8 @@
 import {Direction, EMPTY, NO_EID, TickPhase, AbstractBehavior} from "@spup/sdk";
-import {commitStagedHops} from "./portRelay.js";
-import {ORDER_BEFORE_TRANSPORT} from "../common/constants.js";
 
 /**
  * 1x2 splitter routing in_X -> int_X -> out_Y through internal buffer ports, resting a tick per
- * hop, submitting managed=0 intents so the resolver only links and the seam does the moves.
+ * hop; the round-robin state follows whichever output the resolver picked.
  */
 export class SplitterBehavior extends AbstractBehavior {
 
@@ -19,11 +17,7 @@ export class SplitterBehavior extends AbstractBehavior {
             {name: "state"},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents(engine));
-        // Seam must read shared ports before the belt transport writes pops.
-        const outputFills = [];
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => this._runSeam(engine, outputFills), ORDER_BEFORE_TRANSPORT);
-        // Out-ports fill after the transport ingested, so a routed item rests a tick in its out-port.
-        engine.registerSystem(TickPhase.PRODUCE_OUTPUTS, () => this._fillOutputs(engine, outputFills));
+        engine.registerSystem(TickPhase.POST_RESOLVE, () => this._finish(engine));
     }
 
     onSpawn(engine, eid, type, message) {
@@ -118,8 +112,8 @@ export class SplitterBehavior extends AbstractBehavior {
     }
 
     /**
-     * Submits managed=0 intents: each loaded input to its internal port, each loaded internal port
-     * fanned out to both outputs ranked by the round-robin state.
+     * Submits each loaded input to its internal port, and each loaded internal port fanned out to
+     * both outputs ranked by the round-robin state.
      * @private
      * @param {GameEngine} engine
      * @returns {void}
@@ -130,81 +124,37 @@ export class SplitterBehavior extends AbstractBehavior {
         const splitter = def.store;
         for (let row = 0; row < def.count; row += 1) {
             if (item[splitter.in_a[row]] !== EMPTY) {
-                engine.transfers.submitTransfer(splitter.in_a[row], splitter.int_a[row], item[splitter.int_a[row]] === EMPTY, false);
+                engine.transfers.submitTransfer(splitter.in_a[row], splitter.int_a[row], item[splitter.int_a[row]] === EMPTY);
             }
             if (item[splitter.in_b[row]] !== EMPTY) {
-                engine.transfers.submitTransfer(splitter.in_b[row], splitter.int_b[row], item[splitter.int_b[row]] === EMPTY, false);
+                engine.transfers.submitTransfer(splitter.in_b[row], splitter.int_b[row], item[splitter.int_b[row]] === EMPTY);
             }
             const preferA = splitter.state[row] === 0 ? 1 : 2;
             const preferB = splitter.state[row] === 0 ? 2 : 1;
             if (item[splitter.int_a[row]] !== EMPTY) {
-                engine.transfers.submitTransfer(splitter.int_a[row], splitter.out_a[row], item[splitter.out_a[row]] === EMPTY, false, preferA);
-                engine.transfers.submitTransfer(splitter.int_a[row], splitter.out_b[row], item[splitter.out_b[row]] === EMPTY, false, preferB);
+                engine.transfers.submitTransfer(splitter.int_a[row], splitter.out_a[row], item[splitter.out_a[row]] === EMPTY, preferA);
+                engine.transfers.submitTransfer(splitter.int_a[row], splitter.out_b[row], item[splitter.out_b[row]] === EMPTY, preferB);
             }
             if (item[splitter.int_b[row]] !== EMPTY) {
-                engine.transfers.submitTransfer(splitter.int_b[row], splitter.out_b[row], item[splitter.out_b[row]] === EMPTY, false, preferA);
-                engine.transfers.submitTransfer(splitter.int_b[row], splitter.out_a[row], item[splitter.out_a[row]] === EMPTY, false, preferB);
+                engine.transfers.submitTransfer(splitter.int_b[row], splitter.out_b[row], item[splitter.out_b[row]] === EMPTY, preferA);
+                engine.transfers.submitTransfer(splitter.int_b[row], splitter.out_a[row], item[splitter.out_a[row]] === EMPTY, preferB);
             }
         }
     }
 
     /**
-     * POST_RESOLVE seam: record resolved hops, clear drained sources, fill the internal ports, and
-     * advance routed splitters' round-robin state; out-port fills defer to PRODUCE_OUTPUTS.
+     * POST_RESOLVE: a splitter that routed an internal port this tick flips its round-robin state.
      * @private
      * @param {GameEngine} engine
-     * @param {{outPort:number, item:number}[]} outputFills
      * @returns {void}
      */
-    _runSeam(engine, outputFills) {
-        const item = engine.Port.item;
+    _finish(engine) {
         const def = engine.components.get("Splitter");
         const splitter = def.store;
-        const stage1 = [];
-        const stage2 = [];
-
-        for (let row = 0; row < def.count; row += 1) {
-            for (const intPort of [splitter.int_a[row], splitter.int_b[row]]) {
-                if (item[intPort] === EMPTY) {
-                    continue;
-                }
-                const dest = engine.transfers.destFor(intPort);
-                if (dest !== EMPTY) {
-                    stage2.push({outPort: dest, item: item[intPort], intPort: intPort});
-                }
-            }
-            for (const inPort of [splitter.in_a[row], splitter.in_b[row]]) {
-                if (item[inPort] === EMPTY) {
-                    continue;
-                }
-                const dest = engine.transfers.destFor(inPort);
-                if (dest !== EMPTY) {
-                    stage1.push({intPort: dest, item: item[inPort], inPort: inPort});
-                }
-            }
-        }
-
-        commitStagedHops(engine, stage1, stage2, outputFills);
-
         for (let row = 0; row < def.count; row += 1) {
             if (engine.transfers.destFor(splitter.int_a[row]) !== EMPTY || engine.transfers.destFor(splitter.int_b[row]) !== EMPTY) {
                 splitter.state[row] = 1 - splitter.state[row];
             }
         }
-    }
-
-    /**
-     * PRODUCE_OUTPUTS: writes the seam's routed items into their out-ports, after the transport
-     * ingested this tick — so each item rests a visible tick in its out-port.
-     * @private
-     * @param {GameEngine} engine
-     * @param {{outPort:number, item:number}[]} outputFills
-     * @returns {void}
-     */
-    _fillOutputs(engine, outputFills) {
-        for (const record of outputFills) {
-            engine.ports.setItem(record.outPort, record.item);
-        }
-        outputFills.length = 0;
     }
 }

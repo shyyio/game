@@ -1,17 +1,15 @@
 import {EMPTY} from "@/sim/sentinels.js";
+import {TickPhase, SYSTEM_ORDER_LIMIT} from "@/sim/GameEngine.js";
 
 // Initial row count for the per-tick intent/resolved columns; grows by doubling.
 const INTENT_CAPACITY = 1024;
 
-// Intent flag bits.
-const INTENT_DEST_EMPTY = 1;
-const INTENT_MANAGED = 2;
-
 /**
- * The port-transfer protocol: mods submit intents in SUBMIT_INTENTS, this resolves which of them
- * actually move this tick, and COMMIT_TRANSFERS applies the managed ones to the ports.
+ * The port-transfer protocol: mods submit intents, this resolves which of them actually move this
+ * tick, empties the resolved sources at once, and fills the resolved destinations once the mods
+ * have had their say.
  *
- * Both the intents and the resolutions are SoA: one row per submitted intent / committed transfer,
+ * Both the intents and the resolutions are SoA: one row per submitted intent / resolved transfer,
  * so a tick's several hundred thousand rows cost no object headers.
  */
 export class TransferResolver {
@@ -24,46 +22,51 @@ export class TransferResolver {
         this.engine = engine;
 
         // Submitted this tick. source/dest are port eids, or EMPTY for a source-less create /
-        // destination-less drain; flags carry destEmpty and managed.
+        // destination-less drain.
         this._intentCapacity = INTENT_CAPACITY;
         this._intentSource = new Int32Array(INTENT_CAPACITY);
         this._intentDest = new Int32Array(INTENT_CAPACITY);
         this._intentOutput = new Int32Array(INTENT_CAPACITY);
         this._intentRank = new Int32Array(INTENT_CAPACITY);
-        this._intentFlags = new Uint8Array(INTENT_CAPACITY);
-        this._intentSeen = new Uint8Array(INTENT_CAPACITY);
+        this._intentDestEmpty = new Uint8Array(INTENT_CAPACITY);
+        this._intentResolved = new Uint8Array(INTENT_CAPACITY);
         this._intentCount = 0;
 
-        // Committed transfers.
+        // Resolved transfers.
         this._resolvedCapacity = INTENT_CAPACITY;
         this._resolvedSource = new Int32Array(INTENT_CAPACITY);
         this._resolvedDest = new Int32Array(INTENT_CAPACITY);
         this._resolvedItem = new Int32Array(INTENT_CAPACITY);
-        this._resolvedManaged = new Uint8Array(INTENT_CAPACITY);
         this._resolvedCount = 0;
 
-        // resolve()'s working lists, reused tick to tick. Every one of them holds at most one entry
-        // per intent row, so a single grow against the intent count sizes them all.
+        // _resolve()'s working lists, reused tick to tick. Each holds at most one entry per intent
+        // row, so a single grow against the intent count sizes them all.
         this._scratchCapacity = INTENT_CAPACITY;
         this._touchedDests = new Int32Array(INTENT_CAPACITY);
-        this._touchedSources = new Int32Array(INTENT_CAPACITY);
-        this._drainQueue = new Int32Array(INTENT_CAPACITY);
-        this._resolvedRows = new Int32Array(INTENT_CAPACITY);
         this._rankedSources = new Int32Array(INTENT_CAPACITY);
-        // Managed destination-less sources the engine drains this tick.
-        this._sinks = new Int32Array(INTENT_CAPACITY);
-        this._sinkCount = 0;
 
-        // Per-port resolution, persisting through the tick (mods query it in POST_RESOLVE). resolve()
-        // clears only the slots it touched, so no pass costs the width of the world.
+        // Per-port resolution, persisting through the tick (mods query it in POST_RESOLVE).
+        // _resolve() clears only the slots it touched, so no pass costs the width of the world.
         this._destBySource = new Int32Array(portCapacity).fill(EMPTY);
         this._portResolved = new Uint8Array(portCapacity);
-        this._portResolvedUnmanaged = new Uint8Array(portCapacity);
-        // Transient within resolve(): the winning/best intent row per port, and whether the port
-        // empties this tick.
+        // Transient within _resolve(): the winning/best intent row per port, whether the port empties
+        // this tick, and the ports that do, in propagation order.
         this._winnerByDest = new Int32Array(portCapacity).fill(EMPTY);
         this._bestBySource = new Int32Array(portCapacity).fill(EMPTY);
-        this._draining = new Uint8Array(portCapacity);
+        this._emptying = new Uint8Array(portCapacity);
+        this._emptyingQueue = new Int32Array(portCapacity);
+    }
+
+    /**
+     * Registers the resolver's own tick systems: it opens SUBMIT_INTENTS by clearing last tick and
+     * closes it by resolving what was submitted and emptying the resolved sources, then closes
+     * POST_RESOLVE by filling the resolved destinations.
+     * @returns {void}
+     */
+    registerSystems() {
+        this.engine.registerBracketSystem(TickPhase.SUBMIT_INTENTS, () => this.resetTick(), -SYSTEM_ORDER_LIMIT);
+        this.engine.registerBracketSystem(TickPhase.SUBMIT_INTENTS, () => this._resolve(), SYSTEM_ORDER_LIMIT);
+        this.engine.registerBracketSystem(TickPhase.POST_RESOLVE, () => this._fillDestinations(), SYSTEM_ORDER_LIMIT);
     }
 
     /**
@@ -74,7 +77,7 @@ export class TransferResolver {
     }
 
     /**
-     * @returns {number} transfers resolved this tick
+     * @returns {number} intents resolved this tick
      */
     get resolvedCount() {
         return this._resolvedCount;
@@ -91,16 +94,17 @@ export class TransferResolver {
             grown.set(this[name]);
             this[name] = grown;
         }
-        for (const name of ["_portResolved", "_portResolvedUnmanaged", "_draining"]) {
+        for (const name of ["_portResolved", "_emptying"]) {
             const grown = new Uint8Array(capacity);
             grown.set(this[name]);
             this[name] = grown;
         }
+        // Transient within one pass, so it is replaced rather than copied.
+        this._emptyingQueue = new Int32Array(capacity);
     }
 
     /**
-     * The destination a resolved transfer moved this source's item to this tick, or EMPTY. Lets a mod
-     * doing its own (managed=0) move read the engine's resolution.
+     * The destination a resolved transfer moves this source's item to this tick, or EMPTY.
      * @param {number} source
      * @returns {number}
      */
@@ -119,13 +123,12 @@ export class TransferResolver {
     }
 
     /**
-     * As {@link wasDest} but only for unmanaged (managed=0) transfers — the form belts submit, where a
-     * resolved out-port means the path may pop this tick.
-     * @param {number} dest
+     * Whether the intent submitted as row `intentRow` this tick resolved.
+     * @param {number} intentRow
      * @returns {boolean}
      */
-    wasUnmanagedDest(dest) {
-        return dest !== EMPTY && this._portResolvedUnmanaged[dest] === 1;
+    wasResolved(intentRow) {
+        return this._intentResolved[intentRow] === 1;
     }
 
     /**
@@ -142,12 +145,11 @@ export class TransferResolver {
             const dest = this._resolvedDest[row];
             if (dest !== EMPTY) {
                 this._portResolved[dest] = 0;
-                this._portResolvedUnmanaged[dest] = 0;
             }
         }
+        this._intentResolved.fill(0, 0, this._intentCount);
         this._intentCount = 0;
         this._resolvedCount = 0;
-        this._sinkCount = 0;
     }
 
     /**
@@ -155,15 +157,13 @@ export class TransferResolver {
      * @param {number} source - the port the item leaves
      * @param {number} dest - the port it lands in
      * @param {boolean} destEmpty - whether `dest` is free to take it right now
-     * @param {boolean} managed - whether the engine moves the item (false: the mod moves it itself and
-     *     only reads the resolution)
      * @param {number} [rank] - preference among one source's several destinations; lowest wins
      * @param {number} [outputItem] - what lands in `dest`, when the move translates the item type;
      *     without it the source's own item moves across
-     * @returns {void}
+     * @returns {number} the intent row, for {@link wasResolved}
      */
-    submitTransfer(source, dest, destEmpty, managed, rank=EMPTY, outputItem=EMPTY) {
-        this._pushIntent(source, dest, destEmpty, managed, outputItem, rank);
+    submitTransfer(source, dest, destEmpty, rank=EMPTY, outputItem=EMPTY) {
+        return this._pushIntent(source, dest, destEmpty, rank, outputItem);
     }
 
     /**
@@ -171,21 +171,20 @@ export class TransferResolver {
      * @param {number} dest
      * @param {number} item
      * @param {boolean} destEmpty
-     * @returns {void}
+     * @returns {number} the intent row, for {@link wasResolved}
      */
     submitCreate(dest, item, destEmpty) {
-        this._pushIntent(EMPTY, dest, destEmpty, true, item, EMPTY);
+        return this._pushIntent(EMPTY, dest, destEmpty, EMPTY, item);
     }
 
     /**
-     * Submits a destination-less drain: `source` empties this tick, so whatever feeds it can resolve.
-     * A managed drain is also cleared by the engine in CONSUME_INPUTS.
+     * Submits a destination-less drain: `source` is emptied this tick, so whatever feeds it can
+     * resolve.
      * @param {number} source
-     * @param {boolean} managed
-     * @returns {void}
+     * @returns {number} the intent row, for {@link wasResolved}
      */
-    submitDrain(source, managed) {
-        this._pushIntent(source, EMPTY, false, managed, EMPTY, EMPTY);
+    submitDrain(source) {
+        return this._pushIntent(source, EMPTY, false, EMPTY, EMPTY);
     }
 
     /**
@@ -194,74 +193,56 @@ export class TransferResolver {
      * @param {number} source
      * @param {number} dest
      * @param {boolean} destEmpty
-     * @param {boolean} managed
-     * @param {number} outputItem
      * @param {number} rank
-     * @returns {void}
+     * @param {number} outputItem
+     * @returns {number} the intent row
      */
-    _pushIntent(source, dest, destEmpty, managed, outputItem, rank) {
+    _pushIntent(source, dest, destEmpty, rank, outputItem) {
         const row = this._intentCount;
         this._growIntents(row);
         this._intentSource[row] = source;
         this._intentDest[row] = dest;
         this._intentOutput[row] = outputItem;
         this._intentRank[row] = rank;
-        let flags = 0;
-        if (destEmpty) {
-            flags |= INTENT_DEST_EMPTY;
-        }
-        if (managed) {
-            flags |= INTENT_MANAGED;
-        }
-        this._intentFlags[row] = flags;
-        this._intentSeen[row] = 0;
+        this._intentDestEmpty[row] = destEmpty ? 1 : 0;
         this._intentCount = row + 1;
+        return row;
     }
 
     /**
-     * RESOLVE_TRANSFERS: resolves this tick's intents into resolved transfers via a linear backward
-     * propagation over the functional transfer graph.
+     * Resolves this tick's intents into resolved transfers via a linear backward propagation over
+     * the functional transfer graph, then empties the resolved sources.
+     * @private
      * @returns {void}
      */
-    resolve() {
+    _resolve() {
         const count = this._intentCount;
         const source = this._intentSource;
         const dest = this._intentDest;
         const rank = this._intentRank;
-        const flags = this._intentFlags;
+        const destEmpty = this._intentDestEmpty;
         const winner = this._winnerByDest;
-        const draining = this._draining;
+        const emptying = this._emptying;
         this._growScratch(count);
-        // Ports whose transient scratch was touched, so the reset at the end walks only those.
+        // Destinations whose winner slot was touched, so the reset at the end walks only those.
         const touchedDests = this._touchedDests;
-        const touchedSources = this._touchedSources;
-        const queue = this._drainQueue;
-        const resolvedRows = this._resolvedRows;
-        const sinks = this._sinks;
+        // The ports emptying this tick; doubles as the reset list for `emptying`.
+        const queue = this._emptyingQueue;
         let destCount = 0;
-        let sourceCount = 0;
         let queueCount = 0;
-        let resolvedRowCount = 0;
-        let sinkCount = 0;
 
         // Pass 1: dedup contenders per destination (a port takes one) — lowest rank wins, tie by
-        // source. Destination-less rows mark their source as draining this tick, and a managed one
-        // also becomes a sink the engine drains in commit.
+        // source. A destination-less row resolves outright and empties its source.
         for (let row = 0; row < count; row += 1) {
             if (dest[row] === EMPTY) {
                 if (source[row] === EMPTY) {
                     continue;
                 }
-                if ((flags[row] & INTENT_MANAGED) !== 0) {
-                    sinks[sinkCount] = source[row];
-                    sinkCount += 1;
-                }
-                if (draining[source[row]] === 0) {
-                    draining[source[row]] = 1;
+                this._recordResolved(row);
+                if (emptying[source[row]] === 0) {
+                    emptying[source[row]] = 1;
                     queue[queueCount] = source[row];
                     queueCount += 1;
-                    touchedSources[sourceCount] = source[row];
-                    sourceCount += 1;
                 }
                 continue;
             }
@@ -276,102 +257,81 @@ export class TransferResolver {
                 winner[dest[row]] = row;
             }
         }
-        this._sinkCount = sinkCount;
 
-        // Pass 2: a transfer resolves if its destination empties this tick — the destination is
-        // empty (destEmpty), or drains, or is itself a resolving source (packed chain shifts as one).
-        // Propagate backward: when a port joins the draining set, the transfer feeding it resolves.
+        // A destination that is free right now (destEmpty) empties too, which is what seeds the
+        // propagation.
         for (let index = 0; index < destCount; index += 1) {
-            const row = winner[touchedDests[index]];
-            if ((flags[row] & INTENT_DEST_EMPTY) === 0) {
-                continue;
-            }
-            resolvedRows[resolvedRowCount] = row;
-            resolvedRowCount += 1;
-            this._intentSeen[row] = 1;
-            if (source[row] !== EMPTY && draining[source[row]] === 0) {
-                draining[source[row]] = 1;
-                queue[queueCount] = source[row];
+            const port = touchedDests[index];
+            if (destEmpty[winner[port]] === 1 && emptying[port] === 0) {
+                emptying[port] = 1;
+                queue[queueCount] = port;
                 queueCount += 1;
-                touchedSources[sourceCount] = source[row];
-                sourceCount += 1;
             }
         }
 
-        for (let head = 0; head < queueCount; head += 1) {
-            const row = winner[queue[head]];
-            if (row === EMPTY || this._intentSeen[row] === 1) {
-                continue;
-            }
-            resolvedRows[resolvedRowCount] = row;
-            resolvedRowCount += 1;
-            this._intentSeen[row] = 1;
-            if (source[row] !== EMPTY && draining[source[row]] === 0) {
-                draining[source[row]] = 1;
-                queue[queueCount] = source[row];
-                queueCount += 1;
-                touchedSources[sourceCount] = source[row];
-                sourceCount += 1;
-            }
-        }
-
-        // Pass 3: per-source pick. Single-destination sources pass through; a fan-out source keeps
-        // only its best-ranked resolved destination.
+        // Pass 2: a transfer resolves if its destination empties this tick, which empties its own
+        // source in turn (a packed chain shifts as one). Each port enters the queue once, so each
+        // winning row resolves once. A fan-out source defers to pass 3.
         const best = this._bestBySource;
         const ranked = this._rankedSources;
         let rankedCount = 0;
-        for (let index = 0; index < resolvedRowCount; index += 1) {
-            const row = resolvedRows[index];
-            if (rank[row] === EMPTY) {
-                this._commitResolved(row);
+        for (let head = 0; head < queueCount; head += 1) {
+            const row = winner[queue[head]];
+            if (row === EMPTY) {
                 continue;
             }
-            const current = best[source[row]];
-            if (current === EMPTY) {
-                ranked[rankedCount] = source[row];
-                rankedCount += 1;
+            if (rank[row] === EMPTY) {
+                this._recordResolved(row);
+            } else {
+                const current = best[source[row]];
+                if (current === EMPTY) {
+                    ranked[rankedCount] = source[row];
+                    rankedCount += 1;
+                }
+                if (current === EMPTY
+                    || rank[row] < rank[current]
+                    || (rank[row] === rank[current] && dest[row] < dest[current])) {
+                    best[source[row]] = row;
+                }
             }
-            if (current === EMPTY
-                || rank[row] < rank[current]
-                || (rank[row] === rank[current] && dest[row] < dest[current])) {
-                best[source[row]] = row;
+            if (source[row] !== EMPTY && emptying[source[row]] === 0) {
+                emptying[source[row]] = 1;
+                queue[queueCount] = source[row];
+                queueCount += 1;
             }
         }
+
+        // Pass 3: a fan-out source keeps only its best-ranked resolved destination.
         for (let index = 0; index < rankedCount; index += 1) {
             const port = ranked[index];
-            this._commitResolved(best[port]);
+            this._recordResolved(best[port]);
             best[port] = EMPTY;
         }
 
         for (let index = 0; index < destCount; index += 1) {
             winner[touchedDests[index]] = EMPTY;
         }
-        for (let index = 0; index < sourceCount; index += 1) {
-            draining[touchedSources[index]] = 0;
+        for (let index = 0; index < queueCount; index += 1) {
+            emptying[queue[index]] = 0;
         }
+
+        this._clearSources();
     }
 
     /**
-     * Records one resolved transfer, capturing the moved item now (before commit mutates ports).
-     * Managed: the destination receives output_item if set, else the source's item. Unmanaged: the
-     * owning mod moves it, so the engine records no item.
+     * Records one resolved transfer, capturing the moved item now (before the sources empty): the
+     * destination receives output_item if set, else the source's item.
      * @private
      * @param {number} intentRow
      * @returns {void}
      */
-    _commitResolved(intentRow) {
+    _recordResolved(intentRow) {
+        this._intentResolved[intentRow] = 1;
         const source = this._intentSource[intentRow];
         const dest = this._intentDest[intentRow];
-        const managed = (this._intentFlags[intentRow] & INTENT_MANAGED) !== 0;
-        const outputItem = this._intentOutput[intentRow];
-        const sourceItem = source === EMPTY ? EMPTY : this.engine.Port.item[source];
-        let item = EMPTY;
-        if (managed) {
-            if (outputItem !== EMPTY) {
-                item = outputItem;
-            } else {
-                item = sourceItem;
-            }
+        let item = this._intentOutput[intentRow];
+        if (item === EMPTY && source !== EMPTY) {
+            item = this.engine.Port.item[source];
         }
 
         const row = this._resolvedCount;
@@ -379,46 +339,43 @@ export class TransferResolver {
         this._resolvedSource[row] = source;
         this._resolvedDest[row] = dest;
         this._resolvedItem[row] = item;
-        this._resolvedManaged[row] = managed ? 1 : 0;
         this._resolvedCount = row + 1;
 
-        // First transfer wins, matching the find() this index replaced.
+        // First transfer wins
         if (source !== EMPTY && this._destBySource[source] === EMPTY) {
             this._destBySource[source] = dest;
         }
-        this._portResolved[dest] = 1;
-        if (!managed) {
-            this._portResolvedUnmanaged[dest] = 1;
+        if (dest !== EMPTY) {
+            this._portResolved[dest] = 1;
         }
     }
 
     /**
-     * CONSUME_INPUTS: drains resolved managed sinks. Runs before POST_RESOLVE so a producer feeding
-     * the same port refills it the same tick.
+     * Empties every resolved source. Runs with the resolution, before POST_RESOLVE, so a transport
+     * refilling a source the same tick lands on an empty port.
+     * @private
      * @returns {void}
      */
-    flushSinks() {
-        for (let index = 0; index < this._sinkCount; index += 1) {
-            this.engine.ports.consumeItem(this._sinks[index]);
-        }
-    }
-
-    /**
-     * COMMIT_TRANSFERS: applies resolved managed transfers to Port — clears sources, then writes
-     * destinations, so a packed chain shifts atomically.
-     * @returns {void}
-     */
-    commit() {
-        const engine = this.engine;
+    _clearSources() {
         for (let row = 0; row < this._resolvedCount; row += 1) {
             const source = this._resolvedSource[row];
-            if (this._resolvedManaged[row] === 1 && source !== EMPTY) {
-                engine.ports.consumeItem(source);
+            if (source !== EMPTY) {
+                this.engine.ports.consumeItem(source);
             }
         }
+    }
+
+    /**
+     * Writes every resolved transfer's item into its destination. Runs after the POST_RESOLVE
+     * systems, so a landed item rests a visible tick before anything reads it.
+     * @private
+     * @returns {void}
+     */
+    _fillDestinations() {
+        const engine = this.engine;
         for (let row = 0; row < this._resolvedCount; row += 1) {
             const dest = this._resolvedDest[row];
-            if (this._resolvedManaged[row] === 1 && dest !== EMPTY) {
+            if (dest !== EMPTY) {
                 engine.Port.item[dest] = this._resolvedItem[row];
                 engine.render.markDirty(dest);
             }
@@ -457,7 +414,7 @@ export class TransferResolver {
         while (capacity <= count) {
             capacity *= 2;
         }
-        for (const name of ["_touchedDests", "_touchedSources", "_drainQueue", "_resolvedRows", "_rankedSources", "_sinks"]) {
+        for (const name of ["_touchedDests", "_rankedSources"]) {
             this[name] = new Int32Array(capacity);
         }
         this._scratchCapacity = capacity;
@@ -482,7 +439,7 @@ export class TransferResolver {
             grown.set(this[name]);
             this[name] = grown;
         }
-        for (const name of ["_intentFlags", "_intentSeen"]) {
+        for (const name of ["_intentDestEmpty", "_intentResolved"]) {
             const grown = new Uint8Array(capacity);
             grown.set(this[name]);
             this[name] = grown;
@@ -509,9 +466,6 @@ export class TransferResolver {
             grown.set(this[name]);
             this[name] = grown;
         }
-        const managed = new Uint8Array(capacity);
-        managed.set(this._resolvedManaged);
-        this._resolvedManaged = managed;
         this._resolvedCapacity = capacity;
     }
 }

@@ -157,6 +157,15 @@ export class RenderDiff {
     }
 
     /**
+     * Notes that a transport took a consumed port's item and draws it onward, so the clear is plain.
+     * @param {number} eid
+     * @returns {void}
+     */
+    noteConveyed(eid) {
+        this._emptied[eid] = PORT_EMPTIED_MOD;
+    }
+
+    /**
      * Clears a recycled port eid's leftover shadow, so a previous tenant never leaks into it.
      * @param {number} eid
      * @returns {void}

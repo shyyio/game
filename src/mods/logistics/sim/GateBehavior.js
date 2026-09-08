@@ -1,13 +1,12 @@
 import {AbstractBehavior, TickPhase, EMPTY, NO_EID, chunkId, getOrCreate, LAYER_SURFACE, CONVEYS_ITEM, CONVEYS_FLUID} from "@spup/sdk";
-import {ORDER_BEFORE_TRANSPORT, LOGIC_KEY_OPEN} from "../common/constants.js";
+import {LOGIC_KEY_OPEN} from "../common/constants.js";
 import {GateSetBatchEvent} from "../common/events.js";
 import {gateConnections, placementBlockedByGate} from "../common/gateConnections.js";
-import {commitStagedHops} from "./portRelay.js";
 
 // Buffered toggles land first, then mode review, then the gate's own intents.
 const ORDER_APPLY_PENDING = -30;
 const ORDER_REVIEW = -20;
-// Delta emission runs after the seam settled the tick's port moves.
+// Delta emission runs after the fluid buffers debited.
 const ORDER_EMIT = 10;
 
 // No toggle buffered.
@@ -45,12 +44,8 @@ export class GateBehavior extends AbstractBehavior {
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GateBehavior._applyPending(engine), ORDER_APPLY_PENDING);
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GateBehavior._review(engine), ORDER_REVIEW);
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GateBehavior._submitIntents(engine));
-        // Seam must read shared ports before the belt transport writes pops.
-        const outputFills = [];
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => GateBehavior._runSeam(engine, outputFills), ORDER_BEFORE_TRANSPORT);
+        engine.registerSystem(TickPhase.POST_RESOLVE, () => GateBehavior._finish(engine));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => GateBehavior._emitDeltas(engine), ORDER_EMIT);
-        // Out-ports fill after the transport ingested, so a passed item rests a visible tick.
-        engine.registerSystem(TickPhase.PRODUCE_OUTPUTS, () => GateBehavior._fillOutputs(engine, outputFills));
         engine.registerChunkSync(chunk => GateBehavior._chunkSync(engine, chunk));
     }
 
@@ -402,7 +397,7 @@ export class GateBehavior extends AbstractBehavior {
             if (gate.fluid[row] === 1) {
                 const resting = item[gate.in[row]];
                 if (resting !== EMPTY && gate.buffered[row] === EMPTY) {
-                    engine.transfers.submitDrain(gate.in[row], true);
+                    engine.transfers.submitDrain(gate.in[row]);
                     gate.buffered[row] = resting;
                     engine.ports.setFluidSource(gate.out[row], resting);
                 }
@@ -412,59 +407,29 @@ export class GateBehavior extends AbstractBehavior {
                 continue;
             }
             if (item[gate.in[row]] !== EMPTY) {
-                engine.transfers.submitTransfer(gate.in[row], gate.int[row], item[gate.int[row]] === EMPTY, false);
+                engine.transfers.submitTransfer(gate.in[row], gate.int[row], item[gate.int[row]] === EMPTY);
             }
             if (item[gate.int[row]] !== EMPTY) {
-                engine.transfers.submitTransfer(gate.int[row], gate.out[row], item[gate.out[row]] === EMPTY, false);
+                engine.transfers.submitTransfer(gate.int[row], gate.out[row], item[gate.out[row]] === EMPTY);
             }
         }
     }
 
     /**
-     * POST_RESOLVE seam: applies resolved hops (out-port fills deferred); fluid buffers debit.
+     * POST_RESOLVE: a fluid gate whose buffered unit was delivered debits its buffer.
      * @private
      * @param {GameEngine} engine
-     * @param {{outPort:number, item:number}[]} outputFills
      * @returns {void}
      */
-    static _runSeam(engine, outputFills) {
-        const item = engine.Port.item;
+    static _finish(engine) {
         const def = engine.components.get("Gate");
         const gate = def.store;
-        const stage1 = [];
-        const stage2 = [];
         for (let row = 0; row < def.count; row += 1) {
-            if (gate.fluid[row] === 1) {
-                if (gate.buffered[row] !== EMPTY && engine.transfers.wasDest(gate.out[row])) {
-                    gate.buffered[row] = EMPTY;
-                    engine.ports.setFluidSource(gate.out[row], EMPTY);
-                }
-                continue;
-            }
-            const intPort = gate.int[row];
-            if (item[intPort] !== EMPTY && engine.transfers.destFor(intPort) !== EMPTY) {
-                stage2.push({outPort: gate.out[row], item: item[intPort], intPort});
-            }
-            const inPort = gate.in[row];
-            if (item[inPort] !== EMPTY && engine.transfers.destFor(inPort) !== EMPTY) {
-                stage1.push({intPort, item: item[inPort], inPort});
+            if (gate.fluid[row] === 1 && gate.buffered[row] !== EMPTY && engine.transfers.wasDest(gate.out[row])) {
+                gate.buffered[row] = EMPTY;
+                engine.ports.setFluidSource(gate.out[row], EMPTY);
             }
         }
-        commitStagedHops(engine, stage1, stage2, outputFills);
-    }
-
-    /**
-     * PRODUCE_OUTPUTS: writes the seam's passed items into their out-ports.
-     * @private
-     * @param {GameEngine} engine
-     * @param {{outPort:number, item:number}[]} outputFills
-     * @returns {void}
-     */
-    static _fillOutputs(engine, outputFills) {
-        for (const record of outputFills) {
-            engine.ports.setItem(record.outPort, record.item);
-        }
-        outputFills.length = 0;
     }
 
     /**

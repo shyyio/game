@@ -137,7 +137,3 @@ export const LOGIC_CONDITION_RECORD = "LogicRuleCondition";
 export function withinWireRange(x1, y1, x2, y2) {
     return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2)) <= WIRE_LINK_RANGE;
 }
-
-// ---- System ordering ----
-// Splitter's POST_RESOLVE seam reads shared ports before belt transport (default order 0) writes pops.
-export const ORDER_BEFORE_TRANSPORT = -10;

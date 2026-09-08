@@ -8,8 +8,8 @@ import {SplitterBehavior} from "@/mods/logistics/sim/SplitterBehavior.js";
 
 const RED = 1;
 
-// Builds a belt line feeding a splitter, with the belt transport and the splitter seam registered
-// in the given order, and returns the per-tick out_a/out_b item stream for a continuous input feed.
+// Builds a belt line feeding a splitter, with the belt transport and the splitter registered in the
+// given order, and returns the per-tick out_a/out_b item stream for a continuous input feed.
 async function streamWithRegistration(beltsFirst) {
     const engine = new GameEngine();
     await engine.init();
@@ -41,9 +41,9 @@ async function streamWithRegistration(beltsFirst) {
     return stream;
 }
 
-// The splitter's POST_RESOLVE seam must read shared ports before the belt transport writes pops.
-// ORDER_BEFORE_TRANSPORT pins that, so the item stream is identical whichever side registers first.
-test("the splitter seam runs before belt transport regardless of registration order", async () => {
+// The resolver empties the splitter's sources before POST_RESOLVE and fills its destinations after,
+// so the belt transport and the splitter never race on a shared port whichever registers first.
+test("the item stream through a splitter is the same regardless of registration order", async () => {
     const beltsFirst = await streamWithRegistration(true);
     const splitterFirst = await streamWithRegistration(false);
     assert.deepEqual(beltsFirst, splitterFirst, "registration order must not change the item stream");
