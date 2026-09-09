@@ -7,9 +7,9 @@ import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {chunkOrdinal} from "@/common/util.js";
 import {AbstractScenario} from "@/test/scenarios/AbstractScenario.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {GateDefinition, LogicTerminalDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {GateType, LogicTerminalType} from "@/mods/logistics/common/objectTypes.js";
 import {WireLinkMessage} from "@/mods/logistics/common/messages.js";
-import {TankDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {TankType} from "@/mods/fluids/common/objectTypes.js";
 import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
 import {ITEM_TYPE_WATER} from "@/mods/base-game/common/constants.js";
 
@@ -63,11 +63,11 @@ export class LogicScenario extends AbstractScenario {
             1,
         );
 
-        const terminal = place(engine, LogicTerminalDefinition, TERMINAL_X, TERMINAL_Y);
-        const gateA = place(engine, GateDefinition, TERMINAL_X - 2, TERMINAL_Y);
-        const gateB = place(engine, GateDefinition, TERMINAL_X + 2, TERMINAL_Y);
+        const terminal = place(engine, LogicTerminalType, TERMINAL_X, TERMINAL_Y);
+        const gateA = place(engine, GateType, TERMINAL_X - 2, TERMINAL_Y);
+        const gateB = place(engine, GateType, TERMINAL_X + 2, TERMINAL_Y);
         const blender = place(engine, BlenderType, TERMINAL_X - 3, TERMINAL_Y + 3);
-        const tank = place(engine, TankDefinition, TERMINAL_X + 2, TERMINAL_Y + 3);
+        const tank = place(engine, TankType, TERMINAL_X + 2, TERMINAL_Y + 3);
 
         const tankDef = engine.components.get("Tank");
         const tankRow = tankDef.row(engine.placed.eidByObjectRef(tank));

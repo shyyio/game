@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {PipeDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {PipeType} from "@/mods/fluids/common/objectTypes.js";
 import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
 import {ITEM_TYPE_CABBAGE, ITEM_TYPE_NUTRIENT_SLOP} from "@/mods/base-game/common/constants.js";
 
@@ -12,7 +12,7 @@ test("a machine's delivered output notifies the engine's itemProduced listeners"
     const produced = [];
     engine.itemProduced.add((playerRef, itemTypeId, amount) => produced.push([itemTypeId, amount]));
     engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 5, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 5, 4, Direction.UP));
     const [eid] = engine.placed.eidsOf(BlenderType.objectTypeId);
     const def = engine.components.get("Machine");
     const row = def.row(eid);

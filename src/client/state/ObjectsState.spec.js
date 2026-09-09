@@ -12,7 +12,7 @@ function cell(x, y, layer=0) {
 }
 
 // A 1x1 object with one input on its tile and one output one tile ahead, both facing UP.
-const machineDefinition = new ObjectType({
+const machineType = new ObjectType({
     name: "Machine",
     inputPorts: [new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP})],
     outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
@@ -21,7 +21,7 @@ const machineDefinition = new ObjectType({
 });
 // Registers a surface machine facing `direction`.
 function machine(cache, id, x, y, direction) {
-    cache.set(id, x, y, [{x, y, layer: LAYER_SURFACE}], {}, {type: machineDefinition, direction});
+    cache.set(id, x, y, [{x, y, layer: LAYER_SURFACE}], {}, {type: machineType, direction});
 }
 
 test("set then get returns the record with derived chunk", () => {

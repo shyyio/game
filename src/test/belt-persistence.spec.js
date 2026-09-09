@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
@@ -31,7 +31,7 @@ test("belt state survives a serialize -> deserialize round-trip mid-flight", asy
     // Original: build the chunk-split line, feed an item, run a few ticks so it is mid-flight.
     const a = await newModule();
     for (const cell of CELLS) {
-        a.engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP));
+        a.engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, cell.x, cell.y, Direction.UP));
     }
     const aPorts = networkPorts(a.belts);
     a.engine.ports.setItem(aPorts.inPort, RED);
@@ -68,7 +68,7 @@ test("belt state survives a serialize -> deserialize round-trip mid-flight", asy
 test("belt state persists through a structured SQLite save store and reloads", async () => {
     const a = await newModule();
     for (const cell of CELLS) {
-        a.engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP));
+        a.engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, cell.x, cell.y, Direction.UP));
     }
     const ports = networkPorts(a.belts);
     a.engine.ports.setItem(ports.inPort, RED);

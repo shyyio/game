@@ -7,7 +7,7 @@ import {chunkKeyAt} from "@/common/util.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGame, ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {GateDefinition, PoleDefinition, LogicTerminalDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {GateType, PoleType, LogicTerminalType} from "@/mods/logistics/common/objectTypes.js";
 import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
 import {ITEM_TYPE_NUTRIENT_SLOP} from "@/mods/base-game/common/constants.js";
 import {
@@ -30,7 +30,7 @@ import {
     LOGIC_CONDITION_CAP,
     LOGIC_CONDITION_KIND_STORED,
 } from "@/mods/logistics/common/constants.js";
-import {TankDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {TankType} from "@/mods/fluids/common/objectTypes.js";
 import {LOGIC_KEY_AMOUNT, FLUID_TYPE_WATER} from "@/mods/fluids/common/constants.js";
 
 /**
@@ -94,10 +94,10 @@ test("a rule whose conditions hold writes its action the same tick", async () =>
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const pole = place(engine, PoleDefinition, 5, 5);
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
-    const gateA = place(engine, GateDefinition, 8, 5, Direction.UP);
-    const gateB = place(engine, GateDefinition, 10, 5, Direction.UP);
+    const pole = place(engine, PoleType, 5, 5);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
+    const gateA = place(engine, GateType, 8, 5, Direction.UP);
+    const gateB = place(engine, GateType, 10, 5, Direction.UP);
     for (const id of [terminal, gateA, gateB]) {
         game.dispatchMessage(new WireLinkMessage(id, pole), player);
     }
@@ -117,10 +117,10 @@ test("a condition-less rule always applies, and a failing condition stops the wr
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const pole = place(engine, PoleDefinition, 5, 5);
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
-    const gateA = place(engine, GateDefinition, 8, 5, Direction.UP);
-    const gateB = place(engine, GateDefinition, 10, 5, Direction.UP);
+    const pole = place(engine, PoleType, 5, 5);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
+    const gateA = place(engine, GateType, 8, 5, Direction.UP);
+    const gateB = place(engine, GateType, 10, 5, Direction.UP);
     const machine = place(engine, BlenderType, 10, 8, Direction.UP);
     for (const id of [terminal, gateA, gateB, machine]) {
         game.dispatchMessage(new WireLinkMessage(id, pole), player);
@@ -162,11 +162,11 @@ test("all conditions must hold (AND)", async () => {
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const pole = place(engine, PoleDefinition, 5, 5);
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
-    const gateA = place(engine, GateDefinition, 8, 5, Direction.UP);
-    const gateB = place(engine, GateDefinition, 10, 5, Direction.UP);
-    const gateC = place(engine, GateDefinition, 12, 5, Direction.UP);
+    const pole = place(engine, PoleType, 5, 5);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
+    const gateA = place(engine, GateType, 8, 5, Direction.UP);
+    const gateB = place(engine, GateType, 10, 5, Direction.UP);
+    const gateC = place(engine, GateType, 12, 5, Direction.UP);
     for (const id of [terminal, gateA, gateB, gateC]) {
         game.dispatchMessage(new WireLinkMessage(id, pole), player);
     }
@@ -186,11 +186,11 @@ test("a stored condition sums the item across every storage in the network", asy
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const pole = place(engine, PoleDefinition, 5, 5);
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
-    const gate = place(engine, GateDefinition, 8, 5, Direction.UP);
-    const tankA = place(engine, TankDefinition, 10, 8, Direction.UP);
-    const tankB = place(engine, TankDefinition, 13, 8, Direction.UP);
+    const pole = place(engine, PoleType, 5, 5);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
+    const gate = place(engine, GateType, 8, 5, Direction.UP);
+    const tankA = place(engine, TankType, 10, 8, Direction.UP);
+    const tankB = place(engine, TankType, 13, 8, Direction.UP);
     for (const id of [terminal, gate, tankA, tankB]) {
         game.dispatchMessage(new WireLinkMessage(id, pole), player);
     }
@@ -217,11 +217,11 @@ test("a container-filtered stored condition counts only that container", async (
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const pole = place(engine, PoleDefinition, 5, 5);
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
-    const gate = place(engine, GateDefinition, 8, 5, Direction.UP);
-    const tankA = place(engine, TankDefinition, 10, 8, Direction.UP);
-    const tankB = place(engine, TankDefinition, 13, 8, Direction.UP);
+    const pole = place(engine, PoleType, 5, 5);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
+    const gate = place(engine, GateType, 8, 5, Direction.UP);
+    const tankA = place(engine, TankType, 10, 8, Direction.UP);
+    const tankB = place(engine, TankType, 13, 8, Direction.UP);
     for (const id of [terminal, gate, tankA, tankB]) {
         game.dispatchMessage(new WireLinkMessage(id, pole), player);
     }
@@ -246,9 +246,9 @@ test("the topmost rule writing a device wins the tick", async () => {
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const pole = place(engine, PoleDefinition, 5, 5);
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
-    const gateB = place(engine, GateDefinition, 10, 5, Direction.UP);
+    const pole = place(engine, PoleType, 5, 5);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
+    const gateB = place(engine, GateType, 10, 5, Direction.UP);
     for (const id of [terminal, gateB]) {
         game.dispatchMessage(new WireLinkMessage(id, pole), player);
     }
@@ -265,11 +265,11 @@ test("a rule referencing a device outside the network suspends without writing",
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const pole = place(engine, PoleDefinition, 5, 5);
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
-    const gateB = place(engine, GateDefinition, 10, 5, Direction.UP);
+    const pole = place(engine, PoleType, 5, 5);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
+    const gateB = place(engine, GateType, 10, 5, Direction.UP);
     // Placed but never wired: not a network member.
-    const strayGate = place(engine, GateDefinition, 8, 5, Direction.UP);
+    const strayGate = place(engine, GateType, 8, 5, Direction.UP);
     for (const id of [terminal, gateB]) {
         game.dispatchMessage(new WireLinkMessage(id, pole), player);
     }
@@ -289,9 +289,9 @@ test("an over-cap or wrong-shape rule list is rejected whole", async () => {
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const pole = place(engine, PoleDefinition, 5, 5);
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
-    const gate = place(engine, GateDefinition, 8, 5, Direction.UP);
+    const pole = place(engine, PoleType, 5, 5);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
+    const gate = place(engine, GateType, 8, 5, Direction.UP);
     for (const id of [terminal, gate]) {
         game.dispatchMessage(new WireLinkMessage(id, pole), player);
     }
@@ -319,10 +319,10 @@ test("rules and their conditions persist through a save/load and keep running", 
     const game = await makeGame([], store);
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const pole = place(engine, PoleDefinition, 5, 5);
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
-    const gateA = place(engine, GateDefinition, 8, 5, Direction.UP);
-    const gateB = place(engine, GateDefinition, 10, 5, Direction.UP);
+    const pole = place(engine, PoleType, 5, 5);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
+    const gateA = place(engine, GateType, 8, 5, Direction.UP);
+    const gateB = place(engine, GateType, 10, 5, Direction.UP);
     for (const id of [terminal, gateA, gateB]) {
         game.dispatchMessage(new WireLinkMessage(id, pole), player);
     }
@@ -346,12 +346,12 @@ test("rules and their conditions persist through a save/load and keep running", 
 
 test("behaviors declare their logic key lists and the registry names the keys", () => {
     const modRegistry = ecsModRegistry();
-    assert.deepEqual(GateDefinition.behavior.logicReadKeys(), [LOGIC_KEY_OPEN]);
-    assert.deepEqual(GateDefinition.behavior.logicWriteKeys(), [LOGIC_KEY_OPEN]);
+    assert.deepEqual(GateType.behavior.logicReadKeys(), [LOGIC_KEY_OPEN]);
+    assert.deepEqual(GateType.behavior.logicWriteKeys(), [LOGIC_KEY_OPEN]);
     assert.deepEqual(BlenderType.behavior.logicReadKeys(), [LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING]);
     assert.deepEqual(BlenderType.behavior.logicWriteKeys(), [LOGIC_KEY_ENABLED], "processing is read-only");
-    assert.deepEqual(TankDefinition.behavior.logicReadKeys(), [LOGIC_KEY_AMOUNT]);
-    assert.deepEqual(TankDefinition.behavior.logicWriteKeys(), [], "the tank amount is read-only");
+    assert.deepEqual(TankType.behavior.logicReadKeys(), [LOGIC_KEY_AMOUNT]);
+    assert.deepEqual(TankType.behavior.logicWriteKeys(), [], "the tank amount is read-only");
     assert.equal(modRegistry.logicKeyName(LOGIC_KEY_ENABLED), "Enabled");
     assert.equal(modRegistry.logicKeyEntry(LOGIC_KEY_OPEN).states[0].verb, "Open");
     assert.equal(modRegistry.logicKeyEntry(LOGIC_KEY_OPEN).states[1].state, "is closed");
@@ -364,10 +364,10 @@ test("the snapshot carries rules, their conditions, and suspended flags", async 
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const pole = place(engine, PoleDefinition, 5, 5);
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
-    const gateB = place(engine, GateDefinition, 10, 5, Direction.UP);
-    const strayGate = place(engine, GateDefinition, 8, 5, Direction.UP);
+    const pole = place(engine, PoleType, 5, 5);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
+    const gateB = place(engine, GateType, 10, 5, Direction.UP);
+    const strayGate = place(engine, GateType, 8, 5, Direction.UP);
     for (const id of [terminal, gateB]) {
         game.dispatchMessage(new WireLinkMessage(id, pole), player);
     }
@@ -398,9 +398,9 @@ test("removing a terminal drops its rules", async () => {
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const pole = place(engine, PoleDefinition, 5, 5);
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
-    const gate = place(engine, GateDefinition, 8, 5, Direction.UP);
+    const pole = place(engine, PoleType, 5, 5);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
+    const gate = place(engine, GateType, 8, 5, Direction.UP);
     for (const id of [terminal, gate]) {
         game.dispatchMessage(new WireLinkMessage(id, pole), player);
     }

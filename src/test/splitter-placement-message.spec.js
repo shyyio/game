@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
-import {SplitterDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {SplitterType} from "@/mods/logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector, flattenBatches} from "@/test/EventCollector.js";
 
@@ -11,12 +11,12 @@ test("placing a splitter via CreateObjectMessage emits an ObjectInsertEvent; del
     const engine = await makeGameEngine();
     const collector = new EventCollector(engine);
 
-    const handled = engine.applyMessage(new CreateObjectMessage(SplitterDefinition.objectTypeId, 5, 5, Direction.UP));
+    const handled = engine.applyMessage(new CreateObjectMessage(SplitterType.objectTypeId, 5, 5, Direction.UP));
     assert.equal(handled, true, "splitter create handled by the engine");
 
     const insert = collector.drain().find(event => event instanceof ObjectInsertEvent);
     assert.ok(insert, "ObjectInsertEvent emitted");
-    assert.equal(insert.objectTypeId, SplitterDefinition.objectTypeId);
+    assert.equal(insert.objectTypeId, SplitterType.objectTypeId);
     assert.equal(insert.x, 5);
     assert.equal(insert.y, 5);
     assert.equal(insert.portRefs.length, 2, "out_a and out_b port refs sent");

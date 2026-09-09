@@ -1,16 +1,16 @@
 import {AbstractModDeclaration, LogicKeyEntry, LogicKeyState} from "@spup/sdk";
 import {LOGIC_KEY_OPEN} from "./common/constants.js";
 import {
-    BeltDefinition,
-    BeltTunnelDownDefinition,
-    BeltTunnelUpDefinition,
-    BeltUndergroundDefinition,
-    SplitterDefinition,
-    RoadDefinition,
-    HousingDefinition,
-    GateDefinition,
-    PoleDefinition,
-    LogicTerminalDefinition,
+    BeltType,
+    BeltTunnelDownType,
+    BeltTunnelUpType,
+    BeltUndergroundType,
+    SplitterType,
+    RoadType,
+    HousingType,
+    GateType,
+    PoleType,
+    LogicTerminalType,
 } from "./common/objectTypes.js";
 import {
     BeltPathRecalculateEvent,
@@ -44,16 +44,16 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
     get objectTypes() {
         // The mouth/underground kinds append after the originals, keeping prior objectTypeIds stable.
         return [
-            BeltDefinition,
-            SplitterDefinition,
-            RoadDefinition,
-            HousingDefinition,
-            BeltTunnelDownDefinition,
-            BeltTunnelUpDefinition,
-            BeltUndergroundDefinition,
-            GateDefinition,
-            PoleDefinition,
-            LogicTerminalDefinition,
+            BeltType,
+            SplitterType,
+            RoadType,
+            HousingType,
+            BeltTunnelDownType,
+            BeltTunnelUpType,
+            BeltUndergroundType,
+            GateType,
+            PoleType,
+            LogicTerminalType,
         ];
     }
 

@@ -9,7 +9,7 @@
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {Direction} from "@/common/constants.js";
 import {QuartzDepositResourceType, ExtractorType, BakeType} from "@/mods/base-game/common/objectTypes.js";
-import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {BeltType} from "@/mods/logistics/common/objectTypes.js";
 
 export const LANES_PER_LINE = 3;
 // A lane's vertical extent, relative to its extractor at row 0: the extractor's output lands at
@@ -38,7 +38,7 @@ export function buildLine(engine, ox, oy) {
         engine.applyMessage(new CreateObjectMessage(QuartzDepositResourceType.objectTypeId, x, oy, Direction.UP));
         engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, x, oy, Direction.UP));
         for (let dy = 1; dy <= 3; dy += 1) {
-            engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, x, oy - dy, Direction.UP));
+            engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, x, oy - dy, Direction.UP));
         }
         engine.applyMessage(new CreateObjectMessage(BakeType.objectTypeId, x, oy - BAKE_DY, Direction.UP));
     }

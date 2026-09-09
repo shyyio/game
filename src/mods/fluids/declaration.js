@@ -1,6 +1,6 @@
 import {AbstractModDeclaration, LogicKeyEntry} from "@spup/sdk";
 import {FLUID_TYPE_WATER, FLUID_TYPE_OIL, LOGIC_KEY_AMOUNT} from "./common/constants.js";
-import {PipeDefinition, TankDefinition} from "./common/objectTypes.js";
+import {PipeType, TankType} from "./common/objectTypes.js";
 import {
     PipeNetworkRecalculateEvent,
     PipeNetworkBatchEvent,
@@ -19,8 +19,8 @@ export class FluidsDeclaration extends AbstractModDeclaration {
 
     get objectTypes() {
         return [
-            PipeDefinition,
-            TankDefinition,
+            PipeType,
+            TankType,
         ];
     }
 

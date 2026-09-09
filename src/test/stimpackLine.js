@@ -9,8 +9,8 @@ import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {Direction} from "@/common/constants.js";
 import {chunkOrdinal} from "@/common/util.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
-import {PipeDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {BeltType} from "@/mods/logistics/common/objectTypes.js";
+import {PipeType} from "@/mods/fluids/common/objectTypes.js";
 import {
     ExtractorType,
     WaterResourceType,
@@ -286,13 +286,13 @@ const MAX_CLIMB_ATTEMPTS = 40;
  * between Brew's two same-depth inputs), so this searches instead of guessing. Reserves every tile
  * it uses in `occupied` before placing, so later edges see it as reserved.
  * @param {GameEngine} engine
- * @param {Function} Definition BeltDefinition or PipeDefinition
+ * @param {ObjectType} objectType BeltType or PipeType
  * @param {{x: number, y: number}} from
  * @param {{x: number, y: number}} to
  * @param {Set<string>} occupied
  * @returns {void}
  */
-function layPath(engine, Definition, from, to, occupied) {
+function layPath(engine, objectType, from, to, occupied) {
     let waypoints = null;
     for (let climb = 1; climb <= MAX_CLIMB_ATTEMPTS; climb += 1) {
         const candidate = pathWaypoints(from, to, climb);
@@ -319,7 +319,7 @@ function layPath(engine, Definition, from, to, occupied) {
                 direction = Direction.LEFT;
             }
         }
-        engine.applyMessage(new CreateObjectMessage(Definition.objectTypeId, cur.x, cur.y, direction));
+        engine.applyMessage(new CreateObjectMessage(objectType.objectTypeId, cur.x, cur.y, direction));
     }
 }
 
@@ -340,8 +340,8 @@ function connectEdges(engine, node, occupied) {
         const inTile = {x: node.x + inPort.x, y: node.y + inPort.y};
         const connectorTile = {x: inTile.x, y: inTile.y + 1};
         const outTile = {x: child.x + child.outputPort.x, y: child.y + child.outputPort.y};
-        const Definition = inPort.fluid ? PipeDefinition : BeltDefinition;
-        layPath(engine, Definition, outTile, connectorTile, occupied);
+        const objectType = inPort.fluid ? PipeType : BeltType;
+        layPath(engine, objectType, outTile, connectorTile, occupied);
         connectEdges(engine, child, occupied);
     }
 }

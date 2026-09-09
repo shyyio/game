@@ -33,7 +33,7 @@ import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {chunkOrdinal} from "@/common/util.js";
 import {AbstractScenario} from "@/test/scenarios/AbstractScenario.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {BeltDefinition, SplitterDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {BeltType, SplitterType} from "@/mods/logistics/common/objectTypes.js";
 import {TradingTerminalType} from "@/mods/market/common/objectTypes.js";
 import {ConfigureTradingTerminalMessage} from "@/mods/market/common/messages.js";
 import {MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "@/mods/market/common/constants.js";
@@ -277,7 +277,7 @@ function buildChain(engine, originX, originY, beltLength) {
     engine.applyMessage(new CreateObjectMessage(ThroughputPressType.objectTypeId, originX, pressY, Direction.UP));
     if (splitterFits) {
         layBelts(engine, originX, pressY, 1);
-        engine.applyMessage(new CreateObjectMessage(SplitterDefinition.objectTypeId, originX, pressY - 2, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(SplitterType.objectTypeId, originX, pressY - 2, Direction.UP));
         layBelts(engine, originX, pressY - 2, beltLength - 2);
     } else {
         layBelts(engine, originX, pressY, beltLength);
@@ -308,7 +308,7 @@ function buildChain(engine, originX, originY, beltLength) {
  */
 function layBelts(engine, x, fromY, beltLength) {
     for (let step = 1; step <= beltLength; step += 1) {
-        engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, x, fromY - step, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, x, fromY - step, Direction.UP));
     }
 }
 

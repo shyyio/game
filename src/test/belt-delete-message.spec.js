@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
-import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector} from "@/test/EventCollector.js";
 import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
@@ -14,7 +14,7 @@ test("DeleteObjectMessage removes an ECS belt and emits an ObjectDeleteEvent", a
     const engine = await makeGameEngine();
     const collector = new EventCollector(engine);
     for (const cell of CELLS) {
-        engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, cell.x, cell.y, Direction.UP));
     }
 
     const insert = collector.drain().find(event => event instanceof ObjectInsertEvent && event.x === 0 && event.y === 1);

@@ -8,7 +8,7 @@ import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {PortItemSetEvent} from "@/common/PortItemEvents.js";
 import {ObjectSyncEvent} from "@/common/ObjectEvents.js";
-import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {GameEngine, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
 import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
@@ -29,7 +29,7 @@ test("a session subscribing to a chunk receives its existing belts and resting i
     game.connect(builder);
     game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(0, 0)), builder);
     for (const cell of CELLS) {
-        game.dispatchMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP), builder);
+        game.dispatchMessage(new CreateObjectMessage(BeltType.objectTypeId, cell.x, cell.y, Direction.UP), builder);
     }
     const path = beltsOf(engine).pathAt(0, 2);
     engine.ports.setItem(path.inPort, RED);
@@ -48,7 +48,7 @@ test("a session subscribing to a chunk receives its existing belts and resting i
     const bundle = viewer.events.find(event => event instanceof ChunkSyncEvent);
     assert.ok(bundle, "a ChunkSyncEvent bundle for the subscribed chunk");
     const synced = flattenBatches(bundle.events);
-    const belts = synced.filter(event => event instanceof ObjectSyncEvent && event.objectTypeId === BeltDefinition.objectTypeId);
+    const belts = synced.filter(event => event instanceof ObjectSyncEvent && event.objectTypeId === BeltType.objectTypeId);
 
     assert.equal(belts.length, CELLS.length, "one ObjectSyncEvent per placed belt");
     assert.deepEqual(

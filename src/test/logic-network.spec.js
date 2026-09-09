@@ -7,7 +7,7 @@ import {chunkKeyAt} from "@/common/util.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine, makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {GateDefinition, PoleDefinition, BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {GateType, PoleType, BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {WireLinkMessage, WireUnlinkMessage} from "@/mods/logistics/common/messages.js";
 import {LogicWireSetEvent, LogicWireClearEvent} from "@/mods/logistics/common/events.js";
 import {LogicNetworks} from "@/mods/logistics/sim/LogicNetworks.js";
@@ -24,9 +24,9 @@ function place(engine, type, x, y, direction=Direction.UP) {
 test("poles connect only through explicit wires", async () => {
     const engine = await makeGameEngine();
     const networks = engine.resolve(LogicNetworks);
-    const a = place(engine, PoleDefinition, 0, 0);
-    const b = place(engine, PoleDefinition, 8, 0);
-    const c = place(engine, PoleDefinition, 16, 0);
+    const a = place(engine, PoleType, 0, 0);
+    const b = place(engine, PoleType, 8, 0);
+    const c = place(engine, PoleType, 16, 0);
 
     assert.equal(networks.networks.length, 3, "unwired in-range poles stay separate");
 
@@ -46,9 +46,9 @@ test("poles connect only through explicit wires", async () => {
 test("removing a pole drops its wires and splits its component", async () => {
     const engine = await makeGameEngine();
     const networks = engine.resolve(LogicNetworks);
-    const a = place(engine, PoleDefinition, 0, 0);
-    const bridge = place(engine, PoleDefinition, 8, 0);
-    const c = place(engine, PoleDefinition, 16, 0);
+    const a = place(engine, PoleType, 0, 0);
+    const bridge = place(engine, PoleType, 8, 0);
+    const c = place(engine, PoleType, 16, 0);
     networks.wire(a, bridge);
     networks.wire(bridge, c);
     assert.equal(networks.networks.length, 1);
@@ -61,8 +61,8 @@ test("removing a pole drops its wires and splits its component", async () => {
 test("a wired logic network spans chunk seams", async () => {
     const engine = await makeGameEngine();
     const networks = engine.resolve(LogicNetworks);
-    const a = place(engine, PoleDefinition, 0, 60);
-    const b = place(engine, PoleDefinition, 0, 68);
+    const a = place(engine, PoleType, 0, 60);
+    const b = place(engine, PoleType, 0, 68);
     assert.notEqual(chunkKeyAt(0, 60), chunkKeyAt(0, 68), "the poles sit in different chunks");
     networks.wire(a, b);
     assert.equal(networks.networkOf(a).id, networks.networkOf(b).id);
@@ -77,9 +77,9 @@ test("a pole-pole wire message round-trips, toggles off, and respects range", as
     game.dispatchMessage(new SetViewportMessage([chunkKey]), player);
     const engine = game.simEngine;
     const networks = engine.resolve(LogicNetworks);
-    const a = place(engine, PoleDefinition, 5, 5);
-    const b = place(engine, PoleDefinition, 12, 5);
-    const far = place(engine, PoleDefinition, 30, 5);
+    const a = place(engine, PoleType, 5, 5);
+    const b = place(engine, PoleType, 12, 5);
+    const far = place(engine, PoleType, 30, 5);
 
     player.events.length = 0;
     game.dispatchMessage(new WireLinkMessage(a, b), player);
@@ -106,8 +106,8 @@ test("a wire joins a gate to a pole's network; unwiring and pole removal detach 
     game.dispatchMessage(new ClaimChunkMessage(chunkKey), player);
     game.dispatchMessage(new SetViewportMessage([chunkKey]), player);
     const engine = game.simEngine;
-    const gateId = place(engine, GateDefinition, 5, 5, Direction.UP);
-    const poleId = place(engine, PoleDefinition, 8, 5);
+    const gateId = place(engine, GateType, 5, 5, Direction.UP);
+    const poleId = place(engine, PoleType, 8, 5);
     const networks = engine.resolve(LogicNetworks);
 
     player.events.length = 0;
@@ -137,8 +137,8 @@ test("devices wire to each other directly, poles optional", async () => {
     game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), player);
     const engine = game.simEngine;
     const networks = engine.resolve(LogicNetworks);
-    const gateA = place(engine, GateDefinition, 5, 5, Direction.UP);
-    const gateB = place(engine, GateDefinition, 8, 5, Direction.UP);
+    const gateA = place(engine, GateType, 5, 5, Direction.UP);
+    const gateB = place(engine, GateType, 8, 5, Direction.UP);
 
     game.dispatchMessage(new WireLinkMessage(gateA, gateB), player);
     assert.equal(networks.hasWire(gateA, gateB), true, "a gate-gate wire holds");
@@ -159,10 +159,10 @@ test("wiring rejects a non-wireable device and an out-of-range pole", async () =
     game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), player);
     const engine = game.simEngine;
     const networks = engine.resolve(LogicNetworks);
-    const beltId = place(engine, BeltDefinition, 5, 7, Direction.UP);
-    const gateId = place(engine, GateDefinition, 5, 5, Direction.UP);
-    const nearPole = place(engine, PoleDefinition, 8, 5);
-    const farPole = place(engine, PoleDefinition, 30, 5);
+    const beltId = place(engine, BeltType, 5, 7, Direction.UP);
+    const gateId = place(engine, GateType, 5, 5, Direction.UP);
+    const nearPole = place(engine, PoleType, 8, 5);
+    const farPole = place(engine, PoleType, 30, 5);
 
     game.dispatchMessage(new WireLinkMessage(beltId, nearPole), player);
     assert.equal(networks.hasWire(beltId, nearPole), false, "a belt is not wireable");
@@ -178,9 +178,9 @@ test("poles and wires survive a save/load", async () => {
     game.connect(player);
     game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), player);
     const engine = game.simEngine;
-    const gateId = place(engine, GateDefinition, 5, 5, Direction.UP);
-    const poleId = place(engine, PoleDefinition, 8, 5);
-    const otherPoleId = place(engine, PoleDefinition, 12, 5);
+    const gateId = place(engine, GateType, 5, 5, Direction.UP);
+    const poleId = place(engine, PoleType, 8, 5);
+    const otherPoleId = place(engine, PoleType, 12, 5);
     game.dispatchMessage(new WireLinkMessage(gateId, poleId), player);
     game.dispatchMessage(new WireLinkMessage(poleId, otherPoleId), player);
     await game.save();
@@ -201,9 +201,9 @@ test("a late joiner learns the chunk's wires through chunk sync", async () => {
     const chunkKey = chunkKeyAt(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunkKey), player);
     const engine = game.simEngine;
-    const gateId = place(engine, GateDefinition, 5, 5, Direction.UP);
-    const poleId = place(engine, PoleDefinition, 8, 5);
-    const otherPoleId = place(engine, PoleDefinition, 12, 5);
+    const gateId = place(engine, GateType, 5, 5, Direction.UP);
+    const poleId = place(engine, PoleType, 8, 5);
+    const otherPoleId = place(engine, PoleType, 12, 5);
     game.dispatchMessage(new WireLinkMessage(gateId, poleId), player);
     game.dispatchMessage(new WireLinkMessage(poleId, otherPoleId), player);
 

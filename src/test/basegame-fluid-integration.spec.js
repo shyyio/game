@@ -5,7 +5,7 @@ import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {pipesOf} from "@/mods/fluids/sim/testHelpers.js";
-import {PipeDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {PipeType} from "@/mods/fluids/common/objectTypes.js";
 import {
     BlenderType,
     AirFilterType,
@@ -37,7 +37,7 @@ test("a Blender pumps Nutrient Slop into an adjacent pipe network", async () => 
     const def = engine.components.get("Machine");
     const row = def.row(eid);
     engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE);
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 5, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 5, 4, Direction.UP));
     const pipes = pipesOf(engine);
 
     for (let i = 0; i < 40; i += 1) {
@@ -53,7 +53,7 @@ test("a Blender pumps Nutrient Slop into an adjacent pipe network", async () => 
 test("an Air Filter types its pipe network before any payload arrives", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(AirFilterType.objectTypeId, 5, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 5, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 5, 4, Direction.UP));
     const pipes = pipesOf(engine);
 
     const net = pipes.networkAt(5, 4);
@@ -67,7 +67,7 @@ test("a pipe delivers Water into a Greenhouse's fluid input, completing the reci
     // pipe (its output lands on the pipe's own tile).
     engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 7, 9, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 7, 9, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 7, 8, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 7, 8, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(GreenhouseType.objectTypeId, 5, 5, Direction.UP));
     const [eid] = engine.placed.eidsOf(GreenhouseType.objectTypeId);
     const def = engine.components.get("Machine");

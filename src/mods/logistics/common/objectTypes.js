@@ -99,25 +99,25 @@ export function isBeltType(type) {
     return type instanceof BeltObjectType;
 }
 
-export const BeltDefinition = new BeltObjectType({
+export const BeltType = new BeltObjectType({
     name: "Belt",
     beltKind: BELT_NORMAL,
     mapColor: MAP_COLOR_BELT,
 });
 
-export const BeltTunnelDownDefinition = new BeltObjectType({
+export const BeltTunnelDownType = new BeltObjectType({
     name: "BeltTunnelDown",
     beltKind: BELT_TUNNEL_DOWN,
     mapColor: MAP_COLOR_BELT_TUNNEL,
 });
 
-export const BeltTunnelUpDefinition = new BeltObjectType({
+export const BeltTunnelUpType = new BeltObjectType({
     name: "BeltTunnelUp",
     beltKind: BELT_TUNNEL_UP,
     mapColor: MAP_COLOR_BELT_TUNNEL,
 });
 
-export const BeltUndergroundDefinition = new BeltObjectType({
+export const BeltUndergroundType = new BeltObjectType({
     name: "BeltUnderground",
     beltKind: BELT_UNDERGROUND,
     overworldVisible: false,
@@ -125,7 +125,7 @@ export const BeltUndergroundDefinition = new BeltObjectType({
 
 // A 1x2 router; each item flows in_X -> int_X -> out_Y, resting a tick in int_X and a visible
 // tick in out_Y.
-export const SplitterDefinition = new ObjectType({
+export const SplitterType = new ObjectType({
     name: "Splitter",
     toolId: 4,
     inputPorts: [
@@ -149,7 +149,7 @@ export const SplitterDefinition = new ObjectType({
 });
 
 // A road cell of the worker network; workers walk it from Housing to machines.
-export const RoadDefinition = new ObjectType({
+export const RoadType = new ObjectType({
     name: "Road",
     toolId: 5,
     geometry: "1x1",
@@ -198,7 +198,7 @@ class GateObjectType extends ObjectType {
 
 // A click-to-toggle flow stop facing the flow direction; adopts the kind of the first transport
 // coupled to it.
-export const GateDefinition = new GateObjectType({
+export const GateType = new GateObjectType({
     name: "Gate",
     toolId: 28,
     inputPorts: [new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP})],
@@ -216,7 +216,7 @@ export const GateDefinition = new GateObjectType({
 });
 
 // A logic-network pole; wires draw as catenaries above objects.
-export const PoleDefinition = new ObjectType({
+export const PoleType = new ObjectType({
     name: "Pole",
     toolId: 30,
     geometry: "1x1",
@@ -239,7 +239,7 @@ export function isTerminalType(type) {
 const openTerminalConfig = (record, session, client) => client.cache.writer("logistics").openTerminalConfig(record.id);
 
 // The config surface of a logic network; portless, wired to a pole like any device.
-export const LogicTerminalDefinition = new ObjectType({
+export const LogicTerminalType = new ObjectType({
     name: "LogicTerminal",
     toolId: 29,
     geometry: "1x1",
@@ -251,7 +251,7 @@ export const LogicTerminalDefinition = new ObjectType({
     wireAnchor: {x: 0.5, y: 0.2},
 });
 
-export const HousingDefinition = new ObjectType({
+export const HousingType = new ObjectType({
     name: "Housing",
     toolId: 6,
     geometry: "2x2",

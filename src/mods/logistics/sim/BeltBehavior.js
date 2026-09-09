@@ -1,6 +1,6 @@
 import {AbstractBehavior, CreateObjectMessage, DeleteObjectMessage} from "@spup/sdk";
 import {Belts} from "./Belts.js";
-import {BeltUndergroundDefinition} from "../common/objectTypes.js";
+import {BeltUndergroundType} from "../common/objectTypes.js";
 import {getUndergroundBeltsToCreate, isTunnelMouth} from "../common/geometry.js";
 
 /**
@@ -66,7 +66,7 @@ export class BeltBehavior extends AbstractBehavior {
             type: this.beltKind,
         });
         for (const cell of span) {
-            engine.applyMessage(new CreateObjectMessage(BeltUndergroundDefinition.objectTypeId, cell.x, cell.y, message.direction));
+            engine.applyMessage(new CreateObjectMessage(BeltUndergroundType.objectTypeId, cell.x, cell.y, message.direction));
         }
     }
 

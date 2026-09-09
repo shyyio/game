@@ -1,5 +1,5 @@
 import {Direction} from "@spup/sdk";
-import {BeltDefinition, isBeltType} from "./objectTypes.js";
+import {BeltType, isBeltType} from "./objectTypes.js";
 import {
     BELT_NORMAL,
     BELT_TUNNEL_UP,
@@ -32,7 +32,7 @@ function feedsForward(data) {
  */
 export function inferBeltParent(cache, tileX, tileY, direction) {
     // Stand-in record with a normal belt's ports for the port-connection query.
-    const belt = {tileX, tileY, data: {type: BeltDefinition, direction}};
+    const belt = {tileX, tileY, data: {type: BeltType, direction}};
 
     let parent = null;
     for (const connection of cache.connectedPorts(belt)) {

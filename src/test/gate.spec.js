@@ -11,10 +11,10 @@ import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {makeGameEngine, makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
-import {GateDefinition, BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {GateType, BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {SetGateOpenMessage} from "@/mods/logistics/common/messages.js";
 import {ObjectFieldsEvent, ObjectFieldsBatchEvent} from "@/common/ObjectEvents.js";
-import {PipeDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {PipeType} from "@/mods/fluids/common/objectTypes.js";
 import {Pipes} from "@/mods/fluids/sim/Pipes.js";
 import {FLUID_TYPE_WATER, FLUID_TYPE_OIL} from "@/mods/fluids/common/constants.js";
 
@@ -24,7 +24,7 @@ const RED = 3;
  * Places a gate at (x, y) and returns its eid plus port lookups.
  */
 function placeGate(engine, x, y, direction) {
-    assert.equal(engine.applyMessage(new CreateObjectMessage(GateDefinition.objectTypeId, x, y, direction)), true);
+    assert.equal(engine.applyMessage(new CreateObjectMessage(GateType.objectTypeId, x, y, direction)), true);
     const def = engine.components.get("Gate");
     const eid = def.eids[def.count - 1];
     const row = def.row(eid);
@@ -35,11 +35,11 @@ function placeGate(engine, x, y, direction) {
  * Places a real (tracked) pipe, so gate adjacency rules see it.
  */
 function placePipe(engine, x, y) {
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, x, y, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, x, y, Direction.UP));
 }
 
 function gateBehavior(engine) {
-    return engine.placed.behaviorFor(GateDefinition.objectTypeId);
+    return engine.placed.behaviorFor(GateType.objectTypeId);
 }
 
 function gateMode(engine, eid) {
@@ -197,7 +197,7 @@ test("connecting a transport to an unconnected gate transforms its mode", async 
 
     // Pipe gone, belt in front: back to item mode.
     engine.applyMessage(new DeleteObjectMessage(engine.space.ownerAt(5, 6, LAYER_SURFACE)));
-    engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, 5, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 5, 4, Direction.UP));
     engine.tickAll();
     assert.equal(gateMode(engine, gate.eid), 0, "the coupled belt transformed the gate back");
 });
@@ -205,7 +205,7 @@ test("connecting a transport to an unconnected gate transforms its mode", async 
 test("the guard rejects coupling one transport kind while the other side holds the other", async () => {
     const engine = await makeGameEngine();
     // Belt behind the gate: an item connection.
-    engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, 5, 6, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 5, 6, Direction.UP));
     placeGate(engine, 5, 5, Direction.UP);
 
     // A pipe in front must be rejected.
@@ -217,7 +217,7 @@ test("the guard rejects coupling one transport kind while the other side holds t
     placePipe(engine, 10, 6);
     const other = placeGate(engine, 10, 5, Direction.DOWN);
     assert.equal(gateMode(engine, other.eid), 1, "pipe-fed gate is fluid");
-    engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, 10, 4, Direction.DOWN));
+    engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 10, 4, Direction.DOWN));
     assert.equal(engine.space.ownerAt(10, 4, LAYER_SURFACE), null, "the conflicting belt was not placed");
     assert.equal(pipes.networkAt(10, 6).size, 1, "the pipe network is untouched");
 });
@@ -229,7 +229,7 @@ test("a toggle applies at the next tick, batches the change, and syncs to late j
     const chunkKey = chunkKeyAt(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunkKey), player);
     game.dispatchMessage(new SetViewportMessage([chunkKey]), player);
-    game.dispatchMessage(new CreateObjectMessage(GateDefinition.objectTypeId, 5, 5, Direction.UP), player);
+    game.dispatchMessage(new CreateObjectMessage(GateType.objectTypeId, 5, 5, Direction.UP), player);
     const engine = game.simEngine;
     const def = engine.components.get("Gate");
     const eid = def.eids[def.count - 1];
@@ -268,7 +268,7 @@ test("a toggle without build rights is refused with a corrective event", async (
     const owner = new CapturingSession(1);
     game.connect(owner);
     game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), owner);
-    game.dispatchMessage(new CreateObjectMessage(GateDefinition.objectTypeId, 5, 5, Direction.UP), owner);
+    game.dispatchMessage(new CreateObjectMessage(GateType.objectTypeId, 5, 5, Direction.UP), owner);
     const engine = game.simEngine;
     const def = engine.components.get("Gate");
     const eid = def.eids[def.count - 1];
@@ -292,7 +292,7 @@ test("gate state survives a save/load", async () => {
     const player = new CapturingSession(1);
     game.connect(player);
     game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), player);
-    game.dispatchMessage(new CreateObjectMessage(GateDefinition.objectTypeId, 5, 5, Direction.UP), player);
+    game.dispatchMessage(new CreateObjectMessage(GateType.objectTypeId, 5, 5, Direction.UP), player);
     const engine = game.simEngine;
     const def = engine.components.get("Gate");
     const eid = def.eids[def.count - 1];

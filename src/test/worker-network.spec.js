@@ -13,7 +13,7 @@ import {
     TEST_MACHINE_WORKER_COST,
     MachineFixtureDeclaration,
 } from "@/test/machineFixture.js";
-import {RoadDefinition, HousingDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {RoadType, HousingType} from "@/mods/logistics/common/objectTypes.js";
 import {HOUSING_WORKER_SUPPLY} from "@/mods/logistics/common/constants.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
@@ -73,10 +73,10 @@ function carryOf(engine, objectRef) {
 // road tile below them.
 async function mannedSetup() {
     const engine = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
-    const housingId = placeObject(engine, HousingDefinition, 2, 4);
+    const housingId = placeObject(engine, HousingType, 2, 4);
     const roadIds = new Map();
     for (let x = 4; x <= 8; x += 1) {
-        roadIds.set(x, placeObject(engine, RoadDefinition, x, 5));
+        roadIds.set(x, placeObject(engine, RoadType, x, 5));
     }
     const nearId = placeObject(engine, TestMachineType, 5, 4);
     const farId = placeObject(engine, TestMachineType, 8, 4);
@@ -131,13 +131,13 @@ test("fractional progress banks past a craft and shortens the next", async () =>
 
 test("a worker shortage staffs the closest machines first", async () => {
     const engine = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
-    placeObject(engine, HousingDefinition, 2, 4);
+    placeObject(engine, HousingType, 2, 4);
     // Two machines past what the supply fully staffs: full crews nearest; a remainder short of a
     // full crew staffs nobody.
     const fullGrants = Math.floor(HOUSING_WORKER_SUPPLY / TEST_MACHINE_WORKER_COST);
     const count = fullGrants + 2;
     for (let x = 4; x < 5 + count; x += 1) {
-        placeObject(engine, RoadDefinition, x, 5);
+        placeObject(engine, RoadType, x, 5);
     }
     const machineIds = [];
     for (let x = 5; x < 5 + count; x += 1) {
@@ -151,12 +151,12 @@ test("a worker shortage staffs the closest machines first", async () => {
 
 test("a distance tie staffs the older machine (lower objectRef)", async () => {
     const engine = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
-    placeObject(engine, HousingDefinition, 2, 4);
+    placeObject(engine, HousingType, 2, 4);
     // Closer machines drain the supply down to one last full crew; it goes to one of two machines
     // at equal distance, and placement order must break the tie.
     const leadCount = Math.floor(HOUSING_WORKER_SUPPLY / TEST_MACHINE_WORKER_COST) - 1;
     for (let x = 4; x <= 5 + leadCount; x += 1) {
-        placeObject(engine, RoadDefinition, x, 5);
+        placeObject(engine, RoadType, x, 5);
     }
     for (let x = 5; x < 5 + leadCount; x += 1) {
         placeObject(engine, TestMachineType, x, 4);
@@ -194,10 +194,10 @@ test("deleting the housing unmans every machine", async () => {
 test("a housing bridges two road stretches into one network with pooled supply", async () => {
     const engine = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
     // housing (2,4) - road (4,5) - housing (5,4) - road (7,5): one network through the housings.
-    placeObject(engine, HousingDefinition, 2, 4);
-    placeObject(engine, RoadDefinition, 4, 5);
-    placeObject(engine, HousingDefinition, 5, 4);
-    placeObject(engine, RoadDefinition, 7, 5);
+    placeObject(engine, HousingType, 2, 4);
+    placeObject(engine, RoadType, 4, 5);
+    placeObject(engine, HousingType, 5, 4);
+    placeObject(engine, RoadType, 7, 5);
     const nearId = placeObject(engine, TestMachineType, 4, 4);
     const farId = placeObject(engine, TestMachineType, 7, 4);
 
@@ -211,10 +211,10 @@ test("a housing bridges two road stretches into one network with pooled supply",
 
 test("directly adjacent housings pool their supply into one network", async () => {
     const engine = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
-    placeObject(engine, HousingDefinition, 2, 4);
+    placeObject(engine, HousingType, 2, 4);
     // Stacked on top of the first, touching no road itself.
-    placeObject(engine, HousingDefinition, 2, 2);
-    placeObject(engine, RoadDefinition, 4, 5);
+    placeObject(engine, HousingType, 2, 2);
+    placeObject(engine, RoadType, 4, 5);
     const machineId = placeObject(engine, TestMachineType, 4, 4);
 
     const snapshot = engine.inspectSnapshot(machineId);
@@ -225,15 +225,15 @@ test("directly adjacent housings pool their supply into one network", async () =
 test("a new smaller-id component takes a machine from its old network", async () => {
     const engine = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
     // Right network first: the machine's only road neighbor, so it staffs the machine.
-    placeObject(engine, RoadDefinition, 7, 4);
-    placeObject(engine, HousingDefinition, 8, 3);
+    placeObject(engine, RoadType, 7, 4);
+    placeObject(engine, HousingType, 8, 3);
     const machineId = placeObject(engine, TestMachineType, 6, 4);
     assert.equal(engine.inspectSnapshot(machineId).workers, TEST_MACHINE_WORKER_COST);
 
     // Left network: its road tile has the smaller tileKey, so it outranks the right one.
     const collector = new EventCollector(engine);
-    placeObject(engine, RoadDefinition, 5, 4);
-    const leftHousingId = placeObject(engine, HousingDefinition, 3, 3);
+    placeObject(engine, RoadType, 5, 4);
+    const leftHousingId = placeObject(engine, HousingType, 3, 3);
 
     const deltas = collector.drain().filter(event =>
         event instanceof WorkerAssignmentEvent && event.machineId === machineId);
@@ -246,13 +246,13 @@ test("a new smaller-id component takes a machine from its old network", async ()
 
 test("a machine stays with its smaller-id network when a new one appears beside it", async () => {
     const engine = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
-    placeObject(engine, RoadDefinition, 5, 4);
-    placeObject(engine, HousingDefinition, 3, 3);
+    placeObject(engine, RoadType, 5, 4);
+    placeObject(engine, HousingType, 3, 3);
     const machineId = placeObject(engine, TestMachineType, 6, 4);
 
     const collector = new EventCollector(engine);
-    placeObject(engine, RoadDefinition, 7, 4);
-    placeObject(engine, HousingDefinition, 8, 3);
+    placeObject(engine, RoadType, 7, 4);
+    placeObject(engine, HousingType, 8, 3);
 
     const deltas = collector.drain().filter(event =>
         event instanceof WorkerAssignmentEvent && event.machineId === machineId);
@@ -275,7 +275,7 @@ test("chunk sync carries the manned assignments", async () => {
 test("a non-directional type spawns facing UP whatever the message says", async () => {
     const engine = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
     const collector = new EventCollector(engine);
-    assert.equal(engine.applyMessage(new CreateObjectMessage(HousingDefinition.objectTypeId, 2, 4, Direction.RIGHT)), true);
+    assert.equal(engine.applyMessage(new CreateObjectMessage(HousingType.objectTypeId, 2, 4, Direction.RIGHT)), true);
     const insert = collector.drain().find(event => event instanceof ObjectInsertEvent);
     assert.equal(insert.direction, Direction.UP);
 });

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import {CHUNK_SIZE, Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {BeltDefinition, BeltTunnelDownDefinition, BeltTunnelUpDefinition, HousingDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {BeltType, BeltTunnelDownType, BeltTunnelUpType, HousingType} from "@/mods/logistics/common/objectTypes.js";
 import {WaterResourceType, ExtractorType} from "@/mods/base-game/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 
@@ -32,30 +32,30 @@ function runsFor(event, chunkKey) {
 
 test("a placed belt bakes as one run at its tile", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, 3, 2, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 3, 2, Direction.UP));
 
     const event = engine.overworldBake.snapshot(0, 0, 1, 1);
     assert.equal(event.chunks.length, 1);
     assert.deepEqual(runsFor(event, event.chunks[0]), [
-        {start: 2 * CHUNK_SIZE + 3, length: 1, objectTypeId: BeltDefinition.objectTypeId},
+        {start: 2 * CHUNK_SIZE + 3, length: 1, objectTypeId: BeltType.objectTypeId},
     ]);
 });
 
 test("a 2x2 housing bakes as one run per covered row", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(HousingDefinition.objectTypeId, 10, 10, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(HousingType.objectTypeId, 10, 10, Direction.UP));
 
     const event = engine.overworldBake.snapshot(0, 0, 1, 1);
     assert.deepEqual(runsFor(event, event.chunks[0]), [
-        {start: 10 * CHUNK_SIZE + 10, length: 2, objectTypeId: HousingDefinition.objectTypeId},
-        {start: 11 * CHUNK_SIZE + 10, length: 2, objectTypeId: HousingDefinition.objectTypeId},
+        {start: 10 * CHUNK_SIZE + 10, length: 2, objectTypeId: HousingType.objectTypeId},
+        {start: 11 * CHUNK_SIZE + 10, length: 2, objectTypeId: HousingType.objectTypeId},
     ]);
 });
 
 test("a deleted object's chunk drops out of the snapshot", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, 3, 2, Direction.UP));
-    const objectRef = engine.placed.objectRefOf(engine.placed.eidsOf(BeltDefinition.objectTypeId)[0]);
+    engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 3, 2, Direction.UP));
+    const objectRef = engine.placed.objectRefOf(engine.placed.eidsOf(BeltType.objectTypeId)[0]);
     engine.applyMessage(new DeleteObjectMessage(objectRef));
 
     const event = engine.overworldBake.snapshot(0, 0, 1, 1);
@@ -65,13 +65,13 @@ test("a deleted object's chunk drops out of the snapshot", async () => {
 test("undergrounds stay out of the bake; mouths stay in", async () => {
     const engine = await makeGameEngine();
     // Tunnel-down at (0,4), tunnel-up at (0,1) auto-fills undergrounds at (0,3) and (0,2).
-    engine.applyMessage(new CreateObjectMessage(BeltTunnelDownDefinition.objectTypeId, 0, 4, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(BeltTunnelUpDefinition.objectTypeId, 0, 1, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltTunnelDownType.objectTypeId, 0, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltTunnelUpType.objectTypeId, 0, 1, Direction.UP));
 
     const event = engine.overworldBake.snapshot(0, 0, 1, 1);
     assert.deepEqual(runsFor(event, event.chunks[0]), [
-        {start: 1 * CHUNK_SIZE, length: 1, objectTypeId: BeltTunnelUpDefinition.objectTypeId},
-        {start: 4 * CHUNK_SIZE, length: 1, objectTypeId: BeltTunnelDownDefinition.objectTypeId},
+        {start: 1 * CHUNK_SIZE, length: 1, objectTypeId: BeltTunnelUpType.objectTypeId},
+        {start: 4 * CHUNK_SIZE, length: 1, objectTypeId: BeltTunnelDownType.objectTypeId},
     ]);
 });
 
@@ -88,8 +88,8 @@ test("an extractor on a water tile wins the tile's bake", async () => {
 
 test("the bake survives a serialize/deserialize round-trip", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, 3, 2, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(HousingDefinition.objectTypeId, -70, -70, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 3, 2, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(HousingType.objectTypeId, -70, -70, Direction.UP));
     const before = engine.overworldBake.snapshot(-2, -2, 4, 4);
 
     const restored = await makeGameEngine();

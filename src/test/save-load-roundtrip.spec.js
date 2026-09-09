@@ -4,7 +4,7 @@ import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {WaterResourceType, ExtractorType, BlenderType} from "@/mods/base-game/common/objectTypes.js";
 import {ITEM_TYPE_WATER} from "@/mods/base-game/common/constants.js";
-import {SplitterDefinition, BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {SplitterType, BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
@@ -15,11 +15,11 @@ async function populated() {
     engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 5, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 5, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 10, 10, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(SplitterDefinition.objectTypeId, 3, 8, Direction.UP));
-    const splitterEid = engine.placed.eidsOf(SplitterDefinition.objectTypeId)[0];
+    engine.applyMessage(new CreateObjectMessage(SplitterType.objectTypeId, 3, 8, Direction.UP));
+    const splitterEid = engine.placed.eidsOf(SplitterType.objectTypeId)[0];
     const splitterId = engine.placed.objectRefOf(splitterEid);
     for (const cell of [{x: 20, y: 20}, {x: 20, y: 21}, {x: 20, y: 22}]) {
-        engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, cell.x, cell.y, Direction.UP));
     }
     for (let i = 0; i < 3; i += 1) {
         engine.tickAll();

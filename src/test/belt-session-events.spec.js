@@ -4,7 +4,7 @@ import {Game} from "@/sim/Game.js";
 import {Direction} from "@/common/constants.js";
 import {chunkKeyAt} from "@/common/util.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
@@ -34,7 +34,7 @@ test("a Game on GameEngine routes belt render events only to sessions watching t
 
     game.dispatchMessage(new ClaimChunkMessage(beltChunk), watcher);
     for (const cell of CELLS) {
-        game.dispatchMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP), watcher);
+        game.dispatchMessage(new CreateObjectMessage(BeltType.objectTypeId, cell.x, cell.y, Direction.UP), watcher);
     }
 
     // Feed an item; do not drain, so it pops and rests at the out-port (tail tile 0,0).

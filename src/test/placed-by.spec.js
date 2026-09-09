@@ -9,7 +9,7 @@ import {ClaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessag
 import {AddFriendMessage} from "@/common/PlayerMessages.js";
 import {ChunkPermission} from "@/common/ClaimEvents.js";
 import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
-import {PipeDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {PipeType} from "@/mods/fluids/common/objectTypes.js";
 import {ITEM_TYPE_CABBAGE} from "@/mods/base-game/common/constants.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
@@ -57,7 +57,7 @@ test("production is credited to the chunk owner, not to the friend who built the
     const produced = [];
     game.simEngine.itemProduced.add((playerRef, itemTypeId, amount) => produced.push(playerRef));
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
-    game.dispatchMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 5, 4, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(PipeType.objectTypeId, 5, 4, Direction.UP), bob);
 
     const engine = game.simEngine;
     const [eid] = engine.placed.eidsOf(BlenderType.objectTypeId);

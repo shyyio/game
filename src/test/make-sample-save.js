@@ -1,13 +1,13 @@
 import {Direction} from "@/common/constants.js";
 import {chunkKeyAt} from "@/common/util.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {BeltDefinition, SplitterDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {BeltType, SplitterType} from "@/mods/logistics/common/objectTypes.js";
 import {WaterResourceType, ExtractorType, BlenderType} from "@/mods/base-game/common/objectTypes.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
-import {PipeDefinition, TankDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {PipeType, TankType} from "@/mods/fluids/common/objectTypes.js";
 import {FLUID_TYPE_WATER} from "@/mods/fluids/common/constants.js";
 import {Pipes} from "@/mods/fluids/sim/Pipes.js";
 
@@ -23,14 +23,14 @@ await game.init();
 engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 5, 5, Direction.UP));
 engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 5, 5, Direction.UP));
 engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 10, 10, Direction.UP));
-engine.applyMessage(new CreateObjectMessage(SplitterDefinition.objectTypeId, 3, 8, Direction.UP));
+engine.applyMessage(new CreateObjectMessage(SplitterType.objectTypeId, 3, 8, Direction.UP));
 for (const cell of [{x: 20, y: 20}, {x: 20, y: 21}, {x: 20, y: 22}, {x: 20, y: 23}]) {
-    engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, cell.x, cell.y, Direction.UP));
 }
 // A pipe run feeding a tank at (30, 30), 2x2 covering (30..31, 30..31).
-engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 30, 32, Direction.UP));
-engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 30, 33, Direction.UP));
-engine.applyMessage(new CreateObjectMessage(TankDefinition.objectTypeId, 30, 30, Direction.UP));
+engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 30, 32, Direction.UP));
+engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 30, 33, Direction.UP));
+engine.applyMessage(new CreateObjectMessage(TankType.objectTypeId, 30, 30, Direction.UP));
 engine.resolve(Pipes).addFluid(30, 32, FLUID_TYPE_WATER, 50);
 for (let i = 0; i < 5; i += 1) {
     engine.tickAll();

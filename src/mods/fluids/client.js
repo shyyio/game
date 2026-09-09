@@ -1,7 +1,7 @@
 import {AbstractClientMod, EMPTY, Direction, chunkKeyAt} from "@spup/sdk/client";
 import {PipeFluidDrawLayer} from "./client/PipeFluidDrawLayer.js";
 import {NetworkDebugDrawLayer} from "./client/NetworkDebugDrawLayer.js";
-import {isPipeType, isTankType, PipeDefinition} from "./common/objectTypes.js";
+import {isPipeType, isTankType, PipeType} from "./common/objectTypes.js";
 import {PIPE_SEGMENT_CAPACITY, joinedFluidType} from "./common/constants.js";
 import {PipeNetworkRecalculateEvent, PipeFluidSetEvent} from "./common/events.js";
 
@@ -70,7 +70,7 @@ export class FluidsClientMod extends AbstractClientMod {
             const ny = tileY + Direction.dy(neighborDirection);
             const candidates = [];
             if (chunkKeyAt(nx, ny) === chunkKey) {
-                const pipe = client.objects.objectAt(nx, ny, PipeDefinition);
+                const pipe = client.objects.objectAt(nx, ny, PipeType);
                 if (pipe !== null) {
                     candidates.push(this._networkFluidType(pipe.id));
                 }

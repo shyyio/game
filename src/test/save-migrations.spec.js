@@ -9,8 +9,8 @@ import {migrateSnapshot, SAVE_FORMAT} from "@/common/saveMigrations.js";
 import {GAME_VERSION, Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
-import {GateDefinition} from "@/mods/logistics/common/objectTypes.js";
-import {TankDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {GateType} from "@/mods/logistics/common/objectTypes.js";
+import {TankType} from "@/mods/fluids/common/objectTypes.js";
 import {TradingTerminalType} from "@/mods/market/common/objectTypes.js";
 
 test("a fresh snapshot carries the current format and the writing version", async () => {
@@ -199,8 +199,8 @@ test("a format-3 save, whose id columns were plain i32, loads with them retagged
 
 test("a format-5 save drops the gate's and tank's last-synced columns and gains an empty Gate.lastOutput", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(GateDefinition.objectTypeId, 6, 6, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(TankDefinition.objectTypeId, 10, 10, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(GateType.objectTypeId, 6, 6, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TankType.objectTypeId, 10, 10, Direction.UP));
     const snapshot = engine.snapshots.serialize();
     snapshot.saveFormat = 5;
     const gate = snapshot.components.find(component => component.name === "Gate");
@@ -232,8 +232,8 @@ test("a format-5 save drops the gate's and tank's last-synced columns and gains 
 
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
-    assert.equal(restored.placed.eidsOf(GateDefinition.objectTypeId).length, 1);
-    assert.equal(restored.placed.eidsOf(TankDefinition.objectTypeId).length, 1);
+    assert.equal(restored.placed.eidsOf(GateType.objectTypeId).length, 1);
+    assert.equal(restored.placed.eidsOf(TankType.objectTypeId).length, 1);
 });
 
 test("a format-6 save gains the empty lane components", async () => {

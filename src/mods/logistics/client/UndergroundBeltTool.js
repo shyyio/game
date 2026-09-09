@@ -1,6 +1,6 @@
 import {AbstractTool, Direction, Haptics, LAYER_SURFACE, CreateObjectMessage, DeleteObjectMessage} from "@spup/sdk/client";
 import {BeltBend, MAX_UNDERGROUND_LENGTH, BELT_NORMAL, BELT_TUNNEL_DOWN, BELT_TUNNEL_UP} from "../common/constants.js";
-import {BeltDefinition, BeltTunnelDownDefinition, BeltTunnelUpDefinition, isBeltType} from "../common/objectTypes.js";
+import {BeltType, BeltTunnelDownType, BeltTunnelUpType, isBeltType} from "../common/objectTypes.js";
 import {Belt} from "./BeltDrawLayer.js";
 import {getUndergroundBeltsToCreate, surfaceBeltAt, inferBeltParent, findTunnelPartner} from "../common/geometry.js";
 
@@ -116,11 +116,11 @@ export class UndergroundBeltTool extends AbstractTool {
      * @private
      * @returns {ObjectType}
      */
-    _mouthDefinition(placement) {
+    _mouthType(placement) {
         if (placement.type === BELT_TUNNEL_UP) {
-            return BeltTunnelUpDefinition;
+            return BeltTunnelUpType;
         }
-        return BeltTunnelDownDefinition;
+        return BeltTunnelDownType;
     }
 
     /**
@@ -133,7 +133,7 @@ export class UndergroundBeltTool extends AbstractTool {
         if (!this._client.canBuildAt(tileX, tileY)) {
             return true;
         }
-        if (!this._client.modsAllowPlacement(this._mouthDefinition(placement), tileX, tileY, placement.direction)) {
+        if (!this._client.modsAllowPlacement(this._mouthType(placement), tileX, tileY, placement.direction)) {
             return true;
         }
         // A non-belt surface object blocks outright.
@@ -155,7 +155,7 @@ export class UndergroundBeltTool extends AbstractTool {
             return;
         }
         const placement = this._resolvePlacement(tileX, tileY, direction);
-        if (!this._client.modsAllowPlacement(this._mouthDefinition(placement), tileX, tileY, placement.direction)) {
+        if (!this._client.modsAllowPlacement(this._mouthType(placement), tileX, tileY, placement.direction)) {
             return;
         }
 
@@ -169,7 +169,7 @@ export class UndergroundBeltTool extends AbstractTool {
         }
 
         // Tunnel span is derived sim-side; only the mouth is sent.
-        const mouthType = this._mouthDefinition(placement);
+        const mouthType = this._mouthType(placement);
         this.session.sendMessage(new CreateObjectMessage(
             mouthType.objectTypeId,
             tileX,

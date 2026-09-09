@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {MAX_UNDERGROUND_LENGTH} from "@/mods/logistics/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {BeltTunnelDownDefinition, BeltTunnelUpDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {BeltTunnelDownType, BeltTunnelUpType} from "@/mods/logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 
@@ -13,10 +13,10 @@ const RED = 1;
 // engine and both mouth ids. A RIGHT tunnel.
 async function tunnel(gap) {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(BeltTunnelDownDefinition.objectTypeId, 1, 1, Direction.RIGHT));
+    engine.applyMessage(new CreateObjectMessage(BeltTunnelDownType.objectTypeId, 1, 1, Direction.RIGHT));
     const downId = beltsOf(engine)._beltAt(1, 1, Direction.RIGHT).id;
     const exitX = 1 + gap + 1;
-    engine.applyMessage(new CreateObjectMessage(BeltTunnelUpDefinition.objectTypeId, exitX, 1, Direction.RIGHT));
+    engine.applyMessage(new CreateObjectMessage(BeltTunnelUpType.objectTypeId, exitX, 1, Direction.RIGHT));
     const upId = beltsOf(engine)._beltAt(exitX, 1, Direction.RIGHT).id;
     return {engine, downId, upId, exitX};
 }
@@ -52,8 +52,8 @@ test("mouths beyond the maximum tunnel length do not connect", async () => {
 
 test("a reversed pair (tunnel-up first, then tunnel-down) connects", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(BeltTunnelUpDefinition.objectTypeId, 3, 1, Direction.RIGHT));
-    engine.applyMessage(new CreateObjectMessage(BeltTunnelDownDefinition.objectTypeId, 1, 1, Direction.RIGHT));
+    engine.applyMessage(new CreateObjectMessage(BeltTunnelUpType.objectTypeId, 3, 1, Direction.RIGHT));
+    engine.applyMessage(new CreateObjectMessage(BeltTunnelDownType.objectTypeId, 1, 1, Direction.RIGHT));
 
     assert.ok(connected(engine, 1, 1, 3, 1), "the reversed pair forms one tunnel path");
     assert.equal(beltsOf(engine).paths.length, 1);

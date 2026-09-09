@@ -4,18 +4,18 @@ import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {pipesOf} from "@/mods/fluids/sim/testHelpers.js";
 import {FLUID_TYPE_WATER} from "@/mods/fluids/common/constants.js";
-import {PipeDefinition, TankDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {PipeType, TankType} from "@/mods/fluids/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 
 async function populated() {
     const engine = await makeGameEngine();
     // The 2x2 tank at (0, 0) covers (0..1, 0..1) and is fed from (0, 2) through its bottom-left tile.
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 0, 2, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 0, 3, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(TankDefinition.objectTypeId, 0, 0, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 0, 2, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 0, 3, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TankType.objectTypeId, 0, 0, Direction.UP));
     // A second, disjoint network across the chunk border.
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 5, 63, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 5, 64, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 5, 63, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 5, 64, Direction.UP));
     const pipes = pipesOf(engine);
     pipes.addFluid(0, 2, FLUID_TYPE_WATER, 4);
     for (let i = 0; i < 4; i += 1) {
@@ -26,7 +26,7 @@ async function populated() {
 
 function tankState(engine) {
     const def = engine.components.get("Tank");
-    const row = def.row(engine.placed.eidsOf(TankDefinition.objectTypeId)[0]);
+    const row = def.row(engine.placed.eidsOf(TankType.objectTypeId)[0]);
     return {fluidType: def.store.fluidType[row], amount: def.store.amount[row]};
 }
 
@@ -63,12 +63,12 @@ test("pipe networks and fluid state round-trip through the engine serializer", a
 test("deleting a pipe through the generic path relinks the networks", async () => {
     const engine = await makeGameEngine();
     for (let x = 0; x < 3; x += 1) {
-        engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, x, 0, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, x, 0, Direction.UP));
     }
     const pipes = pipesOf(engine);
     assert.equal(pipes.networkAt(0, 0).size, 3);
 
-    const middleEid = engine.placed.eidsOf(PipeDefinition.objectTypeId)
+    const middleEid = engine.placed.eidsOf(PipeType.objectTypeId)
         .find(eid => engine.Position.x[eid] === 1 && engine.Position.y[eid] === 0);
     engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(middleEid)));
 

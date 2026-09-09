@@ -1,6 +1,6 @@
 import {AbstractTool, Direction, Haptics, LAYER_SURFACE, CreateObjectMessage, DeleteObjectMessage} from "@spup/sdk/client";
 import {BELT_NORMAL} from "../common/constants.js";
-import {BeltDefinition} from "../common/objectTypes.js";
+import {BeltType} from "../common/objectTypes.js";
 import {Belt} from "./BeltDrawLayer.js";
 import {inferBeltParent} from "../common/geometry.js";
 
@@ -81,7 +81,7 @@ export class BeltTool extends AbstractTool {
         if (!this._client.canBuildAt(tileX, tileY)) {
             return true;
         }
-        if (!this._client.modsAllowPlacement(BeltDefinition, tileX, tileY, direction)) {
+        if (!this._client.modsAllowPlacement(BeltType, tileX, tileY, direction)) {
             return true;
         }
         const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
@@ -114,7 +114,7 @@ export class BeltTool extends AbstractTool {
     _placeBelt(tileX, tileY, direction) {
         // The server would drop an ungated or mod-vetoed placement anyway.
         if (!this._client.canBuildAt(tileX, tileY)
-            || !this._client.modsAllowPlacement(BeltDefinition, tileX, tileY, direction)) {
+            || !this._client.modsAllowPlacement(BeltType, tileX, tileY, direction)) {
             return;
         }
         const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
@@ -124,7 +124,7 @@ export class BeltTool extends AbstractTool {
             }
             this.session.sendMessage(new DeleteObjectMessage(occupant.id));
         }
-        this.session.sendMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, tileX, tileY, direction));
+        this.session.sendMessage(new CreateObjectMessage(BeltType.objectTypeId, tileX, tileY, direction));
         Haptics.tap();
     }
 

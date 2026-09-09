@@ -8,7 +8,7 @@ import {
     LOGIC_CONDITION_KIND_STORED,
 } from "../common/constants.js";
 import {LogicRule, LogicCondition, deviceCondition, storedCondition} from "../sim/LogicRules.js";
-import {LogicTerminalDefinition} from "../common/objectTypes.js";
+import {LogicTerminalType} from "../common/objectTypes.js";
 
 const PANEL_WIDTH = 400;
 const MAX_DEVICE_ROWS = 4;
@@ -399,7 +399,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             );
             row.pushLeft(verb);
             const device = this._deviceById(snapshot, rule.actionDeviceId);
-            let deviceTexture = LogicTerminalDefinition.textureName;
+            let deviceTexture = LogicTerminalType.textureName;
             if (device !== undefined) {
                 deviceTexture = device.type.textureName;
             }
@@ -513,7 +513,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         if (condition.deviceId !== 0) {
             const containers = this._pickerDevices(snapshot).filter(device => this._isContainer(device));
             const container = this._deviceById(snapshot, condition.deviceId);
-            let containerTexture = LogicTerminalDefinition.textureName;
+            let containerTexture = LogicTerminalType.textureName;
             if (container !== undefined) {
                 containerTexture = container.type.textureName;
             }
@@ -546,7 +546,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         const buttons = [];
         const devices = this._devicesWithReadKey(snapshot, condition.key);
         const device = this._deviceById(snapshot, condition.deviceId);
-        let deviceTexture = LogicTerminalDefinition.textureName;
+        let deviceTexture = LogicTerminalType.textureName;
         if (device !== undefined) {
             deviceTexture = device.type.textureName;
         }

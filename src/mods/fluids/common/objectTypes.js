@@ -10,7 +10,7 @@ import {PipeBehavior} from "../sim/PipeBehavior.js";
 import {TankBehavior} from "../sim/TankBehavior.js";
 
 // Portless: the network derives boundary ports from adjacency.
-export const PipeDefinition = new ObjectType({
+export const PipeType = new ObjectType({
     name: "Pipe",
     toolId: 7,
     geometry: "1x1",
@@ -42,7 +42,7 @@ export function isTankType(type) {
 
 // Fed from below at its bottom-left tile, emitting above its top-right; the fluid out-port opts
 // out of item rendering.
-export const TankDefinition = new ObjectType({
+export const TankType = new ObjectType({
     name: "Tank",
     toolId: 8,
     inputPorts: [

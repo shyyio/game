@@ -7,9 +7,9 @@ import {chunkKeyAt} from "@/common/util.js";
 import {makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 import {
-    GateDefinition,
-    PoleDefinition,
-    LogicTerminalDefinition,
+    GateType,
+    PoleType,
+    LogicTerminalType,
 } from "@/mods/logistics/common/objectTypes.js";
 import {WireLinkMessage, WireUnlinkMessage, LogicSnapshotRequestMessage} from "@/mods/logistics/common/messages.js";
 import {LogicSnapshotEvent} from "@/mods/logistics/common/events.js";
@@ -40,10 +40,10 @@ test("a network accepts only one terminal", async () => {
     const player = claimedPlayer(game);
     const engine = game.simEngine;
     const networks = engine.resolve(LogicNetworks);
-    const poleA = place(engine, PoleDefinition, 5, 5);
-    const poleB = place(engine, PoleDefinition, 12, 5);
-    const terminalA = place(engine, LogicTerminalDefinition, 6, 5);
-    const terminalB = place(engine, LogicTerminalDefinition, 11, 5);
+    const poleA = place(engine, PoleType, 5, 5);
+    const poleB = place(engine, PoleType, 12, 5);
+    const terminalA = place(engine, LogicTerminalType, 6, 5);
+    const terminalB = place(engine, LogicTerminalType, 11, 5);
 
     game.dispatchMessage(new WireLinkMessage(terminalA, poleA), player);
     assert.equal(networks.hasWire(terminalA, poleA), true);
@@ -67,9 +67,9 @@ test("a terminal may relink within its own network", async () => {
     const player = claimedPlayer(game);
     const engine = game.simEngine;
     const networks = engine.resolve(LogicNetworks);
-    const poleA = place(engine, PoleDefinition, 5, 5);
-    const poleB = place(engine, PoleDefinition, 12, 5);
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
+    const poleA = place(engine, PoleType, 5, 5);
+    const poleB = place(engine, PoleType, 12, 5);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
     game.dispatchMessage(new WireLinkMessage(poleA, poleB), player);
     game.dispatchMessage(new WireLinkMessage(terminal, poleA), player);
 
@@ -82,9 +82,9 @@ test("removing a terminal frees its network for a new one", async () => {
     const player = claimedPlayer(game);
     const engine = game.simEngine;
     const networks = engine.resolve(LogicNetworks);
-    const pole = place(engine, PoleDefinition, 5, 5);
-    const terminalA = place(engine, LogicTerminalDefinition, 6, 5);
-    const terminalB = place(engine, LogicTerminalDefinition, 8, 5);
+    const pole = place(engine, PoleType, 5, 5);
+    const terminalA = place(engine, LogicTerminalType, 6, 5);
+    const terminalB = place(engine, LogicTerminalType, 8, 5);
     game.dispatchMessage(new WireLinkMessage(terminalA, pole), player);
 
     engine.applyMessage(new DeleteObjectMessage(terminalA));
@@ -96,9 +96,9 @@ test("the snapshot lists the network's devices, excluding the terminal itself", 
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const pole = place(engine, PoleDefinition, 5, 5);
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
-    const gate = place(engine, GateDefinition, 8, 5, Direction.UP);
+    const pole = place(engine, PoleType, 5, 5);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
+    const gate = place(engine, GateType, 8, 5, Direction.UP);
     game.dispatchMessage(new WireLinkMessage(terminal, pole), player);
     game.dispatchMessage(new WireLinkMessage(gate, pole), player);
 
@@ -110,7 +110,7 @@ test("the snapshot lists the network's devices, excluding the terminal itself", 
     assert.equal(snapshot.linked, 1);
     assert.equal(snapshot.tier, LOGIC_TIER_BASE);
     assert.deepEqual(snapshot.deviceObjectRefs, [gate]);
-    assert.deepEqual(snapshot.deviceTypeIds, [GateDefinition.objectTypeId]);
+    assert.deepEqual(snapshot.deviceTypeIds, [GateType.objectTypeId]);
     assert.deepEqual(snapshot.deviceTileXs, [8]);
     assert.deepEqual(snapshot.deviceTileYs, [5]);
 });
@@ -119,7 +119,7 @@ test("an unwired terminal's snapshot reports unlinked and empty", async () => {
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
 
     game.dispatchMessage(new LogicSnapshotRequestMessage(terminal), player);
     const snapshot = player.events.find(event => event instanceof LogicSnapshotEvent);
@@ -140,8 +140,8 @@ test("a terminal wired straight to a gate forms a working pole-less network", as
     const player = claimedPlayer(game);
     const engine = game.simEngine;
     const networks = engine.resolve(LogicNetworks);
-    const terminal = place(engine, LogicTerminalDefinition, 6, 5);
-    const gate = place(engine, GateDefinition, 8, 5, Direction.UP);
+    const terminal = place(engine, LogicTerminalType, 6, 5);
+    const gate = place(engine, GateType, 8, 5, Direction.UP);
 
     game.dispatchMessage(new WireLinkMessage(terminal, gate), player);
     assert.equal(networks.hasWire(terminal, gate), true);

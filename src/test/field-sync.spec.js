@@ -9,7 +9,7 @@ import {ObjectFieldsEvent, ObjectFieldsBatchEvent} from "@/common/ObjectEvents.j
 import {makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
-import {GateDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {GateType} from "@/mods/logistics/common/objectTypes.js";
 
 /**
  * Places a gate in a claimed, viewed chunk and returns what the sync tests need.
@@ -18,7 +18,7 @@ function placeGate(game, player, x, y) {
     const chunkKey = chunkKeyAt(x, y);
     game.dispatchMessage(new ClaimChunkMessage(chunkKey), player);
     game.dispatchMessage(new SetViewportMessage([chunkKey]), player);
-    game.dispatchMessage(new CreateObjectMessage(GateDefinition.objectTypeId, x, y, Direction.UP), player);
+    game.dispatchMessage(new CreateObjectMessage(GateType.objectTypeId, x, y, Direction.UP), player);
     const engine = game.simEngine;
     const def = engine.components.get("Gate");
     const eid = def.eids[def.count - 1];
@@ -51,7 +51,7 @@ test("a marked row's synced fields batch per chunk at tick end, to the chunk's v
     const far = new CapturingSession(2);
     game.connect(far);
     game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(300, 300)), far);
-    game.dispatchMessage(new CreateObjectMessage(GateDefinition.objectTypeId, 300, 300, Direction.UP), far);
+    game.dispatchMessage(new CreateObjectMessage(GateType.objectTypeId, 300, 300, Direction.UP), far);
     const farEid = def.eids[def.count - 1];
     player.events.length = 0;
     far.events.length = 0;
@@ -72,7 +72,7 @@ test("chunk sync carries every row off its defaults, after the objects themselve
     engine.sync.markDirty(def, eid);
     game.runTick();
     // A second gate at its defaults stays out of the sync.
-    game.dispatchMessage(new CreateObjectMessage(GateDefinition.objectTypeId, 6, 5, Direction.UP), player);
+    game.dispatchMessage(new CreateObjectMessage(GateType.objectTypeId, 6, 5, Direction.UP), player);
 
     const joiner = new CapturingSession(2);
     game.connect(joiner);
