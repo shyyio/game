@@ -40,6 +40,16 @@ export class AbstractBehavior {
     }
 
     /**
+     * The component fields the engine mirrors into each entity's client data (`data.<name>`): a
+     * behavior marks a changed row with `engine.sync.markDirty`, and the engine batches the deltas
+     * per chunk at tick end and chunk-syncs every row off its defaults.
+     * @returns {SyncedFields|null}
+     */
+    get syncedFields() {
+        return null;
+    }
+
+    /**
      * Whether `message` may spawn an entity (e.g. a required resource is present).
      * @param {GameEngine} engine
      * @param {ObjectType} type
@@ -52,7 +62,7 @@ export class AbstractBehavior {
 
     /**
      * Wires the freshly spawned entity: attaches behavior components, resolves ports, registers
-     * rendered ports. The insert event's port ids come from {@link syncData}.
+     * rendered ports. The insert event's port ids come from {@link renderedPortIds}.
      * @param {GameEngine} engine
      * @param {number} eid
      * @param {ObjectType} type
@@ -74,13 +84,14 @@ export class AbstractBehavior {
     }
 
     /**
-     * The behavior payload of the entity's chunk-sync event.
+     * The entity's rendered out-port ids, in `outputPorts.filter(render)` order, for its insert and
+     * chunk-sync events.
      * @param {GameEngine} engine
      * @param {number} eid
-     * @returns {{portIds:number[], lastOutput:number|null}}
+     * @returns {number[]}
      */
-    syncData(engine, eid) {
-        return {portIds: [], lastOutput: null};
+    renderedPortIds(engine, eid) {
+        return [];
     }
 
     /**

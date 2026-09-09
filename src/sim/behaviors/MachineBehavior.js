@@ -4,6 +4,7 @@ import {TickPhase} from "@/sim/GameEngine.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {deterministicRoll} from "@/sim/Rng.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
+import {SyncedFields, SyncedField} from "@/common/SyncedFields.js";
 import {syncFluidSource} from "@/sim/behaviors/util.js";
 
 // Recipe input keys are always padded to three slots.
@@ -17,6 +18,8 @@ const RECIPE_SLOT_LIMIT = 1024;
 const MANNED_SPEED_MULTIPLIER = 1.3;
 
 // Per-slot column names, indexed 0..RECIPE_SLOTS-1.
+const SYNCED_FIELDS = new SyncedFields("Machine", [new SyncedField("lastOutput", EMPTY)]);
+
 const IN_COLS = ["in0", "in1", "in2"];
 const SLOT_COLS = ["slot0", "slot1", "slot2"];
 const PROCESSING_COLS = ["processing0", "processing1", "processing2"];
@@ -91,37 +94,41 @@ export class MachineBehavior extends AbstractBehavior {
         return key;
     }
 
+    get syncedFields() {
+        return SYNCED_FIELDS;
+    }
+
     install(engine) {
         engine.components.define("Machine", [
-            {name: "out", kind: "eid", fill: NO_EID},
+            {name: "out", kind: "eid", defaultValue: NO_EID},
             // Byproduct port; NO_EID unless the object type declares a second output port.
-            {name: "out2", kind: "eid", fill: NO_EID},
-            {name: "in0", kind: "eid", fill: NO_EID},
-            {name: "in1", kind: "eid", fill: NO_EID},
-            {name: "in2", kind: "eid", fill: NO_EID},
-            {name: "slot0", kind: "item", fill: EMPTY},
-            {name: "slot1", kind: "item", fill: EMPTY},
-            {name: "slot2", kind: "item", fill: EMPTY},
-            {name: "processing0", kind: "item", fill: EMPTY},
-            {name: "processing1", kind: "item", fill: EMPTY},
-            {name: "processing2", kind: "item", fill: EMPTY},
-            {name: "remaining", kind: "f32", fill: EMPTY},
+            {name: "out2", kind: "eid", defaultValue: NO_EID},
+            {name: "in0", kind: "eid", defaultValue: NO_EID},
+            {name: "in1", kind: "eid", defaultValue: NO_EID},
+            {name: "in2", kind: "eid", defaultValue: NO_EID},
+            {name: "slot0", kind: "item", defaultValue: EMPTY},
+            {name: "slot1", kind: "item", defaultValue: EMPTY},
+            {name: "slot2", kind: "item", defaultValue: EMPTY},
+            {name: "processing0", kind: "item", defaultValue: EMPTY},
+            {name: "processing1", kind: "item", defaultValue: EMPTY},
+            {name: "processing2", kind: "item", defaultValue: EMPTY},
+            {name: "remaining", kind: "f32", defaultValue: EMPTY},
             // Overshot progress banked past a finished craft; the next craft starts this far along.
             {name: "carry", kind: "f32"},
-            {name: "output", kind: "item", fill: EMPTY},
-            {name: "lastOutput", kind: "item", fill: EMPTY},
+            {name: "output", kind: "item", defaultValue: EMPTY},
+            {name: "lastOutput", kind: "item", defaultValue: EMPTY},
             // This craft's rolled byproduct (EMPTY if the recipe has none or the roll missed).
-            {name: "byproduct", kind: "item", fill: EMPTY},
-            {name: "lastByproduct", kind: "item", fill: EMPTY},
+            {name: "byproduct", kind: "item", defaultValue: EMPTY},
+            {name: "lastByproduct", kind: "item", defaultValue: EMPTY},
             // The two behavior constants the submit pass reads per machine per tick. Kept on the row so
             // the pass never hops through PlacedObject to reach the behavior instance.
             {name: "inputCount"},
             {name: "processingTicks"},
             // Per-tick processing progress (1 unstaffed, MANNED_SPEED_MULTIPLIER fully staffed;
             // grants are full-crew-or-nothing); written by WorkerNetworks via setWorkers.
-            {name: "workerStep", kind: "f32", fill: 1},
+            {name: "workerStep", kind: "f32", defaultValue: 1},
             // Logic-network switch; a disabled machine pauses whole (no gather, craft, or output).
-            {name: "enabled", fill: 1},
+            {name: "enabled", defaultValue: 1},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => MachineBehavior._submitIntents(engine));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => MachineBehavior._finish(engine));
@@ -183,19 +190,14 @@ export class MachineBehavior extends AbstractBehavior {
         def.store.workerStep[def.row(eid)] = 1 + (MANNED_SPEED_MULTIPLIER - 1) * (granted / this.workerCost);
     }
 
-    syncData(engine, eid) {
+    renderedPortIds(engine, eid) {
         const def = engine.components.get("Machine");
         const row = def.row(eid);
-        const last = def.store.lastOutput[row];
-        let lastOutput = last;
-        if (last === EMPTY) {
-            lastOutput = null;
-        }
         const portIds = [def.store.out[row]];
         if (this.hasByproductPort) {
             portIds.push(def.store.out2[row]);
         }
-        return {portIds, lastOutput};
+        return portIds;
     }
 
     resyncRenderedPorts(engine, eid) {
@@ -555,7 +557,10 @@ export class MachineBehavior extends AbstractBehavior {
             if (engine.transfers.wasDest(machine.out[row]) && byproductDelivered) {
                 const eid = eids[row];
                 engine.itemProduced.notify(placed.claimOwnerOf(eid), machine.output[row], 1);
-                machine.lastOutput[row] = machine.output[row];
+                if (machine.lastOutput[row] !== machine.output[row]) {
+                    machine.lastOutput[row] = machine.output[row];
+                    engine.sync.markDirty(def, eid);
+                }
                 machine.output[row] = EMPTY;
                 machine.remaining[row] = EMPTY;
                 if (byproductPending) {

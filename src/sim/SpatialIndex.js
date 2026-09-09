@@ -28,7 +28,7 @@ export class SpatialIndex {
         this.positionDef = engine.components.define("Position", [
             {name: "x"},
             {name: "y"},
-            {name: "direction", fill: NO_EID},
+            {name: "direction", defaultValue: NO_EID},
         ]);
 
         /**
@@ -43,7 +43,7 @@ export class SpatialIndex {
         // Position — cells are the entities carrying both.
         this.occupancyDef = engine.components.define("Occupancy", [
             {name: "layer"},
-            {name: "owner", fill: NO_EID},
+            {name: "owner", defaultValue: NO_EID},
             {name: "userData"},
         ]);
 

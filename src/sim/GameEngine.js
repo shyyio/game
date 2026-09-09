@@ -11,6 +11,7 @@ import {ComponentRegistry} from "@/sim/ComponentRegistry.js";
 import {SpatialIndex} from "@/sim/SpatialIndex.js";
 import {TransferResolver} from "@/sim/TransferResolver.js";
 import {RenderDiff} from "@/sim/RenderDiff.js";
+import {FieldSync} from "@/sim/FieldSync.js";
 import {PortIndex} from "@/sim/PortIndex.js";
 import {SnapshotSerializer} from "@/sim/SnapshotSerializer.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
@@ -160,6 +161,12 @@ export class GameEngine {
          */
         this.transfers = new TransferResolver(this, this.ports.capacity);
 
+        /**
+         * What the client is told about behaviors' synced component fields.
+         * @type {FieldSync}
+         */
+        this.sync = new FieldSync(this);
+
         this.components.onGrow(this.ports.def, capacity => this.ports.growColumns(capacity));
     }
 
@@ -201,6 +208,7 @@ export class GameEngine {
          * @type {SnapshotSerializer}
          */
         this.snapshots = new SnapshotSerializer(this);
+        this.snapshots.registerRebuildHook(() => this.sync.rebuild());
     }
 
     /**
@@ -220,6 +228,7 @@ export class GameEngine {
             this.clock += 1;
         });
         this.registerSystem(TickPhase.EMIT_RENDER, () => this.render.emit());
+        this.registerSystem(TickPhase.EMIT_RENDER, () => this.sync.emit());
     }
 
     /**
@@ -670,8 +679,11 @@ export class GameEngine {
                 events.push(event);
             }
         }
-        // After the contributors: the client resolves a port item against the object/path
-        // the contributors' events just recreated.
+        // After the contributors: the client patches synced fields onto, and resolves a port item
+        // against, the object/path the contributors' events just recreated.
+        for (const event of this.sync.chunkSync(chunk)) {
+            events.push(event);
+        }
         const portItems = this.render.chunkSync(chunk);
         if (portItems !== null) {
             events.push(portItems);

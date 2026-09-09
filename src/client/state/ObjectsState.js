@@ -1,5 +1,5 @@
 import {ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
-import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
+import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent, ObjectFieldsEvent} from "@/common/ObjectEvents.js";
 import {TILE_VARIANT_LIMIT, chunkId, tileId, tileVariantId} from "@/common/util.js";
 import {portAt, edgeKey} from "@/common/portGeometry.js";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
@@ -20,7 +20,6 @@ export const OBJECTS_SCHEMA = {
  * @property {number} typeId
  * @property {Direction} direction
  * @property {Object.<string, number>} ports rendered out-ports, by PortDefinition name
- * @property {number|null} lastProduced
  */
 
 /**
@@ -51,6 +50,10 @@ export class ObjectsWriter extends AbstractCacheWriter {
             this._state.mapDelete("objects.byId", event.id);
             return;
         }
+        if (event instanceof ObjectFieldsEvent) {
+            this._patchFields(event);
+            return;
+        }
         if (event instanceof ChunkUnsubscribeEvent) {
             // The chunk index lives on the view; getByChunk returns a fresh array, so the
             // per-delete index updates can't disturb the iteration.
@@ -58,6 +61,26 @@ export class ObjectsWriter extends AbstractCacheWriter {
                 this._state.mapDelete("objects.byId", entry.id);
             }
         }
+    }
+
+    /**
+     * Patches an object's synced fields onto its entry's data, zipped against its behavior's
+     * declared order; an event for an object no longer held is dropped.
+     * @private
+     * @param {ObjectFieldsEvent} event
+     * @returns {void}
+     */
+    _patchFields(event) {
+        const view = this._state.view("objects");
+        const entry = view.get(event.id);
+        if (entry === null) {
+            return;
+        }
+        const patch = {};
+        for (const [i, field] of entry.data.type.behavior.syncedFields.fields.entries()) {
+            patch[field.name] = event.values[i];
+        }
+        view.update(event.id, patch);
     }
 
     /**
@@ -72,14 +95,6 @@ export class ObjectsWriter extends AbstractCacheWriter {
         for (const [i, port] of renderedPorts.entries()) {
             ports[port.name] = event.portIds[i];
         }
-        // A sync without an output keeps the last produced item already mirrored.
-        let lastProduced = event.lastOutput;
-        if (lastProduced === null) {
-            const previous = this._state.mapGet("objects.byId", event.id);
-            if (previous !== undefined) {
-                lastProduced = previous.lastProduced;
-            }
-        }
         this._state.mapSet("objects.byId", event.id, {
             id: event.id,
             tileX: event.x,
@@ -87,14 +102,14 @@ export class ObjectsWriter extends AbstractCacheWriter {
             typeId: event.typeId,
             direction: event.direction,
             ports,
-            lastProduced,
         });
     }
 }
 
 
 /**
- * The `data` payload of a derived-type cache entry.
+ * The `data` payload of a derived-type cache entry, plus the behavior's synced fields under their
+ * own names, starting at their defaults.
  */
 export class ObjectClientData {
 
@@ -105,6 +120,13 @@ export class ObjectClientData {
     constructor(type, direction) {
         this.type = type;
         this.direction = direction;
+        const synced = type.behavior.syncedFields;
+        if (synced === null) {
+            return;
+        }
+        for (const field of synced.fields) {
+            this[field.name] = field.defaultValue;
+        }
     }
 }
 
@@ -463,19 +485,6 @@ export class ObjectsView extends AbstractCacheView {
         this._removeListeners.notify(entry);
         this._structuralListeners.notify();
         return entry;
-    }
-
-    /**
-     * The object's last produced item, for the inspect panel's output slot.
-     * @param {number} objectId
-     * @returns {number|undefined}
-     */
-    lastProducedOf(objectId) {
-        const object = this._state.mapGet("objects.byId", objectId);
-        if (object === undefined || object.lastProduced === null) {
-            return undefined;
-        }
-        return object.lastProduced;
     }
 
     /**

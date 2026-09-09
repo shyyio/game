@@ -72,7 +72,7 @@ export function conversionLosses(snapshot, loadout) {
  * down to the fields the next engine registers. Throws on an object whose type the loadout lacks.
  * @param {object} snapshot
  * @param {Loadout} loadout
- * @param {Array<{name: string, fields: Array<{name: string, kind: string, fill: number}>}>} componentDefs the next engine's
+ * @param {Array<{name: string, fields: Array<{name: string, kind: string, defaultValue: number}>}>} componentDefs the next engine's
  * @returns {object} a new snapshot; the given one is untouched
  */
 export function convertSnapshot(snapshot, loadout, componentDefs) {
@@ -89,8 +89,8 @@ export function convertSnapshot(snapshot, loadout, componentDefs) {
             const converted = {eid: row.eid};
             for (const field of def.fields) {
                 if (!savedNames.has(field.name)) {
-                    // A field this loadout added: the save has no value, so the column's own fill stands.
-                    converted[field.name] = field.fill;
+                    // A field this loadout added: the save has no value, so the column's own default stands.
+                    converted[field.name] = field.defaultValue;
                 } else if (field.kind === KIND_TYPE) {
                     const name = snapshot.objectTypeNames[row[field.name]];
                     if (!typeIdByName.has(name)) {

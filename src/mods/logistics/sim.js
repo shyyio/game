@@ -6,7 +6,7 @@ import {
     LogicSnapshotRequestMessage,
     ConfigureLogicRulesMessage,
 } from "./common/messages.js";
-import {GateSetEvent, LogicSnapshotEvent} from "./common/events.js";
+import {LogicSnapshotEvent} from "./common/events.js";
 import {isGateType, isTerminalType} from "./common/objectTypes.js";
 import {
     withinWireRange,
@@ -112,9 +112,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         // Mod messages bypass the core placement gate, so gates check build rights themselves.
         if (!engine.placementAllowed(session.playerId, chunkId(x, y))) {
             // Correct the sender's optimistic flip with the authoritative state.
-            const def = engine.components.get("Gate");
-            const row = def.row(eid);
-            game.bus.publishTo(session.id, new GateSetEvent(x, y, message.objectId, def.store.open[row], def.store.fluid[row]));
+            game.bus.publishTo(session.id, engine.sync.eventFor(engine.components.get("Gate"), eid));
             return;
         }
         engine.placed.behaviorFor(typeId).requestOpen(engine, eid, message.open === 1);

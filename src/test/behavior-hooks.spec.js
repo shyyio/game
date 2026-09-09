@@ -88,7 +88,7 @@ test("every AbstractBehavior hook drops the PlacedObjects parameter", () => {
         canSpawn: 3,
         onSpawn: 4,
         onDespawn: 2,
-        syncData: 2,
+        renderedPortIds: 2,
         inspect: 3,
         resyncRenderedPorts: 2,
         setWorkers: 3,

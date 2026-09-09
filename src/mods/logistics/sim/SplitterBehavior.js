@@ -8,12 +8,12 @@ export class SplitterBehavior extends AbstractBehavior {
 
     install(engine) {
         engine.components.define("Splitter", [
-            {name: "in_a", kind: "eid", fill: NO_EID},
-            {name: "in_b", kind: "eid", fill: NO_EID},
-            {name: "out_a", kind: "eid", fill: NO_EID},
-            {name: "out_b", kind: "eid", fill: NO_EID},
-            {name: "int_a", kind: "eid", fill: NO_EID},
-            {name: "int_b", kind: "eid", fill: NO_EID},
+            {name: "in_a", kind: "eid", defaultValue: NO_EID},
+            {name: "in_b", kind: "eid", defaultValue: NO_EID},
+            {name: "out_a", kind: "eid", defaultValue: NO_EID},
+            {name: "out_b", kind: "eid", defaultValue: NO_EID},
+            {name: "int_a", kind: "eid", defaultValue: NO_EID},
+            {name: "int_b", kind: "eid", defaultValue: NO_EID},
             {name: "state"},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents(engine));
@@ -37,10 +37,10 @@ export class SplitterBehavior extends AbstractBehavior {
         engine.render.unregisterPort(def.store.out_b[row]);
     }
 
-    syncData(engine, eid) {
+    renderedPortIds(engine, eid) {
         const def = engine.components.get("Splitter");
         const row = def.row(eid);
-        return {portIds: [def.store.out_a[row], def.store.out_b[row]], lastOutput: null};
+        return [def.store.out_a[row], def.store.out_b[row]];
     }
 
     resyncRenderedPorts(engine, eid) {

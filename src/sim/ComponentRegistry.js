@@ -8,12 +8,12 @@ const NO_ROW = -1;
  * A component column for a field kind: Float32Array for "f32", Int32Array otherwise ("i32"/"eid").
  * @param {string} kind
  * @param {number} capacity
- * @param {number} fill
+ * @param {number} defaultValue
  * @returns {Int32Array|Float32Array}
  */
-function columnFor(kind, capacity, fill) {
+function columnFor(kind, capacity, defaultValue) {
     const column = kind === "f32" ? new Float32Array(capacity) : new Int32Array(capacity);
-    return column.fill(fill);
+    return column.fill(defaultValue);
 }
 
 /**
@@ -29,7 +29,7 @@ export class ComponentDef {
 
     /**
      * @param {string} name
-     * @param {{name:string, kind:string, fill:number}[]} fields
+     * @param {{name:string, kind:string, defaultValue:number}[]} fields
      * @param {boolean} snapshotOnly
      * @param {boolean} sparse
      */
@@ -50,7 +50,7 @@ export class ComponentDef {
          */
         this.store = {};
         for (const field of fields) {
-            this.store[field.name] = columnFor(field.kind, INITIAL_CAPACITY, field.fill);
+            this.store[field.name] = columnFor(field.kind, INITIAL_CAPACITY, field.defaultValue);
         }
 
         /**
@@ -146,12 +146,12 @@ export class ComponentRegistry {
 
     /**
      * Registers a component: SoA typed-array columns grown by doubling, tracked for generic
-     * serialization. `fields` are {name, kind?, fill?} — kind "eid" marks an entity-reference column
+     * serialization. `fields` are {name, kind?, defaultValue?} — kind "eid" marks an entity-reference column
      * remapped on deserialize, "type" an object typeId and "item" an item type (both carried over
-     * when the loadout changes), "f32" a float column (default "i32"); fill is the empty-slot value
+     * when the loadout changes), "f32" a float column (default "i32"); defaultValue is what an unwritten slot holds
      * (default 0). Modules call this so their state round-trips with no bespoke save code.
      * @param {string} name
-     * @param {{name:string, kind?:string, fill?:number}[]} fieldSpecs
+     * @param {{name:string, kind?:string, defaultValue?:number}[]} fieldSpecs
      * @param {{snapshotOnly?:boolean, sparse?:boolean}} [options] - snapshotOnly components hold state
      *     materialized at save (belt paths), not kept in sync during play, so the port sweep ignores
      *     their eid fields (the module's live pin hook is authoritative instead); sparse components
@@ -165,11 +165,11 @@ export class ComponentRegistry {
             if (kind === undefined) {
                 kind = "i32";
             }
-            let fill = spec.fill;
-            if (fill === undefined) {
-                fill = 0;
+            let defaultValue = spec.defaultValue;
+            if (defaultValue === undefined) {
+                defaultValue = 0;
             }
-            return {name: spec.name, kind, fill};
+            return {name: spec.name, kind, defaultValue};
         });
         const def = new ComponentDef(name, fields, snapshotOnly, sparse);
         this.defs.push(def);
@@ -242,13 +242,13 @@ export class ComponentRegistry {
     }
 
     /**
-     * Resets every registered component's columns to their fill values.
+     * Resets every registered component's columns to their default values.
      * @returns {void}
      */
     clearAll() {
         for (const def of this.defs) {
             for (const field of def.fields) {
-                def.store[field.name].fill(field.fill);
+                def.store[field.name].fill(field.defaultValue);
             }
         }
     }
@@ -268,7 +268,7 @@ export class ComponentRegistry {
             capacity *= 2;
         }
         for (const field of def.fields) {
-            const grown = columnFor(field.kind, capacity, field.fill);
+            const grown = columnFor(field.kind, capacity, field.defaultValue);
             grown.set(def.store[field.name]);
             def.store[field.name] = grown;
         }
@@ -297,7 +297,7 @@ export class ComponentRegistry {
         const row = def.row(eid);
         this.grow(def, row);
         for (const field of def.fields) {
-            def.store[field.name][row] = field.fill;
+            def.store[field.name][row] = field.defaultValue;
         }
     }
 

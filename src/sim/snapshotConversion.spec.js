@@ -89,7 +89,7 @@ test("a component that gained a field carries it on every row, at the new column
     const before = snapshot();
     before.components[0].rows.splice(2, 1);
     const defs = NEXT_DEFS.slice();
-    defs[1] = {name: "Port", fields: [{name: "item", kind: "item", fill: EMPTY}, {name: "flow", kind: "i32", fill: -7}]};
+    defs[1] = {name: "Port", fields: [{name: "item", kind: "item", defaultValue: EMPTY}, {name: "flow", kind: "i32", defaultValue: -7}]};
     const port = convertSnapshot(before, NEXT, defs).components.find(component => component.name === "Port");
     assert.deepEqual(port.rows.map(row => row.flow), [-7, -7, -7, -7]);
 });

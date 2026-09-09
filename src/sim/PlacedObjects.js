@@ -23,10 +23,10 @@ export class PlacedObjects {
         // Where a placed object sits lives on the shared Position component, not here.
         this.def = engine.components.define("PlacedObject", [
             {name: "typeId", kind: "type"},
-            {name: "objectId", fill: NO_EID},
+            {name: "objectId", defaultValue: NO_EID},
             // Who placed it, for record keeping: a friend building in your chunk is recorded as
             // themselves. Economics read claimOwnerOf instead, which follows the ground.
-            {name: "placedBy", fill: PLAYER_ID_NONE},
+            {name: "placedBy", defaultValue: PLAYER_ID_NONE},
         ], {sparse: true});
 
         // typeId -> ObjectType, derived types only.
@@ -65,6 +65,10 @@ export class PlacedObjects {
             if (!installed.has(type.behavior.constructor)) {
                 installed.add(type.behavior.constructor);
                 type.behavior.install(this.engine);
+                const synced = type.behavior.syncedFields;
+                if (synced !== null) {
+                    this.engine.sync.register(this.engine.components.get(synced.component), synced.fields);
+                }
             }
         }
     }
@@ -242,15 +246,18 @@ export class PlacedObjects {
         this.def.store.placedBy[row] = playerId;
         engine.space.setPosition(eid, message.x, message.y, message.direction);
         type.behavior.onSpawn(engine, eid, type, message);
+        const synced = type.behavior.syncedFields;
+        if (synced !== null) {
+            engine.sync.markSpawned(engine.components.get(synced.component), eid);
+        }
         if (type.placement.solid) {
             engine.track(objectId, footprint);
         }
         this._eidByObjectId.set(objectId, eid);
         this._indexChunk(eid, message.x, message.y);
         this._notifyChunkChanged(chunkId(message.x, message.y));
-        // One source for the insert payload: the behavior's sync record (ports + seeded lastOutput).
-        const sync = type.behavior.syncData(engine, eid);
-        engine.emitEvent(new ObjectInsertEvent(type.typeId, objectId, message.x, message.y, message.direction, sync.portIds, sync.lastOutput));
+        const portIds = type.behavior.renderedPortIds(engine, eid);
+        engine.emitEvent(new ObjectInsertEvent(type.typeId, objectId, message.x, message.y, message.direction, portIds));
         engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_PLACED, playerId, type.typeId, 1);
         return true;
     }
@@ -340,13 +347,12 @@ export class PlacedObjects {
         for (const eid of eids) {
             const row = this.def.row(eid);
             const type = this._types.get(placedObject.typeId[row]);
-            const sync = type.behavior.syncData(this.engine, eid);
             if (batch === null) {
                 batch = new ObjectSyncBatchEvent(origin.x, origin.y);
             }
             batch.add(
                 type.typeId, placedObject.objectId[row], position.x[eid], position.y[eid], position.direction[eid],
-                sync.portIds, sync.lastOutput,
+                type.behavior.renderedPortIds(this.engine, eid),
             );
         }
         if (batch === null) {

@@ -63,6 +63,8 @@ export {
 // TickPhase is the enum of the per-tick phases systems are scheduled into.
 export {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 export {StaticBehavior} from "@/common/behaviors/StaticBehavior.js";
+// A behavior's `syncedFields`: component fields the engine mirrors into the client's object data.
+export {SyncedFields, SyncedField} from "@/common/SyncedFields.js";
 export {MachineBehavior} from "@/sim/behaviors/MachineBehavior.js";
 export {ExtractorBehavior} from "@/sim/behaviors/ExtractorBehavior.js";
 export {GeneratorBehavior} from "@/sim/behaviors/GeneratorBehavior.js";
@@ -98,6 +100,9 @@ export {DeleteObjectMessage} from "@/common/CoreMessages.js";
 // lifecycle events PlacedObjects emits — a mod uses these instead of per-object classes.
 export {CreateObjectMessage} from "@/common/CoreMessages.js";
 export {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
+// A synced-field delta per object (`engine.sync.eventFor` builds one for a corrective send) and the
+// per-chunk batch the engine emits.
+export {ObjectFieldsEvent, ObjectFieldsBatchEvent} from "@/common/ObjectEvents.js";
 
 // The core player intents a mod's client side (or its specs) may send: viewport subscription,
 // chunk claiming, friend list edits, and a player-setting write.

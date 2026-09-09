@@ -129,6 +129,7 @@ export class SnapshotSerializer {
         engine.components.clearAll();
         // Drop the prior world's render/tick state so its stale eids never leak into the new world.
         engine.render.reset();
+        engine.sync.reset();
         engine.transfers.resetTick();
 
         // Every eid that appears (as a row's own eid or an eid-field target) needs a fresh entity.

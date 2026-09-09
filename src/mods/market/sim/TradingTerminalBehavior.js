@@ -1,6 +1,8 @@
-import {AbstractBehavior, EMPTY, NO_EID, TickPhase, PLAYER_ID_NONE} from "@spup/sdk";
+import {AbstractBehavior, EMPTY, NO_EID, TickPhase, PLAYER_ID_NONE, SyncedFields, SyncedField} from "@spup/sdk";
 import {MARKET_MODE_SELL, MARKET_MODE_BUY} from "../common/constants.js";
 import {MarketBook} from "./MarketBook.js";
+
+const SYNCED_FIELDS = new SyncedFields("MarketTerminal", [new SyncedField("lastOutput", EMPTY)]);
 
 /**
  * Trading Terminal: input port (sell mode) and output port (buy mode), both always present; live
@@ -13,6 +15,10 @@ import {MarketBook} from "./MarketBook.js";
  */
 export class TradingTerminalBehavior extends AbstractBehavior {
 
+    get syncedFields() {
+        return SYNCED_FIELDS;
+    }
+
     install(engine) {
         const fixedPrices = new Map();
         for (const listing of engine.modRegistry.marketListings) {
@@ -23,21 +29,21 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         engine.provide(MarketBook, new MarketBook(fixedPrices));
         engine.components.define("MarketTerminal", [
             {name: "mode"},
-            {name: "itemType", kind: "item", fill: EMPTY},
+            {name: "itemType", kind: "item", defaultValue: EMPTY},
             {name: "price"},
             // Buy only: cached owner balance, refreshed per tick by MarketSimMod.onTick. Not authoritative.
             {name: "balance"},
             // Buy only: cached chunk owner, lets _submitIntents pool balance across a player's buy terminals.
-            {name: "owner", fill: PLAYER_ID_NONE},
+            {name: "owner", defaultValue: PLAYER_ID_NONE},
             // Sell only: whether this terminal's chunk is owned, refreshed per tick by MarketSimMod.onTick.
             {name: "sellEnabled"},
             // Sell-only scratch: price/counterparty this row is selling to this tick.
-            {name: "pendingPrice", fill: EMPTY},
-            {name: "pendingBuyer", kind: "eid", fill: NO_EID},
-            {name: "pendingIsNpc", fill: 0},
-            {name: "in", kind: "eid", fill: NO_EID},
-            {name: "out", kind: "eid", fill: NO_EID},
-            {name: "lastOutput", kind: "item", fill: EMPTY},
+            {name: "pendingPrice", defaultValue: EMPTY},
+            {name: "pendingBuyer", kind: "eid", defaultValue: NO_EID},
+            {name: "pendingIsNpc", defaultValue: 0},
+            {name: "in", kind: "eid", defaultValue: NO_EID},
+            {name: "out", kind: "eid", defaultValue: NO_EID},
+            {name: "lastOutput", kind: "item", defaultValue: EMPTY},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => TradingTerminalBehavior._submitIntents(engine));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => TradingTerminalBehavior._finish(engine));
@@ -63,15 +69,26 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         book.removeSell(eid);
     }
 
-    syncData(engine, eid) {
-        const def = engine.components.get("MarketTerminal");
-        const row = def.row(eid);
-        const last = def.store.lastOutput[row];
-        let lastOutput = last;
-        if (last === EMPTY) {
-            lastOutput = null;
+    /**
+     * Records the traded item as the terminal's last output, syncing a change.
+     * @private
+     * @param {GameEngine} engine
+     * @param {ComponentDef} def
+     * @param {number} row
+     * @returns {void}
+     */
+    static _recordOutput(engine, def, row) {
+        const terminal = def.store;
+        if (terminal.lastOutput[row] === terminal.itemType[row]) {
+            return;
         }
-        return {portIds: [def.store.out[row]], lastOutput};
+        terminal.lastOutput[row] = terminal.itemType[row];
+        engine.sync.markDirty(def, def.eids[row]);
+    }
+
+    renderedPortIds(engine, eid) {
+        const def = engine.components.get("MarketTerminal");
+        return [def.store.out[def.row(eid)]];
     }
 
     resyncRenderedPorts(engine, eid) {
@@ -223,7 +240,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         for (let row = 0; row < count; row += 1) {
             if (terminal.mode[row] === MARKET_MODE_BUY) {
                 if (engine.transfers.wasDest(terminal.out[row])) {
-                    terminal.lastOutput[row] = terminal.itemType[row];
+                    TradingTerminalBehavior._recordOutput(engine, def, row);
                     if (terminal.pendingPrice[row] !== EMPTY) {
                         book.recordPurchase(eids[row], terminal.itemType[row], terminal.pendingPrice[row]);
                     }
@@ -239,7 +256,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
                 continue;
             }
             const sellerEid = eids[row];
-            terminal.lastOutput[row] = terminal.itemType[row];
+            TradingTerminalBehavior._recordOutput(engine, def, row);
             let buyerEid = NO_EID;
             if (!npc) {
                 buyerEid = terminal.pendingBuyer[row];

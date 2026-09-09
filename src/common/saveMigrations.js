@@ -1,5 +1,5 @@
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
-export const SAVE_FORMAT = 5;
+export const SAVE_FORMAT = 6;
 
 // What a save written before the stamp counts as.
 const UNSTAMPED_FORMAT = 0;
@@ -16,7 +16,7 @@ export const SAVE_MIGRATIONS = new Map([
     // Format 2 adds the world seed global; worlds saved before it had none, so they keep seed 0.
     [1, snapshot => ({...snapshot, saveFormat: 2, globals: {...snapshot.globals, seed: 0}})],
     // Format 3 adds Machine.enabled, the logic-network switch; machines saved before it run.
-    [2, snapshot => ({...snapshot, saveFormat: 3, components: addField(snapshot.components, "Machine", "enabled", 1)})],
+    [2, snapshot => ({...snapshot, saveFormat: 3, components: addField(snapshot.components, "Machine", "enabled", "i32", 1)})],
     // Format 4 tags the object-type and item-type columns, which a loadout change carries over by
     // name; they were plain i32 (records: plain integer) before.
     [3, snapshot => ({
@@ -31,6 +31,19 @@ export const SAVE_MIGRATIONS = new Map([
         ...snapshot,
         saveFormat: 5,
         components: renameField(snapshot.components, "PlacedObject", "ownerId", "placedBy"),
+    })],
+    // Format 6 moves the gate and tank onto the engine's field sync: their hand-kept last-synced
+    // columns go, and the gate gains an empty lastOutput for the fluid it last buffered.
+    [5, snapshot => ({
+        ...snapshot,
+        saveFormat: 6,
+        components: addField(
+            dropField(dropField(dropField(snapshot.components, "Gate", "lastOpen"), "Gate", "lastFluid"), "Tank", "lastType"),
+            "Gate",
+            "lastOutput",
+            "item",
+            -1,
+        ),
     })],
 ]);
 
@@ -94,10 +107,11 @@ function retagFields(components, kinds) {
  * @param {object[]} components
  * @param {string} componentName
  * @param {string} fieldName
+ * @param {string} kind
  * @param {number} value
  * @returns {object[]}
  */
-function addField(components, componentName, fieldName, value) {
+function addField(components, componentName, fieldName, kind, value) {
     return components.map(component => {
         if (component.name !== componentName
             || component.fields.some(field => field.name === fieldName)) {
@@ -105,7 +119,7 @@ function addField(components, componentName, fieldName, value) {
         }
         return {
             ...component,
-            fields: [...component.fields, {name: fieldName, kind: "i32"}],
+            fields: [...component.fields, {name: fieldName, kind}],
             rows: component.rows.map(row => ({...row, [fieldName]: value})),
         };
     });
@@ -137,6 +151,32 @@ function renameField(components, componentName, from, to) {
             rows: component.rows.map(row => {
                 const next = {...row, [to]: row[from]};
                 delete next[from];
+                return next;
+            }),
+        };
+    });
+}
+
+/**
+ * Returns `components` with `fieldName` removed from `componentName`, on the field list and on every
+ * row. A snapshot missing that component or field is returned untouched.
+ * @param {object[]} components
+ * @param {string} componentName
+ * @param {string} fieldName
+ * @returns {object[]}
+ */
+function dropField(components, componentName, fieldName) {
+    return components.map(component => {
+        if (component.name !== componentName
+            || !component.fields.some(field => field.name === fieldName)) {
+            return component;
+        }
+        return {
+            ...component,
+            fields: component.fields.filter(field => field.name !== fieldName),
+            rows: component.rows.map(row => {
+                const next = {...row};
+                delete next[fieldName];
                 return next;
             }),
         };

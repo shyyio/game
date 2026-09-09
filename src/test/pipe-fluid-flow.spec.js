@@ -19,7 +19,7 @@ import {
 import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
 import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 import {PortItemSetEvent} from "@/common/PortItemEvents.js";
-import {TankFluidSetEvent} from "@/mods/fluids/common/events.js";
+import {ObjectFieldsEvent} from "@/common/ObjectEvents.js";
 import {EventCollector} from "@/test/EventCollector.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 
@@ -96,9 +96,9 @@ test("a pipe network drains into a tank through the shared edge port", async () 
     }
 
     // Only the type change syncs: one delta when the tank adopts water, none for the fill.
-    const tankDeltas = collector.drain().filter(event => event instanceof TankFluidSetEvent);
+    const tankDeltas = collector.drain().filter(event => event instanceof ObjectFieldsEvent);
     assert.equal(tankDeltas.length, 1, "amount changes emit nothing");
-    assert.equal(tankDeltas[0].fluidType, FLUID_TYPE_WATER);
+    assert.deepEqual(tankDeltas[0].values, [FLUID_TYPE_WATER]);
 
     const def = engine.components.get("Tank");
     const row = def.row(engine.placed.eidsOf(TankDefinition.typeId)[0]);

@@ -2,7 +2,10 @@ import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {TickPhase} from "@/sim/GameEngine.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
+import {SyncedFields, SyncedField} from "@/common/SyncedFields.js";
 import {LAYER_RESOURCE} from "@/sim/behaviors/ResourceBehavior.js";
+
+const SYNCED_FIELDS = new SyncedFields("Extractor", [new SyncedField("lastOutput", EMPTY)]);
 
 /**
  * A resource extractor: a producer with no input port whose fixed input is the resource covered at
@@ -22,15 +25,19 @@ export class ExtractorBehavior extends AbstractBehavior {
         this.recipes = new Map(recipes.map(recipe => [recipe.inputs[0], recipe.output]));
     }
 
+    get syncedFields() {
+        return SYNCED_FIELDS;
+    }
+
     install(engine) {
         engine.components.define("Extractor", [
-            {name: "out", kind: "eid", fill: NO_EID},
-            {name: "resourceType", fill: EMPTY},
-            {name: "remaining", kind: "f32", fill: EMPTY},
+            {name: "out", kind: "eid", defaultValue: NO_EID},
+            {name: "resourceType", defaultValue: EMPTY},
+            {name: "remaining", kind: "f32", defaultValue: EMPTY},
             // Overshot progress banked past a finished cycle; the next cycle starts this far along.
             {name: "carry", kind: "f32"},
-            {name: "output", kind: "item", fill: EMPTY},
-            {name: "lastOutput", kind: "item", fill: EMPTY},
+            {name: "output", kind: "item", defaultValue: EMPTY},
+            {name: "lastOutput", kind: "item", defaultValue: EMPTY},
             // The countdown length, kept on the row so the submit pass reaches no behavior instance
             // while an extractor is merely counting down.
             {name: "processingTicks"},
@@ -79,19 +86,12 @@ export class ExtractorBehavior extends AbstractBehavior {
         engine.ports.setFluidSource(out, EMPTY);
     }
 
-    syncData(engine, eid) {
+    renderedPortIds(engine, eid) {
+        if (!this.type.outputPorts[0].render) {
+            return [];
+        }
         const def = engine.components.get("Extractor");
-        const row = def.row(eid);
-        const last = def.store.lastOutput[row];
-        let lastOutput = last;
-        if (last === EMPTY) {
-            lastOutput = null;
-        }
-        let portIds = [];
-        if (this.type.outputPorts[0].render) {
-            portIds = [def.store.out[row]];
-        }
-        return {portIds, lastOutput};
+        return [def.store.out[def.row(eid)]];
     }
 
     resyncRenderedPorts(engine, eid) {
@@ -225,7 +225,10 @@ export class ExtractorBehavior extends AbstractBehavior {
             if (engine.transfers.wasDest(extractor.out[row])) {
                 const eid = eids[row];
                 engine.itemProduced.notify(placed.claimOwnerOf(eid), extractor.output[row], 1);
-                extractor.lastOutput[row] = extractor.output[row];
+                if (extractor.lastOutput[row] !== extractor.output[row]) {
+                    extractor.lastOutput[row] = extractor.output[row];
+                    engine.sync.markDirty(def, eid);
+                }
                 extractor.output[row] = EMPTY;
                 extractor.remaining[row] = EMPTY;
             }

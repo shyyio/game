@@ -18,7 +18,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
 
     install(engine) {
         engine.components.define("LogicTerminal", [
-            {name: "tier", fill: LOGIC_TIER_BASE},
+            {name: "tier", defaultValue: LOGIC_TIER_BASE},
         ], {sparse: true});
         engine.provide(LogicRules, new LogicRules());
         engine.registerSystem(

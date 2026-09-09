@@ -6,7 +6,6 @@ import {
     PipeNetworkBatchEvent,
     PipeFluidSetEvent,
     PipeFluidBatchEvent,
-    TankFluidSetEvent,
 } from "./common/events.js";
 
 export class FluidsDeclaration extends AbstractModDeclaration {
@@ -35,7 +34,6 @@ export class FluidsDeclaration extends AbstractModDeclaration {
             PipeNetworkBatchEvent,
             PipeFluidSetEvent,
             PipeFluidBatchEvent,
-            TankFluidSetEvent,
         ];
     }
 

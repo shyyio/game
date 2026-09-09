@@ -2,6 +2,7 @@ import {UIPanel} from "@/client/hud/UIPanel.js";
 import {InspectContent, inspectContentHeight} from "@/client/hud/InspectContent.js";
 import {SlotTooltip} from "@/client/hud/SlotTooltip.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT} from "@/client/Theme.js";
+import {EMPTY} from "@/sim/sentinels.js";
 import {ConnectedPanelLayer} from "@/client/hud/ConnectedPanelLayer.js";
 
 const PANEL_WIDTH = 375;
@@ -29,11 +30,16 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
                 const entry = objects.get(objectId);
                 let machineTile = undefined;
                 let title = `Machine #${objectId}`;
+                let lastProduced = undefined;
                 if (entry !== null) {
                     machineTile = {x: entry.tileX, y: entry.tileY};
                     title = entry.data.type.label;
+                    // The synced last output of a producer; EMPTY before its first delivery.
+                    if (entry.data.lastOutput !== undefined && entry.data.lastOutput !== EMPTY) {
+                        lastProduced = entry.data.lastOutput;
+                    }
                 }
-                this.update(heartbeat, objects.lastProducedOf(objectId), machineTile, title);
+                this.update(heartbeat, lastProduced, machineTile, title);
             }
         });
         /**

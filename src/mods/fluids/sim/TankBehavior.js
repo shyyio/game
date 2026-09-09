@@ -1,6 +1,7 @@
-import {AbstractBehavior, TickPhase, EMPTY, NO_EID} from "@spup/sdk";
-import {TankFluidSetEvent} from "../common/events.js";
+import {AbstractBehavior, TickPhase, EMPTY, NO_EID, SyncedFields, SyncedField} from "@spup/sdk";
 import {LOGIC_KEY_AMOUNT} from "../common/constants.js";
+
+const SYNCED_FIELDS = new SyncedFields("Tank", [new SyncedField("fluidType", EMPTY)]);
 
 /**
  * A fluid buffer: drains type-matching in-port payloads into an amount counter and creates one
@@ -17,16 +18,18 @@ export class TankBehavior extends AbstractBehavior {
         this.capacity = capacity;
     }
 
+    get syncedFields() {
+        return SYNCED_FIELDS;
+    }
+
     install(engine) {
         engine.components.define("Tank", [
-            {name: "in", kind: "eid", fill: NO_EID},
-            {name: "out", kind: "eid", fill: NO_EID},
-            {name: "fluidType", kind: "item", fill: EMPTY},
+            {name: "in", kind: "eid", defaultValue: NO_EID},
+            {name: "out", kind: "eid", defaultValue: NO_EID},
+            {name: "fluidType", kind: "item", defaultValue: EMPTY},
             {name: "amount"},
             // Denormalized from the behavior so the tick pass stays on the row.
             {name: "capacity"},
-            // Last type synced to clients, so the tick emits only type changes.
-            {name: "lastType", kind: "item", fill: EMPTY},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => TankBehavior._submitIntents(engine));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => TankBehavior._finish(engine));
@@ -94,22 +97,6 @@ export class TankBehavior extends AbstractBehavior {
     }
 
     /**
-     * The held fluid rides the lastOutput slot, so a subscribing client learns the type.
-     * @param {GameEngine} engine
-     * @param {number} eid
-     * @returns {{portIds:number[], lastOutput:number|null}}
-     */
-    syncData(engine, eid) {
-        const def = engine.components.get("Tank");
-        const row = def.row(eid);
-        let lastOutput = null;
-        if (def.store.amount[row] > 0) {
-            lastOutput = def.store.fluidType[row];
-        }
-        return {portIds: [], lastOutput};
-    }
-
-    /**
      * Restores the denormalized capacity and the port fluid flags after a load.
      * @param {GameEngine} engine
      * @returns {void}
@@ -147,7 +134,10 @@ export class TankBehavior extends AbstractBehavior {
                 && tank.amount[row] < tank.capacity[row]
                 && (tank.amount[row] === 0 || resting === tank.fluidType[row])) {
                 engine.transfers.submitDrain(tank.in[row]);
-                tank.fluidType[row] = resting;
+                if (tank.fluidType[row] !== resting) {
+                    tank.fluidType[row] = resting;
+                    engine.sync.markDirty(def, def.eids[row]);
+                }
                 tank.amount[row] += 1;
                 engine.ports.setFluidSource(tank.out[row], resting);
             }
@@ -158,40 +148,25 @@ export class TankBehavior extends AbstractBehavior {
     }
 
     /**
-     * POST_RESOLVE: debit a delivered out-port payload (a drained tank frees its type); sync type
-     * changes to observed chunks.
+     * POST_RESOLVE: debit a delivered out-port payload; a drained tank frees its type.
      * @private
      * @param {GameEngine} engine
      * @returns {void}
      */
     static _finish(engine) {
-        const placed = engine.placed;
         const def = engine.components.get("Tank");
         const tank = def.store;
-        const position = engine.Position;
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
-            if (engine.transfers.wasDest(tank.out[row])) {
-                tank.amount[row] -= 1;
-                if (tank.amount[row] === 0) {
-                    tank.fluidType[row] = EMPTY;
-                    engine.ports.setFluidSource(tank.out[row], EMPTY);
-                }
-            }
-            if (tank.fluidType[row] === tank.lastType[row]) {
+            if (!engine.transfers.wasDest(tank.out[row])) {
                 continue;
             }
-            tank.lastType[row] = tank.fluidType[row];
-            const eid = def.eids[row];
-            if (!engine.observesTile(position.x[eid], position.y[eid])) {
-                continue;
+            tank.amount[row] -= 1;
+            if (tank.amount[row] === 0) {
+                tank.fluidType[row] = EMPTY;
+                engine.ports.setFluidSource(tank.out[row], EMPTY);
+                engine.sync.markDirty(def, def.eids[row]);
             }
-            engine.emitEvent(new TankFluidSetEvent(
-                position.x[eid],
-                position.y[eid],
-                placed.objectIdOf(eid),
-                tank.fluidType[row],
-            ));
         }
     }
 }

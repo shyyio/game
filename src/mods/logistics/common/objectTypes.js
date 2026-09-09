@@ -173,7 +173,7 @@ export function isGateType(type) {
 
 const toggleGate = (record, session, client) => client.cache.writer("logistics").toggleGate(record.id);
 
-// `data.gateOpen`/`data.gateFluid` pick among four frames; the base texture is the open item
+// The synced `data.open`/`data.fluid` pick among four frames; the base texture is the open item
 // frame (also the tool icon and ghost).
 class GateObjectType extends ObjectType {
 
@@ -189,10 +189,10 @@ class GateObjectType extends ObjectType {
     }
 
     textureFor(data) {
-        if (data.gateFluid === true) {
-            return data.gateOpen === false ? this.fluidClosedTextureName : this.fluidTextureName;
+        if (data.fluid === 1) {
+            return data.open === 0 ? this.fluidClosedTextureName : this.fluidTextureName;
         }
-        return data.gateOpen === false ? this.closedTextureName : this.textureName;
+        return data.open === 0 ? this.closedTextureName : this.textureName;
     }
 }
 

@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {ObjectInsertEvent} from "@/common/ObjectEvents.js";
+import {ObjectInsertEvent, ObjectFieldsEvent} from "@/common/ObjectEvents.js";
 import {WaterResourceType, ExtractorType} from "@/mods/base-game/common/objectTypes.js";
 import {ITEM_TYPE_WATER} from "@/mods/base-game/common/constants.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
@@ -19,10 +19,13 @@ test("an extractor on water produces the water item into its output port", async
     assert.equal(engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 5, 5, Direction.UP)), true);
     assert.equal(engine.placed.eidsOf(ExtractorType.typeId).length, 1, "extractor placed on the resource");
 
-    // The product is fixed by the resource, so the insert already carries it.
-    const insert = collector.drain().find(event =>
-        event instanceof ObjectInsertEvent && event.typeId === ExtractorType.typeId);
-    assert.equal(insert.lastOutput, ITEM_TYPE_WATER, "lastOutput seeded at placement");
+    // The product is fixed by the resource, so the spawn tick's field delta already carries it.
+    engine.tickAll();
+    const events = collector.drain();
+    const insert = events.find(event => event instanceof ObjectInsertEvent && event.typeId === ExtractorType.typeId);
+    assert.equal(insert.lastOutput, undefined, "the insert carries no output slot");
+    const fields = events.find(event => event instanceof ObjectFieldsEvent && event.id === insert.id);
+    assert.deepEqual(fields.values, [ITEM_TYPE_WATER], "lastOutput seeded at placement");
 
     const outPort = engine.ports.at(5, 4, Direction.UP);
     let produced = false;

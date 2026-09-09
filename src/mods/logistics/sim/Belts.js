@@ -112,23 +112,23 @@ export class Belts {
 
         // Runtime state lives in the JS maps above; these snapshotOnly components mirror it only at save/load.
         this._pathDef = engine.components.define("BeltPath", [
-            {name: "inPort", kind: "eid", fill: NO_EID},
-            {name: "outPort", kind: "eid", fill: NO_EID},
+            {name: "inPort", kind: "eid", defaultValue: NO_EID},
+            {name: "outPort", kind: "eid", defaultValue: NO_EID},
             {name: "headGap"},
             {name: "length"},
         ], {snapshotOnly: true});
         // Path membership only; a belt's position/direction/kind ride the PlacedObject snapshot.
         this._beltDef = engine.components.define("BeltPathMember", [
-            {name: "path", kind: "eid", fill: NO_EID},
+            {name: "path", kind: "eid", defaultValue: NO_EID},
             {name: "seq"},
-            {name: "objectId", fill: NO_EID},
+            {name: "objectId", defaultValue: NO_EID},
         ], {snapshotOnly: true});
         this._itemDef = engine.components.define("BeltItem", [
-            {name: "path", kind: "eid", fill: NO_EID},
+            {name: "path", kind: "eid", defaultValue: NO_EID},
             {name: "seq"},
             {name: "gap"},
-            {name: "type", kind: "item", fill: EMPTY},
-            {name: "itemId", fill: NO_EID},
+            {name: "type", kind: "item", defaultValue: EMPTY},
+            {name: "itemId", defaultValue: NO_EID},
         ], {snapshotOnly: true});
         engine.globals.beltNextItemId = this._nextItemId;
 

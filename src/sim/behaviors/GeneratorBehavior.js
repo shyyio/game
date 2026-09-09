@@ -2,7 +2,10 @@ import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {TickPhase} from "@/sim/GameEngine.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
+import {SyncedFields, SyncedField} from "@/common/SyncedFields.js";
 import {syncFluidSource} from "@/sim/behaviors/util.js";
+
+const SYNCED_FIELDS = new SyncedFields("Generator", [new SyncedField("lastOutput", EMPTY)]);
 
 /**
  * A passive producer with no input port: a fixed item lands in its output port every
@@ -32,20 +35,24 @@ export class GeneratorBehavior extends AbstractBehavior {
         this.hasSecondaryPort = this.secondaryOutput !== null;
     }
 
+    get syncedFields() {
+        return SYNCED_FIELDS;
+    }
+
     install(engine) {
         engine.components.define("Generator", [
-            {name: "out", kind: "eid", fill: NO_EID},
-            {name: "remaining", kind: "f32", fill: EMPTY},
+            {name: "out", kind: "eid", defaultValue: NO_EID},
+            {name: "remaining", kind: "f32", defaultValue: EMPTY},
             {name: "carry", kind: "f32"},
-            {name: "output", kind: "item", fill: EMPTY},
-            {name: "lastOutput", kind: "item", fill: EMPTY},
+            {name: "output", kind: "item", defaultValue: EMPTY},
+            {name: "lastOutput", kind: "item", defaultValue: EMPTY},
             {name: "processingTicks"},
             // Secondary cycle; unused columns stay at fill for a type with no secondary port.
-            {name: "out2", kind: "eid", fill: NO_EID},
-            {name: "remaining2", kind: "f32", fill: EMPTY},
+            {name: "out2", kind: "eid", defaultValue: NO_EID},
+            {name: "remaining2", kind: "f32", defaultValue: EMPTY},
             {name: "carry2", kind: "f32"},
-            {name: "output2", kind: "item", fill: EMPTY},
-            {name: "lastOutput2", kind: "item", fill: EMPTY},
+            {name: "output2", kind: "item", defaultValue: EMPTY},
+            {name: "lastOutput2", kind: "item", defaultValue: EMPTY},
             {name: "processingTicks2"},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GeneratorBehavior._submitIntents(engine));
@@ -82,19 +89,14 @@ export class GeneratorBehavior extends AbstractBehavior {
         }
     }
 
-    syncData(engine, eid) {
+    renderedPortIds(engine, eid) {
         const def = engine.components.get("Generator");
         const row = def.row(eid);
-        const last = def.store.lastOutput[row];
-        let lastOutput = last;
-        if (last === EMPTY) {
-            lastOutput = null;
-        }
         const portIds = [def.store.out[row]];
         if (this.hasSecondaryPort) {
             portIds.push(def.store.out2[row]);
         }
-        return {portIds, lastOutput};
+        return portIds;
     }
 
     resyncRenderedPorts(engine, eid) {
@@ -246,7 +248,10 @@ export class GeneratorBehavior extends AbstractBehavior {
             const eid = eids[row];
             if (engine.transfers.wasDest(generator.out[row])) {
                 engine.itemProduced.notify(placed.claimOwnerOf(eid), generator.output[row], 1);
-                generator.lastOutput[row] = generator.output[row];
+                if (generator.lastOutput[row] !== generator.output[row]) {
+                    generator.lastOutput[row] = generator.output[row];
+                    engine.sync.markDirty(def, eid);
+                }
                 generator.output[row] = EMPTY;
                 generator.remaining[row] = EMPTY;
             }

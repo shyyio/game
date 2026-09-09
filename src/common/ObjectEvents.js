@@ -1,14 +1,8 @@
 import {AbstractChunkRoutedEvent} from "@/common/AbstractChunkRoutedEvent.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 
-// Column sentinel for an object that has produced nothing, so `lastOutputs` stays a plain int
-// column; the per-object events keep using null. Zero, not -1: an `int32` column sign-extends a
-// negative to a 10-byte varint.
-const EMPTY_OUTPUT = 0;
-
 // Generic object lifecycle events, tagged with the object type's `typeId`. `portIds` are the rendered
-// out-port ids in `outputPorts.filter(render)` order (the client zips them back to names). `lastOutput`
-// is the object's last produced item (0 = none), so a client can show production at a glance.
+// out-port ids in `outputPorts.filter(render)` order (the client zips them back to names).
 
 /**
  * An object the player just placed.
@@ -22,7 +16,6 @@ export class ObjectInsertEvent extends AbstractChunkRoutedEvent {
         y: "sint32",
         direction: "int32",
         portIds: "int64[]",
-        lastOutput: "int32?",
     };
 
     /**
@@ -32,15 +25,13 @@ export class ObjectInsertEvent extends AbstractChunkRoutedEvent {
      * @param {number} y
      * @param {Direction} direction
      * @param {number[]} portIds
-     * @param {number|null} lastOutput
      */
-    constructor(typeId, id, x, y, direction, portIds, lastOutput) {
+    constructor(typeId, id, x, y, direction, portIds) {
         super(x, y);
         this.typeId = typeId;
         this.id = id;
         this.direction = direction;
         this.portIds = portIds;
-        this.lastOutput = lastOutput;
     }
 }
 
@@ -57,7 +48,6 @@ export class ObjectSyncEvent extends AbstractChunkRoutedEvent {
         y: "sint32",
         direction: "int32",
         portIds: "int64[]",
-        lastOutput: "int32?",
     };
 
     /**
@@ -67,15 +57,13 @@ export class ObjectSyncEvent extends AbstractChunkRoutedEvent {
      * @param {number} y
      * @param {Direction} direction
      * @param {number[]} portIds
-     * @param {number|null} lastOutput
      */
-    constructor(typeId, id, x, y, direction, portIds, lastOutput) {
+    constructor(typeId, id, x, y, direction, portIds) {
         super(x, y);
         this.typeId = typeId;
         this.id = id;
         this.direction = direction;
         this.portIds = portIds;
-        this.lastOutput = lastOutput;
     }
 }
 
@@ -108,7 +96,7 @@ export class ObjectDeleteEvent extends AbstractChunkRoutedEvent {
  * One chunk's objects for a sync, as packed columns: entity `i` is `typeIds[i]` with id `ids[i]` at
  * (`tileX[i]`, `tileY[i]`) — chunk-relative, so a tile offset stays one byte however far the chunk
  * sits from the origin — facing `directions[i]`, owning the next `portCounts[i]` entries of the
- * flattened `portIds`. `lastOutputs` uses EMPTY_OUTPUT for an object that has produced nothing.
+ * flattened `portIds`.
  */
 export class ObjectSyncBatchEvent extends AbstractBatchEvent {
 
@@ -122,7 +110,6 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
         directions: "int32[]",
         portCounts: "int32[]",
         portIds: "int64[]",
-        lastOutputs: "int32[]",
     };
 
     /**
@@ -140,7 +127,6 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
         this.directions = [];
         this.portCounts = [];
         this.portIds = [];
-        this.lastOutputs = [];
     }
 
     /**
@@ -150,21 +136,17 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
      * @param {number} y
      * @param {number} direction
      * @param {number[]} portIds
-     * @param {number|null} lastOutput
      * @returns {void}
      */
-    add(typeId, id, x, y, direction, portIds, lastOutput) {
+    add(typeId, id, x, y, direction, portIds) {
         this.typeIds.push(typeId);
         this.ids.push(id);
         this.tileX.push(x - this.originX);
         this.tileY.push(y - this.originY);
         this.directions.push(direction);
         this.portCounts.push(portIds.length);
-        this.portIds.push(...portIds);
-        if (lastOutput === null) {
-            this.lastOutputs.push(EMPTY_OUTPUT);
-        } else {
-            this.lastOutputs.push(lastOutput);
+        for (const portId of portIds) {
+            this.portIds.push(portId);
         }
     }
 
@@ -177,7 +159,6 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
         for (let i = 0; i < this.ids.length; i += 1) {
             const portIds = this.portIds.slice(portAt, portAt + this.portCounts[i]);
             portAt += this.portCounts[i];
-            const lastOutput = this.lastOutputs[i] === EMPTY_OUTPUT ? null : this.lastOutputs[i];
             events.push(new ObjectSyncEvent(
                 this.typeIds[i],
                 this.ids[i],
@@ -185,8 +166,80 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
                 this.originY + this.tileY[i],
                 this.directions[i],
                 portIds,
-                lastOutput,
             ));
+        }
+        return events;
+    }
+}
+
+/**
+ * One object's synced fields, in its behavior's declared order; also the corrective payload sent
+ * to a single session.
+ */
+export class ObjectFieldsEvent extends AbstractChunkRoutedEvent {
+
+    static wireFields = {
+        id: "int64",
+        values: "sint32[]",
+    };
+
+    /**
+     * @param {number} id
+     * @param {number} x
+     * @param {number} y
+     * @param {number[]} values
+     */
+    constructor(id, x, y, values) {
+        super(x, y);
+        this.id = id;
+        this.values = values;
+    }
+}
+
+/**
+ * One chunk's synced-field deltas for one behavior, as packed columns: object `i` is `ids[i]`,
+ * owning the next `fieldCount` entries of the flattened `values`.
+ */
+export class ObjectFieldsBatchEvent extends AbstractBatchEvent {
+
+    static wireFields = {
+        fieldCount: "int32",
+        ids: "int64[]",
+        values: "sint32[]",
+    };
+
+    /**
+     * @param {number} x - a member object's tile in the batched chunk, routes the batch to that topic
+     * @param {number} y
+     * @param {number} fieldCount
+     */
+    constructor(x, y, fieldCount) {
+        super(x, y);
+        this.fieldCount = fieldCount;
+        this.ids = [];
+        this.values = [];
+    }
+
+    /**
+     * @param {number} id
+     * @param {number[]} values
+     * @returns {void}
+     */
+    add(id, values) {
+        this.ids.push(id);
+        for (const value of values) {
+            this.values.push(value);
+        }
+    }
+
+    /**
+     * @returns {ObjectFieldsEvent[]}
+     */
+    explode() {
+        const events = [];
+        for (let i = 0; i < this.ids.length; i += 1) {
+            const at = i * this.fieldCount;
+            events.push(new ObjectFieldsEvent(this.ids[i], this.x, this.y, this.values.slice(at, at + this.fieldCount)));
         }
         return events;
     }

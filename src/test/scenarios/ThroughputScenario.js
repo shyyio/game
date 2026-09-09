@@ -90,9 +90,9 @@ class SinkBehavior extends AbstractBehavior {
      */
     install(engine) {
         engine.components.define("ThroughputSink", [
-            {name: "in", kind: "eid", fill: NO_EID},
+            {name: "in", kind: "eid", defaultValue: NO_EID},
             {name: "consumed"},
-            {name: "lastConsumed", fill: EMPTY},
+            {name: "lastConsumed", defaultValue: EMPTY},
         ], {sparse: true});
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => SinkBehavior._submitIntents(engine));
     }

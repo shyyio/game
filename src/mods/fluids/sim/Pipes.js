@@ -75,12 +75,12 @@ export class Pipes {
 
         // snapshotOnly mirrors of the JS records above, written at save/load.
         this._netDef = engine.components.define("PipeNetwork", [
-            {name: "fluidType", kind: "item", fill: EMPTY},
+            {name: "fluidType", kind: "item", defaultValue: EMPTY},
             {name: "amount"},
         ], {snapshotOnly: true});
         this._memberDef = engine.components.define("PipeNetworkMember", [
-            {name: "network", kind: "eid", fill: NO_EID},
-            {name: "objectId", fill: NO_EID},
+            {name: "network", kind: "eid", defaultValue: NO_EID},
+            {name: "objectId", defaultValue: NO_EID},
         ], {snapshotOnly: true});
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());

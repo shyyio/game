@@ -3,7 +3,7 @@ import {PipeFluidDrawLayer} from "./client/PipeFluidDrawLayer.js";
 import {NetworkDebugDrawLayer} from "./client/NetworkDebugDrawLayer.js";
 import {isPipeType, isTankType, PipeDefinition} from "./common/objectTypes.js";
 import {PIPE_SEGMENT_CAPACITY, joinedFluidType} from "./common/constants.js";
-import {PipeNetworkRecalculateEvent, PipeFluidSetEvent, TankFluidSetEvent} from "./common/events.js";
+import {PipeNetworkRecalculateEvent, PipeFluidSetEvent} from "./common/events.js";
 
 export class FluidsClientMod extends AbstractClientMod {
 
@@ -17,8 +17,6 @@ export class FluidsClientMod extends AbstractClientMod {
         this._pipeToNetwork = new Map();
         // Network id -> {fluidType, amount}.
         this._fluidByNetwork = new Map();
-        // Tank object id -> held fluid type, from the tank fluid deltas.
-        this._fluidByTank = new Map();
         // Debug overlay of network membership and fill.
         this._debugLayer = new NetworkDebugDrawLayer(this._networkParts, this._fluidByNetwork, PIPE_SEGMENT_CAPACITY);
     }
@@ -31,9 +29,6 @@ export class FluidsClientMod extends AbstractClientMod {
         client.objects.onRemove(entry => {
             if (isPipeType(entry.data.type)) {
                 this._onPipeRemoved(entry.id);
-            }
-            if (isTankType(entry.data.type)) {
-                this._fluidByTank.delete(entry.id);
             }
         });
     }
@@ -53,10 +48,6 @@ export class FluidsClientMod extends AbstractClientMod {
             this._fluidByNetwork.set(event.networkId, {fluidType: event.fluidType, amount: event.amount});
             this._repaintNetwork(event.networkId);
             this._debugLayer.markStale();
-            return;
-        }
-        if (event instanceof TankFluidSetEvent) {
-            this._fluidByTank.set(event.objectId, event.fluidType);
         }
     }
 
@@ -86,7 +77,7 @@ export class FluidsClientMod extends AbstractClientMod {
             }
             const feeder = client.objects.outPortAt(tileX, tileY, Direction.invert(neighborDirection));
             if (feeder !== null) {
-                candidates.push(this._producedFluidType(client, feeder.entry.id));
+                candidates.push(this._producedFluidType(client, feeder.entry));
             }
             return candidates;
         }) !== null;
@@ -111,18 +102,18 @@ export class FluidsClientMod extends AbstractClientMod {
     }
 
     /**
-     * The fluid an object's out-port produces, or EMPTY: tank live content, else last output.
+     * The fluid an object's out-port produces, or EMPTY: a tank's held type, else the synced last
+     * output of any producer that has one.
      * @private
      * @param {Client} client
-     * @param {number} objectId
+     * @param {CacheEntry} entry
      * @returns {number}
      */
-    _producedFluidType(client, objectId) {
-        const tankFluid = this._fluidByTank.get(objectId);
-        if (tankFluid !== undefined) {
-            return tankFluid;
+    _producedFluidType(client, entry) {
+        if (isTankType(entry.data.type)) {
+            return entry.data.fluidType;
         }
-        const product = client.objects.lastProducedOf(objectId);
+        const product = entry.data.lastOutput;
         if (product === undefined || !client.modRegistry.fluidTypes.has(product)) {
             return EMPTY;
         }

@@ -76,29 +76,6 @@ export class PipeNetworkBatchEvent extends AbstractBatchEvent {
 }
 
 /**
- * A tank's held fluid type changed; EMPTY (-1) when drained. Amounts stay sim-side.
- */
-export class TankFluidSetEvent extends AbstractChunkRoutedEvent {
-
-    static wireFields = {
-        objectId: "int64",
-        fluidType: "sint32",
-    };
-
-    /**
-     * @param {number} x
-     * @param {number} y
-     * @param {number} objectId
-     * @param {number} fluidType
-     */
-    constructor(x, y, objectId, fluidType) {
-        super(x, y);
-        this.objectId = objectId;
-        this.fluidType = fluidType;
-    }
-}
-
-/**
  * A pipe network's fluid state changed; fluidType is EMPTY (-1) when drained.
  */
 export class PipeFluidSetEvent extends AbstractChunkRoutedEvent {

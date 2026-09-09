@@ -8,7 +8,7 @@ import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSetti
 import {PlayerSettingsToolOrderSyncEvent} from "@/common/PlayerSettingsToolOrderEvents.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent, TickEndEvent} from "@/common/CoreEvents.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
-import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
+import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent, ObjectSyncBatchEvent, ObjectFieldsEvent, ObjectFieldsBatchEvent} from "@/common/ObjectEvents.js";
 import {WorkerAssignmentEvent, WorkerAssignmentBatchEvent} from "@/common/WorkerEvents.js";
 import {
     SignInMessage, AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage, SetPlayerSettingMessage,
@@ -30,7 +30,6 @@ const Long = protobuf.util.Long;
 const INT64_TYPES = new Set(["int64", "uint64", "sint64", "fixed64", "sfixed64"]);
 
 /**
- * Core wire classes; order is part of the wire-id contract, so only ever append.
  * @type {*[]}
  */
 const CORE_WIRE_CLASSES = [
@@ -81,6 +80,8 @@ const CORE_WIRE_CLASSES = [
     MetricsUnsubscribeMessage,
     MetricsRollupBucketEvent,
     TickEndEvent,
+    ObjectFieldsEvent,
+    ObjectFieldsBatchEvent,
 ];
 
 /**

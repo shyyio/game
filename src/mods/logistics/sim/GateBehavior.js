@@ -1,16 +1,19 @@
-import {AbstractBehavior, TickPhase, EMPTY, NO_EID, chunkId, getOrCreate, LAYER_SURFACE, CONVEYS_ITEM, CONVEYS_FLUID} from "@spup/sdk";
+import {AbstractBehavior, TickPhase, EMPTY, NO_EID, LAYER_SURFACE, CONVEYS_ITEM, CONVEYS_FLUID, SyncedFields, SyncedField} from "@spup/sdk";
 import {LOGIC_KEY_OPEN} from "../common/constants.js";
-import {GateSetBatchEvent} from "../common/events.js";
 import {gateConnections, placementBlockedByGate} from "../common/gateConnections.js";
 
 // Buffered toggles land first, then mode review, then the gate's own intents.
 const ORDER_APPLY_PENDING = -30;
 const ORDER_REVIEW = -20;
-// Delta emission runs after the fluid buffers debited.
-const ORDER_EMIT = 10;
 
 // No toggle buffered.
 const PENDING_NONE = -1;
+
+const SYNCED_FIELDS = new SyncedFields("Gate", [
+    new SyncedField("open", 1),
+    new SyncedField("fluid"),
+    new SyncedField("lastOutput", EMPTY),
+]);
 
 /**
  * A player-toggled flow stop that adopts the kind of the transport coupled to it: item mode
@@ -19,22 +22,25 @@ const PENDING_NONE = -1;
  */
 export class GateBehavior extends AbstractBehavior {
 
+    get syncedFields() {
+        return SYNCED_FIELDS;
+    }
+
     install(engine) {
         engine.components.define("Gate", [
-            {name: "in", kind: "eid", fill: NO_EID},
-            {name: "out", kind: "eid", fill: NO_EID},
+            {name: "in", kind: "eid", defaultValue: NO_EID},
+            {name: "out", kind: "eid", defaultValue: NO_EID},
             // Item mode's internal port; NO_EID in fluid mode.
-            {name: "int", kind: "eid", fill: NO_EID},
-            {name: "open"},
+            {name: "int", kind: "eid", defaultValue: NO_EID},
+            {name: "open", defaultValue: 1},
             // Current mode, adopted from coupled transports (see _review).
             {name: "fluid"},
             // Fluid mode's one-unit buffer, EMPTY when empty.
-            {name: "buffered", kind: "item", fill: EMPTY},
+            {name: "buffered", kind: "item", defaultValue: EMPTY},
+            // The last fluid buffered, so a client placing a pipe knows what the gate carries.
+            {name: "lastOutput", kind: "item", defaultValue: EMPTY},
             // Toggle request applied at the next tick; PENDING_NONE when idle.
-            {name: "pendingOpen", fill: PENDING_NONE},
-            // Last state synced, so the tick emits only changes.
-            {name: "lastOpen", fill: 1},
-            {name: "lastFluid"},
+            {name: "pendingOpen", defaultValue: PENDING_NONE},
         ], {sparse: true});
         engine.registerPlacementGuard((type, x, y, direction) => !placementBlockedByGate(
             (tx, ty) => GateBehavior._occupantAt(engine, tx, ty),
@@ -45,8 +51,6 @@ export class GateBehavior extends AbstractBehavior {
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GateBehavior._review(engine), ORDER_REVIEW);
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GateBehavior._submitIntents(engine));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => GateBehavior._finish(engine));
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => GateBehavior._emitDeltas(engine), ORDER_EMIT);
-        engine.registerChunkSync(chunk => GateBehavior._chunkSync(engine, chunk));
     }
 
     onSpawn(engine, eid, type, message) {
@@ -150,6 +154,7 @@ export class GateBehavior extends AbstractBehavior {
             return false;
         }
         gate.open[row] = flag;
+        engine.sync.markDirty(def, eid);
         // Unmarking the closed in-port makes the upstream network's out-edge skip it.
         if (gate.fluid[row] === 1) {
             if (flag === 1) {
@@ -161,21 +166,9 @@ export class GateBehavior extends AbstractBehavior {
         return true;
     }
 
-    /**
-     * Fluid mode rides its buffered type in the lastOutput slot for pipe placement checks.
-     * @param {GameEngine} engine
-     * @param {number} eid
-     * @returns {{portIds:number[], lastOutput:number|null}}
-     */
-    syncData(engine, eid) {
+    renderedPortIds(engine, eid) {
         const def = engine.components.get("Gate");
-        const gate = def.store;
-        const row = def.row(eid);
-        let lastOutput = null;
-        if (gate.fluid[row] === 1 && gate.buffered[row] !== EMPTY) {
-            lastOutput = gate.buffered[row];
-        }
-        return {portIds: [gate.out[row]], lastOutput};
+        return [def.store.out[def.row(eid)]];
     }
 
     resyncRenderedPorts(engine, eid) {
@@ -298,6 +291,7 @@ export class GateBehavior extends AbstractBehavior {
         const def = engine.components.get("Gate");
         const gate = def.store;
         const row = def.row(eid);
+        engine.sync.markDirty(def, eid);
         engine.ports.setItem(gate.in[row], EMPTY);
         engine.ports.setItem(gate.out[row], EMPTY);
         if (fluid) {
@@ -313,40 +307,9 @@ export class GateBehavior extends AbstractBehavior {
             engine.ports.unmarkFluid(gate.out[row]);
             engine.ports.setFluidSource(gate.out[row], EMPTY);
             gate.buffered[row] = EMPTY;
+            gate.lastOutput[row] = EMPTY;
             gate.fluid[row] = 0;
             GateBehavior._enterItemMode(engine, gate, row);
-        }
-    }
-
-    /**
-     * POST_RESOLVE (last): batches the tick's gate-state changes per observed chunk.
-     * @private
-     * @param {GameEngine} engine
-     * @returns {void}
-     */
-    static _emitDeltas(engine) {
-        const placed = engine.placed;
-        const def = engine.components.get("Gate");
-        const gate = def.store;
-        const position = engine.Position;
-        const batches = new Map();
-        for (let row = 0; row < def.count; row += 1) {
-            if (gate.open[row] === gate.lastOpen[row] && gate.fluid[row] === gate.lastFluid[row]) {
-                continue;
-            }
-            gate.lastOpen[row] = gate.open[row];
-            gate.lastFluid[row] = gate.fluid[row];
-            const eid = def.eids[row];
-            const x = position.x[eid];
-            const y = position.y[eid];
-            if (!engine.observesTile(x, y)) {
-                continue;
-            }
-            const batch = getOrCreate(batches, chunkId(x, y), () => new GateSetBatchEvent(x, y));
-            batch.add(placed.objectIdOf(eid), gate.open[row], gate.fluid[row]);
-        }
-        for (const batch of batches.values()) {
-            engine.emitEvent(batch);
         }
     }
 
@@ -400,6 +363,10 @@ export class GateBehavior extends AbstractBehavior {
                     engine.transfers.submitDrain(gate.in[row]);
                     gate.buffered[row] = resting;
                     engine.ports.setFluidSource(gate.out[row], resting);
+                    if (gate.lastOutput[row] !== resting) {
+                        gate.lastOutput[row] = resting;
+                        engine.sync.markDirty(def, def.eids[row]);
+                    }
                 }
                 if (gate.buffered[row] !== EMPTY) {
                     engine.transfers.submitCreate(gate.out[row], gate.buffered[row], item[gate.out[row]] === EMPTY);
@@ -430,37 +397,5 @@ export class GateBehavior extends AbstractBehavior {
                 engine.ports.setFluidSource(gate.out[row], EMPTY);
             }
         }
-    }
-
-    /**
-     * Chunk sync: one batch of the chunk's off-default gates.
-     * @private
-     * @param {GameEngine} engine
-     * @param {number} chunk
-     * @returns {GateSetBatchEvent[]}
-     */
-    static _chunkSync(engine, chunk) {
-        const placed = engine.placed;
-        const def = engine.components.get("Gate");
-        const gate = def.store;
-        const position = engine.Position;
-        let batch = null;
-        for (let row = 0; row < def.count; row += 1) {
-            if (gate.open[row] === 1 && gate.fluid[row] === 0) {
-                continue;
-            }
-            const eid = def.eids[row];
-            if (chunkId(position.x[eid], position.y[eid]) !== chunk) {
-                continue;
-            }
-            if (batch === null) {
-                batch = new GateSetBatchEvent(position.x[eid], position.y[eid]);
-            }
-            batch.add(placed.objectIdOf(eid), gate.open[row], gate.fluid[row]);
-        }
-        if (batch === null) {
-            return [];
-        }
-        return [batch];
     }
 }

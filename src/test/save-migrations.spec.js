@@ -6,6 +6,8 @@ import {migrateSnapshot, SAVE_FORMAT} from "@/common/saveMigrations.js";
 import {GAME_VERSION, Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
+import {GateDefinition} from "@/mods/logistics/common/objectTypes.js";
+import {TankDefinition} from "@/mods/fluids/common/objectTypes.js";
 
 test("a fresh snapshot carries the current format and the writing version", async () => {
     const engine = await makeGameEngine();
@@ -178,10 +180,52 @@ test("a format-3 save, whose id columns were plain i32, loads with them retagged
             }
         }
     }
+    // Gate.lastOutput arrived at format 6, so a format-3 save has none for the retag to touch.
+    const gate = snapshot.components.find(component => component.name === "Gate");
+    gate.fields = gate.fields.filter(field => field.name !== "lastOutput");
 
     const migrated = migrateSnapshot(snapshot);
     assert.equal(migrated.saveFormat, SAVE_FORMAT);
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
     assert.equal(restored.placed.eidsOf(BlenderType.typeId).length, 1);
+});
+
+test("a format-5 save drops the gate's and tank's last-synced columns and gains an empty Gate.lastOutput", async () => {
+    const engine = await makeGameEngine();
+    engine.applyMessage(new CreateObjectMessage(GateDefinition.typeId, 6, 6, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TankDefinition.typeId, 10, 10, Direction.UP));
+    const snapshot = engine.snapshots.serialize();
+    snapshot.saveFormat = 5;
+    const gate = snapshot.components.find(component => component.name === "Gate");
+    assert.equal(gate.rows.length, 1);
+    gate.fields = gate.fields.filter(field => field.name !== "lastOutput");
+    gate.fields.push({name: "lastOpen", kind: "i32"}, {name: "lastFluid", kind: "i32"});
+    for (const row of gate.rows) {
+        delete row.lastOutput;
+        row.lastOpen = 1;
+        row.lastFluid = 0;
+    }
+    const tank = snapshot.components.find(component => component.name === "Tank");
+    assert.equal(tank.rows.length, 1);
+    tank.fields.push({name: "lastType", kind: "item"});
+    for (const row of tank.rows) {
+        row.lastType = -1;
+    }
+
+    const migrated = migrateSnapshot(snapshot);
+    const upgradedGate = migrated.components.find(component => component.name === "Gate");
+    assert.ok(!upgradedGate.fields.some(field => field.name === "lastOpen" || field.name === "lastFluid"));
+    assert.equal(upgradedGate.rows[0].lastOpen, undefined);
+    assert.equal(upgradedGate.rows[0].lastFluid, undefined);
+    assert.ok(upgradedGate.fields.some(field => field.name === "lastOutput" && field.kind === "item"));
+    assert.equal(upgradedGate.rows[0].lastOutput, -1);
+    const upgradedTank = migrated.components.find(component => component.name === "Tank");
+    assert.ok(!upgradedTank.fields.some(field => field.name === "lastType"));
+    assert.equal(upgradedTank.rows[0].lastType, undefined);
+
+    const restored = await makeGameEngine();
+    assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
+    assert.equal(restored.placed.eidsOf(GateDefinition.typeId).length, 1);
+    assert.equal(restored.placed.eidsOf(TankDefinition.typeId).length, 1);
 });

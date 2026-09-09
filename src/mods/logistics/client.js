@@ -111,24 +111,11 @@ export class LogisticsClientMod extends AbstractClientMod {
         client.cache.register("logistics", LOGISTICS_SCHEMA, new LogisticsWriter(client.cache, client.session));
         this._terminalConfigLayer = new LogicTerminalConfigLayer(client.app, client.cache, client.modRegistry);
         this._wireLayer.bindObjects(client.objects);
-        // Patching the entry swaps the sprite through the derived layer's onCacheUpdate.
-        client.cache.subscribe("logistics.openById", (id, open) => {
-            client.objects.update(id, {gateOpen: open !== 0});
-        });
-        client.cache.subscribe("logistics.fluidById", (id, fluid) => {
-            client.objects.update(id, {gateFluid: fluid === 1});
-        });
         client.objects.onSet(entry => {
             if (isBeltType(entry.data.type)) {
                 this._onBeltSet(client, entry);
             }
             if (isGateType(entry.data.type)) {
-                // A re-set entry's data starts fresh; re-apply any cached off-default state.
-                const open = client.cache.mapGet("logistics.openById", entry.id);
-                const fluid = client.cache.mapGet("logistics.fluidById", entry.id);
-                if (open !== undefined || fluid !== undefined) {
-                    client.objects.update(entry.id, {gateOpen: open !== 0, gateFluid: fluid === 1});
-                }
                 this._predictGateMode(client, entry);
             }
             if (entry.data.type.conveys !== null) {
@@ -141,9 +128,6 @@ export class LogisticsClientMod extends AbstractClientMod {
         client.objects.onRemove(entry => {
             if (isBeltType(entry.data.type)) {
                 this._onBeltRemoved(client, entry);
-            }
-            if (isGateType(entry.data.type)) {
-                client.cache.writer("logistics").forget(entry.id);
             }
             if (entry.data.type.wireAnchor !== null) {
                 this._wireLayer.removeEndpoint(entry.id);
@@ -207,9 +191,9 @@ export class LogisticsClientMod extends AbstractClientMod {
         const hasItem = kinds.behind === CONVEYS_ITEM || kinds.front === CONVEYS_ITEM;
         const hasFluid = kinds.behind === CONVEYS_FLUID || kinds.front === CONVEYS_FLUID;
         if (hasFluid && !hasItem) {
-            client.cache.writer("logistics").predictFluid(entry.id, 1);
+            client.objects.update(entry.id, {fluid: 1});
         } else if (hasItem && !hasFluid) {
-            client.cache.writer("logistics").predictFluid(entry.id, 0);
+            client.objects.update(entry.id, {fluid: 0});
         }
     }
 

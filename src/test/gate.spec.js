@@ -13,7 +13,7 @@ import {CapturingSession} from "@/test/CapturingSession.js";
 import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 import {GateDefinition, BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
 import {SetGateOpenMessage} from "@/mods/logistics/common/messages.js";
-import {GateSetEvent, GateSetBatchEvent} from "@/mods/logistics/common/events.js";
+import {ObjectFieldsEvent, ObjectFieldsBatchEvent} from "@/common/ObjectEvents.js";
 import {PipeDefinition} from "@/mods/fluids/common/objectTypes.js";
 import {Pipes} from "@/mods/fluids/sim/Pipes.js";
 import {FLUID_TYPE_WATER, FLUID_TYPE_OIL} from "@/mods/fluids/common/constants.js";
@@ -240,28 +240,27 @@ test("a toggle applies at the next tick, batches the change, and syncs to late j
     assert.equal(def.store.open[def.row(eid)], 1, "the toggle is buffered, not instantaneous");
     game.runTick();
     assert.equal(def.store.open[def.row(eid)], 0, "the tick applied the buffered toggle");
-    const batch = player.events.find(event => event instanceof GateSetBatchEvent);
+    const batch = player.events.find(event => event instanceof ObjectFieldsBatchEvent);
     assert.ok(batch, "the tick's delta batch fanned out to the chunk's viewers");
-    const change = batch.explode().find(event => event.objectId === objectId);
-    assert.equal(change.open, 0);
-    assert.equal(change.fluid, 0);
+    const change = batch.explode().find(event => event.id === objectId);
+    assert.deepEqual(change.values, [0, 0, EMPTY], "open, fluid, lastOutput");
 
     // A redundant set applies with no delta, so no batch goes out.
     player.events.length = 0;
     game.dispatchMessage(new SetGateOpenMessage(objectId, 0), player);
     game.runTick();
-    assert.equal(player.events.find(event => event instanceof GateSetBatchEvent), undefined);
+    assert.equal(player.events.find(event => event instanceof ObjectFieldsBatchEvent), undefined);
 
     // A late joiner learns the closed gate through chunk sync.
     const joiner = new CapturingSession(2);
     game.connect(joiner);
     game.dispatchMessage(new SetViewportMessage([chunk]), joiner);
     const bundle = joiner.events.find(event => event.events !== undefined);
-    const synced = bundle.events.filter(event => event instanceof GateSetBatchEvent);
+    const synced = bundle.events.filter(event => event instanceof ObjectFieldsBatchEvent);
     assert.equal(synced.length, 1);
     const syncedGate = synced[0].explode()[0];
-    assert.equal(syncedGate.objectId, objectId);
-    assert.equal(syncedGate.open, 0);
+    assert.equal(syncedGate.id, objectId);
+    assert.deepEqual(syncedGate.values, [0, 0, EMPTY]);
 });
 
 test("a toggle without build rights is refused with a corrective event", async () => {
@@ -281,10 +280,10 @@ test("a toggle without build rights is refused with a corrective event", async (
     game.dispatchMessage(new SetGateOpenMessage(objectId, 0), intruder);
     game.runTick();
     assert.equal(def.store.open[def.row(eid)], 1, "the foreign toggle was refused");
-    const corrective = intruder.events.find(event => event instanceof GateSetEvent);
+    const corrective = intruder.events.find(event => event instanceof ObjectFieldsEvent);
     assert.ok(corrective, "the sender got the authoritative state back");
-    assert.equal(corrective.objectId, objectId);
-    assert.equal(corrective.open, 1);
+    assert.equal(corrective.id, objectId);
+    assert.deepEqual(corrective.values, [1, 0, EMPTY]);
 });
 
 test("gate state survives a save/load", async () => {
