@@ -1,5 +1,5 @@
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
-export const SAVE_FORMAT = 6;
+export const SAVE_FORMAT = 7;
 
 // What a save written before the stamp counts as.
 const UNSTAMPED_FORMAT = 0;
@@ -45,13 +45,56 @@ export const SAVE_MIGRATIONS = new Map([
             -1,
         ),
     })],
+    // Format 7 adds transport lanes: a save written before them holds no lane, cell or item rows.
+    [6, snapshot => ({
+        ...snapshot,
+        saveFormat: 7,
+        components: addComponents(snapshot.components, LANE_COMPONENTS),
+    })],
 ]);
+
+// The lane components as format 7 registers them, for the save that predates all three.
+const LANE_COMPONENTS = [
+    {
+        name: "Lane",
+        fields: [
+            {name: "headCell", kind: "eid"},
+            {name: "inPort", kind: "eid"},
+            {name: "outPort", kind: "eid"},
+            {name: "slotCount", kind: "i32"},
+            {name: "itemCount", kind: "i32"},
+            {name: "headGap", kind: "i32"},
+            {name: "firstItem", kind: "eid"},
+            {name: "lastItem", kind: "eid"},
+            {name: "nextItemRef", kind: "i32"},
+        ],
+    },
+    {
+        name: "LaneCell",
+        fields: [
+            {name: "lane", kind: "eid"},
+            {name: "childCell", kind: "eid"},
+            {name: "parentEdge", kind: "i32"},
+        ],
+    },
+    {
+        name: "LaneItem",
+        fields: [
+            {name: "lane", kind: "eid"},
+            {name: "nextItem", kind: "eid"},
+            {name: "itemTypeId", kind: "item"},
+            {name: "gap", kind: "i32"},
+            {name: "itemRef", kind: "i32"},
+        ],
+    },
+];
 
 // component.field -> kind, for format 4.
 const ID_FIELD_KINDS = new Map([
     ["PlacedObject.typeId", "type"],
     ["Port.item", "item"],
     ["BeltItem.type", "item"],
+    ["LaneItem.itemTypeId", "item"],
     ["Machine.slot0", "item"],
     ["Machine.slot1", "item"],
     ["Machine.slot2", "item"],
@@ -81,6 +124,21 @@ const RECORD_ID_FIELD_KINDS = new Map([
     ["ItemProduced.item_type", "item"],
     ["LogicRuleCondition.item_type", "item"],
 ]);
+
+/**
+ * Returns `components` with each named component appended, holding no rows; one already present is
+ * left alone.
+ * @param {object[]} components
+ * @param {{name: string, fields: {name: string, kind: string}[]}[]} added
+ * @returns {object[]}
+ */
+function addComponents(components, added) {
+    const present = new Set(components.map(component => component.name));
+    const missing = added
+        .filter(component => !present.has(component.name))
+        .map(component => ({name: component.name, fields: component.fields, rows: []}));
+    return components.concat(missing);
+}
 
 /**
  * Returns `components` with the listed fields' kinds replaced; a field not present is skipped.

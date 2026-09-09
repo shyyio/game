@@ -1,5 +1,41 @@
-import {edgeKey} from "@/common/portGeometry.js";
+import {edgeKey, portAt} from "@/common/portGeometry.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
+
+// The endpoint answer for a port nothing declares; shared and never written.
+const NO_ENDPOINTS = Object.freeze([]);
+
+/**
+ * @param {Map<number, number[]>} byPort
+ * @param {number} portEid
+ * @param {number} eid
+ * @returns {void}
+ */
+function push(byPort, portEid, eid) {
+    const held = byPort.get(portEid);
+    if (held === undefined) {
+        byPort.set(portEid, [eid]);
+        return;
+    }
+    held.push(eid);
+}
+
+/**
+ * @param {Map<number, number[]>} byPort
+ * @param {number} eid
+ * @returns {void}
+ */
+function remove(byPort, eid) {
+    for (const [portEid, held] of byPort) {
+        const index = held.indexOf(eid);
+        if (index === -1) {
+            continue;
+        }
+        held.splice(index, 1);
+        if (held.length === 0) {
+            byPort.delete(portEid);
+        }
+    }
+}
 
 /**
  * An Int32Array column indexed by port eid, owned by a module but grown with the Port component.
@@ -82,6 +118,65 @@ export class PortIndex {
         // Hooks returning the port eids a module still references in JS-only runtime state (belt
         // paths), so the sweep keeps them alive.
         this._pins = [];
+
+        // Port eid -> the placed objects declaring it as an output port, and as an input port, so
+        // a neighbor asks the edge who stands across it rather than scanning tiles.
+        this._producersByPort = new Map();
+        this._consumersByPort = new Map();
+    }
+
+    /**
+     * Binds a placed object to every port its type declares: producer of its outputs, consumer of
+     * its inputs.
+     * @param {number} eid
+     * @param {ObjectType} type
+     * @param {number} x
+     * @param {number} y
+     * @param {Direction} direction
+     * @returns {void}
+     */
+    bindEndpoints(eid, type, x, y, direction) {
+        for (const definition of type.activePorts("outputPorts")) {
+            const edge = portAt(definition, x, y, direction);
+            push(this._producersByPort, this.at(edge.x, edge.y, edge.direction), eid);
+        }
+        for (const definition of type.activePorts("inputPorts")) {
+            const edge = portAt(definition, x, y, direction);
+            push(this._consumersByPort, this.at(edge.x, edge.y, edge.direction), eid);
+        }
+    }
+
+    /**
+     * @param {number} eid
+     * @returns {void}
+     */
+    unbindEndpoints(eid) {
+        remove(this._producersByPort, eid);
+        remove(this._consumersByPort, eid);
+    }
+
+    /**
+     * @param {number} portEid
+     * @returns {number[]} the placed objects with an output port on that edge
+     */
+    producersOf(portEid) {
+        const held = this._producersByPort.get(portEid);
+        if (held === undefined) {
+            return NO_ENDPOINTS;
+        }
+        return held;
+    }
+
+    /**
+     * @param {number} portEid
+     * @returns {number[]} the placed objects with an input port on that edge
+     */
+    consumersOf(portEid) {
+        const held = this._consumersByPort.get(portEid);
+        if (held === undefined) {
+            return NO_ENDPOINTS;
+        }
+        return held;
     }
 
     /**
@@ -333,6 +428,8 @@ export class PortIndex {
         this._fluid.fill(0);
         this._fluidSource.fill(EMPTY);
         this._byEdge = new Map();
+        this._producersByPort = new Map();
+        this._consumersByPort = new Map();
         // The edge ports are those carrying Position; a port with none sits on no edge.
         const edgePorts = this.engine.world.query([this.def.store, this.engine.space.positionDef.store]);
         for (const eid of edgePorts) {

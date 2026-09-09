@@ -13,6 +13,7 @@ import {TransferResolver} from "@/sim/TransferResolver.js";
 import {RenderDiff} from "@/sim/RenderDiff.js";
 import {FieldSync} from "@/sim/FieldSync.js";
 import {PortIndex} from "@/sim/PortIndex.js";
+import {LaneIndex} from "@/sim/LaneIndex.js";
 import {SnapshotSerializer} from "@/sim/SnapshotSerializer.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 
@@ -79,6 +80,12 @@ export class GameEngine {
         this.components = new ComponentRegistry(this);
         this._initPortState();
         this._initSpatialState();
+
+        /**
+         * The transport lanes items step along, and the items on them.
+         * @type {LaneIndex}
+         */
+        this.lanes = new LaneIndex(this);
         this._initSaveState();
         this._registerCoreSystems();
         this._initRenderSinks();
@@ -122,6 +129,7 @@ export class GameEngine {
         this._chunkSyncers = [];
         this._inspectors = [];
         this._placementGuards = [];
+        this._spawnListeners = [];
         this._despawnListeners = [];
 
         // Decides whether a player may modify a chunk; without one every change is allowed.
@@ -224,6 +232,7 @@ export class GameEngine {
             this.systems[phase] = [];
         }
         this.transfers.registerSystems();
+        this.lanes.registerSystems();
         this.registerSystem(TickPhase.SUBMIT_INTENTS, () => {
             this.clock += 1;
         });
@@ -528,6 +537,27 @@ export class GameEngine {
      */
     placementGuardsAllow(type, x, y, direction) {
         return this._placementGuards.every(guard => guard(type, x, y, direction));
+    }
+
+    /**
+     * A mod registers a spawn listener, called for every placed-object create once its footprint is
+     * tracked, before its insert event.
+     * @param {function(number, number): void} listener - (eid, objectId)
+     * @returns {void}
+     */
+    registerSpawnListener(listener) {
+        this._spawnListeners.push(listener);
+    }
+
+    /**
+     * @param {number} eid
+     * @param {number} objectId
+     * @returns {void}
+     */
+    notifySpawn(eid, objectId) {
+        for (const listener of this._spawnListeners) {
+            listener(eid, objectId);
+        }
     }
 
     /**

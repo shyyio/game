@@ -50,6 +50,16 @@ export class AbstractBehavior {
     }
 
     /**
+     * The position layers this behavior's entities occupy facing `direction`. Objects on different
+     * layers coexist on a tile.
+     * @param {Direction} direction
+     * @returns {string[]}
+     */
+    positionLayers(direction) {
+        return [this.type.positionLayer];
+    }
+
+    /**
      * Whether `message` may spawn an entity (e.g. a required resource is present).
      * @param {GameEngine} engine
      * @param {ObjectType} type

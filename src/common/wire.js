@@ -3,6 +3,10 @@ import protobuf from "protobufjs";
 import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {PortItemSetEvent, PortItemClearEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
+import {
+    LaneGeometryEvent, LaneGeometryBatchEvent, LaneItemUpsertEvent, LaneItemSyncEvent,
+    LaneItemDeleteEvent, LaneItemResetEvent, LaneItemBatchEvent,
+} from "@/common/LaneEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {PlayerSettingsToolOrderSyncEvent} from "@/common/PlayerSettingsToolOrderEvents.js";
@@ -82,6 +86,13 @@ const CORE_WIRE_CLASSES = [
     TickEndEvent,
     ObjectFieldsEvent,
     ObjectFieldsBatchEvent,
+    LaneGeometryEvent,
+    LaneGeometryBatchEvent,
+    LaneItemUpsertEvent,
+    LaneItemSyncEvent,
+    LaneItemDeleteEvent,
+    LaneItemResetEvent,
+    LaneItemBatchEvent,
 ];
 
 /**

@@ -148,6 +148,58 @@ export class PlacedObjects {
     }
 
     /**
+     * The placed entity occupying a cell, NO_EID when it is free.
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {string} layer
+     * @returns {number}
+     */
+    eidAt(tileX, tileY, layer) {
+        const objectId = this.engine.space.ownerAt(tileX, tileY, layer);
+        if (objectId === null) {
+            return NO_EID;
+        }
+        const eid = this._eidByObjectId.get(objectId);
+        if (eid === undefined) {
+            throw new Error(`Cell ${tileX},${tileY} on layer ${layer} is owned by unknown object ${objectId}`);
+        }
+        return eid;
+    }
+
+    /**
+     * Places an object as the engine rather than a player, so sim code adds one without replaying a
+     * message.
+     * @param {object} config
+     * @param {number} config.typeId
+     * @param {number} config.tileX
+     * @param {number} config.tileY
+     * @param {Direction} config.direction
+     * @param {number} [config.placedBy]
+     * @returns {number} the eid, NO_EID when a guard or an occupied cell refused it
+     */
+    spawn({typeId, tileX, tileY, direction, placedBy = PLAYER_ID_NONE}) {
+        const message = new CreateObjectMessage(typeId, tileX, tileY, direction);
+        this._place(message, placedBy);
+        const type = this._types.get(typeId);
+        if (type === undefined) {
+            return NO_EID;
+        }
+        return this.eidAt(tileX, tileY, type.positionLayerTiles(message.direction)[0].layer);
+    }
+
+    /**
+     * Removes a placed object as the engine rather than a player.
+     * @param {number} eid
+     * @returns {void}
+     */
+    despawn(eid) {
+        const objectId = this.objectIdOf(eid);
+        this.engine.untrack(objectId);
+        this._delete(objectId, PLAYER_ID_NONE);
+        this.engine.ports.collectUnreferenced();
+    }
+
+    /**
      * The placed entity with object id `objectId`, or undefined.
      * @param {number} objectId
      * @returns {number|undefined}
@@ -245,6 +297,7 @@ export class PlacedObjects {
         this.def.store.objectId[row] = objectId;
         this.def.store.placedBy[row] = playerId;
         engine.space.setPosition(eid, message.x, message.y, message.direction);
+        engine.ports.bindEndpoints(eid, type, message.x, message.y, message.direction);
         type.behavior.onSpawn(engine, eid, type, message);
         const synced = type.behavior.syncedFields;
         if (synced !== null) {
@@ -256,6 +309,7 @@ export class PlacedObjects {
         this._eidByObjectId.set(objectId, eid);
         this._indexChunk(eid, message.x, message.y);
         this._notifyChunkChanged(chunkId(message.x, message.y));
+        engine.notifySpawn(eid, objectId);
         const portIds = type.behavior.renderedPortIds(engine, eid);
         engine.emitEvent(new ObjectInsertEvent(type.typeId, objectId, message.x, message.y, message.direction, portIds));
         engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_PLACED, playerId, type.typeId, 1);
@@ -277,6 +331,7 @@ export class PlacedObjects {
         const engine = this.engine;
         const position = engine.Position;
         const type = this._types.get(this.typeIdOf(eid));
+        engine.ports.unbindEndpoints(eid);
         type.behavior.onDespawn(engine, eid);
         engine.notifyDespawn(eid, objectId);
         const x = position.x[eid];
@@ -395,6 +450,7 @@ export class PlacedObjects {
             this._eidByObjectId.set(placedObject.objectId[row], eid);
             this._indexChunk(eid, position.x[eid], position.y[eid]);
             const type = this._types.get(placedObject.typeId[row]);
+            this.engine.ports.bindEndpoints(eid, type, position.x[eid], position.y[eid], position.direction[eid]);
             type.behavior.resyncRenderedPorts(this.engine, eid);
         }
         const rebuilt = new Set();

@@ -277,7 +277,7 @@ export class ObjectType {
      */
     positionLayerTiles(direction) {
         const cells = this.geometry.tiles(direction);
-        return [{layer: this.positionLayer, cells}];
+        return this.behavior.positionLayers(direction).map(layer => ({layer, cells}));
     }
 
     /**

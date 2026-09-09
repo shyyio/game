@@ -70,6 +70,18 @@ export {ExtractorBehavior} from "@/sim/behaviors/ExtractorBehavior.js";
 export {GeneratorBehavior} from "@/sim/behaviors/GeneratorBehavior.js";
 export {ResourceBehavior} from "@/sim/behaviors/ResourceBehavior.js";
 export {RoadBehavior} from "@/sim/behaviors/RoadBehavior.js";
+// One cell of a transport lane. The core derives the lane from the cells' geometry and owns the
+// step, the ports at both ends, the save and the client feed; `engine.lanes` reads it back. A cell
+// takes flow at `inLevel` and gives it at `outLevel`, so a run dives under or climbs over another.
+export {LaneBehavior} from "@/sim/behaviors/LaneBehavior.js";
+export {
+    LANE_LEVEL_SURFACE,
+    LANE_LEVEL_BURIED,
+    LANE_LEVEL_ELEVATED_1,
+    LANE_LEVEL_ELEVATED_2,
+    NO_LANE,
+    laneLevelLayer,
+} from "@/sim/LaneIndex.js";
 export {HousingBehavior} from "@/sim/behaviors/HousingBehavior.js";
 export {TickPhase} from "@/sim/GameEngine.js";
 export {EMPTY, NO_EID} from "@/sim/sentinels.js";
@@ -121,6 +133,15 @@ export {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 
 // Engine render deltas for the item resting in a render-flagged out-port.
 export {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
+
+// The lane feed: a lane's shape whenever it is rebuilt, and the item rows riding it.
+export {
+    LaneGeometryEvent,
+    LaneItemUpsertEvent,
+    LaneItemSyncEvent,
+    LaneItemDeleteEvent,
+    LaneItemResetEvent,
+} from "@/common/LaneEvents.js";
 
 // The joining session's own identity, and the friend list a mod may gate on.
 export {WelcomeEvent, FriendListEvent} from "@/common/PlayerEvents.js";

@@ -43,6 +43,7 @@ import {ObjectDrawLayer} from "@/client/layers/ObjectDrawLayer.js";
 import {ObjectGhostLayer} from "@/client/layers/ObjectGhostLayer.js";
 import {ObjectTool} from "@/client/input/ObjectTool.js";
 import {InspectHighlight} from "@/client/layers/InspectHighlight.js";
+import {LaneItemDrawLayer} from "@/client/layers/LaneItemDrawLayer.js";
 import {ItemDrawLayer} from "@/client/layers/ItemDrawLayer.js";
 import {ConnectionDrawLayer} from "@/client/layers/ConnectionDrawLayer.js";
 import {WorkerDrawLayer} from "@/client/layers/WorkerDrawLayer.js";
@@ -174,6 +175,8 @@ export class Client {
         // The single shared item layer: belts drive their computed-position items imperatively;
         // resting out-port items render here automatically from the port-item events.
         this.itemLayer = new ItemDrawLayer(this.modRegistry.items);
+        // Turns the core's lane feed into item sprites on the shared item layer.
+        this.laneItemLayer = new LaneItemDrawLayer(this.itemLayer);
         // Shared hover-highlight layer, driven by mods' inspect hover.
         this.inspectLayer = new InspectLayer();
         // The hovered item's bracket, drawn between the items and the objects carrying them.
@@ -249,6 +252,7 @@ export class Client {
         this.drawLayerRegistry.add(this.inspectLayer);
         this.drawLayerRegistry.add(this.itemInspectLayer);
         this.drawLayerRegistry.add(this.itemLayer);
+        this.drawLayerRegistry.add(this.laneItemLayer);
         this.drawLayerRegistry.add(this.connectionLayer);
         this.drawLayerRegistry.add(this.workerLayer);
         this.drawLayerRegistry.add(this.workerDebugLayer);

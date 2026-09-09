@@ -229,3 +229,23 @@ test("a format-5 save drops the gate's and tank's last-synced columns and gains 
     assert.equal(restored.placed.eidsOf(GateDefinition.typeId).length, 1);
     assert.equal(restored.placed.eidsOf(TankDefinition.typeId).length, 1);
 });
+
+test("a format-6 save gains the empty lane components", async () => {
+    const engine = await makeGameEngine();
+    const snapshot = engine.snapshots.serialize();
+    snapshot.saveFormat = 6;
+    const laneNames = new Set(["Lane", "LaneCell", "LaneItem"]);
+    snapshot.components = snapshot.components.filter(component => !laneNames.has(component.name));
+
+    const migrated = migrateSnapshot(snapshot);
+
+    assert.equal(migrated.saveFormat, SAVE_FORMAT);
+    for (const name of laneNames) {
+        const component = migrated.components.find(entry => entry.name === name);
+        assert.ok(component !== undefined, `${name} is added`);
+        assert.deepEqual(component.rows, [], `${name} comes back empty`);
+    }
+    const restored = await makeGameEngine();
+    assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
+    assert.deepEqual(restored.lanes.ids(), []);
+});
