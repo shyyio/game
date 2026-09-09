@@ -1,6 +1,6 @@
 import {ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent, ObjectFieldsEvent} from "@/common/ObjectEvents.js";
-import {TILE_VARIANT_LIMIT, chunkKey, tileKey, tileVariantKey} from "@/common/util.js";
+import {TILE_VARIANT_LIMIT, chunkKeyAt, tileKeyAt, tileVariantKey} from "@/common/util.js";
 import {portAt, edgeKey} from "@/common/portGeometry.js";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {DEV} from "@/common/env.js";
@@ -57,7 +57,7 @@ export class ObjectsWriter extends AbstractCacheWriter {
         if (event instanceof ChunkUnsubscribeEvent) {
             // The chunk index lives on the view; getByChunk returns a fresh array, so the
             // per-delete index updates can't disturb the iteration.
-            for (const entry of this._state.view("objects").getByChunk(event.chunk)) {
+            for (const entry of this._state.view("objects").getByChunk(event.chunkKey)) {
                 this._state.mapDelete("objects.byId", entry.id);
             }
         }
@@ -150,7 +150,7 @@ export class CacheEntry {
         this.id = id;
         this.tileX = tileX;
         this.tileY = tileY;
-        this.chunk = chunkKey(tileX, tileY);
+        this.chunkKey = chunkKeyAt(tileX, tileY);
         this.cells = cells;
         this.ports = ports;
         this.data = data;
@@ -344,7 +344,7 @@ export class ObjectsView extends AbstractCacheView {
      * @private
      */
     static _tileKey(tileX, tileY) {
-        return tileKey(tileX, tileY);
+        return tileKeyAt(tileX, tileY);
     }
 
     /**
@@ -366,7 +366,7 @@ export class ObjectsView extends AbstractCacheView {
             }
             this._layerCodes.set(layer, code);
         }
-        return tileVariantKey(tileKey(tileX, tileY), code);
+        return tileVariantKey(tileKeyAt(tileX, tileY), code);
     }
 
     /**
@@ -396,11 +396,11 @@ export class ObjectsView extends AbstractCacheView {
             tileEntries.push(entry);
         }
 
-        const chunkKeys = this._byChunk.get(entry.chunk);
-        if (chunkKeys === undefined) {
-            this._byChunk.set(entry.chunk, new Set([id]));
+        const objectRefs = this._byChunk.get(entry.chunkKey);
+        if (objectRefs === undefined) {
+            this._byChunk.set(entry.chunkKey, new Set([id]));
         } else {
-            chunkKeys.add(id);
+            objectRefs.add(id);
         }
 
         for (const cell of cells) {
@@ -453,11 +453,11 @@ export class ObjectsView extends AbstractCacheView {
             }
         }
 
-        const chunkKeys = this._byChunk.get(entry.chunk);
-        if (chunkKeys !== undefined) {
-            chunkKeys.delete(id);
-            if (chunkKeys.size === 0) {
-                this._byChunk.delete(entry.chunk);
+        const objectRefs = this._byChunk.get(entry.chunkKey);
+        if (objectRefs !== undefined) {
+            objectRefs.delete(id);
+            if (objectRefs.size === 0) {
+                this._byChunk.delete(entry.chunkKey);
             }
         }
 
@@ -539,7 +539,7 @@ export class ObjectsView extends AbstractCacheView {
         if (code === undefined) {
             return null;
         }
-        const stacked = this._byCell.get(tileVariantKey(tileKey(tileX, tileY), code));
+        const stacked = this._byCell.get(tileVariantKey(tileKeyAt(tileX, tileY), code));
         if (stacked === undefined) {
             return null;
         }
@@ -558,7 +558,7 @@ export class ObjectsView extends AbstractCacheView {
         if (code === undefined) {
             return [];
         }
-        const stacked = this._byCell.get(tileVariantKey(tileKey(tileX, tileY), code));
+        const stacked = this._byCell.get(tileVariantKey(tileKeyAt(tileX, tileY), code));
         if (stacked === undefined) {
             return [];
         }
@@ -581,16 +581,16 @@ export class ObjectsView extends AbstractCacheView {
     }
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {CacheEntry[]}
      */
-    getByChunk(chunk) {
-        const chunkKeys = this._byChunk.get(chunk);
-        if (chunkKeys === undefined) {
+    getByChunk(chunkKey) {
+        const objectRefs = this._byChunk.get(chunkKey);
+        if (objectRefs === undefined) {
             return [];
         }
         const entries = [];
-        for (const id of chunkKeys) {
+        for (const id of objectRefs) {
             entries.push(this._byId.get(id));
         }
         return entries;

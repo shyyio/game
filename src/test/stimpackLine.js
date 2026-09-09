@@ -162,7 +162,7 @@ function assignDepth(node, depth) {
  * @param {number} y
  * @returns {string}
  */
-function tileKey(x, y) {
+function tileKeyAt(x, y) {
     return `${x},${y}`;
 }
 
@@ -179,7 +179,7 @@ function markFootprint(occupied, type, x, y) {
     const extent = type.geometry.extent;
     for (let dy = 0; dy <= extent.y; dy += 1) {
         for (let dx = 0; dx <= extent.x; dx += 1) {
-            occupied.add(tileKey(x + dx, y + dy));
+            occupied.add(tileKeyAt(x + dx, y + dy));
         }
     }
 }
@@ -296,7 +296,7 @@ function layPath(engine, Definition, from, to, occupied) {
     let waypoints = null;
     for (let climb = 1; climb <= MAX_CLIMB_ATTEMPTS; climb += 1) {
         const candidate = pathWaypoints(from, to, climb);
-        const free = candidate.every(tile => !occupied.has(tileKey(tile.x, tile.y)));
+        const free = candidate.every(tile => !occupied.has(tileKeyAt(tile.x, tile.y)));
         if (free) {
             waypoints = candidate;
             break;
@@ -306,7 +306,7 @@ function layPath(engine, Definition, from, to, occupied) {
         throw new Error(`No collision-free path found from (${from.x},${from.y}) to (${to.x},${to.y})`);
     }
     for (const tile of waypoints) {
-        occupied.add(tileKey(tile.x, tile.y));
+        occupied.add(tileKeyAt(tile.x, tile.y));
     }
     for (let i = 0; i < waypoints.length; i += 1) {
         const cur = waypoints[i];

@@ -1,4 +1,4 @@
-import {cellNeighbors, tileKey} from "@/common/util.js";
+import {cellNeighbors, tileKeyAt} from "@/common/util.js";
 import {NEIGHBOR_DELTAS} from "@/common/constants.js";
 
 /**
@@ -8,7 +8,7 @@ import {NEIGHBOR_DELTAS} from "@/common/constants.js";
  * null for a tile holding no fresh housing.
  * @param {object} options
  * @param {{x: number, y: number}} options.seed
- * @param {Map<number, {x: number, y: number}>} options.roadTiles - keyed by {@link tileKey}
+ * @param {Map<number, {x: number, y: number}>} options.roadTiles - keyed by {@link tileKeyAt}
  * @param {Set<number>} options.seen - road tiles already claimed
  * @param {function(number, number): ({cells: {x: number, y: number}[]}|null)} options.housingAt
  * @param {function({x: number, y: number}): void} options.onRoad
@@ -19,7 +19,7 @@ export function floodRoadComponent({seed, roadTiles, seen, housingAt, onRoad, on
     const roadQueue = [seed];
     const housingQueue = [];
     const visit = (x, y) => {
-        const tile = tileKey(x, y);
+        const tile = tileKeyAt(x, y);
         const road = roadTiles.get(tile);
         if (road !== undefined) {
             if (seen.has(tile)) {

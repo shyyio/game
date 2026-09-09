@@ -2,12 +2,12 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {ClaimChunkMessage, SetViewportMessage, chunkKey} from "@spup/sdk";
+import {ClaimChunkMessage, SetViewportMessage, chunkKeyAt} from "@spup/sdk";
 import {NotePlaceMessage, NoteEditMessage, NoteDeleteMessage} from "./common/messages.js";
 import {NoteSetEvent, NoteDeleteEvent} from "./common/events.js";
 
-const CHUNK = chunkKey(0, 0);
-const FOREIGN_CHUNK = chunkKey(1000, 1000);
+const CHUNK = chunkKeyAt(0, 0);
+const FOREIGN_CHUNK = chunkKeyAt(1000, 1000);
 // ChunkPermission.PERMISSION_FRIENDS; the engine's claim enum is not part of the mod SDK.
 const PERMISSION_FRIENDS = 1;
 

@@ -3,7 +3,7 @@ import assert from "node:assert";
 
 import {AbstractChunkRoutedEvent} from "@/common/AbstractChunkRoutedEvent.js";
 import {AbstractEvent} from "@/common/AbstractEvent.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 
 test("AbstractChunkRoutedEvent derives its chunk from its tile position", () => {
     class WithFields extends AbstractChunkRoutedEvent {
@@ -13,7 +13,7 @@ test("AbstractChunkRoutedEvent derives its chunk from its tile position", () => 
     assert.ok(event instanceof AbstractEvent);
     assert.strictEqual(event.x, 70);
     assert.strictEqual(event.y, 5);
-    assert.strictEqual(event.chunk, chunkKey(70, 5));
+    assert.strictEqual(event.chunkKey, chunkKeyAt(70, 5));
 });
 
 test("a AbstractChunkRoutedEvent subclass without wireFields throws", () => {

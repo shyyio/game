@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction, CHUNK_SIZE} from "@/common/constants.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {EventCollector} from "@/test/EventCollector.js";
 import {Belts} from "@/mods/logistics/sim/Belts.js";
@@ -70,7 +70,7 @@ test("a move pass emits one belt item batch per chunk", async () => {
 
     const batches = emitted.filter(event => event instanceof BeltItemBatchEvent);
     assert.equal(batches.length, 2, "one batch per chunk");
-    const near = batches.find(batch => batch.chunk === chunkKey(0, 0));
+    const near = batches.find(batch => batch.chunkKey === chunkKeyAt(0, 0));
     assert.equal(near.upsertPathIds.length, 2, "both near paths ingested into one batch");
     assert.deepEqual(near.upsertItemTypeIds, [RED, RED]);
 });

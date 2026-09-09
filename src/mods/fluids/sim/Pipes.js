@@ -1,4 +1,4 @@
-import {TickPhase, EMPTY, NO_EID, Direction, chunkKey, chunkOrigin, tileKey, getOrCreate, removeFromGroup} from "@spup/sdk";
+import {TickPhase, EMPTY, NO_EID, Direction, chunkKeyAt, chunkOrigin, tileKeyAt, getOrCreate, removeFromGroup} from "@spup/sdk";
 import {PIPE_SEGMENT_CAPACITY, DIRECTIONS, joinedFluidType} from "../common/constants.js";
 import {
     PipeNetworkRecalculateEvent,
@@ -14,7 +14,7 @@ class PipeNetwork {
 
     /**
      * @param {number} netId
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {number} originX
      * @param {number} originY
      * @param {{x:number, y:number, id:number}[]} pipes
@@ -25,9 +25,9 @@ class PipeNetwork {
      * @param {number[]} inPorts
      * @param {{x:number, y:number, direction:number, neighborKey:number}[]} outEdges
      */
-    constructor(netId, chunk, originX, originY, pipes, tiles, fluidType, amount, capacity, inPorts, outEdges) {
+    constructor(netId, chunkKey, originX, originY, pipes, tiles, fluidType, amount, capacity, inPorts, outEdges) {
         this.netId = netId;
-        this.chunk = chunk;
+        this.chunkKey = chunkKey;
         this.originX = originX;
         this.originY = originY;
         this.pipes = pipes;
@@ -118,7 +118,7 @@ export class Pipes {
      * @returns {{id:number, fluidType:number, amount:number, capacity:number, size:number}|null}
      */
     networkAt(x, y) {
-        const net = this._networkByTile.get(tileKey(x, y));
+        const net = this._networkByTile.get(tileKeyAt(x, y));
         if (net === undefined) {
             return null;
         }
@@ -133,13 +133,13 @@ export class Pipes {
      * @returns {boolean}
      */
     canJoin(x, y) {
-        const chunk = chunkKey(x, y);
+        const chunkKey = chunkKeyAt(x, y);
         return joinedFluidType(direction => {
             const nx = x + Direction.dx(direction);
             const ny = y + Direction.dy(direction);
             const candidates = [];
-            if (chunkKey(nx, ny) === chunk) {
-                const net = this._networkByTile.get(tileKey(nx, ny));
+            if (chunkKeyAt(nx, ny) === chunkKey) {
+                const net = this._networkByTile.get(tileKeyAt(nx, ny));
                 if (net !== undefined) {
                     candidates.push(net.fluidType);
                 }
@@ -162,13 +162,13 @@ export class Pipes {
      */
     placePipe(x, y, id=undefined) {
         const pipe = {x, y, id: id === undefined ? this.engine.createObjectRef() : id};
-        this._pipeByTile.set(tileKey(x, y), pipe);
+        this._pipeByTile.set(tileKeyAt(x, y), pipe);
         this._pipeById.set(pipe.id, pipe);
 
         const component = this._collectComponent(pipe);
         const overlapping = new Set();
         for (const member of component) {
-            const held = this._networkByTile.get(tileKey(member.x, member.y));
+            const held = this._networkByTile.get(tileKeyAt(member.x, member.y));
             if (held !== undefined) {
                 overlapping.add(held);
             }
@@ -204,9 +204,9 @@ export class Pipes {
         if (pipe === undefined) {
             return false;
         }
-        const net = this._networkByTile.get(tileKey(pipe.x, pipe.y));
+        const net = this._networkByTile.get(tileKeyAt(pipe.x, pipe.y));
         this._dropNetwork(net);
-        this._pipeByTile.delete(tileKey(pipe.x, pipe.y));
+        this._pipeByTile.delete(tileKeyAt(pipe.x, pipe.y));
         this._pipeById.delete(id);
 
         const covered = new Set();
@@ -255,7 +255,7 @@ export class Pipes {
      * @returns {number} the amount added
      */
     addFluid(x, y, fluidType, amount) {
-        const net = this._networkByTile.get(tileKey(x, y));
+        const net = this._networkByTile.get(tileKeyAt(x, y));
         if (net === undefined) {
             throw new Error(`No pipe network at (${x}, ${y})`);
         }
@@ -277,8 +277,8 @@ export class Pipes {
      * @returns {object[]}
      */
     _collectComponent(pipe) {
-        const chunk = chunkKey(pipe.x, pipe.y);
-        const seen = new Set([tileKey(pipe.x, pipe.y)]);
+        const chunkKey = chunkKeyAt(pipe.x, pipe.y);
+        const seen = new Set([tileKeyAt(pipe.x, pipe.y)]);
         const stack = [pipe];
         const component = [];
         while (stack.length > 0) {
@@ -287,8 +287,8 @@ export class Pipes {
             for (const direction of DIRECTIONS) {
                 const nx = current.x + Direction.dx(direction);
                 const ny = current.y + Direction.dy(direction);
-                const key = tileKey(nx, ny);
-                if (seen.has(key) || chunkKey(nx, ny) !== chunk) {
+                const key = tileKeyAt(nx, ny);
+                if (seen.has(key) || chunkKeyAt(nx, ny) !== chunkKey) {
                     continue;
                 }
                 const neighbor = this._pipeByTile.get(key);
@@ -311,26 +311,26 @@ export class Pipes {
      * @returns {PipeNetwork}
      */
     _buildNetwork(pipes, fluidType, amount) {
-        const tiles = new Set(pipes.map(pipe => tileKey(pipe.x, pipe.y)));
+        const tiles = new Set(pipes.map(pipe => tileKeyAt(pipe.x, pipe.y)));
         const inPorts = [];
         const outEdges = [];
         for (const pipe of pipes) {
             for (const direction of DIRECTIONS) {
                 const nx = pipe.x + Direction.dx(direction);
                 const ny = pipe.y + Direction.dy(direction);
-                if (tiles.has(tileKey(nx, ny))) {
+                if (tiles.has(tileKeyAt(nx, ny))) {
                     continue;
                 }
                 const inPort = this.engine.ports.at(pipe.x, pipe.y, Direction.invert(direction));
                 this.engine.ports.markFluid(inPort);
                 inPorts.push(inPort);
-                outEdges.push({x: nx, y: ny, direction, neighborKey: tileKey(nx, ny)});
+                outEdges.push({x: nx, y: ny, direction, neighborKey: tileKeyAt(nx, ny)});
             }
         }
         const first = pipes[0];
         const net = new PipeNetwork(
             first.id,
-            chunkKey(first.x, first.y),
+            chunkKeyAt(first.x, first.y),
             first.x,
             first.y,
             pipes,
@@ -345,7 +345,7 @@ export class Pipes {
         for (const key of tiles) {
             this._networkByTile.set(key, net);
         }
-        getOrCreate(this._networksByChunk, net.chunk, () => new Set()).add(net);
+        getOrCreate(this._networksByChunk, net.chunkKey, () => new Set()).add(net);
         // An adopted producer out-port binds the type before the first payload.
         net.sourceGen = this.engine.ports.fluidSourceGeneration;
         if (net.fluidType === EMPTY) {
@@ -382,7 +382,7 @@ export class Pipes {
         for (const key of net.tiles) {
             this._networkByTile.delete(key);
         }
-        removeFromGroup(this._networksByChunk, net.chunk, net);
+        removeFromGroup(this._networksByChunk, net.chunkKey, net);
         for (const port of net.inPorts) {
             this.engine.ports.unmarkFluid(port);
         }
@@ -499,7 +499,7 @@ export class Pipes {
             if (!engine.observesTile(net.originX, net.originY)) {
                 continue;
             }
-            const batch = getOrCreate(batches, net.chunk, () => new PipeFluidBatchEvent(net.originX, net.originY));
+            const batch = getOrCreate(batches, net.chunkKey, () => new PipeFluidBatchEvent(net.originX, net.originY));
             batch.add(net.netId, net.fluidType, net.amount);
         }
         for (const batch of batches.values()) {
@@ -509,15 +509,15 @@ export class Pipes {
 
     /**
      * The events recreating `chunk`'s networks and fluid state for a just-subscribed session.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {object[]}
      */
-    chunkSync(chunk) {
-        const nets = this._networksByChunk.get(chunk);
+    chunkSync(chunkKey) {
+        const nets = this._networksByChunk.get(chunkKey);
         if (nets === undefined) {
             return [];
         }
-        const origin = chunkOrigin(chunk);
+        const origin = chunkOrigin(chunkKey);
         let topology = null;
         let fluid = null;
         for (const net of nets) {
@@ -577,7 +577,7 @@ export class Pipes {
      * @returns {void}
      */
     registerPipe(pipe) {
-        this._pipeByTile.set(tileKey(pipe.x, pipe.y), pipe);
+        this._pipeByTile.set(tileKeyAt(pipe.x, pipe.y), pipe);
         this._pipeById.set(pipe.id, pipe);
     }
 

@@ -78,8 +78,8 @@ export class OverworldDrawLayer extends AbstractDrawLayer {
             return;
         }
         this._lastCullKey = cullKey;
-        for (const [chunk, graphics] of this._graphics) {
-            const position = chunkPosition(chunk);
+        for (const [chunkKey, graphics] of this._graphics) {
+            const position = chunkPosition(chunkKey);
             graphics.visible = position.x >= left && position.x <= right
                 && position.y >= top && position.y <= bottom;
         }
@@ -87,17 +87,17 @@ export class OverworldDrawLayer extends AbstractDrawLayer {
 
     /**
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _dropChunk(chunk) {
-        const graphics = this._graphics.get(chunk);
+    _dropChunk(chunkKey) {
+        const graphics = this._graphics.get(chunkKey);
         if (graphics === undefined) {
             return;
         }
         this.removeChild(graphics);
         graphics.destroy();
-        this._graphics.delete(chunk);
+        this._graphics.delete(chunkKey);
     }
 
     /**
@@ -107,14 +107,14 @@ export class OverworldDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _drawChunk(entry) {
-        let graphics = this._graphics.get(entry.chunk);
+        let graphics = this._graphics.get(entry.chunkKey);
         if (graphics === undefined) {
             graphics = new Graphics();
-            const origin = chunkOrigin(entry.chunk);
+            const origin = chunkOrigin(entry.chunkKey);
             graphics.position.set(origin.x * TILE_SIZE, origin.y * TILE_SIZE);
             // Visible until the next cull pass re-evaluates it.
             this._lastCullKey = null;
-            this._graphics.set(entry.chunk, graphics);
+            this._graphics.set(entry.chunkKey, graphics);
             this.addChild(graphics);
         } else {
             graphics.clear();

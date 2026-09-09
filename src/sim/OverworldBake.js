@@ -1,5 +1,5 @@
 import {CHUNK_SIZE, REGION_SIZE} from "@/common/constants.js";
-import {chunkKey, chunkOrdinal, chunkOrigin} from "@/common/util.js";
+import {chunkKeyAt, chunkOrdinal, chunkOrigin} from "@/common/util.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 
 const REGION_HALF = REGION_SIZE / 2;
@@ -52,10 +52,10 @@ export class OverworldBake {
         const event = new OverworldSnapshotEvent(chunkX, chunkY, chunkWidth, chunkHeight);
         for (let cy = chunkY; cy < chunkY + chunkHeight; cy += 1) {
             for (let cx = chunkX; cx < chunkX + chunkWidth; cx += 1) {
-                const chunk = chunkOrdinal(cx, cy);
-                const bake = this._chunks.get(chunk);
+                const chunkKey = chunkOrdinal(cx, cy);
+                const bake = this._chunks.get(chunkKey);
                 if (bake !== undefined) {
-                    this._appendRuns(event, chunk, bake.tiles);
+                    this._appendRuns(event, chunkKey, bake.tiles);
                 }
             }
         }
@@ -66,11 +66,11 @@ export class OverworldBake {
      * Emits a chunk's tiles as row-constrained runs (each run draws as one rect).
      * @private
      * @param {OverworldSnapshotEvent} event
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {Uint16Array} tiles
      * @returns {void}
      */
-    _appendRuns(event, chunk, tiles) {
+    _appendRuns(event, chunkKey, tiles) {
         const starts = [];
         const lengths = [];
         const objectTypeIds = [];
@@ -99,19 +99,19 @@ export class OverworldBake {
                 runValue = value;
             }
         }
-        event.addChunk(chunk, starts, lengths, objectTypeIds);
+        event.addChunk(chunkKey, starts, lengths, objectTypeIds);
     }
 
     /**
      * Repaints one chunk's bake from its placed objects, dropping the record when none are visible.
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _repaintChunk(chunk) {
-        const eids = this.placed.eidsInChunk(chunk);
+    _repaintChunk(chunkKey) {
+        const eids = this.placed.eidsInChunk(chunkKey);
         if (eids.size === 0) {
-            this._chunks.delete(chunk);
+            this._chunks.delete(chunkKey);
             return;
         }
         // Higher drawLayerIndex paints last, matching map-mode z-order; objectRef ties keep it
@@ -124,9 +124,9 @@ export class OverworldBake {
             }
             return this.placed.objectRefOf(a) - this.placed.objectRefOf(b);
         });
-        const origin = chunkOrigin(chunk);
+        const origin = chunkOrigin(chunkKey);
         const position = this.engine.Position;
-        let bake = this._chunks.get(chunk);
+        let bake = this._chunks.get(chunkKey);
         if (bake === undefined) {
             bake = new OverworldChunkBake();
         } else {
@@ -150,11 +150,11 @@ export class OverworldBake {
             }
         }
         if (filled === 0) {
-            this._chunks.delete(chunk);
+            this._chunks.delete(chunkKey);
             return;
         }
         bake.filled = filled;
-        this._chunks.set(chunk, bake);
+        this._chunks.set(chunkKey, bake);
     }
 
     /**
@@ -169,7 +169,7 @@ export class OverworldBake {
         const touched = new Set();
         for (let row = 0; row < def.count; row += 1) {
             const eid = def.eids[row];
-            touched.add(chunkKey(position.x[eid], position.y[eid]));
+            touched.add(chunkKeyAt(position.x[eid], position.y[eid]));
         }
         for (const chunk of touched) {
             this._repaintChunk(chunk);

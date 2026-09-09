@@ -22,7 +22,7 @@ test("placing a splitter via CreateObjectMessage emits an ObjectInsertEvent; del
     assert.equal(insert.portRefs.length, 2, "out_a and out_b port refs sent");
 
     // Chunk sync recreates it.
-    const sync = flattenBatches(engine.chunkSync(insert.chunk));
+    const sync = flattenBatches(engine.chunkSync(insert.chunkKey));
     assert.ok(sync.some(event => event.objectRef === insert.objectRef), "splitter appears in chunk sync");
 
     // Delete removes it and emits a delete event.

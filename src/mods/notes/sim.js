@@ -1,4 +1,4 @@
-import {AbstractSimMod, chunkKey} from "@spup/sdk";
+import {AbstractSimMod, chunkKeyAt} from "@spup/sdk";
 import {NOTE_RECORD} from "./common/constants.js";
 import {NotePlaceMessage, NoteEditMessage, NoteDeleteMessage} from "./common/messages.js";
 import {NoteSetEvent, NoteDeleteEvent} from "./common/events.js";
@@ -29,12 +29,12 @@ export class NotesSimMod extends AbstractSimMod {
     /**
      * Sends the author names the chunk's incoming notes need, before their sync bundle.
      * @param {AbstractSession} session
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {Game} game
      * @returns {void}
      */
-    onChunkSubscribed(session, chunk, game) {
-        game.playerDirectory.syncUsernames(session.sessionRef, this._store.authorIdsIn(chunk));
+    onChunkSubscribed(session, chunkKey, game) {
+        game.playerDirectory.syncUsernames(session.sessionRef, this._store.authorIdsIn(chunkKey));
     }
 
     /**
@@ -83,9 +83,9 @@ export class NotesSimMod extends AbstractSimMod {
      * @private
      */
     _handlePlace(message, session, game) {
-        const chunk = chunkKey(message.tileX, message.tileY);
+        const chunkKey = chunkKeyAt(message.tileX, message.tileY);
         // Mod messages bypass the core placement gate, so notes check it themselves.
-        if (!game.simEngine.placementAllowed(session.playerRef, chunk)) {
+        if (!game.simEngine.placementAllowed(session.playerRef, chunkKey)) {
             return;
         }
         const existing = this._store.get(message.tileX, message.tileY);
@@ -133,8 +133,8 @@ export class NotesSimMod extends AbstractSimMod {
         if (note === null) {
             return;
         }
-        const chunk = chunkKey(message.tileX, message.tileY);
-        if (note.authorId !== session.playerRef && !game.simEngine.placementAllowed(session.playerRef, chunk)) {
+        const chunkKey = chunkKeyAt(message.tileX, message.tileY);
+        if (note.authorId !== session.playerRef && !game.simEngine.placementAllowed(session.playerRef, chunkKey)) {
             return;
         }
         this._store.delete(message.tileX, message.tileY);

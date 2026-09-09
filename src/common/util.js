@@ -54,7 +54,7 @@ export function chunkOrdinal(chunkX, chunkY) {
  * @param {number} y tile y
  * @returns {number}
  */
-export function chunkKey(x, y) {
+export function chunkKeyAt(x, y) {
     return chunkOrdinal(Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE));
 }
 
@@ -66,7 +66,7 @@ export function chunkKey(x, y) {
  * @param {number} y tile y
  * @returns {number}
  */
-export function tileKey(x, y) {
+export function tileKeyAt(x, y) {
     // Called per spatial lookup, so the bounds check is dev-only: out of the box it returns a
     // colliding key rather than throwing.
     if (DEV && (x < -TILE_HALF || x >= TILE_HALF || y < -TILE_HALF || y >= TILE_HALF)) {
@@ -78,7 +78,7 @@ export function tileKey(x, y) {
 /**
  * A tile key qualified by `variant` (a position layer, a direction), so one index can hold several
  * entries per tile.
- * @param {number} tile a {@link tileKey}
+ * @param {number} tile a {@link tileKeyAt}
  * @param {number} variant below {@link TILE_VARIANT_LIMIT}
  * @returns {number}
  */
@@ -98,11 +98,11 @@ export function inRegion(chunkX, chunkY) {
 
 /**
  * The chunk's edge neighbors, clipped to the region.
- * @param {number} chunk
+ * @param {number} chunkKey
  * @returns {number[]}
  */
-export function chunkNeighbors(chunk) {
-    const position = chunkPosition(chunk);
+export function chunkNeighbors(chunkKey) {
+    const position = chunkPosition(chunkKey);
     const neighbors = [];
     for (const delta of NEIGHBOR_DELTAS) {
         const x = position.x + delta.dx;
@@ -115,35 +115,35 @@ export function chunkNeighbors(chunk) {
 }
 
 /**
- * Inverse of {@link chunkKey}: the chunk coordinate (chunkX, chunkY) of a chunk key.
- * @param {number} chunk
+ * Inverse of {@link chunkKeyAt}: the chunk coordinate (chunkX, chunkY) of a chunk key.
+ * @param {number} chunkKey
  * @returns {{x: number, y: number}}
  */
-export function chunkPosition(chunk) {
+export function chunkPosition(chunkKey) {
     return {
-        x: chunk % REGION_SIZE - REGION_HALF,
-        y: Math.floor(chunk / REGION_SIZE) - REGION_HALF,
+        x: chunkKey % REGION_SIZE - REGION_HALF,
+        y: Math.floor(chunkKey / REGION_SIZE) - REGION_HALF,
     };
 }
 
 /**
  * The tile position of a chunk's top-left corner, the origin chunk-relative tile coordinates count
  * from.
- * @param {number} chunk
+ * @param {number} chunkKey
  * @returns {{x: number, y: number}}
  */
-export function chunkOrigin(chunk) {
-    const position = chunkPosition(chunk);
+export function chunkOrigin(chunkKey) {
+    const position = chunkPosition(chunkKey);
     return {x: position.x * CHUNK_SIZE, y: position.y * CHUNK_SIZE};
 }
 
 /**
  * The tile position of a chunk's center.
- * @param {number} chunk
+ * @param {number} chunkKey
  * @returns {{x: number, y: number}}
  */
-export function chunkCenter(chunk) {
-    const origin = chunkOrigin(chunk);
+export function chunkCenter(chunkKey) {
+    const origin = chunkOrigin(chunkKey);
     return {x: origin.x + CHUNK_SIZE / 2, y: origin.y + CHUNK_SIZE / 2};
 }
 

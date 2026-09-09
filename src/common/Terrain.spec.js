@@ -8,7 +8,7 @@ import {ModRegistry} from "@/common/ModRegistry.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
 import {CHUNK_SIZE, REGION_SIZE} from "@/common/constants.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 
 class TerrainDeclaration extends AbstractModDeclaration {
 
@@ -120,11 +120,11 @@ test("biomeAt is deterministic and honors first-match order", () => {
 test("bakeChunk lays tiles out row-major and caches the array", () => {
     const registry = standardLoadout();
     const terrain = new Terrain(new WorldNoise(3, registry.noiseChannels), registry.biomes);
-    const chunk = chunkKey(CHUNK_SIZE * 2, CHUNK_SIZE * -3);
-    const bake = terrain.bakeChunk(chunk);
+    const chunkKey = chunkKeyAt(CHUNK_SIZE * 2, CHUNK_SIZE * -3);
+    const bake = terrain.bakeChunk(chunkKey);
     assert.equal(bake.biomes.length, CHUNK_SIZE * CHUNK_SIZE);
     assert.equal(bake.biomes[5 * CHUNK_SIZE + 7], terrain.biomeAt(CHUNK_SIZE * 2 + 7, CHUNK_SIZE * -3 + 5));
-    assert.equal(terrain.bakeChunk(chunk), bake);
+    assert.equal(terrain.bakeChunk(chunkKey), bake);
     assert.ok(bake.weights.some(weight => weight > 0), "some tiles blend");
     for (let index = 0; index < bake.biomes.length; index++) {
         assert.ok(bake.weights[index] <= BLEND_WEIGHT_SCALE);
@@ -269,5 +269,5 @@ test("a loadout with no biomes classifies every tile as biome 0 with no blend, a
     assert.equal(terrain.biomeAt(3, 4), 0);
     const tile = terrain.classify(-20, 9);
     assert.deepEqual([tile.biomeId, tile.otherId, tile.weight], [0, 0, 0]);
-    assert.equal(terrain.bakeChunk(chunkKey(0, 0)).biomes.length, CHUNK_SIZE * CHUNK_SIZE);
+    assert.equal(terrain.bakeChunk(chunkKeyAt(0, 0)).biomes.length, CHUNK_SIZE * CHUNK_SIZE);
 });

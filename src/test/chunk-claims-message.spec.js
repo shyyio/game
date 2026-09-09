@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {Direction, PLAYER_REF_NONE} from "@/common/constants.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {CreateObjectMessage, DeleteObjectMessage, SetViewportMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
@@ -56,10 +56,10 @@ test("connect syncs identity, the own name, own claims, and friends", async () =
 
 test("a claim reaches the chunk's viewers, name first, and skips the rest", async () => {
     const {game, alice, bob} = await setup();
-    const chunk = chunkKey(5, 5);
-    game.dispatchMessage(new SetViewportMessage([chunk]), bob);
+    const chunkKey = chunkKeyAt(5, 5);
+    game.dispatchMessage(new SetViewportMessage([chunkKey]), bob);
     bob.events.length = 0;
-    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), alice);
 
     const result = alice.events.find(event => event instanceof ClaimResultEvent);
     assert.equal(result.result, ClaimResult.CLAIM_RESULT_OK);
@@ -70,13 +70,13 @@ test("a claim reaches the chunk's viewers, name first, and skips the rest", asyn
     assert.ok(nameIndex >= 0, "the viewer learns the owner's name");
     assert.ok(updateIndex > nameIndex, "the name precedes the update");
     const update = bob.events[updateIndex];
-    assert.equal(update.chunk, chunk);
+    assert.equal(update.chunkKey, chunkKey);
     assert.equal(update.playerRef, ALICE);
 
     const charlie = new CapturingSession(3);
     game.connect(charlie);
     charlie.events.length = 0;
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(69, 5)), alice);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(69, 5)), alice);
     assert.ok(
         !charlie.events.some(event => event instanceof ChunkClaimUpdateEvent),
         "a session without the chunk in view hears nothing",
@@ -85,40 +85,40 @@ test("a claim reaches the chunk's viewers, name first, and skips the rest", asyn
 
 test("the acting player's session gets the update without viewing the chunk", async () => {
     const {game, alice} = await setup();
-    const chunk = chunkKey(5, 5);
-    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+    const chunkKey = chunkKeyAt(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), alice);
 
     const update = alice.events.find(event => event instanceof ChunkClaimUpdateEvent);
-    assert.equal(update.chunk, chunk);
+    assert.equal(update.chunkKey, chunkKey);
     assert.equal(update.playerRef, ALICE);
 });
 
 test("a viewport gaining a claimed chunk is seeded its claim and owner name", async () => {
     const {game, alice, bob} = await setup();
-    const chunk = chunkKey(5, 5);
-    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
-    game.dispatchMessage(new SetViewportMessage([chunk]), bob);
+    const chunkKey = chunkKeyAt(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), alice);
+    game.dispatchMessage(new SetViewportMessage([chunkKey]), bob);
 
     const names = bob.events.find(event => event instanceof PlayerNamesEvent);
     assert.deepEqual(names.playerRefs, [ALICE]);
     const update = bob.events.find(event => event instanceof ChunkClaimUpdateEvent);
-    assert.equal(update.chunk, chunk);
+    assert.equal(update.chunkKey, chunkKey);
     assert.equal(update.playerRef, ALICE);
 
     // Leaving and returning re-seeds the claim, but a known name never resends.
     bob.events.length = 0;
     game.dispatchMessage(new SetViewportMessage([]), bob);
-    game.dispatchMessage(new SetViewportMessage([chunk]), bob);
+    game.dispatchMessage(new SetViewportMessage([chunkKey]), bob);
     assert.ok(bob.events.some(event => event instanceof ChunkClaimUpdateEvent));
     assert.ok(!bob.events.some(event => event instanceof PlayerNamesEvent));
 });
 
 test("a rejected claim answers only the requester", async () => {
     const {game, alice, bob} = await setup();
-    const chunk = chunkKey(5, 5);
-    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+    const chunkKey = chunkKeyAt(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), alice);
     bob.events.length = 0;
-    game.dispatchMessage(new ClaimChunkMessage(chunk), bob);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), bob);
 
     const result = bob.events.find(event => event instanceof ClaimResultEvent);
     assert.equal(result.result, ClaimResult.CLAIM_RESULT_OWNED);
@@ -130,14 +130,14 @@ test("building in an unclaimed chunk is rejected until claimed", async () => {
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
     assert.equal(machineCount(game), 0, "unclaimed build rejected");
 
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), alice);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
     assert.equal(machineCount(game), 1, "claiming unlocks the chunk");
 });
 
 test("building in a foreign chunk is rejected until the owner grants it", async () => {
     const {game, alice, bob} = await setup();
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), alice);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), alice);
 
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 0, "stranger's build rejected");
@@ -153,54 +153,54 @@ test("building in a foreign chunk is rejected until the owner grants it", async 
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 10, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1, "alice's grant alone gives bob nothing under the only-me default");
 
-    game.dispatchMessage(new SetChunkPermissionMessage(chunkKey(5, 5), ChunkPermission.PERMISSION_FRIENDS), alice);
+    game.dispatchMessage(new SetChunkPermissionMessage(chunkKeyAt(5, 5), ChunkPermission.PERMISSION_FRIENDS), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 10, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 2, "alice's grant lets bob build once permission is friends-only");
 });
 
 test("a claim defaults to only-me permission", async () => {
     const {game, alice} = await setup();
-    const chunk = chunkKey(5, 5);
-    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
-    assert.equal(game.claims.permissionOf(chunk), ChunkPermission.PERMISSION_ONLY_ME);
+    const chunkKey = chunkKeyAt(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), alice);
+    assert.equal(game.claims.permissionOf(chunkKey), ChunkPermission.PERMISSION_ONLY_ME);
 });
 
 test("friends permission lets a friend-granted player build, only-me blocks them", async () => {
     const {game, alice, bob} = await setup();
-    const chunk = chunkKey(5, 5);
-    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+    const chunkKey = chunkKeyAt(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), alice);
     game.dispatchMessage(new AddFriendMessage(BOB), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 0, "only-me default blocks bob despite the grant");
 
-    game.dispatchMessage(new SetChunkPermissionMessage(chunk, ChunkPermission.PERMISSION_FRIENDS), alice);
+    game.dispatchMessage(new SetChunkPermissionMessage(chunkKey, ChunkPermission.PERMISSION_FRIENDS), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1, "the grant lets bob build once permission is friends-only");
 
-    game.dispatchMessage(new SetChunkPermissionMessage(chunk, ChunkPermission.PERMISSION_ONLY_ME), alice);
+    game.dispatchMessage(new SetChunkPermissionMessage(chunkKey, ChunkPermission.PERMISSION_ONLY_ME), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 10, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1, "only-me overrides bob's existing grant");
 });
 
 test("a non-owner's permission change is ignored", async () => {
     const {game, alice, bob} = await setup();
-    const chunk = chunkKey(5, 5);
-    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+    const chunkKey = chunkKeyAt(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), alice);
 
-    game.dispatchMessage(new SetChunkPermissionMessage(chunk, ChunkPermission.PERMISSION_FRIENDS), bob);
-    assert.equal(game.claims.permissionOf(chunk), ChunkPermission.PERMISSION_ONLY_ME, "bob owns nothing here");
+    game.dispatchMessage(new SetChunkPermissionMessage(chunkKey, ChunkPermission.PERMISSION_FRIENDS), bob);
+    assert.equal(game.claims.permissionOf(chunkKey), ChunkPermission.PERMISSION_ONLY_ME, "bob owns nothing here");
 });
 
 test("a permission change reaches the chunk's viewers", async () => {
     const {game, alice, bob} = await setup();
-    const chunk = chunkKey(5, 5);
-    game.dispatchMessage(new SetViewportMessage([chunk]), bob);
-    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+    const chunkKey = chunkKeyAt(5, 5);
+    game.dispatchMessage(new SetViewportMessage([chunkKey]), bob);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), alice);
     bob.events.length = 0;
 
-    game.dispatchMessage(new SetChunkPermissionMessage(chunk, ChunkPermission.PERMISSION_ONLY_ME), alice);
+    game.dispatchMessage(new SetChunkPermissionMessage(chunkKey, ChunkPermission.PERMISSION_ONLY_ME), alice);
     const update = bob.events.find(event => event instanceof ChunkClaimUpdateEvent);
-    assert.equal(update.chunk, chunk);
+    assert.equal(update.chunkKey, chunkKey);
     assert.equal(update.playerRef, ALICE);
     assert.equal(update.permission, ChunkPermission.PERMISSION_ONLY_ME);
 });
@@ -262,7 +262,7 @@ test("add-friend-by-code on your own code answers not found", async () => {
 test("deleting in a foreign chunk is rejected and leaves occupancy intact", async () => {
     const {game, alice, bob} = await setup();
     const engine = game.simEngine;
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), alice);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
     const eid = engine.placed.eidsOf(BlenderType.objectTypeId)[0];
     const objectRef = engine.placed.objectRefOf(eid);
@@ -279,28 +279,28 @@ test("deleting in a foreign chunk is rejected and leaves occupancy intact", asyn
 
 test("unclaiming a non-empty chunk needs the clear confirmation, which deletes the objects", async () => {
     const {game, alice} = await setup();
-    const chunk = chunkKey(5, 5);
-    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+    const chunkKey = chunkKeyAt(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
     alice.events.length = 0;
 
-    game.dispatchMessage(new UnclaimChunkMessage(chunk), alice);
+    game.dispatchMessage(new UnclaimChunkMessage(chunkKey), alice);
     const rejected = alice.events.find(event => event instanceof ClaimResultEvent);
     assert.equal(rejected.result, ClaimResult.CLAIM_RESULT_NOT_EMPTY);
-    assert.equal(game.claims.ownerOf(chunk), ALICE, "still claimed");
+    assert.equal(game.claims.ownerOf(chunkKey), ALICE, "still claimed");
     assert.equal(machineCount(game), 1, "nothing deleted on the rejection");
 
-    game.dispatchMessage(new UnclaimChunkMessage(chunk, true), alice);
-    assert.equal(game.claims.ownerOf(chunk), PLAYER_REF_NONE);
+    game.dispatchMessage(new UnclaimChunkMessage(chunkKey, true), alice);
+    assert.equal(game.claims.ownerOf(chunkKey), PLAYER_REF_NONE);
     assert.equal(machineCount(game), 0, "the confirmation cleared the chunk");
 });
 
 test("a splitting unclaim rejects with WOULD_SPLIT before the non-empty confirmation", async () => {
     const {game, alice} = await setup();
-    const middle = chunkKey(69, 5);
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), alice);
+    const middle = chunkKeyAt(69, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), alice);
     game.dispatchMessage(new ClaimChunkMessage(middle), alice);
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(133, 5)), alice);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(133, 5)), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 69, 5, Direction.UP), alice);
     alice.events.length = 0;
 
@@ -313,14 +313,14 @@ test("a splitting unclaim rejects with WOULD_SPLIT before the non-empty confirma
 
 test("unclaim frees the chunk for other players and tells its viewers", async () => {
     const {game, alice, bob} = await setup();
-    const chunk = chunkKey(5, 5);
-    game.dispatchMessage(new SetViewportMessage([chunk]), bob);
-    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
-    game.dispatchMessage(new UnclaimChunkMessage(chunk), alice);
+    const chunkKey = chunkKeyAt(5, 5);
+    game.dispatchMessage(new SetViewportMessage([chunkKey]), bob);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), alice);
+    game.dispatchMessage(new UnclaimChunkMessage(chunkKey), alice);
 
     const update = bob.events.filter(event => event instanceof ChunkClaimUpdateEvent).at(-1);
     assert.equal(update.playerRef, PLAYER_REF_NONE);
-    game.dispatchMessage(new ClaimChunkMessage(chunk), bob);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), bob);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1);
 });

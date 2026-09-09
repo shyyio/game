@@ -22,7 +22,7 @@ import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from 
 import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ChunkPermission} from "@/common/ClaimEvents.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
 import {GAME_VERSION, PLAYER_REF_NONE} from "@/common/constants.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 
 // Core-only registry: common/ must not depend on mods/. Mod wire classes are
 // covered by their own specs (e.g. src/mods/Logistics/wire.spec.js).
@@ -52,7 +52,7 @@ function roundTrip(reg, instance, cls) {
 
 test("Round-trips a SetViewportMessage", () => {
     const reg = registry();
-    roundTrip(reg, new SetViewportMessage([0, 1, chunkKey(-64, 128)]), SetViewportMessage);
+    roundTrip(reg, new SetViewportMessage([0, 1, chunkKeyAt(-64, 128)]), SetViewportMessage);
 });
 
 test("Round-trips a PortItemSetEvent with a port ref", () => {
@@ -71,28 +71,28 @@ test("Round-trips a PortItemBatchEvent's packed columns", () => {
 
 test("Round-trips chunk subscribe/unsubscribe events, recovering the chunk key", () => {
     const reg = registry();
-    const chunk = chunkKey(128, -192);
-    roundTrip(reg, new ChunkSubscribeEvent(chunk), ChunkSubscribeEvent);
-    roundTrip(reg, new ChunkUnsubscribeEvent(chunk), ChunkUnsubscribeEvent);
+    const chunkKey = chunkKeyAt(128, -192);
+    roundTrip(reg, new ChunkSubscribeEvent(chunkKey), ChunkSubscribeEvent);
+    roundTrip(reg, new ChunkUnsubscribeEvent(chunkKey), ChunkUnsubscribeEvent);
     // The chunk key is wired directly.
-    const decoded = reg.decode(reg.encode(new ChunkUnsubscribeEvent(chunk)));
-    assert.strictEqual(decoded.chunk, chunk);
+    const decoded = reg.decode(reg.encode(new ChunkUnsubscribeEvent(chunkKey)));
+    assert.strictEqual(decoded.chunkKey, chunkKey);
 });
 
 test("ChunkSyncEvent round-trips its bundle of polymorphic inner events", () => {
     const reg = registry();
-    const chunk = chunkKey(128, -192);
+    const chunkKey = chunkKeyAt(128, -192);
     const inner = [
-        new ChunkSubscribeEvent(chunk),
+        new ChunkSubscribeEvent(chunkKey),
         new GameSettingsUpdateEvent(7, 70),
     ];
-    const decoded = reg.decode(reg.encode(new ChunkSyncEvent(chunk, inner)));
+    const decoded = reg.decode(reg.encode(new ChunkSyncEvent(chunkKey, inner)));
 
     assert.ok(decoded instanceof ChunkSyncEvent);
-    assert.strictEqual(decoded.chunk, chunk);
+    assert.strictEqual(decoded.chunkKey, chunkKey);
     assert.strictEqual(decoded.events.length, 2);
     assert.ok(decoded.events[0] instanceof ChunkSubscribeEvent);
-    assert.strictEqual(decoded.events[0].chunk, chunk);
+    assert.strictEqual(decoded.events[0].chunkKey, chunkKey);
     assert.ok(decoded.events[1] instanceof GameSettingsUpdateEvent);
     assert.strictEqual(decoded.events[1].key, 7);
     assert.strictEqual(decoded.events[1].value, 70);

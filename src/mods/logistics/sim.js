@@ -1,4 +1,4 @@
-import {AbstractSimMod, chunkKey} from "@spup/sdk";
+import {AbstractSimMod, chunkKeyAt} from "@spup/sdk";
 import {
     SetGateOpenMessage,
     WireLinkMessage,
@@ -110,7 +110,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         const x = engine.Position.x[eid];
         const y = engine.Position.y[eid];
         // Mod messages bypass the core placement gate, so gates check build rights themselves.
-        if (!engine.placementAllowed(session.playerRef, chunkKey(x, y))) {
+        if (!engine.placementAllowed(session.playerRef, chunkKeyAt(x, y))) {
             // Correct the sender's optimistic flip with the authoritative state.
             game.bus.publishTo(session.sessionRef, engine.sync.eventFor(engine.components.get("Gate"), eid));
             return;
@@ -146,8 +146,8 @@ export class LogisticsSimMod extends AbstractSimMod {
             return null;
         }
         // Mod messages bypass the core placement gate, so wires check build rights themselves.
-        if (!engine.placementAllowed(session.playerRef, chunkKey(position.x[aEid], position.y[aEid]))
-            || !engine.placementAllowed(session.playerRef, chunkKey(position.x[bEid], position.y[bEid]))) {
+        if (!engine.placementAllowed(session.playerRef, chunkKeyAt(position.x[aEid], position.y[aEid]))
+            || !engine.placementAllowed(session.playerRef, chunkKeyAt(position.x[bEid], position.y[bEid]))) {
             return null;
         }
         return {aEid, bEid};
@@ -281,7 +281,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         // Mod messages bypass the core placement gate, so rules check build rights themselves.
         const x = engine.Position.x[eid];
         const y = engine.Position.y[eid];
-        if (!engine.placementAllowed(session.playerRef, chunkKey(x, y))) {
+        if (!engine.placementAllowed(session.playerRef, chunkKeyAt(x, y))) {
             return;
         }
         const ruleCount = message.actionDeviceIds.length;

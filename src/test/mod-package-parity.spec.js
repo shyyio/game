@@ -15,7 +15,7 @@ import {CapturingSession} from "@/test/CapturingSession.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {Direction} from "@/common/constants.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {MOD_PART_SIM, MOD_PART_CLIENT} from "@/common/ModManifest.js";
 import {simLoadout, MOD_DIRS} from "@/mods/loadout.js";
@@ -116,7 +116,7 @@ test("a packaged loadout runs a game", async () => {
     // A Market object type placed on a claimed chunk: the sim part's behavior only reaches the
     // right entities if it shares the core's ObjectType instances with the declaration.
     const terminal = registry.objectTypes.find(type => type.name === "TradingTerminal");
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(3, 3)), session);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(3, 3)), session);
     game.dispatchMessage(new CreateObjectMessage(terminal.objectTypeId, 3, 3, Direction.UP), session);
     game.runTick();
 

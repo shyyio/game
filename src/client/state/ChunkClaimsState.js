@@ -60,21 +60,21 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
         }
         if (event instanceof ChunkClaimUpdateEvent) {
             if (event.playerRef === PLAYER_REF_NONE) {
-                this._state.mapDelete("chunkClaims.ownerByChunk", event.chunk);
-                this._state.mapDelete("chunkClaims.permissionByChunk", event.chunk);
-                this._state.setDelete("chunkClaims.ownChunks", event.chunk);
+                this._state.mapDelete("chunkClaims.ownerByChunk", event.chunkKey);
+                this._state.mapDelete("chunkClaims.permissionByChunk", event.chunkKey);
+                this._state.setDelete("chunkClaims.ownChunks", event.chunkKey);
                 return;
             }
-            this._state.mapSet("chunkClaims.ownerByChunk", event.chunk, event.playerRef);
-            this._state.mapSet("chunkClaims.permissionByChunk", event.chunk, event.permission);
+            this._state.mapSet("chunkClaims.ownerByChunk", event.chunkKey, event.playerRef);
+            this._state.mapSet("chunkClaims.permissionByChunk", event.chunkKey, event.permission);
             if (event.playerRef === this._state.get("chunkClaims.ownPlayerRef")) {
-                this._state.setAdd("chunkClaims.ownChunks", event.chunk);
+                this._state.setAdd("chunkClaims.ownChunks", event.chunkKey);
             }
             return;
         }
         if (event instanceof ChunkSubscribeEvent) {
             // A stale foreign entry resets before the seeded update (claimed chunks only) lands.
-            this._dropForeign(event.chunk);
+            this._dropForeign(event.chunkKey);
             return;
         }
         if (event instanceof OverworldSnapshotEvent) {
@@ -112,14 +112,14 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
      * Removes a chunk's ownership entry unless it is the own player's (own claims track the
      * targeted updates alone).
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _dropForeign(chunk) {
-        const owner = this._state.mapGet("chunkClaims.ownerByChunk", chunk);
+    _dropForeign(chunkKey) {
+        const owner = this._state.mapGet("chunkClaims.ownerByChunk", chunkKey);
         if (owner !== undefined && owner !== this._state.get("chunkClaims.ownPlayerRef")) {
-            this._state.mapDelete("chunkClaims.ownerByChunk", chunk);
-            this._state.mapDelete("chunkClaims.permissionByChunk", chunk);
+            this._state.mapDelete("chunkClaims.ownerByChunk", chunkKey);
+            this._state.mapDelete("chunkClaims.permissionByChunk", chunkKey);
         }
     }
 }
@@ -151,11 +151,11 @@ export class ChunkClaimsView extends AbstractCacheView {
     }
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {number} the owning playerRef, or PLAYER_REF_NONE when unclaimed
      */
-    ownerOf(chunk) {
-        const owner = this._state.mapGet("chunkClaims.ownerByChunk", chunk);
+    ownerOf(chunkKey) {
+        const owner = this._state.mapGet("chunkClaims.ownerByChunk", chunkKey);
         if (owner === undefined) {
             return PLAYER_REF_NONE;
         }
@@ -191,11 +191,11 @@ export class ChunkClaimsView extends AbstractCacheView {
     }
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {number} the chunk's ChunkPermission, defaulting to owner-only when unclaimed
      */
-    permissionOf(chunk) {
-        const permission = this._state.mapGet("chunkClaims.permissionByChunk", chunk);
+    permissionOf(chunkKey) {
+        const permission = this._state.mapGet("chunkClaims.permissionByChunk", chunkKey);
         if (permission === undefined) {
             return ChunkPermission.PERMISSION_ONLY_ME;
         }
@@ -204,18 +204,18 @@ export class ChunkClaimsView extends AbstractCacheView {
 
     /**
      * Mirrors the sim's placement gate: the owner always can, permission gates everyone else.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {boolean}
      */
-    canBuildIn(chunk) {
-        const owner = this.ownerOf(chunk);
+    canBuildIn(chunkKey) {
+        const owner = this.ownerOf(chunkKey);
         if (owner === PLAYER_REF_NONE) {
             return false;
         }
         if (owner === this.ownPlayerRef) {
             return true;
         }
-        if (this.permissionOf(chunk) === ChunkPermission.PERMISSION_ONLY_ME) {
+        if (this.permissionOf(chunkKey) === ChunkPermission.PERMISSION_ONLY_ME) {
             return false;
         }
         return this.isFriendsWithMe(owner);
@@ -223,17 +223,17 @@ export class ChunkClaimsView extends AbstractCacheView {
 
     /**
      * Mirrors the sim's claim checks: what a claim attempt on `chunk` would answer.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {number} a ClaimResult
      */
-    claimCheck(chunk) {
-        if (this.ownerOf(chunk) !== PLAYER_REF_NONE) {
+    claimCheck(chunkKey) {
+        if (this.ownerOf(chunkKey) !== PLAYER_REF_NONE) {
             return ClaimResult.CLAIM_RESULT_OWNED;
         }
         if (this.atChunkLimit()) {
             return ClaimResult.CLAIM_RESULT_LIMIT;
         }
-        if (this.ownCount() > 0 && !this._touchesOwn(chunk)) {
+        if (this.ownCount() > 0 && !this._touchesOwn(chunkKey)) {
             return ClaimResult.CLAIM_RESULT_NOT_ADJACENT;
         }
         return ClaimResult.CLAIM_RESULT_OK;
@@ -242,11 +242,11 @@ export class ChunkClaimsView extends AbstractCacheView {
     /**
      * Whether an edge neighbor of `chunk` is the own player's.
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {boolean}
      */
-    _touchesOwn(chunk) {
-        for (const neighbor of chunkNeighbors(chunk)) {
+    _touchesOwn(chunkKey) {
+        for (const neighbor of chunkNeighbors(chunkKey)) {
             if (this._state.setHas("chunkClaims.ownChunks", neighbor)) {
                 return true;
             }

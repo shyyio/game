@@ -7,7 +7,7 @@ import {ClientCache} from "@/client/state/ClientCache.js";
 import {OVERWORLD_SCHEMA, OverworldWriter, OverworldView} from "@/client/state/OverworldState.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 
 const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
 
@@ -87,10 +87,10 @@ test("a moved viewport subscribes the chunks it covers, plus the leading ring", 
     // The sweep starts one chunk before the top-left corner, so the chunk a pan is heading into
     // is already loading.
     assert.deepEqual(lastViewport(session).sort(), [
-        chunkKey(-CHUNK_SIZE, -CHUNK_SIZE),
-        chunkKey(-CHUNK_SIZE, 0),
-        chunkKey(0, -CHUNK_SIZE),
-        chunkKey(0, 0),
+        chunkKeyAt(-CHUNK_SIZE, -CHUNK_SIZE),
+        chunkKeyAt(-CHUNK_SIZE, 0),
+        chunkKeyAt(0, -CHUNK_SIZE),
+        chunkKeyAt(0, 0),
     ].sort());
 });
 
@@ -123,7 +123,7 @@ test("a chunk one ring outside the view stays subscribed, two rings out drops", 
     const {subscription, viewport, session} = build();
     viewport.coverChunks(0, 0, 1, 1);
     subscription.viewportMoved();
-    const corner = chunkKey(-CHUNK_SIZE, -CHUNK_SIZE);
+    const corner = chunkKeyAt(-CHUNK_SIZE, -CHUNK_SIZE);
     assert.ok(lastViewport(session).includes(corner));
 
     // One chunk right: the corner is now outside the view but inside the retention ring.

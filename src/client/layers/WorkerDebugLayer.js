@@ -2,7 +2,7 @@ import {Container, Graphics, Text} from "pixi.js";
 import {AbstractDebugDrawLayer} from "@/client/layers/AbstractDebugDrawLayer.js";
 import {TILE_SIZE, GAME_FONT} from "@/client/constants.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
-import {cellNeighbors, tileKey} from "@/common/util.js";
+import {cellNeighbors, tileKeyAt} from "@/common/util.js";
 import {floodRoadComponent} from "@/common/roadFlood.js";
 import {RoadBehavior, isWorkerBehavior} from "@/sim/behaviors/RoadBehavior.js";
 import {DEBUG_COLOR} from "@/client/Theme.js";
@@ -74,7 +74,7 @@ export class WorkerDebugLayer extends AbstractDebugDrawLayer {
         for (const entry of this.cache.values()) {
             if (entry.behavior instanceof RoadBehavior) {
                 for (const cell of entry.cells) {
-                    roadTiles.set(tileKey(cell.x, cell.y), {x: cell.x, y: cell.y, entryId: entry.id});
+                    roadTiles.set(tileKeyAt(cell.x, cell.y), {x: cell.x, y: cell.y, entryId: entry.id});
                 }
             }
         }
@@ -146,7 +146,7 @@ export class WorkerDebugLayer extends AbstractDebugDrawLayer {
         let demand = 0;
         const attached = new Set();
         for (const {x, y} of cellNeighbors(component)) {
-            if (roadTiles.has(tileKey(x, y))) {
+            if (roadTiles.has(tileKeyAt(x, y))) {
                 continue;
             }
             const entry = this.cache.at(x, y, LAYER_SURFACE);

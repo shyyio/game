@@ -10,11 +10,11 @@ import {makeGameEngine} from "@/test/ecsSim.js";
 /**
  * One chunk's runs from a snapshot event, as {start, length, objectTypeId} records.
  */
-function runsFor(event, chunk) {
+function runsFor(event, chunkKey) {
     let offset = 0;
     for (let i = 0; i < event.chunks.length; i += 1) {
         const count = event.runCounts[i];
-        if (event.chunks[i] === chunk) {
+        if (event.chunks[i] === chunkKey) {
             const runs = [];
             for (let run = offset; run < offset + count; run += 1) {
                 runs.push({

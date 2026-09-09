@@ -6,7 +6,7 @@ import {
     Direction,
     AbstractTileMeshDrawLayer,
 } from "@spup/sdk/client";
-import {chunkKey, getOrCreate, removeFromGroup} from "@spup/sdk";
+import {chunkKeyAt, getOrCreate, removeFromGroup} from "@spup/sdk";
 import {
     BeltBend,
     BELT_NORMAL,
@@ -134,14 +134,14 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
 
     /**
      * Draws a tile per belt into the chunk's pooled Graphics, one fill per color.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {Graphics} graphics
      * @returns {void}
      */
-    _drawChunkGeometry(chunk, graphics) {
+    _drawChunkGeometry(chunkKey, graphics) {
         for (const color of [MAP_COLOR_BELT, MAP_COLOR_BELT_TUNNEL]) {
             let drew = false;
-            for (const belt of this._beltsIn(chunk)) {
+            for (const belt of this._beltsIn(chunkKey)) {
                 const beltColor = belt.type === BELT_NORMAL ? MAP_COLOR_BELT : MAP_COLOR_BELT_TUNNEL;
                 if (beltColor !== color) {
                     continue;
@@ -157,12 +157,12 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
 
     /**
      * The mesh tiles of a chunk's belts.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {AnimatedTile[]}
      */
-    _buildTiles(chunk) {
+    _buildTiles(chunkKey) {
         const tiles = [];
-        for (const belt of this._beltsIn(chunk)) {
+        for (const belt of this._beltsIn(chunkKey)) {
             tiles.push(new AnimatedTile(
                 belt.x,
                 belt.y,
@@ -175,12 +175,12 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
 
     /**
      * The belts a chunk holds.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {Iterable<Belt>}
      * @private
      */
-    _beltsIn(chunk) {
-        const belts = this._chunkBelts.get(chunk);
+    _beltsIn(chunkKey) {
+        const belts = this._chunkBelts.get(chunkKey);
         if (belts === undefined) {
             return [];
         }
@@ -202,25 +202,25 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
         const belt = new Belt(id, x, y, direction, BeltBend.STRAIGHT, type);
         this._belts.set(id, belt);
 
-        const chunk = chunkKey(x, y);
-        getOrCreate(this._chunkBelts, chunk, () => new Set()).add(belt);
-        this._memberAdded(chunk);
+        const chunkKey = chunkKeyAt(x, y);
+        getOrCreate(this._chunkBelts, chunkKey, () => new Set()).add(belt);
+        this._memberAdded(chunkKey);
     }
 
     /**
      * Re-derives invalidated bends, marking the chunk for a mesh rebuild when any turned.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      * @private
      */
-    _refreshBends(chunk) {
-        for (const belt of this._beltsIn(chunk)) {
+    _refreshBends(chunkKey) {
+        for (const belt of this._beltsIn(chunkKey)) {
             if (belt.bendEpoch === this._bendEpoch) {
                 continue;
             }
             belt.bendEpoch = this._bendEpoch;
             if (belt.type === BELT_NORMAL && this._applyBend(belt)) {
-                this._dirtyChunks.add(chunk);
+                this._dirtyChunks.add(chunkKey);
             }
         }
     }
@@ -250,11 +250,11 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
             return;
         }
 
-        const chunk = chunkKey(belt.x, belt.y);
+        const chunkKey = chunkKeyAt(belt.x, belt.y);
         this._belts.delete(id);
 
-        removeFromGroup(this._chunkBelts, chunk, belt);
-        this._memberRemoved(chunk, !this._chunkBelts.has(chunk));
+        removeFromGroup(this._chunkBelts, chunkKey, belt);
+        this._memberRemoved(chunkKey, !this._chunkBelts.has(chunkKey));
     }
 
     /**
@@ -272,12 +272,12 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
 
     /**
      * Bends first: the mesh bakes them in, and a first-mount chunk has never derived them.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _prepareChunkSprites(chunk) {
-        this._refreshBends(chunk);
-        this._rebuildChunkSprites(chunk);
+    _prepareChunkSprites(chunkKey) {
+        this._refreshBends(chunkKey);
+        this._rebuildChunkSprites(chunkKey);
     }
 }
 

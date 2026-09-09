@@ -4,7 +4,7 @@ import {
     GHOST_BLOCKED_TINT,
     Mouse,
     claimColor,
-    tileKey,
+    tileKeyAt,
 } from "@spup/sdk/client";
 import {NOTE_EDITOR_MODE_PLACE} from "./NotesState.js";
 import {NotePin} from "./NotePin.js";
@@ -61,7 +61,7 @@ export class NoteGhostLayer extends AbstractDrawLayer {
         if (tileX === null) {
             this._hoveredTile = null;
         } else {
-            this._hoveredTile = tileKey(tileX, tileY);
+            this._hoveredTile = tileKeyAt(tileX, tileY);
         }
         this._blocked = blocked;
     }

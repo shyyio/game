@@ -166,17 +166,17 @@ export class StatusMessageLayer extends Container {
      */
     onEvent(event) {
         if (event instanceof ChunkSubscribeEvent) {
-            this._subscribed.add(event.chunk);
-            if (this._pending.delete(event.chunk)) {
+            this._subscribed.add(event.chunkKey);
+            if (this._pending.delete(event.chunkKey)) {
                 // The first arriving chunk ends the connecting phase.
                 this._connecting = false;
                 this._refresh();
             }
         } else if (event instanceof ChunkUnsubscribeEvent) {
-            this._subscribed.delete(event.chunk);
+            this._subscribed.delete(event.chunkKey);
             // A chunk that left drops from total (and pending, if not yet subscribed).
-            if (this._batch.delete(event.chunk)) {
-                this._pending.delete(event.chunk);
+            if (this._batch.delete(event.chunkKey)) {
+                this._pending.delete(event.chunkKey);
                 this._refresh();
             }
         }

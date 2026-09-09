@@ -66,14 +66,14 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {number|null} chunk
+     * @param {number|null} chunkKey
      * @returns {void}
      */
-    setSelectedChunk(chunk) {
-        if (chunk === this._selectedChunk) {
+    setSelectedChunk(chunkKey) {
+        if (chunkKey === this._selectedChunk) {
             return;
         }
-        this._selectedChunk = chunk;
+        this._selectedChunk = chunkKey;
         this._redrawSelection();
         // The hover square yields to the selection square on the same chunk.
         this._redrawHover();
@@ -81,17 +81,17 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
 
     /**
      * No-op on mobile: there's no cursor to hover with, only the center-locked selection square.
-     * @param {number|null} chunk
+     * @param {number|null} chunkKey
      * @returns {void}
      */
-    setHoverChunk(chunk) {
+    setHoverChunk(chunkKey) {
         if (Mobile.enabled) {
-            chunk = null;
+            chunkKey = null;
         }
-        if (chunk === this._hoverChunk) {
+        if (chunkKey === this._hoverChunk) {
             return;
         }
-        this._hoverChunk = chunk;
+        this._hoverChunk = chunkKey;
         this._redrawHover();
     }
 
@@ -130,11 +130,11 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
      * @returns {number}
      */
     _selectionColor() {
-        const chunk = this._selectedChunk;
-        if (this._claims.ownerOf(chunk) === this._claims.ownPlayerRef) {
+        const chunkKey = this._selectedChunk;
+        if (this._claims.ownerOf(chunkKey) === this._claims.ownPlayerRef) {
             return CHUNK_SELECT_COLOR;
         }
-        if (this._claims.claimCheck(chunk) === ClaimResult.CLAIM_RESULT_OK) {
+        if (this._claims.claimCheck(chunkKey) === ClaimResult.CLAIM_RESULT_OK) {
             return TARGET_TILE_COLOR;
         }
         return BLOCKED_TILE_COLOR;
@@ -169,28 +169,28 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _redrawHover() {
-        let chunk = this._hoverChunk;
-        if (chunk === this._selectedChunk) {
-            chunk = null;
+        let chunkKey = this._hoverChunk;
+        if (chunkKey === this._selectedChunk) {
+            chunkKey = null;
         }
-        this._draw(this._hover, chunk, CHUNK_HOVER_COLOR, CHUNK_HOVER_ALPHA);
+        this._draw(this._hover, chunkKey, CHUNK_HOVER_COLOR, CHUNK_HOVER_ALPHA);
     }
 
     /**
      * An inset outline square over `chunk`; nothing for null.
      * @private
      * @param {Graphics} graphics
-     * @param {number|null} chunk
+     * @param {number|null} chunkKey
      * @param {number} color
      * @param {number} alpha
      * @returns {void}
      */
-    _draw(graphics, chunk, color, alpha) {
+    _draw(graphics, chunkKey, color, alpha) {
         graphics.clear();
-        if (chunk === null) {
+        if (chunkKey === null) {
             return;
         }
-        this._insetOutline(graphics, chunkOrigin(chunk), color, alpha);
+        this._insetOutline(graphics, chunkOrigin(chunkKey), color, alpha);
     }
 
     /**

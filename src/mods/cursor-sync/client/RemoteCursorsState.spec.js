@@ -4,7 +4,7 @@ import {REMOTE_CURSORS_SCHEMA, RemoteCursorsWriter} from "./RemoteCursorsState.j
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "../common/events.js";
 import {CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_NONE, CURSOR_AUDIENCE_FRIENDS, CURSOR_AUDIENCE_EVERYONE} from "../common/constants.js";
 import {
-    WelcomeEvent, FriendListEvent, ChunkUnsubscribeEvent, chunkKey,
+    WelcomeEvent, FriendListEvent, ChunkUnsubscribeEvent, chunkKeyAt,
     ClientCache, CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView,
     PLAYER_SETTINGS_SCHEMA, PlayerSettingsWriter,
 } from "@spup/sdk/client";
@@ -55,7 +55,7 @@ test("a chunk unsubscribe drops only its own cursors", () => {
     const {state, removes} = stateWithOwnPlayer(1);
     state.onEvent(new PlayerCursorEvent(2, 4.5, -1.25));
     state.onEvent(new PlayerCursorEvent(3, 200.5, 200.5));
-    state.onEvent(new ChunkUnsubscribeEvent(chunkKey(4.5, -1.25)));
+    state.onEvent(new ChunkUnsubscribeEvent(chunkKeyAt(4.5, -1.25)));
     assert.deepEqual(removes, [2]);
 });
 

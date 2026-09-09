@@ -76,11 +76,11 @@ export class ConnectionDrawLayer extends AbstractTileMeshDrawLayer {
 
     /**
      * The mesh may have gone stale while the chunk was unmounted.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _onChunkMounted(chunk) {
-        this._rebuildChunkSprites(chunk);
+    _onChunkMounted(chunkKey) {
+        this._rebuildChunkSprites(chunkKey);
     }
 
     /**
@@ -146,11 +146,11 @@ export class ConnectionDrawLayer extends AbstractTileMeshDrawLayer {
     _reindex(id, entry) {
         const connections = this._connections.get(id);
         const drawn = entry !== null && connections !== undefined && connections.length > 0;
-        const chunk = drawn ? entry.chunk : undefined;
+        const chunkKey = drawn ? entry.chunkKey : undefined;
         const previous = this._objectChunks.get(id);
-        if (previous === chunk) {
+        if (previous === chunkKey) {
             if (drawn) {
-                this._dirtyChunks.add(chunk);
+                this._dirtyChunks.add(chunkKey);
             }
             return;
         }
@@ -165,19 +165,19 @@ export class ConnectionDrawLayer extends AbstractTileMeshDrawLayer {
             return;
         }
 
-        this._objectChunks.set(id, chunk);
-        getOrCreate(this._chunkObjects, chunk, () => new Set()).add(id);
-        this._memberAdded(chunk);
+        this._objectChunks.set(id, chunkKey);
+        getOrCreate(this._chunkObjects, chunkKey, () => new Set()).add(id);
+        this._memberAdded(chunkKey);
     }
 
     /**
      * The stubs of every object the chunk holds.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {AnimatedTile[]}
      */
-    _buildTiles(chunk) {
+    _buildTiles(chunkKey) {
         const tiles = [];
-        for (const id of this._chunkObjects.get(chunk)) {
+        for (const id of this._chunkObjects.get(chunkKey)) {
             for (const connection of this._connections.get(id)) {
                 tiles.push(new AnimatedTile(
                     connection.tileX,
@@ -191,12 +191,12 @@ export class ConnectionDrawLayer extends AbstractTileMeshDrawLayer {
     }
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _onChunkDropped(chunk) {
-        super._onChunkDropped(chunk);
-        this._chunkObjects.delete(chunk);
+    _onChunkDropped(chunkKey) {
+        super._onChunkDropped(chunkKey);
+        this._chunkObjects.delete(chunkKey);
     }
 
     /**

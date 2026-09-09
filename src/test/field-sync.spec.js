@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, SetViewportMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {ObjectFieldsEvent, ObjectFieldsBatchEvent} from "@/common/ObjectEvents.js";
 import {makeGame} from "@/test/ecsSim.js";
@@ -15,14 +15,14 @@ import {GateDefinition} from "@/mods/logistics/common/objectTypes.js";
  * Places a gate in a claimed, viewed chunk and returns what the sync tests need.
  */
 function placeGate(game, player, x, y) {
-    const chunk = chunkKey(x, y);
-    game.dispatchMessage(new ClaimChunkMessage(chunk), player);
-    game.dispatchMessage(new SetViewportMessage([chunk]), player);
+    const chunkKey = chunkKeyAt(x, y);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), player);
+    game.dispatchMessage(new SetViewportMessage([chunkKey]), player);
     game.dispatchMessage(new CreateObjectMessage(GateDefinition.objectTypeId, x, y, Direction.UP), player);
     const engine = game.simEngine;
     const def = engine.components.get("Gate");
     const eid = def.eids[def.count - 1];
-    return {engine, def, eid, chunk, objectRef: engine.placed.objectRefOf(eid)};
+    return {engine, def, eid, chunkKey, objectRef: engine.placed.objectRefOf(eid)};
 }
 
 test("a marked row's synced fields batch per chunk at tick end, to the chunk's viewers only", async () => {
@@ -50,7 +50,7 @@ test("a marked row's synced fields batch per chunk at tick end, to the chunk's v
     // A mark on an unobserved chunk builds no event.
     const far = new CapturingSession(2);
     game.connect(far);
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(300, 300)), far);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(300, 300)), far);
     game.dispatchMessage(new CreateObjectMessage(GateDefinition.objectTypeId, 300, 300, Direction.UP), far);
     const farEid = def.eids[def.count - 1];
     player.events.length = 0;
@@ -76,7 +76,7 @@ test("chunk sync carries every row off its defaults, after the objects themselve
 
     const joiner = new CapturingSession(2);
     game.connect(joiner);
-    game.dispatchMessage(new SetViewportMessage([gate.chunk]), joiner);
+    game.dispatchMessage(new SetViewportMessage([gate.chunkKey]), joiner);
     const bundle = joiner.events.find(event => event.events !== undefined);
     const objectsAt = bundle.events.findIndex(event => event.objectRefs !== undefined);
     const fieldsAt = bundle.events.findIndex(event => event instanceof ObjectFieldsBatchEvent);
@@ -130,7 +130,7 @@ test("after a load the engine knows what a chunk sync told the client, so a chan
     assert.equal(await restored.load(), true);
     const joiner = new CapturingSession(2);
     restored.connect(joiner);
-    restored.dispatchMessage(new SetViewportMessage([gate.chunk]), joiner);
+    restored.dispatchMessage(new SetViewportMessage([gate.chunkKey]), joiner);
     const engine = restored.simEngine;
     const def = engine.components.get("Gate");
     const eid = def.eids[0];

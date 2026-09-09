@@ -6,15 +6,15 @@ import {AbstractEvent} from "@/common/AbstractEvent.js";
 export class ChunkSubscribeEvent extends AbstractEvent {
 
     static wireFields = {
-        chunk: "int32",
+        chunkKey: "int32",
     };
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      */
-    constructor(chunk) {
+    constructor(chunkKey) {
         super();
-        this.chunk = chunk;
+        this.chunkKey = chunkKey;
     }
 }
 
@@ -24,15 +24,15 @@ export class ChunkSubscribeEvent extends AbstractEvent {
 export class ChunkUnsubscribeEvent extends AbstractEvent {
 
     static wireFields = {
-        chunk: "int32",
+        chunkKey: "int32",
     };
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      */
-    constructor(chunk) {
+    constructor(chunkKey) {
         super();
-        this.chunk = chunk;
+        this.chunkKey = chunkKey;
     }
 }
 
@@ -61,17 +61,17 @@ export class TickEndEvent extends AbstractEvent {
 export class ChunkSyncEvent extends AbstractEvent {
 
     static wireFields = {
-        chunk: "int32",
+        chunkKey: "int32",
         events: "message[]",
     };
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {AbstractEvent[]} events
      */
-    constructor(chunk, events) {
+    constructor(chunkKey, events) {
         super();
-        this.chunk = chunk;
+        this.chunkKey = chunkKey;
         this.events = events;
     }
 }

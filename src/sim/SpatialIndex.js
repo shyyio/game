@@ -1,4 +1,4 @@
-import {tileKey, tileVariantKey, TILE_VARIANT_LIMIT} from "@/common/util.js";
+import {tileKeyAt, tileVariantKey, TILE_VARIANT_LIMIT} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {NO_EID} from "@/sim/sentinels.js";
 
@@ -209,7 +209,7 @@ export class SpatialIndex {
      * @returns {number} its index key
      */
     _cellKey(eid) {
-        const tile = tileKey(this.Position.x[eid], this.Position.y[eid]);
+        const tile = tileKeyAt(this.Position.x[eid], this.Position.y[eid]);
         return tileVariantKey(tile, this.occupancyDef.store.layer[eid]);
     }
 
@@ -221,6 +221,6 @@ export class SpatialIndex {
      * @returns {number} the index key of cell {x, y, layer}
      */
     _cellKeyAt(x, y, layer) {
-        return tileVariantKey(tileKey(x, y), this._layerCodes.get(layer));
+        return tileVariantKey(tileKeyAt(x, y), this._layerCodes.get(layer));
     }
 }

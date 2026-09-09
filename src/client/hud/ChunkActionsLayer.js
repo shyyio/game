@@ -117,14 +117,14 @@ export class ChunkActionsLayer extends Container {
 
     /**
      * Shows (or retargets) the stack for a chunk; hover re-enters on the same chunk are free.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    showChunk(chunk) {
-        if (chunk === this._chunk && this.visible) {
+    showChunk(chunkKey) {
+        if (chunkKey === this._chunk && this.visible) {
             return;
         }
-        this._chunk = chunk;
+        this._chunk = chunkKey;
         this._rebuild();
     }
 
@@ -161,15 +161,15 @@ export class ChunkActionsLayer extends Container {
      * @returns {{status: string, rows: Container[]}}
      */
     _content() {
-        const chunk = this._chunk;
+        const chunkKey = this._chunk;
         const claims = this._claims;
-        const owner = claims.ownerOf(chunk);
+        const owner = claims.ownerOf(chunkKey);
         if (owner !== PLAYER_REF_NONE && owner === claims.ownPlayerRef) {
             return {
                 status: "Your chunk. You can build here",
                 rows: [
-                    this._buildPermissionRow(claims.permissionOf(chunk)),
-                    this._buildButton("Unclaim chunk", () => this._onUnclaim(chunk)),
+                    this._buildPermissionRow(claims.permissionOf(chunkKey)),
+                    this._buildButton("Unclaim chunk", () => this._onUnclaim(chunkKey)),
                 ],
             };
         }
@@ -193,12 +193,12 @@ export class ChunkActionsLayer extends Container {
             }
             return {status, rows};
         }
-        const check = claims.claimCheck(chunk);
+        const check = claims.claimCheck(chunkKey);
         if (check === ClaimResult.CLAIM_RESULT_OK) {
             const label = hotkeyLabel("Claim", CLAIM_SHORTCUT_HINT);
             return {
                 status: "Unclaimed chunk. Claim it to build here",
-                rows: [this._buildButton(label, () => this._onClaim(chunk))],
+                rows: [this._buildButton(label, () => this._onClaim(chunkKey))],
             };
         }
         if (check === ClaimResult.CLAIM_RESULT_LIMIT) {

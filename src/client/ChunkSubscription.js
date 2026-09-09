@@ -7,7 +7,7 @@ import {
     OVERWORLD_REFRESH_THROTTLE_MS,
 } from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
-import {chunkKey, REGION_HALF} from "@/common/util.js";
+import {chunkKeyAt, REGION_HALF} from "@/common/util.js";
 import {OverworldRect} from "@/client/state/OverworldState.js";
 
 // Handed to the layer tick in overworld mode, where no chunks are mounted: building the real
@@ -160,7 +160,7 @@ export class ChunkSubscription {
         const chunks = [];
         for (let x = snapToChunk(x1) - CHUNK_SIZE; x <= snapToChunk(x2); x += CHUNK_SIZE) {
             for (let y = snapToChunk(y1) - CHUNK_SIZE; y <= snapToChunk(y2); y += CHUNK_SIZE) {
-                chunks.push(chunkKey(x, y));
+                chunks.push(chunkKeyAt(x, y));
             }
         }
         return chunks;

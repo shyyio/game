@@ -1,5 +1,5 @@
 import {ObjectFieldsEvent, ObjectFieldsBatchEvent} from "@/common/ObjectEvents.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 
 // Initial length of the per-eid dirty flags and shadow columns; grows by doubling.
 const INITIAL_CAPACITY = 1024;
@@ -203,11 +203,11 @@ export class FieldSync {
                 if (!this.engine.observesTile(x, y)) {
                     continue;
                 }
-                const chunk = chunkKey(x, y);
-                let batch = batches.get(chunk);
+                const chunkKey = chunkKeyAt(x, y);
+                let batch = batches.get(chunkKey);
                 if (batch === undefined) {
                     batch = new ObjectFieldsBatchEvent(x, y, set.fields.length);
-                    batches.set(chunk, batch);
+                    batches.set(chunkKey, batch);
                 }
                 batch.add(placed.objectRefOf(eid), values);
             }
@@ -220,14 +220,14 @@ export class FieldSync {
 
     /**
      * The chunk's placed rows off their defaults, one batch per set.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {ObjectFieldsBatchEvent[]}
      */
-    chunkSync(chunk) {
+    chunkSync(chunkKey) {
         const position = this.engine.Position;
         const placed = this.engine.placed;
         const events = [];
-        const eids = placed.eidsInChunk(chunk);
+        const eids = placed.eidsInChunk(chunkKey);
         for (const set of this._sets.values()) {
             let batch = null;
             for (const eid of eids) {

@@ -1,4 +1,4 @@
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {EMPTY} from "@/sim/sentinels.js";
 
@@ -271,11 +271,11 @@ export class RenderDiff {
 
     /**
      * The chunk's resting rendered-port items as one set-only batch, or null when it has none.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {PortItemBatchEvent|null}
      */
-    chunkSync(chunk) {
-        const eids = this._byChunk.get(chunk);
+    chunkSync(chunkKey) {
+        const eids = this._byChunk.get(chunkKey);
         if (eids === undefined) {
             return null;
         }
@@ -300,11 +300,11 @@ export class RenderDiff {
      * @returns {void}
      */
     _index(eid) {
-        const chunk = chunkKey(this._x[eid], this._y[eid]);
-        let eids = this._byChunk.get(chunk);
+        const chunkKey = chunkKeyAt(this._x[eid], this._y[eid]);
+        let eids = this._byChunk.get(chunkKey);
         if (eids === undefined) {
             eids = new Set();
-            this._byChunk.set(chunk, eids);
+            this._byChunk.set(chunkKey, eids);
         }
         eids.add(eid);
     }
@@ -316,14 +316,14 @@ export class RenderDiff {
      * @returns {void}
      */
     _unindex(eid) {
-        const chunk = chunkKey(this._x[eid], this._y[eid]);
-        const eids = this._byChunk.get(chunk);
+        const chunkKey = chunkKeyAt(this._x[eid], this._y[eid]);
+        const eids = this._byChunk.get(chunkKey);
         if (eids === undefined) {
             return;
         }
         eids.delete(eid);
         if (eids.size === 0) {
-            this._byChunk.delete(chunk);
+            this._byChunk.delete(chunkKey);
         }
     }
 
@@ -353,13 +353,13 @@ export class RenderDiff {
      * @returns {PortItemBatchEvent}
      */
     _batchAt(batches, x, y) {
-        const chunk = chunkKey(x, y);
-        const existing = batches.get(chunk);
+        const chunkKey = chunkKeyAt(x, y);
+        const existing = batches.get(chunkKey);
         if (existing !== undefined) {
             return existing;
         }
         const batch = new PortItemBatchEvent(x, y);
-        batches.set(chunk, batch);
+        batches.set(chunkKey, batch);
         return batch;
     }
 }

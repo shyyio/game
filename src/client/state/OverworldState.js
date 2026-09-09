@@ -42,7 +42,7 @@ export const OVERWORLD_SCHEMA = {
 /**
  * @typedef {object} OverworldChunkState one received chunk's bake: row-constrained tile runs
  *     plus receipt time for the TTL
- * @property {number} chunk
+ * @property {number} chunkKey
  * @property {number[]} runStarts
  * @property {number[]} runLengths
  * @property {number[]} runTypeIds
@@ -78,7 +78,7 @@ export class OverworldWriter extends AbstractCacheWriter {
         for (let i = 0; i < event.chunks.length; i += 1) {
             const count = event.runCounts[i];
             runsByChunk.set(event.chunks[i], {
-                chunk: event.chunks[i],
+                chunkKey: event.chunks[i],
                 runStarts: event.runStarts.slice(offset, offset + count),
                 runLengths: event.runLengths.slice(offset, offset + count),
                 runTypeIds: event.runTypeIds.slice(offset, offset + count),
@@ -107,9 +107,9 @@ export class OverworldWriter extends AbstractCacheWriter {
     evictOutside(rect, nowMs, ttlMs) {
         const kept = new Set(rect.ordinals());
         const stale = [];
-        for (const [chunk, entry] of this._state.mapEntries("overworld.byChunk")) {
-            if (!kept.has(chunk) && nowMs - entry.receivedAt > ttlMs) {
-                stale.push(chunk);
+        for (const [chunkKey, entry] of this._state.mapEntries("overworld.byChunk")) {
+            if (!kept.has(chunkKey) && nowMs - entry.receivedAt > ttlMs) {
+                stale.push(chunkKey);
             }
         }
         for (const chunk of stale) {

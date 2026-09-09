@@ -12,15 +12,15 @@ const VALID_PERMISSIONS = new Set(Object.values(ChunkPermission));
 class AbstractChunkMessage extends AbstractMessage {
 
     static wireFields = {
-        chunk: "int32",
+        chunkKey: "int32",
     };
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      */
-    constructor(chunk) {
+    constructor(chunkKey) {
         super();
-        this.chunk = chunk;
+        this.chunkKey = chunkKey;
     }
 
     /**
@@ -29,7 +29,7 @@ class AbstractChunkMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return Number.isInteger(this.chunk) && this.chunk >= 0 && this.chunk < CHUNK_ORDINAL_LIMIT;
+        return Number.isInteger(this.chunkKey) && this.chunkKey >= 0 && this.chunkKey < CHUNK_ORDINAL_LIMIT;
     }
 }
 
@@ -42,16 +42,16 @@ export class ClaimChunkMessage extends AbstractChunkMessage {
 export class UnclaimChunkMessage extends AbstractChunkMessage {
 
     static wireFields = {
-        chunk: "int32",
+        chunkKey: "int32",
         clear: "int32",
     };
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {boolean} [clear]
      */
-    constructor(chunk, clear = false) {
-        super(chunk);
+    constructor(chunkKey, clear = false) {
+        super(chunkKey);
         this.clear = clear ? 1 : 0;
     }
 }
@@ -62,16 +62,16 @@ export class UnclaimChunkMessage extends AbstractChunkMessage {
 export class SetChunkPermissionMessage extends AbstractChunkMessage {
 
     static wireFields = {
-        chunk: "int32",
+        chunkKey: "int32",
         permission: "int32",
     };
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {number} permission - a ChunkPermission
      */
-    constructor(chunk, permission) {
-        super(chunk);
+    constructor(chunkKey, permission) {
+        super(chunkKey);
         this.permission = permission;
     }
 

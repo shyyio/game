@@ -67,10 +67,10 @@ test("writes and evictions notify subscribers with the touched chunks", () => {
 
     const rect = new OverworldRect(0, 0, 2, 1);
     writer.write(snapshotWithOneChunk(rect, 0, 0), 1000);
-    assert.deepEqual(updates.map(([chunk]) => chunk), [chunkOrdinal(0, 0), chunkOrdinal(1, 0)]);
+    assert.deepEqual(updates.map(([chunkKey]) => chunkKey), [chunkOrdinal(0, 0), chunkOrdinal(1, 0)]);
 
     writer.evictOutside(new OverworldRect(5, 5, 1, 1), 1000 + TTL_MS + 1, TTL_MS);
     const evicted = updates.slice(2);
-    assert.deepEqual(evicted.map(([chunk]) => chunk).sort((a, b) => a - b), [chunkOrdinal(0, 0), chunkOrdinal(1, 0)]);
+    assert.deepEqual(evicted.map(([chunkKey]) => chunkKey).sort((a, b) => a - b), [chunkOrdinal(0, 0), chunkOrdinal(1, 0)]);
     assert.ok(evicted.every(([, entry]) => entry === undefined));
 });

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {floodRoadComponent} from "@/common/roadFlood.js";
-import {tileKey} from "@/common/util.js";
+import {tileKeyAt} from "@/common/util.js";
 
 /**
  * A road map over the given tiles, each cell its own `{x, y}` record.
@@ -9,18 +9,18 @@ import {tileKey} from "@/common/util.js";
 function roadMap(cells) {
     const tiles = new Map();
     for (const {x, y} of cells) {
-        tiles.set(tileKey(x, y), {x, y});
+        tiles.set(tileKeyAt(x, y), {x, y});
     }
     return tiles;
 }
 
 test("collects the roads reachable from the seed, skipping the ones already seen", () => {
     const roadTiles = roadMap([{x: 0, y: 0}, {x: 1, y: 0}, {x: 2, y: 0}, {x: 9, y: 9}]);
-    const seen = new Set([tileKey(0, 0)]);
+    const seen = new Set([tileKeyAt(0, 0)]);
     const roads = [];
 
     floodRoadComponent({
-        seed: roadTiles.get(tileKey(0, 0)),
+        seed: roadTiles.get(tileKeyAt(0, 0)),
         roadTiles,
         seen,
         housingAt: () => null,
@@ -34,13 +34,13 @@ test("collects the roads reachable from the seed, skipping the ones already seen
 test("crosses a housing's cells to reach the roads on its far side", () => {
     const roadTiles = roadMap([{x: 0, y: 0}, {x: 3, y: 0}]);
     const housing = {cells: [{x: 1, y: 0}, {x: 2, y: 0}]};
-    const seen = new Set([tileKey(0, 0)]);
+    const seen = new Set([tileKeyAt(0, 0)]);
     const roads = [];
     const housings = [];
     let handed = false;
 
     floodRoadComponent({
-        seed: roadTiles.get(tileKey(0, 0)),
+        seed: roadTiles.get(tileKeyAt(0, 0)),
         roadTiles,
         seen,
         housingAt: (x, y) => {

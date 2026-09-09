@@ -285,19 +285,19 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {number|null} chunk
+     * @param {number|null} chunkKey
      * @returns {void}
      */
-    setSelectedChunk(chunk) {
-        if (chunk === this._selectedChunk) {
+    setSelectedChunk(chunkKey) {
+        if (chunkKey === this._selectedChunk) {
             return;
         }
         const previous = this._graphics.get(this._selectedChunk);
         if (previous !== undefined) {
             previous.visible = true;
         }
-        this._selectedChunk = chunk;
-        const current = this._graphics.get(chunk);
+        this._selectedChunk = chunkKey;
+        const current = this._graphics.get(chunkKey);
         if (current !== undefined) {
             current.visible = false;
         }
@@ -305,17 +305,17 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
 
     /**
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _dropChunk(chunk) {
-        const graphics = this._graphics.get(chunk);
+    _dropChunk(chunkKey) {
+        const graphics = this._graphics.get(chunkKey);
         if (graphics === undefined) {
             return;
         }
         this.removeChild(graphics);
         graphics.destroy();
-        this._graphics.delete(chunk);
+        this._graphics.delete(chunkKey);
     }
 
     /**
@@ -323,12 +323,12 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
      * permission (only-me is the silent default); foreign chunks read whether the own player
      * specifically can build there, not the raw permission value.
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {number} owner
      * @returns {function(Graphics, number, number): void|null}
      */
-    _badgeIconFor(chunk, owner) {
-        const permission = this._claims.permissionOf(chunk);
+    _badgeIconFor(chunkKey, owner) {
+        const permission = this._claims.permissionOf(chunkKey);
         if (owner === this._claims.ownPlayerRef) {
             if (permission === ChunkPermission.PERMISSION_FRIENDS) {
                 return drawFriendIcon;
@@ -344,22 +344,22 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
     /**
      * (Re)draws or drops `chunk`'s permission badge at its top-left corner.
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {number} owner
      * @returns {void}
      */
-    _updateBadge(chunk, owner) {
-        const drawIcon = this._badgeIconFor(chunk, owner);
+    _updateBadge(chunkKey, owner) {
+        const drawIcon = this._badgeIconFor(chunkKey, owner);
         if (drawIcon === null) {
-            this._dropBadge(chunk);
+            this._dropBadge(chunkKey);
             return;
         }
-        let badge = this._badges.get(chunk);
+        let badge = this._badges.get(chunkKey);
         if (badge === undefined) {
             badge = new Graphics();
             badge.visible = !this._overworld;
             this._labelLayer.addChild(badge);
-            this._badges.set(chunk, badge);
+            this._badges.set(chunkKey, badge);
             // A fresh child needs the next tick's rescale; skip only fires on an unchanged zoom.
             this._labelScale = null;
         } else {
@@ -368,7 +368,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
         // White halo under the colored glyph, matching the home marker's technique.
         drawIcon(badge, 0xffffff, 6);
         drawIcon(badge, claimColor(owner), 3);
-        const origin = chunkOrigin(chunk);
+        const origin = chunkOrigin(chunkKey);
         badge.position.set(
             origin.x * TILE_SIZE + BADGE_CORNER_INSET,
             origin.y * TILE_SIZE + BADGE_CORNER_INSET,
@@ -377,29 +377,29 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
 
     /**
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _dropBadge(chunk) {
-        const badge = this._badges.get(chunk);
+    _dropBadge(chunkKey) {
+        const badge = this._badges.get(chunkKey);
         if (badge === undefined) {
             return;
         }
         this._labelLayer.removeChild(badge);
         badge.destroy();
-        this._badges.delete(chunk);
+        this._badges.delete(chunkKey);
     }
 
     /**
      * The owner of the chunk one step from `chunk`, or PLAYER_REF_NONE off the region edge.
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {number} dx
      * @param {number} dy
      * @returns {number}
      */
-    _neighborOwner(chunk, dx, dy) {
-        const position = chunkPosition(chunk);
+    _neighborOwner(chunkKey, dx, dy) {
+        const position = chunkPosition(chunkKey);
         const x = position.x + dx;
         const y = position.y + dy;
         if (!inRegion(x, y)) {
@@ -411,24 +411,24 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
     /**
      * Border strips on edges facing another owner, plus a translucent fill.
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {number} owner
      * @returns {void}
      */
-    _drawChunk(chunk, owner) {
-        const graphics = getOrCreate(this._graphics, chunk, () => {
+    _drawChunk(chunkKey, owner) {
+        const graphics = getOrCreate(this._graphics, chunkKey, () => {
             const created = new Graphics();
-            const origin = chunkOrigin(chunk);
+            const origin = chunkOrigin(chunkKey);
             created.position.set(origin.x * TILE_SIZE, origin.y * TILE_SIZE);
             // Below the label layer.
             this.addChildAt(created, 0);
             return created;
         });
-        graphics.visible = chunk !== this._selectedChunk;
+        graphics.visible = chunkKey !== this._selectedChunk;
         graphics.clear();
         const color = claimColor(owner);
         if (this._worldMode) {
-            this._drawBorder(graphics, chunk, owner, WORLD_BORDER_WIDTH);
+            this._drawBorder(graphics, chunkKey, owner, WORLD_BORDER_WIDTH);
             graphics.fill({color, alpha: WORLD_BORDER_ALPHA});
             return;
         }
@@ -439,7 +439,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
         if (this._overworld) {
             return;
         }
-        this._drawBorder(graphics, chunk, owner, BORDER_WIDTH);
+        this._drawBorder(graphics, chunkKey, owner, BORDER_WIDTH);
         graphics.fill({color, alpha: CLAIM_BORDER_ALPHA});
     }
 
@@ -447,16 +447,16 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
      * Queues the border rects at `width`; the caller fills them.
      * @private
      * @param {Graphics} graphics
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {number} owner
      * @param {number} width
      * @returns {void}
      */
-    _drawBorder(graphics, chunk, owner, width) {
-        const top = this._neighborOwner(chunk, 0, -1) !== owner;
-        const bottom = this._neighborOwner(chunk, 0, 1) !== owner;
-        const left = this._neighborOwner(chunk, -1, 0) !== owner;
-        const right = this._neighborOwner(chunk, 1, 0) !== owner;
+    _drawBorder(graphics, chunkKey, owner, width) {
+        const top = this._neighborOwner(chunkKey, 0, -1) !== owner;
+        const bottom = this._neighborOwner(chunkKey, 0, 1) !== owner;
+        const left = this._neighborOwner(chunkKey, -1, 0) !== owner;
+        const right = this._neighborOwner(chunkKey, 1, 0) !== owner;
         if (top) {
             graphics.rect(0, 0, CHUNK_PX, width);
         }
@@ -473,23 +473,23 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
             graphics.rect(CHUNK_PX - width, topInset, width, CHUNK_PX - topInset - bottomInset);
         }
         // Diagonal same-owner contact: cap the pinched corner (top-corner chunk only, no double-blend).
-        if (top && left && this._neighborOwner(chunk, -1, -1) === owner) {
+        if (top && left && this._neighborOwner(chunkKey, -1, -1) === owner) {
             graphics.rect(-width / 2, -width / 2, width, width);
         }
-        if (top && right && this._neighborOwner(chunk, 1, -1) === owner) {
+        if (top && right && this._neighborOwner(chunkKey, 1, -1) === owner) {
             graphics.rect(CHUNK_PX - width / 2, -width / 2, width, width);
         }
         // Concave corner (edge neighbors same-owner, diagonal foreign): bridge the turn square.
-        if (!top && !left && this._neighborOwner(chunk, -1, -1) !== owner) {
+        if (!top && !left && this._neighborOwner(chunkKey, -1, -1) !== owner) {
             graphics.rect(0, 0, width, width);
         }
-        if (!top && !right && this._neighborOwner(chunk, 1, -1) !== owner) {
+        if (!top && !right && this._neighborOwner(chunkKey, 1, -1) !== owner) {
             graphics.rect(CHUNK_PX - width, 0, width, width);
         }
-        if (!bottom && !left && this._neighborOwner(chunk, -1, 1) !== owner) {
+        if (!bottom && !left && this._neighborOwner(chunkKey, -1, 1) !== owner) {
             graphics.rect(0, CHUNK_PX - width, width, width);
         }
-        if (!bottom && !right && this._neighborOwner(chunk, 1, 1) !== owner) {
+        if (!bottom && !right && this._neighborOwner(chunkKey, 1, 1) !== owner) {
             graphics.rect(CHUNK_PX - width, CHUNK_PX - width, width, width);
         }
     }

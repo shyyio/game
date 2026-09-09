@@ -34,10 +34,10 @@ export class AbstractTileMeshDrawLayer extends AbstractChunkedDrawLayer {
     /**
      * The tiles a chunk's mesh draws.
      * @abstract
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {AnimatedTile[]}
      */
-    _buildTiles(chunk) {
+    _buildTiles(chunkKey) {
         throw new NotImplementedError();
     }
 
@@ -69,39 +69,39 @@ export class AbstractTileMeshDrawLayer extends AbstractChunkedDrawLayer {
     /**
      * Hangs the chunk's animated mesh under its fresh node.
      * @param {ChunkNode} node
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _initChunkNode(node, chunk) {
+    _initChunkNode(node, chunkKey) {
         const mesh = new AnimatedTileMesh(this._meshShader());
         node.sprites.addChild(mesh);
         node.showSprites();
-        this._meshes.set(chunk, mesh);
+        this._meshes.set(chunkKey, mesh);
     }
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _rebuildChunkSprites(chunk) {
-        this._dirtyChunks.delete(chunk);
-        this._meshes.get(chunk).setTiles(this._buildTiles(chunk));
+    _rebuildChunkSprites(chunkKey) {
+        this._dirtyChunks.delete(chunkKey);
+        this._meshes.get(chunkKey).setTiles(this._buildTiles(chunkKey));
     }
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _prepareChunkSprites(chunk) {
-        this._rebuildChunkSprites(chunk);
+    _prepareChunkSprites(chunkKey) {
+        this._rebuildChunkSprites(chunkKey);
     }
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _onChunkDropped(chunk) {
-        this._meshes.delete(chunk);
+    _onChunkDropped(chunkKey) {
+        this._meshes.delete(chunkKey);
     }
 
     /**

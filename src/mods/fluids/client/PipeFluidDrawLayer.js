@@ -23,12 +23,12 @@ class PipeFill {
     /**
      * @param {number} tileX
      * @param {number} tileY
-     * @param {number} chunk
+     * @param {number} chunkKey
      */
-    constructor(tileX, tileY, chunk) {
+    constructor(tileX, tileY, chunkKey) {
         this.tileX = tileX;
         this.tileY = tileY;
-        this.chunk = chunk;
+        this.chunkKey = chunkKey;
         this.fluidType = EMPTY;
         this.fraction = 0;
         this.graphics = new Graphics();
@@ -66,11 +66,11 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
             return;
         }
         this.removePipe(entry.id);
-        const record = new PipeFill(entry.tileX, entry.tileY, entry.chunk);
+        const record = new PipeFill(entry.tileX, entry.tileY, entry.chunkKey);
         this._fills.set(entry.id, record);
-        getOrCreate(this._fillsByChunk, record.chunk, () => new Set()).add(record);
-        this._node(record.chunk).sprites.addChild(record.graphics);
-        this._memberAdded(record.chunk);
+        getOrCreate(this._fillsByChunk, record.chunkKey, () => new Set()).add(record);
+        this._node(record.chunkKey).sprites.addChild(record.graphics);
+        this._memberAdded(record.chunkKey);
     }
 
     /**
@@ -94,9 +94,9 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
         }
         record.graphics.destroy();
         this._fills.delete(id);
-        removeFromGroup(this._fillsByChunk, record.chunk, record);
-        const node = this._chunks.get(record.chunk);
-        this._memberRemoved(record.chunk, node === undefined || node.isEmpty);
+        removeFromGroup(this._fillsByChunk, record.chunkKey, record);
+        const node = this._chunks.get(record.chunkKey);
+        this._memberRemoved(record.chunkKey, node === undefined || node.isEmpty);
     }
 
     /**
@@ -114,7 +114,7 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
         record.fluidType = fluidType;
         record.fraction = fraction;
         this._redraw(record);
-        this._dirtyChunks.add(record.chunk);
+        this._dirtyChunks.add(record.chunkKey);
     }
 
     /**
@@ -142,12 +142,12 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
 
     /**
      * Draws every filled pipe tile in the chunk into its pooled Graphics.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {Graphics} graphics
      * @returns {void}
      */
-    _drawChunkGeometry(chunk, graphics) {
-        const records = this._fillsByChunk.get(chunk);
+    _drawChunkGeometry(chunkKey, graphics) {
+        const records = this._fillsByChunk.get(chunkKey);
         if (records === undefined) {
             return;
         }

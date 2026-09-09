@@ -167,16 +167,16 @@ export class WorkerNetworks {
     /**
      * The chunk's road-attached machines as one batch, or nothing when it holds none.
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {WorkerAssignmentBatchEvent[]}
      */
-    _chunkSync(chunk) {
+    _chunkSync(chunkKey) {
         this.ensureFresh();
-        const objectRefs = this.assignments.inChunk(chunk);
+        const objectRefs = this.assignments.inChunk(chunkKey);
         if (objectRefs === undefined) {
             return [];
         }
-        const origin = chunkOrigin(chunk);
+        const origin = chunkOrigin(chunkKey);
         const batch = new WorkerAssignmentBatchEvent(origin.x, origin.y);
         for (const objectRef of objectRefs) {
             const assignment = this.assignments.get(objectRef);

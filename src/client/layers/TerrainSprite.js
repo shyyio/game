@@ -305,13 +305,13 @@ export class TerrainSprite extends Sprite {
 
     /**
      * @param {TerrainPalette} palette
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {TerrainBake} bake the chunk's bake (Terrain.bakeChunk)
      * @param {Terrain} terrain for the shade noise
      * @returns {TerrainSprite} one texel per tile over the chunk, shaded by the shade channel
      */
-    static forChunk(palette, chunk, bake, terrain) {
-        const origin = chunkOrigin(chunk);
+    static forChunk(palette, chunkKey, bake, terrain) {
+        const origin = chunkOrigin(chunkKey);
         const shadeAt = cell => shadeFor(terrain.shadeAt(origin.x + cell % CHUNK_SIZE, origin.y + Math.floor(cell / CHUNK_SIZE)));
         // World tile, not chunk-local, so a pattern without a 64-tile period still tiles seamlessly.
         const ditherAt = cell => ditherThreshold(origin.x + cell % CHUNK_SIZE, origin.y + Math.floor(cell / CHUNK_SIZE));
@@ -341,11 +341,11 @@ export class TerrainSprite extends Sprite {
 }
 
 /**
- * @param {number} chunk
+ * @param {number} chunkKey
  * @returns {Sprite} flat white ground over the chunk, for when the terrain is off
  */
-export function blankChunkSprite(chunk) {
-    const origin = chunkOrigin(chunk);
+export function blankChunkSprite(chunkKey) {
+    const origin = chunkOrigin(chunkKey);
     return blankSprite(origin.x * TILE_SIZE, origin.y * TILE_SIZE, CHUNK_PX);
 }
 

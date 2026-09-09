@@ -21,7 +21,7 @@ export class ChunkCursor {
     /**
      * @returns {number|null}
      */
-    get chunk() {
+    get chunkKey() {
         return this._chunk;
     }
 
@@ -37,11 +37,11 @@ export class ChunkCursor {
             this.clear();
             return;
         }
-        const chunk = this.chunkAt(tileX, tileY);
+        const chunkKey = this.chunkAt(tileX, tileY);
         if (this._client.centerLock.enabled) {
-            this.select(chunk);
+            this.select(chunkKey);
         } else {
-            this._client.chunkSelectionLayer.setHoverChunk(chunk);
+            this._client.chunkSelectionLayer.setHoverChunk(chunkKey);
         }
     }
 
@@ -54,12 +54,12 @@ export class ChunkCursor {
      * @returns {void}
      */
     handleSelect(tileX, tileY, claimShortcut = false) {
-        const chunk = this.chunkAt(tileX, tileY);
-        this.select(chunk);
-        if (claimShortcut && chunk !== null) {
+        const chunkKey = this.chunkAt(tileX, tileY);
+        this.select(chunkKey);
+        if (claimShortcut && chunkKey !== null) {
             const claims = this._client.cache.view("chunkClaims");
-            if (claims.claimCheck(chunk) === ClaimResult.CLAIM_RESULT_OK) {
-                this._client.sendMessage(new ClaimChunkMessage(chunk));
+            if (claims.claimCheck(chunkKey) === ClaimResult.CLAIM_RESULT_OK) {
+                this._client.sendMessage(new ClaimChunkMessage(chunkKey));
             }
         }
     }
@@ -67,21 +67,21 @@ export class ChunkCursor {
     /**
      * Targets the chunk action stack and the selection square; null clears both. Re-selecting the
      * current chunk is free.
-     * @param {number|null} chunk
+     * @param {number|null} chunkKey
      * @returns {void}
      */
-    select(chunk) {
-        if (chunk === this._chunk) {
+    select(chunkKey) {
+        if (chunkKey === this._chunk) {
             return;
         }
-        this._chunk = chunk;
-        this._client.chunkSelectionLayer.setSelectedChunk(chunk);
-        this._client.chunkClaimsLayer.setSelectedChunk(chunk);
-        this._client.claimFrontierLayer.setSelectedChunk(chunk);
-        if (chunk === null) {
+        this._chunk = chunkKey;
+        this._client.chunkSelectionLayer.setSelectedChunk(chunkKey);
+        this._client.chunkClaimsLayer.setSelectedChunk(chunkKey);
+        this._client.claimFrontierLayer.setSelectedChunk(chunkKey);
+        if (chunkKey === null) {
             this._client.hud.chunkActionsLayer.hide();
         } else {
-            this._client.hud.chunkActionsLayer.showChunk(chunk);
+            this._client.hud.chunkActionsLayer.showChunk(chunkKey);
         }
         // The active mode surfaces the new selection in its bars.
         this._client.chunkMode.updateIndicators();

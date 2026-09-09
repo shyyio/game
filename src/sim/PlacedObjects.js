@@ -1,7 +1,7 @@
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
 import {Direction, PLAYER_REF_NONE} from "@/common/constants.js";
-import {chunkKey, chunkOrigin} from "@/common/util.js";
+import {chunkKeyAt, chunkOrigin} from "@/common/util.js";
 import {NO_EID} from "@/sim/sentinels.js";
 import {METRICS_FACT_TYPE_OBJECT_PLACED, METRICS_FACT_TYPE_OBJECT_DESPAWNED} from "@/common/MetricsFact.js";
 
@@ -109,7 +109,7 @@ export class PlacedObjects {
      */
     claimOwnerOf(eid) {
         const position = this.engine.Position;
-        return this.engine.chunkOwnerOf(chunkKey(position.x[eid], position.y[eid]));
+        return this.engine.chunkOwnerOf(chunkKeyAt(position.x[eid], position.y[eid]));
     }
 
     /**
@@ -210,11 +210,11 @@ export class PlacedObjects {
 
     /**
      * The eids placed in a chunk.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {Set<number>}
      */
-    eidsInChunk(chunk) {
-        const held = this._eidsByChunk.get(chunk);
+    eidsInChunk(chunkKey) {
+        const held = this._eidsByChunk.get(chunkKey);
         if (held === undefined) {
             return EMPTY_EIDS;
         }
@@ -232,12 +232,12 @@ export class PlacedObjects {
 
     /**
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _notifyChunkChanged(chunk) {
+    _notifyChunkChanged(chunkKey) {
         for (const observer of this._chunkObservers) {
-            observer(chunk);
+            observer(chunkKey);
         }
     }
 
@@ -308,7 +308,7 @@ export class PlacedObjects {
         }
         this._eidByObjectRef.set(objectRef, eid);
         this._indexChunk(eid, message.x, message.y);
-        this._notifyChunkChanged(chunkKey(message.x, message.y));
+        this._notifyChunkChanged(chunkKeyAt(message.x, message.y));
         engine.notifySpawn(eid, objectRef);
         const portEids = type.behavior.renderedPortEids(engine, eid);
         engine.emitEvent(new ObjectInsertEvent(type.objectTypeId, objectRef, message.x, message.y, message.direction, portEids));
@@ -342,7 +342,7 @@ export class PlacedObjects {
         this._unindexChunk(eid, x, y);
         engine.components.destroyEntity(eid);
         this._eidByObjectRef.delete(objectRef);
-        this._notifyChunkChanged(chunkKey(x, y));
+        this._notifyChunkChanged(chunkKeyAt(x, y));
         return true;
     }
 
@@ -355,10 +355,10 @@ export class PlacedObjects {
      * @returns {void}
      */
     _indexChunk(eid, x, y) {
-        const chunk = chunkKey(x, y);
-        const held = this._eidsByChunk.get(chunk);
+        const chunkKey = chunkKeyAt(x, y);
+        const held = this._eidsByChunk.get(chunkKey);
         if (held === undefined) {
-            this._eidsByChunk.set(chunk, new Set([eid]));
+            this._eidsByChunk.set(chunkKey, new Set([eid]));
         } else {
             held.add(eid);
         }
@@ -373,29 +373,29 @@ export class PlacedObjects {
      * @returns {void}
      */
     _unindexChunk(eid, x, y) {
-        const chunk = chunkKey(x, y);
-        const held = this._eidsByChunk.get(chunk);
+        const chunkKey = chunkKeyAt(x, y);
+        const held = this._eidsByChunk.get(chunkKey);
         if (held === undefined) {
             return;
         }
         held.delete(eid);
         if (held.size === 0) {
-            this._eidsByChunk.delete(chunk);
+            this._eidsByChunk.delete(chunkKey);
         }
     }
 
     /**
      * The chunk's objects as one packed batch, or nothing when it holds none.
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {ObjectSyncBatchEvent[]}
      */
-    _chunkSync(chunk) {
-        const eids = this._eidsByChunk.get(chunk);
+    _chunkSync(chunkKey) {
+        const eids = this._eidsByChunk.get(chunkKey);
         if (eids === undefined) {
             return [];
         }
-        const origin = chunkOrigin(chunk);
+        const origin = chunkOrigin(chunkKey);
         let batch = null;
         const placedObject = this.def.store;
         const position = this.engine.Position;

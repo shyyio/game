@@ -1,4 +1,4 @@
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {AbstractEvent} from "@/common/AbstractEvent.js";
 
 /**
@@ -20,8 +20,8 @@ export class AbstractChunkRoutedEvent extends AbstractEvent {
     /**
      * @returns {number}
      */
-    get chunk() {
-        return chunkKey(this.x, this.y);
+    get chunkKey() {
+        return chunkKeyAt(this.x, this.y);
     }
 
     /**
@@ -29,6 +29,6 @@ export class AbstractChunkRoutedEvent extends AbstractEvent {
      * @returns {Set<number>|undefined}
      */
     subscribersIn(bus) {
-        return bus.chunkSubscribers(this.chunk);
+        return bus.chunkSubscribers(this.chunkKey);
     }
 }

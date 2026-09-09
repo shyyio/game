@@ -36,7 +36,7 @@ export class ClaimResultFeedback {
                 title: "Unclaim chunk?",
                 message: "This chunk still contains buildings. Unclaiming will permanently delete everything in it.",
                 confirmLabel: "Delete and unclaim",
-                onConfirm: () => this.client.sendMessage(new UnclaimChunkMessage(event.chunk, true)),
+                onConfirm: () => this.client.sendMessage(new UnclaimChunkMessage(event.chunkKey, true)),
             });
             return;
         }

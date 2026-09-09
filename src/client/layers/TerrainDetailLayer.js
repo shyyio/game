@@ -3,7 +3,7 @@ import {AbstractChunkedDrawLayer} from "@/client/layers/AbstractChunkedDrawLayer
 import {DisplayPool} from "@/client/layers/DisplayPool.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {CHUNK_SIZE, LAYER_SURFACE} from "@/common/constants.js";
-import {chunkKey, chunkOrigin} from "@/common/util.js";
+import {chunkKeyAt, chunkOrigin} from "@/common/util.js";
 import {tileHash} from "@/common/WorldNoise.js";
 import {scaleColor} from "@/client/Theme.js";
 
@@ -128,55 +128,55 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
      */
     onCacheChange(entry) {
         for (const cell of entry.cells) {
-            const chunk = chunkKey(cell.x, cell.y);
-            if (this._chunks.has(chunk)) {
-                this._dirtyChunks.add(chunk);
+            const chunkKey = chunkKeyAt(cell.x, cell.y);
+            if (this._chunks.has(chunkKey)) {
+                this._dirtyChunks.add(chunkKey);
             }
         }
     }
 
     /**
      * Every chunk has ground, so a mount creates the node rather than waiting for a member.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _mountChunk(chunk) {
-        this._node(chunk);
-        super._mountChunk(chunk);
+    _mountChunk(chunkKey) {
+        this._node(chunkKey);
+        super._mountChunk(chunkKey);
     }
 
     /**
      * @param {ChunkNode} node
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _initChunkNode(node, chunk) {
-        this._scatter(node, chunk);
+    _initChunkNode(node, chunkKey) {
+        this._scatter(node, chunkKey);
         node.showSprites();
     }
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _rebuildChunkSprites(chunk) {
-        this._dirtyChunks.delete(chunk);
-        const node = this._chunks.get(chunk);
+    _rebuildChunkSprites(chunkKey) {
+        this._dirtyChunks.delete(chunkKey);
+        const node = this._chunks.get(chunkKey);
         this._releaseSprites(node);
-        this._scatter(node, chunk);
+        this._scatter(node, chunkKey);
     }
 
     /**
      * A chunk leaving the viewport returns its sprites to the pool and drops.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _unmountChunk(chunk) {
-        const wasMounted = this._mounted.has(chunk);
-        super._unmountChunk(chunk);
+    _unmountChunk(chunkKey) {
+        const wasMounted = this._mounted.has(chunkKey);
+        super._unmountChunk(chunkKey);
         if (wasMounted) {
-            this._releaseSprites(this._chunks.get(chunk));
-            this._dropChunk(chunk);
+            this._releaseSprites(this._chunks.get(chunkKey));
+            this._dropChunk(chunkKey);
         }
     }
 
@@ -195,12 +195,12 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
      * Places the chunk's details: one pooled sprite per decorated, unoccupied tile.
      * @private
      * @param {ChunkNode} node
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _scatter(node, chunk) {
-        const bake = this._terrain.bakeChunk(chunk);
-        const origin = chunkOrigin(chunk);
+    _scatter(node, chunkKey) {
+        const bake = this._terrain.bakeChunk(chunkKey);
+        const origin = chunkOrigin(chunkKey);
         const seed = this._terrain.noise.seed;
         let index = 0;
         for (let localY = 0; localY < CHUNK_SIZE; localY++) {
@@ -262,9 +262,9 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
 
     /**
      * Never called: map mode hides the layer instead of swapping to geometry.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {Graphics} graphics
      * @returns {void}
      */
-    _drawChunkGeometry(chunk, graphics) {}
+    _drawChunkGeometry(chunkKey, graphics) {}
 }

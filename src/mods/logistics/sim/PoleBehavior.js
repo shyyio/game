@@ -1,4 +1,4 @@
-import {AbstractBehavior, chunkKey} from "@spup/sdk";
+import {AbstractBehavior, chunkKeyAt} from "@spup/sdk";
 import {LogicWireSetEvent} from "../common/events.js";
 import {LogicNetworks} from "./LogicNetworks.js";
 
@@ -36,17 +36,17 @@ export class PoleBehavior extends AbstractBehavior {
      * Chunk sync: every wire with an endpoint in the chunk, once.
      * @private
      * @param {GameEngine} engine
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {LogicWireSetEvent[]}
      */
-    static _chunkSync(engine, chunk) {
+    static _chunkSync(engine, chunkKey) {
         const placed = engine.placed;
         const position = engine.Position;
         const events = [];
         for (const wire of engine.resolve(LogicNetworks).wires) {
             for (const objectRef of [wire.a, wire.b]) {
                 const eid = placed.eidByObjectRef(objectRef);
-                if (eid === undefined || chunkKey(position.x[eid], position.y[eid]) !== chunk) {
+                if (eid === undefined || chunkKeyAt(position.x[eid], position.y[eid]) !== chunkKey) {
                     continue;
                 }
                 events.push(new LogicWireSetEvent(position.x[eid], position.y[eid], wire.a, wire.b));

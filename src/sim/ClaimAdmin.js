@@ -24,18 +24,18 @@ export class ClaimAdmin {
      * everyone else is gated by the chunk's permission. Mirrored client-side by
      * ChunkClaimsView.canBuildIn; keep both in sync.
      * @param {number} playerRef
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {boolean}
      */
-    canBuildIn(playerRef, chunk) {
-        const owner = this.game.claims.ownerOf(chunk);
+    canBuildIn(playerRef, chunkKey) {
+        const owner = this.game.claims.ownerOf(chunkKey);
         if (owner === PLAYER_REF_NONE) {
             return false;
         }
         if (owner === playerRef) {
             return true;
         }
-        if (this.game.claims.permissionOf(chunk) === ChunkPermission.PERMISSION_ONLY_ME) {
+        if (this.game.claims.permissionOf(chunkKey) === ChunkPermission.PERMISSION_ONLY_ME) {
             return false;
         }
         return this.game.players.isFriend(owner, playerRef);
@@ -54,61 +54,61 @@ export class ClaimAdmin {
 
     /**
      * @param {AbstractSession} session
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    claim(session, chunk) {
+    claim(session, chunkKey) {
         const record = this.game.players.byId(session.playerRef);
-        const result = this.game.claims.claim(session.playerRef, chunk, record.maxChunks);
+        const result = this.game.claims.claim(session.playerRef, chunkKey, record.maxChunks);
         if (result === ClaimResult.CLAIM_RESULT_OK) {
-            this._publishUpdate(session, chunk, session.playerRef, this.game.claims.permissionOf(chunk));
+            this._publishUpdate(session, chunkKey, session.playerRef, this.game.claims.permissionOf(chunkKey));
         }
-        this.game.bus.publishTo(session.sessionRef, new ClaimResultEvent(chunk, result));
+        this.game.bus.publishTo(session.sessionRef, new ClaimResultEvent(chunkKey, result));
     }
 
     /**
      * Sets a claimed chunk's permission; silently ignored if the sender does not own it (a stale
      * panel racing a concurrent unclaim), same as any other invariant the client already gates on.
      * @param {AbstractSession} session
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {number} permission - a ChunkPermission
      * @returns {void}
      */
-    setPermission(session, chunk, permission) {
-        const result = this.game.claims.setPermission(session.playerRef, chunk, permission);
+    setPermission(session, chunkKey, permission) {
+        const result = this.game.claims.setPermission(session.playerRef, chunkKey, permission);
         if (result === ClaimResult.CLAIM_RESULT_OK) {
-            this._publishUpdate(session, chunk, session.playerRef, permission);
+            this._publishUpdate(session, chunkKey, session.playerRef, permission);
         }
     }
 
     /**
      * @param {AbstractSession} session
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {boolean} clear - whether the player confirmed emptying the chunk
      * @returns {void}
      */
-    unclaim(session, chunk, clear) {
+    unclaim(session, chunkKey, clear) {
         // A doomed unclaim (not owner, would split) rejects before the not-empty confirmation.
-        const check = this.game.claims.unclaimCheck(session.playerRef, chunk);
+        const check = this.game.claims.unclaimCheck(session.playerRef, chunkKey);
         if (check !== ClaimResult.CLAIM_RESULT_OK) {
-            this.game.bus.publishTo(session.sessionRef, new ClaimResultEvent(chunk, check));
+            this.game.bus.publishTo(session.sessionRef, new ClaimResultEvent(chunkKey, check));
             return;
         }
-        const solidIds = this._solidObjectRefsIn(chunk);
+        const solidIds = this._solidObjectRefsIn(chunkKey);
         // An unclaim must empty the chunk; without the clear confirmation it is rejected.
         if (solidIds.length > 0 && !clear) {
-            this.game.bus.publishTo(session.sessionRef, new ClaimResultEvent(chunk, ClaimResult.CLAIM_RESULT_NOT_EMPTY));
+            this.game.bus.publishTo(session.sessionRef, new ClaimResultEvent(chunkKey, ClaimResult.CLAIM_RESULT_NOT_EMPTY));
             return;
         }
-        const result = this.game.claims.unclaim(session.playerRef, chunk);
+        const result = this.game.claims.unclaim(session.playerRef, chunkKey);
         if (result === ClaimResult.CLAIM_RESULT_OK) {
             // Engine-originated deletes bypass the placement gate the now-unclaimed chunk holds.
             for (const objectRef of solidIds) {
                 this.game.simEngine.applyMessage(new DeleteObjectMessage(objectRef), PLAYER_REF_NONE);
             }
-            this._publishUpdate(session, chunk, PLAYER_REF_NONE, ChunkPermission.PERMISSION_FRIENDS);
+            this._publishUpdate(session, chunkKey, PLAYER_REF_NONE, ChunkPermission.PERMISSION_FRIENDS);
         }
-        this.game.bus.publishTo(session.sessionRef, new ClaimResultEvent(chunk, result));
+        this.game.bus.publishTo(session.sessionRef, new ClaimResultEvent(chunkKey, result));
     }
 
     /**
@@ -117,14 +117,14 @@ export class ClaimAdmin {
      * everywhere.
      * @private
      * @param {AbstractSession} session
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {number} owner - the new owner, or PLAYER_REF_NONE for an unclaim
      * @param {number} permission - the chunk's ChunkPermission; meaningless for an unclaim
      * @returns {void}
      */
-    _publishUpdate(session, chunk, owner, permission) {
-        const event = new ChunkClaimUpdateEvent(chunk, owner, permission);
-        const subscribers = this.game.bus.chunkSubscribers(chunk);
+    _publishUpdate(session, chunkKey, owner, permission) {
+        const event = new ChunkClaimUpdateEvent(chunkKey, owner, permission);
+        const subscribers = this.game.bus.chunkSubscribers(chunkKey);
         if (subscribers !== undefined) {
             for (const sessionRef of subscribers) {
                 this.game.playerDirectory.syncUsernames(sessionRef, [owner]);
@@ -142,12 +142,12 @@ export class ClaimAdmin {
      * The object refs of every solid object in a chunk; non-solid ground cover
      * (resources, water) stays out.
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {number[]}
      */
-    _solidObjectRefsIn(chunk) {
+    _solidObjectRefsIn(chunkKey) {
         const ids = [];
-        for (const event of this.game.simEngine.chunkSync(chunk)) {
+        for (const event of this.game.simEngine.chunkSync(chunkKey)) {
             let inner = [event];
             if (event instanceof AbstractBatchEvent) {
                 inner = event.explode();

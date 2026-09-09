@@ -78,14 +78,14 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {number|null} chunk
+     * @param {number|null} chunkKey
      * @returns {void}
      */
-    setSelectedChunk(chunk) {
-        if (chunk === this._selectedChunk) {
+    setSelectedChunk(chunkKey) {
+        if (chunkKey === this._selectedChunk) {
             return;
         }
-        this._selectedChunk = chunk;
+        this._selectedChunk = chunkKey;
         this._redraw();
     }
 

@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {AddFriendMessage} from "@/common/PlayerMessages.js";
 import {makeGame} from "@/test/ecsSim.js";
@@ -15,8 +15,8 @@ test("players, friends, and claims survive a save/load", async () => {
     bob.maxChunks = 20;
     const aliceSession = new CapturingSession(alice.playerRef);
     game.connect(aliceSession);
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(0, 0)), aliceSession);
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(64, 0)), aliceSession);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(0, 0)), aliceSession);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(64, 0)), aliceSession);
     game.dispatchMessage(new AddFriendMessage(bob.playerRef), aliceSession);
     await game.save();
 
@@ -25,8 +25,8 @@ test("players, friends, and claims survive a save/load", async () => {
     assert.equal(restored.players.byId(alice.playerRef).username, "alice");
     assert.equal(restored.players.byId(bob.playerRef).maxChunks, 20);
     assert.equal(restored.players.isFriend(alice.playerRef, bob.playerRef), true);
-    assert.equal(restored.claims.ownerOf(chunkKey(0, 0)), alice.playerRef);
-    assert.equal(restored.claims.ownerOf(chunkKey(64, 0)), alice.playerRef);
+    assert.equal(restored.claims.ownerOf(chunkKeyAt(0, 0)), alice.playerRef);
+    assert.equal(restored.claims.ownerOf(chunkKeyAt(64, 0)), alice.playerRef);
     assert.equal(restored.claims.countOf(alice.playerRef), 2);
     // The id counter resumes past the loaded players.
     assert.equal(restored.players.getOrCreate("sub-carol", "carol").playerRef, 3);

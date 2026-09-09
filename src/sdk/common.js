@@ -221,11 +221,11 @@ export {GameSettingsKey} from "@/common/constants.js";
 
 // ---- Chunk keys ----
 // A chunk is identified by an integer ordinal (its index within the region);
-// `chunkKey(tileX, tileY)` computes that key in JS.
-export {chunkKey, chunkOrigin} from "@/common/util.js";
+// `chunkKeyAt(tileX, tileY)` computes that key in JS.
+export {chunkKeyAt, chunkOrigin} from "@/common/util.js";
 
 // The key of a tile, used by every spatial index.
-export {tileKey} from "@/common/util.js";
+export {tileKeyAt} from "@/common/util.js";
 
 // Half the region's tile span; the world's half-open coordinate box is [-TILE_HALF, TILE_HALF).
 export {TILE_HALF} from "@/common/util.js";

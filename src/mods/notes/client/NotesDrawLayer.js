@@ -6,7 +6,7 @@ import {
     OVERWRITE_TILE_COLOR,
     claimColor,
     startDelay,
-    tileKey,
+    tileKeyAt,
 } from "@spup/sdk/client";
 import {NotePin} from "./NotePin.js";
 import {noteAnchor} from "./layout.js";
@@ -108,7 +108,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
         if (tileX === null) {
             this._toolTile = null;
         } else {
-            this._toolTile = tileKey(tileX, tileY);
+            this._toolTile = tileKeyAt(tileX, tileY);
         }
         this._applyHighlight();
     }

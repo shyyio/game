@@ -1,6 +1,6 @@
 import {AbstractChunkedDrawLayer} from "@/client/layers/AbstractChunkedDrawLayer.js";
 import {TILE_SIZE} from "@/client/constants.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {MAP_TILE_COLOR} from "@/client/Theme.js";
 import {ObjectClientData} from "@/client/state/ObjectsState.js";
 import {ObjectSprite} from "@/client/layers/ObjectSprite.js";
@@ -78,9 +78,9 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
      */
     addObject(id, sprite) {
         this._objects.set(id, sprite);
-        const chunk = chunkKey(sprite.tileX, sprite.tileY);
-        this._node(chunk).sprites.addChild(sprite);
-        this._memberAdded(chunk);
+        const chunkKey = chunkKeyAt(sprite.tileX, sprite.tileY);
+        this._node(chunkKey).sprites.addChild(sprite);
+        this._memberAdded(chunkKey);
     }
 
     /**
@@ -92,13 +92,13 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
             return;
         }
 
-        const chunk = chunkKey(sprite.tileX, sprite.tileY);
+        const chunkKey = chunkKeyAt(sprite.tileX, sprite.tileY);
         // Scans only its own chunk's children, and detaches from its parent.
         sprite.destroy();
         this._objects.delete(id);
 
-        const node = this._chunks.get(chunk);
-        this._memberRemoved(chunk, node === undefined || node.isEmpty);
+        const node = this._chunks.get(chunkKey);
+        this._memberRemoved(chunkKey, node === undefined || node.isEmpty);
     }
 
     /**
@@ -117,12 +117,12 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
 
     /**
      * Draws every tile of every object in the chunk into its pooled Graphics.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {Graphics} graphics
      * @returns {void}
      */
-    _drawChunkGeometry(chunk, graphics) {
-        for (const sprite of this._chunks.get(chunk).spriteList) {
+    _drawChunkGeometry(chunkKey, graphics) {
+        for (const sprite of this._chunks.get(chunkKey).spriteList) {
             for (const cell of this._type.geometry.tiles(sprite.direction)) {
                 graphics.rect(
                     (sprite.tileX + cell.x) * TILE_SIZE,

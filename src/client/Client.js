@@ -28,7 +28,7 @@ import {INSPECT_SCHEMA, InspectWriter, InspectView} from "@/client/state/Inspect
 import {Direction, GameSettingsKey} from "@/common/constants.js";
 import {WorldNoise} from "@/common/WorldNoise.js";
 import {Terrain} from "@/common/Terrain.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {OVERWORLD_SCHEMA, OverworldWriter, OverworldView} from "@/client/state/OverworldState.js";
 import {OverworldDrawLayer} from "@/client/layers/OverworldDrawLayer.js";
 import {GridDrawLayer} from "@/client/layers/GridDrawLayer.js";
@@ -327,7 +327,7 @@ export class Client {
      * @returns {boolean}
      */
     canBuildAt(tileX, tileY) {
-        return this.cache.view("chunkClaims").canBuildIn(chunkKey(tileX, tileY));
+        return this.cache.view("chunkClaims").canBuildIn(chunkKeyAt(tileX, tileY));
     }
 
     /**

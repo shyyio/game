@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {CreateObjectMessage, SetViewportMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
@@ -47,7 +47,7 @@ test("a session subscribing to a chunk receives its lanes, items and resting por
     const {game, engine} = await setup();
     const builder = new CapturingSession(1);
     game.connect(builder);
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(0, 0)), builder);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(0, 0)), builder);
     for (const cell of CELLS) {
         game.dispatchMessage(new CreateObjectMessage(TestLaneType.objectTypeId, cell[0], cell[1], Direction.UP), builder);
     }
@@ -59,7 +59,7 @@ test("a session subscribing to a chunk receives its lanes, items and resting por
 
     const viewer = new CapturingSession(2);
     game.connect(viewer);
-    game.dispatchMessage(new SetViewportMessage([chunkKey(0, 0)]), viewer);
+    game.dispatchMessage(new SetViewportMessage([chunkKeyAt(0, 0)]), viewer);
 
     const bundle = viewer.events.find(event => event instanceof ChunkSyncEvent);
     assert.ok(bundle, "a ChunkSyncEvent bundle for the subscribed chunk");
@@ -81,7 +81,7 @@ test("a subscribing session receives a lane's resting out-port item", async () =
     const {game, engine} = await setup();
     const builder = new CapturingSession(1);
     game.connect(builder);
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(0, 0)), builder);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(0, 0)), builder);
     for (const cell of CELLS) {
         game.dispatchMessage(new CreateObjectMessage(TestLaneType.objectTypeId, cell[0], cell[1], Direction.UP), builder);
     }
@@ -91,7 +91,7 @@ test("a subscribing session receives a lane's resting out-port item", async () =
 
     const viewer = new CapturingSession(2);
     game.connect(viewer);
-    game.dispatchMessage(new SetViewportMessage([chunkKey(0, 0)]), viewer);
+    game.dispatchMessage(new SetViewportMessage([chunkKeyAt(0, 0)]), viewer);
 
     const synced = flattenBatches(viewer.events.find(event => event instanceof ChunkSyncEvent).events);
     const portItems = synced.filter(event => event instanceof PortItemSetEvent);
@@ -107,9 +107,9 @@ test("lane events reach only the sessions watching the chunk", async () => {
     const bystander = new CapturingSession(2);
     game.connect(watcher);
     game.connect(bystander);
-    game.dispatchMessage(new SetViewportMessage([chunkKey(0, 0)]), watcher);
-    game.dispatchMessage(new SetViewportMessage([chunkKey(1000, 1000)]), bystander);
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(0, 0)), watcher);
+    game.dispatchMessage(new SetViewportMessage([chunkKeyAt(0, 0)]), watcher);
+    game.dispatchMessage(new SetViewportMessage([chunkKeyAt(1000, 1000)]), bystander);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(0, 0)), watcher);
     for (const cell of CELLS) {
         game.dispatchMessage(new CreateObjectMessage(TestLaneType.objectTypeId, cell[0], cell[1], Direction.UP), watcher);
     }

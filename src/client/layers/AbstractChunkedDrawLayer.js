@@ -114,13 +114,13 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
 
     /**
      * The chunk's node, created empty on first use.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {ChunkNode}
      */
-    _node(chunk) {
-        return getOrCreate(this._chunks, chunk, () => {
+    _node(chunkKey) {
+        return getOrCreate(this._chunks, chunkKey, () => {
             const node = new ChunkNode();
-            this._initChunkNode(node, chunk);
+            this._initChunkNode(node, chunkKey);
             return node;
         });
     }
@@ -128,97 +128,97 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
     /**
      * Optional hook: outfits a freshly created chunk node (e.g. hangs the chunk's mesh).
      * @param {ChunkNode} node
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _initChunkNode(node, chunk) {}
+    _initChunkNode(node, chunkKey) {}
 
     /**
      * Marks a chunk stale after a member joined it, creating its node and mounting it when on
      * screen. Call after indexing the member, so a mount sees it.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _memberAdded(chunk) {
-        this._node(chunk);
-        this._dirtyChunks.add(chunk);
-        if (this._visibleChunks.has(chunk)) {
-            this._mountChunk(chunk);
+    _memberAdded(chunkKey) {
+        this._node(chunkKey);
+        this._dirtyChunks.add(chunkKey);
+        if (this._visibleChunks.has(chunkKey)) {
+            this._mountChunk(chunkKey);
         }
     }
 
     /**
      * Marks a chunk stale after a member left it, dropping it once empty.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {boolean} empty
      * @returns {void}
      */
-    _memberRemoved(chunk, empty) {
+    _memberRemoved(chunkKey, empty) {
         if (empty) {
-            this._dropChunk(chunk);
+            this._dropChunk(chunkKey);
             return;
         }
-        this._dirtyChunks.add(chunk);
+        this._dirtyChunks.add(chunkKey);
     }
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _mountChunk(chunk) {
-        const node = this._chunks.get(chunk);
-        if (node === undefined || this._mounted.has(chunk)) {
+    _mountChunk(chunkKey) {
+        const node = this._chunks.get(chunkKey);
+        if (node === undefined || this._mounted.has(chunkKey)) {
             return;
         }
-        this._mounted.add(chunk);
-        this._onChunkMounted(chunk);
+        this._mounted.add(chunkKey);
+        this._onChunkMounted(chunkKey);
         this.addChild(node.root);
     }
 
     /**
      * Optional hook: readies a chunk's content as it mounts; by default applies the current mode.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _onChunkMounted(chunk) {
-        this._applyMode(chunk);
+    _onChunkMounted(chunkKey) {
+        this._applyMode(chunkKey);
     }
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _unmountChunk(chunk) {
-        if (!this._mounted.has(chunk)) {
+    _unmountChunk(chunkKey) {
+        if (!this._mounted.has(chunkKey)) {
             return;
         }
-        this.removeChild(this._chunks.get(chunk).root);
-        this._mounted.delete(chunk);
+        this.removeChild(this._chunks.get(chunkKey).root);
+        this._mounted.delete(chunkKey);
     }
 
     /**
      * Drops a chunk's node and mount (e.g. with its last child); a no-op for an unknown chunk.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _dropChunk(chunk) {
-        const node = this._chunks.get(chunk);
+    _dropChunk(chunkKey) {
+        const node = this._chunks.get(chunkKey);
         if (node === undefined) {
             return;
         }
-        this._unmountChunk(chunk);
+        this._unmountChunk(chunkKey);
         node.destroy();
-        this._chunks.delete(chunk);
-        this._dirtyChunks.delete(chunk);
-        this._onChunkDropped(chunk);
+        this._chunks.delete(chunkKey);
+        this._dirtyChunks.delete(chunkKey);
+        this._onChunkDropped(chunkKey);
     }
 
     /**
      * Optional hook: extra teardown as a chunk's node drops (e.g. its mesh index entry).
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _onChunkDropped(chunk) {}
+    _onChunkDropped(chunkKey) {}
 
     /**
      * Rebuilds every stale mounted chunk in one pass.
@@ -238,72 +238,72 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
 
     /**
      * Rebuilds one stale chunk in the current mode.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _rebuildChunk(chunk) {
+    _rebuildChunk(chunkKey) {
         if (this._mapMode) {
-            this._rebuildChunkGeometry(chunk);
+            this._rebuildChunkGeometry(chunkKey);
             return;
         }
-        this._rebuildChunkSprites(chunk);
+        this._rebuildChunkSprites(chunkKey);
     }
 
     /**
      * Optional hook: rebuilds one stale chunk's sprite content; by default sprites keep themselves
      * current.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _rebuildChunkSprites(chunk) {}
+    _rebuildChunkSprites(chunkKey) {}
 
     /**
      * Hangs the current mode's content under the chunk root, detaching the other one.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _applyMode(chunk) {
-        const node = this._chunks.get(chunk);
+    _applyMode(chunkKey) {
+        const node = this._chunks.get(chunkKey);
         if (this._mapMode) {
-            node.showGraphics(this._rebuildChunkGeometry(chunk));
+            node.showGraphics(this._rebuildChunkGeometry(chunkKey));
             return;
         }
-        this._prepareChunkSprites(chunk);
+        this._prepareChunkSprites(chunkKey);
         node.showSprites();
     }
 
     /**
      * Optional hook: readies a chunk's sprites before they show (e.g. rebuilds its mesh).
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _prepareChunkSprites(chunk) {}
+    _prepareChunkSprites(chunkKey) {}
 
     /**
      * Redraws one chunk's pooled map-mode geometry into its cleared Graphics.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {Graphics}
      */
-    _rebuildChunkGeometry(chunk) {
-        this._dirtyChunks.delete(chunk);
-        const node = this._chunks.get(chunk);
+    _rebuildChunkGeometry(chunkKey) {
+        this._dirtyChunks.delete(chunkKey);
+        const node = this._chunks.get(chunkKey);
         if (node.graphics === null) {
             node.graphics = new Graphics();
         } else {
             node.graphics.clear();
         }
-        this._drawChunkGeometry(chunk, node.graphics);
+        this._drawChunkGeometry(chunkKey, node.graphics);
         return node.graphics;
     }
 
     /**
      * Draws one chunk's map-mode geometry into its cleared Graphics.
      * @abstract
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {Graphics} graphics
      * @returns {void}
      */
-    _drawChunkGeometry(chunk, graphics) {
+    _drawChunkGeometry(chunkKey, graphics) {
         throw new NotImplementedError();
     }
 }

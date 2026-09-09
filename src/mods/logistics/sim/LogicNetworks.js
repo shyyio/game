@@ -259,10 +259,10 @@ export class LogicNetworks {
                 continue;
             }
             const event = new eventClass(position.x[eid], position.y[eid], aObjectRef, bObjectRef);
-            if (emitted.has(event.chunk)) {
+            if (emitted.has(event.chunkKey)) {
                 continue;
             }
-            emitted.add(event.chunk);
+            emitted.add(event.chunkKey);
             engine.emitEvent(event);
         }
     }

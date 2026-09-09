@@ -24,29 +24,29 @@ export class GridDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      */
-    addChunk(chunk) {
-        if (this._chunks.has(chunk)) {
+    addChunk(chunkKey) {
+        if (this._chunks.has(chunkKey)) {
             return;
         }
 
-        const {x, y} = chunkPosition(chunk);
+        const {x, y} = chunkPosition(chunkKey);
         const tileX = x * CHUNK_SIZE;
         const tileY = y * CHUNK_SIZE;
         const grid = new GridChunk(this._majorContext, this._minorContext);
         grid.minor.visible = !this._mapMode;
         grid.position.set(tileX * TILE_SIZE, tileY * TILE_SIZE);
         grid.zIndex = tileX + tileY;
-        this._chunks.set(chunk, grid);
+        this._chunks.set(chunkKey, grid);
         this.addChild(grid);
     }
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      */
-    removeChunk(chunk) {
-        const grid = this._chunks.get(chunk);
+    removeChunk(chunkKey) {
+        const grid = this._chunks.get(chunkKey);
         if (grid === undefined) {
             return;
         }
@@ -54,7 +54,7 @@ export class GridDrawLayer extends AbstractDrawLayer {
         this.removeChild(grid);
         // The Graphics views die with the container; the shared contexts live on.
         grid.destroy({children: true});
-        this._chunks.delete(chunk);
+        this._chunks.delete(chunkKey);
     }
 
     set mapMode(value) {
@@ -70,9 +70,9 @@ export class GridDrawLayer extends AbstractDrawLayer {
 
     onEvent(event) {
         if (event instanceof ChunkSubscribeEvent) {
-            this.addChunk(event.chunk);
+            this.addChunk(event.chunkKey);
         } else if (event instanceof ChunkUnsubscribeEvent) {
-            this.removeChunk(event.chunk);
+            this.removeChunk(event.chunkKey);
         }
     }
 

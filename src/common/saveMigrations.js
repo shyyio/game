@@ -1,5 +1,5 @@
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
-export const SAVE_FORMAT = 9;
+export const SAVE_FORMAT = 10;
 
 // What a save written before the stamp counts as.
 const UNSTAMPED_FORMAT = 0;
@@ -77,6 +77,12 @@ export const SAVE_MIGRATIONS = new Map([
             "objectId",
             "objectRef",
         ),
+    })],
+    // Format 10 renames the ChunkClaim record's chunk column to chunkKey.
+    [9, snapshot => ({
+        ...snapshot,
+        saveFormat: 10,
+        records: renameField(snapshot.records === undefined ? [] : snapshot.records, "ChunkClaim", "chunk", "chunkKey"),
     })],
 ]);
 

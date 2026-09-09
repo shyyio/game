@@ -5,10 +5,10 @@ export class CursorState {
 
     /**
      * @param {number} playerRef
-     * @param {number} chunk
+     * @param {number} chunkKey
      */
-    constructor(playerRef, chunk) {
+    constructor(playerRef, chunkKey) {
         this.playerRef = playerRef;
-        this.chunk = chunk;
+        this.chunkKey = chunkKey;
     }
 }

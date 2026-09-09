@@ -1,5 +1,5 @@
 import {CHUNK_SIZE, REGION_SIZE} from "@/common/constants.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 
 export const TILE_SIZE = 64;
 
@@ -85,7 +85,7 @@ function chunksOver(left, top, right, bottom) {
     const chunks = new Set();
     for (let x = left; x <= right; x += CHUNK_SIZE) {
         for (let y = top; y <= bottom; y += CHUNK_SIZE) {
-            chunks.add(chunkKey(x, y));
+            chunks.add(chunkKeyAt(x, y));
         }
     }
     return chunks;

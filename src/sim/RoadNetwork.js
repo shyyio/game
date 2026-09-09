@@ -1,4 +1,4 @@
-import {cellNeighbors, tileKey} from "@/common/util.js";
+import {cellNeighbors, tileKeyAt} from "@/common/util.js";
 import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
 import {RoadBehavior} from "@/sim/behaviors/RoadBehavior.js";
 import {floodRoadComponent} from "@/common/roadFlood.js";
@@ -17,7 +17,7 @@ export class RoadTile {
     constructor(x, y, objectRef) {
         this.x = x;
         this.y = y;
-        this.key = tileKey(x, y);
+        this.key = tileKeyAt(x, y);
         this.objectRef = objectRef;
         /** @type {number|null} */
         this.component = null;
@@ -117,7 +117,7 @@ export class RoadNetwork {
      * @returns {void}
      */
     addRoad(x, y, objectRef) {
-        this._tiles.set(tileKey(x, y), new RoadTile(x, y, objectRef));
+        this._tiles.set(tileKeyAt(x, y), new RoadTile(x, y, objectRef));
         this._markCellDirty(x, y);
     }
 
@@ -128,7 +128,7 @@ export class RoadNetwork {
      * @returns {void}
      */
     removeRoad(x, y) {
-        const tile = tileKey(x, y);
+        const tile = tileKeyAt(x, y);
         const road = this._tiles.get(tile);
         if (road !== undefined && road.component !== null) {
             this._dirtyComponents.add(road.component);
@@ -155,7 +155,7 @@ export class RoadNetwork {
      * @returns {void}
      */
     _markCellDirty(x, y) {
-        this._dirtyCells.set(tileKey(x, y), {x, y});
+        this._dirtyCells.set(tileKeyAt(x, y), {x, y});
     }
 
     /**
@@ -164,7 +164,7 @@ export class RoadNetwork {
      * @returns {boolean}
      */
     roadAt(x, y) {
-        return this._tiles.has(tileKey(x, y));
+        return this._tiles.has(tileKeyAt(x, y));
     }
 
     /**
@@ -210,7 +210,7 @@ export class RoadNetwork {
         const seenHousings = new Set();
         const housingQueue = [];
         const consider = (x, y) => {
-            const tile = tileKey(x, y);
+            const tile = tileKeyAt(x, y);
             const road = this._tiles.get(tile);
             if (road !== undefined) {
                 if (!seenRoads.has(tile)) {

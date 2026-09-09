@@ -130,11 +130,11 @@ export class EventBus {
 
     /**
      * The sessions viewing a chunk, or undefined when none.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {Set<number>|undefined}
      */
-    chunkSubscribers(chunk) {
-        return this._chunkSubscribers.get(chunk);
+    chunkSubscribers(chunkKey) {
+        return this._chunkSubscribers.get(chunkKey);
     }
 
     /**
@@ -149,11 +149,11 @@ export class EventBus {
     /**
      * Whether any session is subscribed to a chunk's topic. The sim checks this before building a
      * render event, so an unwatched chunk costs nothing.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {boolean}
      */
-    hasChunkSubscribers(chunk) {
-        return this._chunkSubscribers.has(chunk);
+    hasChunkSubscribers(chunkKey) {
+        return this._chunkSubscribers.has(chunkKey);
     }
 
     /**

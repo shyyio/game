@@ -66,11 +66,11 @@ export class AbstractSimMod {
     /**
      * Optional hook: a session subscribed to a chunk, before that chunk's sync bundle is sent.
      * @param {AbstractSession} session
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {Game} game
      * @returns {void}
      */
-    onChunkSubscribed(session, chunk, game) {}
+    onChunkSubscribed(session, chunkKey, game) {}
 
     /**
      * Optional hook: runs once per tick, after every phase has resolved for this tick.

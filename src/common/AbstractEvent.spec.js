@@ -10,7 +10,7 @@ test("a AbstractEvent subclass with wireFields constructs and carries no positio
     const event = new WithFields();
     assert.ok(event instanceof AbstractEvent);
     assert.strictEqual(event.x, undefined);
-    assert.strictEqual(event.chunk, undefined);
+    assert.strictEqual(event.chunkKey, undefined);
 });
 
 test("constructing an AbstractEvent subclass without wireFields throws", () => {

@@ -101,7 +101,7 @@ export class ClaimSelectionMode {
             this.set(false);
             return;
         }
-        if (previous === ViewMode.WORLD && this.active && this._cursor.chunk === null) {
+        if (previous === ViewMode.WORLD && this.active && this._cursor.chunkKey === null) {
             this._cursor.selectCenterChunk();
         }
         this.updateIndicators();

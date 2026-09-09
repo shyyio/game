@@ -208,15 +208,15 @@ export class Terrain {
     }
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {TerrainBake} the chunk's tiles with blends, index = localY * CHUNK_SIZE + localX; cached
      */
-    bakeChunk(chunk) {
-        let bake = this._bakes.get(chunk);
+    bakeChunk(chunkKey) {
+        let bake = this._bakes.get(chunkKey);
         if (bake !== undefined) {
             return bake;
         }
-        const origin = chunkOrigin(chunk);
+        const origin = chunkOrigin(chunkKey);
         bake = new TerrainBake(CHUNK_SIZE, true);
         let index = 0;
         for (let localY = 0; localY < CHUNK_SIZE; localY++) {
@@ -228,7 +228,7 @@ export class Terrain {
                 index++;
             }
         }
-        this._bakes.set(chunk, bake);
+        this._bakes.set(chunkKey, bake);
         return bake;
     }
 

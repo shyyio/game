@@ -53,19 +53,19 @@ export class OwnClaimsSyncEvent extends AbstractEvent {
 export class ChunkClaimUpdateEvent extends AbstractEvent {
 
     static wireFields = {
-        chunk: "int32",
+        chunkKey: "int32",
         playerRef: "int64",
         permission: "int32",
     };
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {number} playerRef
      * @param {number} permission - a ChunkPermission; meaningless once unclaimed
      */
-    constructor(chunk, playerRef, permission = ChunkPermission.PERMISSION_ONLY_ME) {
+    constructor(chunkKey, playerRef, permission = ChunkPermission.PERMISSION_ONLY_ME) {
         super();
-        this.chunk = chunk;
+        this.chunkKey = chunkKey;
         this.playerRef = playerRef;
         this.permission = permission;
     }
@@ -75,7 +75,7 @@ export class ChunkClaimUpdateEvent extends AbstractEvent {
      * @returns {Set<number>|undefined}
      */
     subscribersIn(bus) {
-        return bus.chunkSubscribers(this.chunk);
+        return bus.chunkSubscribers(this.chunkKey);
     }
 }
 
@@ -85,17 +85,17 @@ export class ChunkClaimUpdateEvent extends AbstractEvent {
 export class ClaimResultEvent extends AbstractEvent {
 
     static wireFields = {
-        chunk: "int32",
+        chunkKey: "int32",
         result: "int32",
     };
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {number} result
      */
-    constructor(chunk, result) {
+    constructor(chunkKey, result) {
         super();
-        this.chunk = chunk;
+        this.chunkKey = chunkKey;
         this.result = result;
     }
 }

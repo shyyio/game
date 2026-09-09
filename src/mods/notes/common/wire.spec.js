@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert";
 import {wireRegistryFor, assertRoundTrip} from "@/test/wireRoundTrip.js";
-import {chunkKey} from "@spup/sdk";
+import {chunkKeyAt} from "@spup/sdk";
 import {NotesDeclaration} from "../declaration.js";
 import {NotePlaceMessage, NoteEditMessage, NoteDeleteMessage} from "./messages.js";
 import {NoteSetEvent, NoteDeleteEvent} from "./events.js";
@@ -16,7 +16,7 @@ test("Round-trips the note messages and events", () => {
     assertRoundTrip(reg, new NoteDeleteEvent(12, -3), NoteDeleteEvent);
     // The chunk is derived from the tile position, never wired.
     const decoded = reg.decode(reg.encode(new NoteSetEvent(12, -3, 250, 999, 7, "hi")));
-    assert.strictEqual(decoded.chunk, chunkKey(12, -3));
+    assert.strictEqual(decoded.chunkKey, chunkKeyAt(12, -3));
 });
 
 test("Note placement validation gates positions, offsets, and text", () => {

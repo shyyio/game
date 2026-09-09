@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {tileKey} from "@/common/util.js";
+import {tileKeyAt} from "@/common/util.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {Belts} from "@/mods/logistics/sim/Belts.js";
 
@@ -30,7 +30,7 @@ test("items on belts orphaned by a junction steal survive the rebuild", async ()
     // A newer belt feeding the mid tile (5,5) from the side wins its junction, so (5,5) adopts it
     // and the upstream (5,7)+(5,6) split off into their own orphan path.
     belts.placeBelt(4, 5, Direction.RIGHT);
-    const orphan = belts.paths.find(path => path.belts.includes(tileKey(5, 7)));
+    const orphan = belts.paths.find(path => path.belts.includes(tileKeyAt(5, 7)));
     assert.ok(orphan !== undefined, "the orphaned upstream belts form their own path");
     const expected = belts.itemsOf(orphan).filter(item => item.type === RED).length;
     assert.ok(expected >= 2, "the orphan path carries the packed items, not an empty rebuild");

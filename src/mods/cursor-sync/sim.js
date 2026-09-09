@@ -116,17 +116,17 @@ export class CursorSyncSimMod extends AbstractSimMod {
         }
         const event = new PlayerCursorEvent(session.playerRef, message.x, message.y);
         // The chunk getter recomputes; derive it once per heartbeat.
-        const chunk = event.chunk;
+        const chunkKey = event.chunkKey;
         const state = this._cursorBySession.get(session.sessionRef);
         if (state === undefined) {
-            this._cursorBySession.set(session.sessionRef, new CursorState(session.playerRef, chunk));
+            this._cursorBySession.set(session.sessionRef, new CursorState(session.playerRef, chunkKey));
         } else {
-            if (state.chunk !== chunk) {
-                this._publishCursorHide(state.playerRef, state.chunk, chunk, session.sessionRef, game);
+            if (state.chunkKey !== chunkKey) {
+                this._publishCursorHide(state.playerRef, state.chunkKey, chunkKey, session.sessionRef, game);
             }
-            state.chunk = chunk;
+            state.chunkKey = chunkKey;
         }
-        const viewers = game.bus.chunkSubscribers(chunk);
+        const viewers = game.bus.chunkSubscribers(chunkKey);
         if (viewers === undefined) {
             return;
         }
@@ -196,7 +196,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
             return;
         }
         this._cursorBySession.delete(sessionRef);
-        this._publishCursorHide(state.playerRef, state.chunk, null, sessionRef, game);
+        this._publishCursorHide(state.playerRef, state.chunkKey, null, sessionRef, game);
     }
 
     /**

@@ -1,5 +1,5 @@
 import {World} from "@/sim/World.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {portAt} from "@/common/portGeometry.js";
 import {PLAYER_REF_NONE} from "@/common/constants.js";
 import {ListenerList} from "@/common/ListenerList.js";
@@ -326,14 +326,14 @@ export class GameEngine {
      * Whether `playerRef` may modify `chunk`. Engine-originated messages (PLAYER_REF_NONE) are
      * trusted: their parent message already passed the gate.
      * @param {number} playerRef
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {boolean}
      */
-    placementAllowed(playerRef, chunk) {
+    placementAllowed(playerRef, chunkKey) {
         if (playerRef === PLAYER_REF_NONE || this._placementGate === null) {
             return true;
         }
-        return this._placementGate(playerRef, chunk);
+        return this._placementGate(playerRef, chunkKey);
     }
 
     /**
@@ -348,14 +348,14 @@ export class GameEngine {
     /**
      * The current owner of `chunk`, or PLAYER_REF_NONE when no resolver is installed (tests without
      * a Game) or the chunk is unclaimed.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {number}
      */
-    chunkOwnerOf(chunk) {
+    chunkOwnerOf(chunkKey) {
         if (this._chunkOwnerResolver === null) {
             return PLAYER_REF_NONE;
         }
-        return this._chunkOwnerResolver(chunk);
+        return this._chunkOwnerResolver(chunkKey);
     }
 
     /**
@@ -381,7 +381,7 @@ export class GameEngine {
      * @returns {boolean}
      */
     observesTile(x, y) {
-        return this._chunkObserved(chunkKey(x, y));
+        return this._chunkObserved(chunkKeyAt(x, y));
     }
 
     /**
@@ -642,7 +642,7 @@ export class GameEngine {
     applyMessage(message, playerRef = PLAYER_REF_NONE) {
         // Both ownership gates live here, above every create/delete handler (bespoke ones too).
         if (message instanceof CreateObjectMessage
-            && !this.placementAllowed(playerRef, chunkKey(message.x, message.y))) {
+            && !this.placementAllowed(playerRef, chunkKeyAt(message.x, message.y))) {
             return true;
         }
         let handled;
@@ -695,26 +695,26 @@ export class GameEngine {
         if (eid === undefined) {
             return true;
         }
-        return this.placementAllowed(playerRef, chunkKey(this.Position.x[eid], this.Position.y[eid]));
+        return this.placementAllowed(playerRef, chunkKeyAt(this.Position.x[eid], this.Position.y[eid]));
     }
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {object[]}
      */
-    chunkSync(chunk) {
+    chunkSync(chunkKey) {
         const events = [];
         for (const contributor of this._chunkSyncers) {
-            for (const event of contributor(chunk)) {
+            for (const event of contributor(chunkKey)) {
                 events.push(event);
             }
         }
         // After the contributors: the client patches synced fields onto, and resolves a port item
         // against, the object/path the contributors' events just recreated.
-        for (const event of this.sync.chunkSync(chunk)) {
+        for (const event of this.sync.chunkSync(chunkKey)) {
             events.push(event);
         }
-        const portItems = this.render.chunkSync(chunk);
+        const portItems = this.render.chunkSync(chunkKey);
         if (portItems !== null) {
             events.push(portItems);
         }

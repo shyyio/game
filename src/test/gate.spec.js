@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
@@ -122,7 +122,7 @@ test("a belt gate works across a chunk seam", async () => {
     const feed = belts.placeBelt(0, 64, Direction.UP);
     placeGate(engine, 0, 63, Direction.UP);
     const onward = belts.placeBelt(0, 62, Direction.UP);
-    assert.notEqual(chunkKey(0, 64), chunkKey(0, 63), "the gate sits across the seam from its feed");
+    assert.notEqual(chunkKeyAt(0, 64), chunkKeyAt(0, 63), "the gate sits across the seam from its feed");
 
     engine.ports.setItem(feed.inPort, RED);
     let arrived = false;
@@ -226,9 +226,9 @@ test("a toggle applies at the next tick, batches the change, and syncs to late j
     const game = await makeGame();
     const player = new CapturingSession(1);
     game.connect(player);
-    const chunk = chunkKey(5, 5);
-    game.dispatchMessage(new ClaimChunkMessage(chunk), player);
-    game.dispatchMessage(new SetViewportMessage([chunk]), player);
+    const chunkKey = chunkKeyAt(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), player);
+    game.dispatchMessage(new SetViewportMessage([chunkKey]), player);
     game.dispatchMessage(new CreateObjectMessage(GateDefinition.objectTypeId, 5, 5, Direction.UP), player);
     const engine = game.simEngine;
     const def = engine.components.get("Gate");
@@ -254,7 +254,7 @@ test("a toggle applies at the next tick, batches the change, and syncs to late j
     // A late joiner learns the closed gate through chunk sync.
     const joiner = new CapturingSession(2);
     game.connect(joiner);
-    game.dispatchMessage(new SetViewportMessage([chunk]), joiner);
+    game.dispatchMessage(new SetViewportMessage([chunkKey]), joiner);
     const bundle = joiner.events.find(event => event.events !== undefined);
     const synced = bundle.events.filter(event => event instanceof ObjectFieldsBatchEvent);
     assert.equal(synced.length, 1);
@@ -267,7 +267,7 @@ test("a toggle without build rights is refused with a corrective event", async (
     const game = await makeGame();
     const owner = new CapturingSession(1);
     game.connect(owner);
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), owner);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), owner);
     game.dispatchMessage(new CreateObjectMessage(GateDefinition.objectTypeId, 5, 5, Direction.UP), owner);
     const engine = game.simEngine;
     const def = engine.components.get("Gate");
@@ -291,7 +291,7 @@ test("gate state survives a save/load", async () => {
     const game = await makeGame([], store);
     const player = new CapturingSession(1);
     game.connect(player);
-    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), player);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), player);
     game.dispatchMessage(new CreateObjectMessage(GateDefinition.objectTypeId, 5, 5, Direction.UP), player);
     const engine = game.simEngine;
     const def = engine.components.get("Gate");

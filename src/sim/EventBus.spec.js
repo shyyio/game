@@ -4,8 +4,8 @@ import {EventBus} from "@/sim/EventBus.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 
 // Test events routing through a fixed topic.
-function chunkEvent(chunk) {
-    return {chunk, subscribersIn: bus => bus.chunkSubscribers(chunk)};
+function chunkEvent(chunkKey) {
+    return {chunkKey, subscribersIn: bus => bus.chunkSubscribers(chunkKey)};
 }
 
 function objectEvent(objectRef) {

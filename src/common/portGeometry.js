@@ -1,4 +1,4 @@
-import {rotate, tileKey, tileVariantKey} from "@/common/util.js";
+import {rotate, tileKeyAt, tileVariantKey} from "@/common/util.js";
 
 // Where a port sits in the world and when two of them meet. The sim keys its shared edge ports on
 // this, the client derives its connection rendering from it, and both read the same PortDefinitions
@@ -26,5 +26,5 @@ export function portAt(port, tileX, tileY, direction) {
  * @returns {number}
  */
 export function edgeKey(x, y, direction) {
-    return tileVariantKey(tileKey(x, y), direction);
+    return tileVariantKey(tileKeyAt(x, y), direction);
 }

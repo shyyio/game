@@ -2,7 +2,7 @@ import {Container, Graphics, GraphicsContext} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
 import {DisplayPool} from "@/client/layers/DisplayPool.js";
 import {TILE_SIZE} from "@/client/constants.js";
-import {chunkKey, getOrCreate} from "@/common/util.js";
+import {chunkKeyAt, getOrCreate} from "@/common/util.js";
 
 // Worker dot styling, in a row along the machine's top edge: every slot carries the same solid
 // black ring; a granted worker fills it green, a missing one yellow.
@@ -149,7 +149,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
             bounds.minTileX * TILE_SIZE + DOT_LEFT_INSET,
             bounds.minTileY * TILE_SIZE + DOT_EDGE_INSET,
         );
-        const container = this._containerFor(chunkKey(bounds.minTileX, bounds.minTileY));
+        const container = this._containerFor(chunkKeyAt(bounds.minTileX, bounds.minTileY));
         if (badge.parent !== container) {
             container.addChild(badge);
         }
@@ -204,12 +204,12 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
     /**
      * The badge container for a chunk, created on first use.
      * @private
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {BadgeChunkContainer}
      */
-    _containerFor(chunk) {
-        return getOrCreate(this._chunkContainers, chunk, () => {
-            const container = new BadgeChunkContainer(chunk);
+    _containerFor(chunkKey) {
+        return getOrCreate(this._chunkContainers, chunkKey, () => {
+            const container = new BadgeChunkContainer(chunkKey);
             this.addChild(container);
             return container;
         });
@@ -230,7 +230,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
         const container = badge.parent;
         container.removeChild(badge);
         if (container.children.length === 0) {
-            this._chunkContainers.delete(container.chunk);
+            this._chunkContainers.delete(container.chunkKey);
             this.removeChild(container);
             container.destroy();
         }
@@ -264,11 +264,11 @@ class Badge extends Graphics {
 class BadgeChunkContainer extends Container {
 
     /**
-     * @param {number} chunk
+     * @param {number} chunkKey
      */
-    constructor(chunk) {
+    constructor(chunkKey) {
         super();
         this.isRenderGroup = true;
-        this.chunk = chunk;
+        this.chunkKey = chunkKey;
     }
 }

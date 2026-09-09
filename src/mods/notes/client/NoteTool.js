@@ -1,4 +1,4 @@
-import {AbstractTool, Mouse, PLAYER_REF_NONE, TILE_SIZE, tileKey} from "@spup/sdk/client";
+import {AbstractTool, Mouse, PLAYER_REF_NONE, TILE_SIZE, tileKeyAt} from "@spup/sdk/client";
 import {NOTE_OFFSET_CENTER, NOTE_OFFSET_UNITS, NOTE_TOOL_ID} from "../common/constants.js";
 import {NOTE_EDITOR_MODE_PLACE, NOTE_EDITOR_MODE_EDIT, NOTE_EDITOR_MODE_DELETE, NoteEditorTarget} from "./NotesState.js";
 
@@ -113,7 +113,7 @@ export class NoteTool extends AbstractTool {
      * @returns {void}
      */
     openAt(tileX, tileY) {
-        const note = this._cache.mapGet("notes.byTile", tileKey(tileX, tileY));
+        const note = this._cache.mapGet("notes.byTile", tileKeyAt(tileX, tileY));
         if (note !== undefined) {
             this._openExisting(note);
             return;

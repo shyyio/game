@@ -1,6 +1,9 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {makeGameEngine} from "@/test/ecsSim.js";
+import {makeGameEngine, makeGame} from "@/test/ecsSim.js";
+import {CapturingSession} from "@/test/CapturingSession.js";
+import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {migrateSnapshot, SAVE_FORMAT} from "@/common/saveMigrations.js";
 import {GAME_VERSION, Direction} from "@/common/constants.js";
@@ -320,4 +323,32 @@ test("a format-8 save renames every objectId column to objectRef", async () => {
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
     assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1);
+});
+
+test("a format-9 save renames the ChunkClaim record's chunk column to chunkKey", async () => {
+    const game = await makeGame();
+    const alice = game.players.getOrCreate("sub-alice", "alice");
+    const session = new CapturingSession(alice.playerRef);
+    game.connect(session);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(0, 0)), session);
+    const snapshot = game.serialize();
+    snapshot.saveFormat = 9;
+    const claims = snapshot.records.find(table => table.name === "ChunkClaim");
+    for (const field of claims.fields) {
+        if (field.name === "chunkKey") {
+            field.name = "chunk";
+        }
+    }
+    for (const row of claims.rows) {
+        row.chunk = row.chunkKey;
+        delete row.chunkKey;
+    }
+
+    const migrated = migrateSnapshot(snapshot);
+
+    const upgraded = migrated.records.find(table => table.name === "ChunkClaim");
+    assert.ok(upgraded.fields.some(field => field.name === "chunkKey"));
+    assert.ok(!upgraded.fields.some(field => field.name === "chunk"));
+    assert.equal(upgraded.rows[0].chunk, undefined);
+    assert.equal(upgraded.rows[0].chunkKey, chunkKeyAt(0, 0));
 });

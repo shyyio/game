@@ -48,14 +48,14 @@ export class OverworldSnapshotEvent extends AbstractEvent {
 
     /**
      * Appends one chunk's runs (parallel arrays: in-chunk tile offset, length, objectTypeId).
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {number[]} starts
      * @param {number[]} lengths
      * @param {number[]} objectTypeIds
      * @returns {void}
      */
-    addChunk(chunk, starts, lengths, objectTypeIds) {
-        this.chunks.push(chunk);
+    addChunk(chunkKey, starts, lengths, objectTypeIds) {
+        this.chunks.push(chunkKey);
         this.runCounts.push(starts.length);
         this.runStarts.push(...starts);
         this.runLengths.push(...lengths);

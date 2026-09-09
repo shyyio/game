@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {Direction} from "@/common/constants.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {AddFriendMessage} from "@/common/PlayerMessages.js";
@@ -29,11 +29,11 @@ async function setup() {
     const bob = new CapturingSession(BOB);
     game.connect(alice);
     game.connect(bob);
-    const chunk = chunkKey(5, 5);
-    game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
+    const chunkKey = chunkKeyAt(5, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey), alice);
     game.dispatchMessage(new AddFriendMessage(BOB), alice);
-    game.dispatchMessage(new SetChunkPermissionMessage(chunk, ChunkPermission.PERMISSION_FRIENDS), alice);
-    return {game, alice, bob, chunk};
+    game.dispatchMessage(new SetChunkPermissionMessage(chunkKey, ChunkPermission.PERMISSION_FRIENDS), alice);
+    return {game, alice, bob, chunkKey};
 }
 
 test("a placed object records who placed it, not whose chunk it landed in", async () => {

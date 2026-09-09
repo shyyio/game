@@ -1,5 +1,5 @@
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
-import {chunkKey} from "@/common/util.js";
+import {chunkKeyAt} from "@/common/util.js";
 import {portAt} from "@/common/portGeometry.js";
 import {
     LaneGeometryEvent,
@@ -635,7 +635,7 @@ export class LaneIndex {
      * @returns {number}
      */
     _chunkOf(eid) {
-        return chunkKey(this.engine.Position.x[eid], this.engine.Position.y[eid]);
+        return chunkKeyAt(this.engine.Position.x[eid], this.engine.Position.y[eid]);
     }
 
     /**

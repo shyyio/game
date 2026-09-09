@@ -18,7 +18,7 @@ const LOG_BATCH_ITEMS = 5;
  */
 function eventLogView(event) {
     if (event instanceof ChunkSyncEvent) {
-        return {event: event.constructor.name, chunk: event.chunk, events: event.events.map(eventLogView)};
+        return {event: event.constructor.name, chunkKey: event.chunkKey, events: event.events.map(eventLogView)};
     }
     if (!(event instanceof AbstractBatchEvent)) {
         return event;
@@ -102,18 +102,18 @@ export class EventQueue {
             return;
         }
         if (event instanceof ChunkUnsubscribeEvent) {
-            if (this._queuedCountByChunk.has(event.chunk)) {
+            if (this._queuedCountByChunk.has(event.chunkKey)) {
                 // The chunk left the viewport before its queued sync applied: the unsubscribe
                 // wipes that state anyway, so drop the queue's share of it first.
-                this._pendingEvents = this._pendingEvents.filter(pending => pending.chunk !== event.chunk);
-                this._queuedCountByChunk.delete(event.chunk);
+                this._pendingEvents = this._pendingEvents.filter(pending => pending.chunkKey !== event.chunkKey);
+                this._queuedCountByChunk.delete(event.chunkKey);
             }
             // Tearing down a chunk's entries and sprites is heavy too: a prune pass drops many
             // chunks at once, so unsubscribes ride the budgeted drain, one chunk per event.
             this._queueEvent(event);
             return;
         }
-        if (event.chunk !== undefined && this._queuedCountByChunk.has(event.chunk)) {
+        if (event.chunkKey !== undefined && this._queuedCountByChunk.has(event.chunkKey)) {
             // The event's chunk still has queued sync: apply behind it, keeping per-chunk order.
             this._queueEvent(event);
             return;
@@ -134,11 +134,11 @@ export class EventQueue {
         while (applied < this._pendingEvents.length && performance.now() - started < DRAIN_BUDGET_MS) {
             const event = this._pendingEvents[applied];
             applied += 1;
-            const count = this._queuedCountByChunk.get(event.chunk);
+            const count = this._queuedCountByChunk.get(event.chunkKey);
             if (count === 1) {
-                this._queuedCountByChunk.delete(event.chunk);
+                this._queuedCountByChunk.delete(event.chunkKey);
             } else {
-                this._queuedCountByChunk.set(event.chunk, count - 1);
+                this._queuedCountByChunk.set(event.chunkKey, count - 1);
             }
             this._applyEvent(event);
         }
@@ -163,14 +163,14 @@ export class EventQueue {
      */
     _queueEvent(event) {
         this._pendingEvents.push(event);
-        const count = this._queuedCountByChunk.get(event.chunk);
+        const count = this._queuedCountByChunk.get(event.chunkKey);
         let nextCount;
         if (count === undefined) {
             nextCount = 1;
         } else {
             nextCount = count + 1;
         }
-        this._queuedCountByChunk.set(event.chunk, nextCount);
+        this._queuedCountByChunk.set(event.chunkKey, nextCount);
     }
 
     /**

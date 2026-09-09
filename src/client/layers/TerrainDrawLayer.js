@@ -176,56 +176,56 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
 
     /**
      * Every chunk has ground, so a mount creates the node rather than waiting for a member.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _mountChunk(chunk) {
-        this._node(chunk);
-        super._mountChunk(chunk);
+    _mountChunk(chunkKey) {
+        this._node(chunkKey);
+        super._mountChunk(chunkKey);
     }
 
     /**
      * Hangs the chunk's ground sprite under its fresh node.
      * @param {ChunkNode} node
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _initChunkNode(node, chunk) {
+    _initChunkNode(node, chunkKey) {
         if (this._enabled) {
             node.sprites.addChild(TerrainSprite.forChunk(
-                this._palette, chunk, this._terrain.bakeChunk(chunk), this._terrain,
+                this._palette, chunkKey, this._terrain.bakeChunk(chunkKey), this._terrain,
             ));
         } else {
-            node.sprites.addChild(blankChunkSprite(chunk));
+            node.sprites.addChild(blankChunkSprite(chunkKey));
         }
         node.showSprites();
     }
 
     /**
      * The sprite is ready from creation; nothing mode-dependent to apply.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _onChunkMounted(chunk) {}
+    _onChunkMounted(chunkKey) {}
 
     /**
      * A chunk leaving the viewport drops with its texture; a remount rebuilds it from the bake cache.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @returns {void}
      */
-    _unmountChunk(chunk) {
-        const wasMounted = this._mounted.has(chunk);
-        super._unmountChunk(chunk);
+    _unmountChunk(chunkKey) {
+        const wasMounted = this._mounted.has(chunkKey);
+        super._unmountChunk(chunkKey);
         if (wasMounted) {
-            this._dropChunk(chunk);
+            this._dropChunk(chunkKey);
         }
     }
 
     /**
      * Never called: the ground never swaps to map geometry.
-     * @param {number} chunk
+     * @param {number} chunkKey
      * @param {Graphics} graphics
      * @returns {void}
      */
-    _drawChunkGeometry(chunk, graphics) {}
+    _drawChunkGeometry(chunkKey, graphics) {}
 }
