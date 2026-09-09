@@ -1,4 +1,3 @@
-
 /**
  * One mod as registered into a ModRegistry: its declaration plus the optional sim and client parts.
  */

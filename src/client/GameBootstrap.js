@@ -46,7 +46,9 @@ async function loadoutFor(props, localLoadout) {
     const packages = [...base, ...await loadLocalMods(localLoadout)];
     if (scenarioSelected()) {
         const {scenarioModPackages} = await import("@/test/scenarios/index.js");
-        packages.push(...scenarioModPackages());
+        for (const pkg of scenarioModPackages()) {
+            packages.push(pkg);
+        }
     }
     return packages;
 }
@@ -211,7 +213,7 @@ export async function createClient(app, viewport, props) {
     renderToolbar();
     // Re-renders the toolbar once the player's custom order syncs (or after a local reorder);
     // wired only after the toolbar's first render, so an in-flight sync racing client.init()
-    // never rebuilds it before its textureRegistry is set.
+    // never rebuilds it before its textureCache is set.
     client.cache.subscribe("playerSettings.toolOrder", renderToolbar);
 
     /**

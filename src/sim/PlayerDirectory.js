@@ -125,7 +125,7 @@ export class PlayerDirectory {
      * @returns {void}
      */
     syncFriendList(sessionRef, playerRef) {
-        const friendIds = [...this.game.players.byId(playerRef).friends];
+        const friendIds = Array.from(this.game.players.byId(playerRef).friends);
         const grantedByIds = this.game.players.grantedBy(playerRef);
         this.syncUsernames(sessionRef, friendIds.concat(grantedByIds));
         this.game.bus.publishTo(sessionRef, new FriendListEvent(friendIds, grantedByIds));

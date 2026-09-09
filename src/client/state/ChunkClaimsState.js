@@ -187,7 +187,7 @@ export class ChunkClaimsView extends AbstractCacheView {
      * @returns {number[]} the own player's claimed chunks
      */
     ownChunks() {
-        return [...this._state.setValues("chunkClaims.ownChunks")];
+        return Array.from(this._state.setValues("chunkClaims.ownChunks"));
     }
 
     /**
@@ -276,7 +276,7 @@ export class ChunkClaimsView extends AbstractCacheView {
      * @returns {number[]} players the own player granted build rights to
      */
     friendIds() {
-        return [...this._state.setValues("chunkClaims.friendIds")];
+        return Array.from(this._state.setValues("chunkClaims.friendIds"));
     }
 
     /**
@@ -304,6 +304,6 @@ export class ChunkClaimsView extends AbstractCacheView {
                 nearestByOwner.set(owner, distance);
             }
         }
-        return [...nearestByOwner.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => id);
+        return Array.from(nearestByOwner.entries()).sort((a, b) => a[1] - b[1]).map(([id]) => id);
     }
 }

@@ -56,7 +56,7 @@ export class ProductionLogPanelLayer extends Container {
         this._players = cache.view("players");
         this._claims = cache.view("chunkClaims");
         this._tooltip = tooltip;
-        this.textureRegistry = null;
+        this.textureCache = null;
         this.anchorButton = null;
         this.visible = false;
         this._managed = new ManagedPanel();
@@ -207,7 +207,7 @@ export class ProductionLogPanelLayer extends Container {
         const width = UIPanel.fitWidth(this._app, PANEL_WIDTH);
         const panel = this._managed.show({
             app: this._app,
-            textureRegistry: this.textureRegistry,
+            textureCache: this.textureCache,
             title: this._title(),
             titleColor: PANEL_TITLE_TEXT,
             tint: PANEL_TINT,
@@ -229,7 +229,7 @@ export class ProductionLogPanelLayer extends Container {
      * @returns {Container}
      */
     _buildBackButton() {
-        return buildPanelButton(this.textureRegistry, "Back", PANEL_BORDER, () => this._back(), this._history.length === 1);
+        return buildPanelButton(this.textureCache, "Back", PANEL_BORDER, () => this._back(), this._history.length === 1);
     }
 
     /**
@@ -244,7 +244,7 @@ export class ProductionLogPanelLayer extends Container {
         stack.row((row) => {
             row.pushLeft(this._buildBackButton());
             row.pushRight(buildToggleRow(
-                this.textureRegistry,
+                this.textureCache,
                 [{value: false, label: "Count"}, {value: true, label: "Rank"}],
                 this._showRank,
                 (value) => {
@@ -256,7 +256,7 @@ export class ProductionLogPanelLayer extends Container {
         });
         stack.text(`${counts.size}/${total} items`);
         stack.gap();
-        const categories = new PanelStack(this.textureRegistry, ScrollView.contentWidthFor(stack.contentWidth));
+        const categories = new PanelStack(this.textureCache, ScrollView.contentWidthFor(stack.contentWidth));
         for (const category of this._categories) {
             this._buildCategoryHeader(categories, category, counts);
             const picker = this._buildPicker(categories.contentWidth, category, counts, ranks);
@@ -264,7 +264,7 @@ export class ProductionLogPanelLayer extends Container {
             categories.gap();
         }
         const visibleHeight = Math.min(categories.contentHeight, this._app.screen.height * CATEGORIES_HEIGHT_FRACTION);
-        const scrollView = new ScrollView(this.textureRegistry, stack.contentWidth, visibleHeight);
+        const scrollView = new ScrollView(this.textureCache, stack.contentWidth, visibleHeight);
         scrollView.content.addChild(categories);
         scrollView.setContentHeight(categories.contentHeight);
         stack.block(scrollView, visibleHeight);
@@ -337,7 +337,7 @@ export class ProductionLogPanelLayer extends Container {
                 }));
             }
         }
-        return new IconPicker(this.textureRegistry, width, entries, (itemTypeId) => {
+        return new IconPicker(this.textureCache, width, entries, (itemTypeId) => {
             let rank = ranks.get(itemTypeId);
             if (rank === undefined) {
                 rank = 0;
@@ -407,8 +407,8 @@ export class ProductionLogPanelLayer extends Container {
         stack.text(this._rankLabel(board));
         const lastPage = board === null || view.offset + LEADERBOARD_PAGE_SIZE >= board.total;
         stack.row((row) => {
-            row.pushLeft(buildPanelButton(this.textureRegistry, "Previous", PANEL_BORDER, () => this._turnPage(view, -LEADERBOARD_PAGE_SIZE), view.offset === 0));
-            row.pushRight(buildPanelButton(this.textureRegistry, "Next", PANEL_BORDER, () => this._turnPage(view, LEADERBOARD_PAGE_SIZE), lastPage));
+            row.pushLeft(buildPanelButton(this.textureCache, "Previous", PANEL_BORDER, () => this._turnPage(view, -LEADERBOARD_PAGE_SIZE), view.offset === 0));
+            row.pushRight(buildPanelButton(this.textureCache, "Next", PANEL_BORDER, () => this._turnPage(view, LEADERBOARD_PAGE_SIZE), lastPage));
         });
     }
 

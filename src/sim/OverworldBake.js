@@ -116,7 +116,7 @@ export class OverworldBake {
         }
         // Higher drawLayerIndex paints last, matching map-mode z-order; objectRef ties keep it
         // deterministic.
-        const sorted = [...eids].sort((a, b) => {
+        const sorted = Array.from(eids).sort((a, b) => {
             const layerA = this.placed.typeFor(this.placed.objectTypeIdOf(a)).drawLayerIndex;
             const layerB = this.placed.typeFor(this.placed.objectTypeIdOf(b)).drawLayerIndex;
             if (layerA !== layerB) {

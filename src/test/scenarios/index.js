@@ -32,7 +32,7 @@ function selectedScenario() {
     }
     const scenario = BY_NAME.get(name);
     if (scenario === undefined) {
-        throw new Error(`Unknown scenario "${name}"; known scenarios: ${[...BY_NAME.keys()].join(", ")}`);
+        throw new Error(`Unknown scenario "${name}"; known scenarios: ${Array.from(BY_NAME.keys()).join(", ")}`);
     }
     return {scenario, params};
 }

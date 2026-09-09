@@ -82,7 +82,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     removeEndpoint(id) {
-        for (const [key, edge] of [...this._edges]) {
+        for (const [key, edge] of Array.from(this._edges)) {
             if (edge.a === id || edge.b === id) {
                 this._edges.delete(key);
                 this._stale = true;
@@ -236,5 +236,4 @@ export class WireDrawLayer extends AbstractDrawLayer {
         graphics.moveTo(from.x, from.y);
         graphics.quadraticCurveTo((from.x + to.x) / 2, (from.y + to.y) / 2 + sag, to.x, to.y);
     }
-
 }

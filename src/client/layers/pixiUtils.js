@@ -4,7 +4,7 @@ import {TapRecognizer} from "@/client/input/TapRecognizer.js";
 
 /**
  * A NineSliceSprite of `name` at the given on-screen size, with equal edge insets per axis.
- * @param {TextureRegistry} textureRegistry
+ * @param {TextureCache} textureCache
  * @param {string} name
  * @param {number} insetX
  * @param {number} insetY
@@ -12,9 +12,9 @@ import {TapRecognizer} from "@/client/input/TapRecognizer.js";
  * @param {number} height
  * @returns {NineSliceSprite}
  */
-export function nineSlice(textureRegistry, name, insetX, insetY, width, height) {
+export function nineSlice(textureCache, name, insetX, insetY, width, height) {
     const sprite = new NineSliceSprite({
-        texture: textureRegistry.get(name),
+        texture: textureCache.get(name),
         leftWidth: insetX,
         rightWidth: insetX,
         topHeight: insetY,

@@ -24,7 +24,7 @@ test("a snapshot whose object type list is a prefix of the current loadout still
 test("a reordered/removed object type is rejected with a clear error", async () => {
     const engine = await makeGameEngine();
     const snapshot = engine.snapshots.serialize();
-    snapshot.objectTypeNames = [...snapshot.objectTypeNames];
+    snapshot.objectTypeNames = Array.from(snapshot.objectTypeNames);
     // Swap two entries, simulating a mod reorder that shifted every objectTypeId after it.
     [snapshot.objectTypeNames[0], snapshot.objectTypeNames[1]] = [snapshot.objectTypeNames[1], snapshot.objectTypeNames[0]];
 

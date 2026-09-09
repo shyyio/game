@@ -28,6 +28,6 @@ export class ItemCategory {
             const existing = getOrCreate(merged, category.name, () => new ItemCategory(category.name, {}));
             Object.assign(existing.items, category.items);
         }
-        return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name));
+        return Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name));
     }
 }

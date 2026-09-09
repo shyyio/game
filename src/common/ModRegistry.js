@@ -193,7 +193,9 @@ export class ModRegistry {
             }
             if (pkg.client !== null) {
                 this._clientMods.push(pkg.client);
-                this._textureAtlases.push(...pkg.client.textureAtlases());
+                for (const atlas of pkg.client.textureAtlases()) {
+                    this._textureAtlases.push(atlas);
+                }
             }
             for (const category of pkg.declaration.items) {
                 for (const [itemTypeId, definition] of Object.entries(category.items)) {

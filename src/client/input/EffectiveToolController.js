@@ -123,5 +123,4 @@ export class EffectiveToolController {
         }
         this.viewport.glideTo({scale: target});
     }
-
 }

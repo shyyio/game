@@ -9,7 +9,7 @@ const ARENA_CAPACITY = 4096;
  * item's distance from the output edge): decrementing one gap advances it and everything behind
  * it, and popping the lead leaves the next one's stored gap already correct.
  */
-export class ItemStore {
+export class ItemCache {
 
     constructor() {
         this.capacity = ARENA_CAPACITY;

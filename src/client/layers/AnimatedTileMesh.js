@@ -83,10 +83,10 @@ function animatedFrameBitGl(frameCount) {
 export class FrameTable {
 
     /**
-     * @param {TextureRegistry} textureRegistry
+     * @param {TextureCache} textureCache
      * @param {string[]} sequenceNames - base sequence names, in the slot order tiles reference
      */
-    constructor(textureRegistry, sequenceNames) {
+    constructor(textureCache, sequenceNames) {
         if (sequenceNames.length === 0) {
             throw new Error("A frame table needs at least one sequence");
         }
@@ -105,19 +105,19 @@ export class FrameTable {
         this.uniforms = new Float32Array(this.frameCount * 4);
 
         for (const [slot, name] of sequenceNames.entries()) {
-            this._addSequence(slot, name, textureRegistry);
+            this._addSequence(slot, name, textureCache);
         }
     }
 
     /**
      * @param {number} slot
      * @param {string} name
-     * @param {TextureRegistry} textureRegistry
+     * @param {TextureCache} textureCache
      * @returns {void}
      * @private
      */
-    _addSequence(slot, name, textureRegistry) {
-        const frames = textureRegistry.getAnimation(name);
+    _addSequence(slot, name, textureCache) {
+        const frames = textureCache.getAnimation(name);
         if (frames === undefined) {
             throw new Error(`Unknown animation sequence: "${name}"`);
         }

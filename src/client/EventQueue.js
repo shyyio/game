@@ -197,5 +197,4 @@ export class EventQueue {
         this._client.hud.statusLayer.onEvent(event);
         this._eventListeners.notify(event);
     }
-
 }

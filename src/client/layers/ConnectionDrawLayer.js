@@ -90,7 +90,7 @@ export class ConnectionDrawLayer extends AbstractTileMeshDrawLayer {
      * @returns {void}
      */
     _updateSprites(frame, deltaMS) {
-        if (this.textureRegistry === null) {
+        if (this.textureCache === null) {
             return;
         }
         this._flushDirty();

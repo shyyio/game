@@ -187,7 +187,7 @@ export class ChunkSubscription {
         // never re-syncs the chunk.
         let changed = false;
         const retained = new Set(this._chunksInView(1));
-        for (const chunk of [...this._requestedChunks]) {
+        for (const chunk of Array.from(this._requestedChunks)) {
             if (!retained.has(chunk)) {
                 this._requestedChunks.delete(chunk);
                 changed = true;
@@ -212,7 +212,7 @@ export class ChunkSubscription {
      * @param {boolean} loading - whether to drive the loading status (only when subscribing)
      */
     _sendViewport(loading) {
-        const chunks = [...this._requestedChunks];
+        const chunks = Array.from(this._requestedChunks);
         if (loading) {
             // Track the request before sending: single-player replies with the
             // ChunkSubscribeEvents synchronously, so the layer must already be counting.
@@ -220,5 +220,4 @@ export class ChunkSubscription {
         }
         this._session.sendMessage(new SetViewportMessage(chunks));
     }
-
 }

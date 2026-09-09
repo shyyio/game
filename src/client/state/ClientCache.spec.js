@@ -96,7 +96,7 @@ test("set replace swaps members wholesale and notifies each delta", () => {
     state.setReplace("demo.members", [2, 3]);
     assert.equal(state.setHas("demo.members", 1), false);
     assert.equal(state.setHas("demo.members", 3), true);
-    assert.deepEqual([...state.setValues("demo.members")], [2, 3]);
+    assert.deepEqual(Array.from(state.setValues("demo.members")), [2, 3]);
     assert.deepEqual(seen, [[1, false], [3, true]]);
 });
 

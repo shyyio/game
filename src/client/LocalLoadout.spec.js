@@ -55,7 +55,7 @@ test("a chosen mod round-trips through JSON", () => {
 
     assert.equal(parsed.name, "widgets");
     assert.equal(parsed.pinned, false);
-    assert.deepEqual([...parsed.integrity], [...mod.integrity]);
+    assert.deepEqual(Array.from(parsed.integrity), Array.from(mod.integrity));
 });
 
 test("a chosen mod becomes the same lockfile entry a server would pin", () => {

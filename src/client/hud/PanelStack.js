@@ -28,12 +28,12 @@ const SELECTED_ALPHA = 0.25;
 export class PanelStack extends Container {
 
     /**
-     * @param {TextureRegistry} textureRegistry
+     * @param {TextureCache} textureCache
      * @param {number} contentWidth - the width available inside the panel this stack will be added to
      */
-    constructor(textureRegistry, contentWidth) {
+    constructor(textureCache, contentWidth) {
         super();
-        this._textureRegistry = textureRegistry;
+        this._textureCache = textureCache;
         this._contentWidth = contentWidth;
         this._y = 0;
         this._overflow = 0;
@@ -171,7 +171,7 @@ export class PanelStack extends Container {
         }
         const insetHeight = visibleHeight + SECTION_PADDING_TOP;
 
-        const inset = UIPanel.insetSprite(this._textureRegistry, this._contentWidth, insetHeight, PANEL_TINT);
+        const inset = UIPanel.insetSprite(this._textureCache, this._contentWidth, insetHeight, PANEL_TINT);
         inset.y = this._y;
         this.addChild(inset);
 
@@ -226,7 +226,7 @@ export class PanelStack extends Container {
      */
     _buildScrollView(innerWidth, viewportHeight, rows, rowsHeight) {
         const scrollView = new ScrollView(
-            this._textureRegistry,
+            this._textureCache,
             innerWidth,
             viewportHeight + SECTION_PADDING_TOP,
         );
@@ -278,7 +278,7 @@ export class PanelStack extends Container {
                 if (tint === undefined) {
                     tint = ACTIVE_ACCENT;
                 }
-                row.pushRight(buildPanelButton(this._textureRegistry, descriptor.buttonLabel, tint, descriptor.onClick));
+                row.pushRight(buildPanelButton(this._textureCache, descriptor.buttonLabel, tint, descriptor.onClick));
             }
             // The label takes what the trailing items leave: it comes from data, so its length is
             // nobody's to promise.

@@ -45,7 +45,7 @@ export class ProductionPanelLayer extends Container {
         this._metrics = state.view("metrics");
         this._gameSettings = state.view("gameSettings");
         this._clock = state.view("clock");
-        this.textureRegistry = null;
+        this.textureCache = null;
         // The production button, to open below it by default (set by the host).
         this.anchorButton = null;
         this.visible = false;
@@ -142,11 +142,11 @@ export class ProductionPanelLayer extends Container {
         const contentWidth = UIPanel.contentWidthFor(width);
 
         // Placeholder the real DOM/SVG chart overlay sits on top of every frame (see _positionChartRoot()).
-        this._chartInset = UIPanel.insetSprite(this.textureRegistry, contentWidth, CHART_HEIGHT, PANEL_TINT);
+        this._chartInset = UIPanel.insetSprite(this.textureCache, contentWidth, CHART_HEIGHT, PANEL_TINT);
 
         const panel = this._managed.show({
             app: this._app,
-            textureRegistry: this.textureRegistry,
+            textureCache: this.textureCache,
             title: "Production",
             titleColor: PANEL_TITLE_TEXT,
             tint: PANEL_TINT,

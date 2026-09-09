@@ -70,7 +70,7 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     repaint() {
-        for (const chunk of [...this._chunks.keys()]) {
+        for (const chunk of Array.from(this._chunks.keys())) {
             this._unmountChunk(chunk);
             this._dropChunk(chunk);
         }
@@ -88,7 +88,7 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
             return;
         }
         this._enabled = enabled;
-        for (const chunk of [...this._chunks.keys()]) {
+        for (const chunk of Array.from(this._chunks.keys())) {
             this._unmountChunk(chunk);
             this._dropChunk(chunk);
         }
@@ -186,7 +186,7 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     _releaseSprites(node) {
-        for (const sprite of [...node.spriteList]) {
+        for (const sprite of Array.from(node.spriteList)) {
             this._pool.release(sprite);
         }
     }
@@ -254,7 +254,7 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
     _texture(name) {
         let texture = this._textures.get(name);
         if (texture === undefined) {
-            texture = this.textureRegistry.get(name);
+            texture = this.textureCache.get(name);
             this._textures.set(name, texture);
         }
         return texture;

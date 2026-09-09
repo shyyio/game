@@ -35,12 +35,12 @@ export class ScrollView extends Container {
     }
 
     /**
-     * @param {TextureRegistry} textureRegistry
+     * @param {TextureCache} textureCache
      * @param {number} width
      * @param {number} height - the visible viewport height; content beyond this scrolls
      */
     constructor(
-        textureRegistry,
+        textureCache,
         width,
         height,
     ) {
@@ -62,7 +62,7 @@ export class ScrollView extends Container {
         this.mask = maskGraphics;
 
         const trackX = width - SCROLLBAR_WIDTH;
-        this._track = UIPanel.insetSprite(textureRegistry, SCROLLBAR_WIDTH, height, SCROLLBAR_TRACK_TINT);
+        this._track = UIPanel.insetSprite(textureCache, SCROLLBAR_WIDTH, height, SCROLLBAR_TRACK_TINT);
         this._track.x = trackX;
         this.addChild(this._track);
         this._thumb = new Graphics();

@@ -66,7 +66,7 @@ test("integerTicks steps on the 1-2-5 ladder and never duplicates labels", () =>
     assert.deepEqual(integerTicks(0, 100, 5), [0, 20, 40, 60, 80, 100]);
     assert.deepEqual(integerTicks(-100, 0, 5), [-100, -80, -60, -40, -20, 0]);
     const ticks = integerTicks(0, 3, 10);
-    assert.deepEqual(ticks, [...new Set(ticks)]);
+    assert.deepEqual(ticks, Array.from(new Set(ticks)));
 });
 
 test("visibleExtent fits only the buckets inside the visible range, with headroom", () => {

@@ -14,14 +14,14 @@ const DISABLED_ALPHA = 0.45;
 
 /**
  * A button's tinted 9-slice background and the hover wash over it, sized to `width`.
- * @param {TextureRegistry} textureRegistry
+ * @param {TextureCache} textureCache
  * @param {number} width
  * @param {number} borderColor
  * @returns {{button: Container, hover: Graphics}}
  */
-function buildButtonFace(textureRegistry, width, borderColor) {
+function buildButtonFace(textureCache, width, borderColor) {
     const button = new Container();
-    button.addChild(slotFrameSprite(textureRegistry, width, BUTTON_HEIGHT, borderColor));
+    button.addChild(slotFrameSprite(textureCache, width, BUTTON_HEIGHT, borderColor));
 
     const hover = new Graphics().rect(0, 0, width, BUTTON_HEIGHT).fill(SLOT_HIGHLIGHT_COLOR);
     hover.alpha = 0;
@@ -63,21 +63,21 @@ export function hotkeyLabel(label, key) {
 /**
  * A 9-slice HUD button sized to its label, tinted `borderColor`; tap fires onClick. Disabled
  * grays it out and drops interactivity.
- * @param {TextureRegistry} textureRegistry
+ * @param {TextureCache} textureCache
  * @param {string} label
  * @param {number} borderColor
  * @param {function(): void} onClick
  * @param {boolean} [disabled]
  * @returns {Container}
  */
-export function buildPanelButton(textureRegistry, label, borderColor, onClick, disabled = false) {
+export function buildPanelButton(textureCache, label, borderColor, onClick, disabled = false) {
     const text = new Text({
         text: label,
         style: {fontFamily: GAME_FONT, fontSize: BUTTON_FONT_SIZE, fill: textOn(borderColor), fontWeight: "bold"},
     });
     const width = text.width + BUTTON_PADDING_X * 2;
 
-    const {button, hover} = buildButtonFace(textureRegistry, width, borderColor);
+    const {button, hover} = buildButtonFace(textureCache, width, borderColor);
 
     text.x = BUTTON_PADDING_X;
     text.y = (BUTTON_HEIGHT - text.height) / 2;
@@ -93,17 +93,17 @@ export function buildPanelButton(textureRegistry, label, borderColor, onClick, d
 
 /**
  * A square 9-slice HUD button showing a tinted icon instead of a label; tap fires onClick.
- * @param {TextureRegistry} textureRegistry
+ * @param {TextureCache} textureCache
  * @param {string} iconTextureName
  * @param {number} iconTint
  * @param {number} borderColor
  * @param {function(): void} onClick
  * @returns {Container}
  */
-export function buildIconButton(textureRegistry, iconTextureName, iconTint, borderColor, onClick) {
-    const {button, hover} = buildButtonFace(textureRegistry, BUTTON_HEIGHT, borderColor);
+export function buildIconButton(textureCache, iconTextureName, iconTint, borderColor, onClick) {
+    const {button, hover} = buildButtonFace(textureCache, BUTTON_HEIGHT, borderColor);
 
-    const icon = new Sprite(textureRegistry.get(iconTextureName));
+    const icon = new Sprite(textureCache.get(iconTextureName));
     icon.tint = iconTint;
     fitIcon(icon, BUTTON_HEIGHT, SLOT_FRAME_INSET);
     button.addChild(icon);
@@ -115,19 +115,19 @@ export function buildIconButton(textureRegistry, iconTextureName, iconTint, bord
 /**
  * A horizontal row of {@link buildPanelButton} segments, one per option; the option matching
  * `current` is tinted `activeTint`, the rest `inactiveTint`; tapping one selects it via `onSelect`.
- * @param {TextureRegistry} textureRegistry
+ * @param {TextureCache} textureCache
  * @param {Array<{value: *, label: string}>} options
  * @param {*} current
  * @param {function(value: *): void} onSelect
  * @param {{activeTint: number, inactiveTint: number, gap: number}} style
  * @returns {Container}
  */
-export function buildToggleRow(textureRegistry, options, current, onSelect, {activeTint, inactiveTint, gap}) {
+export function buildToggleRow(textureCache, options, current, onSelect, {activeTint, inactiveTint, gap}) {
     const row = new Container();
     let x = 0;
     for (const {value, label} of options) {
         const tint = value === current ? activeTint : inactiveTint;
-        const segment = buildPanelButton(textureRegistry, label, tint, () => onSelect(value));
+        const segment = buildPanelButton(textureCache, label, tint, () => onSelect(value));
         segment.x = x;
         row.addChild(segment);
         x += segment.width + gap;

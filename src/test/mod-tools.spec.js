@@ -22,7 +22,7 @@ test("the free-variable scan catches a bundle reaching page globals", () => {
             return new Local();
         }
     `;
-    assert.deepEqual([...freeIdentifiers(clean).keys()], []);
+    assert.deepEqual(Array.from(freeIdentifiers(clean).keys()), []);
 
     const hostile = `
         export function createClient(sdk) {
@@ -30,5 +30,5 @@ test("the free-variable scan catches a bundle reaching page globals", () => {
             return new sdk.AbstractClientMod();
         }
     `;
-    assert.deepEqual([...freeIdentifiers(hostile).keys()].sort(), ["document", "fetch"]);
+    assert.deepEqual(Array.from(freeIdentifiers(hostile).keys()).sort(), ["document", "fetch"]);
 });

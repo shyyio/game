@@ -49,7 +49,6 @@ class TileBatchEvent extends AbstractBatchEvent {
 class GlobalEvent extends AbstractEvent {
 
     static wireFields = {};
-
 }
 
 /**

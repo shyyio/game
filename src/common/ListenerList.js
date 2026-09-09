@@ -33,7 +33,7 @@ export class ListenerList {
      * @returns {void}
      */
     notify(...args) {
-        for (const listener of [...this._listeners]) {
+        for (const listener of Array.from(this._listeners)) {
             listener(...args);
         }
     }

@@ -32,7 +32,7 @@ export class AbstractEdgeBarLayer extends Container {
     constructor(app) {
         super();
         this._app = app;
-        this.textureRegistry = null;
+        this.textureCache = null;
         this.zIndex = HudLayer.EDGE_BAR;
         this.visible = false;
         this._panel = new Container();
@@ -102,7 +102,7 @@ export class AbstractEdgeBarLayer extends Container {
         this._contentNodes = [];
 
         let height = 0;
-        if (this.visible && this.textureRegistry !== null) {
+        if (this.visible && this.textureCache !== null) {
             height = this._rebuildContent();
         }
         this._onRebuilt(this.visible ? height : 0);
@@ -154,7 +154,7 @@ export class AbstractEdgeBarLayer extends Container {
         this._frame = UIPanel.rebuildFrame({
             container: this._panel,
             previous: this._frame,
-            textureRegistry: this.textureRegistry,
+            textureCache: this.textureCache,
             width: width + EDGE_BLEED * 2,
             height: height + EDGE_BLEED,
             tint: PANEL_TINT,

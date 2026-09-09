@@ -44,7 +44,7 @@ export class ChunkActionsLayer extends Container {
         this._viewport = viewport;
         this._claims = claims;
         this._players = players;
-        this.textureRegistry = null;
+        this.textureCache = null;
         this.visible = false;
         this._chunk = null;
         this._statusText = null;
@@ -218,12 +218,12 @@ export class ChunkActionsLayer extends Container {
      * @returns {void}
      */
     _rebuild() {
-        if (this.textureRegistry === null) {
+        if (this.textureCache === null) {
             return;
         }
         const {status, rows} = this._content();
         this._statusText = status;
-        for (const child of [...this._stack.children]) {
+        for (const child of Array.from(this._stack.children)) {
             child.destroy({children: true});
         }
         const width = rows.reduce((max, row) => Math.max(max, row.width), 0);
@@ -248,7 +248,7 @@ export class ChunkActionsLayer extends Container {
      * @returns {Container}
      */
     _buildButton(label, action) {
-        return buildPanelButton(this.textureRegistry, label, ACTIVE_ACCENT, action);
+        return buildPanelButton(this.textureCache, label, ACTIVE_ACCENT, action);
     }
 
     /**
@@ -260,7 +260,7 @@ export class ChunkActionsLayer extends Container {
      */
     _buildPermissionRow(current) {
         const options = PERMISSION_ORDER.map(value => ({value, label: PERMISSION_LABELS[value]}));
-        return buildToggleRow(this.textureRegistry, options, current,
+        return buildToggleRow(this.textureCache, options, current,
             value => this._onSetPermission(this._chunk, value),
             {activeTint: ACTIVE_ACCENT, inactiveTint: PANEL_BORDER, gap: SEGMENT_GAP});
     }

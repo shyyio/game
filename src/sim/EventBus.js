@@ -69,7 +69,7 @@ export class EventBus {
             return;
         }
         // Copied: a session's own dispatch may resubscribe while we fan out.
-        for (const sessionRef of [...subscribers]) {
+        for (const sessionRef of Array.from(subscribers)) {
             this._sessions.get(sessionRef).publishEvent(event);
         }
     }
@@ -244,7 +244,7 @@ export class EventBus {
                 objectRefs.add(objectRef);
             }
         }
-        return [...objectRefs];
+        return Array.from(objectRefs);
     }
 
     /**

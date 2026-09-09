@@ -60,7 +60,7 @@ export class GameServer extends AbstractHttpServer {
      */
     setWorld(world) {
         if (this._world !== null) {
-            for (const session of [...this._sessionsByPlayer.values()]) {
+            for (const session of Array.from(this._sessionsByPlayer.values())) {
                 session.kick(CLOSE_CODE_LOADOUT_CHANGED);
             }
         }
@@ -162,7 +162,7 @@ export class GameServer extends AbstractHttpServer {
      * @returns {void}
      */
     shutdown() {
-        for (const session of [...this._sessionsByPlayer.values()]) {
+        for (const session of Array.from(this._sessionsByPlayer.values())) {
             session.kick(CLOSE_CODE_SERVER_SHUTDOWN);
         }
         this.stop();

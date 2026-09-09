@@ -59,7 +59,7 @@ async function openSpriteEditor() {
     spriteEditorModule = await import("@/client/spriteEditor/spriteEditor.js");
   }
   if (spriteEditorSession === null) {
-    spriteEditorSession = new spriteEditorModule.SpriteEditorSession(editorClient.textureRegistry, editorClient.spriteOverrideStore);
+    spriteEditorSession = new spriteEditorModule.SpriteEditorSession(editorClient.textureCache, editorClient.spriteOverrideStore);
   }
   try {
     closeSpriteEditorWindow = spriteEditorModule.openSpriteEditorWindow(spriteEditorSession, () => {

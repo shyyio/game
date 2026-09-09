@@ -75,7 +75,7 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
      */
     repaint() {
         this._palette = new TerrainPalette(this._biomes);
-        for (const chunk of [...this._chunks.keys()]) {
+        for (const chunk of Array.from(this._chunks.keys())) {
             this._dropChunk(chunk);
         }
         // Forces the next tick's reconcile to remount what is on screen.

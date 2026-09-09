@@ -290,7 +290,11 @@ export class Hud {
      */
     addModLayers(layers) {
         this._modLayers = layers;
-        this._themedLayers.push(...layers.filter(layer => layer.restyle !== undefined));
+        for (const layer of layers) {
+            if (layer.restyle !== undefined) {
+                this._themedLayers.push(layer);
+            }
+        }
     }
 
     /**
@@ -333,28 +337,28 @@ export class Hud {
      * @returns {void}
      */
     mount() {
-        const {app, viewport, textureRegistry, modRegistry} = this._client;
-        this.toolbarLayer.textureRegistry = textureRegistry;
-        this.inspectPanelLayer.textureRegistry = textureRegistry;
+        const {app, viewport, textureCache, modRegistry} = this._client;
+        this.toolbarLayer.textureCache = textureCache;
+        this.inspectPanelLayer.textureCache = textureCache;
         this.inspectPanelLayer.items = modRegistry.items;
         this.inspectPanelLayer.viewport = viewport;
         this.inspectPanelLayer.onClose(objectRef => this._client.unInspectObject(objectRef));
-        this.statusLayer.textureRegistry = textureRegistry;
+        this.statusLayer.textureCache = textureCache;
         this.statusLayer.refreshBackground();
         this._layoutTopLeft();
-        this.topStatusBar.textureRegistry = textureRegistry;
+        this.topStatusBar.textureCache = textureCache;
         this.topStatusBar.refreshBackground();
-        this.bottomActionBar.textureRegistry = textureRegistry;
+        this.bottomActionBar.textureCache = textureCache;
         this.bottomActionBar.refreshBackground();
-        this.noticeLayer.textureRegistry = textureRegistry;
-        this.confirmDialogLayer.textureRegistry = textureRegistry;
-        this.chunkActionsLayer.textureRegistry = textureRegistry;
+        this.noticeLayer.textureCache = textureCache;
+        this.confirmDialogLayer.textureCache = textureCache;
+        this.chunkActionsLayer.textureCache = textureCache;
         // A chunk can be selected before the textures land, which skips the stack's build.
         this.chunkActionsLayer.refresh();
-        this.friendsPanelLayer.textureRegistry = textureRegistry;
+        this.friendsPanelLayer.textureCache = textureCache;
         this.friendsPanelLayer.viewport = viewport;
         this.friendsPanelLayer.anchorButton = this.friendsButtonLayer;
-        this.productionPanelLayer.textureRegistry = textureRegistry;
+        this.productionPanelLayer.textureCache = textureCache;
         this.productionPanelLayer.anchorButton = this.productionButtonLayer;
         app.stage.addChild(this.versionWatermarkLayer);
         app.stage.addChild(this._client.centerLock.markerLayer);
@@ -379,7 +383,7 @@ export class Hud {
         this.panelHost.add(this.friendsPanelLayer);
         this.panelHost.add(this.productionPanelLayer);
         for (const layer of this._modLayers) {
-            layer.textureRegistry = textureRegistry;
+            layer.textureCache = textureCache;
             layer.viewport = viewport;
             layer.popovers = this.popoverHost;
             if (mountsInPanelHost(layer)) {
@@ -428,5 +432,4 @@ export class Hud {
         this._restyle();
         app.renderer.emit("resize", app.screen.width, app.screen.height);
     }
-
 }

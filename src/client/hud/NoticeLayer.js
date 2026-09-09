@@ -22,8 +22,8 @@ export class NoticeLayer extends Container {
     constructor(app) {
         super();
         this._app = app;
-        this._textureRegistry = null;
-        // A notify() before textureRegistry is assigned queues here; fires once the registry lands.
+        this._textureCache = null;
+        // A notify() before textureCache is assigned queues here; fires once the registry lands.
         this._pendingText = null;
         // Display-only: never a hit target (the stage is interactive for mobile pinch).
         this.eventMode = "none";
@@ -43,17 +43,17 @@ export class NoticeLayer extends Container {
     }
 
     /**
-     * @returns {TextureRegistry|null}
+     * @returns {TextureCache|null}
      */
-    get textureRegistry() {
-        return this._textureRegistry;
+    get textureCache() {
+        return this._textureCache;
     }
 
     /**
-     * @param {TextureRegistry} registry
+     * @param {TextureCache} registry
      */
-    set textureRegistry(registry) {
-        this._textureRegistry = registry;
+    set textureCache(registry) {
+        this._textureCache = registry;
         if (this._pendingText !== null) {
             const text = this._pendingText;
             this._pendingText = null;
@@ -68,7 +68,7 @@ export class NoticeLayer extends Container {
      * @returns {void}
      */
     notify(text) {
-        if (this._textureRegistry === null) {
+        if (this._textureCache === null) {
             this._pendingText = text;
             return;
         }
@@ -99,7 +99,7 @@ export class NoticeLayer extends Container {
         this._box = UIPanel.rebuildFramedBox({
             container: this._panel,
             previous: this._box,
-            textureRegistry: this.textureRegistry,
+            textureCache: this.textureCache,
             width,
             height,
             tint: PANEL_TINT,
@@ -112,7 +112,7 @@ export class NoticeLayer extends Container {
      */
     restyle() {
         this._text.style.fill = PANEL_TINT_TEXT;
-        if (this.visible && this.textureRegistry !== null) {
+        if (this.visible && this.textureCache !== null) {
             this._rebuildBackground(this._panel.width, this._panel.height);
         }
     }

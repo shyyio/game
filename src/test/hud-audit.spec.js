@@ -51,7 +51,9 @@ test("every tap target meets WCAG AAA at the big scale", () => {
 test("the big scale is no larger than the smallest target requires", () => {
     // Whatever forces UI_SCALE_BIG up is the target worth growing at the normal scale first.
     atScale(UiScale.UI_SCALE_NORMAL, () => {
-        const smallest = Math.min(...UiScale.tapTargets().map(target => Math.min(target.width, target.height)));
+        const smallest = UiScale.tapTargets()
+            .map(target => Math.min(target.width, target.height))
+            .reduce((low, size) => Math.min(low, size));
         const needed = TARGET_SIZE_AAA / smallest;
         assert.ok(
             UiScale.UI_SCALE_BIG < needed + 0.1,
@@ -141,7 +143,9 @@ function sourceFiles(directory) {
     for (const entry of readdirSync(directory)) {
         const path = `${directory}/${entry}`;
         if (statSync(path).isDirectory()) {
-            paths.push(...sourceFiles(path));
+            for (const file of sourceFiles(path)) {
+                paths.push(file);
+            }
         } else if (entry.endsWith(".js")) {
             paths.push(path);
         }

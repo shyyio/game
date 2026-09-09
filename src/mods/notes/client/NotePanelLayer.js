@@ -48,7 +48,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
         this._showAuthor = showAuthor;
         this._notes = cache.writer("notes");
         this._players = cache.view("players");
-        this.textureRegistry = null;
+        this.textureCache = null;
         this._editor = new ManagedPanel();
         // The DOM-backed input the editor owns while writing; absent in delete mode.
         this._input = null;
@@ -134,7 +134,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
 
         const panel = this._editor.show({
             app: this._app,
-            textureRegistry: this.textureRegistry,
+            textureCache: this.textureCache,
             title: this._title(target),
             titleColor: PANEL_TITLE_TEXT,
             tint: PANEL_TINT,
@@ -215,9 +215,9 @@ export class NotePanelLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _fillButtons(row, target) {
-        row.pushLeft(buildPanelButton(this.textureRegistry, "Back", PANEL_TINT, () => this._notes.closeEditor()));
+        row.pushLeft(buildPanelButton(this.textureCache, "Back", PANEL_TINT, () => this._notes.closeEditor()));
         if (target.mode !== NOTE_EDITOR_MODE_PLACE) {
-            row.pushLeft(buildPanelButton(this.textureRegistry, "Delete", PANEL_TINT, () => {
+            row.pushLeft(buildPanelButton(this.textureCache, "Delete", PANEL_TINT, () => {
                 this._session.sendMessage(new NoteDeleteMessage(target.tileX, target.tileY));
                 this._notes.closeEditor();
             }));
@@ -225,7 +225,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
         if (this._input === null) {
             return;
         }
-        row.pushLeft(buildPanelButton(this.textureRegistry, "Save", ACTIVE_ACCENT, () => this._save(target)));
+        row.pushLeft(buildPanelButton(this.textureCache, "Save", ACTIVE_ACCENT, () => this._save(target)));
     }
 
     /**

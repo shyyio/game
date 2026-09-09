@@ -214,7 +214,7 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
             return;
         }
         const center = this.viewport.center;
-        const ranked = [...this._workers.values()];
+        const ranked = Array.from(this._workers.values());
         for (const worker of ranked) {
             const dx = worker.x - center.x;
             const dy = worker.y - center.y;
@@ -232,7 +232,7 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
      */
     _walkFrames() {
         if (this._frames === null) {
-            const frames = this.textureRegistry.getAnimation(WORKER_ANIMATION);
+            const frames = this.textureCache.getAnimation(WORKER_ANIMATION);
             if (frames === undefined) {
                 throw new Error(`Missing "${WORKER_ANIMATION}" animation frames in the atlas`);
             }
@@ -274,7 +274,6 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
             }
         }
     }
-
 }
 
 /**

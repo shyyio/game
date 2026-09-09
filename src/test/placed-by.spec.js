@@ -69,5 +69,5 @@ test("production is credited to the chunk owner, not to the friend who built the
     }
 
     assert.ok(produced.length > 0, "the machine produced nothing to attribute");
-    assert.deepEqual([...new Set(produced)], [ALICE]);
+    assert.deepEqual(Array.from(new Set(produced)), [ALICE]);
 });

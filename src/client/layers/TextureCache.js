@@ -54,7 +54,7 @@ export class LoadedAtlas {
     }
 }
 
-export class TextureRegistry {
+export class TextureCache {
 
     constructor() {
         /**

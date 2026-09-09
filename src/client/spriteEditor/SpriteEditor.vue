@@ -48,7 +48,7 @@ const sequence = computed(() => {
   void state.frameName;
   return props.session.sequence;
 });
-const atlases = computed(() => [...props.session.textureRegistry.atlases.values()]);
+const atlases = computed(() => Array.from(props.session.textureCache.atlases.values()));
 // The picked tint as pixi takes it in code.
 const tintValue = computed(() => `0x${state.tintHex.slice(1).toUpperCase()}`);
 
@@ -64,7 +64,7 @@ const groups = computed(() => {
     }
     byGroup.get(entry.group).push(entry);
   }
-  return [...byGroup.entries()].map(([name, frames]) => ({name, frames}));
+  return Array.from(byGroup.entries()).map(([name, frames]) => ({name, frames}));
 });
 
 function select(name) {

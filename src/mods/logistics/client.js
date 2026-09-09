@@ -1,4 +1,3 @@
-
 import {BeltDrawLayer} from "./client/BeltDrawLayer.js";
 import {BeltOverlayDrawLayer} from "./client/BeltOverlayDrawLayer.js";
 import {BeltGhostLayer} from "./client/BeltGhostLayer.js";
@@ -735,5 +734,4 @@ export class LogisticsClientMod extends AbstractClientMod {
         }
         return highlights;
     }
-
 }

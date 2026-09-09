@@ -141,7 +141,7 @@ for (const {themeId, level} of THEME_LEVELS) {
 }
 
 test("every theme defines every themed color", () => {
-    const names = [...Theme.themedColorNames()].sort();
+    const names = Array.from(Theme.themedColorNames()).sort();
     for (const {themeId} of THEME_LEVELS) {
         assert.deepEqual(Object.keys(Theme.palette(themeId)).sort(), names, Theme.THEME_NAMES[themeId]);
     }
@@ -168,7 +168,9 @@ function sourceFiles(directory) {
     for (const entry of readdirSync(directory)) {
         const path = `${directory}/${entry}`;
         if (statSync(path).isDirectory()) {
-            paths.push(...sourceFiles(path));
+            for (const file of sourceFiles(path)) {
+                paths.push(file);
+            }
         }
         else if (entry.endsWith(".js")) {
             paths.push(path);

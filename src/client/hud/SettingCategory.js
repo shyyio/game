@@ -31,8 +31,10 @@ export class SettingCategory {
             if (existing.displayOrder !== category.displayOrder) {
                 throw new Error(`Settings category "${category.name}" declared with displayOrder ${category.displayOrder} and ${existing.displayOrder}`);
             }
-            existing.controls.push(...category.controls);
+            for (const control of category.controls) {
+                existing.controls.push(control);
+            }
         }
-        return [...merged.values()].sort((a, b) => a.displayOrder - b.displayOrder);
+        return Array.from(merged.values()).sort((a, b) => a.displayOrder - b.displayOrder);
     }
 }

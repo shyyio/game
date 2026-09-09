@@ -76,7 +76,7 @@ export class InspectView extends AbstractCacheView {
      * @returns {number[]} the open machines' object refs
      */
     openIds() {
-        return [...this._state.setValues("inspect.openObjects")];
+        return Array.from(this._state.setValues("inspect.openObjects"));
     }
 
     /**

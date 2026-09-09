@@ -165,7 +165,7 @@ export class ItemInspectLayer extends AbstractDrawLayer {
             return;
         }
         if (this._sprite === null) {
-            this._sprite = new Sprite(this.textureRegistry.get("inspect/item"));
+            this._sprite = new Sprite(this.textureCache.get("inspect/item"));
             this._sprite.anchor = 0.5;
             this.addChild(this._sprite);
         }

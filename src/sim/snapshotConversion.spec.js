@@ -53,14 +53,14 @@ const NEXT_DEFS = [
 
 test("the losses name every object type and item the next loadout lacks, with counts", () => {
     const losses = conversionLosses(snapshot(), NEXT);
-    assert.deepEqual([...losses.objects], [["Gadget", 1]]);
-    assert.deepEqual([...losses.items], [[GOLD, 3]], "two on ports, one in the record table");
+    assert.deepEqual(Array.from(losses.objects), [["Gadget", 1]]);
+    assert.deepEqual(Array.from(losses.items), [[GOLD, 3]], "two on ports, one in the record table");
 });
 
 test("the losses count the item types a record table holds too", () => {
     const records = snapshot();
     records.components = [];
-    assert.deepEqual([...conversionLosses(records, NEXT).items], [[GOLD, 1]]);
+    assert.deepEqual(Array.from(conversionLosses(records, NEXT).items), [[GOLD, 1]]);
 });
 
 test("a loadout that only appends loses nothing", () => {

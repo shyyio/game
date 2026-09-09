@@ -145,7 +145,7 @@ export class SnapshotSerializer {
             }
         }
         const remap = new Map();
-        for (const old of [...referenced].sort((a, b) => a - b)) {
+        for (const old of Array.from(referenced).sort((a, b) => a - b)) {
             remap.set(old, engine.world.addEntity());
         }
         const translate = value => (value === NO_EID ? NO_EID : remap.get(value));

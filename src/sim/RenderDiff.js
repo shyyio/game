@@ -42,7 +42,7 @@ export class RenderDiff {
         // subscription predicate for every port written this tick.
         this._observed = new Uint8Array(portCapacity);
         this._observedGen = new Int32Array(portCapacity);
-        // Ports unregistered while holding a rendered item (eid -> {x, y}): a pending clear, cancelled
+        // Ports unregistered while holding a rendered item (eid -> {x, y}): a pending clear, canceled
         // if the port is re-registered in the same edit (so a churned-but-surviving port stays static,
         // no clear+set glide). Flushed by the diff.
         this._pendingClear = new Map();

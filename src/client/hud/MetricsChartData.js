@@ -75,7 +75,7 @@ export function buildSeries(rollup, metric) {
     for (let tick = minBucketTick; tick < currentBucket; tick += rollup.tier) {
         ticks.push(tick);
     }
-    const seriesList = [...byKey.entries()].map(([key, entry]) => ({
+    const seriesList = Array.from(byKey.entries()).map(([key, entry]) => ({
         key,
         category: entry.category,
         tag: entry.tag,
@@ -147,7 +147,7 @@ export function seriesRates(rollup, rangeTicks, nowTick) {
             entry.total += rollup.count[i];
         }
     }
-    const rates = [...byKey.entries()].map(([key, entry]) =>
+    const rates = Array.from(byKey.entries()).map(([key, entry]) =>
         new SeriesRate(key, entry.category, entry.tag, entry.total / windowTicks));
     rates.sort((a, b) => {
         if (b.ratePerTick !== a.ratePerTick) {

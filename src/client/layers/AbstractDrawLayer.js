@@ -17,9 +17,9 @@ export class AbstractDrawLayer extends Container {
         // an animation frame) re-packs only that layer's geometry, not the whole scene's.
         this.isRenderGroup = true;
         /**
-         * @type {TextureRegistry|null}
+         * @type {TextureCache|null}
          */
-        this.textureRegistry = null;
+        this.textureCache = null;
         /**
          * The viewport this layer is drawn in, injected by Client.init.
          * @type {ClientViewport|null}

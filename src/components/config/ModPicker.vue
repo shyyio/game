@@ -109,7 +109,7 @@ const allTags = computed(() => {
       tags.add(tag);
     }
   }
-  return [...tags].sort((left, right) => MOD_TAGS.indexOf(left) - MOD_TAGS.indexOf(right));
+  return Array.from(tags).sort((left, right) => MOD_TAGS.indexOf(left) - MOD_TAGS.indexOf(right));
 });
 
 const shown = computed(() => {

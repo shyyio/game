@@ -43,17 +43,17 @@ export class FrameEntry {
 export class SpriteEditorSession {
 
     /**
-     * @param {TextureRegistry} textureRegistry
+     * @param {TextureCache} textureCache
      * @param {SpriteOverrideStore} store
      */
-    constructor(textureRegistry, store) {
-        this.textureRegistry = textureRegistry;
+    constructor(textureCache, store) {
+        this.textureCache = textureCache;
         this.store = store;
         /**
          * @type {FrameEntry[]}
          */
         this.frames = [];
-        for (const atlas of textureRegistry.atlases.values()) {
+        for (const atlas of textureCache.atlases.values()) {
             for (const name of atlas.frameNames) {
                 const frame = atlas.sheetData.frames[name];
                 if (frame.rotated || frame.trimmed) {
@@ -151,7 +151,7 @@ export class SpriteEditorSession {
         }
         this.flushPersist();
         this.state.frameName = frameName;
-        this.pixels = this.textureRegistry.frameImageData(frameName);
+        this.pixels = this.textureCache.frameImageData(frameName);
         this.state.playIndex = 0;
         this._refreshPalette();
         this._syncStacks();
@@ -265,8 +265,8 @@ export class SpriteEditorSession {
     async resetAll() {
         this.flushPersist();
         await this.store.clear();
-        for (const atlas of this.textureRegistry.atlases.values()) {
-            this.textureRegistry.replaceAtlas(atlas.name, await loadImage(atlas.imageUrl));
+        for (const atlas of this.textureCache.atlases.values()) {
+            this.textureCache.replaceAtlas(atlas.name, await loadImage(atlas.imageUrl));
         }
         this._undo.clear();
         this._redo.clear();
@@ -285,7 +285,7 @@ export class SpriteEditorSession {
     async importAtlas(atlasName, file) {
         const bitmap = await createImageBitmap(file);
         try {
-            this.textureRegistry.replaceAtlas(atlasName, bitmap);
+            this.textureCache.replaceAtlas(atlasName, bitmap);
         } finally {
             bitmap.close();
         }
@@ -308,7 +308,7 @@ export class SpriteEditorSession {
      */
     async atlasPng(atlasName) {
         this.flushPersist();
-        const atlas = this.textureRegistry.atlases.get(atlasName);
+        const atlas = this.textureCache.atlases.get(atlasName);
         return new Promise(resolve => atlas.canvas.toBlob(resolve, "image/png"));
     }
 
@@ -391,7 +391,7 @@ export class SpriteEditorSession {
      * @private
      */
     _push() {
-        this.textureRegistry.patchFrame(this.state.frameName, this.pixels);
+        this.textureCache.patchFrame(this.state.frameName, this.pixels);
         this.state.paintVersion++;
     }
 

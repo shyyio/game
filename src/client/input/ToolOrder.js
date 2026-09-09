@@ -23,7 +23,9 @@ export function applyToolOrder(tools, orderedIds) {
             byId.delete(id);
         }
     }
-    ordered.push(...byId.values());
+    for (const tool of byId.values()) {
+        ordered.push(tool);
+    }
     return ordered;
 }
 

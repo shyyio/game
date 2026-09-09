@@ -44,14 +44,14 @@ export class InspectContent extends Container {
     /**
      * @param {InspectHeartbeatState} event - the first snapshot, which fixes the layout
      * @param {number} contentWidth - width available inside the panel body
-     * @param {TextureRegistry} textureRegistry
+     * @param {TextureCache} textureCache
      * @param {ItemRegistry} items
      * @param {SlotTooltip} tooltip - raised while the pointer rests on one of these slots
      */
     constructor(
         event,
         contentWidth,
-        textureRegistry,
+        textureCache,
         items,
         tooltip,
     ) {
@@ -64,18 +64,18 @@ export class InspectContent extends Container {
         // Per input port, the ticks its present look still has to run.
         this._inputHold = [];
         for (const [i] of event.inputPorts.entries()) {
-            const slot = new InspectSlot(textureRegistry, items, tooltip);
+            const slot = new InspectSlot(textureCache, items, tooltip);
             slot.x = i * (SLOT_SIZE + SLOT_MARGIN_X);
             this.addChild(slot);
             this._inputSlots.push(slot);
             this._inputHold.push(0);
         }
 
-        this._progressBar = new InspectProgressBar(textureRegistry, outputX - SLOT_MARGIN_X, event.processingTotal);
+        this._progressBar = new InspectProgressBar(textureCache, outputX - SLOT_MARGIN_X, event.processingTotal);
         this._progressBar.y = secondRowY + (SLOT_SIZE - BUTTON_HEIGHT) / 2;
         this.addChild(this._progressBar);
 
-        this._outputSlot = new InspectSlot(textureRegistry, items, tooltip);
+        this._outputSlot = new InspectSlot(textureCache, items, tooltip);
         this._outputSlot.x = outputX;
         this._outputSlot.y = secondRowY;
         this.addChild(this._outputSlot);

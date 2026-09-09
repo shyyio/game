@@ -25,7 +25,7 @@ export class StatusMessageLayer extends Container {
      */
     constructor(app) {
         super();
-        this.textureRegistry = null;
+        this.textureCache = null;
         // Display-only: never a hit target (the stage is interactive for mobile pinch).
         this.eventMode = "none";
         this.zIndex = HudLayer.STATUS;
@@ -268,12 +268,12 @@ export class StatusMessageLayer extends Container {
     }
 
     /**
-     * Rebuilds the background sized to the current text; no-op until textureRegistry is assigned.
+     * Rebuilds the background sized to the current text; no-op until textureCache is assigned.
      * @private
      * @returns {void}
      */
     _rebuildBackground() {
-        if (this.textureRegistry === null) {
+        if (this.textureCache === null) {
             return;
         }
         const width = this._text.width + (PADDING_X + FRAME_MARGIN) * 2;
@@ -281,7 +281,7 @@ export class StatusMessageLayer extends Container {
         this._box = UIPanel.rebuildFramedBox({
             container: this._panel,
             previous: this._box,
-            textureRegistry: this.textureRegistry,
+            textureCache: this.textureCache,
             width,
             height,
             tint: PANEL_TINT,
@@ -298,11 +298,11 @@ export class StatusMessageLayer extends Container {
     }
 
     /**
-     * Rebuilds the background for the already-showing message, once textureRegistry becomes available.
+     * Rebuilds the background for the already-showing message, once textureCache becomes available.
      * @returns {void}
      */
     refreshBackground() {
-        if (this.textureRegistry !== null && this.visible) {
+        if (this.textureCache !== null && this.visible) {
             this._rebuildBackground();
         }
     }

@@ -1,4 +1,3 @@
-
 import Mouse from "@/client/input/Mouse.js";
 import Keyboard from "@/client/input/Keyboard.js";
 import {AbstractTool} from "@/client/input/AbstractTool.js";

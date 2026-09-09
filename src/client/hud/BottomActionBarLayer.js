@@ -87,7 +87,7 @@ export class BottomActionBarLayer extends AbstractEdgeBarLayer {
         const contentTop = FRAME_MARGIN;
         const contentRight = width - insets.right - FRAME_MARGIN;
 
-        const button = buildPanelButton(this.textureRegistry, hotkeyLabel("Confirm", CONFIRM_HOTKEY),
+        const button = buildPanelButton(this.textureCache, hotkeyLabel("Confirm", CONFIRM_HOTKEY),
             ACTIVE_ACCENT, () => this._action.onConfirm());
         button.x = contentRight - button.width;
 
@@ -101,12 +101,12 @@ export class BottomActionBarLayer extends AbstractEdgeBarLayer {
         button.y = contentTop + (rowHeight - button.height) / 2;
         this._addNode(button);
 
-        const pattern = UIPanel.patternStrip(this.textureRegistry, THIN_PATTERN_WIDTH, rowHeight);
+        const pattern = UIPanel.patternStrip(this.textureCache, THIN_PATTERN_WIDTH, rowHeight);
         pattern.position.set(patternX, contentTop);
         this._addNode(pattern);
 
         if (insetWidth > 0) {
-            const inset = UIPanel.insetSprite(this.textureRegistry, insetWidth, rowHeight, PANEL_TINT);
+            const inset = UIPanel.insetSprite(this.textureCache, insetWidth, rowHeight, PANEL_TINT);
             inset.position.set(insetX, contentTop);
             this._addNode(inset);
             text.x = insetX + Math.round((insetWidth - text.width) / 2);

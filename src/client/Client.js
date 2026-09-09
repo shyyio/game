@@ -1,5 +1,5 @@
 import {coreTextureAtlases} from "@/client/CoreTextures/assets.js";
-import {TextureRegistry} from "@/client/layers/TextureRegistry.js";
+import {TextureCache} from "@/client/layers/TextureCache.js";
 import {SpriteOverrideStore} from "@/client/spriteEditor/SpriteOverrideStore.js";
 import {DrawLayerRegistry} from "@/client/layers/DrawLayerRegistry.js";
 import {ToolRotation} from "@/client/input/ToolRotation.js";
@@ -74,7 +74,7 @@ export class Client {
         this.session = session;
         this.modRegistry = modRegistry;
 
-        this.textureRegistry = new TextureRegistry();
+        this.textureCache = new TextureCache();
         // Artist edits from the sprite editor, painted over the atlases once they load.
         this.spriteOverrideStore = new SpriteOverrideStore();
         this.drawLayerRegistry = new DrawLayerRegistry();
@@ -384,16 +384,16 @@ export class Client {
      * @returns {Promise<void>}
      */
     async init() {
-        await this.textureRegistry.load(coreTextureAtlases.concat(this.modRegistry.textureAtlases));
+        await this.textureCache.load(coreTextureAtlases.concat(this.modRegistry.textureAtlases));
         // Storage can be off (private mode, policy); art edits are optional, the game is not.
         try {
-            await this.spriteOverrideStore.applyTo(this.textureRegistry);
+            await this.spriteOverrideStore.applyTo(this.textureCache);
         } catch (error) {
             console.warn(`Sprite overrides unavailable: ${error.message}`);
         }
 
         for (const layer of this.drawLayerRegistry.layers) {
-            layer.textureRegistry = this.textureRegistry;
+            layer.textureCache = this.textureCache;
             layer.viewport = this.viewport;
             this.viewport.addChild(layer);
         }
@@ -590,5 +590,4 @@ export class Client {
         const tools = this._bespokeModTools.concat(this.bundles.map(bundle => bundle.tool));
         return applyToolOrder(tools, this.cache.view("playerSettings").toolOrder());
     }
-
 }

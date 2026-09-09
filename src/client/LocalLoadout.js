@@ -137,7 +137,6 @@ export class LocalMod {
             pinned: pinned,
         });
     }
-
 }
 
 /**
@@ -183,7 +182,7 @@ export function compatibleVersions(listing) {
     if (!Array.isArray(listing.versions)) {
         return [];
     }
-    return [...listing.versions].reverse().filter(version => version.sdkVersion === SDK_VERSION);
+    return Array.from(listing.versions).reverse().filter(version => version.sdkVersion === SDK_VERSION);
 }
 
 /**
@@ -195,7 +194,7 @@ export function publishedVersions(listing) {
     if (!Array.isArray(listing.versions)) {
         return [];
     }
-    return [...listing.versions].reverse();
+    return Array.from(listing.versions).reverse();
 }
 
 /**
@@ -270,7 +269,7 @@ export class LocalLoadout {
         if (at === -1) {
             return new LocalLoadout([...this.mods, mod]);
         }
-        const mods = [...this.mods];
+        const mods = Array.from(this.mods);
         mods[at] = mod;
         return new LocalLoadout(mods);
     }

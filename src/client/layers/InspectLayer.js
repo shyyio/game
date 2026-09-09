@@ -35,7 +35,7 @@ export class InspectLayer extends AbstractDrawLayer {
             } else {
                 variantSuffix = "";
             }
-            const texture = this.textureRegistry.get(`inspect/${highlight.type.geometryName}${variantSuffix}`);
+            const texture = this.textureCache.get(`inspect/${highlight.type.geometryName}${variantSuffix}`);
             const sprite = new ObjectSprite(0, highlight.tileX, highlight.tileY, highlight.direction, texture, highlight.type);
             this.addChild(sprite);
             this._sprites.push(sprite);

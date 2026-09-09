@@ -24,7 +24,7 @@ export class BeltOverlayDrawLayer extends AbstractDrawLayer {
     showUndergroundReveal(tiles, direction) {
         this.clearUndergroundReveal();
         for (const tile of tiles) {
-            const frames = this.textureRegistry.getAnimation(beltFrameBase(BeltBend.STRAIGHT, BELT_UNDERGROUND));
+            const frames = this.textureCache.getAnimation(beltFrameBase(BeltBend.STRAIGHT, BELT_UNDERGROUND));
             const sprite = new BeltSprite(
                 0,
                 tile.x,

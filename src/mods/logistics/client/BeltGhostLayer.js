@@ -94,7 +94,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
      * @private
      */
     _addSprite(container, tileX, tileY, direction, beltType, tint, bend, alpha=GHOST_ALPHA) {
-        const frames = this.textureRegistry.getAnimation(beltFrameBase(bend, beltType));
+        const frames = this.textureCache.getAnimation(beltFrameBase(bend, beltType));
         const sprite = new BeltSprite(
             0,
             tileX,

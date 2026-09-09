@@ -29,7 +29,7 @@ export class FriendsPanelLayer extends Container {
         this._app = app;
         this._claims = state.view("chunkClaims");
         this._players = state.view("players");
-        this.textureRegistry = null;
+        this.textureCache = null;
         // The game viewport, for the currently-visible-owners roster (set by the host).
         this.viewport = null;
         // The friends button, to open below it by default (set by the host).
@@ -167,7 +167,7 @@ export class FriendsPanelLayer extends Container {
         const friendIds = this._sortByUsername(this._claims.friendIds());
         const panel = this._managed.show({
             app: this._app,
-            textureRegistry: this.textureRegistry,
+            textureCache: this.textureCache,
             title: "Friends",
             titleColor: PANEL_TITLE_TEXT,
             tint: PANEL_TINT,
@@ -221,7 +221,7 @@ export class FriendsPanelLayer extends Container {
      * @returns {number[]}
      */
     _sortByUsername(ids) {
-        return [...ids].sort((a, b) => this._players.usernameOf(a).localeCompare(this._players.usernameOf(b)));
+        return Array.from(ids).sort((a, b) => this._players.usernameOf(a).localeCompare(this._players.usernameOf(b)));
     }
 
     /**
@@ -248,7 +248,7 @@ export class FriendsPanelLayer extends Container {
      */
     _fillCodeRow(row) {
         const submit = () => this._submitCode(this._codeInput);
-        row.pushRight(buildPanelButton(this.textureRegistry, "Add", ACTIVE_ACCENT, submit), INPUT_GAP);
+        row.pushRight(buildPanelButton(this.textureCache, "Add", ACTIVE_ACCENT, submit), INPUT_GAP);
         // Sized against the button actually built, so a relabeled button can never crowd the input.
         row.fill((width) => {
             if (this._codeInput === null) {

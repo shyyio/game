@@ -17,7 +17,7 @@ const SECONDARY_BUTTON = 2;
 const OTHER_POINTER = 2;
 
 // The frame sprites are the only thing the view asks of the registry, and nothing here renders them.
-const textureRegistry = {get: () => Texture.EMPTY};
+const textureCache = {get: () => Texture.EMPTY};
 
 /**
  * A scrollable view mounted on a harness, with content twice the viewport height.
@@ -25,7 +25,7 @@ const textureRegistry = {get: () => Texture.EMPTY};
  */
 function build() {
     const harness = new PointerHarness();
-    const view = new ScrollView(textureRegistry, VIEW_WIDTH, VIEW_HEIGHT);
+    const view = new ScrollView(textureCache, VIEW_WIDTH, VIEW_HEIGHT);
     view.setContentHeight(CONTENT_HEIGHT);
     harness.add(view);
     harness.sync();

@@ -21,7 +21,7 @@ export class ToolReorderDrag {
     constructor(tool, icon, startOrder, detachTracking) {
         this.tool = tool;
         this.icon = icon;
-        this.order = [...startOrder];
+        this.order = Array.from(startOrder);
         this._startOrder = startOrder;
         this._iconBaseScale = icon.scale.x;
         this._detachTracking = detachTracking;

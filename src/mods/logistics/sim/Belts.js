@@ -15,7 +15,7 @@ import {
     LAYERS_UNDERGROUND_AXIS,
     beltPositionLayer,
 } from "../common/constants.js";
-import {ItemStore} from "./ItemStore.js";
+import {ItemCache} from "./ItemCache.js";
 
 // An empty half-tile in a path's occupancy.
 const GAP = 0;
@@ -31,7 +31,7 @@ const NO_SLOT = -1;
 const PATH_MARKER = {};
 
 /**
- * Belt path movement on the ECS engine; a path carries a slab of the shared {@link ItemStore},
+ * Belt path movement on the ECS engine; a path carries a slab of the shared {@link ItemCache},
  * ordered output-edge -> input-edge, each item holding the empty half-tiles ahead of it.
  */
 
@@ -106,7 +106,7 @@ export class Belts {
         // Chunk -> the paths (by head tile) it holds; paths never cross a chunk seam.
         this._pathsByChunk = new Map();
         // Every live path's items, in three shared columns.
-        this._items = new ItemStore();
+        this._items = new ItemCache();
         // Stable item id, the client's sprite key for continuity/glide.
         this._nextItemId = 1;
 
@@ -399,7 +399,7 @@ export class Belts {
      * @returns {BeltPathRecalculateEvent}
      */
     _pathRecalcEvent(path) {
-        const parts = [...path.beltIds].reverse();
+        const parts = Array.from(path.beltIds).reverse();
         return new BeltPathRecalculateEvent(path.headX, path.headY, parts, path.outPort);
     }
 
@@ -745,8 +745,8 @@ export class Belts {
      */
     _carryItemsForSubrun(sourcePath, subRunBelts) {
         const indices = subRunBelts.map(belt => sourcePath.beltIds.indexOf(belt.id));
-        const a = Math.min(...indices);
-        const b = Math.max(...indices);
+        const a = indices.reduce((low, index) => Math.min(low, index));
+        const b = indices.reduce((high, index) => Math.max(high, index));
         if (indices.some(index => index < 0) || indices.length !== b - a + 1) {
             return {items: []};
         }
@@ -1344,7 +1344,7 @@ export class Belts {
                 covering.add(held);
             }
         }
-        return [...covering];
+        return Array.from(covering);
     }
 
     /**
@@ -1582,7 +1582,7 @@ export class Belts {
             if (paths === null) {
                 paths = new BeltPathBatchEvent(origin.x, origin.y);
             }
-            paths.add(path.headX, path.headY, [...path.beltIds].reverse(), path.outPort);
+            paths.add(path.headX, path.headY, Array.from(path.beltIds).reverse(), path.outPort);
             for (const item of this._unloadItems(path.slot)) {
                 if (items === null) {
                     items = new BeltItemBatchEvent(head.x, head.y);

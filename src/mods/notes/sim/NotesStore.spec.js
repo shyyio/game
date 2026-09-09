@@ -37,8 +37,8 @@ test("notes group by chunk with their authors", () => {
 
     const chunkKey = chunkKeyAt(3, 4);
     assert.equal(store.notesIn(chunkKey).length, 2);
-    assert.deepEqual([...store.authorIdsIn(chunkKey)].sort(), [1, 2]);
-    assert.deepEqual([...store.authorIdsIn(chunkKeyAt(3 + CHUNK_SIZE, 4))], [3]);
+    assert.deepEqual(Array.from(store.authorIdsIn(chunkKey)).sort(), [1, 2]);
+    assert.deepEqual(Array.from(store.authorIdsIn(chunkKeyAt(3 + CHUNK_SIZE, 4))), [3]);
 });
 
 test("the record table round-trips every note", () => {

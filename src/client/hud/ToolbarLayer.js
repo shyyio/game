@@ -106,7 +106,7 @@ export class ToolbarLayer extends Container {
         super();
         this._app = app;
         this._viewport = viewport;
-        this.textureRegistry = null;
+        this.textureCache = null;
         this._tools = [];
         this._coreTools = [];
         this._modTools = [];
@@ -316,14 +316,14 @@ export class ToolbarLayer extends Container {
             this._inset.destroy();
             this._drawerStrip.destroy({children: true});
         }
-        this._panelBg = UIPanel.frameSprite(this.textureRegistry, this._panelWidth, height, PANEL_TINT);
+        this._panelBg = UIPanel.frameSprite(this.textureCache, this._panelWidth, height, PANEL_TINT);
         // Swallow presses on the bar background: no tile placement beneath, no click-off close.
         swallowClicks(this._panelBg, {pixi: false, native: true});
         this._panel.addChildAt(this._panelBg, 0);
 
         // Inset holds only the cell grid: it starts right of the pattern strip.
         const insetWidth = this._panelWidth - INSET_MARGIN - INSET_LEFT;
-        this._inset = UIPanel.insetSprite(this.textureRegistry, insetWidth, height - INSET_MARGIN * 2, PANEL_TINT);
+        this._inset = UIPanel.insetSprite(this.textureCache, insetWidth, height - INSET_MARGIN * 2, PANEL_TINT);
         this._inset.position.set(INSET_LEFT, INSET_MARGIN);
         this._panel.addChildAt(this._inset, 1);
 
@@ -347,7 +347,7 @@ export class ToolbarLayer extends Container {
         const slot = new Container();
         slot.cursor = "pointer";
 
-        slot._bg = slotFrameSprite(this.textureRegistry, SLOT_SIZE, SLOT_SIZE, PANEL_TINT);
+        slot._bg = slotFrameSprite(this.textureCache, SLOT_SIZE, SLOT_SIZE, PANEL_TINT);
         slot.addChild(slot._bg);
 
         // Active/hover highlight: filled rect inset in the slot, solid-ish when active, faint on hover.
@@ -655,7 +655,7 @@ export class ToolbarLayer extends Container {
      * @returns {TilingSprite}
      */
     _createDrawerStrip(height) {
-        const strip = UIPanel.patternStrip(this.textureRegistry, STRIP_WIDTH, height);
+        const strip = UIPanel.patternStrip(this.textureCache, STRIP_WIDTH, height);
         strip.cursor = "pointer";
         // Hit the whole left gutter, from the panel edge to the first slot column.
         strip.hitArea = new Rectangle(-PANEL_PADDING, -PANEL_PADDING, GRID_LEFT, height + PANEL_PADDING);
@@ -673,7 +673,7 @@ export class ToolbarLayer extends Container {
      * @param {string} textureName
      */
     _addSprite(slot, textureName) {
-        const icon = new Sprite(this.textureRegistry.get(textureName));
+        const icon = new Sprite(this.textureCache.get(textureName));
         fitIcon(icon, SLOT_SIZE, ICON_PADDING);
         slot.addChild(icon);
         slot._icon = icon;

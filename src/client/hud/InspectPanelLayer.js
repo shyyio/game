@@ -43,9 +43,9 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
             }
         });
         /**
-         * @type {TextureRegistry|null}
+         * @type {TextureCache|null}
          */
-        this.textureRegistry = null;
+        this.textureCache = null;
         /**
          * Item definitions, for drawing item icons (set by the host before any panel opens).
          * @type {ItemRegistry|null}
@@ -80,7 +80,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
         if (record === undefined) {
             // Height comes from the first snapshot (workerCost is a type constant, so a worker row never appears later).
             const panel = this._createPanel(event.objectRef, UIPanel.heightForContent(inspectContentHeight(event)), title);
-            const content = new InspectContent(event, panel.contentWidth, this.textureRegistry, this.items, this._tooltip);
+            const content = new InspectContent(event, panel.contentWidth, this.textureCache, this.items, this._tooltip);
             panel.addContent(content);
             record = new InspectPanelRecord(panel, content);
             this._panels.set(key, record);
@@ -133,7 +133,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
         const index = this._panels.size;
         const panel = new UIPanel({
             app: this._app,
-            textureRegistry: this.textureRegistry,
+            textureCache: this.textureCache,
             title,
             titleColor: PANEL_TITLE_TEXT,
             tint: PANEL_TINT,

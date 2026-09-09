@@ -187,7 +187,9 @@ export class Game {
             this.toolOrder.serializeRecords(),
         ];
         for (const mod of this.modRegistry.simMods) {
-            snapshot.records.push(...mod.serializeRecords());
+            for (const record of mod.serializeRecords()) {
+                snapshot.records.push(record);
+            }
         }
         return snapshot;
     }

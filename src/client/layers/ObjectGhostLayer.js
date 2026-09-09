@@ -56,7 +56,7 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
         this._anchorTileY = tileY;
         this._direction = direction;
         this._snapKey = null;
-        const sprite = new ObjectSprite(0, tileX, tileY, direction, this.textureRegistry.get(this._type.textureName), this._type);
+        const sprite = new ObjectSprite(0, tileX, tileY, direction, this.textureCache.get(this._type.textureName), this._type);
         let ghostTint;
         let ghostAlpha;
         if (blocked) {

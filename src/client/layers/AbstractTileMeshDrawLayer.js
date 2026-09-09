@@ -47,10 +47,10 @@ export class AbstractTileMeshDrawLayer extends AbstractChunkedDrawLayer {
      */
     _meshShader() {
         if (this._shader === null) {
-            if (this.textureRegistry === null) {
+            if (this.textureCache === null) {
                 throw new Error(`${this.constructor.name} needs a texture registry before it draws`);
             }
-            this._frameTable = new FrameTable(this.textureRegistry, this.meshSequences);
+            this._frameTable = new FrameTable(this.textureCache, this.meshSequences);
             this._shader = new AnimatedTileShader(this._frameTable);
         }
         return this._shader;

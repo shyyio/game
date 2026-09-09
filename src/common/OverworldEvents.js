@@ -57,8 +57,14 @@ export class OverworldSnapshotEvent extends AbstractEvent {
     addChunk(chunkKey, starts, lengths, objectTypeIds) {
         this.chunks.push(chunkKey);
         this.runCounts.push(starts.length);
-        this.runStarts.push(...starts);
-        this.runLengths.push(...lengths);
-        this.runTypeIds.push(...objectTypeIds);
+        for (const start of starts) {
+            this.runStarts.push(start);
+        }
+        for (const length of lengths) {
+            this.runLengths.push(length);
+        }
+        for (const objectTypeId of objectTypeIds) {
+            this.runTypeIds.push(objectTypeId);
+        }
     }
 }

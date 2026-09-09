@@ -37,7 +37,7 @@ test("a world converts to a loadout without one of its mods: its objects go, the
 
     const after = await makeGameEngine();
     const next = after.snapshots.loadout;
-    assert.deepEqual([...conversionLosses(before.snapshots.serialize(), next).objects], [["ConversionGadget", 2]]);
+    assert.deepEqual(Array.from(conversionLosses(before.snapshots.serialize(), next).objects), [["ConversionGadget", 2]]);
 
     before.removeObjectsOfType(GadgetType.objectTypeId);
     assert.equal(before.placed.eidsOf(GadgetType.objectTypeId).length, 0);

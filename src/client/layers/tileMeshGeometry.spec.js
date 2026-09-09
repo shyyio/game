@@ -41,10 +41,10 @@ test("a tile's quad spans exactly its tile in world pixels", () => {
         xs.push(columns.positions[vertex * 2]);
         ys.push(columns.positions[vertex * 2 + 1]);
     }
-    assert.equal(Math.min(...xs), 3 * TILE_SIZE);
-    assert.equal(Math.max(...xs), 4 * TILE_SIZE);
-    assert.equal(Math.min(...ys), 5 * TILE_SIZE);
-    assert.equal(Math.max(...ys), 6 * TILE_SIZE);
+    assert.equal(xs.reduce((low, x) => Math.min(low, x)), 3 * TILE_SIZE);
+    assert.equal(xs.reduce((high, x) => Math.max(high, x)), 4 * TILE_SIZE);
+    assert.equal(ys.reduce((low, y) => Math.min(low, y)), 5 * TILE_SIZE);
+    assert.equal(ys.reduce((high, y) => Math.max(high, y)), 6 * TILE_SIZE);
 });
 
 test("a turned tile keeps its quad axis-aligned, turning only the uvs", () => {
@@ -53,8 +53,8 @@ test("a turned tile keeps its quad axis-aligned, turning only the uvs", () => {
     writeTile(straight, 0, 0, 0, 0, 0);
     writeTile(turned, 0, 0, 0, 1, 0);
 
-    assert.deepEqual([...turned.positions], [...straight.positions]);
-    assert.notDeepEqual([...turned.uvs], [...straight.uvs]);
+    assert.deepEqual(Array.from(turned.positions), Array.from(straight.positions));
+    assert.notDeepEqual(Array.from(turned.uvs), Array.from(straight.uvs));
 });
 
 test("uvs stay unit corners whatever the turn", () => {
@@ -72,8 +72,8 @@ test("a tile's vertices all carry its sequence slot", () => {
     writeTile(columns, 0, 0, 0, 0, 7);
     writeTile(columns, 1, 1, 0, 0, 2);
 
-    assert.deepEqual([...columns.sequences.slice(0, VERTICES_PER_TILE)], [7, 7, 7, 7]);
-    assert.deepEqual([...columns.sequences.slice(VERTICES_PER_TILE)], [2, 2, 2, 2]);
+    assert.deepEqual(Array.from(columns.sequences.slice(0, VERTICES_PER_TILE)), [7, 7, 7, 7]);
+    assert.deepEqual(Array.from(columns.sequences.slice(VERTICES_PER_TILE)), [2, 2, 2, 2]);
 });
 
 test("each tile's triangles index only its own vertices", () => {

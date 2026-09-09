@@ -48,7 +48,7 @@ export class IconPickerEntry {
 export class IconPicker extends Container {
 
     /**
-     * @param {TextureRegistry} textureRegistry
+     * @param {TextureCache} textureCache
      * @param {number} width
      * @param {IconPickerEntry[]} entries
      * @param {function(number): void} onPick - receives the picked entry's id
@@ -61,7 +61,7 @@ export class IconPicker extends Container {
      *     id (null on leave) and its cell, which carries the entry's tooltipText
      */
     constructor(
-        textureRegistry,
+        textureCache,
         width,
         entries,
         onPick,
@@ -82,11 +82,11 @@ export class IconPicker extends Container {
         );
         this.pickerHeight = viewportHeight;
 
-        this.addChild(UIPanel.insetSprite(textureRegistry, width, viewportHeight, PANEL_TINT));
+        this.addChild(UIPanel.insetSprite(textureCache, width, viewportHeight, PANEL_TINT));
 
         const grid = new Container();
         for (const [index, entry] of entries.entries()) {
-            const cell = this._buildCell(textureRegistry, entry, entry.id === selectedId, onPick, cellSize, onHover);
+            const cell = this._buildCell(textureCache, entry, entry.id === selectedId, onPick, cellSize, onHover);
             cell.x = PADDING + (index % columns) * (cellSize + CELL_GAP);
             cell.y = PADDING + Math.floor(index / columns) * (cellSize + CELL_GAP);
             grid.addChild(cell);
@@ -96,7 +96,7 @@ export class IconPicker extends Container {
             this.addChild(grid);
             return;
         }
-        const scrollView = new ScrollView(textureRegistry, width, viewportHeight);
+        const scrollView = new ScrollView(textureCache, width, viewportHeight);
         scrollView.content.addChild(grid);
         scrollView.setContentHeight(contentHeight);
         this.addChild(scrollView);
@@ -115,7 +115,7 @@ export class IconPicker extends Container {
     /**
      * One icon cell: highlight backdrop, scaled tinted sprite, drag-tolerant tap.
      * @private
-     * @param {TextureRegistry} textureRegistry
+     * @param {TextureCache} textureCache
      * @param {IconPickerEntry} entry
      * @param {boolean} selected
      * @param {function(number): void} onPick
@@ -123,7 +123,7 @@ export class IconPicker extends Container {
      * @param {function(number|null, Container): void|null} onHover
      * @returns {Container}
      */
-    _buildCell(textureRegistry, entry, selected, onPick, cellSize, onHover) {
+    _buildCell(textureCache, entry, selected, onPick, cellSize, onHover) {
         const cell = new Container();
         cell.tooltipText = entry.tooltipText;
         const backdrop = new Graphics().roundRect(0, 0, cellSize, cellSize, 4).fill(ACTIVE_ACCENT);
@@ -134,7 +134,7 @@ export class IconPicker extends Container {
         }
         cell.addChild(backdrop);
 
-        const icon = new Sprite(textureRegistry.get(entry.textureName));
+        const icon = new Sprite(textureCache.get(entry.textureName));
         icon.tint = entry.tint;
         fitIcon(icon, cellSize, ICON_INSET);
         cell.addChild(icon);

@@ -31,7 +31,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
         this._session = session;
         this._items = items;
         this._objects = cache.view("objects");
-        this.textureRegistry = null;
+        this.textureCache = null;
         this.visible = false;
         this._managed = new ManagedPanel();
 
@@ -181,7 +181,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
 
         const panel = this._managed.show({
             app: this._app,
-            textureRegistry: this.textureRegistry,
+            textureCache: this.textureCache,
             title: "Trading Terminal",
             titleColor: PANEL_TITLE_TEXT,
             tint: PANEL_TINT,
@@ -248,7 +248,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
             {value: MARKET_MODE_SELL, label: "Sell"},
             {value: MARKET_MODE_BUY, label: "Buy"},
         ];
-        const toggle = buildToggleRow(this.textureRegistry, options, this._mode, mode => {
+        const toggle = buildToggleRow(this.textureCache, options, this._mode, mode => {
             this._selectAndReset(() => {
                 this._mode = mode;
             });
@@ -295,8 +295,8 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
         this._priceText = panelText(this._priceLabel(npcSelected), TextRole.BODY);
         row.pushLeft(this._priceText);
         if (!npcSelected) {
-            row.pushRight(buildPanelButton(this.textureRegistry, "+", ACTIVE_ACCENT, () => this._stepPrice(1)));
-            row.pushRight(buildPanelButton(this.textureRegistry, "-", ACTIVE_ACCENT, () => this._stepPrice(-1)));
+            row.pushRight(buildPanelButton(this.textureCache, "+", ACTIVE_ACCENT, () => this._stepPrice(1)));
+            row.pushRight(buildPanelButton(this.textureCache, "-", ACTIVE_ACCENT, () => this._stepPrice(-1)));
         }
     }
 
@@ -333,7 +333,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
      */
     _fillConfirmRow(row, objectRef, snapshot) {
         const canConfirm = snapshot.itemTypeIds.length > 0;
-        const confirm = buildPanelButton(this.textureRegistry, "Confirm", ACTIVE_ACCENT, () => {
+        const confirm = buildPanelButton(this.textureCache, "Confirm", ACTIVE_ACCENT, () => {
             const itemTypeId = snapshot.itemTypeIds[this._itemIndex];
             this._session.sendMessage(new ConfigureTradingTerminalMessage(objectRef, this._mode, itemTypeId, this._price));
             this._cache.writer("market").closeConfig();

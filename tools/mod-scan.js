@@ -445,7 +445,7 @@ export function freeIdentifiers(source) {
  * @returns {string[]} the disallowed globals it reaches, empty when clean
  */
 export function scanBundle(path) {
-    return [...freeIdentifiers(readFileSync(path, "utf8")).keys()].sort();
+    return Array.from(freeIdentifiers(readFileSync(path, "utf8")).keys()).sort();
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

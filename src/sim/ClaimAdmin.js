@@ -47,7 +47,7 @@ export class ClaimAdmin {
      * @returns {void}
      */
     syncOwnClaims(session) {
-        const ownChunks = [...this.game.claims.chunksOf(session.playerRef)];
+        const ownChunks = Array.from(this.game.claims.chunksOf(session.playerRef));
         const ownPermissions = ownChunks.map(chunk => this.game.claims.permissionOf(chunk));
         this.game.bus.publishTo(session.sessionRef, new OwnClaimsSyncEvent(ownChunks, ownPermissions));
     }

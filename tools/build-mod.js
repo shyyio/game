@@ -102,7 +102,9 @@ function sourceFilesIn(dir) {
     for (const entry of readdirSync(dir, {withFileTypes: true})) {
         const path = join(dir, entry.name);
         if (entry.isDirectory()) {
-            found.push(...sourceFilesIn(path));
+            for (const file of sourceFilesIn(path)) {
+                found.push(file);
+            }
         } else if (entry.name.endsWith(".js") && !entry.name.endsWith(".spec.js")) {
             found.push(path);
         }

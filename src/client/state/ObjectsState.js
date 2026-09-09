@@ -562,7 +562,7 @@ export class ObjectsView extends AbstractCacheView {
         if (stacked === undefined) {
             return [];
         }
-        return [...stacked];
+        return Array.from(stacked);
     }
 
     /**

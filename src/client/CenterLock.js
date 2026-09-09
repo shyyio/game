@@ -72,5 +72,4 @@ export class CenterLock {
             y: targetTileY * TILE_SIZE + TILE_SIZE / 2,
         });
     }
-
 }

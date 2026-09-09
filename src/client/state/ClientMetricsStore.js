@@ -53,7 +53,7 @@ export class ClientMetricsStore extends AbstractMetricsStore {
             entry.count += 1;
             entry.sum += fact.amount;
         }
-        return [...buckets.values()].sort((x, y) => x.bucketTick - y.bucketTick);
+        return Array.from(buckets.values()).sort((x, y) => x.bucketTick - y.bucketTick);
     }
 
     /**

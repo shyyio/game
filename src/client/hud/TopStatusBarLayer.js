@@ -151,9 +151,9 @@ export class TopStatusBarLayer extends AbstractEdgeBarLayer {
      */
     _rebuildContent() {
         const insets = SafeArea.insets();
-        const sections = [...this._sections.values()].sort((a, b) => a.order - b.order);
+        const sections = Array.from(this._sections.values()).sort((a, b) => a.order - b.order);
         const builtButtons = sections.flatMap(section => section.buttons)
-            .map(button => buildPanelButton(this.textureRegistry, button.label, PANEL_BORDER, button.onClick));
+            .map(button => buildPanelButton(this.textureCache, button.label, PANEL_BORDER, button.onClick));
 
         const width = this._app.screen.width;
         const contentTop = insets.top + FRAME_MARGIN;
@@ -190,13 +190,13 @@ export class TopStatusBarLayer extends AbstractEdgeBarLayer {
             this._addNode(built);
         }
         if (builtButtons.length > 0) {
-            const pattern = UIPanel.patternStrip(this.textureRegistry, THIN_PATTERN_WIDTH, rowHeight);
+            const pattern = UIPanel.patternStrip(this.textureCache, THIN_PATTERN_WIDTH, rowHeight);
             pattern.position.set(patternX, contentTop);
             this._addNode(pattern);
         }
 
         if (insetWidth > 0) {
-            const inset = UIPanel.insetSprite(this.textureRegistry, insetWidth, rowHeight, PANEL_TINT);
+            const inset = UIPanel.insetSprite(this.textureCache, insetWidth, rowHeight, PANEL_TINT);
             inset.position.set(insetX, contentTop);
             this._addNode(inset);
             text.x = insetX + Math.round((insetWidth - text.width) / 2);

@@ -13,8 +13,8 @@ test("add reports the first time a player produces an item type", () => {
     assert.equal(log.add(ALICE, IRON, 1), true);
     assert.equal(log.add(ALICE, IRON, 2), false);
     assert.equal(log.add(ALICE, COAL, 1), true);
-    assert.deepEqual([...log.countsOf(ALICE)], [[IRON, 3], [COAL, 1]]);
-    assert.deepEqual([...log.countsOf(BOB)], []);
+    assert.deepEqual(Array.from(log.countsOf(ALICE)), [[IRON, 3], [COAL, 1]]);
+    assert.deepEqual(Array.from(log.countsOf(BOB)), []);
 });
 
 test("an item page ranks producers by count, ties by player ref, with the asker's rank", () => {
@@ -57,8 +57,8 @@ test("the record table round-trips every count", () => {
 
     const restored = new ProductionLog();
     restored.deserializeRecords(tables[0], items);
-    assert.deepEqual([...restored.countsOf(ALICE)], [[IRON, 5]]);
-    assert.deepEqual([...restored.countsOf(BOB)], [[COAL, 1]]);
+    assert.deepEqual(Array.from(restored.countsOf(ALICE)), [[IRON, 5]]);
+    assert.deepEqual(Array.from(restored.countsOf(BOB)), [[COAL, 1]]);
     restored.deserializeRecords(undefined, items);
-    assert.deepEqual([...restored.countsOf(ALICE)], []);
+    assert.deepEqual(Array.from(restored.countsOf(ALICE)), []);
 });

@@ -185,7 +185,7 @@ export class RoadNetwork {
             this._dirtyAll = false;
             this._dirtyCells.clear();
             this._dirtyComponents.clear();
-            return {seeds: [...this._tiles.values()], affected: null};
+            return {seeds: Array.from(this._tiles.values()), affected: null};
         }
         if (this._dirtyCells.size === 0 && this._dirtyComponents.size === 0) {
             return null;

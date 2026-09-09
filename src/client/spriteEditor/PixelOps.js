@@ -154,7 +154,7 @@ export function paletteOf(buffer, limit) {
         const key = (buffer.data[i] << 24 | buffer.data[i + 1] << 16 | buffer.data[i + 2] << 8 | buffer.data[i + 3]) >>> 0;
         counts.set(key, (counts.get(key) || 0) + 1);
     }
-    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
+    const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, limit);
     return sorted.map(([key]) => [key >>> 24, key >>> 16 & 255, key >>> 8 & 255, key & 255]);
 }
 

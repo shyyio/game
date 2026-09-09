@@ -211,11 +211,11 @@ export class ClientCache {
             if (entry.kind === STATE_KIND_SCALAR) {
                 this.set(path, entry.initial);
             } else if (entry.kind === STATE_KIND_MAP) {
-                for (const id of [...entry.value.keys()]) {
+                for (const id of Array.from(entry.value.keys())) {
                     this.mapDelete(path, id);
                 }
             } else {
-                for (const id of [...entry.value]) {
+                for (const id of Array.from(entry.value)) {
                     this.setDelete(path, id);
                 }
             }
@@ -432,7 +432,7 @@ export class ClientCache {
                 }
                 tree[namespace][key] = plain;
             } else if (entry.kind === STATE_KIND_SET) {
-                tree[namespace][key] = [...entry.value];
+                tree[namespace][key] = Array.from(entry.value);
             } else {
                 tree[namespace][key] = entry.value;
             }

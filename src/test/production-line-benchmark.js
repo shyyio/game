@@ -98,7 +98,9 @@ async function main() {
     for (let k = 0; k < lineCount; k += 1) {
         const origin = lineOrigin(k);
         buildLine(engine, origin.x, origin.y);
-        sinkPorts.push(...lineSinkPort(engine, origin.x, origin.y));
+        for (const port of lineSinkPort(engine, origin.x, origin.y)) {
+            sinkPorts.push(port);
+        }
     }
     const buildMs = performance.now() - buildStart;
 

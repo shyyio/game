@@ -73,7 +73,7 @@ export class WorkerAllocation {
             if (this._contested.size === 0) {
                 return this._next;
             }
-            seedList = [...seedList];
+            seedList = Array.from(seedList);
             for (const id of this._contested) {
                 affected.add(id);
                 seedList.push(this.roads.tileByKey(id));
@@ -100,7 +100,7 @@ export class WorkerAllocation {
             return;
         }
 
-        const housingList = [...component.housings].sort((a, b) => a.objectRef - b.objectRef);
+        const housingList = Array.from(component.housings).sort((a, b) => a.objectRef - b.objectRef);
         let supply = 0;
         for (const housing of housingList) {
             supply += housing.remaining;
@@ -110,7 +110,7 @@ export class WorkerAllocation {
             demand += machine.cost;
         }
 
-        const machineList = [...machines.values()];
+        const machineList = Array.from(machines.values());
         for (const machine of machineList) {
             machine.distance = this._minDistance(machine.cells, housingList);
             this._next.set(machine.objectRef, new WorkerAssignment({

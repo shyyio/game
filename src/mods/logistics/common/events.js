@@ -248,7 +248,9 @@ export class BeltPathBatchEvent extends AbstractBatchEvent {
         this.tileX.push(x - this.originX);
         this.tileY.push(y - this.originY);
         this.partCounts.push(parts.length);
-        this.parts.push(...parts);
+        for (const part of parts) {
+            this.parts.push(part);
+        }
         let wiredOutPortRef = outPortRef;
         if (outPortRef === null) {
             wiredOutPortRef = NO_OUT_PORT;

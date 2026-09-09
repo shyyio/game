@@ -290,7 +290,12 @@ export class ObjectTool extends AbstractTool {
         const vetoed = !this._client.canBuildAt(tileX, tileY)
             || !this._client.modsAllowPlacement(this._type, tileX, tileY, direction);
         if (vetoed) {
-            blockedCells.push(...overwriteCells, ...clearCells);
+            for (const cell of overwriteCells) {
+                blockedCells.push(cell);
+            }
+            for (const cell of clearCells) {
+                blockedCells.push(cell);
+            }
             return {blockedCells, overwriteCells: [], clearCells: [], overwriteIds: []};
         }
 

@@ -15,22 +15,22 @@ const ABSENT_ALPHA = 0.6;
 export class InspectSlot extends Container {
 
     /**
-     * @param {TextureRegistry} textureRegistry
+     * @param {TextureCache} textureCache
      * @param {ItemRegistry} items
      * @param {SlotTooltip} tooltip - raised while the pointer rests on this slot
      */
     constructor(
-        textureRegistry,
+        textureCache,
         items,
         tooltip,
     ) {
         super();
-        this._textureRegistry = textureRegistry;
+        this._textureCache = textureCache;
         this._items = items;
         this._item = 0;
         this._present = false;
 
-        this._frame = slotFrameSprite(textureRegistry, SLOT_SIZE, SLOT_SIZE, PANEL_TINT);
+        this._frame = slotFrameSprite(textureCache, SLOT_SIZE, SLOT_SIZE, PANEL_TINT);
         this.addChild(this._frame);
 
         // Hover highlight (no active state on inspect slots).
@@ -94,7 +94,7 @@ export class InspectSlot extends Container {
             return;
         }
         const definition = this._items.typeFor(this._item);
-        this._icon.texture = this._textureRegistry.get(definition.texture);
+        this._icon.texture = this._textureCache.get(definition.texture);
         this._icon.tint = definition.tint;
         fitIcon(this._icon, SLOT_SIZE, ITEM_INSET);
         this._icon.visible = true;

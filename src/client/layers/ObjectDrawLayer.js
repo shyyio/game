@@ -43,7 +43,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
             entry.tileX,
             entry.tileY,
             entry.data.direction,
-            this.textureRegistry.get(this._type.textureFor(entry.data)),
+            this.textureCache.get(this._type.textureFor(entry.data)),
             this._type,
         ));
     }
@@ -69,7 +69,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
         if (sprite === undefined) {
             return;
         }
-        sprite.texture = this.textureRegistry.get(this._type.textureFor(entry.data));
+        sprite.texture = this.textureCache.get(this._type.textureFor(entry.data));
     }
 
     /**

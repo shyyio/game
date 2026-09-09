@@ -57,7 +57,9 @@ export class PipeNetworkBatchEvent extends AbstractBatchEvent {
     add(networkId, parts) {
         this.networkIds.push(networkId);
         this.partCounts.push(parts.length);
-        this.parts.push(...parts);
+        for (const part of parts) {
+            this.parts.push(part);
+        }
     }
 
     /**

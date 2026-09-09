@@ -1,4 +1,3 @@
-
 /**
  * The derived client surface of one object type: its draw layer, placement ghost, and tool. Built by
  * the client for every type with a behavior; each piece comes from the type's create* hook or the

@@ -69,5 +69,4 @@ export class ViewModeController {
             this._client.subscription.leaveOverworld();
         }
     }
-
 }

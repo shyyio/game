@@ -26,7 +26,7 @@ export class ConfirmDialogLayer extends Container {
     constructor(app) {
         super();
         this._app = app;
-        this.textureRegistry = null;
+        this.textureCache = null;
         this.zIndex = HudLayer.DIALOG;
         this.visible = false;
         this.eventMode = "none";
@@ -92,11 +92,11 @@ export class ConfirmDialogLayer extends Container {
         panel.addChild(messageText);
 
         const buttonsY = messageText.y + messageText.height + MESSAGE_GAP;
-        const confirmButton = buildPanelButton(this.textureRegistry, confirmLabel, BLOCKED_TILE_COLOR, () => {
+        const confirmButton = buildPanelButton(this.textureCache, confirmLabel, BLOCKED_TILE_COLOR, () => {
             this.close();
             onConfirm();
         });
-        const cancelButton = buildPanelButton(this.textureRegistry, "Cancel", ACTIVE_ACCENT, () => this.close());
+        const cancelButton = buildPanelButton(this.textureCache, "Cancel", ACTIVE_ACCENT, () => this.close());
         confirmButton.x = PANEL_WIDTH - FRAME_MARGIN - PADDING - confirmButton.width;
         confirmButton.y = buttonsY;
         cancelButton.x = confirmButton.x - BUTTON_GAP - cancelButton.width;
@@ -105,8 +105,8 @@ export class ConfirmDialogLayer extends Container {
         panel.addChild(confirmButton);
 
         const panelHeight = buttonsY + BUTTON_HEIGHT + PADDING + FRAME_MARGIN;
-        const frame = UIPanel.frameSprite(this.textureRegistry, PANEL_WIDTH, panelHeight, PANEL_TINT);
-        const inset = UIPanel.insetSprite(this.textureRegistry, PANEL_WIDTH - FRAME_MARGIN * 2, panelHeight - FRAME_MARGIN * 2, PANEL_TINT);
+        const frame = UIPanel.frameSprite(this.textureCache, PANEL_WIDTH, panelHeight, PANEL_TINT);
+        const inset = UIPanel.insetSprite(this.textureCache, PANEL_WIDTH - FRAME_MARGIN * 2, panelHeight - FRAME_MARGIN * 2, PANEL_TINT);
         inset.position.set(FRAME_MARGIN, FRAME_MARGIN);
         panel.addChildAt(inset, 0);
         panel.addChildAt(frame, 0);

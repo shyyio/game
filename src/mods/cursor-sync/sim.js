@@ -131,7 +131,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
             return;
         }
         // Copied: a viewer's own dispatch may resubscribe while we fan out.
-        for (const viewerSessionRef of [...viewers]) {
+        for (const viewerSessionRef of Array.from(viewers)) {
             // The owning session never gets its own cursor echoed back.
             if (viewerSessionRef === session.sessionRef) {
                 continue;

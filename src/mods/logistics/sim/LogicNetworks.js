@@ -78,7 +78,7 @@ export class LogicNetworks {
         const wasPole = this._poles.delete(objectRef);
         const keys = this._wiresByEndpoint.get(objectRef);
         if (keys !== undefined) {
-            for (const key of [...keys]) {
+            for (const key of Array.from(keys)) {
                 const wire = this._wires.get(key);
                 this.unwire(wire.a, wire.b);
             }
@@ -216,7 +216,7 @@ export class LogicNetworks {
      * @returns {object[]}
      */
     serializeRecords() {
-        const rows = [...this._wires.values()].map(wire => ({a_object_id: wire.a, b_object_id: wire.b}));
+        const rows = Array.from(this._wires.values()).map(wire => ({a_object_id: wire.a, b_object_id: wire.b}));
         return [{
             name: LOGIC_WIRE_RECORD,
             fields: [
@@ -276,7 +276,7 @@ export class LogicNetworks {
     _recompute() {
         this._dirty = false;
         const neighbors = new Map();
-        for (const [key, wire] of [...this._wires]) {
+        for (const [key, wire] of Array.from(this._wires)) {
             if (this.placed.eidByObjectRef(wire.a) === undefined
                 || this.placed.eidByObjectRef(wire.b) === undefined) {
                 this._drop(key);
@@ -324,7 +324,7 @@ export class LogicNetworks {
         }
 
         this._networks = components.map(members => {
-            const sorted = [...members].sort((a, b) => a - b);
+            const sorted = Array.from(members).sort((a, b) => a - b);
             const poleIds = sorted.filter(objectRef => this._poles.has(objectRef));
             const deviceIds = sorted.filter(objectRef => !this._poles.has(objectRef));
             return new LogicNetwork(sorted[0], poleIds, deviceIds);

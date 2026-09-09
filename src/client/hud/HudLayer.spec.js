@@ -84,7 +84,9 @@ function sourceFiles(directory) {
     for (const entry of readdirSync(directory)) {
         const path = `${directory}/${entry}`;
         if (statSync(path).isDirectory()) {
-            paths.push(...sourceFiles(path));
+            for (const file of sourceFiles(path)) {
+                paths.push(file);
+            }
         } else if (entry.endsWith(".js")) {
             paths.push(path);
         }

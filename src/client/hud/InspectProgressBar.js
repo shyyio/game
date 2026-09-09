@@ -25,12 +25,12 @@ const TX_BARFILL = "ui/barfill";
 export class InspectProgressBar extends Container {
 
     /**
-     * @param {TextureRegistry} textureRegistry
+     * @param {TextureCache} textureCache
      * @param {number} width
      * @param {number} total - the machine's processing ticks (0 = instant, drawn as a bare frame)
      */
     constructor(
-        textureRegistry,
+        textureCache,
         width,
         total,
     ) {
@@ -39,7 +39,7 @@ export class InspectProgressBar extends Container {
         this._steps = total + 1;
         this._width = width;
 
-        this._background = slotFrameSprite(textureRegistry, width, BUTTON_HEIGHT, PANEL_TINT);
+        this._background = slotFrameSprite(textureCache, width, BUTTON_HEIGHT, PANEL_TINT);
         this.addChild(this._background);
 
         this._blocks = [];
@@ -49,7 +49,7 @@ export class InspectProgressBar extends Container {
             const blockWidth = usable / this._steps;
             const fillHeight = BUTTON_HEIGHT - FILL_INSET_TOP - FILL_INSET_BOTTOM;
             for (let i = 0; i < this._steps; i++) {
-                const block = nineSlice(textureRegistry, TX_BARFILL, BARFILL_INSET, BARFILL_INSET, blockWidth, fillHeight);
+                const block = nineSlice(textureCache, TX_BARFILL, BARFILL_INSET, BARFILL_INSET, blockWidth, fillHeight);
                 block.tint = PROGRESS_BAR_TINT;
                 block.x = FILL_INSET_LEFT + i * blockWidth;
                 block.y = FILL_INSET_TOP;

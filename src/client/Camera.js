@@ -57,5 +57,4 @@ export class Camera {
         // moveCenter emits no "moved"; refresh the data feed directly.
         this._client.viewportMoved();
     }
-
 }

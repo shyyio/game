@@ -112,7 +112,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         this._cache = cache;
         this._modRegistry = modRegistry;
         this._objects = cache.view("objects");
-        this.textureRegistry = null;
+        this.textureCache = null;
         this.visible = false;
         this._managed = new ManagedPanel();
 
@@ -259,7 +259,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
 
         const panel = this._managed.show({
             app: this._app,
-            textureRegistry: this.textureRegistry,
+            textureCache: this.textureCache,
             title: "Logic Terminal",
             titleColor: PANEL_TITLE_TEXT,
             tint: PANEL_TINT,
@@ -297,7 +297,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         stack.gap();
         stack.row((row) => {
             const actions = this._addActionOptionsFor(snapshot);
-            const add = buildPanelButton(this.textureRegistry, "Add action", ACTIVE_ACCENT, () => {
+            const add = buildPanelButton(this.textureCache, "Add action", ACTIVE_ACCENT, () => {
                 this._openDropdown(actions, add);
             }, this._rules.length >= LOGIC_RULE_CAP || actions.length === 0);
             row.pushLeft(add);
@@ -313,7 +313,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      */
     _buildRulesBox(stack, snapshot) {
         this._valueInputs = [];
-        const rulesStack = new PanelStack(this.textureRegistry, ScrollView.contentWidthFor(stack.contentWidth));
+        const rulesStack = new PanelStack(this.textureCache, ScrollView.contentWidthFor(stack.contentWidth));
         if (this._rules.length === 0) {
             rulesStack.text("No rules yet.", TextRole.MUTED);
         }
@@ -325,7 +325,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             stack.block(rulesStack, height);
             return;
         }
-        const scrollView = new ScrollView(this.textureRegistry, stack.contentWidth, RULES_VIEWPORT_HEIGHT);
+        const scrollView = new ScrollView(this.textureCache, stack.contentWidth, RULES_VIEWPORT_HEIGHT);
         scrollView.content.addChild(rulesStack);
         scrollView.setContentHeight(height);
         scrollView.scrollY = this._rulesScrollY;
@@ -345,7 +345,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _openDropdown(options, button) {
-        const list = new PanelStack(this.textureRegistry, DROPDOWN_WIDTH);
+        const list = new PanelStack(this.textureCache, DROPDOWN_WIDTH);
         list.scrollSection(options, (option) => ({
             label: option.label,
             onRowClick: () => {
@@ -367,7 +367,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _openIconPicker(entries, selectedId, onPick, button) {
-        const picker = new IconPicker(this.textureRegistry, DROPDOWN_WIDTH, entries, (id) => {
+        const picker = new IconPicker(this.textureCache, DROPDOWN_WIDTH, entries, (id) => {
             this.popovers.close();
             onPick(id);
             this._rebuild();
@@ -392,7 +392,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                     .fill(SUSPENDED_TINT));
             }
             const verb = buildPanelButton(
-                this.textureRegistry,
+                this.textureCache,
                 `${this._actionVerb(rule)} ▾`,
                 ACTIVE_ACCENT,
                 () => this._openDropdown(this._actionVerbOptionsFor(snapshot, rule), verb),
@@ -404,7 +404,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 deviceTexture = device.type.textureName;
             }
             // Only devices holding the rule's own key: the verb stays true of whatever is picked.
-            const target = buildIconButton(this.textureRegistry, deviceTexture, 0xffffff, ACTIVE_ACCENT,
+            const target = buildIconButton(this.textureCache, deviceTexture, 0xffffff, ACTIVE_ACCENT,
                 () => this._openDropdown(
                     this._devicesWithWriteKey(snapshot, rule.actionKey).map(held => new DropdownOption(held.label, () => {
                         rule.actionDeviceId = held.objectRef;
@@ -421,7 +421,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         }
         stack.row((row) => {
             const conditionTypes = this._conditionTypeOptionsFor(snapshot, rule);
-            const add = buildPanelButton(this.textureRegistry, "+ condition", INACTIVE_TINT, () => {
+            const add = buildPanelButton(this.textureCache, "+ condition", INACTIVE_TINT, () => {
                 this._openDropdown(conditionTypes, add);
             }, rule.conditions.length >= LOGIC_CONDITION_CAP || conditionTypes.length === 0);
             row.indent();
@@ -455,7 +455,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             }
             if (this._conditionIsNumeric(condition)) {
                 const comparator = buildPanelButton(
-                    this.textureRegistry,
+                    this.textureCache,
                     COMPARATOR_LABELS[condition.comparator],
                     ACTIVE_ACCENT,
                     () => this._openDropdown(COMPARATOR_LABELS.map((label, value) => new DropdownOption(label, () => {
@@ -517,7 +517,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             if (container !== undefined) {
                 containerTexture = container.type.textureName;
             }
-            const containerButton = buildIconButton(this.textureRegistry, containerTexture, 0xffffff, ACTIVE_ACCENT,
+            const containerButton = buildIconButton(this.textureCache, containerTexture, 0xffffff, ACTIVE_ACCENT,
                 () => this._openDropdown(containers.map(device => new DropdownOption(device.label, () => {
                     condition.deviceId = device.objectRef;
                     this._sendRules();
@@ -525,7 +525,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             buttons.push(containerButton);
         }
         const item = this._modRegistry.items.typeFor(condition.itemTypeId);
-        const itemButton = buildIconButton(this.textureRegistry, item.texture, item.tint, ACTIVE_ACCENT,
+        const itemButton = buildIconButton(this.textureCache, item.texture, item.tint, ACTIVE_ACCENT,
             () => this._openIconPicker(this._storableEntries(), condition.itemTypeId, (itemTypeId) => {
                 condition.itemTypeId = itemTypeId;
                 this._sendRules();
@@ -550,7 +550,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         if (device !== undefined) {
             deviceTexture = device.type.textureName;
         }
-        const deviceButton = buildIconButton(this.textureRegistry, deviceTexture, 0xffffff, ACTIVE_ACCENT,
+        const deviceButton = buildIconButton(this.textureCache, deviceTexture, 0xffffff, ACTIVE_ACCENT,
             () => this._openDropdown(devices.map(held => new DropdownOption(held.label, () => {
                 condition.deviceId = held.objectRef;
                 this._sendRules();
@@ -565,7 +565,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         if (stateLabel === null) {
             stateLabel = "?";
         }
-        const stateButton = buildPanelButton(this.textureRegistry, `${stateLabel} ▾`, ACTIVE_ACCENT,
+        const stateButton = buildPanelButton(this.textureCache, `${stateLabel} ▾`, ACTIVE_ACCENT,
             () => this._openDropdown(entry.states.map(state => new DropdownOption(state.state, () => {
                 condition.comparator = LOGIC_COMPARATOR_EXACTLY;
                 condition.value = state.value;
@@ -605,7 +605,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {Container}
      */
     _removeButton(onClick) {
-        return buildPanelButton(this.textureRegistry, "X", INACTIVE_TINT, onClick);
+        return buildPanelButton(this.textureCache, "X", INACTIVE_TINT, onClick);
     }
 
     /**
@@ -788,7 +788,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      */
     _storableItems() {
         const fluidTypes = this._modRegistry.fluidTypes;
-        return [...this._modRegistry.items.entries()]
+        return Array.from(this._modRegistry.items.entries())
             .filter(([itemTypeId]) => fluidTypes.has(itemTypeId))
             .map(([itemTypeId, definition]) => new StorableItem(itemTypeId, definition))
             .sort((a, b) => a.name.localeCompare(b.name));

@@ -95,16 +95,16 @@ export class SpriteOverrideStore {
     /**
      * Paints every stored frame over the loaded atlases. A stored frame the loadout no longer
      * has (or whose size changed) is dropped.
-     * @param {TextureRegistry} textureRegistry
+     * @param {TextureCache} textureCache
      * @returns {Promise<number>} frames applied
      */
-    async applyTo(textureRegistry) {
+    async applyTo(textureCache) {
         const entries = await this.entries();
         let applied = 0;
         for (const [frameName, blob] of entries) {
             const bitmap = await createImageBitmap(blob);
             try {
-                textureRegistry.patchFrame(frameName, bitmap);
+                textureCache.patchFrame(frameName, bitmap);
                 applied++;
             } catch (error) {
                 console.warn(`Dropping stored sprite "${frameName}": ${error.message}`);

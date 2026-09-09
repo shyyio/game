@@ -167,7 +167,7 @@ export class LogicRules {
         if (ruleTable === undefined) {
             return;
         }
-        const sortedRules = [...ruleTable.rows].sort((a, b) =>
+        const sortedRules = Array.from(ruleTable.rows).sort((a, b) =>
             a.terminal_object_id - b.terminal_object_id || a.rule_index - b.rule_index);
         for (const row of sortedRules) {
             const rule = new LogicRule(row.action_device_id, row.action_key, row.action_value, []);
@@ -181,7 +181,7 @@ export class LogicRules {
         if (conditionTable === undefined) {
             return;
         }
-        const sortedConditions = [...conditionTable.rows].sort((a, b) =>
+        const sortedConditions = Array.from(conditionTable.rows).sort((a, b) =>
             a.terminal_object_id - b.terminal_object_id
             || a.rule_index - b.rule_index
             || a.condition_index - b.condition_index);

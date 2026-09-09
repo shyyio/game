@@ -10,7 +10,9 @@ export function flattenBatches(events) {
     const flat = [];
     for (const event of events) {
         if (event instanceof AbstractBatchEvent) {
-            flat.push(...event.explode());
+            for (const part of event.explode()) {
+                flat.push(part);
+            }
             continue;
         }
         flat.push(event);
