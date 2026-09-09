@@ -190,14 +190,14 @@ export class MachineBehavior extends AbstractBehavior {
         def.store.workerStep[def.row(eid)] = 1 + (MANNED_SPEED_MULTIPLIER - 1) * (granted / this.workerCost);
     }
 
-    renderedPortIds(engine, eid) {
+    renderedPortEids(engine, eid) {
         const def = engine.components.get("Machine");
         const row = def.row(eid);
-        const portIds = [def.store.out[row]];
+        const portEids = [def.store.out[row]];
         if (this.hasByproductPort) {
-            portIds.push(def.store.out2[row]);
+            portEids.push(def.store.out2[row]);
         }
-        return portIds;
+        return portEids;
     }
 
     resyncRenderedPorts(engine, eid) {

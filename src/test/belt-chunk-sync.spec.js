@@ -58,6 +58,6 @@ test("a session subscribing to a chunk receives its existing belts and resting i
 
     const portItems = synced.filter(event => event instanceof PortItemSetEvent);
     assert.equal(portItems.length, 1, "the resting out-port item is synced");
-    assert.equal(portItems[0].portId, path.outPort);
+    assert.equal(portItems[0].portRef, path.outPort);
     assert.equal(portItems[0].itemTypeId, RED);
 });

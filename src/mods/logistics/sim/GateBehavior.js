@@ -166,7 +166,7 @@ export class GateBehavior extends AbstractBehavior {
         return true;
     }
 
-    renderedPortIds(engine, eid) {
+    renderedPortEids(engine, eid) {
         const def = engine.components.get("Gate");
         return [def.store.out[def.row(eid)]];
     }

@@ -19,7 +19,7 @@ test("placing a splitter via CreateObjectMessage emits an ObjectInsertEvent; del
     assert.equal(insert.objectTypeId, SplitterDefinition.objectTypeId);
     assert.equal(insert.x, 5);
     assert.equal(insert.y, 5);
-    assert.equal(insert.portIds.length, 2, "out_a and out_b port ids sent");
+    assert.equal(insert.portRefs.length, 2, "out_a and out_b port ids sent");
 
     // Chunk sync recreates it.
     const sync = flattenBatches(engine.chunkSync(insert.chunk));

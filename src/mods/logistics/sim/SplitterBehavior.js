@@ -37,7 +37,7 @@ export class SplitterBehavior extends AbstractBehavior {
         engine.render.unregisterPort(def.store.out_b[row]);
     }
 
-    renderedPortIds(engine, eid) {
+    renderedPortEids(engine, eid) {
         const def = engine.components.get("Splitter");
         const row = def.row(eid);
         return [def.store.out_a[row], def.store.out_b[row]];

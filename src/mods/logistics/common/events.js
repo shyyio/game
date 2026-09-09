@@ -1,6 +1,6 @@
 import {AbstractChunkRoutedEvent, AbstractBatchEvent, AbstractEvent} from "@spup/sdk";
 
-// Sentinel for a path feeding nothing, keeping `outPortIds` a plain int column; per-path events use null.
+// Sentinel for a path feeding nothing, keeping `outPortRefs` a plain int column; per-path events use null.
 const NO_OUT_PORT = 0;
 
 export class BeltPathRecalculateEvent extends AbstractChunkRoutedEvent {
@@ -9,19 +9,19 @@ export class BeltPathRecalculateEvent extends AbstractChunkRoutedEvent {
         x: "sint32",
         y: "sint32",
         parts: "int64[]",
-        outPortId: "int64?",
+        outPortRef: "int64?",
     };
 
     /**
      * @param {number} x
      * @param {number} y
      * @param {number[]} parts - belt ids in path order, head last
-     * @param {number|null} [outPortId] - the path's out-port id
+     * @param {number|null} [outPortRef] - the path's out-port id
      */
-    constructor(x, y, parts, outPortId=null) {
+    constructor(x, y, parts, outPortRef=null) {
         super(x, y);
         this.parts = parts;
-        this.outPortId = outPortId;
+        this.outPortRef = outPortRef;
     }
 }
 
@@ -219,7 +219,7 @@ export class BeltPathBatchEvent extends AbstractBatchEvent {
         tileY: "sint32[]",
         partCounts: "int32[]",
         parts: "int64[]",
-        outPortIds: "int64[]",
+        outPortRefs: "int64[]",
     };
 
     /**
@@ -234,26 +234,26 @@ export class BeltPathBatchEvent extends AbstractBatchEvent {
         this.tileY = [];
         this.partCounts = [];
         this.parts = [];
-        this.outPortIds = [];
+        this.outPortRefs = [];
     }
 
     /**
      * @param {number} x
      * @param {number} y
      * @param {number[]} parts - belt ids in path order, head last
-     * @param {number|null} outPortId
+     * @param {number|null} outPortRef
      * @returns {void}
      */
-    add(x, y, parts, outPortId) {
+    add(x, y, parts, outPortRef) {
         this.tileX.push(x - this.originX);
         this.tileY.push(y - this.originY);
         this.partCounts.push(parts.length);
         this.parts.push(...parts);
-        let wiredOutPortId = outPortId;
-        if (outPortId === null) {
-            wiredOutPortId = NO_OUT_PORT;
+        let wiredOutPortRef = outPortRef;
+        if (outPortRef === null) {
+            wiredOutPortRef = NO_OUT_PORT;
         }
-        this.outPortIds.push(wiredOutPortId);
+        this.outPortRefs.push(wiredOutPortRef);
     }
 
     /**
@@ -265,12 +265,12 @@ export class BeltPathBatchEvent extends AbstractBatchEvent {
         for (let i = 0; i < this.tileX.length; i += 1) {
             const parts = this.parts.slice(partAt, partAt + this.partCounts[i]);
             partAt += this.partCounts[i];
-            const outPortId = this.outPortIds[i] === NO_OUT_PORT ? null : this.outPortIds[i];
+            const outPortRef = this.outPortRefs[i] === NO_OUT_PORT ? null : this.outPortRefs[i];
             events.push(new BeltPathRecalculateEvent(
                 this.originX + this.tileX[i],
                 this.originY + this.tileY[i],
                 parts,
-                outPortId,
+                outPortRef,
             ));
         }
         return events;

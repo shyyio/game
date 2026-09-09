@@ -118,7 +118,7 @@ test("downstream extension emits recalc before item rows and clears the old out-
     // The tail moved, so the old out-port is gone for good — its clear flushes on the next render tick.
     engine.tickAll();
     const clearedOldOut = [...events, ...collector.drain()].some(event =>
-        event instanceof PortItemClearEvent && event.portId === oldOutPort);
+        event instanceof PortItemClearEvent && event.portRef === oldOutPort);
     assert.ok(clearedOldOut, "the old out-port's resting-item sprite is cleared");
 });
 
@@ -174,6 +174,6 @@ test("extending a path upstream leaves a resting out-port item static", async ()
     assert.equal(engine.ports.item(outPort), RED, "the item is still in the out-port after the edit");
     const churned = [...editEvents, ...tickEvents].some(event =>
         (event instanceof PortItemClearEvent || event instanceof PortItemSetEvent)
-        && event.portId === outPort);
+        && event.portRef === outPort);
     assert.ok(!churned, "the surviving out-port emits no clear/set, so its sprite stays static");
 });

@@ -10,7 +10,7 @@ import ReducedMotion from "@/client/ReducedMotion.js";
 
 // Item sprites resting in out-ports share this layer with belt-path items; their keys are
 // namespaced from the path-item row-id keys so the two can't collide.
-export const PORT_SPRITE_KEY = portId => `port:${portId}`;
+export const PORT_SPRITE_KEY = portRef => `port:${portRef}`;
 
 // Items glide to each new position over this long (the game tick is 600ms, so they
 // arrive and briefly rest before the next move).
@@ -135,13 +135,13 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     onEvent(event) {
         // A null placement means a port this layer doesn't own (a belt-path port, or a
         // port whose id isn't in the index) — leave it to the owning mod.
-        const placement = this._resolvePort(event.portId);
+        const placement = this._resolvePort(event.portRef);
         if (placement === null) {
             return;
         }
         if (event instanceof PortItemSetEvent) {
             this.moveItem({
-                key: PORT_SPRITE_KEY(event.portId),
+                key: PORT_SPRITE_KEY(event.portRef),
                 tileX: placement.tileX,
                 tileY: placement.tileY,
                 halfTile: true,
@@ -149,9 +149,9 @@ export class ItemDrawLayer extends AbstractDrawLayer {
                 type: event.itemTypeId,
             });
         } else if (event.consumed === 1) {
-            this.consumeItem(PORT_SPRITE_KEY(event.portId), placement.sourceDirection);
+            this.consumeItem(PORT_SPRITE_KEY(event.portRef), placement.sourceDirection);
         } else {
-            this.removeItem(PORT_SPRITE_KEY(event.portId));
+            this.removeItem(PORT_SPRITE_KEY(event.portRef));
         }
     }
 
@@ -159,16 +159,16 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * The render tile for a port id, derived from its owning object's cached position/direction
      * and the matching output PortDefinition (offset + facing rotated by the object). Null when
      * the port isn't in the object index (another mod's port, or not yet cached).
-     * @param {number} portId
+     * @param {number} portRef
      * @returns {{tileX: number, tileY: number, sourceDirection: Direction}|null}
      * @private
      */
-    _resolvePort(portId) {
-        const entry = this.cache.getByPort(portId);
+    _resolvePort(portRef) {
+        const entry = this.cache.getByPort(portRef);
         if (entry === null) {
             return null;
         }
-        const portDef = entry.data.type.outputPorts.find(port => port.name === entry.portName(portId));
+        const portDef = entry.data.type.outputPorts.find(port => port.name === entry.portName(portRef));
         const world = rotate(portDef, entry.data.direction);
         return {
             tileX: entry.tileX + world.x,
@@ -183,8 +183,8 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     onCacheRemove(entry) {
-        for (const portId of Object.values(entry.ports)) {
-            this.removeItem(PORT_SPRITE_KEY(portId));
+        for (const portRef of Object.values(entry.ports)) {
+            this.removeItem(PORT_SPRITE_KEY(portRef));
         }
     }
 

@@ -27,7 +27,7 @@ test("rendered out-ports emit port-item set/clear deltas on change only", async 
     let events = collector.drain();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemSetEvent);
-    assert.equal(events[0].portId, s.out_a);
+    assert.equal(events[0].portRef, s.out_a);
     assert.equal(events[0].itemTypeId, ITEM);
 
     engine.tickAll();
@@ -38,7 +38,7 @@ test("rendered out-ports emit port-item set/clear deltas on change only", async 
     events = collector.drain();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemClearEvent);
-    assert.equal(events[0].portId, s.out_a);
+    assert.equal(events[0].portRef, s.out_a);
 });
 
 // The deltas leave the engine as one batch per chunk, not one event per port.
@@ -63,9 +63,9 @@ test("a render pass emits one port-item batch per chunk", async () => {
 
     assert.equal(emitted.length, 2, "one batch per chunk");
     const near = emitted.find(batch => batch.chunk === chunkId(5, 4));
-    assert.deepEqual(near.setPortIds, [s.out_a, s.out_b]);
+    assert.deepEqual(near.setPortRefs, [s.out_a, s.out_b]);
     assert.deepEqual(near.setItemTypeIds, [ITEM, ITEM]);
-    assert.deepEqual(near.clearPortIds, []);
+    assert.deepEqual(near.clearPortRefs, []);
 });
 
 /**
@@ -176,6 +176,6 @@ test("a splitter draining its rendered in-port emits a consumed clear", async ()
     const events = collector.drain();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemClearEvent);
-    assert.equal(events[0].portId, s.in_a);
+    assert.equal(events[0].portRef, s.in_a);
     assert.equal(events[0].consumed, 1);
 });

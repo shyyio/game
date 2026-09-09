@@ -229,8 +229,8 @@ export class LogisticsClientMod extends AbstractClientMod {
      */
     onEvent(event, client) {
         if (event instanceof TickEndEvent) {
-            for (const portId of this._pendingPops.keys()) {
-                this._flushPendingPop(client, portId);
+            for (const portRef of this._pendingPops.keys()) {
+                this._flushPendingPop(client, portRef);
             }
             return;
         }
@@ -249,10 +249,10 @@ export class LogisticsClientMod extends AbstractClientMod {
         }
         if (event instanceof BeltPathRecalculateEvent) {
             this._updatePath(event.parts);
-            if (event.outPortId !== null) {
+            if (event.outPortRef !== null) {
                 const head = event.parts[event.parts.length - 1];
-                this._outPortToPath.set(event.outPortId, head);
-                this._pathToOutPort.set(head, event.outPortId);
+                this._outPortToPath.set(event.outPortRef, head);
+                this._pathToOutPort.set(head, event.outPortRef);
             }
             this._pathDebugLayer.markStale();
             return;
@@ -291,84 +291,84 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @private
      */
     _handlePortItemEvent(client, event) {
-        const portId = event.portId;
-        if (!this._outPortToPath.has(portId)) {
+        const portRef = event.portRef;
+        if (!this._outPortToPath.has(portRef)) {
             return;
         }
         if (event instanceof PortItemClearEvent) {
-            this._clearPortItem(client, portId, event.consumed === 1);
+            this._clearPortItem(client, portRef, event.consumed === 1);
             return;
         }
         // Rename only: the render below places the sprite with the event's own item type.
-        this._takePendingPop(client, portId);
-        this._renderPortItem(client, portId, event.itemTypeId);
+        this._takePendingPop(client, portRef);
+        this._renderPortItem(client, portRef, event.itemTypeId);
     }
 
     /**
      * Drops an out-port's item sprite — a consumed one glides on into the consumer instead —
      * then hands the port to any pop waiting on it.
      * @param {Client} client
-     * @param {number} portId
+     * @param {number} portRef
      * @param {boolean} consumed
      * @private
      */
-    _clearPortItem(client, portId, consumed) {
-        const key = PORT_SPRITE_KEY(portId);
-        const port = consumed ? this._resolvePortBelt(client, portId) : null;
+    _clearPortItem(client, portRef, consumed) {
+        const key = PORT_SPRITE_KEY(portRef);
+        const port = consumed ? this._resolvePortBelt(client, portRef) : null;
         if (port !== null) {
             client.itemLayer.consumeItem(key, port.sourceDirection);
         } else {
             client.itemLayer.removeItem(key);
         }
-        this._flushPendingPop(client, portId);
+        this._flushPendingPop(client, portRef);
     }
 
     /**
      * Applies a deferred pop: renames its belt sprite into the (now settled) out-port and
      * renders it there.
      * @param {Client} client
-     * @param {number} portId
+     * @param {number} portRef
      * @private
      */
-    _flushPendingPop(client, portId) {
-        const pop = this._takePendingPop(client, portId);
+    _flushPendingPop(client, portRef) {
+        const pop = this._takePendingPop(client, portRef);
         if (pop === null) {
             return;
         }
-        this._renderPortItem(client, portId, pop.type);
+        this._renderPortItem(client, portRef, pop.type);
     }
 
     /**
      * Claims a deferred pop and renames its belt sprite into the out-port; null when none waits.
      * @param {Client} client
-     * @param {number} portId
+     * @param {number} portRef
      * @returns {PendingPop|null}
      * @private
      */
-    _takePendingPop(client, portId) {
-        const pop = this._pendingPops.get(portId);
+    _takePendingPop(client, portRef) {
+        const pop = this._pendingPops.get(portRef);
         if (pop === undefined) {
             return null;
         }
-        this._pendingPops.delete(portId);
-        client.itemLayer.renameItem(pop.itemId, PORT_SPRITE_KEY(portId));
+        this._pendingPops.delete(portRef);
+        client.itemLayer.renameItem(pop.itemId, PORT_SPRITE_KEY(portRef));
         return pop;
     }
 
     /**
      * Places an out-port's item sprite one tile downstream of the tail, on the upstream edge.
      * @param {Client} client
-     * @param {number} portId
+     * @param {number} portRef
      * @param {number} type - item type
      * @private
      */
-    _renderPortItem(client, portId, type) {
-        const port = this._resolvePortBelt(client, portId);
+    _renderPortItem(client, portRef, type) {
+        const port = this._resolvePortBelt(client, portRef);
         if (port === null) {
             return;
         }
         client.itemLayer.moveItem({
-            key: PORT_SPRITE_KEY(portId),
+            key: PORT_SPRITE_KEY(portRef),
             tileX: port.tileX,
             tileY: port.tileY,
             halfTile: true,
@@ -380,12 +380,12 @@ export class LogisticsClientMod extends AbstractClientMod {
     /**
      * The tile an out-port's item rests on: one downstream of the tail, facing back at it; null when uncached.
      * @param {Client} client
-     * @param {number} portId
+     * @param {number} portRef
      * @returns {{tileX: number, tileY: number, sourceDirection: Direction}|null}
      * @private
      */
-    _resolvePortBelt(client, portId) {
-        const head = this._outPortToPath.get(portId);
+    _resolvePortBelt(client, portRef) {
+        const head = this._outPortToPath.get(portRef);
         if (head === undefined) {
             return null;
         }
@@ -447,20 +447,20 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @private
      */
     _dropDeletedItem(client, pathId, itemId, item) {
-        const outPortId = this._pathToOutPort.get(pathId);
-        if (item === undefined || outPortId === undefined) {
+        const outPortRef = this._pathToOutPort.get(pathId);
+        if (item === undefined || outPortRef === undefined) {
             client.itemLayer.removeItem(itemId);
             return;
         }
-        const portKey = PORT_SPRITE_KEY(outPortId);
+        const portKey = PORT_SPRITE_KEY(outPortRef);
         if (client.itemLayer.hasItem(portKey)) {
             // The occupant's fate lands later this tick: a consumed CLEAR glides it into the
             // consumer, a downstream ingest simply replaces its sprite. Defer the hand-off.
-            this._pendingPops.set(outPortId, new PendingPop(itemId, item.type));
+            this._pendingPops.set(outPortRef, new PendingPop(itemId, item.type));
             return;
         }
         client.itemLayer.renameItem(itemId, portKey);
-        this._renderPortItem(client, outPortId, item.type);
+        this._renderPortItem(client, outPortRef, item.type);
     }
 
     /**
@@ -651,14 +651,14 @@ export class LogisticsClientMod extends AbstractClientMod {
         }
         this._clearPathItems(client, id);
         // Sprite goes when the removed belt renders the port item or heads the path; mapping goes only with the head.
-        for (const [head, portId] of this._pathToOutPort) {
+        for (const [head, portRef] of this._pathToOutPort) {
             const parts = this._pathParts.get(head);
             const rendersHere = parts !== undefined && parts[0] === id;
             if (rendersHere || head === id) {
-                client.itemLayer.removeItem(PORT_SPRITE_KEY(portId));
+                client.itemLayer.removeItem(PORT_SPRITE_KEY(portRef));
             }
             if (head === id) {
-                this._outPortToPath.delete(portId);
+                this._outPortToPath.delete(portRef);
                 this._pathToOutPort.delete(head);
             }
         }

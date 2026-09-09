@@ -11,7 +11,7 @@ import {
 
 // Item sprite keys, namespaced away from the port and belt keys sharing the item layer.
 const LANE_SPRITE_KEY = (laneRef, itemRef) => `lane:${laneRef}:${itemRef}`;
-const LANE_PORT_SPRITE_KEY = portId => `lanePort:${portId}`;
+const LANE_PORT_SPRITE_KEY = portRef => `lanePort:${portRef}`;
 
 /**
  * One lane as the client knows it: the cells the sim last told it about, and the item rows riding
@@ -182,12 +182,12 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _portItem(event) {
-        const laneRef = this._laneByOutPort.get(event.portId);
+        const laneRef = this._laneByOutPort.get(event.portRef);
         if (laneRef === undefined) {
             return;
         }
         if (event instanceof PortItemClearEvent) {
-            this._itemLayer.removeItem(LANE_PORT_SPRITE_KEY(event.portId));
+            this._itemLayer.removeItem(LANE_PORT_SPRITE_KEY(event.portRef));
             return;
         }
         const lane = this._lanes.get(laneRef);
@@ -195,7 +195,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         if (slots === null) {
             return;
         }
-        this._drawAt(LANE_PORT_SPRITE_KEY(event.portId), lane, slots, slots.total - 1, event.itemTypeId, false);
+        this._drawAt(LANE_PORT_SPRITE_KEY(event.portRef), lane, slots, slots.total - 1, event.itemTypeId, false);
     }
 
     /**

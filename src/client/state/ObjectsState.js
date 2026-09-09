@@ -93,7 +93,7 @@ export class ObjectsWriter extends AbstractCacheWriter {
         const ports = {};
         const renderedPorts = type.outputPorts.filter(port => port.render);
         for (const [i, port] of renderedPorts.entries()) {
-            ports[port.name] = event.portIds[i];
+            ports[port.name] = event.portRefs[i];
         }
         this._state.mapSet("objects.byId", event.objectRef, {
             id: event.objectRef,
@@ -158,11 +158,11 @@ export class CacheEntry {
 
     /**
      * The PortDefinition name of one of this object's rendered out-port ids, or undefined.
-     * @param {number} portId
+     * @param {number} portRef
      * @returns {string|undefined}
      */
-    portName(portId) {
-        return Object.keys(this.ports).find(name => this.ports[name] === portId);
+    portName(portRef) {
+        return Object.keys(this.ports).find(name => this.ports[name] === portRef);
     }
 
     /**
@@ -384,8 +384,8 @@ export class ObjectsView extends AbstractCacheView {
         const entry = new CacheEntry(id, tileX, tileY, cells, ports, data);
         this._byId.set(id, entry);
 
-        for (const portId of Object.values(ports)) {
-            this._byPort.set(portId, entry);
+        for (const portRef of Object.values(ports)) {
+            this._byPort.set(portRef, entry);
         }
 
         const tileKey = ObjectsView._tileKey(tileX, tileY);
@@ -476,9 +476,9 @@ export class ObjectsView extends AbstractCacheView {
             }
         }
 
-        for (const portId of Object.values(entry.ports)) {
-            if (this._byPort.get(portId) === entry) {
-                this._byPort.delete(portId);
+        for (const portRef of Object.values(entry.ports)) {
+            if (this._byPort.get(portRef) === entry) {
+                this._byPort.delete(portRef);
             }
         }
 
@@ -489,11 +489,11 @@ export class ObjectsView extends AbstractCacheView {
 
     /**
      * The entry owning a rendered out-port id, or null.
-     * @param {number} portId
+     * @param {number} portRef
      * @returns {CacheEntry|null}
      */
-    getByPort(portId) {
-        const entry = this._byPort.get(portId);
+    getByPort(portRef) {
+        const entry = this._byPort.get(portRef);
         if (entry === undefined) {
             return null;
         }

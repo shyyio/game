@@ -86,7 +86,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         engine.sync.markDirty(def, def.eids[row]);
     }
 
-    renderedPortIds(engine, eid) {
+    renderedPortEids(engine, eid) {
         const def = engine.components.get("MarketTerminal");
         return [def.store.out[def.row(eid)]];
     }

@@ -110,8 +110,8 @@ test("Decoded id is a Number, round-tripped exactly", () => {
     const reg = registry();
     const id = 999999999999;
     const decoded = reg.decode(reg.encode(new PortItemSetEvent(0, 0, id, 1)));
-    assert.strictEqual(typeof decoded.portId, "number");
-    assert.strictEqual(decoded.portId, id);
+    assert.strictEqual(typeof decoded.portRef, "number");
+    assert.strictEqual(decoded.portRef, id);
 });
 
 test("Repeated int64 decodes to Numbers, exact up to the 2^53 cap", () => {

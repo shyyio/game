@@ -310,8 +310,8 @@ export class PlacedObjects {
         this._indexChunk(eid, message.x, message.y);
         this._notifyChunkChanged(chunkId(message.x, message.y));
         engine.notifySpawn(eid, objectRef);
-        const portIds = type.behavior.renderedPortIds(engine, eid);
-        engine.emitEvent(new ObjectInsertEvent(type.objectTypeId, objectRef, message.x, message.y, message.direction, portIds));
+        const portEids = type.behavior.renderedPortEids(engine, eid);
+        engine.emitEvent(new ObjectInsertEvent(type.objectTypeId, objectRef, message.x, message.y, message.direction, portEids));
         engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_PLACED, playerId, type.objectTypeId, 1);
         return true;
     }
@@ -407,7 +407,7 @@ export class PlacedObjects {
             }
             batch.add(
                 type.objectTypeId, placedObject.objectRef[row], position.x[eid], position.y[eid], position.direction[eid],
-                type.behavior.renderedPortIds(this.engine, eid),
+                type.behavior.renderedPortEids(this.engine, eid),
             );
         }
         if (batch === null) {

@@ -72,7 +72,7 @@ export class AbstractBehavior {
 
     /**
      * Wires the freshly spawned entity: attaches behavior components, resolves ports, registers
-     * rendered ports. The insert event's port ids come from {@link renderedPortIds}.
+     * rendered ports. The insert event's ports come from {@link renderedPortEids}.
      * @param {GameEngine} engine
      * @param {number} eid
      * @param {ObjectType} type
@@ -100,7 +100,7 @@ export class AbstractBehavior {
      * @param {number} eid
      * @returns {number[]}
      */
-    renderedPortIds(engine, eid) {
+    renderedPortEids(engine, eid) {
         return [];
     }
 

@@ -11,19 +11,19 @@ import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 export class PortItemSetEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
-        portId: "int64",
+        portRef: "int64",
         itemTypeId: "int32",
     };
 
     /**
      * @param {number} x
      * @param {number} y
-     * @param {number} portId
+     * @param {number} portRef
      * @param {number} itemTypeId
      */
-    constructor(x, y, portId, itemTypeId) {
+    constructor(x, y, portRef, itemTypeId) {
         super(x, y);
-        this.portId = portId;
+        this.portRef = portRef;
         this.itemTypeId = itemTypeId;
     }
 }
@@ -34,33 +34,33 @@ export class PortItemSetEvent extends AbstractChunkRoutedEvent {
 export class PortItemClearEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
-        portId: "int64",
+        portRef: "int64",
         consumed: "int32",
     };
 
     /**
      * @param {number} x
      * @param {number} y
-     * @param {number} portId
+     * @param {number} portRef
      * @param {number} [consumed] - 1 when a consumer ate the item, so the client glides it out
      */
-    constructor(x, y, portId, consumed=0) {
+    constructor(x, y, portRef, consumed=0) {
         super(x, y);
-        this.portId = portId;
+        this.portRef = portRef;
         this.consumed = consumed;
     }
 }
 
 /**
- * One chunk's port-item deltas for a render pass: each set is `setPortIds[i]` now holding
- * `setItemTypeIds[i]`, each clear is a `clearPortIds` entry.
+ * One chunk's port-item deltas for a render pass: each set is `setPortRefs[i]` now holding
+ * `setItemTypeIds[i]`, each clear is a `clearPortRefs` entry.
  */
 export class PortItemBatchEvent extends AbstractBatchEvent {
 
     static wireFields = {
-        setPortIds: "int64[]",
+        setPortRefs: "int64[]",
         setItemTypeIds: "int32[]",
-        clearPortIds: "int64[]",
+        clearPortRefs: "int64[]",
         clearConsumed: "int32[]",
     };
 
@@ -70,29 +70,29 @@ export class PortItemBatchEvent extends AbstractBatchEvent {
      */
     constructor(x, y) {
         super(x, y);
-        this.setPortIds = [];
+        this.setPortRefs = [];
         this.setItemTypeIds = [];
-        this.clearPortIds = [];
+        this.clearPortRefs = [];
         this.clearConsumed = [];
     }
 
     /**
-     * @param {number} portId
+     * @param {number} portRef
      * @param {number} itemTypeId
      * @returns {void}
      */
-    addSet(portId, itemTypeId) {
-        this.setPortIds.push(portId);
+    addSet(portRef, itemTypeId) {
+        this.setPortRefs.push(portRef);
         this.setItemTypeIds.push(itemTypeId);
     }
 
     /**
-     * @param {number} portId
+     * @param {number} portRef
      * @param {number} [consumed] - 1 when a consumer ate the item
      * @returns {void}
      */
-    addClear(portId, consumed=0) {
-        this.clearPortIds.push(portId);
+    addClear(portRef, consumed=0) {
+        this.clearPortRefs.push(portRef);
         this.clearConsumed.push(consumed);
     }
 
@@ -102,11 +102,11 @@ export class PortItemBatchEvent extends AbstractBatchEvent {
      */
     explode() {
         const events = [];
-        for (let i = 0; i < this.clearPortIds.length; i += 1) {
-            events.push(new PortItemClearEvent(this.x, this.y, this.clearPortIds[i], this.clearConsumed[i]));
+        for (let i = 0; i < this.clearPortRefs.length; i += 1) {
+            events.push(new PortItemClearEvent(this.x, this.y, this.clearPortRefs[i], this.clearConsumed[i]));
         }
-        for (let i = 0; i < this.setPortIds.length; i += 1) {
-            events.push(new PortItemSetEvent(this.x, this.y, this.setPortIds[i], this.setItemTypeIds[i]));
+        for (let i = 0; i < this.setPortRefs.length; i += 1) {
+            events.push(new PortItemSetEvent(this.x, this.y, this.setPortRefs[i], this.setItemTypeIds[i]));
         }
         return events;
     }

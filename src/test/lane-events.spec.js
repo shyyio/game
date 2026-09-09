@@ -101,7 +101,7 @@ test("a lane emits a port-item set when an item pops to its out-port", async () 
     }
 
     assert.equal(sets.length, 1);
-    assert.equal(sets[0].portId, engine.lanes.outPortOf(lane));
+    assert.equal(sets[0].portRef, engine.lanes.outPortOf(lane));
     assert.equal(sets[0].itemTypeId, CARGO);
 });
 
@@ -126,7 +126,7 @@ test("deleting the tail cell emits a port-item clear for the stranded out-port",
 
     const clears = collector.drain().filter(event => event instanceof PortItemClearEvent);
     assert.equal(clears.length, 1);
-    assert.equal(clears[0].portId, outPort);
+    assert.equal(clears[0].portRef, outPort);
 });
 
 // The client places items against the lane geometry it was last told, so a rebuild must send the
@@ -156,7 +156,7 @@ test("a downstream extension emits geometry before item rows and clears the old 
 
     engine.tickAll();
     const cleared = events.concat(collector.drain()).some(event =>
-        event instanceof PortItemClearEvent && event.portId === oldOutPort);
+        event instanceof PortItemClearEvent && event.portRef === oldOutPort);
     assert.ok(cleared, "the old out-port's resting sprite is cleared");
 });
 
@@ -183,6 +183,6 @@ test("extending a lane upstream leaves a resting out-port item static", async ()
 
     assert.equal(engine.ports.item(outPort), CARGO, "the item is still in the out-port");
     const churned = editEvents.concat(tickEvents).some(event =>
-        (event instanceof PortItemClearEvent || event instanceof PortItemSetEvent) && event.portId === outPort);
+        (event instanceof PortItemClearEvent || event instanceof PortItemSetEvent) && event.portRef === outPort);
     assert.ok(!churned, "the surviving out-port emits no clear or set, so its sprite stays put");
 });

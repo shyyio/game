@@ -96,7 +96,7 @@ test("a subscribing session receives a lane's resting out-port item", async () =
     const synced = flattenBatches(viewer.events.find(event => event instanceof ChunkSyncEvent).events);
     const portItems = synced.filter(event => event instanceof PortItemSetEvent);
     assert.equal(portItems.length, 1, "the resting out-port item is synced");
-    assert.equal(portItems[0].portId, engine.lanes.outPortOf(lane));
+    assert.equal(portItems[0].portRef, engine.lanes.outPortOf(lane));
     assert.equal(portItems[0].itemTypeId, CARGO);
 });
 

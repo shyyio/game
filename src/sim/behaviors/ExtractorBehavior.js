@@ -86,7 +86,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         engine.ports.setFluidSource(out, EMPTY);
     }
 
-    renderedPortIds(engine, eid) {
+    renderedPortEids(engine, eid) {
         if (!this.type.outputPorts[0].render) {
             return [];
         }

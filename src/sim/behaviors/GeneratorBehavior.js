@@ -89,14 +89,14 @@ export class GeneratorBehavior extends AbstractBehavior {
         }
     }
 
-    renderedPortIds(engine, eid) {
+    renderedPortEids(engine, eid) {
         const def = engine.components.get("Generator");
         const row = def.row(eid);
-        const portIds = [def.store.out[row]];
+        const portEids = [def.store.out[row]];
         if (this.hasSecondaryPort) {
-            portIds.push(def.store.out2[row]);
+            portEids.push(def.store.out2[row]);
         }
-        return portIds;
+        return portEids;
     }
 
     resyncRenderedPorts(engine, eid) {

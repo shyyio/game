@@ -32,7 +32,7 @@ test("a belt emits a port-item set when an item pops to its out-port", async () 
     }
 
     assert.equal(sets.length, 1);
-    assert.equal(sets[0].portId, handle.outPort);
+    assert.equal(sets[0].portRef, handle.outPort);
     assert.equal(sets[0].itemTypeId, RED);
 });
 
@@ -59,5 +59,5 @@ test("deleting the output belt emits a port-item clear for the stranded out-port
 
     const clears = collector.drain().filter(event => event instanceof PortItemClearEvent);
     assert.equal(clears.length, 1);
-    assert.equal(clears[0].portId, handle.outPort);
+    assert.equal(clears[0].portRef, handle.outPort);
 });
