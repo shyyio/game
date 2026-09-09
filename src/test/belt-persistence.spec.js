@@ -31,7 +31,7 @@ test("belt state survives a serialize -> deserialize round-trip mid-flight", asy
     // Original: build the chunk-split line, feed an item, run a few ticks so it is mid-flight.
     const a = await newModule();
     for (const cell of CELLS) {
-        a.engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP));
+        a.engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP));
     }
     const aPorts = networkPorts(a.belts);
     a.engine.ports.setItem(aPorts.inPort, RED);
@@ -68,7 +68,7 @@ test("belt state survives a serialize -> deserialize round-trip mid-flight", asy
 test("belt state persists through a structured SQLite save store and reloads", async () => {
     const a = await newModule();
     for (const cell of CELLS) {
-        a.engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP));
+        a.engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP));
     }
     const ports = networkPorts(a.belts);
     a.engine.ports.setItem(ports.inPort, RED);

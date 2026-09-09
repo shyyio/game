@@ -66,7 +66,7 @@ export class BeltBehavior extends AbstractBehavior {
             type: this.beltKind,
         });
         for (const cell of span) {
-            engine.applyMessage(new CreateObjectMessage(BeltUndergroundDefinition.typeId, cell.x, cell.y, message.direction));
+            engine.applyMessage(new CreateObjectMessage(BeltUndergroundDefinition.objectTypeId, cell.x, cell.y, message.direction));
         }
     }
 
@@ -83,7 +83,7 @@ export class BeltBehavior extends AbstractBehavior {
         const placedObject = def.store;
         const position = engine.Position;
         for (let row = 0; row < def.count; row += 1) {
-            const behavior = placed.behaviorFor(placedObject.typeId[row]);
+            const behavior = placed.behaviorFor(placedObject.objectTypeId[row]);
             if (!(behavior instanceof BeltBehavior)) {
                 continue;
             }

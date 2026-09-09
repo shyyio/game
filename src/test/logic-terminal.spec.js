@@ -20,7 +20,7 @@ import {LOGIC_TIER_BASE} from "@/mods/logistics/common/constants.js";
  * Places an object and returns its objectId (the newest placed row's).
  */
 function place(engine, type, x, y, direction=Direction.UP) {
-    assert.equal(engine.applyMessage(new CreateObjectMessage(type.typeId, x, y, direction)), true);
+    assert.equal(engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, direction)), true);
     const def = engine.placed.def;
     return def.store.objectId[def.row(def.eids[def.count - 1])];
 }
@@ -110,7 +110,7 @@ test("the snapshot lists the network's devices, excluding the terminal itself", 
     assert.equal(snapshot.linked, 1);
     assert.equal(snapshot.tier, LOGIC_TIER_BASE);
     assert.deepEqual(snapshot.deviceObjectIds, [gate]);
-    assert.deepEqual(snapshot.deviceTypeIds, [GateDefinition.typeId]);
+    assert.deepEqual(snapshot.deviceTypeIds, [GateDefinition.objectTypeId]);
     assert.deepEqual(snapshot.deviceTileXs, [8]);
     assert.deepEqual(snapshot.deviceTileYs, [5]);
 });

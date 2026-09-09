@@ -36,7 +36,7 @@ export class PipeBehavior extends AbstractBehavior {
         const placedObject = def.store;
         const position = engine.Position;
         for (let row = 0; row < def.count; row += 1) {
-            if (!(placed.behaviorFor(placedObject.typeId[row]) instanceof PipeBehavior)) {
+            if (!(placed.behaviorFor(placedObject.objectTypeId[row]) instanceof PipeBehavior)) {
                 continue;
             }
             const eid = def.eids[row];

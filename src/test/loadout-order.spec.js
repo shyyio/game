@@ -1,4 +1,4 @@
-// Registration order is what assigns the positional typeIds and wireIds, so a client and a server
+// Registration order is what assigns the positional objectTypeIds and wireIds, so a client and a server
 // that register in different orders mean different things by the same id. One rule fixes it: the mod
 // directories, sorted by name. This holds the sim loadout to that order, and holds the two name
 // transforms — the game's and the builder's, deliberately separate — to the same answers.

@@ -31,7 +31,7 @@ async function setup() {
 
 // Places a machine and returns its output port, so the lane topology sees a real producer.
 function placeProducer(engine, tileX, tileY, direction) {
-    engine.applyMessage(new CreateObjectMessage(TestMachineType.typeId, tileX, tileY, direction));
+    engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, tileX, tileY, direction));
     return engine.portFor(TestMachineType.outputPorts[0], tileX, tileY, direction).port;
 }
 

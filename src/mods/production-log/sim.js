@@ -35,7 +35,7 @@ export class ProductionLogSimMod extends AbstractSimMod {
      */
     setup(engine) {
         this._items = engine.modRegistry.items;
-        engine.itemProduced.add((playerId, itemType, amount) => this._record(playerId, itemType, amount));
+        engine.itemProduced.add((playerId, itemTypeId, amount) => this._record(playerId, itemTypeId, amount));
     }
 
     /**
@@ -43,8 +43,8 @@ export class ProductionLogSimMod extends AbstractSimMod {
      * @returns {void}
      */
     onTick(game) {
-        for (const [playerId, itemTypes] of this._discovered) {
-            game.bus.publishToPlayer(playerId, new ItemsDiscoveredEvent(itemTypes));
+        for (const [playerId, itemTypeIds] of this._discovered) {
+            game.bus.publishToPlayer(playerId, new ItemsDiscoveredEvent(itemTypeIds));
         }
         this._discovered.clear();
     }
@@ -61,7 +61,7 @@ export class ProductionLogSimMod extends AbstractSimMod {
             return true;
         }
         if (message instanceof ItemLeaderboardRequestMessage) {
-            const page = this._log.itemPage(message.itemType, message.offset, session.playerId);
+            const page = this._log.itemPage(message.itemTypeId, message.offset, session.playerId);
             this._publish(session, game, page.playerIds, page);
             return true;
         }
@@ -86,16 +86,16 @@ export class ProductionLogSimMod extends AbstractSimMod {
     /**
      * Counts a delivery for its owner; an unowned producer counts for nobody.
      * @param {number} playerId
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} amount
      * @private
      */
-    _record(playerId, itemType, amount) {
+    _record(playerId, itemTypeId, amount) {
         if (playerId === PLAYER_ID_NONE) {
             return;
         }
-        if (this._log.add(playerId, itemType, amount)) {
-            getOrCreate(this._discovered, playerId, () => []).push(itemType);
+        if (this._log.add(playerId, itemTypeId, amount)) {
+            getOrCreate(this._discovered, playerId, () => []).push(itemTypeId);
         }
     }
 
@@ -111,12 +111,12 @@ export class ProductionLogSimMod extends AbstractSimMod {
             return;
         }
         const counts = this._log.countsOf(message.playerId);
-        const itemTypes = Array.from(counts.keys());
+        const itemTypeIds = Array.from(counts.keys());
         this._publish(session, game, [message.playerId], new ProductionLogEvent(
             message.playerId,
-            itemTypes,
+            itemTypeIds,
             Array.from(counts.values()),
-            itemTypes.map(itemType => this._log.rankOf(message.playerId, itemType)),
+            itemTypeIds.map(itemTypeId => this._log.rankOf(message.playerId, itemTypeId)),
         ));
     }
 

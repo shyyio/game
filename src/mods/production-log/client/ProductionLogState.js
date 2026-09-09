@@ -48,11 +48,11 @@ export class ProductionLogWriter extends AbstractCacheWriter {
     }
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} offset
      * @returns {void}
      */
-    requestItemBoard(itemType, offset) {
-        this._session.sendMessage(new ItemLeaderboardRequestMessage(itemType, offset));
+    requestItemBoard(itemTypeId, offset) {
+        this._session.sendMessage(new ItemLeaderboardRequestMessage(itemTypeId, offset));
     }
 }

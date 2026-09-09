@@ -1,5 +1,5 @@
 // Turns the cached packages into the server's external mods: one ModPackage per lockfile entry,
-// in lockfile order (which is what assigns the positional typeIds and wireIds).
+// in lockfile order (which is what assigns the positional objectTypeIds and wireIds).
 
 import {pathToFileURL} from "node:url";
 import {ModPackage} from "@/common/ModPackage.js";

@@ -34,7 +34,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     onCacheSet(entry) {
-        if (!(entry.data instanceof ObjectClientData) || entry.data.type.typeId !== this._type.typeId) {
+        if (!(entry.data instanceof ObjectClientData) || entry.data.type.objectTypeId !== this._type.objectTypeId) {
             return;
         }
         this.removeObject(entry.id);
@@ -62,7 +62,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     onCacheUpdate(entry) {
-        if (!(entry.data instanceof ObjectClientData) || entry.data.type.typeId !== this._type.typeId) {
+        if (!(entry.data instanceof ObjectClientData) || entry.data.type.objectTypeId !== this._type.objectTypeId) {
             return;
         }
         const sprite = this._objects.get(entry.id);

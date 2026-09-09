@@ -25,14 +25,14 @@ export class ProductionLogScenario extends AbstractScenario {
      * @returns {Promise<void>}
      */
     async apply(game, params) {
-        const itemTypes = Array.from(game.modRegistry.items.entries()).map(entry => entry[0]);
+        const itemTypeIds = Array.from(game.modRegistry.items.entries()).map(entry => entry[0]);
         for (let playerId = OWN_PLAYER_ID; playerId < OWN_PLAYER_ID + PLAYER_COUNT; playerId += 1) {
             game.players.ensure(playerId);
-            for (const itemType of itemTypes) {
+            for (const itemTypeId of itemTypeIds) {
                 if (Math.random() > PRODUCED_CHANCE) {
                     continue;
                 }
-                game.simEngine.itemProduced.notify(playerId, itemType, 1 + Math.floor(Math.random() * MAX_COUNT));
+                game.simEngine.itemProduced.notify(playerId, itemTypeId, 1 + Math.floor(Math.random() * MAX_COUNT));
             }
         }
     }

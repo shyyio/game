@@ -11,12 +11,12 @@ test("placing a splitter via CreateObjectMessage emits an ObjectInsertEvent; del
     const engine = await makeGameEngine();
     const collector = new EventCollector(engine);
 
-    const handled = engine.applyMessage(new CreateObjectMessage(SplitterDefinition.typeId, 5, 5, Direction.UP));
+    const handled = engine.applyMessage(new CreateObjectMessage(SplitterDefinition.objectTypeId, 5, 5, Direction.UP));
     assert.equal(handled, true, "splitter create handled by the engine");
 
     const insert = collector.drain().find(event => event instanceof ObjectInsertEvent);
     assert.ok(insert, "ObjectInsertEvent emitted");
-    assert.equal(insert.typeId, SplitterDefinition.typeId);
+    assert.equal(insert.objectTypeId, SplitterDefinition.objectTypeId);
     assert.equal(insert.x, 5);
     assert.equal(insert.y, 5);
     assert.equal(insert.portIds.length, 2, "out_a and out_b port ids sent");

@@ -38,29 +38,29 @@ async function setup() {
 
 test("a placed object records who placed it, not whose chunk it landed in", async () => {
     const {game, bob} = await setup();
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
 
-    const [eid] = game.simEngine.placed.eidsOf(BlenderType.typeId);
+    const [eid] = game.simEngine.placed.eidsOf(BlenderType.objectTypeId);
     assert.equal(game.simEngine.placed.placedByOf(eid), BOB);
 });
 
 test("an object's claim owner is the ground's current owner, not a placement-time snapshot", async () => {
     const {game, bob} = await setup();
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
 
-    const [eid] = game.simEngine.placed.eidsOf(BlenderType.typeId);
+    const [eid] = game.simEngine.placed.eidsOf(BlenderType.objectTypeId);
     assert.equal(game.simEngine.placed.claimOwnerOf(eid), ALICE);
 });
 
 test("production is credited to the chunk owner, not to the friend who built the machine", async () => {
     const {game, bob} = await setup();
     const produced = [];
-    game.simEngine.itemProduced.add((playerId, itemType, amount) => produced.push(playerId));
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), bob);
-    game.dispatchMessage(new CreateObjectMessage(PipeDefinition.typeId, 5, 4, Direction.UP), bob);
+    game.simEngine.itemProduced.add((playerId, itemTypeId, amount) => produced.push(playerId));
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 5, 4, Direction.UP), bob);
 
     const engine = game.simEngine;
-    const [eid] = engine.placed.eidsOf(BlenderType.typeId);
+    const [eid] = engine.placed.eidsOf(BlenderType.objectTypeId);
     const def = engine.components.get("Machine");
     const row = def.row(eid);
     for (let i = 0; i < 10; i += 1) {

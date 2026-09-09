@@ -41,7 +41,7 @@ test("a belt item emits an upsert on ingest and a delete on pop", async () => {
     const deletes = items.filter(event => event instanceof BeltItemDeleteEvent);
 
     // The item run (type RED) is upserted, and every item event is keyed to the head belt's path id (3).
-    assert.ok(upserts.some(event => event.itemType === RED), "the item run is upserted");
+    assert.ok(upserts.some(event => event.itemTypeId === RED), "the item run is upserted");
     assert.ok(deletes.length > 0, "runs are deleted as the item advances/pops");
     assert.ok(items.every(event => event.pathId === 3), "all item events carry the head belt path id");
 });
@@ -72,5 +72,5 @@ test("a move pass emits one belt item batch per chunk", async () => {
     assert.equal(batches.length, 2, "one batch per chunk");
     const near = batches.find(batch => batch.chunk === chunkId(0, 0));
     assert.equal(near.upsertPathIds.length, 2, "both near paths ingested into one batch");
-    assert.deepEqual(near.upsertItemTypes, [RED, RED]);
+    assert.deepEqual(near.upsertItemTypeIds, [RED, RED]);
 });

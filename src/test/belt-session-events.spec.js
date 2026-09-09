@@ -34,7 +34,7 @@ test("a Game on GameEngine routes belt render events only to sessions watching t
 
     game.dispatchMessage(new ClaimChunkMessage(beltChunk), watcher);
     for (const cell of CELLS) {
-        game.dispatchMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP), watcher);
+        game.dispatchMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP), watcher);
     }
 
     // Feed an item; do not drain, so it pops and rests at the out-port (tail tile 0,0).
@@ -54,6 +54,6 @@ test("a Game on GameEngine routes belt render events only to sessions watching t
     const watcherRenders = portItems(watcher.events);
     const bystanderRenders = portItems(bystander.events);
 
-    assert.ok(watcherRenders.some(event => event instanceof PortItemSetEvent && event.itemType === RED), "watcher gets the item's render set");
+    assert.ok(watcherRenders.some(event => event instanceof PortItemSetEvent && event.itemTypeId === RED), "watcher gets the item's render set");
     assert.equal(bystanderRenders.length, 0, "the bystander (different chunk) gets no belt render events");
 });

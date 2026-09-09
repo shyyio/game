@@ -252,7 +252,7 @@ export class GameEngine {
         // Sink for metrics facts; unlike _eventSink, ignores chunk observation.
         this._metricsSink = null;
         /**
-         * Notified (playerId, itemType, amount) when a producer's output is delivered.
+         * Notified (playerId, itemTypeId, amount) when a producer's output is delivered.
          * @type {ListenerList}
          */
         this.itemProduced = new ListenerList();
@@ -391,7 +391,7 @@ export class GameEngine {
         this.world = new World();
         this.components.bindAll();
         if (this.modRegistry !== null) {
-            // The registry must be frozen (typeIds assigned) before content wires up; the accessors
+            // The registry must be frozen (objectTypeIds assigned) before content wires up; the accessors
             // throw otherwise. The generic entity host installs every derived type's behavior first,
             // then bespoke sim mods register theirs.
             this._fluidTypes = this.modRegistry.fluidTypes;
@@ -666,11 +666,11 @@ export class GameEngine {
 
     /**
      * Deletes every placed object of a type, as the engine rather than a player: no ownership gate.
-     * @param {number} typeId
+     * @param {number} objectTypeId
      * @returns {number} how many were deleted
      */
-    removeObjectsOfType(typeId) {
-        const eids = this.placed.eidsOf(typeId);
+    removeObjectsOfType(objectTypeId) {
+        const eids = this.placed.eidsOf(objectTypeId);
         for (const eid of eids) {
             const message = new DeleteObjectMessage(this.placed.objectIdOf(eid));
             this.untrack(message.id);

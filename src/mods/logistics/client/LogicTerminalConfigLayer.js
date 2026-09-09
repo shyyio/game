@@ -80,11 +80,11 @@ class PickerDevice {
 class StorableItem {
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {ItemDefinition} definition
      */
-    constructor(itemType, definition) {
-        this.itemType = itemType;
+    constructor(itemTypeId, definition) {
+        this.itemTypeId = itemTypeId;
         this.name = definition.name;
         this.texture = definition.texture;
         this.tint = definition.tint;
@@ -215,7 +215,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 conditions.push(new LogicCondition(
                     snapshot.condKinds[c],
                     snapshot.condDeviceIds[c],
-                    snapshot.condItemTypes[c],
+                    snapshot.condItemTypeIds[c],
                     snapshot.condKeys[c],
                     snapshot.condComparators[c],
                     snapshot.condValues[c],
@@ -524,10 +524,10 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 })), containerButton));
             buttons.push(containerButton);
         }
-        const item = this._modRegistry.items.definitionFor(condition.itemType);
+        const item = this._modRegistry.items.definitionFor(condition.itemTypeId);
         const itemButton = buildIconButton(this.textureRegistry, item.texture, item.tint, ACTIVE_ACCENT,
-            () => this._openIconPicker(this._storableEntries(), condition.itemType, (itemType) => {
-                condition.itemType = itemType;
+            () => this._openIconPicker(this._storableEntries(), condition.itemTypeId, (itemTypeId) => {
+                condition.itemTypeId = itemTypeId;
                 this._sendRules();
             }, itemButton));
         buttons.push(itemButton);
@@ -727,10 +727,10 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         const containers = this._pickerDevices(snapshot).filter(device => this._isContainer(device));
         if (storables.length > 0) {
             options.push(new DropdownOption("Total Amount stored", () => append(storedCondition(
-                storables[0].itemType, LOGIC_COMPARATOR_AT_LEAST, DEFAULT_STORED_VALUE))));
+                storables[0].itemTypeId, LOGIC_COMPARATOR_AT_LEAST, DEFAULT_STORED_VALUE))));
             if (containers.length > 0) {
                 options.push(new DropdownOption("Amount stored", () => append(storedCondition(
-                    storables[0].itemType, LOGIC_COMPARATOR_AT_LEAST, DEFAULT_STORED_VALUE,
+                    storables[0].itemTypeId, LOGIC_COMPARATOR_AT_LEAST, DEFAULT_STORED_VALUE,
                     containers[0].objectId))));
             }
         }
@@ -789,8 +789,8 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
     _storableItems() {
         const fluidTypes = this._modRegistry.fluidTypes;
         return [...this._modRegistry.items.entries()]
-            .filter(([itemType]) => fluidTypes.has(itemType))
-            .map(([itemType, definition]) => new StorableItem(itemType, definition))
+            .filter(([itemTypeId]) => fluidTypes.has(itemTypeId))
+            .map(([itemTypeId, definition]) => new StorableItem(itemTypeId, definition))
             .sort((a, b) => a.name.localeCompare(b.name));
     }
 
@@ -799,7 +799,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {IconPickerEntry[]}
      */
     _storableEntries() {
-        return this._storableItems().map(item => new IconPickerEntry(item.itemType, item.texture, {tint: item.tint}));
+        return this._storableItems().map(item => new IconPickerEntry(item.itemTypeId, item.texture, {tint: item.tint}));
     }
 
     /**
@@ -850,12 +850,12 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
     _pickerDevices(snapshot) {
         const countByType = new Map();
         return snapshot.deviceObjectIds.map((deviceObjectId, i) => {
-            const typeId = snapshot.deviceTypeIds[i];
-            const ordinal = (countByType.get(typeId) || 0) + 1;
-            countByType.set(typeId, ordinal);
+            const objectTypeId = snapshot.deviceTypeIds[i];
+            const ordinal = (countByType.get(objectTypeId) || 0) + 1;
+            countByType.set(objectTypeId, ordinal);
             return new PickerDevice(
                 deviceObjectId,
-                this._modRegistry.typeById(typeId),
+                this._modRegistry.objectTypeById(objectTypeId),
                 snapshot.deviceTileXs[i],
                 snapshot.deviceTileYs[i],
                 ordinal,

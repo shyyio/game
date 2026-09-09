@@ -181,7 +181,7 @@ export class ProductionLogPanelLayer extends Container {
             this._writer.requestLog(view.playerId);
             return;
         }
-        this._writer.requestItemBoard(view.itemType, view.offset);
+        this._writer.requestItemBoard(view.itemTypeId, view.offset);
     }
 
     /**
@@ -281,9 +281,9 @@ export class ProductionLogPanelLayer extends Container {
         const counts = new Map();
         const ranks = new Map();
         if (log !== null && log.playerId === playerId) {
-            for (let i = 0; i < log.itemTypes.length; i += 1) {
-                counts.set(log.itemTypes[i], log.counts[i]);
-                ranks.set(log.itemTypes[i], log.ranks[i]);
+            for (let i = 0; i < log.itemTypeIds.length; i += 1) {
+                counts.set(log.itemTypeIds[i], log.counts[i]);
+                ranks.set(log.itemTypeIds[i], log.ranks[i]);
             }
         }
         return {counts, ranks};
@@ -298,13 +298,13 @@ export class ProductionLogPanelLayer extends Container {
      * @returns {void}
      */
     _buildCategoryHeader(stack, category, counts) {
-        const itemTypes = Object.keys(category.items).map(Number);
-        const discovered = itemTypes.filter((itemType) => counts.has(itemType)).length;
-        const caption = panelText(`${discovered}/${itemTypes.length}`, TextRole.CAPTION);
+        const itemTypeIds = Object.keys(category.items).map(Number);
+        const discovered = itemTypeIds.filter((itemTypeId) => counts.has(itemTypeId)).length;
+        const caption = panelText(`${discovered}/${itemTypeIds.length}`, TextRole.CAPTION);
         const header = stack.headerRow(category.name, (row) => {
             row.pushLeft(caption);
         });
-        if (discovered === itemTypes.length) {
+        if (discovered === itemTypeIds.length) {
             header.style.fill = SUCCESS_TEXT;
             caption.style.fill = SUCCESS_TEXT;
             caption.alpha = 1;
@@ -322,32 +322,32 @@ export class ProductionLogPanelLayer extends Container {
     _buildPicker(width, category, counts, ranks) {
         const entries = [];
         for (const [key, definition] of Object.entries(category.items)) {
-            const itemType = Number(key);
-            const count = counts.get(itemType);
+            const itemTypeId = Number(key);
+            const count = counts.get(itemTypeId);
             if (count === undefined) {
-                entries.push(new IconPickerEntry(itemType, definition.texture, {
+                entries.push(new IconPickerEntry(itemTypeId, definition.texture, {
                     tint: scaleColor(definition.tint, UNPRODUCED_BRIGHTNESS),
                     tooltipText: definition.name,
                 }));
             } else {
-                entries.push(new IconPickerEntry(itemType, definition.texture, {
+                entries.push(new IconPickerEntry(itemTypeId, definition.texture, {
                     tint: definition.tint,
-                    label: this._cellLabel(count, ranks.get(itemType)),
+                    label: this._cellLabel(count, ranks.get(itemTypeId)),
                     tooltipText: `${definition.name}\n${formatExactCount(count)}`,
                 }));
             }
         }
-        return new IconPicker(this.textureRegistry, width, entries, (itemType) => {
-            let rank = ranks.get(itemType);
+        return new IconPicker(this.textureRegistry, width, entries, (itemTypeId) => {
+            let rank = ranks.get(itemTypeId);
             if (rank === undefined) {
                 rank = 0;
             }
-            this._push(new ItemBoardView(itemType, rank));
+            this._push(new ItemBoardView(itemTypeId, rank));
         }, {
             columns: IconPicker.columnsFor(width, ICON_CELL_SIZE),
             visibleRows: PICKER_VISIBLE_ROWS,
             cellSize: ICON_CELL_SIZE,
-            onHover: (itemType, cell) => this._hover(itemType, cell),
+            onHover: (itemTypeId, cell) => this._hover(itemTypeId, cell),
         });
     }
 
@@ -366,12 +366,12 @@ export class ProductionLogPanelLayer extends Container {
 
     /**
      * @private
-     * @param {number|null} itemType
+     * @param {number|null} itemTypeId
      * @param {Container} cell
      * @returns {void}
      */
-    _hover(itemType, cell) {
-        if (itemType === null) {
+    _hover(itemTypeId, cell) {
+        if (itemTypeId === null) {
             this._tooltip.clearTarget(cell);
             return;
         }
@@ -389,7 +389,7 @@ export class ProductionLogPanelLayer extends Container {
         stack.row((row) => {
             row.pushLeft(this._buildBackButton());
         });
-        stack.header(this._items.require(view.itemType).name);
+        stack.header(this._items.require(view.itemTypeId).name);
         const ownPlayerId = this._claims.ownPlayerId;
         const rows = [];
         if (board !== null) {
@@ -420,7 +420,7 @@ export class ProductionLogPanelLayer extends Container {
      */
     _boardOf(view) {
         const board = this._cache.get("productionLog.itemBoard");
-        if (board === null || board.itemType !== view.itemType) {
+        if (board === null || board.itemTypeId !== view.itemTypeId) {
             return null;
         }
         return board;

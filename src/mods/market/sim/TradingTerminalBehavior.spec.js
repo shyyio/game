@@ -33,9 +33,9 @@ const PRICE = 10;
  */
 async function setup() {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 10, 10, Direction.UP));
-    const [sellerEid, buyerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 5, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 10, 10, Direction.UP));
+    const [sellerEid, buyerEid] = engine.placed.eidsOf(TradingTerminalType.objectTypeId);
 
     const def = engine.components.get("MarketTerminal");
     const terminal = def.store;
@@ -43,13 +43,13 @@ async function setup() {
     const buyerRow = def.row(buyerEid);
 
     terminal.mode[sellerRow] = MARKET_MODE_SELL;
-    terminal.itemType[sellerRow] = ITEM;
+    terminal.itemTypeId[sellerRow] = ITEM;
     terminal.price[sellerRow] = PRICE;
     // Bypasses MarketSimMod, so ownership cache must be set directly.
     terminal.sellEnabled[sellerRow] = 1;
 
     terminal.mode[buyerRow] = MARKET_MODE_BUY;
-    terminal.itemType[buyerRow] = ITEM;
+    terminal.itemTypeId[buyerRow] = ITEM;
     terminal.price[buyerRow] = PRICE;
     terminal.balance[buyerRow] = 1_000_000;
 
@@ -84,13 +84,13 @@ test("a sell terminal never drains the wrong item type", async () => {
 
 test("a sell terminal does not drain without a matching buyer", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
-    const [sellerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 5, 5, Direction.UP));
+    const [sellerEid] = engine.placed.eidsOf(TradingTerminalType.objectTypeId);
     const def = engine.components.get("MarketTerminal");
     const terminal = def.store;
     const row = def.row(sellerEid);
     terminal.mode[row] = MARKET_MODE_SELL;
-    terminal.itemType[row] = ITEM;
+    terminal.itemTypeId[row] = ITEM;
     terminal.price[row] = PRICE;
     terminal.sellEnabled[row] = 1;
 
@@ -102,8 +102,8 @@ test("a sell terminal does not drain without a matching buyer", async () => {
 test("a terminal whose item a loadout change emptied trades nothing", async () => {
     const {engine, sellerInPort, buyerOutPort} = await setup();
     const def = engine.components.get("MarketTerminal");
-    for (const eid of engine.placed.eidsOf(TradingTerminalType.typeId)) {
-        def.store.itemType[def.row(eid)] = EMPTY;
+    for (const eid of engine.placed.eidsOf(TradingTerminalType.objectTypeId)) {
+        def.store.itemTypeId[def.row(eid)] = EMPTY;
     }
 
     engine.ports.setItem(sellerInPort, EMPTY);
@@ -114,7 +114,7 @@ test("a terminal whose item a loadout change emptied trades nothing", async () =
 test("a sell terminal with sellEnabled=0 never sells, even with an eligible buyer", async () => {
     const {engine, sellerInPort, buyerOutPort} = await setup();
     const def = engine.components.get("MarketTerminal");
-    const [sellerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
+    const [sellerEid] = engine.placed.eidsOf(TradingTerminalType.objectTypeId);
     def.store.sellEnabled[def.row(sellerEid)] = 0;
 
     engine.ports.setItem(sellerInPort, ITEM);
@@ -125,13 +125,13 @@ test("a sell terminal with sellEnabled=0 never sells, even with an eligible buye
 
 test("an NPC-priced sell terminal always has a counterparty, no buy terminal needed", async () => {
     const engine = await makeGameEngine([new ModPackage(new NpcPriceFixtureDeclaration())]);
-    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
-    const [sellerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 5, 5, Direction.UP));
+    const [sellerEid] = engine.placed.eidsOf(TradingTerminalType.objectTypeId);
     const def = engine.components.get("MarketTerminal");
     const terminal = def.store;
     const row = def.row(sellerEid);
     terminal.mode[row] = MARKET_MODE_SELL;
-    terminal.itemType[row] = ITEM;
+    terminal.itemTypeId[row] = ITEM;
     terminal.price[row] = PRICE;
     terminal.sellEnabled[row] = 1;
 
@@ -142,13 +142,13 @@ test("an NPC-priced sell terminal always has a counterparty, no buy terminal nee
 
 test("an NPC-priced buy terminal purchases every tick, at full throughput", async () => {
     const engine = await makeGameEngine([new ModPackage(new NpcPriceFixtureDeclaration())]);
-    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
-    const [buyerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 5, 5, Direction.UP));
+    const [buyerEid] = engine.placed.eidsOf(TradingTerminalType.objectTypeId);
     const def = engine.components.get("MarketTerminal");
     const terminal = def.store;
     const row = def.row(buyerEid);
     terminal.mode[row] = MARKET_MODE_BUY;
-    terminal.itemType[row] = ITEM;
+    terminal.itemTypeId[row] = ITEM;
     terminal.balance[row] = 1_000_000;
 
     const outPort = terminal.out[row];
@@ -162,13 +162,13 @@ test("an NPC-priced buy terminal purchases every tick, at full throughput", asyn
 
 test("an NPC-priced buy terminal keeps buying while a consumer drains its port the same tick", async () => {
     const engine = await makeGameEngine([new ModPackage(new NpcPriceFixtureDeclaration())]);
-    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
-    const [buyerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 5, 5, Direction.UP));
+    const [buyerEid] = engine.placed.eidsOf(TradingTerminalType.objectTypeId);
     const def = engine.components.get("MarketTerminal");
     const terminal = def.store;
     const row = def.row(buyerEid);
     terminal.mode[row] = MARKET_MODE_BUY;
-    terminal.itemType[row] = ITEM;
+    terminal.itemTypeId[row] = ITEM;
     terminal.balance[row] = 1_000_000;
 
     // A belt takes the resting item in the same phase the terminal submits its purchase, so the port
@@ -191,10 +191,10 @@ test("an NPC-priced buy terminal keeps buying while a consumer drains its port t
 
 test("two sellers racing for one buyer: the loser's item stays resting, no double-delivery", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 20, 20, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 10, 10, Direction.UP));
-    const [sellerAEid, sellerBEid, buyerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 5, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 20, 20, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 10, 10, Direction.UP));
+    const [sellerAEid, sellerBEid, buyerEid] = engine.placed.eidsOf(TradingTerminalType.objectTypeId);
     const def = engine.components.get("MarketTerminal");
     const terminal = def.store;
     const sellerARow = def.row(sellerAEid);
@@ -203,12 +203,12 @@ test("two sellers racing for one buyer: the loser's item stays resting, no doubl
 
     for (const row of [sellerARow, sellerBRow]) {
         terminal.mode[row] = MARKET_MODE_SELL;
-        terminal.itemType[row] = ITEM;
+        terminal.itemTypeId[row] = ITEM;
         terminal.price[row] = PRICE;
         terminal.sellEnabled[row] = 1;
     }
     terminal.mode[buyerRow] = MARKET_MODE_BUY;
-    terminal.itemType[buyerRow] = ITEM;
+    terminal.itemTypeId[buyerRow] = ITEM;
     terminal.price[buyerRow] = PRICE;
     terminal.balance[buyerRow] = 1_000_000;
     engine.resolve(MarketBook).postBuy(buyerEid, ITEM, PRICE, terminal.out[buyerRow]);

@@ -171,7 +171,7 @@ export class UndergroundBeltTool extends AbstractTool {
         // Tunnel span is derived sim-side; only the mouth is sent.
         const mouthType = this._mouthDefinition(placement);
         this.session.sendMessage(new CreateObjectMessage(
-            mouthType.typeId,
+            mouthType.objectTypeId,
             tileX,
             tileY,
             placement.direction,

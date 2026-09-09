@@ -146,7 +146,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
                 tileY: placement.tileY,
                 halfTile: true,
                 sourceDirection: placement.sourceDirection,
-                type: event.itemType,
+                type: event.itemTypeId,
             });
         } else if (event.consumed === 1) {
             this.consumeItem(PORT_SPRITE_KEY(event.portId), placement.sourceDirection);
@@ -224,7 +224,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         const texture = this.textureRegistry.get(definition.texture);
         const particle = this._items.take(key, texture);
         particle.live = true;
-        particle.itemType = type;
+        particle.itemTypeId = type;
         particle.setTexture(texture);
         particle.setTint(definition.tint);
         particle.hidden = hidden;
@@ -418,7 +418,7 @@ class ItemParticle extends Particle {
         super({texture, anchorX: 0.5, anchorY: 0.5});
         this._container = container;
         // The item type on show, so a picked particle can be named.
-        this.itemType = null;
+        this.itemTypeId = null;
         // False once released to the pool.
         this.live = false;
         // Under cover (in a tunnel): positioned but rendered at alpha 0 outside debug mode.
@@ -491,7 +491,7 @@ class ItemParticle extends Particle {
      * @returns {void}
      */
     reset() {
-        this.itemType = null;
+        this.itemTypeId = null;
         this.hidden = false;
         this._startX = null;
         this._startY = null;

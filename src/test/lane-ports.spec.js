@@ -37,7 +37,7 @@ test("a machine placed at a lane's output adopts its out-port and receives items
     const lane = laneAt(engine, 5, 6);
     const outPort = engine.lanes.outPortOf(lane);
 
-    engine.applyMessage(new CreateObjectMessage(TestMachineType.typeId, 5, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 5, 5, Direction.UP));
 
     assert.equal(engine.ports.at(5, 5, Direction.UP), outPort, "the machine's input is the lane's out-port");
 

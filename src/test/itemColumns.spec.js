@@ -28,7 +28,7 @@ const ITEM_COLUMNS = [
     "Gate.lastOutput",
     "Tank.fluidType",
     "PipeNetwork.fluidType",
-    "MarketTerminal.itemType",
+    "MarketTerminal.itemTypeId",
     "MarketTerminal.lastOutput",
 ];
 

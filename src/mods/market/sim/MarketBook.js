@@ -8,14 +8,14 @@ class MarketQuote {
 
     /**
      * @param {number} eid
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} price
      * @param {number} outPort
      * @param {number} sequence
      */
-    constructor(eid, itemType, price, outPort, sequence) {
+    constructor(eid, itemTypeId, price, outPort, sequence) {
         this.eid = eid;
-        this.itemType = itemType;
+        this.itemTypeId = itemTypeId;
         this.price = price;
         this.outPort = outPort;
         this.sequence = sequence;
@@ -66,13 +66,13 @@ class MarketSettlement {
     /**
      * @param {number} sellerEid
      * @param {number} buyerEid - NO_EID for an NPC counterparty
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} price
      */
-    constructor(sellerEid, buyerEid, itemType, price) {
+    constructor(sellerEid, buyerEid, itemTypeId, price) {
         this.sellerEid = sellerEid;
         this.buyerEid = buyerEid;
-        this.itemType = itemType;
+        this.itemTypeId = itemTypeId;
         this.price = price;
     }
 }
@@ -85,18 +85,18 @@ class MarketPurchase {
 
     /**
      * @param {number} buyerEid
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} price
      */
-    constructor(buyerEid, itemType, price) {
+    constructor(buyerEid, itemTypeId, price) {
         this.buyerEid = buyerEid;
-        this.itemType = itemType;
+        this.itemTypeId = itemTypeId;
         this.price = price;
     }
 }
 
 /**
- * One side (buy or sell) of the book's standing-quote index: itemType -> quote[] for lookup,
+ * One side (buy or sell) of the book's standing-quote index: itemTypeId -> quote[] for lookup,
  * eid -> quote for O(1) removal.
  */
 class QuoteIndex {
@@ -113,10 +113,10 @@ class QuoteIndex {
     post(quote) {
         this.remove(quote.eid);
         this._byEid.set(quote.eid, quote);
-        let quotes = this._byItem.get(quote.itemType);
+        let quotes = this._byItem.get(quote.itemTypeId);
         if (quotes === undefined) {
             quotes = [];
-            this._byItem.set(quote.itemType, quotes);
+            this._byItem.set(quote.itemTypeId, quotes);
         }
         quotes.push(quote);
     }
@@ -131,27 +131,27 @@ class QuoteIndex {
             return;
         }
         this._byEid.delete(eid);
-        const quotes = this._byItem.get(quote.itemType);
+        const quotes = this._byItem.get(quote.itemTypeId);
         quotes.splice(quotes.indexOf(quote), 1);
         if (quotes.length === 0) {
-            this._byItem.delete(quote.itemType);
+            this._byItem.delete(quote.itemTypeId);
         }
     }
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {MarketQuote[]|undefined}
      */
-    list(itemType) {
-        return this._byItem.get(itemType);
+    list(itemTypeId) {
+        return this._byItem.get(itemTypeId);
     }
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {number}
      */
-    count(itemType) {
-        const quotes = this._byItem.get(itemType);
+    count(itemTypeId) {
+        const quotes = this._byItem.get(itemTypeId);
         if (quotes === undefined) {
             return 0;
         }
@@ -166,7 +166,7 @@ class QuoteIndex {
 export class MarketBook {
 
     /**
-     * @param {Map<number, number>} [fixedPrices] itemType -> NPC price
+     * @param {Map<number, number>} [fixedPrices] itemTypeId -> NPC price
      * @param {number} [guidePriceIntervalTicks] overridable so tests don't need real-length intervals
      */
     constructor(fixedPrices = new Map(), guidePriceIntervalTicks = GUIDE_PRICE_INTERVAL_TICKS) {
@@ -184,38 +184,38 @@ export class MarketBook {
         // This tick's confirmed NPC purchases, drained by MarketSimMod.onTick.
         this._purchases = [];
 
-        // itemType -> GuidePrice.
+        // itemTypeId -> GuidePrice.
         this._guidePrices = new Map();
         // Own tick clock; advanced once per onTick call.
         this._tick = 0;
     }
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {boolean}
      */
-    isFixedPrice(itemType) {
-        return this._fixedPrices.has(itemType);
+    isFixedPrice(itemTypeId) {
+        return this._fixedPrices.has(itemTypeId);
     }
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {number|undefined}
      */
-    fixedPriceOf(itemType) {
-        return this._fixedPrices.get(itemType);
+    fixedPriceOf(itemTypeId) {
+        return this._fixedPrices.get(itemTypeId);
     }
 
     /**
      * Posts or replaces a buy terminal's standing bid.
      * @param {number} eid
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} price
      * @param {number} outPort
      * @returns {void}
      */
-    postBuy(eid, itemType, price, outPort) {
-        const quote = new MarketQuote(eid, itemType, price, outPort, this._nextSequence);
+    postBuy(eid, itemTypeId, price, outPort) {
+        const quote = new MarketQuote(eid, itemTypeId, price, outPort, this._nextSequence);
         this._nextSequence += 1;
         this._buys.post(quote);
     }
@@ -234,12 +234,12 @@ export class MarketBook {
      * item — each seller carries its own floor and initiates its own match — this only feeds the
      * guide-price supply signal and the reported best ask.
      * @param {number} eid
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} price
      * @returns {void}
      */
-    postSell(eid, itemType, price) {
-        const quote = new MarketQuote(eid, itemType, price, EMPTY, this._nextSequence);
+    postSell(eid, itemTypeId, price) {
+        const quote = new MarketQuote(eid, itemTypeId, price, EMPTY, this._nextSequence);
         this._nextSequence += 1;
         this._sells.post(quote);
     }
@@ -254,27 +254,27 @@ export class MarketBook {
     }
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {number}
      */
-    buyCount(itemType) {
-        return this._buys.count(itemType);
+    buyCount(itemTypeId) {
+        return this._buys.count(itemTypeId);
     }
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {number}
      */
-    sellCount(itemType) {
-        return this._sells.count(itemType);
+    sellCount(itemTypeId) {
+        return this._sells.count(itemTypeId);
     }
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {number|undefined} the highest currently-posted bid, or undefined if none
      */
-    bestBid(itemType) {
-        const quotes = this._buys.list(itemType);
+    bestBid(itemTypeId) {
+        const quotes = this._buys.list(itemTypeId);
         if (quotes === undefined || quotes.length === 0) {
             return undefined;
         }
@@ -286,11 +286,11 @@ export class MarketBook {
     }
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {number|undefined} the lowest currently-posted ask, or undefined if none
      */
-    bestAsk(itemType) {
-        const quotes = this._sells.list(itemType);
+    bestAsk(itemTypeId) {
+        const quotes = this._sells.list(itemTypeId);
         if (quotes === undefined || quotes.length === 0) {
             return undefined;
         }
@@ -302,19 +302,19 @@ export class MarketBook {
     }
 
     /**
-     * The best current counterparty for a seller asking `floorPrice` for `itemType`: the
+     * The best current counterparty for a seller asking `floorPrice` for `itemTypeId`: the
      * highest-paying eligible buyer (clears the floor, its output port is currently free, its cached
      * balance covers its own price), preferring a player buyer over the NPC on a tie. Null when
      * nothing qualifies.
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} floorPrice
      * @param {function(number): boolean} portIsEmpty
      * @param {function(number): number} balanceOf
      * @returns {MarketMatch|null}
      */
-    bestEligibleBuyer(itemType, floorPrice, portIsEmpty, balanceOf) {
+    bestEligibleBuyer(itemTypeId, floorPrice, portIsEmpty, balanceOf) {
         let best = null;
-        const quotes = this._buys.list(itemType);
+        const quotes = this._buys.list(itemTypeId);
         if (quotes !== undefined) {
             for (const quote of quotes) {
                 if (quote.price < floorPrice) {
@@ -333,7 +333,7 @@ export class MarketBook {
                 }
             }
         }
-        const fixedPrice = this._fixedPrices.get(itemType);
+        const fixedPrice = this._fixedPrices.get(itemTypeId);
         if (fixedPrice !== undefined && fixedPrice >= floorPrice && (best === null || fixedPrice > best.price)) {
             return new MarketMatch(true, fixedPrice, null, null);
         }
@@ -348,16 +348,16 @@ export class MarketBook {
      * trade-history signal.
      * @param {number} sellerEid
      * @param {number} buyerEid - NO_EID for an NPC counterparty
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} price
      * @returns {void}
      */
-    recordSettlement(sellerEid, buyerEid, itemType, price) {
-        this._settlements.push(new MarketSettlement(sellerEid, buyerEid, itemType, price));
-        let guide = this._guidePrices.get(itemType);
+    recordSettlement(sellerEid, buyerEid, itemTypeId, price) {
+        this._settlements.push(new MarketSettlement(sellerEid, buyerEid, itemTypeId, price));
+        let guide = this._guidePrices.get(itemTypeId);
         if (guide === undefined) {
             guide = new GuidePrice(price);
-            this._guidePrices.set(itemType, guide);
+            this._guidePrices.set(itemTypeId, guide);
         }
         guide.tradeCount += 1;
         guide.priceSum += price;
@@ -377,12 +377,12 @@ export class MarketBook {
      * Records a confirmed NPC-sourced purchase (a buy terminal creating a fixed-price item straight
      * from the NPC's infinite supply) for MarketSimMod.onTick to settle.
      * @param {number} buyerEid
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} price
      * @returns {void}
      */
-    recordPurchase(buyerEid, itemType, price) {
-        this._purchases.push(new MarketPurchase(buyerEid, itemType, price));
+    recordPurchase(buyerEid, itemTypeId, price) {
+        this._purchases.push(new MarketPurchase(buyerEid, itemTypeId, price));
     }
 
     /**
@@ -396,11 +396,11 @@ export class MarketBook {
     }
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {number|undefined} the item's guide price, or undefined if never traded/imbalanced
      */
-    guidePriceOf(itemType) {
-        const guide = this._guidePrices.get(itemType);
+    guidePriceOf(itemTypeId) {
+        const guide = this._guidePrices.get(itemTypeId);
         if (guide === undefined) {
             return undefined;
         }
@@ -417,7 +417,7 @@ export class MarketBook {
     advanceTick() {
         this._tick += 1;
         const tick = this._tick;
-        for (const [itemType, guide] of this._guidePrices) {
+        for (const [itemTypeId, guide] of this._guidePrices) {
             if (tick - guide.lastUpdateTick < this._guidePriceIntervalTicks) {
                 continue;
             }
@@ -429,7 +429,7 @@ export class MarketBook {
                 const step = Math.round((average - price) * volumeWeight);
                 price += Math.max(-maxStep, Math.min(maxStep, step));
             }
-            const imbalance = this.buyCount(itemType) - this.sellCount(itemType);
+            const imbalance = this.buyCount(itemTypeId) - this.sellCount(itemTypeId);
             if (imbalance !== 0) {
                 const step = Math.sign(imbalance) * Math.min(maxStep, Math.abs(imbalance));
                 price += step;

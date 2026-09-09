@@ -7,15 +7,15 @@ import {AbstractEvent} from "@spup/sdk";
 export class ItemsDiscoveredEvent extends AbstractEvent {
 
     static wireFields = {
-        itemTypes: "int32[]",
+        itemTypeIds: "int32[]",
     };
 
     /**
-     * @param {number[]} itemTypes
+     * @param {number[]} itemTypeIds
      */
-    constructor(itemTypes) {
+    constructor(itemTypeIds) {
         super();
-        this.itemTypes = itemTypes;
+        this.itemTypeIds = itemTypeIds;
     }
 }
 
@@ -27,21 +27,21 @@ export class ProductionLogEvent extends AbstractEvent {
 
     static wireFields = {
         playerId: "int64",
-        itemTypes: "int32[]",
+        itemTypeIds: "int32[]",
         counts: "int64[]",
         ranks: "int32[]",
     };
 
     /**
      * @param {number} playerId
-     * @param {number[]} itemTypes
+     * @param {number[]} itemTypeIds
      * @param {number[]} counts
      * @param {number[]} ranks
      */
-    constructor(playerId, itemTypes, counts, ranks) {
+    constructor(playerId, itemTypeIds, counts, ranks) {
         super();
         this.playerId = playerId;
-        this.itemTypes = itemTypes;
+        this.itemTypeIds = itemTypeIds;
         this.counts = counts;
         this.ranks = ranks;
     }
@@ -54,7 +54,7 @@ export class ProductionLogEvent extends AbstractEvent {
 export class ItemLeaderboardEvent extends AbstractEvent {
 
     static wireFields = {
-        itemType: "int32",
+        itemTypeId: "int32",
         playerIds: "int64[]",
         scores: "int64[]",
         requesterRank: "int32",
@@ -62,15 +62,15 @@ export class ItemLeaderboardEvent extends AbstractEvent {
     };
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number[]} playerIds
      * @param {number[]} scores
      * @param {number} requesterRank
      * @param {number} total
      */
-    constructor(itemType, playerIds, scores, requesterRank, total) {
+    constructor(itemTypeId, playerIds, scores, requesterRank, total) {
         super();
-        this.itemType = itemType;
+        this.itemTypeId = itemTypeId;
         this.playerIds = playerIds;
         this.scores = scores;
         this.requesterRank = requesterRank;

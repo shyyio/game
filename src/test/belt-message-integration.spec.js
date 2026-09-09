@@ -18,7 +18,7 @@ const EXPECTED = [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, RED, RED, EMPTY, EMPTY, EMP
 test("a belt line placed and ticked via messages on GameEngine flows two items to the tail", async () => {
     const engine = await makeGameEngine();
     for (const cell of CELLS) {
-        engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP));
     }
     const path = beltsOf(engine).pathAt(HEAD.x, HEAD.y);
     const stream = [];

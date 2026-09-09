@@ -12,19 +12,19 @@ export class PortItemSetEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         portId: "int64",
-        itemType: "int32",
+        itemTypeId: "int32",
     };
 
     /**
      * @param {number} x
      * @param {number} y
      * @param {number} portId
-     * @param {number} itemType
+     * @param {number} itemTypeId
      */
-    constructor(x, y, portId, itemType) {
+    constructor(x, y, portId, itemTypeId) {
         super(x, y);
         this.portId = portId;
-        this.itemType = itemType;
+        this.itemTypeId = itemTypeId;
     }
 }
 
@@ -53,13 +53,13 @@ export class PortItemClearEvent extends AbstractChunkRoutedEvent {
 
 /**
  * One chunk's port-item deltas for a render pass: each set is `setPortIds[i]` now holding
- * `setItemTypes[i]`, each clear is a `clearPortIds` entry.
+ * `setItemTypeIds[i]`, each clear is a `clearPortIds` entry.
  */
 export class PortItemBatchEvent extends AbstractBatchEvent {
 
     static wireFields = {
         setPortIds: "int64[]",
-        setItemTypes: "int32[]",
+        setItemTypeIds: "int32[]",
         clearPortIds: "int64[]",
         clearConsumed: "int32[]",
     };
@@ -71,19 +71,19 @@ export class PortItemBatchEvent extends AbstractBatchEvent {
     constructor(x, y) {
         super(x, y);
         this.setPortIds = [];
-        this.setItemTypes = [];
+        this.setItemTypeIds = [];
         this.clearPortIds = [];
         this.clearConsumed = [];
     }
 
     /**
      * @param {number} portId
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {void}
      */
-    addSet(portId, itemType) {
+    addSet(portId, itemTypeId) {
         this.setPortIds.push(portId);
-        this.setItemTypes.push(itemType);
+        this.setItemTypeIds.push(itemTypeId);
     }
 
     /**
@@ -106,7 +106,7 @@ export class PortItemBatchEvent extends AbstractBatchEvent {
             events.push(new PortItemClearEvent(this.x, this.y, this.clearPortIds[i], this.clearConsumed[i]));
         }
         for (let i = 0; i < this.setPortIds.length; i += 1) {
-            events.push(new PortItemSetEvent(this.x, this.y, this.setPortIds[i], this.setItemTypes[i]));
+            events.push(new PortItemSetEvent(this.x, this.y, this.setPortIds[i], this.setItemTypeIds[i]));
         }
         return events;
     }

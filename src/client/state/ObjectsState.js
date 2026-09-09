@@ -17,7 +17,7 @@ export const OBJECTS_SCHEMA = {
  * @property {number} id
  * @property {number} tileX
  * @property {number} tileY
- * @property {number} typeId
+ * @property {number} objectTypeId
  * @property {Direction} direction
  * @property {Object.<string, number>} ports rendered out-ports, by PortDefinition name
  */
@@ -89,7 +89,7 @@ export class ObjectsWriter extends AbstractCacheWriter {
      * @returns {void}
      */
     _set(event) {
-        const type = this._registry.typeById(event.typeId);
+        const type = this._registry.objectTypeById(event.objectTypeId);
         const ports = {};
         const renderedPorts = type.outputPorts.filter(port => port.render);
         for (const [i, port] of renderedPorts.entries()) {
@@ -99,7 +99,7 @@ export class ObjectsWriter extends AbstractCacheWriter {
             id: event.id,
             tileX: event.x,
             tileY: event.y,
-            typeId: event.typeId,
+            objectTypeId: event.objectTypeId,
             direction: event.direction,
             ports,
         });
@@ -289,7 +289,7 @@ export class ObjectsView extends AbstractCacheView {
                 this.remove(id);
                 return;
             }
-            const type = this._modRegistry.typeById(object.typeId);
+            const type = this._modRegistry.objectTypeById(object.objectTypeId);
             const cells = type.positionLayerTiles(object.direction).flatMap(group =>
                 group.cells.map(cell => ({
                     x: object.tileX + cell.x,
@@ -574,7 +574,7 @@ export class ObjectsView extends AbstractCacheView {
      */
     objectAt(tileX, tileY, type) {
         const entry = this.at(tileX, tileY, type.positionLayer);
-        if (entry !== null && entry.data.type.typeId === type.typeId) {
+        if (entry !== null && entry.data.type.objectTypeId === type.objectTypeId) {
             return entry;
         }
         return null;

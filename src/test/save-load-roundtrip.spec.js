@@ -12,14 +12,14 @@ import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 // Populates an engine with one of every migrated object type and ticks it a few times.
 async function populated() {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 5, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 5, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 10, 10, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(SplitterDefinition.typeId, 3, 8, Direction.UP));
-    const splitterEid = engine.placed.eidsOf(SplitterDefinition.typeId)[0];
+    engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 5, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 5, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 10, 10, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(SplitterDefinition.objectTypeId, 3, 8, Direction.UP));
+    const splitterEid = engine.placed.eidsOf(SplitterDefinition.objectTypeId)[0];
     const splitterId = engine.placed.objectIdOf(splitterEid);
     for (const cell of [{x: 20, y: 20}, {x: 20, y: 21}, {x: 20, y: 22}]) {
-        engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP));
     }
     for (let i = 0; i < 3; i += 1) {
         engine.tickAll();
@@ -34,8 +34,8 @@ test("the whole world round-trips through the engine serializer", async () => {
     const restored = await makeGameEngine();
     restored.snapshots.deserialize(snapshot);
 
-    assert.equal(restored.placed.eidsOf(ExtractorType.typeId).length, 1, "extractor restored");
-    assert.equal(restored.placed.eidsOf(BlenderType.typeId).length, 1, "machine restored");
+    assert.equal(restored.placed.eidsOf(ExtractorType.objectTypeId).length, 1, "extractor restored");
+    assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1, "machine restored");
     assert.equal(beltsOf(restored).paths.length, beltPaths, "belt paths restored");
     assert.notEqual(restored.space.userDataAt(5, 5, "R"), null, "resource cover restored");
     assert.notEqual(restored.placed.eidByObjectId(splitterId), undefined, "splitter restored");
@@ -63,7 +63,7 @@ test("a snapshot survives a JSON blob round-trip (the client save path)", async 
     const restored = await makeGameEngine();
     restored.snapshots.deserialize(snapshot);
 
-    assert.equal(restored.placed.eidsOf(BlenderType.typeId).length, 1);
+    assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1);
     assert.notEqual(restored.placed.eidByObjectId(splitterId), undefined);
 });
 
@@ -80,8 +80,8 @@ test("a snapshot round-trips through structured SQLite (the node save path)", as
 
     const restored = await makeGameEngine();
     restored.snapshots.deserialize(loaded);
-    assert.equal(restored.placed.eidsOf(ExtractorType.typeId).length, 1);
-    assert.equal(restored.placed.eidsOf(BlenderType.typeId).length, 1);
+    assert.equal(restored.placed.eidsOf(ExtractorType.objectTypeId).length, 1);
+    assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1);
 });
 
 test("load returns null when nothing was saved", async () => {

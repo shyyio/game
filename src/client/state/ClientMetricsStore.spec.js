@@ -30,7 +30,7 @@ test("queryRollup keeps category and tag as separate groups within the same buck
     await store.recordBatch([
         new MetricsFact(TYPE, 0, PLAYER, 1, 100, 0), // sell
         new MetricsFact(TYPE, 1, PLAYER, 1, 200, 1), // buy, same bucket+a, different side
-        new MetricsFact(TYPE, 2, PLAYER, 2, 50, 0), // different itemType
+        new MetricsFact(TYPE, 2, PLAYER, 2, 50, 0), // different itemTypeId
     ]);
 
     const rollup = await store.queryRollup(TYPE, PLAYER, 0, 9, 10);

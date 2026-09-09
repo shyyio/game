@@ -102,8 +102,8 @@ export class LogisticsSimMod extends AbstractSimMod {
         if (eid === undefined) {
             return;
         }
-        const typeId = engine.placed.typeIdOf(eid);
-        const type = engine.placed.typeFor(typeId);
+        const objectTypeId = engine.placed.objectTypeIdOf(eid);
+        const type = engine.placed.typeFor(objectTypeId);
         if (type === undefined || !isGateType(type)) {
             return;
         }
@@ -115,7 +115,7 @@ export class LogisticsSimMod extends AbstractSimMod {
             game.bus.publishTo(session.id, engine.sync.eventFor(engine.components.get("Gate"), eid));
             return;
         }
-        engine.placed.behaviorFor(typeId).requestOpen(engine, eid, message.open === 1);
+        engine.placed.behaviorFor(objectTypeId).requestOpen(engine, eid, message.open === 1);
     }
 
     /**
@@ -135,7 +135,7 @@ export class LogisticsSimMod extends AbstractSimMod {
             return null;
         }
         const wireable = eid => {
-            const type = engine.placed.typeFor(engine.placed.typeIdOf(eid));
+            const type = engine.placed.typeFor(engine.placed.objectTypeIdOf(eid));
             return type !== undefined && type.wireAnchor !== null;
         };
         if (!wireable(aEid) || !wireable(bEid)) {
@@ -221,7 +221,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         if (eid === undefined) {
             return false;
         }
-        const type = engine.placed.typeFor(engine.placed.typeIdOf(eid));
+        const type = engine.placed.typeFor(engine.placed.objectTypeIdOf(eid));
         return type !== undefined && isTerminalType(type);
     }
 
@@ -274,7 +274,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         if (eid === undefined) {
             return;
         }
-        const type = engine.placed.typeFor(engine.placed.typeIdOf(eid));
+        const type = engine.placed.typeFor(engine.placed.objectTypeIdOf(eid));
         if (type === undefined || !isTerminalType(type)) {
             return;
         }
@@ -318,7 +318,7 @@ export class LogisticsSimMod extends AbstractSimMod {
                 conditions.push(new LogicCondition(
                     message.condKinds[c],
                     message.condDeviceIds[c],
-                    message.condItemTypes[c],
+                    message.condItemTypeIds[c],
                     message.condKeys[c],
                     message.condComparators[c],
                     message.condValues[c],
@@ -348,7 +348,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         if (eid === undefined) {
             return;
         }
-        const type = engine.placed.typeFor(engine.placed.typeIdOf(eid));
+        const type = engine.placed.typeFor(engine.placed.objectTypeIdOf(eid));
         if (type === undefined || !isTerminalType(type)) {
             return;
         }
@@ -373,7 +373,7 @@ export class LogisticsSimMod extends AbstractSimMod {
                     continue;
                 }
                 deviceObjectIds.push(deviceId);
-                deviceTypeIds.push(engine.placed.typeIdOf(deviceEid));
+                deviceTypeIds.push(engine.placed.objectTypeIdOf(deviceEid));
                 deviceTileXs.push(position.x[deviceEid]);
                 deviceTileYs.push(position.y[deviceEid]);
             }
@@ -389,7 +389,7 @@ export class LogisticsSimMod extends AbstractSimMod {
             rules.map(rule => rule.conditions.length),
             conditions.map(condition => condition.kind),
             conditions.map(condition => condition.deviceId),
-            conditions.map(condition => condition.itemType),
+            conditions.map(condition => condition.itemTypeId),
             conditions.map(condition => condition.key),
             conditions.map(condition => condition.comparator),
             conditions.map(condition => condition.value),

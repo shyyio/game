@@ -121,9 +121,9 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
         if (snapshot === null) {
             return;
         }
-        if (snapshot.currentItemType !== MARKET_SNAPSHOT_NONE) {
+        if (snapshot.currentItemTypeId !== MARKET_SNAPSHOT_NONE) {
             this._mode = snapshot.currentMode;
-            const index = snapshot.itemTypes.indexOf(snapshot.currentItemType);
+            const index = snapshot.itemTypeIds.indexOf(snapshot.currentItemTypeId);
             if (index === -1) {
                 this._itemIndex = 0;
             } else {
@@ -145,7 +145,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _resetPriceDefault(snapshot = this._snapshot()) {
-        if (this._priceEdited || snapshot === null || snapshot.itemTypes.length === 0) {
+        if (this._priceEdited || snapshot === null || snapshot.itemTypeIds.length === 0) {
             return;
         }
         const npc = snapshot.npcPrices[this._itemIndex];
@@ -209,8 +209,8 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
         stack.gap();
 
         stack.header("Item");
-        stack.scrollSection(snapshot.itemTypes, (itemType, i) => ({
-            label: `${this._items.require(itemType).name} (${this._itemDetail(snapshot, i)})`,
+        stack.scrollSection(snapshot.itemTypeIds, (itemTypeId, i) => ({
+            label: `${this._items.require(itemTypeId).name} (${this._itemDetail(snapshot, i)})`,
             buttonLabel: i === this._itemIndex ? "Selected" : "Select",
             buttonTint: i === this._itemIndex ? ACTIVE_ACCENT : INACTIVE_TINT,
             onClick: () => this._selectAndReset(() => this._itemIndex = i),
@@ -291,7 +291,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _fillPriceRow(row, snapshot) {
-        const npcSelected = snapshot.itemTypes.length > 0 && snapshot.npcPrices[this._itemIndex] !== MARKET_SNAPSHOT_NONE;
+        const npcSelected = snapshot.itemTypeIds.length > 0 && snapshot.npcPrices[this._itemIndex] !== MARKET_SNAPSHOT_NONE;
         this._priceText = panelText(this._priceLabel(npcSelected), TextRole.BODY);
         row.pushLeft(this._priceText);
         if (!npcSelected) {
@@ -332,10 +332,10 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _fillConfirmRow(row, objectId, snapshot) {
-        const canConfirm = snapshot.itemTypes.length > 0;
+        const canConfirm = snapshot.itemTypeIds.length > 0;
         const confirm = buildPanelButton(this.textureRegistry, "Confirm", ACTIVE_ACCENT, () => {
-            const itemType = snapshot.itemTypes[this._itemIndex];
-            this._session.sendMessage(new ConfigureTradingTerminalMessage(objectId, this._mode, itemType, this._price));
+            const itemTypeId = snapshot.itemTypeIds[this._itemIndex];
+            this._session.sendMessage(new ConfigureTradingTerminalMessage(objectId, this._mode, itemTypeId, this._price));
             this._cache.writer("market").closeConfig();
         }, !canConfirm);
         row.pushLeft(confirm);

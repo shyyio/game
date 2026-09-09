@@ -170,18 +170,18 @@ test("a loadout that drops a mod renumbers the object types it keeps", () => {
     const first = objectType("First");
     const second = objectType("Second");
     frozen([["A", [first]], ["B", [second]]]);
-    assert.deepEqual([first.typeId, second.typeId], [0, 1]);
+    assert.deepEqual([first.objectTypeId, second.objectTypeId], [0, 1]);
 
     frozen([["B", [second]]]);
-    assert.equal(second.typeId, 0);
+    assert.equal(second.objectTypeId, 0);
 });
 
-test("a registry takes its own typeIds back after another loadout froze over them", () => {
+test("a registry takes its own objectTypeIds back after another loadout froze over them", () => {
     const first = objectType("Third");
     const second = objectType("Fourth");
     const registry = frozen([["A", [first]], ["B", [second]]]);
     frozen([["B", [second]]]);
 
     registry.claimTypeIds();
-    assert.deepEqual([first.typeId, second.typeId], [0, 1]);
+    assert.deepEqual([first.objectTypeId, second.objectTypeId], [0, 1]);
 });

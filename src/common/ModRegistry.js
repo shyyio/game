@@ -22,7 +22,7 @@ const CORE_LOGIC_KEYS = {
 
 /**
  * The declarative register of loaded mods. Mods are registered as ModPackages, then freeze()
- * assigns every object type its positional typeId exactly once; every accessor throws before the
+ * assigns every object type its positional objectTypeId exactly once; every accessor throws before the
  * freeze, and register throws after it, so the lifecycle is: register loadout, freeze, build the
  * engine/client on the frozen registry.
  */
@@ -35,7 +35,7 @@ export class ModRegistry {
         this._packages = [];
         this._frozen = false;
         this._objectTypes = [];
-        this._typeById = new Map();
+        this._objectTypeById = new Map();
         // Aggregates computed once at freeze; the getters are on per-event hot paths.
         this._wireClasses = [];
         this._simMods = [];
@@ -91,7 +91,7 @@ export class ModRegistry {
     }
 
     /**
-     * Assigns each object type its positional typeId (registration order across the loadout) and
+     * Assigns each object type its positional objectTypeId (registration order across the loadout) and
      * validates the loadout; the registry is immutable afterward.
      * @returns {void}
      */
@@ -114,14 +114,14 @@ export class ModRegistry {
     }
 
     /**
-     * Re-stamps this registry's positional typeIds onto its object types. Loadouts share ObjectType
+     * Re-stamps this registry's positional objectTypeIds onto its object types. Loadouts share ObjectType
      * instances, so freezing another one over them leaves those numbers meaning the other loadout;
      * a world that outlives such a freeze takes its own back with this.
      * @returns {void}
      */
     claimTypeIds() {
-        for (const [typeId, type] of this._typeById) {
-            type._assignTypeId(typeId);
+        for (const [objectTypeId, type] of this._objectTypeById) {
+            type._assignObjectTypeId(objectTypeId);
         }
     }
 
@@ -144,7 +144,7 @@ export class ModRegistry {
     }
 
     /**
-     * Assigns each object type its positional typeId, in loadout order.
+     * Assigns each object type its positional objectTypeId, in loadout order.
      * @private
      * @returns {void}
      */
@@ -156,8 +156,8 @@ export class ModRegistry {
                     throw new Error(`Duplicate object type "${type.name}"`);
                 }
                 typeNames.add(type.name);
-                type._assignTypeId(this._objectTypes.length);
-                this._typeById.set(this._objectTypes.length, type);
+                type._assignObjectTypeId(this._objectTypes.length);
+                this._objectTypeById.set(this._objectTypes.length, type);
                 this._objectTypes.push(type);
             }
         }
@@ -196,8 +196,8 @@ export class ModRegistry {
                 this._textureAtlases.push(...pkg.client.textureAtlases());
             }
             for (const category of pkg.declaration.items) {
-                for (const [itemType, definition] of Object.entries(category.items)) {
-                    this._items.register(Number(itemType), definition);
+                for (const [itemTypeId, definition] of Object.entries(category.items)) {
+                    this._items.register(Number(itemTypeId), definition);
                 }
             }
             for (const fluidType of pkg.declaration.fluidTypes) {
@@ -289,13 +289,13 @@ export class ModRegistry {
      * @returns {void}
      */
     _collectMarketListings() {
-        const listedItemTypes = new Set();
+        const listedItemTypeIds = new Set();
         for (const pkg of this._packages) {
             for (const entry of pkg.declaration.marketListings) {
-                if (listedItemTypes.has(entry.itemType)) {
-                    throw new Error(`Duplicate market listing for item type ${entry.itemType}`);
+                if (listedItemTypeIds.has(entry.itemTypeId)) {
+                    throw new Error(`Duplicate market listing for item type ${entry.itemTypeId}`);
                 }
-                listedItemTypes.add(entry.itemType);
+                listedItemTypeIds.add(entry.itemTypeId);
                 this._marketListings.push(entry);
             }
         }
@@ -337,7 +337,7 @@ export class ModRegistry {
     }
 
     /**
-     * Every object type across the loadout, in typeId order.
+     * Every object type across the loadout, in objectTypeId order.
      * @returns {ObjectType[]}
      */
     get objectTypes() {
@@ -380,15 +380,15 @@ export class ModRegistry {
     }
 
     /**
-     * The object type with the given typeId; throws on an unknown id.
-     * @param {number} typeId
+     * The object type with the given objectTypeId; throws on an unknown id.
+     * @param {number} objectTypeId
      * @returns {ObjectType}
      */
-    typeById(typeId) {
+    objectTypeById(objectTypeId) {
         this._assertFrozen();
-        const type = this._typeById.get(typeId);
+        const type = this._objectTypeById.get(objectTypeId);
         if (type === undefined) {
-            throw new Error(`Unknown object typeId ${typeId}`);
+            throw new Error(`Unknown object objectTypeId ${objectTypeId}`);
         }
         return type;
     }

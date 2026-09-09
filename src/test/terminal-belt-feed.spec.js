@@ -27,19 +27,19 @@ function held(engine, port) {
 // resolver must have emptied that port before the transport writes, not after.
 test("a belt-fed seller loses no items when a pop and a sale share a tick", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 5, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, 10, 10, Direction.UP));
-    const [sellerEid, buyerEid] = engine.placed.eidsOf(TradingTerminalType.typeId);
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 5, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 10, 10, Direction.UP));
+    const [sellerEid, buyerEid] = engine.placed.eidsOf(TradingTerminalType.objectTypeId);
     const def = engine.components.get("MarketTerminal");
     const terminal = def.store;
     const sellerRow = def.row(sellerEid);
     const buyerRow = def.row(buyerEid);
     terminal.mode[sellerRow] = MARKET_MODE_SELL;
-    terminal.itemType[sellerRow] = ITEM;
+    terminal.itemTypeId[sellerRow] = ITEM;
     terminal.price[sellerRow] = PRICE;
     terminal.sellEnabled[sellerRow] = 1;
     terminal.mode[buyerRow] = MARKET_MODE_BUY;
-    terminal.itemType[buyerRow] = ITEM;
+    terminal.itemTypeId[buyerRow] = ITEM;
     terminal.price[buyerRow] = PRICE;
     terminal.balance[buyerRow] = 1_000_000;
     engine.resolve(MarketBook).postBuy(buyerEid, ITEM, PRICE, terminal.out[buyerRow]);

@@ -39,7 +39,7 @@ function selectedScenario() {
 
 /**
  * The mod packages the selected scenario brings of its own, appended to the loadout before it is
- * frozen so its object types get typeIds like any other mod's.
+ * frozen so its object types get objectTypeIds like any other mod's.
  * @returns {ModPackage[]}
  */
 export function scenarioModPackages() {

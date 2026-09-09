@@ -1,5 +1,5 @@
 // An ordered list of packaged mods, each with the hash of every file it consists of. Order is loadout
-// order (it assigns the positional typeIds/wireIds), so reordering is a save-breaking change. Nothing
+// order (it assigns the positional objectTypeIds/wireIds), so reordering is a save-breaking change. Nothing
 // rewrites an entry implicitly — on a server only the admin page and the `mods` CLI rewrite the list
 // in server.json, in the browser only
 // the local-loadout editor.

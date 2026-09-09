@@ -37,7 +37,7 @@ import {LOGIC_KEY_AMOUNT, FLUID_TYPE_WATER} from "@/mods/fluids/common/constants
  * Places an object and returns its objectId (the newest placed row's).
  */
 function place(engine, type, x, y, direction=Direction.UP) {
-    assert.equal(engine.applyMessage(new CreateObjectMessage(type.typeId, x, y, direction)), true);
+    assert.equal(engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, direction)), true);
     const def = engine.placed.def;
     return def.store.objectId[def.row(def.eids[def.count - 1])];
 }
@@ -65,7 +65,7 @@ function rulesMessage(terminalId, rules) {
         rules.map(rule => rule.conditions.length),
         conditions.map(condition => condition.kind),
         conditions.map(condition => condition.deviceId),
-        conditions.map(condition => condition.itemType),
+        conditions.map(condition => condition.itemTypeId),
         conditions.map(condition => condition.key),
         conditions.map(condition => condition.comparator),
         conditions.map(condition => condition.value),
@@ -142,7 +142,7 @@ test("the processing key reads real activity, not the enable switch", async () =
     const engine = game.simEngine;
     const machine = place(engine, BlenderType, 10, 8, Direction.UP);
     const eid = engine.placed.eidByObjectId(machine);
-    const behavior = engine.placed.behaviorFor(engine.placed.typeIdOf(eid));
+    const behavior = engine.placed.behaviorFor(engine.placed.objectTypeIdOf(eid));
 
     assert.equal(behavior.logicRead(engine, eid, LOGIC_KEY_ENABLED), 1);
     assert.equal(behavior.logicRead(engine, eid, LOGIC_KEY_PROCESSING), 0,
@@ -389,7 +389,7 @@ test("the snapshot carries rules, their conditions, and suspended flags", async 
     assert.deepEqual(snapshot.ruleActionDeviceIds, [gateB, gateB]);
     assert.deepEqual(snapshot.ruleConditionCounts, [2, 1]);
     assert.deepEqual(snapshot.condKinds[0], LOGIC_CONDITION_KIND_STORED);
-    assert.deepEqual(snapshot.condItemTypes[0], FLUID_TYPE_WATER);
+    assert.deepEqual(snapshot.condItemTypeIds[0], FLUID_TYPE_WATER);
     assert.deepEqual(snapshot.condDeviceIds[2], strayGate);
     assert.deepEqual(snapshot.ruleSuspended, [0, 1], "the stray-device rule reports suspended");
 });

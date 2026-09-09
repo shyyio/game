@@ -24,7 +24,7 @@ test("a Game on GameEngine places and ticks belts via messages", async () => {
 
     const session = new CapturingSession();
     for (const cell of CELLS) {
-        game.dispatchMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP), session);
+        game.dispatchMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP), session);
     }
 
     const path = beltsOf(engine).pathAt(HEAD.x, HEAD.y);

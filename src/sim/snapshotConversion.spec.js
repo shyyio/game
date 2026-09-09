@@ -18,8 +18,8 @@ function snapshot() {
         components: [
             {
                 name: "PlacedObject",
-                fields: [{name: "typeId", kind: "type"}, {name: "objectId", kind: "i32"}],
-                rows: [{eid: 1, typeId: 0, objectId: 1}, {eid: 2, typeId: 2, objectId: 2}, {eid: 3, typeId: 1, objectId: 3}],
+                fields: [{name: "objectTypeId", kind: "type"}, {name: "objectId", kind: "i32"}],
+                rows: [{eid: 1, objectTypeId: 0, objectId: 1}, {eid: 2, objectTypeId: 2, objectId: 2}, {eid: 3, objectTypeId: 1, objectId: 3}],
             },
             {
                 name: "Port",
@@ -44,9 +44,9 @@ function snapshot() {
 }
 
 // The next loadout drops Gadget (and its Gadgetry component), adds Pump first, and no longer has gold.
-const NEXT = {typeNames: ["Pump", "Belt", "Furnace"], itemTypes: new Set([IRON])};
+const NEXT = {typeNames: ["Pump", "Belt", "Furnace"], itemTypeIds: new Set([IRON])};
 const NEXT_DEFS = [
-    {name: "PlacedObject", fields: [{name: "typeId", kind: "type"}, {name: "objectId", kind: "i32"}]},
+    {name: "PlacedObject", fields: [{name: "objectTypeId", kind: "type"}, {name: "objectId", kind: "i32"}]},
     {name: "Port", fields: [{name: "item", kind: "item"}]},
     {name: "PumpState", fields: [{name: "pressure", kind: "i32"}]},
 ];
@@ -64,7 +64,7 @@ test("the losses count the item types a record table holds too", () => {
 });
 
 test("a loadout that only appends loses nothing", () => {
-    const losses = conversionLosses(snapshot(), {typeNames: ["Belt", "Gadget", "Furnace", "Pump"], itemTypes: new Set([IRON, GOLD])});
+    const losses = conversionLosses(snapshot(), {typeNames: ["Belt", "Gadget", "Furnace", "Pump"], itemTypeIds: new Set([IRON, GOLD])});
     assert.equal(losses.objects.size, 0);
     assert.equal(losses.items.size, 0);
 });
@@ -75,14 +75,14 @@ test("converting remaps type ids by name, empties lost items, and swaps the comp
     const converted = convertSnapshot(before, NEXT, NEXT_DEFS);
     assert.deepEqual(converted.objectTypeNames, ["Pump", "Belt", "Furnace"]);
     const placed = converted.components.find(component => component.name === "PlacedObject");
-    assert.deepEqual(placed.rows.map(row => row.typeId), [1, 2]);
+    assert.deepEqual(placed.rows.map(row => row.objectTypeId), [1, 2]);
     const port = converted.components.find(component => component.name === "Port");
     assert.deepEqual(port.rows.map(row => row.item), [IRON, EMPTY, EMPTY, EMPTY]);
     assert.deepEqual(converted.components.map(component => component.name), ["PlacedObject", "Port", "PumpState"]);
     assert.deepEqual(converted.components[2], {name: "PumpState", fields: NEXT_DEFS[2].fields, rows: []});
     assert.deepEqual(converted.globals, {nextObjectId: 9});
     assert.equal(converted.records.length, 2);
-    assert.equal(before.components[0].rows[0].typeId, 0);
+    assert.equal(before.components[0].rows[0].objectTypeId, 0);
 });
 
 test("a component that gained a field carries it on every row, at the new column's fill", () => {

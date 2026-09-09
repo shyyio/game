@@ -37,11 +37,11 @@ export class RecipeByproduct {
 
     /**
      * A recipe's chance-driven secondary output, landing in the object type's second output port.
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} chance in [0, 1], rolled once per craft via a deterministic per-craft seed
      */
-    constructor(itemType, chance) {
-        this.itemType = itemType;
+    constructor(itemTypeId, chance) {
+        this.itemTypeId = itemTypeId;
         this.chance = chance;
     }
 }
@@ -198,28 +198,28 @@ export class ObjectType {
         }
         // Stable numeric identity assigned at ModRegistry.freeze() (registration order); the wire
         // carries it and the client cache keys off this type.
-        this._typeId = null;
+        this._objectTypeId = null;
     }
 
     /**
      * @returns {number}
      */
-    get typeId() {
-        if (this._typeId === null) {
-            throw new Error(`ObjectType "${this.name}" has no typeId; freeze the ModRegistry first`);
+    get objectTypeId() {
+        if (this._objectTypeId === null) {
+            throw new Error(`ObjectType "${this.name}" has no objectTypeId; freeze the ModRegistry first`);
         }
-        return this._typeId;
+        return this._objectTypeId;
     }
 
     /**
      * Called by ModRegistry.freeze(). Loadouts share ObjectType instances, so the newest freeze owns
      * the number; a registry that outlives another loadout's freeze takes its own back through
      * ModRegistry.claimTypeIds().
-     * @param {number} typeId
+     * @param {number} objectTypeId
      * @returns {void}
      */
-    _assignTypeId(typeId) {
-        this._typeId = typeId;
+    _assignObjectTypeId(objectTypeId) {
+        this._objectTypeId = objectTypeId;
     }
 
     /**

@@ -76,8 +76,8 @@ test("a pinned loadout caches, loads, and registers like the static one", async 
     staticRegistry.freeze();
 
     assert.deepEqual(
-        registry.objectTypes.map(type => [type.name, type.typeId]),
-        staticRegistry.objectTypes.map(type => [type.name, type.typeId]),
+        registry.objectTypes.map(type => [type.name, type.objectTypeId]),
+        staticRegistry.objectTypes.map(type => [type.name, type.objectTypeId]),
     );
     assert.deepEqual(mods.map(mod => mod.manifest.name), MOD_DIRS.map(dir => modName(dir)));
 });

@@ -14,7 +14,7 @@ export class ObjectTool extends AbstractTool {
 
     /**
      * @param {Client} client
-     * @param {ObjectType} type - the object type placed (its typeId on the message, its placement
+     * @param {ObjectType} type - the object type placed (its objectTypeId on the message, its placement
      *     rule for the overwrite/advance/placeOn knobs)
      * @param {ObjectGhostLayer} ghostLayer
      */
@@ -85,7 +85,7 @@ export class ObjectTool extends AbstractTool {
         for (const id of result.overwriteIds) {
             this.session.sendMessage(new DeleteObjectMessage(id));
         }
-        this.session.sendMessage(new CreateObjectMessage(this._type.typeId, baseX, baseY, direction));
+        this.session.sendMessage(new CreateObjectMessage(this._type.objectTypeId, baseX, baseY, direction));
         Haptics.tap();
         // Re-evaluate next frame so the just-placed tile now reads as occupied.
         this._ghostLayer.invalidateSnap();
@@ -351,7 +351,7 @@ export class ObjectTool extends AbstractTool {
      * @returns {boolean}
      */
     _overwritable(occupant, direction) {
-        if (this._replaceSameKind && occupant.data.type.typeId === this._type.typeId) {
+        if (this._replaceSameKind && occupant.data.type.objectTypeId === this._type.objectTypeId) {
             return true;
         }
         if (!this._type.directional) {

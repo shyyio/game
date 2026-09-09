@@ -153,9 +153,9 @@ export class LaneFixtureDeclaration extends AbstractModDeclaration {
  * @returns {number} the cell's eid, NO_EID when the placement was refused
  */
 export function placeLane(engine, tileX, tileY, direction, type = TestLaneType) {
-    const before = engine.placed.eidsOf(type.typeId).length;
-    engine.applyMessage(new CreateObjectMessage(type.typeId, tileX, tileY, direction));
-    if (engine.placed.eidsOf(type.typeId).length === before) {
+    const before = engine.placed.eidsOf(type.objectTypeId).length;
+    engine.applyMessage(new CreateObjectMessage(type.objectTypeId, tileX, tileY, direction));
+    if (engine.placed.eidsOf(type.objectTypeId).length === before) {
         return NO_EID;
     }
     return engine.placed.eidAt(tileX, tileY, type.positionLayerTiles(direction)[0].layer);

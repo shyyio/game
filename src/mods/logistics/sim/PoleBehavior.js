@@ -26,7 +26,7 @@ export class PoleBehavior extends AbstractBehavior {
         const def = placed.def;
         const placedObject = def.store;
         for (let row = 0; row < def.count; row += 1) {
-            if (placed.behaviorFor(placedObject.typeId[row]) instanceof PoleBehavior) {
+            if (placed.behaviorFor(placedObject.objectTypeId[row]) instanceof PoleBehavior) {
                 networks.addPole(def.eids[row]);
             }
         }

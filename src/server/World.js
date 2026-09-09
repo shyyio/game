@@ -46,7 +46,7 @@ export class World {
     /**
      * What moving this world onto `loadout` would lose, named for the operator.
      * @param {object} snapshot this world as {@link takeSnapshot} left it
-     * @param {{typeNames: string[], itemTypes: Set<number>}} loadout
+     * @param {{typeNames: string[], itemTypeIds: Set<number>}} loadout
      * @returns {{objects: Array<{name: string, count: number}>, items: Array<{name: string, count: number}>}}
      */
     conversionLosses(snapshot, loadout) {
@@ -54,21 +54,21 @@ export class World {
         const items = this.game.modRegistry.items;
         return {
             objects: Array.from(losses.objects, ([name, count]) => ({name, count})),
-            items: Array.from(losses.items, ([itemType, count]) => ({name: items.definitionFor(itemType).name, count})),
+            items: Array.from(losses.items, ([itemTypeId, count]) => ({name: items.definitionFor(itemTypeId).name, count})),
         };
     }
 
     /**
      * Deletes every object of a type `loadout` lacks, then serializes; {@link boot} converts the
      * result onto the new loadout.
-     * @param {{typeNames: string[], itemTypes: Set<number>}} loadout
+     * @param {{typeNames: string[], itemTypeIds: Set<number>}} loadout
      * @returns {object}
      */
     snapshotForConversion(loadout) {
         const kept = new Set(loadout.typeNames);
         for (const type of this.game.modRegistry.objectTypes) {
             if (!kept.has(type.name)) {
-                this.game.simEngine.removeObjectsOfType(type.typeId);
+                this.game.simEngine.removeObjectsOfType(type.objectTypeId);
             }
         }
         return this.game.serialize();
@@ -84,7 +84,7 @@ export class World {
 
     /**
      * Puts `snapshot` back under this world: the objects a failed conversion deleted return, and the
-     * registry takes back the typeIds the other loadout's freeze stamped onto the shared types.
+     * registry takes back the objectTypeIds the other loadout's freeze stamped onto the shared types.
      * @param {object} snapshot
      * @returns {void}
      */
@@ -155,23 +155,23 @@ export class World {
      * What `config`'s mods declare, read off the packages without freezing a registry (a freeze
      * renumbers the object types the running world shares).
      * @param {ServerConfig} config
-     * @returns {Promise<{typeNames: string[], itemTypes: Set<number>}>}
+     * @returns {Promise<{typeNames: string[], itemTypeIds: Set<number>}>}
      */
     static async loadoutOf(config) {
         const {packages} = await World._packagesOf(config);
         const typeNames = [];
-        const itemTypes = new Set();
+        const itemTypeIds = new Set();
         for (const pkg of packages) {
             for (const type of pkg.declaration.objectTypes) {
                 typeNames.push(type.name);
             }
             for (const category of pkg.declaration.items) {
-                for (const itemType of Object.keys(category.items)) {
-                    itemTypes.add(Number(itemType));
+                for (const itemTypeId of Object.keys(category.items)) {
+                    itemTypeIds.add(Number(itemTypeId));
                 }
             }
         }
-        return {typeNames, itemTypes};
+        return {typeNames, itemTypeIds};
     }
 
     /**

@@ -275,7 +275,7 @@ export const AirFilterType = new ObjectType({
     behavior: new GeneratorBehavior({
         processingTicks: 4,
         output: ITEM_TYPE_OXYGEN,
-        secondaryOutput: {itemType: ITEM_TYPE_WATER, processingTicks: 40},
+        secondaryOutput: {itemTypeId: ITEM_TYPE_WATER, processingTicks: 40},
     }),
 });
 

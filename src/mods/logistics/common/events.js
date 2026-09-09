@@ -38,7 +38,7 @@ export class BeltItemUpsertEvent extends AbstractChunkRoutedEvent {
         pathId: "int64",
         itemId: "int64",
         gap: "int32",
-        itemType: "int32",
+        itemTypeId: "int32",
     };
 
     /**
@@ -47,14 +47,14 @@ export class BeltItemUpsertEvent extends AbstractChunkRoutedEvent {
      * @param {number} pathId
      * @param {number} itemId
      * @param {number} gap
-     * @param {number} itemType
+     * @param {number} itemTypeId
      */
-    constructor(x, y, pathId, itemId, gap, itemType) {
+    constructor(x, y, pathId, itemId, gap, itemTypeId) {
         super(x, y);
         this.pathId = pathId;
         this.itemId = itemId;
         this.gap = gap;
-        this.itemType = itemType;
+        this.itemTypeId = itemTypeId;
     }
 }
 
@@ -67,7 +67,7 @@ export class BeltItemSyncEvent extends AbstractChunkRoutedEvent {
         pathId: "int64",
         itemId: "int64",
         gap: "int32",
-        itemType: "int32",
+        itemTypeId: "int32",
     };
 
     /**
@@ -76,14 +76,14 @@ export class BeltItemSyncEvent extends AbstractChunkRoutedEvent {
      * @param {number} pathId
      * @param {number} itemId
      * @param {number} gap
-     * @param {number} itemType
+     * @param {number} itemTypeId
      */
-    constructor(x, y, pathId, itemId, gap, itemType) {
+    constructor(x, y, pathId, itemId, gap, itemTypeId) {
         super(x, y);
         this.pathId = pathId;
         this.itemId = itemId;
         this.gap = gap;
-        this.itemType = itemType;
+        this.itemTypeId = itemTypeId;
     }
 }
 
@@ -140,7 +140,7 @@ export class BeltItemBatchEvent extends AbstractBatchEvent {
         upsertPathIds: "int64[]",
         upsertItemIds: "int64[]",
         upsertGaps: "int32[]",
-        upsertItemTypes: "int32[]",
+        upsertItemTypeIds: "int32[]",
         deletePathIds: "int64[]",
         deleteItemIds: "int64[]",
     };
@@ -154,7 +154,7 @@ export class BeltItemBatchEvent extends AbstractBatchEvent {
         this.upsertPathIds = [];
         this.upsertItemIds = [];
         this.upsertGaps = [];
-        this.upsertItemTypes = [];
+        this.upsertItemTypeIds = [];
         this.deletePathIds = [];
         this.deleteItemIds = [];
     }
@@ -163,14 +163,14 @@ export class BeltItemBatchEvent extends AbstractBatchEvent {
      * @param {number} pathId
      * @param {number} itemId
      * @param {number} gap
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {void}
      */
-    addUpsert(pathId, itemId, gap, itemType) {
+    addUpsert(pathId, itemId, gap, itemTypeId) {
         this.upsertPathIds.push(pathId);
         this.upsertItemIds.push(itemId);
         this.upsertGaps.push(gap);
-        this.upsertItemTypes.push(itemType);
+        this.upsertItemTypeIds.push(itemTypeId);
     }
 
     /**
@@ -199,7 +199,7 @@ export class BeltItemBatchEvent extends AbstractBatchEvent {
                 this.upsertPathIds[i],
                 this.upsertItemIds[i],
                 this.upsertGaps[i],
-                this.upsertItemTypes[i],
+                this.upsertItemTypeIds[i],
             ));
         }
         return events;
@@ -345,7 +345,7 @@ export class LogicSnapshotEvent extends AbstractEvent {
         ruleConditionCounts: "int32[]",
         condKinds: "int32[]",
         condDeviceIds: "int64[]",
-        condItemTypes: "int32[]",
+        condItemTypeIds: "int32[]",
         condKeys: "int32[]",
         condComparators: "int32[]",
         condValues: "sint32[]",
@@ -366,12 +366,12 @@ export class LogicSnapshotEvent extends AbstractEvent {
      * @param {number[]} ruleConditionCounts - rule i owns the next ruleConditionCounts[i] cond* entries
      * @param {number[]} condKinds
      * @param {number[]} condDeviceIds
-     * @param {number[]} condItemTypes
+     * @param {number[]} condItemTypeIds
      * @param {number[]} condKeys
      * @param {number[]} condComparators
      * @param {number[]} condValues
      */
-    constructor(objectId, linked, tier, deviceObjectIds, deviceTypeIds, deviceTileXs, deviceTileYs, ruleActionDeviceIds, ruleActionKeys, ruleActionValues, ruleSuspended, ruleConditionCounts, condKinds, condDeviceIds, condItemTypes, condKeys, condComparators, condValues) {
+    constructor(objectId, linked, tier, deviceObjectIds, deviceTypeIds, deviceTileXs, deviceTileYs, ruleActionDeviceIds, ruleActionKeys, ruleActionValues, ruleSuspended, ruleConditionCounts, condKinds, condDeviceIds, condItemTypeIds, condKeys, condComparators, condValues) {
         super();
         this.objectId = objectId;
         this.linked = linked;
@@ -387,7 +387,7 @@ export class LogicSnapshotEvent extends AbstractEvent {
         this.ruleConditionCounts = ruleConditionCounts;
         this.condKinds = condKinds;
         this.condDeviceIds = condDeviceIds;
-        this.condItemTypes = condItemTypes;
+        this.condItemTypeIds = condItemTypeIds;
         this.condKeys = condKeys;
         this.condComparators = condComparators;
         this.condValues = condValues;

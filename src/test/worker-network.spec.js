@@ -29,8 +29,8 @@ import {EventCollector, flattenBatches} from "@/test/EventCollector.js";
  * @returns {number}
  */
 function placeObject(engine, type, x, y) {
-    assert.equal(engine.applyMessage(new CreateObjectMessage(type.typeId, x, y, Direction.UP)), true);
-    const eids = engine.placed.eidsOf(type.typeId);
+    assert.equal(engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, Direction.UP)), true);
+    const eids = engine.placed.eidsOf(type.objectTypeId);
     return engine.placed.objectIdOf(eids[eids.length - 1]);
 }
 
@@ -275,7 +275,7 @@ test("chunk sync carries the manned assignments", async () => {
 test("a non-directional type spawns facing UP whatever the message says", async () => {
     const engine = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
     const collector = new EventCollector(engine);
-    assert.equal(engine.applyMessage(new CreateObjectMessage(HousingDefinition.typeId, 2, 4, Direction.RIGHT)), true);
+    assert.equal(engine.applyMessage(new CreateObjectMessage(HousingDefinition.objectTypeId, 2, 4, Direction.RIGHT)), true);
     const insert = collector.drain().find(event => event instanceof ObjectInsertEvent);
     assert.equal(insert.direction, Direction.UP);
 });

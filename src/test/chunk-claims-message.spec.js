@@ -35,7 +35,7 @@ async function setup() {
 }
 
 function machineCount(game) {
-    return game.simEngine.placed.eidsOf(BlenderType.typeId).length;
+    return game.simEngine.placed.eidsOf(BlenderType.objectTypeId).length;
 }
 
 test("connect syncs identity, the own name, own claims, and friends", async () => {
@@ -127,11 +127,11 @@ test("a rejected claim answers only the requester", async () => {
 
 test("building in an unclaimed chunk is rejected until claimed", async () => {
     const {game, alice} = await setup();
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), alice);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
     assert.equal(machineCount(game), 0, "unclaimed build rejected");
 
     game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), alice);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
     assert.equal(machineCount(game), 1, "claiming unlocks the chunk");
 });
 
@@ -139,22 +139,22 @@ test("building in a foreign chunk is rejected until the owner grants it", async 
     const {game, alice, bob} = await setup();
     game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
 
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 0, "stranger's build rejected");
 
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), alice);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
     assert.equal(machineCount(game), 1, "owner builds freely");
 
     game.dispatchMessage(new AddFriendMessage(ALICE), bob);
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 10, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 10, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1, "bob's own grant to alice gives him nothing");
 
     game.dispatchMessage(new AddFriendMessage(BOB), alice);
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 10, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 10, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1, "alice's grant alone gives bob nothing under the only-me default");
 
     game.dispatchMessage(new SetChunkPermissionMessage(chunkId(5, 5), ChunkPermission.PERMISSION_FRIENDS), alice);
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 10, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 10, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 2, "alice's grant lets bob build once permission is friends-only");
 });
 
@@ -170,15 +170,15 @@ test("friends permission lets a friend-granted player build, only-me blocks them
     const chunk = chunkId(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
     game.dispatchMessage(new AddFriendMessage(BOB), alice);
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 0, "only-me default blocks bob despite the grant");
 
     game.dispatchMessage(new SetChunkPermissionMessage(chunk, ChunkPermission.PERMISSION_FRIENDS), alice);
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1, "the grant lets bob build once permission is friends-only");
 
     game.dispatchMessage(new SetChunkPermissionMessage(chunk, ChunkPermission.PERMISSION_ONLY_ME), alice);
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 10, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 10, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1, "only-me overrides bob's existing grant");
 });
 
@@ -263,8 +263,8 @@ test("deleting in a foreign chunk is rejected and leaves occupancy intact", asyn
     const {game, alice, bob} = await setup();
     const engine = game.simEngine;
     game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), alice);
-    const eid = engine.placed.eidsOf(BlenderType.typeId)[0];
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
+    const eid = engine.placed.eidsOf(BlenderType.objectTypeId)[0];
     const objectId = engine.placed.objectIdOf(eid);
     const footprint = engine.footprint(BlenderType, 5, 5, Direction.UP);
 
@@ -281,7 +281,7 @@ test("unclaiming a non-empty chunk needs the clear confirmation, which deletes t
     const {game, alice} = await setup();
     const chunk = chunkId(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), alice);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
     alice.events.length = 0;
 
     game.dispatchMessage(new UnclaimChunkMessage(chunk), alice);
@@ -301,7 +301,7 @@ test("a splitting unclaim rejects with WOULD_SPLIT before the non-empty confirma
     game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
     game.dispatchMessage(new ClaimChunkMessage(middle), alice);
     game.dispatchMessage(new ClaimChunkMessage(chunkId(133, 5)), alice);
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 69, 5, Direction.UP), alice);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 69, 5, Direction.UP), alice);
     alice.events.length = 0;
 
     game.dispatchMessage(new UnclaimChunkMessage(middle), alice);
@@ -321,6 +321,6 @@ test("unclaim frees the chunk for other players and tells its viewers", async ()
     const update = bob.events.filter(event => event instanceof ChunkClaimUpdateEvent).at(-1);
     assert.equal(update.playerId, PLAYER_ID_NONE);
     game.dispatchMessage(new ClaimChunkMessage(chunk), bob);
-    game.dispatchMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP), bob);
+    game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1);
 });

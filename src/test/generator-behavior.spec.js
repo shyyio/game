@@ -25,7 +25,7 @@ const DualOutputGeneratorType = new ObjectType({
     behavior: new GeneratorBehavior({
         processingTicks: 1,
         output: ITEM_MAIN,
-        secondaryOutput: {itemType: ITEM_SECONDARY, processingTicks: 4},
+        secondaryOutput: {itemTypeId: ITEM_SECONDARY, processingTicks: 4},
     }),
 });
 
@@ -56,8 +56,8 @@ async function engineWithFixture() {
 
 test("a generator with no input port produces its main output on its own cadence", async () => {
     const engine = await engineWithFixture();
-    engine.applyMessage(new CreateObjectMessage(SingleOutputGeneratorType.typeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(SingleOutputGeneratorType.typeId);
+    engine.applyMessage(new CreateObjectMessage(SingleOutputGeneratorType.objectTypeId, 5, 5, Direction.UP));
+    const [eid] = engine.placed.eidsOf(SingleOutputGeneratorType.objectTypeId);
     const def = engine.components.get("Generator");
     const outPort = def.store.out[def.row(eid)];
 
@@ -74,8 +74,8 @@ test("a generator with no input port produces its main output on its own cadence
 
 test("main and secondary outputs run independent cadences into their own ports", async () => {
     const engine = await engineWithFixture();
-    engine.applyMessage(new CreateObjectMessage(DualOutputGeneratorType.typeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(DualOutputGeneratorType.typeId);
+    engine.applyMessage(new CreateObjectMessage(DualOutputGeneratorType.objectTypeId, 5, 5, Direction.UP));
+    const [eid] = engine.placed.eidsOf(DualOutputGeneratorType.objectTypeId);
     const def = engine.components.get("Generator");
     const row = def.row(eid);
     const outPort = def.store.out[row];
@@ -101,8 +101,8 @@ test("main and secondary outputs run independent cadences into their own ports",
 
 test("a generator with a single output port never wires or touches the second port", async () => {
     const engine = await engineWithFixture();
-    engine.applyMessage(new CreateObjectMessage(SingleOutputGeneratorType.typeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(SingleOutputGeneratorType.typeId);
+    engine.applyMessage(new CreateObjectMessage(SingleOutputGeneratorType.objectTypeId, 5, 5, Direction.UP));
+    const [eid] = engine.placed.eidsOf(SingleOutputGeneratorType.objectTypeId);
     const def = engine.components.get("Generator");
     const row = def.row(eid);
     assert.equal(def.store.out2[row], EMPTY, "no second port was wired");

@@ -102,7 +102,7 @@ test("a lane emits a port-item set when an item pops to its out-port", async () 
 
     assert.equal(sets.length, 1);
     assert.equal(sets[0].portId, engine.lanes.outPortOf(lane));
-    assert.equal(sets[0].itemType, CARGO);
+    assert.equal(sets[0].itemTypeId, CARGO);
 });
 
 // Deleting the tail strands its out-port; the sweep must still emit the clear, or the client's

@@ -98,7 +98,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
             rule.suspended = true;
             return;
         }
-        const written = placed.behaviorFor(placed.typeIdOf(actionEid))
+        const written = placed.behaviorFor(placed.objectTypeIdOf(actionEid))
             .logicWrite(engine, actionEid, rule.actionKey, rule.actionValue);
         if (!written) {
             rule.suspended = true;
@@ -132,8 +132,8 @@ export class LogicTerminalBehavior extends AbstractBehavior {
                 if (eid === undefined) {
                     continue;
                 }
-                const stored = placed.behaviorFor(placed.typeIdOf(eid)).logicStored(engine, eid);
-                if (stored !== null && stored.itemType === condition.itemType) {
+                const stored = placed.behaviorFor(placed.objectTypeIdOf(eid)).logicStored(engine, eid);
+                if (stored !== null && stored.itemTypeId === condition.itemTypeId) {
                     total += stored.amount;
                 }
             }
@@ -143,7 +143,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
         if (eid === null) {
             return null;
         }
-        return placed.behaviorFor(placed.typeIdOf(eid)).logicRead(engine, eid, condition.key);
+        return placed.behaviorFor(placed.objectTypeIdOf(eid)).logicRead(engine, eid, condition.key);
     }
 
     /**

@@ -20,7 +20,7 @@ export class GeneratorBehavior extends AbstractBehavior {
      * @param {number} config.processingTicks
      * @param {number} config.output
      * @param {object} [config.secondaryOutput]
-     * @param {number} config.secondaryOutput.itemType
+     * @param {number} config.secondaryOutput.itemTypeId
      * @param {number} config.secondaryOutput.processingTicks
      */
     constructor({processingTicks, output, secondaryOutput=null}) {
@@ -74,7 +74,7 @@ export class GeneratorBehavior extends AbstractBehavior {
             generator.out2[row] = secondary.port;
             generator.processingTicks2[row] = this.secondaryOutput.processingTicks;
             engine.render.registerPort(secondary.port, secondary.tile.x, secondary.tile.y);
-            syncFluidSource(engine, secondary.port, this.secondaryOutput.itemType);
+            syncFluidSource(engine, secondary.port, this.secondaryOutput.itemTypeId);
         }
     }
 
@@ -143,12 +143,12 @@ export class GeneratorBehavior extends AbstractBehavior {
         const generator = def.store;
         const eids = def.eids;
         for (let row = 0; row < def.count; row += 1) {
-            const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
+            const behavior = placed.behaviorFor(placed.objectTypeIdOf(eids[row]));
             generator.processingTicks[row] = behavior.processingTicks;
             syncFluidSource(engine, generator.out[row], behavior.output);
             if (behavior.hasSecondaryPort) {
                 generator.processingTicks2[row] = behavior.secondaryOutput.processingTicks;
-                syncFluidSource(engine, generator.out2[row], behavior.secondaryOutput.itemType);
+                syncFluidSource(engine, generator.out2[row], behavior.secondaryOutput.itemTypeId);
             }
         }
     }
@@ -163,11 +163,11 @@ export class GeneratorBehavior extends AbstractBehavior {
      * @param {ArrayLike<number>} output
      * @param {ArrayLike<number>} outPort
      * @param {ArrayLike<number>} processingTicks
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} row
      * @returns {void}
      */
-    static _advanceCycle(engine, remaining, carry, output, outPort, processingTicks, itemType, row) {
+    static _advanceCycle(engine, remaining, carry, output, outPort, processingTicks, itemTypeId, row) {
         if (remaining[row] > 0) {
             const next = remaining[row] - 1;
             if (next > 0) {
@@ -179,7 +179,7 @@ export class GeneratorBehavior extends AbstractBehavior {
             }
         }
         if (output[row] === EMPTY) {
-            output[row] = itemType;
+            output[row] = itemTypeId;
             const start = processingTicks[row] - carry[row];
             if (start > 0) {
                 remaining[row] = start;
@@ -210,24 +210,24 @@ export class GeneratorBehavior extends AbstractBehavior {
         const eids = def.eids;
         const count = def.count;
         for (let row = 0; row < count; row += 1) {
-            let itemType = generator.output[row];
-            if (itemType === EMPTY) {
-                itemType = placed.behaviorFor(placed.typeIdOf(eids[row])).output;
+            let itemTypeId = generator.output[row];
+            if (itemTypeId === EMPTY) {
+                itemTypeId = placed.behaviorFor(placed.objectTypeIdOf(eids[row])).output;
             }
             GeneratorBehavior._advanceCycle(
                 engine, generator.remaining, generator.carry, generator.output, generator.out,
-                generator.processingTicks, itemType, row,
+                generator.processingTicks, itemTypeId, row,
             );
             if (generator.out2[row] === NO_EID) {
                 continue;
             }
-            let secondaryItemType = generator.output2[row];
-            if (secondaryItemType === EMPTY) {
-                secondaryItemType = placed.behaviorFor(placed.typeIdOf(eids[row])).secondaryOutput.itemType;
+            let secondaryItemTypeId = generator.output2[row];
+            if (secondaryItemTypeId === EMPTY) {
+                secondaryItemTypeId = placed.behaviorFor(placed.objectTypeIdOf(eids[row])).secondaryOutput.itemTypeId;
             }
             GeneratorBehavior._advanceCycle(
                 engine, generator.remaining2, generator.carry2, generator.output2, generator.out2,
-                generator.processingTicks2, secondaryItemType, row,
+                generator.processingTicks2, secondaryItemTypeId, row,
             );
         }
     }

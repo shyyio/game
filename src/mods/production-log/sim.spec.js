@@ -52,7 +52,7 @@ test("a player's first production of each item type is announced once, batched p
     game.runTick();
     const discovered = eventsOf(alice, ItemsDiscoveredEvent);
     assert.equal(discovered.length, 1);
-    assert.deepEqual(discovered[0].itemTypes, [IRON, COAL]);
+    assert.deepEqual(discovered[0].itemTypeIds, [IRON, COAL]);
     assert.equal(eventsOf(bob, ItemsDiscoveredEvent).length, 0);
 
     game.simEngine.itemProduced.notify(alice.playerId, IRON, 1);
@@ -72,7 +72,7 @@ test("a production log request answers with the player's counts and ranks, their
     const logs = eventsOf(bob, ProductionLogEvent);
     assert.equal(logs.length, 1);
     assert.equal(logs[0].playerId, alice.playerId);
-    assert.deepEqual(logs[0].itemTypes, [IRON, COAL]);
+    assert.deepEqual(logs[0].itemTypeIds, [IRON, COAL]);
     assert.deepEqual(logs[0].counts, [2, 1]);
     assert.deepEqual(logs[0].ranks, [2, 1]);
     assert.ok(bob.events.indexOf(names[0]) < bob.events.indexOf(logs[0]));
@@ -90,7 +90,7 @@ test("a leaderboard request answers one page with the requester's rank, names fi
     game.dispatchMessage(new ItemLeaderboardRequestMessage(IRON, 0), alice);
     const boards = eventsOf(alice, ItemLeaderboardEvent);
     assert.equal(boards.length, 1);
-    assert.equal(boards[0].itemType, IRON);
+    assert.equal(boards[0].itemTypeId, IRON);
     assert.deepEqual(boards[0].playerIds, [bob.playerId, alice.playerId]);
     assert.deepEqual(boards[0].scores, [7, 5]);
     assert.equal(boards[0].requesterRank, 2);

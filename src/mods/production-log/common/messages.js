@@ -44,17 +44,17 @@ function pageOffsetValid(offset) {
 export class ItemLeaderboardRequestMessage extends AbstractMessage {
 
     static wireFields = {
-        itemType: "int32",
+        itemTypeId: "int32",
         offset: "int32",
     };
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} offset first rank of the page, zero-based, a multiple of the page size
      */
-    constructor(itemType, offset) {
+    constructor(itemTypeId, offset) {
         super();
-        this.itemType = itemType;
+        this.itemTypeId = itemTypeId;
         this.offset = offset;
     }
 
@@ -64,6 +64,6 @@ export class ItemLeaderboardRequestMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return Number.isInteger(this.itemType) && this.itemType >= 0 && pageOffsetValid(this.offset);
+        return Number.isInteger(this.itemTypeId) && this.itemTypeId >= 0 && pageOffsetValid(this.offset);
     }
 }

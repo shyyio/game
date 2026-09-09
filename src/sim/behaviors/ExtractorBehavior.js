@@ -152,7 +152,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         const extractor = def.store;
         const eids = def.eids;
         for (let row = 0; row < def.count; row += 1) {
-            const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
+            const behavior = placed.behaviorFor(placed.objectTypeIdOf(eids[row]));
             extractor.processingTicks[row] = behavior.processingTicks;
             const product = behavior.recipes.get(extractor.resourceType[row]);
             if (product !== undefined && engine.isFluid(product)) {
@@ -189,7 +189,7 @@ export class ExtractorBehavior extends AbstractBehavior {
             // Only an idle extractor bound to a resource needs its recipe table, so the behavior hop
             // stays off the countdown path.
             if (extractor.output[row] === EMPTY && extractor.resourceType[row] !== EMPTY) {
-                const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
+                const behavior = placed.behaviorFor(placed.objectTypeIdOf(eids[row]));
                 if (behavior.recipes.has(extractor.resourceType[row])) {
                     extractor.output[row] = behavior.recipes.get(extractor.resourceType[row]);
                     const start = extractor.processingTicks[row] - extractor.carry[row];

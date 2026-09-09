@@ -147,7 +147,7 @@ export class ComponentRegistry {
     /**
      * Registers a component: SoA typed-array columns grown by doubling, tracked for generic
      * serialization. `fields` are {name, kind?, defaultValue?} — kind "eid" marks an entity-reference column
-     * remapped on deserialize, "type" an object typeId and "item" an item type (both carried over
+     * remapped on deserialize, "type" an object objectTypeId and "item" an item type (both carried over
      * when the loadout changes), "f32" a float column (default "i32"); defaultValue is what an unwritten slot holds
      * (default 0). Modules call this so their state round-trips with no bespoke save code.
      * @param {string} name

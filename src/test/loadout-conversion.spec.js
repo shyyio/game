@@ -31,16 +31,16 @@ class GadgetDeclaration extends AbstractModDeclaration {
 
 test("a world converts to a loadout without one of its mods: its objects go, the rest carries over", async () => {
     const before = await makeGameEngine([new ModPackage(new GadgetDeclaration())]);
-    before.applyMessage(new CreateObjectMessage(GadgetType.typeId, 5, 5, Direction.UP));
-    before.applyMessage(new CreateObjectMessage(GadgetType.typeId, 7, 5, Direction.UP));
-    assert.equal(before.placed.eidsOf(GadgetType.typeId).length, 2);
+    before.applyMessage(new CreateObjectMessage(GadgetType.objectTypeId, 5, 5, Direction.UP));
+    before.applyMessage(new CreateObjectMessage(GadgetType.objectTypeId, 7, 5, Direction.UP));
+    assert.equal(before.placed.eidsOf(GadgetType.objectTypeId).length, 2);
 
     const after = await makeGameEngine();
     const next = after.snapshots.loadout;
     assert.deepEqual([...conversionLosses(before.snapshots.serialize(), next).objects], [["ConversionGadget", 2]]);
 
-    before.removeObjectsOfType(GadgetType.typeId);
-    assert.equal(before.placed.eidsOf(GadgetType.typeId).length, 0);
+    before.removeObjectsOfType(GadgetType.objectTypeId);
+    assert.equal(before.placed.eidsOf(GadgetType.objectTypeId).length, 0);
     const converted = convertSnapshot(before.snapshots.serialize(), next, after.components.defs);
     after.snapshots.deserialize(converted);
     assert.deepEqual(after.snapshots.serialize().objectTypeNames, next.typeNames);

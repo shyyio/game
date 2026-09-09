@@ -18,8 +18,8 @@ async function setup() {
 // inputs, so a neighbor asks the port who stands on the other side instead of scanning tiles.
 test("placing an object binds it to its ports' endpoints, deleting it unbinds", async () => {
     const engine = await setup();
-    engine.applyMessage(new CreateObjectMessage(TestMachineType.typeId, 5, 5, Direction.UP));
-    const machine = engine.placed.eidsOf(TestMachineType.typeId)[0];
+    engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 5, 5, Direction.UP));
+    const machine = engine.placed.eidsOf(TestMachineType.objectTypeId)[0];
     const inPort = engine.ports.at(5, 5, Direction.UP);
     const outPort = engine.ports.at(5, 4, Direction.UP);
 
@@ -27,8 +27,8 @@ test("placing an object binds it to its ports' endpoints, deleting it unbinds", 
     assert.deepEqual(engine.ports.producersOf(outPort), [machine], "and produces into its output edge");
     assert.deepEqual(engine.ports.producersOf(inPort), [], "nothing produces into its input yet");
 
-    engine.applyMessage(new CreateObjectMessage(TestLaneType.typeId, 5, 4, Direction.UP));
-    const cell = engine.placed.eidsOf(TestLaneType.typeId)[0];
+    engine.applyMessage(new CreateObjectMessage(TestLaneType.objectTypeId, 5, 4, Direction.UP));
+    const cell = engine.placed.eidsOf(TestLaneType.objectTypeId)[0];
     assert.deepEqual(engine.ports.consumersOf(outPort), [cell], "the cell across the edge consumes the machine's output");
 
     engine.applyMessage(new DeleteObjectMessage(engine.placed.objectIdOf(machine)));
@@ -38,12 +38,12 @@ test("placing an object binds it to its ports' endpoints, deleting it unbinds", 
 
 test("endpoints are rebuilt after a load", async () => {
     const a = await setup();
-    a.applyMessage(new CreateObjectMessage(TestMachineType.typeId, 5, 5, Direction.UP));
+    a.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 5, 5, Direction.UP));
     const snapshot = JSON.parse(JSON.stringify(a.snapshots.serialize()));
 
     const b = await setup();
     b.snapshots.deserialize(snapshot);
-    const machine = b.placed.eidsOf(TestMachineType.typeId)[0];
+    const machine = b.placed.eidsOf(TestMachineType.objectTypeId)[0];
 
     assert.deepEqual(b.ports.producersOf(b.ports.at(5, 4, Direction.UP)), [machine]);
 });

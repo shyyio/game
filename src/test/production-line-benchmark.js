@@ -107,8 +107,8 @@ async function main() {
         seedProfile = await profiler.stop(seedProfilePath);
     }
 
-    const extractors = engine.placed.eidsOf(ExtractorType.typeId).length;
-    const machines = engine.placed.eidsOf(BakeType.typeId).length;
+    const extractors = engine.placed.eidsOf(ExtractorType.objectTypeId).length;
+    const machines = engine.placed.eidsOf(BakeType.objectTypeId).length;
     console.log(
         `Built in ${(buildMs / MS_PER_SECOND).toFixed(1)}s: `
         + `${extractors.toLocaleString()} extractors, ${machines.toLocaleString()} machines.`

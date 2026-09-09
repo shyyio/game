@@ -248,13 +248,13 @@ export class ProductionPanelLayer extends Container {
 
     /**
      * @private
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {string}
      */
-    _itemName(itemType) {
-        const definition = this._items.get(itemType);
+    _itemName(itemTypeId) {
+        const definition = this._items.get(itemTypeId);
         if (definition === undefined) {
-            return `Item ${itemType}`;
+            return `Item ${itemTypeId}`;
         }
         return definition.name;
     }

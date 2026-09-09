@@ -1,6 +1,6 @@
 // Every mod this build carries, as directory names in load order: the mods in src/mods, then the
 // ones in dev-mods, each root sorted by name. A dev mod loads after every built-in one, so what a
-// checkout is working on can never renumber the positional typeIds and wireIds a save is keyed to.
+// checkout is working on can never renumber the positional objectTypeIds and wireIds a save is keyed to.
 //
 // Names only, and no mod is loaded to produce them — the mods screen draws a row per mod, and must
 // not drag the mods themselves (and pixi with them) into the main bundle. The modules behind these

@@ -57,8 +57,8 @@ async function engineWithFixture() {
 
 test("a chance=1 byproduct lands in the second output port alongside the main output", async () => {
     const engine = await engineWithFixture();
-    engine.applyMessage(new CreateObjectMessage(AlwaysByproductType.typeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(AlwaysByproductType.typeId);
+    engine.applyMessage(new CreateObjectMessage(AlwaysByproductType.objectTypeId, 5, 5, Direction.UP));
+    const [eid] = engine.placed.eidsOf(AlwaysByproductType.objectTypeId);
     const def = engine.components.get("Machine");
     const row = def.row(eid);
     const inPort = def.store.in0[row];
@@ -76,8 +76,8 @@ test("a chance=1 byproduct lands in the second output port alongside the main ou
 
 test("a chance=0 recipe never produces a byproduct", async () => {
     const engine = await engineWithFixture();
-    engine.applyMessage(new CreateObjectMessage(NeverByproductType.typeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(NeverByproductType.typeId);
+    engine.applyMessage(new CreateObjectMessage(NeverByproductType.objectTypeId, 5, 5, Direction.UP));
+    const [eid] = engine.placed.eidsOf(NeverByproductType.objectTypeId);
     const def = engine.components.get("Machine");
     const row = def.row(eid);
     const inPort = def.store.in0[row];
@@ -99,8 +99,8 @@ test("a chance=0 recipe never produces a byproduct", async () => {
 
 test("a machine with no byproduct-configured recipe never touches the second port", async () => {
     const engine = await engineWithFixture();
-    engine.applyMessage(new CreateObjectMessage(NeverByproductType.typeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(NeverByproductType.typeId);
+    engine.applyMessage(new CreateObjectMessage(NeverByproductType.objectTypeId, 5, 5, Direction.UP));
+    const [eid] = engine.placed.eidsOf(NeverByproductType.objectTypeId);
     const def = engine.components.get("Machine");
     const row = def.row(eid);
     assert.notEqual(def.store.out2[row], EMPTY, "the second port was still wired (declared on the object type)");

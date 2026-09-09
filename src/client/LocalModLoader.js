@@ -1,5 +1,5 @@
 // Turns a chosen local loadout into ModPackages, in its order — which is what assigns the positional
-// typeIds after the base loadout's.
+// objectTypeIds after the base loadout's.
 
 import {ModFileStore, loadModPackage} from "@/client/ModPackageLoader.js";
 

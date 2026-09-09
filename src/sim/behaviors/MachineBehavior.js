@@ -305,7 +305,7 @@ export class MachineBehavior extends AbstractBehavior {
         const machine = def.store;
         const eids = def.eids;
         for (let row = 0; row < def.count; row += 1) {
-            const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
+            const behavior = placed.behaviorFor(placed.objectTypeIdOf(eids[row]));
             machine.inputCount[row] = behavior.inputCount;
             machine.processingTicks[row] = behavior.processingTicks;
             syncFluidSource(engine, machine.out[row], machine.output[row]);
@@ -418,7 +418,7 @@ export class MachineBehavior extends AbstractBehavior {
             return EMPTY;
         }
         if (deterministicRoll(eid, clock) < byproduct.chance) {
-            return byproduct.itemType;
+            return byproduct.itemTypeId;
         }
         return EMPTY;
     }
@@ -506,7 +506,7 @@ export class MachineBehavior extends AbstractBehavior {
             if (idle && filled === inputCount) {
                 // Only the recipe match needs the behavior instance, and only on the tick a set
                 // completes — rare next to the per-tick passes above.
-                const behavior = placed.behaviorFor(placed.typeIdOf(eids[row]));
+                const behavior = placed.behaviorFor(placed.objectTypeIdOf(eids[row]));
                 output[row] = behavior._resolveRecipe(slotCols, row);
                 syncFluidSource(engine, out[row], output[row]);
                 if (behavior.hasByproductPort) {

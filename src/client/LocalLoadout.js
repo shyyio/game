@@ -5,7 +5,7 @@
 // is what pulls the client SDK in.
 //
 // The base loadout the client ships (@/mods/clientLoadout.js) registers first, in its own fixed
-// order, so a chosen mod only ever appends typeIds after it; that is the built-in mode, and what an
+// order, so a chosen mod only ever appends objectTypeIds after it; that is the built-in mode, and what an
 // empty loadout means. With built-in mods off, the base mods are chosen from the registry like any
 // other, version and all.
 //
@@ -261,7 +261,7 @@ export class LocalLoadout {
 
     /**
      * `mod` appended, or swapped in where a mod of that name already sits (a version change keeps
-     * its position, since moving it would shift the typeIds after it).
+     * its position, since moving it would shift the objectTypeIds after it).
      * @param {LocalMod} mod
      * @returns {LocalLoadout}
      */
@@ -377,7 +377,7 @@ export function refreshLoadout(loadout, listings) {
 
 /**
  * The mod list a server would run this loadout from. A name the server already runs keeps its entry
- * and its position, so no mod's positional typeId moves; the rest follow in load order.
+ * and its position, so no mod's positional objectTypeId moves; the rest follow in load order.
  * @param {LocalLoadout} loadout
  * @param {ModLockfile} [current] the server's mods as they are now
  * @returns {object} a lockfile, as JSON

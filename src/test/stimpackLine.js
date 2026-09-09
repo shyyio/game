@@ -70,12 +70,12 @@ function resourceLeaf(resourceType) {
 }
 
 /**
- * @param {number} itemType
+ * @param {number} itemTypeId
  * @param {number} price
  * @returns {object}
  */
-function terminalLeaf(itemType, price) {
-    return {kind: "terminal", name: "TradingTerminal", itemType, price, children: []};
+function terminalLeaf(itemTypeId, price) {
+    return {kind: "terminal", name: "TradingTerminal", itemTypeId, price, children: []};
 }
 
 // The whole chain, root (Fill, makes Stimpack) down to leaves (raw resources / NPC buy orders).
@@ -198,18 +198,18 @@ function placeNode(engine, node, originX, originY, occupied) {
     node.x = originX + node.lane * LANE_WIDTH;
     node.y = originY + node.depth * TIER_HEIGHT;
     if (node.kind === "resource") {
-        engine.applyMessage(new CreateObjectMessage(node.resourceType.typeId, node.x, node.y, Direction.UP));
-        engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, node.x, node.y, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(node.resourceType.objectTypeId, node.x, node.y, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, node.x, node.y, Direction.UP));
         node.outputPort = ExtractorType.outputPorts[0];
         markFootprint(occupied, ExtractorType, node.x, node.y);
     } else if (node.kind === "terminal") {
-        engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, node.x, node.y, Direction.UP));
-        const eid = engine.placed.eidsOf(TradingTerminalType.typeId).at(-1);
+        engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, node.x, node.y, Direction.UP));
+        const eid = engine.placed.eidsOf(TradingTerminalType.objectTypeId).at(-1);
         node.objectId = engine.placed.objectIdOf(eid);
         node.outputPort = TradingTerminalType.outputPorts[0];
         markFootprint(occupied, TradingTerminalType, node.x, node.y);
     } else {
-        engine.applyMessage(new CreateObjectMessage(node.type.typeId, node.x, node.y, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(node.type.objectTypeId, node.x, node.y, Direction.UP));
         node.outputPort = node.type.outputPorts[0];
         markFootprint(occupied, node.type, node.x, node.y);
     }
@@ -229,7 +229,7 @@ function placeNode(engine, node, originX, originY, occupied) {
 function configureTerminals(game, node) {
     if (node.kind === "terminal") {
         const session = new CapturingSession(STIMPACK_FACTORY_PLAYER_ID);
-        game.dispatchMessage(new ConfigureTradingTerminalMessage(node.objectId, MARKET_MODE_BUY, node.itemType, node.price), session);
+        game.dispatchMessage(new ConfigureTradingTerminalMessage(node.objectId, MARKET_MODE_BUY, node.itemTypeId, node.price), session);
         return;
     }
     for (const edge of node.children) {
@@ -319,7 +319,7 @@ function layPath(engine, Definition, from, to, occupied) {
                 direction = Direction.LEFT;
             }
         }
-        engine.applyMessage(new CreateObjectMessage(Definition.typeId, cur.x, cur.y, direction));
+        engine.applyMessage(new CreateObjectMessage(Definition.objectTypeId, cur.x, cur.y, direction));
     }
 }
 

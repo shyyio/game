@@ -7,7 +7,7 @@ import {
 
 /**
  * One condition of a rule. DEVICE kind reads `deviceId`'s `key`; STORED kind sums the stored
- * `itemType` across the network, or one container when `deviceId` is set (unused fields hold 0).
+ * `itemTypeId` across the network, or one container when `deviceId` is set (unused fields hold 0).
  * All fields integer.
  */
 export class LogicCondition {
@@ -15,15 +15,15 @@ export class LogicCondition {
     /**
      * @param {number} kind - a LOGIC_CONDITION_KIND_* value
      * @param {number} deviceId
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} key
      * @param {number} comparator - a LOGIC_COMPARATOR_* value
      * @param {number} value
      */
-    constructor(kind, deviceId, itemType, key, comparator, value) {
+    constructor(kind, deviceId, itemTypeId, key, comparator, value) {
         this.kind = kind;
         this.deviceId = deviceId;
-        this.itemType = itemType;
+        this.itemTypeId = itemTypeId;
         this.key = key;
         this.comparator = comparator;
         this.value = value;
@@ -122,7 +122,7 @@ export class LogicRules {
                         condition_index: conditionIndex,
                         kind: condition.kind,
                         device_id: condition.deviceId,
-                        item_type: condition.itemType,
+                        item_type: condition.itemTypeId,
                         key: condition.key,
                         comparator: condition.comparator,
                         value: condition.value,
@@ -203,7 +203,7 @@ export class LogicRules {
 }
 
 /**
- * A DEVICE condition; the unused itemType field holds 0.
+ * A DEVICE condition; the unused itemTypeId field holds 0.
  * @param {number} deviceId
  * @param {number} key
  * @param {number} comparator
@@ -217,12 +217,12 @@ export function deviceCondition(deviceId, key, comparator, value) {
 /**
  * A STORED condition; deviceId 0 sums the whole network, else one container. The unused key
  * field holds 0.
- * @param {number} itemType
+ * @param {number} itemTypeId
  * @param {number} comparator
  * @param {number} value
  * @param {number} [deviceId]
  * @returns {LogicCondition}
  */
-export function storedCondition(itemType, comparator, value, deviceId = 0) {
-    return new LogicCondition(LOGIC_CONDITION_KIND_STORED, deviceId, itemType, 0, comparator, value);
+export function storedCondition(itemTypeId, comparator, value, deviceId = 0) {
+    return new LogicCondition(LOGIC_CONDITION_KIND_STORED, deviceId, itemTypeId, 0, comparator, value);
 }

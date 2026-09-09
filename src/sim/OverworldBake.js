@@ -6,7 +6,7 @@ const REGION_HALF = REGION_SIZE / 2;
 const TILES_PER_CHUNK = CHUNK_SIZE * CHUNK_SIZE;
 
 /**
- * One chunk's baked tile picture: typeId + 1 per tile, 0 = empty.
+ * One chunk's baked tile picture: objectTypeId + 1 per tile, 0 = empty.
  */
 class OverworldChunkBake {
 
@@ -73,7 +73,7 @@ export class OverworldBake {
     _appendRuns(event, chunk, tiles) {
         const starts = [];
         const lengths = [];
-        const typeIds = [];
+        const objectTypeIds = [];
         for (let row = 0; row < CHUNK_SIZE; row += 1) {
             const rowStart = row * CHUNK_SIZE;
             let runStart = -1;
@@ -91,7 +91,7 @@ export class OverworldBake {
                 if (runValue !== 0) {
                     starts.push(runStart);
                     lengths.push(rowStart + column - runStart);
-                    typeIds.push(runValue - 1);
+                    objectTypeIds.push(runValue - 1);
                 }
                 if (value !== 0) {
                     runStart = rowStart + column;
@@ -99,7 +99,7 @@ export class OverworldBake {
                 runValue = value;
             }
         }
-        event.addChunk(chunk, starts, lengths, typeIds);
+        event.addChunk(chunk, starts, lengths, objectTypeIds);
     }
 
     /**
@@ -117,8 +117,8 @@ export class OverworldBake {
         // Higher drawLayerIndex paints last, matching map-mode z-order; objectId ties keep it
         // deterministic.
         const sorted = [...eids].sort((a, b) => {
-            const layerA = this.placed.typeFor(this.placed.typeIdOf(a)).drawLayerIndex;
-            const layerB = this.placed.typeFor(this.placed.typeIdOf(b)).drawLayerIndex;
+            const layerA = this.placed.typeFor(this.placed.objectTypeIdOf(a)).drawLayerIndex;
+            const layerB = this.placed.typeFor(this.placed.objectTypeIdOf(b)).drawLayerIndex;
             if (layerA !== layerB) {
                 return layerA - layerB;
             }
@@ -134,13 +134,13 @@ export class OverworldBake {
         }
         let filled = 0;
         for (const eid of sorted) {
-            const type = this.placed.typeFor(this.placed.typeIdOf(eid));
+            const type = this.placed.typeFor(this.placed.objectTypeIdOf(eid));
             if (!type.overworldVisible) {
                 continue;
             }
             const baseX = position.x[eid] - origin.x;
             const baseY = position.y[eid] - origin.y;
-            const value = type.typeId + 1;
+            const value = type.objectTypeId + 1;
             for (const cell of type.geometry.tiles(position.direction[eid])) {
                 const offset = (baseY + cell.y) * CHUNK_SIZE + baseX + cell.x;
                 if (bake.tiles[offset] === 0) {

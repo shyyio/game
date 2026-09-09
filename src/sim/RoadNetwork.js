@@ -255,7 +255,7 @@ export class RoadNetwork {
         if (eid === undefined) {
             return null;
         }
-        const behavior = this.placed.behaviorFor(this.placed.typeIdOf(eid));
+        const behavior = this.placed.behaviorFor(this.placed.objectTypeIdOf(eid));
         if (behavior.workerSupply <= 0) {
             return null;
         }
@@ -337,7 +337,7 @@ export class RoadNetwork {
         this._tiles = new Map();
         const def = this.placed.def;
         for (let row = 0; row < def.count; row += 1) {
-            const behavior = this.placed.behaviorFor(def.store.typeId[row]);
+            const behavior = this.placed.behaviorFor(def.store.objectTypeId[row]);
             if (!(behavior instanceof RoadBehavior)) {
                 continue;
             }

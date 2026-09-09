@@ -13,13 +13,13 @@ test("a vertical tunnel and a horizontal belt cross on the same tile and flow in
     const engine = await makeGameEngine();
 
     // Vertical UP tunnel down column x=0: tunnel-down (0,4), tunnel-up (0,1) -> undergrounds (0,3),(0,2); feeder (0,5).
-    engine.applyMessage(new CreateObjectMessage(BeltTunnelDownDefinition.typeId, 0, 4, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(BeltTunnelUpDefinition.typeId, 0, 1, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, 0, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltTunnelDownDefinition.objectTypeId, 0, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltTunnelUpDefinition.objectTypeId, 0, 1, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, 0, 5, Direction.UP));
 
     // Horizontal RIGHT belt across row y=3, passing over the underground at (0,3).
     for (const x of [-1, 0, 1, 2]) {
-        engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, x, 3, Direction.RIGHT));
+        engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, x, 3, Direction.RIGHT));
     }
 
     // Tile (0,3) holds two belts on different axes.

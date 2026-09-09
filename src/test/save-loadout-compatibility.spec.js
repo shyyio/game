@@ -25,7 +25,7 @@ test("a reordered/removed object type is rejected with a clear error", async () 
     const engine = await makeGameEngine();
     const snapshot = engine.snapshots.serialize();
     snapshot.objectTypeNames = [...snapshot.objectTypeNames];
-    // Swap two entries, simulating a mod reorder that shifted every typeId after it.
+    // Swap two entries, simulating a mod reorder that shifted every objectTypeId after it.
     [snapshot.objectTypeNames[0], snapshot.objectTypeNames[1]] = [snapshot.objectTypeNames[1], snapshot.objectTypeNames[0]];
 
     const restored = await makeGameEngine();

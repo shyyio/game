@@ -176,7 +176,7 @@ export class WorkerAllocation {
         if (eid === undefined) {
             return;
         }
-        const behavior = this.placed.behaviorFor(this.placed.typeIdOf(eid));
+        const behavior = this.placed.behaviorFor(this.placed.objectTypeIdOf(eid));
         if (behavior.workerCost <= 0) {
             return;
         }

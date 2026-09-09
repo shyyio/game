@@ -18,7 +18,7 @@ export class AbstractModDeclaration {
 
     /**
      * The placeable object types this mod adds; registration order across the loadout assigns
-     * each its typeId at ModRegistry.freeze().
+     * each its objectTypeId at ModRegistry.freeze().
      * @returns {ObjectType[]}
      */
     get objectTypes() {

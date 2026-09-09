@@ -124,7 +124,7 @@ export class BeltTool extends AbstractTool {
             }
             this.session.sendMessage(new DeleteObjectMessage(occupant.id));
         }
-        this.session.sendMessage(new CreateObjectMessage(BeltDefinition.typeId, tileX, tileY, direction));
+        this.session.sendMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, tileX, tileY, direction));
         Haptics.tap();
     }
 

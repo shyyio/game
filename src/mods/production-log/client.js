@@ -58,20 +58,20 @@ export class ProductionLogClientMod extends AbstractClientMod {
         if (!(event instanceof ItemsDiscoveredEvent)) {
             return;
         }
-        client.hud.notify(this._discoveryText(event.itemTypes, client.modRegistry.items));
+        client.hud.notify(this._discoveryText(event.itemTypeIds, client.modRegistry.items));
         this._logPanel.refreshOwn();
     }
 
     /**
      * @private
-     * @param {number[]} itemTypes
+     * @param {number[]} itemTypeIds
      * @param {ItemRegistry} items
      * @returns {string}
      */
-    _discoveryText(itemTypes, items) {
-        if (itemTypes.length === 1) {
-            return `New item: ${items.require(itemTypes[0]).name}`;
+    _discoveryText(itemTypeIds, items) {
+        if (itemTypeIds.length === 1) {
+            return `New item: ${items.require(itemTypeIds[0]).name}`;
         }
-        return `${itemTypes.length} new items`;
+        return `${itemTypeIds.length} new items`;
     }
 }

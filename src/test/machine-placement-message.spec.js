@@ -19,10 +19,10 @@ test("a machine placed via message adopts a belt, cooks its input, and deletes",
     const collector = new EventCollector(engine);
 
     // Machine at (5,5); belt at (5,6) UP feeds its input edge (5,5).
-    assert.equal(engine.applyMessage(new CreateObjectMessage(TestMachineType.typeId, 5, 5, Direction.UP)), true);
+    assert.equal(engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 5, 5, Direction.UP)), true);
     const insert = collector.drain().find(event => event instanceof ObjectInsertEvent);
     assert.ok(insert, "ObjectInsertEvent emitted");
-    assert.equal(insert.typeId, TestMachineType.typeId);
+    assert.equal(insert.objectTypeId, TestMachineType.objectTypeId);
 
     const belt = beltsOf(engine).placeBelt(5, 6, Direction.UP);
     // Feed the machine's recipe input; it should produce the cooked output.

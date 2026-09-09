@@ -5,11 +5,11 @@
 export class MarketListingEntry {
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number|null} npcPrice fixed NPC price, or null for a player-market-only item
      */
-    constructor(itemType, npcPrice) {
-        this.itemType = itemType;
+    constructor(itemTypeId, npcPrice) {
+        this.itemTypeId = itemTypeId;
         this.npcPrice = npcPrice;
     }
 }

@@ -74,7 +74,7 @@ async function makeRuntime(t, json = {}, baseDir = process.cwd(), overridden = [
         },
         loadoutFor: async config => {
             loadouts.push(config);
-            return {typeNames: config.lockfile.mods.map(mod => `${mod.name}-type`), itemTypes: new Set()};
+            return {typeNames: config.lockfile.mods.map(mod => `${mod.name}-type`), itemTypeIds: new Set()};
         },
         deleteWorldFiles: config => {
             if (config.db.endsWith("locked.sqlite3")) {

@@ -51,7 +51,7 @@ export class GameMetrics {
             (type, playerId, category, amount, tag) => this.record(type, playerId, category, amount, tag),
         );
         simEngine.itemProduced.add(
-            (playerId, itemType, amount) => this.record(METRICS_FACT_TYPE_ITEM_PRODUCED, playerId, itemType, amount),
+            (playerId, itemTypeId, amount) => this.record(METRICS_FACT_TYPE_ITEM_PRODUCED, playerId, itemTypeId, amount),
         );
 
         /**

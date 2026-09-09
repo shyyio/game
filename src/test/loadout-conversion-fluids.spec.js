@@ -17,9 +17,9 @@ import {makeGameEngine} from "@/test/ecsSim.js";
  */
 async function filled() {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 0, 2, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 0, 3, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(TankDefinition.typeId, 0, 0, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 0, 2, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 0, 3, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TankDefinition.objectTypeId, 0, 0, Direction.UP));
     pipesOf(engine).addFluid(0, 2, FLUID_TYPE_WATER, 8);
     for (let tick = 0; tick < 4; tick += 1) {
         engine.tickAll();
@@ -51,12 +51,12 @@ function withFluidLost(engine) {
 test("a tank whose fluid the loadout dropped comes back empty, not holding untyped units", async () => {
     const engine = await filled();
     const def = engine.components.get("Tank");
-    assert.ok(def.store.amount[def.row(engine.placed.eidsOf(TankDefinition.typeId)[0])] > 0);
+    assert.ok(def.store.amount[def.row(engine.placed.eidsOf(TankDefinition.objectTypeId)[0])] > 0);
 
     const restored = await makeGameEngine();
     restored.snapshots.deserialize(withFluidLost(engine));
     const restoredDef = restored.components.get("Tank");
-    const row = restoredDef.row(restored.placed.eidsOf(TankDefinition.typeId)[0]);
+    const row = restoredDef.row(restored.placed.eidsOf(TankDefinition.objectTypeId)[0]);
     assert.deepEqual(
         [restoredDef.store.fluidType[row], restoredDef.store.amount[row]],
         [EMPTY, 0],

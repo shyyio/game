@@ -225,7 +225,7 @@ test("a second surface cell cannot occupy the same tile, and delete frees it", a
 // cell before it.
 test("a head fed on its flank by a machine takes that edge as its parent edge and in-port", async () => {
     const engine = await setup();
-    engine.applyMessage(new CreateObjectMessage(TestMachineType.typeId, 4, 5, Direction.RIGHT));
+    engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 4, 5, Direction.RIGHT));
     placeLane(engine, 5, 5, Direction.UP);
     placeLane(engine, 5, 4, Direction.UP);
 
@@ -251,7 +251,7 @@ test("a machine placed beside a finished lane head takes its flank as the in-por
     const head = engine.placed.eidAt(5, 5, LAYER_SURFACE);
     assert.equal(engine.lanes.parentEdgeOf(head), Direction.UP, "the head starts on its straight back edge");
 
-    engine.applyMessage(new CreateObjectMessage(TestMachineType.typeId, 4, 5, Direction.RIGHT));
+    engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 4, 5, Direction.RIGHT));
 
     const lane = laneAt(engine, 5, 5);
     assert.equal(engine.lanes.parentEdgeOf(head), Direction.RIGHT, "the machine's edge became the parent edge");
@@ -271,7 +271,7 @@ test("deleting the machine returns the head to its back edge", async () => {
     const engine = await setup();
     placeLane(engine, 5, 5, Direction.UP);
     placeLane(engine, 5, 4, Direction.UP);
-    engine.applyMessage(new CreateObjectMessage(TestMachineType.typeId, 4, 5, Direction.RIGHT));
+    engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 4, 5, Direction.RIGHT));
     const head = engine.placed.eidAt(5, 5, LAYER_SURFACE);
     const machine = engine.placed.eidAt(4, 5, LAYER_SURFACE);
     assert.equal(engine.lanes.parentEdgeOf(head), Direction.RIGHT, "the machine feeds the head's flank");

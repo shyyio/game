@@ -22,16 +22,16 @@ export class PlacedObjects {
         this.engine = engine;
         // Where a placed object sits lives on the shared Position component, not here.
         this.def = engine.components.define("PlacedObject", [
-            {name: "typeId", kind: "type"},
+            {name: "objectTypeId", kind: "type"},
             {name: "objectId", defaultValue: NO_EID},
             // Who placed it, for record keeping: a friend building in your chunk is recorded as
             // themselves. Economics read claimOwnerOf instead, which follows the ground.
             {name: "placedBy", defaultValue: PLAYER_ID_NONE},
         ], {sparse: true});
 
-        // typeId -> ObjectType, derived types only.
+        // objectTypeId -> ObjectType, derived types only.
         this._types = new Map();
-        // typeId -> behavior, a dense array over the positional typeIds: the tick loops resolve a
+        // objectTypeId -> behavior, a dense array over the positional objectTypeIds: the tick loops resolve a
         // behavior per entity per tick, so this stays off a Map lookup.
         this._behaviors = [];
         this._eidByObjectId = new Map();
@@ -49,8 +49,8 @@ export class PlacedObjects {
         engine.snapshots.registerRebuildHook(() => this._rebuild());
 
         for (const type of registry.objectTypes) {
-            this._types.set(type.typeId, type);
-            this._behaviors[type.typeId] = type.behavior;
+            this._types.set(type.objectTypeId, type);
+            this._behaviors[type.objectTypeId] = type.behavior;
         }
     }
 
@@ -78,8 +78,8 @@ export class PlacedObjects {
      * @param {number} eid
      * @returns {number}
      */
-    typeIdOf(eid) {
-        return this.def.store.typeId[this.def.row(eid)];
+    objectTypeIdOf(eid) {
+        return this.def.store.objectTypeId[this.def.row(eid)];
     }
 
     /**
@@ -113,34 +113,34 @@ export class PlacedObjects {
     }
 
     /**
-     * The behavior instance owning `typeId`'s entities.
-     * @param {number} typeId
+     * The behavior instance owning `objectTypeId`'s entities.
+     * @param {number} objectTypeId
      * @returns {AbstractBehavior}
      */
-    behaviorFor(typeId) {
-        return this._behaviors[typeId];
+    behaviorFor(objectTypeId) {
+        return this._behaviors[objectTypeId];
     }
 
     /**
-     * The ObjectType with `typeId`, derived types only.
-     * @param {number} typeId
+     * The ObjectType with `objectTypeId`, derived types only.
+     * @param {number} objectTypeId
      * @returns {ObjectType|undefined}
      */
-    typeFor(typeId) {
-        return this._types.get(typeId);
+    typeFor(objectTypeId) {
+        return this._types.get(objectTypeId);
     }
 
     /**
      * The placed entities of one type.
-     * @param {number} typeId
+     * @param {number} objectTypeId
      * @returns {number[]}
      */
-    eidsOf(typeId) {
-        const column = this.def.store.typeId;
+    eidsOf(objectTypeId) {
+        const column = this.def.store.objectTypeId;
         const eids = this.def.eids;
         const matches = [];
         for (let row = 0; row < this.def.count; row += 1) {
-            if (column[row] === typeId) {
+            if (column[row] === objectTypeId) {
                 matches.push(eids[row]);
             }
         }
@@ -170,17 +170,17 @@ export class PlacedObjects {
      * Places an object as the engine rather than a player, so sim code adds one without replaying a
      * message.
      * @param {object} config
-     * @param {number} config.typeId
+     * @param {number} config.objectTypeId
      * @param {number} config.tileX
      * @param {number} config.tileY
      * @param {Direction} config.direction
      * @param {number} [config.placedBy]
      * @returns {number} the eid, NO_EID when a guard or an occupied cell refused it
      */
-    spawn({typeId, tileX, tileY, direction, placedBy = PLAYER_ID_NONE}) {
-        const message = new CreateObjectMessage(typeId, tileX, tileY, direction);
+    spawn({objectTypeId, tileX, tileY, direction, placedBy = PLAYER_ID_NONE}) {
+        const message = new CreateObjectMessage(objectTypeId, tileX, tileY, direction);
         this._place(message, placedBy);
-        const type = this._types.get(typeId);
+        const type = this._types.get(objectTypeId);
         if (type === undefined) {
             return NO_EID;
         }
@@ -267,7 +267,7 @@ export class PlacedObjects {
      * @returns {boolean}
      */
     _place(message, playerId) {
-        const type = this._types.get(message.typeId);
+        const type = this._types.get(message.objectTypeId);
         if (type === undefined) {
             return false;
         }
@@ -293,7 +293,7 @@ export class PlacedObjects {
         const eid = engine.components.createEntity(this.def);
         const objectId = engine.createObjectId();
         const row = this.def.row(eid);
-        this.def.store.typeId[row] = type.typeId;
+        this.def.store.objectTypeId[row] = type.objectTypeId;
         this.def.store.objectId[row] = objectId;
         this.def.store.placedBy[row] = playerId;
         engine.space.setPosition(eid, message.x, message.y, message.direction);
@@ -311,8 +311,8 @@ export class PlacedObjects {
         this._notifyChunkChanged(chunkId(message.x, message.y));
         engine.notifySpawn(eid, objectId);
         const portIds = type.behavior.renderedPortIds(engine, eid);
-        engine.emitEvent(new ObjectInsertEvent(type.typeId, objectId, message.x, message.y, message.direction, portIds));
-        engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_PLACED, playerId, type.typeId, 1);
+        engine.emitEvent(new ObjectInsertEvent(type.objectTypeId, objectId, message.x, message.y, message.direction, portIds));
+        engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_PLACED, playerId, type.objectTypeId, 1);
         return true;
     }
 
@@ -330,14 +330,14 @@ export class PlacedObjects {
         }
         const engine = this.engine;
         const position = engine.Position;
-        const type = this._types.get(this.typeIdOf(eid));
+        const type = this._types.get(this.objectTypeIdOf(eid));
         engine.ports.unbindEndpoints(eid);
         type.behavior.onDespawn(engine, eid);
         engine.notifyDespawn(eid, objectId);
         const x = position.x[eid];
         const y = position.y[eid];
-        engine.emitEvent(new ObjectDeleteEvent(type.typeId, objectId, x, y));
-        engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_DESPAWNED, playerId, type.typeId, 1);
+        engine.emitEvent(new ObjectDeleteEvent(type.objectTypeId, objectId, x, y));
+        engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_DESPAWNED, playerId, type.objectTypeId, 1);
         // Before the destroy, which recycles the eid and may clear its position.
         this._unindexChunk(eid, x, y);
         engine.components.destroyEntity(eid);
@@ -401,12 +401,12 @@ export class PlacedObjects {
         const position = this.engine.Position;
         for (const eid of eids) {
             const row = this.def.row(eid);
-            const type = this._types.get(placedObject.typeId[row]);
+            const type = this._types.get(placedObject.objectTypeId[row]);
             if (batch === null) {
                 batch = new ObjectSyncBatchEvent(origin.x, origin.y);
             }
             batch.add(
-                type.typeId, placedObject.objectId[row], position.x[eid], position.y[eid], position.direction[eid],
+                type.objectTypeId, placedObject.objectId[row], position.x[eid], position.y[eid], position.direction[eid],
                 type.behavior.renderedPortIds(this.engine, eid),
             );
         }
@@ -426,7 +426,7 @@ export class PlacedObjects {
         if (eid === undefined) {
             return null;
         }
-        const type = this._types.get(this.typeIdOf(eid));
+        const type = this._types.get(this.objectTypeIdOf(eid));
         if (!type.inspectable) {
             return null;
         }
@@ -449,7 +449,7 @@ export class PlacedObjects {
             const eid = eids[row];
             this._eidByObjectId.set(placedObject.objectId[row], eid);
             this._indexChunk(eid, position.x[eid], position.y[eid]);
-            const type = this._types.get(placedObject.typeId[row]);
+            const type = this._types.get(placedObject.objectTypeId[row]);
             this.engine.ports.bindEndpoints(eid, type, position.x[eid], position.y[eid], position.direction[eid]);
             type.behavior.resyncRenderedPorts(this.engine, eid);
         }

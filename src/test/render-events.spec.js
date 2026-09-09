@@ -28,7 +28,7 @@ test("rendered out-ports emit port-item set/clear deltas on change only", async 
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemSetEvent);
     assert.equal(events[0].portId, s.out_a);
-    assert.equal(events[0].itemType, ITEM);
+    assert.equal(events[0].itemTypeId, ITEM);
 
     engine.tickAll();
     assert.deepEqual(collector.drain(), []);
@@ -64,7 +64,7 @@ test("a render pass emits one port-item batch per chunk", async () => {
     assert.equal(emitted.length, 2, "one batch per chunk");
     const near = emitted.find(batch => batch.chunk === chunkId(5, 4));
     assert.deepEqual(near.setPortIds, [s.out_a, s.out_b]);
-    assert.deepEqual(near.setItemTypes, [ITEM, ITEM]);
+    assert.deepEqual(near.setItemTypeIds, [ITEM, ITEM]);
     assert.deepEqual(near.clearPortIds, []);
 });
 
@@ -133,7 +133,7 @@ test("a consumed port refilled the same tick emits clear then set", async () => 
     assert.ok(events[0] instanceof PortItemClearEvent);
     assert.equal(events[0].consumed, 1);
     assert.ok(events[1] instanceof PortItemSetEvent);
-    assert.equal(events[1].itemType, NEXT_ITEM);
+    assert.equal(events[1].itemTypeId, NEXT_ITEM);
 });
 
 // A mod taking a rendered port's item and refilling it in one tick (full-throughput ingest) still
@@ -149,7 +149,7 @@ test("a mod-emptied port refilled the same tick emits clear then set", async () 
     assert.ok(events[0] instanceof PortItemClearEvent);
     assert.equal(events[0].consumed, 0);
     assert.ok(events[1] instanceof PortItemSetEvent);
-    assert.equal(events[1].itemType, ITEM);
+    assert.equal(events[1].itemTypeId, ITEM);
 });
 
 // The splitter transfers out of its in-port like any consumer, so the rendered feed item glides

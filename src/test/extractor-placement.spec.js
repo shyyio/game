@@ -15,14 +15,14 @@ async function setup() {
 test("an extractor on water produces the water item into its output port", async () => {
     const engine = await setup();
     const collector = new EventCollector(engine);
-    engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 5, 5, Direction.UP));
-    assert.equal(engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 5, 5, Direction.UP)), true);
-    assert.equal(engine.placed.eidsOf(ExtractorType.typeId).length, 1, "extractor placed on the resource");
+    engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 5, 5, Direction.UP));
+    assert.equal(engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 5, 5, Direction.UP)), true);
+    assert.equal(engine.placed.eidsOf(ExtractorType.objectTypeId).length, 1, "extractor placed on the resource");
 
     // The product is fixed by the resource, so the spawn tick's field delta already carries it.
     engine.tickAll();
     const events = collector.drain();
-    const insert = events.find(event => event instanceof ObjectInsertEvent && event.typeId === ExtractorType.typeId);
+    const insert = events.find(event => event instanceof ObjectInsertEvent && event.objectTypeId === ExtractorType.objectTypeId);
     assert.equal(insert.lastOutput, undefined, "the insert carries no output slot");
     const fields = events.find(event => event instanceof ObjectFieldsEvent && event.id === insert.id);
     assert.deepEqual(fields.values, [ITEM_TYPE_WATER], "lastOutput seeded at placement");
@@ -38,21 +38,21 @@ test("an extractor on water produces the water item into its output port", async
 
 test("an extractor cannot be placed off a resource", async () => {
     const engine = await setup();
-    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 10, 10, Direction.UP));
-    assert.equal(engine.placed.eidsOf(ExtractorType.typeId).length, 0, "no extractor placed without a resource");
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 10, 10, Direction.UP));
+    assert.equal(engine.placed.eidsOf(ExtractorType.objectTypeId).length, 0, "no extractor placed without a resource");
 });
 
 test("resource and extractor delete", async () => {
     const engine = await setup();
     const collector = new EventCollector(engine);
-    engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 5, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 5, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 5, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 5, 5, Direction.UP));
     const inserts = collector.drain().filter(e => e instanceof ObjectInsertEvent);
-    const resourceId = inserts.find(e => e.typeId === WaterResourceType.typeId).id;
-    const extractorId = inserts.find(e => e.typeId === ExtractorType.typeId).id;
+    const resourceId = inserts.find(e => e.objectTypeId === WaterResourceType.objectTypeId).id;
+    const extractorId = inserts.find(e => e.objectTypeId === ExtractorType.objectTypeId).id;
 
     assert.equal(engine.applyMessage(new DeleteObjectMessage(extractorId)), true);
-    assert.equal(engine.placed.eidsOf(ExtractorType.typeId).length, 0);
+    assert.equal(engine.placed.eidsOf(ExtractorType.objectTypeId).length, 0);
     assert.equal(engine.applyMessage(new DeleteObjectMessage(resourceId)), true);
     assert.equal(engine.space.userDataAt(5, 5, "R"), null, "resource cover cleared");
 });

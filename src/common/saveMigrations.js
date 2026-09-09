@@ -1,5 +1,5 @@
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
-export const SAVE_FORMAT = 7;
+export const SAVE_FORMAT = 8;
 
 // What a save written before the stamp counts as.
 const UNSTAMPED_FORMAT = 0;
@@ -50,6 +50,17 @@ export const SAVE_MIGRATIONS = new Map([
         ...snapshot,
         saveFormat: 7,
         components: addComponents(snapshot.components, LANE_COMPONENTS),
+    })],
+    // Format 8 renames PlacedObject.typeId to objectTypeId and MarketTerminal.itemType to itemTypeId.
+    [7, snapshot => ({
+        ...snapshot,
+        saveFormat: 8,
+        components: renameField(
+            renameField(snapshot.components, "PlacedObject", "typeId", "objectTypeId"),
+            "MarketTerminal",
+            "itemType",
+            "itemTypeId",
+        ),
     })],
 ]);
 

@@ -3,7 +3,7 @@
  * generic entity lifecycle (spawn/despawn/chunk-sync/inspect); a behavior supplies the type-specific
  * pieces: its components and systems ({@link install}, once per behavior class per engine — never
  * read instance config there) and the per-entity hooks. One behavior instance belongs to exactly one
- * ObjectType; systems read per-entity config through `engine.placed.behaviorFor(typeId)`.
+ * ObjectType; systems read per-entity config through `engine.placed.behaviorFor(objectTypeId)`.
  */
 export class AbstractBehavior {
 
@@ -172,7 +172,7 @@ export class AbstractBehavior {
      * The entity's stored stock, summed into network "stored" totals; null when it stores nothing.
      * @param {GameEngine} engine
      * @param {number} eid
-     * @returns {{itemType: number, amount: number}|null}
+     * @returns {{itemTypeId: number, amount: number}|null}
      */
     logicStored(engine, eid) {
         return null;

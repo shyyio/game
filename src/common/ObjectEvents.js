@@ -1,7 +1,7 @@
 import {AbstractChunkRoutedEvent} from "@/common/AbstractChunkRoutedEvent.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 
-// Generic object lifecycle events, tagged with the object type's `typeId`. `portIds` are the rendered
+// Generic object lifecycle events, tagged with the object type's `objectTypeId`. `portIds` are the rendered
 // out-port ids in `outputPorts.filter(render)` order (the client zips them back to names).
 
 /**
@@ -10,7 +10,7 @@ import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 export class ObjectInsertEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
-        typeId: "int32",
+        objectTypeId: "int32",
         id: "int64",
         x: "sint32",
         y: "sint32",
@@ -19,16 +19,16 @@ export class ObjectInsertEvent extends AbstractChunkRoutedEvent {
     };
 
     /**
-     * @param {number} typeId
+     * @param {number} objectTypeId
      * @param {number} id
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
      * @param {number[]} portIds
      */
-    constructor(typeId, id, x, y, direction, portIds) {
+    constructor(objectTypeId, id, x, y, direction, portIds) {
         super(x, y);
-        this.typeId = typeId;
+        this.objectTypeId = objectTypeId;
         this.id = id;
         this.direction = direction;
         this.portIds = portIds;
@@ -42,7 +42,7 @@ export class ObjectInsertEvent extends AbstractChunkRoutedEvent {
 export class ObjectSyncEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
-        typeId: "int32",
+        objectTypeId: "int32",
         id: "int64",
         x: "sint32",
         y: "sint32",
@@ -51,16 +51,16 @@ export class ObjectSyncEvent extends AbstractChunkRoutedEvent {
     };
 
     /**
-     * @param {number} typeId
+     * @param {number} objectTypeId
      * @param {number} id
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
      * @param {number[]} portIds
      */
-    constructor(typeId, id, x, y, direction, portIds) {
+    constructor(objectTypeId, id, x, y, direction, portIds) {
         super(x, y);
-        this.typeId = typeId;
+        this.objectTypeId = objectTypeId;
         this.id = id;
         this.direction = direction;
         this.portIds = portIds;
@@ -73,27 +73,27 @@ export class ObjectSyncEvent extends AbstractChunkRoutedEvent {
 export class ObjectDeleteEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
-        typeId: "int32",
+        objectTypeId: "int32",
         id: "int64",
         x: "sint32",
         y: "sint32",
     };
 
     /**
-     * @param {number} typeId
+     * @param {number} objectTypeId
      * @param {number} id
      * @param {number} x
      * @param {number} y
      */
-    constructor(typeId, id, x, y) {
+    constructor(objectTypeId, id, x, y) {
         super(x, y);
-        this.typeId = typeId;
+        this.objectTypeId = objectTypeId;
         this.id = id;
     }
 }
 
 /**
- * One chunk's objects for a sync, as packed columns: entity `i` is `typeIds[i]` with id `ids[i]` at
+ * One chunk's objects for a sync, as packed columns: entity `i` is `objectTypeIds[i]` with id `ids[i]` at
  * (`tileX[i]`, `tileY[i]`) — chunk-relative, so a tile offset stays one byte however far the chunk
  * sits from the origin — facing `directions[i]`, owning the next `portCounts[i]` entries of the
  * flattened `portIds`.
@@ -103,7 +103,7 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
     static wireFields = {
         originX: "sint32",
         originY: "sint32",
-        typeIds: "int32[]",
+        objectTypeIds: "int32[]",
         ids: "int64[]",
         tileX: "sint32[]",
         tileY: "sint32[]",
@@ -120,7 +120,7 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
         super(originX, originY);
         this.originX = originX;
         this.originY = originY;
-        this.typeIds = [];
+        this.objectTypeIds = [];
         this.ids = [];
         this.tileX = [];
         this.tileY = [];
@@ -130,7 +130,7 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
     }
 
     /**
-     * @param {number} typeId
+     * @param {number} objectTypeId
      * @param {number} id
      * @param {number} x
      * @param {number} y
@@ -138,8 +138,8 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
      * @param {number[]} portIds
      * @returns {void}
      */
-    add(typeId, id, x, y, direction, portIds) {
-        this.typeIds.push(typeId);
+    add(objectTypeId, id, x, y, direction, portIds) {
+        this.objectTypeIds.push(objectTypeId);
         this.ids.push(id);
         this.tileX.push(x - this.originX);
         this.tileY.push(y - this.originY);
@@ -160,7 +160,7 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
             const portIds = this.portIds.slice(portAt, portAt + this.portCounts[i]);
             portAt += this.portCounts[i];
             events.push(new ObjectSyncEvent(
-                this.typeIds[i],
+                this.objectTypeIds[i],
                 this.ids[i],
                 this.originX + this.tileX[i],
                 this.originY + this.tileY[i],

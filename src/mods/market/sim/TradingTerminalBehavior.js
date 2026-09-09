@@ -23,13 +23,13 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         const fixedPrices = new Map();
         for (const listing of engine.modRegistry.marketListings) {
             if (listing.npcPrice !== null) {
-                fixedPrices.set(listing.itemType, listing.npcPrice);
+                fixedPrices.set(listing.itemTypeId, listing.npcPrice);
             }
         }
         engine.provide(MarketBook, new MarketBook(fixedPrices));
         engine.components.define("MarketTerminal", [
             {name: "mode"},
-            {name: "itemType", kind: "item", defaultValue: EMPTY},
+            {name: "itemTypeId", kind: "item", defaultValue: EMPTY},
             {name: "price"},
             // Buy only: cached owner balance, refreshed per tick by MarketSimMod.onTick. Not authoritative.
             {name: "balance"},
@@ -79,10 +79,10 @@ export class TradingTerminalBehavior extends AbstractBehavior {
      */
     static _recordOutput(engine, def, row) {
         const terminal = def.store;
-        if (terminal.lastOutput[row] === terminal.itemType[row]) {
+        if (terminal.lastOutput[row] === terminal.itemTypeId[row]) {
             return;
         }
-        terminal.lastOutput[row] = terminal.itemType[row];
+        terminal.lastOutput[row] = terminal.itemTypeId[row];
         engine.sync.markDirty(def, def.eids[row]);
     }
 
@@ -134,11 +134,11 @@ export class TradingTerminalBehavior extends AbstractBehavior {
                 continue;
             }
             const inPort = terminal.in[row];
-            if (item[inPort] !== terminal.itemType[row]) {
+            if (item[inPort] !== terminal.itemTypeId[row]) {
                 continue;
             }
             const match = book.bestEligibleBuyer(
-                terminal.itemType[row],
+                terminal.itemTypeId[row],
                 terminal.price[row],
                 port => item[port] === EMPTY,
                 buyerEid => TradingTerminalBehavior._remainingBalance(def, terminal, buyerEid, reservedBalance),
@@ -151,7 +151,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
                 engine.transfers.submitDrain(inPort);
                 terminal.pendingIsNpc[row] = 1;
             } else {
-                engine.transfers.submitTransfer(inPort, match.outPort, true, EMPTY, terminal.itemType[row]);
+                engine.transfers.submitTransfer(inPort, match.outPort, true, EMPTY, terminal.itemTypeId[row]);
                 terminal.pendingBuyer[row] = match.eid;
                 const owner = terminal.owner[def.row(match.eid)];
                 const remaining = TradingTerminalBehavior._remainingBalance(def, terminal, match.eid, reservedBalance);
@@ -175,8 +175,8 @@ export class TradingTerminalBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _submitNpcPurchase(engine, item, book, terminal, row, reservedBalance) {
-        const itemType = terminal.itemType[row];
-        const fixedPrice = book.fixedPriceOf(itemType);
+        const itemTypeId = terminal.itemTypeId[row];
+        const fixedPrice = book.fixedPriceOf(itemTypeId);
         if (fixedPrice === undefined) {
             return;
         }
@@ -193,7 +193,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         // the resolver lands the create when that port drains this same tick, so a terminal feeding a
         // belt buys every tick instead of every other one. The spend is reserved here either way — a
         // create that loses its port for the tick only over-reserves this pass, never overspends.
-        engine.transfers.submitCreate(outPort, itemType, item[outPort] === EMPTY);
+        engine.transfers.submitCreate(outPort, itemTypeId, item[outPort] === EMPTY);
         terminal.pendingPrice[row] = fixedPrice;
         terminal.pendingIsNpc[row] = 1;
         reservedBalance.set(owner, remaining - fixedPrice);
@@ -242,7 +242,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
                 if (engine.transfers.wasDest(terminal.out[row])) {
                     TradingTerminalBehavior._recordOutput(engine, def, row);
                     if (terminal.pendingPrice[row] !== EMPTY) {
-                        book.recordPurchase(eids[row], terminal.itemType[row], terminal.pendingPrice[row]);
+                        book.recordPurchase(eids[row], terminal.itemTypeId[row], terminal.pendingPrice[row]);
                     }
                 }
                 continue;
@@ -261,7 +261,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             if (!npc) {
                 buyerEid = terminal.pendingBuyer[row];
             }
-            book.recordSettlement(sellerEid, buyerEid, terminal.itemType[row], terminal.pendingPrice[row]);
+            book.recordSettlement(sellerEid, buyerEid, terminal.itemTypeId[row], terminal.pendingPrice[row]);
         }
     }
 }

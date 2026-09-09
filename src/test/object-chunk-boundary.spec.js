@@ -15,14 +15,14 @@ test("a multi-tile object straddling a chunk boundary is rejected", async () => 
 
     // A 2x2 anchored on the chunk's last column would span into the next chunk.
     const edge = CHUNK_SIZE - 1;
-    assert.equal(engine.applyMessage(new CreateObjectMessage(HousingDefinition.typeId, edge, 5, Direction.UP)), true);
+    assert.equal(engine.applyMessage(new CreateObjectMessage(HousingDefinition.objectTypeId, edge, 5, Direction.UP)), true);
     assert.ok(
         !collector.drain().some(event => event instanceof ObjectInsertEvent),
         "no insert for a chunk-straddling footprint",
     );
 
     // One tile back it fits inside the chunk.
-    assert.equal(engine.applyMessage(new CreateObjectMessage(HousingDefinition.typeId, edge - 1, 5, Direction.UP)), true);
+    assert.equal(engine.applyMessage(new CreateObjectMessage(HousingDefinition.objectTypeId, edge - 1, 5, Direction.UP)), true);
     assert.ok(
         collector.drain().some(event => event instanceof ObjectInsertEvent),
         "the same footprint inside one chunk places",

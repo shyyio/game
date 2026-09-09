@@ -52,7 +52,7 @@ export class MetricsFact {
      * @param {number} type METRICS_FACT_TYPE_*
      * @param {number} tick sim clock at record time
      * @param {number} playerId PLAYER_ID_NONE when not player-scoped
-     * @param {number} category grouped as-is by queryRollup; meaning depends on type (itemType, typeId, ...)
+     * @param {number} category grouped as-is by queryRollup; meaning depends on type (itemTypeId, objectTypeId, ...)
      * @param {number} amount summed by queryRollup; meaning depends on type
      * @param {number} tag grouped as-is by queryRollup; meaning depends on type (e.g. trade side)
      */

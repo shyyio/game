@@ -1,5 +1,5 @@
 // A packaged mod must register exactly like the same mod does statically: same object types with
-// the same positional typeIds, same wire order, same items. Builds every in-repo mod through
+// the same positional objectTypeIds, same wire order, same items. Builds every in-repo mod through
 // tools/build-mod.js and freezes the result next to the static loadout.
 
 import {test, after} from "node:test";
@@ -53,8 +53,8 @@ const {registry, manifests, bundles} = await packagedRegistry(outRoot);
  * @param {ModRegistry} registry
  * @returns {[string, number][]}
  */
-function typeIds(registry) {
-    return registry.objectTypes.map(type => [type.name, type.typeId]);
+function objectTypeIds(registry) {
+    return registry.objectTypes.map(type => [type.name, type.objectTypeId]);
 }
 
 /**
@@ -65,8 +65,8 @@ function typeIds(registry) {
 function itemNames(packages) {
     const names = [];
     for (const pkg of packages) {
-        for (const [itemType, definition] of Object.entries(pkg.declaration.items)) {
-            names.push([itemType, definition.name]);
+        for (const [itemTypeId, definition] of Object.entries(pkg.declaration.items)) {
+            names.push([itemTypeId, definition.name]);
         }
     }
     return names.sort();
@@ -80,7 +80,7 @@ test("built mod packages register identically to the static loadout", () => {
     }
     staticRegistry.freeze();
 
-    assert.deepEqual(typeIds(registry), typeIds(staticRegistry), "object type ids drifted");
+    assert.deepEqual(objectTypeIds(registry), objectTypeIds(staticRegistry), "object type ids drifted");
     assert.deepEqual(
         registry.wireClasses.map(cls => cls.name),
         staticRegistry.wireClasses.map(cls => cls.name),
@@ -117,10 +117,10 @@ test("a packaged loadout runs a game", async () => {
     // right entities if it shares the core's ObjectType instances with the declaration.
     const terminal = registry.objectTypes.find(type => type.name === "TradingTerminal");
     game.dispatchMessage(new ClaimChunkMessage(chunkId(3, 3)), session);
-    game.dispatchMessage(new CreateObjectMessage(terminal.typeId, 3, 3, Direction.UP), session);
+    game.dispatchMessage(new CreateObjectMessage(terminal.objectTypeId, 3, 3, Direction.UP), session);
     game.runTick();
 
-    assert.equal(game.simEngine.placed.eidsOf(terminal.typeId).length, 1);
+    assert.equal(game.simEngine.placed.eidsOf(terminal.objectTypeId).length, 1);
 });
 
 test("a built package is its manifest plus one bundle, art included", async (t) => {

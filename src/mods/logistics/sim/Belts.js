@@ -1405,7 +1405,7 @@ export class Belts {
         const drainRowCol = this._colDrainRow;
         const baseCol = this._colItemBase;
         const headCol = this._colItemHead;
-        const itemTypes = this._items.types;
+        const itemTypeIds = this._items.types;
         const slotByInPort = this._slotByInPort.column;
         const count = this.paths.length;
         for (let slot = 0; slot < count; slot += 1) {
@@ -1433,7 +1433,7 @@ export class Belts {
                 const downstreamCanIngest = downstream !== NO_SLOT
                     && (headGapCol[downstream] > 0 || firstGapCol[downstream] !== -1);
                 const outEmpty = P[outPort] === EMPTY || downstreamCanIngest;
-                const lead = itemTypes[baseCol[slot] + headCol[slot]];
+                const lead = itemTypeIds[baseCol[slot] + headCol[slot]];
                 if (restingFluid) {
                     // The refused fluid stays put, so the pop creates into the out-port instead.
                     popRowCol[slot] = engine.transfers.submitCreate(outPort, lead, outEmpty);
@@ -1467,7 +1467,7 @@ export class Belts {
         const baseCol = this._colItemBase;
         const slabCol = this._colItemSlab;
         const headCol = this._colItemHead;
-        const itemTypes = this._items.types;
+        const itemTypeIds = this._items.types;
         const itemGaps = this._items.gaps;
         const count = this.paths.length;
         // One batch per chunk, flushed at the end so the pass stays ordered against outside emits.
@@ -1548,7 +1548,7 @@ export class Belts {
             }
             const cell = baseCol[slot] + at;
             itemIds[cell] = id;
-            itemTypes[cell] = type;
+            itemTypeIds[cell] = type;
             itemGaps[cell] = gap;
             countCol[slot] = items + 1;
             if (items === 0) {

@@ -5,7 +5,7 @@ import {simPackagesFrom} from "@/mods/modPackages.js";
 export {MOD_DIRS};
 
 // The canonical mod loadout. Both build sites register the same declarations in the same order, so
-// the positional typeIds/wireIds assigned at freeze() match between sim and client. The client
+// the positional objectTypeIds/wireIds assigned at freeze() match between sim and client. The client
 // loadout lives in clientLoadout.js — importing the client mods here would drag pixi into the
 // server bundle.
 

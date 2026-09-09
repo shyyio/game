@@ -23,7 +23,7 @@ test("production counts survive a save/load", async () => {
     restored.connect(session);
     restored.dispatchMessage(new ProductionLogRequestMessage(alice.playerId), session);
     const logs = session.events.filter(event => event instanceof ProductionLogEvent);
-    assert.deepEqual(logs[0].itemTypes, [IRON]);
+    assert.deepEqual(logs[0].itemTypeIds, [IRON]);
     assert.deepEqual(logs[0].counts, [5]);
 });
 
@@ -42,5 +42,5 @@ test("a count for an item type no mod declares any more does not come back", asy
     restored.connect(session);
     restored.dispatchMessage(new ProductionLogRequestMessage(alice.playerId), session);
     const log = session.events.filter(event => event instanceof ProductionLogEvent)[0];
-    assert.deepEqual([log.itemTypes, log.counts], [[declared], [2]]);
+    assert.deepEqual([log.itemTypeIds, log.counts], [[declared], [2]]);
 });

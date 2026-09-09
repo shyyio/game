@@ -35,12 +35,12 @@ export const BASE_Y = 8;
 export function buildLine(engine, ox, oy) {
     for (let lane = 0; lane < LANES_PER_LINE; lane += 1) {
         const x = ox + lane;
-        engine.applyMessage(new CreateObjectMessage(QuartzDepositResourceType.typeId, x, oy, Direction.UP));
-        engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, x, oy, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(QuartzDepositResourceType.objectTypeId, x, oy, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, x, oy, Direction.UP));
         for (let dy = 1; dy <= 3; dy += 1) {
-            engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, x, oy - dy, Direction.UP));
+            engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, x, oy - dy, Direction.UP));
         }
-        engine.applyMessage(new CreateObjectMessage(BakeType.typeId, x, oy - BAKE_DY, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(BakeType.objectTypeId, x, oy - BAKE_DY, Direction.UP));
     }
 }
 

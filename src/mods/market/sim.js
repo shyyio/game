@@ -89,14 +89,14 @@ export class MarketSimMod extends AbstractSimMod {
     _configure(message, game) {
         const engine = game.simEngine;
         const eid = engine.placed.eidByObjectId(message.objectId);
-        if (eid === undefined || engine.placed.typeIdOf(eid) !== TradingTerminalType.typeId) {
+        if (eid === undefined || engine.placed.objectTypeIdOf(eid) !== TradingTerminalType.objectTypeId) {
             return;
         }
         if (message.mode !== MARKET_MODE_SELL && message.mode !== MARKET_MODE_BUY) {
             return;
         }
         const book = engine.resolve(MarketBook);
-        const isFixed = book.isFixedPrice(message.itemType);
+        const isFixed = book.isFixedPrice(message.itemTypeId);
         if (!isFixed && message.price <= 0) {
             return;
         }
@@ -106,16 +106,16 @@ export class MarketSimMod extends AbstractSimMod {
         book.removeBuy(eid);
         book.removeSell(eid);
         terminal.mode[row] = message.mode;
-        terminal.itemType[row] = message.itemType;
+        terminal.itemTypeId[row] = message.itemTypeId;
         if (isFixed) {
-            terminal.price[row] = book.fixedPriceOf(message.itemType);
+            terminal.price[row] = book.fixedPriceOf(message.itemTypeId);
             return;
         }
         terminal.price[row] = message.price;
         if (message.mode === MARKET_MODE_SELL) {
-            book.postSell(eid, message.itemType, message.price);
+            book.postSell(eid, message.itemTypeId, message.price);
         } else {
-            book.postBuy(eid, message.itemType, message.price, terminal.out[row]);
+            book.postBuy(eid, message.itemTypeId, message.price, terminal.out[row]);
         }
     }
 
@@ -131,46 +131,46 @@ export class MarketSimMod extends AbstractSimMod {
     _sendSnapshot(message, session, game) {
         const engine = game.simEngine;
         const book = engine.resolve(MarketBook);
-        const itemTypes = [];
+        const itemTypeIds = [];
         const npcPrices = [];
         const bestBidPrices = [];
         const bestAskPrices = [];
         const guidePrices = [];
         for (const listing of engine.modRegistry.marketListings) {
-            const itemType = listing.itemType;
-            itemTypes.push(itemType);
-            const npcPrice = book.fixedPriceOf(itemType);
+            const itemTypeId = listing.itemTypeId;
+            itemTypeIds.push(itemTypeId);
+            const npcPrice = book.fixedPriceOf(itemTypeId);
             const npcSnapshot = npcPrice === undefined ? MARKET_SNAPSHOT_NONE : npcPrice;
             npcPrices.push(npcSnapshot);
-            const bestBid = book.bestBid(itemType);
+            const bestBid = book.bestBid(itemTypeId);
             const bestBidSnapshot = bestBid === undefined ? MARKET_SNAPSHOT_NONE : bestBid;
             bestBidPrices.push(bestBidSnapshot);
-            const bestAsk = book.bestAsk(itemType);
+            const bestAsk = book.bestAsk(itemTypeId);
             const bestAskSnapshot = bestAsk === undefined ? MARKET_SNAPSHOT_NONE : bestAsk;
             bestAskPrices.push(bestAskSnapshot);
-            const guidePrice = book.guidePriceOf(itemType);
+            const guidePrice = book.guidePriceOf(itemTypeId);
             const guideSnapshot = guidePrice === undefined ? MARKET_SNAPSHOT_NONE : guidePrice;
             guidePrices.push(guideSnapshot);
         }
 
         let currentMode = MARKET_MODE_NONE;
-        let currentItemType = MARKET_SNAPSHOT_NONE;
+        let currentItemTypeId = MARKET_SNAPSHOT_NONE;
         let currentPrice = MARKET_SNAPSHOT_NONE;
         const eid = engine.placed.eidByObjectId(message.objectId);
-        if (eid !== undefined && engine.placed.typeIdOf(eid) === TradingTerminalType.typeId) {
+        if (eid !== undefined && engine.placed.objectTypeIdOf(eid) === TradingTerminalType.objectTypeId) {
             const def = engine.components.get("MarketTerminal");
             const terminal = def.store;
             const row = def.row(eid);
             currentMode = terminal.mode[row];
             if (currentMode !== MARKET_MODE_NONE) {
-                currentItemType = terminal.itemType[row];
+                currentItemTypeId = terminal.itemTypeId[row];
                 currentPrice = terminal.price[row];
             }
         }
 
         game.bus.publishTo(session.id, new MarketSnapshotEvent(
-            itemTypes, npcPrices, bestBidPrices, bestAskPrices, guidePrices,
-            currentMode, currentItemType, currentPrice,
+            itemTypeIds, npcPrices, bestBidPrices, bestAskPrices, guidePrices,
+            currentMode, currentItemTypeId, currentPrice,
         ));
     }
 
@@ -218,7 +218,7 @@ export class MarketSimMod extends AbstractSimMod {
                 deltas.set(sellerOwner, (deltas.get(sellerOwner) || 0) + settlement.price);
                 engine.emitMetrics(
                     METRICS_FACT_TYPE_TRADE_EXECUTED, sellerOwner,
-                    settlement.itemType, settlement.price, METRICS_TRADE_SIDE_SELL,
+                    settlement.itemTypeId, settlement.price, METRICS_TRADE_SIDE_SELL,
                 );
             }
             if (settlement.buyerEid !== NO_EID) {
@@ -227,7 +227,7 @@ export class MarketSimMod extends AbstractSimMod {
                     deltas.set(buyerOwner, (deltas.get(buyerOwner) || 0) - settlement.price);
                     engine.emitMetrics(
                         METRICS_FACT_TYPE_TRADE_EXECUTED, buyerOwner,
-                        settlement.itemType, settlement.price, METRICS_TRADE_SIDE_BUY,
+                        settlement.itemTypeId, settlement.price, METRICS_TRADE_SIDE_BUY,
                     );
                 }
             }
@@ -265,7 +265,7 @@ export class MarketSimMod extends AbstractSimMod {
                 deltas.set(buyerOwner, (deltas.get(buyerOwner) || 0) - purchase.price);
                 engine.emitMetrics(
                     METRICS_FACT_TYPE_TRADE_EXECUTED, buyerOwner,
-                    purchase.itemType, purchase.price, METRICS_TRADE_SIDE_BUY,
+                    purchase.itemTypeId, purchase.price, METRICS_TRADE_SIDE_BUY,
                 );
             }
         }

@@ -222,7 +222,7 @@ export class GateBehavior extends AbstractBehavior {
         if (eid === undefined) {
             return null;
         }
-        const type = placed.typeFor(placed.typeIdOf(eid));
+        const type = placed.typeFor(placed.objectTypeIdOf(eid));
         if (type === undefined) {
             return null;
         }

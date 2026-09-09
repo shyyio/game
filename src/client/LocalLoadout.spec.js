@@ -261,7 +261,7 @@ test("a mod the registry no longer lists reads back titled by its name", () => {
     assert.equal(LocalLoadout.fromLockfile(lockfile, []).mods[0].title, "widgets");
 });
 
-test("exporting over a server's current list leaves every entry where it is, so no typeId moves", () => {
+test("exporting over a server's current list leaves every entry where it is, so no objectTypeId moves", () => {
     const current = ModLockfile.parse({mods: [listedEntry("widgets", "1.0.0"), listedEntry("gadgets", "1.0.0")]});
     const loadout = LocalLoadout.fromLockfile(current, []).with(chosen("sprockets", GAME));
 

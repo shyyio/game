@@ -84,9 +84,9 @@ test("different fluids meeting at a seam block instead of mixing", async () => {
 test("a pipe network drains into a tank through the shared edge port", async () => {
     const engine = await makeGameEngine();
     // The 2x2 tank at (0, 0) covers (0..1, 0..1) and is fed from (0, 2) through its bottom-left tile.
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 0, 2, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 0, 3, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(TankDefinition.typeId, 0, 0, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 0, 2, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 0, 3, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TankDefinition.objectTypeId, 0, 0, Direction.UP));
     const pipes = pipesOf(engine);
     pipes.addFluid(0, 2, FLUID_TYPE_WATER, 4);
     const collector = new EventCollector(engine);
@@ -101,7 +101,7 @@ test("a pipe network drains into a tank through the shared edge port", async () 
     assert.deepEqual(tankDeltas[0].values, [FLUID_TYPE_WATER]);
 
     const def = engine.components.get("Tank");
-    const row = def.row(engine.placed.eidsOf(TankDefinition.typeId)[0]);
+    const row = def.row(engine.placed.eidsOf(TankDefinition.objectTypeId)[0]);
     const outPort = engine.ports.at(1, -1, Direction.UP);
     assert.equal(pipes.networkAt(0, 2).amount, 0, "the network drained fully");
     assert.equal(def.store.fluidType[row], FLUID_TYPE_WATER);
@@ -112,9 +112,9 @@ test("a pipe network drains into a tank through the shared edge port", async () 
 
 test("an extractor pumps its produce into an adjacent pipe network", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 0, 1, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 0, 1, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 0, 0, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 0, 1, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 0, 1, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 0, 0, Direction.UP));
     const pipes = pipesOf(engine);
 
     for (let i = 0; i < 80; i += 1) {
@@ -128,10 +128,10 @@ test("an extractor pumps its produce into an adjacent pipe network", async () =>
 
 test("a resting fluid output never renders as a port item; a solid one does", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 0, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 0, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(OxideDepositResourceType.typeId, 10, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 10, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 0, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 0, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(OxideDepositResourceType.objectTypeId, 10, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 10, 5, Direction.UP));
     const collector = new EventCollector(engine);
 
     for (let i = 0; i < 10; i += 1) {
@@ -139,15 +139,15 @@ test("a resting fluid output never renders as a port item; a solid one does", as
     }
 
     const sets = collector.drain().filter(event => event instanceof PortItemSetEvent);
-    assert.ok(sets.some(event => event.itemType === ITEM_TYPE_IRON_ORE), "the solid product renders");
-    assert.ok(!sets.some(event => event.itemType === ITEM_TYPE_WATER), "the fluid product does not");
+    assert.ok(sets.some(event => event.itemTypeId === ITEM_TYPE_IRON_ORE), "the solid product renders");
+    assert.ok(!sets.some(event => event.itemTypeId === ITEM_TYPE_WATER), "the fluid product does not");
 });
 
 test("a pipe adopting a fluid producer's out-port binds its type at placement", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 0, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 0, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 0, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 0, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 0, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 0, 4, Direction.UP));
     const pipes = pipesOf(engine);
 
     const net = pipes.networkAt(0, 4);
@@ -157,9 +157,9 @@ test("a pipe adopting a fluid producer's out-port binds its type at placement", 
 
 test("a producer placed after the pipes types the empty network", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 0, 4, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 0, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 0, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 0, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 0, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 0, 5, Direction.UP));
     const pipes = pipesOf(engine);
 
     engine.tickAll();
@@ -168,42 +168,42 @@ test("a producer placed after the pipes types the empty network", async () => {
 
 test("a pipe cannot connect a producer's out-port to a different fluid", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 0, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 0, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 1, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 0, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 0, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 1, 4, Direction.UP));
     const pipes = pipesOf(engine);
     pipes.addFluid(1, 4, FLUID_TYPE_OIL, 30);
 
     // (0, 4) touches both the oil network and the water extractor's out-port.
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 0, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 0, 4, Direction.UP));
     assert.equal(pipes.networkAt(0, 4), null, "the conflicting placement is rejected");
     assert.equal(pipes.pipeCount, 1);
 });
 
 test("a pipe binds brine from a deep extractor and cannot bridge to a water source", async () => {
     const engine = await makeGameEngine([new ModPackage(new VolcanoFixtureDeclaration())]);
-    engine.applyMessage(new CreateObjectMessage(TestVolcanoResourceType.typeId, 5, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(TestDeepExtractorType.typeId, 6, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TestVolcanoResourceType.objectTypeId, 5, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TestDeepExtractorType.objectTypeId, 6, 4, Direction.UP));
     const pipes = pipesOf(engine);
 
     // The deep extractor's out-port edge is at (6, 3): the adopting pipe binds brine at placement.
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 6, 3, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 6, 3, Direction.UP));
     assert.equal(pipes.networkAt(6, 3).fluidType, ITEM_TYPE_TEST_BRINE, "typed before any payload");
 
     // A water extractor facing DOWN puts its out-port edge at (5, 3); a pipe there would join the
     // brine network to a water source.
-    engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 5, 2, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 5, 2, Direction.DOWN));
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 5, 3, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 5, 2, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 5, 2, Direction.DOWN));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 5, 3, Direction.UP));
     assert.equal(pipes.networkAt(5, 3), null, "the conflicting placement is rejected");
     assert.equal(pipes.pipeCount, 1);
 });
 
 test("a belt refuses a fluid payload resting in its in-port", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 0, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 0, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, 0, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 0, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 0, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, 0, 4, Direction.UP));
     const belts = beltsOf(engine);
 
     for (let i = 0; i < 20; i += 1) {
@@ -218,8 +218,8 @@ test("a belt refuses a fluid payload resting in its in-port", async () => {
 
 test("a belt never pops an item into a fluid port", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, 0, 1, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 0, 0, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, 0, 1, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 0, 0, Direction.UP));
     const belts = beltsOf(engine);
     const pipes = pipesOf(engine);
     const path = belts.pathAt(0, 1);

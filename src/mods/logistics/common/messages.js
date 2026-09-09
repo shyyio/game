@@ -136,7 +136,7 @@ export class ConfigureLogicRulesMessage extends AbstractMessage {
         conditionCounts: "int32[]",
         condKinds: "int32[]",
         condDeviceIds: "int64[]",
-        condItemTypes: "int32[]",
+        condItemTypeIds: "int32[]",
         condKeys: "int32[]",
         condComparators: "int32[]",
         condValues: "sint32[]",
@@ -150,12 +150,12 @@ export class ConfigureLogicRulesMessage extends AbstractMessage {
      * @param {number[]} conditionCounts
      * @param {number[]} condKinds
      * @param {number[]} condDeviceIds
-     * @param {number[]} condItemTypes
+     * @param {number[]} condItemTypeIds
      * @param {number[]} condKeys
      * @param {number[]} condComparators
      * @param {number[]} condValues
      */
-    constructor(objectId, actionDeviceIds, actionKeys, actionValues, conditionCounts, condKinds, condDeviceIds, condItemTypes, condKeys, condComparators, condValues) {
+    constructor(objectId, actionDeviceIds, actionKeys, actionValues, conditionCounts, condKinds, condDeviceIds, condItemTypeIds, condKeys, condComparators, condValues) {
         super();
         this.objectId = objectId;
         this.actionDeviceIds = actionDeviceIds;
@@ -164,7 +164,7 @@ export class ConfigureLogicRulesMessage extends AbstractMessage {
         this.conditionCounts = conditionCounts;
         this.condKinds = condKinds;
         this.condDeviceIds = condDeviceIds;
-        this.condItemTypes = condItemTypes;
+        this.condItemTypeIds = condItemTypeIds;
         this.condKeys = condKeys;
         this.condComparators = condComparators;
         this.condValues = condValues;
@@ -182,7 +182,7 @@ export class ConfigureLogicRulesMessage extends AbstractMessage {
         }
         const ruleColumns = [this.actionDeviceIds, this.actionKeys, this.actionValues, this.conditionCounts];
         const conditionColumns = [
-            this.condKinds, this.condDeviceIds, this.condItemTypes,
+            this.condKinds, this.condDeviceIds, this.condItemTypeIds,
             this.condKeys, this.condComparators, this.condValues,
         ];
         for (const column of [...ruleColumns, ...conditionColumns]) {

@@ -272,27 +272,27 @@ function buildChain(engine, originX, originY, beltLength) {
     const sinkY = originY - 3 * stride;
     const splitterFits = beltLength >= 2;
 
-    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.typeId, originX, originY, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, originX, originY, Direction.UP));
     layBelts(engine, originX, originY, beltLength);
-    engine.applyMessage(new CreateObjectMessage(ThroughputPressType.typeId, originX, pressY, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ThroughputPressType.objectTypeId, originX, pressY, Direction.UP));
     if (splitterFits) {
         layBelts(engine, originX, pressY, 1);
-        engine.applyMessage(new CreateObjectMessage(SplitterDefinition.typeId, originX, pressY - 2, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(SplitterDefinition.objectTypeId, originX, pressY - 2, Direction.UP));
         layBelts(engine, originX, pressY - 2, beltLength - 2);
     } else {
         layBelts(engine, originX, pressY, beltLength);
     }
-    engine.applyMessage(new CreateObjectMessage(ThroughputPackType.typeId, originX, packY, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ThroughputPackType.objectTypeId, originX, packY, Direction.UP));
     layBelts(engine, originX, packY, beltLength);
-    engine.applyMessage(new CreateObjectMessage(ThroughputSinkType.typeId, originX, sinkY, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ThroughputSinkType.objectTypeId, originX, sinkY, Direction.UP));
 
     if (splitterFits) {
         // Splitter out_b lands here; a second Press fed parts crafts its fallback unit.
         const branchX = originX + 1;
         layBelts(engine, branchX, pressY - 2, beltLength - 2);
-        engine.applyMessage(new CreateObjectMessage(ThroughputPressType.typeId, branchX, packY, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(ThroughputPressType.objectTypeId, branchX, packY, Direction.UP));
         layBelts(engine, branchX, packY, beltLength);
-        engine.applyMessage(new CreateObjectMessage(ThroughputSinkType.typeId, branchX, sinkY, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(ThroughputSinkType.objectTypeId, branchX, sinkY, Direction.UP));
     }
 }
 
@@ -308,7 +308,7 @@ function buildChain(engine, originX, originY, beltLength) {
  */
 function layBelts(engine, x, fromY, beltLength) {
     for (let step = 1; step <= beltLength; step += 1) {
-        engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, x, fromY - step, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, x, fromY - step, Direction.UP));
     }
 }
 
@@ -363,7 +363,7 @@ export class ThroughputScenario extends AbstractScenario {
         }
 
         const session = new CapturingSession(THROUGHPUT_PLAYER_ID);
-        for (const terminalEid of engine.placed.eidsOf(TradingTerminalType.typeId)) {
+        for (const terminalEid of engine.placed.eidsOf(TradingTerminalType.objectTypeId)) {
             game.dispatchMessage(new ConfigureTradingTerminalMessage(
                 engine.placed.objectIdOf(terminalEid), MARKET_MODE_BUY,
                 ITEM_TYPE_THROUGHPUT_FEED, NPC_PRICE_THROUGHPUT_FEED,

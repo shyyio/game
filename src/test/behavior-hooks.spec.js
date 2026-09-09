@@ -67,8 +67,8 @@ test("a behavior hook takes the engine and the entity, with PlacedObjects reache
     assert.equal(installArgs[0], engine);
     assert.equal(engine.placed !== null, true, "engine.placed is reachable while a behavior installs");
 
-    engine.applyMessage(new CreateObjectMessage(RecordingType.typeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(RecordingType.typeId);
+    engine.applyMessage(new CreateObjectMessage(RecordingType.objectTypeId, 5, 5, Direction.UP));
+    const [eid] = engine.placed.eidsOf(RecordingType.objectTypeId);
     const spawnArgs = behavior.argsOf("onSpawn");
     assert.equal(spawnArgs.length, 4);
     assert.equal(spawnArgs[0], engine);

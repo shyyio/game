@@ -118,28 +118,28 @@ export class OverworldRequestMessage extends AbstractMessage {
 }
 
 /**
- * Places an object of `typeId` (an ObjectType's freeze-assigned type id) at a tile. The engine's
+ * Places an object of `objectTypeId` (an ObjectType's freeze-assigned type id) at a tile. The engine's
  * PlacedObjects host spawns any derived type from it; bespoke handlers ignore ids they don't own —
  * so a tool places any simple object without a per-object message class.
  */
 export class CreateObjectMessage extends AbstractMessage {
 
     static wireFields = {
-        typeId: "int32",
+        objectTypeId: "int32",
         x: "sint32",
         y: "sint32",
         direction: "int32",
     };
 
     /**
-     * @param {number} typeId
+     * @param {number} objectTypeId
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
      */
-    constructor(typeId, x, y, direction) {
+    constructor(objectTypeId, x, y, direction) {
         super();
-        this.typeId = typeId;
+        this.objectTypeId = objectTypeId;
         this.x = x;
         this.y = y;
         this.direction = direction;

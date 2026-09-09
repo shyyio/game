@@ -1,4 +1,4 @@
-// Carrying a saved world over to another mod loadout. Object typeIds are positional, so a column of
+// Carrying a saved world over to another mod loadout. Object objectTypeIds are positional, so a column of
 // kind "type" is remapped by name; item types are declared constants, so a column of kind "item"
 // only needs values no mod declares any more emptied. A record table's own "item" columns count
 // toward the losses; the module that owns the table drops those rows as it deserializes. Objects of a type the next loadout lacks must
@@ -12,8 +12,8 @@ const KIND_ITEM = "item";
 
 /**
  * @typedef {Object} Loadout
- * @property {string[]} typeNames every object type's name, in typeId order
- * @property {Set<number>} itemTypes every declared item type
+ * @property {string[]} typeNames every object type's name, in objectTypeId order
+ * @property {Set<number>} itemTypeIds every declared item type
  */
 
 /**
@@ -52,15 +52,15 @@ export function conversionLosses(snapshot, loadout) {
     const objects = new Map();
     const items = new Map();
     const kept = new Set(loadout.typeNames);
-    visitValues(snapshot, KIND_TYPE, typeId => {
-        const name = snapshot.objectTypeNames[typeId];
+    visitValues(snapshot, KIND_TYPE, objectTypeId => {
+        const name = snapshot.objectTypeNames[objectTypeId];
         if (!kept.has(name)) {
             objects.set(name, (objects.has(name) ? objects.get(name) : 0) + 1);
         }
     });
-    visitValues(snapshot, KIND_ITEM, itemType => {
-        if (itemType !== EMPTY && !loadout.itemTypes.has(itemType)) {
-            items.set(itemType, (items.has(itemType) ? items.get(itemType) : 0) + 1);
+    visitValues(snapshot, KIND_ITEM, itemTypeId => {
+        if (itemTypeId !== EMPTY && !loadout.itemTypeIds.has(itemTypeId)) {
+            items.set(itemTypeId, (items.has(itemTypeId) ? items.get(itemTypeId) : 0) + 1);
         }
     });
     return {objects, items};
@@ -76,7 +76,7 @@ export function conversionLosses(snapshot, loadout) {
  * @returns {object} a new snapshot; the given one is untouched
  */
 export function convertSnapshot(snapshot, loadout, componentDefs) {
-    const typeIdByName = new Map(loadout.typeNames.map((name, typeId) => [name, typeId]));
+    const objectTypeIdByName = new Map(loadout.typeNames.map((name, objectTypeId) => [name, objectTypeId]));
     const saved = new Map(snapshot.components.map(component => [component.name, component]));
     const components = componentDefs.map(def => {
         const fields = def.fields.map(field => ({name: field.name, kind: field.kind}));
@@ -93,11 +93,11 @@ export function convertSnapshot(snapshot, loadout, componentDefs) {
                     converted[field.name] = field.defaultValue;
                 } else if (field.kind === KIND_TYPE) {
                     const name = snapshot.objectTypeNames[row[field.name]];
-                    if (!typeIdByName.has(name)) {
+                    if (!objectTypeIdByName.has(name)) {
                         throw new Error(`An object of type ${name} is still in the world; delete it before converting`);
                     }
-                    converted[field.name] = typeIdByName.get(name);
-                } else if (field.kind === KIND_ITEM && row[field.name] !== EMPTY && !loadout.itemTypes.has(row[field.name])) {
+                    converted[field.name] = objectTypeIdByName.get(name);
+                } else if (field.kind === KIND_ITEM && row[field.name] !== EMPTY && !loadout.itemTypeIds.has(row[field.name])) {
                     converted[field.name] = EMPTY;
                 } else {
                     converted[field.name] = row[field.name];

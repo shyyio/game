@@ -32,12 +32,12 @@ import {
 
 test("a Blender pumps Nutrient Slop into an adjacent pipe network", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(BlenderType.typeId);
+    engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP));
+    const [eid] = engine.placed.eidsOf(BlenderType.objectTypeId);
     const def = engine.components.get("Machine");
     const row = def.row(eid);
     engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE);
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 5, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 5, 4, Direction.UP));
     const pipes = pipesOf(engine);
 
     for (let i = 0; i < 40; i += 1) {
@@ -52,8 +52,8 @@ test("a Blender pumps Nutrient Slop into an adjacent pipe network", async () => 
 
 test("an Air Filter types its pipe network before any payload arrives", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(AirFilterType.typeId, 5, 5, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 5, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(AirFilterType.objectTypeId, 5, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 5, 4, Direction.UP));
     const pipes = pipesOf(engine);
 
     const net = pipes.networkAt(5, 4);
@@ -65,11 +65,11 @@ test("a pipe delivers Water into a Greenhouse's fluid input, completing the reci
     // Greenhouse (3x3, facing UP) anchors at (5,5): its fluid input (east column, bottom row) sits
     // at tile (7,7) facing UP, fed from a pipe at (7,8) just south of it. Extractor south of that
     // pipe (its output lands on the pipe's own tile).
-    engine.applyMessage(new CreateObjectMessage(WaterResourceType.typeId, 7, 9, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(ExtractorType.typeId, 7, 9, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(PipeDefinition.typeId, 7, 8, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(GreenhouseType.typeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(GreenhouseType.typeId);
+    engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 7, 9, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 7, 9, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 7, 8, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(GreenhouseType.objectTypeId, 5, 5, Direction.UP));
+    const [eid] = engine.placed.eidsOf(GreenhouseType.objectTypeId);
     const def = engine.components.get("Machine");
     const row = def.row(eid);
     const outPort = def.store.out[row];
@@ -85,8 +85,8 @@ test("a pipe delivers Water into a Greenhouse's fluid input, completing the reci
 
 test("Blast Furnace produces Raw Steel from Iron Ore + Coke + Oxygen in one craft", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(BlastFurnaceType.typeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(BlastFurnaceType.typeId);
+    engine.applyMessage(new CreateObjectMessage(BlastFurnaceType.objectTypeId, 5, 5, Direction.UP));
+    const [eid] = engine.placed.eidsOf(BlastFurnaceType.objectTypeId);
     const def = engine.components.get("Machine");
     const row = def.row(eid);
 
@@ -103,8 +103,8 @@ test("Blast Furnace produces Raw Steel from Iron Ore + Coke + Oxygen in one craf
 
 test("Brew produces both Basic Potion Base and Overload Mix, one machine", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(BrewType.typeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(BrewType.typeId);
+    engine.applyMessage(new CreateObjectMessage(BrewType.objectTypeId, 5, 5, Direction.UP));
+    const [eid] = engine.placed.eidsOf(BrewType.objectTypeId);
     const def = engine.components.get("Machine");
     const row = def.row(eid);
     const in0Port = def.store.in0[row];

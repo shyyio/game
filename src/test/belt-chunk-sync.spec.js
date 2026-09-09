@@ -29,7 +29,7 @@ test("a session subscribing to a chunk receives its existing belts and resting i
     game.connect(builder);
     game.dispatchMessage(new ClaimChunkMessage(chunkId(0, 0)), builder);
     for (const cell of CELLS) {
-        game.dispatchMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP), builder);
+        game.dispatchMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP), builder);
     }
     const path = beltsOf(engine).pathAt(0, 2);
     engine.ports.setItem(path.inPort, RED);
@@ -48,7 +48,7 @@ test("a session subscribing to a chunk receives its existing belts and resting i
     const bundle = viewer.events.find(event => event instanceof ChunkSyncEvent);
     assert.ok(bundle, "a ChunkSyncEvent bundle for the subscribed chunk");
     const synced = flattenBatches(bundle.events);
-    const belts = synced.filter(event => event instanceof ObjectSyncEvent && event.typeId === BeltDefinition.typeId);
+    const belts = synced.filter(event => event instanceof ObjectSyncEvent && event.objectTypeId === BeltDefinition.objectTypeId);
 
     assert.equal(belts.length, CELLS.length, "one ObjectSyncEvent per placed belt");
     assert.deepEqual(
@@ -59,5 +59,5 @@ test("a session subscribing to a chunk receives its existing belts and resting i
     const portItems = synced.filter(event => event instanceof PortItemSetEvent);
     assert.equal(portItems.length, 1, "the resting out-port item is synced");
     assert.equal(portItems[0].portId, path.outPort);
-    assert.equal(portItems[0].itemType, RED);
+    assert.equal(portItems[0].itemTypeId, RED);
 });

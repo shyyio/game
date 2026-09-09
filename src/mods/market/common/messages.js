@@ -10,21 +10,21 @@ export class ConfigureTradingTerminalMessage extends AbstractMessage {
     static wireFields = {
         objectId: "int32",
         mode: "int32",
-        itemType: "int32",
+        itemTypeId: "int32",
         price: "int32",
     };
 
     /**
      * @param {number} objectId
      * @param {number} mode MARKET_MODE_SELL or MARKET_MODE_BUY
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} price
      */
-    constructor(objectId, mode, itemType, price) {
+    constructor(objectId, mode, itemTypeId, price) {
         super();
         this.objectId = objectId;
         this.mode = mode;
-        this.itemType = itemType;
+        this.itemTypeId = itemTypeId;
         this.price = price;
     }
 
@@ -37,7 +37,7 @@ export class ConfigureTradingTerminalMessage extends AbstractMessage {
      */
     validate(api, session) {
         return Number.isInteger(this.objectId) && Number.isInteger(this.mode)
-            && Number.isInteger(this.itemType) && Number.isInteger(this.price);
+            && Number.isInteger(this.itemTypeId) && Number.isInteger(this.price);
     }
 }
 

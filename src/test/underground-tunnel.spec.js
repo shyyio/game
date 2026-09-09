@@ -13,10 +13,10 @@ test("an item tunnels through a tunnel-down / underground / tunnel-up run", asyn
     const engine = await makeGameEngine();
 
     // UP tunnel: tunnel-down (0,4), tunnel-up (0,1) fills undergrounds (0,3),(0,2); normal feeder (0,5).
-    engine.applyMessage(new CreateObjectMessage(BeltTunnelDownDefinition.typeId, 0, 4, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltTunnelDownDefinition.objectTypeId, 0, 4, Direction.UP));
     const tunnelDownId = beltsOf(engine)._beltAt(0, 4, Direction.UP).id;
-    engine.applyMessage(new CreateObjectMessage(BeltTunnelUpDefinition.typeId, 0, 1, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, 0, 5, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltTunnelUpDefinition.objectTypeId, 0, 1, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, 0, 5, Direction.UP));
 
     // Undergrounds were auto-created and the whole run is one path.
     assert.equal(beltsOf(engine).beltById(tunnelDownId).type, BELT_TUNNEL_DOWN);

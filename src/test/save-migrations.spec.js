@@ -8,6 +8,7 @@ import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
 import {GateDefinition} from "@/mods/logistics/common/objectTypes.js";
 import {TankDefinition} from "@/mods/fluids/common/objectTypes.js";
+import {TradingTerminalType} from "@/mods/market/common/objectTypes.js";
 
 test("a fresh snapshot carries the current format and the writing version", async () => {
     const engine = await makeGameEngine();
@@ -94,7 +95,7 @@ test("deserialize refuses a snapshot that has not been migrated", async () => {
 
 test("a format-2 save gains Machine.enabled, and every machine loads switched on", async () => {
     const engine = await makeGameEngine();
-    assert.equal(engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 4, 4, Direction.UP)), true);
+    assert.equal(engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 4, 4, Direction.UP)), true);
     const snapshot = engine.snapshots.serialize();
     snapshot.saveFormat = 2;
     const machine = snapshot.components.find(component => component.name === "Machine");
@@ -117,7 +118,7 @@ test("a format-2 save gains Machine.enabled, and every machine loads switched on
 
 test("a format-4 save's PlacedObject.ownerId is renamed to placedBy", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 6, 6, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 6, 6, Direction.UP));
     const snapshot = engine.snapshots.serialize();
     snapshot.saveFormat = 4;
     const placed = snapshot.components.find(component => component.name === "PlacedObject");
@@ -142,7 +143,7 @@ test("a format-4 save's PlacedObject.ownerId is renamed to placedBy", async () =
 
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
-    assert.equal(restored.placed.eidsOf(BlenderType.typeId).length, 1);
+    assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1);
 });
 
 test("NodeSaveStore round-trips the format stamp", async () => {
@@ -170,7 +171,7 @@ test("NodeSaveStore reads a save written before the stamp as unstamped", async (
 
 test("a format-3 save, whose id columns were plain i32, loads with them retagged", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 3, 3, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 3, 3, Direction.UP));
     const snapshot = engine.snapshots.serialize();
     snapshot.saveFormat = 3;
     for (const component of snapshot.components) {
@@ -183,18 +184,20 @@ test("a format-3 save, whose id columns were plain i32, loads with them retagged
     // Gate.lastOutput arrived at format 6, so a format-3 save has none for the retag to touch.
     const gate = snapshot.components.find(component => component.name === "Gate");
     gate.fields = gate.fields.filter(field => field.name !== "lastOutput");
+    renameRowsBack(snapshot, "PlacedObject", "objectTypeId", "typeId");
+    renameRowsBack(snapshot, "MarketTerminal", "itemTypeId", "itemType");
 
     const migrated = migrateSnapshot(snapshot);
     assert.equal(migrated.saveFormat, SAVE_FORMAT);
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
-    assert.equal(restored.placed.eidsOf(BlenderType.typeId).length, 1);
+    assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1);
 });
 
 test("a format-5 save drops the gate's and tank's last-synced columns and gains an empty Gate.lastOutput", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(GateDefinition.typeId, 6, 6, Direction.UP));
-    engine.applyMessage(new CreateObjectMessage(TankDefinition.typeId, 10, 10, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(GateDefinition.objectTypeId, 6, 6, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TankDefinition.objectTypeId, 10, 10, Direction.UP));
     const snapshot = engine.snapshots.serialize();
     snapshot.saveFormat = 5;
     const gate = snapshot.components.find(component => component.name === "Gate");
@@ -226,8 +229,8 @@ test("a format-5 save drops the gate's and tank's last-synced columns and gains 
 
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
-    assert.equal(restored.placed.eidsOf(GateDefinition.typeId).length, 1);
-    assert.equal(restored.placed.eidsOf(TankDefinition.typeId).length, 1);
+    assert.equal(restored.placed.eidsOf(GateDefinition.objectTypeId).length, 1);
+    assert.equal(restored.placed.eidsOf(TankDefinition.objectTypeId).length, 1);
 });
 
 test("a format-6 save gains the empty lane components", async () => {
@@ -249,3 +252,47 @@ test("a format-6 save gains the empty lane components", async () => {
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
     assert.deepEqual(restored.lanes.ids(), []);
 });
+
+test("a format-7 save renames PlacedObject.typeId and MarketTerminal.itemType", async () => {
+    const engine = await makeGameEngine();
+    engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 3, 3, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 8, 8, Direction.UP));
+    const snapshot = engine.snapshots.serialize();
+    snapshot.saveFormat = 7;
+    renameRowsBack(snapshot, "PlacedObject", "objectTypeId", "typeId");
+    renameRowsBack(snapshot, "MarketTerminal", "itemTypeId", "itemType");
+
+    const migrated = migrateSnapshot(snapshot);
+
+    const placed = migrated.components.find(component => component.name === "PlacedObject");
+    assert.ok(placed.fields.some(field => field.name === "objectTypeId" && field.kind === "type"));
+    assert.equal(placed.rows[0].typeId, undefined);
+    assert.equal(placed.rows[0].objectTypeId, BlenderType.objectTypeId);
+    const terminal = migrated.components.find(component => component.name === "MarketTerminal");
+    assert.ok(terminal.fields.some(field => field.name === "itemTypeId" && field.kind === "item"));
+    assert.equal(terminal.rows[0].itemType, undefined);
+
+    const restored = await makeGameEngine();
+    assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
+    assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1);
+});
+
+/**
+ * Puts one component's field back under its pre-format-8 name, in the field list and every row.
+ * @param {object} snapshot
+ * @param {string} componentName
+ * @param {string} from
+ * @param {string} to
+ */
+function renameRowsBack(snapshot, componentName, from, to) {
+    const component = snapshot.components.find(entry => entry.name === componentName);
+    for (const field of component.fields) {
+        if (field.name === from) {
+            field.name = to;
+        }
+    }
+    for (const row of component.rows) {
+        row[to] = row[from];
+        delete row[from];
+    }
+}

@@ -4,8 +4,8 @@ import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 
 /**
- * A frozen ModRegistry with the standard sim loadout (typeIds assigned), for tests that need the
- * ECS engine or the definitions' typeIds.
+ * A frozen ModRegistry with the standard sim loadout (objectTypeIds assigned), for tests that need the
+ * ECS engine or the definitions' objectTypeIds.
  * @param {ModPackage[]} [extraPackages] registered after the standard loadout, for tests that need
  *     a fixture-only declaration (e.g. a market listing) without touching real mod content
  * @returns {ModRegistry}

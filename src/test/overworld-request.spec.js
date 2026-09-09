@@ -22,7 +22,7 @@ test("a session with no chunk subscriptions gets an overworld snapshot on reques
     const session = new CapturingSession();
     game.connect(session);
 
-    game.dispatchMessage(new CreateObjectMessage(BeltDefinition.typeId, 3, 2, Direction.UP), session);
+    game.dispatchMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, 3, 2, Direction.UP), session);
     game.dispatchMessage(new OverworldRequestMessage(-1, -1, 2, 2), session);
 
     const snapshots = session.events.filter(event => event instanceof OverworldSnapshotEvent);
@@ -31,7 +31,7 @@ test("a session with no chunk subscriptions gets an overworld snapshot on reques
     assert.equal(snapshot.chunks.length, 1);
     assert.deepEqual(snapshot.runStarts, [2 * CHUNK_SIZE + 3]);
     assert.deepEqual(snapshot.runLengths, [1]);
-    assert.deepEqual(snapshot.runTypeIds, [BeltDefinition.typeId]);
+    assert.deepEqual(snapshot.runTypeIds, [BeltDefinition.objectTypeId]);
 });
 
 test("an overworld snapshot carries the rect's claims, owner names pushed first", async () => {

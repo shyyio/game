@@ -288,7 +288,7 @@ export class LaneIndex {
      * @returns {LaneBehavior}
      */
     _behavior(eid) {
-        return this.engine.placed.behaviorFor(this.engine.placed.typeIdOf(eid));
+        return this.engine.placed.behaviorFor(this.engine.placed.objectTypeIdOf(eid));
     }
 
     /**
@@ -365,7 +365,7 @@ export class LaneIndex {
         const position = engine.Position;
         const direction = position.direction[eid];
         const inLevel = this._behavior(eid).inLevel;
-        const type = engine.placed.typeFor(engine.placed.typeIdOf(eid));
+        const type = engine.placed.typeFor(engine.placed.objectTypeIdOf(eid));
         const eids = [];
         const edges = [];
         for (const definition of type.activePorts("inputPorts")) {
@@ -463,7 +463,7 @@ export class LaneIndex {
         }
         const engine = this.engine;
         const position = engine.Position;
-        const type = engine.placed.typeFor(engine.placed.typeIdOf(eid));
+        const type = engine.placed.typeFor(engine.placed.objectTypeIdOf(eid));
         const stale = new Set();
         for (const definition of type.activePorts("outputPorts")) {
             const edge = portAt(definition, position.x[eid], position.y[eid], position.direction[eid]);

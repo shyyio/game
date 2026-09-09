@@ -14,7 +14,7 @@ test("DeleteObjectMessage removes an ECS belt and emits an ObjectDeleteEvent", a
     const engine = await makeGameEngine();
     const collector = new EventCollector(engine);
     for (const cell of CELLS) {
-        engine.applyMessage(new CreateObjectMessage(BeltDefinition.typeId, cell.x, cell.y, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP));
     }
 
     const insert = collector.drain().find(event => event instanceof ObjectInsertEvent && event.x === 0 && event.y === 1);

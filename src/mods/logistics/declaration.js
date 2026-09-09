@@ -42,7 +42,7 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
     }
 
     get objectTypes() {
-        // The mouth/underground kinds append after the originals, keeping prior typeIds stable.
+        // The mouth/underground kinds append after the originals, keeping prior objectTypeIds stable.
         return [
             BeltDefinition,
             SplitterDefinition,

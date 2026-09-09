@@ -17,26 +17,26 @@ export class ItemRegistry {
     }
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {ItemDefinition} definition
      * @returns {void}
      */
-    register(itemType, definition) {
-        if (this._byType.has(itemType)) {
-            throw new Error(`Duplicate item definition for item type ${itemType}`);
+    register(itemTypeId, definition) {
+        if (this._byType.has(itemTypeId)) {
+            throw new Error(`Duplicate item definition for item type ${itemTypeId}`);
         }
-        this._byType.set(itemType, definition);
+        this._byType.set(itemTypeId, definition);
     }
 
     /**
      * The definition for an item type; throws on an unregistered type.
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {ItemDefinition}
      */
-    require(itemType) {
-        const definition = this._byType.get(itemType);
+    require(itemTypeId) {
+        const definition = this._byType.get(itemTypeId);
         if (definition === undefined) {
-            throw new Error(`Unknown item type ${itemType}`);
+            throw new Error(`Unknown item type ${itemTypeId}`);
         }
         return definition;
     }
@@ -44,15 +44,15 @@ export class ItemRegistry {
     /**
      * The definition for an item type, or undefined; for wire-fed types a stale loadout may not
      * declare (render/label fallback).
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {ItemDefinition|undefined}
      */
-    get(itemType) {
-        return this._byType.get(itemType);
+    get(itemTypeId) {
+        return this._byType.get(itemTypeId);
     }
 
     /**
-     * Every registered (itemType, definition) pair.
+     * Every registered (itemTypeId, definition) pair.
      * @returns {IterableIterator<[number, ItemDefinition]>}
      */
     entries() {
@@ -61,11 +61,11 @@ export class ItemRegistry {
 
     /**
      * The definition for an item type, or {@link DEFAULT_ITEM_DEFINITION} for an unmapped one.
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @returns {ItemDefinition}
      */
-    definitionFor(itemType) {
-        const definition = this._byType.get(itemType);
+    definitionFor(itemTypeId) {
+        const definition = this._byType.get(itemTypeId);
         if (definition === undefined) {
             return DEFAULT_ITEM_DEFINITION;
         }

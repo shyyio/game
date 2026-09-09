@@ -72,7 +72,7 @@ export class LogisticsWriter extends AbstractCacheWriter {
             rules.map(rule => rule.conditions.length),
             conditions.map(condition => condition.kind),
             conditions.map(condition => condition.deviceId),
-            conditions.map(condition => condition.itemType),
+            conditions.map(condition => condition.itemTypeId),
             conditions.map(condition => condition.key),
             conditions.map(condition => condition.comparator),
             conditions.map(condition => condition.value),

@@ -93,7 +93,7 @@ export class TankBehavior extends AbstractBehavior {
         if (def.store.fluidType[row] === EMPTY) {
             return null;
         }
-        return {itemType: def.store.fluidType[row], amount: def.store.amount[row]};
+        return {itemTypeId: def.store.fluidType[row], amount: def.store.amount[row]};
     }
 
     /**
@@ -107,7 +107,7 @@ export class TankBehavior extends AbstractBehavior {
         const tank = def.store;
         const eids = def.eids;
         for (let row = 0; row < def.count; row += 1) {
-            tank.capacity[row] = placed.behaviorFor(placed.typeIdOf(eids[row])).capacity;
+            tank.capacity[row] = placed.behaviorFor(placed.objectTypeIdOf(eids[row])).capacity;
             engine.ports.markFluid(tank.in[row]);
             engine.ports.markFluid(tank.out[row]);
             if (tank.fluidType[row] !== EMPTY) {

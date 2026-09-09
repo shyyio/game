@@ -22,8 +22,8 @@ test("a second surface belt cannot occupy the same tile, and delete frees it", a
 test("an object cannot be placed on an occupied tile", async () => {
     const engine = await makeGameEngine();
 
-    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP));
-    assert.equal(engine.placed.eidsOf(BlenderType.typeId).length, 1);
-    engine.applyMessage(new CreateObjectMessage(BlenderType.typeId, 5, 5, Direction.UP));
-    assert.equal(engine.placed.eidsOf(BlenderType.typeId).length, 1, "overlapping machine rejected");
+    engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP));
+    assert.equal(engine.placed.eidsOf(BlenderType.objectTypeId).length, 1);
+    engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP));
+    assert.equal(engine.placed.eidsOf(BlenderType.objectTypeId).length, 1, "overlapping machine rejected");
 });

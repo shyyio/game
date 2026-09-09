@@ -33,7 +33,7 @@ test("a belt emits a port-item set when an item pops to its out-port", async () 
 
     assert.equal(sets.length, 1);
     assert.equal(sets[0].portId, handle.outPort);
-    assert.equal(sets[0].itemType, RED);
+    assert.equal(sets[0].itemTypeId, RED);
 });
 
 // Deleting the output belt strands its out-port; the port sweep must still emit the deferred clear,

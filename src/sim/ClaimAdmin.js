@@ -156,7 +156,7 @@ export class ClaimAdmin {
                 if (!(single instanceof ObjectSyncEvent)) {
                     continue;
                 }
-                const type = this.game.modRegistry.typeById(single.typeId);
+                const type = this.game.modRegistry.objectTypeById(single.objectTypeId);
                 if (type.placement.solid) {
                     ids.push(single.id);
                 }

@@ -26,7 +26,7 @@ import {GateBehavior} from "../sim/GateBehavior.js";
 import {PoleBehavior} from "../sim/PoleBehavior.js";
 import {LogicTerminalBehavior} from "../sim/LogicTerminalBehavior.js";
 
-// One ObjectType per belt kind (the typeId carries the kind on the wire); `bespokeClient` opts
+// One ObjectType per belt kind (the objectTypeId carries the kind on the wire); `bespokeClient` opts
 // out of the derived bundles since BeltDrawLayer/BeltTool stay bespoke.
 class BeltObjectType extends ObjectType {
 

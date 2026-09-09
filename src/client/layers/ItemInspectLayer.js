@@ -151,7 +151,7 @@ export class ItemInspectLayer extends AbstractDrawLayer {
     _follow() {
         if (this._particle !== null) {
             const lost = !this._particle.pickable
-                || this._particle.itemType !== this._lockedType
+                || this._particle.itemTypeId !== this._lockedType
                 || this._offScreen(this._particle);
             if (lost) {
                 this._lock(null);
@@ -199,7 +199,7 @@ export class ItemInspectLayer extends AbstractDrawLayer {
         if (particle === null) {
             this._lockedType = null;
         } else {
-            this._lockedType = particle.itemType;
+            this._lockedType = particle.itemTypeId;
         }
     }
 }

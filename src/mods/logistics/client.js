@@ -234,7 +234,7 @@ export class LogisticsClientMod extends AbstractClientMod {
             }
             return;
         }
-        if (event instanceof ObjectInsertEvent && isBeltType(client.modRegistry.typeById(event.typeId))) {
+        if (event instanceof ObjectInsertEvent && isBeltType(client.modRegistry.objectTypeById(event.objectTypeId))) {
             // A live insert's recalc precedes the belt, so repaint once it is cached.
             this._pathDebugLayer.markStale();
             return;
@@ -301,7 +301,7 @@ export class LogisticsClientMod extends AbstractClientMod {
         }
         // Rename only: the render below places the sprite with the event's own item type.
         this._takePendingPop(client, portId);
-        this._renderPortItem(client, portId, event.itemType);
+        this._renderPortItem(client, portId, event.itemTypeId);
     }
 
     /**
@@ -433,7 +433,7 @@ export class LogisticsClientMod extends AbstractClientMod {
             items = new Map();
             this._pathItems.set(pathId, items);
         }
-        items.set(itemId, {gap: event.gap, type: event.itemType});
+        items.set(itemId, {gap: event.gap, type: event.itemTypeId});
         // A synced item was only re-keyed, not moved, so place its sprite without animating.
         this._recomputePathItems(client, pathId, event instanceof BeltItemSyncEvent);
     }

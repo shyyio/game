@@ -30,7 +30,7 @@ const TANK_WATER_AMOUNT = 30;
  * @returns {number}
  */
 function place(engine, type, x, y) {
-    if (!engine.applyMessage(new CreateObjectMessage(type.typeId, x, y, Direction.UP))) {
+    if (!engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, Direction.UP))) {
         throw new Error(`Logic scenario failed to place ${type.name} at (${x}, ${y})`);
     }
     const def = engine.placed.def;

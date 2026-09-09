@@ -24,7 +24,7 @@
 // beside the module they test.
 //
 // Lifecycle: register the loadout's packages into a ModRegistry, freeze() it once (assigning every
-// ObjectType its positional typeId and every wire class its wireId), then build the GameEngine /
+// ObjectType its positional objectTypeId and every wire class its wireId), then build the GameEngine /
 // Client on the frozen registry. Both build sites share `src/mods/loadout.js`, so the positional
 // ids always match between sim and client.
 //
@@ -108,7 +108,7 @@ export {AbstractMessage} from "@/common/AbstractMessage.js";
 // entity. Lets a tool remove any object without knowing which mod owns it.
 export {DeleteObjectMessage} from "@/common/CoreMessages.js";
 
-// Generic object-placement message (tagged with an ObjectType's typeId) and the generic object
+// Generic object-placement message (tagged with an ObjectType's objectTypeId) and the generic object
 // lifecycle events PlacedObjects emits — a mod uses these instead of per-object classes.
 export {CreateObjectMessage} from "@/common/CoreMessages.js";
 export {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";

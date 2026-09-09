@@ -49,13 +49,13 @@ export class SnapshotSerializer {
 
     /**
      * What a snapshot converts against, see @/sim/snapshotConversion.js.
-     * @returns {{typeNames: string[], itemTypes: Set<number>}}
+     * @returns {{typeNames: string[], itemTypeIds: Set<number>}}
      */
     get loadout() {
         const registry = this.engine.modRegistry;
         return {
             typeNames: registry.objectTypes.map(type => type.name),
-            itemTypes: new Set(Array.from(registry.items.entries(), entry => entry[0])),
+            itemTypeIds: new Set(Array.from(registry.items.entries(), entry => entry[0])),
         };
     }
 
@@ -95,9 +95,9 @@ export class SnapshotSerializer {
                 throw new RangeError(`SnapshotSerializer.serialize: global "${key}" is not a safe integer: ${globals[key]}`);
             }
         }
-        // Every object type's name, in typeId order — deserialize compares this against the current
+        // Every object type's name, in objectTypeId order — deserialize compares this against the current
         // loadout so a stale save (object types added/removed/reordered since) fails loudly at load
-        // time instead of resolving a component row's typeId to the wrong behavior mid-tick.
+        // time instead of resolving a component row's objectTypeId to the wrong behavior mid-tick.
         let objectTypeNames = null;
         if (engine.modRegistry !== null) {
             objectTypeNames = engine.modRegistry.objectTypes.map(type => type.name);
@@ -193,9 +193,9 @@ export class SnapshotSerializer {
 
     /**
      * Throws when `snapshot` was written against a different object-type layout than the current
-     * loadout: typeIds are positional (assigned by registration order at ModRegistry.freeze()), so
-     * adding/removing/reordering a mod's object types shifts every typeId after the change, and a
-     * component row's saved typeId would silently resolve to the wrong ObjectType/behavior — a crash
+     * loadout: objectTypeIds are positional (assigned by registration order at ModRegistry.freeze()), so
+     * adding/removing/reordering a mod's object types shifts every objectTypeId after the change, and a
+     * component row's saved objectTypeId would silently resolve to the wrong ObjectType/behavior — a crash
      * deep in an unrelated tick, far from the real cause. A pure append (current has every saved name
      * as a prefix, plus new ones after) is fine; anything else is not. No-op when this engine has no
      * modRegistry (synthetic test engines never persist for real).
@@ -214,7 +214,7 @@ export class SnapshotSerializer {
         if (!prefixMatches) {
             throw new Error(
                 "Save is incompatible with the current mod loadout: object types were added, removed, "
-                + "or reordered since this save was written, so typeIds no longer mean the same thing. "
+                + "or reordered since this save was written, so objectTypeIds no longer mean the same thing. "
                 + `Saved: [${saved === null || saved === undefined ? "unknown (pre-dates this check)" : saved.join(", ")}]. `
                 + `Current: [${current.join(", ")}]. Delete or migrate the save file.`
             );

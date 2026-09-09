@@ -124,7 +124,7 @@ export class WorkerNetworks {
         if (eid === undefined) {
             return;
         }
-        const behavior = this.placed.behaviorFor(this.placed.typeIdOf(eid));
+        const behavior = this.placed.behaviorFor(this.placed.objectTypeIdOf(eid));
         behavior.setWorkers(this.engine, eid, granted);
     }
 

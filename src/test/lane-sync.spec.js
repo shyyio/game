@@ -49,7 +49,7 @@ test("a session subscribing to a chunk receives its lanes, items and resting por
     game.connect(builder);
     game.dispatchMessage(new ClaimChunkMessage(chunkId(0, 0)), builder);
     for (const cell of CELLS) {
-        game.dispatchMessage(new CreateObjectMessage(TestLaneType.typeId, cell[0], cell[1], Direction.UP), builder);
+        game.dispatchMessage(new CreateObjectMessage(TestLaneType.objectTypeId, cell[0], cell[1], Direction.UP), builder);
     }
     const lane = laneAt(engine, 0, 2);
     engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
@@ -65,7 +65,7 @@ test("a session subscribing to a chunk receives its lanes, items and resting por
     assert.ok(bundle, "a ChunkSyncEvent bundle for the subscribed chunk");
     const synced = flattenBatches(bundle.events);
 
-    const cells = synced.filter(event => event instanceof ObjectSyncEvent && event.typeId === TestLaneType.typeId);
+    const cells = synced.filter(event => event instanceof ObjectSyncEvent && event.objectTypeId === TestLaneType.objectTypeId);
     assert.equal(cells.length, CELLS.length, "one ObjectSyncEvent per placed cell");
 
     const geometry = synced.filter(event => event instanceof LaneGeometryEvent);
@@ -83,7 +83,7 @@ test("a subscribing session receives a lane's resting out-port item", async () =
     game.connect(builder);
     game.dispatchMessage(new ClaimChunkMessage(chunkId(0, 0)), builder);
     for (const cell of CELLS) {
-        game.dispatchMessage(new CreateObjectMessage(TestLaneType.typeId, cell[0], cell[1], Direction.UP), builder);
+        game.dispatchMessage(new CreateObjectMessage(TestLaneType.objectTypeId, cell[0], cell[1], Direction.UP), builder);
     }
     const lane = laneAt(engine, 0, 2);
     engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
@@ -97,7 +97,7 @@ test("a subscribing session receives a lane's resting out-port item", async () =
     const portItems = synced.filter(event => event instanceof PortItemSetEvent);
     assert.equal(portItems.length, 1, "the resting out-port item is synced");
     assert.equal(portItems[0].portId, engine.lanes.outPortOf(lane));
-    assert.equal(portItems[0].itemType, CARGO);
+    assert.equal(portItems[0].itemTypeId, CARGO);
 });
 
 // Lane traffic is chunk-routed: a session watching elsewhere is told nothing.
@@ -111,7 +111,7 @@ test("lane events reach only the sessions watching the chunk", async () => {
     game.dispatchMessage(new SetViewportMessage([chunkId(1000, 1000)]), bystander);
     game.dispatchMessage(new ClaimChunkMessage(chunkId(0, 0)), watcher);
     for (const cell of CELLS) {
-        game.dispatchMessage(new CreateObjectMessage(TestLaneType.typeId, cell[0], cell[1], Direction.UP), watcher);
+        game.dispatchMessage(new CreateObjectMessage(TestLaneType.objectTypeId, cell[0], cell[1], Direction.UP), watcher);
     }
 
     const lane = laneAt(engine, 0, 2);
@@ -122,7 +122,7 @@ test("lane events reach only the sessions watching the chunk", async () => {
         .filter(event => event instanceof PortItemBatchEvent)
         .flatMap(batch => batch.explode());
     assert.ok(
-        portItems(watcher.events).some(event => event instanceof PortItemSetEvent && event.itemType === CARGO),
+        portItems(watcher.events).some(event => event instanceof PortItemSetEvent && event.itemTypeId === CARGO),
         "the watcher gets the item's render set",
     );
     assert.equal(portItems(bystander.events).length, 0, "the bystander gets no lane render events");

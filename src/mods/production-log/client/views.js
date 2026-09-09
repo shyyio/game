@@ -20,11 +20,11 @@ export class LogView {
 export class ItemBoardView {
 
     /**
-     * @param {number} itemType
+     * @param {number} itemTypeId
      * @param {number} focusRank the rank to open on and center, 0 for none
      */
-    constructor(itemType, focusRank) {
-        this.itemType = itemType;
+    constructor(itemTypeId, focusRank) {
+        this.itemTypeId = itemTypeId;
         this.focusRank = focusRank;
         this.offset = Math.floor(Math.max(focusRank - 1, 0) / LEADERBOARD_PAGE_SIZE) * LEADERBOARD_PAGE_SIZE;
     }

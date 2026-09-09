@@ -16,7 +16,7 @@ import {LogicNetworks} from "@/mods/logistics/sim/LogicNetworks.js";
  * Places an object and returns its objectId (the newest placed row's).
  */
 function place(engine, type, x, y, direction=Direction.UP) {
-    assert.equal(engine.applyMessage(new CreateObjectMessage(type.typeId, x, y, direction)), true);
+    assert.equal(engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, direction)), true);
     const def = engine.placed.def;
     return def.store.objectId[def.row(def.eids[def.count - 1])];
 }
