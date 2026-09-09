@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, SetViewportMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {ObjectFieldsEvent, ObjectFieldsBatchEvent} from "@/common/ObjectEvents.js";
 import {makeGame} from "@/test/ecsSim.js";
@@ -15,7 +15,7 @@ import {GateDefinition} from "@/mods/logistics/common/objectTypes.js";
  * Places a gate in a claimed, viewed chunk and returns what the sync tests need.
  */
 function placeGate(game, player, x, y) {
-    const chunk = chunkId(x, y);
+    const chunk = chunkKey(x, y);
     game.dispatchMessage(new ClaimChunkMessage(chunk), player);
     game.dispatchMessage(new SetViewportMessage([chunk]), player);
     game.dispatchMessage(new CreateObjectMessage(GateDefinition.objectTypeId, x, y, Direction.UP), player);
@@ -50,7 +50,7 @@ test("a marked row's synced fields batch per chunk at tick end, to the chunk's v
     // A mark on an unobserved chunk builds no event.
     const far = new CapturingSession(2);
     game.connect(far);
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(300, 300)), far);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(300, 300)), far);
     game.dispatchMessage(new CreateObjectMessage(GateDefinition.objectTypeId, 300, 300, Direction.UP), far);
     const farEid = def.eids[def.count - 1];
     player.events.length = 0;

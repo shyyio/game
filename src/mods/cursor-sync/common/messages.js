@@ -27,7 +27,7 @@ export class CursorMoveMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        // The region's half-open tile box, matching tileId's bounds.
+        // The region's half-open tile box, matching tileKey's bounds.
         return Number.isFinite(this.x) && Number.isFinite(this.y)
             && this.x >= -TILE_HALF && this.x < TILE_HALF
             && this.y >= -TILE_HALF && this.y < TILE_HALF;

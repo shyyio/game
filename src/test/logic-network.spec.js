@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage, SetViewportMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine, makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
@@ -63,7 +63,7 @@ test("a wired logic network spans chunk seams", async () => {
     const networks = engine.resolve(LogicNetworks);
     const a = place(engine, PoleDefinition, 0, 60);
     const b = place(engine, PoleDefinition, 0, 68);
-    assert.notEqual(chunkId(0, 60), chunkId(0, 68), "the poles sit in different chunks");
+    assert.notEqual(chunkKey(0, 60), chunkKey(0, 68), "the poles sit in different chunks");
     networks.wire(a, b);
     assert.equal(networks.networkOf(a).id, networks.networkOf(b).id);
 });
@@ -72,7 +72,7 @@ test("a pole-pole wire message round-trips, toggles off, and respects range", as
     const game = await makeGame();
     const player = new CapturingSession(1);
     game.connect(player);
-    const chunk = chunkId(5, 5);
+    const chunk = chunkKey(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunk), player);
     game.dispatchMessage(new SetViewportMessage([chunk]), player);
     const engine = game.simEngine;
@@ -102,7 +102,7 @@ test("a wire joins a gate to a pole's network; unwiring and pole removal detach 
     const game = await makeGame();
     const player = new CapturingSession(1);
     game.connect(player);
-    const chunk = chunkId(5, 5);
+    const chunk = chunkKey(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunk), player);
     game.dispatchMessage(new SetViewportMessage([chunk]), player);
     const engine = game.simEngine;
@@ -134,7 +134,7 @@ test("devices wire to each other directly, poles optional", async () => {
     const game = await makeGame();
     const player = new CapturingSession(1);
     game.connect(player);
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), player);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), player);
     const engine = game.simEngine;
     const networks = engine.resolve(LogicNetworks);
     const gateA = place(engine, GateDefinition, 5, 5, Direction.UP);
@@ -156,7 +156,7 @@ test("wiring rejects a non-wireable device and an out-of-range pole", async () =
     const game = await makeGame();
     const player = new CapturingSession(1);
     game.connect(player);
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), player);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), player);
     const engine = game.simEngine;
     const networks = engine.resolve(LogicNetworks);
     const beltId = place(engine, BeltDefinition, 5, 7, Direction.UP);
@@ -176,7 +176,7 @@ test("poles and wires survive a save/load", async () => {
     const game = await makeGame([], store);
     const player = new CapturingSession(1);
     game.connect(player);
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), player);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), player);
     const engine = game.simEngine;
     const gateId = place(engine, GateDefinition, 5, 5, Direction.UP);
     const poleId = place(engine, PoleDefinition, 8, 5);
@@ -198,7 +198,7 @@ test("a late joiner learns the chunk's wires through chunk sync", async () => {
     const game = await makeGame();
     const player = new CapturingSession(1);
     game.connect(player);
-    const chunk = chunkId(5, 5);
+    const chunk = chunkKey(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunk), player);
     const engine = game.simEngine;
     const gateId = place(engine, GateDefinition, 5, 5, Direction.UP);

@@ -1,6 +1,6 @@
 import {AbstractTool} from "@/client/input/AbstractTool.js";
 import {Direction} from "@/common/constants.js";
-import {chunkId, rotate} from "@/common/util.js";
+import {chunkKey, rotate} from "@/common/util.js";
 import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import Haptics from "@/client/Haptics.js";
 
@@ -223,7 +223,7 @@ export class ObjectTool extends AbstractTool {
      * @returns {{blockedCells: {x: number, y: number}[], overwriteCells: {x: number, y: number}[], clearCells: {x: number, y: number}[], overwriteIds: number[]}}
      */
     _evaluate(tileX, tileY, direction) {
-        const base = chunkId(tileX, tileY);
+        const base = chunkKey(tileX, tileY);
         // When this object must sit on a target (a resource), a cell off every target is blocked.
         const targetKeys = this._placeOn.length > 0
             ? new Set(this._targetTiles().map(tile => `${tile.x},${tile.y}`))
@@ -237,7 +237,7 @@ export class ObjectTool extends AbstractTool {
         const overwriteIds = new Set();
         for (const cell of this._geometryTiles(tileX, tileY, direction)) {
             const key = `${cell.x},${cell.y}`;
-            if (chunkId(cell.x, cell.y) !== base || (targetKeys !== null && !targetKeys.has(key))) {
+            if (chunkKey(cell.x, cell.y) !== base || (targetKeys !== null && !targetKeys.has(key))) {
                 bodyByKey.set(key, {cell, state: "blocked"});
                 continue;
             }

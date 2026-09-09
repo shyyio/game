@@ -219,13 +219,13 @@ export {Biome, NoiseRange, TerrainDetail} from "@/common/Biome.js";
 export {Terrain, TerrainBake, TileBiome} from "@/common/Terrain.js";
 export {GameSettingsKey} from "@/common/constants.js";
 
-// ---- Chunk ids ----
-// A chunk is identified by an integer ordinal id (its index within the region);
-// `chunkId(tileX, tileY)` computes that id in JS.
-export {chunkId, chunkOrigin} from "@/common/util.js";
+// ---- Chunk keys ----
+// A chunk is identified by an integer ordinal (its index within the region);
+// `chunkKey(tileX, tileY)` computes that key in JS.
+export {chunkKey, chunkOrigin} from "@/common/util.js";
 
-// The id of a tile, used as the key of every spatial index.
-export {tileId} from "@/common/util.js";
+// The key of a tile, used by every spatial index.
+export {tileKey} from "@/common/util.js";
 
 // Half the region's tile span; the world's half-open coordinate box is [-TILE_HALF, TILE_HALF).
 export {TILE_HALF} from "@/common/util.js";

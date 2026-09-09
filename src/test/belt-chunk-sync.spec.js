@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Game} from "@/sim/Game.js";
 import {Direction} from "@/common/constants.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 import {CreateObjectMessage, SetViewportMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
@@ -27,7 +27,7 @@ test("a session subscribing to a chunk receives its existing belts and resting i
     // A placing session builds a belt line and lets an item rest at the out-port.
     const builder = new CapturingSession(1);
     game.connect(builder);
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(0, 0)), builder);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(0, 0)), builder);
     for (const cell of CELLS) {
         game.dispatchMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP), builder);
     }
@@ -43,7 +43,7 @@ test("a session subscribing to a chunk receives its existing belts and resting i
     // A fresh viewer subscribes to the belt's chunk and must be sent the existing state.
     const viewer = new CapturingSession(2);
     game.connect(viewer);
-    game.dispatchMessage(new SetViewportMessage([chunkId(0, 0)]), viewer);
+    game.dispatchMessage(new SetViewportMessage([chunkKey(0, 0)]), viewer);
 
     const bundle = viewer.events.find(event => event instanceof ChunkSyncEvent);
     assert.ok(bundle, "a ChunkSyncEvent bundle for the subscribed chunk");

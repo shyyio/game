@@ -1,4 +1,4 @@
-import {chunkId, getOrCreate, removeFromGroup, tileId} from "@spup/sdk";
+import {chunkKey, getOrCreate, removeFromGroup, tileKey} from "@spup/sdk";
 import {NOTE_RECORD} from "../common/constants.js";
 import {Note} from "../common/Note.js";
 
@@ -25,7 +25,7 @@ export class NotesStore {
      * @returns {Note|null}
      */
     get(tileX, tileY) {
-        const note = this._byTile.get(tileId(tileX, tileY));
+        const note = this._byTile.get(tileKey(tileX, tileY));
         if (note === undefined) {
             return null;
         }
@@ -38,9 +38,9 @@ export class NotesStore {
      * @returns {void}
      */
     set(note) {
-        const tile = tileId(note.tileX, note.tileY);
+        const tile = tileKey(note.tileX, note.tileY);
         this._byTile.set(tile, note);
-        getOrCreate(this._tilesByChunk, chunkId(note.tileX, note.tileY), () => new Set()).add(tile);
+        getOrCreate(this._tilesByChunk, chunkKey(note.tileX, note.tileY), () => new Set()).add(tile);
     }
 
     /**
@@ -49,11 +49,11 @@ export class NotesStore {
      * @returns {boolean} whether a note stood there
      */
     delete(tileX, tileY) {
-        const tile = tileId(tileX, tileY);
+        const tile = tileKey(tileX, tileY);
         if (!this._byTile.delete(tile)) {
             return false;
         }
-        removeFromGroup(this._tilesByChunk, chunkId(tileX, tileY), tile);
+        removeFromGroup(this._tilesByChunk, chunkKey(tileX, tileY), tile);
         return true;
     }
 

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {Direction, PLAYER_REF_NONE} from "@/common/constants.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 import {CreateObjectMessage, DeleteObjectMessage, SetViewportMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
@@ -56,7 +56,7 @@ test("connect syncs identity, the own name, own claims, and friends", async () =
 
 test("a claim reaches the chunk's viewers, name first, and skips the rest", async () => {
     const {game, alice, bob} = await setup();
-    const chunk = chunkId(5, 5);
+    const chunk = chunkKey(5, 5);
     game.dispatchMessage(new SetViewportMessage([chunk]), bob);
     bob.events.length = 0;
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
@@ -76,7 +76,7 @@ test("a claim reaches the chunk's viewers, name first, and skips the rest", asyn
     const charlie = new CapturingSession(3);
     game.connect(charlie);
     charlie.events.length = 0;
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(69, 5)), alice);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(69, 5)), alice);
     assert.ok(
         !charlie.events.some(event => event instanceof ChunkClaimUpdateEvent),
         "a session without the chunk in view hears nothing",
@@ -85,7 +85,7 @@ test("a claim reaches the chunk's viewers, name first, and skips the rest", asyn
 
 test("the acting player's session gets the update without viewing the chunk", async () => {
     const {game, alice} = await setup();
-    const chunk = chunkId(5, 5);
+    const chunk = chunkKey(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
 
     const update = alice.events.find(event => event instanceof ChunkClaimUpdateEvent);
@@ -95,7 +95,7 @@ test("the acting player's session gets the update without viewing the chunk", as
 
 test("a viewport gaining a claimed chunk is seeded its claim and owner name", async () => {
     const {game, alice, bob} = await setup();
-    const chunk = chunkId(5, 5);
+    const chunk = chunkKey(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
     game.dispatchMessage(new SetViewportMessage([chunk]), bob);
 
@@ -115,7 +115,7 @@ test("a viewport gaining a claimed chunk is seeded its claim and owner name", as
 
 test("a rejected claim answers only the requester", async () => {
     const {game, alice, bob} = await setup();
-    const chunk = chunkId(5, 5);
+    const chunk = chunkKey(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
     bob.events.length = 0;
     game.dispatchMessage(new ClaimChunkMessage(chunk), bob);
@@ -130,14 +130,14 @@ test("building in an unclaimed chunk is rejected until claimed", async () => {
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
     assert.equal(machineCount(game), 0, "unclaimed build rejected");
 
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
     assert.equal(machineCount(game), 1, "claiming unlocks the chunk");
 });
 
 test("building in a foreign chunk is rejected until the owner grants it", async () => {
     const {game, alice, bob} = await setup();
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), alice);
 
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 0, "stranger's build rejected");
@@ -153,21 +153,21 @@ test("building in a foreign chunk is rejected until the owner grants it", async 
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 10, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1, "alice's grant alone gives bob nothing under the only-me default");
 
-    game.dispatchMessage(new SetChunkPermissionMessage(chunkId(5, 5), ChunkPermission.PERMISSION_FRIENDS), alice);
+    game.dispatchMessage(new SetChunkPermissionMessage(chunkKey(5, 5), ChunkPermission.PERMISSION_FRIENDS), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 10, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 2, "alice's grant lets bob build once permission is friends-only");
 });
 
 test("a claim defaults to only-me permission", async () => {
     const {game, alice} = await setup();
-    const chunk = chunkId(5, 5);
+    const chunk = chunkKey(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
     assert.equal(game.claims.permissionOf(chunk), ChunkPermission.PERMISSION_ONLY_ME);
 });
 
 test("friends permission lets a friend-granted player build, only-me blocks them", async () => {
     const {game, alice, bob} = await setup();
-    const chunk = chunkId(5, 5);
+    const chunk = chunkKey(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
     game.dispatchMessage(new AddFriendMessage(BOB), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
@@ -184,7 +184,7 @@ test("friends permission lets a friend-granted player build, only-me blocks them
 
 test("a non-owner's permission change is ignored", async () => {
     const {game, alice, bob} = await setup();
-    const chunk = chunkId(5, 5);
+    const chunk = chunkKey(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
 
     game.dispatchMessage(new SetChunkPermissionMessage(chunk, ChunkPermission.PERMISSION_FRIENDS), bob);
@@ -193,7 +193,7 @@ test("a non-owner's permission change is ignored", async () => {
 
 test("a permission change reaches the chunk's viewers", async () => {
     const {game, alice, bob} = await setup();
-    const chunk = chunkId(5, 5);
+    const chunk = chunkKey(5, 5);
     game.dispatchMessage(new SetViewportMessage([chunk]), bob);
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
     bob.events.length = 0;
@@ -262,7 +262,7 @@ test("add-friend-by-code on your own code answers not found", async () => {
 test("deleting in a foreign chunk is rejected and leaves occupancy intact", async () => {
     const {game, alice, bob} = await setup();
     const engine = game.simEngine;
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
     const eid = engine.placed.eidsOf(BlenderType.objectTypeId)[0];
     const objectRef = engine.placed.objectRefOf(eid);
@@ -279,7 +279,7 @@ test("deleting in a foreign chunk is rejected and leaves occupancy intact", asyn
 
 test("unclaiming a non-empty chunk needs the clear confirmation, which deletes the objects", async () => {
     const {game, alice} = await setup();
-    const chunk = chunkId(5, 5);
+    const chunk = chunkKey(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
     alice.events.length = 0;
@@ -297,10 +297,10 @@ test("unclaiming a non-empty chunk needs the clear confirmation, which deletes t
 
 test("a splitting unclaim rejects with WOULD_SPLIT before the non-empty confirmation", async () => {
     const {game, alice} = await setup();
-    const middle = chunkId(69, 5);
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
+    const middle = chunkKey(69, 5);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), alice);
     game.dispatchMessage(new ClaimChunkMessage(middle), alice);
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(133, 5)), alice);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(133, 5)), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 69, 5, Direction.UP), alice);
     alice.events.length = 0;
 
@@ -313,7 +313,7 @@ test("a splitting unclaim rejects with WOULD_SPLIT before the non-empty confirma
 
 test("unclaim frees the chunk for other players and tells its viewers", async () => {
     const {game, alice, bob} = await setup();
-    const chunk = chunkId(5, 5);
+    const chunk = chunkKey(5, 5);
     game.dispatchMessage(new SetViewportMessage([chunk]), bob);
     game.dispatchMessage(new ClaimChunkMessage(chunk), alice);
     game.dispatchMessage(new UnclaimChunkMessage(chunk), alice);

@@ -6,7 +6,7 @@ import {EventCollector} from "@/test/EventCollector.js";
 import {SplitterBehavior} from "@/mods/logistics/sim/SplitterBehavior.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 
 const ITEM = 7;
 
@@ -62,7 +62,7 @@ test("a render pass emits one port-item batch per chunk", async () => {
     engine.tickAll();
 
     assert.equal(emitted.length, 2, "one batch per chunk");
-    const near = emitted.find(batch => batch.chunk === chunkId(5, 4));
+    const near = emitted.find(batch => batch.chunk === chunkKey(5, 4));
     assert.deepEqual(near.setPortRefs, [s.out_a, s.out_b]);
     assert.deepEqual(near.setItemTypeIds, [ITEM, ITEM]);
     assert.deepEqual(near.clearPortRefs, []);

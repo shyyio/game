@@ -1,5 +1,5 @@
 import {CHUNK_SIZE, REGION_SIZE} from "@/common/constants.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 
 export const TILE_SIZE = 64;
 
@@ -74,7 +74,7 @@ export function viewportChunks(viewport) {
 }
 
 /**
- * The chunk ids in a snapped tile rect, both ends inclusive.
+ * The chunk keys in a snapped tile rect, both ends inclusive.
  * @param {number} left snapped tile x
  * @param {number} top snapped tile y
  * @param {number} right snapped tile x
@@ -85,7 +85,7 @@ function chunksOver(left, top, right, bottom) {
     const chunks = new Set();
     for (let x = left; x <= right; x += CHUNK_SIZE) {
         for (let y = top; y <= bottom; y += CHUNK_SIZE) {
-            chunks.add(chunkId(x, y));
+            chunks.add(chunkKey(x, y));
         }
     }
     return chunks;
@@ -130,7 +130,7 @@ export class ViewportChunkWindow {
 /**
  * @param {Set<number>} a
  * @param {Set<number>} b
- * @returns {boolean} whether both sets hold the same chunk ids
+ * @returns {boolean} whether both sets hold the same chunk keys
  */
 export function sameChunks(a, b) {
     if (a.size !== b.size) {

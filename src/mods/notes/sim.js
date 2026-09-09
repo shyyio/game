@@ -1,4 +1,4 @@
-import {AbstractSimMod, chunkId} from "@spup/sdk";
+import {AbstractSimMod, chunkKey} from "@spup/sdk";
 import {NOTE_RECORD} from "./common/constants.js";
 import {NotePlaceMessage, NoteEditMessage, NoteDeleteMessage} from "./common/messages.js";
 import {NoteSetEvent, NoteDeleteEvent} from "./common/events.js";
@@ -83,7 +83,7 @@ export class NotesSimMod extends AbstractSimMod {
      * @private
      */
     _handlePlace(message, session, game) {
-        const chunk = chunkId(message.tileX, message.tileY);
+        const chunk = chunkKey(message.tileX, message.tileY);
         // Mod messages bypass the core placement gate, so notes check it themselves.
         if (!game.simEngine.placementAllowed(session.playerRef, chunk)) {
             return;
@@ -133,7 +133,7 @@ export class NotesSimMod extends AbstractSimMod {
         if (note === null) {
             return;
         }
-        const chunk = chunkId(message.tileX, message.tileY);
+        const chunk = chunkKey(message.tileX, message.tileY);
         if (note.authorId !== session.playerRef && !game.simEngine.placementAllowed(session.playerRef, chunk)) {
             return;
         }

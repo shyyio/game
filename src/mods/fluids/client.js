@@ -1,4 +1,4 @@
-import {AbstractClientMod, EMPTY, Direction, chunkId} from "@spup/sdk/client";
+import {AbstractClientMod, EMPTY, Direction, chunkKey} from "@spup/sdk/client";
 import {PipeFluidDrawLayer} from "./client/PipeFluidDrawLayer.js";
 import {NetworkDebugDrawLayer} from "./client/NetworkDebugDrawLayer.js";
 import {isPipeType, isTankType, PipeDefinition} from "./common/objectTypes.js";
@@ -64,12 +64,12 @@ export class FluidsClientMod extends AbstractClientMod {
         if (!isPipeType(type)) {
             return true;
         }
-        const chunk = chunkId(tileX, tileY);
+        const chunk = chunkKey(tileX, tileY);
         return joinedFluidType(neighborDirection => {
             const nx = tileX + Direction.dx(neighborDirection);
             const ny = tileY + Direction.dy(neighborDirection);
             const candidates = [];
-            if (chunkId(nx, ny) === chunk) {
+            if (chunkKey(nx, ny) === chunk) {
                 const pipe = client.objects.objectAt(nx, ny, PipeDefinition);
                 if (pipe !== null) {
                     candidates.push(this._networkFluidType(pipe.id));

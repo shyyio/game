@@ -1,4 +1,4 @@
-import {AbstractSimMod, chunkId, NO_EID, PLAYER_REF_NONE, PlayerSettingsUpdateEvent} from "@spup/sdk";
+import {AbstractSimMod, chunkKey, NO_EID, PLAYER_REF_NONE, PlayerSettingsUpdateEvent} from "@spup/sdk";
 import {MarketBook} from "./sim/MarketBook.js";
 import {TradingTerminalType} from "./common/objectTypes.js";
 import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./common/messages.js";
@@ -187,7 +187,7 @@ export class MarketSimMod extends AbstractSimMod {
         let owner = owners.get(eid);
         if (owner === undefined) {
             const position = engine.Position;
-            owner = game.claims.ownerOf(chunkId(position.x[eid], position.y[eid]));
+            owner = game.claims.ownerOf(chunkKey(position.x[eid], position.y[eid]));
             owners.set(eid, owner);
         }
         return owner;

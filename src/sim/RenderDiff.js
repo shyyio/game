@@ -1,4 +1,4 @@
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 import {PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {EMPTY} from "@/sim/sentinels.js";
 
@@ -300,7 +300,7 @@ export class RenderDiff {
      * @returns {void}
      */
     _index(eid) {
-        const chunk = chunkId(this._x[eid], this._y[eid]);
+        const chunk = chunkKey(this._x[eid], this._y[eid]);
         let eids = this._byChunk.get(chunk);
         if (eids === undefined) {
             eids = new Set();
@@ -316,7 +316,7 @@ export class RenderDiff {
      * @returns {void}
      */
     _unindex(eid) {
-        const chunk = chunkId(this._x[eid], this._y[eid]);
+        const chunk = chunkKey(this._x[eid], this._y[eid]);
         const eids = this._byChunk.get(chunk);
         if (eids === undefined) {
             return;
@@ -353,7 +353,7 @@ export class RenderDiff {
      * @returns {PortItemBatchEvent}
      */
     _batchAt(batches, x, y) {
-        const chunk = chunkId(x, y);
+        const chunk = chunkKey(x, y);
         const existing = batches.get(chunk);
         if (existing !== undefined) {
             return existing;

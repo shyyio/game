@@ -29,7 +29,7 @@ export class NotePin extends Container {
         super();
         this.hitArea = PIN_HIT_AREA;
         /**
-         * The tileId this pin is currently bound to, rebound on every take from the pool.
+         * The tileKey this pin is currently bound to, rebound on every take from the pool.
          * @type {number|null}
          */
         this.tile = null;

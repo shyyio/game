@@ -1,4 +1,4 @@
-import {TickPhase, Direction, EMPTY, NO_EID, chunkId, chunkOrigin, tileId, getOrCreate, removeFromGroup} from "@spup/sdk";
+import {TickPhase, Direction, EMPTY, NO_EID, chunkKey, chunkOrigin, tileKey, getOrCreate, removeFromGroup} from "@spup/sdk";
 import {findTunnelPartner} from "../common/geometry.js";
 import {
     BeltPathBatchEvent,
@@ -152,7 +152,7 @@ export class Belts {
      * @returns {object[]} the belts on tile (x, y)
      */
     _beltsAt(x, y) {
-        const held = this._belts.get(tileId(x, y));
+        const held = this._belts.get(tileKey(x, y));
         if (held === undefined) {
             return [];
         }
@@ -219,7 +219,7 @@ export class Belts {
      * @returns {void}
      */
     _addBelt(belt) {
-        const key = tileId(belt.x, belt.y);
+        const key = tileKey(belt.x, belt.y);
         const held = this._belts.get(key);
         if (held === undefined) {
             this._belts.set(key, belt);
@@ -237,7 +237,7 @@ export class Belts {
      * @returns {void}
      */
     _removeBeltObject(belt) {
-        const key = tileId(belt.x, belt.y);
+        const key = tileKey(belt.x, belt.y);
         const remaining = this._beltsAt(belt.x, belt.y).filter(candidate => candidate !== belt);
         if (remaining.length === 0) {
             this._belts.delete(key);
@@ -284,7 +284,7 @@ export class Belts {
         const rebuilt = this._rebuildOrphans(orphans, run, removed);
 
         // Recalc + item rows for every changed path (the run and any split-off orphan).
-        const affected = [...run, ...rebuilt].map(belt => tileId(belt.x, belt.y));
+        const affected = [...run, ...rebuilt].map(belt => tileKey(belt.x, belt.y));
         this._emitPathRecalcs(affected);
         this._emitPathItems(affected);
         return result;
@@ -446,7 +446,7 @@ export class Belts {
      * @returns {BeltItemBatchEvent}
      */
     _itemBatch(batches, head) {
-        const chunk = chunkId(head.x, head.y);
+        const chunk = chunkKey(head.x, head.y);
         const existing = batches.get(chunk);
         if (existing !== undefined) {
             return existing;
@@ -565,10 +565,10 @@ export class Belts {
             this._rebuildSubrun(run, sources);
             for (const runBelt of run) {
                 covered.add(runBelt.id);
-                affected.push(tileId(runBelt.x, runBelt.y));
+                affected.push(tileKey(runBelt.x, runBelt.y));
             }
             for (const runBelt of this._rebuildOrphans(orphans, run, sources)) {
-                affected.push(tileId(runBelt.x, runBelt.y));
+                affected.push(tileKey(runBelt.x, runBelt.y));
             }
         }
         this._emitPathRecalcs(affected);
@@ -631,7 +631,7 @@ export class Belts {
         let current = [];
         let currentChunk = null;
         for (const cell of run) {
-            const chunk = chunkId(cell.x, cell.y);
+            const chunk = chunkKey(cell.x, cell.y);
             if (chunk !== currentChunk && current.length > 0) {
                 segments.push(current);
                 current = [];
@@ -779,7 +779,7 @@ export class Belts {
         this.engine.world.addComponent(eid, PATH_MARKER);
         return {
             id: eid,
-            belts: runBelts.map(belt => tileId(belt.x, belt.y)),
+            belts: runBelts.map(belt => tileKey(belt.x, belt.y)),
             beltIds: runBelts.map(belt => belt.id),
             headX: runBelts[0].x,
             headY: runBelts[0].y,
@@ -858,8 +858,8 @@ export class Belts {
      * @returns {{id:number, inPort:number, outPort:number, length:number, segments:number[]}}
      */
     _buildSingleChunk(run, placed, removed) {
-        const runKeys = run.map(belt => tileId(belt.x, belt.y));
-        const newKey = tileId(placed.x, placed.y);
+        const runKeys = run.map(belt => tileKey(belt.x, belt.y));
+        const newKey = tileKey(placed.x, placed.y);
 
         // Only extending one path at an end preserves its in-flight items; anything else rebuilds empty.
         let items = [];
@@ -935,7 +935,7 @@ export class Belts {
      * @returns {{id:number, inPort:number, outPort:number}|null}
      */
     pathAt(x, y) {
-        const held = this._pathsByTile.get(tileId(x, y));
+        const held = this._pathsByTile.get(tileKey(x, y));
         const path = Array.isArray(held) ? held[0] : held;
         if (path === undefined) {
             return null;
@@ -1285,7 +1285,7 @@ export class Belts {
         for (const id of path.beltIds) {
             this._pathByBeltId.set(id, path);
         }
-        getOrCreate(this._pathsByChunk, chunkId(path.headX, path.headY), () => new Set()).add(path);
+        getOrCreate(this._pathsByChunk, chunkKey(path.headX, path.headY), () => new Set()).add(path);
     }
 
     /**
@@ -1315,7 +1315,7 @@ export class Belts {
                 this._pathsByTile.delete(key);
             }
         }
-        removeFromGroup(this._pathsByChunk, chunkId(path.headX, path.headY), path);
+        removeFromGroup(this._pathsByChunk, chunkKey(path.headX, path.headY), path);
         for (const id of path.beltIds) {
             if (this._pathByBeltId.get(id) === path) {
                 this._pathByBeltId.delete(id);
@@ -1697,7 +1697,7 @@ export class Belts {
             );
             const path = {
                 id: pathEid,
-                belts: belts.map(belt => tileId(belt.x, belt.y)),
+                belts: belts.map(belt => tileKey(belt.x, belt.y)),
                 beltIds: belts.map(belt => belt.id),
                 headX: belts[0].x,
                 headY: belts[0].y,

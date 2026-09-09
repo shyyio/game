@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Game} from "@/sim/Game.js";
 import {Direction} from "@/common/constants.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
@@ -27,8 +27,8 @@ test("a Game on GameEngine routes belt render events only to sessions watching t
     game.connect(watcher);
     game.connect(bystander);
 
-    const beltChunk = chunkId(0, 0);
-    const elsewhere = chunkId(1000, 1000);
+    const beltChunk = chunkKey(0, 0);
+    const elsewhere = chunkKey(1000, 1000);
     game.dispatchMessage(new SetViewportMessage([beltChunk]), watcher);
     game.dispatchMessage(new SetViewportMessage([elsewhere]), bystander);
 

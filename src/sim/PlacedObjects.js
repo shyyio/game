@@ -1,7 +1,7 @@
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
 import {Direction, PLAYER_REF_NONE} from "@/common/constants.js";
-import {chunkId, chunkOrigin} from "@/common/util.js";
+import {chunkKey, chunkOrigin} from "@/common/util.js";
 import {NO_EID} from "@/sim/sentinels.js";
 import {METRICS_FACT_TYPE_OBJECT_PLACED, METRICS_FACT_TYPE_OBJECT_DESPAWNED} from "@/common/MetricsFact.js";
 
@@ -109,7 +109,7 @@ export class PlacedObjects {
      */
     claimOwnerOf(eid) {
         const position = this.engine.Position;
-        return this.engine.chunkOwnerOf(chunkId(position.x[eid], position.y[eid]));
+        return this.engine.chunkOwnerOf(chunkKey(position.x[eid], position.y[eid]));
     }
 
     /**
@@ -308,7 +308,7 @@ export class PlacedObjects {
         }
         this._eidByObjectRef.set(objectRef, eid);
         this._indexChunk(eid, message.x, message.y);
-        this._notifyChunkChanged(chunkId(message.x, message.y));
+        this._notifyChunkChanged(chunkKey(message.x, message.y));
         engine.notifySpawn(eid, objectRef);
         const portEids = type.behavior.renderedPortEids(engine, eid);
         engine.emitEvent(new ObjectInsertEvent(type.objectTypeId, objectRef, message.x, message.y, message.direction, portEids));
@@ -342,7 +342,7 @@ export class PlacedObjects {
         this._unindexChunk(eid, x, y);
         engine.components.destroyEntity(eid);
         this._eidByObjectRef.delete(objectRef);
-        this._notifyChunkChanged(chunkId(x, y));
+        this._notifyChunkChanged(chunkKey(x, y));
         return true;
     }
 
@@ -355,7 +355,7 @@ export class PlacedObjects {
      * @returns {void}
      */
     _indexChunk(eid, x, y) {
-        const chunk = chunkId(x, y);
+        const chunk = chunkKey(x, y);
         const held = this._eidsByChunk.get(chunk);
         if (held === undefined) {
             this._eidsByChunk.set(chunk, new Set([eid]));
@@ -373,7 +373,7 @@ export class PlacedObjects {
      * @returns {void}
      */
     _unindexChunk(eid, x, y) {
-        const chunk = chunkId(x, y);
+        const chunk = chunkKey(x, y);
         const held = this._eidsByChunk.get(chunk);
         if (held === undefined) {
             return;

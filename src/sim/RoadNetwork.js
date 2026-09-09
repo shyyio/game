@@ -1,4 +1,4 @@
-import {cellNeighbors, tileId} from "@/common/util.js";
+import {cellNeighbors, tileKey} from "@/common/util.js";
 import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
 import {RoadBehavior} from "@/sim/behaviors/RoadBehavior.js";
 import {floodRoadComponent} from "@/common/roadFlood.js";
@@ -17,7 +17,7 @@ export class RoadTile {
     constructor(x, y, objectRef) {
         this.x = x;
         this.y = y;
-        this.key = tileId(x, y);
+        this.key = tileKey(x, y);
         this.objectRef = objectRef;
         /** @type {number|null} */
         this.component = null;
@@ -95,14 +95,14 @@ export class RoadNetwork {
         this.engine = engine;
         this.placed = placed;
         /**
-         * tileId -> the road on it.
+         * tileKey -> the road on it.
          * @type {Map<number, RoadTile>}
          * @private
          */
         this._tiles = new Map();
         // A full recompute pending (load/rebuild); the cell/component sets below cover edits.
         this._dirtyAll = false;
-        // tileId -> {x, y} cells edited since the last recompute.
+        // tileKey -> {x, y} cells edited since the last recompute.
         this._dirtyCells = new Map();
         // Prior component ids affected by an edit (e.g. a removed road tile's), so their
         // assignments rediff even when no surviving road tile leads back to them.
@@ -117,7 +117,7 @@ export class RoadNetwork {
      * @returns {void}
      */
     addRoad(x, y, objectRef) {
-        this._tiles.set(tileId(x, y), new RoadTile(x, y, objectRef));
+        this._tiles.set(tileKey(x, y), new RoadTile(x, y, objectRef));
         this._markCellDirty(x, y);
     }
 
@@ -128,7 +128,7 @@ export class RoadNetwork {
      * @returns {void}
      */
     removeRoad(x, y) {
-        const tile = tileId(x, y);
+        const tile = tileKey(x, y);
         const road = this._tiles.get(tile);
         if (road !== undefined && road.component !== null) {
             this._dirtyComponents.add(road.component);
@@ -155,7 +155,7 @@ export class RoadNetwork {
      * @returns {void}
      */
     _markCellDirty(x, y) {
-        this._dirtyCells.set(tileId(x, y), {x, y});
+        this._dirtyCells.set(tileKey(x, y), {x, y});
     }
 
     /**
@@ -164,11 +164,11 @@ export class RoadNetwork {
      * @returns {boolean}
      */
     roadAt(x, y) {
-        return this._tiles.has(tileId(x, y));
+        return this._tiles.has(tileKey(x, y));
     }
 
     /**
-     * @param {number} key - a tileId
+     * @param {number} key - a tileKey
      * @returns {RoadTile|undefined}
      */
     tileByKey(key) {
@@ -210,7 +210,7 @@ export class RoadNetwork {
         const seenHousings = new Set();
         const housingQueue = [];
         const consider = (x, y) => {
-            const tile = tileId(x, y);
+            const tile = tileKey(x, y);
             const road = this._tiles.get(tile);
             if (road !== undefined) {
                 if (!seenRoads.has(tile)) {

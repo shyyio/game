@@ -1,4 +1,4 @@
-import {getOrCreate, removeFromGroup, chunkId} from "@/common/util.js";
+import {getOrCreate, removeFromGroup, chunkKey} from "@/common/util.js";
 
 /**
  * One road-attached machine's standing worker allocation. `granted` and `housingObjectRef` are the
@@ -74,7 +74,7 @@ export class WorkerAssignments {
      */
     store(assignment) {
         this._byObjectRef.set(assignment.objectRef, assignment);
-        getOrCreate(this._byChunk, chunkId(assignment.x, assignment.y), () => new Set()).add(assignment.objectRef);
+        getOrCreate(this._byChunk, chunkKey(assignment.x, assignment.y), () => new Set()).add(assignment.objectRef);
         getOrCreate(this._byComponent, assignment.component, () => new Set()).add(assignment.objectRef);
     }
 
@@ -88,7 +88,7 @@ export class WorkerAssignments {
             return;
         }
         this._byObjectRef.delete(objectRef);
-        removeFromGroup(this._byChunk, chunkId(assignment.x, assignment.y), objectRef);
+        removeFromGroup(this._byChunk, chunkKey(assignment.x, assignment.y), objectRef);
         removeFromGroup(this._byComponent, assignment.component, objectRef);
     }
 

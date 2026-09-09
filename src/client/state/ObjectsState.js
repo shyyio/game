@@ -1,6 +1,6 @@
 import {ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent, ObjectFieldsEvent} from "@/common/ObjectEvents.js";
-import {TILE_VARIANT_LIMIT, chunkId, tileId, tileVariantId} from "@/common/util.js";
+import {TILE_VARIANT_LIMIT, chunkKey, tileKey, tileVariantKey} from "@/common/util.js";
 import {portAt, edgeKey} from "@/common/portGeometry.js";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {DEV} from "@/common/env.js";
@@ -150,7 +150,7 @@ export class CacheEntry {
         this.id = id;
         this.tileX = tileX;
         this.tileY = tileY;
-        this.chunk = chunkId(tileX, tileY);
+        this.chunk = chunkKey(tileX, tileY);
         this.cells = cells;
         this.ports = ports;
         this.data = data;
@@ -344,7 +344,7 @@ export class ObjectsView extends AbstractCacheView {
      * @private
      */
     static _tileKey(tileX, tileY) {
-        return tileId(tileX, tileY);
+        return tileKey(tileX, tileY);
     }
 
     /**
@@ -366,7 +366,7 @@ export class ObjectsView extends AbstractCacheView {
             }
             this._layerCodes.set(layer, code);
         }
-        return tileVariantId(tileId(tileX, tileY), code);
+        return tileVariantKey(tileKey(tileX, tileY), code);
     }
 
     /**
@@ -396,11 +396,11 @@ export class ObjectsView extends AbstractCacheView {
             tileEntries.push(entry);
         }
 
-        const chunkIds = this._byChunk.get(entry.chunk);
-        if (chunkIds === undefined) {
+        const chunkKeys = this._byChunk.get(entry.chunk);
+        if (chunkKeys === undefined) {
             this._byChunk.set(entry.chunk, new Set([id]));
         } else {
-            chunkIds.add(id);
+            chunkKeys.add(id);
         }
 
         for (const cell of cells) {
@@ -453,10 +453,10 @@ export class ObjectsView extends AbstractCacheView {
             }
         }
 
-        const chunkIds = this._byChunk.get(entry.chunk);
-        if (chunkIds !== undefined) {
-            chunkIds.delete(id);
-            if (chunkIds.size === 0) {
+        const chunkKeys = this._byChunk.get(entry.chunk);
+        if (chunkKeys !== undefined) {
+            chunkKeys.delete(id);
+            if (chunkKeys.size === 0) {
                 this._byChunk.delete(entry.chunk);
             }
         }
@@ -539,7 +539,7 @@ export class ObjectsView extends AbstractCacheView {
         if (code === undefined) {
             return null;
         }
-        const stacked = this._byCell.get(tileVariantId(tileId(tileX, tileY), code));
+        const stacked = this._byCell.get(tileVariantKey(tileKey(tileX, tileY), code));
         if (stacked === undefined) {
             return null;
         }
@@ -558,7 +558,7 @@ export class ObjectsView extends AbstractCacheView {
         if (code === undefined) {
             return [];
         }
-        const stacked = this._byCell.get(tileVariantId(tileId(tileX, tileY), code));
+        const stacked = this._byCell.get(tileVariantKey(tileKey(tileX, tileY), code));
         if (stacked === undefined) {
             return [];
         }
@@ -585,12 +585,12 @@ export class ObjectsView extends AbstractCacheView {
      * @returns {CacheEntry[]}
      */
     getByChunk(chunk) {
-        const chunkIds = this._byChunk.get(chunk);
-        if (chunkIds === undefined) {
+        const chunkKeys = this._byChunk.get(chunk);
+        if (chunkKeys === undefined) {
             return [];
         }
         const entries = [];
-        for (const id of chunkIds) {
+        for (const id of chunkKeys) {
             entries.push(this._byId.get(id));
         }
         return entries;

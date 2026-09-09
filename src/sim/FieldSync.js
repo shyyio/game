@@ -1,5 +1,5 @@
 import {ObjectFieldsEvent, ObjectFieldsBatchEvent} from "@/common/ObjectEvents.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 
 // Initial length of the per-eid dirty flags and shadow columns; grows by doubling.
 const INITIAL_CAPACITY = 1024;
@@ -203,7 +203,7 @@ export class FieldSync {
                 if (!this.engine.observesTile(x, y)) {
                     continue;
                 }
-                const chunk = chunkId(x, y);
+                const chunk = chunkKey(x, y);
                 let batch = batches.get(chunk);
                 if (batch === undefined) {
                     batch = new ObjectFieldsBatchEvent(x, y, set.fields.length);

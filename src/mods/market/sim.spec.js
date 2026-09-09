@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 import {
-    EMPTY, Direction, CHUNK_SIZE, chunkId, CreateObjectMessage, ClaimChunkMessage,
+    EMPTY, Direction, CHUNK_SIZE, chunkKey, CreateObjectMessage, ClaimChunkMessage,
     PlayerSettingsUpdateEvent, ModPackage, AbstractModDeclaration, MarketListingEntry,
 } from "@spup/sdk";
 import {TradingTerminalType} from "./common/objectTypes.js";
@@ -55,7 +55,7 @@ async function gameWithSessions(extraPackages = []) {
  * @returns {number}
  */
 function placeTerminal(game, session, tileX, tileY, mode, itemTypeId, price) {
-    const chunk = chunkId(tileX, tileY);
+    const chunk = chunkKey(tileX, tileY);
     game.dispatchMessage(new ClaimChunkMessage(chunk), session);
     game.dispatchMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, tileX, tileY, Direction.UP), session);
     const eid = game.simEngine.placed.eidsOf(TradingTerminalType.objectTypeId).at(-1);
@@ -203,7 +203,7 @@ test("the market snapshot reports the tradable catalog and the requested termina
 
 test("a snapshot request for an unconfigured terminal reports MARKET_SNAPSHOT_NONE", async () => {
     const {game, buyer} = await gameWithSessions();
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), buyer);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), buyer);
     game.dispatchMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 5, 5, Direction.UP), buyer);
     const eid = game.simEngine.placed.eidsOf(TradingTerminalType.objectTypeId).at(-1);
     const objectRef = game.simEngine.placed.objectRefOf(eid);
@@ -215,7 +215,7 @@ test("a snapshot request for an unconfigured terminal reports MARKET_SNAPSHOT_NO
 
 test("configuring with a non-positive price on a player-market item is rejected", async () => {
     const {game, seller} = await gameWithSessions();
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), seller);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), seller);
     game.dispatchMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 5, 5, Direction.UP), seller);
     const eid = game.simEngine.placed.eidsOf(TradingTerminalType.objectTypeId).at(-1);
     const objectRef = game.simEngine.placed.objectRefOf(eid);

@@ -2,7 +2,7 @@ import {Container, Graphics, Text} from "pixi.js";
 import {AbstractDebugDrawLayer} from "@/client/layers/AbstractDebugDrawLayer.js";
 import {TILE_SIZE, GAME_FONT} from "@/client/constants.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
-import {cellNeighbors, tileId} from "@/common/util.js";
+import {cellNeighbors, tileKey} from "@/common/util.js";
 import {floodRoadComponent} from "@/common/roadFlood.js";
 import {RoadBehavior, isWorkerBehavior} from "@/sim/behaviors/RoadBehavior.js";
 import {DEBUG_COLOR} from "@/client/Theme.js";
@@ -69,12 +69,12 @@ export class WorkerDebugLayer extends AbstractDebugDrawLayer {
             label.destroy();
         }
 
-        // tileId -> road cell, over every cached road entry's cells.
+        // tileKey -> road cell, over every cached road entry's cells.
         const roadTiles = new Map();
         for (const entry of this.cache.values()) {
             if (entry.behavior instanceof RoadBehavior) {
                 for (const cell of entry.cells) {
-                    roadTiles.set(tileId(cell.x, cell.y), {x: cell.x, y: cell.y, entryId: entry.id});
+                    roadTiles.set(tileKey(cell.x, cell.y), {x: cell.x, y: cell.y, entryId: entry.id});
                 }
             }
         }
@@ -146,7 +146,7 @@ export class WorkerDebugLayer extends AbstractDebugDrawLayer {
         let demand = 0;
         const attached = new Set();
         for (const {x, y} of cellNeighbors(component)) {
-            if (roadTiles.has(tileId(x, y))) {
+            if (roadTiles.has(tileKey(x, y))) {
                 continue;
             }
             const entry = this.cache.at(x, y, LAYER_SURFACE);

@@ -1,5 +1,5 @@
 import {Direction} from "@/common/constants.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {BeltDefinition, SplitterDefinition} from "@/mods/logistics/common/objectTypes.js";
 import {WaterResourceType, ExtractorType, BlenderType} from "@/mods/base-game/common/objectTypes.js";
@@ -40,7 +40,7 @@ for (let i = 0; i < 5; i += 1) {
 const alice = game.players.getOrCreate("sub-alice", "alice");
 const bob = game.players.getOrCreate("sub-bob", "bob");
 game.players.addFriend(alice.playerRef, bob.playerRef);
-game.claims.claim(alice.playerRef, chunkId(5, 5), alice.maxChunks);
+game.claims.claim(alice.playerRef, chunkKey(5, 5), alice.maxChunks);
 
 await game.save();
 console.log(`wrote sample save: ${PATH}`);

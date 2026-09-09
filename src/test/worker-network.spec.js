@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent} from "@/common/ObjectEvents.js";
 import {WorkerAssignmentEvent, NO_HOUSING} from "@/common/WorkerEvents.js";
@@ -230,7 +230,7 @@ test("a new smaller-id component takes a machine from its old network", async ()
     const machineId = placeObject(engine, TestMachineType, 6, 4);
     assert.equal(engine.inspectSnapshot(machineId).workers, TEST_MACHINE_WORKER_COST);
 
-    // Left network: its road tile has the smaller tileId, so it outranks the right one.
+    // Left network: its road tile has the smaller tileKey, so it outranks the right one.
     const collector = new EventCollector(engine);
     placeObject(engine, RoadDefinition, 5, 4);
     const leftHousingId = placeObject(engine, HousingDefinition, 3, 3);
@@ -265,7 +265,7 @@ test("a machine stays with its smaller-id network when a new one appears beside 
 test("chunk sync carries the manned assignments", async () => {
     const {engine, housingId, nearId, farId} = await mannedSetup();
     engine.tickAll();
-    const events = flattenBatches(engine.chunkSync(chunkId(5, 4)));
+    const events = flattenBatches(engine.chunkSync(chunkKey(5, 4)));
     const assignments = events.filter(event => event instanceof WorkerAssignmentEvent);
     const byMachine = new Map(assignments.map(event => [event.machineId, event.housingId]));
     assert.equal(byMachine.get(nearId), housingId);

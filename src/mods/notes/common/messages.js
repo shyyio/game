@@ -2,7 +2,7 @@ import {AbstractMessage, TILE_HALF} from "@spup/sdk";
 import {noteOffsetValid, noteTextValid} from "./constants.js";
 
 /**
- * Whether a tile position is inside the region's half-open tile box, matching tileId's bounds.
+ * Whether a tile position is inside the region's half-open tile box, matching tileKey's bounds.
  * @param {number} tileX
  * @param {number} tileY
  * @returns {boolean}

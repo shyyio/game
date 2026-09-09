@@ -1,4 +1,4 @@
-import {AbstractCacheWriter, ChunkUnsubscribeEvent, chunkId, schemaMap, schemaScalar, tileId} from "@spup/sdk/client";
+import {AbstractCacheWriter, ChunkUnsubscribeEvent, chunkKey, schemaMap, schemaScalar, tileKey} from "@spup/sdk/client";
 import {NoteSetEvent, NoteDeleteEvent} from "../common/events.js";
 import {Note} from "../common/Note.js";
 
@@ -67,7 +67,7 @@ export class NotesWriter extends AbstractCacheWriter {
                 event.authorId,
                 event.text,
             );
-            this._state.mapSet("notes.byTile", tileId(event.x, event.y), note);
+            this._state.mapSet("notes.byTile", tileKey(event.x, event.y), note);
             const hoverTarget = this._state.get("notes.hoverTarget");
             // An edit lands while its own note is hovered; the panel must read the new text.
             if (hoverTarget !== null && hoverTarget.tileX === note.tileX && hoverTarget.tileY === note.tileY) {
@@ -76,12 +76,12 @@ export class NotesWriter extends AbstractCacheWriter {
             return;
         }
         if (event instanceof NoteDeleteEvent) {
-            this._state.mapDelete("notes.byTile", tileId(event.x, event.y));
+            this._state.mapDelete("notes.byTile", tileKey(event.x, event.y));
             this._clearTargetsAt(event.x, event.y);
             return;
         }
         if (event instanceof ChunkUnsubscribeEvent) {
-            this._state.mapDeleteWhere("notes.byTile", note => chunkId(note.tileX, note.tileY) === event.chunk);
+            this._state.mapDeleteWhere("notes.byTile", note => chunkKey(note.tileX, note.tileY) === event.chunk);
             this._clearTargetsIn(event.chunk);
         }
     }
@@ -128,7 +128,7 @@ export class NotesWriter extends AbstractCacheWriter {
      * @returns {void}
      */
     _clearTargetsIn(chunk) {
-        this._clearTargetsWhere(target => chunkId(target.tileX, target.tileY) === chunk);
+        this._clearTargetsWhere(target => chunkKey(target.tileX, target.tileY) === chunk);
     }
 
     /**

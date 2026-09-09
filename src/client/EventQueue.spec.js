@@ -6,14 +6,14 @@ import {AbstractChunkRoutedEvent} from "@/common/AbstractChunkRoutedEvent.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {AbstractEvent} from "@/common/AbstractEvent.js";
 import {ChunkSyncEvent, ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 
 // One tile deep in each of two chunks, so a "chunk" is a real routed id.
 const IN_CHUNK_A = 1;
 const IN_CHUNK_B = CHUNK_SIZE + 1;
-const CHUNK_A = chunkId(IN_CHUNK_A, IN_CHUNK_A);
-const CHUNK_B = chunkId(IN_CHUNK_B, IN_CHUNK_B);
+const CHUNK_A = chunkKey(IN_CHUNK_A, IN_CHUNK_A);
+const CHUNK_B = chunkKey(IN_CHUNK_B, IN_CHUNK_B);
 
 class TileEvent extends AbstractChunkRoutedEvent {
 

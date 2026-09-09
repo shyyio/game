@@ -2,7 +2,7 @@ import {Container, Graphics, GraphicsContext} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
 import {DisplayPool} from "@/client/layers/DisplayPool.js";
 import {TILE_SIZE} from "@/client/constants.js";
-import {chunkId, getOrCreate} from "@/common/util.js";
+import {chunkKey, getOrCreate} from "@/common/util.js";
 
 // Worker dot styling, in a row along the machine's top edge: every slot carries the same solid
 // black ring; a granted worker fills it green, a missing one yellow.
@@ -149,7 +149,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
             bounds.minTileX * TILE_SIZE + DOT_LEFT_INSET,
             bounds.minTileY * TILE_SIZE + DOT_EDGE_INSET,
         );
-        const container = this._containerFor(chunkId(bounds.minTileX, bounds.minTileY));
+        const container = this._containerFor(chunkKey(bounds.minTileX, bounds.minTileY));
         if (badge.parent !== container) {
             container.addChild(badge);
         }

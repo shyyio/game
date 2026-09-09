@@ -4,7 +4,7 @@ import {makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 import {
     SetViewportMessage, SetPlayerSettingMessage, AddFriendMessage, RemoveFriendMessage,
-    CHUNK_SIZE, chunkId,
+    CHUNK_SIZE, chunkKey,
 } from "@spup/sdk";
 import {CursorMoveMessage, CursorHideMessage} from "./common/messages.js";
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "./common/events.js";
@@ -18,9 +18,9 @@ async function gameWithSessions() {
     game.connect(sender);
     game.connect(watcher);
     game.connect(bystander);
-    game.dispatchMessage(new SetViewportMessage([chunkId(0, 0)]), sender);
-    game.dispatchMessage(new SetViewportMessage([chunkId(0, 0)]), watcher);
-    game.dispatchMessage(new SetViewportMessage([chunkId(1000, 1000)]), bystander);
+    game.dispatchMessage(new SetViewportMessage([chunkKey(0, 0)]), sender);
+    game.dispatchMessage(new SetViewportMessage([chunkKey(0, 0)]), watcher);
+    game.dispatchMessage(new SetViewportMessage([chunkKey(1000, 1000)]), bystander);
     return {game, sender, watcher, bystander};
 }
 
@@ -56,8 +56,8 @@ test("a chunk crossing hides the cursor only for viewers losing sight of it", as
     // The watcher sees both chunks; a fourth session sees only the origin chunk.
     const edgeWatcher = new CapturingSession(4);
     game.connect(edgeWatcher);
-    game.dispatchMessage(new SetViewportMessage([chunkId(0, 0)]), edgeWatcher);
-    game.dispatchMessage(new SetViewportMessage([chunkId(0, 0), chunkId(CHUNK_SIZE, 0)]), watcher);
+    game.dispatchMessage(new SetViewportMessage([chunkKey(0, 0)]), edgeWatcher);
+    game.dispatchMessage(new SetViewportMessage([chunkKey(0, 0), chunkKey(CHUNK_SIZE, 0)]), watcher);
 
     game.dispatchMessage(new CursorMoveMessage(4.5, 7.25), sender);
     game.dispatchMessage(new CursorMoveMessage(CHUNK_SIZE + 0.5, 7.25), sender);

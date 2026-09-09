@@ -1,5 +1,5 @@
 import {CHUNK_SIZE, REGION_SIZE} from "@/common/constants.js";
-import {chunkId, chunkOrdinal, chunkOrigin} from "@/common/util.js";
+import {chunkKey, chunkOrdinal, chunkOrigin} from "@/common/util.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 
 const REGION_HALF = REGION_SIZE / 2;
@@ -169,7 +169,7 @@ export class OverworldBake {
         const touched = new Set();
         for (let row = 0; row < def.count; row += 1) {
             const eid = def.eids[row];
-            touched.add(chunkId(position.x[eid], position.y[eid]));
+            touched.add(chunkKey(position.x[eid], position.y[eid]));
         }
         for (const chunk of touched) {
             this._repaintChunk(chunk);

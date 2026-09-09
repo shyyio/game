@@ -9,7 +9,7 @@ import {CreateObjectMessage, OverworldRequestMessage} from "@/common/CoreMessage
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {PlayerNamesEvent} from "@/common/PlayerEvents.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 import {BeltDefinition} from "@/mods/logistics/common/objectTypes.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
@@ -43,7 +43,7 @@ test("an overworld snapshot carries the rect's claims, owner names pushed first"
     const bob = new CapturingSession(2);
     game.connect(alice);
     game.connect(bob);
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(3, 2)), alice);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(3, 2)), alice);
     bob.events.length = 0;
 
     game.dispatchMessage(new OverworldRequestMessage(-1, -1, 2, 2), bob);
@@ -54,7 +54,7 @@ test("an overworld snapshot carries the rect's claims, owner names pushed first"
     assert.ok(nameIndex >= 0, "the requester learns the owner's name");
     assert.ok(snapshotIndex > nameIndex, "the name precedes the snapshot");
     const snapshot = bob.events[snapshotIndex];
-    assert.deepEqual(snapshot.claimedChunks, [chunkId(3, 2)]);
+    assert.deepEqual(snapshot.claimedChunks, [chunkKey(3, 2)]);
     assert.deepEqual(snapshot.claimOwners, [1]);
 
     // A repeat request resends no known name; a rect missing the claim carries none.

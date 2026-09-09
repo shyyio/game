@@ -1,6 +1,6 @@
 import {AbstractChunkedDrawLayer} from "@/client/layers/AbstractChunkedDrawLayer.js";
 import {TILE_SIZE} from "@/client/constants.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 import {MAP_TILE_COLOR} from "@/client/Theme.js";
 import {ObjectClientData} from "@/client/state/ObjectsState.js";
 import {ObjectSprite} from "@/client/layers/ObjectSprite.js";
@@ -78,7 +78,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
      */
     addObject(id, sprite) {
         this._objects.set(id, sprite);
-        const chunk = chunkId(sprite.tileX, sprite.tileY);
+        const chunk = chunkKey(sprite.tileX, sprite.tileY);
         this._node(chunk).sprites.addChild(sprite);
         this._memberAdded(chunk);
     }
@@ -92,7 +92,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
             return;
         }
 
-        const chunk = chunkId(sprite.tileX, sprite.tileY);
+        const chunk = chunkKey(sprite.tileX, sprite.tileY);
         // Scans only its own chunk's children, and detaches from its parent.
         sprite.destroy();
         this._objects.delete(id);

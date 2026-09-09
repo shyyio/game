@@ -1,4 +1,4 @@
-import {cellNeighbors, tileId} from "@/common/util.js";
+import {cellNeighbors, tileKey} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {WorkerAssignment} from "@/sim/WorkerAssignments.js";
 
@@ -201,7 +201,7 @@ export class WorkerAllocation {
     _claims(component, owner, cells) {
         let winner = component.minTile;
         for (const {x, y} of cellNeighbors(cells)) {
-            const road = this.roads.tileByKey(tileId(x, y));
+            const road = this.roads.tileByKey(tileKey(x, y));
             if (road !== undefined && road.component !== null && road.component < winner) {
                 winner = road.component;
             }

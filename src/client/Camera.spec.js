@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {Camera} from "@/client/Camera.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 
 // A chunk's center in world pixels, the unit every assertion below is written in.
 const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
@@ -55,17 +55,17 @@ function build(ownChunks) {
 }
 
 test("one claimed chunk centers on that chunk", () => {
-    const {camera} = build([chunkId(0, 0)]);
+    const {camera} = build([chunkKey(0, 0)]);
     assert.deepEqual(camera.ownClaimsCenter(), {x: CHUNK_CENTER_PX, y: CHUNK_CENTER_PX});
 });
 
 test("the center is the centroid of every claim, not their bounding box", () => {
     // Three in a row plus one below the leftmost: the centroid leans left of the box's center.
     const {camera} = build([
-        chunkId(0, 0),
-        chunkId(CHUNK_SIZE, 0),
-        chunkId(2 * CHUNK_SIZE, 0),
-        chunkId(0, CHUNK_SIZE),
+        chunkKey(0, 0),
+        chunkKey(CHUNK_SIZE, 0),
+        chunkKey(2 * CHUNK_SIZE, 0),
+        chunkKey(0, CHUNK_SIZE),
     ]);
     assert.deepEqual(camera.ownClaimsCenter(), {
         x: CHUNK_CENTER_PX + 3 * CHUNK_PX / 4,
@@ -74,7 +74,7 @@ test("the center is the centroid of every claim, not their bounding box", () => 
 });
 
 test("claims across the origin average out to it", () => {
-    const {camera} = build([chunkId(-CHUNK_SIZE, -CHUNK_SIZE), chunkId(0, 0)]);
+    const {camera} = build([chunkKey(-CHUNK_SIZE, -CHUNK_SIZE), chunkKey(0, 0)]);
     assert.deepEqual(camera.ownClaimsCenter(), {x: 0, y: 0});
 });
 
@@ -84,13 +84,13 @@ test("no claims means no center", () => {
 });
 
 test("gliding home keeps the current zoom", () => {
-    const {camera, client} = build([chunkId(0, 0)]);
+    const {camera, client} = build([chunkKey(0, 0)]);
     camera.glideHome();
     assert.deepEqual(client.viewport.glides, [{x: CHUNK_CENTER_PX, y: CHUNK_CENTER_PX}]);
 });
 
 test("starting at home snaps without a glide, and refreshes the data feed", () => {
-    const {camera, client} = build([chunkId(0, 0)]);
+    const {camera, client} = build([chunkKey(0, 0)]);
     camera.startAtHome();
     assert.deepEqual(client.viewport.snaps, [{x: CHUNK_CENTER_PX, y: CHUNK_CENTER_PX}]);
     assert.deepEqual(client.viewport.glides, []);

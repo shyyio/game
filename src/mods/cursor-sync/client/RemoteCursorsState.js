@@ -1,4 +1,4 @@
-import {AbstractCacheWriter, ChunkUnsubscribeEvent, chunkId, schemaMap} from "@spup/sdk/client";
+import {AbstractCacheWriter, ChunkUnsubscribeEvent, chunkKey, schemaMap} from "@spup/sdk/client";
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "../common/events.js";
 import {CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_DEFAULT, audienceAdmits} from "../common/constants.js";
 
@@ -79,7 +79,7 @@ export class RemoteCursorsWriter extends AbstractCacheWriter {
             return;
         }
         if (event instanceof ChunkUnsubscribeEvent) {
-            this._state.mapDeleteWhere("remoteCursors.byPlayer", cursor => chunkId(cursor.x, cursor.y) === event.chunk);
+            this._state.mapDeleteWhere("remoteCursors.byPlayer", cursor => chunkKey(cursor.x, cursor.y) === event.chunk);
         }
     }
 }

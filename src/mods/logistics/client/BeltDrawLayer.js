@@ -6,7 +6,7 @@ import {
     Direction,
     AbstractTileMeshDrawLayer,
 } from "@spup/sdk/client";
-import {chunkId, getOrCreate, removeFromGroup} from "@spup/sdk";
+import {chunkKey, getOrCreate, removeFromGroup} from "@spup/sdk";
 import {
     BeltBend,
     BELT_NORMAL,
@@ -202,7 +202,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
         const belt = new Belt(id, x, y, direction, BeltBend.STRAIGHT, type);
         this._belts.set(id, belt);
 
-        const chunk = chunkId(x, y);
+        const chunk = chunkKey(x, y);
         getOrCreate(this._chunkBelts, chunk, () => new Set()).add(belt);
         this._memberAdded(chunk);
     }
@@ -250,7 +250,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
             return;
         }
 
-        const chunk = chunkId(belt.x, belt.y);
+        const chunk = chunkKey(belt.x, belt.y);
         this._belts.delete(id);
 
         removeFromGroup(this._chunkBelts, chunk, belt);

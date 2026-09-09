@@ -1,5 +1,5 @@
 import {World} from "@/sim/World.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 import {portAt} from "@/common/portGeometry.js";
 import {PLAYER_REF_NONE} from "@/common/constants.js";
 import {ListenerList} from "@/common/ListenerList.js";
@@ -381,7 +381,7 @@ export class GameEngine {
      * @returns {boolean}
      */
     observesTile(x, y) {
-        return this._chunkObserved(chunkId(x, y));
+        return this._chunkObserved(chunkKey(x, y));
     }
 
     /**
@@ -642,7 +642,7 @@ export class GameEngine {
     applyMessage(message, playerRef = PLAYER_REF_NONE) {
         // Both ownership gates live here, above every create/delete handler (bespoke ones too).
         if (message instanceof CreateObjectMessage
-            && !this.placementAllowed(playerRef, chunkId(message.x, message.y))) {
+            && !this.placementAllowed(playerRef, chunkKey(message.x, message.y))) {
             return true;
         }
         let handled;
@@ -695,7 +695,7 @@ export class GameEngine {
         if (eid === undefined) {
             return true;
         }
-        return this.placementAllowed(playerRef, chunkId(this.Position.x[eid], this.Position.y[eid]));
+        return this.placementAllowed(playerRef, chunkKey(this.Position.x[eid], this.Position.y[eid]));
     }
 
     /**

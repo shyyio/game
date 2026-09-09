@@ -1,6 +1,6 @@
 import {TILE_SIZE} from "@/client/constants.js";
 import {LAYER_SURFACE, NEIGHBOR_DELTAS} from "@/common/constants.js";
-import {cellNeighbors, tileId} from "@/common/util.js";
+import {cellNeighbors, tileKey} from "@/common/util.js";
 import {RoadBehavior} from "@/sim/behaviors/RoadBehavior.js";
 
 /**
@@ -50,7 +50,7 @@ export function findCommuteRoute(cache, machineEntry) {
     const parents = new Map();
     const queue = [];
     for (const {x, y} of cellNeighbors(machineEntry.cells)) {
-        const tile = tileId(x, y);
+        const tile = tileKey(x, y);
         if (parents.has(tile)) {
             continue;
         }
@@ -72,7 +72,7 @@ export function findCommuteRoute(cache, machineEntry) {
         for (const delta of NEIGHBOR_DELTAS) {
             const x = current.x + delta.dx;
             const y = current.y + delta.dy;
-            const tile = tileId(x, y);
+            const tile = tileKey(x, y);
             if (parents.has(tile)) {
                 continue;
             }

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 import {makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 import {
@@ -31,7 +31,7 @@ function place(engine, type, x, y, direction=Direction.UP) {
 function claimedPlayer(game) {
     const player = new CapturingSession(1);
     game.connect(player);
-    game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), player);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKey(5, 5)), player);
     return player;
 }
 

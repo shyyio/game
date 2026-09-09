@@ -3,7 +3,7 @@ import {DEV} from "@/common/env.js";
 
 export const REGION_HALF = REGION_SIZE / 2;
 
-// How many variants a tile id may be qualified with (a position layer, a direction).
+// How many variants a tile key may be qualified with (a position layer, a direction).
 export const TILE_VARIANT_LIMIT = 16;
 
 // The box the spatial indexes address, in tiles: the whole region, so coordinates fall in
@@ -11,11 +11,11 @@ export const TILE_VARIANT_LIMIT = 16;
 const TILE_SPAN = CHUNK_SIZE * REGION_SIZE;
 export const TILE_HALF = TILE_SPAN / 2;
 
-// A qualified tile id must stay a small integer, or every Map keyed by one hashes a boxed number
+// A qualified tile key must stay a small integer, or every Map keyed by one hashes a boxed number
 // instead. Growing the region past this needs the indexes rekeyed, not a wider id.
 const MAX_SMALL_INTEGER = 2 ** 31;
 if (TILE_SPAN * TILE_SPAN * TILE_VARIANT_LIMIT >= MAX_SMALL_INTEGER) {
-    throw new RangeError(`A ${TILE_SPAN}x${TILE_SPAN} tile box does not fit a small-integer tile id`);
+    throw new RangeError(`A ${TILE_SPAN}x${TILE_SPAN} tile box does not fit a small-integer tile key`);
 }
 
 /**
@@ -49,26 +49,26 @@ export function chunkOrdinal(chunkX, chunkY) {
 }
 
 /**
- * The ordinal id of the chunk containing tile (x, y).
+ * The key of the chunk containing tile (x, y): its ordinal within the region.
  * @param {number} x tile x
  * @param {number} y tile y
  * @returns {number}
  */
-export function chunkId(x, y) {
+export function chunkKey(x, y) {
     return chunkOrdinal(Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE));
 }
 
 /**
- * The id of tile (x, y): its index in the world grid, counted left-to-right, top-to-bottom. The
+ * The key of tile (x, y): its index in the world grid, counted left-to-right, top-to-bottom. The
  * spatial indexes key on this rather than on an "x,y" string — a tile lookup then costs no string
  * to build and no string to keep.
  * @param {number} x tile x
  * @param {number} y tile y
  * @returns {number}
  */
-export function tileId(x, y) {
+export function tileKey(x, y) {
     // Called per spatial lookup, so the bounds check is dev-only: out of the box it returns a
-    // colliding id rather than throwing.
+    // colliding key rather than throwing.
     if (DEV && (x < -TILE_HALF || x >= TILE_HALF || y < -TILE_HALF || y >= TILE_HALF)) {
         throw new RangeError(`Tile (${x}, ${y}) is outside the ${TILE_SPAN}x${TILE_SPAN} tile box`);
     }
@@ -76,13 +76,13 @@ export function tileId(x, y) {
 }
 
 /**
- * A tile id qualified by `variant` (a position layer, a direction), so one index can hold several
+ * A tile key qualified by `variant` (a position layer, a direction), so one index can hold several
  * entries per tile.
- * @param {number} tile a {@link tileId}
+ * @param {number} tile a {@link tileKey}
  * @param {number} variant below {@link TILE_VARIANT_LIMIT}
  * @returns {number}
  */
-export function tileVariantId(tile, variant) {
+export function tileVariantKey(tile, variant) {
     return tile * TILE_VARIANT_LIMIT + variant;
 }
 
@@ -115,7 +115,7 @@ export function chunkNeighbors(chunk) {
 }
 
 /**
- * Inverse of {@link chunkId}: the chunk coordinate (chunkX, chunkY) of a chunk id.
+ * Inverse of {@link chunkKey}: the chunk coordinate (chunkX, chunkY) of a chunk key.
  * @param {number} chunk
  * @returns {{x: number, y: number}}
  */

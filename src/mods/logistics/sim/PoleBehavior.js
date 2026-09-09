@@ -1,4 +1,4 @@
-import {AbstractBehavior, chunkId} from "@spup/sdk";
+import {AbstractBehavior, chunkKey} from "@spup/sdk";
 import {LogicWireSetEvent} from "../common/events.js";
 import {LogicNetworks} from "./LogicNetworks.js";
 
@@ -46,7 +46,7 @@ export class PoleBehavior extends AbstractBehavior {
         for (const wire of engine.resolve(LogicNetworks).wires) {
             for (const objectRef of [wire.a, wire.b]) {
                 const eid = placed.eidByObjectRef(objectRef);
-                if (eid === undefined || chunkId(position.x[eid], position.y[eid]) !== chunk) {
+                if (eid === undefined || chunkKey(position.x[eid], position.y[eid]) !== chunk) {
                     continue;
                 }
                 events.push(new LogicWireSetEvent(position.x[eid], position.y[eid], wire.a, wire.b));

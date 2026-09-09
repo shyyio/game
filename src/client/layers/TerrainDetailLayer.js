@@ -3,7 +3,7 @@ import {AbstractChunkedDrawLayer} from "@/client/layers/AbstractChunkedDrawLayer
 import {DisplayPool} from "@/client/layers/DisplayPool.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {CHUNK_SIZE, LAYER_SURFACE} from "@/common/constants.js";
-import {chunkId, chunkOrigin} from "@/common/util.js";
+import {chunkKey, chunkOrigin} from "@/common/util.js";
 import {tileHash} from "@/common/WorldNoise.js";
 import {scaleColor} from "@/client/Theme.js";
 
@@ -128,7 +128,7 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
      */
     onCacheChange(entry) {
         for (const cell of entry.cells) {
-            const chunk = chunkId(cell.x, cell.y);
+            const chunk = chunkKey(cell.x, cell.y);
             if (this._chunks.has(chunk)) {
                 this._dirtyChunks.add(chunk);
             }

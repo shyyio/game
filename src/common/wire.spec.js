@@ -22,7 +22,7 @@ import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from 
 import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ChunkPermission} from "@/common/ClaimEvents.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
 import {GAME_VERSION, PLAYER_REF_NONE} from "@/common/constants.js";
-import {chunkId} from "@/common/util.js";
+import {chunkKey} from "@/common/util.js";
 
 // Core-only registry: common/ must not depend on mods/. Mod wire classes are
 // covered by their own specs (e.g. src/mods/Logistics/wire.spec.js).
@@ -52,7 +52,7 @@ function roundTrip(reg, instance, cls) {
 
 test("Round-trips a SetViewportMessage", () => {
     const reg = registry();
-    roundTrip(reg, new SetViewportMessage([0, 1, chunkId(-64, 128)]), SetViewportMessage);
+    roundTrip(reg, new SetViewportMessage([0, 1, chunkKey(-64, 128)]), SetViewportMessage);
 });
 
 test("Round-trips a PortItemSetEvent with a port ref", () => {
@@ -69,19 +69,19 @@ test("Round-trips a PortItemBatchEvent's packed columns", () => {
     roundTrip(reg, batch, PortItemBatchEvent);
 });
 
-test("Round-trips chunk subscribe/unsubscribe events, recovering the chunk id", () => {
+test("Round-trips chunk subscribe/unsubscribe events, recovering the chunk key", () => {
     const reg = registry();
-    const chunk = chunkId(128, -192);
+    const chunk = chunkKey(128, -192);
     roundTrip(reg, new ChunkSubscribeEvent(chunk), ChunkSubscribeEvent);
     roundTrip(reg, new ChunkUnsubscribeEvent(chunk), ChunkUnsubscribeEvent);
-    // The chunk id is wired directly.
+    // The chunk key is wired directly.
     const decoded = reg.decode(reg.encode(new ChunkUnsubscribeEvent(chunk)));
     assert.strictEqual(decoded.chunk, chunk);
 });
 
 test("ChunkSyncEvent round-trips its bundle of polymorphic inner events", () => {
     const reg = registry();
-    const chunk = chunkId(128, -192);
+    const chunk = chunkKey(128, -192);
     const inner = [
         new ChunkSubscribeEvent(chunk),
         new GameSettingsUpdateEvent(7, 70),
