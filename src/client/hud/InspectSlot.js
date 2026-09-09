@@ -58,7 +58,7 @@ export class InspectSlot extends Container {
         if (this._item === 0) {
             return null;
         }
-        return this._items.definitionFor(this._item).name;
+        return this._items.typeFor(this._item).name;
     }
 
     /**
@@ -93,7 +93,7 @@ export class InspectSlot extends Container {
             this._icon.visible = false;
             return;
         }
-        const definition = this._items.definitionFor(this._item);
+        const definition = this._items.typeFor(this._item);
         this._icon.texture = this._textureRegistry.get(definition.texture);
         this._icon.tint = definition.tint;
         fitIcon(this._icon, SLOT_SIZE, ITEM_INSET);

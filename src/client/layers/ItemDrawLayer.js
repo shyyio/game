@@ -29,7 +29,7 @@ const MOVE_DURATION_MS = 190;
 export class ItemDrawLayer extends AbstractDrawLayer {
 
     /**
-     * @param {ItemRegistry} items item definitions merged across mods
+     * @param {ItemRegistry} items item types merged across mods
      */
     constructor(items) {
         super();
@@ -220,7 +220,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {boolean} [move.hidden] - the item is under cover (in a tunnel)
      */
     moveItem({key, tileX, tileY, halfTile, sourceDirection, type, snap=false, hidden=false}) {
-        const definition = this._itemRegistry.definitionFor(type);
+        const definition = this._itemRegistry.typeFor(type);
         const texture = this.textureRegistry.get(definition.texture);
         const particle = this._items.take(key, texture);
         particle.live = true;

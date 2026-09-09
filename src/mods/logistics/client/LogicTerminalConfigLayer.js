@@ -81,7 +81,7 @@ class StorableItem {
 
     /**
      * @param {number} itemTypeId
-     * @param {ItemDefinition} definition
+     * @param {ItemType} definition
      */
     constructor(itemTypeId, definition) {
         this.itemTypeId = itemTypeId;
@@ -524,7 +524,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 })), containerButton));
             buttons.push(containerButton);
         }
-        const item = this._modRegistry.items.definitionFor(condition.itemTypeId);
+        const item = this._modRegistry.items.typeFor(condition.itemTypeId);
         const itemButton = buildIconButton(this.textureRegistry, item.texture, item.tint, ACTIVE_ACCENT,
             () => this._openIconPicker(this._storableEntries(), condition.itemTypeId, (itemTypeId) => {
                 condition.itemTypeId = itemTypeId;

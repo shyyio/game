@@ -54,7 +54,7 @@ export class World {
         const items = this.game.modRegistry.items;
         return {
             objects: Array.from(losses.objects, ([name, count]) => ({name, count})),
-            items: Array.from(losses.items, ([itemTypeId, count]) => ({name: items.definitionFor(itemTypeId).name, count})),
+            items: Array.from(losses.items, ([itemTypeId, count]) => ({name: items.typeFor(itemTypeId).name, count})),
         };
     }
 

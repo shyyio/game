@@ -7,7 +7,7 @@ import {
     ResourceBehavior,
     ExtractorBehavior,
     Direction,
-    ItemDefinition,
+    ItemType,
     ItemCategory,
 } from "@/sdk/common.js";
 
@@ -83,8 +83,8 @@ export class VolcanoFixtureDeclaration extends AbstractModDeclaration {
 
     get items() {
         return [new ItemCategory("Volcano", {
-            [ITEM_TYPE_TEST_SULFUR]: new ItemDefinition("Test Sulfur", "items/2"),
-            [ITEM_TYPE_TEST_BRINE]: new ItemDefinition("Test Brine", "items/1"),
+            [ITEM_TYPE_TEST_SULFUR]: new ItemType("Test Sulfur", "items/2"),
+            [ITEM_TYPE_TEST_BRINE]: new ItemType("Test Brine", "items/1"),
         })];
     }
 

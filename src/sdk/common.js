@@ -192,8 +192,8 @@ export {MetricsGlobalQueryEntry} from "@/common/MetricsGlobalQueryEntry.js";
 // Item definition a declaration contributes inside an ItemCategory (items): a player-visible name
 // plus a texture name and a pixi multiply tint, so shared shapes stay visually distinct per item
 // type. The frozen ModRegistry merges them into its ItemRegistry (modRegistry.items).
-export {ItemDefinition} from "@/common/ItemDefinition.js";
-// A named section of item definitions a declaration contributes (items); same-name categories
+export {ItemType} from "@/common/ItemType.js";
+// A named section of item types a declaration contributes (items); same-name categories
 // merge across the loadout and sort by name (modRegistry.itemCategories).
 export {ItemCategory} from "@/common/ItemCategory.js";
 

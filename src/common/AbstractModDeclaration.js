@@ -34,7 +34,7 @@ export class AbstractModDeclaration {
     }
 
     /**
-     * Item categories with their item definitions; same-name categories merge across the loadout
+     * Item categories with their item types; same-name categories merge across the loadout
      * and item types must be unique across it.
      * @returns {ItemCategory[]}
      */

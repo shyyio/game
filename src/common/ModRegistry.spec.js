@@ -4,7 +4,7 @@ import {ModRegistry} from "@/common/ModRegistry.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
 import {PlayerSettingEntry} from "@/common/PlayerSettingEntry.js";
-import {ItemDefinition} from "@/common/ItemDefinition.js";
+import {ItemType} from "@/common/ItemType.js";
 import {ItemCategory} from "@/common/ItemCategory.js";
 import {ObjectType, PlacementRule} from "@/common/ObjectType.js";
 import {StaticBehavior} from "@/common/behaviors/StaticBehavior.js";
@@ -81,9 +81,9 @@ class ItemsDeclaration extends AbstractModDeclaration {
     }
 }
 
-test("a mod's item definitions collect into the item registry at freeze", () => {
+test("a mod's item types collect into the item registry at freeze", () => {
     const registry = new ModRegistry();
-    const fluids = new ItemCategory("Fluids", {[MOD_ITEM_TYPE]: new ItemDefinition("Water", "items/1-gray")});
+    const fluids = new ItemCategory("Fluids", {[MOD_ITEM_TYPE]: new ItemType("Water", "items/1-gray")});
     registry.register(new ModPackage(new ItemsDeclaration("A", [fluids])));
     registry.freeze();
     assert.equal(registry.items.require(MOD_ITEM_TYPE).name, "Water");
@@ -91,18 +91,18 @@ test("a mod's item definitions collect into the item registry at freeze", () => 
 
 test("a duplicate item type across mods throws at freeze", () => {
     const registry = new ModRegistry();
-    const water = new ItemCategory("Fluids", {[MOD_ITEM_TYPE]: new ItemDefinition("Water", "items/1-gray")});
-    const brine = new ItemCategory("Fluids", {[MOD_ITEM_TYPE]: new ItemDefinition("Brine", "items/2-gray")});
+    const water = new ItemCategory("Fluids", {[MOD_ITEM_TYPE]: new ItemType("Water", "items/1-gray")});
+    const brine = new ItemCategory("Fluids", {[MOD_ITEM_TYPE]: new ItemType("Brine", "items/2-gray")});
     registry.register(new ModPackage(new ItemsDeclaration("A", [water])));
     registry.register(new ModPackage(new ItemsDeclaration("B", [brine])));
-    assert.throws(() => registry.freeze(), /Duplicate item definition/);
+    assert.throws(() => registry.freeze(), /Duplicate item type/);
 });
 
 test("same-name item categories across mods merge, sorted by name", () => {
     const registry = new ModRegistry();
-    const water = new ItemDefinition("Water", "items/1-gray");
-    const brine = new ItemDefinition("Brine", "items/2-gray");
-    const iron = new ItemDefinition("Iron", "items/3-gray");
+    const water = new ItemType("Water", "items/1-gray");
+    const brine = new ItemType("Brine", "items/2-gray");
+    const iron = new ItemType("Iron", "items/3-gray");
     registry.register(new ModPackage(new ItemsDeclaration("A", [
         new ItemCategory("Ores", {[MOD_ITEM_TYPE + 2]: iron}),
         new ItemCategory("Fluids", {[MOD_ITEM_TYPE]: water}),

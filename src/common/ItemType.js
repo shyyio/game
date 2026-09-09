@@ -3,7 +3,7 @@
  * mod's declaration.items. The tint recolors a shared desaturated shape so item types sharing
  * a shape stay visually distinct.
  */
-export class ItemDefinition {
+export class ItemType {
 
     /**
      * @param {string} name player-visible item name

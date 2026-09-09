@@ -428,7 +428,7 @@ export class ModRegistry {
     }
 
     /**
-     * The item definitions merged across all mods.
+     * The item types merged across all mods.
      * @returns {ItemRegistry}
      */
     get items() {

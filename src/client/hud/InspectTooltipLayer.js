@@ -64,7 +64,7 @@ export class InspectTooltipLayer extends AbstractTooltipLayer {
         if (item !== this._item) {
             this._item = item;
             this._heldMS = 0;
-            this._setName(this._items.definitionFor(item.itemTypeId).name);
+            this._setName(this._items.typeFor(item.itemTypeId).name);
         }
         this._heldMS += deltaMS;
         // A tap is deliberate already, so touch skips the dwell.

@@ -8,7 +8,7 @@ import {
     LANE_LEVEL_ELEVATED_1,
     CreateObjectMessage,
     DeleteObjectMessage,
-    ItemDefinition,
+    ItemType,
     ItemCategory,
     Direction,
     CONVEYS_ITEM,
@@ -132,9 +132,9 @@ export class LaneFixtureDeclaration extends AbstractModDeclaration {
 
     get items() {
         return [new ItemCategory("Lane Fixture", {
-            [ITEM_TYPE_TEST_CARGO]: new ItemDefinition("Test Cargo", "items/1-gray"),
-            [ITEM_TYPE_TEST_CARGO_B]: new ItemDefinition("Test Cargo B", "items/1-gray"),
-            [ITEM_TYPE_TEST_FLUID]: new ItemDefinition("Test Fluid", "items/1-gray"),
+            [ITEM_TYPE_TEST_CARGO]: new ItemType("Test Cargo", "items/1-gray"),
+            [ITEM_TYPE_TEST_CARGO_B]: new ItemType("Test Cargo B", "items/1-gray"),
+            [ITEM_TYPE_TEST_FLUID]: new ItemType("Test Fluid", "items/1-gray"),
         })];
     }
 

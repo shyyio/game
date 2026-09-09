@@ -1,13 +1,13 @@
 import {getOrCreate} from "@/common/util.js";
 
 /**
- * A named section of item definitions; same-name categories merge and sections sort by name.
+ * A named section of item types; same-name categories merge and sections sort by name.
  */
 export class ItemCategory {
 
     /**
      * @param {string} name section title
-     * @param {Object.<number, ItemDefinition>} items item type -> definition
+     * @param {Object.<number, ItemType>} items item type -> definition
      */
     constructor(name, items) {
         this.name = name;
