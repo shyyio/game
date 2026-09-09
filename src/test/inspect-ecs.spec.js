@@ -17,7 +17,7 @@ async function setup() {
     return game;
 }
 
-// Places a DemoMachine and returns its client id (object id) plus its input port.
+// Places a DemoMachine and returns its client id (object ref) plus its input port.
 function createMachine(game, x, y) {
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, x, y, Direction.UP), new CapturingSession());
     const placed = game.simEngine.placed;

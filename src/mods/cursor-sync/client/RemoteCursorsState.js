@@ -8,7 +8,7 @@ export const REMOTE_CURSORS_SCHEMA = {
 
 /**
  * @typedef {object} RemoteCursorState one remote player's live cursor
- * @property {number} playerId
+ * @property {number} playerRef
  * @property {number} x tile x, fractional
  * @property {number} y tile y, fractional
  */
@@ -43,18 +43,18 @@ export class RemoteCursorsWriter extends AbstractCacheWriter {
      */
     _setDisplayMode(mode) {
         this._displayMode = mode;
-        this._state.mapDeleteWhere("remoteCursors.byPlayer", cursor => !this._admits(cursor.playerId));
+        this._state.mapDeleteWhere("remoteCursors.byPlayer", cursor => !this._admits(cursor.playerRef));
     }
 
     /**
      * Whether the display setting admits a player's cursor.
      * @private
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {boolean}
      */
-    _admits(playerId) {
+    _admits(playerRef) {
         // Own events are dropped before this gate; self-admission never applies.
-        return audienceAdmits(this._displayMode, false, this._claims.isFriend(playerId));
+        return audienceAdmits(this._displayMode, false, this._claims.isFriend(playerRef));
     }
 
     /**
@@ -64,18 +64,18 @@ export class RemoteCursorsWriter extends AbstractCacheWriter {
      */
     onEvent(event) {
         if (event instanceof PlayerCursorEvent) {
-            if (event.playerId === this._claims.ownPlayerId || !this._admits(event.playerId)) {
+            if (event.playerRef === this._claims.ownPlayerRef || !this._admits(event.playerRef)) {
                 return;
             }
-            this._state.mapSet("remoteCursors.byPlayer", event.playerId, {
-                playerId: event.playerId,
+            this._state.mapSet("remoteCursors.byPlayer", event.playerRef, {
+                playerRef: event.playerRef,
                 x: event.x,
                 y: event.y,
             });
             return;
         }
         if (event instanceof PlayerCursorHideEvent) {
-            this._state.mapDelete("remoteCursors.byPlayer", event.playerId);
+            this._state.mapDelete("remoteCursors.byPlayer", event.playerRef);
             return;
         }
         if (event instanceof ChunkUnsubscribeEvent) {

@@ -149,13 +149,13 @@ export function chunkCenter(chunk) {
 
 
 /**
- * The fallback display name for a player id with no registered username; the sim's ensure() and
+ * The fallback display name for a player ref with no registered username; the sim's ensure() and
  * the client's directory fallback share it so they never drift.
- * @param {number} playerId
+ * @param {number} playerRef
  * @returns {string}
  */
-export function syntheticUsername(playerId) {
-    return `player${playerId}`;
+export function syntheticUsername(playerRef) {
+    return `player${playerRef}`;
 }
 
 /**

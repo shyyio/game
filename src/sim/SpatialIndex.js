@@ -37,7 +37,7 @@ export class SpatialIndex {
          */
         this.Position = this.positionDef.store;
 
-        // Occupancy component: the cell claim on a Position, tagged with its owner object id (so a
+        // Occupancy component: the cell claim on a Position, tagged with its owner object ref (so a
         // delete releases all its cells by query) and per-cell userData read via userDataAt (0 for
         // plain footprints; e.g. resource cover stores its resource type). Always paired with
         // Position — cells are the entities carrying both.
@@ -110,7 +110,7 @@ export class SpatialIndex {
     }
 
     /**
-     * object id owning the cell at {x, y, layer}, or null when the cell is free or unowned.
+     * object ref owning the cell at {x, y, layer}, or null when the cell is free or unowned.
      * @param {number} x
      * @param {number} y
      * @param {string} layer
@@ -132,7 +132,7 @@ export class SpatialIndex {
      * Marks each cell occupied, one Position+Occupancy entity per newly taken cell, tagged with
      * `owner` so {@link destroyOwnerCells} can destroy them all on delete.
      * @param {{x:number, y:number, layer:string}[]} cells
-     * @param {number} [owner] - the owning object id
+     * @param {number} [owner] - the owning object ref
      * @param {number} [userData] - per-cell value read back via {@link userDataAt}
      * @returns {void}
      */

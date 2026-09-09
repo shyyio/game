@@ -78,16 +78,16 @@ export class ProductionLogPanelLayer extends Container {
             this.hide();
             return;
         }
-        this.showFor(this._claims.ownPlayerId);
+        this.showFor(this._claims.ownPlayerRef);
     }
 
     /**
      * Opens the panel on a player's log, starting a fresh history.
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {void}
      */
-    showFor(playerId) {
-        this._history = [new LogView(playerId)];
+    showFor(playerRef) {
+        this._history = [new LogView(playerRef)];
         this._enter();
     }
 
@@ -97,8 +97,8 @@ export class ProductionLogPanelLayer extends Container {
      */
     refreshOwn() {
         const view = this._current();
-        if (this.visible && view instanceof LogView && view.playerId === this._claims.ownPlayerId) {
-            this._writer.requestLog(view.playerId);
+        if (this.visible && view instanceof LogView && view.playerRef === this._claims.ownPlayerRef) {
+            this._writer.requestLog(view.playerRef);
         }
     }
 
@@ -178,7 +178,7 @@ export class ProductionLogPanelLayer extends Container {
     _request() {
         const view = this._current();
         if (view instanceof LogView) {
-            this._writer.requestLog(view.playerId);
+            this._writer.requestLog(view.playerRef);
             return;
         }
         this._writer.requestItemBoard(view.itemTypeId, view.offset);
@@ -193,10 +193,10 @@ export class ProductionLogPanelLayer extends Container {
         if (!(view instanceof LogView)) {
             return "Leaderboard";
         }
-        if (view.playerId === this._claims.ownPlayerId) {
+        if (view.playerRef === this._claims.ownPlayerRef) {
             return "Production log";
         }
-        return `${this._players.usernameOf(view.playerId)}'s log`;
+        return `${this._players.usernameOf(view.playerRef)}'s log`;
     }
 
     /**
@@ -239,7 +239,7 @@ export class ProductionLogPanelLayer extends Container {
      * @returns {void}
      */
     _buildLogBody(stack, view) {
-        const {counts, ranks} = this._logOf(view.playerId);
+        const {counts, ranks} = this._logOf(view.playerRef);
         const total = this._categories.reduce((sum, category) => sum + Object.keys(category.items).length, 0);
         stack.row((row) => {
             row.pushLeft(this._buildBackButton());
@@ -273,14 +273,14 @@ export class ProductionLogPanelLayer extends Container {
     /**
      * The last log answer's counts and ranks when it is this player's, empty while still loading.
      * @private
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {{counts: Map<number, number>, ranks: Map<number, number>}}
      */
-    _logOf(playerId) {
+    _logOf(playerRef) {
         const log = this._cache.get("productionLog.log");
         const counts = new Map();
         const ranks = new Map();
-        if (log !== null && log.playerId === playerId) {
+        if (log !== null && log.playerRef === playerRef) {
             for (let i = 0; i < log.itemTypeIds.length; i += 1) {
                 counts.set(log.itemTypeIds[i], log.counts[i]);
                 ranks.set(log.itemTypeIds[i], log.ranks[i]);
@@ -390,18 +390,18 @@ export class ProductionLogPanelLayer extends Container {
             row.pushLeft(this._buildBackButton());
         });
         stack.header(this._items.require(view.itemTypeId).name);
-        const ownPlayerId = this._claims.ownPlayerId;
+        const ownPlayerRef = this._claims.ownPlayerRef;
         const rows = [];
         if (board !== null) {
-            for (let i = 0; i < board.playerIds.length; i += 1) {
-                rows.push({rank: view.offset + i + 1, playerId: board.playerIds[i], score: board.scores[i]});
+            for (let i = 0; i < board.playerRefs.length; i += 1) {
+                rows.push({rank: view.offset + i + 1, playerRef: board.playerRefs[i], score: board.scores[i]});
             }
         }
         stack.scrollSection(rows, (row) => new PanelRowDescriptor({
-            label: `#${row.rank} ${this._players.usernameOf(row.playerId)}`,
+            label: `#${row.rank} ${this._players.usernameOf(row.playerRef)}`,
             rightLabel: formatExactCount(row.score),
-            selected: row.playerId === ownPlayerId,
-            onRowClick: () => this._push(new LogView(row.playerId)),
+            selected: row.playerRef === ownPlayerRef,
+            onRowClick: () => this._push(new LogView(row.playerRef)),
         }), "Nobody ranked yet", {visibleRows: BOARD_VISIBLE_ROWS, centerRow: view.focusRow});
         stack.gap();
         stack.text(this._rankLabel(board));

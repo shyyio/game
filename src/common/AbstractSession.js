@@ -12,7 +12,7 @@ export class AbstractSession {
         /**
          * @type {number|null}
          */
-        this.id = null;
+        this.sessionRef = null;
         this.api = api;
 
         /**
@@ -44,11 +44,11 @@ export class AbstractSession {
     }
 
     /**
-     * @param {number} sessionId
+     * @param {number} sessionRef
      * @returns {void}
      */
-    setId(sessionId) {
-        this.id = sessionId;
+    setSessionRef(sessionRef) {
+        this.sessionRef = sessionRef;
     }
 
     /**
@@ -72,15 +72,15 @@ export class AbstractSession {
      * @abstract
      * @returns {number}
      */
-    get playerId() {
+    get playerRef() {
         throw new NotImplementedError();
     }
 
     /**
-     * Whether {@link playerId} is safe to read yet.
+     * Whether {@link playerRef} is safe to read yet.
      * @returns {boolean}
      */
-    get hasPlayerId() {
+    get hasPlayerRef() {
         return true;
     }
 

@@ -60,7 +60,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
     }
 
     /**
-     * Registers the callback invoked with an object id when a panel's close button is pressed.
+     * Registers the callback invoked with an object ref when a panel's close button is pressed.
      * @param {function(number): void} callback
      */
     onClose(callback) {

@@ -1,4 +1,4 @@
-import {AbstractTool, Mouse, PLAYER_ID_NONE, TILE_SIZE, tileId} from "@spup/sdk/client";
+import {AbstractTool, Mouse, PLAYER_REF_NONE, TILE_SIZE, tileId} from "@spup/sdk/client";
 import {NOTE_OFFSET_CENTER, NOTE_OFFSET_UNITS, NOTE_TOOL_ID} from "../common/constants.js";
 import {NOTE_EDITOR_MODE_PLACE, NOTE_EDITOR_MODE_EDIT, NOTE_EDITOR_MODE_DELETE, NoteEditorTarget} from "./NotesState.js";
 
@@ -136,7 +136,7 @@ export class NoteTool extends AbstractTool {
             this._anchorOffset(aimY, tileY),
             "",
             NOTE_EDITOR_MODE_PLACE,
-            PLAYER_ID_NONE,
+            PLAYER_REF_NONE,
         ));
     }
 
@@ -148,7 +148,7 @@ export class NoteTool extends AbstractTool {
      */
     _openExisting(note) {
         let mode = NOTE_EDITOR_MODE_EDIT;
-        if (note.authorId !== this._claims.ownPlayerId) {
+        if (note.authorId !== this._claims.ownPlayerRef) {
             if (!this._client.canBuildAt(note.tileX, note.tileY)) {
                 this._client.hud.notify("That note belongs to someone else");
                 return;

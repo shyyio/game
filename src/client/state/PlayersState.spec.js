@@ -21,7 +21,7 @@ test("name events fill the map, unknown ids fall back to a synthetic name", () =
 test("a repeated id overwrites, so a rename applies instantly", () => {
     const {state, players} = playersState();
     const touched = [];
-    state.subscribe("players.usernameByPlayer", (playerId, username) => touched.push([playerId, username]));
+    state.subscribe("players.usernameByPlayer", (playerRef, username) => touched.push([playerRef, username]));
 
     state.onEvent(new PlayerNamesEvent([1], ["alice"]));
     state.onEvent(new PlayerNamesEvent([1], ["alicia"]));

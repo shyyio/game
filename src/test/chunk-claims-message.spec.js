@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
-import {Direction, PLAYER_ID_NONE} from "@/common/constants.js";
+import {Direction, PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 import {CreateObjectMessage, DeleteObjectMessage, SetViewportMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
@@ -46,10 +46,10 @@ test("connect syncs identity, the own name, own claims, and friends", async () =
     game.connect(alice);
 
     const welcome = alice.events.find(event => event instanceof WelcomeEvent);
-    assert.equal(welcome.playerId, ALICE);
+    assert.equal(welcome.playerRef, ALICE);
     assert.ok(welcome.maxChunks > 0);
     const names = alice.events.find(event => event instanceof PlayerNamesEvent);
-    assert.deepEqual(names.playerIds, [ALICE], "only the own name arrives on connect");
+    assert.deepEqual(names.playerRefs, [ALICE], "only the own name arrives on connect");
     assert.ok(alice.events.some(event => event instanceof OwnClaimsSyncEvent));
     assert.ok(alice.events.some(event => event instanceof FriendListEvent));
 });
@@ -64,14 +64,14 @@ test("a claim reaches the chunk's viewers, name first, and skips the rest", asyn
     const result = alice.events.find(event => event instanceof ClaimResultEvent);
     assert.equal(result.result, ClaimResult.CLAIM_RESULT_OK);
     const nameIndex = bob.events.findIndex(
-        event => event instanceof PlayerNamesEvent && event.playerIds.includes(ALICE),
+        event => event instanceof PlayerNamesEvent && event.playerRefs.includes(ALICE),
     );
     const updateIndex = bob.events.findIndex(event => event instanceof ChunkClaimUpdateEvent);
     assert.ok(nameIndex >= 0, "the viewer learns the owner's name");
     assert.ok(updateIndex > nameIndex, "the name precedes the update");
     const update = bob.events[updateIndex];
     assert.equal(update.chunk, chunk);
-    assert.equal(update.playerId, ALICE);
+    assert.equal(update.playerRef, ALICE);
 
     const charlie = new CapturingSession(3);
     game.connect(charlie);
@@ -90,7 +90,7 @@ test("the acting player's session gets the update without viewing the chunk", as
 
     const update = alice.events.find(event => event instanceof ChunkClaimUpdateEvent);
     assert.equal(update.chunk, chunk);
-    assert.equal(update.playerId, ALICE);
+    assert.equal(update.playerRef, ALICE);
 });
 
 test("a viewport gaining a claimed chunk is seeded its claim and owner name", async () => {
@@ -100,10 +100,10 @@ test("a viewport gaining a claimed chunk is seeded its claim and owner name", as
     game.dispatchMessage(new SetViewportMessage([chunk]), bob);
 
     const names = bob.events.find(event => event instanceof PlayerNamesEvent);
-    assert.deepEqual(names.playerIds, [ALICE]);
+    assert.deepEqual(names.playerRefs, [ALICE]);
     const update = bob.events.find(event => event instanceof ChunkClaimUpdateEvent);
     assert.equal(update.chunk, chunk);
-    assert.equal(update.playerId, ALICE);
+    assert.equal(update.playerRef, ALICE);
 
     // Leaving and returning re-seeds the claim, but a known name never resends.
     bob.events.length = 0;
@@ -201,7 +201,7 @@ test("a permission change reaches the chunk's viewers", async () => {
     game.dispatchMessage(new SetChunkPermissionMessage(chunk, ChunkPermission.PERMISSION_ONLY_ME), alice);
     const update = bob.events.find(event => event instanceof ChunkClaimUpdateEvent);
     assert.equal(update.chunk, chunk);
-    assert.equal(update.playerId, ALICE);
+    assert.equal(update.playerRef, ALICE);
     assert.equal(update.permission, ChunkPermission.PERMISSION_ONLY_ME);
 });
 
@@ -213,7 +213,7 @@ test("a friendship change resyncs both players' lists, names first", async () =>
     assert.deepEqual(aliceList.friendIds, [BOB]);
     assert.deepEqual(aliceList.grantedByIds, []);
     const bobNames = bob.events.find(event => event instanceof PlayerNamesEvent);
-    assert.deepEqual(bobNames.playerIds, [ALICE], "bob learns his granter's name");
+    assert.deepEqual(bobNames.playerRefs, [ALICE], "bob learns his granter's name");
     const bobList = bob.events.filter(event => event instanceof FriendListEvent).at(-1);
     assert.deepEqual(bobList.friendIds, []);
     assert.deepEqual(bobList.grantedByIds, [ALICE], "bob learns alice granted him build rights");
@@ -291,7 +291,7 @@ test("unclaiming a non-empty chunk needs the clear confirmation, which deletes t
     assert.equal(machineCount(game), 1, "nothing deleted on the rejection");
 
     game.dispatchMessage(new UnclaimChunkMessage(chunk, true), alice);
-    assert.equal(game.claims.ownerOf(chunk), PLAYER_ID_NONE);
+    assert.equal(game.claims.ownerOf(chunk), PLAYER_REF_NONE);
     assert.equal(machineCount(game), 0, "the confirmation cleared the chunk");
 });
 
@@ -319,7 +319,7 @@ test("unclaim frees the chunk for other players and tells its viewers", async ()
     game.dispatchMessage(new UnclaimChunkMessage(chunk), alice);
 
     const update = bob.events.filter(event => event instanceof ChunkClaimUpdateEvent).at(-1);
-    assert.equal(update.playerId, PLAYER_ID_NONE);
+    assert.equal(update.playerRef, PLAYER_REF_NONE);
     game.dispatchMessage(new ClaimChunkMessage(chunk), bob);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
     assert.equal(machineCount(game), 1);

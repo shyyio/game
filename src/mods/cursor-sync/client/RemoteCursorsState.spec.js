@@ -9,17 +9,17 @@ import {
     PLAYER_SETTINGS_SCHEMA, PlayerSettingsWriter,
 } from "@spup/sdk/client";
 
-function stateWithOwnPlayer(ownPlayerId) {
+function stateWithOwnPlayer(ownPlayerRef) {
     const state = new ClientCache();
     state.register("chunkClaims", CHUNK_CLAIMS_SCHEMA, new ChunkClaimsWriter(state), new ChunkClaimsView());
     state.register("playerSettings", PLAYER_SETTINGS_SCHEMA, new PlayerSettingsWriter(state));
     state.register("remoteCursors", REMOTE_CURSORS_SCHEMA, new RemoteCursorsWriter(state));
-    state.onEvent(new WelcomeEvent(ownPlayerId, 9, "0001-2A3B"));
+    state.onEvent(new WelcomeEvent(ownPlayerRef, 9, "0001-2A3B"));
     const upserts = [];
     const removes = [];
-    state.subscribe("remoteCursors.byPlayer", (playerId, cursor) => {
+    state.subscribe("remoteCursors.byPlayer", (playerRef, cursor) => {
         if (cursor === undefined) {
-            removes.push(playerId);
+            removes.push(playerRef);
         } else {
             upserts.push(cursor);
         }
@@ -32,9 +32,9 @@ test("writes a cursor per event", () => {
     state.onEvent(new PlayerCursorEvent(2, 4.5, -1.25));
     state.onEvent(new PlayerCursorEvent(2, 5.0, -1.0));
     assert.equal(upserts.length, 2);
-    assert.equal(upserts[1].playerId, 2);
+    assert.equal(upserts[1].playerRef, 2);
     assert.equal(upserts[1].x, 5.0);
-    assert.deepEqual(state.mapGet("remoteCursors.byPlayer", 2), {playerId: 2, x: 5.0, y: -1.0});
+    assert.deepEqual(state.mapGet("remoteCursors.byPlayer", 2), {playerRef: 2, x: 5.0, y: -1.0});
 });
 
 test("drops the own player's echoed events", () => {
@@ -84,5 +84,5 @@ test("displaying friends only clears and gates non-friend cursors", () => {
     state.onEvent(new PlayerCursorEvent(3, 2, 2));
     state.onEvent(new PlayerCursorEvent(2, 2, 2));
     assert.equal(upserts.length, 3, "the non-friend update is ignored, the friend's lands");
-    assert.equal(upserts[2].playerId, 2);
+    assert.equal(upserts[2].playerRef, 2);
 });

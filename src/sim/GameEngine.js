@@ -1,7 +1,7 @@
 import {World} from "@/sim/World.js";
 import {chunkId} from "@/common/util.js";
 import {portAt} from "@/common/portGeometry.js";
-import {PLAYER_ID_NONE} from "@/common/constants.js";
+import {PLAYER_REF_NONE} from "@/common/constants.js";
 import {ListenerList} from "@/common/ListenerList.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PlacedObjects} from "@/sim/PlacedObjects.js";
@@ -198,7 +198,7 @@ export class GameEngine {
      * @returns {void}
      */
     _initSaveState() {
-        // Global client-facing object id, shared across all object types so ids never collide.
+        // Global client-facing object ref, shared across all object types so ids never collide.
         this._nextObjectRef = 1;
 
         // Whole ticks elapsed, incremented once per tick (see _registerCoreSystems).
@@ -252,7 +252,7 @@ export class GameEngine {
         // Sink for metrics facts; unlike _eventSink, ignores chunk observation.
         this._metricsSink = null;
         /**
-         * Notified (playerId, itemTypeId, amount) when a producer's output is delivered.
+         * Notified (playerRef, itemTypeId, amount) when a producer's output is delivered.
          * @type {ListenerList}
          */
         this.itemProduced = new ListenerList();
@@ -292,15 +292,15 @@ export class GameEngine {
     /**
      * Passes a metrics fact to the metrics sink; a no-op if none is installed.
      * @param {number} type METRICS_FACT_TYPE_*
-     * @param {number} playerId PLAYER_ID_NONE when not player-scoped
+     * @param {number} playerRef PLAYER_REF_NONE when not player-scoped
      * @param {number} [category]
      * @param {number} [amount]
      * @param {number} [tag]
      * @returns {void}
      */
-    emitMetrics(type, playerId, category, amount, tag) {
+    emitMetrics(type, playerRef, category, amount, tag) {
         if (this._metricsSink !== null) {
-            this._metricsSink(type, playerId, category, amount, tag);
+            this._metricsSink(type, playerRef, category, amount, tag);
         }
     }
 
@@ -315,7 +315,7 @@ export class GameEngine {
 
     /**
      * Sets the predicate deciding whether a player may modify a chunk.
-     * @param {function(number, number): boolean} gate - (playerId, chunk) -> allowed
+     * @param {function(number, number): boolean} gate - (playerRef, chunk) -> allowed
      * @returns {void}
      */
     setPlacementGate(gate) {
@@ -323,22 +323,22 @@ export class GameEngine {
     }
 
     /**
-     * Whether `playerId` may modify `chunk`. Engine-originated messages (PLAYER_ID_NONE) are
+     * Whether `playerRef` may modify `chunk`. Engine-originated messages (PLAYER_REF_NONE) are
      * trusted: their parent message already passed the gate.
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} chunk
      * @returns {boolean}
      */
-    placementAllowed(playerId, chunk) {
-        if (playerId === PLAYER_ID_NONE || this._placementGate === null) {
+    placementAllowed(playerRef, chunk) {
+        if (playerRef === PLAYER_REF_NONE || this._placementGate === null) {
             return true;
         }
-        return this._placementGate(playerId, chunk);
+        return this._placementGate(playerRef, chunk);
     }
 
     /**
      * Sets the resolver a spawn queries for the placing chunk's current owner, cached onto the placed object.
-     * @param {function(number): number} resolver - chunk -> playerId (PLAYER_ID_NONE if unclaimed)
+     * @param {function(number): number} resolver - chunk -> playerRef (PLAYER_REF_NONE if unclaimed)
      * @returns {void}
      */
     setChunkOwnerResolver(resolver) {
@@ -346,14 +346,14 @@ export class GameEngine {
     }
 
     /**
-     * The current owner of `chunk`, or PLAYER_ID_NONE when no resolver is installed (tests without
+     * The current owner of `chunk`, or PLAYER_REF_NONE when no resolver is installed (tests without
      * a Game) or the chunk is unclaimed.
      * @param {number} chunk
      * @returns {number}
      */
     chunkOwnerOf(chunk) {
         if (this._chunkOwnerResolver === null) {
-            return PLAYER_ID_NONE;
+            return PLAYER_REF_NONE;
         }
         return this._chunkOwnerResolver(chunk);
     }
@@ -489,7 +489,7 @@ export class GameEngine {
     }
 
     /**
-     * Creates the next global client-facing object id.
+     * Creates the next global client-facing object ref.
      * @returns {number}
      */
     createObjectRef() {
@@ -500,7 +500,7 @@ export class GameEngine {
 
     /**
      * A mod registers a message handler (returns true if it handled the message).
-     * @param {function(AbstractMessage, number): boolean} handler - message, acting playerId
+     * @param {function(AbstractMessage, number): boolean} handler - message, acting playerRef
      * @returns {void}
      */
     registerMessageHandler(handler) {
@@ -636,27 +636,27 @@ export class GameEngine {
 
     /**
      * @param {AbstractMessage} message
-     * @param {number} [playerId] - the acting player; PLAYER_ID_NONE for engine-originated messages
+     * @param {number} [playerRef] - the acting player; PLAYER_REF_NONE for engine-originated messages
      * @returns {boolean}
      */
-    applyMessage(message, playerId = PLAYER_ID_NONE) {
+    applyMessage(message, playerRef = PLAYER_REF_NONE) {
         // Both ownership gates live here, above every create/delete handler (bespoke ones too).
         if (message instanceof CreateObjectMessage
-            && !this.placementAllowed(playerId, chunkId(message.x, message.y))) {
+            && !this.placementAllowed(playerRef, chunkId(message.x, message.y))) {
             return true;
         }
         let handled;
         if (message instanceof DeleteObjectMessage) {
             // Gate before untrack: a rejection after it would leave the object half-deleted.
-            if (!this._deleteAllowed(message.objectRef, playerId)) {
+            if (!this._deleteAllowed(message.objectRef, playerRef)) {
                 return true;
             }
             this.untrack(message.objectRef);
-            handled = this._messageHandlers.some(handler => handler(message, playerId));
+            handled = this._messageHandlers.some(handler => handler(message, playerRef));
             // A delete (and any belt relink it triggered) can strand ports; destroy them now.
             this.ports.collectUnreferenced();
         } else {
-            handled = this._messageHandlers.some(handler => handler(message, playerId));
+            handled = this._messageHandlers.some(handler => handler(message, playerRef));
         }
         if (this.workers !== null) {
             this.workers.ensureFresh();
@@ -674,20 +674,20 @@ export class GameEngine {
         for (const eid of eids) {
             const message = new DeleteObjectMessage(this.placed.objectRefOf(eid));
             this.untrack(message.objectRef);
-            this._messageHandlers.some(handler => handler(message, PLAYER_ID_NONE));
+            this._messageHandlers.some(handler => handler(message, PLAYER_REF_NONE));
         }
         this.ports.collectUnreferenced();
         return eids.length;
     }
 
     /**
-     * Whether `playerId` may delete the object; unknown ids pass through to the handlers.
+     * Whether `playerRef` may delete the object; unknown ids pass through to the handlers.
      * @private
      * @param {number} objectRef
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {boolean}
      */
-    _deleteAllowed(objectRef, playerId) {
+    _deleteAllowed(objectRef, playerRef) {
         if (this.placed === null) {
             return true;
         }
@@ -695,7 +695,7 @@ export class GameEngine {
         if (eid === undefined) {
             return true;
         }
-        return this.placementAllowed(playerId, chunkId(this.Position.x[eid], this.Position.y[eid]));
+        return this.placementAllowed(playerRef, chunkId(this.Position.x[eid], this.Position.y[eid]));
     }
 
     /**

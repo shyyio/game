@@ -20,7 +20,7 @@ test("adjacent pipes group into one network per connected component", async () =
     assert.equal(pipes.networkAt(0, 0).id, pipes.networkAt(3, 0).id);
 });
 
-// Pipe object ids run 1..4 on a fresh engine, in placement order.
+// Pipe object refs run 1..4 on a fresh engine, in placement order.
 test("removing an end pipe shrinks the network in place", async () => {
     const {pipes} = await makePipes();
     for (let x = 0; x < 4; x += 1) {

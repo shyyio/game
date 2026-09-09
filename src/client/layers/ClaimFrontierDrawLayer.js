@@ -1,7 +1,7 @@
 import {Graphics} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
 import {TILE_SIZE, ViewMode} from "@/client/constants.js";
-import {CHUNK_SIZE, PLAYER_ID_NONE} from "@/common/constants.js";
+import {CHUNK_SIZE, PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkNeighbors, chunkOrigin} from "@/common/util.js";
 import {claimColor} from "@/client/Theme.js";
 
@@ -41,7 +41,7 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
         // both halves settled.
         state.subscribe("chunkClaims.ownerByChunk", () => this._markDirty());
         state.subscribe("chunkClaims.ownChunks", () => this._markDirty());
-        state.subscribe("chunkClaims.ownPlayerId", () => this._markDirty());
+        state.subscribe("chunkClaims.ownPlayerRef", () => this._markDirty());
         state.subscribe("chunkClaims.maxChunks", () => this._markDirty());
     }
 
@@ -109,7 +109,7 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
         const frontier = new Set();
         for (const chunk of this._claims.ownChunks()) {
             for (const neighbor of chunkNeighbors(chunk)) {
-                if (this._claims.ownerOf(neighbor) === PLAYER_ID_NONE) {
+                if (this._claims.ownerOf(neighbor) === PLAYER_REF_NONE) {
                     frontier.add(neighbor);
                 }
             }
@@ -148,7 +148,7 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
         } else {
             alpha = FRONTIER_ALPHA;
         }
-        this._graphics.fill({color: claimColor(this._claims.ownPlayerId), alpha});
+        this._graphics.fill({color: claimColor(this._claims.ownPlayerRef), alpha});
     }
 
     /**

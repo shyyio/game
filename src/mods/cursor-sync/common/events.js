@@ -6,19 +6,19 @@ import {AbstractEvent, AbstractChunkRoutedEvent} from "@spup/sdk";
 export class PlayerCursorEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
-        playerId: "int64",
+        playerRef: "int64",
         x: "float",
         y: "float",
     };
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} x tile x, fractional
      * @param {number} y tile y, fractional
      */
-    constructor(playerId, x, y) {
+    constructor(playerRef, x, y) {
         super(x, y);
-        this.playerId = playerId;
+        this.playerRef = playerRef;
     }
 }
 
@@ -29,14 +29,14 @@ export class PlayerCursorEvent extends AbstractChunkRoutedEvent {
 export class PlayerCursorHideEvent extends AbstractEvent {
 
     static wireFields = {
-        playerId: "int64",
+        playerRef: "int64",
     };
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      */
-    constructor(playerId) {
+    constructor(playerRef) {
         super();
-        this.playerId = playerId;
+        this.playerRef = playerRef;
     }
 }

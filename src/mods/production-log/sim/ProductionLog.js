@@ -10,20 +10,20 @@ export class ProductionLog {
 
     constructor() {
         /**
-         * playerId -> (itemTypeId -> count)
+         * playerRef -> (itemTypeId -> count)
          * @type {Map<number, Map<number, number>>}
          */
         this._byPlayer = new Map();
     }
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} itemTypeId
      * @param {number} amount
      * @returns {boolean} whether this is the player's first of the item type
      */
-    add(playerId, itemTypeId, amount) {
-        const counts = getOrCreate(this._byPlayer, playerId, () => new Map());
+    add(playerRef, itemTypeId, amount) {
+        const counts = getOrCreate(this._byPlayer, playerRef, () => new Map());
         const previous = counts.get(itemTypeId);
         if (previous === undefined) {
             counts.set(itemTypeId, amount);
@@ -34,11 +34,11 @@ export class ProductionLog {
     }
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {Map<number, number>} itemTypeId -> count
      */
-    countsOf(playerId) {
-        const counts = this._byPlayer.get(playerId);
+    countsOf(playerRef) {
+        const counts = this._byPlayer.get(playerRef);
         if (counts === undefined) {
             return new Map();
         }
@@ -46,7 +46,7 @@ export class ProductionLog {
     }
 
     /**
-     * One page of an item type's leaderboard: producers by count, most first, ties by player id.
+     * One page of an item type's leaderboard: producers by count, most first, ties by player ref.
      * @param {number} itemTypeId
      * @param {number} offset first rank of the page, zero-based
      * @param {number} requesterId the asking player
@@ -54,8 +54,8 @@ export class ProductionLog {
      */
     itemPage(itemTypeId, offset, requesterId) {
         const ranking = Array.from(this._byPlayer)
-            .filter(([playerId, counts]) => counts.has(itemTypeId))
-            .map(([playerId, counts]) => [playerId, counts.get(itemTypeId)])
+            .filter(([playerRef, counts]) => counts.has(itemTypeId))
+            .map(([playerRef, counts]) => [playerRef, counts.get(itemTypeId)])
             .sort((a, b) => b[1] - a[1] || a[0] - b[0]);
         const page = ranking.slice(offset, offset + LEADERBOARD_PAGE_SIZE);
         return new ItemLeaderboardEvent(
@@ -70,12 +70,12 @@ export class ProductionLog {
     /**
      * A player's 1-based place on an item's board, 0 when they never produced it: one more than
      * the producers ahead of them (more produced, or as much with a lower id).
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} itemTypeId
      * @returns {number}
      */
-    rankOf(playerId, itemTypeId) {
-        const own = this.countsOf(playerId).get(itemTypeId);
+    rankOf(playerRef, itemTypeId) {
+        const own = this.countsOf(playerRef).get(itemTypeId);
         if (own === undefined) {
             return 0;
         }
@@ -85,7 +85,7 @@ export class ProductionLog {
             if (count === undefined) {
                 continue;
             }
-            if (count > own || (count === own && otherId < playerId)) {
+            if (count > own || (count === own && otherId < playerRef)) {
                 ahead += 1;
             }
         }
@@ -97,9 +97,9 @@ export class ProductionLog {
      */
     serializeRecords() {
         const rows = [];
-        for (const [playerId, counts] of this._byPlayer) {
+        for (const [playerRef, counts] of this._byPlayer) {
             for (const [itemTypeId, count] of counts) {
-                rows.push({player_id: playerId, item_type: itemTypeId, count: count});
+                rows.push({player_id: playerRef, item_type: itemTypeId, count: count});
             }
         }
         return [

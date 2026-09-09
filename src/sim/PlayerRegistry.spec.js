@@ -6,8 +6,8 @@ test("getOrCreate is idempotent and allocates stable ids from 1", () => {
     const players = new PlayerRegistry();
     const alice = players.getOrCreate("sub-alice", "alice");
     const bob = players.getOrCreate("sub-bob", "bob");
-    assert.equal(alice.playerId, 1);
-    assert.equal(bob.playerId, 2);
+    assert.equal(alice.playerRef, 1);
+    assert.equal(bob.playerRef, 2);
     assert.equal(players.getOrCreate("sub-alice", "alice"), alice);
     assert.equal(players.byId(2), bob);
 });
@@ -15,7 +15,7 @@ test("getOrCreate is idempotent and allocates stable ids from 1", () => {
 test("a returning sub is recognized even if the display name changed", () => {
     const players = new PlayerRegistry();
     const alice = players.getOrCreate("sub-alice", "alice");
-    assert.equal(players.getOrCreate("sub-alice", "alice2").playerId, alice.playerId, "same identity, new display name");
+    assert.equal(players.getOrCreate("sub-alice", "alice2").playerRef, alice.playerRef, "same identity, new display name");
 });
 
 test("an invalid sub is rejected; the display name is unconstrained", () => {
@@ -35,22 +35,22 @@ test("unknown ids break loudly", () => {
 test("ensure registers external ids without disturbing the counter", () => {
     const players = new PlayerRegistry();
     const local = players.ensure(1);
-    assert.equal(local.playerId, 1);
+    assert.equal(local.playerRef, 1);
     assert.equal(players.ensure(1), local);
     // The next organic registration does not collide with the ensured id.
-    assert.equal(players.getOrCreate("sub-alice", "alice").playerId, 2);
+    assert.equal(players.getOrCreate("sub-alice", "alice").playerRef, 2);
 });
 
 test("friend lists are one-directional and validated", () => {
     const players = new PlayerRegistry();
     const alice = players.getOrCreate("sub-alice", "alice");
     const bob = players.getOrCreate("sub-bob", "bob");
-    players.addFriend(alice.playerId, bob.playerId);
-    assert.equal(players.isFriend(alice.playerId, bob.playerId), true);
-    assert.equal(players.isFriend(bob.playerId, alice.playerId), false);
-    assert.throws(() => players.addFriend(alice.playerId, 99), RangeError);
-    players.removeFriend(alice.playerId, bob.playerId);
-    assert.equal(players.isFriend(alice.playerId, bob.playerId), false);
+    players.addFriend(alice.playerRef, bob.playerRef);
+    assert.equal(players.isFriend(alice.playerRef, bob.playerRef), true);
+    assert.equal(players.isFriend(bob.playerRef, alice.playerRef), false);
+    assert.throws(() => players.addFriend(alice.playerRef, 99), RangeError);
+    players.removeFriend(alice.playerRef, bob.playerRef);
+    assert.equal(players.isFriend(alice.playerRef, bob.playerRef), false);
     assert.equal(players.isFriend(99, 1), false, "unknown owner is nobody's friend");
 });
 
@@ -59,7 +59,7 @@ test("directory lists every player", () => {
     players.getOrCreate("sub-alice", "alice");
     players.getOrCreate("sub-bob", "bob");
     const directory = players.directory();
-    assert.deepEqual(directory.playerIds, [1, 2]);
+    assert.deepEqual(directory.playerRefs, [1, 2]);
     assert.deepEqual(directory.usernames, ["alice", "bob"]);
 });
 
@@ -68,7 +68,7 @@ test("records round-trip and the id counter resumes past the loaded ids", () => 
     const alice = players.getOrCreate("sub-alice", "alice");
     const bob = players.getOrCreate("sub-bob", "bob");
     alice.maxChunks = 12;
-    players.addFriend(alice.playerId, bob.playerId);
+    players.addFriend(alice.playerRef, bob.playerRef);
 
     const [playerTable, friendTable] = players.serializeRecords();
     const restored = new PlayerRegistry();
@@ -77,11 +77,11 @@ test("records round-trip and the id counter resumes past the loaded ids", () => 
     assert.equal(restored.byId(1).maxChunks, 12);
     assert.equal(restored.isFriend(1, 2), true);
     assert.equal(restored.getOrCreate("sub-alice", "alice"), restored.byId(1), "sub survives the round-trip");
-    assert.equal(restored.getOrCreate("sub-carol", "carol").playerId, 3);
+    assert.equal(restored.getOrCreate("sub-carol", "carol").playerRef, 3);
 
     restored.deserializeRecords(undefined, undefined);
     assert.equal(restored.has(1), false);
-    assert.equal(restored.getOrCreate("sub-dave", "dave").playerId, 1);
+    assert.equal(restored.getOrCreate("sub-dave", "dave").playerRef, 1);
 });
 
 test("a locally-ensured record (no auth server involved) never collides on sub", () => {
@@ -89,10 +89,10 @@ test("a locally-ensured record (no auth server involved) never collides on sub",
     players.ensure(1);
     players.ensure(2);
     // Both ensured records have sub=null; getOrCreate must not treat that as a shared identity.
-    assert.equal(players.getOrCreate("sub-alice", "alice").playerId, 3);
+    assert.equal(players.getOrCreate("sub-alice", "alice").playerRef, 3);
 });
 
-test("friend codes are random, unique per player, and not tied to playerId", () => {
+test("friend codes are random, unique per player, and not tied to playerRef", () => {
     const players = new PlayerRegistry();
     const alice = players.getOrCreate("sub-alice", "alice");
     const bob = players.getOrCreate("sub-bob", "bob");

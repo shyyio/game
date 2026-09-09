@@ -224,12 +224,12 @@ export function scaleColor(color, factor) {
 /**
  * A stable, distinct claim color per player, identical on every client: golden-angle hue steps
  * keep neighboring ids far apart on the wheel.
- * @param {number} playerId
+ * @param {number} playerRef
  * @returns {number}
  */
-export function claimColor(playerId) {
-    return getOrCreate(CLAIM_COLORS, playerId, () => {
-        const hue = (playerId * 137.508) % 360;
+export function claimColor(playerRef) {
+    return getOrCreate(CLAIM_COLORS, playerRef, () => {
+        const hue = (playerRef * 137.508) % 360;
         return new Color({h: hue, s: 70, l: 45}).toNumber();
     });
 }

@@ -110,9 +110,9 @@ export class LogisticsSimMod extends AbstractSimMod {
         const x = engine.Position.x[eid];
         const y = engine.Position.y[eid];
         // Mod messages bypass the core placement gate, so gates check build rights themselves.
-        if (!engine.placementAllowed(session.playerId, chunkId(x, y))) {
+        if (!engine.placementAllowed(session.playerRef, chunkId(x, y))) {
             // Correct the sender's optimistic flip with the authoritative state.
-            game.bus.publishTo(session.id, engine.sync.eventFor(engine.components.get("Gate"), eid));
+            game.bus.publishTo(session.sessionRef, engine.sync.eventFor(engine.components.get("Gate"), eid));
             return;
         }
         engine.placed.behaviorFor(objectTypeId).requestOpen(engine, eid, message.open === 1);
@@ -146,8 +146,8 @@ export class LogisticsSimMod extends AbstractSimMod {
             return null;
         }
         // Mod messages bypass the core placement gate, so wires check build rights themselves.
-        if (!engine.placementAllowed(session.playerId, chunkId(position.x[aEid], position.y[aEid]))
-            || !engine.placementAllowed(session.playerId, chunkId(position.x[bEid], position.y[bEid]))) {
+        if (!engine.placementAllowed(session.playerRef, chunkId(position.x[aEid], position.y[aEid]))
+            || !engine.placementAllowed(session.playerRef, chunkId(position.x[bEid], position.y[bEid]))) {
             return null;
         }
         return {aEid, bEid};
@@ -281,7 +281,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         // Mod messages bypass the core placement gate, so rules check build rights themselves.
         const x = engine.Position.x[eid];
         const y = engine.Position.y[eid];
-        if (!engine.placementAllowed(session.playerId, chunkId(x, y))) {
+        if (!engine.placementAllowed(session.playerRef, chunkId(x, y))) {
             return;
         }
         const ruleCount = message.actionDeviceIds.length;
@@ -380,7 +380,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         }
         const rules = engine.resolve(LogicRules).rulesOf(message.objectRef);
         const conditions = rules.flatMap(rule => rule.conditions);
-        game.bus.publishTo(session.id, new LogicSnapshotEvent(
+        game.bus.publishTo(session.sessionRef, new LogicSnapshotEvent(
             message.objectRef, linked, tier, deviceObjectRefs, deviceTypeIds, deviceTileXs, deviceTileYs,
             rules.map(rule => rule.actionDeviceId),
             rules.map(rule => rule.actionKey),

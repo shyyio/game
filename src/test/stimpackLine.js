@@ -48,7 +48,7 @@ const TIER_HEIGHT = 8;
 
 // The player this factory is built for: pre-funded and pre-claimed, so its two NPC-buy Trading
 // Terminals are live from tick one (no session needs to claim/configure anything by hand).
-export const STIMPACK_FACTORY_PLAYER_ID = 1;
+export const STIMPACK_FACTORY_PLAYER_REF = 1;
 const STARTING_BALANCE = 100000;
 
 /**
@@ -228,7 +228,7 @@ function placeNode(engine, node, originX, originY, occupied) {
  */
 function configureTerminals(game, node) {
     if (node.kind === "terminal") {
-        const session = new CapturingSession(STIMPACK_FACTORY_PLAYER_ID);
+        const session = new CapturingSession(STIMPACK_FACTORY_PLAYER_REF);
         game.dispatchMessage(new ConfigureTradingTerminalMessage(node.objectRef, MARKET_MODE_BUY, node.itemTypeId, node.price), session);
         return;
     }
@@ -348,7 +348,7 @@ function connectEdges(engine, node, occupied) {
 
 /**
  * Builds the whole Stimpack production chain at (originX, originY) (Fill's own anchor), pre-funds
- * and pre-claims the chunks it occupies for STIMPACK_FACTORY_PLAYER_ID, and returns the root node
+ * and pre-claims the chunks it occupies for STIMPACK_FACTORY_PLAYER_REF, and returns the root node
  * (whose `.type`/`.x`/`.y` locate the final Fill machine, for a caller that wants to watch its
  * output port).
  * @param {GameEngine} engine
@@ -378,10 +378,10 @@ export function buildStimpackFactory(engine, game, originX, originY) {
     const maxChunks = (maxChunkX - minChunkX + 1) * (maxChunkY - minChunkY + 1);
     for (let cy = minChunkY; cy <= maxChunkY; cy += 1) {
         for (let cx = minChunkX; cx <= maxChunkX; cx += 1) {
-            game.claims.claim(STIMPACK_FACTORY_PLAYER_ID, chunkOrdinal(cx, cy), maxChunks);
+            game.claims.claim(STIMPACK_FACTORY_PLAYER_REF, chunkOrdinal(cx, cy), maxChunks);
         }
     }
-    game.playerSettings.set(STIMPACK_FACTORY_PLAYER_ID, MARKET_SETTING_BALANCE, STARTING_BALANCE);
+    game.playerSettings.set(STIMPACK_FACTORY_PLAYER_REF, MARKET_SETTING_BALANCE, STARTING_BALANCE);
 
     const occupied = new Set();
     placeNode(engine, tree, originX, originY, occupied);

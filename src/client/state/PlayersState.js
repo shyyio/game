@@ -18,8 +18,8 @@ export class PlayersWriter extends AbstractCacheWriter {
      */
     onEvent(event) {
         if (event instanceof PlayerNamesEvent) {
-            for (let i = 0; i < event.playerIds.length; i += 1) {
-                this._state.mapSet("players.usernameByPlayer", event.playerIds[i], event.usernames[i]);
+            for (let i = 0; i < event.playerRefs.length; i += 1) {
+                this._state.mapSet("players.usernameByPlayer", event.playerRefs[i], event.usernames[i]);
             }
         }
     }
@@ -31,13 +31,13 @@ export class PlayersWriter extends AbstractCacheWriter {
 export class PlayersView extends AbstractCacheView {
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {string}
      */
-    usernameOf(playerId) {
-        const username = this._state.mapGet("players.usernameByPlayer", playerId);
+    usernameOf(playerRef) {
+        const username = this._state.mapGet("players.usernameByPlayer", playerRef);
         if (username === undefined) {
-            return syntheticUsername(playerId);
+            return syntheticUsername(playerRef);
         }
         return username;
     }

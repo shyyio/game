@@ -90,7 +90,7 @@ export class NoteGhostLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _paint() {
-        let color = claimColor(this._claims.ownPlayerId);
+        let color = claimColor(this._claims.ownPlayerRef);
         let alpha = GHOST_ALPHA;
         if (this._blocked) {
             color = GHOST_BLOCKED_TINT;

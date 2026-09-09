@@ -42,7 +42,7 @@ export class PathDebugDrawLayer extends AbstractDebugDrawLayer {
     }
 
     /**
-     * @param {number[]} parts - belt ids in path order, head last
+     * @param {number[]} parts - belt refs in path order, head last
      * @private
      */
     _drawPath(parts) {

@@ -86,7 +86,7 @@ test("extending a belt path downstream preserves an item resting in the out-port
 });
 
 // The client renders items against the recalculated path length and keys the resting out-port sprite by
-// port id, so on a downstream extension the path-recalc must precede the item rows and the old out-port
+// port ref, so on a downstream extension the path-recalc must precede the item rows and the old out-port
 // must be cleared — otherwise items land at a stale offset and the old sprite lingers.
 test("downstream extension emits recalc before item rows and clears the old out-port", async () => {
     const engine = new GameEngine();

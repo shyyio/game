@@ -161,8 +161,8 @@ export {
     LAYER_SURFACE,
 } from "@/common/constants.js";
 
-// The unowned/anonymous player id: no session owns the action.
-export {PLAYER_ID_NONE} from "@/common/constants.js";
+// The unowned/anonymous player ref: no session owns the action.
+export {PLAYER_REF_NONE} from "@/common/constants.js";
 
 // ---- Logic network ----
 // Machine on/off, readable and writable through AbstractBehavior.logicRead/logicWrite;

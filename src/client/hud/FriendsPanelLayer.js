@@ -60,14 +60,14 @@ export class FriendsPanelLayer extends Container {
     }
 
     /**
-     * @param {function(playerId: number): void} callback
+     * @param {function(playerRef: number): void} callback
      */
     onAddFriend(callback) {
         this._onAddFriend = callback;
     }
 
     /**
-     * @param {function(playerId: number): void} callback
+     * @param {function(playerRef: number): void} callback
      */
     onUnfriend(callback) {
         this._onUnfriend = callback;

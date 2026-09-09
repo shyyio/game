@@ -63,7 +63,7 @@ test("queryRollup keeps category and tag as separate groups within the same buck
     ]);
 });
 
-test("queryRollup with playerId null is unscoped across every player", async () => {
+test("queryRollup with playerRef null is unscoped across every player", async () => {
     const store = new NodeMetricsStore(":memory:");
     await store.recordBatch([
         new MetricsFact(TYPE, 0, PLAYER, 1, 10, 0),
@@ -90,9 +90,9 @@ test("a baked tier answers the same rollup the raw facts would, across folded an
     await reference.recordBatch(facts);
 
     const toTick = METRICS_FOLD_TIER * 2 + 29;
-    for (const playerId of [null, PLAYER]) {
-        const baked = await store.queryRollup(TYPE, playerId, 0, toTick, METRICS_FOLD_TIER);
-        const expected = await reference.queryRollup(TYPE, playerId, 0, toTick, METRICS_FOLD_TIER);
+    for (const playerRef of [null, PLAYER]) {
+        const baked = await store.queryRollup(TYPE, playerRef, 0, toTick, METRICS_FOLD_TIER);
+        const expected = await reference.queryRollup(TYPE, playerRef, 0, toTick, METRICS_FOLD_TIER);
         assert.deepEqual(sortRows(baked), sortRows(expected));
     }
 });

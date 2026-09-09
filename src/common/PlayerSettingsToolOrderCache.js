@@ -7,25 +7,25 @@ export const PLAYER_SETTINGS_TOOL_ORDER_RECORD = "PlayerSettingsToolOrder";
 export class PlayerSettingsToolOrderCache {
 
     constructor() {
-        // playerId -> number[]
+        // playerRef -> number[]
         this._byPlayer = new Map();
     }
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number[]} toolIds
      * @returns {void}
      */
-    set(playerId, toolIds) {
-        this._byPlayer.set(playerId, toolIds);
+    set(playerRef, toolIds) {
+        this._byPlayer.set(playerRef, toolIds);
     }
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {number[]}
      */
-    get(playerId) {
-        const toolIds = this._byPlayer.get(playerId);
+    get(playerRef) {
+        const toolIds = this._byPlayer.get(playerRef);
         if (toolIds === undefined) {
             return [];
         }
@@ -37,9 +37,9 @@ export class PlayerSettingsToolOrderCache {
      */
     serializeRecords() {
         const rows = [];
-        for (const [playerId, toolIds] of this._byPlayer) {
+        for (const [playerRef, toolIds] of this._byPlayer) {
             for (const [position, toolId] of toolIds.entries()) {
-                rows.push({player_id: playerId, position, tool_id: toolId});
+                rows.push({player_id: playerRef, position, tool_id: toolId});
             }
         }
         return {
@@ -71,9 +71,9 @@ export class PlayerSettingsToolOrderCache {
             }
             rows.push(row);
         }
-        for (const [playerId, rows] of rowsByPlayer) {
+        for (const [playerRef, rows] of rowsByPlayer) {
             rows.sort((a, b) => a.position - b.position);
-            this._byPlayer.set(playerId, rows.map(row => row.tool_id));
+            this._byPlayer.set(playerRef, rows.map(row => row.tool_id));
         }
     }
 }

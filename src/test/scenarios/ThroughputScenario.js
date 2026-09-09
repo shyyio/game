@@ -199,7 +199,7 @@ const WARMUP_TICKS = 120;
 
 // The player the chains are built for: pre-claimed and pre-funded, so the buy terminals are live
 // from tick one (a terminal on an unclaimed chunk caches a 0 balance and never buys).
-export const THROUGHPUT_PLAYER_ID = 1;
+export const THROUGHPUT_PLAYER_REF = 1;
 
 // Runway per chain copy; the granted balance scales with `n`.
 const STARTING_BALANCE_PER_COPY = 1000000;
@@ -252,7 +252,7 @@ function claimRect(game, minX, maxX, minY, maxY) {
     const maxChunks = (maxChunkX - minChunkX + 1) * (maxChunkY - minChunkY + 1);
     for (let chunkY = minChunkY; chunkY <= maxChunkY; chunkY += 1) {
         for (let chunkX = minChunkX; chunkX <= maxChunkX; chunkX += 1) {
-            game.claims.claim(THROUGHPUT_PLAYER_ID, chunkOrdinal(chunkX, chunkY), maxChunks);
+            game.claims.claim(THROUGHPUT_PLAYER_REF, chunkOrdinal(chunkX, chunkY), maxChunks);
         }
     }
 }
@@ -354,7 +354,7 @@ export class ThroughputScenario extends AbstractScenario {
             ORIGIN_X, ORIGIN_X + (columns - 1) * pitchX + copyWidth - 1,
             ORIGIN_Y - 3 * stride, ORIGIN_Y + (rows - 1) * pitchY,
         );
-        game.playerSettings.set(THROUGHPUT_PLAYER_ID, MARKET_SETTING_BALANCE, STARTING_BALANCE_PER_COPY * copies);
+        game.playerSettings.set(THROUGHPUT_PLAYER_REF, MARKET_SETTING_BALANCE, STARTING_BALANCE_PER_COPY * copies);
 
         for (let copy = 0; copy < copies; copy += 1) {
             const originX = ORIGIN_X + (copy % columns) * pitchX;
@@ -362,7 +362,7 @@ export class ThroughputScenario extends AbstractScenario {
             buildChain(engine, originX, originY, beltLength);
         }
 
-        const session = new CapturingSession(THROUGHPUT_PLAYER_ID);
+        const session = new CapturingSession(THROUGHPUT_PLAYER_REF);
         for (const terminalEid of engine.placed.eidsOf(TradingTerminalType.objectTypeId)) {
             game.dispatchMessage(new ConfigureTradingTerminalMessage(
                 engine.placed.objectRefOf(terminalEid), MARKET_MODE_BUY,

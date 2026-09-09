@@ -40,12 +40,12 @@ export class ProductionLogClientMod extends AbstractClientMod {
     }
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {Client} client
      * @returns {PlayerAction[]}
      */
-    playerActions(playerId, client) {
-        return [new PlayerAction("View log", () => this._logPanel.showFor(playerId))];
+    playerActions(playerRef, client) {
+        return [new PlayerAction("View log", () => this._logPanel.showFor(playerRef))];
     }
 
     /**

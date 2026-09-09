@@ -28,13 +28,13 @@ export class AbstractMetricsStore {
      * Bucketed (bucket, category, tag) aggregates of one type in a tick range, optionally scoped to one player.
      * @abstract
      * @param {number} type METRICS_FACT_TYPE_*
-     * @param {number|null} playerId null for unscoped (every player)
+     * @param {number|null} playerRef null for unscoped (every player)
      * @param {number} fromTick
      * @param {number} toTick
      * @param {number} tier - bucket width in ticks, one of TIER_LADDER
      * @returns {Promise<MetricsRollupRow[]>}
      */
-    async queryRollup(type, playerId, fromTick, toTick, tier) {
+    async queryRollup(type, playerRef, fromTick, toTick, tier) {
         throw new NotImplementedError();
     }
 

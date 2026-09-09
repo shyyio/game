@@ -1,6 +1,6 @@
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
-import {Direction, PLAYER_ID_NONE} from "@/common/constants.js";
+import {Direction, PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkId, chunkOrigin} from "@/common/util.js";
 import {NO_EID} from "@/sim/sentinels.js";
 import {METRICS_FACT_TYPE_OBJECT_PLACED, METRICS_FACT_TYPE_OBJECT_DESPAWNED} from "@/common/MetricsFact.js";
@@ -26,7 +26,7 @@ export class PlacedObjects {
             {name: "objectRef", defaultValue: NO_EID},
             // Who placed it, for record keeping: a friend building in your chunk is recorded as
             // themselves. Economics read claimOwnerOf instead, which follows the ground.
-            {name: "placedBy", defaultValue: PLAYER_ID_NONE},
+            {name: "placedBy", defaultValue: PLAYER_REF_NONE},
         ], {sparse: true});
 
         // objectTypeId -> ObjectType, derived types only.
@@ -43,7 +43,7 @@ export class PlacedObjects {
 
         // Before the behavior installs, so anything a behavior registers (a belt path sync) runs
         // after the host's — the client rebuilds objects first, then what references them.
-        engine.registerMessageHandler((message, playerId) => this._message(message, playerId));
+        engine.registerMessageHandler((message, playerRef) => this._message(message, playerRef));
         engine.registerChunkSync(chunk => this._chunkSync(chunk));
         engine.registerInspector(objectRef => this._inspect(objectRef));
         engine.snapshots.registerRebuildHook(() => this._rebuild());
@@ -83,7 +83,7 @@ export class PlacedObjects {
     }
 
     /**
-     * The client-facing object id of a placed entity.
+     * The client-facing object ref of a placed entity.
      * @param {number} eid
      * @returns {number}
      */
@@ -92,7 +92,7 @@ export class PlacedObjects {
     }
 
     /**
-     * The player who placed this entity, PLAYER_ID_NONE for an engine-originated spawn.
+     * The player who placed this entity, PLAYER_REF_NONE for an engine-originated spawn.
      * @param {number} eid
      * @returns {number}
      */
@@ -101,7 +101,7 @@ export class PlacedObjects {
     }
 
     /**
-     * The current owner of the chunk this entity stands in, PLAYER_ID_NONE when unclaimed. Read live
+     * The current owner of the chunk this entity stands in, PLAYER_REF_NONE when unclaimed. Read live
      * rather than cached: a stored copy would have to be rewritten at every claim and permission
      * change, and a missed call site bills the wrong player.
      * @param {number} eid
@@ -177,7 +177,7 @@ export class PlacedObjects {
      * @param {number} [config.placedBy]
      * @returns {number} the eid, NO_EID when a guard or an occupied cell refused it
      */
-    spawn({objectTypeId, tileX, tileY, direction, placedBy = PLAYER_ID_NONE}) {
+    spawn({objectTypeId, tileX, tileY, direction, placedBy = PLAYER_REF_NONE}) {
         const message = new CreateObjectMessage(objectTypeId, tileX, tileY, direction);
         this._place(message, placedBy);
         const type = this._types.get(objectTypeId);
@@ -195,12 +195,12 @@ export class PlacedObjects {
     despawn(eid) {
         const objectRef = this.objectRefOf(eid);
         this.engine.untrack(objectRef);
-        this._delete(objectRef, PLAYER_ID_NONE);
+        this._delete(objectRef, PLAYER_REF_NONE);
         this.engine.ports.collectUnreferenced();
     }
 
     /**
-     * The placed entity with object id `objectRef`, or undefined.
+     * The placed entity with object ref `objectRef`, or undefined.
      * @param {number} objectRef
      * @returns {number|undefined}
      */
@@ -244,15 +244,15 @@ export class PlacedObjects {
     /**
      * @private
      * @param {AbstractMessage} message
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {boolean}
      */
-    _message(message, playerId) {
+    _message(message, playerRef) {
         if (message instanceof CreateObjectMessage) {
-            return this._place(message, playerId);
+            return this._place(message, playerRef);
         }
         if (message instanceof DeleteObjectMessage) {
-            return this._delete(message.objectRef, playerId);
+            return this._delete(message.objectRef, playerRef);
         }
         return false;
     }
@@ -263,10 +263,10 @@ export class PlacedObjects {
      * own (bespoke placement falls through to the mod's own handler).
      * @private
      * @param {CreateObjectMessage} message
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {boolean}
      */
-    _place(message, playerId) {
+    _place(message, playerRef) {
         const type = this._types.get(message.objectTypeId);
         if (type === undefined) {
             return false;
@@ -295,7 +295,7 @@ export class PlacedObjects {
         const row = this.def.row(eid);
         this.def.store.objectTypeId[row] = type.objectTypeId;
         this.def.store.objectRef[row] = objectRef;
-        this.def.store.placedBy[row] = playerId;
+        this.def.store.placedBy[row] = playerRef;
         engine.space.setPosition(eid, message.x, message.y, message.direction);
         engine.ports.bindEndpoints(eid, type, message.x, message.y, message.direction);
         type.behavior.onSpawn(engine, eid, type, message);
@@ -312,7 +312,7 @@ export class PlacedObjects {
         engine.notifySpawn(eid, objectRef);
         const portEids = type.behavior.renderedPortEids(engine, eid);
         engine.emitEvent(new ObjectInsertEvent(type.objectTypeId, objectRef, message.x, message.y, message.direction, portEids));
-        engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_PLACED, playerId, type.objectTypeId, 1);
+        engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_PLACED, playerRef, type.objectTypeId, 1);
         return true;
     }
 
@@ -320,10 +320,10 @@ export class PlacedObjects {
      * The generic despawn path; an index miss returns false (a bespoke type's delete falls through).
      * @private
      * @param {number} objectRef
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {boolean}
      */
-    _delete(objectRef, playerId) {
+    _delete(objectRef, playerRef) {
         const eid = this._eidByObjectRef.get(objectRef);
         if (eid === undefined) {
             return false;
@@ -337,7 +337,7 @@ export class PlacedObjects {
         const x = position.x[eid];
         const y = position.y[eid];
         engine.emitEvent(new ObjectDeleteEvent(type.objectTypeId, objectRef, x, y));
-        engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_DESPAWNED, playerId, type.objectTypeId, 1);
+        engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_DESPAWNED, playerRef, type.objectTypeId, 1);
         // Before the destroy, which recycles the eid and may clear its position.
         this._unindexChunk(eid, x, y);
         engine.components.destroyEntity(eid);

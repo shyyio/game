@@ -13,23 +13,23 @@ test("players, friends, and claims survive a save/load", async () => {
     const alice = game.players.getOrCreate("sub-alice", "alice");
     const bob = game.players.getOrCreate("sub-bob", "bob");
     bob.maxChunks = 20;
-    const aliceSession = new CapturingSession(alice.playerId);
+    const aliceSession = new CapturingSession(alice.playerRef);
     game.connect(aliceSession);
     game.dispatchMessage(new ClaimChunkMessage(chunkId(0, 0)), aliceSession);
     game.dispatchMessage(new ClaimChunkMessage(chunkId(64, 0)), aliceSession);
-    game.dispatchMessage(new AddFriendMessage(bob.playerId), aliceSession);
+    game.dispatchMessage(new AddFriendMessage(bob.playerRef), aliceSession);
     await game.save();
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
-    assert.equal(restored.players.byId(alice.playerId).username, "alice");
-    assert.equal(restored.players.byId(bob.playerId).maxChunks, 20);
-    assert.equal(restored.players.isFriend(alice.playerId, bob.playerId), true);
-    assert.equal(restored.claims.ownerOf(chunkId(0, 0)), alice.playerId);
-    assert.equal(restored.claims.ownerOf(chunkId(64, 0)), alice.playerId);
-    assert.equal(restored.claims.countOf(alice.playerId), 2);
+    assert.equal(restored.players.byId(alice.playerRef).username, "alice");
+    assert.equal(restored.players.byId(bob.playerRef).maxChunks, 20);
+    assert.equal(restored.players.isFriend(alice.playerRef, bob.playerRef), true);
+    assert.equal(restored.claims.ownerOf(chunkId(0, 0)), alice.playerRef);
+    assert.equal(restored.claims.ownerOf(chunkId(64, 0)), alice.playerRef);
+    assert.equal(restored.claims.countOf(alice.playerRef), 2);
     // The id counter resumes past the loaded players.
-    assert.equal(restored.players.getOrCreate("sub-carol", "carol").playerId, 3);
+    assert.equal(restored.players.getOrCreate("sub-carol", "carol").playerRef, 3);
 });
 
 test("player settings survive a save/load", async () => {
@@ -37,29 +37,29 @@ test("player settings survive a save/load", async () => {
     const game = await makeGame([], store);
     const alice = game.players.getOrCreate("sub-alice", "alice");
     const bob = game.players.getOrCreate("sub-bob", "bob");
-    game.playerSettings.set(alice.playerId, 1, 1);
-    game.playerSettings.set(alice.playerId, 2, 0);
-    game.playerSettings.set(bob.playerId, 1, 0);
+    game.playerSettings.set(alice.playerRef, 1, 1);
+    game.playerSettings.set(alice.playerRef, 2, 0);
+    game.playerSettings.set(bob.playerRef, 1, 0);
     await game.save();
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
-    assert.equal(restored.playerSettings.get(alice.playerId, 1), 1);
-    assert.equal(restored.playerSettings.get(alice.playerId, 2), 0);
-    assert.equal(restored.playerSettings.get(bob.playerId, 1), 0);
-    assert.equal(restored.playerSettings.get(bob.playerId, 2), undefined);
+    assert.equal(restored.playerSettings.get(alice.playerRef, 1), 1);
+    assert.equal(restored.playerSettings.get(alice.playerRef, 2), 0);
+    assert.equal(restored.playerSettings.get(bob.playerRef, 1), 0);
+    assert.equal(restored.playerSettings.get(bob.playerRef, 2), undefined);
 });
 
 test("a player's custom tool order survives a save/load", async () => {
     const store = new NodeSaveStore(":memory:");
     const game = await makeGame([], store);
     const alice = game.players.getOrCreate("sub-alice", "alice");
-    game.toolOrder.set(alice.playerId, [30, -10, 20]);
+    game.toolOrder.set(alice.playerRef, [30, -10, 20]);
     await game.save();
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
-    assert.deepEqual(restored.toolOrder.get(alice.playerId), [30, -10, 20]);
+    assert.deepEqual(restored.toolOrder.get(alice.playerRef), [30, -10, 20]);
 });
 
 test("a snapshot without tables loads with empty registries", async () => {

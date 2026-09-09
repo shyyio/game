@@ -158,6 +158,6 @@ export class SettleFlow {
      * @returns {boolean}
      */
     _noClaims() {
-        return this._claims.ownPlayerId !== null && !this._claims.hasOwnClaims();
+        return this._claims.ownPlayerRef !== null && !this._claims.hasOwnClaims();
     }
 }

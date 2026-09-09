@@ -24,13 +24,13 @@ export class ClientMetricsStore extends AbstractMetricsStore {
 
     /**
      * @param {number} type
-     * @param {number|null} playerId
+     * @param {number|null} playerRef
      * @param {number} fromTick
      * @param {number} toTick
      * @param {number} tier
      * @returns {Promise<MetricsRollupRow[]>}
      */
-    async queryRollup(type, playerId, fromTick, toTick, tier) {
+    async queryRollup(type, playerRef, fromTick, toTick, tier) {
         const buckets = new Map();
         for (let i = this._firstIndexAtOrAfter(fromTick); i < this._facts.length; i += 1) {
             const fact = this._facts[i];
@@ -40,7 +40,7 @@ export class ClientMetricsStore extends AbstractMetricsStore {
             if (fact.type !== type) {
                 continue;
             }
-            if (playerId !== null && fact.playerId !== playerId) {
+            if (playerRef !== null && fact.playerRef !== playerRef) {
                 continue;
             }
             const bucketTick = bucketTickFor(fact.tick, tier);

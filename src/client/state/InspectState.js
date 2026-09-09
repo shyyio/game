@@ -73,7 +73,7 @@ export class InspectWriter extends AbstractCacheWriter {
 export class InspectView extends AbstractCacheView {
 
     /**
-     * @returns {number[]} the open machines' object ids
+     * @returns {number[]} the open machines' object refs
      */
     openIds() {
         return [...this._state.setValues("inspect.openObjects")];

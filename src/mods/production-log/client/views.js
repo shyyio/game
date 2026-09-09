@@ -6,10 +6,10 @@ import {LEADERBOARD_PAGE_SIZE} from "../common/constants.js";
 export class LogView {
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      */
-    constructor(playerId) {
-        this.playerId = playerId;
+    constructor(playerRef) {
+        this.playerRef = playerRef;
     }
 }
 

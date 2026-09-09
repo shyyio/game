@@ -262,7 +262,7 @@ export class Belts {
      * @param {number} y
      * @param {Direction} direction
      * @param {BeltType} [type]
-     * @param {number} [id] - the belt's object id, allocated by the generic spawn path
+     * @param {number} [id] - the belt's object ref, allocated by the generic spawn path
      * @returns {{id:number, inPort:number, outPort:number, length:number, segments:number[]}|null} null
      *     when the target cell is taken
      */
@@ -393,7 +393,7 @@ export class Belts {
     }
 
     /**
-     * The path-recalc event: belt ids in path order (head last) and out-port id, routed by the head tile.
+     * The path-recalc event: belt refs in path order (head last) and out-port ref, routed by the head tile.
      * @private
      * @param {object} path
      * @returns {BeltPathRecalculateEvent}

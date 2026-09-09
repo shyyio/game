@@ -1,4 +1,4 @@
-import {AbstractSimMod, chunkId, NO_EID, PLAYER_ID_NONE, PlayerSettingsUpdateEvent} from "@spup/sdk";
+import {AbstractSimMod, chunkId, NO_EID, PLAYER_REF_NONE, PlayerSettingsUpdateEvent} from "@spup/sdk";
 import {MarketBook} from "./sim/MarketBook.js";
 import {TradingTerminalType} from "./common/objectTypes.js";
 import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./common/messages.js";
@@ -34,13 +34,13 @@ export class MarketSimMod extends AbstractSimMod {
      * @returns {void}
      */
     onSessionConnect(session, game) {
-        if (session.playerId === PLAYER_ID_NONE) {
+        if (session.playerRef === PLAYER_REF_NONE) {
             return;
         }
-        if (game.playerSettings.get(session.playerId, MARKET_SETTING_BALANCE) !== undefined) {
+        if (game.playerSettings.get(session.playerRef, MARKET_SETTING_BALANCE) !== undefined) {
             return;
         }
-        game.playerSettings.set(session.playerId, MARKET_SETTING_BALANCE, MARKET_STARTING_BALANCE);
+        game.playerSettings.set(session.playerRef, MARKET_SETTING_BALANCE, MARKET_STARTING_BALANCE);
     }
 
     /**
@@ -168,7 +168,7 @@ export class MarketSimMod extends AbstractSimMod {
             }
         }
 
-        game.bus.publishTo(session.id, new MarketSnapshotEvent(
+        game.bus.publishTo(session.sessionRef, new MarketSnapshotEvent(
             itemTypeIds, npcPrices, bestBidPrices, bestAskPrices, guidePrices,
             currentMode, currentItemTypeId, currentPrice,
         ));
@@ -178,10 +178,10 @@ export class MarketSimMod extends AbstractSimMod {
      * @param {number} eid a placed terminal
      * @param {GameEngine} engine
      * @param {Game} game
-     * @param {Map<number, number>} owners this tick's eid -> playerId cache, shared across both
+     * @param {Map<number, number>} owners this tick's eid -> playerRef cache, shared across both
      *     _settle and _refreshBalances so a terminal touched by both is only looked up once
      * @private
-     * @returns {number} the chunk owner's playerId, or PLAYER_ID_NONE
+     * @returns {number} the chunk owner's playerRef, or PLAYER_REF_NONE
      */
     _ownerOf(eid, engine, game, owners) {
         let owner = owners.get(eid);
@@ -202,7 +202,7 @@ export class MarketSimMod extends AbstractSimMod {
      * @param {MarketBook} book
      * @param {GameEngine} engine
      * @param {Game} game
-     * @param {Map<number, number>} owners this tick's eid -> playerId cache
+     * @param {Map<number, number>} owners this tick's eid -> playerRef cache
      * @private
      * @returns {void}
      */
@@ -214,7 +214,7 @@ export class MarketSimMod extends AbstractSimMod {
         const deltas = new Map();
         for (const settlement of settlements) {
             const sellerOwner = this._ownerOf(settlement.sellerEid, engine, game, owners);
-            if (sellerOwner !== PLAYER_ID_NONE) {
+            if (sellerOwner !== PLAYER_REF_NONE) {
                 deltas.set(sellerOwner, (deltas.get(sellerOwner) || 0) + settlement.price);
                 engine.emitMetrics(
                     METRICS_FACT_TYPE_TRADE_EXECUTED, sellerOwner,
@@ -223,7 +223,7 @@ export class MarketSimMod extends AbstractSimMod {
             }
             if (settlement.buyerEid !== NO_EID) {
                 const buyerOwner = this._ownerOf(settlement.buyerEid, engine, game, owners);
-                if (buyerOwner !== PLAYER_ID_NONE) {
+                if (buyerOwner !== PLAYER_REF_NONE) {
                     deltas.set(buyerOwner, (deltas.get(buyerOwner) || 0) - settlement.price);
                     engine.emitMetrics(
                         METRICS_FACT_TYPE_TRADE_EXECUTED, buyerOwner,
@@ -232,11 +232,11 @@ export class MarketSimMod extends AbstractSimMod {
                 }
             }
         }
-        for (const [playerId, delta] of deltas) {
-            const current = game.playerSettings.get(playerId, MARKET_SETTING_BALANCE) || 0;
+        for (const [playerRef, delta] of deltas) {
+            const current = game.playerSettings.get(playerRef, MARKET_SETTING_BALANCE) || 0;
             const next = Math.max(0, current + delta);
-            game.playerSettings.set(playerId, MARKET_SETTING_BALANCE, next);
-            game.bus.publishToPlayer(playerId, new PlayerSettingsUpdateEvent(MARKET_SETTING_BALANCE, next));
+            game.playerSettings.set(playerRef, MARKET_SETTING_BALANCE, next);
+            game.bus.publishToPlayer(playerRef, new PlayerSettingsUpdateEvent(MARKET_SETTING_BALANCE, next));
         }
     }
 
@@ -249,7 +249,7 @@ export class MarketSimMod extends AbstractSimMod {
      * @param {MarketBook} book
      * @param {GameEngine} engine
      * @param {Game} game
-     * @param {Map<number, number>} owners this tick's eid -> playerId cache
+     * @param {Map<number, number>} owners this tick's eid -> playerRef cache
      * @private
      * @returns {void}
      */
@@ -261,7 +261,7 @@ export class MarketSimMod extends AbstractSimMod {
         const deltas = new Map();
         for (const purchase of purchases) {
             const buyerOwner = this._ownerOf(purchase.buyerEid, engine, game, owners);
-            if (buyerOwner !== PLAYER_ID_NONE) {
+            if (buyerOwner !== PLAYER_REF_NONE) {
                 deltas.set(buyerOwner, (deltas.get(buyerOwner) || 0) - purchase.price);
                 engine.emitMetrics(
                     METRICS_FACT_TYPE_TRADE_EXECUTED, buyerOwner,
@@ -269,11 +269,11 @@ export class MarketSimMod extends AbstractSimMod {
                 );
             }
         }
-        for (const [playerId, delta] of deltas) {
-            const current = game.playerSettings.get(playerId, MARKET_SETTING_BALANCE) || 0;
+        for (const [playerRef, delta] of deltas) {
+            const current = game.playerSettings.get(playerRef, MARKET_SETTING_BALANCE) || 0;
             const next = Math.max(0, current + delta);
-            game.playerSettings.set(playerId, MARKET_SETTING_BALANCE, next);
-            game.bus.publishToPlayer(playerId, new PlayerSettingsUpdateEvent(MARKET_SETTING_BALANCE, next));
+            game.playerSettings.set(playerRef, MARKET_SETTING_BALANCE, next);
+            game.bus.publishToPlayer(playerRef, new PlayerSettingsUpdateEvent(MARKET_SETTING_BALANCE, next));
         }
     }
 
@@ -285,7 +285,7 @@ export class MarketSimMod extends AbstractSimMod {
      * never sell, since nobody could be paid for it).
      * @param {GameEngine} engine
      * @param {Game} game
-     * @param {Map<number, number>} owners this tick's eid -> playerId cache
+     * @param {Map<number, number>} owners this tick's eid -> playerRef cache
      * @private
      * @returns {void}
      */
@@ -297,7 +297,7 @@ export class MarketSimMod extends AbstractSimMod {
         for (let row = 0; row < count; row += 1) {
             if (terminal.mode[row] === MARKET_MODE_SELL) {
                 const owner = this._ownerOf(eids[row], engine, game, owners);
-                if (owner === PLAYER_ID_NONE) {
+                if (owner === PLAYER_REF_NONE) {
                     terminal.sellEnabled[row] = 0;
                 } else {
                     terminal.sellEnabled[row] = 1;
@@ -309,7 +309,7 @@ export class MarketSimMod extends AbstractSimMod {
             }
             const owner = this._ownerOf(eids[row], engine, game, owners);
             let balance = 0;
-            if (owner !== PLAYER_ID_NONE) {
+            if (owner !== PLAYER_REF_NONE) {
                 balance = game.playerSettings.get(owner, MARKET_SETTING_BALANCE) || 0;
             }
             terminal.balance[row] = balance;

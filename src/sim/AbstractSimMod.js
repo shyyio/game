@@ -38,20 +38,20 @@ export class AbstractSimMod {
 
     /**
      * Optional hook: a session left; its bus subscriptions are already gone.
-     * @param {number} sessionId
+     * @param {number} sessionRef
      * @param {Game} game
      * @returns {void}
      */
-    onSessionDisconnect(sessionId, game) {}
+    onSessionDisconnect(sessionRef, game) {}
 
     /**
      * Optional hook: a player dropped another from their friend list (already applied and synced).
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} friendId
      * @param {Game} game
      * @returns {void}
      */
-    onFriendRemoved(playerId, friendId, game) {}
+    onFriendRemoved(playerRef, friendId, game) {}
 
     /**
      * Optional hook: a client wrote one of its player settings (already stored and echoed).

@@ -1,4 +1,4 @@
-import {AbstractSimMod, PLAYER_ID_NONE, getOrCreate} from "@spup/sdk";
+import {AbstractSimMod, PLAYER_REF_NONE, getOrCreate} from "@spup/sdk";
 import {ITEM_PRODUCED_RECORD} from "./common/constants.js";
 import {
     ProductionLogRequestMessage,
@@ -22,7 +22,7 @@ export class ProductionLogSimMod extends AbstractSimMod {
          */
         this._items = null;
         /**
-         * playerId -> item types first produced this tick, announced at tick end.
+         * playerRef -> item types first produced this tick, announced at tick end.
          * @type {Map<number, number[]>}
          */
         this._discovered = new Map();
@@ -35,7 +35,7 @@ export class ProductionLogSimMod extends AbstractSimMod {
      */
     setup(engine) {
         this._items = engine.modRegistry.items;
-        engine.itemProduced.add((playerId, itemTypeId, amount) => this._record(playerId, itemTypeId, amount));
+        engine.itemProduced.add((playerRef, itemTypeId, amount) => this._record(playerRef, itemTypeId, amount));
     }
 
     /**
@@ -43,8 +43,8 @@ export class ProductionLogSimMod extends AbstractSimMod {
      * @returns {void}
      */
     onTick(game) {
-        for (const [playerId, itemTypeIds] of this._discovered) {
-            game.bus.publishToPlayer(playerId, new ItemsDiscoveredEvent(itemTypeIds));
+        for (const [playerRef, itemTypeIds] of this._discovered) {
+            game.bus.publishToPlayer(playerRef, new ItemsDiscoveredEvent(itemTypeIds));
         }
         this._discovered.clear();
     }
@@ -61,8 +61,8 @@ export class ProductionLogSimMod extends AbstractSimMod {
             return true;
         }
         if (message instanceof ItemLeaderboardRequestMessage) {
-            const page = this._log.itemPage(message.itemTypeId, message.offset, session.playerId);
-            this._publish(session, game, page.playerIds, page);
+            const page = this._log.itemPage(message.itemTypeId, message.offset, session.playerRef);
+            this._publish(session, game, page.playerRefs, page);
             return true;
         }
         return false;
@@ -85,17 +85,17 @@ export class ProductionLogSimMod extends AbstractSimMod {
 
     /**
      * Counts a delivery for its owner; an unowned producer counts for nobody.
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} itemTypeId
      * @param {number} amount
      * @private
      */
-    _record(playerId, itemTypeId, amount) {
-        if (playerId === PLAYER_ID_NONE) {
+    _record(playerRef, itemTypeId, amount) {
+        if (playerRef === PLAYER_REF_NONE) {
             return;
         }
-        if (this._log.add(playerId, itemTypeId, amount)) {
-            getOrCreate(this._discovered, playerId, () => []).push(itemTypeId);
+        if (this._log.add(playerRef, itemTypeId, amount)) {
+            getOrCreate(this._discovered, playerRef, () => []).push(itemTypeId);
         }
     }
 
@@ -107,16 +107,16 @@ export class ProductionLogSimMod extends AbstractSimMod {
      * @private
      */
     _answerLog(message, session, game) {
-        if (!game.players.has(message.playerId)) {
+        if (!game.players.has(message.playerRef)) {
             return;
         }
-        const counts = this._log.countsOf(message.playerId);
+        const counts = this._log.countsOf(message.playerRef);
         const itemTypeIds = Array.from(counts.keys());
-        this._publish(session, game, [message.playerId], new ProductionLogEvent(
-            message.playerId,
+        this._publish(session, game, [message.playerRef], new ProductionLogEvent(
+            message.playerRef,
             itemTypeIds,
             Array.from(counts.values()),
-            itemTypeIds.map(itemTypeId => this._log.rankOf(message.playerId, itemTypeId)),
+            itemTypeIds.map(itemTypeId => this._log.rankOf(message.playerRef, itemTypeId)),
         ));
     }
 
@@ -124,12 +124,12 @@ export class ProductionLogSimMod extends AbstractSimMod {
      * Sends an answer to one session, the names it mentions first.
      * @param {AbstractSession} session
      * @param {Game} game
-     * @param {number[]} playerIds
+     * @param {number[]} playerRefs
      * @param {AbstractEvent} event
      * @private
      */
-    _publish(session, game, playerIds, event) {
-        game.playerDirectory.syncUsernames(session.id, playerIds);
-        game.bus.publishTo(session.id, event);
+    _publish(session, game, playerRefs, event) {
+        game.playerDirectory.syncUsernames(session.sessionRef, playerRefs);
+        game.bus.publishTo(session.sessionRef, event);
     }
 }

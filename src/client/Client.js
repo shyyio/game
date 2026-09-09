@@ -344,11 +344,11 @@ export class Client {
 
     /**
      * Every button the client mods offer on a player.
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {PlayerAction[]}
      */
-    modPlayerActions(playerId) {
-        return this.modRegistry.clientMods.flatMap(mod => mod.playerActions(playerId, this));
+    modPlayerActions(playerRef) {
+        return this.modRegistry.clientMods.flatMap(mod => mod.playerActions(playerRef, this));
     }
 
     /**

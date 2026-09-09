@@ -157,7 +157,7 @@ export class Pipes {
      * pool, mixed types must be pre-rejected via {@link canJoin}.
      * @param {number} x
      * @param {number} y
-     * @param {number} [id] - the pipe's object id, allocated by the generic spawn path
+     * @param {number} [id] - the pipe's object ref, allocated by the generic spawn path
      * @returns {number} the network id
      */
     placePipe(x, y, id=undefined) {

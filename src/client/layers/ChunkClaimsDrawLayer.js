@@ -1,7 +1,7 @@
 import {Container, Graphics, Text} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
 import {GAME_FONT, TILE_SIZE, ViewMode} from "@/client/constants.js";
-import {CHUNK_SIZE, PLAYER_ID_NONE} from "@/common/constants.js";
+import {CHUNK_SIZE, PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkCenter, chunkOrdinal, chunkOrigin, chunkPosition, getOrCreate, inRegion} from "@/common/util.js";
 import {claimColor, CLAIM_FILL_ALPHA, CLAIM_BORDER_ALPHA} from "@/client/Theme.js";
 import {ChunkPermission} from "@/common/ClaimEvents.js";
@@ -42,7 +42,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
         this._graphics = new Map();
         // Chunk ordinal -> its permission badge Graphics, present only where notable.
         this._badges = new Map();
-        // Owner playerId -> username Text.
+        // Owner playerRef -> username Text.
         this._labels = new Map();
         // Home glyph on the own player's territory.
         this._homeMarker = null;
@@ -79,10 +79,10 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
             this._updateBadge(chunk, this._claims.ownerOf(chunk));
         });
         // A grant toggling changes whether that owner's friends-only chunks read as buildable.
-        state.subscribe("chunkClaims.grantedByIds", (playerId) => {
+        state.subscribe("chunkClaims.grantedByIds", (playerRef) => {
             for (const chunk of this._graphics.keys()) {
-                if (this._claims.ownerOf(chunk) === playerId) {
-                    this._updateBadge(chunk, playerId);
+                if (this._claims.ownerOf(chunk) === playerRef) {
+                    this._updateBadge(chunk, playerRef);
                 }
             }
         });
@@ -163,7 +163,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
             const owner = this._claims.ownerOf(chunk);
             let territory;
             // Own territory gets the home glyph, not a label.
-            if (owner === this._claims.ownPlayerId) {
+            if (owner === this._claims.ownPlayerRef) {
                 if (ownTerritory === null) {
                     ownTerritory = {chunks: [], sumX: 0, sumY: 0};
                 }
@@ -227,7 +227,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
             this._homeMarker = new Graphics();
             // White halo under the colored glyph.
             drawHomeIcon(this._homeMarker, 0xffffff, 6);
-            drawHomeIcon(this._homeMarker, claimColor(this._claims.ownPlayerId), 3);
+            drawHomeIcon(this._homeMarker, claimColor(this._claims.ownPlayerRef), 3);
             this._labelLayer.addChild(this._homeMarker);
         }
         const position = this._labelPosition(territory);
@@ -329,7 +329,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
      */
     _badgeIconFor(chunk, owner) {
         const permission = this._claims.permissionOf(chunk);
-        if (owner === this._claims.ownPlayerId) {
+        if (owner === this._claims.ownPlayerRef) {
             if (permission === ChunkPermission.PERMISSION_FRIENDS) {
                 return drawFriendIcon;
             }
@@ -391,7 +391,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * The owner of the chunk one step from `chunk`, or PLAYER_ID_NONE off the region edge.
+     * The owner of the chunk one step from `chunk`, or PLAYER_REF_NONE off the region edge.
      * @private
      * @param {number} chunk
      * @param {number} dx
@@ -403,7 +403,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
         const x = position.x + dx;
         const y = position.y + dy;
         if (!inRegion(x, y)) {
-            return PLAYER_ID_NONE;
+            return PLAYER_REF_NONE;
         }
         return this._claims.ownerOf(chunkOrdinal(x, y));
     }

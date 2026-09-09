@@ -54,7 +54,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
          * @private
          */
         this._lanes = new Map();
-        // Lane id by the out-port id it rests items in, so a port-item event finds its lane.
+        // Lane id by the out-port ref it rests items in, so a port-item event finds its lane.
         this._laneByOutPort = new Map();
     }
 

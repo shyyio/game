@@ -5,11 +5,11 @@ import {AbstractSession} from "@/common/AbstractSession.js";
 export class CapturingSession extends AbstractSession {
 
     /**
-     * @param {number} [playerId]
+     * @param {number} [playerRef]
      */
-    constructor(playerId=0) {
+    constructor(playerRef=0) {
         super(null);
-        this._playerId = playerId;
+        this._playerRef = playerRef;
         /**
          * @type {AbstractEvent[]}
          */
@@ -19,8 +19,8 @@ export class CapturingSession extends AbstractSession {
     /**
      * @returns {number}
      */
-    get playerId() {
-        return this._playerId;
+    get playerRef() {
+        return this._playerRef;
     }
 
     /**

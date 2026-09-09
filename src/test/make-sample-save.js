@@ -39,8 +39,8 @@ for (let i = 0; i < 5; i += 1) {
 // Two players, a one-way friendship, and a claim on the extractor's chunk.
 const alice = game.players.getOrCreate("sub-alice", "alice");
 const bob = game.players.getOrCreate("sub-bob", "bob");
-game.players.addFriend(alice.playerId, bob.playerId);
-game.claims.claim(alice.playerId, chunkId(5, 5), alice.maxChunks);
+game.players.addFriend(alice.playerRef, bob.playerRef);
+game.claims.claim(alice.playerRef, chunkId(5, 5), alice.maxChunks);
 
 await game.save();
 console.log(`wrote sample save: ${PATH}`);

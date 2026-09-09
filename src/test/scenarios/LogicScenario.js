@@ -15,7 +15,7 @@ import {ITEM_TYPE_WATER} from "@/mods/base-game/common/constants.js";
 
 // The player the testbed is claimed for: the local session's own id, so the panel and wire tool
 // work without claiming anything by hand.
-const LOGIC_PLAYER_ID = 1;
+const LOGIC_PLAYER_REF = 1;
 
 const TERMINAL_X = 12;
 const TERMINAL_Y = 8;
@@ -58,7 +58,7 @@ export class LogicScenario extends AbstractScenario {
     async apply(game, params) {
         const engine = game.simEngine;
         game.claims.claim(
-            LOGIC_PLAYER_ID,
+            LOGIC_PLAYER_REF,
             chunkOrdinal(Math.floor(TERMINAL_X / CHUNK_SIZE), Math.floor(TERMINAL_Y / CHUNK_SIZE)),
             1,
         );
@@ -74,7 +74,7 @@ export class LogicScenario extends AbstractScenario {
         tankDef.store.fluidType[tankRow] = ITEM_TYPE_WATER;
         tankDef.store.amount[tankRow] = TANK_WATER_AMOUNT;
 
-        const session = new CapturingSession(LOGIC_PLAYER_ID);
+        const session = new CapturingSession(LOGIC_PLAYER_REF);
         for (const deviceId of [gateA, gateB, blender, tank]) {
             game.dispatchMessage(new WireLinkMessage(terminal, deviceId), session);
         }

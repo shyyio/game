@@ -63,15 +63,15 @@ export class LogisticsClientMod extends AbstractClientMod {
         this._beltLayer = new BeltDrawLayer();
         // Reveals buried tunnel belts under a hovered mouth.
         this._overlayLayer = new BeltOverlayDrawLayer();
-        // Head id → belt ids in path order (head last).
+        // Head id → belt refs in path order (head last).
         this._pathParts = new Map();
         // Head id → Map<item id, {gap, type}>, output-to-input; positions derived from gaps.
         this._pathItems = new Map();
-        // Out-port id → path head id, so a port-item event (port id only) resolves to a path.
+        // Out-port ref → path head id, so a port-item event (port ref only) resolves to a path.
         this._outPortToPath = new Map();
         // Inverse map, so a lead item's DELETE (a pop) hands its sprite to the out-port.
         this._pathToOutPort = new Map();
-        // Out-port id → pop whose hand-off waits on the occupant's fate: a consumed CLEAR glides
+        // Out-port ref → pop whose hand-off waits on the occupant's fate: a consumed CLEAR glides
         // the occupant into the consumer first; TickEndEvent flushes the rest (occupant ingested
         // downstream, its sprite simply replaced).
         this._pendingPops = new Map();
@@ -271,7 +271,7 @@ export class LogisticsClientMod extends AbstractClientMod {
 
     /**
      * Records a recalculated path under its head id, dropping any head a merge absorbed.
-     * @param {number[]} parts - belt ids in path order, head last
+     * @param {number[]} parts - belt refs in path order, head last
      * @private
      */
     _updatePath(parts) {

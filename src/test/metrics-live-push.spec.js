@@ -130,8 +130,8 @@ test("disconnect clears subscriptions so a later push touches nothing for that s
     );
     await Promise.resolve();
 
-    game.disconnect(alice.id);
+    game.disconnect(alice.sessionRef);
 
-    // Must not throw resolving a stale session's playerId mid-push.
+    // Must not throw resolving a stale session's playerRef mid-push.
     assert.doesNotThrow(() => game.metrics.push());
 });

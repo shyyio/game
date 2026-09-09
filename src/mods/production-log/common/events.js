@@ -26,21 +26,21 @@ export class ItemsDiscoveredEvent extends AbstractEvent {
 export class ProductionLogEvent extends AbstractEvent {
 
     static wireFields = {
-        playerId: "int64",
+        playerRef: "int64",
         itemTypeIds: "int32[]",
         counts: "int64[]",
         ranks: "int32[]",
     };
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number[]} itemTypeIds
      * @param {number[]} counts
      * @param {number[]} ranks
      */
-    constructor(playerId, itemTypeIds, counts, ranks) {
+    constructor(playerRef, itemTypeIds, counts, ranks) {
         super();
-        this.playerId = playerId;
+        this.playerRef = playerRef;
         this.itemTypeIds = itemTypeIds;
         this.counts = counts;
         this.ranks = ranks;
@@ -55,7 +55,7 @@ export class ItemLeaderboardEvent extends AbstractEvent {
 
     static wireFields = {
         itemTypeId: "int32",
-        playerIds: "int64[]",
+        playerRefs: "int64[]",
         scores: "int64[]",
         requesterRank: "int32",
         total: "int32",
@@ -63,15 +63,15 @@ export class ItemLeaderboardEvent extends AbstractEvent {
 
     /**
      * @param {number} itemTypeId
-     * @param {number[]} playerIds
+     * @param {number[]} playerRefs
      * @param {number[]} scores
      * @param {number} requesterRank
      * @param {number} total
      */
-    constructor(itemTypeId, playerIds, scores, requesterRank, total) {
+    constructor(itemTypeId, playerRefs, scores, requesterRank, total) {
         super();
         this.itemTypeId = itemTypeId;
-        this.playerIds = playerIds;
+        this.playerRefs = playerRefs;
         this.scores = scores;
         this.requesterRank = requesterRank;
         this.total = total;

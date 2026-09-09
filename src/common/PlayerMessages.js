@@ -40,15 +40,15 @@ export class SignInMessage extends AbstractMessage {
 export class AddFriendMessage extends AbstractMessage {
 
     static wireFields = {
-        playerId: "int64",
+        playerRef: "int64",
     };
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      */
-    constructor(playerId) {
+    constructor(playerRef) {
         super();
-        this.playerId = playerId;
+        this.playerRef = playerRef;
     }
 }
 
@@ -83,15 +83,15 @@ export class AddFriendByCodeMessage extends AbstractMessage {
 export class RemoveFriendMessage extends AbstractMessage {
 
     static wireFields = {
-        playerId: "int64",
+        playerRef: "int64",
     };
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      */
-    constructor(playerId) {
+    constructor(playerRef) {
         super();
-        this.playerId = playerId;
+        this.playerRef = playerRef;
     }
 }
 

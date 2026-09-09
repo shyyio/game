@@ -34,7 +34,7 @@ export class GameServer extends AbstractHttpServer {
         this._origin = origin;
         this._name = name;
         this._startedAtMs = Date.now();
-        // playerId -> WebSocketSession, to kick a superseded login.
+        // playerRef -> WebSocketSession, to kick a superseded login.
         this._sessionsByPlayer = new Map();
 
         this.app.get("/status", (res, req) => {
@@ -245,8 +245,8 @@ export class GameServer extends AbstractHttpServer {
         try {
             this._api.sendMessage(message, session);
         } catch (error) {
-            reportError(error, `Message dispatch failed for player ${session.playerId}`, {
-                playerId: session.playerId,
+            reportError(error, `Message dispatch failed for player ${session.playerRef}`, {
+                playerRef: session.playerRef,
                 messageType: message.constructor.name,
             });
             ws.end(CLOSE_CODE_BAD_FRAME);
@@ -271,17 +271,17 @@ export class GameServer extends AbstractHttpServer {
             return;
         }
         const record = this._game.players.getOrCreate(claims.sub, claims.name);
-        const superseded = this._sessionsByPlayer.get(record.playerId);
+        const superseded = this._sessionsByPlayer.get(record.playerRef);
         if (superseded !== undefined) {
             // The close callback runs the usual disconnect cleanup.
             superseded.kick(CLOSE_CODE_SUPERSEDED);
         }
 
-        const session = new WebSocketSession(this._api, ws, record.playerId);
+        const session = new WebSocketSession(this._api, ws, record.playerRef);
         ws.getUserData().session = session;
-        this._sessionsByPlayer.set(record.playerId, session);
+        this._sessionsByPlayer.set(record.playerRef, session);
         this._game.connect(session);
-        console.log(`+ ${claims.name} (player ${record.playerId}, session ${session.id})`);
+        console.log(`+ ${claims.name} (player ${record.playerRef}, session ${session.sessionRef})`);
     }
 
     /**
@@ -295,11 +295,11 @@ export class GameServer extends AbstractHttpServer {
             return;
         }
         session.markClosed();
-        if (this._sessionsByPlayer.get(session.playerId) === session) {
-            this._sessionsByPlayer.delete(session.playerId);
+        if (this._sessionsByPlayer.get(session.playerRef) === session) {
+            this._sessionsByPlayer.delete(session.playerRef);
         }
-        this._game.disconnect(session.id);
-        const username = this._game.players.byId(session.playerId).username;
-        console.log(`- ${username} (player ${session.playerId}, session ${session.id}, tx ${formatBytes(session.txBytes)}, rx ${formatBytes(session.rxBytes)})`);
+        this._game.disconnect(session.sessionRef);
+        const username = this._game.players.byId(session.playerRef).username;
+        console.log(`- ${username} (player ${session.playerRef}, session ${session.sessionRef}, tx ${formatBytes(session.txBytes)}, rx ${formatBytes(session.rxBytes)})`);
     }
 }

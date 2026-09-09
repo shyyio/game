@@ -114,7 +114,7 @@ export class Game {
          * @type {ClaimAdmin}
          */
         this.claimAdmin = new ClaimAdmin(this);
-        this.simEngine.setPlacementGate((playerId, chunk) => this.claimAdmin.canBuildIn(playerId, chunk));
+        this.simEngine.setPlacementGate((playerRef, chunk) => this.claimAdmin.canBuildIn(playerRef, chunk));
         this.simEngine.setChunkOwnerResolver(chunk => this.claims.ownerOf(chunk));
 
         /**
@@ -141,9 +141,9 @@ export class Game {
             [ClaimChunkMessage, (session, message) => this.claimAdmin.claim(session, message.chunk)],
             [UnclaimChunkMessage, (session, message) => this.claimAdmin.unclaim(session, message.chunk, message.clear === 1)],
             [SetChunkPermissionMessage, (session, message) => this.claimAdmin.setPermission(session, message.chunk, message.permission)],
-            [AddFriendMessage, (session, message) => this.playerDirectory.addFriend(session, message.playerId)],
+            [AddFriendMessage, (session, message) => this.playerDirectory.addFriend(session, message.playerRef)],
             [AddFriendByCodeMessage, (session, message) => this.playerDirectory.addFriendByCode(session, message.code)],
-            [RemoveFriendMessage, (session, message) => this.playerDirectory.removeFriend(session, message.playerId)],
+            [RemoveFriendMessage, (session, message) => this.playerDirectory.removeFriend(session, message.playerRef)],
             [SetPlayerSettingMessage, (session, message) => this._handleSetPlayerSetting(session, message.key, message.value)],
             [SetPlayerSettingsToolOrderMessage, (session, message) => this._handleSetToolOrder(session, message.toolIds)],
         ]);
@@ -249,12 +249,12 @@ export class Game {
      * @param {AbstractSession} session
      */
     connect(session) {
-        const sessionId = this.bus.addSession(session);
-        session.setId(sessionId);
-        this.playerDirectory.connect(sessionId);
+        const sessionRef = this.bus.addSession(session);
+        session.setSessionRef(sessionRef);
+        this.playerDirectory.connect(sessionRef);
         // Local and test sessions carry ids the registry has never seen; the server registers its
         // players before connecting them, so this is a no-op there.
-        this.players.ensure(session.playerId);
+        this.players.ensure(session.playerRef);
 
         this.metrics.onConnect(session);
 
@@ -275,15 +275,15 @@ export class Game {
      * @private
      */
     _syncPlayerState(session) {
-        const record = this.players.byId(session.playerId);
-        this.bus.publishTo(session.id, new WelcomeEvent(record.playerId, record.maxChunks, record.friendCode));
-        this.playerDirectory.syncUsernames(session.id, [session.playerId]);
+        const record = this.players.byId(session.playerRef);
+        this.bus.publishTo(session.sessionRef, new WelcomeEvent(record.playerRef, record.maxChunks, record.friendCode));
+        this.playerDirectory.syncUsernames(session.sessionRef, [session.playerRef]);
         this.claimAdmin.syncOwnClaims(session);
-        this.playerDirectory.syncFriendList(session.id, session.playerId);
+        this.playerDirectory.syncFriendList(session.sessionRef, session.playerRef);
     }
 
     _syncGameSettings(session) {
-        this.bus.publishTo(session.id, new GameSettingsSyncEvent(this.gameSettings.snapshot()));
+        this.bus.publishTo(session.sessionRef, new GameSettingsSyncEvent(this.gameSettings.snapshot()));
     }
 
     /**
@@ -291,7 +291,7 @@ export class Game {
      * @private
      */
     _syncPlayerSettings(session) {
-        this.bus.publishTo(session.id, new PlayerSettingsSyncEvent(this.playerSettings.snapshot(session.playerId)));
+        this.bus.publishTo(session.sessionRef, new PlayerSettingsSyncEvent(this.playerSettings.snapshot(session.playerRef)));
     }
 
     /**
@@ -299,21 +299,21 @@ export class Game {
      * @private
      */
     _syncToolOrder(session) {
-        this.bus.publishTo(session.id, new PlayerSettingsToolOrderSyncEvent(this.toolOrder.get(session.playerId)));
+        this.bus.publishTo(session.sessionRef, new PlayerSettingsToolOrderSyncEvent(this.toolOrder.get(session.playerRef)));
     }
 
     /**
-     * @param {number} sessionId
+     * @param {number} sessionRef
      */
-    disconnect(sessionId) {
-        // Before removeSession, so the leave fact still resolves the session's playerId.
-        this.metrics.onDisconnect(sessionId);
+    disconnect(sessionRef) {
+        // Before removeSession, so the leave fact still resolves the session's playerRef.
+        this.metrics.onDisconnect(sessionRef);
 
-        this.bus.removeSession(sessionId);
-        this.playerDirectory.disconnect(sessionId);
+        this.bus.removeSession(sessionRef);
+        this.playerDirectory.disconnect(sessionRef);
         // After the removal, so mod farewells fan out to the remaining sessions alone.
         for (const mod of this.modRegistry.simMods) {
-            mod.onSessionDisconnect(sessionId, this);
+            mod.onSessionDisconnect(sessionRef, this);
         }
         this.simEngine.invalidateObservers();
     }
@@ -343,7 +343,7 @@ export class Game {
             }
         }
 
-        this.simEngine.applyMessage(message, session.playerId);
+        this.simEngine.applyMessage(message, session.playerRef);
 
         // Close menus after the object is actually deleted, never before.
         if (message instanceof DeleteObjectMessage) {
@@ -367,8 +367,8 @@ export class Game {
         if (value < 0 || value >= entry.optionCount) {
             return;
         }
-        this.playerSettings.set(session.playerId, key, value);
-        this.bus.publishTo(session.id, new PlayerSettingsUpdateEvent(key, value));
+        this.playerSettings.set(session.playerRef, key, value);
+        this.bus.publishTo(session.sessionRef, new PlayerSettingsUpdateEvent(key, value));
         for (const mod of this.modRegistry.simMods) {
             mod.onPlayerSettingWritten(session, key, value, this);
         }
@@ -381,8 +381,8 @@ export class Game {
      * @private
      */
     _handleSetToolOrder(session, toolIds) {
-        this.toolOrder.set(session.playerId, toolIds);
-        this.bus.publishTo(session.id, new PlayerSettingsToolOrderSyncEvent(toolIds));
+        this.toolOrder.set(session.playerRef, toolIds);
+        this.bus.publishTo(session.sessionRef, new PlayerSettingsToolOrderSyncEvent(toolIds));
     }
 
     // ---- Tick ----

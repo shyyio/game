@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {PLAYER_ID_NONE} from "@spup/sdk";
+import {PLAYER_REF_NONE} from "@spup/sdk";
 import {makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 import {
@@ -24,8 +24,8 @@ async function world() {
     const game = await makeGame();
     const alice = game.players.getOrCreate("sub-alice", "alice");
     const bob = game.players.getOrCreate("sub-bob", "bob");
-    const aliceSession = new CapturingSession(alice.playerId);
-    const bobSession = new CapturingSession(bob.playerId);
+    const aliceSession = new CapturingSession(alice.playerRef);
+    const bobSession = new CapturingSession(bob.playerRef);
     game.connect(aliceSession);
     game.connect(bobSession);
     aliceSession.events.length = 0;
@@ -43,10 +43,10 @@ function nameEventsOf(session) {
 
 test("a player's first production of each item type is announced once, batched per tick", async () => {
     const {game, alice, bob} = await world();
-    game.simEngine.itemProduced.notify(alice.playerId, IRON, 1);
-    game.simEngine.itemProduced.notify(alice.playerId, IRON, 1);
-    game.simEngine.itemProduced.notify(alice.playerId, COAL, 1);
-    game.simEngine.itemProduced.notify(PLAYER_ID_NONE, COAL, 1);
+    game.simEngine.itemProduced.notify(alice.playerRef, IRON, 1);
+    game.simEngine.itemProduced.notify(alice.playerRef, IRON, 1);
+    game.simEngine.itemProduced.notify(alice.playerRef, COAL, 1);
+    game.simEngine.itemProduced.notify(PLAYER_REF_NONE, COAL, 1);
     assert.equal(eventsOf(alice, ItemsDiscoveredEvent).length, 0);
 
     game.runTick();
@@ -55,23 +55,23 @@ test("a player's first production of each item type is announced once, batched p
     assert.deepEqual(discovered[0].itemTypeIds, [IRON, COAL]);
     assert.equal(eventsOf(bob, ItemsDiscoveredEvent).length, 0);
 
-    game.simEngine.itemProduced.notify(alice.playerId, IRON, 1);
+    game.simEngine.itemProduced.notify(alice.playerRef, IRON, 1);
     game.runTick();
     assert.equal(eventsOf(alice, ItemsDiscoveredEvent).length, 1);
 });
 
 test("a production log request answers with the player's counts and ranks, their name first", async () => {
     const {game, alice, bob} = await world();
-    game.simEngine.itemProduced.notify(alice.playerId, IRON, 2);
-    game.simEngine.itemProduced.notify(alice.playerId, COAL, 1);
-    game.simEngine.itemProduced.notify(bob.playerId, IRON, 9);
+    game.simEngine.itemProduced.notify(alice.playerRef, IRON, 2);
+    game.simEngine.itemProduced.notify(alice.playerRef, COAL, 1);
+    game.simEngine.itemProduced.notify(bob.playerRef, IRON, 9);
 
-    game.dispatchMessage(new ProductionLogRequestMessage(alice.playerId), bob);
+    game.dispatchMessage(new ProductionLogRequestMessage(alice.playerRef), bob);
     const names = nameEventsOf(bob);
     assert.deepEqual(names[0].usernames, ["alice"]);
     const logs = eventsOf(bob, ProductionLogEvent);
     assert.equal(logs.length, 1);
-    assert.equal(logs[0].playerId, alice.playerId);
+    assert.equal(logs[0].playerRef, alice.playerRef);
     assert.deepEqual(logs[0].itemTypeIds, [IRON, COAL]);
     assert.deepEqual(logs[0].counts, [2, 1]);
     assert.deepEqual(logs[0].ranks, [2, 1]);
@@ -83,15 +83,15 @@ test("a production log request answers with the player's counts and ranks, their
 
 test("a leaderboard request answers one page with the requester's rank, names first", async () => {
     const {game, alice, bob} = await world();
-    game.simEngine.itemProduced.notify(alice.playerId, IRON, 5);
-    game.simEngine.itemProduced.notify(bob.playerId, IRON, 7);
-    game.simEngine.itemProduced.notify(bob.playerId, COAL, 1);
+    game.simEngine.itemProduced.notify(alice.playerRef, IRON, 5);
+    game.simEngine.itemProduced.notify(bob.playerRef, IRON, 7);
+    game.simEngine.itemProduced.notify(bob.playerRef, COAL, 1);
 
     game.dispatchMessage(new ItemLeaderboardRequestMessage(IRON, 0), alice);
     const boards = eventsOf(alice, ItemLeaderboardEvent);
     assert.equal(boards.length, 1);
     assert.equal(boards[0].itemTypeId, IRON);
-    assert.deepEqual(boards[0].playerIds, [bob.playerId, alice.playerId]);
+    assert.deepEqual(boards[0].playerRefs, [bob.playerRef, alice.playerRef]);
     assert.deepEqual(boards[0].scores, [7, 5]);
     assert.equal(boards[0].requesterRank, 2);
     assert.equal(boards[0].total, 2);
@@ -101,7 +101,7 @@ test("a leaderboard request answers one page with the requester's rank, names fi
 
     game.dispatchMessage(new ItemLeaderboardRequestMessage(IRON, LEADERBOARD_PAGE_SIZE), alice);
     const page = eventsOf(alice, ItemLeaderboardEvent)[1];
-    assert.deepEqual(page.playerIds, []);
+    assert.deepEqual(page.playerRefs, []);
     assert.equal(page.requesterRank, 2);
     assert.equal(page.total, 2);
 

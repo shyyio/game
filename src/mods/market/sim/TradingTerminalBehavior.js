@@ -1,4 +1,4 @@
-import {AbstractBehavior, EMPTY, NO_EID, TickPhase, PLAYER_ID_NONE, SyncedFields, SyncedField} from "@spup/sdk";
+import {AbstractBehavior, EMPTY, NO_EID, TickPhase, PLAYER_REF_NONE, SyncedFields, SyncedField} from "@spup/sdk";
 import {MARKET_MODE_SELL, MARKET_MODE_BUY} from "../common/constants.js";
 import {MarketBook} from "./MarketBook.js";
 
@@ -34,7 +34,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             // Buy only: cached owner balance, refreshed per tick by MarketSimMod.onTick. Not authoritative.
             {name: "balance"},
             // Buy only: cached chunk owner, lets _submitIntents pool balance across a player's buy terminals.
-            {name: "owner", defaultValue: PLAYER_ID_NONE},
+            {name: "owner", defaultValue: PLAYER_REF_NONE},
             // Sell only: whether this terminal's chunk is owned, refreshed per tick by MarketSimMod.onTick.
             {name: "sellEnabled"},
             // Sell-only scratch: price/counterparty this row is selling to this tick.

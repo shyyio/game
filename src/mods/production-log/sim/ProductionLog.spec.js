@@ -17,19 +17,19 @@ test("add reports the first time a player produces an item type", () => {
     assert.deepEqual([...log.countsOf(BOB)], []);
 });
 
-test("an item page ranks producers by count, ties by player id, with the asker's rank", () => {
+test("an item page ranks producers by count, ties by player ref, with the asker's rank", () => {
     const log = new ProductionLog();
     log.add(ALICE, IRON, 5);
     log.add(BOB, IRON, 7);
     log.add(BOB, COAL, 1);
     const page = log.itemPage(IRON, 0, ALICE);
-    assert.deepEqual(page.playerIds, [BOB, ALICE]);
+    assert.deepEqual(page.playerRefs, [BOB, ALICE]);
     assert.deepEqual(page.scores, [7, 5]);
     assert.equal(page.requesterRank, 2);
     assert.equal(page.total, 2);
 
     const unranked = log.itemPage(COAL, 0, ALICE);
-    assert.deepEqual(unranked.playerIds, [BOB]);
+    assert.deepEqual(unranked.playerRefs, [BOB]);
     assert.equal(unranked.requesterRank, 0);
 });
 

@@ -1,6 +1,6 @@
 import {Container} from "pixi.js";
 import {TILE_SIZE} from "@/client/constants.js";
-import {CHUNK_SIZE, PLAYER_ID_NONE} from "@/common/constants.js";
+import {CHUNK_SIZE, PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkOrigin} from "@/common/util.js";
 import {ClaimResult, ChunkPermission} from "@/common/ClaimEvents.js";
 import {ACTIVE_ACCENT, PANEL_BORDER} from "@/client/Theme.js";
@@ -88,14 +88,14 @@ export class ChunkActionsLayer extends Container {
     }
 
     /**
-     * @param {function(playerId: number): void} callback
+     * @param {function(playerRef: number): void} callback
      */
     onAddFriend(callback) {
         this._onAddFriend = callback;
     }
 
     /**
-     * @param {function(playerId: number): void} callback
+     * @param {function(playerRef: number): void} callback
      */
     onUnfriend(callback) {
         this._onUnfriend = callback;
@@ -109,7 +109,7 @@ export class ChunkActionsLayer extends Container {
     }
 
     /**
-     * @param {function(playerId: number): PlayerAction[]} callback the mods' buttons on a chunk's owner
+     * @param {function(playerRef: number): PlayerAction[]} callback the mods' buttons on a chunk's owner
      */
     onPlayerActions(callback) {
         this._playerActions = callback;
@@ -164,7 +164,7 @@ export class ChunkActionsLayer extends Container {
         const chunk = this._chunk;
         const claims = this._claims;
         const owner = claims.ownerOf(chunk);
-        if (owner !== PLAYER_ID_NONE && owner === claims.ownPlayerId) {
+        if (owner !== PLAYER_REF_NONE && owner === claims.ownPlayerRef) {
             return {
                 status: "Your chunk. You can build here",
                 rows: [
@@ -173,7 +173,7 @@ export class ChunkActionsLayer extends Container {
                 ],
             };
         }
-        if (owner !== PLAYER_ID_NONE) {
+        if (owner !== PLAYER_REF_NONE) {
             const name = this._players.usernameOf(owner);
             // Access comes from THEIR grant; the button toggles the own player's grant back.
             let status;

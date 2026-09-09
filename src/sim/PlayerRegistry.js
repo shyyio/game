@@ -8,22 +8,22 @@ export const FRIEND_RECORD = "Friend";
 export class PlayerRecord {
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {string|null} sub - the auth server's pairwise identity for this player on this
      *     server, or null for a locally-registered record (ensure()) with no auth server involved
      * @param {string} username - a display name only; not unique
      * @param {number} maxChunks
-     * @param {string} friendCode - random, unguessable; not derived from playerId or sub
+     * @param {string} friendCode - random, unguessable; not derived from playerRef or sub
      */
-    constructor(playerId, sub, username, maxChunks, friendCode) {
-        this.playerId = playerId;
+    constructor(playerRef, sub, username, maxChunks, friendCode) {
+        this.playerRef = playerRef;
         this.sub = sub;
         this.username = username;
         this.maxChunks = maxChunks;
         this.friendCode = friendCode;
 
         /**
-         * @type {Set<number>} playerIds allowed to build in this player's chunks
+         * @type {Set<number>} playerRefs allowed to build in this player's chunks
          */
         this.friends = new Set();
     }
@@ -51,7 +51,7 @@ export class PlayerRegistry {
          * @type {Map<string, PlayerRecord>} keyed by normalizeFriendCode() output
          */
         this._byFriendCode = new Map();
-        this._nextPlayerId = 1;
+        this._nextPlayerRef = 1;
     }
 
     /**
@@ -68,20 +68,20 @@ export class PlayerRegistry {
         if (existing !== undefined) {
             return existing;
         }
-        return this._register(new PlayerRecord(this._nextPlayerId, sub, username, DEFAULT_MAX_CHUNKS, this._freshFriendCode()));
+        return this._register(new PlayerRecord(this._nextPlayerRef, sub, username, DEFAULT_MAX_CHUNKS, this._freshFriendCode()));
     }
 
     /**
      * Registers a record under an externally chosen id (local sessions, tests) if none exists.
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {PlayerRecord}
      */
-    ensure(playerId) {
-        const existing = this._byId.get(playerId);
+    ensure(playerRef) {
+        const existing = this._byId.get(playerRef);
         if (existing !== undefined) {
             return existing;
         }
-        return this._register(new PlayerRecord(playerId, null, syntheticUsername(playerId), DEFAULT_MAX_CHUNKS, this._freshFriendCode()));
+        return this._register(new PlayerRecord(playerRef, null, syntheticUsername(playerRef), DEFAULT_MAX_CHUNKS, this._freshFriendCode()));
     }
 
     /**
@@ -116,67 +116,67 @@ export class PlayerRegistry {
      * @returns {PlayerRecord}
      */
     _register(record) {
-        this._byId.set(record.playerId, record);
+        this._byId.set(record.playerRef, record);
         if (record.sub !== null) {
             this._bySub.set(record.sub, record);
         }
         this._byFriendCode.set(normalizeFriendCode(record.friendCode), record);
-        if (record.playerId >= this._nextPlayerId) {
-            this._nextPlayerId = record.playerId + 1;
+        if (record.playerRef >= this._nextPlayerRef) {
+            this._nextPlayerRef = record.playerRef + 1;
         }
         return record;
     }
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {PlayerRecord}
      */
-    byId(playerId) {
-        const record = this._byId.get(playerId);
+    byId(playerRef) {
+        const record = this._byId.get(playerRef);
         if (record === undefined) {
-            throw new RangeError(`Unknown playerId: ${playerId}`);
+            throw new RangeError(`Unknown playerRef: ${playerRef}`);
         }
         return record;
     }
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {boolean}
      */
-    has(playerId) {
-        return this._byId.has(playerId);
+    has(playerRef) {
+        return this._byId.has(playerRef);
     }
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} friendId
      * @returns {void}
      */
-    addFriend(playerId, friendId) {
+    addFriend(playerRef, friendId) {
         this.byId(friendId);
-        this.byId(playerId).friends.add(friendId);
+        this.byId(playerRef).friends.add(friendId);
     }
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} friendId
      * @returns {void}
      */
-    removeFriend(playerId, friendId) {
-        this.byId(playerId).friends.delete(friendId);
+    removeFriend(playerRef, friendId) {
+        this.byId(playerRef).friends.delete(friendId);
     }
 
     /**
-     * The players whose friend lists contain `playerId` (who granted them build rights).
+     * The players whose friend lists contain `playerRef` (who granted them build rights).
      * Derived by scanning the roster: friendships change at user rate on a small map.
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {number[]}
      */
-    grantedBy(playerId) {
+    grantedBy(playerRef) {
         const granters = [];
         for (const record of this._byId.values()) {
-            if (record.friends.has(playerId)) {
-                granters.push(record.playerId);
+            if (record.friends.has(playerRef)) {
+                granters.push(record.playerRef);
             }
         }
         return granters;
@@ -198,16 +198,16 @@ export class PlayerRegistry {
 
     /**
      * Every known player as parallel arrays, for the directory sync event.
-     * @returns {{playerIds: number[], usernames: string[]}}
+     * @returns {{playerRefs: number[], usernames: string[]}}
      */
     directory() {
-        const playerIds = [];
+        const playerRefs = [];
         const usernames = [];
         for (const record of this._byId.values()) {
-            playerIds.push(record.playerId);
+            playerRefs.push(record.playerRef);
             usernames.push(record.username);
         }
-        return {playerIds, usernames};
+        return {playerRefs, usernames};
     }
 
     /**
@@ -218,14 +218,14 @@ export class PlayerRegistry {
         const friendRows = [];
         for (const record of this._byId.values()) {
             playerRows.push({
-                player_id: record.playerId,
+                player_id: record.playerRef,
                 sub: record.sub,
                 username: record.username,
                 max_chunks: record.maxChunks,
                 friend_code: record.friendCode,
             });
             for (const friendId of record.friends) {
-                friendRows.push({player_id: record.playerId, friend_id: friendId});
+                friendRows.push({player_id: record.playerRef, friend_id: friendId});
             }
         }
         return [
@@ -260,7 +260,7 @@ export class PlayerRegistry {
         this._byId.clear();
         this._bySub.clear();
         this._byFriendCode.clear();
-        this._nextPlayerId = 1;
+        this._nextPlayerRef = 1;
         if (playerTable === undefined) {
             return;
         }

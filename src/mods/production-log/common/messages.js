@@ -7,15 +7,15 @@ import {LEADERBOARD_PAGE_SIZE} from "./constants.js";
 export class ProductionLogRequestMessage extends AbstractMessage {
 
     static wireFields = {
-        playerId: "int64",
+        playerRef: "int64",
     };
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      */
-    constructor(playerId) {
+    constructor(playerRef) {
         super();
-        this.playerId = playerId;
+        this.playerRef = playerRef;
     }
 
     /**
@@ -24,7 +24,7 @@ export class ProductionLogRequestMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return Number.isInteger(this.playerId);
+        return Number.isInteger(this.playerRef);
     }
 }
 

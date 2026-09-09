@@ -26,7 +26,7 @@ export class NoteEditorTarget {
      * @param {number} offsetMy sub-tile y offset, milli-tiles
      * @param {string} text
      * @param {number} mode a NOTE_EDITOR_MODE_* option
-     * @param {number} authorId PLAYER_ID_NONE while placing a fresh note
+     * @param {number} authorId PLAYER_REF_NONE while placing a fresh note
      */
     constructor(
         tileX,

@@ -42,7 +42,7 @@ test("queryRollup keeps category and tag as separate groups within the same buck
     ]);
 });
 
-test("queryRollup with playerId null is unscoped across every player", async () => {
+test("queryRollup with playerRef null is unscoped across every player", async () => {
     const store = new ClientMetricsStore();
     await store.recordBatch([
         new MetricsFact(TYPE, 0, PLAYER, 1, 10, 0),

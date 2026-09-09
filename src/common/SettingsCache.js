@@ -46,37 +46,37 @@ export class SettingsCache {
 }
 
 /**
- * Per-player settings keyed by player id.
+ * Per-player settings keyed by player ref.
  */
 export class PlayerSettingsCache {
 
     constructor() {
-        // playerId -> SettingsCache
+        // playerRef -> SettingsCache
         this._byPlayer = new Map();
     }
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} key
      * @param {number} value
      * @returns {void}
      */
-    set(playerId, key, value) {
-        let settings = this._byPlayer.get(playerId);
+    set(playerRef, key, value) {
+        let settings = this._byPlayer.get(playerRef);
         if (settings === undefined) {
             settings = new SettingsCache();
-            this._byPlayer.set(playerId, settings);
+            this._byPlayer.set(playerRef, settings);
         }
         settings.set(key, value);
     }
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} key
      * @returns {number|undefined}
      */
-    get(playerId, key) {
-        const settings = this._byPlayer.get(playerId);
+    get(playerRef, key) {
+        const settings = this._byPlayer.get(playerRef);
         if (settings === undefined) {
             return undefined;
         }
@@ -84,11 +84,11 @@ export class PlayerSettingsCache {
     }
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {Object.<number, number>} a plain key→value snapshot for wire sync
      */
-    snapshot(playerId) {
-        const settings = this._byPlayer.get(playerId);
+    snapshot(playerRef) {
+        const settings = this._byPlayer.get(playerRef);
         if (settings === undefined) {
             return {};
         }
@@ -100,9 +100,9 @@ export class PlayerSettingsCache {
      */
     serializeRecords() {
         const rows = [];
-        for (const [playerId, settings] of this._byPlayer) {
+        for (const [playerRef, settings] of this._byPlayer) {
             for (const [key, value] of settings.entries()) {
-                rows.push({player_id: playerId, key, value});
+                rows.push({player_id: playerRef, key, value});
             }
         }
         return {

@@ -149,9 +149,9 @@ export class RemoteCursorsDrawLayer extends AbstractDrawLayer {
             CURSOR_POOL_CAPACITY,
         );
         this._displays = new KeyedDisplayPool(pool);
-        state.subscribe("remoteCursors.byPlayer", (playerId, cursor) => {
+        state.subscribe("remoteCursors.byPlayer", (playerRef, cursor) => {
             if (cursor === undefined) {
-                this._displays.release(playerId);
+                this._displays.release(playerRef);
             } else {
                 this._onUpsert(cursor);
             }
@@ -170,10 +170,10 @@ export class RemoteCursorsDrawLayer extends AbstractDrawLayer {
     _onUpsert(cursor) {
         const x = cursor.x * TILE_SIZE;
         const y = cursor.y * TILE_SIZE;
-        let display = this._displays.get(cursor.playerId);
+        let display = this._displays.get(cursor.playerRef);
         if (display === undefined) {
-            display = this._displays.take(cursor.playerId);
-            display.show(this._players.usernameOf(cursor.playerId), claimColor(cursor.playerId));
+            display = this._displays.take(cursor.playerRef);
+            display.show(this._players.usernameOf(cursor.playerRef), claimColor(cursor.playerRef));
             display.snap(x, y);
         } else {
             display.retarget(x, y);

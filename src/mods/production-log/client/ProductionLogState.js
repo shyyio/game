@@ -40,11 +40,11 @@ export class ProductionLogWriter extends AbstractCacheWriter {
     }
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {void}
      */
-    requestLog(playerId) {
-        this._session.sendMessage(new ProductionLogRequestMessage(playerId));
+    requestLog(playerRef) {
+        this._session.sendMessage(new ProductionLogRequestMessage(playerRef));
     }
 
     /**

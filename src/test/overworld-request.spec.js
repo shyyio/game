@@ -48,7 +48,7 @@ test("an overworld snapshot carries the rect's claims, owner names pushed first"
 
     game.dispatchMessage(new OverworldRequestMessage(-1, -1, 2, 2), bob);
     const nameIndex = bob.events.findIndex(
-        event => event instanceof PlayerNamesEvent && event.playerIds.includes(1),
+        event => event instanceof PlayerNamesEvent && event.playerRefs.includes(1),
     );
     const snapshotIndex = bob.events.findIndex(event => event instanceof OverworldSnapshotEvent);
     assert.ok(nameIndex >= 0, "the requester learns the owner's name");

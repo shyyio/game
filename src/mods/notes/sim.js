@@ -34,7 +34,7 @@ export class NotesSimMod extends AbstractSimMod {
      * @returns {void}
      */
     onChunkSubscribed(session, chunk, game) {
-        game.playerDirectory.syncUsernames(session.id, this._store.authorIdsIn(chunk));
+        game.playerDirectory.syncUsernames(session.sessionRef, this._store.authorIdsIn(chunk));
     }
 
     /**
@@ -85,11 +85,11 @@ export class NotesSimMod extends AbstractSimMod {
     _handlePlace(message, session, game) {
         const chunk = chunkId(message.tileX, message.tileY);
         // Mod messages bypass the core placement gate, so notes check it themselves.
-        if (!game.simEngine.placementAllowed(session.playerId, chunk)) {
+        if (!game.simEngine.placementAllowed(session.playerRef, chunk)) {
             return;
         }
         const existing = this._store.get(message.tileX, message.tileY);
-        if (existing !== null && existing.authorId !== session.playerId) {
+        if (existing !== null && existing.authorId !== session.playerRef) {
             return;
         }
         const note = new Note(
@@ -97,7 +97,7 @@ export class NotesSimMod extends AbstractSimMod {
             message.tileY,
             message.offsetMx,
             message.offsetMy,
-            session.playerId,
+            session.playerRef,
             message.text,
         );
         this._store.set(note);
@@ -114,7 +114,7 @@ export class NotesSimMod extends AbstractSimMod {
      */
     _handleEdit(message, session, game) {
         const note = this._store.get(message.tileX, message.tileY);
-        if (note === null || note.authorId !== session.playerId) {
+        if (note === null || note.authorId !== session.playerRef) {
             return;
         }
         note.text = message.text;
@@ -134,7 +134,7 @@ export class NotesSimMod extends AbstractSimMod {
             return;
         }
         const chunk = chunkId(message.tileX, message.tileY);
-        if (note.authorId !== session.playerId && !game.simEngine.placementAllowed(session.playerId, chunk)) {
+        if (note.authorId !== session.playerRef && !game.simEngine.placementAllowed(session.playerRef, chunk)) {
             return;
         }
         this._store.delete(message.tileX, message.tileY);
@@ -170,8 +170,8 @@ export class NotesSimMod extends AbstractSimMod {
             return;
         }
         const authorIds = [event.authorId];
-        for (const sessionId of subscribers) {
-            game.playerDirectory.syncUsernames(sessionId, authorIds);
+        for (const sessionRef of subscribers) {
+            game.playerDirectory.syncUsernames(sessionRef, authorIds);
         }
         game.bus.publish(event);
     }

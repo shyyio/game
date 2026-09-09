@@ -156,7 +156,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * The render tile for a port id, derived from its owning object's cached position/direction
+     * The render tile for a port ref, derived from its owning object's cached position/direction
      * and the matching output PortDefinition (offset + facing rotated by the object). Null when
      * the port isn't in the object index (another mod's port, or not yet cached).
      * @param {number} portRef

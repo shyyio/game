@@ -25,8 +25,8 @@ export class LocalSession extends AbstractSession {
         this.client.events.publish(this.api.wire.decode(encoded), encoded.length);
     }
 
-    get playerId() {
-        // A real player id (PLAYER_ID_NONE would bypass the placement gate), stable per local world.
+    get playerRef() {
+        // A real player ref (PLAYER_REF_NONE would bypass the placement gate), stable per local world.
         return 1;
     }
 

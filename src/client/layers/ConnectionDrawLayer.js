@@ -42,7 +42,7 @@ export class ConnectionDrawLayer extends AbstractTileMeshDrawLayer {
 
     constructor() {
         super();
-        // Connection geometry per object id, re-derived only when the object or a neighbor changes.
+        // Connection geometry per object ref, re-derived only when the object or a neighbor changes.
         this._connections = new Map();
         // The chunk each object's stubs hang under, and the objects each chunk holds.
         this._objectChunks = new Map();

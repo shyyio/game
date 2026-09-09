@@ -186,8 +186,8 @@ export class Hud {
         this.friendsPanelLayer.onAddByCode(
             code => this._client.sendMessage(new AddFriendByCodeMessage(code)),
         );
-        this.friendsPanelLayer.onAddFriend(playerId => this._client.sendMessage(new AddFriendMessage(playerId)));
-        this.friendsPanelLayer.onUnfriend(playerId => this._client.sendMessage(new RemoveFriendMessage(playerId)));
+        this.friendsPanelLayer.onAddFriend(playerRef => this._client.sendMessage(new AddFriendMessage(playerRef)));
+        this.friendsPanelLayer.onUnfriend(playerRef => this._client.sendMessage(new RemoveFriendMessage(playerRef)));
         this.friendsPanelLayer.onError(message => this.notify(message));
         this.topStatusBar.onChange((height) => {
             // The bar's height already covers the safe area; the inset only matters while it is hidden.
@@ -243,12 +243,12 @@ export class Hud {
         this.chunkActionsLayer = new ChunkActionsLayer(app, viewport, cache.view("chunkClaims"), cache.view("players"));
         this.chunkActionsLayer.onClaim(chunk => this._client.sendMessage(new ClaimChunkMessage(chunk)));
         this.chunkActionsLayer.onUnclaim(chunk => this._client.sendMessage(new UnclaimChunkMessage(chunk)));
-        this.chunkActionsLayer.onAddFriend(playerId => this._client.sendMessage(new AddFriendMessage(playerId)));
-        this.chunkActionsLayer.onUnfriend(playerId => this._client.sendMessage(new RemoveFriendMessage(playerId)));
+        this.chunkActionsLayer.onAddFriend(playerRef => this._client.sendMessage(new AddFriendMessage(playerRef)));
+        this.chunkActionsLayer.onUnfriend(playerRef => this._client.sendMessage(new RemoveFriendMessage(playerRef)));
         this.chunkActionsLayer.onSetPermission(
             (chunk, permission) => this._client.sendMessage(new SetChunkPermissionMessage(chunk, permission)),
         );
-        this.chunkActionsLayer.onPlayerActions(playerId => this._client.modPlayerActions(playerId));
+        this.chunkActionsLayer.onPlayerActions(playerRef => this._client.modPlayerActions(playerRef));
     }
 
     /**

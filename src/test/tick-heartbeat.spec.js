@@ -46,7 +46,7 @@ test("a disconnected session stops hearing the clock", async () => {
     game.connect(session);
 
     game.runTick();
-    game.disconnect(session.id);
+    game.disconnect(session.sessionRef);
     game.runTick();
 
     assert.equal(heartbeats(session).length, 1);

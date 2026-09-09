@@ -10,11 +10,11 @@ export class WebSocketSession extends AbstractSession {
     /**
      * @param {GameAPI} api
      * @param {object} ws - the uWS websocket
-     * @param {number} playerId
+     * @param {number} playerRef
      */
-    constructor(api, ws, playerId) {
+    constructor(api, ws, playerRef) {
         super(api);
-        this._playerId = playerId;
+        this._playerRef = playerRef;
         this._queue = new OutboundQueue({
             send: bytes => ws.send(bytes, true),
             bufferedAmount: () => ws.getBufferedAmount(),
@@ -28,8 +28,8 @@ export class WebSocketSession extends AbstractSession {
     /**
      * @returns {number}
      */
-    get playerId() {
-        return this._playerId;
+    get playerRef() {
+        return this._playerRef;
     }
 
     /**

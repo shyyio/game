@@ -36,7 +36,7 @@ class NpcPriceFixtureDeclaration extends AbstractModDeclaration {
  */
 function clearBalances(game, ...sessions) {
     for (const session of sessions) {
-        game.playerSettings.set(session.playerId, MARKET_SETTING_BALANCE, 0);
+        game.playerSettings.set(session.playerRef, MARKET_SETTING_BALANCE, 0);
     }
 }
 
@@ -68,15 +68,15 @@ function balanceUpdates(session) {
     return session.events.filter(event => event instanceof PlayerSettingsUpdateEvent && event.key === MARKET_SETTING_BALANCE);
 }
 
-function balanceOf(game, playerId) {
-    return game.playerSettings.get(playerId, MARKET_SETTING_BALANCE) || 0;
+function balanceOf(game, playerRef) {
+    return game.playerSettings.get(playerRef, MARKET_SETTING_BALANCE) || 0;
 }
 
 test("a player-market trade pays the seller and charges the buyer, at the buyer's price", async () => {
     const {game, seller, buyer} = await gameWithSessions();
     const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, 3);
     placeTerminal(game, buyer, 5 + CHUNK_SIZE * 4, 5, MARKET_MODE_BUY, ITEM, PRICE);
-    game.playerSettings.set(buyer.playerId, MARKET_SETTING_BALANCE, 1000);
+    game.playerSettings.set(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
 
     const inPort = game.simEngine.components.get("MarketTerminal").store.in[game.simEngine.components.get("MarketTerminal").row(sellerEid)];
     game.simEngine.ports.setItem(inPort, ITEM);
@@ -84,8 +84,8 @@ test("a player-market trade pays the seller and charges the buyer, at the buyer'
     game.runTick();
     game.runTick();
 
-    assert.equal(balanceOf(game, seller.playerId), PRICE, "the seller is credited the buyer's price, not their own floor");
-    assert.equal(balanceOf(game, buyer.playerId), 1000 - PRICE);
+    assert.equal(balanceOf(game, seller.playerRef), PRICE, "the seller is credited the buyer's price, not their own floor");
+    assert.equal(balanceOf(game, buyer.playerRef), 1000 - PRICE);
 });
 
 test("a buyer with insufficient balance never wins a trade", async () => {
@@ -100,7 +100,7 @@ test("a buyer with insufficient balance never wins a trade", async () => {
     game.runTick();
     game.runTick();
     assert.equal(game.simEngine.ports.item(inPort), ITEM, "nothing to sell to, since the buyer can't afford it");
-    assert.equal(balanceOf(game, seller.playerId), 0);
+    assert.equal(balanceOf(game, seller.playerRef), 0);
 });
 
 test("an unclaimed chunk's terminal never trades", async () => {
@@ -117,7 +117,7 @@ test("an unclaimed chunk's terminal never trades", async () => {
     game.dispatchMessage(new ConfigureTradingTerminalMessage(sellerObjectRef, MARKET_MODE_SELL, ITEM, PRICE), seller);
     placeTerminal(game, buyer, 5 + CHUNK_SIZE * 4, 5, MARKET_MODE_BUY, ITEM, PRICE);
     // Fund buyer directly, isolating the case to seller's missing ownership.
-    game.playerSettings.set(buyer.playerId, MARKET_SETTING_BALANCE, 1000);
+    game.playerSettings.set(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
 
     const def = game.simEngine.components.get("MarketTerminal");
     const inPort = def.store.in[def.row(sellerEid)];
@@ -137,14 +137,14 @@ test("an NPC-priced item trades without any buy terminal, crediting the seller's
     // sellEnabled refreshes only at tick end; first tick runs on stale cache.
     game.runTick();
     game.runTick();
-    assert.equal(balanceOf(game, seller.playerId), PRICE);
+    assert.equal(balanceOf(game, seller.playerRef), PRICE);
     assert.ok(balanceUpdates(seller).some(event => event.value === PRICE));
 });
 
 test("a buy terminal on an NPC-priced item purchases from the NPC, no seller needed", async () => {
     const {game, buyer} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
     const buyerEid = placeTerminal(game, buyer, 5, 5, MARKET_MODE_BUY, ITEM, PRICE);
-    game.playerSettings.set(buyer.playerId, MARKET_SETTING_BALANCE, 1000);
+    game.playerSettings.set(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
     const def = game.simEngine.components.get("MarketTerminal");
     const outPort = def.store.out[def.row(buyerEid)];
 
@@ -153,7 +153,7 @@ test("a buy terminal on an NPC-priced item purchases from the NPC, no seller nee
     game.runTick();
 
     assert.equal(game.simEngine.ports.item(outPort), ITEM, "the NPC delivered straight into the terminal's output");
-    assert.equal(balanceOf(game, buyer.playerId), 1000 - PRICE);
+    assert.equal(balanceOf(game, buyer.playerRef), 1000 - PRICE);
     assert.ok(balanceUpdates(buyer).some(event => event.value === 1000 - PRICE));
 });
 
@@ -167,13 +167,13 @@ test("a buy terminal on an NPC-priced item never purchases without enough balanc
     game.runTick();
 
     assert.equal(game.simEngine.ports.item(outPort), EMPTY, "no balance, nothing bought");
-    assert.equal(balanceOf(game, buyer.playerId), 0);
+    assert.equal(balanceOf(game, buyer.playerRef), 0);
 });
 
 test("a buy terminal keeps purchasing from the NPC every tick its output is free", async () => {
     const {game, buyer} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
     const buyerEid = placeTerminal(game, buyer, 5, 5, MARKET_MODE_BUY, ITEM, PRICE);
-    game.playerSettings.set(buyer.playerId, MARKET_SETTING_BALANCE, 1000);
+    game.playerSettings.set(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
     const def = game.simEngine.components.get("MarketTerminal");
     const outPort = def.store.out[def.row(buyerEid)];
 
@@ -183,7 +183,7 @@ test("a buy terminal keeps purchasing from the NPC every tick its output is free
         assert.equal(game.simEngine.ports.item(outPort), ITEM, `tick ${i}: bought`);
         game.simEngine.ports.setItem(outPort, EMPTY);
     }
-    assert.equal(balanceOf(game, buyer.playerId), 1000 - PRICE * 5);
+    assert.equal(balanceOf(game, buyer.playerRef), 1000 - PRICE * 5);
 });
 
 test("the market snapshot reports the tradable catalog and the requested terminal's own config", async () => {
@@ -228,7 +228,7 @@ test("a sustained trade keeps settling every tick (full throughput, end to end)"
     const {game, seller, buyer} = await gameWithSessions();
     const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, PRICE);
     const buyerEid = placeTerminal(game, buyer, 5 + CHUNK_SIZE * 4, 5, MARKET_MODE_BUY, ITEM, PRICE);
-    game.playerSettings.set(buyer.playerId, MARKET_SETTING_BALANCE, 1000);
+    game.playerSettings.set(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
 
     const def = game.simEngine.components.get("MarketTerminal");
     const inPort = def.store.in[def.row(sellerEid)];
@@ -244,17 +244,17 @@ test("a sustained trade keeps settling every tick (full throughput, end to end)"
         assert.equal(game.simEngine.ports.item(outPort), ITEM, `tick ${i}: delivered`);
         game.simEngine.ports.setItem(outPort, EMPTY);
     }
-    assert.equal(balanceOf(game, seller.playerId), PRICE * 5);
-    assert.equal(balanceOf(game, buyer.playerId), 1000 - PRICE * 5);
+    assert.equal(balanceOf(game, seller.playerRef), PRICE * 5);
+    assert.equal(balanceOf(game, buyer.playerRef), 1000 - PRICE * 5);
 });
 
 test("a first-time player is granted a starting balance, a returning one is not topped up", async () => {
     const game = await makeGame();
     const player = new CapturingSession(1);
     game.connect(player);
-    assert.equal(balanceOf(game, player.playerId), MARKET_STARTING_BALANCE);
+    assert.equal(balanceOf(game, player.playerRef), MARKET_STARTING_BALANCE);
 
-    game.playerSettings.set(player.playerId, MARKET_SETTING_BALANCE, 0);
+    game.playerSettings.set(player.playerRef, MARKET_SETTING_BALANCE, 0);
     game.connect(new CapturingSession(1));
-    assert.equal(balanceOf(game, player.playerId), 0, "a player who spent down to 0 is not re-granted");
+    assert.equal(balanceOf(game, player.playerRef), 0, "a player who spent down to 0 is not re-granted");
 });

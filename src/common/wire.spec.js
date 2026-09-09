@@ -21,7 +21,7 @@ import {
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ChunkPermission} from "@/common/ClaimEvents.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
-import {GAME_VERSION, PLAYER_ID_NONE} from "@/common/constants.js";
+import {GAME_VERSION, PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkId} from "@/common/util.js";
 
 // Core-only registry: common/ must not depend on mods/. Mod wire classes are
@@ -55,7 +55,7 @@ test("Round-trips a SetViewportMessage", () => {
     roundTrip(reg, new SetViewportMessage([0, 1, chunkId(-64, 128)]), SetViewportMessage);
 });
 
-test("Round-trips a PortItemSetEvent with a port id", () => {
+test("Round-trips a PortItemSetEvent with a port ref", () => {
     const reg = registry();
     roundTrip(reg, new PortItemSetEvent(12, -5, 999999999999, 8), PortItemSetEvent);
 });
@@ -177,7 +177,7 @@ test("Round-trips the claim messages and events", () => {
         new OwnClaimsSyncEvent([8256, 8257], [ChunkPermission.PERMISSION_FRIENDS, ChunkPermission.PERMISSION_ONLY_ME]),
         OwnClaimsSyncEvent,
     );
-    roundTrip(reg, new ChunkClaimUpdateEvent(8256, PLAYER_ID_NONE), ChunkClaimUpdateEvent);
+    roundTrip(reg, new ChunkClaimUpdateEvent(8256, PLAYER_REF_NONE), ChunkClaimUpdateEvent);
     roundTrip(
         reg,
         new ChunkClaimUpdateEvent(8256, 7, ChunkPermission.PERMISSION_ONLY_ME),

@@ -15,8 +15,8 @@ export class BeltPathRecalculateEvent extends AbstractChunkRoutedEvent {
     /**
      * @param {number} x
      * @param {number} y
-     * @param {number[]} parts - belt ids in path order, head last
-     * @param {number|null} [outPortRef] - the path's out-port id
+     * @param {number[]} parts - belt refs in path order, head last
+     * @param {number|null} [outPortRef] - the path's out-port ref
      */
     constructor(x, y, parts, outPortRef=null) {
         super(x, y);
@@ -240,7 +240,7 @@ export class BeltPathBatchEvent extends AbstractBatchEvent {
     /**
      * @param {number} x
      * @param {number} y
-     * @param {number[]} parts - belt ids in path order, head last
+     * @param {number[]} parts - belt refs in path order, head last
      * @param {number|null} outPortRef
      * @returns {void}
      */

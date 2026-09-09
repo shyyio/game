@@ -159,8 +159,8 @@ export const DEFAULT_TICK_MS = 600;
 export const SETTING_ON = 0;
 export const SETTING_OFF = 1;
 
-// The null player: unclaimed chunks, engine-originated messages. Real player ids start at 1.
-export const PLAYER_ID_NONE = 0;
+// The null player: unclaimed chunks, engine-originated messages. Real player refs start at 1.
+export const PLAYER_REF_NONE = 0;
 
 // Chunks a player may claim before any bonus grants.
 export const DEFAULT_MAX_CHUNKS = 9;

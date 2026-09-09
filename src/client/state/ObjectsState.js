@@ -157,7 +157,7 @@ export class CacheEntry {
     }
 
     /**
-     * The PortDefinition name of one of this object's rendered out-port ids, or undefined.
+     * The PortDefinition name of one of this object's rendered out-port refs, or undefined.
      * @param {number} portRef
      * @returns {string|undefined}
      */
@@ -210,7 +210,7 @@ export class CacheEntry {
 /**
  * Client-side spatial store of every placed object, shared across all mods (the browser never
  * reads the simulation DB). Holds a {@link CacheEntry} per object, keyed by id (globally unique,
- * a single sequence across object types) and indexed by tile, chunk, cell, and rendered port id.
+ * a single sequence across object types) and indexed by tile, chunk, cell, and rendered port ref.
  */
 export class ObjectsView extends AbstractCacheView {
 
@@ -250,7 +250,7 @@ export class ObjectsView extends AbstractCacheView {
          */
         this._layerCodes = new Map();
         /**
-         * Rendered out-port id -> the owning CacheEntry, so the item layer resolves a port-item
+         * Rendered out-port ref -> the owning CacheEntry, so the item layer resolves a port-item
          * event to its object and PortDefinition.
          * @type {Map<number, CacheEntry>}
          * @private
@@ -488,7 +488,7 @@ export class ObjectsView extends AbstractCacheView {
     }
 
     /**
-     * The entry owning a rendered out-port id, or null.
+     * The entry owning a rendered out-port ref, or null.
      * @param {number} portRef
      * @returns {CacheEntry|null}
      */

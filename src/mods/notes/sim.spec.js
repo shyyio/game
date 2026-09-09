@@ -44,7 +44,7 @@ test("a placed note fans out to the chunk's viewers, the author's name first", a
     assert.equal(seen[0].offsetMx, 250);
     assert.equal(seen[0].authorId, 1);
     assert.equal(seen[0].text, "watch this");
-    const nameIndex = neighbor.events.findIndex(event => event.playerIds !== undefined && event.playerIds.includes(1));
+    const nameIndex = neighbor.events.findIndex(event => event.playerRefs !== undefined && event.playerRefs.includes(1));
     assert.ok(nameIndex !== -1 && nameIndex < neighbor.events.indexOf(seen[0]), "the author's name arrives before the note");
     assert.equal(setEvents(owner).length, 1, "the author sees their own note too");
 });
@@ -120,6 +120,6 @@ test("a late subscriber gets the chunk's notes in its sync bundle, names first",
     const notes = bundle.events.filter(event => event instanceof NoteSetEvent);
     assert.equal(notes.length, 1);
     assert.equal(notes[0].text, "watch this");
-    const nameIndex = latecomer.events.findIndex(event => event.playerIds !== undefined && event.playerIds.includes(1));
+    const nameIndex = latecomer.events.findIndex(event => event.playerRefs !== undefined && event.playerRefs.includes(1));
     assert.ok(nameIndex !== -1 && nameIndex < latecomer.events.indexOf(bundle), "the author's name precedes the bundle");
 });

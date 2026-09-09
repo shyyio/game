@@ -14,14 +14,14 @@ test("production counts survive a save/load", async () => {
     const store = new NodeSaveStore(":memory:");
     const game = await makeGame([], store);
     const alice = game.players.getOrCreate("sub-alice", "alice");
-    game.simEngine.itemProduced.notify(alice.playerId, IRON, 5);
+    game.simEngine.itemProduced.notify(alice.playerRef, IRON, 5);
     await game.save();
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
-    const session = new CapturingSession(alice.playerId);
+    const session = new CapturingSession(alice.playerRef);
     restored.connect(session);
-    restored.dispatchMessage(new ProductionLogRequestMessage(alice.playerId), session);
+    restored.dispatchMessage(new ProductionLogRequestMessage(alice.playerRef), session);
     const logs = session.events.filter(event => event instanceof ProductionLogEvent);
     assert.deepEqual(logs[0].itemTypeIds, [IRON]);
     assert.deepEqual(logs[0].counts, [5]);
@@ -31,16 +31,16 @@ test("a count for an item type no mod declares any more does not come back", asy
     const store = new NodeSaveStore(":memory:");
     const game = await makeGame([], store);
     const alice = game.players.getOrCreate("sub-alice", "alice");
-    game.simEngine.itemProduced.notify(alice.playerId, UNDECLARED, 5);
+    game.simEngine.itemProduced.notify(alice.playerRef, UNDECLARED, 5);
     const declared = Array.from(game.modRegistry.items.entries())[0][0];
-    game.simEngine.itemProduced.notify(alice.playerId, declared, 2);
+    game.simEngine.itemProduced.notify(alice.playerRef, declared, 2);
     await game.save();
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
-    const session = new CapturingSession(alice.playerId);
+    const session = new CapturingSession(alice.playerRef);
     restored.connect(session);
-    restored.dispatchMessage(new ProductionLogRequestMessage(alice.playerId), session);
+    restored.dispatchMessage(new ProductionLogRequestMessage(alice.playerRef), session);
     const log = session.events.filter(event => event instanceof ProductionLogEvent)[0];
     assert.deepEqual([log.itemTypeIds, log.counts], [[declared], [2]]);
 });

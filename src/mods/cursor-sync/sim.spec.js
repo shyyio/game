@@ -38,7 +38,7 @@ test("a cursor move fans out to the sessions watching its chunk", async () => {
 
     const seen = cursorEvents(watcher);
     assert.equal(seen.length, 1);
-    assert.equal(seen[0].playerId, 1);
+    assert.equal(seen[0].playerRef, 1);
     assert.equal(seen[0].x, 4.5);
     assert.equal(cursorEvents(bystander).length, 0, "a session watching another chunk gets nothing");
     assert.equal(cursorEvents(sender).length, 0, "no echo back to the owning session");
@@ -63,7 +63,7 @@ test("a chunk crossing hides the cursor only for viewers losing sight of it", as
     game.dispatchMessage(new CursorMoveMessage(CHUNK_SIZE + 0.5, 7.25), sender);
 
     assert.equal(hideEvents(edgeWatcher).length, 1, "the origin-only viewer loses the cursor");
-    assert.equal(hideEvents(edgeWatcher)[0].playerId, 1);
+    assert.equal(hideEvents(edgeWatcher)[0].playerRef, 1);
     assert.equal(hideEvents(watcher).length, 0, "a viewer of both chunks keeps it");
     assert.equal(cursorEvents(watcher).length, 2);
     assert.equal(hideEvents(bystander).length, 0);
@@ -77,16 +77,16 @@ test("a hide message erases the cursor for its last chunk's viewers alone", asyn
     game.dispatchMessage(new CursorMoveMessage(4.5, 7.25), sender);
     game.dispatchMessage(new CursorHideMessage(), sender);
     assert.equal(hideEvents(watcher).length, 1);
-    assert.equal(hideEvents(watcher)[0].playerId, 1);
+    assert.equal(hideEvents(watcher)[0].playerRef, 1);
     assert.equal(hideEvents(bystander).length, 0);
 });
 
 test("a disconnect erases the cursor for the remaining viewers", async () => {
     const {game, sender, watcher} = await gameWithSessions();
     game.dispatchMessage(new CursorMoveMessage(4.5, 7.25), sender);
-    game.disconnect(sender.id);
+    game.disconnect(sender.sessionRef);
     assert.equal(hideEvents(watcher).length, 1);
-    assert.equal(hideEvents(watcher)[0].playerId, 1);
+    assert.equal(hideEvents(watcher)[0].playerRef, 1);
     assert.equal(hideEvents(sender).length, 0, "the leaving session gets nothing");
 });
 
@@ -103,7 +103,7 @@ test("a friends-sharing player's cursor reaches only their friends", async () =>
     game.dispatchMessage(new CursorMoveMessage(4.5, 7.25), sender);
     assert.equal(cursorEvents(watcher).length, 0, "a stranger sees nothing");
 
-    game.dispatchMessage(new AddFriendMessage(watcher.playerId), sender);
+    game.dispatchMessage(new AddFriendMessage(watcher.playerRef), sender);
     game.dispatchMessage(new CursorMoveMessage(5.5, 7.25), sender);
     assert.equal(cursorEvents(watcher).length, 1, "a friend sees the cursor");
 });
@@ -130,7 +130,7 @@ test("a viewer displaying friends only receives only their friends' cursors", as
     game.dispatchMessage(new CursorMoveMessage(4.5, 7.25), sender);
     assert.equal(cursorEvents(watcher).length, 0, "a stranger's cursor is filtered out");
 
-    game.dispatchMessage(new AddFriendMessage(sender.playerId), watcher);
+    game.dispatchMessage(new AddFriendMessage(sender.playerRef), watcher);
     game.dispatchMessage(new CursorMoveMessage(5.5, 7.25), sender);
     assert.equal(cursorEvents(watcher).length, 1, "a befriended sender's cursor arrives");
 });
@@ -142,20 +142,20 @@ test("narrowing the display setting erases the shown cursors it no longer admits
     game.dispatchMessage(new SetPlayerSettingMessage(CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_FRIENDS), watcher);
     const hides = hideEvents(watcher);
     assert.equal(hides.length, 1, "the shown stranger cursor is erased");
-    assert.equal(hides[0].playerId, sender.playerId);
+    assert.equal(hides[0].playerRef, sender.playerRef);
 });
 
 test("an unfriend erases a friends-displaying remover's sight of the removed player", async () => {
     const {game, sender, watcher} = await gameWithSessions();
     game.dispatchMessage(new SetPlayerSettingMessage(CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_FRIENDS), watcher);
-    game.dispatchMessage(new AddFriendMessage(sender.playerId), watcher);
+    game.dispatchMessage(new AddFriendMessage(sender.playerRef), watcher);
     game.dispatchMessage(new CursorMoveMessage(4.5, 7.25), sender);
     assert.equal(cursorEvents(watcher).length, 1);
 
-    game.dispatchMessage(new RemoveFriendMessage(sender.playerId), watcher);
+    game.dispatchMessage(new RemoveFriendMessage(sender.playerRef), watcher);
     const hides = hideEvents(watcher);
     assert.equal(hides.length, 1, "the remover loses the removed player's cursor");
-    assert.equal(hides[0].playerId, sender.playerId);
+    assert.equal(hides[0].playerRef, sender.playerRef);
 
     game.dispatchMessage(new CursorMoveMessage(5.5, 7.25), sender);
     assert.equal(cursorEvents(watcher).length, 1, "later heartbeats stay filtered");
@@ -164,14 +164,14 @@ test("an unfriend erases a friends-displaying remover's sight of the removed pla
 test("an unfriend erases a friends-sharing player's cursor for the removed friend", async () => {
     const {game, sender, watcher} = await gameWithSessions();
     game.dispatchMessage(new SetPlayerSettingMessage(CURSOR_SETTING_SHARE, CURSOR_AUDIENCE_FRIENDS), sender);
-    game.dispatchMessage(new AddFriendMessage(watcher.playerId), sender);
+    game.dispatchMessage(new AddFriendMessage(watcher.playerRef), sender);
     game.dispatchMessage(new CursorMoveMessage(4.5, 7.25), sender);
     assert.equal(cursorEvents(watcher).length, 1);
 
-    game.dispatchMessage(new RemoveFriendMessage(watcher.playerId), sender);
+    game.dispatchMessage(new RemoveFriendMessage(watcher.playerRef), sender);
     const hides = hideEvents(watcher);
     assert.equal(hides.length, 1, "the removed friend loses the cursor");
-    assert.equal(hides[0].playerId, sender.playerId);
+    assert.equal(hides[0].playerRef, sender.playerRef);
 
     game.dispatchMessage(new CursorMoveMessage(5.5, 7.25), sender);
     assert.equal(cursorEvents(watcher).length, 1, "later heartbeats stay filtered");

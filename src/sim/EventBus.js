@@ -2,7 +2,7 @@
  * Topic pub/sub for session event delivery. A session subscribes to the chunks it views and the
  * objects it inspects; `publish` picks recipients from the event's own topic and hands each the
  * event, and whether a given session's delivery crosses the wire is that session's own concern.
- * Also allocates session ids and owns the session registry.
+ * Also allocates session refs and owns the session registry.
  *
  * Chunk and object topics live in separate maps keyed by the raw numeric id, so routing an event
  * builds no string.
@@ -10,15 +10,15 @@
 export class EventBus {
 
     constructor() {
-        // sessionId -> session
+        // sessionRef -> session
         this._sessions = new Map();
-        // chunk -> Set<sessionId>
+        // chunk -> Set<sessionRef>
         this._chunkSubscribers = new Map();
-        // objectRef -> Set<sessionId>
+        // objectRef -> Set<sessionRef>
         this._objectSubscribers = new Map();
-        // sessionId -> Set<chunk> (the diff/query source for viewport topics)
+        // sessionRef -> Set<chunk> (the diff/query source for viewport topics)
         this._viewports = new Map();
-        // sessionId -> Set<objectRef> (the diff/query source for inspect topics)
+        // sessionRef -> Set<objectRef> (the diff/query source for inspect topics)
         this._inspects = new Map();
         this._nextId = 1;
     }
@@ -26,34 +26,34 @@ export class EventBus {
     // ---- Sessions ----
 
     /**
-     * Allocates a session id, registers the session, and gives it an empty viewport / inspect set.
+     * Allocates a session ref, registers the session, and gives it an empty viewport / inspect set.
      * @param {AbstractSession} session
-     * @returns {number} the new session id
+     * @returns {number} the new session ref
      */
     addSession(session) {
-        const sessionId = this._nextId;
+        const sessionRef = this._nextId;
         this._nextId += 1;
-        this._sessions.set(sessionId, session);
-        this._viewports.set(sessionId, new Set());
-        this._inspects.set(sessionId, new Set());
-        return sessionId;
+        this._sessions.set(sessionRef, session);
+        this._viewports.set(sessionRef, new Set());
+        this._inspects.set(sessionRef, new Set());
+        return sessionRef;
     }
 
     /**
      * Drops a session, unsubscribing it from every chunk and object topic.
-     * @param {number} sessionId
+     * @param {number} sessionRef
      * @returns {void}
      */
-    removeSession(sessionId) {
-        for (const chunk of this._viewports.get(sessionId)) {
-            this._unsubscribe(this._chunkSubscribers, chunk, sessionId);
+    removeSession(sessionRef) {
+        for (const chunk of this._viewports.get(sessionRef)) {
+            this._unsubscribe(this._chunkSubscribers, chunk, sessionRef);
         }
-        for (const objectRef of this._inspects.get(sessionId)) {
-            this._unsubscribe(this._objectSubscribers, objectRef, sessionId);
+        for (const objectRef of this._inspects.get(sessionRef)) {
+            this._unsubscribe(this._objectSubscribers, objectRef, sessionRef);
         }
-        this._viewports.delete(sessionId);
-        this._inspects.delete(sessionId);
-        this._sessions.delete(sessionId);
+        this._viewports.delete(sessionRef);
+        this._inspects.delete(sessionRef);
+        this._sessions.delete(sessionRef);
     }
 
     // ---- Delivery ----
@@ -69,8 +69,8 @@ export class EventBus {
             return;
         }
         // Copied: a session's own dispatch may resubscribe while we fan out.
-        for (const sessionId of [...subscribers]) {
-            this._sessions.get(sessionId).publishEvent(event);
+        for (const sessionRef of [...subscribers]) {
+            this._sessions.get(sessionRef).publishEvent(event);
         }
     }
 
@@ -88,14 +88,14 @@ export class EventBus {
 
     /**
      * The connected sessions of one player (targeted per-player resyncs route through this).
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {number[]}
      */
-    sessionIdsOf(playerId) {
+    sessionRefsOf(playerRef) {
         const ids = [];
-        for (const [sessionId, session] of this._sessions) {
-            if (session.playerId === playerId) {
-                ids.push(sessionId);
+        for (const [sessionRef, session] of this._sessions) {
+            if (session.playerRef === playerRef) {
+                ids.push(sessionRef);
             }
         }
         return ids;
@@ -103,13 +103,13 @@ export class EventBus {
 
     /**
      * Delivers an event to every connected session of one player.
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {AbstractEvent} event
      * @returns {void}
      */
-    publishToPlayer(playerId, event) {
+    publishToPlayer(playerRef, event) {
         for (const session of this._sessions.values()) {
-            if (session.playerId === playerId) {
+            if (session.playerRef === playerRef) {
                 session.publishEvent(event);
             }
         }
@@ -117,15 +117,15 @@ export class EventBus {
 
     /**
      * The player behind a connected session.
-     * @param {number} sessionId
+     * @param {number} sessionRef
      * @returns {number}
      */
-    playerIdOf(sessionId) {
-        const session = this._sessions.get(sessionId);
+    playerRefOf(sessionRef) {
+        const session = this._sessions.get(sessionRef);
         if (session === undefined) {
-            throw new RangeError(`Unknown sessionId: ${sessionId}`);
+            throw new RangeError(`Unknown sessionRef: ${sessionRef}`);
         }
-        return session.playerId;
+        return session.playerRef;
     }
 
     /**
@@ -158,12 +158,12 @@ export class EventBus {
 
     /**
      * Delivers an event to one session (a subscribe/sync or seed, targeted at that session alone).
-     * @param {number} sessionId
+     * @param {number} sessionRef
      * @param {AbstractEvent} event
      * @returns {void}
      */
-    publishTo(sessionId, event) {
-        const session = this._sessions.get(sessionId);
+    publishTo(sessionRef, event) {
+        const session = this._sessions.get(sessionRef);
         if (session !== undefined) {
             session.publishEvent(event);
         }
@@ -174,30 +174,30 @@ export class EventBus {
     /**
      * Replaces a session's viewport with `chunks`, subscribing/unsubscribing chunk topics and returning
      * the delta so the caller syncs only the change.
-     * @param {number} sessionId
+     * @param {number} sessionRef
      * @param {number[]} chunks
      * @returns {{added: number[], removed: number[]}}
      */
-    setViewport(sessionId, chunks) {
-        const current = this._viewports.get(sessionId);
+    setViewport(sessionRef, chunks) {
+        const current = this._viewports.get(sessionRef);
         const requested = new Set(chunks);
 
         const added = [];
         for (const chunk of requested) {
             if (!current.has(chunk)) {
                 added.push(chunk);
-                this._subscribe(this._chunkSubscribers, chunk, sessionId);
+                this._subscribe(this._chunkSubscribers, chunk, sessionRef);
             }
         }
         const removed = [];
         for (const chunk of current) {
             if (!requested.has(chunk)) {
                 removed.push(chunk);
-                this._unsubscribe(this._chunkSubscribers, chunk, sessionId);
+                this._unsubscribe(this._chunkSubscribers, chunk, sessionRef);
             }
         }
 
-        this._viewports.set(sessionId, requested);
+        this._viewports.set(sessionRef, requested);
         return {added, removed};
     }
 
@@ -206,30 +206,30 @@ export class EventBus {
     /**
      * Replaces a session's inspected-object set with `objectRefs`, subscribing/unsubscribing object
      * topics and returning the delta so the caller seeds a snapshot for the added objects.
-     * @param {number} sessionId
+     * @param {number} sessionRef
      * @param {number[]} objectRefs
      * @returns {{added: number[], removed: number[]}}
      */
-    setInspects(sessionId, objectRefs) {
-        const current = this._inspects.get(sessionId);
+    setInspects(sessionRef, objectRefs) {
+        const current = this._inspects.get(sessionRef);
         const requested = new Set(objectRefs);
 
         const added = [];
         for (const objectRef of requested) {
             if (!current.has(objectRef)) {
                 added.push(objectRef);
-                this._subscribe(this._objectSubscribers, objectRef, sessionId);
+                this._subscribe(this._objectSubscribers, objectRef, sessionRef);
             }
         }
         const removed = [];
         for (const objectRef of current) {
             if (!requested.has(objectRef)) {
                 removed.push(objectRef);
-                this._unsubscribe(this._objectSubscribers, objectRef, sessionId);
+                this._unsubscribe(this._objectSubscribers, objectRef, sessionRef);
             }
         }
 
-        this._inspects.set(sessionId, requested);
+        this._inspects.set(sessionRef, requested);
         return {added, removed};
     }
 
@@ -257,8 +257,8 @@ export class EventBus {
         if (subscribers === undefined) {
             return;
         }
-        for (const sessionId of subscribers) {
-            this._inspects.get(sessionId).delete(objectRef);
+        for (const sessionRef of subscribers) {
+            this._inspects.get(sessionRef).delete(objectRef);
         }
         this._objectSubscribers.delete(objectRef);
     }
@@ -269,31 +269,31 @@ export class EventBus {
      * @private
      * @param {Map<number, Set<number>>} topics
      * @param {number} key
-     * @param {number} sessionId
+     * @param {number} sessionRef
      * @returns {void}
      */
-    _subscribe(topics, key, sessionId) {
+    _subscribe(topics, key, sessionRef) {
         let subscribers = topics.get(key);
         if (subscribers === undefined) {
             subscribers = new Set();
             topics.set(key, subscribers);
         }
-        subscribers.add(sessionId);
+        subscribers.add(sessionRef);
     }
 
     /**
      * @private
      * @param {Map<number, Set<number>>} topics
      * @param {number} key
-     * @param {number} sessionId
+     * @param {number} sessionRef
      * @returns {void}
      */
-    _unsubscribe(topics, key, sessionId) {
+    _unsubscribe(topics, key, sessionRef) {
         const subscribers = topics.get(key);
         if (subscribers === undefined) {
             return;
         }
-        subscribers.delete(sessionId);
+        subscribers.delete(sessionRef);
         if (subscribers.size === 0) {
             topics.delete(key);
         }

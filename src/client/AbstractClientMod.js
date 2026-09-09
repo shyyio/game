@@ -66,11 +66,11 @@ export class AbstractClientMod {
 
     /**
      * The buttons this mod offers on another player, shown wherever the HUD presents them.
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {Client} client
      * @returns {PlayerAction[]}
      */
-    playerActions(playerId, client) {
+    playerActions(playerRef, client) {
         return [];
     }
 

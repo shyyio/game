@@ -1,5 +1,5 @@
 import {PlayerNamesEvent, FriendListEvent, AddFriendByCodeResultEvent} from "@/common/PlayerEvents.js";
-import {PLAYER_ID_NONE} from "@/common/constants.js";
+import {PLAYER_REF_NONE} from "@/common/constants.js";
 
 /**
  * Who each session is allowed to see: usernames travel on a need-to-know basis, and friendships are
@@ -14,7 +14,7 @@ export class PlayerDirectory {
     constructor(game) {
         this.game = game;
         /**
-         * sessionId -> playerIds whose usernames the session already received.
+         * sessionRef -> playerRefs whose usernames the session already received.
          * @type {Map<number, Set<number>>}
          * @private
          */
@@ -22,57 +22,57 @@ export class PlayerDirectory {
     }
 
     /**
-     * @param {number} sessionId
+     * @param {number} sessionRef
      * @returns {void}
      */
-    connect(sessionId) {
-        this._knownBySession.set(sessionId, new Set());
+    connect(sessionRef) {
+        this._knownBySession.set(sessionRef, new Set());
     }
 
     /**
-     * @param {number} sessionId
+     * @param {number} sessionRef
      * @returns {void}
      */
-    disconnect(sessionId) {
-        this._knownBySession.delete(sessionId);
+    disconnect(sessionRef) {
+        this._knownBySession.delete(sessionRef);
     }
 
     /**
      * Sends a session the usernames of the given players it has not seen yet.
-     * @param {number} sessionId
-     * @param {Iterable<number>} playerIds
+     * @param {number} sessionRef
+     * @param {Iterable<number>} playerRefs
      * @returns {void}
      */
-    syncUsernames(sessionId, playerIds) {
-        const known = this._knownBySession.get(sessionId);
+    syncUsernames(sessionRef, playerRefs) {
+        const known = this._knownBySession.get(sessionRef);
         const ids = [];
         const usernames = [];
-        for (const playerId of playerIds) {
-            if (playerId === PLAYER_ID_NONE || known.has(playerId)) {
+        for (const playerRef of playerRefs) {
+            if (playerRef === PLAYER_REF_NONE || known.has(playerRef)) {
                 continue;
             }
-            known.add(playerId);
-            ids.push(playerId);
-            usernames.push(this.game.players.byId(playerId).username);
+            known.add(playerRef);
+            ids.push(playerRef);
+            usernames.push(this.game.players.byId(playerRef).username);
         }
         if (ids.length > 0) {
-            this.game.bus.publishTo(sessionId, new PlayerNamesEvent(ids, usernames));
+            this.game.bus.publishTo(sessionRef, new PlayerNamesEvent(ids, usernames));
         }
     }
 
     /**
-     * Befriends by playerId; an unknown id or self just re-sends the unchanged list.
+     * Befriends by playerRef; an unknown id or self just re-sends the unchanged list.
      * @param {AbstractSession} session
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {void}
      */
-    addFriend(session, playerId) {
-        if (this.game.players.has(playerId) && playerId !== session.playerId) {
-            this.game.players.addFriend(session.playerId, playerId);
-            this._syncBothSides(session, playerId);
+    addFriend(session, playerRef) {
+        if (this.game.players.has(playerRef) && playerRef !== session.playerRef) {
+            this.game.players.addFriend(session.playerRef, playerRef);
+            this._syncBothSides(session, playerRef);
             return;
         }
-        this.syncFriendList(session.id, session.playerId);
+        this.syncFriendList(session.sessionRef, session.playerRef);
     }
 
     /**
@@ -83,23 +83,23 @@ export class PlayerDirectory {
      */
     addFriendByCode(session, code) {
         const target = this.game.players.byFriendCode(code);
-        const playerId = target === undefined ? PLAYER_ID_NONE : target.playerId;
-        const found = playerId !== PLAYER_ID_NONE && playerId !== session.playerId;
-        this.addFriend(session, playerId);
-        this.game.bus.publishTo(session.id, new AddFriendByCodeResultEvent(code, found));
+        const playerRef = target === undefined ? PLAYER_REF_NONE : target.playerRef;
+        const found = playerRef !== PLAYER_REF_NONE && playerRef !== session.playerRef;
+        this.addFriend(session, playerRef);
+        this.game.bus.publishTo(session.sessionRef, new AddFriendByCodeResultEvent(code, found));
     }
 
     /**
-     * Unfriends by playerId, resyncing both sides and letting mods react to the lost build rights.
+     * Unfriends by playerRef, resyncing both sides and letting mods react to the lost build rights.
      * @param {AbstractSession} session
-     * @param {number} playerId
+     * @param {number} playerRef
      * @returns {void}
      */
-    removeFriend(session, playerId) {
-        this.game.players.removeFriend(session.playerId, playerId);
-        this._syncBothSides(session, playerId);
+    removeFriend(session, playerRef) {
+        this.game.players.removeFriend(session.playerRef, playerRef);
+        this._syncBothSides(session, playerRef);
         for (const mod of this.game.modRegistry.simMods) {
-            mod.onFriendRemoved(session.playerId, playerId, this.game);
+            mod.onFriendRemoved(session.playerRef, playerRef, this.game);
         }
     }
 
@@ -112,22 +112,22 @@ export class PlayerDirectory {
      * @returns {void}
      */
     _syncBothSides(session, friendId) {
-        this.syncFriendList(session.id, session.playerId);
-        for (const sessionId of this.game.bus.sessionIdsOf(friendId)) {
-            this.syncFriendList(sessionId, friendId);
+        this.syncFriendList(session.sessionRef, session.playerRef);
+        for (const sessionRef of this.game.bus.sessionRefsOf(friendId)) {
+            this.syncFriendList(sessionRef, friendId);
         }
     }
 
     /**
      * Sends one session a player's friend lists, both sides' names first.
-     * @param {number} sessionId
-     * @param {number} playerId
+     * @param {number} sessionRef
+     * @param {number} playerRef
      * @returns {void}
      */
-    syncFriendList(sessionId, playerId) {
-        const friendIds = [...this.game.players.byId(playerId).friends];
-        const grantedByIds = this.game.players.grantedBy(playerId);
-        this.syncUsernames(sessionId, friendIds.concat(grantedByIds));
-        this.game.bus.publishTo(sessionId, new FriendListEvent(friendIds, grantedByIds));
+    syncFriendList(sessionRef, playerRef) {
+        const friendIds = [...this.game.players.byId(playerRef).friends];
+        const grantedByIds = this.game.players.grantedBy(playerRef);
+        this.syncUsernames(sessionRef, friendIds.concat(grantedByIds));
+        this.game.bus.publishTo(sessionRef, new FriendListEvent(friendIds, grantedByIds));
     }
 }

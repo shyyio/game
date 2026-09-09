@@ -22,7 +22,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
     constructor() {
         super();
         /**
-         * sessionId -> its cursor's {@link CursorState}, present only while the cursor is shown.
+         * sessionRef -> its cursor's {@link CursorState}, present only while the cursor is shown.
          * @type {Map<number, CursorState>}
          */
         this._cursorBySession = new Map();
@@ -47,19 +47,19 @@ export class CursorSyncSimMod extends AbstractSimMod {
             return true;
         }
         if (message instanceof CursorHideMessage) {
-            this._hideCursor(session.id, game);
+            this._hideCursor(session.sessionRef, game);
             return true;
         }
         return false;
     }
 
     /**
-     * @param {number} sessionId
+     * @param {number} sessionRef
      * @param {Game} game
      * @returns {void}
      */
-    onSessionDisconnect(sessionId, game) {
-        this._hideCursor(sessionId, game);
+    onSessionDisconnect(sessionRef, game) {
+        this._hideCursor(sessionRef, game);
     }
 
     /**
@@ -76,27 +76,27 @@ export class CursorSyncSimMod extends AbstractSimMod {
         // The client applies its own narrowing write too, but the erase must not depend on it.
         // Erases are broad; the next heartbeat re-shows the cursor where still admitted.
         if (key === CURSOR_SETTING_SHARE) {
-            this._hideCursor(session.id, game);
+            this._hideCursor(session.sessionRef, game);
         }
         if (key === CURSOR_SETTING_DISPLAY) {
-            this._eraseExcludedCursors(session.playerId, value, game);
+            this._eraseExcludedCursors(session.playerRef, value, game);
         }
     }
 
     /**
      * An unfriend cuts the remover's friends-narrowed sight both ways: the removed player loses
      * a friends-sharing remover's cursor, a friends-displaying remover loses the removed player's.
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} friendId
      * @param {Game} game
      * @returns {void}
      */
-    onFriendRemoved(playerId, friendId, game) {
-        if (this._audienceOf(playerId, CURSOR_SETTING_SHARE, game) === CURSOR_AUDIENCE_FRIENDS) {
-            game.bus.publishToPlayer(friendId, new PlayerCursorHideEvent(playerId));
+    onFriendRemoved(playerRef, friendId, game) {
+        if (this._audienceOf(playerRef, CURSOR_SETTING_SHARE, game) === CURSOR_AUDIENCE_FRIENDS) {
+            game.bus.publishToPlayer(friendId, new PlayerCursorHideEvent(playerRef));
         }
-        if (this._audienceOf(playerId, CURSOR_SETTING_DISPLAY, game) === CURSOR_AUDIENCE_FRIENDS) {
-            game.bus.publishToPlayer(playerId, new PlayerCursorHideEvent(friendId));
+        if (this._audienceOf(playerRef, CURSOR_SETTING_DISPLAY, game) === CURSOR_AUDIENCE_FRIENDS) {
+            game.bus.publishToPlayer(playerRef, new PlayerCursorHideEvent(friendId));
         }
     }
 
@@ -110,19 +110,19 @@ export class CursorSyncSimMod extends AbstractSimMod {
      */
     _handleCursorMove(message, session, game) {
         // Client-side gating trusted but re-checked: a non-sharing player's cursor never fans out.
-        const shareMode = this._audienceOf(session.playerId, CURSOR_SETTING_SHARE, game);
+        const shareMode = this._audienceOf(session.playerRef, CURSOR_SETTING_SHARE, game);
         if (shareMode === CURSOR_AUDIENCE_NONE) {
             return;
         }
-        const event = new PlayerCursorEvent(session.playerId, message.x, message.y);
+        const event = new PlayerCursorEvent(session.playerRef, message.x, message.y);
         // The chunk getter recomputes; derive it once per heartbeat.
         const chunk = event.chunk;
-        const state = this._cursorBySession.get(session.id);
+        const state = this._cursorBySession.get(session.sessionRef);
         if (state === undefined) {
-            this._cursorBySession.set(session.id, new CursorState(session.playerId, chunk));
+            this._cursorBySession.set(session.sessionRef, new CursorState(session.playerRef, chunk));
         } else {
             if (state.chunk !== chunk) {
-                this._publishCursorHide(state.playerId, state.chunk, chunk, session.id, game);
+                this._publishCursorHide(state.playerRef, state.chunk, chunk, session.sessionRef, game);
             }
             state.chunk = chunk;
         }
@@ -131,35 +131,35 @@ export class CursorSyncSimMod extends AbstractSimMod {
             return;
         }
         // Copied: a viewer's own dispatch may resubscribe while we fan out.
-        for (const viewerSessionId of [...viewers]) {
+        for (const viewerSessionRef of [...viewers]) {
             // The owning session never gets its own cursor echoed back.
-            if (viewerSessionId === session.id) {
+            if (viewerSessionRef === session.sessionRef) {
                 continue;
             }
-            const viewerId = game.bus.playerIdOf(viewerSessionId);
-            const isSelf = viewerId === session.playerId;
-            if (!audienceAdmits(shareMode, isSelf, game.players.isFriend(session.playerId, viewerId))) {
+            const viewerId = game.bus.playerRefOf(viewerSessionRef);
+            const isSelf = viewerId === session.playerRef;
+            if (!audienceAdmits(shareMode, isSelf, game.players.isFriend(session.playerRef, viewerId))) {
                 continue;
             }
             const displayMode = this._audienceOf(viewerId, CURSOR_SETTING_DISPLAY, game);
-            if (!audienceAdmits(displayMode, isSelf, game.players.isFriend(viewerId, session.playerId))) {
+            if (!audienceAdmits(displayMode, isSelf, game.players.isFriend(viewerId, session.playerRef))) {
                 continue;
             }
             // The cursor label needs its owner's name; first sight of a player sends it.
-            game.playerDirectory.syncUsernames(viewerSessionId, [session.playerId]);
-            game.bus.publishTo(viewerSessionId, event);
+            game.playerDirectory.syncUsernames(viewerSessionRef, [session.playerRef]);
+            game.bus.publishTo(viewerSessionRef, event);
         }
     }
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} key CURSOR_SETTING_SHARE or CURSOR_SETTING_DISPLAY
      * @param {Game} game
      * @returns {number} the player's CURSOR_AUDIENCE_* option
      * @private
      */
-    _audienceOf(playerId, key, game) {
-        const value = game.playerSettings.get(playerId, key);
+    _audienceOf(playerRef, key, game) {
+        const value = game.playerSettings.get(playerRef, key);
         return value === undefined ? CURSOR_AUDIENCE_DEFAULT : value;
     }
 
@@ -173,9 +173,9 @@ export class CursorSyncSimMod extends AbstractSimMod {
     _eraseExcludedCursors(viewerId, mode, game) {
         const excludedIds = new Set();
         for (const state of this._cursorBySession.values()) {
-            const isSelf = viewerId === state.playerId;
-            if (!audienceAdmits(mode, isSelf, game.players.isFriend(viewerId, state.playerId))) {
-                excludedIds.add(state.playerId);
+            const isSelf = viewerId === state.playerRef;
+            if (!audienceAdmits(mode, isSelf, game.players.isFriend(viewerId, state.playerRef))) {
+                excludedIds.add(state.playerRef);
             }
         }
         for (const excludedId of excludedIds) {
@@ -186,44 +186,44 @@ export class CursorSyncSimMod extends AbstractSimMod {
     /**
      * Erases a session's cursor for every viewer of its last chunk (hide message, share change,
      * disconnect); a no-op when it was never shown.
-     * @param {number} sessionId
+     * @param {number} sessionRef
      * @param {Game} game
      * @private
      */
-    _hideCursor(sessionId, game) {
-        const state = this._cursorBySession.get(sessionId);
+    _hideCursor(sessionRef, game) {
+        const state = this._cursorBySession.get(sessionRef);
         if (state === undefined) {
             return;
         }
-        this._cursorBySession.delete(sessionId);
-        this._publishCursorHide(state.playerId, state.chunk, null, sessionId, game);
+        this._cursorBySession.delete(sessionRef);
+        this._publishCursorHide(state.playerRef, state.chunk, null, sessionRef, game);
     }
 
     /**
      * Sends a hide to the sessions viewing `fromChunk` but not `toChunk` (null: all of them).
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} fromChunk
      * @param {number|null} toChunk
-     * @param {number} ownerSessionId
+     * @param {number} ownerSessionRef
      * @param {Game} game
      * @private
      */
-    _publishCursorHide(playerId, fromChunk, toChunk, ownerSessionId, game) {
+    _publishCursorHide(playerRef, fromChunk, toChunk, ownerSessionRef, game) {
         const losing = game.bus.chunkSubscribers(fromChunk);
         if (losing === undefined) {
             return;
         }
         const keeping = toChunk === null ? undefined : game.bus.chunkSubscribers(toChunk);
         // One shared instance: delivery only encodes, and publishTo never resubscribes.
-        const event = new PlayerCursorHideEvent(playerId);
-        for (const sessionId of losing) {
-            if (sessionId === ownerSessionId) {
+        const event = new PlayerCursorHideEvent(playerRef);
+        for (const sessionRef of losing) {
+            if (sessionRef === ownerSessionRef) {
                 continue;
             }
-            if (keeping !== undefined && keeping.has(sessionId)) {
+            if (keeping !== undefined && keeping.has(sessionRef)) {
                 continue;
             }
-            game.bus.publishTo(sessionId, event);
+            game.bus.publishTo(sessionRef, event);
         }
     }
 }

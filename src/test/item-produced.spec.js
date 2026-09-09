@@ -10,7 +10,7 @@ import {ITEM_TYPE_CABBAGE, ITEM_TYPE_NUTRIENT_SLOP} from "@/mods/base-game/commo
 test("a machine's delivered output notifies the engine's itemProduced listeners", async () => {
     const engine = await makeGameEngine();
     const produced = [];
-    engine.itemProduced.add((playerId, itemTypeId, amount) => produced.push([itemTypeId, amount]));
+    engine.itemProduced.add((playerRef, itemTypeId, amount) => produced.push([itemTypeId, amount]));
     engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 5, 4, Direction.UP));
     const [eid] = engine.placed.eidsOf(BlenderType.objectTypeId);

@@ -6,7 +6,7 @@ import {WelcomeEvent, FriendListEvent} from "@/common/PlayerEvents.js";
 import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResult, ChunkPermission} from "@/common/ClaimEvents.js";
 import {ChunkSubscribeEvent} from "@/common/CoreEvents.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
-import {PLAYER_ID_NONE} from "@/common/constants.js";
+import {PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkOrdinal} from "@/common/util.js";
 
 function claimsState() {
@@ -18,7 +18,7 @@ function claimsState() {
 test("welcome fills identity", () => {
     const {state, claims} = claimsState();
     state.onEvent(new WelcomeEvent(3, 12, "0001-2A3B"));
-    assert.equal(claims.ownPlayerId, 3);
+    assert.equal(claims.ownPlayerRef, 3);
     assert.equal(claims.maxChunks, 12);
     assert.equal(claims.ownFriendCode, "0001-2A3B");
 });
@@ -51,8 +51,8 @@ test("updates apply deltas to the mirror and the own set", () => {
     state.onEvent(new ChunkClaimUpdateEvent(100, 1));
     assert.deepEqual(claims.ownChunks(), [100], "an own claim joins the own set");
 
-    state.onEvent(new ChunkClaimUpdateEvent(100, PLAYER_ID_NONE));
-    assert.equal(claims.ownerOf(100), PLAYER_ID_NONE);
+    state.onEvent(new ChunkClaimUpdateEvent(100, PLAYER_REF_NONE));
+    assert.equal(claims.ownerOf(100), PLAYER_REF_NONE);
     assert.equal(claims.ownCount(), 0, "an unclaim leaves the own set");
     assert.deepEqual(touched.at(-1), [100, undefined]);
 });
@@ -64,7 +64,7 @@ test("a chunk subscribe resets a stale foreign entry ahead of the seeded update"
     state.onEvent(new ChunkClaimUpdateEvent(101, 2));
 
     state.onEvent(new ChunkSubscribeEvent(101));
-    assert.equal(claims.ownerOf(101), PLAYER_ID_NONE, "no seed follows an unclaimed chunk");
+    assert.equal(claims.ownerOf(101), PLAYER_REF_NONE, "no seed follows an unclaimed chunk");
 
     state.onEvent(new ChunkSubscribeEvent(100));
     assert.equal(claims.ownerOf(100), 1, "own claim survives");
@@ -87,7 +87,7 @@ test("an overworld snapshot stamps its rect's claims and sheds stale foreign ent
     state.onEvent(event);
 
     assert.equal(claims.ownerOf(inRect), 2, "rect claim stamped");
-    assert.equal(claims.ownerOf(staleInRect), PLAYER_ID_NONE, "stale foreign entry in the rect shed");
+    assert.equal(claims.ownerOf(staleInRect), PLAYER_REF_NONE, "stale foreign entry in the rect shed");
     assert.equal(claims.ownerOf(ownInRect), 1, "own claim survives the stamp");
     assert.equal(claims.ownerOf(outsideRect), 4, "entries outside the rect untouched");
 });
@@ -107,7 +107,7 @@ test("canBuildIn mirrors the sim gate", () => {
     state.onEvent(new FriendListEvent([2], [2]));
     assert.equal(claims.canBuildIn(101), true, "owner's grant unlocks their chunk");
 
-    state.onEvent(new ChunkClaimUpdateEvent(101, PLAYER_ID_NONE));
+    state.onEvent(new ChunkClaimUpdateEvent(101, PLAYER_REF_NONE));
     assert.equal(claims.canBuildIn(101), false, "unclaimed again");
 });
 

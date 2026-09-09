@@ -49,7 +49,7 @@ export class RemoteSession extends AbstractSession {
         this._token = token;
         this._mintJoinToken = mintJoinToken;
         this._ws = null;
-        this._playerId = null;
+        this._playerRef = null;
         this._onStatusChange = null;
         this._pending = [];
         this._reconnecting = false;
@@ -108,18 +108,18 @@ export class RemoteSession extends AbstractSession {
     /**
      * @returns {number}
      */
-    get playerId() {
-        if (this._playerId === null) {
-            throw new Error("playerId read before the server's welcome");
+    get playerRef() {
+        if (this._playerRef === null) {
+            throw new Error("playerRef read before the server's welcome");
         }
-        return this._playerId;
+        return this._playerRef;
     }
 
     /**
      * @returns {boolean}
      */
-    get hasPlayerId() {
-        return this._playerId !== null;
+    get hasPlayerRef() {
+        return this._playerRef !== null;
     }
 
     /**
@@ -176,7 +176,7 @@ export class RemoteSession extends AbstractSession {
             this.rxBytes += bytes.length;
             const decoded = this._wire.decode(bytes);
             if (decoded instanceof WelcomeEvent) {
-                this._playerId = decoded.playerId;
+                this._playerRef = decoded.playerRef;
                 if (this._reconnecting) {
                     this._reconnecting = false;
                     this._retryAttempt = 0;

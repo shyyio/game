@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {ChunkUnsubscribeEvent, ClientCache, PLAYER_ID_NONE, chunkId, tileId} from "@spup/sdk/client";
+import {ChunkUnsubscribeEvent, ClientCache, PLAYER_REF_NONE, chunkId, tileId} from "@spup/sdk/client";
 import {NOTES_SCHEMA, NOTE_EDITOR_MODE_EDIT, NOTE_EDITOR_MODE_PLACE, NoteEditorTarget, NotesWriter} from "./NotesState.js";
 import {NoteSetEvent, NoteDeleteEvent} from "../common/events.js";
 
@@ -71,7 +71,7 @@ test("unsubscribing a chunk evicts its notes and targets", () => {
 test("the editor target opens and closes without touching the notes", () => {
     const state = stateWithNotes();
     const writer = state.writer("notes");
-    writer.openEditor(new NoteEditorTarget(3, 4, 500, 500, "", NOTE_EDITOR_MODE_PLACE, PLAYER_ID_NONE));
+    writer.openEditor(new NoteEditorTarget(3, 4, 500, 500, "", NOTE_EDITOR_MODE_PLACE, PLAYER_REF_NONE));
     assert.equal(state.get("notes.editorTarget").mode, NOTE_EDITOR_MODE_PLACE);
 
     writer.closeEditor();

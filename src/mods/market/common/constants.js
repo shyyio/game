@@ -15,7 +15,7 @@ export const MARKET_STARTING_BALANCE = 10000;
 // This mod's metrics fact type: one fact per trade side (shared flat keyspace, see MetricsFact.js).
 export const METRICS_FACT_TYPE_TRADE_EXECUTED = 3;
 
-// TRADE_EXECUTED's `tag`: trade side `playerId` was on; a global price series reads SELL rows only.
+// TRADE_EXECUTED's `tag`: trade side `playerRef` was on; a global price series reads SELL rows only.
 export const METRICS_TRADE_SIDE_SELL = 0;
 export const METRICS_TRADE_SIDE_BUY = 1;
 

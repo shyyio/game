@@ -27,7 +27,7 @@ function formatFriendCode(digits) {
 
 /**
  * A fresh, unguessable friend code (grouped XXXX-XXXX) — what players exchange to add each other
- * as friends. Random, not derived from playerId or sub: a deterministic mapping would let anyone
+ * as friends. Random, not derived from playerRef or sub: a deterministic mapping would let anyone
  * enumerate every player by walking the input space.
  * @returns {string}
  */

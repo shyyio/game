@@ -69,7 +69,7 @@ test("extending a lane downstream preserves an item resting in the out-port", as
     assert.equal(drain(engine, lane, 16), 1, "the resting out-port item is delivered after the extension");
 });
 
-// The client places items against the lane's length and keys the resting out-port sprite by port id,
+// The client places items against the lane's length and keys the resting out-port sprite by port ref,
 // so item rows must stay ordered by ascending id from the output edge after a rebuild.
 test("a tail extension keeps item rows ordered output-to-input", async () => {
     const engine = await setup();

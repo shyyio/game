@@ -2,14 +2,14 @@ import {WelcomeEvent, FriendListEvent} from "@/common/PlayerEvents.js";
 import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResult, ChunkPermission} from "@/common/ClaimEvents.js";
 import {ChunkSubscribeEvent} from "@/common/CoreEvents.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
-import {DEFAULT_MAX_CHUNKS, PLAYER_ID_NONE} from "@/common/constants.js";
+import {DEFAULT_MAX_CHUNKS, PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkNeighbors, chunkCenter} from "@/common/util.js";
 import {OverworldRect} from "@/client/state/OverworldState.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {AbstractCacheWriter, AbstractCacheView, schemaScalar, schemaMap, schemaSet} from "@/client/state/ClientCache.js";
 
 export const CHUNK_CLAIMS_SCHEMA = {
-    ownPlayerId: schemaScalar(null),
+    ownPlayerRef: schemaScalar(null),
     maxChunks: schemaScalar(DEFAULT_MAX_CHUNKS),
     // Cached from the welcome at sign-in; never re-fetched, so opening the friends panel never
     // hits the server.
@@ -39,7 +39,7 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
      */
     onEvent(event) {
         if (event instanceof WelcomeEvent) {
-            this._state.set("chunkClaims.ownPlayerId", event.playerId);
+            this._state.set("chunkClaims.ownPlayerRef", event.playerRef);
             this._state.set("chunkClaims.maxChunks", event.maxChunks);
             this._state.set("chunkClaims.ownFriendCode", event.friendCode);
             return;
@@ -51,23 +51,23 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
         }
         if (event instanceof OwnClaimsSyncEvent) {
             this._state.setReplace("chunkClaims.ownChunks", event.chunks);
-            const ownPlayerId = this._state.get("chunkClaims.ownPlayerId");
+            const ownPlayerRef = this._state.get("chunkClaims.ownPlayerRef");
             for (let i = 0; i < event.chunks.length; i += 1) {
-                this._state.mapSet("chunkClaims.ownerByChunk", event.chunks[i], ownPlayerId);
+                this._state.mapSet("chunkClaims.ownerByChunk", event.chunks[i], ownPlayerRef);
                 this._state.mapSet("chunkClaims.permissionByChunk", event.chunks[i], event.permissions[i]);
             }
             return;
         }
         if (event instanceof ChunkClaimUpdateEvent) {
-            if (event.playerId === PLAYER_ID_NONE) {
+            if (event.playerRef === PLAYER_REF_NONE) {
                 this._state.mapDelete("chunkClaims.ownerByChunk", event.chunk);
                 this._state.mapDelete("chunkClaims.permissionByChunk", event.chunk);
                 this._state.setDelete("chunkClaims.ownChunks", event.chunk);
                 return;
             }
-            this._state.mapSet("chunkClaims.ownerByChunk", event.chunk, event.playerId);
+            this._state.mapSet("chunkClaims.ownerByChunk", event.chunk, event.playerRef);
             this._state.mapSet("chunkClaims.permissionByChunk", event.chunk, event.permission);
-            if (event.playerId === this._state.get("chunkClaims.ownPlayerId")) {
+            if (event.playerRef === this._state.get("chunkClaims.ownPlayerRef")) {
                 this._state.setAdd("chunkClaims.ownChunks", event.chunk);
             }
             return;
@@ -117,7 +117,7 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
      */
     _dropForeign(chunk) {
         const owner = this._state.mapGet("chunkClaims.ownerByChunk", chunk);
-        if (owner !== undefined && owner !== this._state.get("chunkClaims.ownPlayerId")) {
+        if (owner !== undefined && owner !== this._state.get("chunkClaims.ownPlayerRef")) {
             this._state.mapDelete("chunkClaims.ownerByChunk", chunk);
             this._state.mapDelete("chunkClaims.permissionByChunk", chunk);
         }
@@ -132,8 +132,8 @@ export class ChunkClaimsView extends AbstractCacheView {
     /**
      * @returns {number|null} null until the welcome arrives
      */
-    get ownPlayerId() {
-        return this._state.get("chunkClaims.ownPlayerId");
+    get ownPlayerRef() {
+        return this._state.get("chunkClaims.ownPlayerRef");
     }
 
     /**
@@ -152,12 +152,12 @@ export class ChunkClaimsView extends AbstractCacheView {
 
     /**
      * @param {number} chunk
-     * @returns {number} the owning playerId, or PLAYER_ID_NONE when unclaimed
+     * @returns {number} the owning playerRef, or PLAYER_REF_NONE when unclaimed
      */
     ownerOf(chunk) {
         const owner = this._state.mapGet("chunkClaims.ownerByChunk", chunk);
         if (owner === undefined) {
-            return PLAYER_ID_NONE;
+            return PLAYER_REF_NONE;
         }
         return owner;
     }
@@ -209,10 +209,10 @@ export class ChunkClaimsView extends AbstractCacheView {
      */
     canBuildIn(chunk) {
         const owner = this.ownerOf(chunk);
-        if (owner === PLAYER_ID_NONE) {
+        if (owner === PLAYER_REF_NONE) {
             return false;
         }
-        if (owner === this.ownPlayerId) {
+        if (owner === this.ownPlayerRef) {
             return true;
         }
         if (this.permissionOf(chunk) === ChunkPermission.PERMISSION_ONLY_ME) {
@@ -227,7 +227,7 @@ export class ChunkClaimsView extends AbstractCacheView {
      * @returns {number} a ClaimResult
      */
     claimCheck(chunk) {
-        if (this.ownerOf(chunk) !== PLAYER_ID_NONE) {
+        if (this.ownerOf(chunk) !== PLAYER_REF_NONE) {
             return ClaimResult.CLAIM_RESULT_OWNED;
         }
         if (this.atChunkLimit()) {
@@ -255,21 +255,21 @@ export class ChunkClaimsView extends AbstractCacheView {
     }
 
     /**
-     * Whether the own player granted `playerId` build rights.
-     * @param {number} playerId
+     * Whether the own player granted `playerRef` build rights.
+     * @param {number} playerRef
      * @returns {boolean}
      */
-    isFriend(playerId) {
-        return this._state.setHas("chunkClaims.friendIds", playerId);
+    isFriend(playerRef) {
+        return this._state.setHas("chunkClaims.friendIds", playerRef);
     }
 
     /**
-     * Whether `playerId` granted the own player build rights.
-     * @param {number} playerId
+     * Whether `playerRef` granted the own player build rights.
+     * @param {number} playerRef
      * @returns {boolean}
      */
-    isFriendsWithMe(playerId) {
-        return this._state.setHas("chunkClaims.grantedByIds", playerId);
+    isFriendsWithMe(playerRef) {
+        return this._state.setHas("chunkClaims.grantedByIds", playerRef);
     }
 
     /**
@@ -292,7 +292,7 @@ export class ChunkClaimsView extends AbstractCacheView {
         const nearestByOwner = new Map();
         for (const chunk of chunks) {
             const owner = this.ownerOf(chunk);
-            if (owner === PLAYER_ID_NONE || owner === this.ownPlayerId || this.isFriend(owner)) {
+            if (owner === PLAYER_REF_NONE || owner === this.ownPlayerRef || this.isFriend(owner)) {
                 continue;
             }
             const point = chunkCenter(chunk);

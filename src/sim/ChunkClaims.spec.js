@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {ChunkClaims} from "@/sim/ChunkClaims.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
 import {chunkOrdinal} from "@/common/util.js";
-import {PLAYER_ID_NONE} from "@/common/constants.js";
+import {PLAYER_REF_NONE} from "@/common/constants.js";
 
 const MAX = 9;
 
@@ -16,7 +16,7 @@ test("first claim lands anywhere", () => {
 
 test("the null player cannot claim", () => {
     const claims = new ChunkClaims();
-    assert.throws(() => claims.claim(PLAYER_ID_NONE, chunkOrdinal(0, 0), MAX), RangeError);
+    assert.throws(() => claims.claim(PLAYER_REF_NONE, chunkOrdinal(0, 0), MAX), RangeError);
 });
 
 test("a second claim must touch an own chunk edge-on", () => {
@@ -48,7 +48,7 @@ test("only the owner may unclaim", () => {
     assert.equal(claims.unclaim(2, chunkOrdinal(0, 0)), ClaimResult.CLAIM_RESULT_NOT_OWNER);
     assert.equal(claims.unclaim(1, chunkOrdinal(5, 5)), ClaimResult.CLAIM_RESULT_NOT_OWNER);
     assert.equal(claims.unclaim(1, chunkOrdinal(0, 0)), ClaimResult.CLAIM_RESULT_OK);
-    assert.equal(claims.ownerOf(chunkOrdinal(0, 0)), PLAYER_ID_NONE);
+    assert.equal(claims.ownerOf(chunkOrdinal(0, 0)), PLAYER_REF_NONE);
 });
 
 test("unclaiming the middle of a line would split it", () => {
@@ -86,7 +86,7 @@ test("claimsIn filters claims to the rect", () => {
 
     const inRect = claims.claimsIn(0, 0, 2, 1);
     assert.deepEqual(inRect.chunks.sort(), [chunkOrdinal(0, 0), chunkOrdinal(1, 0)].sort());
-    assert.deepEqual(inRect.playerIds, [1, 1]);
+    assert.deepEqual(inRect.playerRefs, [1, 1]);
 
     const empty = claims.claimsIn(-5, -5, 3, 3);
     assert.deepEqual(empty.chunks, []);

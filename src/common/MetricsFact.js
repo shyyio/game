@@ -51,15 +51,15 @@ export class MetricsFact {
     /**
      * @param {number} type METRICS_FACT_TYPE_*
      * @param {number} tick sim clock at record time
-     * @param {number} playerId PLAYER_ID_NONE when not player-scoped
+     * @param {number} playerRef PLAYER_REF_NONE when not player-scoped
      * @param {number} category grouped as-is by queryRollup; meaning depends on type (itemTypeId, objectTypeId, ...)
      * @param {number} amount summed by queryRollup; meaning depends on type
      * @param {number} tag grouped as-is by queryRollup; meaning depends on type (e.g. trade side)
      */
-    constructor(type, tick, playerId, category=0, amount=0, tag=0) {
+    constructor(type, tick, playerRef, category=0, amount=0, tag=0) {
         this.type = type;
         this.tick = tick;
-        this.playerId = playerId;
+        this.playerRef = playerRef;
         this.category = category;
         this.amount = amount;
         this.tag = tag;

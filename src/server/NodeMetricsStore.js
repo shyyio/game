@@ -160,7 +160,7 @@ export class NodeMetricsStore extends AbstractMetricsStore {
         this._insertBatch = this.db.transaction(facts => {
             for (const fact of facts) {
                 this._insert.run({
-                    type: fact.type, tick: fact.tick, player_id: fact.playerId,
+                    type: fact.type, tick: fact.tick, player_id: fact.playerRef,
                     category: fact.category, amount: fact.amount, tag: fact.tag,
                 });
             }
@@ -273,13 +273,13 @@ export class NodeMetricsStore extends AbstractMetricsStore {
 
     /**
      * @param {number} type
-     * @param {number|null} playerId
+     * @param {number|null} playerRef
      * @param {number} fromTick
      * @param {number} toTick
      * @param {number} tier
      * @returns {Promise<MetricsRollupRow[]>}
      */
-    async queryRollup(type, playerId, fromTick, toTick, tier) {
+    async queryRollup(type, playerRef, fromTick, toTick, tier) {
         const tailFromTick = METRICS_BAKED_TIERS.includes(tier) ? Math.max(fromTick, this._foldedThrough) : fromTick;
         const params = {
             tier,
@@ -289,10 +289,10 @@ export class NodeMetricsStore extends AbstractMetricsStore {
             to_tick: toTick,
         };
         let rows;
-        if (playerId === null) {
+        if (playerRef === null) {
             rows = this._queryRollupAllPlayers.all(params);
         } else {
-            rows = this._queryRollupForPlayer.all({...params, player_id: playerId});
+            rows = this._queryRollupForPlayer.all({...params, player_id: playerRef});
         }
         return rows.map(row => new MetricsRollupRow(row.bucket_tick, row.category, row.tag, row.count, row.sum));
     }

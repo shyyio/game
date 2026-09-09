@@ -7,26 +7,26 @@ import {AbstractEvent} from "@/common/AbstractEvent.js";
 export class WelcomeEvent extends AbstractEvent {
 
     static wireFields = {
-        playerId: "int64",
+        playerRef: "int64",
         maxChunks: "int32",
         friendCode: "string",
     };
 
     /**
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} maxChunks
      * @param {string} friendCode
      */
-    constructor(playerId, maxChunks, friendCode) {
+    constructor(playerRef, maxChunks, friendCode) {
         super();
-        this.playerId = playerId;
+        this.playerRef = playerRef;
         this.maxChunks = maxChunks;
         this.friendCode = friendCode;
     }
 }
 
 /**
- * playerId -> username entries as parallel arrays, sent to a session only for players it can see
+ * playerRef -> username entries as parallel arrays, sent to a session only for players it can see
  * (claim owners in its viewport or requested overworld rects, visible cursors, friends). Targeted
  * (publishTo), never broadcast; a repeated id carries a rename. The only place usernames cross
  * the wire after sign-in.
@@ -34,17 +34,17 @@ export class WelcomeEvent extends AbstractEvent {
 export class PlayerNamesEvent extends AbstractEvent {
 
     static wireFields = {
-        playerIds: "int64[]",
+        playerRefs: "int64[]",
         usernames: "string[]",
     };
 
     /**
-     * @param {number[]} playerIds
+     * @param {number[]} playerRefs
      * @param {string[]} usernames
      */
-    constructor(playerIds, usernames) {
+    constructor(playerRefs, usernames) {
         super();
-        this.playerIds = playerIds;
+        this.playerRefs = playerRefs;
         this.usernames = usernames;
     }
 }

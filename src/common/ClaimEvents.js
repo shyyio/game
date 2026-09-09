@@ -46,7 +46,7 @@ export class OwnClaimsSyncEvent extends AbstractEvent {
 }
 
 /**
- * One chunk's ownership or permission changed; playerId PLAYER_ID_NONE means it is now unclaimed.
+ * One chunk's ownership or permission changed; playerRef PLAYER_REF_NONE means it is now unclaimed.
  * Routed to the chunk's topic; the sim also targets it at the affected owner's sessions and at a
  * session whose viewport gains a claimed chunk.
  */
@@ -54,19 +54,19 @@ export class ChunkClaimUpdateEvent extends AbstractEvent {
 
     static wireFields = {
         chunk: "int32",
-        playerId: "int64",
+        playerRef: "int64",
         permission: "int32",
     };
 
     /**
      * @param {number} chunk
-     * @param {number} playerId
+     * @param {number} playerRef
      * @param {number} permission - a ChunkPermission; meaningless once unclaimed
      */
-    constructor(chunk, playerId, permission = ChunkPermission.PERMISSION_ONLY_ME) {
+    constructor(chunk, playerRef, permission = ChunkPermission.PERMISSION_ONLY_ME) {
         super();
         this.chunk = chunk;
-        this.playerId = playerId;
+        this.playerRef = playerRef;
         this.permission = permission;
     }
 

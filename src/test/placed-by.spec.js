@@ -55,7 +55,7 @@ test("an object's claim owner is the ground's current owner, not a placement-tim
 test("production is credited to the chunk owner, not to the friend who built the machine", async () => {
     const {game, bob} = await setup();
     const produced = [];
-    game.simEngine.itemProduced.add((playerId, itemTypeId, amount) => produced.push(playerId));
+    game.simEngine.itemProduced.add((playerRef, itemTypeId, amount) => produced.push(playerRef));
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
     game.dispatchMessage(new CreateObjectMessage(PipeDefinition.objectTypeId, 5, 4, Direction.UP), bob);
 
