@@ -27,12 +27,12 @@ export class BeltBehavior extends AbstractBehavior {
         if (isTunnelMouth(this.beltKind)) {
             this._fillTunnel(engine, belts, message);
         }
-        belts.placeBelt(message.x, message.y, message.direction, this.beltKind, engine.placed.objectIdOf(eid));
+        belts.placeBelt(message.x, message.y, message.direction, this.beltKind, engine.placed.objectRefOf(eid));
     }
 
     onDespawn(engine, eid) {
         const belts = engine.resolve(Belts);
-        const belt = belts.beltById(engine.placed.objectIdOf(eid));
+        const belt = belts.beltById(engine.placed.objectRefOf(eid));
         if (belt === null) {
             return;
         }
@@ -93,7 +93,7 @@ export class BeltBehavior extends AbstractBehavior {
                 y: position.y[eid],
                 direction: position.direction[eid],
                 type: behavior.beltKind,
-                id: placedObject.objectId[row],
+                id: placedObject.objectRef[row],
             });
         }
     }

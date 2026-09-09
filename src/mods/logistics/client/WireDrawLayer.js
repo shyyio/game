@@ -39,7 +39,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
         this._previewFrom = null;
         this._previewSnap = null;
         /**
-         * Wire key -> its {a, b} endpoint objectIds.
+         * Wire key -> its {a, b} endpoint objectRefs.
          * @type {Map<string, {a: number, b: number}>}
          */
         this._edges = new Map();
@@ -64,7 +64,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
 
     /**
      * A cached endpoint appeared or changed; repaint if a wire hangs off it.
-     * @param {number} id - the endpoint's objectId
+     * @param {number} id - the endpoint's objectRef
      * @returns {void}
      */
     touchEndpoint(id) {
@@ -78,7 +78,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
 
     /**
      * A removed endpoint drops its edges; re-subscribing re-syncs them.
-     * @param {number} id - the endpoint's objectId
+     * @param {number} id - the endpoint's objectRef
      * @returns {void}
      */
     removeEndpoint(id) {
@@ -91,7 +91,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {number} a - endpoint objectId
+     * @param {number} a - endpoint objectRef
      * @param {number} b
      * @returns {void}
      */
@@ -101,7 +101,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {number} a - endpoint objectId
+     * @param {number} a - endpoint objectRef
      * @param {number} b
      * @returns {void}
      */
@@ -112,7 +112,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * @param {number} a - endpoint objectId
+     * @param {number} a - endpoint objectRef
      * @param {number} b
      * @returns {boolean}
      */

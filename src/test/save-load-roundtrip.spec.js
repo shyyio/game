@@ -17,7 +17,7 @@ async function populated() {
     engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 10, 10, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(SplitterDefinition.objectTypeId, 3, 8, Direction.UP));
     const splitterEid = engine.placed.eidsOf(SplitterDefinition.objectTypeId)[0];
-    const splitterId = engine.placed.objectIdOf(splitterEid);
+    const splitterId = engine.placed.objectRefOf(splitterEid);
     for (const cell of [{x: 20, y: 20}, {x: 20, y: 21}, {x: 20, y: 22}]) {
         engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, cell.x, cell.y, Direction.UP));
     }
@@ -38,7 +38,7 @@ test("the whole world round-trips through the engine serializer", async () => {
     assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1, "machine restored");
     assert.equal(beltsOf(restored).paths.length, beltPaths, "belt paths restored");
     assert.notEqual(restored.space.userDataAt(5, 5, "R"), null, "resource cover restored");
-    assert.notEqual(restored.placed.eidByObjectId(splitterId), undefined, "splitter restored");
+    assert.notEqual(restored.placed.eidByObjectRef(splitterId), undefined, "splitter restored");
     assert.equal(restored.space.cellsFree([{x: 10, y: 10, layer: "S"}]), false, "machine position restored");
 
     // The extractor keeps producing water into its edge out-port after the load.
@@ -64,7 +64,7 @@ test("a snapshot survives a JSON blob round-trip (the client save path)", async 
     restored.snapshots.deserialize(snapshot);
 
     assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1);
-    assert.notEqual(restored.placed.eidByObjectId(splitterId), undefined);
+    assert.notEqual(restored.placed.eidByObjectRef(splitterId), undefined);
 });
 
 test("a snapshot round-trips through structured SQLite (the node save path)", async () => {

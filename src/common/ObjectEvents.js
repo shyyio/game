@@ -11,7 +11,7 @@ export class ObjectInsertEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         objectTypeId: "int32",
-        id: "int64",
+        objectRef: "int64",
         x: "sint32",
         y: "sint32",
         direction: "int32",
@@ -20,16 +20,16 @@ export class ObjectInsertEvent extends AbstractChunkRoutedEvent {
 
     /**
      * @param {number} objectTypeId
-     * @param {number} id
+     * @param {number} objectRef
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
      * @param {number[]} portIds
      */
-    constructor(objectTypeId, id, x, y, direction, portIds) {
+    constructor(objectTypeId, objectRef, x, y, direction, portIds) {
         super(x, y);
         this.objectTypeId = objectTypeId;
-        this.id = id;
+        this.objectRef = objectRef;
         this.direction = direction;
         this.portIds = portIds;
     }
@@ -43,7 +43,7 @@ export class ObjectSyncEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         objectTypeId: "int32",
-        id: "int64",
+        objectRef: "int64",
         x: "sint32",
         y: "sint32",
         direction: "int32",
@@ -52,16 +52,16 @@ export class ObjectSyncEvent extends AbstractChunkRoutedEvent {
 
     /**
      * @param {number} objectTypeId
-     * @param {number} id
+     * @param {number} objectRef
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
      * @param {number[]} portIds
      */
-    constructor(objectTypeId, id, x, y, direction, portIds) {
+    constructor(objectTypeId, objectRef, x, y, direction, portIds) {
         super(x, y);
         this.objectTypeId = objectTypeId;
-        this.id = id;
+        this.objectRef = objectRef;
         this.direction = direction;
         this.portIds = portIds;
     }
@@ -74,26 +74,26 @@ export class ObjectDeleteEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         objectTypeId: "int32",
-        id: "int64",
+        objectRef: "int64",
         x: "sint32",
         y: "sint32",
     };
 
     /**
      * @param {number} objectTypeId
-     * @param {number} id
+     * @param {number} objectRef
      * @param {number} x
      * @param {number} y
      */
-    constructor(objectTypeId, id, x, y) {
+    constructor(objectTypeId, objectRef, x, y) {
         super(x, y);
         this.objectTypeId = objectTypeId;
-        this.id = id;
+        this.objectRef = objectRef;
     }
 }
 
 /**
- * One chunk's objects for a sync, as packed columns: entity `i` is `objectTypeIds[i]` with id `ids[i]` at
+ * One chunk's objects for a sync, as packed columns: entity `i` is `objectTypeIds[i]` with ref `objectRefs[i]` at
  * (`tileX[i]`, `tileY[i]`) — chunk-relative, so a tile offset stays one byte however far the chunk
  * sits from the origin — facing `directions[i]`, owning the next `portCounts[i]` entries of the
  * flattened `portIds`.
@@ -104,7 +104,7 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
         originX: "sint32",
         originY: "sint32",
         objectTypeIds: "int32[]",
-        ids: "int64[]",
+        objectRefs: "int64[]",
         tileX: "sint32[]",
         tileY: "sint32[]",
         directions: "int32[]",
@@ -121,7 +121,7 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
         this.originX = originX;
         this.originY = originY;
         this.objectTypeIds = [];
-        this.ids = [];
+        this.objectRefs = [];
         this.tileX = [];
         this.tileY = [];
         this.directions = [];
@@ -131,16 +131,16 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
 
     /**
      * @param {number} objectTypeId
-     * @param {number} id
+     * @param {number} objectRef
      * @param {number} x
      * @param {number} y
      * @param {number} direction
      * @param {number[]} portIds
      * @returns {void}
      */
-    add(objectTypeId, id, x, y, direction, portIds) {
+    add(objectTypeId, objectRef, x, y, direction, portIds) {
         this.objectTypeIds.push(objectTypeId);
-        this.ids.push(id);
+        this.objectRefs.push(objectRef);
         this.tileX.push(x - this.originX);
         this.tileY.push(y - this.originY);
         this.directions.push(direction);
@@ -156,12 +156,12 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
     explode() {
         const events = [];
         let portAt = 0;
-        for (let i = 0; i < this.ids.length; i += 1) {
+        for (let i = 0; i < this.objectRefs.length; i += 1) {
             const portIds = this.portIds.slice(portAt, portAt + this.portCounts[i]);
             portAt += this.portCounts[i];
             events.push(new ObjectSyncEvent(
                 this.objectTypeIds[i],
-                this.ids[i],
+                this.objectRefs[i],
                 this.originX + this.tileX[i],
                 this.originY + this.tileY[i],
                 this.directions[i],
@@ -179,32 +179,32 @@ export class ObjectSyncBatchEvent extends AbstractBatchEvent {
 export class ObjectFieldsEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
-        id: "int64",
+        objectRef: "int64",
         values: "sint32[]",
     };
 
     /**
-     * @param {number} id
+     * @param {number} objectRef
      * @param {number} x
      * @param {number} y
      * @param {number[]} values
      */
-    constructor(id, x, y, values) {
+    constructor(objectRef, x, y, values) {
         super(x, y);
-        this.id = id;
+        this.objectRef = objectRef;
         this.values = values;
     }
 }
 
 /**
- * One chunk's synced-field deltas for one behavior, as packed columns: object `i` is `ids[i]`,
+ * One chunk's synced-field deltas for one behavior, as packed columns: object `i` is `objectRefs[i]`,
  * owning the next `fieldCount` entries of the flattened `values`.
  */
 export class ObjectFieldsBatchEvent extends AbstractBatchEvent {
 
     static wireFields = {
         fieldCount: "int32",
-        ids: "int64[]",
+        objectRefs: "int64[]",
         values: "sint32[]",
     };
 
@@ -216,17 +216,17 @@ export class ObjectFieldsBatchEvent extends AbstractBatchEvent {
     constructor(x, y, fieldCount) {
         super(x, y);
         this.fieldCount = fieldCount;
-        this.ids = [];
+        this.objectRefs = [];
         this.values = [];
     }
 
     /**
-     * @param {number} id
+     * @param {number} objectRef
      * @param {number[]} values
      * @returns {void}
      */
-    add(id, values) {
-        this.ids.push(id);
+    add(objectRef, values) {
+        this.objectRefs.push(objectRef);
         for (const value of values) {
             this.values.push(value);
         }
@@ -237,9 +237,9 @@ export class ObjectFieldsBatchEvent extends AbstractBatchEvent {
      */
     explode() {
         const events = [];
-        for (let i = 0; i < this.ids.length; i += 1) {
+        for (let i = 0; i < this.objectRefs.length; i += 1) {
             const at = i * this.fieldCount;
-            events.push(new ObjectFieldsEvent(this.ids[i], this.x, this.y, this.values.slice(at, at + this.fieldCount)));
+            events.push(new ObjectFieldsEvent(this.objectRefs[i], this.x, this.y, this.values.slice(at, at + this.fieldCount)));
         }
         return events;
     }

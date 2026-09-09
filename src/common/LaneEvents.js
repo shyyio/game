@@ -72,8 +72,8 @@ export class LaneGeometryBatchEvent extends AbstractBatchEvent {
         this.laneRefs.push(laneRef);
         this.outPortRefs.push(outPortRef);
         this.cellCounts.push(cellObjectRefs.length);
-        for (const objectId of cellObjectRefs) {
-            this.cellObjectRefs.push(objectId);
+        for (const objectRef of cellObjectRefs) {
+            this.cellObjectRefs.push(objectRef);
         }
         for (const edge of cellParentEdges) {
             this.cellParentEdges.push(edge);

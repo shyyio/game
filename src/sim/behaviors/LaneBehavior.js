@@ -35,7 +35,7 @@ export class LaneBehavior extends AbstractBehavior {
     chooseParent(engine, candidates) {
         let chosen = candidates[0];
         for (const eid of candidates) {
-            if (engine.placed.objectIdOf(eid) > engine.placed.objectIdOf(chosen)) {
+            if (engine.placed.objectRefOf(eid) > engine.placed.objectRefOf(chosen)) {
                 chosen = eid;
             }
         }

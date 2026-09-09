@@ -70,7 +70,7 @@ test("deleting a pipe through the generic path relinks the networks", async () =
 
     const middleEid = engine.placed.eidsOf(PipeDefinition.objectTypeId)
         .find(eid => engine.Position.x[eid] === 1 && engine.Position.y[eid] === 0);
-    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectIdOf(middleEid)));
+    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(middleEid)));
 
     assert.equal(pipes.networkAt(0, 0).size, 1);
     assert.equal(pipes.networkAt(2, 0).size, 1);

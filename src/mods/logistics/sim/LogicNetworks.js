@@ -3,12 +3,12 @@ import {LogicWireSetEvent, LogicWireClearEvent} from "../common/events.js";
 
 /**
  * The canonical key of a wire.
- * @param {number} aObjectId
- * @param {number} bObjectId
+ * @param {number} aObjectRef
+ * @param {number} bObjectRef
  * @returns {string}
  */
-function wireKey(aObjectId, bObjectId) {
-    return `${Math.min(aObjectId, bObjectId)}:${Math.max(aObjectId, bObjectId)}`;
+function wireKey(aObjectRef, bObjectRef) {
+    return `${Math.min(aObjectRef, bObjectRef)}:${Math.max(aObjectRef, bObjectRef)}`;
 }
 
 /**
@@ -17,7 +17,7 @@ function wireKey(aObjectId, bObjectId) {
 export class LogicNetwork {
 
     /**
-     * @param {number} id - the smallest member objectId
+     * @param {number} id - the smallest member objectRef
      * @param {number[]} poleIds
      * @param {number[]} deviceIds
      */
@@ -42,17 +42,17 @@ export class LogicNetworks {
         this.engine = engine;
         this.placed = engine.placed;
         /**
-         * The objectIds of every placed pole (a lone pole is still its own component).
+         * The objectRefs of every placed pole (a lone pole is still its own component).
          * @type {Set<number>}
          */
         this._poles = new Set();
         /**
-         * Wire key -> its {a, b} endpoint objectIds.
+         * Wire key -> its {a, b} endpoint objectRefs.
          * @type {Map<string, {a: number, b: number}>}
          */
         this._wires = new Map();
         /**
-         * Endpoint objectId -> the wire keys touching it, so a despawn never walks every wire.
+         * Endpoint objectRef -> the wire keys touching it, so a despawn never walks every wire.
          * @type {Map<number, Set<string>>}
          */
         this._wiresByEndpoint = new Map();
@@ -65,18 +65,18 @@ export class LogicNetworks {
      * @returns {void}
      */
     addPole(eid) {
-        this._poles.add(this.placed.objectIdOf(eid));
+        this._poles.add(this.placed.objectRefOf(eid));
         this._dirty = true;
     }
 
     /**
      * Drops a despawned endpoint and every wire hanging off it.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    removeObject(objectId) {
-        const wasPole = this._poles.delete(objectId);
-        const keys = this._wiresByEndpoint.get(objectId);
+    removeObject(objectRef) {
+        const wasPole = this._poles.delete(objectRef);
+        const keys = this._wiresByEndpoint.get(objectRef);
         if (keys !== undefined) {
             for (const key of [...keys]) {
                 const wire = this._wires.get(key);
@@ -91,18 +91,18 @@ export class LogicNetworks {
 
     /**
      * Adds a wire between two endpoints; an existing wire is a no-op.
-     * @param {number} aObjectId
-     * @param {number} bObjectId
+     * @param {number} aObjectRef
+     * @param {number} bObjectRef
      * @returns {void}
      */
-    wire(aObjectId, bObjectId) {
-        const key = wireKey(aObjectId, bObjectId);
+    wire(aObjectRef, bObjectRef) {
+        const key = wireKey(aObjectRef, bObjectRef);
         if (this._wires.has(key)) {
             return;
         }
-        this._hold(key, {a: aObjectId, b: bObjectId});
+        this._hold(key, {a: aObjectRef, b: bObjectRef});
         this._dirty = true;
-        this._emitAtEndpoints(LogicWireSetEvent, aObjectId, bObjectId);
+        this._emitAtEndpoints(LogicWireSetEvent, aObjectRef, bObjectRef);
     }
 
     /**
@@ -114,10 +114,10 @@ export class LogicNetworks {
      */
     _hold(key, wire) {
         this._wires.set(key, wire);
-        for (const objectId of [wire.a, wire.b]) {
-            const held = this._wiresByEndpoint.get(objectId);
+        for (const objectRef of [wire.a, wire.b]) {
+            const held = this._wiresByEndpoint.get(objectRef);
             if (held === undefined) {
-                this._wiresByEndpoint.set(objectId, new Set([key]));
+                this._wiresByEndpoint.set(objectRef, new Set([key]));
             } else {
                 held.add(key);
             }
@@ -136,11 +136,11 @@ export class LogicNetworks {
             return false;
         }
         this._wires.delete(key);
-        for (const objectId of [wire.a, wire.b]) {
-            const held = this._wiresByEndpoint.get(objectId);
+        for (const objectRef of [wire.a, wire.b]) {
+            const held = this._wiresByEndpoint.get(objectRef);
             held.delete(key);
             if (held.size === 0) {
-                this._wiresByEndpoint.delete(objectId);
+                this._wiresByEndpoint.delete(objectRef);
             }
         }
         return true;
@@ -148,25 +148,25 @@ export class LogicNetworks {
 
     /**
      * Removes a wire; a missing wire is a no-op.
-     * @param {number} aObjectId
-     * @param {number} bObjectId
+     * @param {number} aObjectRef
+     * @param {number} bObjectRef
      * @returns {void}
      */
-    unwire(aObjectId, bObjectId) {
-        if (!this._drop(wireKey(aObjectId, bObjectId))) {
+    unwire(aObjectRef, bObjectRef) {
+        if (!this._drop(wireKey(aObjectRef, bObjectRef))) {
             return;
         }
         this._dirty = true;
-        this._emitAtEndpoints(LogicWireClearEvent, aObjectId, bObjectId);
+        this._emitAtEndpoints(LogicWireClearEvent, aObjectRef, bObjectRef);
     }
 
     /**
-     * @param {number} aObjectId
-     * @param {number} bObjectId
+     * @param {number} aObjectRef
+     * @param {number} bObjectRef
      * @returns {boolean}
      */
-    hasWire(aObjectId, bObjectId) {
-        return this._wires.has(wireKey(aObjectId, bObjectId));
+    hasWire(aObjectRef, bObjectRef) {
+        return this._wires.has(wireKey(aObjectRef, bObjectRef));
     }
 
     /**
@@ -187,13 +187,13 @@ export class LogicNetworks {
     }
 
     /**
-     * The network containing the pole or device with `objectId`, or null.
-     * @param {number} objectId
+     * The network containing the pole or device with `objectRef`, or null.
+     * @param {number} objectRef
      * @returns {LogicNetwork|null}
      */
-    networkOf(objectId) {
+    networkOf(objectRef) {
         for (const network of this.networks) {
-            if (network.poleIds.includes(objectId) || network.deviceIds.includes(objectId)) {
+            if (network.poleIds.includes(objectRef) || network.deviceIds.includes(objectRef)) {
                 return network;
             }
         }
@@ -245,20 +245,20 @@ export class LogicNetworks {
      * Emits one wire event per distinct endpoint chunk, so both sides' viewers hear it.
      * @private
      * @param {Function} eventClass
-     * @param {number} aObjectId
-     * @param {number} bObjectId
+     * @param {number} aObjectRef
+     * @param {number} bObjectRef
      * @returns {void}
      */
-    _emitAtEndpoints(eventClass, aObjectId, bObjectId) {
+    _emitAtEndpoints(eventClass, aObjectRef, bObjectRef) {
         const engine = this.engine;
         const position = engine.Position;
         const emitted = new Set();
-        for (const objectId of [aObjectId, bObjectId]) {
-            const eid = this.placed.eidByObjectId(objectId);
+        for (const objectRef of [aObjectRef, bObjectRef]) {
+            const eid = this.placed.eidByObjectRef(objectRef);
             if (eid === undefined) {
                 continue;
             }
-            const event = new eventClass(position.x[eid], position.y[eid], aObjectId, bObjectId);
+            const event = new eventClass(position.x[eid], position.y[eid], aObjectRef, bObjectRef);
             if (emitted.has(event.chunk)) {
                 continue;
             }
@@ -277,8 +277,8 @@ export class LogicNetworks {
         this._dirty = false;
         const neighbors = new Map();
         for (const [key, wire] of [...this._wires]) {
-            if (this.placed.eidByObjectId(wire.a) === undefined
-                || this.placed.eidByObjectId(wire.b) === undefined) {
+            if (this.placed.eidByObjectRef(wire.a) === undefined
+                || this.placed.eidByObjectRef(wire.b) === undefined) {
                 this._drop(key);
                 continue;
             }
@@ -296,27 +296,27 @@ export class LogicNetworks {
             }
         }
         const nodes = new Set(this._poles);
-        for (const objectId of neighbors.keys()) {
-            nodes.add(objectId);
+        for (const objectRef of neighbors.keys()) {
+            nodes.add(objectRef);
         }
 
         const componentByNode = new Map();
         const components = [];
-        for (const seedObjectId of nodes) {
-            if (componentByNode.has(seedObjectId)) {
+        for (const seedObjectRef of nodes) {
+            if (componentByNode.has(seedObjectRef)) {
                 continue;
             }
-            const members = [seedObjectId];
-            componentByNode.set(seedObjectId, members);
+            const members = [seedObjectRef];
+            componentByNode.set(seedObjectRef, members);
             for (let at = 0; at < members.length; at += 1) {
                 const held = neighbors.get(members[at]);
                 if (held === undefined) {
                     continue;
                 }
-                for (const objectId of held) {
-                    if (!componentByNode.has(objectId)) {
-                        componentByNode.set(objectId, members);
-                        members.push(objectId);
+                for (const objectRef of held) {
+                    if (!componentByNode.has(objectRef)) {
+                        componentByNode.set(objectRef, members);
+                        members.push(objectRef);
                     }
                 }
             }
@@ -325,8 +325,8 @@ export class LogicNetworks {
 
         this._networks = components.map(members => {
             const sorted = [...members].sort((a, b) => a - b);
-            const poleIds = sorted.filter(objectId => this._poles.has(objectId));
-            const deviceIds = sorted.filter(objectId => !this._poles.has(objectId));
+            const poleIds = sorted.filter(objectRef => this._poles.has(objectRef));
+            const deviceIds = sorted.filter(objectRef => !this._poles.has(objectRef));
             return new LogicNetwork(sorted[0], poleIds, deviceIds);
         });
     }

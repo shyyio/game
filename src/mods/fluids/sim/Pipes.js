@@ -80,7 +80,7 @@ export class Pipes {
         ], {snapshotOnly: true});
         this._memberDef = engine.components.define("PipeNetworkMember", [
             {name: "network", kind: "eid", defaultValue: NO_EID},
-            {name: "objectId", defaultValue: NO_EID},
+            {name: "objectRef", defaultValue: NO_EID},
         ], {snapshotOnly: true});
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
@@ -161,7 +161,7 @@ export class Pipes {
      * @returns {number} the network id
      */
     placePipe(x, y, id=undefined) {
-        const pipe = {x, y, id: id === undefined ? this.engine.createObjectId() : id};
+        const pipe = {x, y, id: id === undefined ? this.engine.createObjectRef() : id};
         this._pipeByTile.set(tileId(x, y), pipe);
         this._pipeById.set(pipe.id, pipe);
 
@@ -557,7 +557,7 @@ export class Pipes {
             for (const pipe of net.pipes) {
                 const memberEid = this.engine.components.createEntity(this._memberDef);
                 M.network[memberEid] = netEid;
-                M.objectId[memberEid] = pipe.id;
+                M.objectRef[memberEid] = pipe.id;
             }
         }
     }
@@ -595,9 +595,9 @@ export class Pipes {
         const M = this._memberDef.store;
         const membersByNet = new Map();
         for (const eid of this.engine.components.entitiesWith(this._memberDef)) {
-            const pipe = this.pipeById(M.objectId[eid]);
+            const pipe = this.pipeById(M.objectRef[eid]);
             if (pipe === null) {
-                throw new Error(`PipeNetworkMember references unknown pipe ${M.objectId[eid]}`);
+                throw new Error(`PipeNetworkMember references unknown pipe ${M.objectRef[eid]}`);
             }
             getOrCreate(membersByNet, M.network[eid], () => []).push(pipe);
         }

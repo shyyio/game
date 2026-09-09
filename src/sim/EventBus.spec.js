@@ -8,8 +8,8 @@ function chunkEvent(chunk) {
     return {chunk, subscribersIn: bus => bus.chunkSubscribers(chunk)};
 }
 
-function objectEvent(objectId) {
-    return {objectId, subscribersIn: bus => bus.objectSubscribers(objectId)};
+function objectEvent(objectRef) {
+    return {objectRef, subscribersIn: bus => bus.objectSubscribers(objectRef)};
 }
 
 test("addSession allocates ascending ids", () => {

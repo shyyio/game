@@ -33,7 +33,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, eid) {
-        engine.resolve(LogicRules).dropTerminal(engine.placed.objectIdOf(eid));
+        engine.resolve(LogicRules).dropTerminal(engine.placed.objectRefOf(eid));
     }
 
     /**
@@ -53,11 +53,11 @@ export class LogicTerminalBehavior extends AbstractBehavior {
         const eids = def.eids;
         for (let row = 0; row < def.count; row += 1) {
             const eid = eids[row];
-            const rules = rulesService.rulesOf(placed.objectIdOf(eid));
+            const rules = rulesService.rulesOf(placed.objectRefOf(eid));
             if (rules.length === 0) {
                 continue;
             }
-            const network = networks.networkOf(placed.objectIdOf(eid));
+            const network = networks.networkOf(placed.objectRefOf(eid));
             const claimed = new Set();
             for (const rule of rules) {
                 LogicTerminalBehavior._evaluateRule(engine, network, rule, claimed);
@@ -70,7 +70,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
      * @param {GameEngine} engine
      * @param {LogicNetwork|null} network - null when the terminal is unwired
      * @param {LogicRule} rule
-     * @param {Set<number>} claimed - device objectIds already written this evaluation
+     * @param {Set<number>} claimed - device objectRefs already written this evaluation
      * @returns {void}
      */
     static _evaluateRule(engine, network, rule, claimed) {
@@ -128,7 +128,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
                 if (condition.deviceId !== 0 && deviceId !== condition.deviceId) {
                     continue;
                 }
-                const eid = placed.eidByObjectId(deviceId);
+                const eid = placed.eidByObjectRef(deviceId);
                 if (eid === undefined) {
                     continue;
                 }
@@ -151,14 +151,14 @@ export class LogicTerminalBehavior extends AbstractBehavior {
      * @private
      * @param {GameEngine} engine
      * @param {LogicNetwork} network
-     * @param {number} deviceObjectId
+     * @param {number} deviceObjectRef
      * @returns {number|null}
      */
-    static _deviceEid(engine, network, deviceObjectId) {
-        if (!network.deviceIds.includes(deviceObjectId)) {
+    static _deviceEid(engine, network, deviceObjectRef) {
+        if (!network.deviceIds.includes(deviceObjectRef)) {
             return null;
         }
-        const eid = engine.placed.eidByObjectId(deviceObjectId);
+        const eid = engine.placed.eidByObjectRef(deviceObjectRef);
         if (eid === undefined) {
             return null;
         }

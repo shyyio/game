@@ -113,10 +113,10 @@ export class GeneratorBehavior extends AbstractBehavior {
     /**
      * @param {GameEngine} engine
      * @param {number} eid
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {InspectHeartbeatEvent}
      */
-    inspect(engine, eid, objectId) {
+    inspect(engine, eid, objectRef) {
         const def = engine.components.get("Generator");
         const generator = def.store;
         const row = def.row(eid);
@@ -129,7 +129,7 @@ export class GeneratorBehavior extends AbstractBehavior {
         if (outItem === EMPTY) {
             displayOutItem = null;
         }
-        return new InspectHeartbeatEvent(objectId, [], [], remaining, this.processingTicks, displayOutItem, this.output);
+        return new InspectHeartbeatEvent(objectRef, [], [], remaining, this.processingTicks, displayOutItem, this.output);
     }
 
     /**

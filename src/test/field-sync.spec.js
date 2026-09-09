@@ -22,7 +22,7 @@ function placeGate(game, player, x, y) {
     const engine = game.simEngine;
     const def = engine.components.get("Gate");
     const eid = def.eids[def.count - 1];
-    return {engine, def, eid, chunk, objectId: engine.placed.objectIdOf(eid)};
+    return {engine, def, eid, chunk, objectRef: engine.placed.objectRefOf(eid)};
 }
 
 test("a marked row's synced fields batch per chunk at tick end, to the chunk's viewers only", async () => {
@@ -39,7 +39,7 @@ test("a marked row's synced fields batch per chunk at tick end, to the chunk's v
     game.runTick();
     const batch = player.events.find(event => event instanceof ObjectFieldsBatchEvent);
     assert.ok(batch, "the tick's deltas fanned out to the chunk's viewers");
-    const change = batch.explode().find(event => event.id === gate.objectId);
+    const change = batch.explode().find(event => event.objectRef === gate.objectRef);
     assert.deepEqual(change.values, [0, 0, EMPTY], "open, fluid, lastOutput: the behavior's declared order");
 
     // A second tick with no mark sends nothing.
@@ -78,12 +78,12 @@ test("chunk sync carries every row off its defaults, after the objects themselve
     game.connect(joiner);
     game.dispatchMessage(new SetViewportMessage([gate.chunk]), joiner);
     const bundle = joiner.events.find(event => event.events !== undefined);
-    const objectsAt = bundle.events.findIndex(event => event.ids !== undefined);
+    const objectsAt = bundle.events.findIndex(event => event.objectRefs !== undefined);
     const fieldsAt = bundle.events.findIndex(event => event instanceof ObjectFieldsBatchEvent);
     assert.ok(objectsAt >= 0 && fieldsAt > objectsAt, "the fields follow the objects they patch");
     const synced = bundle.events[fieldsAt].explode();
     assert.equal(synced.length, 1);
-    assert.equal(synced[0].id, gate.objectId);
+    assert.equal(synced[0].objectRef, gate.objectRef);
     assert.deepEqual(synced[0].values, [0, 0, EMPTY]);
 });
 
@@ -94,7 +94,7 @@ test("eventFor builds one row's current values as a single event", async () => {
     const gate = placeGate(game, player, 5, 5);
     const event = gate.engine.sync.eventFor(gate.def, gate.eid);
     assert.ok(event instanceof ObjectFieldsEvent);
-    assert.equal(event.id, gate.objectId);
+    assert.equal(event.objectRef, gate.objectRef);
     assert.equal(event.x, 5);
     assert.equal(event.y, 5);
     assert.deepEqual(event.values, [1, 0, EMPTY]);

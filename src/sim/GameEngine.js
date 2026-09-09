@@ -199,7 +199,7 @@ export class GameEngine {
      */
     _initSaveState() {
         // Global client-facing object id, shared across all object types so ids never collide.
-        this._nextObjectId = 1;
+        this._nextObjectRef = 1;
 
         // Whole ticks elapsed, incremented once per tick (see _registerCoreSystems).
         // A stable per-tick seed component for deterministic per-craft rolls (see MachineBehavior).
@@ -469,7 +469,7 @@ export class GameEngine {
      * @returns {object}
      */
     saveGlobals() {
-        return {nextObjectId: this._nextObjectId, clock: this.clock, seed: this.seed, ...this.globals};
+        return {nextObjectRef: this._nextObjectRef, clock: this.clock, seed: this.seed, ...this.globals};
     }
 
     /**
@@ -478,11 +478,11 @@ export class GameEngine {
      * @returns {void}
      */
     restoreGlobals(globals) {
-        this._nextObjectId = globals.nextObjectId;
+        this._nextObjectRef = globals.nextObjectRef;
         this.clock = globals.clock === undefined ? 0 : globals.clock;
         this.seed = globals.seed;
         for (const key of Object.keys(globals)) {
-            if (key !== "nextObjectId" && key !== "clock" && key !== "seed") {
+            if (key !== "nextObjectRef" && key !== "clock" && key !== "seed") {
                 this.globals[key] = globals[key];
             }
         }
@@ -492,9 +492,9 @@ export class GameEngine {
      * Creates the next global client-facing object id.
      * @returns {number}
      */
-    createObjectId() {
-        const id = this._nextObjectId;
-        this._nextObjectId += 1;
+    createObjectRef() {
+        const id = this._nextObjectRef;
+        this._nextObjectRef += 1;
         return id;
     }
 
@@ -542,7 +542,7 @@ export class GameEngine {
     /**
      * A mod registers a spawn listener, called for every placed-object create once its footprint is
      * tracked, before its insert event.
-     * @param {function(number, number): void} listener - (eid, objectId)
+     * @param {function(number, number): void} listener - (eid, objectRef)
      * @returns {void}
      */
     registerSpawnListener(listener) {
@@ -551,19 +551,19 @@ export class GameEngine {
 
     /**
      * @param {number} eid
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    notifySpawn(eid, objectId) {
+    notifySpawn(eid, objectRef) {
         for (const listener of this._spawnListeners) {
-            listener(eid, objectId);
+            listener(eid, objectRef);
         }
     }
 
     /**
      * A mod registers a despawn listener, called for every placed-object delete before the entity
      * is destroyed.
-     * @param {function(number, number): void} listener - (eid, objectId)
+     * @param {function(number, number): void} listener - (eid, objectRef)
      * @returns {void}
      */
     registerDespawnListener(listener) {
@@ -572,12 +572,12 @@ export class GameEngine {
 
     /**
      * @param {number} eid
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    notifyDespawn(eid, objectId) {
+    notifyDespawn(eid, objectRef) {
         for (const listener of this._despawnListeners) {
-            listener(eid, objectId);
+            listener(eid, objectRef);
         }
     }
 
@@ -621,12 +621,12 @@ export class GameEngine {
 
     /**
      * The current inspect snapshot for an object, or null if no module owns that client id.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {InspectHeartbeatEvent|null}
      */
-    inspectSnapshot(objectId) {
+    inspectSnapshot(objectRef) {
         for (let i = 0; i < this._inspectors.length; i += 1) {
-            const snapshot = this._inspectors[i](objectId);
+            const snapshot = this._inspectors[i](objectRef);
             if (snapshot !== null) {
                 return snapshot;
             }
@@ -648,10 +648,10 @@ export class GameEngine {
         let handled;
         if (message instanceof DeleteObjectMessage) {
             // Gate before untrack: a rejection after it would leave the object half-deleted.
-            if (!this._deleteAllowed(message.id, playerId)) {
+            if (!this._deleteAllowed(message.objectRef, playerId)) {
                 return true;
             }
-            this.untrack(message.id);
+            this.untrack(message.objectRef);
             handled = this._messageHandlers.some(handler => handler(message, playerId));
             // A delete (and any belt relink it triggered) can strand ports; destroy them now.
             this.ports.collectUnreferenced();
@@ -672,8 +672,8 @@ export class GameEngine {
     removeObjectsOfType(objectTypeId) {
         const eids = this.placed.eidsOf(objectTypeId);
         for (const eid of eids) {
-            const message = new DeleteObjectMessage(this.placed.objectIdOf(eid));
-            this.untrack(message.id);
+            const message = new DeleteObjectMessage(this.placed.objectRefOf(eid));
+            this.untrack(message.objectRef);
             this._messageHandlers.some(handler => handler(message, PLAYER_ID_NONE));
         }
         this.ports.collectUnreferenced();
@@ -683,15 +683,15 @@ export class GameEngine {
     /**
      * Whether `playerId` may delete the object; unknown ids pass through to the handlers.
      * @private
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {number} playerId
      * @returns {boolean}
      */
-    _deleteAllowed(objectId, playerId) {
+    _deleteAllowed(objectRef, playerId) {
         if (this.placed === null) {
             return true;
         }
-        const eid = this.placed.eidByObjectId(objectId);
+        const eid = this.placed.eidByObjectRef(objectRef);
         if (eid === undefined) {
             return true;
         }
@@ -754,20 +754,20 @@ export class GameEngine {
 
     /**
      * Occupies a placed object's footprint, tagged with its client id so a delete destroys it.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {{x:number, y:number, layer:string}[]} footprint
      * @returns {void}
      */
-    track(objectId, footprint) {
-        this.space.occupy(footprint, objectId);
+    track(objectRef, footprint) {
+        this.space.occupy(footprint, objectRef);
     }
 
     /**
      * Destroys a deleted object's footprint.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    untrack(objectId) {
-        this.space.destroyOwnerCells(objectId);
+    untrack(objectRef) {
+        this.space.destroyOwnerCells(objectRef);
     }
 }

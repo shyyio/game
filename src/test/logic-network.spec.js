@@ -13,12 +13,12 @@ import {LogicWireSetEvent, LogicWireClearEvent} from "@/mods/logistics/common/ev
 import {LogicNetworks} from "@/mods/logistics/sim/LogicNetworks.js";
 
 /**
- * Places an object and returns its objectId (the newest placed row's).
+ * Places an object and returns its objectRef (the newest placed row's).
  */
 function place(engine, type, x, y, direction=Direction.UP) {
     assert.equal(engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, direction)), true);
     const def = engine.placed.def;
-    return def.store.objectId[def.row(def.eids[def.count - 1])];
+    return def.store.objectRef[def.row(def.eids[def.count - 1])];
 }
 
 test("poles connect only through explicit wires", async () => {
@@ -86,8 +86,8 @@ test("a pole-pole wire message round-trips, toggles off, and respects range", as
     assert.equal(networks.hasWire(a, b), true);
     const set = player.events.find(event => event instanceof LogicWireSetEvent);
     assert.ok(set, "the wire fanned out to the chunk's viewers");
-    assert.equal(set.aObjectId, a);
-    assert.equal(set.bObjectId, b);
+    assert.equal(set.aObjectRef, a);
+    assert.equal(set.bObjectRef, b);
 
     player.events.length = 0;
     game.dispatchMessage(new WireUnlinkMessage(a, b), player);
@@ -213,6 +213,6 @@ test("a late joiner learns the chunk's wires through chunk sync", async () => {
     const bundle = joiner.events.find(event => event.events !== undefined);
     const wires = bundle.events.filter(event => event instanceof LogicWireSetEvent);
     assert.equal(wires.length, 2, "both wires synced once each for the shared chunk");
-    const keys = wires.map(event => `${event.aObjectId}:${event.bObjectId}`).sort();
+    const keys = wires.map(event => `${event.aObjectRef}:${event.bObjectRef}`).sort();
     assert.deepEqual(keys, [`${gateId}:${poleId}`, `${poleId}:${otherPoleId}`].sort());
 });

@@ -1,7 +1,7 @@
 import {getOrCreate, removeFromGroup, chunkId} from "@/common/util.js";
 
 /**
- * One road-attached machine's standing worker allocation. `granted` and `housingObjectId` are the
+ * One road-attached machine's standing worker allocation. `granted` and `housingObjectRef` are the
  * allocation's result, filled in as the component's supply is handed out; `supply`/`demand` are its
  * whole component's totals, carried for inspect.
  */
@@ -9,15 +9,15 @@ export class WorkerAssignment {
 
     /**
      * @param {object} config
-     * @param {number} config.objectId - the machine
+     * @param {number} config.objectRef - the machine
      * @param {number} config.x
      * @param {number} config.y
      * @param {number} config.supply
      * @param {number} config.demand
      * @param {number} config.component
      */
-    constructor({objectId, x, y, supply, demand, component}) {
-        this.objectId = objectId;
+    constructor({objectRef, x, y, supply, demand, component}) {
+        this.objectRef = objectRef;
         this.x = x;
         this.y = y;
         this.supply = supply;
@@ -27,7 +27,7 @@ export class WorkerAssignment {
          * The housing the workers come from, null while none are granted.
          * @type {number|null}
          */
-        this.housingObjectId = null;
+        this.housingObjectRef = null;
         this.granted = 0;
     }
 }
@@ -40,11 +40,11 @@ export class WorkerAssignments {
 
     constructor() {
         /**
-         * machineObjectId -> assignment.
+         * machineObjectRef -> assignment.
          * @type {Map<number, WorkerAssignment>}
          * @private
          */
-        this._byObjectId = new Map();
+        this._byObjectRef = new Map();
         /** @private */
         this._byChunk = new Map();
         /** @private */
@@ -52,11 +52,11 @@ export class WorkerAssignments {
     }
 
     /**
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {WorkerAssignment|undefined}
      */
-    get(objectId) {
-        return this._byObjectId.get(objectId);
+    get(objectRef) {
+        return this._byObjectRef.get(objectRef);
     }
 
     /**
@@ -73,23 +73,23 @@ export class WorkerAssignments {
      * @returns {void}
      */
     store(assignment) {
-        this._byObjectId.set(assignment.objectId, assignment);
-        getOrCreate(this._byChunk, chunkId(assignment.x, assignment.y), () => new Set()).add(assignment.objectId);
-        getOrCreate(this._byComponent, assignment.component, () => new Set()).add(assignment.objectId);
+        this._byObjectRef.set(assignment.objectRef, assignment);
+        getOrCreate(this._byChunk, chunkId(assignment.x, assignment.y), () => new Set()).add(assignment.objectRef);
+        getOrCreate(this._byComponent, assignment.component, () => new Set()).add(assignment.objectRef);
     }
 
     /**
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    drop(objectId) {
-        const assignment = this._byObjectId.get(objectId);
+    drop(objectRef) {
+        const assignment = this._byObjectRef.get(objectRef);
         if (assignment === undefined) {
             return;
         }
-        this._byObjectId.delete(objectId);
-        removeFromGroup(this._byChunk, chunkId(assignment.x, assignment.y), objectId);
-        removeFromGroup(this._byComponent, assignment.component, objectId);
+        this._byObjectRef.delete(objectRef);
+        removeFromGroup(this._byChunk, chunkId(assignment.x, assignment.y), objectRef);
+        removeFromGroup(this._byComponent, assignment.component, objectRef);
     }
 
     /**
@@ -100,16 +100,16 @@ export class WorkerAssignments {
      */
     within(components) {
         if (components === null) {
-            return new Map(this._byObjectId);
+            return new Map(this._byObjectRef);
         }
         const held = new Map();
         for (const component of components) {
-            const objectIds = this._byComponent.get(component);
-            if (objectIds === undefined) {
+            const objectRefs = this._byComponent.get(component);
+            if (objectRefs === undefined) {
                 continue;
             }
-            for (const objectId of objectIds) {
-                held.set(objectId, this._byObjectId.get(objectId));
+            for (const objectRef of objectRefs) {
+                held.set(objectRef, this._byObjectRef.get(objectRef));
             }
         }
         return held;
@@ -119,7 +119,7 @@ export class WorkerAssignments {
      * @returns {void}
      */
     clear() {
-        this._byObjectId = new Map();
+        this._byObjectRef = new Map();
         this._byChunk = new Map();
         this._byComponent = new Map();
     }

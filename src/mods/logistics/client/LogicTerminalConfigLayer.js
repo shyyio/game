@@ -50,14 +50,14 @@ class DropdownOption {
 class PickerDevice {
 
     /**
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {ObjectType} type
      * @param {number} tileX
      * @param {number} tileY
      * @param {number} ordinal - 1-based rank among the network's devices of this type
      */
-    constructor(objectId, type, tileX, tileY, ordinal) {
-        this.objectId = objectId;
+    constructor(objectRef, type, tileX, tileY, ordinal) {
+        this.objectRef = objectRef;
         this.type = type;
         this.tileX = tileX;
         this.tileY = tileY;
@@ -126,8 +126,8 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         this._rulesScrollY = 0;
 
         this._connectors.set("terminal", () => this._managed.panel, () => {
-            const objectId = this._targetObjectId();
-            const entry = objectId === null ? null : this._objects.get(objectId);
+            const objectRef = this._targetObjectRef();
+            const entry = objectRef === null ? null : this._objects.get(objectRef);
             if (entry === null) {
                 return null;
             }
@@ -156,7 +156,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @private
      * @returns {number|null}
      */
-    _targetObjectId() {
+    _targetObjectRef() {
         return this._cache.get("logistics.configTarget");
     }
 
@@ -239,7 +239,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _sendRules() {
-        this._cache.writer("logistics").configureLogicRules(this._targetObjectId(), this._rules);
+        this._cache.writer("logistics").configureLogicRules(this._targetObjectRef(), this._rules);
     }
 
     /**
@@ -247,8 +247,8 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _rebuild() {
-        const objectId = this._targetObjectId();
-        if (objectId === null) {
+        const objectRef = this._targetObjectRef();
+        if (objectRef === null) {
             return;
         }
         if (this._rulesScroll !== null) {
@@ -284,7 +284,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             stack.text("Not wired to a logic network.", TextRole.MUTED);
             return;
         }
-        stack.header(`Devices (${snapshot.deviceObjectIds.length})`);
+        stack.header(`Devices (${snapshot.deviceObjectRefs.length})`);
         stack.scrollSection(this._pickerDevices(snapshot), (device) => ({
             label: device.label,
             rightLabel: `${device.tileX}, ${device.tileY}`,
@@ -407,7 +407,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             const target = buildIconButton(this.textureRegistry, deviceTexture, 0xffffff, ACTIVE_ACCENT,
                 () => this._openDropdown(
                     this._devicesWithWriteKey(snapshot, rule.actionKey).map(held => new DropdownOption(held.label, () => {
-                        rule.actionDeviceId = held.objectId;
+                        rule.actionDeviceId = held.objectRef;
                         this._sendRules();
                     })), target));
             row.pushLeft(target);
@@ -519,7 +519,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             }
             const containerButton = buildIconButton(this.textureRegistry, containerTexture, 0xffffff, ACTIVE_ACCENT,
                 () => this._openDropdown(containers.map(device => new DropdownOption(device.label, () => {
-                    condition.deviceId = device.objectId;
+                    condition.deviceId = device.objectRef;
                     this._sendRules();
                 })), containerButton));
             buttons.push(containerButton);
@@ -552,7 +552,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         }
         const deviceButton = buildIconButton(this.textureRegistry, deviceTexture, 0xffffff, ACTIVE_ACCENT,
             () => this._openDropdown(devices.map(held => new DropdownOption(held.label, () => {
-                condition.deviceId = held.objectId;
+                condition.deviceId = held.objectRef;
                 this._sendRules();
             })), deviceButton));
         buttons.push(deviceButton);
@@ -659,7 +659,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             seenKeys.push(key);
             for (const [stateIndex, state] of this._modRegistry.logicKeyEntry(key).states.entries()) {
                 options.push(new DropdownOption(state.verb, () => {
-                    const appended = new LogicRule(device.objectId, 0, 0, []);
+                    const appended = new LogicRule(device.objectRef, 0, 0, []);
                     this._applySwitch(appended, device, key, stateIndex);
                     this._rules.push(appended);
                     this._sendRules();
@@ -679,7 +679,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _applySwitch(rule, device, key, stateIndex) {
-        rule.actionDeviceId = device.objectId;
+        rule.actionDeviceId = device.objectRef;
         rule.actionKey = key;
         rule.actionValue = this._modRegistry.logicKeyEntry(key).states[stateIndex].value;
     }
@@ -731,7 +731,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             if (containers.length > 0) {
                 options.push(new DropdownOption("Amount stored", () => append(storedCondition(
                     storables[0].itemTypeId, LOGIC_COMPARATOR_AT_LEAST, DEFAULT_STORED_VALUE,
-                    containers[0].objectId))));
+                    containers[0].objectRef))));
             }
         }
         const statedKeys = [];
@@ -746,7 +746,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             const entry = this._modRegistry.logicKeyEntry(key);
             const devices = this._devicesWithReadKey(snapshot, key);
             options.push(new DropdownOption(entry.stateLabel, () => append(deviceCondition(
-                devices[0].objectId, key, LOGIC_COMPARATOR_EXACTLY, entry.states[0].value))));
+                devices[0].objectRef, key, LOGIC_COMPARATOR_EXACTLY, entry.states[0].value))));
         }
         return options;
     }
@@ -842,19 +842,19 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
 
     /**
      * The snapshot's devices as picker entries: per-type ordinals count up in the snapshot's
-     * objectId order, so "Gate #2" stays stable while the network's membership holds.
+     * objectRef order, so "Gate #2" stays stable while the network's membership holds.
      * @private
      * @param {LogicSnapshotEvent} snapshot
      * @returns {PickerDevice[]}
      */
     _pickerDevices(snapshot) {
         const countByType = new Map();
-        return snapshot.deviceObjectIds.map((deviceObjectId, i) => {
+        return snapshot.deviceObjectRefs.map((deviceObjectRef, i) => {
             const objectTypeId = snapshot.deviceTypeIds[i];
             const ordinal = (countByType.get(objectTypeId) || 0) + 1;
             countByType.set(objectTypeId, ordinal);
             return new PickerDevice(
-                deviceObjectId,
+                deviceObjectRef,
                 this._modRegistry.objectTypeById(objectTypeId),
                 snapshot.deviceTileXs[i],
                 snapshot.deviceTileYs[i],
@@ -866,11 +866,11 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
     /**
      * @private
      * @param {LogicSnapshotEvent} snapshot
-     * @param {number} deviceObjectId
+     * @param {number} deviceObjectRef
      * @returns {PickerDevice|undefined}
      */
-    _deviceById(snapshot, deviceObjectId) {
-        return this._pickerDevices(snapshot).find(device => device.objectId === deviceObjectId);
+    _deviceById(snapshot, deviceObjectRef) {
+        return this._pickerDevices(snapshot).find(device => device.objectRef === deviceObjectRef);
     }
 
     /**

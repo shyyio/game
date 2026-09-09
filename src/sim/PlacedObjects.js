@@ -9,7 +9,7 @@ const EMPTY_EIDS = new Set();
 
 /**
  * The generic entity host for every derived (behavior-driven) object type: the shared PlacedObject
- * component, the objectId -> eid index, and the ONE spawn/despawn/chunk-sync/inspect path. Built by
+ * component, the objectRef -> eid index, and the ONE spawn/despawn/chunk-sync/inspect path. Built by
  * the engine before sim mods wire up; installs each frozen type's behavior once per behavior class.
  */
 export class PlacedObjects {
@@ -23,7 +23,7 @@ export class PlacedObjects {
         // Where a placed object sits lives on the shared Position component, not here.
         this.def = engine.components.define("PlacedObject", [
             {name: "objectTypeId", kind: "type"},
-            {name: "objectId", defaultValue: NO_EID},
+            {name: "objectRef", defaultValue: NO_EID},
             // Who placed it, for record keeping: a friend building in your chunk is recorded as
             // themselves. Economics read claimOwnerOf instead, which follows the ground.
             {name: "placedBy", defaultValue: PLAYER_ID_NONE},
@@ -34,7 +34,7 @@ export class PlacedObjects {
         // objectTypeId -> behavior, a dense array over the positional objectTypeIds: the tick loops resolve a
         // behavior per entity per tick, so this stays off a Map lookup.
         this._behaviors = [];
-        this._eidByObjectId = new Map();
+        this._eidByObjectRef = new Map();
         // Chunk -> the eids placed in it, so a subscribing session syncs a chunk without a scan of
         // every placed object in the world.
         this._eidsByChunk = new Map();
@@ -45,7 +45,7 @@ export class PlacedObjects {
         // after the host's — the client rebuilds objects first, then what references them.
         engine.registerMessageHandler((message, playerId) => this._message(message, playerId));
         engine.registerChunkSync(chunk => this._chunkSync(chunk));
-        engine.registerInspector(objectId => this._inspect(objectId));
+        engine.registerInspector(objectRef => this._inspect(objectRef));
         engine.snapshots.registerRebuildHook(() => this._rebuild());
 
         for (const type of registry.objectTypes) {
@@ -87,8 +87,8 @@ export class PlacedObjects {
      * @param {number} eid
      * @returns {number}
      */
-    objectIdOf(eid) {
-        return this.def.store.objectId[this.def.row(eid)];
+    objectRefOf(eid) {
+        return this.def.store.objectRef[this.def.row(eid)];
     }
 
     /**
@@ -155,13 +155,13 @@ export class PlacedObjects {
      * @returns {number}
      */
     eidAt(tileX, tileY, layer) {
-        const objectId = this.engine.space.ownerAt(tileX, tileY, layer);
-        if (objectId === null) {
+        const objectRef = this.engine.space.ownerAt(tileX, tileY, layer);
+        if (objectRef === null) {
             return NO_EID;
         }
-        const eid = this._eidByObjectId.get(objectId);
+        const eid = this._eidByObjectRef.get(objectRef);
         if (eid === undefined) {
-            throw new Error(`Cell ${tileX},${tileY} on layer ${layer} is owned by unknown object ${objectId}`);
+            throw new Error(`Cell ${tileX},${tileY} on layer ${layer} is owned by unknown object ${objectRef}`);
         }
         return eid;
     }
@@ -193,19 +193,19 @@ export class PlacedObjects {
      * @returns {void}
      */
     despawn(eid) {
-        const objectId = this.objectIdOf(eid);
-        this.engine.untrack(objectId);
-        this._delete(objectId, PLAYER_ID_NONE);
+        const objectRef = this.objectRefOf(eid);
+        this.engine.untrack(objectRef);
+        this._delete(objectRef, PLAYER_ID_NONE);
         this.engine.ports.collectUnreferenced();
     }
 
     /**
-     * The placed entity with object id `objectId`, or undefined.
-     * @param {number} objectId
+     * The placed entity with object id `objectRef`, or undefined.
+     * @param {number} objectRef
      * @returns {number|undefined}
      */
-    eidByObjectId(objectId) {
-        return this._eidByObjectId.get(objectId);
+    eidByObjectRef(objectRef) {
+        return this._eidByObjectRef.get(objectRef);
     }
 
     /**
@@ -252,7 +252,7 @@ export class PlacedObjects {
             return this._place(message, playerId);
         }
         if (message instanceof DeleteObjectMessage) {
-            return this._delete(message.id, playerId);
+            return this._delete(message.objectRef, playerId);
         }
         return false;
     }
@@ -291,10 +291,10 @@ export class PlacedObjects {
             return true;
         }
         const eid = engine.components.createEntity(this.def);
-        const objectId = engine.createObjectId();
+        const objectRef = engine.createObjectRef();
         const row = this.def.row(eid);
         this.def.store.objectTypeId[row] = type.objectTypeId;
-        this.def.store.objectId[row] = objectId;
+        this.def.store.objectRef[row] = objectRef;
         this.def.store.placedBy[row] = playerId;
         engine.space.setPosition(eid, message.x, message.y, message.direction);
         engine.ports.bindEndpoints(eid, type, message.x, message.y, message.direction);
@@ -304,14 +304,14 @@ export class PlacedObjects {
             engine.sync.markSpawned(engine.components.get(synced.component), eid);
         }
         if (type.placement.solid) {
-            engine.track(objectId, footprint);
+            engine.track(objectRef, footprint);
         }
-        this._eidByObjectId.set(objectId, eid);
+        this._eidByObjectRef.set(objectRef, eid);
         this._indexChunk(eid, message.x, message.y);
         this._notifyChunkChanged(chunkId(message.x, message.y));
-        engine.notifySpawn(eid, objectId);
+        engine.notifySpawn(eid, objectRef);
         const portIds = type.behavior.renderedPortIds(engine, eid);
-        engine.emitEvent(new ObjectInsertEvent(type.objectTypeId, objectId, message.x, message.y, message.direction, portIds));
+        engine.emitEvent(new ObjectInsertEvent(type.objectTypeId, objectRef, message.x, message.y, message.direction, portIds));
         engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_PLACED, playerId, type.objectTypeId, 1);
         return true;
     }
@@ -319,12 +319,12 @@ export class PlacedObjects {
     /**
      * The generic despawn path; an index miss returns false (a bespoke type's delete falls through).
      * @private
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {number} playerId
      * @returns {boolean}
      */
-    _delete(objectId, playerId) {
-        const eid = this._eidByObjectId.get(objectId);
+    _delete(objectRef, playerId) {
+        const eid = this._eidByObjectRef.get(objectRef);
         if (eid === undefined) {
             return false;
         }
@@ -333,15 +333,15 @@ export class PlacedObjects {
         const type = this._types.get(this.objectTypeIdOf(eid));
         engine.ports.unbindEndpoints(eid);
         type.behavior.onDespawn(engine, eid);
-        engine.notifyDespawn(eid, objectId);
+        engine.notifyDespawn(eid, objectRef);
         const x = position.x[eid];
         const y = position.y[eid];
-        engine.emitEvent(new ObjectDeleteEvent(type.objectTypeId, objectId, x, y));
+        engine.emitEvent(new ObjectDeleteEvent(type.objectTypeId, objectRef, x, y));
         engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_DESPAWNED, playerId, type.objectTypeId, 1);
         // Before the destroy, which recycles the eid and may clear its position.
         this._unindexChunk(eid, x, y);
         engine.components.destroyEntity(eid);
-        this._eidByObjectId.delete(objectId);
+        this._eidByObjectRef.delete(objectRef);
         this._notifyChunkChanged(chunkId(x, y));
         return true;
     }
@@ -406,7 +406,7 @@ export class PlacedObjects {
                 batch = new ObjectSyncBatchEvent(origin.x, origin.y);
             }
             batch.add(
-                type.objectTypeId, placedObject.objectId[row], position.x[eid], position.y[eid], position.direction[eid],
+                type.objectTypeId, placedObject.objectRef[row], position.x[eid], position.y[eid], position.direction[eid],
                 type.behavior.renderedPortIds(this.engine, eid),
             );
         }
@@ -418,11 +418,11 @@ export class PlacedObjects {
 
     /**
      * @private
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {InspectHeartbeatEvent|null}
      */
-    _inspect(objectId) {
-        const eid = this._eidByObjectId.get(objectId);
+    _inspect(objectRef) {
+        const eid = this._eidByObjectRef.get(objectRef);
         if (eid === undefined) {
             return null;
         }
@@ -430,24 +430,24 @@ export class PlacedObjects {
         if (!type.inspectable) {
             return null;
         }
-        return type.behavior.inspect(this.engine, eid, objectId);
+        return type.behavior.inspect(this.engine, eid, objectRef);
     }
 
     /**
-     * Rebuilds the objectId index and every entity's rendered ports after a load, plus each behavior
+     * Rebuilds the objectRef index and every entity's rendered ports after a load, plus each behavior
      * class's derived indexes.
      * @private
      * @returns {void}
      */
     _rebuild() {
-        this._eidByObjectId = new Map();
+        this._eidByObjectRef = new Map();
         this._eidsByChunk = new Map();
         const placedObject = this.def.store;
         const position = this.engine.Position;
         const eids = this.def.eids;
         for (let row = 0; row < this.def.count; row += 1) {
             const eid = eids[row];
-            this._eidByObjectId.set(placedObject.objectId[row], eid);
+            this._eidByObjectRef.set(placedObject.objectRef[row], eid);
             this._indexChunk(eid, position.x[eid], position.y[eid]);
             const type = this._types.get(placedObject.objectTypeId[row]);
             this.engine.ports.bindEndpoints(eid, type, position.x[eid], position.y[eid], position.direction[eid]);

@@ -55,8 +55,8 @@ test("a 2x2 housing bakes as one run per covered row", async () => {
 test("a deleted object's chunk drops out of the snapshot", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(BeltDefinition.objectTypeId, 3, 2, Direction.UP));
-    const objectId = engine.placed.objectIdOf(engine.placed.eidsOf(BeltDefinition.objectTypeId)[0]);
-    engine.applyMessage(new DeleteObjectMessage(objectId));
+    const objectRef = engine.placed.objectRefOf(engine.placed.eidsOf(BeltDefinition.objectTypeId)[0]);
+    engine.applyMessage(new DeleteObjectMessage(objectRef));
 
     const event = engine.overworldBake.snapshot(0, 0, 1, 1);
     assert.equal(event.chunks.length, 0);

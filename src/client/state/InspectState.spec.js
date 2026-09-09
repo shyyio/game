@@ -10,14 +10,14 @@ function inspectState() {
     return {state, writer: state.writer("inspect"), view: state.view("inspect")};
 }
 
-function heartbeat(objectId) {
-    return new InspectHeartbeatEvent(objectId, [0], [0], null, 10, null, null);
+function heartbeat(objectRef) {
+    return new InspectHeartbeatEvent(objectRef, [0], [0], null, 10, null, null);
 }
 
 test("open and close maintain the open set and the inspect view", () => {
     const {state, writer, view} = inspectState();
     const openSets = [];
-    state.subscribe("inspect.openObjects", (objectId, present) => openSets.push([objectId, present]));
+    state.subscribe("inspect.openObjects", (objectRef, present) => openSets.push([objectRef, present]));
     writer.open(7);
     assert.deepEqual(view.openIds(), [7]);
     assert.equal(view.isOpen(7), true);
@@ -30,7 +30,7 @@ test("heartbeats store only for open menus; a close drops the stored snapshot", 
     const {state, writer} = inspectState();
     writer.open(7);
     state.onEvent(heartbeat(7));
-    assert.equal(state.mapGet("inspect.heartbeatByObject", 7).objectId, 7);
+    assert.equal(state.mapGet("inspect.heartbeatByObject", 7).objectRef, 7);
 
     // In flight past a close: must not revive the panel.
     writer.close(7);

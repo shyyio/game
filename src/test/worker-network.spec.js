@@ -21,7 +21,7 @@ import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector, flattenBatches} from "@/test/EventCollector.js";
 
 /**
- * Places one object and returns its objectId (the newest row of its type).
+ * Places one object and returns its objectRef (the newest row of its type).
  * @param {GameEngine} engine
  * @param {ObjectType} type
  * @param {number} x
@@ -31,7 +31,7 @@ import {EventCollector, flattenBatches} from "@/test/EventCollector.js";
 function placeObject(engine, type, x, y) {
     assert.equal(engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, Direction.UP)), true);
     const eids = engine.placed.eidsOf(type.objectTypeId);
-    return engine.placed.objectIdOf(eids[eids.length - 1]);
+    return engine.placed.objectRefOf(eids[eids.length - 1]);
 }
 
 /**
@@ -61,12 +61,12 @@ function producedOver(engine, inPort, outPort, ticks) {
 /**
  * The Machine component's carry (banked fractional progress) for one machine.
  * @param {GameEngine} engine
- * @param {number} objectId
+ * @param {number} objectRef
  * @returns {number}
  */
-function carryOf(engine, objectId) {
+function carryOf(engine, objectRef) {
     const def = engine.components.get("Machine");
-    return def.store.carry[def.row(engine.placed.eidByObjectId(objectId))];
+    return def.store.carry[def.row(engine.placed.eidByObjectRef(objectRef))];
 }
 
 // Housing at (2,4) (cells x2-3, y4-5), a road row along y=5, machines on y=4 each adjacent to the
@@ -125,7 +125,7 @@ test("fractional progress banks past a craft and shortens the next", async () =>
     engine.tickAll();
     assert.equal(carryOf(engine, nearId), 0, "bank consumed at load");
     const def = engine.components.get("Machine");
-    const remaining = def.store.remaining[def.row(engine.placed.eidByObjectId(nearId))];
+    const remaining = def.store.remaining[def.row(engine.placed.eidByObjectRef(nearId))];
     assert.ok(Math.abs(remaining - 1.4) < 1e-3, `remaining ${remaining}`);
 });
 
@@ -149,7 +149,7 @@ test("a worker shortage staffs the closest machines first", async () => {
     }
 });
 
-test("a distance tie staffs the older machine (lower objectId)", async () => {
+test("a distance tie staffs the older machine (lower objectRef)", async () => {
     const engine = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
     placeObject(engine, HousingDefinition, 2, 4);
     // Closer machines drain the supply down to one last full crew; it goes to one of two machines

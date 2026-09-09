@@ -107,7 +107,7 @@ export class ExtractorBehavior extends AbstractBehavior {
      * The extractor's inspect snapshot; the bound resource shows as the sole (memory) input.
      * @returns {InspectHeartbeatEvent}
      */
-    inspect(engine, eid, objectId) {
+    inspect(engine, eid, objectRef) {
         const def = engine.components.get("Extractor");
         const extractor = def.store;
         const row = def.row(eid);
@@ -131,7 +131,7 @@ export class ExtractorBehavior extends AbstractBehavior {
             displayOutItem = null;
         }
         return new InspectHeartbeatEvent(
-            objectId,
+            objectRef,
             [0],
             [resourceMemory],
             remaining,

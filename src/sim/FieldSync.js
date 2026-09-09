@@ -171,7 +171,7 @@ export class FieldSync {
     eventFor(def, eid) {
         const set = this._set(def);
         const position = this.engine.Position;
-        return new ObjectFieldsEvent(this.engine.placed.objectIdOf(eid), position.x[eid], position.y[eid], set.valuesAt(def.row(eid)));
+        return new ObjectFieldsEvent(this.engine.placed.objectRefOf(eid), position.x[eid], position.y[eid], set.valuesAt(def.row(eid)));
     }
 
     /**
@@ -209,7 +209,7 @@ export class FieldSync {
                     batch = new ObjectFieldsBatchEvent(x, y, set.fields.length);
                     batches.set(chunk, batch);
                 }
-                batch.add(placed.objectIdOf(eid), values);
+                batch.add(placed.objectRefOf(eid), values);
             }
             set.dirty.length = 0;
             for (const batch of batches.values()) {
@@ -238,7 +238,7 @@ export class FieldSync {
                 if (batch === null) {
                     batch = new ObjectFieldsBatchEvent(position.x[eid], position.y[eid], set.fields.length);
                 }
-                batch.add(placed.objectIdOf(eid), set.valuesAt(row));
+                batch.add(placed.objectRefOf(eid), set.valuesAt(row));
             }
             if (batch !== null) {
                 events.push(batch);

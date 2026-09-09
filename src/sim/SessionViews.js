@@ -86,14 +86,14 @@ export class SessionViews {
     /**
      * Diffs the session's inspected-object set against the requested ids.
      * @param {AbstractSession} session
-     * @param {number[]} objectIds
+     * @param {number[]} objectRefs
      * @returns {void}
      */
-    setInspects(session, objectIds) {
-        const {added} = this.game.bus.setInspects(session.id, objectIds);
+    setInspects(session, objectRefs) {
+        const {added} = this.game.bus.setInspects(session.id, objectRefs);
         // Fill each new menu now, not on the next heartbeat.
-        for (const objectId of added) {
-            this._syncInspect(session, objectId);
+        for (const objectRef of added) {
+            this._syncInspect(session, objectRef);
         }
     }
 
@@ -101,11 +101,11 @@ export class SessionViews {
      * Sends a session one object's current snapshot when its menu opens.
      * @private
      * @param {AbstractSession} session
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    _syncInspect(session, objectId) {
-        const snapshot = this.game.simEngine.inspectSnapshot(objectId);
+    _syncInspect(session, objectRef) {
+        const snapshot = this.game.simEngine.inspectSnapshot(objectRef);
         if (snapshot !== null) {
             this.game.bus.publishTo(session.id, snapshot);
         }
@@ -113,12 +113,12 @@ export class SessionViews {
 
     /**
      * Closes a deleted object's menu on every session inspecting it, then drops its subscriptions.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    closeInspect(objectId) {
-        this.game.bus.publish(new InspectClosedEvent(objectId));
-        this.game.bus.clearObject(objectId);
+    closeInspect(objectRef) {
+        this.game.bus.publish(new InspectClosedEvent(objectRef));
+        this.game.bus.clearObject(objectRef);
     }
 
     /**
@@ -127,10 +127,10 @@ export class SessionViews {
      * @returns {void}
      */
     dispatchInspectEvents() {
-        for (const objectId of this.game.bus.subscribedObjects()) {
-            const snapshot = this.game.simEngine.inspectSnapshot(objectId);
+        for (const objectRef of this.game.bus.subscribedObjects()) {
+            const snapshot = this.game.simEngine.inspectSnapshot(objectRef);
             if (snapshot === null) {
-                this.closeInspect(objectId);
+                this.closeInspect(objectRef);
                 continue;
             }
             this.game.bus.publish(snapshot);

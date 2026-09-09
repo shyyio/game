@@ -365,7 +365,7 @@ export class ThroughputScenario extends AbstractScenario {
         const session = new CapturingSession(THROUGHPUT_PLAYER_ID);
         for (const terminalEid of engine.placed.eidsOf(TradingTerminalType.objectTypeId)) {
             game.dispatchMessage(new ConfigureTradingTerminalMessage(
-                engine.placed.objectIdOf(terminalEid), MARKET_MODE_BUY,
+                engine.placed.objectRefOf(terminalEid), MARKET_MODE_BUY,
                 ITEM_TYPE_THROUGHPUT_FEED, NPC_PRICE_THROUGHPUT_FEED,
             ), session);
         }

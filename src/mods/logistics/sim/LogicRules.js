@@ -59,7 +59,7 @@ export class LogicRules {
 
     constructor() {
         /**
-         * Terminal objectId -> its rules, top-down priority order.
+         * Terminal objectRef -> its rules, top-down priority order.
          * @type {Map<number, LogicRule[]>}
          */
         this._rulesByTerminal = new Map();
@@ -67,24 +67,24 @@ export class LogicRules {
 
     /**
      * Replaces a terminal's whole rule list; an empty list drops the entry.
-     * @param {number} terminalObjectId
+     * @param {number} terminalObjectRef
      * @param {LogicRule[]} rules
      * @returns {void}
      */
-    setRules(terminalObjectId, rules) {
+    setRules(terminalObjectRef, rules) {
         if (rules.length === 0) {
-            this._rulesByTerminal.delete(terminalObjectId);
+            this._rulesByTerminal.delete(terminalObjectRef);
             return;
         }
-        this._rulesByTerminal.set(terminalObjectId, rules);
+        this._rulesByTerminal.set(terminalObjectRef, rules);
     }
 
     /**
-     * @param {number} terminalObjectId
+     * @param {number} terminalObjectRef
      * @returns {LogicRule[]}
      */
-    rulesOf(terminalObjectId) {
-        const rules = this._rulesByTerminal.get(terminalObjectId);
+    rulesOf(terminalObjectRef) {
+        const rules = this._rulesByTerminal.get(terminalObjectRef);
         if (rules === undefined) {
             return [];
         }
@@ -93,11 +93,11 @@ export class LogicRules {
 
     /**
      * Drops a despawned terminal's rules.
-     * @param {number} terminalObjectId
+     * @param {number} terminalObjectRef
      * @returns {void}
      */
-    dropTerminal(terminalObjectId) {
-        this._rulesByTerminal.delete(terminalObjectId);
+    dropTerminal(terminalObjectRef) {
+        this._rulesByTerminal.delete(terminalObjectRef);
     }
 
     /**
@@ -106,10 +106,10 @@ export class LogicRules {
     serializeRecords() {
         const ruleRows = [];
         const conditionRows = [];
-        for (const [terminalObjectId, rules] of this._rulesByTerminal) {
+        for (const [terminalObjectRef, rules] of this._rulesByTerminal) {
             for (const [ruleIndex, rule] of rules.entries()) {
                 ruleRows.push({
-                    terminal_object_id: terminalObjectId,
+                    terminal_object_id: terminalObjectRef,
                     rule_index: ruleIndex,
                     action_device_id: rule.actionDeviceId,
                     action_key: rule.actionKey,
@@ -117,7 +117,7 @@ export class LogicRules {
                 });
                 for (const [conditionIndex, condition] of rule.conditions.entries()) {
                     conditionRows.push({
-                        terminal_object_id: terminalObjectId,
+                        terminal_object_id: terminalObjectRef,
                         rule_index: ruleIndex,
                         condition_index: conditionIndex,
                         kind: condition.kind,

@@ -47,7 +47,7 @@ export class ObjectsWriter extends AbstractCacheWriter {
             return;
         }
         if (event instanceof ObjectDeleteEvent) {
-            this._state.mapDelete("objects.byId", event.id);
+            this._state.mapDelete("objects.byId", event.objectRef);
             return;
         }
         if (event instanceof ObjectFieldsEvent) {
@@ -72,7 +72,7 @@ export class ObjectsWriter extends AbstractCacheWriter {
      */
     _patchFields(event) {
         const view = this._state.view("objects");
-        const entry = view.get(event.id);
+        const entry = view.get(event.objectRef);
         if (entry === null) {
             return;
         }
@@ -80,7 +80,7 @@ export class ObjectsWriter extends AbstractCacheWriter {
         for (const [i, field] of entry.data.type.behavior.syncedFields.fields.entries()) {
             patch[field.name] = event.values[i];
         }
-        view.update(event.id, patch);
+        view.update(event.objectRef, patch);
     }
 
     /**
@@ -95,8 +95,8 @@ export class ObjectsWriter extends AbstractCacheWriter {
         for (const [i, port] of renderedPorts.entries()) {
             ports[port.name] = event.portIds[i];
         }
-        this._state.mapSet("objects.byId", event.id, {
-            id: event.id,
+        this._state.mapSet("objects.byId", event.objectRef, {
+            id: event.objectRef,
             tileX: event.x,
             tileY: event.y,
             objectTypeId: event.objectTypeId,

@@ -35,6 +35,6 @@ test("a machine placed via message adopts a belt, cooks its input, and deletes",
     }
     assert.ok(cooked, "the belt-fed input was cooked to the machine's output");
 
-    assert.equal(engine.applyMessage(new DeleteObjectMessage(insert.id)), true, "machine delete handled");
-    assert.ok(collector.drain().some(event => event instanceof ObjectDeleteEvent && event.id === insert.id));
+    assert.equal(engine.applyMessage(new DeleteObjectMessage(insert.objectRef)), true, "machine delete handled");
+    assert.ok(collector.drain().some(event => event instanceof ObjectDeleteEvent && event.objectRef === insert.objectRef));
 });

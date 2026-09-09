@@ -16,11 +16,11 @@ export class PipeBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, eid, type, message) {
-        engine.resolve(Pipes).placePipe(message.x, message.y, engine.placed.objectIdOf(eid));
+        engine.resolve(Pipes).placePipe(message.x, message.y, engine.placed.objectRefOf(eid));
     }
 
     onDespawn(engine, eid) {
-        engine.resolve(Pipes).removePipe(engine.placed.objectIdOf(eid));
+        engine.resolve(Pipes).removePipe(engine.placed.objectRefOf(eid));
     }
 
     /**
@@ -43,7 +43,7 @@ export class PipeBehavior extends AbstractBehavior {
             pipes.registerPipe({
                 x: position.x[eid],
                 y: position.y[eid],
-                id: placedObject.objectId[row],
+                id: placedObject.objectRef[row],
             });
         }
     }

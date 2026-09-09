@@ -20,10 +20,10 @@ test("DeleteObjectMessage removes an ECS belt and emits an ObjectDeleteEvent", a
     const insert = collector.drain().find(event => event instanceof ObjectInsertEvent && event.x === 0 && event.y === 1);
     assert.ok(insert, "belt (0,1) was placed");
 
-    const removed = engine.applyMessage(new DeleteObjectMessage(insert.id));
+    const removed = engine.applyMessage(new DeleteObjectMessage(insert.objectRef));
     assert.equal(removed, true, "delete handled by the engine");
 
     const events = collector.drain();
-    assert.ok(events.some(event => event instanceof ObjectDeleteEvent && event.id === insert.id), "ObjectDeleteEvent emitted");
+    assert.ok(events.some(event => event instanceof ObjectDeleteEvent && event.objectRef === insert.objectRef), "ObjectDeleteEvent emitted");
     assert.equal(beltsOf(engine).pathAt(0, 1), null, "the belt's tile is no longer on any path");
 });

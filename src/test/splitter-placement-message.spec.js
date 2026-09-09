@@ -23,9 +23,9 @@ test("placing a splitter via CreateObjectMessage emits an ObjectInsertEvent; del
 
     // Chunk sync recreates it.
     const sync = flattenBatches(engine.chunkSync(insert.chunk));
-    assert.ok(sync.some(event => event.id === insert.id), "splitter appears in chunk sync");
+    assert.ok(sync.some(event => event.objectRef === insert.objectRef), "splitter appears in chunk sync");
 
     // Delete removes it and emits a delete event.
-    assert.equal(engine.applyMessage(new DeleteObjectMessage(insert.id)), true, "splitter delete handled");
-    assert.ok(collector.drain().some(event => event instanceof ObjectDeleteEvent && event.id === insert.id), "ObjectDeleteEvent emitted");
+    assert.equal(engine.applyMessage(new DeleteObjectMessage(insert.objectRef)), true, "splitter delete handled");
+    assert.ok(collector.drain().some(event => event instanceof ObjectDeleteEvent && event.objectRef === insert.objectRef), "ObjectDeleteEvent emitted");
 });

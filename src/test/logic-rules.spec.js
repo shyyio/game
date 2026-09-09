@@ -34,12 +34,12 @@ import {TankDefinition} from "@/mods/fluids/common/objectTypes.js";
 import {LOGIC_KEY_AMOUNT, FLUID_TYPE_WATER} from "@/mods/fluids/common/constants.js";
 
 /**
- * Places an object and returns its objectId (the newest placed row's).
+ * Places an object and returns its objectRef (the newest placed row's).
  */
 function place(engine, type, x, y, direction=Direction.UP) {
     assert.equal(engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, direction)), true);
     const def = engine.placed.def;
-    return def.store.objectId[def.row(def.eids[def.count - 1])];
+    return def.store.objectRef[def.row(def.eids[def.count - 1])];
 }
 
 /**
@@ -73,11 +73,11 @@ function rulesMessage(terminalId, rules) {
 }
 
 /**
- * A component column value for a placed objectId.
+ * A component column value for a placed objectRef.
  */
-function columnOf(engine, componentName, column, objectId) {
+function columnOf(engine, componentName, column, objectRef) {
     const def = engine.components.get(componentName);
-    return def.store[column][def.row(engine.placed.eidByObjectId(objectId))];
+    return def.store[column][def.row(engine.placed.eidByObjectRef(objectRef))];
 }
 
 /**
@@ -85,7 +85,7 @@ function columnOf(engine, componentName, column, objectId) {
  */
 function fillTank(engine, tankId, fluidType, amount) {
     const def = engine.components.get("Tank");
-    const row = def.row(engine.placed.eidByObjectId(tankId));
+    const row = def.row(engine.placed.eidByObjectRef(tankId));
     def.store.fluidType[row] = fluidType;
     def.store.amount[row] = amount;
 }
@@ -141,7 +141,7 @@ test("the processing key reads real activity, not the enable switch", async () =
     const game = await makeGame();
     const engine = game.simEngine;
     const machine = place(engine, BlenderType, 10, 8, Direction.UP);
-    const eid = engine.placed.eidByObjectId(machine);
+    const eid = engine.placed.eidByObjectRef(machine);
     const behavior = engine.placed.behaviorFor(engine.placed.objectTypeIdOf(eid));
 
     assert.equal(behavior.logicRead(engine, eid, LOGIC_KEY_ENABLED), 1);

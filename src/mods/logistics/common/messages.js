@@ -6,17 +6,17 @@ import {AbstractMessage} from "@spup/sdk";
 export class SetGateOpenMessage extends AbstractMessage {
 
     static wireFields = {
-        objectId: "int64",
+        objectRef: "int64",
         open: "int32",
     };
 
     /**
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {number} open - 1 open, 0 closed
      */
-    constructor(objectId, open) {
+    constructor(objectRef, open) {
         super();
-        this.objectId = objectId;
+        this.objectRef = objectRef;
         this.open = open;
     }
 
@@ -27,7 +27,7 @@ export class SetGateOpenMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return Number.isInteger(this.objectId) && (this.open === 0 || this.open === 1);
+        return Number.isInteger(this.objectRef) && (this.open === 0 || this.open === 1);
     }
 }
 
@@ -37,18 +37,18 @@ export class SetGateOpenMessage extends AbstractMessage {
 export class WireLinkMessage extends AbstractMessage {
 
     static wireFields = {
-        aObjectId: "int64",
-        bObjectId: "int64",
+        aObjectRef: "int64",
+        bObjectRef: "int64",
     };
 
     /**
-     * @param {number} aObjectId
-     * @param {number} bObjectId
+     * @param {number} aObjectRef
+     * @param {number} bObjectRef
      */
-    constructor(aObjectId, bObjectId) {
+    constructor(aObjectRef, bObjectRef) {
         super();
-        this.aObjectId = aObjectId;
-        this.bObjectId = bObjectId;
+        this.aObjectRef = aObjectRef;
+        this.bObjectRef = bObjectRef;
     }
 
     /**
@@ -58,7 +58,7 @@ export class WireLinkMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return Number.isInteger(this.aObjectId) && Number.isInteger(this.bObjectId);
+        return Number.isInteger(this.aObjectRef) && Number.isInteger(this.bObjectRef);
     }
 }
 
@@ -68,18 +68,18 @@ export class WireLinkMessage extends AbstractMessage {
 export class WireUnlinkMessage extends AbstractMessage {
 
     static wireFields = {
-        aObjectId: "int64",
-        bObjectId: "int64",
+        aObjectRef: "int64",
+        bObjectRef: "int64",
     };
 
     /**
-     * @param {number} aObjectId
-     * @param {number} bObjectId
+     * @param {number} aObjectRef
+     * @param {number} bObjectRef
      */
-    constructor(aObjectId, bObjectId) {
+    constructor(aObjectRef, bObjectRef) {
         super();
-        this.aObjectId = aObjectId;
-        this.bObjectId = bObjectId;
+        this.aObjectRef = aObjectRef;
+        this.bObjectRef = bObjectRef;
     }
 
     /**
@@ -89,7 +89,7 @@ export class WireUnlinkMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return Number.isInteger(this.aObjectId) && Number.isInteger(this.bObjectId);
+        return Number.isInteger(this.aObjectRef) && Number.isInteger(this.bObjectRef);
     }
 }
 
@@ -99,15 +99,15 @@ export class WireUnlinkMessage extends AbstractMessage {
 export class LogicSnapshotRequestMessage extends AbstractMessage {
 
     static wireFields = {
-        objectId: "int64",
+        objectRef: "int64",
     };
 
     /**
-     * @param {number} objectId
+     * @param {number} objectRef
      */
-    constructor(objectId) {
+    constructor(objectRef) {
         super();
-        this.objectId = objectId;
+        this.objectRef = objectRef;
     }
 
     /**
@@ -117,7 +117,7 @@ export class LogicSnapshotRequestMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return Number.isInteger(this.objectId);
+        return Number.isInteger(this.objectRef);
     }
 }
 
@@ -129,7 +129,7 @@ export class LogicSnapshotRequestMessage extends AbstractMessage {
 export class ConfigureLogicRulesMessage extends AbstractMessage {
 
     static wireFields = {
-        objectId: "int64",
+        objectRef: "int64",
         actionDeviceIds: "int64[]",
         actionKeys: "int32[]",
         actionValues: "sint32[]",
@@ -143,7 +143,7 @@ export class ConfigureLogicRulesMessage extends AbstractMessage {
     };
 
     /**
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {number[]} actionDeviceIds
      * @param {number[]} actionKeys
      * @param {number[]} actionValues
@@ -155,9 +155,9 @@ export class ConfigureLogicRulesMessage extends AbstractMessage {
      * @param {number[]} condComparators
      * @param {number[]} condValues
      */
-    constructor(objectId, actionDeviceIds, actionKeys, actionValues, conditionCounts, condKinds, condDeviceIds, condItemTypeIds, condKeys, condComparators, condValues) {
+    constructor(objectRef, actionDeviceIds, actionKeys, actionValues, conditionCounts, condKinds, condDeviceIds, condItemTypeIds, condKeys, condComparators, condValues) {
         super();
-        this.objectId = objectId;
+        this.objectRef = objectRef;
         this.actionDeviceIds = actionDeviceIds;
         this.actionKeys = actionKeys;
         this.actionValues = actionValues;
@@ -177,7 +177,7 @@ export class ConfigureLogicRulesMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        if (!Number.isInteger(this.objectId)) {
+        if (!Number.isInteger(this.objectRef)) {
             return false;
         }
         const ruleColumns = [this.actionDeviceIds, this.actionKeys, this.actionValues, this.conditionCounts];

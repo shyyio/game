@@ -296,3 +296,28 @@ function renameRowsBack(snapshot, componentName, from, to) {
         delete row[from];
     }
 }
+
+test("a format-8 save renames every objectId column to objectRef", async () => {
+    const engine = await makeGameEngine();
+    engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 3, 3, Direction.UP));
+    const snapshot = engine.snapshots.serialize();
+    snapshot.saveFormat = 8;
+    renameRowsBack(snapshot, "PlacedObject", "objectRef", "objectId");
+    renameRowsBack(snapshot, "BeltPathMember", "objectRef", "objectId");
+    renameRowsBack(snapshot, "PipeNetworkMember", "objectRef", "objectId");
+
+    const migrated = migrateSnapshot(snapshot);
+
+    for (const name of ["PlacedObject", "BeltPathMember", "PipeNetworkMember"]) {
+        const component = migrated.components.find(entry => entry.name === name);
+        assert.ok(component.fields.some(field => field.name === "objectRef"), `${name} carries objectRef`);
+        assert.ok(!component.fields.some(field => field.name === "objectId"), `${name} dropped objectId`);
+    }
+    const placed = migrated.components.find(component => component.name === "PlacedObject");
+    assert.equal(placed.rows[0].objectId, undefined);
+    assert.ok(placed.rows[0].objectRef > 0);
+
+    const restored = await makeGameEngine();
+    assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
+    assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1);
+});

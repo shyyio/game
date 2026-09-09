@@ -3,7 +3,7 @@ import {MarketSnapshotEvent} from "../common/events.js";
 import {MarketSnapshotRequestMessage} from "../common/messages.js";
 
 export const MARKET_SCHEMA = {
-    // objectId of the terminal the config panel is open for, or null when closed.
+    // objectRef of the terminal the config panel is open for, or null when closed.
     configTarget: schemaScalar(null),
     // Last MarketSnapshotEvent, or null before first response.
     snapshot: schemaScalar(null),
@@ -35,13 +35,13 @@ export class MarketWriter extends AbstractCacheWriter {
 
     /**
      * Opens the config panel for a placed terminal and requests its current snapshot.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    openConfig(objectId) {
-        this._state.set("market.configTarget", objectId);
+    openConfig(objectRef) {
+        this._state.set("market.configTarget", objectRef);
         this._state.set("market.snapshot", null);
-        this._session.sendMessage(new MarketSnapshotRequestMessage(objectId));
+        this._session.sendMessage(new MarketSnapshotRequestMessage(objectRef));
     }
 
     /**

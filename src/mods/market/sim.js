@@ -88,7 +88,7 @@ export class MarketSimMod extends AbstractSimMod {
      */
     _configure(message, game) {
         const engine = game.simEngine;
-        const eid = engine.placed.eidByObjectId(message.objectId);
+        const eid = engine.placed.eidByObjectRef(message.objectRef);
         if (eid === undefined || engine.placed.objectTypeIdOf(eid) !== TradingTerminalType.objectTypeId) {
             return;
         }
@@ -156,7 +156,7 @@ export class MarketSimMod extends AbstractSimMod {
         let currentMode = MARKET_MODE_NONE;
         let currentItemTypeId = MARKET_SNAPSHOT_NONE;
         let currentPrice = MARKET_SNAPSHOT_NONE;
-        const eid = engine.placed.eidByObjectId(message.objectId);
+        const eid = engine.placed.eidByObjectRef(message.objectRef);
         if (eid !== undefined && engine.placed.objectTypeIdOf(eid) === TradingTerminalType.objectTypeId) {
             const def = engine.components.get("MarketTerminal");
             const terminal = def.store;

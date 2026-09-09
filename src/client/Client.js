@@ -353,20 +353,20 @@ export class Client {
 
     /**
      * Opens a machine's menu: subscribes to its per-tick inspect snapshots.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    inspectObject(objectId) {
-        this.cache.writer("inspect").open(objectId);
+    inspectObject(objectRef) {
+        this.cache.writer("inspect").open(objectRef);
     }
 
     /**
      * Closes a machine's menu: drops its subscription and its panel.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    unInspectObject(objectId) {
-        this.cache.writer("inspect").close(objectId);
+    unInspectObject(objectRef) {
+        this.cache.writer("inspect").close(objectRef);
     }
 
     _sendInspectedObjects() {

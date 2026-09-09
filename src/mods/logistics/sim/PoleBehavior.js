@@ -11,7 +11,7 @@ export class PoleBehavior extends AbstractBehavior {
     install(engine) {
         const networks = new LogicNetworks(engine);
         engine.provide(LogicNetworks, networks);
-        engine.registerDespawnListener((eid, objectId) => networks.removeObject(objectId));
+        engine.registerDespawnListener((eid, objectRef) => networks.removeObject(objectRef));
         engine.registerChunkSync(chunk => PoleBehavior._chunkSync(engine, chunk));
     }
 
@@ -44,8 +44,8 @@ export class PoleBehavior extends AbstractBehavior {
         const position = engine.Position;
         const events = [];
         for (const wire of engine.resolve(LogicNetworks).wires) {
-            for (const objectId of [wire.a, wire.b]) {
-                const eid = placed.eidByObjectId(objectId);
+            for (const objectRef of [wire.a, wire.b]) {
+                const eid = placed.eidByObjectRef(objectRef);
                 if (eid === undefined || chunkId(position.x[eid], position.y[eid]) !== chunk) {
                     continue;
                 }

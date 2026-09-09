@@ -121,7 +121,7 @@ export class Belts {
         this._beltDef = engine.components.define("BeltPathMember", [
             {name: "path", kind: "eid", defaultValue: NO_EID},
             {name: "seq"},
-            {name: "objectId", defaultValue: NO_EID},
+            {name: "objectRef", defaultValue: NO_EID},
         ], {snapshotOnly: true});
         this._itemDef = engine.components.define("BeltItem", [
             {name: "path", kind: "eid", defaultValue: NO_EID},
@@ -272,7 +272,7 @@ export class Belts {
         if (!this.engine.space.cellsFree([{x, y, layer}])) {
             return null;
         }
-        const placed = {x, y, direction, type, id: id === undefined ? this.engine.createObjectId() : id};
+        const placed = {x, y, direction, type, id: id === undefined ? this.engine.createObjectRef() : id};
         this.engine.space.occupy([{x, y, layer}], placed.id);
 
         this._addBelt(placed);
@@ -1620,7 +1620,7 @@ export class Belts {
                 const memberEid = this.engine.components.createEntity(this._beltDef);
                 B.path[memberEid] = pathEid;
                 B.seq[memberEid] = index;
-                B.objectId[memberEid] = beltId;
+                B.objectRef[memberEid] = beltId;
             }
 
             for (const [seq, item] of this._unloadItems(path.slot).entries()) {
@@ -1673,7 +1673,7 @@ export class Belts {
 
         const beltsByPath = new Map();
         for (const eid of this.engine.components.entitiesWith(this._beltDef)) {
-            const belt = this.beltById(B.objectId[eid]);
+            const belt = this.beltById(B.objectRef[eid]);
             const pathEid = B.path[eid];
             if (!beltsByPath.has(pathEid)) {
                 beltsByPath.set(pathEid, []);

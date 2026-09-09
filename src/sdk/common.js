@@ -104,7 +104,7 @@ export {
 // it, declare a static `wireFields` map, and optionally override `validate`.
 export {AbstractMessage} from "@/common/AbstractMessage.js";
 
-// Generic "delete the object with this id" message; the engine's PlacedObjects host despawns the
+// Generic "delete the object with this ref" message; the engine's PlacedObjects host despawns the
 // entity. Lets a tool remove any object without knowing which mod owns it.
 export {DeleteObjectMessage} from "@/common/CoreMessages.js";
 

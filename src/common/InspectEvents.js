@@ -9,7 +9,7 @@ import {AbstractEvent} from "@/common/AbstractEvent.js";
 export class InspectHeartbeatEvent extends AbstractEvent {
 
     static wireFields = {
-        objectId: "int64",
+        objectRef: "int64",
         inputPorts: "int32[]",
         inputMemory: "int32[]",
         processingRemaining: "int32?",
@@ -23,7 +23,7 @@ export class InspectHeartbeatEvent extends AbstractEvent {
     };
 
     /**
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {number[]} inputPorts - per-port resting item (0 = empty)
      * @param {number[]} inputMemory - per-port gathered/consumed item (0 = none)
      * @param {number|null} processingRemaining - ticks left (null = idle)
@@ -36,7 +36,7 @@ export class InspectHeartbeatEvent extends AbstractEvent {
      * @param {number|null} [workerDemand] - the road component's total demand (null when road-less)
      */
     constructor(
-        objectId,
+        objectRef,
         inputPorts,
         inputMemory,
         processingRemaining,
@@ -49,7 +49,7 @@ export class InspectHeartbeatEvent extends AbstractEvent {
         workerDemand=null,
     ) {
         super();
-        this.objectId = objectId;
+        this.objectRef = objectRef;
         this.inputPorts = inputPorts;
         this.inputMemory = inputMemory;
         this.processingRemaining = processingRemaining;
@@ -67,7 +67,7 @@ export class InspectHeartbeatEvent extends AbstractEvent {
      * @returns {Set<number>|undefined}
      */
     subscribersIn(bus) {
-        return bus.objectSubscribers(this.objectId);
+        return bus.objectSubscribers(this.objectRef);
     }
 }
 
@@ -77,15 +77,15 @@ export class InspectHeartbeatEvent extends AbstractEvent {
 export class InspectClosedEvent extends AbstractEvent {
 
     static wireFields = {
-        objectId: "int64",
+        objectRef: "int64",
     };
 
     /**
-     * @param {number} objectId
+     * @param {number} objectRef
      */
-    constructor(objectId) {
+    constructor(objectRef) {
         super();
-        this.objectId = objectId;
+        this.objectRef = objectRef;
     }
 
     /**
@@ -93,6 +93,6 @@ export class InspectClosedEvent extends AbstractEvent {
      * @returns {Set<number>|undefined}
      */
     subscribersIn(bus) {
-        return bus.objectSubscribers(this.objectId);
+        return bus.objectSubscribers(this.objectRef);
     }
 }

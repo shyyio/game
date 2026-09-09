@@ -23,13 +23,13 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
     constructor(app, cache) {
         super(app);
         const objects = cache.view("objects");
-        cache.subscribe("inspect.heartbeatByObject", (objectId, heartbeat) => {
+        cache.subscribe("inspect.heartbeatByObject", (objectRef, heartbeat) => {
             if (heartbeat === undefined) {
-                this.remove(objectId);
+                this.remove(objectRef);
             } else {
-                const entry = objects.get(objectId);
+                const entry = objects.get(objectRef);
                 let machineTile = undefined;
-                let title = `Machine #${objectId}`;
+                let title = `Machine #${objectRef}`;
                 let lastProduced = undefined;
                 if (entry !== null) {
                     machineTile = {x: entry.tileX, y: entry.tileY};
@@ -52,7 +52,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
          */
         this.items = null;
         this._onClose = null;
-        // objectId string -> InspectPanelRecord.
+        // objectRef string -> InspectPanelRecord.
         this._panels = new Map();
         // The hovered slot's item name, above every panel.
         this._tooltip = new SlotTooltip(app);
@@ -75,11 +75,11 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
      * @param {string} title - the machine's object type label
      */
     update(event, lastProduced, machineTile, title) {
-        const key = String(event.objectId);
+        const key = String(event.objectRef);
         let record = this._panels.get(key);
         if (record === undefined) {
             // Height comes from the first snapshot (workerCost is a type constant, so a worker row never appears later).
-            const panel = this._createPanel(event.objectId, UIPanel.heightForContent(inspectContentHeight(event)), title);
+            const panel = this._createPanel(event.objectRef, UIPanel.heightForContent(inspectContentHeight(event)), title);
             const content = new InspectContent(event, panel.contentWidth, this.textureRegistry, this.items, this._tooltip);
             panel.addContent(content);
             record = new InspectPanelRecord(panel, content);
@@ -109,10 +109,10 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
 
     /**
      * Removes a machine's panel (its menu closed or the machine was deleted).
-     * @param {number} objectId
+     * @param {number} objectRef
      */
-    remove(objectId) {
-        const key = String(objectId);
+    remove(objectRef) {
+        const key = String(objectRef);
         const record = this._panels.get(key);
         if (record === undefined) {
             return;
@@ -123,13 +123,13 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
     }
 
     /**
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {number} height - the panel's outer height for this machine's content
      * @param {string} title
      * @returns {UIPanel}
      * @private
      */
-    _createPanel(objectId, height, title) {
+    _createPanel(objectRef, height, title) {
         const index = this._panels.size;
         const panel = new UIPanel({
             app: this._app,
@@ -141,7 +141,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
             height,
             onClose: () => {
                 if (this._onClose !== null) {
-                    this._onClose(objectId);
+                    this._onClose(objectRef);
                 }
             },
         });

@@ -17,12 +17,12 @@ import {LogicNetworks} from "@/mods/logistics/sim/LogicNetworks.js";
 import {LOGIC_TIER_BASE} from "@/mods/logistics/common/constants.js";
 
 /**
- * Places an object and returns its objectId (the newest placed row's).
+ * Places an object and returns its objectRef (the newest placed row's).
  */
 function place(engine, type, x, y, direction=Direction.UP) {
     assert.equal(engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, direction)), true);
     const def = engine.placed.def;
-    return def.store.objectId[def.row(def.eids[def.count - 1])];
+    return def.store.objectRef[def.row(def.eids[def.count - 1])];
 }
 
 /**
@@ -106,10 +106,10 @@ test("the snapshot lists the network's devices, excluding the terminal itself", 
     game.dispatchMessage(new LogicSnapshotRequestMessage(terminal), player);
     const snapshot = player.events.find(event => event instanceof LogicSnapshotEvent);
     assert.ok(snapshot, "the snapshot answered the requesting session");
-    assert.equal(snapshot.objectId, terminal);
+    assert.equal(snapshot.objectRef, terminal);
     assert.equal(snapshot.linked, 1);
     assert.equal(snapshot.tier, LOGIC_TIER_BASE);
-    assert.deepEqual(snapshot.deviceObjectIds, [gate]);
+    assert.deepEqual(snapshot.deviceObjectRefs, [gate]);
     assert.deepEqual(snapshot.deviceTypeIds, [GateDefinition.objectTypeId]);
     assert.deepEqual(snapshot.deviceTileXs, [8]);
     assert.deepEqual(snapshot.deviceTileYs, [5]);
@@ -125,7 +125,7 @@ test("an unwired terminal's snapshot reports unlinked and empty", async () => {
     const snapshot = player.events.find(event => event instanceof LogicSnapshotEvent);
     assert.ok(snapshot);
     assert.equal(snapshot.linked, 0);
-    assert.deepEqual(snapshot.deviceObjectIds, []);
+    assert.deepEqual(snapshot.deviceObjectRefs, []);
 
     player.events.length = 0;
     game.dispatchMessage(new LogicSnapshotRequestMessage(999999), player);
@@ -150,5 +150,5 @@ test("a terminal wired straight to a gate forms a working pole-less network", as
     game.dispatchMessage(new LogicSnapshotRequestMessage(terminal), player);
     const snapshot = player.events.find(event => event instanceof LogicSnapshotEvent);
     assert.equal(snapshot.linked, 1);
-    assert.deepEqual(snapshot.deviceObjectIds, [gate]);
+    assert.deepEqual(snapshot.deviceObjectRefs, [gate]);
 });

@@ -7,7 +7,7 @@ import {
 } from "../common/messages.js";
 
 export const LOGISTICS_SCHEMA = {
-    // objectId of the terminal the config panel is open for, or null when closed.
+    // objectRef of the terminal the config panel is open for, or null when closed.
     configTarget: schemaScalar(null),
     // Last LogicSnapshotEvent, or null before first response.
     logicSnapshot: schemaScalar(null),
@@ -33,20 +33,20 @@ export class LogisticsWriter extends AbstractCacheWriter {
      * @returns {void}
      */
     onEvent(event) {
-        if (event instanceof LogicSnapshotEvent && event.objectId === this._state.get("logistics.configTarget")) {
+        if (event instanceof LogicSnapshotEvent && event.objectRef === this._state.get("logistics.configTarget")) {
             this._state.set("logistics.logicSnapshot", event);
         }
     }
 
     /**
      * Opens the config panel for a placed terminal and requests its network snapshot.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    openTerminalConfig(objectId) {
-        this._state.set("logistics.configTarget", objectId);
+    openTerminalConfig(objectRef) {
+        this._state.set("logistics.configTarget", objectRef);
         this._state.set("logistics.logicSnapshot", null);
-        this._session.sendMessage(new LogicSnapshotRequestMessage(objectId));
+        this._session.sendMessage(new LogicSnapshotRequestMessage(objectRef));
     }
 
     /**
@@ -58,14 +58,14 @@ export class LogisticsWriter extends AbstractCacheWriter {
 
     /**
      * Replaces a terminal's whole rule list, then refreshes the snapshot the panel renders from.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {LogicRule[]} rules
      * @returns {void}
      */
-    configureLogicRules(objectId, rules) {
+    configureLogicRules(objectRef, rules) {
         const conditions = rules.flatMap(rule => rule.conditions);
         this._session.sendMessage(new ConfigureLogicRulesMessage(
-            objectId,
+            objectRef,
             rules.map(rule => rule.actionDeviceId),
             rules.map(rule => rule.actionKey),
             rules.map(rule => rule.actionValue),
@@ -77,18 +77,18 @@ export class LogisticsWriter extends AbstractCacheWriter {
             conditions.map(condition => condition.comparator),
             conditions.map(condition => condition.value),
         ));
-        this._session.sendMessage(new LogicSnapshotRequestMessage(objectId));
+        this._session.sendMessage(new LogicSnapshotRequestMessage(objectRef));
     }
 
     /**
      * Requests the inverse of a gate's synced open state, flipping optimistically.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    toggleGate(objectId) {
+    toggleGate(objectRef) {
         const objects = this._state.view("objects");
-        const next = objects.get(objectId).data.open === 0 ? 1 : 0;
-        objects.update(objectId, {open: next});
-        this._session.sendMessage(new SetGateOpenMessage(objectId, next));
+        const next = objects.get(objectRef).data.open === 0 ? 1 : 0;
+        objects.update(objectRef, {open: next});
+        this._session.sendMessage(new SetGateOpenMessage(objectRef, next));
     }
 }

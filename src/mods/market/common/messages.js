@@ -8,21 +8,21 @@ import {AbstractMessage} from "@spup/sdk";
 export class ConfigureTradingTerminalMessage extends AbstractMessage {
 
     static wireFields = {
-        objectId: "int32",
+        objectRef: "int32",
         mode: "int32",
         itemTypeId: "int32",
         price: "int32",
     };
 
     /**
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {number} mode MARKET_MODE_SELL or MARKET_MODE_BUY
      * @param {number} itemTypeId
      * @param {number} price
      */
-    constructor(objectId, mode, itemTypeId, price) {
+    constructor(objectRef, mode, itemTypeId, price) {
         super();
-        this.objectId = objectId;
+        this.objectRef = objectRef;
         this.mode = mode;
         this.itemTypeId = itemTypeId;
         this.price = price;
@@ -36,26 +36,26 @@ export class ConfigureTradingTerminalMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return Number.isInteger(this.objectId) && Number.isInteger(this.mode)
+        return Number.isInteger(this.objectRef) && Number.isInteger(this.mode)
             && Number.isInteger(this.itemTypeId) && Number.isInteger(this.price);
     }
 }
 
 /**
- * Requests the current market snapshot (fixed/live prices for every tradable item) plus `objectId`'s
+ * Requests the current market snapshot (fixed/live prices for every tradable item) plus `objectRef`'s
  * own current configuration, sent when the config panel opens.
  */
 export class MarketSnapshotRequestMessage extends AbstractMessage {
 
     static wireFields = {
-        objectId: "int32",
+        objectRef: "int32",
     };
 
     /**
-     * @param {number} objectId
+     * @param {number} objectRef
      */
-    constructor(objectId) {
+    constructor(objectRef) {
         super();
-        this.objectId = objectId;
+        this.objectRef = objectRef;
     }
 }

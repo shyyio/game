@@ -276,7 +276,7 @@ test("deleting the machine returns the head to its back edge", async () => {
     const machine = engine.placed.eidAt(4, 5, LAYER_SURFACE);
     assert.equal(engine.lanes.parentEdgeOf(head), Direction.RIGHT, "the machine feeds the head's flank");
 
-    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectIdOf(machine)));
+    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(machine)));
 
     assert.equal(engine.lanes.parentEdgeOf(head), Direction.UP, "the head is back on its back edge");
     assert.equal(engine.lanes.inPortOf(laneAt(engine, 5, 5)), engine.ports.at(5, 5, Direction.UP));

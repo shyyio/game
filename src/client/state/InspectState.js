@@ -19,21 +19,21 @@ export class InspectWriter extends AbstractCacheWriter {
 
     /**
      * Local write: opens a machine's menu.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    open(objectId) {
-        this._state.setAdd("inspect.openObjects", objectId);
+    open(objectRef) {
+        this._state.setAdd("inspect.openObjects", objectRef);
     }
 
     /**
      * Local write: closes a machine's menu; an unknown id is a no-op.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    close(objectId) {
-        this._state.mapDelete("inspect.heartbeatByObject", objectId);
-        this._state.setDelete("inspect.openObjects", objectId);
+    close(objectRef) {
+        this._state.mapDelete("inspect.heartbeatByObject", objectRef);
+        this._state.setDelete("inspect.openObjects", objectRef);
     }
 
     /**
@@ -43,11 +43,11 @@ export class InspectWriter extends AbstractCacheWriter {
     onEvent(event) {
         if (event instanceof InspectHeartbeatEvent) {
             // Ignore a heartbeat in flight past a close, so it can't revive a shut panel.
-            if (!this._state.setHas("inspect.openObjects", event.objectId)) {
+            if (!this._state.setHas("inspect.openObjects", event.objectRef)) {
                 return;
             }
-            this._state.mapSet("inspect.heartbeatByObject", event.objectId, {
-                objectId: event.objectId,
+            this._state.mapSet("inspect.heartbeatByObject", event.objectRef, {
+                objectRef: event.objectRef,
                 inputPorts: event.inputPorts,
                 inputMemory: event.inputMemory,
                 processingRemaining: event.processingRemaining,
@@ -62,7 +62,7 @@ export class InspectWriter extends AbstractCacheWriter {
             return;
         }
         if (event instanceof InspectClosedEvent) {
-            this.close(event.objectId);
+            this.close(event.objectRef);
         }
     }
 }
@@ -80,10 +80,10 @@ export class InspectView extends AbstractCacheView {
     }
 
     /**
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {boolean}
      */
-    isOpen(objectId) {
-        return this._state.setHas("inspect.openObjects", objectId);
+    isOpen(objectRef) {
+        return this._state.setHas("inspect.openObjects", objectRef);
     }
 }

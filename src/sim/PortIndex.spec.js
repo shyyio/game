@@ -31,7 +31,7 @@ test("placing an object binds it to its ports' endpoints, deleting it unbinds", 
     const cell = engine.placed.eidsOf(TestLaneType.objectTypeId)[0];
     assert.deepEqual(engine.ports.consumersOf(outPort), [cell], "the cell across the edge consumes the machine's output");
 
-    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectIdOf(machine)));
+    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(machine)));
     assert.deepEqual(engine.ports.producersOf(outPort), [], "the deleted machine is unbound");
     assert.deepEqual(engine.ports.consumersOf(outPort), [cell], "the cell is still bound");
 });

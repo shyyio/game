@@ -14,12 +14,12 @@ function snapshot() {
         saveFormat: 3,
         gameVersion: "4.0.0",
         objectTypeNames: ["Belt", "Gadget", "Furnace"],
-        globals: {nextObjectId: 9},
+        globals: {nextObjectRef: 9},
         components: [
             {
                 name: "PlacedObject",
-                fields: [{name: "objectTypeId", kind: "type"}, {name: "objectId", kind: "i32"}],
-                rows: [{eid: 1, objectTypeId: 0, objectId: 1}, {eid: 2, objectTypeId: 2, objectId: 2}, {eid: 3, objectTypeId: 1, objectId: 3}],
+                fields: [{name: "objectTypeId", kind: "type"}, {name: "objectRef", kind: "i32"}],
+                rows: [{eid: 1, objectTypeId: 0, objectRef: 1}, {eid: 2, objectTypeId: 2, objectRef: 2}, {eid: 3, objectTypeId: 1, objectRef: 3}],
             },
             {
                 name: "Port",
@@ -46,7 +46,7 @@ function snapshot() {
 // The next loadout drops Gadget (and its Gadgetry component), adds Pump first, and no longer has gold.
 const NEXT = {typeNames: ["Pump", "Belt", "Furnace"], itemTypeIds: new Set([IRON])};
 const NEXT_DEFS = [
-    {name: "PlacedObject", fields: [{name: "objectTypeId", kind: "type"}, {name: "objectId", kind: "i32"}]},
+    {name: "PlacedObject", fields: [{name: "objectTypeId", kind: "type"}, {name: "objectRef", kind: "i32"}]},
     {name: "Port", fields: [{name: "item", kind: "item"}]},
     {name: "PumpState", fields: [{name: "pressure", kind: "i32"}]},
 ];
@@ -80,7 +80,7 @@ test("converting remaps type ids by name, empties lost items, and swaps the comp
     assert.deepEqual(port.rows.map(row => row.item), [IRON, EMPTY, EMPTY, EMPTY]);
     assert.deepEqual(converted.components.map(component => component.name), ["PlacedObject", "Port", "PumpState"]);
     assert.deepEqual(converted.components[2], {name: "PumpState", fields: NEXT_DEFS[2].fields, rows: []});
-    assert.deepEqual(converted.globals, {nextObjectId: 9});
+    assert.deepEqual(converted.globals, {nextObjectRef: 9});
     assert.equal(converted.records.length, 2);
     assert.equal(before.components[0].rows[0].objectTypeId, 0);
 });

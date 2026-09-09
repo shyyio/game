@@ -94,7 +94,7 @@ export class ClaimAdmin {
             this.game.bus.publishTo(session.id, new ClaimResultEvent(chunk, check));
             return;
         }
-        const solidIds = this._solidObjectIdsIn(chunk);
+        const solidIds = this._solidObjectRefsIn(chunk);
         // An unclaim must empty the chunk; without the clear confirmation it is rejected.
         if (solidIds.length > 0 && !clear) {
             this.game.bus.publishTo(session.id, new ClaimResultEvent(chunk, ClaimResult.CLAIM_RESULT_NOT_EMPTY));
@@ -103,8 +103,8 @@ export class ClaimAdmin {
         const result = this.game.claims.unclaim(session.playerId, chunk);
         if (result === ClaimResult.CLAIM_RESULT_OK) {
             // Engine-originated deletes bypass the placement gate the now-unclaimed chunk holds.
-            for (const objectId of solidIds) {
-                this.game.simEngine.applyMessage(new DeleteObjectMessage(objectId), PLAYER_ID_NONE);
+            for (const objectRef of solidIds) {
+                this.game.simEngine.applyMessage(new DeleteObjectMessage(objectRef), PLAYER_ID_NONE);
             }
             this._publishUpdate(session, chunk, PLAYER_ID_NONE, ChunkPermission.PERMISSION_FRIENDS);
         }
@@ -145,7 +145,7 @@ export class ClaimAdmin {
      * @param {number} chunk
      * @returns {number[]}
      */
-    _solidObjectIdsIn(chunk) {
+    _solidObjectRefsIn(chunk) {
         const ids = [];
         for (const event of this.game.simEngine.chunkSync(chunk)) {
             let inner = [event];
@@ -158,7 +158,7 @@ export class ClaimAdmin {
                 }
                 const type = this.game.modRegistry.objectTypeById(single.objectTypeId);
                 if (type.placement.solid) {
-                    ids.push(single.id);
+                    ids.push(single.objectRef);
                 }
             }
         }

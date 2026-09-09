@@ -283,20 +283,20 @@ export class BeltPathBatchEvent extends AbstractBatchEvent {
 export class LogicWireSetEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
-        aObjectId: "int64",
-        bObjectId: "int64",
+        aObjectRef: "int64",
+        bObjectRef: "int64",
     };
 
     /**
      * @param {number} x - one endpoint's tile
      * @param {number} y
-     * @param {number} aObjectId
-     * @param {number} bObjectId
+     * @param {number} aObjectRef
+     * @param {number} bObjectRef
      */
-    constructor(x, y, aObjectId, bObjectId) {
+    constructor(x, y, aObjectRef, bObjectRef) {
         super(x, y);
-        this.aObjectId = aObjectId;
-        this.bObjectId = bObjectId;
+        this.aObjectRef = aObjectRef;
+        this.bObjectRef = bObjectRef;
     }
 }
 
@@ -306,20 +306,20 @@ export class LogicWireSetEvent extends AbstractChunkRoutedEvent {
 export class LogicWireClearEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
-        aObjectId: "int64",
-        bObjectId: "int64",
+        aObjectRef: "int64",
+        bObjectRef: "int64",
     };
 
     /**
      * @param {number} x - one endpoint's tile
      * @param {number} y
-     * @param {number} aObjectId
-     * @param {number} bObjectId
+     * @param {number} aObjectRef
+     * @param {number} bObjectRef
      */
-    constructor(x, y, aObjectId, bObjectId) {
+    constructor(x, y, aObjectRef, bObjectRef) {
         super(x, y);
-        this.aObjectId = aObjectId;
-        this.bObjectId = bObjectId;
+        this.aObjectRef = aObjectRef;
+        this.bObjectRef = bObjectRef;
     }
 }
 
@@ -331,10 +331,10 @@ export class LogicWireClearEvent extends AbstractChunkRoutedEvent {
 export class LogicSnapshotEvent extends AbstractEvent {
 
     static wireFields = {
-        objectId: "int64",
+        objectRef: "int64",
         linked: "int32",
         tier: "int32",
-        deviceObjectIds: "int64[]",
+        deviceObjectRefs: "int64[]",
         deviceTypeIds: "int32[]",
         deviceTileXs: "sint32[]",
         deviceTileYs: "sint32[]",
@@ -352,10 +352,10 @@ export class LogicSnapshotEvent extends AbstractEvent {
     };
 
     /**
-     * @param {number} objectId - the requested terminal
+     * @param {number} objectRef - the requested terminal
      * @param {number} linked - 1 when the terminal is wired to a pole
      * @param {number} tier
-     * @param {number[]} deviceObjectIds
+     * @param {number[]} deviceObjectRefs
      * @param {number[]} deviceTypeIds
      * @param {number[]} deviceTileXs
      * @param {number[]} deviceTileYs
@@ -371,12 +371,12 @@ export class LogicSnapshotEvent extends AbstractEvent {
      * @param {number[]} condComparators
      * @param {number[]} condValues
      */
-    constructor(objectId, linked, tier, deviceObjectIds, deviceTypeIds, deviceTileXs, deviceTileYs, ruleActionDeviceIds, ruleActionKeys, ruleActionValues, ruleSuspended, ruleConditionCounts, condKinds, condDeviceIds, condItemTypeIds, condKeys, condComparators, condValues) {
+    constructor(objectRef, linked, tier, deviceObjectRefs, deviceTypeIds, deviceTileXs, deviceTileYs, ruleActionDeviceIds, ruleActionKeys, ruleActionValues, ruleSuspended, ruleConditionCounts, condKinds, condDeviceIds, condItemTypeIds, condKeys, condComparators, condValues) {
         super();
-        this.objectId = objectId;
+        this.objectRef = objectRef;
         this.linked = linked;
         this.tier = tier;
-        this.deviceObjectIds = deviceObjectIds;
+        this.deviceObjectRefs = deviceObjectRefs;
         this.deviceTypeIds = deviceTypeIds;
         this.deviceTileXs = deviceTileXs;
         this.deviceTileYs = deviceTileYs;

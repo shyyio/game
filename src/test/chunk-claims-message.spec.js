@@ -265,14 +265,14 @@ test("deleting in a foreign chunk is rejected and leaves occupancy intact", asyn
     game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
     const eid = engine.placed.eidsOf(BlenderType.objectTypeId)[0];
-    const objectId = engine.placed.objectIdOf(eid);
+    const objectRef = engine.placed.objectRefOf(eid);
     const footprint = engine.footprint(BlenderType, 5, 5, Direction.UP);
 
-    game.dispatchMessage(new DeleteObjectMessage(objectId), bob);
+    game.dispatchMessage(new DeleteObjectMessage(objectRef), bob);
     assert.equal(machineCount(game), 1, "stranger's delete rejected");
     assert.equal(engine.space.cellsFree(footprint), false, "occupancy untouched by the rejected delete");
 
-    game.dispatchMessage(new DeleteObjectMessage(objectId), alice);
+    game.dispatchMessage(new DeleteObjectMessage(objectRef), alice);
     assert.equal(machineCount(game), 0, "owner deletes freely");
     assert.equal(engine.space.cellsFree(footprint), true);
 });

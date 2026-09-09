@@ -43,8 +43,8 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
         this._priceText = null;
 
         this._connectors.set("terminal", () => this._managed.panel, () => {
-            const objectId = this._targetObjectId();
-            const entry = objectId === null ? null : this._objects.get(objectId);
+            const objectRef = this._targetObjectRef();
+            const entry = objectRef === null ? null : this._objects.get(objectRef);
             if (entry === null) {
                 return null;
             }
@@ -71,7 +71,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
      * @private
      * @returns {number|null}
      */
-    _targetObjectId() {
+    _targetObjectRef() {
         return this._cache.get("market.configTarget");
     }
 
@@ -173,8 +173,8 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _rebuild() {
-        const objectId = this._targetObjectId();
-        if (objectId === null) {
+        const objectRef = this._targetObjectRef();
+        if (objectRef === null) {
             return;
         }
         const snapshot = this._snapshot();
@@ -187,18 +187,18 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
             tint: PANEL_TINT,
             width: PANEL_WIDTH,
             onClose: () => this._cache.writer("market").closeConfig(),
-        }, UIPanel.centerPosition(this._app, PANEL_WIDTH), (stack) => this._buildBody(stack, objectId, snapshot));
+        }, UIPanel.centerPosition(this._app, PANEL_WIDTH), (stack) => this._buildBody(stack, objectRef, snapshot));
         this.addChild(panel);
     }
 
     /**
      * @private
      * @param {PanelStack} stack
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {MarketSnapshotEvent|null} snapshot
      * @returns {void}
      */
-    _buildBody(stack, objectId, snapshot) {
+    _buildBody(stack, objectRef, snapshot) {
         if (snapshot === null) {
             stack.text("Loading...");
             return;
@@ -221,7 +221,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
         stack.row((row) => this._fillPriceRow(row, snapshot));
         stack.gap();
 
-        stack.row((row) => this._fillConfirmRow(row, objectId, snapshot));
+        stack.row((row) => this._fillConfirmRow(row, objectRef, snapshot));
     }
 
     /**
@@ -327,15 +327,15 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
     /**
      * @private
      * @param {Container} row
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {MarketSnapshotEvent} snapshot
      * @returns {void}
      */
-    _fillConfirmRow(row, objectId, snapshot) {
+    _fillConfirmRow(row, objectRef, snapshot) {
         const canConfirm = snapshot.itemTypeIds.length > 0;
         const confirm = buildPanelButton(this.textureRegistry, "Confirm", ACTIVE_ACCENT, () => {
             const itemTypeId = snapshot.itemTypeIds[this._itemIndex];
-            this._session.sendMessage(new ConfigureTradingTerminalMessage(objectId, this._mode, itemTypeId, this._price));
+            this._session.sendMessage(new ConfigureTradingTerminalMessage(objectRef, this._mode, itemTypeId, this._price));
             this._cache.writer("market").closeConfig();
         }, !canConfirm);
         row.pushLeft(confirm);

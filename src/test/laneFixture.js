@@ -171,7 +171,7 @@ export function placeLane(engine, tileX, tileY, direction, type = TestLaneType) 
  */
 export function deleteLane(engine, tileX, tileY, layer = LAYER_SURFACE) {
     const eid = engine.placed.eidAt(tileX, tileY, layer);
-    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectIdOf(eid)));
+    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(eid)));
 }
 
 /**

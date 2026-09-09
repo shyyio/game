@@ -214,10 +214,10 @@ export class MachineBehavior extends AbstractBehavior {
     /**
      * @param {GameEngine} engine
      * @param {number} eid
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {InspectHeartbeatEvent}
      */
-    inspect(engine, eid, objectId) {
+    inspect(engine, eid, objectRef) {
         const item = engine.Port.item;
         const def = engine.components.get("Machine");
         const machine = def.store;
@@ -256,7 +256,7 @@ export class MachineBehavior extends AbstractBehavior {
         }
         let workerStats = null;
         if (this.workerCost > 0) {
-            workerStats = engine.workers.inspectFor(objectId);
+            workerStats = engine.workers.inspectFor(objectRef);
         }
         let workerCost = null;
         if (this.workerCost > 0) {
@@ -279,7 +279,7 @@ export class MachineBehavior extends AbstractBehavior {
             workerDemand = workerStats.demand;
         }
         return new InspectHeartbeatEvent(
-            objectId,
+            objectRef,
             inputPorts,
             inputMemory,
             remaining,

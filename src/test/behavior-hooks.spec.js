@@ -75,7 +75,7 @@ test("a behavior hook takes the engine and the entity, with PlacedObjects reache
     assert.equal(spawnArgs[1], eid);
     assert.equal(spawnArgs[2], RecordingType);
 
-    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectIdOf(eid)));
+    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(eid)));
     const despawnArgs = behavior.argsOf("onDespawn");
     assert.equal(despawnArgs.length, 2);
     assert.equal(despawnArgs[0], engine);

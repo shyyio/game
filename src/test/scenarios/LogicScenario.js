@@ -22,7 +22,7 @@ const TERMINAL_Y = 8;
 const TANK_WATER_AMOUNT = 30;
 
 /**
- * Places one object and returns its objectId (the newest placed row's).
+ * Places one object and returns its objectRef (the newest placed row's).
  * @param {GameEngine} engine
  * @param {ObjectType} type
  * @param {number} x
@@ -34,7 +34,7 @@ function place(engine, type, x, y) {
         throw new Error(`Logic scenario failed to place ${type.name} at (${x}, ${y})`);
     }
     const def = engine.placed.def;
-    return def.store.objectId[def.row(def.eids[def.count - 1])];
+    return def.store.objectRef[def.row(def.eids[def.count - 1])];
 }
 
 /**
@@ -70,7 +70,7 @@ export class LogicScenario extends AbstractScenario {
         const tank = place(engine, TankDefinition, TERMINAL_X + 2, TERMINAL_Y + 3);
 
         const tankDef = engine.components.get("Tank");
-        const tankRow = tankDef.row(engine.placed.eidByObjectId(tank));
+        const tankRow = tankDef.row(engine.placed.eidByObjectRef(tank));
         tankDef.store.fluidType[tankRow] = ITEM_TYPE_WATER;
         tankDef.store.amount[tankRow] = TANK_WATER_AMOUNT;
 

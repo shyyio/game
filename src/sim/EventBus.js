@@ -14,11 +14,11 @@ export class EventBus {
         this._sessions = new Map();
         // chunk -> Set<sessionId>
         this._chunkSubscribers = new Map();
-        // objectId -> Set<sessionId>
+        // objectRef -> Set<sessionId>
         this._objectSubscribers = new Map();
         // sessionId -> Set<chunk> (the diff/query source for viewport topics)
         this._viewports = new Map();
-        // sessionId -> Set<objectId> (the diff/query source for inspect topics)
+        // sessionId -> Set<objectRef> (the diff/query source for inspect topics)
         this._inspects = new Map();
         this._nextId = 1;
     }
@@ -48,8 +48,8 @@ export class EventBus {
         for (const chunk of this._viewports.get(sessionId)) {
             this._unsubscribe(this._chunkSubscribers, chunk, sessionId);
         }
-        for (const objectId of this._inspects.get(sessionId)) {
-            this._unsubscribe(this._objectSubscribers, objectId, sessionId);
+        for (const objectRef of this._inspects.get(sessionId)) {
+            this._unsubscribe(this._objectSubscribers, objectRef, sessionId);
         }
         this._viewports.delete(sessionId);
         this._inspects.delete(sessionId);
@@ -139,11 +139,11 @@ export class EventBus {
 
     /**
      * The sessions inspecting an object, or undefined when none.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {Set<number>|undefined}
      */
-    objectSubscribers(objectId) {
-        return this._objectSubscribers.get(objectId);
+    objectSubscribers(objectRef) {
+        return this._objectSubscribers.get(objectRef);
     }
 
     /**
@@ -204,28 +204,28 @@ export class EventBus {
     // ---- Inspect topics ----
 
     /**
-     * Replaces a session's inspected-object set with `objectIds`, subscribing/unsubscribing object
+     * Replaces a session's inspected-object set with `objectRefs`, subscribing/unsubscribing object
      * topics and returning the delta so the caller seeds a snapshot for the added objects.
      * @param {number} sessionId
-     * @param {number[]} objectIds
+     * @param {number[]} objectRefs
      * @returns {{added: number[], removed: number[]}}
      */
-    setInspects(sessionId, objectIds) {
+    setInspects(sessionId, objectRefs) {
         const current = this._inspects.get(sessionId);
-        const requested = new Set(objectIds);
+        const requested = new Set(objectRefs);
 
         const added = [];
-        for (const objectId of requested) {
-            if (!current.has(objectId)) {
-                added.push(objectId);
-                this._subscribe(this._objectSubscribers, objectId, sessionId);
+        for (const objectRef of requested) {
+            if (!current.has(objectRef)) {
+                added.push(objectRef);
+                this._subscribe(this._objectSubscribers, objectRef, sessionId);
             }
         }
         const removed = [];
-        for (const objectId of current) {
-            if (!requested.has(objectId)) {
-                removed.push(objectId);
-                this._unsubscribe(this._objectSubscribers, objectId, sessionId);
+        for (const objectRef of current) {
+            if (!requested.has(objectRef)) {
+                removed.push(objectRef);
+                this._unsubscribe(this._objectSubscribers, objectRef, sessionId);
             }
         }
 
@@ -238,29 +238,29 @@ export class EventBus {
      * @returns {number[]}
      */
     subscribedObjects() {
-        const objectIds = new Set();
+        const objectRefs = new Set();
         for (const inspects of this._inspects.values()) {
-            for (const objectId of inspects) {
-                objectIds.add(objectId);
+            for (const objectRef of inspects) {
+                objectRefs.add(objectRef);
             }
         }
-        return [...objectIds];
+        return [...objectRefs];
     }
 
     /**
      * Drops every subscription to an object's topic (its object is gone), so no session inspects it.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    clearObject(objectId) {
-        const subscribers = this._objectSubscribers.get(objectId);
+    clearObject(objectRef) {
+        const subscribers = this._objectSubscribers.get(objectRef);
         if (subscribers === undefined) {
             return;
         }
         for (const sessionId of subscribers) {
-            this._inspects.get(sessionId).delete(objectId);
+            this._inspects.get(sessionId).delete(objectRef);
         }
-        this._objectSubscribers.delete(objectId);
+        this._objectSubscribers.delete(objectRef);
     }
 
     // ---- Subscriptions ----

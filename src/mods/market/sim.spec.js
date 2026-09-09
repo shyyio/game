@@ -59,8 +59,8 @@ function placeTerminal(game, session, tileX, tileY, mode, itemTypeId, price) {
     game.dispatchMessage(new ClaimChunkMessage(chunk), session);
     game.dispatchMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, tileX, tileY, Direction.UP), session);
     const eid = game.simEngine.placed.eidsOf(TradingTerminalType.objectTypeId).at(-1);
-    const objectId = game.simEngine.placed.objectIdOf(eid);
-    game.dispatchMessage(new ConfigureTradingTerminalMessage(objectId, mode, itemTypeId, price), session);
+    const objectRef = game.simEngine.placed.objectRefOf(eid);
+    game.dispatchMessage(new ConfigureTradingTerminalMessage(objectRef, mode, itemTypeId, price), session);
     return eid;
 }
 
@@ -113,8 +113,8 @@ test("an unclaimed chunk's terminal never trades", async () => {
     // Claim only buyer's chunk; seller's stays unclaimed.
     game.dispatchMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 5, 5, Direction.UP), seller);
     const sellerEid = game.simEngine.placed.eidsOf(TradingTerminalType.objectTypeId).at(-1);
-    const sellerObjectId = game.simEngine.placed.objectIdOf(sellerEid);
-    game.dispatchMessage(new ConfigureTradingTerminalMessage(sellerObjectId, MARKET_MODE_SELL, ITEM, PRICE), seller);
+    const sellerObjectRef = game.simEngine.placed.objectRefOf(sellerEid);
+    game.dispatchMessage(new ConfigureTradingTerminalMessage(sellerObjectRef, MARKET_MODE_SELL, ITEM, PRICE), seller);
     placeTerminal(game, buyer, 5 + CHUNK_SIZE * 4, 5, MARKET_MODE_BUY, ITEM, PRICE);
     // Fund buyer directly, isolating the case to seller's missing ownership.
     game.playerSettings.set(buyer.playerId, MARKET_SETTING_BALANCE, 1000);
@@ -189,8 +189,8 @@ test("a buy terminal keeps purchasing from the NPC every tick its output is free
 test("the market snapshot reports the tradable catalog and the requested terminal's own config", async () => {
     const {game, seller} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
     const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, PRICE);
-    const objectId = game.simEngine.placed.objectIdOf(sellerEid);
-    game.dispatchMessage(new MarketSnapshotRequestMessage(objectId), seller);
+    const objectRef = game.simEngine.placed.objectRefOf(sellerEid);
+    game.dispatchMessage(new MarketSnapshotRequestMessage(objectRef), seller);
     const snapshot = seller.events.find(event => event instanceof MarketSnapshotEvent);
     assert.ok(snapshot);
     const index = snapshot.itemTypeIds.indexOf(ITEM);
@@ -206,8 +206,8 @@ test("a snapshot request for an unconfigured terminal reports MARKET_SNAPSHOT_NO
     game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), buyer);
     game.dispatchMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 5, 5, Direction.UP), buyer);
     const eid = game.simEngine.placed.eidsOf(TradingTerminalType.objectTypeId).at(-1);
-    const objectId = game.simEngine.placed.objectIdOf(eid);
-    game.dispatchMessage(new MarketSnapshotRequestMessage(objectId), buyer);
+    const objectRef = game.simEngine.placed.objectRefOf(eid);
+    game.dispatchMessage(new MarketSnapshotRequestMessage(objectRef), buyer);
     const snapshot = buyer.events.find(event => event instanceof MarketSnapshotEvent);
     assert.equal(snapshot.currentItemTypeId, MARKET_SNAPSHOT_NONE);
     assert.equal(snapshot.currentPrice, MARKET_SNAPSHOT_NONE);
@@ -218,8 +218,8 @@ test("configuring with a non-positive price on a player-market item is rejected"
     game.dispatchMessage(new ClaimChunkMessage(chunkId(5, 5)), seller);
     game.dispatchMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 5, 5, Direction.UP), seller);
     const eid = game.simEngine.placed.eidsOf(TradingTerminalType.objectTypeId).at(-1);
-    const objectId = game.simEngine.placed.objectIdOf(eid);
-    game.dispatchMessage(new ConfigureTradingTerminalMessage(objectId, MARKET_MODE_SELL, ITEM, 0), seller);
+    const objectRef = game.simEngine.placed.objectRefOf(eid);
+    game.dispatchMessage(new ConfigureTradingTerminalMessage(objectRef, MARKET_MODE_SELL, ITEM, 0), seller);
     const def = game.simEngine.components.get("MarketTerminal");
     assert.equal(def.store.mode[def.row(eid)], 0, "the rejected configure never wrote MARKET_MODE_SELL");
 });

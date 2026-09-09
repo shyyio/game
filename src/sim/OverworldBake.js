@@ -114,7 +114,7 @@ export class OverworldBake {
             this._chunks.delete(chunk);
             return;
         }
-        // Higher drawLayerIndex paints last, matching map-mode z-order; objectId ties keep it
+        // Higher drawLayerIndex paints last, matching map-mode z-order; objectRef ties keep it
         // deterministic.
         const sorted = [...eids].sort((a, b) => {
             const layerA = this.placed.typeFor(this.placed.objectTypeIdOf(a)).drawLayerIndex;
@@ -122,7 +122,7 @@ export class OverworldBake {
             if (layerA !== layerB) {
                 return layerA - layerB;
             }
-            return this.placed.objectIdOf(a) - this.placed.objectIdOf(b);
+            return this.placed.objectRefOf(a) - this.placed.objectRefOf(b);
         });
         const origin = chunkOrigin(chunk);
         const position = this.engine.Position;

@@ -24,12 +24,12 @@ export class ResourceBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, eid, type, message) {
-        const objectId = engine.placed.objectIdOf(eid);
+        const objectRef = engine.placed.objectRefOf(eid);
         const cells = type.extractionTiles.map(offset => ({
             x: message.x + offset.x,
             y: message.y + offset.y,
             layer: LAYER_RESOURCE,
         }));
-        engine.space.occupy(cells, objectId, this.resourceType);
+        engine.space.occupy(cells, objectRef, this.resourceType);
     }
 }

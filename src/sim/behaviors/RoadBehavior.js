@@ -6,9 +6,9 @@ import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 export class RoadBehavior extends AbstractBehavior {
 
     onSpawn(engine, eid, type, message) {
-        const objectId = engine.placed.objectIdOf(eid);
+        const objectRef = engine.placed.objectRefOf(eid);
         for (const cell of engine.footprint(type, message.x, message.y, message.direction)) {
-            engine.workers.roads.addRoad(cell.x, cell.y, objectId);
+            engine.workers.roads.addRoad(cell.x, cell.y, objectRef);
         }
     }
 

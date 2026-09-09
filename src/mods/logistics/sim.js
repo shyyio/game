@@ -98,7 +98,7 @@ export class LogisticsSimMod extends AbstractSimMod {
      */
     _handleSetGateOpen(message, session, game) {
         const engine = game.simEngine;
-        const eid = engine.placed.eidByObjectId(message.objectId);
+        const eid = engine.placed.eidByObjectRef(message.objectRef);
         if (eid === undefined) {
             return;
         }
@@ -129,8 +129,8 @@ export class LogisticsSimMod extends AbstractSimMod {
      */
     _resolveWireEndpoints(message, session, game) {
         const engine = game.simEngine;
-        const aEid = engine.placed.eidByObjectId(message.aObjectId);
-        const bEid = engine.placed.eidByObjectId(message.bObjectId);
+        const aEid = engine.placed.eidByObjectRef(message.aObjectRef);
+        const bEid = engine.placed.eidByObjectRef(message.bObjectRef);
         if (aEid === undefined || bEid === undefined || aEid === bEid) {
             return null;
         }
@@ -170,7 +170,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         if (this._wireBreaksTerminalRule(engine, networks, endpoints)) {
             return;
         }
-        networks.wire(engine.placed.objectIdOf(endpoints.aEid), engine.placed.objectIdOf(endpoints.bEid));
+        networks.wire(engine.placed.objectRefOf(endpoints.aEid), engine.placed.objectRefOf(endpoints.bEid));
     }
 
     /**
@@ -183,15 +183,15 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @private
      */
     _wireBreaksTerminalRule(engine, networks, endpoints) {
-        const aObjectId = engine.placed.objectIdOf(endpoints.aEid);
-        const bObjectId = engine.placed.objectIdOf(endpoints.bEid);
-        const aNetwork = networks.networkOf(aObjectId);
-        const bNetwork = networks.networkOf(bObjectId);
+        const aObjectRef = engine.placed.objectRefOf(endpoints.aEid);
+        const bObjectRef = engine.placed.objectRefOf(endpoints.bEid);
+        const aNetwork = networks.networkOf(aObjectRef);
+        const bNetwork = networks.networkOf(bObjectRef);
         if (aNetwork !== null && bNetwork !== null && aNetwork.id === bNetwork.id) {
             return false;
         }
-        return this._sideHasTerminal(engine, aNetwork, aObjectId)
-            && this._sideHasTerminal(engine, bNetwork, bObjectId);
+        return this._sideHasTerminal(engine, aNetwork, aObjectRef)
+            && this._sideHasTerminal(engine, bNetwork, bObjectRef);
     }
 
     /**
@@ -199,25 +199,25 @@ export class LogisticsSimMod extends AbstractSimMod {
      * endpoint itself.
      * @param {GameEngine} engine
      * @param {LogicNetwork|null} network
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {boolean}
      * @private
      */
-    _sideHasTerminal(engine, network, objectId) {
+    _sideHasTerminal(engine, network, objectRef) {
         if (network === null) {
-            return this._isTerminalObject(engine, objectId);
+            return this._isTerminalObject(engine, objectRef);
         }
         return this._hasTerminal(engine, network);
     }
 
     /**
      * @param {GameEngine} engine
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {boolean}
      * @private
      */
-    _isTerminalObject(engine, objectId) {
-        const eid = engine.placed.eidByObjectId(objectId);
+    _isTerminalObject(engine, objectRef) {
+        const eid = engine.placed.eidByObjectRef(objectRef);
         if (eid === undefined) {
             return false;
         }
@@ -255,8 +255,8 @@ export class LogisticsSimMod extends AbstractSimMod {
         }
         const engine = game.simEngine;
         engine.resolve(LogicNetworks).unwire(
-            engine.placed.objectIdOf(endpoints.aEid),
-            engine.placed.objectIdOf(endpoints.bEid),
+            engine.placed.objectRefOf(endpoints.aEid),
+            engine.placed.objectRefOf(endpoints.bEid),
         );
     }
 
@@ -270,7 +270,7 @@ export class LogisticsSimMod extends AbstractSimMod {
      */
     _configureRules(message, session, game) {
         const engine = game.simEngine;
-        const eid = engine.placed.eidByObjectId(message.objectId);
+        const eid = engine.placed.eidByObjectRef(message.objectRef);
         if (eid === undefined) {
             return;
         }
@@ -332,7 +332,7 @@ export class LogisticsSimMod extends AbstractSimMod {
                 conditions,
             ));
         }
-        engine.resolve(LogicRules).setRules(message.objectId, rules);
+        engine.resolve(LogicRules).setRules(message.objectRef, rules);
     }
 
     /**
@@ -344,7 +344,7 @@ export class LogisticsSimMod extends AbstractSimMod {
      */
     _sendLogicSnapshot(message, session, game) {
         const engine = game.simEngine;
-        const eid = engine.placed.eidByObjectId(message.objectId);
+        const eid = engine.placed.eidByObjectRef(message.objectRef);
         if (eid === undefined) {
             return;
         }
@@ -355,33 +355,33 @@ export class LogisticsSimMod extends AbstractSimMod {
         const def = engine.components.get("LogicTerminal");
         const tier = def.store.tier[def.row(eid)];
         const networks = engine.resolve(LogicNetworks);
-        const deviceObjectIds = [];
+        const deviceObjectRefs = [];
         const deviceTypeIds = [];
         const deviceTileXs = [];
         const deviceTileYs = [];
         let linked = 0;
-        const network = networks.networkOf(message.objectId);
+        const network = networks.networkOf(message.objectRef);
         if (network !== null) {
             linked = 1;
             const position = engine.Position;
             for (const deviceId of network.deviceIds) {
-                if (deviceId === message.objectId) {
+                if (deviceId === message.objectRef) {
                     continue;
                 }
-                const deviceEid = engine.placed.eidByObjectId(deviceId);
+                const deviceEid = engine.placed.eidByObjectRef(deviceId);
                 if (deviceEid === undefined) {
                     continue;
                 }
-                deviceObjectIds.push(deviceId);
+                deviceObjectRefs.push(deviceId);
                 deviceTypeIds.push(engine.placed.objectTypeIdOf(deviceEid));
                 deviceTileXs.push(position.x[deviceEid]);
                 deviceTileYs.push(position.y[deviceEid]);
             }
         }
-        const rules = engine.resolve(LogicRules).rulesOf(message.objectId);
+        const rules = engine.resolve(LogicRules).rulesOf(message.objectRef);
         const conditions = rules.flatMap(rule => rule.conditions);
         game.bus.publishTo(session.id, new LogicSnapshotEvent(
-            message.objectId, linked, tier, deviceObjectIds, deviceTypeIds, deviceTileXs, deviceTileYs,
+            message.objectRef, linked, tier, deviceObjectRefs, deviceTypeIds, deviceTileXs, deviceTileYs,
             rules.map(rule => rule.actionDeviceId),
             rules.map(rule => rule.actionKey),
             rules.map(rule => rule.actionValue),

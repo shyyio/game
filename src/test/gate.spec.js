@@ -233,21 +233,21 @@ test("a toggle applies at the next tick, batches the change, and syncs to late j
     const engine = game.simEngine;
     const def = engine.components.get("Gate");
     const eid = def.eids[def.count - 1];
-    const objectId = engine.placed.objectIdOf(eid);
+    const objectRef = engine.placed.objectRefOf(eid);
 
     player.events.length = 0;
-    game.dispatchMessage(new SetGateOpenMessage(objectId, 0), player);
+    game.dispatchMessage(new SetGateOpenMessage(objectRef, 0), player);
     assert.equal(def.store.open[def.row(eid)], 1, "the toggle is buffered, not instantaneous");
     game.runTick();
     assert.equal(def.store.open[def.row(eid)], 0, "the tick applied the buffered toggle");
     const batch = player.events.find(event => event instanceof ObjectFieldsBatchEvent);
     assert.ok(batch, "the tick's delta batch fanned out to the chunk's viewers");
-    const change = batch.explode().find(event => event.id === objectId);
+    const change = batch.explode().find(event => event.objectRef === objectRef);
     assert.deepEqual(change.values, [0, 0, EMPTY], "open, fluid, lastOutput");
 
     // A redundant set applies with no delta, so no batch goes out.
     player.events.length = 0;
-    game.dispatchMessage(new SetGateOpenMessage(objectId, 0), player);
+    game.dispatchMessage(new SetGateOpenMessage(objectRef, 0), player);
     game.runTick();
     assert.equal(player.events.find(event => event instanceof ObjectFieldsBatchEvent), undefined);
 
@@ -259,7 +259,7 @@ test("a toggle applies at the next tick, batches the change, and syncs to late j
     const synced = bundle.events.filter(event => event instanceof ObjectFieldsBatchEvent);
     assert.equal(synced.length, 1);
     const syncedGate = synced[0].explode()[0];
-    assert.equal(syncedGate.id, objectId);
+    assert.equal(syncedGate.objectRef, objectRef);
     assert.deepEqual(syncedGate.values, [0, 0, EMPTY]);
 });
 
@@ -272,17 +272,17 @@ test("a toggle without build rights is refused with a corrective event", async (
     const engine = game.simEngine;
     const def = engine.components.get("Gate");
     const eid = def.eids[def.count - 1];
-    const objectId = engine.placed.objectIdOf(eid);
+    const objectRef = engine.placed.objectRefOf(eid);
 
     const intruder = new CapturingSession(2);
     game.connect(intruder);
     intruder.events.length = 0;
-    game.dispatchMessage(new SetGateOpenMessage(objectId, 0), intruder);
+    game.dispatchMessage(new SetGateOpenMessage(objectRef, 0), intruder);
     game.runTick();
     assert.equal(def.store.open[def.row(eid)], 1, "the foreign toggle was refused");
     const corrective = intruder.events.find(event => event instanceof ObjectFieldsEvent);
     assert.ok(corrective, "the sender got the authoritative state back");
-    assert.equal(corrective.id, objectId);
+    assert.equal(corrective.objectRef, objectRef);
     assert.deepEqual(corrective.values, [1, 0, EMPTY]);
 });
 
@@ -296,8 +296,8 @@ test("gate state survives a save/load", async () => {
     const engine = game.simEngine;
     const def = engine.components.get("Gate");
     const eid = def.eids[def.count - 1];
-    const objectId = engine.placed.objectIdOf(eid);
-    game.dispatchMessage(new SetGateOpenMessage(objectId, 0), player);
+    const objectRef = engine.placed.objectRefOf(eid);
+    game.dispatchMessage(new SetGateOpenMessage(objectRef, 0), player);
     game.runTick();
     await game.save();
 

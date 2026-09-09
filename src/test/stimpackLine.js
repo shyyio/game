@@ -205,7 +205,7 @@ function placeNode(engine, node, originX, originY, occupied) {
     } else if (node.kind === "terminal") {
         engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, node.x, node.y, Direction.UP));
         const eid = engine.placed.eidsOf(TradingTerminalType.objectTypeId).at(-1);
-        node.objectId = engine.placed.objectIdOf(eid);
+        node.objectRef = engine.placed.objectRefOf(eid);
         node.outputPort = TradingTerminalType.outputPorts[0];
         markFootprint(occupied, TradingTerminalType, node.x, node.y);
     } else {
@@ -219,7 +219,7 @@ function placeNode(engine, node, originX, originY, occupied) {
 }
 
 /**
- * Configures every Trading Terminal leaf to buy its NPC-priced item, using the objectId placeNode
+ * Configures every Trading Terminal leaf to buy its NPC-priced item, using the objectRef placeNode
  * captured for it directly — never re-queried after the fact, since by the time every terminal is
  * placed there's no way to tell them apart by "the last one created".
  * @param {Game} game
@@ -229,7 +229,7 @@ function placeNode(engine, node, originX, originY, occupied) {
 function configureTerminals(game, node) {
     if (node.kind === "terminal") {
         const session = new CapturingSession(STIMPACK_FACTORY_PLAYER_ID);
-        game.dispatchMessage(new ConfigureTradingTerminalMessage(node.objectId, MARKET_MODE_BUY, node.itemTypeId, node.price), session);
+        game.dispatchMessage(new ConfigureTradingTerminalMessage(node.objectRef, MARKET_MODE_BUY, node.itemTypeId, node.price), session);
         return;
     }
     for (const edge of node.children) {

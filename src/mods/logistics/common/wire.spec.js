@@ -29,12 +29,12 @@ test("Round-trips generic object events, preserving exact ids in the port-id arr
     assertRoundTrip(reg, new CreateObjectMessage(1, 5, 6, 1), CreateObjectMessage);
 });
 
-test("Decoded belt id is a Number, round-tripped exactly", () => {
+test("Decoded belt ref is a Number, round-tripped exactly", () => {
     const reg = wireRegistryFor(new LogisticsDeclaration());
-    const id = 123456789012345;
-    const decoded = reg.decode(reg.encode(new DeleteObjectMessage(id)));
-    assert.strictEqual(typeof decoded.id, "number");
-    assert.strictEqual(decoded.id, id);
+    const objectRef = 123456789012345;
+    const decoded = reg.decode(reg.encode(new DeleteObjectMessage(objectRef)));
+    assert.strictEqual(typeof decoded.objectRef, "number");
+    assert.strictEqual(decoded.objectRef, objectRef);
 });
 
 test("Round-trips a BeltItemBatchEvent's packed columns", () => {

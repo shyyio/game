@@ -12,13 +12,13 @@ export class RoadTile {
     /**
      * @param {number} x
      * @param {number} y
-     * @param {number} objectId
+     * @param {number} objectRef
      */
-    constructor(x, y, objectId) {
+    constructor(x, y, objectRef) {
         this.x = x;
         this.y = y;
         this.key = tileId(x, y);
-        this.objectId = objectId;
+        this.objectRef = objectRef;
         /** @type {number|null} */
         this.component = null;
     }
@@ -31,12 +31,12 @@ export class RoadTile {
 export class HousingSupply {
 
     /**
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {number} remaining
      * @param {{x: number, y: number}[]} cells
      */
-    constructor(objectId, remaining, cells) {
-        this.objectId = objectId;
+    constructor(objectRef, remaining, cells) {
+        this.objectRef = objectRef;
         this.remaining = remaining;
         this.cells = cells;
     }
@@ -113,11 +113,11 @@ export class RoadNetwork {
      * Registers a road cell.
      * @param {number} x
      * @param {number} y
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {void}
      */
-    addRoad(x, y, objectId) {
-        this._tiles.set(tileId(x, y), new RoadTile(x, y, objectId));
+    addRoad(x, y, objectRef) {
+        this._tiles.set(tileId(x, y), new RoadTile(x, y, objectRef));
         this._markCellDirty(x, y);
     }
 
@@ -220,8 +220,8 @@ export class RoadNetwork {
                 return;
             }
             const housing = this.housingAt(x, y);
-            if (housing !== null && !seenHousings.has(housing.objectId)) {
-                seenHousings.add(housing.objectId);
+            if (housing !== null && !seenHousings.has(housing.objectRef)) {
+                seenHousings.add(housing.objectRef);
                 housingQueue.push(housing);
             }
         };
@@ -251,7 +251,7 @@ export class RoadNetwork {
         if (owner === null) {
             return null;
         }
-        const eid = this.placed.eidByObjectId(owner);
+        const eid = this.placed.eidByObjectRef(owner);
         if (eid === undefined) {
             return null;
         }
@@ -296,10 +296,10 @@ export class RoadNetwork {
                 seen,
                 housingAt: (x, y) => {
                     const housing = this.housingAt(x, y);
-                    if (housing === null || seenHousings.has(housing.objectId)) {
+                    if (housing === null || seenHousings.has(housing.objectRef)) {
                         return null;
                     }
-                    seenHousings.add(housing.objectId);
+                    seenHousings.add(housing.objectRef);
                     return housing;
                 },
                 onRoad: (road) => {
@@ -341,9 +341,9 @@ export class RoadNetwork {
             if (!(behavior instanceof RoadBehavior)) {
                 continue;
             }
-            const objectId = def.store.objectId[row];
+            const objectRef = def.store.objectRef[row];
             for (const cell of this.footprintOf(behavior, def.eids[row])) {
-                this.addRoad(cell.x, cell.y, objectId);
+                this.addRoad(cell.x, cell.y, objectRef);
             }
         }
         this._dirtyAll = true;

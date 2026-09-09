@@ -214,11 +214,11 @@ export class GateBehavior extends AbstractBehavior {
      */
     static _occupantAt(engine, x, y) {
         const placed = engine.placed;
-        const objectId = engine.space.ownerAt(x, y, LAYER_SURFACE);
-        if (objectId === null) {
+        const objectRef = engine.space.ownerAt(x, y, LAYER_SURFACE);
+        if (objectRef === null) {
             return null;
         }
-        const eid = placed.eidByObjectId(objectId);
+        const eid = placed.eidByObjectRef(objectRef);
         if (eid === undefined) {
             return null;
         }

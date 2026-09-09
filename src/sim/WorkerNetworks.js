@@ -12,7 +12,7 @@ const ORDER_WORKER_RECOMPUTE = -20;
  * Road-network workers: roads and housings form networks by adjacency (a housing bridges the roads
  * and housings its footprint touches), each housing's workerSupply feeds its network once, and
  * road-adjacent machines consume their full workerCost by ascending (Manhattan distance to housing,
- * objectId) and run manned; a machine the remaining supply can't fully staff gets nothing.
+ * objectRef) and run manned; a machine the remaining supply can't fully staff gets nothing.
  * Edits mark their cells dirty; the allocation recomputes lazily (message apply, tick, chunk sync,
  * inspect), refilling only the road components the dirty cells touch.
  */
@@ -47,12 +47,12 @@ export class WorkerNetworks {
 
     /**
      * The machine's worker stats for inspect, or null when it touches no road.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {{granted: number, supply: number, demand: number}|null}
      */
-    inspectFor(objectId) {
+    inspectFor(objectRef) {
         this.ensureFresh();
-        const assignment = this.assignments.get(objectId);
+        const assignment = this.assignments.get(objectRef);
         if (assignment === undefined) {
             return null;
         }
@@ -84,8 +84,8 @@ export class WorkerNetworks {
         const previous = this.assignments.within(affected);
         this._applyGrants(previous, next);
         this._emitDeltas(previous, next);
-        for (const objectId of previous.keys()) {
-            this.assignments.drop(objectId);
+        for (const objectRef of previous.keys()) {
+            this.assignments.drop(objectRef);
         }
         for (const assignment of next.values()) {
             this.assignments.store(assignment);
@@ -100,27 +100,27 @@ export class WorkerNetworks {
      * @returns {void}
      */
     _applyGrants(previous, next) {
-        for (const [objectId, assignment] of previous) {
-            if (assignment.granted > 0 && !next.has(objectId)) {
-                this._setGranted(objectId, 0);
+        for (const [objectRef, assignment] of previous) {
+            if (assignment.granted > 0 && !next.has(objectRef)) {
+                this._setGranted(objectRef, 0);
             }
         }
-        for (const [objectId, assignment] of next) {
-            const before = previous.get(objectId);
+        for (const [objectRef, assignment] of next) {
+            const before = previous.get(objectRef);
             if (before === undefined || before.granted !== assignment.granted) {
-                this._setGranted(objectId, assignment.granted);
+                this._setGranted(objectRef, assignment.granted);
             }
         }
     }
 
     /**
      * @private
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {number} granted
      * @returns {void}
      */
-    _setGranted(objectId, granted) {
-        const eid = this.placed.eidByObjectId(objectId);
+    _setGranted(objectRef, granted) {
+        const eid = this.placed.eidByObjectRef(objectRef);
         if (eid === undefined) {
             return;
         }
@@ -137,29 +137,29 @@ export class WorkerNetworks {
      * @returns {void}
      */
     _emitDeltas(previous, next) {
-        for (const [objectId, assignment] of next) {
-            const before = previous.get(objectId);
+        for (const [objectRef, assignment] of next) {
+            const before = previous.get(objectRef);
             if (before !== undefined
-                && before.housingObjectId === assignment.housingObjectId
+                && before.housingObjectRef === assignment.housingObjectRef
                 && before.granted === assignment.granted) {
                 continue;
             }
-            let housingId = assignment.housingObjectId;
+            let housingId = assignment.housingObjectRef;
             if (housingId === null) {
                 housingId = NO_HOUSING;
             }
             this.engine.emitEvent(new WorkerAssignmentEvent(
                 assignment.x,
                 assignment.y,
-                objectId,
+                objectRef,
                 housingId,
                 assignment.granted,
                 1,
             ));
         }
-        for (const [objectId, before] of previous) {
-            if (!next.has(objectId)) {
-                this.engine.emitEvent(new WorkerAssignmentEvent(before.x, before.y, objectId, NO_HOUSING, 0, 0));
+        for (const [objectRef, before] of previous) {
+            if (!next.has(objectRef)) {
+                this.engine.emitEvent(new WorkerAssignmentEvent(before.x, before.y, objectRef, NO_HOUSING, 0, 0));
             }
         }
     }
@@ -172,16 +172,16 @@ export class WorkerNetworks {
      */
     _chunkSync(chunk) {
         this.ensureFresh();
-        const objectIds = this.assignments.inChunk(chunk);
-        if (objectIds === undefined) {
+        const objectRefs = this.assignments.inChunk(chunk);
+        if (objectRefs === undefined) {
             return [];
         }
         const origin = chunkOrigin(chunk);
         const batch = new WorkerAssignmentBatchEvent(origin.x, origin.y);
-        for (const objectId of objectIds) {
-            const assignment = this.assignments.get(objectId);
-            const housingId = assignment.housingObjectId === null ? NO_HOUSING : assignment.housingObjectId;
-            batch.add(objectId, housingId, assignment.granted, assignment.x, assignment.y);
+        for (const objectRef of objectRefs) {
+            const assignment = this.assignments.get(objectRef);
+            const housingId = assignment.housingObjectRef === null ? NO_HOUSING : assignment.housingObjectRef;
+            batch.add(objectRef, housingId, assignment.granted, assignment.x, assignment.y);
         }
         return [batch];
     }

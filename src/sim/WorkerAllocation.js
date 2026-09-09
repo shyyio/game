@@ -9,14 +9,14 @@ import {WorkerAssignment} from "@/sim/WorkerAssignments.js";
 export class MachineDemand {
 
     /**
-     * @param {number} objectId
+     * @param {number} objectRef
      * @param {number} cost
      * @param {number} x
      * @param {number} y
      * @param {{x: number, y: number}[]} cells
      */
-    constructor(objectId, cost, x, y, cells) {
-        this.objectId = objectId;
+    constructor(objectRef, cost, x, y, cells) {
+        this.objectRef = objectRef;
         this.cost = cost;
         this.x = x;
         this.y = y;
@@ -27,7 +27,7 @@ export class MachineDemand {
 
 /**
  * Hands each road component's housing supply to the machines attached to it: every machine takes
- * its full workerCost by ascending (distance to housing, objectId) while supply lasts, and one the
+ * its full workerCost by ascending (distance to housing, objectRef) while supply lasts, and one the
  * remainder can't fully staff gets nothing.
  */
 export class WorkerAllocation {
@@ -100,7 +100,7 @@ export class WorkerAllocation {
             return;
         }
 
-        const housingList = [...component.housings].sort((a, b) => a.objectId - b.objectId);
+        const housingList = [...component.housings].sort((a, b) => a.objectRef - b.objectRef);
         let supply = 0;
         for (const housing of housingList) {
             supply += housing.remaining;
@@ -113,8 +113,8 @@ export class WorkerAllocation {
         const machineList = [...machines.values()];
         for (const machine of machineList) {
             machine.distance = this._minDistance(machine.cells, housingList);
-            this._next.set(machine.objectId, new WorkerAssignment({
-                objectId: machine.objectId,
+            this._next.set(machine.objectRef, new WorkerAssignment({
+                objectRef: machine.objectRef,
                 x: machine.x,
                 y: machine.y,
                 supply,
@@ -122,7 +122,7 @@ export class WorkerAllocation {
                 component: component.minTile,
             }));
         }
-        machineList.sort((a, b) => a.distance - b.distance || a.objectId - b.objectId);
+        machineList.sort((a, b) => a.distance - b.distance || a.objectRef - b.objectRef);
 
         let supplyLeft = supply;
         let cursor = 0;
@@ -137,12 +137,12 @@ export class WorkerAllocation {
             }
             const granted = machine.cost;
             supplyLeft -= granted;
-            const assignment = this._next.get(machine.objectId);
+            const assignment = this._next.get(machine.objectRef);
             assignment.granted = granted;
             while (housingList[cursor].remaining === 0) {
                 cursor += 1;
             }
-            assignment.housingObjectId = housingList[cursor].objectId;
+            assignment.housingObjectRef = housingList[cursor].objectRef;
             let cost = granted;
             while (cost > 0) {
                 const housing = housingList[cursor];
@@ -172,7 +172,7 @@ export class WorkerAllocation {
         if (owner === null || machines.has(owner) || this._next.has(owner)) {
             return;
         }
-        const eid = this.placed.eidByObjectId(owner);
+        const eid = this.placed.eidByObjectRef(owner);
         if (eid === undefined) {
             return;
         }

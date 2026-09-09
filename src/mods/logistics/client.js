@@ -240,11 +240,11 @@ export class LogisticsClientMod extends AbstractClientMod {
             return;
         }
         if (event instanceof LogicWireSetEvent) {
-            this._wireLayer.setEdge(event.aObjectId, event.bObjectId);
+            this._wireLayer.setEdge(event.aObjectRef, event.bObjectRef);
             return;
         }
         if (event instanceof LogicWireClearEvent) {
-            this._wireLayer.removeEdge(event.aObjectId, event.bObjectId);
+            this._wireLayer.removeEdge(event.aObjectRef, event.bObjectRef);
             return;
         }
         if (event instanceof BeltPathRecalculateEvent) {

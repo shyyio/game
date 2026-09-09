@@ -118,10 +118,10 @@ test("Repeated int64 decodes to Numbers, exact up to the 2^53 cap", () => {
     const reg = registry();
     const ids = [1, 999999999999, Number.MAX_SAFE_INTEGER];
     const decoded = reg.decode(reg.encode(new SetInspectedObjectsMessage(ids)));
-    for (const id of decoded.objectIds) {
+    for (const id of decoded.objectRefs) {
         assert.strictEqual(typeof id, "number");
     }
-    assert.deepStrictEqual(decoded.objectIds, ids);
+    assert.deepStrictEqual(decoded.objectRefs, ids);
 });
 
 test("Throws on an unregistered class", () => {

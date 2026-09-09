@@ -78,12 +78,12 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
     /**
      * The edge a lane cell is fed over, in the cell's own frame, or null when no lane covers it.
      * A mod's own draw layer reads a cell's bend from the sim's choice rather than re-deriving it.
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {Direction|null}
      */
-    parentEdgeOf(objectId) {
+    parentEdgeOf(objectRef) {
         for (const lane of this._lanes.values()) {
-            const index = lane.cellObjectRefs.indexOf(objectId);
+            const index = lane.cellObjectRefs.indexOf(objectRef);
             if (index >= 0) {
                 return lane.cellParentEdges[index];
             }
@@ -210,8 +210,8 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         const slots = [];
         const offsets = [];
         let total = 0;
-        for (const objectId of lane.cellObjectRefs) {
-            const entry = this.cache.get(objectId);
+        for (const objectRef of lane.cellObjectRefs) {
+            const entry = this.cache.get(objectRef);
             if (entry === null) {
                 return null;
             }

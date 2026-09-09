@@ -35,15 +35,15 @@ export class SetViewportMessage extends AbstractMessage {
 export class SetInspectedObjectsMessage extends AbstractMessage {
 
     static wireFields = {
-        objectIds: "int64[]",
+        objectRefs: "int64[]",
     };
 
     /**
-     * @param {number[]} objectIds
+     * @param {number[]} objectRefs
      */
-    constructor(objectIds) {
+    constructor(objectRefs) {
         super();
-        this.objectIds = objectIds;
+        this.objectRefs = objectRefs;
     }
 
     /**
@@ -52,27 +52,27 @@ export class SetInspectedObjectsMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return this.objectIds.length <= MAX_INSPECTED_OBJECTS;
+        return this.objectRefs.length <= MAX_INSPECTED_OBJECTS;
     }
 }
 
 /**
- * Deletes a placed object by its (globally unique) id. Dispatched to every mod; each deletes
- * the object if the id is one of its own and ignores it otherwise — so a tool can remove any
+ * Deletes a placed object by its (globally unique) ref. Dispatched to every mod; each deletes
+ * the object if the ref is one of its own and ignores it otherwise — so a tool can remove any
  * object without knowing which mod owns it.
  */
 export class DeleteObjectMessage extends AbstractMessage {
 
     static wireFields = {
-        id: "int64",
+        objectRef: "int64",
     };
 
     /**
-     * @param {number} id
+     * @param {number} objectRef
      */
-    constructor(id) {
+    constructor(objectRef) {
         super();
-        this.id = id;
+        this.objectRef = objectRef;
     }
 }
 

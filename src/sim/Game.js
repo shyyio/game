@@ -136,7 +136,7 @@ export class Game {
          */
         this._coreMessageHandlers = new Map([
             [SetViewportMessage, (session, message) => this.sessionViews.setViewport(session, message.chunks)],
-            [SetInspectedObjectsMessage, (session, message) => this.sessionViews.setInspects(session, message.objectIds)],
+            [SetInspectedObjectsMessage, (session, message) => this.sessionViews.setInspects(session, message.objectRefs)],
             [OverworldRequestMessage, (session, message) => this.sessionViews.sendOverworldSnapshot(session, message)],
             [ClaimChunkMessage, (session, message) => this.claimAdmin.claim(session, message.chunk)],
             [UnclaimChunkMessage, (session, message) => this.claimAdmin.unclaim(session, message.chunk, message.clear === 1)],
@@ -347,7 +347,7 @@ export class Game {
 
         // Close menus after the object is actually deleted, never before.
         if (message instanceof DeleteObjectMessage) {
-            this.sessionViews.closeInspect(message.id);
+            this.sessionViews.closeInspect(message.objectRef);
         }
     }
 

@@ -24,7 +24,7 @@ function createMachine(game, x, y) {
     const eids = placed.eidsOf(BlenderType.objectTypeId);
     const eid = eids[eids.length - 1];
     const machine = game.simEngine.components.get("Machine");
-    return {id: placed.objectIdOf(eid), inPort: machine.store.in0[machine.row(eid)]};
+    return {id: placed.objectRefOf(eid), inPort: machine.store.in0[machine.row(eid)]};
 }
 
 function heartbeats(session) {
@@ -42,7 +42,7 @@ test("opening a menu syncs the machine snapshot immediately, without a tick", as
     const synced = heartbeats(session);
     assert.equal(synced.length, 1);
     const snapshot = synced[0];
-    assert.equal(snapshot.objectId, machine.id);
+    assert.equal(snapshot.objectRef, machine.id);
     assert.deepEqual(snapshot.inputPorts, [0]);
     assert.deepEqual(snapshot.inputMemory, [0]);
     assert.equal(snapshot.processingRemaining, null);
@@ -65,7 +65,7 @@ test("emits a heartbeat snapshot each tick to a subscribing session", async () =
     game.postTick();
 
     assert.equal(heartbeats(session).length, 1);
-    assert.equal(heartbeats(session)[0].objectId, machine.id);
+    assert.equal(heartbeats(session)[0].objectRef, machine.id);
 });
 
 test("each inspecting session gets its own heartbeat for a shared machine", async () => {
@@ -147,7 +147,7 @@ test("a session inspects several machines at once", async () => {
 
     game.dispatchMessage(new SetInspectedObjectsMessage([a.id, b.id]), session);
 
-    const ids = heartbeats(session).map(event => event.objectId).sort();
+    const ids = heartbeats(session).map(event => event.objectRef).sort();
     assert.deepEqual(ids, [a.id, b.id].sort());
 });
 
@@ -162,7 +162,7 @@ test("deleting an inspected machine closes its menu and stops heartbeats", async
 
     const closed = session.events.filter(event => event instanceof InspectClosedEvent);
     assert.equal(closed.length, 1);
-    assert.equal(closed[0].objectId, machine.id);
+    assert.equal(closed[0].objectRef, machine.id);
 
     session.events.length = 0;
     for (const phase of TICK_PHASE_ORDER) {

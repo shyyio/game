@@ -1114,7 +1114,7 @@ export class LaneIndex {
             position.x[head],
             position.y[head],
             laneEid,
-            this.cellsOf(laneEid).map(cell => this.engine.placed.objectIdOf(cell)),
+            this.cellsOf(laneEid).map(cell => this.engine.placed.objectRefOf(cell)),
             this._parentEdgesOf(laneEid),
             this.laneDef.store.outPort[laneRow],
         ));
@@ -1155,7 +1155,7 @@ export class LaneIndex {
             }
             geometry.add(
                 laneEid,
-                this.cellsOf(laneEid).map(cell => this.engine.placed.objectIdOf(cell)),
+                this.cellsOf(laneEid).map(cell => this.engine.placed.objectRefOf(cell)),
                 this._parentEdgesOf(laneEid),
                 this.laneDef.store.outPort[laneRow],
             );

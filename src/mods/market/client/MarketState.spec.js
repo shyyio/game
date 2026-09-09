@@ -19,7 +19,7 @@ test("openConfig sets the target and requests its snapshot", () => {
     assert.equal(state.get("market.configTarget"), 42);
     assert.equal(sent.length, 1);
     assert.ok(sent[0] instanceof MarketSnapshotRequestMessage);
-    assert.equal(sent[0].objectId, 42);
+    assert.equal(sent[0].objectRef, 42);
 });
 
 test("openConfig clears any stale snapshot from a previous target", () => {

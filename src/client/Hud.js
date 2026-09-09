@@ -338,7 +338,7 @@ export class Hud {
         this.inspectPanelLayer.textureRegistry = textureRegistry;
         this.inspectPanelLayer.items = modRegistry.items;
         this.inspectPanelLayer.viewport = viewport;
-        this.inspectPanelLayer.onClose(objectId => this._client.unInspectObject(objectId));
+        this.inspectPanelLayer.onClose(objectRef => this._client.unInspectObject(objectRef));
         this.statusLayer.textureRegistry = textureRegistry;
         this.statusLayer.refreshBackground();
         this._layoutTopLeft();

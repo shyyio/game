@@ -108,10 +108,10 @@ export class AbstractBehavior {
      * The entity's current inspect snapshot.
      * @param {GameEngine} engine
      * @param {number} eid
-     * @param {number} objectId
+     * @param {number} objectRef
      * @returns {InspectHeartbeatEvent|null}
      */
-    inspect(engine, eid, objectId) {
+    inspect(engine, eid, objectRef) {
         return null;
     }
 
