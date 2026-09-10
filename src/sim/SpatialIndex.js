@@ -101,11 +101,11 @@ export class SpatialIndex {
         if (eid === undefined) {
             return null;
         }
-        const owner = this.occupancies.store.owner[eid];
-        if (owner === NO_EID) {
+        const ownerEid = this.occupancies.store.owner[eid];
+        if (ownerEid === NO_EID) {
             return null;
         }
-        return owner;
+        return ownerEid;
     }
 
     /**

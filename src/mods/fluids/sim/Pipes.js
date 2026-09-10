@@ -358,9 +358,9 @@ export class Pipes extends AbstractSystem {
      */
     _getBoundarySourceTypeByNetwork(net) {
         for (const port of net.inputPorts) {
-            const source = this.engine.ports.getFluidSourceByPortEid(port);
-            if (source !== EMPTY) {
-                return source;
+            const sourceFluidType = this.engine.ports.getFluidSourceByPortEid(port);
+            if (sourceFluidType !== EMPTY) {
+                return sourceFluidType;
             }
         }
         return EMPTY;
@@ -450,8 +450,8 @@ export class Pipes extends AbstractSystem {
                     break;
                 }
                 // Only fluid-flagged ports receive payloads.
-                const dest = engine.ports.findPortEidAt(edge.x, edge.y, edge.direction);
-                if (dest === null || !engine.ports.isFluidClaimed(dest)) {
+                const destPortEid = engine.ports.findPortEidAt(edge.x, edge.y, edge.direction);
+                if (destPortEid === null || !engine.ports.isFluidClaimed(destPortEid)) {
                     continue;
                 }
                 const neighborNet = this._networkByTile.get(edge.neighborKey);
@@ -463,8 +463,8 @@ export class Pipes extends AbstractSystem {
                         continue;
                     }
                 }
-                engine.transfers.submitCreate(dest, net.fluidType, P[dest] === EMPTY);
-                this._emittedPorts.push(dest);
+                engine.transfers.submitCreate(destPortEid, net.fluidType, P[destPortEid] === EMPTY);
+                this._emittedPorts.push(destPortEid);
                 this._emittedNets.push(net);
                 budget -= 1;
             }
