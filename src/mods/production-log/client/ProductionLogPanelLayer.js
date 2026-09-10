@@ -54,7 +54,7 @@ export class ProductionLogPanelLayer extends Container {
         this._items = modRegistry.items;
         this._categories = modRegistry.itemCategories;
         this._players = cache.view("players");
-        this._isClaiming = cache.view("chunkClaims");
+        this._claims = cache.view("chunkClaims");
         this._tooltip = tooltip;
         this.textureCache = null;
         this.anchorButton = null;
@@ -78,7 +78,7 @@ export class ProductionLogPanelLayer extends Container {
             this.hide();
             return;
         }
-        this.showLog(this._isClaiming.ownPlayerRef);
+        this.showLog(this._claims.ownPlayerRef);
     }
 
     /**
@@ -97,7 +97,7 @@ export class ProductionLogPanelLayer extends Container {
      */
     refreshOwn() {
         const view = this._current();
-        if (this.visible && view instanceof LogView && view.playerRef === this._isClaiming.ownPlayerRef) {
+        if (this.visible && view instanceof LogView && view.playerRef === this._claims.ownPlayerRef) {
             this._writer.requestLog(view.playerRef);
         }
     }
@@ -193,7 +193,7 @@ export class ProductionLogPanelLayer extends Container {
         if (!(view instanceof LogView)) {
             return "Leaderboard";
         }
-        if (view.playerRef === this._isClaiming.ownPlayerRef) {
+        if (view.playerRef === this._claims.ownPlayerRef) {
             return "Production log";
         }
         return `${this._players.getUsernameByPlayerRef(view.playerRef)}'s log`;
@@ -390,7 +390,7 @@ export class ProductionLogPanelLayer extends Container {
             row.pushLeft(this._buildBackButton());
         });
         stack.header(this._items.getItemTypeByTypeId(view.itemTypeId).name);
-        const ownPlayerRef = this._isClaiming.ownPlayerRef;
+        const ownPlayerRef = this._claims.ownPlayerRef;
         const rows = [];
         if (board !== null) {
             for (let i = 0; i < board.playerRefs.length; i += 1) {

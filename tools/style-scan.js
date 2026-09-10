@@ -37,7 +37,7 @@ const RULES = [
     new StyleRule("observed-vocab", /\b(?![pP]erformanceObserver)\w*([oO]bserv|(?<![sS])[wW]atch)\w*\b(?![(},])/, "chunk visibility is subscribe/isSubscribed", true),
     new StyleRule("record-noun", /\b\w*Record(?!ing|s\b)\w*\b|\b[A-Z_]*_RECORD\b/, "a table element is an Entry", true),
     new StyleRule("ensure-verb", /\b_?ensure\w*\(/, "get-or-create is getOr<Verb>By<Key>", true),
-    new StyleRule("return-literal", /^\s*return \{\s*\w/, "a multi-value result is a named class", true),
+    new StyleRule("return-literal", /^\s*return \{\s*\w/, "a returned shape is a named class or a @typedef", true),
     new StyleRule("contrast-comment", /^\s*(\/\/|\*).*\b(no longer|instead of|rather than|would (bypass|be|have)|isn't|is not a|not a )\b/, "state the present fact only", false),
     new StyleRule("subjectless-bool", /^\s{4}(static )?_?(is|has|can|should)[A-Z][a-z]*\(/, "a boolean names its subject", false),
 ];
@@ -57,6 +57,11 @@ const ENGINE_HOOKS = new Set([
 ]);
 
 const METHOD_LINE = /^\s{4}(?:static\s+)?(?:async\s+)?(_?[a-z]\w*)\s*\([^)]*\)\s*\{$/;
+const FUNCTION_LINE = /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+\s*\(|^\s*(?:const|let)\s+\w+\s*=\s*(?:async\s+)?\([^)]*\)\s*=>\s*\{$/;
+const RETURNS_TAG = /@returns\s+\{(?:Promise<)?([A-Z]\w*)(?:\[\])?>?\}/;
+const RETURN_LITERAL_RULE = "return-literal";
+// Literals a third-party API consumes: vue-router locations, Pixi text styles, Node loader hooks.
+const RETURN_LITERAL_EXEMPT_FILES = new Set(["src/client/router.js", "src/client/hud/PanelText.js", "src/nodeservice/hooks.js"]);
 const KEYWORDS = new Set(["if", "for", "while", "switch", "catch", "function", "return"]);
 const LEADING_WORD = /^_?([a-z]+)/;
 
@@ -113,9 +118,27 @@ export function scanFiles(files) {
     for (const file of files) {
         const relativePath = relative(ROOT, file);
         const lines = readFileSync(file, "utf8").split("\n");
+        const isTestFile = relativePath.endsWith(".spec.js") || relativePath.startsWith("src/test/");
+        let pendingReturnsType = null;
+        let currentReturnsType = null;
+        let currentMethodName = null;
         for (let index = 0; index < lines.length; index += 1) {
             const line = lines[index];
+            const returnsTag = line.match(RETURNS_TAG);
+            if (returnsTag !== null) {
+                pendingReturnsType = returnsTag[1];
+            }
+            const functionStart = line.match(METHOD_LINE);
+            if (functionStart !== null || FUNCTION_LINE.test(line)) {
+                currentReturnsType = pendingReturnsType;
+                pendingReturnsType = null;
+                currentMethodName = functionStart === null ? null : functionStart[1];
+            }
             for (const rule of RULES) {
+                if (rule.name === RETURN_LITERAL_RULE && (isTestFile || currentReturnsType !== null
+                    || currentMethodName === "toJSON" || RETURN_LITERAL_EXEMPT_FILES.has(relativePath))) {
+                    continue;
+                }
                 if (rule.pattern.test(line)) {
                     hitsByRule.get(rule.name).push(new Hit(relativePath, index + 1, line.trim()));
                 }

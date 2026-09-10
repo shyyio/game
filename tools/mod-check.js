@@ -68,7 +68,12 @@ export async function checkPackage(dir) {
 
     try {
         const declaration = bundle.createDeclaration(sdk);
-        const sim = manifest.hasPart(MOD_PART_SIM) ? bundle.createSim(sdk) : null;
+        let sim;
+        if (manifest.hasPart(MOD_PART_SIM)) {
+            sim = bundle.createSim(sdk);
+        } else {
+            sim = null;
+        }
         const registry = new ModRegistry();
         registry.register(new ModPackage(declaration, {sim}));
         registry.freeze();

@@ -36,7 +36,7 @@ export class BeltTool extends AbstractTool {
 
     onTap(tileX, tileY) {
         const direction = this._rotation.direction;
-        const blocked = this._isBlocked(tileX, tileY, direction);
+        const blocked = this._isTileBlocked(tileX, tileY, direction);
         this._place(tileX, tileY, direction);
         if (!blocked) {
             // Advance the center-lock crosshair one tile so consecutive taps lay a line.
@@ -54,7 +54,7 @@ export class BeltTool extends AbstractTool {
      */
     _showGhost(tileX, tileY, direction) {
         const occupant = this._cache.findObjectAt(tileX, tileY, LAYER_SURFACE);
-        const blocked = this._isBlocked(tileX, tileY, direction);
+        const blocked = this._isTileBlocked(tileX, tileY, direction);
         const overwrite = occupant !== null && !blocked;
         this._placementFeedbackLayer.showTile({tileX, tileY, blocked, overwrite});
         const {parentX, parentY} = inferBeltParent(this._cache, tileX, tileY, direction);
@@ -77,7 +77,7 @@ export class BeltTool extends AbstractTool {
      * @private
      * @returns {boolean}
      */
-    _isBlocked(tileX, tileY, direction) {
+    _isTileBlocked(tileX, tileY, direction) {
         if (!this._client.canBuildAt(tileX, tileY)) {
             return true;
         }
@@ -85,7 +85,7 @@ export class BeltTool extends AbstractTool {
             return true;
         }
         const occupant = this._cache.findObjectAt(tileX, tileY, LAYER_SURFACE);
-        return occupant !== null && !this._isOverwritable(occupant);
+        return occupant !== null && !this._isOccupantOverwritable(occupant);
     }
 
     /**
@@ -93,7 +93,7 @@ export class BeltTool extends AbstractTool {
      * @private
      * @returns {boolean}
      */
-    _isOverwritable(occupant) {
+    _isOccupantOverwritable(occupant) {
         return occupant.data.type.placement.conveyor;
     }
 
@@ -119,7 +119,7 @@ export class BeltTool extends AbstractTool {
         }
         const occupant = this._cache.findObjectAt(tileX, tileY, LAYER_SURFACE);
         if (occupant !== null) {
-            if (!this._isOverwritable(occupant)) {
+            if (!this._isOccupantOverwritable(occupant)) {
                 return;
             }
             this.session.sendMessage(new DeleteObjectMessage(occupant.id));

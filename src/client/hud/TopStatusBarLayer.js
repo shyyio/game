@@ -134,7 +134,7 @@ export class TopStatusBarLayer extends AbstractEdgeBarLayer {
      * @protected
      * @returns {boolean}
      */
-    _hasContent() {
+    _hasBarContent() {
         return this._sections.size > 0;
     }
 

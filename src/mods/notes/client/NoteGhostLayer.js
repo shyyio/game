@@ -24,7 +24,7 @@ export class NoteGhostLayer extends AbstractDrawLayer {
     constructor(state) {
         super();
         this._state = state;
-        this._isClaiming = state.view("chunkClaims");
+        this._claims = state.view("chunkClaims");
         this._active = false;
         // The tile the tool hovers; a note already standing there takes the ghost's place.
         this._hoveredTile = null;
@@ -90,7 +90,7 @@ export class NoteGhostLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _paint() {
-        let color = claimColor(this._isClaiming.ownPlayerRef);
+        let color = claimColor(this._claims.ownPlayerRef);
         let alpha = GHOST_ALPHA;
         if (this._isBlocked) {
             color = GHOST_BLOCKED_TINT;

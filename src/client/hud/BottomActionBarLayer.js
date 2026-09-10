@@ -71,7 +71,7 @@ export class BottomActionBarLayer extends AbstractEdgeBarLayer {
      * @protected
      * @returns {boolean}
      */
-    _hasContent() {
+    _hasBarContent() {
         return this._action !== null;
     }
 

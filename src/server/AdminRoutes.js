@@ -98,13 +98,13 @@ export class AdminRoutes {
      */
     registerRoutes(app) {
         app.get("/admin/api/state", (res, req) => {
-            if (!this._isAuthorized(res, req)) {
+            if (!this._isRequestAuthorized(res, req)) {
                 return;
             }
             respondJson(res, this._state());
         });
         app.put("/admin/api/config", (res, req) => {
-            if (!this._isAuthorized(res, req)) {
+            if (!this._isRequestAuthorized(res, req)) {
                 return;
             }
             const convert = req.getQuery("convert") === "1";
@@ -115,7 +115,7 @@ export class AdminRoutes {
             });
         });
         app.post("/admin/api/reset", (res, req) => {
-            if (!this._isAuthorized(res, req)) {
+            if (!this._isRequestAuthorized(res, req)) {
                 return;
             }
             readJson(res, json => {
@@ -147,7 +147,7 @@ export class AdminRoutes {
      * @param {object} req
      * @returns {boolean} whether the request carries the admin token; rejected already when not
      */
-    _isAuthorized(res, req) {
+    _isRequestAuthorized(res, req) {
         const header = req.getHeader("authorization");
         const expected = this._runtime.running.adminToken;
         if (expected !== null && header.startsWith(BEARER) && isTokenMatch(header.slice(BEARER.length), expected)) {

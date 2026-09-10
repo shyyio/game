@@ -916,7 +916,7 @@ export class LaneIndex extends AbstractSystem {
             // A lane has one input; a resting fluid is refused, so its producer backs up.
             const inputPortTakeable = inputPortItemTypeId !== EMPTY && !engine.isFluid(inputPortItemTypeId);
             const leadItemEid = lanes.firstItem[laneRow];
-            if (leadItemEid !== NO_EID && items.gap[this.items.getRowByEid(leadItemEid)] === 0 && this._canPop(laneRow)) {
+            if (leadItemEid !== NO_EID && items.gap[this.items.getRowByEid(leadItemEid)] === 0 && this._canLanePop(laneRow)) {
                 this._submitPop(laneRow, inputPortItemTypeId, items.itemTypeId[this.items.getRowByEid(leadItemEid)]);
             }
             if (inputPortTakeable && lanes.itemCount[laneRow] < lanes.slotCount[laneRow]) {
@@ -955,7 +955,7 @@ export class LaneIndex extends AbstractSystem {
      * @param {number} laneRow
      * @returns {boolean}
      */
-    _canPop(laneRow) {
+    _canLanePop(laneRow) {
         return !this.engine.ports.isFluidClaimed(this.lanes.store.outputPort[laneRow]);
     }
 
@@ -967,7 +967,7 @@ export class LaneIndex extends AbstractSystem {
         const transfers = this.engine.transfers;
         for (let laneRow = 0; laneRow < this.lanes.count; laneRow += 1) {
             const laneEid = this.lanes.eids[laneRow];
-            const popped = this._popIntent[laneRow] !== NO_INTENT && transfers.isResolved(this._popIntent[laneRow]);
+            const popped = this._popIntent[laneRow] !== NO_INTENT && transfers.isIntentResolved(this._popIntent[laneRow]);
             let takenItem = EMPTY;
             if (popped) {
                 this._popLead(laneEid, laneRow);
@@ -976,7 +976,7 @@ export class LaneIndex extends AbstractSystem {
                 this._shiftItems(laneEid, laneRow);
             }
             // The item enters once, whichever intent emptied the port.
-            if (takenItem === EMPTY && this._drainIntent[laneRow] !== NO_INTENT && transfers.isResolved(this._drainIntent[laneRow])) {
+            if (takenItem === EMPTY && this._drainIntent[laneRow] !== NO_INTENT && transfers.isIntentResolved(this._drainIntent[laneRow])) {
                 takenItem = this._drainItem[laneRow];
             }
             if (takenItem !== EMPTY) {

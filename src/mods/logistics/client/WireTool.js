@@ -44,7 +44,7 @@ export class WireTool extends AbstractTool {
 
     onTap(tileX, tileY) {
         const entry = this._cache.findObjectAt(tileX, tileY, LAYER_SURFACE);
-        if (entry === null || !WireTool._isWireable(entry)) {
+        if (entry === null || !WireTool._isEntryWireable(entry)) {
             if (!Mobile.enabled) {
                 this._select(null);
             }
@@ -93,7 +93,7 @@ export class WireTool extends AbstractTool {
             this._placementFeedbackLayer.show({blocked: [], overwrite: [], clear: [], showTarget: true});
             return;
         }
-        if (this._isActionable(entry)) {
+        if (this._isEntryActionable(entry)) {
             this._placementFeedbackLayer.show({blocked: [], overwrite: [], clear: tile, showTarget: true});
         } else {
             this._placementFeedbackLayer.show({blocked: tile, overwrite: [], clear: [], showTarget: true});
@@ -115,7 +115,7 @@ export class WireTool extends AbstractTool {
      * @param {CacheEntry} entry
      * @returns {boolean}
      */
-    static _isWireable(entry) {
+    static _isEntryWireable(entry) {
         return entry.data.type.wireAnchor !== null;
     }
 
@@ -176,7 +176,7 @@ export class WireTool extends AbstractTool {
         }
         const entry = this._cache.findObjectAt(tileX, tileY, LAYER_SURFACE);
         let snap = null;
-        if (entry !== null && entry.id !== selected.id && WireTool._isWireable(entry)) {
+        if (entry !== null && entry.id !== selected.id && WireTool._isEntryWireable(entry)) {
             snap = entry;
         }
         this._wireLayer.showPreview(selected, snap);
@@ -189,8 +189,8 @@ export class WireTool extends AbstractTool {
      * @param {CacheEntry} entry
      * @returns {boolean}
      */
-    _isActionable(entry) {
-        if (!WireTool._isWireable(entry)) {
+    _isEntryActionable(entry) {
+        if (!WireTool._isEntryWireable(entry)) {
             return false;
         }
         if (this._selectedId === null || entry.id === this._selectedId) {

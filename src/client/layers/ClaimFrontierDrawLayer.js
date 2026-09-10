@@ -26,7 +26,7 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
      */
     constructor(state) {
         super();
-        this._isClaiming = state.view("chunkClaims");
+        this._claims = state.view("chunkClaims");
         this._graphics = new Graphics();
         this.addChild(this._graphics);
         this._modeActive = false;
@@ -107,9 +107,9 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
      */
     _frontier() {
         const frontier = new Set();
-        for (const chunk of this._isClaiming.ownChunks()) {
+        for (const chunk of this._claims.ownChunks()) {
             for (const neighbor of chunkNeighbors(chunk)) {
-                if (this._isClaiming.getOwnerByChunkKey(neighbor) === PLAYER_REF_NONE) {
+                if (this._claims.getOwnerByChunkKey(neighbor) === PLAYER_REF_NONE) {
                     frontier.add(neighbor);
                 }
             }
@@ -125,7 +125,7 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
         this._dirty = false;
         this._graphics.clear();
         // At the chunk limit nothing is claimable, so the frontier has nothing to offer.
-        this.visible = this._modeActive && this._zoomedOut && !this._isClaiming.isAtChunkLimit();
+        this.visible = this._modeActive && this._zoomedOut && !this._claims.isAtChunkLimit();
         if (!this.visible) {
             return;
         }
@@ -148,7 +148,7 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
         } else {
             alpha = FRONTIER_ALPHA;
         }
-        this._graphics.fill({color: claimColor(this._isClaiming.ownPlayerRef), alpha});
+        this._graphics.fill({color: claimColor(this._claims.ownPlayerRef), alpha});
     }
 
     /**

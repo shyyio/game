@@ -67,7 +67,7 @@ export class AbstractEdgeBarLayer extends Container {
      * @protected
      * @returns {boolean}
      */
-    _hasContent() {
+    _hasBarContent() {
         throw new NotImplementedError();
     }
 
@@ -95,7 +95,7 @@ export class AbstractEdgeBarLayer extends Container {
      * @returns {void}
      */
     _rebuild() {
-        this.visible = this._hasContent();
+        this.visible = this._hasBarContent();
         for (const node of this._contentNodes) {
             node.destroy({children: true});
         }

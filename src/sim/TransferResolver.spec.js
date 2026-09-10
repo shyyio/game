@@ -188,6 +188,6 @@ test("a submitted intent reports whether it resolved", async () => {
         second = engine.transfers.submitCreate(ports[0], ITEM + 1, true);
     });
 
-    assert.equal(engine.transfers.isResolved(first), true);
-    assert.equal(engine.transfers.isResolved(second), false);
+    assert.equal(engine.transfers.isIntentResolved(first), true);
+    assert.equal(engine.transfers.isIntentResolved(second), false);
 });

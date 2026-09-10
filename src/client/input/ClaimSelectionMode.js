@@ -23,7 +23,7 @@ export class ClaimSelectionMode {
      */
     constructor(client) {
         this._client = client;
-        this._isClaiming = client.cache.view("chunkClaims");
+        this._claims = client.cache.view("chunkClaims");
         this._cursor = client.chunkCursor;
         this._on = false;
         // Entry glide in flight: the mode activates only once the viewport arrives.
@@ -132,7 +132,7 @@ export class ClaimSelectionMode {
         if (!this.active) {
             return null;
         }
-        const text = `${this._isClaiming.ownCount()}/${this._isClaiming.maxChunks} chunks claimed`;
+        const text = `${this._claims.ownCount()}/${this._claims.maxChunks} chunks claimed`;
         return new StatusBarSection(text, [hotkeyButton("Back", EXIT_HOTKEY, () => this.set(false))]);
     }
 
@@ -230,6 +230,6 @@ export class ClaimSelectionMode {
      * @returns {boolean}
      */
     _hasClaims() {
-        return this._isClaiming.hasOwnClaims();
+        return this._claims.hasOwnClaims();
     }
 }

@@ -369,7 +369,12 @@ export async function buildMod(modDir, outDir, {version, title, homepage, minify
     if (client !== null) {
         parts.push(MOD_PART_CLIENT);
     }
-    const manifestTitle = title === undefined ? displayTitle(modDir) : title;
+    let manifestTitle;
+    if (title === undefined) {
+        manifestTitle = displayTitle(modDir);
+    } else {
+        manifestTitle = title;
+    }
     const manifest = ModManifest.parse({
         name: packageName(modDir),
         version,

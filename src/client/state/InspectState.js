@@ -83,7 +83,7 @@ export class InspectView extends AbstractCacheView {
      * @param {number} objectRef
      * @returns {boolean}
      */
-    isOpen(objectRef) {
+    isObjectOpen(objectRef) {
         return this._state.setHas("inspect.openObjects", objectRef);
     }
 }

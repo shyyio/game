@@ -35,14 +35,14 @@ test("a write stores listed runs and cached emptiness for the rest of the rect",
     assert.equal(empty.receivedAt, 1000);
 });
 
-test("shouldFetch is false right after a write, true past the TTL and for uncovered rects", () => {
+test("shouldFetchRect is false right after a write, true past the TTL and for uncovered rects", () => {
     const {writer, view} = overworldState();
     const rect = new OverworldRect(0, 0, 2, 2);
     writer.write(snapshotWithOneChunk(rect, 0, 0), 1000);
 
-    assert.equal(view.shouldFetch(rect, 1000, TTL_MS), false);
-    assert.equal(view.shouldFetch(rect, 1000 + TTL_MS + 1, TTL_MS), true);
-    assert.equal(view.shouldFetch(new OverworldRect(0, 0, 3, 2), 1000, TTL_MS), true);
+    assert.equal(view.shouldFetchRect(rect, 1000, TTL_MS), false);
+    assert.equal(view.shouldFetchRect(rect, 1000 + TTL_MS + 1, TTL_MS), true);
+    assert.equal(view.shouldFetchRect(new OverworldRect(0, 0, 3, 2), 1000, TTL_MS), true);
 });
 
 test("evictOutside drops only stale entries outside the rect", () => {

@@ -181,7 +181,7 @@ export class WorkerAllocation {
             return;
         }
         const cells = this.roads.getFootprintByEid(behavior, eid);
-        if (this._affected !== null && !this._isClaiming(component, owner, cells)) {
+        if (this._affected !== null && !this._isComponentClaimingCells(component, owner, cells)) {
             return;
         }
         const position = this.engine.Position;
@@ -198,7 +198,7 @@ export class WorkerAllocation {
      * @param {{x: number, y: number}[]} cells
      * @returns {boolean}
      */
-    _isClaiming(component, owner, cells) {
+    _isComponentClaimingCells(component, owner, cells) {
         let winner = component.minTile;
         for (const {x, y} of cellNeighbors(cells)) {
             const road = this.roads.findTileByKey(tileKeyAt(x, y));

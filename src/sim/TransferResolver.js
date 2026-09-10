@@ -114,7 +114,7 @@ export class TransferResolver {
      * @param {number} intentRow
      * @returns {boolean}
      */
-    isResolved(intentRow) {
+    isIntentResolved(intentRow) {
         return this._intentResolved[intentRow] === 1;
     }
 
@@ -150,7 +150,7 @@ export class TransferResolver {
      * @param {number} [rank] - preference among one source's several destinations; lowest wins
      * @param {number} [outputItem] - what lands in `dest`, when the move translates the item type;
      *     without it the source's own item moves across
-     * @returns {number} the intent row, for {@link isResolved}
+     * @returns {number} the intent row, for {@link isIntentResolved}
      */
     submitTransfer(source, dest, destEmpty, rank=EMPTY, outputItem=EMPTY) {
         return this._pushIntent(source, dest, destEmpty, rank, outputItem);
@@ -161,7 +161,7 @@ export class TransferResolver {
      * @param {number} dest
      * @param {number} item
      * @param {boolean} destEmpty
-     * @returns {number} the intent row, for {@link isResolved}
+     * @returns {number} the intent row, for {@link isIntentResolved}
      */
     submitCreate(dest, item, destEmpty) {
         return this._pushIntent(EMPTY, dest, destEmpty, EMPTY, item);
@@ -171,7 +171,7 @@ export class TransferResolver {
      * Submits a destination-less drain: `source` is emptied this tick, so whatever feeds it can
      * resolve.
      * @param {number} source
-     * @returns {number} the intent row, for {@link isResolved}
+     * @returns {number} the intent row, for {@link isIntentResolved}
      */
     submitDrain(source) {
         return this._pushIntent(source, EMPTY, false, EMPTY, EMPTY);

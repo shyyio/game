@@ -67,7 +67,7 @@ export class CursorPublisher {
      * @returns {void}
      */
     tick() {
-        if (!this._canSend() || this._mouse.currentX === null) {
+        if (!this._canSendCursor() || this._mouse.currentX === null) {
             return;
         }
         const x = this._mouse.currentX / TILE_SIZE;
@@ -85,7 +85,7 @@ export class CursorPublisher {
      * @private
      * @returns {boolean}
      */
-    _canSend() {
+    _canSendCursor() {
         return this._windowFocus.focused
             && this._viewMode === ViewMode.WORLD
             && this._playerSettings.getValueByKey(CURSOR_SETTING_SHARE) !== CURSOR_AUDIENCE_NONE;

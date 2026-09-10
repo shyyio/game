@@ -29,7 +29,7 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
         this._graphics = new Graphics();
         this._graphics.alpha = FEEDBACK_ALPHA;
         this.addChild(this._graphics);
-        this._isBlocked = [];
+        this._blockedTiles = [];
         this._overwrite = [];
         this._clear = [];
         // Persistent blue highlight of valid target tiles (e.g. resources under an extractor tool);
@@ -59,7 +59,7 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
      *       even off center-lock (for a cursor-follow ghost)
      */
     show({blocked=[], overwrite=[], clear=[], showTarget=false}) {
-        this._isBlocked = blocked;
+        this._blockedTiles = blocked;
         this._overwrite = overwrite;
         this._clear = clear;
         this._showTarget = showTarget;
@@ -104,7 +104,7 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
     }
 
     clear() {
-        this._isBlocked = [];
+        this._blockedTiles = [];
         this._overwrite = [];
         this._clear = [];
         this._redraw();
@@ -117,11 +117,11 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
         this._graphics.clear();
         // The persistent target highlight (blue) sits under the per-hover markers.
         this._target(this._highlight, OVERWRITE_TILE_COLOR);
-        this._marker(this._isBlocked, BLOCKED_TILE_COLOR);
+        this._marker(this._blockedTiles, BLOCKED_TILE_COLOR);
         this._marker(this._overwrite, OVERWRITE_TILE_COLOR);
         // The green target means "it lands here", so suppress it entirely when any cell is blocked
         // (placement is rejected); overwrite cells are still a valid placement, so green stays.
-        if ((this._centerLock || this._showTarget) && this._isBlocked.length === 0) {
+        if ((this._centerLock || this._showTarget) && this._blockedTiles.length === 0) {
             this._target(this._clear);
         }
     }

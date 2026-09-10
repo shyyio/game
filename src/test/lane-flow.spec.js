@@ -215,7 +215,7 @@ test("a feeder never overwrites the input port item of a lane that is popping", 
         intentRow = engine.transfers.submitCreate(inputPort, CARGO, engine.ports.getItemByPortEid(inputPort) === EMPTY);
     }}));
     engine.registerSystem(new ProbeSystem({postResolve: () => {
-        if (engine.transfers.isResolved(intentRow)) {
+        if (engine.transfers.isIntentResolved(intentRow)) {
             fed += 1;
         }
     }}));

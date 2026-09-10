@@ -20,7 +20,7 @@ test("open and close maintain the open set and the inspect view", () => {
     state.subscribe("inspect.openObjects", (objectRef, present) => openSets.push([objectRef, present]));
     writer.open(7);
     assert.deepEqual(view.openIds(), [7]);
-    assert.equal(view.isOpen(7), true);
+    assert.equal(view.isObjectOpen(7), true);
     writer.close(7);
     assert.deepEqual(view.openIds(), []);
     assert.deepEqual(openSets, [[7, true], [7, false]]);
@@ -45,6 +45,6 @@ test("a sim-side close event closes the menu", () => {
     writer.open(7);
     state.onEvent(heartbeat(7));
     state.onEvent(new InspectClosedEvent(7));
-    assert.equal(view.isOpen(7), false);
+    assert.equal(view.isObjectOpen(7), false);
     assert.equal(state.mapGet("inspect.heartbeatByObject", 7), undefined);
 });

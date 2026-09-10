@@ -40,7 +40,7 @@ export class UndergroundBeltTool extends AbstractTool {
 
     onTileEnter(tileX, tileY) {
         const placement = this._resolvePlacement(tileX, tileY, this._rotation.direction);
-        const blocked = this._isBlocked(tileX, tileY, placement);
+        const blocked = this._isTileBlocked(tileX, tileY, placement);
         // An overwritable same-axis belt is deleted before the mouth lands.
         const overwrite = !blocked && this._findSurfaceBeltAt(tileX, tileY) !== null;
         this._placementFeedbackLayer.showTile({tileX, tileY, blocked, overwrite});
@@ -104,7 +104,7 @@ export class UndergroundBeltTool extends AbstractTool {
      * @private
      * @returns {boolean}
      */
-    _isOverwritable(belt, direction) {
+    _isBeltOverwritable(belt, direction) {
         if (belt.type !== BELT_NORMAL || !belt.straight) {
             return false;
         }
@@ -129,7 +129,7 @@ export class UndergroundBeltTool extends AbstractTool {
      * @private
      * @returns {boolean}
      */
-    _isBlocked(tileX, tileY, placement) {
+    _isTileBlocked(tileX, tileY, placement) {
         if (!this._client.canBuildAt(tileX, tileY)) {
             return true;
         }
@@ -142,7 +142,7 @@ export class UndergroundBeltTool extends AbstractTool {
             return true;
         }
         const belt = this._findSurfaceBeltAt(tileX, tileY);
-        return belt !== null && !this._isOverwritable(belt, placement.direction);
+        return belt !== null && !this._isBeltOverwritable(belt, placement.direction);
     }
 
     /**
@@ -161,7 +161,7 @@ export class UndergroundBeltTool extends AbstractTool {
 
         const existing = this._findSurfaceBeltAt(tileX, tileY);
         if (existing !== null) {
-            if (!this._isOverwritable(existing, placement.direction)) {
+            if (!this._isBeltOverwritable(existing, placement.direction)) {
                 return;
             }
             // Client removes the same-axis belt before laying the mouth.

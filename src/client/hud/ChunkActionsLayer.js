@@ -42,7 +42,7 @@ export class ChunkActionsLayer extends Container {
         super();
         this._app = app;
         this._viewport = viewport;
-        this._isClaiming = claims;
+        this._claims = claims;
         this._players = players;
         this.textureCache = null;
         this.visible = false;
@@ -162,7 +162,7 @@ export class ChunkActionsLayer extends Container {
      */
     _content() {
         const chunkKey = this._chunk;
-        const claims = this._isClaiming;
+        const claims = this._claims;
         const owner = claims.getOwnerByChunkKey(chunkKey);
         if (owner !== PLAYER_REF_NONE && owner === claims.ownPlayerRef) {
             return {

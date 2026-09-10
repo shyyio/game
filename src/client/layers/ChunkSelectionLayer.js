@@ -35,7 +35,7 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
      */
     constructor(claims) {
         super();
-        this._isClaiming = claims;
+        this._claims = claims;
         this._selection = new Graphics();
         this._hover = new Graphics();
         this.addChild(this._hover);
@@ -131,10 +131,10 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
      */
     _selectionColor() {
         const chunkKey = this._selectedChunk;
-        if (this._isClaiming.getOwnerByChunkKey(chunkKey) === this._isClaiming.ownPlayerRef) {
+        if (this._claims.getOwnerByChunkKey(chunkKey) === this._claims.ownPlayerRef) {
             return CHUNK_SELECT_COLOR;
         }
-        if (this._isClaiming.claimCheck(chunkKey) === ClaimResult.CLAIM_RESULT_OK) {
+        if (this._claims.claimCheck(chunkKey) === ClaimResult.CLAIM_RESULT_OK) {
             return TARGET_TILE_COLOR;
         }
         return BLOCKED_TILE_COLOR;

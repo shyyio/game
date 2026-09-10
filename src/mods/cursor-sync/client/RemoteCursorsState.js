@@ -26,7 +26,7 @@ export class RemoteCursorsWriter extends AbstractCacheWriter {
      */
     constructor(state) {
         super(state);
-        this._isClaiming = state.view("chunkClaims");
+        this._claims = state.view("chunkClaims");
         this._displayMode = CURSOR_AUDIENCE_DEFAULT;
         state.subscribe("playerSettings.values", (key, value) => {
             if (key === CURSOR_SETTING_DISPLAY) {
@@ -43,7 +43,7 @@ export class RemoteCursorsWriter extends AbstractCacheWriter {
      */
     _setDisplayMode(mode) {
         this._displayMode = mode;
-        this._state.mapDeleteWhere("remoteCursors.byPlayer", cursor => !this._isAdmitting(cursor.playerRef));
+        this._state.mapDeleteWhere("remoteCursors.byPlayer", cursor => !this._isPlayerAdmitted(cursor.playerRef));
     }
 
     /**
@@ -52,9 +52,9 @@ export class RemoteCursorsWriter extends AbstractCacheWriter {
      * @param {number} playerRef
      * @returns {boolean}
      */
-    _isAdmitting(playerRef) {
+    _isPlayerAdmitted(playerRef) {
         // Own events are dropped before this gate; self-admission never applies.
-        return isAudienceAdmitting(this._displayMode, false, this._isClaiming.isFriend(playerRef));
+        return isAudienceAdmitting(this._displayMode, false, this._claims.isFriend(playerRef));
     }
 
     /**
@@ -64,7 +64,7 @@ export class RemoteCursorsWriter extends AbstractCacheWriter {
      */
     onEvent(event) {
         if (event instanceof PlayerCursorEvent) {
-            if (event.playerRef === this._isClaiming.ownPlayerRef || !this._isAdmitting(event.playerRef)) {
+            if (event.playerRef === this._claims.ownPlayerRef || !this._isPlayerAdmitted(event.playerRef)) {
                 return;
             }
             this._state.mapSet("remoteCursors.byPlayer", event.playerRef, {

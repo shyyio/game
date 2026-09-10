@@ -244,7 +244,7 @@ export class ObjectTool extends AbstractTool {
             const occupant = this._findSolidOccupantAt(cell.x, cell.y);
             if (occupant === null) {
                 bodyByKey.set(key, {cell, state: "clear"});
-            } else if (this._isOverwritable(occupant, direction)) {
+            } else if (this._isOccupantOverwritable(occupant, direction)) {
                 bodyByKey.set(key, {cell, state: "overwrite", id: occupant.id});
                 overwriteIds.add(occupant.id);
             } else {
@@ -355,7 +355,7 @@ export class ObjectTool extends AbstractTool {
      * @private
      * @returns {boolean}
      */
-    _isOverwritable(occupant, direction) {
+    _isOccupantOverwritable(occupant, direction) {
         if (this._replaceSameKind && occupant.data.type.objectTypeId === this._type.objectTypeId) {
             return true;
         }

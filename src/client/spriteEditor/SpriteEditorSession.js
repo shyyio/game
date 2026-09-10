@@ -165,7 +165,7 @@ export class SpriteEditorSession {
      * @returns {void}
      */
     beginStroke(x, y) {
-        if (this.pixels === null || !this._isInside(x, y)) {
+        if (this.pixels === null || !this._isPixelInside(x, y)) {
             return;
         }
         if (this.state.tool === TOOL_EYEDROPPER) {
@@ -358,7 +358,7 @@ export class SpriteEditorSession {
      * @returns {boolean}
      * @private
      */
-    _isInside(x, y) {
+    _isPixelInside(x, y) {
         return x >= 0 && y >= 0 && x < this.pixels.width && y < this.pixels.height;
     }
 
@@ -379,7 +379,7 @@ export class SpriteEditorSession {
         const block = SOURCE_BLOCK;
         if (this.state.tool === TOOL_RECT) {
             drawRect(this.pixels, x0, y0, x1, y1, rgba, block);
-        } else if (x0 === x1 && y0 === y1 && this._isInside(x0, y0)) {
+        } else if (x0 === x1 && y0 === y1 && this._isPixelInside(x0, y0)) {
             setBlock(this.pixels, x0, y0, rgba, block);
         } else {
             drawLine(this.pixels, x0, y0, x1, y1, rgba, block);
