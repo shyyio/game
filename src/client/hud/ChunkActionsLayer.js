@@ -26,6 +26,12 @@ const PERMISSION_LABELS = {
 };
 
 /**
+ * @typedef {Object} ChunkActionsContent
+ * @property {string} status
+ * @property {Container[]} rows
+ */
+
+/**
  * The selected chunk's action stack: claim/unclaim/friend/permission buttons centered inside the
  * chunk itself, following it through pan and zoom. The chunk's status text is not here — the
  * host surfaces {@link ChunkActionsLayer#statusText} in the bottom action bar.
@@ -158,7 +164,7 @@ export class ChunkActionsLayer extends Container {
     /**
      * The stack's rows and status line for the current chunk.
      * @private
-     * @returns {{status: string, rows: Container[]}}
+     * @returns {ChunkActionsContent}
      */
     _content() {
         const chunkKey = this._chunk;

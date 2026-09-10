@@ -135,11 +135,17 @@ async function fetchStatus(origin) {
 const RESOURCE_TIMING_TIMEOUT_MS = 5000;
 
 /**
+ * @typedef {Object} NetworkDurationProbe
+ * @property {Promise<number|null>} durationMs null when no entry arrives, the normal outcome for a
+ *     request that never reached the server
+ * @property {function(): void} cancel
+ */
+
+/**
  * Resource Timing duration for the given request, matching what devtools' network panel reports.
  * Reads live via PerformanceObserver.
  * @param {string} url
- * @returns {{durationMs: Promise<number|null>, cancel: function(): void}} durationMs is null when
- *     no entry arrives, which is the normal outcome for a request that never reached the server
+ * @returns {NetworkDurationProbe}
  */
 function observeNetworkDurationMs(url) {
   // Browsers normalize away default ports (e.g. ":443") when recording an entry's name, so an

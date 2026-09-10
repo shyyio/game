@@ -11,10 +11,17 @@ const DRAIN_BUDGET_MS = 2.5;
 const LOG_BATCH_ITEMS = 5;
 
 /**
+ * @typedef {Object} EventLogView
+ * @property {string} event the event class name
+ * @property {number} chunkKey
+ * @property {object[]} events the inner events' views
+ */
+
+/**
  * A console view of an event: a batch event's columns cut to their first {@link LOG_BATCH_ITEMS}
  * entries, a sync bundle's inner events mapped the same way; other events log as-is.
  * @param {AbstractEvent} event
- * @returns {object}
+ * @returns {EventLogView|AbstractEvent|object}
  */
 function eventLogView(event) {
     if (event instanceof ChunkSyncEvent) {

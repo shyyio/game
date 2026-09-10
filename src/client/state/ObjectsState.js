@@ -131,6 +131,20 @@ export class ObjectClientData {
 }
 
 /**
+ * @typedef {Object} TileBounds
+ * @property {number} minTileX
+ * @property {number} minTileY
+ * @property {number} maxTileX
+ * @property {number} maxTileY
+ */
+
+/**
+ * @typedef {Object} PortMatch
+ * @property {CacheEntry} entry
+ * @property {string} portName
+ */
+
+/**
  * One placed object in the ObjectsView: a primary tile (for by-tile / by-chunk lookups), the
  * cells it covers with their position layer (for collision / connection lookups), a `data` payload
  * carrying at least the ObjectType (`data.type`) and direction, and its rendered output ports by
@@ -167,7 +181,7 @@ export class CacheEntry {
 
     /**
      * The footprint bounding box over the cells, in tiles.
-     * @returns {{minTileX: number, minTileY: number, maxTileX: number, maxTileY: number}}
+     * @returns {TileBounds}
      */
     get tileBounds() {
         let minTileX = this.cells[0].x;
@@ -185,7 +199,7 @@ export class CacheEntry {
 
     /**
      * The footprint centroid, in fractional tiles.
-     * @returns {{tileX: number, tileY: number}}
+     * @returns {TilePosition}
      */
     get tileCentroid() {
         let sumX = 0;
@@ -609,7 +623,7 @@ export class ObjectsView extends AbstractCacheView {
      * @param {number} tileX
      * @param {number} tileY
      * @param {Direction} direction
-     * @returns {{entry: CacheEntry, portName: string}|null}
+     * @returns {PortMatch|null}
      */
     findInputPortAt(tileX, tileY, direction) {
         const entry = this.findObjectAt(tileX, tileY, LAYER_SURFACE);
@@ -625,7 +639,7 @@ export class ObjectsView extends AbstractCacheView {
      * @param {number} tileX
      * @param {number} tileY
      * @param {Direction} direction
-     * @returns {{entry: CacheEntry, portName: string}|null}
+     * @returns {PortMatch|null}
      */
     findOutputPortAt(tileX, tileY, direction) {
         const sourceX = tileX - Direction.dx(direction);
@@ -645,7 +659,7 @@ export class ObjectsView extends AbstractCacheView {
      * @param {number} portX
      * @param {number} portY
      * @param {Direction} facing
-     * @returns {{entry: CacheEntry, portName: string}|null}
+     * @returns {PortMatch|null}
      * @private
      */
     _isPortMatch(entry, portKind, portX, portY, facing) {

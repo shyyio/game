@@ -95,6 +95,12 @@ export class ModLockEntry {
     }
 }
 
+/**
+ * A lockfile as JSON.
+ * @typedef {Object} ModLockfileJson
+ * @property {object[]} mods in loadout order
+ */
+
 export class ModLockfile {
 
     /**

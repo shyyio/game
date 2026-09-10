@@ -25,25 +25,40 @@ class StateEntry {
 }
 
 /**
+ * One leaf a namespace schema declares.
+ */
+export class StateLeafSchema {
+
+    /**
+     * @param {string} kind STATE_KIND_*
+     * @param {number|string|null} [initial] scalars only
+     */
+    constructor(kind, initial) {
+        this.kind = kind;
+        this.initial = initial;
+    }
+}
+
+/**
  * @param {number|string|null} initial
- * @returns {{kind: string, initial: number|string|null}}
+ * @returns {StateLeafSchema}
  */
 export function schemaScalar(initial) {
-    return {kind: STATE_KIND_SCALAR, initial};
+    return new StateLeafSchema(STATE_KIND_SCALAR, initial);
 }
 
 /**
- * @returns {{kind: string}}
+ * @returns {StateLeafSchema}
  */
 export function schemaMap() {
-    return {kind: STATE_KIND_MAP};
+    return new StateLeafSchema(STATE_KIND_MAP);
 }
 
 /**
- * @returns {{kind: string}}
+ * @returns {StateLeafSchema}
  */
 export function schemaSet() {
-    return {kind: STATE_KIND_SET};
+    return new StateLeafSchema(STATE_KIND_SET);
 }
 
 /**

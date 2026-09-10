@@ -65,9 +65,28 @@ export function fpsCapIndex() {
 }
 
 /**
+ * The pixi Application and viewport {@link createPixiApp} booted, and the teardown that reverses it.
+ */
+export class BootedPixiApp {
+
+    /**
+     * @param {Application} app
+     * @param {ClientViewport} viewport
+     * @param {function(): void} syncMobileTouchInput
+     * @param {function(): void} destroy
+     */
+    constructor(app, viewport, syncMobileTouchInput, destroy) {
+        this.app = app;
+        this.viewport = viewport;
+        this.syncMobileTouchInput = syncMobileTouchInput;
+        this.destroy = destroy;
+    }
+}
+
+/**
  * Boots the pixi Application and world viewport: canvas mount, resize handling, drag/wheel/zoom,
  * and live touch-input toggling off the "Touchscreen input" device setting.
- * @returns {Promise<{app: Application, viewport: ClientViewport, syncMobileTouchInput: function(): void, destroy: function(): void}>}
+ * @returns {Promise<BootedPixiApp>}
  */
 export async function createPixiApp() {
     const app = new Application();
@@ -186,5 +205,5 @@ export async function createPixiApp() {
         app.destroy({removeView: true}, {children: true});
     }
 
-    return {app, viewport, syncMobileTouchInput, destroy};
+    return new BootedPixiApp(app, viewport, syncMobileTouchInput, destroy);
 }

@@ -43,10 +43,25 @@ export function windowTicksFor(rangeTicks, tier) {
 }
 
 /**
+ * @typedef {Object} ChartSeries
+ * @property {string} key
+ * @property {number} category
+ * @property {number} tag
+ * @property {(number|null)[]} values one per tick, null before the series' first bucket
+ */
+
+/**
+ * @typedef {Object} ChartSeriesSet
+ * @property {number[]} ticks
+ * @property {ChartSeries[]} seriesList
+ * @property {number} tier
+ */
+
+/**
  * Groups a rollup's flat rows into one series per (category, tag); an absent bucket is a real zero, not missing data.
  * @param {MetricsRollup|undefined} rollup
  * @param {string} metric CHART_METRIC_*
- * @returns {{ticks: number[], seriesList: {key: string, category: number, tag: number, values: (number|null)[]}[], tier: number}}
+ * @returns {ChartSeriesSet}
  */
 export function buildSeries(rollup, metric) {
     if (rollup === undefined || rollup.bucketTick.length === 0) {

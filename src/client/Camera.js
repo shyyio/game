@@ -15,7 +15,7 @@ export class Camera {
 
     /**
      * The world-pixel centroid of the player's claimed chunks, or null with none.
-     * @returns {{x: number, y: number}|null}
+     * @returns {Point|null}
      */
     ownClaimsCenter() {
         const chunks = this._client.cache.view("chunkClaims").ownChunks();

@@ -40,6 +40,14 @@ class LaneEntry {
 }
 
 /**
+ * @typedef {Object} LaneSlots
+ * @property {CacheEntry[]} cells
+ * @property {number[]} slots per cell
+ * @property {number[]} offsets each cell's first slot
+ * @property {number} total
+ */
+
+/**
  * Draws the items riding transport lanes. The sim sends a lane's shape whenever it is rebuilt and
  * one row per item whose spacing changed; this walks each lane's file to turn those gaps into
  * tiles, and drives the shared item layer.
@@ -258,7 +266,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * still missing from the object index.
      * @private
      * @param {LaneEntry} lane
-     * @returns {{cells: CacheEntry[], slots: number[], offsets: number[], total: number}|null}
+     * @returns {LaneSlots|null}
      */
     _getSlotsByLane(lane) {
         const cells = [];

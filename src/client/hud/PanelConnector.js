@@ -19,10 +19,10 @@ function smoothstep(edge0, edge1, x) {
 /**
  * Where the ray from `center` toward `toward` exits `rect` (its boundary point in that direction).
  * Slides continuously around corners as the direction rotates, so the attach point never snaps.
- * @param {{x: number, y: number}} center
- * @param {{x: number, y: number}} toward
+ * @param {Point} center
+ * @param {Point} toward
  * @param {{minX: number, minY: number, maxX: number, maxY: number}} rect
- * @returns {{x: number, y: number}}
+ * @returns {Point}
  */
 export function rectEdgePoint(center, toward, rect) {
     const dx = toward.x - center.x;

@@ -11,8 +11,15 @@ const LARGE_SIZE = 24;
 const LARGE_BOLD_SIZE = 18.66;
 
 /**
+ * @typedef {Object} RgbChannels
+ * @property {number} r 0-255
+ * @property {number} g 0-255
+ * @property {number} b 0-255
+ */
+
+/**
  * @param {number} color
- * @returns {{r: number, g: number, b: number}} 0-255 channels
+ * @returns {RgbChannels}
  */
 export function channels(color) {
     return {r: (color >> 16) & 0xff, g: (color >> 8) & 0xff, b: color & 0xff};

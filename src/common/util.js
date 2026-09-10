@@ -306,6 +306,12 @@ export function* cellNeighbors(cells) {
  */
 
 /**
+ * @typedef {Object} TilePosition
+ * @property {number} tileX
+ * @property {number} tileY
+ */
+
+/**
  * @typedef {Object} Vec
  * @property {Direction} direction
  * @property {number} x

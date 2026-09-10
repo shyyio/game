@@ -13,11 +13,17 @@ const BUTTON_FONT_SIZE = 15;
 const DISABLED_ALPHA = 0.45;
 
 /**
+ * @typedef {Object} ButtonFace
+ * @property {Container} button
+ * @property {Graphics} hover
+ */
+
+/**
  * A button's tinted 9-slice background and the hover wash over it, sized to `width`.
  * @param {TextureCache} textureCache
  * @param {number} width
  * @param {number} borderColor
- * @returns {{button: Container, hover: Graphics}}
+ * @returns {ButtonFace}
  */
 function buildButtonFace(textureCache, width, borderColor) {
     const button = new Container();

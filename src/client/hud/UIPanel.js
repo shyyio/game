@@ -53,6 +53,12 @@ const TX_CLOSE = "ui/IconCross01a";
 const TX_PATTERN = "ui/PlusPattern";
 
 /**
+ * @typedef {Object} FramedBox
+ * @property {NineSliceSprite} frame
+ * @property {NineSliceSprite} inset
+ */
+
+/**
  * A framed HUD panel: raised outer frame + sunken inset body + draggable title bar with a close
  * button. A press on it raises it over the other panels through its {@link PanelHost}.
  */
@@ -310,12 +316,12 @@ export class UIPanel extends Container {
      * not a full draggable {@link UIPanel}); inset is inset by {@link FRAME_MARGIN} on every side.
      * @param {object} options
      * @param {Container} options.container
-     * @param {{frame: NineSliceSprite|null, inset: NineSliceSprite|null}} options.previous
+     * @param {FramedBox|{frame: null, inset: null}} options.previous
      * @param {TextureCache} options.textureCache
      * @param {number} options.width
      * @param {number} options.height
      * @param {number} options.tint
-     * @returns {{frame: NineSliceSprite, inset: NineSliceSprite}}
+     * @returns {FramedBox}
      */
     static rebuildFramedBox({container, previous, textureCache, width, height, tint}) {
         const inset = UIPanel._rebuildSprite(
@@ -605,19 +611,28 @@ export class ManagedPanel {
     /**
      * Builds (or rebuilds, keeping the dragged position) the panel via {@link UIPanel.managed}.
      * @param {object} options - same as {@link UIPanel.managed}'s `options`, minus `position`
-     * @param {function(height: number): {x: number, y: number}} fallback - position when nothing's remembered yet
+     * @param {function(height: number): Point} fallback - position when nothing's remembered yet
      * @param {function(PanelStack): void} buildBody
      * @returns {UIPanel}
      */
     show(options, fallback, buildBody) {
-        const position = (height) => {
-            if (this._savedX !== null) {
-                return {x: this._savedX, y: this._savedY};
-            }
-            return fallback(height);
-        };
+        const position = height => this._getPositionByHeight(height, fallback);
         this.panel = UIPanel.managed(this.panel, {...options, position}, buildBody);
         return this.panel;
+    }
+
+    /**
+     * The remembered position, else the fallback's for a panel of `height`.
+     * @private
+     * @param {number} height
+     * @param {function(height: number): Point} fallback
+     * @returns {Point}
+     */
+    _getPositionByHeight(height, fallback) {
+        if (this._savedX !== null) {
+            return {x: this._savedX, y: this._savedY};
+        }
+        return fallback(height);
     }
 
     /**

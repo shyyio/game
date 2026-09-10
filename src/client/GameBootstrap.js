@@ -82,11 +82,33 @@ function isScenarioSelected() {
 }
 
 /**
+ * Everything {@link createClient} built, and the teardown that reverses it.
+ */
+export class BootedClient {
+
+    /**
+     * @param {object} parts
+     * @param {Client} parts.client
+     * @param {AbstractSession} parts.session
+     * @param {Game|null} parts.game
+     * @param {InputHandler} parts.inputHandler
+     * @param {function(): void} parts.destroy
+     */
+    constructor({client, session, game, inputHandler, destroy}) {
+        this.client = client;
+        this.session = session;
+        this.game = game;
+        this.inputHandler = inputHandler;
+        this.destroy = destroy;
+    }
+}
+
+/**
  * Builds the mod registry, session (local sim or remote), Client, and its input handler.
  * @param {Application} app
  * @param {ClientViewport} viewport
  * @param {{mode: string, username: string, token: string, serverUrl: string}} props
- * @returns {Promise<{client: Client, session: AbstractSession, game: Game|null, inputHandler: InputHandler, destroy: function(): void}>}
+ * @returns {Promise<BootedClient>}
  */
 export async function createClient(app, viewport, props) {
     if (props.mode === GAME_MODE_REMOTE) {
@@ -243,5 +265,5 @@ export async function createClient(app, viewport, props) {
         }
     }
 
-    return {client, session, game, inputHandler, destroy};
+    return new BootedClient({client, session, game, inputHandler, destroy});
 }

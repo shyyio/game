@@ -5,6 +5,14 @@ import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js
 import Haptics from "@/client/Haptics.js";
 
 /**
+ * @typedef {Object} PlacementCells
+ * @property {Point[]} blockedCells
+ * @property {Point[]} overwriteCells
+ * @property {Point[]} clearCells
+ * @property {number[]} overwriteIds the occupants an overwrite deletes
+ */
+
+/**
  * Tap-to-place tool: drops one object over its geometry, overwriting an aligned conveyor lane (and
  * optionally its own type), with orientation + center-lock. Placement knobs come from the type's
  * PlacementRule; `dragToPlace` adds drag-to-lay, one placement per tile entered. Belt's drag-to-lay
@@ -164,7 +172,7 @@ export class ObjectTool extends AbstractTool {
      * The world tiles this object may be placed on: every extraction tile of every cached `placeOn`
      * object (rotated by its facing).
      * @private
-     * @returns {{x: number, y: number}[]}
+     * @returns {Point[]}
      */
     _targetTiles() {
         const tiles = [];
@@ -210,7 +218,7 @@ export class ObjectTool extends AbstractTool {
     /**
      * The geometry cells in world coordinates for the object at (tileX, tileY) facing `direction`.
      * @private
-     * @returns {{x: number, y: number}[]}
+     * @returns {Point[]}
      */
     _geometryTiles(tileX, tileY, direction) {
         return this._type.geometry.getTilesByDirection(direction).map(cell => ({x: tileX + cell.x, y: tileY + cell.y}));
@@ -220,7 +228,7 @@ export class ObjectTool extends AbstractTool {
      * Classifies each geometry cell: crossing the base chunk or holding a non-overwritable occupant
      * is blocked; holding an overwritable occupant is overwrite (collected for deletion); otherwise clear.
      * @private
-     * @returns {{blockedCells: {x: number, y: number}[], overwriteCells: {x: number, y: number}[], clearCells: {x: number, y: number}[], overwriteIds: number[]}}
+     * @returns {PlacementCells}
      */
     _evaluate(tileX, tileY, direction) {
         const base = chunkKeyAt(tileX, tileY);

@@ -70,6 +70,12 @@ function tilesInPath(x1, y1, x2, y2) {
 }
 
 
+/**
+ * @typedef {Object} DragEnd
+ * @property {number|null} endX
+ * @property {number|null} endY
+ */
+
 class Mouse {
     constructor() {
         this._clickStartX = null;
@@ -280,7 +286,7 @@ class Mouse {
      * The world point the gesture aims at: the screen center under center-lock, the pointer
      * otherwise. `currentX`/`currentY` are the raw pointer either way, which under center-lock is
      * a stale finger position — anything acting on the aimed tile wants this instead.
-     * @returns {{x: number, y: number}|null} null before the first pointer position is known
+     * @returns {Point|null} null before the first pointer position is known
      */
     aimPoint() {
         if (this._centerLock) {
@@ -295,7 +301,7 @@ class Mouse {
     /**
      * The world point under the screen center.
      * @private
-     * @returns {{x: number, y: number}}
+     * @returns {Point}
      */
     _centerWorld() {
         return this._viewport.toWorld(
@@ -308,7 +314,7 @@ class Mouse {
      * The tile under the screen center, used as the gesture target while
      * center-lock is on.
      * @private
-     * @returns {{tileX: number, tileY: number}}
+     * @returns {TilePosition}
      */
     _centerTile() {
         const world = this._centerWorld();
@@ -600,7 +606,7 @@ class Mouse {
     /**
      * The drag endpoint with the off-axis component dropped while axis-locked, else the raw pointer.
      * @private
-     * @returns {{endX: number|null, endY: number|null}}
+     * @returns {DragEnd}
      */
     _axisSnappedEnd() {
         if (this._dragAxis === "x") {

@@ -170,7 +170,7 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
      * live target (no ghost/viewport, or the cursor hasn't moved yet). Synchronous, so a tap reads it
      * without waiting for the ticker.
      * @param {Direction} direction
-     * @returns {{x: number, y: number}|null}
+     * @returns {Point|null}
      */
     snapBase(direction) {
         if (this._sprite === null || this.viewport === null) {
@@ -190,7 +190,7 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
     /**
      * The world point the ghost centers on: the screen center in center-lock, else the cursor.
      * @private
-     * @returns {{x: number, y: number}|null}
+     * @returns {Point|null}
      */
     _targetPoint() {
         if (this._centerLock) {
@@ -214,7 +214,7 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
      * The geometry centroid (in tiles) for `direction`, so a 1x1 pins on its tile and a 2x2 on its
      * center.
      * @private
-     * @returns {{x: number, y: number}}
+     * @returns {Point}
      */
     _centroidOffset(direction) {
         // The geometry is a filled rectangle from (0,0) to its corner, so its centroid is corner/2.

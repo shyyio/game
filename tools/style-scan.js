@@ -61,8 +61,9 @@ const ENGINE_HOOKS = new Set([
 ]);
 
 const METHOD_LINE = /^\s{4}(?:static\s+)?(?:async\s+)?(_?[a-z]\w*)\s*\([^)]*\)\s*\{$/;
+const ACCESSOR_LINE = /^\s{4}(?:static\s+)?(?:get|set)\s+\w+\s*\([^)]*\)\s*\{$/;
 const FUNCTION_LINE = /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+\s*\(|^\s*(?:const|let)\s+\w+\s*=\s*(?:async\s+)?\([^)]*\)\s*=>\s*\{$/;
-const RETURNS_TAG = /@returns\s+\{(?:Promise<)?([A-Z]\w*)(?:\[\])?>?(?:\|null|\|undefined)?\}/;
+const RETURNS_TAG = /@returns\s+\{(?:Promise<)?([A-Z]\w*)(?:\[\])?>?(?:\|\w+)*\}/;
 const RETURN_LITERAL_RULE = "return-literal";
 // Literals a third-party API consumes: vue-router locations, Pixi text styles, Node loader hooks.
 const RETURN_LITERAL_EXEMPT_FILES = new Set(["src/client/router.js", "src/client/hud/PanelText.js", "src/nodeservice/hooks.js"]);
@@ -134,7 +135,7 @@ export function scanFiles(files) {
             }
             const functionStart = line.match(METHOD_LINE);
             const isKeywordBlock = functionStart !== null && KEYWORDS.has(functionStart[1]);
-            if (!isKeywordBlock && (functionStart !== null || FUNCTION_LINE.test(line))) {
+            if (!isKeywordBlock && (functionStart !== null || FUNCTION_LINE.test(line) || ACCESSOR_LINE.test(line))) {
                 currentReturnsType = pendingReturnsType;
                 pendingReturnsType = null;
                 currentMethodName = functionStart === null ? null : functionStart[1];

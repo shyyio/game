@@ -383,7 +383,7 @@ export function refreshLoadout(loadout, listings) {
  * and its position, so no mod's positional objectTypeId moves; the rest follow in load order.
  * @param {LocalLoadout} loadout
  * @param {ModLockfile} [current] the server's mods as they are now
- * @returns {object} a lockfile, as JSON
+ * @returns {ModLockfileJson}
  */
 export function serverLockfile(loadout, current=new ModLockfile([])) {
     const resolved = new Map();

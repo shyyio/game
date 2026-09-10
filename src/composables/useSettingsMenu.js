@@ -27,10 +27,24 @@ function controlModel(control, value) {
     throw new Error(`Settings control "${control.label}" has an unknown control type`);
 }
 
+export class SettingsMenuBindings {
+
+    /**
+     * @param {object} settingsCategories a ref of the categories and their controls
+     * @param {object} settingValues each control's reactive value
+     * @param {function(Client): void} bindSettingsMenu
+     */
+    constructor(settingsCategories, settingValues, bindSettingsMenu) {
+        this.settingsCategories = settingsCategories;
+        this.settingValues = settingValues;
+        this.bindSettingsMenu = bindSettingsMenu;
+    }
+}
+
 /**
  * Reactive settings-menu state: categories/controls, and each control's value mirrored
  * to/from the device-settings store or the client's player-settings cache.
- * @returns {{settingsCategories: object, settingValues: object, bindSettingsMenu: function(Client): void}}
+ * @returns {SettingsMenuBindings}
  */
 export function useSettingsMenu() {
     const settingsCategories = ref([]);
@@ -116,5 +130,5 @@ export function useSettingsMenu() {
         settingsCategories.value = categories;
     }
 
-    return {settingsCategories, settingValues, bindSettingsMenu};
+    return new SettingsMenuBindings(settingsCategories, settingValues, bindSettingsMenu);
 }

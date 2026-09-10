@@ -1,8 +1,15 @@
 // HSL <-> hex conversions for the editor's color picker. h in [0, 360), s and l in [0, 100].
 
 /**
+ * @typedef {Object} Hsl
+ * @property {number} h [0, 360)
+ * @property {number} s [0, 100]
+ * @property {number} l [0, 100]
+ */
+
+/**
  * @param {string} hex "#rrggbb"
- * @returns {{h: number, s: number, l: number}}
+ * @returns {Hsl}
  */
 export function hexToHsl(hex) {
     const r = parseInt(hex.slice(1, 3), 16) / 255;
