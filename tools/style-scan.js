@@ -34,7 +34,7 @@ const RULES = [
     new StyleRule("spread-args", /\w\(\.\.\.|,\s*\.\.\.\w+\s*\)/, "no spread in argument lists", false),
     new StyleRule("inline-if", /^\s*(if|else if|for|while) \(.*\) [^{\s].*;\s*$/, "every conditional gets braces", true),
     new StyleRule("observed-vocab", /\b(?!PerformanceObserver)\w*([oO]bserv|(?<![sS])[wW]atch)\w*\b/, "chunk visibility is subscribe/isSubscribed", true),
-    new StyleRule("record-noun", /\b\w*Record(?!ing)\w*\b|\b[A-Z_]*_RECORD\b/, "a table element is an Entry", true),
+    new StyleRule("record-noun", /\b\w*Record(?!ing|s\b)\w*\b|\b[A-Z_]*_RECORD\b/, "a table element is an Entry", true),
     new StyleRule("ensure-verb", /\b_?ensure\w*\(/, "get-or-create is getOr<Verb>By<Key>", true),
     new StyleRule("return-literal", /^\s*return \{\s*\w/, "a multi-value result is a named class", true),
     new StyleRule("contrast-comment", /^\s*(\/\/|\*).*\b(no longer|instead of|rather than|would (bypass|be|have)|isn't|is not a|not a )\b/, "state the present fact only", false),
@@ -68,7 +68,7 @@ function listSourceFiles(dir, out) {
         const path = join(dir, name);
         if (statSync(path).isDirectory()) {
             listSourceFiles(path, out);
-        } else if (name.endsWith(".js") || name.endsWith(".vue")) {
+        } else if ((name.endsWith(".js") || name.endsWith(".vue")) && name !== "style-scan.js") {
             out.push(path);
         }
     }

@@ -1,7 +1,7 @@
 import {Direction} from "@/common/constants.js";
 
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
-export const SAVE_FORMAT = 13;
+export const SAVE_FORMAT = 14;
 
 // What a save written before the stamp counts as.
 const UNSTAMPED_FORMAT = 0;
@@ -25,7 +25,7 @@ export const SAVE_MIGRATIONS = new Map([
         ...snapshot,
         saveFormat: 4,
         components: retagFields(snapshot.components, ID_FIELD_KINDS),
-        records: retagFields(snapshot.records === undefined ? [] : snapshot.records, RECORD_ID_FIELD_KINDS),
+        records: retagFields(snapshot.records === undefined ? [] : snapshot.records, TABLE_ID_FIELD_KINDS),
     })],
     // Format 5 renames PlacedObject.ownerId to placedBy, which now records the placing player. Rows
     // written before it hold the chunk owner at spawn, the closest thing the old save knows.
@@ -117,6 +117,11 @@ export const SAVE_MIGRATIONS = new Map([
             snapshot.components,
         ),
     })],
+    // Format 14 carries the tables under `tables`.
+    [13, snapshot => {
+        const {records, ...rest} = snapshot;
+        return {...rest, saveFormat: 14, tables: records === undefined ? [] : records};
+    }],
 ]);
 
 // The port columns format 13 spells out, as [component, old name, new name].
@@ -219,8 +224,8 @@ const ID_FIELD_KINDS = new Map([
     ["MarketTerminal.lastOutput", "item"],
 ]);
 
-// record.field -> kind, for format 4.
-const RECORD_ID_FIELD_KINDS = new Map([
+// table.field -> kind, for format 4.
+const TABLE_ID_FIELD_KINDS = new Map([
     ["ItemProduced.item_type", "item"],
     ["LogicRuleCondition.item_type", "item"],
 ]);

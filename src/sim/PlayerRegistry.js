@@ -2,16 +2,15 @@ import {DEFAULT_MAX_CHUNKS} from "@/common/constants.js";
 import {syntheticUsername} from "@/common/util.js";
 import {generateFriendCode, normalizeFriendCode} from "@/common/FriendCode.js";
 
-export const PLAYER_RECORD = "Player";
-export const FRIEND_RECORD = "Friend";
+export const PLAYER_TABLE = "Player";
+export const FRIEND_TABLE = "Friend";
 
-// Inconsistant. I think we use "Record" and "Entry" interchangably. This needs to be fixed
-export class PlayerRecord {
+export class PlayerEntry {
 
     /**
      * @param {number} playerRef
      * @param {string|null} sub - the auth server's pairwise identity for this player on this
-     *     server, or null for a locally-registered record (ensure()) with no auth server involved
+     *     server, or null for a locally-added entry with no auth server involved
      * @param {string} username - a display name only; not unique
      * @param {number} maxChunks
      * @param {string} friendCode - random, unguessable; not derived from playerRef or sub
@@ -39,17 +38,17 @@ export class PlayerRegistry {
 
     constructor() {
         /**
-         * @type {Map<number, PlayerRecord>}
+         * @type {Map<number, PlayerEntry>}
          */
         this._byId = new Map();
 
         /**
-         * @type {Map<string, PlayerRecord>}
+         * @type {Map<string, PlayerEntry>}
          */
         this._bySub = new Map();
 
         /**
-         * @type {Map<string, PlayerRecord>} keyed by normalizeFriendCode() output
+         * @type {Map<string, PlayerEntry>} keyed by normalizeFriendCode() output
          */
         this._byFriendCode = new Map();
         this._nextPlayerRef = 1;
@@ -59,7 +58,7 @@ export class PlayerRegistry {
      * The player identified by `sub`, registered on first sight.
      * @param {string} sub
      * @param {string} username
-     * @returns {PlayerRecord}
+     * @returns {PlayerEntry}
      */
     getOrCreate(sub, username) {
         if (typeof sub !== "string" || sub.length === 0) {
@@ -69,13 +68,13 @@ export class PlayerRegistry {
         if (existing !== undefined) {
             return existing;
         }
-        return this._register(new PlayerRecord(this._nextPlayerRef, sub, username, DEFAULT_MAX_CHUNKS, this._freshFriendCode()));
+        return this._register(new PlayerEntry(this._nextPlayerRef, sub, username, DEFAULT_MAX_CHUNKS, this._freshFriendCode()));
     }
 
     /**
-     * Registers a record under an externally chosen id (local sessions, tests) if none exists.
+     * Registers an entry under an externally chosen id (local sessions, tests) if none exists.
      * @param {number} playerRef
-     * @returns {PlayerRecord}
+     * @returns {PlayerEntry}
      */
     // Ensure what? ensure exists?
     ensure(playerRef) {
@@ -83,12 +82,12 @@ export class PlayerRegistry {
         if (existing !== undefined) {
             return existing;
         }
-        return this._register(new PlayerRecord(playerRef, null, syntheticUsername(playerRef), DEFAULT_MAX_CHUNKS, this._freshFriendCode()));
+        return this._register(new PlayerEntry(playerRef, null, syntheticUsername(playerRef), DEFAULT_MAX_CHUNKS, this._freshFriendCode()));
     }
 
     /**
      * @param {string} code - as typed by a player, any casing/spacing/dashing
-     * @returns {PlayerRecord|undefined}
+     * @returns {PlayerEntry|undefined}
      */
     findPlayerByFriendCode(code) {
         const normalized = normalizeFriendCode(code);
@@ -113,33 +112,33 @@ export class PlayerRegistry {
     }
 
     /**
-     * Indexes a record and keeps the id counter past every registered id.
+     * Indexes an entry and keeps the id counter past every registered id.
      * @private
-     * @param {PlayerRecord} record
-     * @returns {PlayerRecord}
+     * @param {PlayerEntry} entry
+     * @returns {PlayerEntry}
      */
-    _register(record) {
-        this._byId.set(record.playerRef, record);
-        if (record.sub !== null) {
-            this._bySub.set(record.sub, record);
+    _register(entry) {
+        this._byId.set(entry.playerRef, entry);
+        if (entry.sub !== null) {
+            this._bySub.set(entry.sub, entry);
         }
-        this._byFriendCode.set(normalizeFriendCode(record.friendCode), record);
-        if (record.playerRef >= this._nextPlayerRef) {
-            this._nextPlayerRef = record.playerRef + 1;
+        this._byFriendCode.set(normalizeFriendCode(entry.friendCode), entry);
+        if (entry.playerRef >= this._nextPlayerRef) {
+            this._nextPlayerRef = entry.playerRef + 1;
         }
-        return record;
+        return entry;
     }
 
     /**
      * @param {number} playerRef
-     * @returns {PlayerRecord}
+     * @returns {PlayerEntry}
      */
     getPlayerByRef(playerRef) {
-        const record = this._byId.get(playerRef);
-        if (record === undefined) {
+        const entry = this._byId.get(playerRef);
+        if (entry === undefined) {
             throw new RangeError(`Unknown playerRef: ${playerRef}`);
         }
-        return record;
+        return entry;
     }
 
     /**
@@ -177,9 +176,9 @@ export class PlayerRegistry {
      */
     getGrantedRefsByPlayerRef(playerRef) {
         const granters = [];
-        for (const record of this._byId.values()) {
-            if (record.friends.has(playerRef)) {
-                granters.push(record.playerRef);
+        for (const entry of this._byId.values()) {
+            if (entry.friends.has(playerRef)) {
+                granters.push(entry.playerRef);
             }
         }
         return granters;
@@ -192,11 +191,11 @@ export class PlayerRegistry {
      * @returns {boolean}
      */
     isFriend(ownerId, otherId) {
-        const record = this._byId.get(ownerId);
-        if (record === undefined) {
+        const entry = this._byId.get(ownerId);
+        if (entry === undefined) {
             return false;
         }
-        return record.friends.has(otherId);
+        return entry.friends.has(otherId);
     }
 
     /**
@@ -206,9 +205,9 @@ export class PlayerRegistry {
     getDirectory() {
         const playerRefs = [];
         const usernames = [];
-        for (const record of this._byId.values()) {
-            playerRefs.push(record.playerRef);
-            usernames.push(record.username);
+        for (const entry of this._byId.values()) {
+            playerRefs.push(entry.playerRef);
+            usernames.push(entry.username);
         }
         // I really don't like anonymous objects in return types.
         // create a PlayerDirectory data or something
@@ -216,26 +215,26 @@ export class PlayerRegistry {
     }
 
     /**
-     * @returns {object[]} the Player and Friend record tables
+     * @returns {object[]} the Player and Friend tables
      */
-    serializeRecords() {
+    serializeTables() {
         const playerRows = [];
         const friendRows = [];
-        for (const record of this._byId.values()) {
+        for (const entry of this._byId.values()) {
             playerRows.push({
-                player_id: record.playerRef,
-                sub: record.sub,
-                username: record.username,
-                max_chunks: record.maxChunks,
-                friend_code: record.friendCode,
+                player_id: entry.playerRef,
+                sub: entry.sub,
+                username: entry.username,
+                max_chunks: entry.maxChunks,
+                friend_code: entry.friendCode,
             });
-            for (const friendId of record.friends) {
-                friendRows.push({player_id: record.playerRef, friend_id: friendId});
+            for (const friendId of entry.friends) {
+                friendRows.push({player_id: entry.playerRef, friend_id: friendId});
             }
         }
         return [
             {
-                name: PLAYER_RECORD,
+                name: PLAYER_TABLE,
                 fields: [
                     // Let's adjust the save format and use snakeCase (playerId) from now on.
                     {name: "player_id", kind: "integer"},
@@ -247,7 +246,7 @@ export class PlayerRegistry {
                 rows: playerRows,
             },
             {
-                name: FRIEND_RECORD,
+                name: FRIEND_TABLE,
                 fields: [
                     {name: "player_id", kind: "integer"},
                     {name: "friend_id", kind: "integer"},
@@ -258,11 +257,11 @@ export class PlayerRegistry {
     }
 
     /**
-     * @param {object|undefined} playerTable - the Player record table; undefined clears
-     * @param {object|undefined} friendTable - the Friend record table
+     * @param {object|undefined} playerTable - the Player table; undefined clears
+     * @param {object|undefined} friendTable - the Friend table
      * @returns {void}
      */
-    deserializeRecords(playerTable, friendTable) {
+    deserializeTables(playerTable, friendTable) {
         this._byId.clear();
         this._bySub.clear();
         this._byFriendCode.clear();
@@ -275,7 +274,7 @@ export class PlayerRegistry {
             // Older saves predate friend codes; mint one on load rather than rejecting the save.
             // Don't use a ternary like this, this is hard to follow.
             const friendCode = row.friend_code === undefined ? this._freshFriendCode() : row.friend_code;
-            this._register(new PlayerRecord(row.player_id, sub, row.username, row.max_chunks, friendCode));
+            this._register(new PlayerEntry(row.player_id, sub, row.username, row.max_chunks, friendCode));
         }
         if (friendTable === undefined) {
             return;

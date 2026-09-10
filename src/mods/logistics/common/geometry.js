@@ -11,7 +11,7 @@ import {
 
 /**
  * Whether a feeder feeds forward on the surface: tunnel entrances/undergrounds bury the flow, any non-belt feeds forward.
- * @param {object} data - a feeder record's data
+ * @param {object} data - a feeder entry's data
  * @returns {boolean}
  */
 function isFeedingForward(data) {
@@ -31,7 +31,7 @@ function isFeedingForward(data) {
  * @returns {{parentX: number|null, parentY: number|null}}
  */
 export function inferBeltParent(cache, tileX, tileY, direction) {
-    // Stand-in record with a normal belt's ports for the port-connection query.
+    // Stand-in entry with a normal belt's ports for the port-connection query.
     const belt = {tileX, tileY, data: {type: BeltType, direction}};
 
     let parent = null;
@@ -59,8 +59,8 @@ export function inferBeltParent(cache, tileX, tileY, direction) {
  */
 export function surfaceBeltAt(index, tileX, tileY) {
     const entries = index.getAtTile(tileX, tileY);
-    const surface = entries.find(record =>
-        isBeltType(record.data.type) && record.data.type.beltKind !== BELT_UNDERGROUND);
+    const surface = entries.find(entry =>
+        isBeltType(entry.data.type) && entry.data.type.beltKind !== BELT_UNDERGROUND);
     if (surface === undefined) {
         return null;
     }
@@ -83,17 +83,17 @@ export function walkTunnel(index, mouth) {
     for (let i = 0; i < MAX_UNDERGROUND_LENGTH + 1; i += 1) {
         x += dx;
         y += dy;
-        const records = index.getAtTile(x, y);
+        const entries = index.getAtTile(x, y);
         // A tunnel's undergrounds face its mouths' direction, so skip a crossing tunnel's.
-        const underground = records.find(record =>
-            record.data.type.beltKind === BELT_UNDERGROUND && record.data.direction === mouth.data.direction
+        const underground = entries.find(entry =>
+            entry.data.type.beltKind === BELT_UNDERGROUND && entry.data.direction === mouth.data.direction
         );
         if (underground !== undefined) {
             tiles.push({x, y});
             continue;
         }
-        const pair = records.find(record =>
-            record.data.type.beltKind === pairType && record.data.direction === mouth.data.direction
+        const pair = entries.find(entry =>
+            entry.data.type.beltKind === pairType && entry.data.direction === mouth.data.direction
         );
         if (pair === undefined) {
             return {tiles, pair: null};

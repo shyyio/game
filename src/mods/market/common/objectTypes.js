@@ -13,6 +13,6 @@ export const TradingTerminalType = new ObjectType({
     label: "Trading Terminal",
     placement: new PlacementRule({replaceSameKind: true}),
     // Never sends a message itself; submitting the panel is what sends ConfigureTradingTerminalMessage.
-    tapAction: (record, session, client) => client.cache.writer("market").openConfig(record.id),
+    tapAction: (entry, session, client) => client.cache.writer("market").openConfig(entry.id),
     behavior: new TradingTerminalBehavior(),
 });

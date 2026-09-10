@@ -28,7 +28,7 @@ export class TokenService {
     }
 
     /**
-     * @param {AccountRecord} account
+     * @param {AccountEntry} account
      * @param {string} origin - the target game server's canonical origin
      * @returns {string} compact signed token
      */
@@ -51,7 +51,7 @@ export class TokenService {
      * An origin-scoped credential the game page keeps for the length of a session: it mints join
      * tokens for that one server and nothing else, so the account session never has to be readable
      * from a page that runs mod code.
-     * @param {AccountRecord} account
+     * @param {AccountEntry} account
      * @param {string} origin
      * @returns {string}
      */

@@ -71,18 +71,18 @@ export class NetworkDebugDrawLayer extends AbstractDebugDrawLayer {
      * @returns {void}
      */
     _drawNetwork(networkId, parts) {
-        const records = parts.map(id => this.cache.get(id));
+        const entries = parts.map(id => this.cache.get(id));
         // A pipe left the viewport (or was just deleted): wait for the next recalc.
-        if (records.length === 0 || records.some(record => record === null)) {
+        if (entries.length === 0 || entries.some(entry => entry === null)) {
             return;
         }
         const color = DEBUG_COLOR(networkId);
-        for (const record of records) {
-            this._graphics.rect(record.tileX * TILE_SIZE, record.tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        for (const entry of entries) {
+            this._graphics.rect(entry.tileX * TILE_SIZE, entry.tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
         }
         this._graphics.fill({color, alpha: MEMBER_FILL_ALPHA});
-        for (const record of records) {
-            drawRect(this._graphics, record.tileX * TILE_SIZE, record.tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE, color);
+        for (const entry of entries) {
+            drawRect(this._graphics, entry.tileX * TILE_SIZE, entry.tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE, color);
         }
 
         const fluid = this._fluidByNetwork.get(networkId);
@@ -100,8 +100,8 @@ export class NetworkDebugDrawLayer extends AbstractDebugDrawLayer {
                 stroke: {color: 0x000000, width: 2},
             },
         });
-        label.x = records[0].tileX * TILE_SIZE + 2;
-        label.y = records[0].tileY * TILE_SIZE + 2;
+        label.x = entries[0].tileX * TILE_SIZE + 2;
+        label.y = entries[0].tileY * TILE_SIZE + 2;
         this._labels.addChild(label);
     }
 }

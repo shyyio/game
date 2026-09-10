@@ -660,20 +660,20 @@ export class ObjectsView extends AbstractCacheView {
     }
 
     /**
-     * The ports of `record` connected to a neighbor: the stub's geometry tile (tileX/tileY), the
+     * The ports of `entry` connected to a neighbor: the stub's geometry tile (tileX/tileY), the
      * neighbor cell reached (neighborX/neighborY), and the neighbor entry. Two objects connect
      * where one's output port and the other's input port share a cell and facing — derived from
      * each definition's rotated ports (mod-agnostic).
-     * @param {CacheEntry|{tileX: number, tileY: number, data: object}} record - needs data.type, data.direction
+     * @param {CacheEntry|{tileX: number, tileY: number, data: object}} entry - needs data.type, data.direction
      * @returns {{key: string, isOutput: boolean, tileX: number, tileY: number, neighborX: number, neighborY: number, neighbor: CacheEntry}[]}
      */
-    connectedPorts(record) {
-        const type = record.data.type;
-        const direction = record.data.direction;
+    connectedPorts(entry) {
+        const type = entry.data.type;
+        const direction = entry.data.direction;
         const connections = [];
 
         for (const port of type.getSurfacePortsByKind("outputPorts")) {
-            const placed = portAt(port, record.tileX, record.tileY, direction);
+            const placed = portAt(port, entry.tileX, entry.tileY, direction);
             const consumer = this.findInputPortAt(placed.x, placed.y, placed.direction);
             if (consumer !== null) {
                 // An output port's stub sits on the emitting tile; the cell it reaches is the neighbor's.
@@ -690,7 +690,7 @@ export class ObjectsView extends AbstractCacheView {
         }
 
         for (const port of type.getSurfacePortsByKind("inputPorts")) {
-            const placed = portAt(port, record.tileX, record.tileY, direction);
+            const placed = portAt(port, entry.tileX, entry.tileY, direction);
             const feeder = this.findOutputPortAt(placed.x, placed.y, placed.direction);
             if (feeder !== null) {
                 // An input port's stub sits on its own cell; the feeder is the tile behind it.

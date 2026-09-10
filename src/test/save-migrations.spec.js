@@ -332,6 +332,8 @@ test("a format-9 save renames the ChunkClaim record's chunk column to chunkKey",
     game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(0, 0)), session);
     const snapshot = game.serialize();
     snapshot.saveFormat = 9;
+    snapshot.records = snapshot.tables;
+    delete snapshot.tables;
     const claims = snapshot.records.find(table => table.name === "ChunkClaim");
     for (const field of claims.fields) {
         if (field.name === "chunkKey") {
@@ -345,7 +347,7 @@ test("a format-9 save renames the ChunkClaim record's chunk column to chunkKey",
 
     const migrated = migrateSnapshot(snapshot);
 
-    const upgraded = migrated.records.find(table => table.name === "ChunkClaim");
+    const upgraded = migrated.tables.find(table => table.name === "ChunkClaim");
     assert.ok(upgraded.fields.some(field => field.name === "chunkKey"));
     assert.ok(!upgraded.fields.some(field => field.name === "chunk"));
     assert.equal(upgraded.rows[0].chunk, undefined);
@@ -474,4 +476,22 @@ test("a format-12 save spells out every port column", async () => {
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
     assert.equal(restored.placed.getEidsByTypeId(GateType.objectTypeId).length, 1);
+});
+
+test("a format-13 save carries its tables under records", async () => {
+    const game = await makeGame();
+    game.players.getOrCreate("sub-1", "alice");
+    const snapshot = game.serialize();
+    snapshot.saveFormat = 13;
+    snapshot.records = snapshot.tables;
+    delete snapshot.tables;
+
+    const migrated = migrateSnapshot(snapshot);
+
+    assert.equal(migrated.saveFormat, SAVE_FORMAT);
+    assert.equal(migrated.records, undefined);
+    assert.ok(migrated.tables.some(table => table.name === "Player"));
+    const restored = await makeGame();
+    restored.loadSnapshot(migrated);
+    assert.equal(restored.players.getPlayerByRef(1).username, "alice");
 });

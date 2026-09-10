@@ -64,8 +64,8 @@ export class ClaimAdmin extends ChunkOwnership {
      * @returns {void}
      */
     claim(session, chunkKey) {
-        const record = this.game.players.getPlayerByRef(session.playerRef);
-        const result = this.game.claims.claim(session.playerRef, chunkKey, record.maxChunks);
+        const entry = this.game.players.getPlayerByRef(session.playerRef);
+        const result = this.game.claims.claim(session.playerRef, chunkKey, entry.maxChunks);
         if (result === ClaimResult.CLAIM_RESULT_OK) {
             this._publishChunkClaimUpdate(session, chunkKey, session.playerRef, this.game.claims.getPermissionByChunkKey(chunkKey));
         }

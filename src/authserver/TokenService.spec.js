@@ -6,7 +6,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {SigningKeys} from "@/authserver/SigningKeys.js";
 import {TokenService, RECONNECT_ABSOLUTE_TTL_S} from "@/authserver/TokenService.js";
-import {AccountRecord} from "@/authserver/AccountRegistry.js";
+import {AccountEntry} from "@/authserver/AccountRegistry.js";
 import {ORIGIN_PATTERN} from "@/common/constants.js";
 
 const ORIGIN = "wss://example.com:443";
@@ -31,7 +31,7 @@ function decodePayload(token) {
 test("mint produces a token whose signature verifies against the published JWK", () => {
     const signingKeys = freshSigningKeys();
     const tokens = new TokenService(signingKeys, randomBytes(32));
-    const account = new AccountRecord(1, "alice", 0);
+    const account = new AccountEntry(1, "alice", 0);
     const token = tokens.mint(account, ORIGIN);
 
     const [headerPart, payloadPart, signaturePart] = token.split(".");
@@ -43,7 +43,7 @@ test("mint produces a token whose signature verifies against the published JWK",
 
 test("claims match the doc: aud, name, short exp, empty entitlements", () => {
     const tokens = new TokenService(freshSigningKeys(), randomBytes(32));
-    const account = new AccountRecord(1, "alice", 0);
+    const account = new AccountEntry(1, "alice", 0);
     const nowS = Math.floor(Date.now() / 1000);
     const payload = decodePayload(tokens.mint(account, ORIGIN));
 
@@ -57,8 +57,8 @@ test("claims match the doc: aud, name, short exp, empty entitlements", () => {
 test("sub is pairwise: stable per (account, origin), differs across either", () => {
     const authSecret = randomBytes(32);
     const tokens = new TokenService(freshSigningKeys(), authSecret);
-    const alice = new AccountRecord(1, "alice", 0);
-    const bob = new AccountRecord(2, "bob", 0);
+    const alice = new AccountEntry(1, "alice", 0);
+    const bob = new AccountEntry(2, "bob", 0);
 
     const aliceAgain = decodePayload(tokens.mint(alice, ORIGIN));
     const aliceSameOrigin = decodePayload(tokens.mint(alice, ORIGIN));
@@ -91,7 +91,7 @@ test("a fresh reconnect token verifies and carries its issue time", () => {
     const tokens = new TokenService(freshSigningKeys(), randomBytes(32));
     const nowS = Math.floor(Date.now() / 1000);
 
-    const claims = tokens.verifyReconnect(tokens.mintReconnect(new AccountRecord(7, "alice", 0), ORIGIN));
+    const claims = tokens.verifyReconnect(tokens.mintReconnect(new AccountEntry(7, "alice", 0), ORIGIN));
 
     assert.equal(claims.accountId, 7);
     assert.equal(claims.origin, ORIGIN);
@@ -118,10 +118,10 @@ test("a renewal chain past the absolute lifetime is refused", () => {
 
 test("a forged reconnect signature is refused", () => {
     const tokens = new TokenService(freshSigningKeys(), randomBytes(32));
-    const [payload] = tokens.mintReconnect(new AccountRecord(7, "alice", 0), ORIGIN).split(".");
+    const [payload] = tokens.mintReconnect(new AccountEntry(7, "alice", 0), ORIGIN).split(".");
     const forger = new TokenService(freshSigningKeys(), randomBytes(32));
 
-    const forged = forger.mintReconnect(new AccountRecord(7, "alice", 0), ORIGIN);
+    const forged = forger.mintReconnect(new AccountEntry(7, "alice", 0), ORIGIN);
 
     assert.equal(tokens.verifyReconnect(forged), null, "signed with another secret");
     assert.equal(tokens.verifyReconnect(payload), null, "no signature at all");

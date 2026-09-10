@@ -32,7 +32,7 @@ function snapshot() {
                 rows: [{eid: 3, charge: 5}],
             },
         ],
-        records: [
+        tables: [
             {name: "Player", fields: [{name: "player_id", kind: "integer"}], rows: []},
             {
                 name: "ItemProduced",
@@ -54,13 +54,13 @@ const NEXT_DEFS = [
 test("the losses name every object type and item the next loadout lacks, with counts", () => {
     const losses = conversionLosses(snapshot(), NEXT);
     assert.deepEqual(Array.from(losses.objects), [["Gadget", 1]]);
-    assert.deepEqual(Array.from(losses.items), [[GOLD, 3]], "two on ports, one in the record table");
+    assert.deepEqual(Array.from(losses.items), [[GOLD, 3]], "two on ports, one in the table");
 });
 
-test("the losses count the item types a record table holds too", () => {
-    const records = snapshot();
-    records.components = [];
-    assert.deepEqual(Array.from(conversionLosses(records, NEXT).items), [[GOLD, 1]]);
+test("the losses count the item types a table holds too", () => {
+    const withoutComponents = snapshot();
+    withoutComponents.components = [];
+    assert.deepEqual(Array.from(conversionLosses(withoutComponents, NEXT).items), [[GOLD, 1]]);
 });
 
 test("a loadout that only appends loses nothing", () => {
@@ -81,7 +81,7 @@ test("converting remaps type ids by name, empties lost items, and swaps the comp
     assert.deepEqual(converted.components.map(component => component.name), ["PlacedObject", "Port", "PumpState"]);
     assert.deepEqual(converted.components[2], {name: "PumpState", fields: NEXT_DEFS[2].fields, rows: []});
     assert.deepEqual(converted.globals, {nextObjectRef: 9});
-    assert.equal(converted.records.length, 2);
+    assert.equal(converted.tables.length, 2);
     assert.equal(before.components[0].rows[0].objectTypeId, 0);
 });
 

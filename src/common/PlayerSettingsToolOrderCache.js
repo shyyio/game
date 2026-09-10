@@ -1,4 +1,4 @@
-export const PLAYER_SETTINGS_TOOL_ORDER_RECORD = "PlayerSettingsToolOrder";
+export const PLAYER_SETTINGS_TOOL_ORDER_TABLE = "PlayerSettingsToolOrder";
 
 /**
  * Per-player custom toolbar order: hand-authored tool ids, in display order. Never interpreted
@@ -33,9 +33,9 @@ export class PlayerSettingsToolOrderCache {
     }
 
     /**
-     * @returns {object} the PlayerSettingsToolOrder record table
+     * @returns {object} the PlayerSettingsToolOrder table
      */
-    serializeRecords() {
+    serializeTables() {
         const rows = [];
         for (const [playerRef, toolIds] of this._byPlayer) {
             for (const [position, toolId] of toolIds.entries()) {
@@ -43,7 +43,7 @@ export class PlayerSettingsToolOrderCache {
             }
         }
         return {
-            name: PLAYER_SETTINGS_TOOL_ORDER_RECORD,
+            name: PLAYER_SETTINGS_TOOL_ORDER_TABLE,
             fields: [
                 {name: "player_id", kind: "integer"},
                 {name: "position", kind: "integer"},
@@ -54,10 +54,10 @@ export class PlayerSettingsToolOrderCache {
     }
 
     /**
-     * @param {object|undefined} table - the PlayerSettingsToolOrder record table; undefined clears
+     * @param {object|undefined} table - the PlayerSettingsToolOrder table; undefined clears
      * @returns {void}
      */
-    deserializeRecords(table) {
+    deserializeTables(table) {
         this._byPlayer.clear();
         if (table === undefined) {
             return;

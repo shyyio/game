@@ -2,7 +2,7 @@ import {PLAYER_REF_NONE} from "@/common/constants.js";
 import {ClaimResult, ChunkPermission} from "@/common/ClaimEvents.js";
 import {chunkNeighbors, chunkPosition} from "@/common/util.js";
 
-export const CHUNK_CLAIM_RECORD = "ChunkClaim";
+export const CHUNK_CLAIM_TABLE = "ChunkClaim";
 
 /**
  * Chunk ownership: which player owns each claimed chunk. A player's claimed chunks stay contiguous:
@@ -174,15 +174,15 @@ export class ChunkClaims {
     }
 
     /**
-     * @returns {object} the ChunkClaim record table
+     * @returns {object} the ChunkClaim table
      */
-    serializeRecords() {
+    serializeTables() {
         const rows = [];
         for (const [chunkKey, playerRef] of this._ownerByChunk) {
             rows.push({chunkKey, player_id: playerRef, permission: this.getPermissionByChunkKey(chunkKey)});
         }
         return {
-            name: CHUNK_CLAIM_RECORD,
+            name: CHUNK_CLAIM_TABLE,
             fields: [
                 {name: "chunkKey", kind: "integer"},
                 {name: "player_id", kind: "integer"},
@@ -193,10 +193,10 @@ export class ChunkClaims {
     }
 
     /**
-     * @param {object|undefined} table - the ChunkClaim record table; undefined clears
+     * @param {object|undefined} table - the ChunkClaim table; undefined clears
      * @returns {void}
      */
-    deserializeRecords(table) {
+    deserializeTables(table) {
         this._ownerByChunk.clear();
         this._permissionByChunk.clear();
         if (table === undefined) {

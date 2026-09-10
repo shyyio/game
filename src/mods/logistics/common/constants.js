@@ -55,8 +55,8 @@ export const DRAW_LAYER_WIRES = 30;
 // Maximum chebyshev length of a wire.
 export const WIRE_LINK_RANGE = 10;
 
-// Save-record table of wires (any wireable endpoint pair).
-export const LOGIC_WIRE_RECORD = "LogicWire";
+// Save tables of wires (any wireable endpoint pair).
+export const LOGIC_WIRE_TABLE = "LogicWire";
 
 // A terminal's starting tier.
 export const LOGIC_TIER_BASE = 1;
@@ -102,9 +102,9 @@ export const LOGIC_CONDITION_KIND_DEVICE = 0;
 export const LOGIC_CONDITION_KIND_STORED = 1;
 /** @typedef {number} LogicConditionKind */
 
-// Save-record tables of terminal rules and their conditions.
-export const LOGIC_RULE_RECORD = "LogicRule";
-export const LOGIC_CONDITION_RECORD = "LogicRuleCondition";
+// Save tables of terminal rules and their conditions.
+export const LOGIC_RULE_TABLE = "LogicRule";
+export const LOGIC_CONDITION_TABLE = "LogicRuleCondition";
 
 /**
  * Whether two tiles are within wire reach of each other.

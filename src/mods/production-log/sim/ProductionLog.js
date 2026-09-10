@@ -1,5 +1,5 @@
 import {getOrCreate} from "@spup/sdk";
-import {ITEM_PRODUCED_RECORD, LEADERBOARD_PAGE_SIZE} from "../common/constants.js";
+import {ITEM_PRODUCED_TABLE, LEADERBOARD_PAGE_SIZE} from "../common/constants.js";
 import {ItemLeaderboardEvent} from "../common/events.js";
 
 /**
@@ -93,9 +93,9 @@ export class ProductionLog {
     }
 
     /**
-     * @returns {object[]} the ItemProduced record table
+     * @returns {object[]} the ItemProduced table
      */
-    serializeRecords() {
+    serializeTables() {
         const rows = [];
         for (const [playerRef, counts] of this._byPlayer) {
             for (const [itemTypeId, count] of counts) {
@@ -104,7 +104,7 @@ export class ProductionLog {
         }
         return [
             {
-                name: ITEM_PRODUCED_RECORD,
+                name: ITEM_PRODUCED_TABLE,
                 fields: [
                     {name: "player_id", kind: "integer"},
                     {name: "item_type", kind: "item"},
@@ -116,12 +116,12 @@ export class ProductionLog {
     }
 
     /**
-     * @param {object|undefined} table - the ItemProduced record table; undefined clears
+     * @param {object|undefined} table - the ItemProduced table; undefined clears
      * @param {ItemRegistry} items - a count for an item type it no longer holds is dropped, so a
      *     loadout change leaves no unnameable row in the log
      * @returns {void}
      */
-    deserializeRecords(table, items) {
+    deserializeTables(table, items) {
         this._byPlayer.clear();
         if (table === undefined) {
             return;

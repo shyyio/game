@@ -6,8 +6,8 @@ export const NOTE_OFFSET_UNITS = 1000;
 // The anchor a note gets when the pointer position is unknown (touch, center-lock).
 export const NOTE_OFFSET_CENTER = NOTE_OFFSET_UNITS / 2;
 
-// The save's record table holding every placed note.
-export const NOTE_RECORD = "Note";
+// The save's table holding every placed note.
+export const NOTE_TABLE = "Note";
 
 // Toolbar identity of the note tool; hand-authored, unique across every tool.
 export const NOTE_TOOL_ID = 27;

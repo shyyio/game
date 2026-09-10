@@ -75,8 +75,8 @@ export class UndergroundBeltTool extends AbstractTool {
      */
     _getBeltCandidatesAt(tileX, tileY) {
         return this._cache.getAtTile(tileX, tileY)
-            .filter(record => isBeltType(record.data.type))
-            .map(record => ({id: record.id, type: record.data.type.beltKind, direction: record.data.direction}));
+            .filter(entry => isBeltType(entry.data.type))
+            .map(entry => ({id: entry.id, type: entry.data.type.beltKind, direction: entry.data.direction}));
     }
 
     /**

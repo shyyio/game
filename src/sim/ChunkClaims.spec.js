@@ -99,13 +99,13 @@ test("table round-trip", () => {
     claims.claim(2, chunkOrdinal(10, 10), MAX);
 
     const restored = new ChunkClaims();
-    restored.deserializeRecords(claims.serializeRecords());
+    restored.deserializeTables(claims.serializeTables());
     assert.equal(restored.getOwnerByChunkKey(chunkOrdinal(0, 0)), 1);
     assert.equal(restored.getOwnerByChunkKey(chunkOrdinal(10, 10)), 2);
     assert.equal(restored.getCountByPlayerRef(1), 2);
     // Contiguity survives the round-trip: an adjacent claim still works.
     assert.equal(restored.claim(1, chunkOrdinal(2, 0), MAX), ClaimResult.CLAIM_RESULT_OK);
 
-    restored.deserializeRecords(undefined);
+    restored.deserializeTables(undefined);
     assert.equal(restored.getCountByPlayerRef(1), 0);
 });

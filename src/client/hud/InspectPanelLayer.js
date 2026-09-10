@@ -52,7 +52,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
          */
         this.items = null;
         this._onClose = null;
-        // objectRef string -> InspectPanelRecord.
+        // objectRef string -> InspectPanelEntry.
         this._panels = new Map();
         // The hovered slot's item name, above every panel.
         this._tooltip = new SlotTooltip(app);
@@ -76,23 +76,23 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
      */
     update(event, lastProduced, machineTile, title) {
         const key = String(event.objectRef);
-        let record = this._panels.get(key);
-        if (record === undefined) {
+        let entry = this._panels.get(key);
+        if (entry === undefined) {
             // Height comes from the first snapshot (workerCost is a type constant, so a worker row never appears later).
             const panel = this._createPanel(event.objectRef, UIPanel.heightForContent(inspectContentHeight(event)), title);
             const content = new InspectContent(event, panel.contentWidth, this.textureCache, this.items, this._tooltip);
             panel.addContent(content);
-            record = new InspectPanelRecord(panel, content);
-            this._panels.set(key, record);
-            this._connectors.set(key, () => record.panel, () => {
-                if (record.position === undefined) {
+            entry = new InspectPanelEntry(panel, content);
+            this._panels.set(key, entry);
+            this._connectors.set(key, () => entry.panel, () => {
+                if (entry.position === undefined) {
                     return null;
                 }
-                return record.position;
+                return entry.position;
             });
         }
-        record.position = machineTile;
-        record.content.update(event, lastProduced);
+        entry.position = machineTile;
+        entry.content.update(event, lastProduced);
     }
 
     /**
@@ -100,9 +100,9 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     restyle() {
-        for (const record of this._panels.values()) {
-            record.panel.restyle(PANEL_TINT, PANEL_TITLE_TEXT);
-            record.content.restyle();
+        for (const entry of this._panels.values()) {
+            entry.panel.restyle(PANEL_TINT, PANEL_TITLE_TEXT);
+            entry.content.restyle();
         }
         this._tooltip.restyle();
     }
@@ -113,11 +113,11 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
      */
     remove(objectRef) {
         const key = String(objectRef);
-        const record = this._panels.get(key);
-        if (record === undefined) {
+        const entry = this._panels.get(key);
+        if (entry === undefined) {
             return;
         }
-        record.panel.destroy({children: true});
+        entry.panel.destroy({children: true});
         this._panels.delete(key);
         this._connectors.remove(key);
     }
@@ -175,7 +175,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
 /**
  * One open machine's panel: its body content and the machine tile its connector points at.
  */
-class InspectPanelRecord {
+class InspectPanelEntry {
 
     /**
      * @param {UIPanel} panel

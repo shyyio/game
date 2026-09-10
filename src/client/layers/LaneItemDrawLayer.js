@@ -18,7 +18,7 @@ const LANE_PORT_SPRITE_KEY = portRef => `lanePort:${portRef}`;
  * One lane as the client knows it: the cells the sim last told it about, and the item rows riding
  * them.
  */
-class LaneRecord {
+class LaneEntry {
 
     /**
      * @param {number[]} cellObjectRefs - head first
@@ -53,7 +53,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         super();
         this._itemLayer = itemLayer;
         /**
-         * @type {Map<number, LaneRecord>}
+         * @type {Map<number, LaneEntry>}
          * @private
          */
         this._lanes = new Map();
@@ -129,7 +129,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      */
     _addLane(event) {
         this._forget(event.laneRef);
-        const lane = new LaneRecord(event.cellObjectRefs, event.cellParentEdges, event.outputPortRef);
+        const lane = new LaneEntry(event.cellObjectRefs, event.cellParentEdges, event.outputPortRef);
         this._lanes.set(event.laneRef, lane);
         this._laneByOutputPort.set(event.outputPortRef, event.laneRef);
         for (const objectRef of event.cellObjectRefs) {
@@ -228,7 +228,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * Places the sprite of the item resting in a lane's output port, if any; nothing while the tail
      * cell is still missing from the object index.
      * @private
-     * @param {LaneRecord} lane
+     * @param {LaneEntry} lane
      * @param {boolean} snap - the item did not move, so its sprite must not glide
      * @returns {void}
      */
@@ -257,7 +257,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * The lane's cells with their tiles and how many slots each holds, or null while a cell is
      * still missing from the object index.
      * @private
-     * @param {LaneRecord} lane
+     * @param {LaneEntry} lane
      * @returns {{cells: CacheEntry[], slots: number[], offsets: number[], total: number}|null}
      */
     _getSlotsByLane(lane) {
@@ -282,7 +282,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * Walks a lane's file, turning each item's gap into the slot it stands on.
      * @private
      * @param {number} laneRef
-     * @param {LaneRecord} lane
+     * @param {LaneEntry} lane
      * @param {boolean} snap
      * @returns {void}
      */
@@ -304,7 +304,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * center, edge, center, edge... and its last slot is the output port past the tail.
      * @private
      * @param {string} key
-     * @param {LaneRecord} lane
+     * @param {LaneEntry} lane
      * @param {{cells: CacheEntry[], slots: number[], offsets: number[], total: number}} slots
      * @param {number} physical - the slot counted from the lane's input edge
      * @param {number} itemTypeId

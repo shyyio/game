@@ -126,7 +126,7 @@ export class ObjectType {
      * @param [config.placement] {PlacementRule}
      * @param [config.inspectable] {boolean} wires the sim inspect path; also the client's default
      *     tap action when `tapAction` is left null
-     * @param [config.tapAction] {function(record: CacheEntry, session: AbstractSession, client: Client): void|null}
+     * @param [config.tapAction] {function(entry: CacheEntry, session: AbstractSession, client: Client): void|null}
      *     the left-click (tool-less) action on a placed instance of this type; derived from
      *     `inspectable` when null
      * @param [config.bespokeClient] {boolean} the type's client mod brings its own layers/tools,
@@ -192,7 +192,7 @@ export class ObjectType {
         if (tapAction !== null) {
             this.tapAction = tapAction;
         } else if (inspectable) {
-            this.tapAction = (record, session, client) => client.inspectObject(record.id);
+            this.tapAction = (entry, session, client) => client.inspectObject(entry.id);
         } else {
             this.tapAction = null;
         }
@@ -268,7 +268,7 @@ export class ObjectType {
     }
 
     /**
-     * The tiles this object occupies per layer facing `direction`: `{layer, cells}` records. The
+     * The tiles this object occupies per layer facing `direction`: `{layer, cells}` entries. The
      * default is its geometry body on its own layer; a resource overrides this (body + extraction on
      * the resource layer, body on the surface block). Used by both positionLayer lookups (existing
      * objects) and the placement overlap check (the new object), so placement is symmetric.

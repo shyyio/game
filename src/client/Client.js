@@ -548,11 +548,11 @@ export class Client {
             }
         }
         for (const bundle of this.bundles) {
-            const record = this.objects.findObjectByTypeAt(tileX, tileY, bundle.type);
-            if (record === null || bundle.type.tapAction === null) {
+            const entry = this.objects.findObjectByTypeAt(tileX, tileY, bundle.type);
+            if (entry === null || bundle.type.tapAction === null) {
                 continue;
             }
-            bundle.type.tapAction(record, this.session, this);
+            bundle.type.tapAction(entry, this.session, this);
             return;
         }
         // Touch has no hover, so a tap on nothing tappable names the item under it.
@@ -570,9 +570,9 @@ export class Client {
         const derived = [];
         if (tileX !== null) {
             for (const bundle of this.bundles) {
-                const record = this.objects.findObjectByTypeAt(tileX, tileY, bundle.type);
-                if (record !== null) {
-                    derived.push(new InspectHighlight(record.tileX, record.tileY, record.data.direction, bundle.type));
+                const entry = this.objects.findObjectByTypeAt(tileX, tileY, bundle.type);
+                if (entry !== null) {
+                    derived.push(new InspectHighlight(entry.tileX, entry.tileY, entry.data.direction, bundle.type));
                 }
             }
         }

@@ -12,7 +12,7 @@ export class PlacedObjectComponent extends AbstractComponent {
         super("PlacedObject", [
             {name: "objectTypeId", kind: "type"},
             {name: "objectRef", defaultValue: NO_EID},
-            // Record keeping only: a friend building in your chunk is recorded as themselves.
+            // A friend building in your chunk is recorded as themselves.
             // Economics read getClaimOwnerByEid instead, which follows the ground.
             {name: "placedBy", defaultValue: PLAYER_REF_NONE},
         ], {sparse: true});

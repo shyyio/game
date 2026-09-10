@@ -1,6 +1,6 @@
 import {USERNAME_PATTERN} from "@/common/constants.js";
 
-export class AccountRecord {
+export class AccountEntry {
 
     /**
      * @param {number} accountId
@@ -11,6 +11,14 @@ export class AccountRecord {
         this.accountId = accountId;
         this.username = username;
         this.createdAt = createdAt;
+    }
+
+    /**
+     * @param {{account_id: number, username: string, created_at: number}} row
+     * @returns {AccountEntry}
+     */
+    static parse(row) {
+        return new AccountEntry(row.account_id, row.username, row.created_at);
     }
 }
 
@@ -30,7 +38,7 @@ export class AccountRegistry {
     /**
      * The account named `username`, registered on first sight.
      * @param {string} username
-     * @returns {AccountRecord}
+     * @returns {AccountEntry}
      */
     getOrCreate(username) {
         if (!USERNAME_PATTERN.test(username)) {
@@ -38,30 +46,22 @@ export class AccountRegistry {
         }
         const existing = this._store.findByUsername(username);
         if (existing !== undefined) {
-            return toRecord(existing);
+            return AccountEntry.parse(existing);
         }
         const createdAt = Date.now();
         const accountId = this._store.insert(username, createdAt);
-        return new AccountRecord(accountId, username, createdAt);
+        return new AccountEntry(accountId, username, createdAt);
     }
 
     /**
      * @param {number} accountId
-     * @returns {AccountRecord}
+     * @returns {AccountEntry}
      */
     getPlayerByRef(accountId) {
         const row = this._store.findById(accountId);
         if (row === undefined) {
             throw new RangeError(`Unknown accountId: ${accountId}`);
         }
-        return toRecord(row);
+        return AccountEntry.parse(row);
     }
-}
-
-/**
- * @param {{account_id: number, username: string, created_at: number}} row
- * @returns {AccountRecord}
- */
-function toRecord(row) {
-    return new AccountRecord(row.account_id, row.username, row.created_at);
 }

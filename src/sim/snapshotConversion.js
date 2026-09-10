@@ -1,6 +1,6 @@
 // Carrying a saved world over to another mod loadout. Object objectTypeIds are positional, so a column of
 // kind "type" is remapped by name; item types are declared constants, so a column of kind "item"
-// only needs values no mod declares any more emptied. A record table's own "item" columns count
+// only needs values no mod declares any more emptied. A table's own "item" columns count
 // toward the losses; the module that owns the table drops those rows as it deserializes. Objects of a type the next loadout lacks must
 // be gone before converting: the caller deletes them through the engine, which is what keeps ports,
 // belts and occupancy consistent.
@@ -29,8 +29,8 @@ const KIND_ITEM = "item";
  * @returns {void}
  */
 function visitValues(snapshot, kind, visit) {
-    const records = snapshot.records === undefined ? [] : snapshot.records;
-    for (const table of records.concat(snapshot.components)) {
+    const tables = snapshot.tables === undefined ? [] : snapshot.tables;
+    for (const table of tables.concat(snapshot.components)) {
         for (const field of table.fields) {
             if (field.kind !== kind) {
                 continue;

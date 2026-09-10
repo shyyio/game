@@ -24,16 +24,16 @@ function machine(cache, id, x, y, direction) {
     cache.set(id, x, y, [{x, y, layer: LAYER_SURFACE}], {}, {type: machineType, direction});
 }
 
-test("set then get returns the record with derived chunk", () => {
+test("set then get returns the entry with derived chunk", () => {
     const cache = new ObjectsView(null);
     cache.set(1, 3, 4, cell(3, 4), {}, {type: 0});
 
-    const record = cache.get(1);
-    assert.strictEqual(record.id, 1);
-    assert.strictEqual(record.tileX, 3);
-    assert.strictEqual(record.tileY, 4);
-    assert.strictEqual(record.chunkKey, chunkKeyAt(3, 4));
-    assert.deepStrictEqual(record.data, {type: 0});
+    const entry = cache.get(1);
+    assert.strictEqual(entry.id, 1);
+    assert.strictEqual(entry.tileX, 3);
+    assert.strictEqual(entry.tileY, 4);
+    assert.strictEqual(entry.chunkKey, chunkKeyAt(3, 4));
+    assert.deepStrictEqual(entry.data, {type: 0});
 });
 
 test("getAtTile returns every object on a primary tile", () => {
@@ -41,9 +41,9 @@ test("getAtTile returns every object on a primary tile", () => {
     cache.set(1, 5, 5, cell(5, 5, 0), {}, {type: 0});
     cache.set(2, 5, 5, cell(5, 5, 1), {}, {type: 3});
 
-    const records = cache.getAtTile(5, 5);
-    assert.strictEqual(records.length, 2);
-    assert.deepStrictEqual(records.map(record => record.id).sort(), [1, 2]);
+    const entries = cache.getAtTile(5, 5);
+    assert.strictEqual(entries.length, 2);
+    assert.deepStrictEqual(entries.map(entry => entry.id).sort(), [1, 2]);
     assert.deepStrictEqual(cache.getAtTile(9, 9), []);
 });
 
@@ -62,10 +62,10 @@ test("allAt returns the full stack on a cell, bottom-up", () => {
     cache.set(1, 5, 5, cell(5, 5, 0), {}, {kind: 0});
     cache.set(2, 5, 5, cell(5, 5, 0), {}, {kind: 9});
 
-    assert.deepStrictEqual(cache.getObjectsAt(5, 5, 0).map(record => record.id), [1, 2]);
+    assert.deepStrictEqual(cache.getObjectsAt(5, 5, 0).map(entry => entry.id), [1, 2]);
     assert.deepStrictEqual(cache.getObjectsAt(5, 5, 1), []);
     cache.remove(2);
-    assert.deepStrictEqual(cache.getObjectsAt(5, 5, 0).map(record => record.id), [1]);
+    assert.deepStrictEqual(cache.getObjectsAt(5, 5, 0).map(entry => entry.id), [1]);
 });
 
 test("set with multiple cells indexes every covered cell", () => {
@@ -76,7 +76,7 @@ test("set with multiple cells indexes every covered cell", () => {
     assert.strictEqual(cache.findObjectAt(6, 5, 0).id, 1);
 });
 
-test("update merges into a record's data", () => {
+test("update merges into a entry's data", () => {
     const cache = new ObjectsView(null);
     cache.set(1, 0, 0, cell(0, 0), {}, {a: 1});
     cache.update(1, {b: 2});
@@ -86,7 +86,7 @@ test("update merges into a record's data", () => {
     assert.strictEqual(cache.get(99), null);
 });
 
-test("remove clears all indexes and returns the record", () => {
+test("remove clears all indexes and returns the entry", () => {
     const cache = new ObjectsView(null);
     cache.set(1, 7, 8, cell(7, 8), {}, {type: 0});
 
@@ -116,7 +116,7 @@ test("getByChunk returns objects grouped by chunk", () => {
 
     const near = cache.getByChunk(chunkKeyAt(1, 1));
     assert.strictEqual(near.length, 2);
-    assert.deepStrictEqual(near.map(record => record.id).sort(), [1, 2]);
+    assert.deepStrictEqual(near.map(entry => entry.id).sort(), [1, 2]);
     assert.strictEqual(cache.getByChunk(chunkKeyAt(200, 200)).length, 1);
 });
 
@@ -152,7 +152,7 @@ test("findInputPortAt / findOutputPortAt resolve a feeder-consumer pair facing e
     assert.strictEqual(cache.findInputPortAt(9, 9, Direction.UP), null);
 });
 
-test("connectedPorts reports a record's live output connection", () => {
+test("connectedPorts reports a entry's live output connection", () => {
     const cache = new ObjectsView(null);
     machine(cache, 1, 5, 6, Direction.UP);
     machine(cache, 2, 5, 5, Direction.UP);

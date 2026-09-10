@@ -1,5 +1,5 @@
 import {AbstractSimMod, PLAYER_REF_NONE, getOrCreate} from "@spup/sdk";
-import {ITEM_PRODUCED_RECORD} from "./common/constants.js";
+import {ITEM_PRODUCED_TABLE} from "./common/constants.js";
 import {
     ProductionLogRequestMessage,
     ItemLeaderboardRequestMessage,
@@ -10,7 +10,7 @@ import {ProductionLog} from "./sim/ProductionLog.js";
 /**
  * Keeps every player's all-time production counts off the engine's itemProduced notifications,
  * announces first-time productions, and answers log and leaderboard requests. Counts persist in the
- * save as a record table.
+ * save as a table.
  */
 export class ProductionLogSimMod extends AbstractSimMod {
 
@@ -71,16 +71,16 @@ export class ProductionLogSimMod extends AbstractSimMod {
     /**
      * @returns {object[]}
      */
-    serializeRecords() {
-        return this._log.serializeRecords();
+    serializeTables() {
+        return this._log.serializeTables();
     }
 
     /**
      * @param {Map<string, object>} tablesByName
      * @returns {void}
      */
-    deserializeRecords(tablesByName) {
-        this._log.deserializeRecords(tablesByName.get(ITEM_PRODUCED_RECORD), this._items);
+    deserializeTables(tablesByName) {
+        this._log.deserializeTables(tablesByName.get(ITEM_PRODUCED_TABLE), this._items);
     }
 
     /**

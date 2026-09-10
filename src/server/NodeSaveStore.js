@@ -4,8 +4,8 @@ import {AbstractSaveStore} from "@/common/AbstractSaveStore.js";
 const COMPONENT_META = "_Component";
 const FIELD_META = "_Field";
 const GLOBAL_TABLE = "_Global";
-const RECORD_META = "_Record";
-const RECORD_FIELD_META = "_RecordField";
+const TABLE_META = "_Table";
+const TABLE_FIELD_META = "_TableField";
 const OBJECT_TYPE_TABLE = "_ObjectType";
 const META_TABLE = "_Meta";
 
@@ -36,8 +36,8 @@ export class NodeSaveStore extends AbstractSaveStore {
      * @returns {Promise<void>}
      */
     async save(snapshot) {
-        const records = snapshot.records === undefined ? [] : snapshot.records;
-        this._assertRecordNames(snapshot.components, records);
+        const tables = snapshot.tables === undefined ? [] : snapshot.tables;
+        this._assertTableNames(snapshot.components, tables);
         const write = this.db.transaction(() => {
             this._reset();
             this._writeSnapshotMeta(snapshot);
@@ -47,30 +47,30 @@ export class NodeSaveStore extends AbstractSaveStore {
             }
             this._writeGlobals(snapshot.globals);
             this._writeObjectTypeNames(snapshot.objectTypeNames);
-            this._writeRecordMeta(records);
-            for (const table of records) {
-                this._writeRecords(table);
+            this._writeTableMeta(tables);
+            for (const table of tables) {
+                this._writeTable(table);
             }
         });
         write();
     }
 
     /**
-     * Record tables share the component tables' namespace unprefixed, so a clash breaks loudly
+     * Tables share the component tables' namespace unprefixed, so a clash breaks loudly
      * before anything is written.
      * @private
      * @param {object[]} components
-     * @param {object[]} records
+     * @param {object[]} tables
      * @returns {void}
      */
-    _assertRecordNames(components, records) {
+    _assertTableNames(components, tables) {
         const componentNames = new Set(components.map(component => component.name));
-        for (const table of records) {
+        for (const table of tables) {
             if (table.name.startsWith("_")) {
-                throw new Error(`Record table "${table.name}" collides with the meta-table prefix`);
+                throw new Error(`Table "${table.name}" collides with the meta-table prefix`);
             }
             if (componentNames.has(table.name)) {
-                throw new Error(`Record table "${table.name}" collides with a component`);
+                throw new Error(`Table "${table.name}" collides with a component`);
             }
         }
     }
@@ -89,7 +89,7 @@ export class NodeSaveStore extends AbstractSaveStore {
             ...this._readSnapshotMeta(),
             components: this._readComponents(),
             globals: this._readGlobals(),
-            records: this._readRecords(),
+            tables: this._readTables(),
             objectTypeNames: this._readObjectTypeNames(),
         };
     }
@@ -222,17 +222,17 @@ export class NodeSaveStore extends AbstractSaveStore {
 
     /**
      * @private
-     * @param {object[]} records
+     * @param {object[]} tables
      * @returns {void}
      */
-    _writeRecordMeta(records) {
-        this.db.exec(`CREATE TABLE "${RECORD_META}" (name TEXT PRIMARY KEY, seq INTEGER)`);
-        this.db.exec(`CREATE TABLE "${RECORD_FIELD_META}" (record TEXT, name TEXT, kind TEXT, seq INTEGER)`);
+    _writeTableMeta(tables) {
+        this.db.exec(`CREATE TABLE "${TABLE_META}" (name TEXT PRIMARY KEY, seq INTEGER)`);
+        this.db.exec(`CREATE TABLE "${TABLE_FIELD_META}" (tableName TEXT, name TEXT, kind TEXT, seq INTEGER)`);
 
-        const recordInsert = this.db.prepare(`INSERT INTO "${RECORD_META}" (name, seq) VALUES (?, ?)`);
-        const fieldInsert = this.db.prepare(`INSERT INTO "${RECORD_FIELD_META}" (record, name, kind, seq) VALUES (?, ?, ?, ?)`);
-        for (const [index, table] of records.entries()) {
-            recordInsert.run(table.name, index);
+        const tableInsert = this.db.prepare(`INSERT INTO "${TABLE_META}" (name, seq) VALUES (?, ?)`);
+        const fieldInsert = this.db.prepare(`INSERT INTO "${TABLE_FIELD_META}" (tableName, name, kind, seq) VALUES (?, ?, ?, ?)`);
+        for (const [index, table] of tables.entries()) {
+            tableInsert.run(table.name, index);
             for (const [fieldIndex, field] of table.fields.entries()) {
                 fieldInsert.run(table.name, field.name, field.kind, fieldIndex);
             }
@@ -244,7 +244,7 @@ export class NodeSaveStore extends AbstractSaveStore {
      * @param {object} table
      * @returns {void}
      */
-    _writeRecords(table) {
+    _writeTable(table) {
         const columns = table.fields.map(field => field.name);
         const affinities = table.fields.map(field => field.kind === "text" ? "TEXT" : "INTEGER");
         const columnDdl = columns.map((name, i) => `"${name}" ${affinities[i]}`).join(", ");
@@ -259,26 +259,26 @@ export class NodeSaveStore extends AbstractSaveStore {
 
     /**
      * @private
-     * @returns {object[]} the record tables, empty when the save predates them
+     * @returns {object[]} the tables, empty when the save predates them
      */
-    _readRecords() {
-        const hasRecords = this.db
+    _readTables() {
+        const hasTables = this.db
             .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
-            .get(RECORD_META);
-        if (hasRecords === undefined) {
+            .get(TABLE_META);
+        if (hasTables === undefined) {
             return [];
         }
-        const recordRows = this.db
-            .prepare(`SELECT name FROM "${RECORD_META}" ORDER BY seq`)
+        const tableRows = this.db
+            .prepare(`SELECT name FROM "${TABLE_META}" ORDER BY seq`)
             .all();
         const fieldStatement = this.db
-            .prepare(`SELECT name, kind FROM "${RECORD_FIELD_META}" WHERE record=? ORDER BY seq`);
+            .prepare(`SELECT name, kind FROM "${TABLE_FIELD_META}" WHERE tableName=? ORDER BY seq`);
 
-        return recordRows.map(recordRow => {
-            const fields = fieldStatement.all(recordRow.name).map(field => ({name: field.name, kind: field.kind}));
+        return tableRows.map(tableRow => {
+            const fields = fieldStatement.all(tableRow.name).map(field => ({name: field.name, kind: field.kind}));
             const columns = fields.map(field => `"${field.name}"`).join(", ");
-            const rows = this.db.prepare(`SELECT ${columns} FROM "${recordRow.name}"`).all();
-            return {name: recordRow.name, fields, rows};
+            const rows = this.db.prepare(`SELECT ${columns} FROM "${tableRow.name}"`).all();
+            return {name: tableRow.name, fields, rows};
         });
     }
 

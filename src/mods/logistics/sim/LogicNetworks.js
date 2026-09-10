@@ -1,5 +1,5 @@
 import {AbstractSystem, chunkKeyAt} from "@spup/sdk";
-import {LOGIC_WIRE_RECORD} from "../common/constants.js";
+import {LOGIC_WIRE_TABLE} from "../common/constants.js";
 import {LogicWireSetEvent, LogicWireClearEvent} from "../common/events.js";
 
 /**
@@ -203,7 +203,7 @@ export class LogicNetworks extends AbstractSystem {
     }
 
     /**
-     * Re-registers every placed pole after a load; the wires arrive through deserializeRecords.
+     * Re-registers every placed pole after a load; the wires arrive through deserializeTables.
      * @returns {void}
      */
     reset() {
@@ -217,10 +217,10 @@ export class LogicNetworks extends AbstractSystem {
     /**
      * @returns {object[]}
      */
-    serializeRecords() {
+    serializeTables() {
         const rows = Array.from(this._wires.values()).map(wire => ({a_object_id: wire.a, b_object_id: wire.b}));
         return [{
-            name: LOGIC_WIRE_RECORD,
+            name: LOGIC_WIRE_TABLE,
             fields: [
                 {name: "a_object_id", kind: "integer"},
                 {name: "b_object_id", kind: "integer"},
@@ -233,7 +233,7 @@ export class LogicNetworks extends AbstractSystem {
      * @param {object|undefined} table
      * @returns {void}
      */
-    deserializeRecords(table) {
+    deserializeTables(table) {
         if (table === undefined) {
             return;
         }

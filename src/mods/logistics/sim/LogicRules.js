@@ -1,6 +1,6 @@
 import {
-    LOGIC_RULE_RECORD,
-    LOGIC_CONDITION_RECORD,
+    LOGIC_RULE_TABLE,
+    LOGIC_CONDITION_TABLE,
     LOGIC_CONDITION_KIND_DEVICE,
     LOGIC_CONDITION_KIND_STORED,
 } from "../common/constants.js";
@@ -53,7 +53,7 @@ export class LogicRule {
 
 /**
  * Per-terminal rule lists, replaced whole per Confirm; persisted as the LogicRule and
- * LogicRuleCondition record tables.
+ * LogicRuleCondition tables.
  */
 export class LogicRules {
 
@@ -103,7 +103,7 @@ export class LogicRules {
     /**
      * @returns {object[]}
      */
-    serializeRecords() {
+    serializeTables() {
         const ruleRows = [];
         const conditionRows = [];
         for (const [terminalObjectRef, rules] of this._rulesByTerminal) {
@@ -131,7 +131,7 @@ export class LogicRules {
             }
         }
         return [{
-            name: LOGIC_RULE_RECORD,
+            name: LOGIC_RULE_TABLE,
             fields: [
                 {name: "terminal_object_id", kind: "integer"},
                 {name: "rule_index", kind: "integer"},
@@ -141,7 +141,7 @@ export class LogicRules {
             ],
             rows: ruleRows,
         }, {
-            name: LOGIC_CONDITION_RECORD,
+            name: LOGIC_CONDITION_TABLE,
             fields: [
                 {name: "terminal_object_id", kind: "integer"},
                 {name: "rule_index", kind: "integer"},
@@ -162,7 +162,7 @@ export class LogicRules {
      * @param {object|undefined} conditionTable
      * @returns {void}
      */
-    deserializeRecords(ruleTable, conditionTable) {
+    deserializeTables(ruleTable, conditionTable) {
         this._rulesByTerminal.clear();
         if (ruleTable === undefined) {
             return;

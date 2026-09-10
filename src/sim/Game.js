@@ -12,10 +12,10 @@ import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from 
 import {WireRegistry} from "@/common/wire.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {EventBus} from "@/sim/EventBus.js";
-import {SettingsCache, PlayerSettingsCache, PLAYER_SETTING_RECORD} from "@/common/SettingsCache.js";
-import {PlayerSettingsToolOrderCache, PLAYER_SETTINGS_TOOL_ORDER_RECORD} from "@/common/PlayerSettingsToolOrderCache.js";
-import {ChunkClaims, CHUNK_CLAIM_RECORD} from "@/sim/ChunkClaims.js";
-import {PlayerRegistry, PLAYER_RECORD, FRIEND_RECORD} from "@/sim/PlayerRegistry.js";
+import {SettingsCache, PlayerSettingsCache, PLAYER_SETTING_TABLE} from "@/common/SettingsCache.js";
+import {PlayerSettingsToolOrderCache, PLAYER_SETTINGS_TOOL_ORDER_TABLE} from "@/common/PlayerSettingsToolOrderCache.js";
+import {ChunkClaims, CHUNK_CLAIM_TABLE} from "@/sim/ChunkClaims.js";
+import {PlayerRegistry, PLAYER_TABLE, FRIEND_TABLE} from "@/sim/PlayerRegistry.js";
 import {PlayerDirectory} from "@/sim/PlayerDirectory.js";
 import {ClaimAdmin} from "@/sim/ClaimAdmin.js";
 import {SessionViews} from "@/sim/SessionViews.js";
@@ -172,20 +172,20 @@ export class Game {
     }
 
     /**
-     * The whole world as one snapshot: engine state plus every record table.
+     * The whole world as one snapshot: engine state plus every table.
      * @returns {object}
      */
     serialize() {
         const snapshot = this.simEngine.snapshots.serialize();
-        snapshot.records = [
-            ...this.players.serializeRecords(),
-            this.claims.serializeRecords(),
-            this.playerSettings.serializeRecords(),
-            this.toolOrder.serializeRecords(),
+        snapshot.tables = [
+            ...this.players.serializeTables(),
+            this.claims.serializeTables(),
+            this.playerSettings.serializeTables(),
+            this.toolOrder.serializeTables(),
         ];
         for (const mod of this.modRegistry.simMods) {
-            for (const record of mod.serializeRecords()) {
-                snapshot.records.push(record);
+            for (const table of mod.serializeTables()) {
+                snapshot.tables.push(table);
             }
         }
         return snapshot;
@@ -221,14 +221,14 @@ export class Game {
     loadSnapshot(snapshot) {
         this.simEngine.snapshots.deserialize(snapshot);
         this._applySeed(this.simEngine.seed);
-        const records = snapshot.records === undefined ? [] : snapshot.records;
-        const byName = new Map(records.map(table => [table.name, table]));
-        this.players.deserializeRecords(byName.get(PLAYER_RECORD), byName.get(FRIEND_RECORD));
-        this.claims.deserializeRecords(byName.get(CHUNK_CLAIM_RECORD));
-        this.playerSettings.deserializeRecords(byName.get(PLAYER_SETTING_RECORD));
-        this.toolOrder.deserializeRecords(byName.get(PLAYER_SETTINGS_TOOL_ORDER_RECORD));
+        const tables = snapshot.tables === undefined ? [] : snapshot.tables;
+        const byName = new Map(tables.map(table => [table.name, table]));
+        this.players.deserializeTables(byName.get(PLAYER_TABLE), byName.get(FRIEND_TABLE));
+        this.claims.deserializeTables(byName.get(CHUNK_CLAIM_TABLE));
+        this.playerSettings.deserializeTables(byName.get(PLAYER_SETTING_TABLE));
+        this.toolOrder.deserializeTables(byName.get(PLAYER_SETTINGS_TOOL_ORDER_TABLE));
         for (const mod of this.modRegistry.simMods) {
-            mod.deserializeRecords(byName);
+            mod.deserializeTables(byName);
         }
     }
 
@@ -272,8 +272,8 @@ export class Game {
      * @private
      */
     _syncPlayerState(session) {
-        const record = this.players.getPlayerByRef(session.playerRef);
-        this.bus.publishTo(session.sessionRef, new WelcomeEvent(record.playerRef, record.maxChunks, record.friendCode));
+        const entry = this.players.getPlayerByRef(session.playerRef);
+        this.bus.publishTo(session.sessionRef, new WelcomeEvent(entry.playerRef, entry.maxChunks, entry.friendCode));
         this.playerDirectory.syncUsernames(session.sessionRef, [session.playerRef]);
         this.claimAdmin.syncOwnClaims(session);
         this.playerDirectory.syncFriendList(session.sessionRef, session.playerRef);

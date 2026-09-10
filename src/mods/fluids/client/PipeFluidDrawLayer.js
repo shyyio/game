@@ -44,11 +44,11 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
     constructor() {
         super();
         /**
-         * Pipe id -> its fill record.
+         * Pipe id -> its fill.
          * @type {Map<number, PipeFill>}
          */
         this._fills = new Map();
-        // Chunk -> the fill records in it, for map-mode geometry.
+        // Chunk -> the fills in it, for map-mode geometry.
         this._fillsByChunk = new Map();
     }
 
@@ -66,11 +66,11 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
             return;
         }
         this.removePipe(entry.id);
-        const record = new PipeFill(entry.tileX, entry.tileY, entry.chunkKey);
-        this._fills.set(entry.id, record);
-        getOrCreate(this._fillsByChunk, record.chunkKey, () => new Set()).add(record);
-        this._node(record.chunkKey).sprites.addChild(record.graphics);
-        this._memberAdded(record.chunkKey);
+        const fill = new PipeFill(entry.tileX, entry.tileY, entry.chunkKey);
+        this._fills.set(entry.id, fill);
+        getOrCreate(this._fillsByChunk, fill.chunkKey, () => new Set()).add(fill);
+        this._node(fill.chunkKey).sprites.addChild(fill.graphics);
+        this._memberAdded(fill.chunkKey);
     }
 
     /**
@@ -88,15 +88,15 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     removePipe(id) {
-        const record = this._fills.get(id);
-        if (record === undefined) {
+        const fill = this._fills.get(id);
+        if (fill === undefined) {
             return;
         }
-        record.graphics.destroy();
+        fill.graphics.destroy();
         this._fills.delete(id);
-        removeFromGroup(this._fillsByChunk, record.chunkKey, record);
-        const node = this._chunks.get(record.chunkKey);
-        this._memberRemoved(record.chunkKey, node === undefined || node.isEmpty);
+        removeFromGroup(this._fillsByChunk, fill.chunkKey, fill);
+        const node = this._chunks.get(fill.chunkKey);
+        this._memberRemoved(fill.chunkKey, node === undefined || node.isEmpty);
     }
 
     /**
@@ -107,37 +107,37 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     setFluid(id, fluidType, fraction) {
-        const record = this._fills.get(id);
-        if (record === undefined) {
+        const fill = this._fills.get(id);
+        if (fill === undefined) {
             return;
         }
-        record.fluidType = fluidType;
-        record.fraction = fraction;
-        this._redraw(record);
-        this._dirtyChunks.add(record.chunkKey);
+        fill.fluidType = fluidType;
+        fill.fraction = fraction;
+        this._redraw(fill);
+        this._dirtyChunks.add(fill.chunkKey);
     }
 
     /**
-     * Redraws one record's fill rectangle, bottom-up by fraction.
+     * Redraws one fill's fill rectangle, bottom-up by fraction.
      * @private
-     * @param {PipeFill} record
+     * @param {PipeFill} fill
      * @returns {void}
      */
-    _redraw(record) {
-        const graphics = record.graphics;
+    _redraw(fill) {
+        const graphics = fill.graphics;
         graphics.clear();
-        if (record.fraction <= 0) {
+        if (fill.fraction <= 0) {
             return;
         }
         const inner = TILE_SIZE - 2 * FILL_INSET;
-        const height = Math.max(2, Math.round(inner * Math.min(record.fraction, 1)));
+        const height = Math.max(2, Math.round(inner * Math.min(fill.fraction, 1)));
         graphics.rect(
-            record.tileX * TILE_SIZE + FILL_INSET,
-            record.tileY * TILE_SIZE + FILL_INSET + inner - height,
+            fill.tileX * TILE_SIZE + FILL_INSET,
+            fill.tileY * TILE_SIZE + FILL_INSET + inner - height,
             inner,
             height,
         );
-        graphics.fill({color: fluidColor(record.fluidType), alpha: FILL_ALPHA});
+        graphics.fill({color: fluidColor(fill.fluidType), alpha: FILL_ALPHA});
     }
 
     /**
@@ -147,16 +147,16 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     _drawChunkGeometry(chunkKey, graphics) {
-        const records = this._fillsByChunk.get(chunkKey);
-        if (records === undefined) {
+        const fills = this._fillsByChunk.get(chunkKey);
+        if (fills === undefined) {
             return;
         }
-        for (const record of records) {
-            if (record.fraction <= 0) {
+        for (const fill of fills) {
+            if (fill.fraction <= 0) {
                 continue;
             }
-            graphics.rect(record.tileX * TILE_SIZE, record.tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-            graphics.fill(fluidColor(record.fluidType));
+            graphics.rect(fill.tileX * TILE_SIZE, fill.tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            graphics.fill(fluidColor(fill.fluidType));
         }
     }
 }

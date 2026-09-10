@@ -80,17 +80,17 @@ export class AbstractSimMod {
     onTick(game) {}
 
     /**
-     * Optional hook: the record tables this mod contributes to the world save.
+     * Optional hook: the tables this mod contributes to the world save.
      * @returns {object[]}
      */
-    serializeRecords() {
+    serializeTables() {
         return [];
     }
 
     /**
-     * Optional hook: restores this mod's record tables; a missing table is an older save.
+     * Optional hook: restores this mod's tables; a missing table is an older save.
      * @param {Map<string, object>} tablesByName
      * @returns {void}
      */
-    deserializeRecords(tablesByName) {}
+    deserializeTables(tablesByName) {}
 }

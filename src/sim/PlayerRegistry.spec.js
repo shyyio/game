@@ -63,32 +63,32 @@ test("directory lists every player", () => {
     assert.deepEqual(directory.usernames, ["alice", "bob"]);
 });
 
-test("records round-trip and the id counter resumes past the loaded ids", () => {
+test("entries round-trip and the id counter resumes past the loaded ids", () => {
     const players = new PlayerRegistry();
     const alice = players.getOrCreate("sub-alice", "alice");
     const bob = players.getOrCreate("sub-bob", "bob");
     alice.maxChunks = 12;
     players.addFriend(alice.playerRef, bob.playerRef);
 
-    const [playerTable, friendTable] = players.serializeRecords();
+    const [playerTable, friendTable] = players.serializeTables();
     const restored = new PlayerRegistry();
-    restored.deserializeRecords(playerTable, friendTable);
+    restored.deserializeTables(playerTable, friendTable);
     assert.equal(restored.getPlayerByRef(1).username, "alice");
     assert.equal(restored.getPlayerByRef(1).maxChunks, 12);
     assert.equal(restored.isFriend(1, 2), true);
     assert.equal(restored.getOrCreate("sub-alice", "alice"), restored.getPlayerByRef(1), "sub survives the round-trip");
     assert.equal(restored.getOrCreate("sub-carol", "carol").playerRef, 3);
 
-    restored.deserializeRecords(undefined, undefined);
+    restored.deserializeTables(undefined, undefined);
     assert.equal(restored.hasPlayer(1), false);
     assert.equal(restored.getOrCreate("sub-dave", "dave").playerRef, 1);
 });
 
-test("a locally-ensured record (no auth server involved) never collides on sub", () => {
+test("a locally-added entry (no auth server involved) never collides on sub", () => {
     const players = new PlayerRegistry();
     players.ensure(1);
     players.ensure(2);
-    // Both ensured records have sub=null; getOrCreate must not treat that as a shared identity.
+    // Both local entries have sub=null; getOrCreate must not treat that as a shared identity.
     assert.equal(players.getOrCreate("sub-alice", "alice").playerRef, 3);
 });
 
@@ -113,17 +113,17 @@ test("friend codes survive a round-trip; a save from before friend codes existed
     const players = new PlayerRegistry();
     const alice = players.getOrCreate("sub-alice", "alice");
 
-    const [playerTable, friendTable] = players.serializeRecords();
+    const [playerTable, friendTable] = players.serializeTables();
     const restored = new PlayerRegistry();
-    restored.deserializeRecords(playerTable, friendTable);
+    restored.deserializeTables(playerTable, friendTable);
     assert.equal(restored.getPlayerByRef(1).friendCode, alice.friendCode);
 
-    const [legacyTable] = players.serializeRecords();
+    const [legacyTable] = players.serializeTables();
     for (const row of legacyTable.rows) {
         delete row.friend_code;
     }
     const migrated = new PlayerRegistry();
-    migrated.deserializeRecords(legacyTable, friendTable);
+    migrated.deserializeTables(legacyTable, friendTable);
     assert.equal(typeof migrated.getPlayerByRef(1).friendCode, "string");
     assert.equal(migrated.findPlayerByFriendCode(migrated.getPlayerByRef(1).friendCode), migrated.getPlayerByRef(1));
 });

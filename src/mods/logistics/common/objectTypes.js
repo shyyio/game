@@ -165,7 +165,7 @@ export function isGateType(type) {
     return type.behavior instanceof GateBehavior;
 }
 
-const toggleGate = (record, session, client) => client.cache.writer("logistics").toggleGate(record.id);
+const toggleGate = (entry, session, client) => client.cache.writer("logistics").toggleGate(entry.id);
 
 // The synced `data.open`/`data.fluid` pick among four frames; the base texture is the open item
 // frame (also the tool icon and ghost).
@@ -230,7 +230,7 @@ export function isTerminalType(type) {
     return type.behavior instanceof LogicTerminalBehavior;
 }
 
-const openTerminalConfig = (record, session, client) => client.cache.writer("logistics").openTerminalConfig(record.id);
+const openTerminalConfig = (entry, session, client) => client.cache.writer("logistics").openTerminalConfig(entry.id);
 
 // The config surface of a logic network; portless, wired to a pole like any device.
 export const LogicTerminalType = new ObjectType({

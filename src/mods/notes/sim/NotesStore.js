@@ -1,5 +1,5 @@
 import {AbstractSystem, chunkKeyAt, getOrCreate, removeFromGroup, tileKeyAt} from "@spup/sdk";
-import {NOTE_RECORD} from "../common/constants.js";
+import {NOTE_TABLE} from "../common/constants.js";
 import {Note} from "../common/Note.js";
 import {NoteSetEvent} from "../common/events.js";
 
@@ -92,9 +92,9 @@ export class NotesStore extends AbstractSystem {
     }
 
     /**
-     * @returns {object[]} the Note record table
+     * @returns {object[]} the Note table
      */
-    serializeRecords() {
+    serializeTables() {
         const rows = [];
         for (const note of this._byTile.values()) {
             rows.push({
@@ -108,7 +108,7 @@ export class NotesStore extends AbstractSystem {
         }
         return [
             {
-                name: NOTE_RECORD,
+                name: NOTE_TABLE,
                 fields: [
                     {name: "tile_x", kind: "integer"},
                     {name: "tile_y", kind: "integer"},
@@ -123,10 +123,10 @@ export class NotesStore extends AbstractSystem {
     }
 
     /**
-     * @param {object|undefined} table - the Note record table; undefined clears
+     * @param {object|undefined} table - the Note table; undefined clears
      * @returns {void}
      */
-    deserializeRecords(table) {
+    deserializeTables(table) {
         this._byTile.clear();
         this._tilesByChunk.clear();
         if (table === undefined) {

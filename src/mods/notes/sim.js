@@ -1,5 +1,5 @@
 import {AbstractSimMod, chunkKeyAt} from "@spup/sdk";
-import {NOTE_RECORD} from "./common/constants.js";
+import {NOTE_TABLE} from "./common/constants.js";
 import {NotePlaceMessage, NoteEditMessage, NoteDeleteMessage} from "./common/messages.js";
 import {NoteSetEvent, NoteDeleteEvent} from "./common/events.js";
 import {Note} from "./common/Note.js";
@@ -8,7 +8,7 @@ import {NotesStore} from "./sim/NotesStore.js";
 /**
  * Keeps every player-placed note: one per tile, placed by anyone with build rights on the chunk,
  * edited by its author alone, deleted by its author or a build-rights holder. Notes ride a chunk's
- * sync bundle like any other content and persist in the save as a record table.
+ * sync bundle like any other content and persist in the save as a table.
  */
 export class NotesSimMod extends AbstractSimMod {
 
@@ -62,16 +62,16 @@ export class NotesSimMod extends AbstractSimMod {
     /**
      * @returns {object[]}
      */
-    serializeRecords() {
-        return this._store.serializeRecords();
+    serializeTables() {
+        return this._store.serializeTables();
     }
 
     /**
      * @param {Map<string, object>} tablesByName
      * @returns {void}
      */
-    deserializeRecords(tablesByName) {
-        this._store.deserializeRecords(tablesByName.get(NOTE_RECORD));
+    deserializeTables(tablesByName) {
+        this._store.deserializeTables(tablesByName.get(NOTE_TABLE));
     }
 
     /**

@@ -1,4 +1,4 @@
-export const PLAYER_SETTING_RECORD = "PlayerSetting";
+export const PLAYER_SETTING_TABLE = "PlayerSetting";
 
 /**
  * In-memory key→value game settings. Plain state, independent of the simulation backend.
@@ -96,9 +96,9 @@ export class PlayerSettingsCache {
     }
 
     /**
-     * @returns {object} the PlayerSetting record table
+     * @returns {object} the PlayerSetting table
      */
-    serializeRecords() {
+    serializeTables() {
         const rows = [];
         for (const [playerRef, settings] of this._byPlayer) {
             for (const [key, value] of settings.getEntries()) {
@@ -106,7 +106,7 @@ export class PlayerSettingsCache {
             }
         }
         return {
-            name: PLAYER_SETTING_RECORD,
+            name: PLAYER_SETTING_TABLE,
             fields: [
                 {name: "player_id", kind: "integer"},
                 {name: "key", kind: "integer"},
@@ -117,10 +117,10 @@ export class PlayerSettingsCache {
     }
 
     /**
-     * @param {object|undefined} table - the PlayerSetting record table; undefined clears
+     * @param {object|undefined} table - the PlayerSetting table; undefined clears
      * @returns {void}
      */
-    deserializeRecords(table) {
+    deserializeTables(table) {
         this._byPlayer.clear();
         if (table === undefined) {
             return;

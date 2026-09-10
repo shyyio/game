@@ -270,18 +270,18 @@ export class GameServer extends AbstractHttpServer {
             ws.end(CLOSE_CODE_BAD_SIGN_IN);
             return;
         }
-        const record = this._game.players.getOrCreate(claims.sub, claims.name);
-        const superseded = this._sessionsByPlayer.get(record.playerRef);
+        const entry = this._game.players.getOrCreate(claims.sub, claims.name);
+        const superseded = this._sessionsByPlayer.get(entry.playerRef);
         if (superseded !== undefined) {
             // The close callback runs the usual disconnect cleanup.
             superseded.kick(CLOSE_CODE_SUPERSEDED);
         }
 
-        const session = new WebSocketSession(this._api, ws, record.playerRef);
+        const session = new WebSocketSession(this._api, ws, entry.playerRef);
         ws.getUserData().session = session;
-        this._sessionsByPlayer.set(record.playerRef, session);
+        this._sessionsByPlayer.set(entry.playerRef, session);
         this._game.connect(session);
-        console.log(`+ ${claims.name} (player ${record.playerRef}, session ${session.sessionRef})`);
+        console.log(`+ ${claims.name} (player ${entry.playerRef}, session ${session.sessionRef})`);
     }
 
     /**

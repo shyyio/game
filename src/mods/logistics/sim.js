@@ -10,9 +10,9 @@ import {LogicSnapshotEvent} from "./common/events.js";
 import {isGateType, isTerminalType} from "./common/objectTypes.js";
 import {
     isWithinWireRange,
-    LOGIC_WIRE_RECORD,
-    LOGIC_RULE_RECORD,
-    LOGIC_CONDITION_RECORD,
+    LOGIC_WIRE_TABLE,
+    LOGIC_RULE_TABLE,
+    LOGIC_CONDITION_TABLE,
     LOGIC_RULE_CAP,
     LOGIC_CONDITION_CAP,
     LOGIC_COMPARATOR_AT_LEAST,
@@ -40,10 +40,10 @@ export class LogisticsSimMod extends AbstractSimMod {
     /**
      * @returns {object[]}
      */
-    serializeRecords() {
+    serializeTables() {
         return [
-            ...this._engine.resolve(LogicNetworks).serializeRecords(),
-            ...this._engine.resolve(LogicRules).serializeRecords(),
+            ...this._engine.resolve(LogicNetworks).serializeTables(),
+            ...this._engine.resolve(LogicRules).serializeTables(),
         ];
     }
 
@@ -51,11 +51,11 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @param {Map<string, object>} tablesByName
      * @returns {void}
      */
-    deserializeRecords(tablesByName) {
-        this._engine.resolve(LogicNetworks).deserializeRecords(tablesByName.get(LOGIC_WIRE_RECORD));
-        this._engine.resolve(LogicRules).deserializeRecords(
-            tablesByName.get(LOGIC_RULE_RECORD),
-            tablesByName.get(LOGIC_CONDITION_RECORD),
+    deserializeTables(tablesByName) {
+        this._engine.resolve(LogicNetworks).deserializeTables(tablesByName.get(LOGIC_WIRE_TABLE));
+        this._engine.resolve(LogicRules).deserializeTables(
+            tablesByName.get(LOGIC_RULE_TABLE),
+            tablesByName.get(LOGIC_CONDITION_TABLE),
         );
     }
 

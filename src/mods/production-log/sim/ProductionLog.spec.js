@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {ProductionLog} from "./ProductionLog.js";
-import {ITEM_PRODUCED_RECORD} from "../common/constants.js";
+import {ITEM_PRODUCED_TABLE} from "../common/constants.js";
 import {ItemRegistry, ItemType} from "@spup/sdk";
 
 const ALICE = 1;
@@ -43,25 +43,25 @@ test("rankOf is the player's 1-based place on an item's board, 0 when unproduced
     assert.equal(log.getRankByPlayerRef(ALICE, COAL), 0);
 });
 
-test("the record table round-trips every count", () => {
+test("the table round-trips every count", () => {
     const log = new ProductionLog();
     log.add(ALICE, IRON, 5);
     log.add(BOB, COAL, 1);
 
-    const tables = log.serializeRecords();
+    const tables = log.serializeTables();
     assert.equal(tables.length, 1);
-    assert.equal(tables[0].name, ITEM_PRODUCED_RECORD);
+    assert.equal(tables[0].name, ITEM_PRODUCED_TABLE);
     assert.equal(tables[0].rows.length, 2);
 
-    // Stands in for the ItemRegistry: deserializeRecords only asks whether a type is declared.
+    // Stands in for the ItemRegistry: deserializeTables only asks whether a type is declared.
     const items = new ItemRegistry();
     items.register(IRON, new ItemType("iron", "items/1-gray"));
     items.register(COAL, new ItemType("coal", "items/1-gray"));
 
     const restored = new ProductionLog();
-    restored.deserializeRecords(tables[0], items);
+    restored.deserializeTables(tables[0], items);
     assert.deepEqual(Array.from(restored.getCountsByPlayerRef(ALICE)), [[IRON, 5]]);
     assert.deepEqual(Array.from(restored.getCountsByPlayerRef(BOB)), [[COAL, 1]]);
-    restored.deserializeRecords(undefined, items);
+    restored.deserializeTables(undefined, items);
     assert.deepEqual(Array.from(restored.getCountsByPlayerRef(ALICE)), []);
 });
