@@ -146,9 +146,10 @@ export {PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 // Worker assignment deltas/sync the engine's WorkerNetworks emits (NO_HOUSING = unmanned).
 export {WorkerAssignmentEvent, WorkerAssignmentSyncEvent, WorkerAssignmentBatchEvent, NO_HOUSING} from "@/common/WorkerEvents.js";
 
-// `Direction` is the cardinal-direction enum (with rotate/dx/dy helpers).
+// `Direction` is the cardinal-direction enum (with rotate/dx/dy/axis helpers), `Axis` what axis returns.
 // `CHUNK_SIZE` is the width/height of a chunk in tiles.
 export {
+    Axis,
     Direction,
     CHUNK_SIZE,
     LAYER_SURFACE,

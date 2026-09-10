@@ -1,7 +1,7 @@
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 
 // Position layer for resource cover: an extraction tile stores its resource type as the cell userData.
-export const LAYER_RESOURCE = "R";
+export const LAYER_RESOURCE = "RESOURCE";
 
 /**
  * A resource body: no components beyond PlacedObject and no tick — it occupies its extraction tiles

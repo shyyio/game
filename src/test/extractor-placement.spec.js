@@ -7,6 +7,7 @@ import {WaterResourceType, ExtractorType} from "@/mods/base-game/common/objectTy
 import {ITEM_TYPE_WATER} from "@/mods/base-game/common/constants.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector} from "@/test/EventCollector.js";
+import {LAYER_RESOURCE} from "@/sim/behaviors/ResourceBehavior.js";
 
 async function setup() {
     return makeGameEngine();
@@ -54,5 +55,5 @@ test("resource and extractor delete", async () => {
     assert.equal(engine.applyMessage(new DeleteObjectMessage(extractorId)), true);
     assert.equal(engine.placed.getEidsByTypeId(ExtractorType.objectTypeId).length, 0);
     assert.equal(engine.applyMessage(new DeleteObjectMessage(resourceId)), true);
-    assert.equal(engine.space.getUserDataAt(5, 5, "R"), null, "resource cover cleared");
+    assert.equal(engine.space.getUserDataAt(5, 5, LAYER_RESOURCE), null, "resource cover cleared");
 });

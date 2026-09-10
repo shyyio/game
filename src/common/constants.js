@@ -5,6 +5,15 @@ import packageJson from "../../package.json" with {type: "json"};
  * @typedef {number} Direction
  */
 
+/**
+ * The axis a direction runs on; the values are what Direction.axis computes.
+ * @enum
+ */
+export const Axis = {
+    VERTICAL: 0,
+    HORIZONTAL: 1,
+};
+
 export const Direction = {
     UP: 0,
     RIGHT: 1,
@@ -78,9 +87,9 @@ export const Direction = {
     },
 
     /**
-     * The axis a direction runs on: 0 for vertical (UP/DOWN), 1 for horizontal (RIGHT/LEFT).
+     * The axis a direction runs on.
      * @param {Direction} direction
-     * @returns {number}
+     * @returns {Axis}
      */
     axis(direction) {
         return direction % 2;
@@ -129,7 +138,13 @@ export const REGION_SIZE = 128;
 // The surface position layer: the default ground layer (belts, splitters, machines). A tile holds
 // one object per layer, so objects on different layers coexist; each mod names its own further layers
 // (e.g. belt undergrounds per axis). Shared by the engine position index and the client ObjectsView.
-export const LAYER_SURFACE = "S";
+export const LAYER_SURFACE = "SURFACE";
+
+// The lane layers off the surface: a buried lane takes a layer per axis, so two cross on one tile.
+export const LAYER_LANE_BURIED_HORIZONTAL = "LANE_BURIED_HORIZONTAL";
+export const LAYER_LANE_BURIED_VERTICAL = "LANE_BURIED_VERTICAL";
+export const LAYER_LANE_ELEVATED_1 = "LANE_ELEVATED_1";
+export const LAYER_LANE_ELEVATED_2 = "LANE_ELEVATED_2";
 
 /**
  * Core game-setting keys (mods own keys for their own settings).

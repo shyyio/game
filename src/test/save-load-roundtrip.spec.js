@@ -1,12 +1,13 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {Direction} from "@/common/constants.js";
+import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {WaterResourceType, ExtractorType, BlenderType} from "@/mods/base-game/common/objectTypes.js";
 import {ITEM_TYPE_WATER} from "@/mods/base-game/common/constants.js";
 import {SplitterType, BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
+import {LAYER_RESOURCE} from "@/sim/behaviors/ResourceBehavior.js";
 
 // Populates an engine with one of every migrated object type and ticks it a few times.
 async function populated() {
@@ -36,9 +37,9 @@ test("the whole world round-trips through the engine serializer", async () => {
     assert.equal(restored.placed.getEidsByTypeId(ExtractorType.objectTypeId).length, 1, "extractor restored");
     assert.equal(restored.placed.getEidsByTypeId(BlenderType.objectTypeId).length, 1, "machine restored");
     assert.equal(restored.lanes.getLaneRefs().length, beltLanes, "belt lanes restored");
-    assert.notEqual(restored.space.getUserDataAt(5, 5, "R"), null, "resource cover restored");
+    assert.notEqual(restored.space.getUserDataAt(5, 5, LAYER_RESOURCE), null, "resource cover restored");
     assert.notEqual(restored.placed.findEidByObjectRef(splitterId), undefined, "splitter restored");
-    assert.equal(restored.space.isEveryCellFree([{x: 10, y: 10, layer: "S"}]), false, "machine position restored");
+    assert.equal(restored.space.isEveryCellFree([{x: 10, y: 10, layer: LAYER_SURFACE}]), false, "machine position restored");
 
     // The extractor keeps producing water into its edge output port after the load.
     const outputPort = restored.ports.getPortEidAt(5, 4, Direction.UP);

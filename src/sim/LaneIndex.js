@@ -1,4 +1,12 @@
-import {Direction, LAYER_SURFACE} from "@/common/constants.js";
+import {
+    Axis,
+    Direction,
+    LAYER_SURFACE,
+    LAYER_LANE_BURIED_HORIZONTAL,
+    LAYER_LANE_BURIED_VERTICAL,
+    LAYER_LANE_ELEVATED_1,
+    LAYER_LANE_ELEVATED_2,
+} from "@/common/constants.js";
 import {chunkKeyAt} from "@/common/util.js";
 import {portAt} from "@/common/portGeometry.js";
 import {
@@ -25,18 +33,55 @@ export const NO_LANE = -1;
 // Scratch value for a lane that submitted no intent this tick.
 const NO_INTENT = -1;
 
-// Every level that exists and the one fact the core holds about each: an axis-split level takes a
-// layer per axis, so two lanes cross on one tile and neither bends; an unsplit level takes one
-// layer, so lanes there bend freely but two of them cannot share a tile. Adding a level is one row.
+/**
+ * A lane level and the layers its cells occupy: an axis-split level takes a layer per axis, so two
+ * lanes cross on one tile and neither bends; an unsplit level takes one layer, so lanes there bend
+ * freely but two of them cannot share a tile.
+ */
+class LaneLevel {
 
-// Should have a type here, not an anonymous list of 
-const LANE_LEVELS = new Map([
-    // No need for this to be abbreviated...
-    [LANE_LEVEL_BURIED, {axisSplit: true, layers: ["LB_H", "LB_V"]}],
-    [LANE_LEVEL_SURFACE, {axisSplit: false, layers: [LAYER_SURFACE]}],
-    [LANE_LEVEL_ELEVATED_1, {axisSplit: false, layers: ["LE1"]}],
-    [LANE_LEVEL_ELEVATED_2, {axisSplit: false, layers: ["LE2"]}],
-]);
+    /**
+     * @param {number} level - LANE_LEVEL_*
+     * @param {string} horizontalLayer
+     * @param {string} verticalLayer - the same layer for an unsplit level
+     */
+    constructor(level, horizontalLayer, verticalLayer) {
+        this.level = level;
+        this.horizontalLayer = horizontalLayer;
+        this.verticalLayer = verticalLayer;
+    }
+
+    /**
+     * @param {Direction} direction
+     * @returns {string} the layer a cell running `direction` occupies
+     */
+    getLayerByDirection(direction) {
+        if (Direction.axis(direction) === Axis.VERTICAL) {
+            return this.verticalLayer;
+        }
+        return this.horizontalLayer;
+    }
+}
+
+// Every level that exists. Adding a level is one entry.
+const LANE_LEVELS = [
+    new LaneLevel(LANE_LEVEL_BURIED, LAYER_LANE_BURIED_HORIZONTAL, LAYER_LANE_BURIED_VERTICAL),
+    new LaneLevel(LANE_LEVEL_SURFACE, LAYER_SURFACE, LAYER_SURFACE),
+    new LaneLevel(LANE_LEVEL_ELEVATED_1, LAYER_LANE_ELEVATED_1, LAYER_LANE_ELEVATED_1),
+    new LaneLevel(LANE_LEVEL_ELEVATED_2, LAYER_LANE_ELEVATED_2, LAYER_LANE_ELEVATED_2),
+];
+
+/**
+ * @param {number} level - LANE_LEVEL_*
+ * @returns {LaneLevel}
+ */
+function getLaneLevelByLevel(level) {
+    const laneLevel = LANE_LEVELS.find(entry => entry.level === level);
+    if (laneLevel === undefined) {
+        throw new Error(`No lane level ${level}`);
+    }
+    return laneLevel;
+}
 
 /**
  * The occupancy layer of `level`, for a cell running `direction`.
@@ -45,17 +90,7 @@ const LANE_LEVELS = new Map([
  * @returns {string}
  */
 export function getLaneLevelLayer(level, direction) {
-    const entry = LANE_LEVELS.get(level);
-    if (entry === undefined) {
-        throw new Error(`No lane level ${level}`);
-    }
-    if (!entry.axisSplit) {
-        return entry.layers[0];
-    }
-    // Should be Direction.axis(direction)
-    const vertical = direction === Direction.UP || direction === Direction.DOWN;
-    const axis = vertical ? 1 : 0;
-    return entry.layers[axis];
+    return getLaneLevelByLevel(level).getLayerByDirection(direction);
 }
 
 /**
@@ -103,10 +138,9 @@ export class LaneIndex extends AbstractSystem {
         this.lanes = engine.components.register(new LaneComponent());
         this.cells = engine.components.register(new LaneCellComponent());
 
-        for (const level of LANE_LEVELS.values()) {
-            for (const layer of level.layers) {
-                engine.space.registerLayer(layer);
-            }
+        for (const laneLevel of LANE_LEVELS) {
+            engine.space.registerLayer(laneLevel.horizontalLayer);
+            engine.space.registerLayer(laneLevel.verticalLayer);
         }
 
         // chunk -> its lanes, so the client feed and chunk sync skip the rest of the world.
