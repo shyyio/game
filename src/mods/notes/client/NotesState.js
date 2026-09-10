@@ -13,6 +13,7 @@ export const NOTES_SCHEMA = {
 export const NOTE_EDITOR_MODE_PLACE = 0;
 export const NOTE_EDITOR_MODE_EDIT = 1;
 export const NOTE_EDITOR_MODE_DELETE = 2;
+/** @typedef {number} NoteEditorMode */
 
 /**
  * The note the editor panel is open for: a fresh anchor while placing, an existing note otherwise.
@@ -25,7 +26,7 @@ export class NoteEditorTarget {
      * @param {number} offsetMx sub-tile x offset, milli-tiles
      * @param {number} offsetMy sub-tile y offset, milli-tiles
      * @param {string} text
-     * @param {number} mode a NOTE_EDITOR_MODE_* option
+     * @param {NoteEditorMode} mode
      * @param {number} authorId PLAYER_REF_NONE while placing a fresh note
      */
     constructor(

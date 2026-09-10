@@ -5,6 +5,7 @@ import {generateFriendCode, normalizeFriendCode} from "@/common/FriendCode.js";
 export const PLAYER_RECORD = "Player";
 export const FRIEND_RECORD = "Friend";
 
+// Inconsistant. I think we use "Record" and "Entry" interchangably. This needs to be fixed
 export class PlayerRecord {
 
     /**
@@ -76,6 +77,7 @@ export class PlayerRegistry {
      * @param {number} playerRef
      * @returns {PlayerRecord}
      */
+    // Ensure what? ensure exists?
     ensure(playerRef) {
         const existing = this._byId.get(playerRef);
         if (existing !== undefined) {
@@ -101,6 +103,7 @@ export class PlayerRegistry {
      * @private
      * @returns {string}
      */
+    // bare noun... What does this function do?? Should be _generateFreshFriendCode()
     _freshFriendCode() {
         let code = generateFriendCode();
         while (this._byFriendCode.has(normalizeFriendCode(code))) {
@@ -207,6 +210,8 @@ export class PlayerRegistry {
             playerRefs.push(record.playerRef);
             usernames.push(record.username);
         }
+        // I really don't like anonymous objects in return types.
+        // create a PlayerDirectory data or something
         return {playerRefs, usernames};
     }
 
@@ -232,6 +237,7 @@ export class PlayerRegistry {
             {
                 name: PLAYER_RECORD,
                 fields: [
+                    // Let's adjust the save format and use snakeCase (playerId) from now on.
                     {name: "player_id", kind: "integer"},
                     {name: "sub", kind: "text"},
                     {name: "username", kind: "text"},
@@ -267,6 +273,7 @@ export class PlayerRegistry {
         for (const row of playerTable.rows) {
             const sub = row.sub === undefined ? null : row.sub;
             // Older saves predate friend codes; mint one on load rather than rejecting the save.
+            // Don't use a ternary like this, this is hard to follow.
             const friendCode = row.friend_code === undefined ? this._freshFriendCode() : row.friend_code;
             this._register(new PlayerRecord(row.player_id, sub, row.username, row.max_chunks, friendCode));
         }

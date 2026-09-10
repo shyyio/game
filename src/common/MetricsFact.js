@@ -5,11 +5,13 @@ export const METRICS_FACT_TYPE_OBJECT_DESPAWNED = 1;
 export const METRICS_FACT_TYPE_ITEM_PRODUCED = 2;
 export const METRICS_FACT_TYPE_PLAYER_JOINED = 4;
 export const METRICS_FACT_TYPE_PLAYER_LEFT = 5;
+/** @typedef {number} MetricsFactType */
 
 // MetricsRollupRequestMessage's `scope`: OWN is the requesting player; GLOBAL only for types a mod
 // declared globally queryable (AbstractModDeclaration.metricsGlobalQueries).
 export const METRICS_QUERY_SCOPE_OWN = 0;
 export const METRICS_QUERY_SCOPE_GLOBAL = 1;
+/** @typedef {number} MetricsQueryScope */
 const METRICS_QUERY_SCOPE_COUNT = 2;
 
 /**
@@ -49,7 +51,7 @@ export class MetricsRollupRow {
 export class MetricsFact {
 
     /**
-     * @param {number} type METRICS_FACT_TYPE_*
+     * @param {MetricsFactType} type
      * @param {number} tick sim clock at record time
      * @param {number} playerRef PLAYER_REF_NONE when not player-scoped
      * @param {number} category grouped as-is by queryRollup; meaning depends on type (itemTypeId, objectTypeId, ...)

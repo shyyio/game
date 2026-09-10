@@ -13,8 +13,8 @@ import {
 class MetricsSubscription {
 
     /**
-     * @param {number} metricsType METRICS_FACT_TYPE_*
-     * @param {number} scope METRICS_QUERY_SCOPE_*
+     * @param {MetricsFactType} metricsType
+     * @param {MetricsQueryScope} scope
      * @param {number} tier
      * @param {number} windowTicks
      * @param {number} generation
@@ -70,7 +70,7 @@ export class GameMetrics {
     }
 
     /**
-     * @param {number} type METRICS_FACT_TYPE_*
+     * @param {MetricsFactType} type
      * @param {number} playerRef PLAYER_REF_NONE when not player-scoped
      * @param {number} [category]
      * @param {number} [amount]
@@ -207,7 +207,7 @@ export class GameMetrics {
 
     /**
      * GLOBAL is unscoped; OWN resolves the session's own playerRef (never client-supplied).
-     * @param {number} scope METRICS_QUERY_SCOPE_*
+     * @param {MetricsQueryScope} scope
      * @param {number} sessionRef
      * @returns {number|null}
      * @private
@@ -296,8 +296,8 @@ export class GameMetrics {
 
     /**
      * Trims a GLOBAL answer to the rows the type's declaration keeps public (e.g. one side of each trade).
-     * @param {number} metricsType METRICS_FACT_TYPE_*
-     * @param {number} scope METRICS_QUERY_SCOPE_*
+     * @param {MetricsFactType} metricsType
+     * @param {MetricsQueryScope} scope
      * @param {MetricsRollupRow[]} rows
      * @returns {MetricsRollupRow[]}
      * @private

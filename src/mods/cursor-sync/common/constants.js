@@ -6,6 +6,7 @@ export const CURSOR_SETTING_DISPLAY = 5;
 export const CURSOR_AUDIENCE_NONE = 0;
 export const CURSOR_AUDIENCE_FRIENDS = 1;
 export const CURSOR_AUDIENCE_EVERYONE = 2;
+/** @typedef {number} CursorAudience */
 // The audience of an absent setting, applied by the sim gate, client mirror, and control alike.
 export const CURSOR_AUDIENCE_DEFAULT = CURSOR_AUDIENCE_EVERYONE;
 // Option labels, indexed by audience; each setting's label ends in the completing preposition.
@@ -14,7 +15,7 @@ export const CURSOR_AUDIENCE_OPTIONS = ["No one", "Friends", "Everyone"];
 /**
  * Whether an audience option admits another player; the holder admits themselves always,
  * except with no one.
- * @param {number} mode CURSOR_AUDIENCE_* option
+ * @param {CursorAudience} mode
  * @param {boolean} isSelf
  * @param {boolean} isFriend whether the other player is on the option holder's friend list
  * @returns {boolean}

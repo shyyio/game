@@ -68,10 +68,11 @@ export const LOGIC_COMPARATOR_AT_LEAST = 0;
 export const LOGIC_COMPARATOR_AT_MOST = 1;
 export const LOGIC_COMPARATOR_EXACTLY = 2;
 export const LOGIC_COMPARATOR_NOT = 3;
+/** @typedef {number} LogicComparator */
 
 /**
  * Whether a rule condition holds.
- * @param {number} comparator - a LOGIC_COMPARATOR_* value
+ * @param {LogicComparator} comparator
  * @param {number} value - the device's read value
  * @param {number} target - the rule's threshold
  * @returns {boolean}
@@ -99,6 +100,7 @@ export const LOGIC_CONDITION_CAP = 4;
 // DEVICE reads one device's key; STORED sums logicStored across the network for an item type.
 export const LOGIC_CONDITION_KIND_DEVICE = 0;
 export const LOGIC_CONDITION_KIND_STORED = 1;
+/** @typedef {number} LogicConditionKind */
 
 // Save-record tables of terminal rules and their conditions.
 export const LOGIC_RULE_RECORD = "LogicRule";

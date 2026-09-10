@@ -155,7 +155,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
      * @param {number} playerRef
      * @param {number} key CURSOR_SETTING_SHARE or CURSOR_SETTING_DISPLAY
      * @param {Game} game
-     * @returns {number} the player's CURSOR_AUDIENCE_* option
+     * @returns {CursorAudience}
      * @private
      */
     _getAudienceByPlayerRef(playerRef, key, game) {
@@ -166,7 +166,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
     /**
      * Erases every shown cursor a viewer's narrowed display setting no longer admits.
      * @param {number} viewerId
-     * @param {number} mode the new CURSOR_AUDIENCE_* option
+     * @param {CursorAudience} mode
      * @param {Game} game
      * @private
      */

@@ -27,7 +27,7 @@ export class AbstractMetricsStore {
     /**
      * Bucketed (bucket, category, tag) aggregates of one type in a tick range, optionally scoped to one player.
      * @abstract
-     * @param {number} type METRICS_FACT_TYPE_*
+     * @param {MetricsFactType} type
      * @param {number|null} playerRef null for unscoped (every player)
      * @param {number} fromTick
      * @param {number} toTick

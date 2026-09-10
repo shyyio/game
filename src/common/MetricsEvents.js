@@ -22,8 +22,8 @@ export class MetricsRollupEvent extends AbstractEvent {
     };
 
     /**
-     * @param {number} metricsType METRICS_FACT_TYPE_*
-     * @param {number} scope METRICS_QUERY_SCOPE_*
+     * @param {MetricsFactType} metricsType
+     * @param {MetricsQueryScope} scope
      * @param {number} tier
      * @param {number} toTick the query's right edge (current tick at query time); anchor "now" to this, not the data
      * @param {number[]} buckets distinct bucket-start ticks, ascending, each listed once
@@ -128,8 +128,8 @@ export class MetricsRollupBucketEvent extends AbstractEvent {
     };
 
     /**
-     * @param {number} metricsType METRICS_FACT_TYPE_*
-     * @param {number} scope METRICS_QUERY_SCOPE_*
+     * @param {MetricsFactType} metricsType
+     * @param {MetricsQueryScope} scope
      * @param {number} tier
      * @param {number} toTick same meaning as MetricsRollupEvent's toTick — not bucketTick below
      * @param {number} bucketTick the one completed bucket every row belongs to

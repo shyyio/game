@@ -26,6 +26,7 @@ export const LANE_LEVEL_BURIED = -1;
 export const LANE_LEVEL_SURFACE = 0;
 export const LANE_LEVEL_ELEVATED_1 = 1;
 export const LANE_LEVEL_ELEVATED_2 = 2;
+/** @typedef {number} LaneLevel */
 
 // Lookup answer for a cell, tile or port that belongs to no lane.
 export const NO_LANE = -1;
@@ -38,10 +39,10 @@ const NO_INTENT = -1;
  * lanes cross on one tile and neither bends; an unsplit level takes one layer, so lanes there bend
  * freely but two of them cannot share a tile.
  */
-class LaneLevel {
+class LaneLevelEntry {
 
     /**
-     * @param {number} level - LANE_LEVEL_*
+     * @param {LaneLevel} level
      * @param {string} horizontalLayer
      * @param {string} verticalLayer - the same layer for an unsplit level
      */
@@ -63,19 +64,18 @@ class LaneLevel {
     }
 }
 
-// Every level that exists. Adding a level is one entry.
 const LANE_LEVELS = [
-    new LaneLevel(LANE_LEVEL_BURIED, LAYER_LANE_BURIED_HORIZONTAL, LAYER_LANE_BURIED_VERTICAL),
-    new LaneLevel(LANE_LEVEL_SURFACE, LAYER_SURFACE, LAYER_SURFACE),
-    new LaneLevel(LANE_LEVEL_ELEVATED_1, LAYER_LANE_ELEVATED_1, LAYER_LANE_ELEVATED_1),
-    new LaneLevel(LANE_LEVEL_ELEVATED_2, LAYER_LANE_ELEVATED_2, LAYER_LANE_ELEVATED_2),
+    new LaneLevelEntry(LANE_LEVEL_BURIED, LAYER_LANE_BURIED_HORIZONTAL, LAYER_LANE_BURIED_VERTICAL),
+    new LaneLevelEntry(LANE_LEVEL_SURFACE, LAYER_SURFACE, LAYER_SURFACE),
+    new LaneLevelEntry(LANE_LEVEL_ELEVATED_1, LAYER_LANE_ELEVATED_1, LAYER_LANE_ELEVATED_1),
+    new LaneLevelEntry(LANE_LEVEL_ELEVATED_2, LAYER_LANE_ELEVATED_2, LAYER_LANE_ELEVATED_2),
 ];
 
 /**
- * @param {number} level - LANE_LEVEL_*
- * @returns {LaneLevel}
+ * @param {LaneLevel} level
+ * @returns {LaneLevelEntry}
  */
-function getLaneLevelByLevel(level) {
+function getLaneLevelEntryByLevel(level) {
     const laneLevel = LANE_LEVELS.find(entry => entry.level === level);
     if (laneLevel === undefined) {
         throw new Error(`No lane level ${level}`);
@@ -85,12 +85,12 @@ function getLaneLevelByLevel(level) {
 
 /**
  * The occupancy layer of `level`, for a cell running `direction`.
- * @param {number} level - LANE_LEVEL_*
+ * @param {LaneLevel} level
  * @param {Direction} direction
  * @returns {string}
  */
 export function getLaneLevelLayer(level, direction) {
-    return getLaneLevelByLevel(level).getLayerByDirection(direction);
+    return getLaneLevelEntryByLevel(level).getLayerByDirection(direction);
 }
 
 /**
@@ -134,7 +134,6 @@ export class LaneIndex extends AbstractSystem {
         this.engine = engine;
 
         this.items = engine.components.register(new LaneItemComponent());
-
         this.lanes = engine.components.register(new LaneComponent());
         this.cells = engine.components.register(new LaneCellComponent());
 

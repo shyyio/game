@@ -13,6 +13,8 @@ const PORT_EMPTIED_CONSUMED = 2;
  * drawn and the tile it is drawn at; EMIT_RENDER diffs each port written since the last pass against
  * the shadow of what was last emitted, and sends one batch per chunk.
  */
+// This needs a nound after this. What is this? Is it a store ? a cache? an index?
+// Feels like this might be a system?
 export class RenderDiff {
 
     /**
@@ -77,6 +79,7 @@ export class RenderDiff {
      * @param {number} y
      * @returns {void}
      */
+    // If this is a specifically for output ports, this should be registerOutputPort()
     registerPort(eid, x, y) {
         if (this._rendered[eid] === 1) {
             // Re-registered at a possibly different tile: drop the old chunk-index slot first.
@@ -333,6 +336,8 @@ export class RenderDiff {
      * @param {number} eid
      * @returns {boolean}
      */
+    // Is what observed?? a port? If so, it should be _isPortObserved()
+    // "Observed" is a brand new verb. Clients 'subscribe' to a chunk, no?
     _isObserved(eid) {
         const generation = this.engine.observerGeneration;
         if (this._observedGen[eid] === generation) {
@@ -352,6 +357,7 @@ export class RenderDiff {
      * @param {number} y
      * @returns {PortItemBatchEvent}
      */
+    // batch of what? 
     _getBatchAt(batches, x, y) {
         const chunkKey = chunkKeyAt(x, y);
         const existing = batches.get(chunkKey);

@@ -38,7 +38,7 @@ export class RemoteCursorsWriter extends AbstractCacheWriter {
     /**
      * Applies the display setting: narrowing clears the cursors it no longer admits.
      * @private
-     * @param {number} mode CURSOR_AUDIENCE_* option
+     * @param {CursorAudience} mode
      * @returns {void}
      */
     _setDisplayMode(mode) {

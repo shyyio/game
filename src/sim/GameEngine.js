@@ -235,7 +235,7 @@ export class GameEngine {
 
     /**
      * Passes a metrics fact to the metrics sink; a no-op if none is installed.
-     * @param {number} type METRICS_FACT_TYPE_*
+     * @param {MetricsFactType} type
      * @param {number} playerRef PLAYER_REF_NONE when not player-scoped
      * @param {number} [category]
      * @param {number} [amount]

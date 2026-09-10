@@ -12,8 +12,8 @@ export const METRICS_SCHEMA = {
 export class MetricsRollup {
 
     /**
-     * @param {number} metricsType METRICS_FACT_TYPE_*
-     * @param {number} scope METRICS_QUERY_SCOPE_*
+     * @param {MetricsFactType} metricsType
+     * @param {MetricsQueryScope} scope
      * @param {number} tier
      * @param {number} toTick
      * @param {number[]} bucketTick

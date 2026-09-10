@@ -11,8 +11,8 @@ export class LaneBehavior extends AbstractBehavior {
     /**
      * @param {object} [config]
      * @param {number} [config.slotsPerTile] - item positions per cell
-     * @param {number} [config.inLevel] - LANE_LEVEL_* the cell takes flow from
-     * @param {number} [config.outLevel] - LANE_LEVEL_* the cell gives flow to
+     * @param {LaneLevel} [config.inLevel] the cell takes flow from
+     * @param {LaneLevel} [config.outLevel] the cell gives flow to
      */
     constructor({
         slotsPerTile = 2,

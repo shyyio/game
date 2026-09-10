@@ -13,11 +13,11 @@ import {
 export class LogicCondition {
 
     /**
-     * @param {number} kind - a LOGIC_CONDITION_KIND_* value
+     * @param {LogicConditionKind} kind
      * @param {number} deviceId
      * @param {number} itemTypeId
      * @param {number} key
-     * @param {number} comparator - a LOGIC_COMPARATOR_* value
+     * @param {LogicComparator} comparator
      * @param {number} value
      */
     constructor(kind, deviceId, itemTypeId, key, comparator, value) {

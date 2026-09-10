@@ -18,8 +18,8 @@ function isValidTierSpan(tier, spanTicks) {
  * Shared by every metrics query message: scope must be known, GLOBAL only for a type a mod
  * declared globally queryable.
  * @param {GameAPI} api
- * @param {number} scope METRICS_QUERY_SCOPE_*
- * @param {number} metricsType METRICS_FACT_TYPE_*
+ * @param {MetricsQueryScope} scope
+ * @param {MetricsFactType} metricsType
  * @returns {boolean}
  */
 function isValidScope(api, scope, metricsType) {
@@ -43,8 +43,8 @@ export class MetricsRollupRequestMessage extends AbstractMessage {
     };
 
     /**
-     * @param {number} metricsType METRICS_FACT_TYPE_*
-     * @param {number} scope METRICS_QUERY_SCOPE_*
+     * @param {MetricsFactType} metricsType
+     * @param {MetricsQueryScope} scope
      * @param {number} fromTick
      * @param {number} toTick
      * @param {number} tier
@@ -85,8 +85,8 @@ export class MetricsSubscribeMessage extends AbstractMessage {
     };
 
     /**
-     * @param {number} metricsType METRICS_FACT_TYPE_*
-     * @param {number} scope METRICS_QUERY_SCOPE_*
+     * @param {MetricsFactType} metricsType
+     * @param {MetricsQueryScope} scope
      * @param {number} tier
      * @param {number} windowTicks - how far back from the current tick the sliding window reaches
      */
@@ -122,8 +122,8 @@ export class MetricsUnsubscribeMessage extends AbstractMessage {
     };
 
     /**
-     * @param {number} metricsType METRICS_FACT_TYPE_*
-     * @param {number} scope METRICS_QUERY_SCOPE_*
+     * @param {MetricsFactType} metricsType
+     * @param {MetricsQueryScope} scope
      */
     constructor(metricsType, scope) {
         super();

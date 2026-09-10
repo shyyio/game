@@ -24,8 +24,8 @@ export class ProductionPanelLayer extends Container {
     /**
      * @param {Application} app
      * @param {ClientCache} state
-     * @param {number} metricsType - METRICS_FACT_TYPE_* the chart plots
-     * @param {number} scope - METRICS_QUERY_SCOPE_*, echoed back through the (un)subscribe callbacks
+     * @param {MetricsFactType} metricsType the chart plots
+     * @param {MetricsQueryScope} scope echoed back through the (un)subscribe callbacks
      * @param {ItemRegistry} items - names the list's rows (a series' category is an item type)
      */
     constructor(
