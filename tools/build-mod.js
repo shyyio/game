@@ -38,6 +38,40 @@ const IMAGE_MIME_TYPES = {
 };
 
 /**
+ * A rollup resolution that keeps the module out of the bundle.
+ * @typedef {Object} ExternalResolution
+ * @property {string} id
+ * @property {boolean} external
+ */
+
+/**
+ * Where a mod import lands: the SDK and another closure's modules stay external, the mod's own files
+ * resolve to their absolute paths, and anything else is rollup's to resolve.
+ * @param {Set<string>} externalIds absolute paths of modules another closure already owns
+ * @param {string} source
+ * @param {string|undefined} importer
+ * @returns {ExternalResolution|string|null}
+ */
+function resolveModImport(externalIds, source, importer) {
+    if (SDK_SPECIFIERS.includes(source)) {
+        return {id: SDK_ID, external: true};
+    }
+    if (source.startsWith("@/")) {
+        // A mod reaches the engine only through the SDK, and its own files relatively —
+        // which is what lets this builder run anywhere, with no game checkout in sight.
+        throw new Error(`A mod may not import ${source}; use @spup/sdk, @spup/sdk/client, or a relative path`);
+    }
+    if (!source.startsWith(".") || importer === undefined) {
+        return null;
+    }
+    const resolved = resolve(dirname(importer), source);
+    if (externalIds.has(resolved)) {
+        return {id: resolved, external: true};
+    }
+    return resolved;
+}
+
+/**
  * Resolves the repo's `@/` alias and relative imports to absolute paths, and marks as external the
  * SDK plus any module the calling pass must not inline.
  * @param {Set<string>} externalIds absolute paths of modules another closure already owns
@@ -47,22 +81,7 @@ function resolvePlugin(externalIds) {
     return {
         name: "pipes-mod-resolve",
         resolveId(source, importer) {
-            if (SDK_SPECIFIERS.includes(source)) {
-                return {id: SDK_ID, external: true};
-            }
-            if (source.startsWith("@/")) {
-                // A mod reaches the engine only through the SDK, and its own files relatively —
-                // which is what lets this builder run anywhere, with no game checkout in sight.
-                throw new Error(`A mod may not import ${source}; use @spup/sdk, @spup/sdk/client, or a relative path`);
-            }
-            if (!source.startsWith(".") || importer === undefined) {
-                return null;
-            }
-            const resolved = resolve(dirname(importer), source);
-            if (externalIds.has(resolved)) {
-                return {id: resolved, external: true};
-            }
-            return resolved;
+            return resolveModImport(externalIds, source, importer);
         },
     };
 }
@@ -113,11 +132,17 @@ function sourceFilesIn(dir) {
 }
 
 /**
+ * @typedef {Object} OpenedBuild
+ * @property {object} build the rollup build
+ * @property {string[]} moduleIds every module the graph reached
+ */
+
+/**
  * Opens a rollup build over `input`, collecting the ids of the modules it pulls in.
  * @param {string|string[]} input entry path(s), or "\0entry" for a generated entry
  * @param {Set<string>} externalIds modules another closure already owns
  * @param {string|null} virtualSource source of the generated entry, when input is "\0entry"
- * @returns {Promise<{build: object, moduleIds: string[]}>}
+ * @returns {Promise<OpenedBuild>}
  */
 async function openBuild(input, externalIds, virtualSource) {
     const moduleIds = [];
@@ -189,11 +214,17 @@ async function bundlePart(input, externalIds, globals, virtualSource = null) {
 }
 
 /**
+ * @typedef {Object} BuiltCore
+ * @property {string} code
+ * @property {string[]} moduleIds the core's modules, declaration first
+ */
+
+/**
  * The mod's core: the declaration and every module it or the mod's shared `common/` code reaches.
  * Bundled through a virtual entry exporting one namespace object per module, so the other parts can
  * bind to the very same instances.
  * @param {string} modDir
- * @returns {Promise<{code: string, moduleIds: string[]}>}
+ * @returns {Promise<BuiltCore>}
  */
 async function buildCore(modDir) {
     const roots = [join(modDir, "declaration.js"), ...sourceFilesIn(join(modDir, "common"))];

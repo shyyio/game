@@ -35,10 +35,16 @@ export class PackagedMod {
 }
 
 /**
+ * @typedef {Object} LoadedMods
+ * @property {ModPackage[]} packages
+ * @property {PackagedMod[]} mods
+ */
+
+/**
  * Loads every listed mod's declaration and sim part.
  * @param {ModLockfile} lockfile
  * @param {ModCache} cache
- * @returns {Promise<{packages: ModPackage[], mods: PackagedMod[]}>}
+ * @returns {Promise<LoadedMods>}
  */
 export async function loadPackagedMods(lockfile, cache) {
     const packages = [];

@@ -10,6 +10,12 @@ const OBJECT_TYPE_TABLE = "_ObjectType";
 const META_TABLE = "_Meta";
 
 /**
+ * @typedef {Object} SnapshotMeta
+ * @property {number|null} [saveFormat]
+ * @property {string|null} [gameVersion]
+ */
+
+/**
  * Node {@link AbstractSaveStore}: persists the snapshot as structured SQLite — one table per
  * component (a column per field), plus meta tables recording the component/field descriptors and the
  * global map. Schema is generated from the snapshot, so it stays generic (no per-mod coupling).
@@ -113,7 +119,7 @@ export class NodeSaveStore extends AbstractSaveStore {
 
     /**
      * @private
-     * @returns {{saveFormat?: number, gameVersion?: string|null}} empty when the save predates the
+     * @returns {SnapshotMeta} empty when the save predates the
      *     stamp, so migrateSnapshot reads it as unstamped
      */
     _readSnapshotMeta() {
@@ -203,7 +209,7 @@ export class NodeSaveStore extends AbstractSaveStore {
 
     /**
      * @private
-     * @returns {object[]}
+     * @returns {TableSnapshot[]}
      */
     _readComponents() {
         const componentRows = this.db
@@ -259,7 +265,7 @@ export class NodeSaveStore extends AbstractSaveStore {
 
     /**
      * @private
-     * @returns {object[]} the tables, empty when the save predates them
+     * @returns {TableSnapshot[]} the tables, empty when the save predates them
      */
     _readTables() {
         const hasTables = this.db

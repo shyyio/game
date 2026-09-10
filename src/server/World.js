@@ -15,6 +15,12 @@ import {loadPackagedMods} from "@/server/ModLoader.js";
 import {randomWorldSeed} from "@/common/WorldNoise.js";
 
 /**
+ * @typedef {Object} ConfiguredPackages
+ * @property {ModPackage[]} packages
+ * @property {string} modListJson the mod list a joining client reads
+ */
+
+/**
  * One booted world: the mod registry, the game over its stores, and what serves its mods. A config
  * change that touches any of these boots a new one and closes the old.
  */
@@ -133,7 +139,7 @@ export class World {
      * what assigns the positional ids, so the build's own mods always come first.
      * @private
      * @param {ServerConfig} config
-     * @returns {Promise<{packages: ModPackage[], modListJson: string}>}
+     * @returns {Promise<ConfiguredPackages>}
      */
     static async _getPackagesByConfig(config) {
         const packages = simLoadout();
@@ -155,7 +161,7 @@ export class World {
      * What `config`'s mods declare, read off the packages without freezing a registry (a freeze
      * renumbers the object types the running world shares).
      * @param {ServerConfig} config
-     * @returns {Promise<{typeNames: string[], itemTypeIds: Set<number>}>}
+     * @returns {Promise<Loadout>}
      */
     static async getLoadoutByConfig(config) {
         const {packages} = await World._getPackagesByConfig(config);

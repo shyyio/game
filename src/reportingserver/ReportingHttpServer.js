@@ -162,6 +162,16 @@ const BUILD_BADGE = `<div class="build-badge">
 </div>`;
 
 /**
+ * A crash report's validated fields, as the store takes them.
+ * @typedef {Object} ErrorReportFields
+ * @property {string} message
+ * @property {string} stack
+ * @property {string} buildVersion
+ * @property {string} url
+ * @property {string|null} extra as JSON
+ */
+
+/**
  * reportingserver's HTTP front end: an anonymous, unauthenticated ingest endpoint for client
  * error reports, plus an admin browse UI. The admin routes carry no app-level auth of their
  * own; a reverse proxy in front is expected to gate /admin*.
@@ -232,7 +242,7 @@ export class ReportingHttpServer extends AbstractHttpServer {
     /**
      * @private
      * @param {object} payload
-     * @returns {{message: string, stack: string, buildVersion: string, url: string, extra: string|null}|null}
+     * @returns {ErrorReportFields|null}
      */
     _validateReport(payload) {
         if (typeof payload !== "object" || payload === null) {

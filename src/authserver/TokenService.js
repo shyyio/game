@@ -12,6 +12,13 @@ const SESSION_TTL_S = 24 * 60 * 60;
 const SESSION_NONCE_BYTES = 8;
 
 /**
+ * @typedef {Object} ReconnectClaims
+ * @property {number} accountId
+ * @property {string} origin the server origin the token is scoped to
+ * @property {number} issuedAtS
+ */
+
+/**
  * Mints the auth server's tokens: Ed25519-signed join tokens whose subject is pairwise per
  * (account, origin) so colluding game servers can't cross-reference players, and HMAC-signed
  * session and reconnect tokens the server verifies without keeping any state.
@@ -71,7 +78,7 @@ export class TokenService {
 
     /**
      * @param {string} token
-     * @returns {{accountId: number, origin: string, issuedAtS: number}|null} null when malformed,
+     * @returns {ReconnectClaims|null} null when malformed,
      *     forged, expired, or past the absolute renewal lifetime
      */
     verifyReconnect(token) {

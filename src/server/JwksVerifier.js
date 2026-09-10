@@ -3,6 +3,13 @@ import {createPublicKey, verify} from "node:crypto";
 const JWKS_PATH = "/.well-known/jwks.json";
 
 /**
+ * @typedef {Object} JoinClaims
+ * @property {string} sub the pairwise pseudonym
+ * @property {string} name
+ * @property {string[]} ent
+ */
+
+/**
  * Offline verifier for auth-server join tokens: fetches the auth server's published keys once
  * (load()) and checks signature/audience/expiry against the cache from then on. No callback to
  * the auth server per join, per docs/auth.md.
@@ -37,7 +44,7 @@ export class JwksVerifier {
      * Verifies a compact join token's signature, audience, and expiry.
      * @param {string} token
      * @param {string} expectedAud - this server's own canonical origin
-     * @returns {{sub: string, name: string, ent: string[]}|null} the claims, or null if the token
+     * @returns {JoinClaims|null} the claims, or null if the token
      *     is malformed, unsigned by a known key, expired, or minted for a different origin
      */
     verify(token, expectedAud) {

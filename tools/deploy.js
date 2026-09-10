@@ -37,9 +37,15 @@ const PUSH_HINT = [
 ].join("\n");
 
 /**
+ * @typedef {Object} CapturedCommand
+ * @property {number} status
+ * @property {string} stdout trimmed
+ */
+
+/**
  * @param {string} command
  * @param {string[]} args
- * @returns {{status: number, stdout: string}}
+ * @returns {CapturedCommand}
  */
 function capture(command, args) {
     const result = spawnSync(command, args, {cwd: ROOT, encoding: "utf8"});

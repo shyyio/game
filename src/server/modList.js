@@ -9,9 +9,26 @@
 import {SDK_VERSION} from "@/common/ModManifest.js";
 
 /**
+ * A mod compiled into the client's own build.
+ * @typedef {Object} BuiltInModListEntry
+ * @property {string} name
+ * @property {string} version
+ */
+
+/**
+ * A mod downloaded from the registry that published it.
+ * @typedef {Object} ExternalModListEntry
+ * @property {string} name
+ * @property {string} version
+ * @property {string[]} parts which factories the bundle exports
+ * @property {string} url the package's base URL
+ * @property {string} integrity the bundle's hash, as "sha256-..."
+ */
+
+/**
  * @param {string} name
  * @param {string} version
- * @returns {object} a list entry
+ * @returns {BuiltInModListEntry}
  */
 export function builtInMod(name, version) {
     return {name, version};
@@ -23,7 +40,7 @@ export function builtInMod(name, version) {
  * @param {string[]} parts which factories the bundle exports
  * @param {string} url the package's base URL
  * @param {string} integrity the bundle's hash, as "sha256-..."
- * @returns {object} a list entry
+ * @returns {ExternalModListEntry}
  */
 export function externalMod(name, version, parts, url, integrity) {
     return {name, version, parts, url, integrity};

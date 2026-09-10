@@ -1,6 +1,12 @@
 import BetterSqlite3 from "better-sqlite3";
 
 /**
+ * @typedef {Object} ReportReceipt
+ * @property {number} errorReportId
+ * @property {boolean} isNew false when the report bumped an existing row
+ */
+
+/**
  * Node persistence for anonymous client error reports. Rows are deduplicated by fingerprint
  * within a time window (recordReport bumps count/lastSeen), so a crash loop grows one row's
  * counter.
@@ -62,7 +68,7 @@ export class NodeErrorReportStore {
      * @param {{fingerprint: string, message: string, stack: string, buildVersion: string, url: string, extra: string|null}} report
      * @param {number} nowMs
      * @param {number} dedupWindowMs
-     * @returns {{errorReportId: number, isNew: boolean}}
+     * @returns {ReportReceipt}
      */
     recordReport(report, nowMs, dedupWindowMs) {
         const {fingerprint, message, stack, buildVersion, url, extra} = report;

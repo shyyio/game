@@ -15,9 +15,15 @@ import {scanBundle} from "./mod-scan.js";
 import * as sdk from "../src/sdk/common.js";
 
 /**
+ * @typedef {Object} PackageCheck
+ * @property {ModManifest|null} manifest null when mod.json is missing or malformed
+ * @property {string[]} problems empty for a publishable package
+ */
+
+/**
  * Runs every publishable-package check.
  * @param {string} dir a built package directory (mod.json + mod.js + assets)
- * @returns {Promise<{manifest: ModManifest|null, problems: string[]}>}
+ * @returns {Promise<PackageCheck>}
  */
 export async function checkPackage(dir) {
     const problems = [];
