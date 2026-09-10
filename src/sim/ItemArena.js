@@ -45,7 +45,7 @@ export class ItemArena {
      * @returns {number} the item eid
      */
     create(itemTypeId, gap, itemRef) {
-        const eid = this.engine.components.createEntity(this.def);
+        const eid = this.def.create();
         const row = this.def.row(eid);
         this.store.lane[row] = NO_EID;
         this.store.nextItem[row] = NO_EID;

@@ -61,7 +61,7 @@ export class GeneratorBehavior extends AbstractBehavior {
 
     onSpawn(engine, eid, type, message) {
         const def = engine.components.get("Generator");
-        engine.components.attach(def, eid);
+        def.attach(eid);
         const generator = def.store;
         const row = def.row(eid);
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);

@@ -63,7 +63,7 @@ export class SplitterBehavior extends AbstractBehavior {
         const int_a = engine.ports.create();
         const int_b = engine.ports.create();
         const def = engine.components.get("Splitter");
-        engine.components.attach(def, eid);
+        def.attach(eid);
         const splitter = def.store;
         const row = def.row(eid);
         splitter.in_a[row] = ports.in_a;
@@ -91,7 +91,7 @@ export class SplitterBehavior extends AbstractBehavior {
             out_a: port(wiring.out_a),
             out_b: port(wiring.out_b),
         };
-        const eid = engine.components.createEntity(engine.components.get("Splitter"));
+        const eid = engine.components.get("Splitter").create();
         return this._wire(engine, eid, ports);
     }
 

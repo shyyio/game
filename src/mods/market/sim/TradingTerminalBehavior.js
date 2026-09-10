@@ -51,7 +51,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
 
     onSpawn(engine, eid, type, message) {
         const def = engine.components.get("MarketTerminal");
-        engine.components.attach(def, eid);
+        def.attach(eid);
         const terminal = def.store;
         const row = def.row(eid);
         terminal.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;

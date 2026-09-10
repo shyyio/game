@@ -26,7 +26,10 @@ const NO_INTENT = -1;
 // Every level that exists and the one fact the core holds about each: an axis-split level takes a
 // layer per axis, so two lanes cross on one tile and neither bends; an unsplit level takes one
 // layer, so lanes there bend freely but two of them cannot share a tile. Adding a level is one row.
+
+// Should have a type here, not an anonymous list of 
 const LANE_LEVELS = new Map([
+    // No need for this to be abbreviated...
     [LANE_LEVEL_BURIED, {axisSplit: true, layers: ["LB_H", "LB_V"]}],
     [LANE_LEVEL_SURFACE, {axisSplit: false, layers: [LAYER_SURFACE]}],
     [LANE_LEVEL_ELEVATED_1, {axisSplit: false, layers: ["LE1"]}],
@@ -39,6 +42,7 @@ const LANE_LEVELS = new Map([
  * @param {Direction} direction
  * @returns {string}
  */
+// This should be called getLaneLevelLayer()
 export function laneLevelLayer(level, direction) {
     const entry = LANE_LEVELS.get(level);
     if (entry === undefined) {
@@ -47,6 +51,7 @@ export function laneLevelLayer(level, direction) {
     if (!entry.axisSplit) {
         return entry.layers[0];
     }
+    // Should be Direction.axis(direction)
     const vertical = direction === Direction.UP || direction === Direction.DOWN;
     const axis = vertical ? 1 : 0;
     return entry.layers[axis];
@@ -60,6 +65,7 @@ export function laneLevelLayer(level, direction) {
  * @param {Direction} direction
  * @returns {string}
  */
+// getLaneCallLayer()
 export function laneCellLayer(inLevel, outLevel, direction) {
     if (inLevel !== outLevel || inLevel === LANE_LEVEL_SURFACE) {
         return LAYER_SURFACE;
@@ -76,6 +82,7 @@ export function laneCellLayer(inLevel, outLevel, direction) {
  * @param {Direction} inDirection
  * @returns {boolean}
  */
+// Should be something like "shouldConnectPorts()"
 function levelsMeet(outLevel, outDirection, inLevel, inDirection) {
     if (outLevel !== inLevel) {
         return false;
@@ -83,12 +90,6 @@ function levelsMeet(outLevel, outDirection, inLevel, inDirection) {
     return laneLevelLayer(outLevel, outDirection) === laneLevelLayer(inLevel, inDirection);
 }
 
-/**
- * Transport lanes: the chains of cells items step along, the ports at their two ends, the per-tick
- * step, and the client feed for both. A lane lives entirely inside one chunk; a run spanning chunks
- * is a chain of lanes joined by the shared seam port, which items cross by the ordinary transfer
- * protocol.
- */
 export class LaneIndex {
 
     /**
@@ -101,8 +102,14 @@ export class LaneIndex {
          * The items riding the lanes.
          * @type {ItemArena}
          */
+        // no need to invent a new term here. This can be this.items = new LaneItems(); "LaneItems" is already self-evident
+        //  for "collection of items that belong to a Lane"
+        // LaneItemComponent would also work.. 
         this.arena = new ItemArena(engine);
 
+        // We're extracting LineItem to its own class but keeping Lane here? Why not systematically
+        // have a *Component class? Have it inherit an abstract AbstractComponent class and put common
+        // ECS patterns there??
         this.laneDef = engine.components.define("Lane", [
             {name: "headCell", kind: "eid", defaultValue: NO_EID},
             {name: "inPort", kind: "eid", defaultValue: NO_EID},
@@ -148,17 +155,17 @@ export class LaneIndex {
      * Registers the per-tick systems: the intents, then what they resolved into.
      * @returns {void}
      */
+    // Repeated pattern, same as TransferResolver, why not have them both inherit a "AbstractSystem" class or something?
     registerSystems() {
         this.engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this.submit());
         this.engine.registerSystem(TickPhase.POST_RESOLVE, () => this.resolve());
     }
 
-    // ---- accessors ----
-
     /**
      * @param {number} eid - a lane cell
      * @returns {number} its lane, NO_LANE when it is in none
      */
+    // should be getLaneByEid()
     laneOf(eid) {
         if (eid === NO_EID) {
             return NO_LANE;
@@ -180,6 +187,7 @@ export class LaneIndex {
      * @param {string} layer
      * @returns {number} the lane covering that cell, NO_LANE when none
      */
+    // getLaneAt()
     laneAt(tileX, tileY, layer) {
         return this.laneOf(this.engine.placed.eidAt(tileX, tileY, layer));
     }
@@ -187,14 +195,16 @@ export class LaneIndex {
     /**
      * @returns {number[]} every live lane id
      */
+    // getEids()
     ids() {
-        return Array.from(this.engine.components.entitiesWith(this.laneDef));
+        return Array.from(this.laneDef.entities());
     }
 
     /**
      * @param {number} laneRef
      * @returns {number[]} cell eids, head first
      */
+    // getCellsByRef()
     cellsOf(laneRef) {
         const cells = [];
         let eid = this.laneDef.store.headCell[this._laneRow(laneRef)];
@@ -209,6 +219,7 @@ export class LaneIndex {
      * @param {number} laneRef
      * @returns {number} slots
      */
+    // getLenghtByRef()
     lengthOf(laneRef) {
         return this.laneDef.store.slotCount[this._laneRow(laneRef)];
     }
@@ -217,6 +228,7 @@ export class LaneIndex {
      * @param {number} laneRef
      * @returns {number} port eid
      */
+    // getInputPortByEid()
     inPortOf(laneRef) {
         return this.laneDef.store.inPort[this._laneRow(laneRef)];
     }
@@ -284,13 +296,12 @@ export class LaneIndex {
         return laneRow;
     }
 
-    // ---- cell geometry ----
-
     /**
      * @private
      * @param {number} eid - a lane cell
      * @returns {LaneBehavior}
      */
+    // _getBehavior
     _behavior(eid) {
         return this.engine.placed.behaviorFor(this.engine.placed.objectTypeIdOf(eid));
     }
@@ -323,11 +334,13 @@ export class LaneIndex {
     }
 
     /**
+     // This sentence makes no sense. Doesn,t even seem related to the method name
      * The cell `eid`'s flow enters, NO_EID when nothing takes it.
      * @private
      * @param {number} eid
      * @returns {number}
      */
+    // _getChildByEid()
     _childOf(eid) {
         const position = this.engine.Position;
         const direction = position.direction[eid];
@@ -447,7 +460,7 @@ export class LaneIndex {
      * @returns {void}
      */
     addCell(eid) {
-        this.engine.components.attach(this.cellDef, eid);
+        this.cellDef.attach(eid);
         const affected = this._affectedCells(this._dirtyAround(eid));
         affected.add(eid);
         this._rebuildCells(affected, NO_EID);
@@ -654,7 +667,7 @@ export class LaneIndex {
      */
     _createLane(cells) {
         const engine = this.engine;
-        const laneEid = engine.components.createEntity(this.laneDef);
+        const laneEid = this.laneDef.create();
         const laneRow = this.laneDef.row(laneEid);
         const lanes = this.laneDef.store;
         const tail = cells[cells.length - 1];
@@ -920,12 +933,10 @@ export class LaneIndex {
     }
 
     /**
-     * The pop: the leadItem's type moves into the out-port, and the in-port's own item comes onto the
-     * lane with it, so a feeder's transfer into that port resolves the same tick and nothing is ever
-     * overwritten. A fluid in-port item in the in-port is left alone by a source-less create.
+     * pop leadItem in output port, shift input port's item into lane
      * @private
      * @param {number} laneRow
-     * @param {number} inPortItem - the in-port's item
+     * @param {number} inputPortItem // Should this be inputPortItemTypeId?
      * @param {number} leadTypeId
      * @returns {void}
      */
@@ -968,14 +979,14 @@ export class LaneIndex {
                 this._popLead(laneEid, laneRow);
                 takenItem = this._popSourceItem[laneRow];
             } else {
-                this._advance(laneEid, laneRow);
+                this._shiftItems(laneEid, laneRow);
             }
             // The item enters once, whichever intent emptied the port.
             if (takenItem === EMPTY && this._drainIntent[laneRow] !== NO_INTENT && transfers.wasResolved(this._drainIntent[laneRow])) {
                 takenItem = this._drainItem[laneRow];
             }
             if (takenItem !== EMPTY) {
-                this._ingest(laneEid, laneRow, takenItem);
+                this._shiftItemIntoInputPort(laneEid, laneRow, takenItem);
             }
         }
         this._flushBatches();
@@ -993,7 +1004,7 @@ export class LaneIndex {
         const lanes = this.laneDef.store;
         const leadItem = lanes.firstItem[laneRow];
         const itemRow = this.arena.row(leadItem);
-        this._batchForLane(laneRow).addDelete(laneEid, this.arena.store.itemRef[itemRow]);
+        this._getBatchByLaneRow(laneRow).addDelete(laneEid, this.arena.store.itemRef[itemRow]);
         lanes.firstItem[laneRow] = this.arena.store.nextItem[itemRow];
         if (lanes.firstItem[laneRow] === NO_EID) {
             lanes.lastItem[laneRow] = NO_EID;
@@ -1011,7 +1022,7 @@ export class LaneIndex {
      * @param {number} laneRow
      * @returns {void}
      */
-    _advance(laneEid, laneRow) {
+    _shiftItems(laneEid, laneRow) {
         const items = this.arena.store;
         let itemEid = this.laneDef.store.firstItem[laneRow];
         while (itemEid !== NO_EID) {
@@ -1019,7 +1030,7 @@ export class LaneIndex {
             if (items.gap[itemRow] > 0) {
                 items.gap[itemRow] -= 1;
                 this.laneDef.store.headGap[laneRow] += 1;
-                this._batchForLane(laneRow).addUpsert(laneEid, items.itemRef[itemRow], items.gap[itemRow], items.itemTypeId[itemRow]);
+                this._getBatchByLaneRow(laneRow).addUpsert(laneEid, items.itemRef[itemRow], items.gap[itemRow], items.itemTypeId[itemRow]);
                 return;
             }
             itemEid = items.nextItem[itemRow];
@@ -1034,13 +1045,14 @@ export class LaneIndex {
      * @param {number} itemTypeId
      * @returns {void}
      */
-    _ingest(laneEid, laneRow, itemTypeId) {
+    // ingest? put? pick a terminology.
+    _shiftItemIntoInputPort(laneEid, laneRow, itemTypeId) {
         const lanes = this.laneDef.store;
         const itemEid = this.arena.create(itemTypeId);
         this._appendItem(laneEid, itemEid, lanes.headGap[laneRow] - 1);
         lanes.headGap[laneRow] = 0;
         const itemRow = this.arena.row(itemEid);
-        this._batchForLane(laneRow).addUpsert(
+        this._getBatchByLaneRow(laneRow).addUpsert(
             laneEid,
             this.arena.store.itemRef[itemRow],
             this.arena.store.gap[itemRow],
@@ -1067,14 +1079,18 @@ export class LaneIndex {
         this._drainItem = new Int32Array(capacity);
     }
 
-    // ---- the client feed ----
+    // What does "feed" even mean? That's not established terminology. Be precise
+    // The session terminilogy uses "subscription" to a list of chunks, 
+    // to pub-sub language. 'Subscription feed' would make more sense if that's what you mean
+    // but more importantly we don't need any section headers like that. and that's a code smell.
+    // the sections should be self evident
 
     /**
      * @private
      * @param {number} laneRow - a lane's column laneRow
      * @returns {LaneItemBatchEvent}
      */
-    _batchForLane(laneRow) {
+    _getBatchByLaneRow(laneRow) {
         const head = this.laneDef.store.headCell[laneRow];
         return this._batchFor(this._chunkOf(head), head);
     }
@@ -1114,6 +1130,8 @@ export class LaneIndex {
      * @param {number} laneEid
      * @returns {void}
      */
+    // emit geometry? That's not an action, that's not precice.
+    // Should be something like _emitGeometryChange/Update/Diff. Propose a terminology and stick to it
     _emitGeometry(laneEid) {
         const laneRow = this._laneRow(laneEid);
         const head = this.laneDef.store.headCell[laneRow];
@@ -1138,7 +1156,7 @@ export class LaneIndex {
      */
     _emitSync(laneEid) {
         const laneRow = this._laneRow(laneEid);
-        const batch = this._batchForLane(laneRow);
+        const batch = this._getBatchByLaneRow(laneRow);
         for (const item of this.itemsOf(laneEid)) {
             batch.addSync(laneEid, item.itemRef, item.gap, item.itemTypeId);
         }
@@ -1149,6 +1167,9 @@ export class LaneIndex {
      * @param {number} chunkKey
      * @returns {AbstractEvent[]}
      */
+    // Tons of functions have the .chunkSync() column but no standardized contract. needs to be formalized
+    // with an abstract class or something. This can't stay like this and is the cause of a lot of terminology
+    // drift, it's not enforced at all
     chunkSync(chunkKey) {
         const lanes = this._lanesByChunk.get(chunkKey);
         if (lanes === undefined) {
@@ -1183,18 +1204,15 @@ export class LaneIndex {
         return [geometry, items];
     }
 
-    // ---- rebuild after load ----
-
     /**
-     * Derives every lane again from the restored cells, then puts the saved items back on the slots
-     * they stood on. An item of a type this loadout no longer declares is dropped, and the slots it
-     * held fold into the gap behind it.
+     * Derives lanes from restored cells, then puts items on their slots.
+     * Unknown items are replaced with gaps.
      * @returns {void}
      */
     rebuild() {
         this._lanesByChunk = new Map();
         this._batches.clear();
-        const cells = Array.from(this.engine.components.entitiesWith(this.cellDef));
+        const cells = Array.from(this.cellDef.entities());
         const heldByCell = new Map();
         for (const laneEid of this.ids()) {
             this._captureItems(laneEid, heldByCell);
@@ -1222,6 +1240,7 @@ export class LaneIndex {
      * @param {number[]|undefined} items
      * @returns {void}
      */
+    // This function name makes no sense. It doesn't tell me anything about what it's doing.
     _destroyHeld(items) {
         if (items === undefined) {
             return;
@@ -1238,6 +1257,7 @@ export class LaneIndex {
      * @param {Map<number, number[]>} heldByCell
      * @returns {void}
      */
+    // Drop? HOw is that different from "destroy"? Why not say destroyUnknownItems???
     _dropUnknownItems(heldByCell) {
         if (this.engine.modRegistry === null) {
             return;

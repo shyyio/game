@@ -41,7 +41,7 @@ test("a world converts to a loadout without one of its mods: its objects go, the
 
     before.removeObjectsOfType(GadgetType.objectTypeId);
     assert.equal(before.placed.eidsOf(GadgetType.objectTypeId).length, 0);
-    const converted = convertSnapshot(before.snapshots.serialize(), next, after.components.defs);
+    const converted = convertSnapshot(before.snapshots.serialize(), next, after.components.components);
     after.snapshots.deserialize(converted);
     assert.deepEqual(after.snapshots.serialize().objectTypeNames, next.typeNames);
 });

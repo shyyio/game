@@ -56,7 +56,7 @@ export class ExtractorBehavior extends AbstractBehavior {
 
     onSpawn(engine, eid, type, message) {
         const def = engine.components.get("Extractor");
-        engine.components.attach(def, eid);
+        def.attach(eid);
         const extractor = def.store;
         const row = def.row(eid);
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);

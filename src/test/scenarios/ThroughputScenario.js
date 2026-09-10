@@ -106,7 +106,7 @@ class SinkBehavior extends AbstractBehavior {
      */
     onSpawn(engine, eid, type, message) {
         const def = engine.components.get("ThroughputSink");
-        engine.components.attach(def, eid);
+        def.attach(eid);
         const row = def.row(eid);
         def.store.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;
     }

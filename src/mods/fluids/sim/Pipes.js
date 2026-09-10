@@ -544,18 +544,18 @@ export class Pipes {
      */
     _materialize() {
         for (const def of [this._memberDef, this._netDef]) {
-            for (const eid of this.engine.components.entitiesWith(def)) {
+            for (const eid of def.entities()) {
                 this.engine.components.destroyEntity(eid);
             }
         }
         const N = this._netDef.store;
         const M = this._memberDef.store;
         for (const net of this.networks) {
-            const netEid = this.engine.components.createEntity(this._netDef);
+            const netEid = this._netDef.create();
             N.fluidType[netEid] = net.fluidType;
             N.amount[netEid] = net.amount;
             for (const pipe of net.pipes) {
-                const memberEid = this.engine.components.createEntity(this._memberDef);
+                const memberEid = this._memberDef.create();
                 M.network[memberEid] = netEid;
                 M.objectRef[memberEid] = pipe.id;
             }
@@ -594,14 +594,14 @@ export class Pipes {
         const N = this._netDef.store;
         const M = this._memberDef.store;
         const membersByNet = new Map();
-        for (const eid of this.engine.components.entitiesWith(this._memberDef)) {
+        for (const eid of this._memberDef.entities()) {
             const pipe = this.pipeById(M.objectRef[eid]);
             if (pipe === null) {
                 throw new Error(`PipeNetworkMember references unknown pipe ${M.objectRef[eid]}`);
             }
             getOrCreate(membersByNet, M.network[eid], () => []).push(pipe);
         }
-        for (const netEid of this.engine.components.entitiesWith(this._netDef)) {
+        for (const netEid of this._netDef.entities()) {
             const pipes = membersByNet.get(netEid);
             if (pipes === undefined) {
                 throw new Error(`PipeNetwork entity ${netEid} has no members`);

@@ -226,7 +226,7 @@ export class PortIndex {
      */
     create(item=EMPTY) {
         const eid = this.engine.world.addEntity();
-        this.engine.components.attach(this.def, eid);
+        this.def.attach(eid);
         // The world recycles eids, so clear any shadow/flag the previous tenant left behind.
         this.engine.render.forgetPort(eid);
         this._fluid[eid] = 0;
@@ -378,7 +378,7 @@ export class PortIndex {
     collectUnreferenced() {
         const engine = this.engine;
         const referenced = new Set();
-        for (const def of engine.components.defs) {
+        for (const def of engine.components.components) {
             if (def.snapshotOnly) {
                 continue;
             }
@@ -386,7 +386,7 @@ export class PortIndex {
             if (eidFields.length === 0) {
                 continue;
             }
-            for (const slot of engine.components.slotsOf(def)) {
+            for (const slot of def.slots()) {
                 for (const field of eidFields) {
                     const target = def.store[field.name][slot];
                     if (target !== NO_EID) {

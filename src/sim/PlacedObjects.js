@@ -290,7 +290,7 @@ export class PlacedObjects {
         if (type.placement.solid && !engine.space.cellsFree(footprint)) {
             return true;
         }
-        const eid = engine.components.createEntity(this.def);
+        const eid = this.def.create();
         const objectRef = engine.createObjectRef();
         const row = this.def.row(eid);
         this.def.store.objectTypeId[row] = type.objectTypeId;

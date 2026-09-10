@@ -79,7 +79,7 @@ export class SpatialIndex {
      * @returns {void}
      */
     setPosition(eid, x, y, direction=NO_EID) {
-        this.engine.components.attach(this.positionDef, eid);
+        this.positionDef.attach(eid);
         this.Position.x[eid] = x;
         this.Position.y[eid] = y;
         this.Position.direction[eid] = direction;
@@ -145,7 +145,7 @@ export class SpatialIndex {
             }
             const eid = this.engine.world.addEntity();
             this.setPosition(eid, cell.x, cell.y);
-            this.engine.components.attach(this.occupancyDef, eid);
+            this.occupancyDef.attach(eid);
             occupancy.layer[eid] = this._layerCodes.get(cell.layer);
             occupancy.owner[eid] = owner;
             occupancy.userData[eid] = userData;

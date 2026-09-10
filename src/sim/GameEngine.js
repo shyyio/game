@@ -175,7 +175,7 @@ export class GameEngine {
          */
         this.sync = new FieldSync(this);
 
-        this.components.onGrow(this.ports.def, capacity => this.ports.growColumns(capacity));
+        this.ports.def.growListener = capacity => this.ports.growColumns(capacity);
     }
 
     /**

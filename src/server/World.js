@@ -202,7 +202,7 @@ export class World {
             if (snapshot === null) {
                 loaded = await game.load();
             } else {
-                game.loadSnapshot(convertSnapshot(snapshot, game.simEngine.snapshots.loadout, game.simEngine.components.defs));
+                game.loadSnapshot(convertSnapshot(snapshot, game.simEngine.snapshots.loadout, game.simEngine.components.components));
                 await game.save();
                 loaded = true;
             }

@@ -69,9 +69,9 @@ export class SnapshotSerializer {
         for (const hook of this._serializeHooks) {
             hook();
         }
-        const components = engine.components.defs.map(def => {
+        const components = engine.components.components.map(def => {
             const rows = [];
-            for (const slot of engine.components.slotsOf(def)) {
+            for (const slot of def.slots()) {
                 const row = {eid: def.eidAt(slot)};
                 for (const field of def.fields) {
                     row[field.name] = def.store[field.name][slot];
@@ -154,7 +154,7 @@ export class SnapshotSerializer {
             const def = engine.components.find(component.name);
             for (const row of component.rows) {
                 const eid = remap.get(row.eid);
-                engine.components.attach(def, eid);
+                def.attach(eid);
                 const slot = def.slot(eid);
                 for (const field of def.fields) {
                     const raw = row[field.name];
@@ -256,7 +256,7 @@ export class SnapshotSerializer {
                 }
             }
         }
-        for (const def of this.engine.components.defs) {
+        for (const def of this.engine.components.components) {
             if (!savedNames.has(def.name)) {
                 mismatches.push(`component "${def.name}" is registered but missing from the save`);
             }

@@ -55,7 +55,7 @@ export class TankBehavior extends AbstractBehavior {
 
     onSpawn(engine, eid, type, message) {
         const def = engine.components.get("Tank");
-        engine.components.attach(def, eid);
+        def.attach(eid);
         const tank = def.store;
         const row = def.row(eid);
         tank.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;

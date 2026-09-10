@@ -136,7 +136,7 @@ export class MachineBehavior extends AbstractBehavior {
 
     onSpawn(engine, eid, type, message) {
         const def = engine.components.get("Machine");
-        engine.components.attach(def, eid);
+        def.attach(eid);
         const machine = def.store;
         const row = def.row(eid);
         machine.inputCount[row] = this.inputCount;

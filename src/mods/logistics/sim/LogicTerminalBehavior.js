@@ -29,7 +29,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, eid, type, message) {
-        engine.components.attach(engine.components.get("LogicTerminal"), eid);
+        engine.components.get("LogicTerminal").attach(eid);
     }
 
     onDespawn(engine, eid) {

@@ -55,7 +55,7 @@ export class GateBehavior extends AbstractBehavior {
 
     onSpawn(engine, eid, type, message) {
         const def = engine.components.get("Gate");
-        engine.components.attach(def, eid);
+        def.attach(eid);
         const gate = def.store;
         const row = def.row(eid);
         gate.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;
