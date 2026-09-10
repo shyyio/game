@@ -37,7 +37,7 @@ export class MarketClientMod extends AbstractClientMod {
             }
             client.hud.counterListLayer.setCounter(BALANCE_COUNTER, BALANCE_ENTRY, value);
         });
-        const balance = client.cache.view("playerSettings").get(MARKET_SETTING_BALANCE);
+        const balance = client.cache.view("playerSettings").getValueByKey(MARKET_SETTING_BALANCE);
         if (balance !== undefined) {
             client.hud.counterListLayer.setCounter(BALANCE_COUNTER, BALANCE_ENTRY, balance);
         }

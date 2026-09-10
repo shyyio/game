@@ -188,7 +188,7 @@ export class ProductionPanelLayer extends Container {
             }
         });
 
-        this._chart.setTickIntervalMs(this._gameSettings.get(GameSettingsKey.TICK_MS));
+        this._chart.setTickIntervalMs(this._gameSettings.getValueByKey(GameSettingsKey.TICK_MS));
         this._unbindTickMs = this._state.subscribe("gameSettings.values", (key, value) => {
             if (key === GameSettingsKey.TICK_MS) {
                 this._chart.setTickIntervalMs(value);
@@ -266,7 +266,7 @@ export class ProductionPanelLayer extends Container {
      * @returns {string}
      */
     _rateLabel(ratePerTick) {
-        const tickMs = this._gameSettings.get(GameSettingsKey.TICK_MS);
+        const tickMs = this._gameSettings.getValueByKey(GameSettingsKey.TICK_MS);
         if (tickMs === undefined) {
             return "-/m";
         }

@@ -473,7 +473,7 @@ export class Client {
      * @returns {void}
      */
     updatePlayerSetting(key, value) {
-        if (this.cache.view("playerSettings").get(key) === value) {
+        if (this.cache.view("playerSettings").getValueByKey(key) === value) {
             return;
         }
         this.cache.writer("playerSettings").set(key, value);
@@ -588,6 +588,6 @@ export class Client {
      */
     modTools() {
         const tools = this._bespokeModTools.concat(this.bundles.map(bundle => bundle.tool));
-        return applyToolOrder(tools, this.cache.view("playerSettings").toolOrder());
+        return applyToolOrder(tools, this.cache.view("playerSettings").getToolOrder());
     }
 }

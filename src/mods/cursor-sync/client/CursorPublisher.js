@@ -88,7 +88,7 @@ export class CursorPublisher {
     _canSend() {
         return this._windowFocus.focused
             && this._viewMode === ViewMode.WORLD
-            && this._playerSettings.get(CURSOR_SETTING_SHARE) !== CURSOR_AUDIENCE_NONE;
+            && this._playerSettings.getValueByKey(CURSOR_SETTING_SHARE) !== CURSOR_AUDIENCE_NONE;
     }
 
     /**

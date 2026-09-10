@@ -87,14 +87,14 @@ export class PlayerSettingsView extends AbstractCacheView {
      * @param {number} key
      * @returns {number|undefined} undefined until a value arrives
      */
-    get(key) {
+    getValueByKey(key) {
         return this._state.mapGet("playerSettings.values", key);
     }
 
     /**
      * @returns {number[]} the player's custom toolbar order (tool ids), empty until synced
      */
-    toolOrder() {
+    getToolOrder() {
         return this._state.get("playerSettings.toolOrder");
     }
 }
@@ -108,7 +108,7 @@ export class GameSettingsView extends AbstractCacheView {
      * @param {number} key
      * @returns {number|undefined} undefined until a value arrives
      */
-    get(key) {
+    getValueByKey(key) {
         return this._state.mapGet("gameSettings.values", key);
     }
 }
