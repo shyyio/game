@@ -35,7 +35,7 @@ export class ProductionLogSimMod extends AbstractSimMod {
      */
     init(engine) {
         this._items = engine.modRegistry.items;
-        engine.itemProduced.add((playerRef, itemTypeId, amount) => this._record(playerRef, itemTypeId, amount));
+        engine.itemProduced.add((playerRef, itemTypeId, amount) => this._addProduced(playerRef, itemTypeId, amount));
     }
 
     /**
@@ -90,7 +90,7 @@ export class ProductionLogSimMod extends AbstractSimMod {
      * @param {number} amount
      * @private
      */
-    _record(playerRef, itemTypeId, amount) {
+    _addProduced(playerRef, itemTypeId, amount) {
         if (playerRef === PLAYER_REF_NONE) {
             return;
         }

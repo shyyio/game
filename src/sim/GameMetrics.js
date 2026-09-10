@@ -35,7 +35,7 @@ class MetricsSubscription {
 export class GameMetrics {
 
     /**
-     * @param {AbstractMetricsStore} [store] - omitted when metrics is off; record() then drops facts
+     * @param {AbstractMetricsStore} [store] - omitted when metrics is off; emitMetricsFact() then drops facts
      * @param {ModRegistry} modRegistry - source of the GLOBAL-query declarations
      * @param {EventBus} bus
      * @param {GameEngine} simEngine - source of the tick clock
@@ -48,10 +48,10 @@ export class GameMetrics {
         this._buffer = [];
 
         simEngine.setMetricsSink(
-            (type, playerRef, category, amount, tag) => this.record(type, playerRef, category, amount, tag),
+            (type, playerRef, category, amount, tag) => this.emitMetricsFact(type, playerRef, category, amount, tag),
         );
         simEngine.itemProduced.add(
-            (playerRef, itemTypeId, amount) => this.record(METRICS_FACT_TYPE_ITEM_PRODUCED, playerRef, itemTypeId, amount),
+            (playerRef, itemTypeId, amount) => this.emitMetricsFact(METRICS_FACT_TYPE_ITEM_PRODUCED, playerRef, itemTypeId, amount),
         );
 
         /**
@@ -77,7 +77,7 @@ export class GameMetrics {
      * @param {number} [tag]
      * @returns {void}
      */
-    record(type, playerRef, category, amount, tag) {
+    emitMetricsFact(type, playerRef, category, amount, tag) {
         if (this._store === undefined) {
             return;
         }
@@ -91,7 +91,7 @@ export class GameMetrics {
      */
     onConnect(session) {
         this._sessionJoinedAt.set(session.sessionRef, Date.now());
-        this.record(METRICS_FACT_TYPE_PLAYER_JOINED, session.playerRef);
+        this.emitMetricsFact(METRICS_FACT_TYPE_PLAYER_JOINED, session.playerRef);
     }
 
     /**
@@ -110,7 +110,7 @@ export class GameMetrics {
             sessionLengthMs = Date.now() - joinedAt;
         }
         this._sessionJoinedAt.delete(sessionRef);
-        this.record(METRICS_FACT_TYPE_PLAYER_LEFT, playerRef, undefined, sessionLengthMs);
+        this.emitMetricsFact(METRICS_FACT_TYPE_PLAYER_LEFT, playerRef, undefined, sessionLengthMs);
         this._subscriptions.delete(sessionRef);
     }
 
@@ -146,7 +146,7 @@ export class GameMetrics {
         }
         const facts = this._buffer;
         this._buffer = [];
-        await this._store.recordBatch(facts);
+        await this._store.insertFacts(facts);
         await this._store.advanceTo(this._simEngine.clock);
     }
 

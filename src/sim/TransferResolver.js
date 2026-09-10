@@ -227,7 +227,7 @@ export class TransferResolver {
                 if (source[row] === EMPTY) {
                     continue;
                 }
-                this._recordResolved(row);
+                this._markResolved(row);
                 if (emptying[source[row]] === 0) {
                     emptying[source[row]] = 1;
                     queue[queueCount] = source[row];
@@ -270,7 +270,7 @@ export class TransferResolver {
                 continue;
             }
             if (rank[row] === EMPTY) {
-                this._recordResolved(row);
+                this._markResolved(row);
             } else {
                 const current = best[source[row]];
                 if (current === EMPTY) {
@@ -293,7 +293,7 @@ export class TransferResolver {
         // Pass 3: a fan-out source keeps only its best-ranked resolved destination.
         for (let index = 0; index < rankedCount; index += 1) {
             const port = ranked[index];
-            this._recordResolved(best[port]);
+            this._markResolved(best[port]);
             best[port] = EMPTY;
         }
 
@@ -314,7 +314,7 @@ export class TransferResolver {
      * @param {number} intentRow
      * @returns {void}
      */
-    _recordResolved(intentRow) {
+    _markResolved(intentRow) {
         this._intentResolved[intentRow] = 1;
         const source = this._intentSource[intentRow];
         const dest = this._intentDest[intentRow];

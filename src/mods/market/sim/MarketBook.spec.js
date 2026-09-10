@@ -124,10 +124,10 @@ test("sell count tracks posts/removals independently of matching", () => {
     assert.equal(book.getSellCountByItemTypeId(ITEM), 1);
 });
 
-test("recordSettlement queues for drainSettlements and drains exactly once", () => {
+test("addSettlement queues for drainSettlements and drains exactly once", () => {
     const book = new MarketBook(new Map());
-    book.recordSettlement(1, 2, ITEM, 10);
-    book.recordSettlement(3, 4, ITEM, 20);
+    book.addSettlement(1, 2, ITEM, 10);
+    book.addSettlement(3, 4, ITEM, 20);
     const settlements = book.drainSettlements();
     assert.equal(settlements.length, 2);
     assert.deepEqual(book.drainSettlements(), [], "a second drain is empty");
@@ -136,13 +136,13 @@ test("recordSettlement queues for drainSettlements and drains exactly once", () 
 test("a trade seeds the item's guide price immediately", () => {
     const book = new MarketBook(new Map());
     assert.equal(book.findGuidePriceByItemTypeId(ITEM), undefined);
-    book.recordSettlement(1, 2, ITEM, 50);
+    book.addSettlement(1, 2, ITEM, 50);
     assert.equal(book.findGuidePriceByItemTypeId(ITEM), 50, "seeded from the first trade, before any recompute");
 });
 
 test("advanceTick is a no-op before its interval elapses", () => {
     const book = new MarketBook(new Map(), 10);
-    book.recordSettlement(1, 2, ITEM, 50);
+    book.addSettlement(1, 2, ITEM, 50);
     for (let i = 0; i < 9; i += 1) {
         book.advanceTick();
     }
@@ -151,13 +151,13 @@ test("advanceTick is a no-op before its interval elapses", () => {
 
 test("advanceTick nudges the guide price toward the interval's average trade price, bounded", () => {
     const book = new MarketBook(new Map(), 5);
-    book.recordSettlement(1, 2, ITEM, 100);
+    book.addSettlement(1, 2, ITEM, 100);
     for (let i = 0; i < 5; i += 1) {
         book.advanceTick();
     }
     // Single trade at seed price moves nothing; post a very different batch.
     for (let i = 0; i < 60; i += 1) {
-        book.recordSettlement(1, 2, ITEM, 200);
+        book.addSettlement(1, 2, ITEM, 200);
     }
     const before = book.findGuidePriceByItemTypeId(ITEM);
     for (let i = 0; i < 5; i += 1) {
@@ -170,7 +170,7 @@ test("advanceTick nudges the guide price toward the interval's average trade pri
 
 test("advanceTick nudges the guide price on a standing buy/sell imbalance with zero trades", () => {
     const book = new MarketBook(new Map(), 5);
-    book.recordSettlement(1, 2, ITEM, 100);
+    book.addSettlement(1, 2, ITEM, 100);
     for (let i = 0; i < 5; i += 1) {
         book.advanceTick();
     }

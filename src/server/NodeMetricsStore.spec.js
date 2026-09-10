@@ -35,7 +35,7 @@ test("queryRollup buckets by tick, not by wall-clock, and sums amount per (bucke
     for (let tick = 0; tick < 25; tick += 1) {
         facts.push(new MetricsFact(TYPE, tick, PLAYER, 42, 1, 0));
     }
-    await store.recordBatch(facts);
+    await store.insertFacts(facts);
 
     const rollup = await store.queryRollup(TYPE, PLAYER, 0, 24, 10);
 
@@ -48,7 +48,7 @@ test("queryRollup buckets by tick, not by wall-clock, and sums amount per (bucke
 
 test("queryRollup keeps category and tag as separate groups within the same bucket", async () => {
     const store = new NodeMetricsStore(":memory:");
-    await store.recordBatch([
+    await store.insertFacts([
         new MetricsFact(TYPE, 0, PLAYER, 1, 100, 0), // sell
         new MetricsFact(TYPE, 1, PLAYER, 1, 200, 1), // buy, same bucket+a, different side
         new MetricsFact(TYPE, 2, PLAYER, 2, 50, 0), // different itemTypeId
@@ -65,7 +65,7 @@ test("queryRollup keeps category and tag as separate groups within the same buck
 
 test("queryRollup with playerRef null is unscoped across every player", async () => {
     const store = new NodeMetricsStore(":memory:");
-    await store.recordBatch([
+    await store.insertFacts([
         new MetricsFact(TYPE, 0, PLAYER, 1, 10, 0),
         new MetricsFact(TYPE, 0, OTHER_PLAYER, 1, 20, 0),
     ]);
@@ -82,12 +82,12 @@ test("a baked tier answers the same rollup the raw facts would, across folded an
         facts.push(new MetricsFact(TYPE, tick, PLAYER, tick % 3, tick, 0));
         facts.push(new MetricsFact(TYPE, tick, OTHER_PLAYER, tick % 3, 2 * tick, 1));
     }
-    await store.recordBatch(facts);
+    await store.insertFacts(facts);
     // Only the first two windows fold; the remaining 30 ticks stay in the un-baked tail.
     await store.advanceTo(METRICS_FOLD_TIER * 2 + 30);
     // The plain-array store aggregates the same facts, as the reference the baked path must match.
     const reference = new ClientMetricsStore();
-    await reference.recordBatch(facts);
+    await reference.insertFacts(facts);
 
     const toTick = METRICS_FOLD_TIER * 2 + 29;
     for (const playerRef of [null, PLAYER]) {
@@ -104,7 +104,7 @@ test("a coarse tier folds from the same windows without double-counting repeated
     for (let tick = 0; tick < coarse + METRICS_FOLD_TIER; tick += 1) {
         facts.push(new MetricsFact(TYPE, tick, PLAYER, 1, 1, 0));
     }
-    await store.recordBatch(facts);
+    await store.insertFacts(facts);
     // Fold window by window, so the coarse tier accumulates across many partial updates.
     for (let tick = 0; tick <= coarse + METRICS_FOLD_TIER; tick += METRICS_FOLD_TIER) {
         await store.advanceTo(tick);
@@ -120,7 +120,7 @@ test("a coarse tier folds from the same windows without double-counting repeated
 
 test("a baked query starts at the bucket fromTick falls in, whole rather than clipped", async () => {
     const store = new NodeMetricsStore(":memory:");
-    await store.recordBatch([
+    await store.insertFacts([
         new MetricsFact(TYPE, 0, PLAYER, 1, 1, 0),
         new MetricsFact(TYPE, METRICS_FOLD_TIER - 1, PLAYER, 1, 1, 0),
     ]);
@@ -138,7 +138,7 @@ test("reopening a file folds the facts recorded since the last bake, once", asyn
     for (let tick = 0; tick < METRICS_FOLD_TIER * 2; tick += 1) {
         facts.push(new MetricsFact(TYPE, tick, PLAYER, 1, 1, 0));
     }
-    await store.recordBatch(facts);
+    await store.insertFacts(facts);
     await store.advanceTo(METRICS_FOLD_TIER);
     await store.close();
 
@@ -159,7 +159,7 @@ test("buckets from a tier this build doesn't bake are rebuilt instead of folded 
     for (let tick = 0; tick < METRICS_FOLD_TIER; tick += 1) {
         facts.push(new MetricsFact(TYPE, tick, PLAYER, 1, 1, 0));
     }
-    await store.recordBatch(facts);
+    await store.insertFacts(facts);
     await store.advanceTo(METRICS_FOLD_TIER);
     // Stands in for a build whose ladder has changed since the file was written.
     const offLadderTier = TIER_LADDER[TIER_LADDER.length - 1] + 1;
@@ -179,7 +179,7 @@ test("buckets from a tier this build doesn't bake are rebuilt instead of folded 
 test("advanceTo drops facts and buckets more than RETENTION_TICKS behind the latest tick", async () => {
     const store = new NodeMetricsStore(":memory:");
     const LATEST = METRICS_RETENTION_TICKS + METRICS_FOLD_TIER;
-    await store.recordBatch([
+    await store.insertFacts([
         new MetricsFact(TYPE, 0, PLAYER, 1, 1, 0),
         new MetricsFact(TYPE, LATEST, PLAYER, 1, 1, 0),
     ]);

@@ -16,7 +16,7 @@ export class ClientMetricsStore extends AbstractMetricsStore {
      * @param {MetricsFact[]} facts
      * @returns {Promise<void>}
      */
-    async recordBatch(facts) {
+    async insertFacts(facts) {
         for (const fact of facts) {
             this._facts.push(fact);
         }

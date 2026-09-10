@@ -8,7 +8,7 @@ import BetterSqlite3 from "better-sqlite3";
 
 /**
  * Node persistence for anonymous client error reports. Rows are deduplicated by fingerprint
- * within a time window (recordReport bumps count/lastSeen), so a crash loop grows one row's
+ * within a time window (putReport bumps count/lastSeen), so a crash loop grows one row's
  * counter.
  */
 export class NodeErrorReportStore {
@@ -70,7 +70,7 @@ export class NodeErrorReportStore {
      * @param {number} dedupWindowMs
      * @returns {ReportReceipt}
      */
-    recordReport(report, nowMs, dedupWindowMs) {
+    putReport(report, nowMs, dedupWindowMs) {
         const {fingerprint, message, stack, buildVersion, url, extra} = report;
         const recent = this._findRecentByFingerprint.get(fingerprint, nowMs - dedupWindowMs);
         if (recent !== undefined) {

@@ -352,7 +352,7 @@ export class MarketBook {
      * @param {number} price
      * @returns {void}
      */
-    recordSettlement(sellerEid, buyerEid, itemTypeId, price) {
+    addSettlement(sellerEid, buyerEid, itemTypeId, price) {
         this._settlements.push(new MarketSettlement(sellerEid, buyerEid, itemTypeId, price));
         let guide = this._guidePrices.get(itemTypeId);
         if (guide === undefined) {
@@ -381,7 +381,7 @@ export class MarketBook {
      * @param {number} price
      * @returns {void}
      */
-    recordPurchase(buyerEid, itemTypeId, price) {
+    addPurchase(buyerEid, itemTypeId, price) {
         this._purchases.push(new MarketPurchase(buyerEid, itemTypeId, price));
     }
 

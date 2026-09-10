@@ -195,7 +195,7 @@ export class MetricsLineChart {
      */
     push(rollup) {
         this._rollup = rollup;
-        this._recordPush();
+        this._markPushed();
         if (this._isDragging) {
             this._pendingUpdate = true;
             return;
@@ -545,7 +545,7 @@ export class MetricsLineChart {
      * @returns {void}
      * @private
      */
-    _recordPush() {
+    _markPushed() {
         if (this._rollup === undefined) {
             return;
         }

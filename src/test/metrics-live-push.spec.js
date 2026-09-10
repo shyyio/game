@@ -35,7 +35,7 @@ test("subscribing answers once immediately, and again on the next push", async (
     await Promise.resolve();
     assert.equal(rollupEventsOf(alice).length, 1);
 
-    game.metrics.record(METRICS_FACT_TYPE_ITEM_PRODUCED, 1, 5, 1);
+    game.metrics.emitMetricsFact(METRICS_FACT_TYPE_ITEM_PRODUCED, 1, 5, 1);
     await game.metrics.flush();
     // Bucket 0 (ticks 0-9) only completes once the clock reaches 10 (GameMetrics.push()).
     game.simEngine.clock = 10;
@@ -86,10 +86,10 @@ test("two sessions sharing a GLOBAL subscription share one push, each their own 
     game.connect(bob);
 
     const SIDE_SELL = 0;
-    game.metrics.record(METRICS_FACT_TYPE_TRADE_EXECUTED, 1, 7, 100, SIDE_SELL);
-    game.metrics.record(METRICS_FACT_TYPE_TRADE_EXECUTED, 2, 7, 200, SIDE_SELL);
-    game.metrics.record(METRICS_FACT_TYPE_ITEM_PRODUCED, 1, 42, 1);
-    game.metrics.record(METRICS_FACT_TYPE_ITEM_PRODUCED, 2, 99, 1);
+    game.metrics.emitMetricsFact(METRICS_FACT_TYPE_TRADE_EXECUTED, 1, 7, 100, SIDE_SELL);
+    game.metrics.emitMetricsFact(METRICS_FACT_TYPE_TRADE_EXECUTED, 2, 7, 200, SIDE_SELL);
+    game.metrics.emitMetricsFact(METRICS_FACT_TYPE_ITEM_PRODUCED, 1, 42, 1);
+    game.metrics.emitMetricsFact(METRICS_FACT_TYPE_ITEM_PRODUCED, 2, 99, 1);
     await game.metrics.flush();
 
     game.dispatchMessage(new MetricsSubscribeMessage(METRICS_FACT_TYPE_TRADE_EXECUTED, METRICS_QUERY_SCOPE_GLOBAL, 10, 1000), alice);

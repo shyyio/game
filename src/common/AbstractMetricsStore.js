@@ -18,7 +18,7 @@ export class AbstractMetricsStore {
      * @param {MetricsFact[]} facts
      * @returns {Promise<void>}
      */
-    async recordBatch(facts) {
+    async insertFacts(facts) {
         throw new NotImplementedError();
     }
 

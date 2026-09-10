@@ -28,8 +28,8 @@ test("OWN scope answers only the requesting session's own player", async () => {
     game.connect(alice);
     game.connect(bob);
 
-    game.metrics.record(METRICS_FACT_TYPE_ITEM_PRODUCED, 1, 42, 100);
-    game.metrics.record(METRICS_FACT_TYPE_ITEM_PRODUCED, 2, 42, 999);
+    game.metrics.emitMetricsFact(METRICS_FACT_TYPE_ITEM_PRODUCED, 1, 42, 100);
+    game.metrics.emitMetricsFact(METRICS_FACT_TYPE_ITEM_PRODUCED, 2, 42, 999);
     await game.metrics.flush();
 
     game.dispatchMessage(
@@ -59,8 +59,8 @@ test("GLOBAL scope is unscoped across every player, for an allowed type", async 
     game.connect(alice);
 
     const SIDE_SELL = 0;
-    game.metrics.record(METRICS_FACT_TYPE_TRADE_EXECUTED, 1, 7, 100, SIDE_SELL);
-    game.metrics.record(METRICS_FACT_TYPE_TRADE_EXECUTED, 2, 7, 200, SIDE_SELL);
+    game.metrics.emitMetricsFact(METRICS_FACT_TYPE_TRADE_EXECUTED, 1, 7, 100, SIDE_SELL);
+    game.metrics.emitMetricsFact(METRICS_FACT_TYPE_TRADE_EXECUTED, 2, 7, 200, SIDE_SELL);
     await game.metrics.flush();
 
     game.dispatchMessage(

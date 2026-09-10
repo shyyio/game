@@ -14,7 +14,7 @@ test("queryRollup buckets by tick and sums amount per (bucket, category, tag), m
     for (let tick = 0; tick < 25; tick += 1) {
         facts.push(new MetricsFact(TYPE, tick, PLAYER, 42, 1, 0));
     }
-    await store.recordBatch(facts);
+    await store.insertFacts(facts);
 
     const rollup = await store.queryRollup(TYPE, PLAYER, 0, 24, 10);
 
@@ -27,7 +27,7 @@ test("queryRollup buckets by tick and sums amount per (bucket, category, tag), m
 
 test("queryRollup keeps category and tag as separate groups within the same bucket", async () => {
     const store = new ClientMetricsStore();
-    await store.recordBatch([
+    await store.insertFacts([
         new MetricsFact(TYPE, 0, PLAYER, 1, 100, 0), // sell
         new MetricsFact(TYPE, 1, PLAYER, 1, 200, 1), // buy, same bucket+a, different side
         new MetricsFact(TYPE, 2, PLAYER, 2, 50, 0), // different itemTypeId
@@ -44,7 +44,7 @@ test("queryRollup keeps category and tag as separate groups within the same buck
 
 test("queryRollup with playerRef null is unscoped across every player", async () => {
     const store = new ClientMetricsStore();
-    await store.recordBatch([
+    await store.insertFacts([
         new MetricsFact(TYPE, 0, PLAYER, 1, 10, 0),
         new MetricsFact(TYPE, 0, OTHER_PLAYER, 1, 20, 0),
     ]);
@@ -57,8 +57,8 @@ test("queryRollup with playerRef null is unscoped across every player", async ()
 test("pruneTo drops facts more than RETENTION_TICKS behind the latest tick", async () => {
     const store = new ClientMetricsStore();
     const LATEST = METRICS_RETENTION_TICKS + 10;
-    await store.recordBatch([new MetricsFact(TYPE, 0, PLAYER, 1, 1, 0)]);
-    await store.recordBatch([new MetricsFact(TYPE, LATEST, PLAYER, 1, 1, 0)]);
+    await store.insertFacts([new MetricsFact(TYPE, 0, PLAYER, 1, 1, 0)]);
+    await store.insertFacts([new MetricsFact(TYPE, LATEST, PLAYER, 1, 1, 0)]);
 
     await store.advanceTo(LATEST);
 

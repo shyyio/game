@@ -254,7 +254,7 @@ export class NodeMetricsStore extends AbstractMetricsStore {
      * @param {MetricsFact[]} facts
      * @returns {Promise<void>}
      */
-    async recordBatch(facts) {
+    async insertFacts(facts) {
         if (facts.length === 0) {
             return;
         }

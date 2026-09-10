@@ -82,7 +82,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
      * @param {number} row
      * @returns {void}
      */
-    static _recordOutput(engine, terminals, row) {
+    static _setLastOutput(engine, terminals, row) {
         const terminal = terminals.store;
         if (terminal.lastOutput[row] === terminal.itemTypeId[row]) {
             return;
@@ -245,9 +245,9 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         for (let row = 0; row < count; row += 1) {
             if (terminal.mode[row] === MARKET_MODE_BUY) {
                 if (engine.transfers.isDest(terminal.outputPort[row])) {
-                    TradingTerminalBehavior._recordOutput(engine, terminals, row);
+                    TradingTerminalBehavior._setLastOutput(engine, terminals, row);
                     if (terminal.pendingPrice[row] !== EMPTY) {
-                        book.recordPurchase(eids[row], terminal.itemTypeId[row], terminal.pendingPrice[row]);
+                        book.addPurchase(eids[row], terminal.itemTypeId[row], terminal.pendingPrice[row]);
                     }
                 }
                 continue;
@@ -261,12 +261,12 @@ export class TradingTerminalBehavior extends AbstractBehavior {
                 continue;
             }
             const sellerEid = eids[row];
-            TradingTerminalBehavior._recordOutput(engine, terminals, row);
+            TradingTerminalBehavior._setLastOutput(engine, terminals, row);
             let buyerEid = NO_EID;
             if (!npc) {
                 buyerEid = terminal.pendingBuyer[row];
             }
-            book.recordSettlement(sellerEid, buyerEid, terminal.itemTypeId[row], terminal.pendingPrice[row]);
+            book.addSettlement(sellerEid, buyerEid, terminal.itemTypeId[row], terminal.pendingPrice[row]);
         }
     }
 }
