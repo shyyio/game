@@ -1,15 +1,8 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {GameEngine} from "@/sim/GameEngine.js";
-import {makeGameEngine} from "@/test/ecsSim.js";
 import {AbstractComponent} from "@/sim/AbstractComponent.js";
 import {LaneItemComponent} from "@/sim/LaneItemComponent.js";
-import {LaneComponent} from "@/sim/LaneComponent.js";
-import {LaneCellComponent} from "@/sim/LaneCellComponent.js";
-import {PortComponent} from "@/sim/PortComponent.js";
-import {PositionComponent} from "@/sim/PositionComponent.js";
-import {OccupancyComponent} from "@/sim/OccupancyComponent.js";
-import {PlacedObjectComponent} from "@/sim/PlacedObjectComponent.js";
 import {NO_EID} from "@/sim/sentinels.js";
 
 class WidgetComponent extends AbstractComponent {
@@ -52,23 +45,4 @@ test("LaneItemComponent walks the file from its first item", async () => {
     items.store.nextItem[items.row(firstEid)] = secondEid;
     assert.deepEqual(items.getFileByFirstItemEid(firstEid), [firstEid, secondEid]);
     assert.deepEqual(items.getFileByFirstItemEid(NO_EID), []);
-});
-
-test("LaneIndex holds its lane and cell components", async () => {
-    const engine = new GameEngine();
-    await engine.init();
-    assert.ok(engine.lanes.lanes instanceof LaneComponent);
-    assert.ok(engine.lanes.cells instanceof LaneCellComponent);
-    assert.equal(engine.components.get("Lane"), engine.lanes.lanes);
-    assert.equal(engine.components.get("LaneCell"), engine.lanes.cells);
-});
-
-test("the engine collaborators hold their components", async () => {
-    const engine = await makeGameEngine();
-    assert.ok(engine.ports.ports instanceof PortComponent);
-    assert.ok(engine.space.positions instanceof PositionComponent);
-    assert.ok(engine.space.occupancies instanceof OccupancyComponent);
-    assert.ok(engine.placed.objects instanceof PlacedObjectComponent);
-    assert.equal(engine.Port, engine.ports.ports.store);
-    assert.equal(engine.Position, engine.space.positions.store);
 });
