@@ -35,7 +35,7 @@ class MetricsSubscription {
 export class GameMetrics {
 
     /**
-     * @param {AbstractMetricsStore} [store] - omitted when metrics is off; record() then drops facts instead of buffering them
+     * @param {AbstractMetricsStore} [store] - omitted when metrics is off; record() then drops facts
      * @param {ModRegistry} modRegistry - source of the GLOBAL-query declarations
      * @param {EventBus} bus
      * @param {GameEngine} simEngine - source of the tick clock

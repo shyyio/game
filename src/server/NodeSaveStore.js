@@ -95,7 +95,7 @@ export class NodeSaveStore extends AbstractSaveStore {
     }
 
     /**
-     * The snapshot's format/version stamp. Own table, not a _Global row: globals are integers.
+     * The snapshot's format/version stamp. Own table: globals are integers.
      * @private
      * @param {{saveFormat: number, gameVersion: string|null}} snapshot
      * @returns {void}

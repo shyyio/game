@@ -100,8 +100,7 @@ export async function createPixiApp() {
     });
 
     // The world's transform is the one thing that changes every pan and zoom frame. As a render
-    // group the viewport carries it as a group matrix applied on the GPU, instead of pixi walking
-    // every layer and sprite under it to re-derive world transforms.
+    // group the viewport carries it as a group matrix applied on the GPU.
     viewport.enableRenderGroup();
 
     app.stage.addChild(viewport);
@@ -142,7 +141,7 @@ export async function createPixiApp() {
         });
 
     // Live-toggled by the "Touchscreen input" device setting: adds/removes the pinch plugin and the
-    // HUD-touch routing glue instead of only reading Mobile.enabled once at mount.
+    // HUD-touch routing glue.
     let touchInput = null;
     const syncMobileTouchInput = () => {
         if (Mobile.enabled) {

@@ -334,7 +334,7 @@ export class SpriteEditorSession {
     }
 
     /**
-     * Writes the pending frame to the store now rather than on the debounce.
+     * Writes the pending frame to the store now.
      * @returns {void}
      */
     flushPersist() {

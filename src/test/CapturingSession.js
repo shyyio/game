@@ -24,7 +24,7 @@ export class CapturingSession extends AbstractSession {
     }
 
     /**
-     * Captures instead of forwarding to a client.
+     * Captures the event.
      * @param {AbstractEvent} event
      * @returns {void}
      */

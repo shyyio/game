@@ -46,7 +46,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
         // The pin under the pointer, and the tile the note tool hovers; either rings its pin.
         this._pointerTile = null;
         this._toolTile = null;
-        // The tile currently ringed, so a change touches two pins instead of every one.
+        // The tile currently ringed, so a change touches two pins.
         this._highlightedTile = null;
         this._cancelHover = null;
         const pool = new DisplayPool(

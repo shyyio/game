@@ -198,7 +198,7 @@ function fieldText(field) {
 function setField(field, text) {
   let value = text;
   if (field.numeric) {
-    // An empty box is not zero; NaN so the config refuses it by name instead of taking a port 0.
+    // An empty box is not zero; NaN so the config refuses it by name.
     value = text.trim() === "" ? Number.NaN : Number(text);
   }
   config.value = Object.assign({}, config.value, {[field.key]: value});

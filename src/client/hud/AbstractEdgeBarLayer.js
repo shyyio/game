@@ -14,7 +14,7 @@ export const PATTERN_GAP = 10;
 export const EDGE_BLEED = 24;
 // Gap between the text and its inset's edges, kept clear of the wrap width.
 export const TEXT_PADDING = 8;
-// Wrap width floor, so a narrow screen wraps hard instead of collapsing to nothing.
+// Wrap width floor for a narrow screen.
 export const MIN_TEXT_WIDTH = 80;
 // Both bars read at the same size.
 const BAR_FONT_SIZE = 20;
@@ -120,7 +120,7 @@ export class AbstractEdgeBarLayer extends Container {
     }
 
     /**
-     * The bar's text: centered, wrapping within `wrapWidth` rather than overflowing.
+     * The bar's text: centered, wrapping within `wrapWidth`.
      * @protected
      * @param {string} content
      * @param {number} wrapWidth

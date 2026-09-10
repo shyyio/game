@@ -2,7 +2,7 @@ import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 
 /**
  * Unpacks any batches in `events` into their per-delta events, the way a client replays them, so a
- * spec asserts on the events handlers see rather than on the wire packing.
+ * spec asserts on the events handlers see.
  * @param {AbstractEvent[]} events
  * @returns {AbstractEvent[]}
  */

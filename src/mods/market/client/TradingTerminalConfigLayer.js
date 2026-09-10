@@ -39,7 +39,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
         this._itemIndex = 0;
         this._price = 1;
         this._priceEdited = false;
-        // The price row's live Text, mutated in place by the +/- stepper instead of a full rebuild.
+        // The price row's live Text, mutated in place by the +/- stepper.
         this._priceText = null;
 
         this._connectors.set("terminal", () => this._managed.panel, () => {

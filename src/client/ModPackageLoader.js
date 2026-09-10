@@ -28,7 +28,7 @@ export function sha256Hex(bytes) {
 
 /**
  * The browser-side store of already-downloaded mod files. Absent storage (private mode, a blocked
- * IndexedDB) only costs a re-download, so it degrades to no caching instead of failing the join.
+ * IndexedDB) only costs a re-download.
  */
 export class ModFileStore {
 
@@ -139,7 +139,7 @@ async function fetchModFile(url) {
 
 /**
  * Evaluates a bundle. Cross-origin `import()` cannot check integrity, so verified bytes are
- * imported from a blob instead of from the URL they came from.
+ * imported from a blob.
  * @param {Uint8Array} bytes
  * @returns {Promise<object>} the bundle's factory exports
  */

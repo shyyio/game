@@ -1,8 +1,8 @@
 import {AbstractScenario} from "@/test/scenarios/AbstractScenario.js";
 import {buildLine, lineOrigin} from "@/test/productionLine.js";
 
-// Lines are stamped at boot rather than loaded from a save, so the default stays small enough to
-// build in a frame or two; bench:lines counts belong to the snapshot path.
+// Lines are stamped at boot, so the default stays small enough to build in a frame or two;
+// bench:lines counts belong to the snapshot path.
 const DEFAULT_LINE_COUNT = 200;
 const LINE_COUNT_PARAM = "lines";
 

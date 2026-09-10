@@ -9,8 +9,7 @@ import {NO_EID} from "@/sim/sentinels.js";
  * registry, so a module keeping its state in components round-trips with no bespoke save code.
  *
  * Reading is guarded: a snapshot at the wrong format, from a different object-type layout, or
- * carrying components this build no longer registers is refused loudly rather than restored into
- * columns that no longer mean the same thing.
+ * carrying components this build no longer registers is refused loudly.
  */
 export class SnapshotSerializer {
 
@@ -74,7 +73,7 @@ export class SnapshotSerializer {
         }
         // Every object type's name, in objectTypeId order — deserialize compares this against the current
         // loadout so a stale save (object types added/removed/reordered since) fails loudly at load
-        // time instead of resolving a component row's objectTypeId to the wrong behavior mid-tick.
+        // time.
         let objectTypeNames = null;
         if (engine.modRegistry !== null) {
             objectTypeNames = engine.modRegistry.objectTypes.map(type => type.name);

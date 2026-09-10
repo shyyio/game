@@ -18,8 +18,7 @@ const error = ref(startError.value);
 startError.value = "";
 const connecting = ref(false);
 const connectingOrigin = ref("");
-// A stored list that no longer parses is the mods screen's problem to report, not a reason the
-// login screen cannot render.
+// A stored list that no longer parses is the mods screen's problem to report.
 const localModCount = ref(countLocalMods());
 
 watch(() => route.name, () => {

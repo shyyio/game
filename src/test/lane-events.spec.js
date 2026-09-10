@@ -210,7 +210,7 @@ test("a rebuild's reset for a replaced lane precedes the geometry that reuses it
 });
 
 // A rebuild can move an item into a lane's new output port; the client must learn that with the
-// rebuild's own rows, not a render pass later, or the sprite blinks out for a tick.
+// rebuild's own rows, or the sprite blinks out for a tick.
 test("a rebuild sends the port items it changed along with its rows", async () => {
     const engine = await setup();
     const collector = new EventCollector(engine);

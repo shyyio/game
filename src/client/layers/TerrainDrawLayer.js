@@ -175,7 +175,7 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
     }
 
     /**
-     * Every chunk has ground, so a mount creates the node rather than waiting for a member.
+     * Every chunk has ground, so a mount creates the node.
      * @param {number} chunkKey
      * @returns {void}
      */

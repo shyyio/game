@@ -88,7 +88,7 @@ export class NotesClientMod extends AbstractClientMod {
                 return false;
             }
             // The tap is spent on the marker either way: a note the player may not touch still
-            // answers with a notice rather than falling through to whatever it stands on.
+            // answers with a notice.
             this._tool.openAt(note.tileX, note.tileY);
             return true;
         }

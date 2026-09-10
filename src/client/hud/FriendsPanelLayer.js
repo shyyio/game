@@ -240,8 +240,7 @@ export class FriendsPanelLayer extends Container {
 
     /**
      * The add-by-code row: a text input plus its Add button. The input is reused across
-     * rebuilds (re-parented into the fresh row) rather than recreated, so its real DOM element
-     * doesn't get torn down and flicker on every viewport-triggered refresh.
+     * rebuilds (re-parented into the fresh row), so its DOM element never flickers.
      * @private
      * @param {PanelRow} row
      * @returns {void}

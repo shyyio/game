@@ -136,7 +136,7 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
     }
 
     /**
-     * Every chunk has ground, so a mount creates the node rather than waiting for a member.
+     * Every chunk has ground, so a mount creates the node.
      * @param {number} chunkKey
      * @returns {void}
      */
@@ -261,7 +261,7 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
     }
 
     /**
-     * Never called: map mode hides the layer instead of swapping to geometry.
+     * Never called: map mode hides the layer.
      * @param {number} chunkKey
      * @param {Graphics} graphics
      * @returns {void}

@@ -28,8 +28,7 @@ const LATERAL_RANGE = 7;
 // Route BFS runs per rebuilt machine each frame; capped so a loading burst can't stall the frame.
 const ROUTE_REBUILDS_PER_TICK = 20;
 
-// Figures are cosmetic, so they advance at this cadence rather than every frame; each pass repacks
-// the layer's batch.
+// Figures are cosmetic, so they advance at this cadence; each pass repacks the layer's batch.
 const WORKER_ADVANCE_INTERVAL_MS = 1000 / 12;
 
 // At most this many figures render, nearest the viewport center first; the rest freeze invisible

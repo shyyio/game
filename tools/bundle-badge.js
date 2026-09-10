@@ -15,7 +15,7 @@ const CLIENT_DIR = join(ROOT, "build/client");
 const README = join(ROOT, "README.md");
 const BYTES_PER_KB = 1024;
 
-// The line this script owns, matched so a rerun replaces it rather than stacking badges.
+// The line this script owns, matched so a rerun replaces it.
 const BADGE_LINE = /^!\[bundle size\]\(https:\/\/img\.shields\.io\/badge\/[^\n]*\)$/m;
 
 /**

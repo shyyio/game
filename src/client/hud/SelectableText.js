@@ -3,9 +3,8 @@ import {DomOverlay} from "@/client/hud/DomOverlay.js";
 /**
  * Makes a pixi Text natively selectable/copyable without changing how it looks: an invisible
  * (transparent) readonly DOM `<input>` holding the same string, kept exactly overlaid on the
- * pixi Text's screen rect every tick. An `<input>` (not a plain element) so its selection is
- * scoped to itself even on mobile - a `<div>` here lets a mobile "Select All" gesture grab the
- * whole page's selectable text instead of just this value. The browser owns selection/copy;
+ * pixi Text's screen rect every tick. An `<input>` scopes its selection to itself even on
+ * mobile. The browser owns selection/copy;
  * pixi keeps drawing the visible glyphs underneath, so nothing looks different from a plain
  * {@link panelText}.
  */

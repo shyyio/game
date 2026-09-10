@@ -30,8 +30,7 @@ startError.value = "";
 onMounted(load);
 
 /**
- * A stored list that no longer parses is reported rather than silently discarded — it is the pin
- * list for code that is about to run.
+ * A stored list that no longer parses is reported.
  * @returns {LocalLoadout}
  */
 function loadStoredLoadout() {

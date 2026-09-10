@@ -227,7 +227,7 @@ export class World {
 
     /**
      * Adopts `component`'s membership set as row numbering for a data owner: the set is built now
-     * (rather than on first query) and `onMove` fires whenever a removal swaps a row down.
+     * and `onMove` fires whenever a removal swaps a row down.
      * @param {object} component
      * @param {function(number, number): void} onMove - (fromRow, toRow)
      * @returns {ComponentSet} live dense eids in `dense`, row count in `count`

@@ -12,8 +12,8 @@ const POPOVER_MARGIN = 8;
  * a control and is dismissed by tapping away. Drops below its anchor, flips above when it would run
  * off the bottom, and clamps to the screen's edges.
  *
- * One popover is open at a time, and it lives here rather than inside the panel that opened it, so
- * it outranks every panel and a panel rebuild underneath leaves it alone.
+ * One popover is open at a time; living here, it outranks every panel and a panel rebuild
+ * underneath leaves it alone.
  */
 export class PopoverHost extends Container {
 

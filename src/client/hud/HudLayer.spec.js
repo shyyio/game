@@ -58,8 +58,8 @@ test("layers sharing a band keep the order they mounted in", () => {
 });
 
 test("no layer stamps a raw zIndex, in pixi or in the DOM", () => {
-    // A layer ordering its own children by world position computes a zIndex rather than stamping
-    // a literal, so only a literal is an offense.
+    // A layer ordering its own children by world position computes a zIndex; only a literal is an
+    // offense.
     const stamped = /\bzIndex\s*(=|:)\s*("?\d)/;
     const offenders = [];
     for (const path of sourceFiles("src/client").concat(sourceFiles("src/mods"))) {

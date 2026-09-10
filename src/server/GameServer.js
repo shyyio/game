@@ -97,7 +97,7 @@ export class GameServer extends AbstractHttpServer {
      * @returns {Promise<void>}
      */
     listen(host, port) {
-        // A plain-browser visit gets a text info screen instead of a failed upgrade.
+        // A plain-browser visit gets a text info screen.
         this.app.get("/*", (res, req) => {
             const host = req.getHeader("host");
             const scheme = req.getHeader("x-forwarded-proto") === "https" ? "wss" : "ws";
@@ -158,7 +158,7 @@ export class GameServer extends AbstractHttpServer {
 
     /**
      * Kicks every connected session with a shutdown code, so the client shows a distinct
-     * "server restarting" message instead of a generic drop, then stops accepting connections.
+     * "server restarting" message, then stops accepting connections.
      * @returns {void}
      */
     shutdown() {

@@ -128,7 +128,7 @@ class SinkBehavior extends AbstractBehavior {
 
     /**
      * SUBMIT_INTENTS: drains whatever rests in the input port. A drain resolves outright, so the
-     * count is booked here rather than in a POST_RESOLVE pass.
+     * count is booked here.
      * @private
      * @param {GameEngine} engine
      * @returns {void}

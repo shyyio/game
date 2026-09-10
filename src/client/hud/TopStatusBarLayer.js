@@ -179,7 +179,7 @@ export class TopStatusBarLayer extends AbstractEdgeBarLayer {
         }
 
         // The inset fills the rest of the bar, holding the text centered within itself; the text
-        // wraps rather than overflowing the inset, growing the bar instead.
+        // wraps, growing the bar.
         const insetX = x;
         const insetWidth = Math.max(contentRight - insetX, 0);
         const textWidth = Math.max(insetWidth - TEXT_PADDING * 2, MIN_TEXT_WIDTH);

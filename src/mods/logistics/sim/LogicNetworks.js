@@ -85,7 +85,7 @@ export class LogicNetworks extends AbstractSystem {
                 this.unwire(wire.a, wire.b);
             }
         }
-        // Most despawns are unrelated objects; leave the graph alone rather than force a re-flood.
+        // Most despawns are unrelated objects and leave the graph alone.
         if (wasPole) {
             this._dirty = true;
         }

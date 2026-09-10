@@ -119,7 +119,7 @@ export {ClockView, ClockWriter, CLOCK_SCHEMA} from "@/client/state/ClockState.js
 export {OverworldView} from "@/client/state/OverworldState.js";
 
 // The objects namespace's view doubles as the shared cross-mod spatial index; reached via
-// `client.objects` and injected into draw layers as `this.cache`, instead of querying the sim DB.
+// `client.objects` and injected into draw layers as `this.cache`.
 export {ObjectsView, CacheEntry} from "@/client/state/ObjectsState.js";
 
 

@@ -1,6 +1,6 @@
 /**
  * The stacking order of the HUD, front to back. Every layer added to the pixi stage takes its
- * `zIndex` from here rather than stamping a number, so the whole order reads in one place.
+ * `zIndex` from here.
  *
  * Layers sharing a band are drawn in the order they are added to the stage, pixi's sort being
  * stable.

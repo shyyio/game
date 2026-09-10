@@ -18,7 +18,7 @@ import {ANIMATION_FRAME_COUNT} from "@/client/layers/animation.js";
 import {TileMeshColumns, writeTile} from "@/client/layers/tileMeshGeometry.js";
 
 // Attribute slots. The WGSL compiler sorts vertex inputs by name before assigning locations, so
-// these follow "aPosition" < "aSequence" < "aUV" rather than the order the bits declare them.
+// these follow "aPosition" < "aSequence" < "aUV".
 const LOCATION_POSITION = 0;
 const LOCATION_SEQUENCE = 1;
 const LOCATION_UV = 2;
@@ -157,8 +157,8 @@ export class FrameTable {
 }
 
 /**
- * The shader every {@link AnimatedTileMesh} off one frame table draws with. Shared rather than per
- * mesh, so a layer advances all its chunks with one uniform write.
+ * The shader every {@link AnimatedTileMesh} off one frame table draws with. Shared, so a layer
+ * advances all its chunks with one uniform write.
  */
 export class AnimatedTileShader extends Shader {
 

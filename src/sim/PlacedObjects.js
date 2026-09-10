@@ -90,9 +90,8 @@ export class PlacedObjects extends AbstractSystem {
     }
 
     /**
-     * The current owner of the chunk this entity stands in, PLAYER_REF_NONE when unclaimed. Read live
-     * rather than cached: a stored copy would have to be rewritten at every claim and permission
-     * change, and a missed call site bills the wrong player.
+     * The current owner of the chunk this entity stands in, PLAYER_REF_NONE when unclaimed. Read
+     * live.
      * @param {number} eid
      * @returns {number}
      */

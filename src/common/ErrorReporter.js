@@ -38,7 +38,7 @@ function truncateUtf8(text, maxBytes) {
 /**
  * Builds reportingserver's POST /report payloads and hands them to a transport.
  * Repeats of a fingerprint (message plus the first 3 stack lines) are dropped, so a crash loop
- * costs one request rather than one per throw.
+ * costs one request.
  */
 export class ErrorReporter {
 

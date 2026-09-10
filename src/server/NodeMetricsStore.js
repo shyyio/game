@@ -85,7 +85,7 @@ export class NodeMetricsStore extends AbstractMetricsStore {
          * @private
          */
         this._foldedThrough = this._startOfFolding(bounds);
-        // Folds what an existing file holds ahead of its buckets, at open rather than inside a tick.
+        // Folds what an existing file holds ahead of its buckets, at open.
         this._foldThrough(bounds.latestFact);
     }
 
@@ -173,8 +173,7 @@ export class NodeMetricsStore extends AbstractMetricsStore {
      * @returns {void}
      */
     _prepareQueries() {
-        // Baked rows cover whole buckets, so an answer starts at the bucket @fromBucket names
-        // rather than mid-bucket.
+        // Baked rows cover whole buckets, so an answer starts at the bucket @fromBucket names.
         this._queryRollupAllPlayers = this.db.prepare(
             rollupSql("", `INDEXED BY "idx_MetricsBucket_tier_type_tick_agg"`),
         );

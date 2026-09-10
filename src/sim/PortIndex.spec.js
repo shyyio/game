@@ -15,7 +15,7 @@ async function setup() {
 }
 
 // A placed object's declared ports bind it as the producer of its outputs and the consumer of its
-// inputs, so a neighbor asks the port who stands on the other side instead of scanning tiles.
+// inputs, so a neighbor asks the port who stands on the other side.
 test("placing an object binds it to its ports' endpoints, deleting it unbinds", async () => {
     const engine = await setup();
     engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 5, 5, Direction.UP));

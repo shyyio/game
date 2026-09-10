@@ -31,7 +31,7 @@ export class PortItemSync {
         // chunk -> Set of rendered port eids, so chunk sync walks only the chunk's ports.
         this._byChunk = new Map();
         // Ports written since the last diff, and a per-eid flag so a port enters the list once. The
-        // diff walks this rather than every rendered port in the world.
+        // diff walks this.
         this._dirty = [];
         this._isDirty = new Uint8Array(portCapacity);
         // How each port lost its item this tick (PORT_EMPTIED_*).

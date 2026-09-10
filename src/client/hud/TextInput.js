@@ -4,7 +4,7 @@ import {PANEL_BORDER, ACTIVE_ACCENT} from "@/client/Theme.js";
 import {DomOverlay} from "@/client/hud/DomOverlay.js";
 import {isTopmostAt} from "@/client/layers/pixiUtils.js";
 
-// Exported for the contrast audit, which reads what the box really paints rather than restating it.
+// Exported for the contrast audit.
 export const FONT_SIZE = 15;
 export const BOX_FILL = 0xffffff;
 export const BOX_FILL_ALPHA = 0.85;

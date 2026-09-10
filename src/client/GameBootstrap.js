@@ -55,9 +55,7 @@ async function loadoutFor(props, localLoadout) {
 
 /**
  * Moves every version-tracking mod onto the newest version the registry publishes for it, and
- * remembers the result. An unreachable registry falls back to the versions already stored: those are
- * a real resolution that already worked, and a catalog host being down is not a reason a local game
- * cannot start.
+ * remembers the result. An unreachable registry falls back to the versions already stored.
  * @param {LocalLoadout} stored
  * @returns {Promise<LocalLoadout>}
  */
@@ -151,7 +149,7 @@ export async function createClient(app, viewport, props) {
         session.onStatusChange(status => client.onConnectionStatusChange(status));
         session.connect();
         // A tab regaining focus or the network coming back online means the current backoff
-        // wait is likely stale; retry immediately instead of waiting it out.
+        // wait is likely stale; retry immediately.
         unsubWindowFocus = WindowFocus.onChange(focused => {
             if (focused) {
                 session.retryNow();

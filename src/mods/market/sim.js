@@ -196,8 +196,8 @@ export class MarketSimMod extends AbstractSimMod {
     /**
      * Pays out this tick's confirmed trades: the seller is always credited (their item is already
      * gone); a real (non-NPC) buyer is debited. Both sides settle against their chunk's current
-     * owner — an unclaimed chunk has nobody to pay, so that side of the trade is simply skipped
-     * rather than left to error. Deltas are batched per player so a player with several terminals
+     * owner — an unclaimed chunk has nobody to pay, so that side of the trade is simply skipped.
+     * Deltas are batched per player so a player with several terminals
      * confirming in the same tick gets one balance update, not one per trade.
      * @param {MarketBook} book
      * @param {GameEngine} engine
@@ -242,8 +242,8 @@ export class MarketSimMod extends AbstractSimMod {
 
     /**
      * Pays out this tick's confirmed NPC purchases: the buyer is debited against its chunk's current
-     * owner (an unclaimed chunk has nobody to charge, so the purchase is simply skipped rather than
-     * left to error — reachable when the chunk was unclaimed after this terminal's cached owner/balance
+     * owner (an unclaimed chunk has nobody to charge, so the purchase is simply skipped; reachable
+     * when the chunk was unclaimed after this terminal's cached owner/balance
      * were last refreshed, since that cache is a tick stale). Deltas are batched per player, same as
      * _settle.
      * @param {MarketBook} book

@@ -1,5 +1,5 @@
-// Tap-target sizes, in one place and all scaled together, so an accessibility "big UI" setting is
-// a single multiplier rather than an edit to every widget. Mirrors Theme: importers see the new
+// Tap-target sizes, in one place and all scaled together by the accessibility "big UI" setting.
+// Mirrors Theme: importers see the new
 // value through the live binding, but already-painted pixels need their layer's restyle().
 
 export const UI_SCALE_NORMAL = 1;

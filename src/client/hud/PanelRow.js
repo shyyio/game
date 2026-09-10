@@ -4,11 +4,10 @@ import {BUTTON_HEIGHT as ROW_HEIGHT, ROW_GAP, ROW_INDENT} from "@/client/hud/UiS
 export {BUTTON_HEIGHT as ROW_HEIGHT, ROW_GAP, ROW_INDENT} from "@/client/hud/UiScale.js";
 
 /**
- * One row of panel content, laid out rather than hand-placed: items flow in from the left, pin to
+ * One row of panel content: items flow in from the left, pin to
  * the right, or take the space left between the two. Anything shorter than the row is centered on
  * it. Nothing is positioned until {@link layout}, so a fill can size itself against items added
- * after it, and the row reports its own {@link overflow} instead of quietly drawing items on top of
- * each other.
+ * after it, and the row reports its own {@link overflow}.
  */
 export class PanelRow extends Container {
 

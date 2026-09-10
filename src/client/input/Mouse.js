@@ -161,9 +161,8 @@ class Mouse {
 
     /**
      * Forgets the bound app/viewport (both destroyed already), drops in-flight gesture state, and
-     * clears every callback list, so the next {@link init} rebinds to a fresh pixi Application
-     * instead of silently no-oping, and the next InputHandler's callbacks don't pile up alongside
-     * a previous, now-defunct, Game mount's.
+     * clears every callback list, so the next {@link init} rebinds to a fresh pixi Application and
+     * the next InputHandler's callbacks start clean.
      * @returns {void}
      */
     reset() {

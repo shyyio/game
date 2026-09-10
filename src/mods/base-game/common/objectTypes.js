@@ -218,8 +218,8 @@ export const BakeType = machine("Bake", "Bake", {
     ],
 });
 
-// Coke (solid) and Oxygen (fluid) can't share a port role, so one recipe gets three dedicated
-// ports (3x3) instead of two recipes. PigIron isn't a transportable item, just the in-between state.
+// Coke (solid) and Oxygen (fluid) can't share a port role, so the recipe gets three dedicated
+// ports (3x3). PigIron isn't a transportable item, just the in-between state.
 export const BlastFurnaceType = machine("BlastFurnace", "Blast Furnace", {
     toolId: 22,
     inputPorts: [IN3_A, IN3_MID, IN3_B_FLUID],

@@ -52,7 +52,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
     /**
      * SUBMIT_INTENTS (first): runs every linked terminal's rules top-down. A rule whose devices
      * left the network, died, or refused the key suspends (flagged on the rule, shown in the
-     * panel) instead of silently no-opping; the claimed set gives the topmost rule writing a
+     * panel); the claimed set gives the topmost rule writing a
      * device priority for the tick.
      * @private
      * @param {GameEngine} engine

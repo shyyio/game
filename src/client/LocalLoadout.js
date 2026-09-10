@@ -173,8 +173,7 @@ function titleOf(listing) {
 
 /**
  * A listed mod's versions this client can load, newest first. A bundle built against another SDK
- * version does not load at all, so an incompatible one is never offered rather than offered and then
- * refused at start.
+ * version does not load at all, so an incompatible one is never offered.
  * @param {object} listing a listed mod, as the registry index publishes it
  * @returns {object[]}
  */
@@ -408,7 +407,7 @@ export function serverLockfile(loadout, current=new ModLockfile([])) {
 
 /**
  * The stored local loadout, empty when nothing has been chosen. A stored value that no longer parses
- * throws rather than being silently discarded — it is the pin list for code about to run.
+ * throws.
  * @returns {LocalLoadout}
  */
 export function readLocalLoadout() {

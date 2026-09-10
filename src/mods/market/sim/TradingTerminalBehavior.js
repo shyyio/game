@@ -111,7 +111,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
      * player-market item still submits nothing itself; it only ever receives via a seller's transfer.
      *
      * `reservedBalance` tracks each buyer's remaining cached balance across this single pass, keyed
-     * by owning player rather than by terminal eid: a player with several buy terminals shares one
+     * by owning player: a player with several buy terminals shares one
      * balance, and committing a spend against one of their terminals (a sell-side match paying them,
      * or an NPC purchase of their own) must reduce what any of their other terminals appear to have
      * left, or the same tick-stale balance would clear every one of them independently and let a

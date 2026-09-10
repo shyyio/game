@@ -1,7 +1,7 @@
 // Mod SDK — engine-agnostic surface.
 //
-// This is the stable, documented API that mods bind to instead of reaching into
-// engine internals. It imports from `src/common/` and `src/sim/`, both of which run on client and
+// This is the stable, documented API that mods bind to. It imports from `src/common/` and
+// `src/sim/`, both of which run on client and
 // server alike, so a mod behaves the same in either. Mods import it as `@/sdk/common.js`.
 //
 // Mod anatomy — a mod is a ModPackage of up to three parts:
@@ -104,7 +104,7 @@ export {AbstractMessage} from "@/common/AbstractMessage.js";
 export {DeleteObjectMessage} from "@/common/CoreMessages.js";
 
 // Generic object-placement message (tagged with an ObjectType's objectTypeId) and the generic object
-// lifecycle events PlacedObjects emits — a mod uses these instead of per-object classes.
+// lifecycle events PlacedObjects emits.
 export {CreateObjectMessage} from "@/common/CoreMessages.js";
 export {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
 // A synced-field delta per object (`engine.sync.eventFor` builds one for a corrective send) and the

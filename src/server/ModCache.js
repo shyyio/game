@@ -1,6 +1,6 @@
 // The server's content-addressed store of packaged mod files. Every file is re-hashed before it is
 // written and again on demand, and is stored under its own digest — a mismatch anywhere refuses to
-// boot rather than running code the mod list does not name.
+// boot.
 
 import {createHash} from "node:crypto";
 import {readFileSync, writeFileSync, existsSync, mkdirSync} from "node:fs";

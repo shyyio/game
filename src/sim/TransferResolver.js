@@ -86,7 +86,7 @@ export class TransferResolver {
             grown.set(this[name]);
             this[name] = grown;
         }
-        // Transient within one pass, so it is replaced rather than copied.
+        // Transient within one pass, so it is replaced.
         this._emptyingQueue = new Int32Array(capacity);
     }
 
@@ -389,7 +389,7 @@ export class TransferResolver {
 
     /**
      * Grows the resolver's working lists so `count` entries fit in each. Runs before any of them is
-     * written this tick, so the old contents are dropped rather than copied.
+     * written this tick, so the old contents are dropped.
      * @private
      * @param {number} count
      * @returns {void}

@@ -204,8 +204,8 @@ export class GameEngine {
         // session that subscribes later gets the state through chunkSync, not the missed deltas.
         this._isChunkSubscribed = () => false;
         // Bumped whenever the answer `_isChunkSubscribed` gives could have changed, so a system caching
-        // "is this thing subscribed" per entity can revalidate on an integer compare instead of asking
-        // again every tick. Starts at 1, leaving 0 as "never computed" for those caches.
+        // "is this thing subscribed" per entity can revalidate on an integer compare. Starts at 1,
+        // leaving 0 as "never computed" for those caches.
         this._subscriptionGeneration = 1;
     }
 

@@ -260,7 +260,7 @@ export class PanelStack extends Container {
             const row = new PanelRow(width);
             row.y = y;
             if (descriptor.selected === true) {
-                // Behind the flow, spanning the row, so it is drawn rather than laid out.
+                // Behind the flow, spanning the row.
                 row.addChild(new Graphics()
                     .roundRect(0, 0, width, ROW_HEIGHT, SELECTED_RADIUS)
                     .fill({color: ACTIVE_ACCENT, alpha: SELECTED_ALPHA}));

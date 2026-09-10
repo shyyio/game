@@ -38,7 +38,7 @@ export class ChunkUnsubscribeEvent extends AbstractEvent {
 
 /**
  * The sim finished a tick, carrying the world clock it finished at. Sent to every session every
- * tick, so a client reads the tick it is in instead of timing one.
+ * tick, so a client reads the tick it is in.
  */
 export class TickEndEvent extends AbstractEvent {
 

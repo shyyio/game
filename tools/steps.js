@@ -1,5 +1,5 @@
 // Step plumbing shared by the release and deploy scripts: every command runs as a named step, and a
-// failure ends the run with one readable line and what to do about it, not a stack trace.
+// failure ends the run with one readable line and what to do about it.
 
 import {spawnSync} from "node:child_process";
 

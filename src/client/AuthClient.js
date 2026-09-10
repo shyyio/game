@@ -80,9 +80,9 @@ async function authFetch(path, options) {
 
 /**
  * Logs in with a username, storing the session token for later join-token mints. A rate-limit
- * response carrying a Retry-After header retries silently after that delay instead of surfacing
- * an error to the caller, up to {@link LOGIN_MAX_RETRIES} times; without the header, or once
- * exhausted, the rate limit is treated as a normal failure.
+ * response carrying a Retry-After header retries silently after that delay, up to
+ * {@link LOGIN_MAX_RETRIES} times; without the header, or once exhausted, the rate limit is a
+ * normal failure.
  * @param {string} username
  * @returns {Promise<void>}
  */
@@ -111,7 +111,7 @@ export async function login(username) {
 
 /**
  * authFetch, bearing the stored session token; a 401 means it's expired or invalid, so it's
- * dropped rather than kept around to fail the same way on every subsequent call.
+ * dropped.
  * @param {string} path
  * @param {object} options
  * @returns {Promise<object>}
@@ -188,10 +188,9 @@ function reconnectTokenFor(origin) {
 }
 
 /**
- * A fresh join token for a reconnect, spending the origin-scoped reconnect token rather than the
- * account session — which the game page no longer holds while mods run. Without that token there is
- * nothing left in this context to authenticate with, so the retry loop is told to stop asking
- * rather than sent to mint with a session that was dropped on purpose.
+ * A fresh join token for a reconnect, spending the origin-scoped reconnect token; the game page
+ * holds no account session while mods run. Without that token there is nothing left in this
+ * context to authenticate with, so the retry loop is told to stop asking.
  * @param {string} origin
  * @returns {Promise<string>}
  */

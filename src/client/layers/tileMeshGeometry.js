@@ -24,8 +24,8 @@ export function rotatedCorner(corner, quarterTurns) {
 
 /**
  * Fills the vertex and index columns for one tile: an axis-aligned quad at its tile, sampling the
- * frame corners its facing rotates onto. Rotation rides in the corner assignment rather than the
- * positions, so a turned tile costs no trigonometry.
+ * frame corners its facing rotates onto. Rotation rides in the corner assignment, so a turned tile
+ * costs no trigonometry.
  * @param {TileMeshColumns} columns
  * @param {number} tile - the tile's index in the mesh
  * @param {number} tileX

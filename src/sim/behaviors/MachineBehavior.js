@@ -26,8 +26,7 @@ const SLOT_COLS = ["slot0", "slot1", "slot2"];
 const PROCESSING_COLS = ["processing0", "processing1", "processing2"];
 
 /**
- * Resolves per-slot column names to their arrays, so a hot loop indexes numerically instead of
- * looking the column up by name per entity.
+ * Resolves per-slot column names to their arrays, so a hot loop indexes numerically.
  * @param {object} store
  * @param {string[]} names
  * @returns {ArrayLike<number>[]}

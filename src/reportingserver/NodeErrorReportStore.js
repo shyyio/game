@@ -2,8 +2,8 @@ import BetterSqlite3 from "better-sqlite3";
 
 /**
  * Node persistence for anonymous client error reports. Rows are deduplicated by fingerprint
- * within a time window (recordReport bumps count/lastSeen instead of inserting a duplicate),
- * so a crash loop grows one row's counter rather than the table.
+ * within a time window (recordReport bumps count/lastSeen), so a crash loop grows one row's
+ * counter.
  */
 export class NodeErrorReportStore {
 

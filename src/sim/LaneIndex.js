@@ -452,7 +452,7 @@ export class LaneIndex extends AbstractSystem {
      * Re-derives the lanes an object's output edges feed, so a machine placed or taken away beside a
      * lane head moves that head's parent edge and input port with it. Lane cells come through
      * {@link addCell} and {@link removeCell} instead, and a lane whose feed is unchanged is left
-     * alone rather than rebuilt.
+     * alone.
      * @param {number} eid - the object spawned or being despawned
      * @returns {void}
      */
@@ -605,7 +605,7 @@ export class LaneIndex extends AbstractSystem {
             this._addLaneItemSyncs(laneEid);
         }
         this._flushBatches();
-        // The port items the rebuild moved go out with its rows, not a render pass later.
+        // The port items the rebuild moved go out with its rows.
         this.engine.portItems.emitPortItemBatch();
     }
 

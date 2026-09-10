@@ -53,7 +53,7 @@ export class ComponentRegistry {
 
     /**
      * The component registered under `name`, or undefined — the tolerant twin of {@link get}, for
-     * the save checks that report a drifted component instead of throwing on it.
+     * the save checks that report a drifted component.
      * @param {string} name
      * @returns {AbstractComponent|undefined}
      */

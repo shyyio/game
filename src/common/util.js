@@ -12,7 +12,7 @@ const TILE_SPAN = CHUNK_SIZE * REGION_SIZE;
 export const TILE_HALF = TILE_SPAN / 2;
 
 // A qualified tile key must stay a small integer, or every Map keyed by one hashes a boxed number
-// instead. Growing the region past this needs the indexes rekeyed, not a wider id.
+// instead. Growing the region past this needs the indexes rekeyed.
 const MAX_SMALL_INTEGER = 2 ** 31;
 if (TILE_SPAN * TILE_SPAN * TILE_VARIANT_LIMIT >= MAX_SMALL_INTEGER) {
     throw new RangeError(`A ${TILE_SPAN}x${TILE_SPAN} tile box does not fit a small-integer tile key`);
@@ -60,8 +60,7 @@ export function chunkKeyAt(x, y) {
 
 /**
  * The key of tile (x, y): its index in the world grid, counted left-to-right, top-to-bottom. The
- * spatial indexes key on this rather than on an "x,y" string — a tile lookup then costs no string
- * to build and no string to keep.
+ * spatial indexes key on this.
  * @param {number} x tile x
  * @param {number} y tile y
  * @returns {number}

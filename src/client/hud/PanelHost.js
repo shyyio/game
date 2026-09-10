@@ -4,7 +4,7 @@ import {UIPanel} from "@/client/hud/UIPanel.js";
 
 /**
  * The one place a panel layer mounts. It carries the {@link HudLayer.PANEL} band for every layer it
- * holds, so a layer's own stacking is decided here rather than by the order it was built in: a press
+ * holds, so a layer's own stacking is decided here: a press
  * anywhere inside a layer raises that layer over its siblings, and the pressed {@link UIPanel} over
  * the other panels of that layer.
  */

@@ -280,11 +280,8 @@ const MAX_CLIMB_ATTEMPTS = 40;
 
 /**
  * Lays a belt/pipe path from `from` to `to` (see pathWaypoints), picking the smallest climb depth
- * (1, 2, 3, ...) whose full waypoint list doesn't step on any tile `occupied` already claims —
- * a fixed/staggered climb isn't enough on its own: a producer's own climb column can coincide with
- * some unrelated edge's target column purely by lane-assignment coincidence (happened for real
- * between Brew's two same-depth inputs), so this searches instead of guessing. Reserves every tile
- * it uses in `occupied` before placing, so later edges see it as reserved.
+ * (1, 2, 3, ...) whose full waypoint list doesn't step on any tile `occupied` already claims.
+ * Reserves every tile it uses in `occupied` before placing, so later edges see it as reserved.
  * @param {GameEngine} engine
  * @param {ObjectType} objectType BeltType or PipeType
  * @param {{x: number, y: number}} from

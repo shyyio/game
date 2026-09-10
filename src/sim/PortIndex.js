@@ -107,7 +107,7 @@ export class PortIndex {
 
 
         // Port eid -> the placed objects declaring it as an output port, and as an input port, so
-        // a neighbor asks the edge who stands across it rather than scanning tiles.
+        // a neighbor asks the edge who stands across it.
         this._producersByPort = new Map();
         this._consumersByPort = new Map();
     }
@@ -196,7 +196,7 @@ export class PortIndex {
 
     /**
      * Registers a module column indexed by port eid, grown with the Port component. Lets a module
-     * index per-port state the way the engine does, instead of keying a Map on port eids.
+     * index per-port state the way the engine does.
      * @param {number} [fill] - the value an unwritten port reads as
      * @returns {PortColumn}
      */

@@ -15,8 +15,8 @@ import {
  * A test-only fixture (not part of BaseGame's real content): a 2x2 solid resource body with a ring
  * of extraction tiles, fed by two independently configured extractors — one producing a solid item,
  * one a fluid. Exercises engine capabilities BaseGame's own content never needs (a multi-tile solid
- * resource body, two distinct extractor speeds/recipes sharing one body, a second fluid item type),
- * so volcano-extractor.spec.js and pipe-fluid-flow.spec.js use this instead of real mod content.
+ * resource body, two distinct extractor speeds/recipes sharing one body, a second fluid item type)
+ * for volcano-extractor.spec.js and pipe-fluid-flow.spec.js.
  */
 
 export const RESOURCE_TEST_VOLCANO = 900;

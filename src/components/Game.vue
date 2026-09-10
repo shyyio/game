@@ -116,7 +116,7 @@ const stopThemeSync = onThemeChange(themeId => {
 });
 
 // Set once setup finishes; onUnmounted may fire mid-setup (a fast back-navigation), so each
-// await below checks `disposed` and unwinds whatever it already built instead of racing ahead.
+// await below checks `disposed` and unwinds whatever it already built.
 let disposed = false;
 let teardown = () => {};
 

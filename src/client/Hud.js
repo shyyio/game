@@ -132,7 +132,7 @@ export class Hud {
         this.statusLayer.setConnecting();
         // The top bar's height, so the counter list knows whether the bar owns the top-left corner.
         this._topBarHeight = 0;
-        // The status message's height, so the counter list stacks under it rather than behind it.
+        // The status message's height, so the counter list stacks under it.
         this._statusHeight = 0;
         // The hovered counter's label and exact amount.
         this.counterTooltip = new HoverTooltip(app, TooltipSide.RIGHT, HudLayer.TOOLTIP);

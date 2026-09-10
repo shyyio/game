@@ -136,8 +136,7 @@ const RESOURCE_TIMING_TIMEOUT_MS = 5000;
 
 /**
  * Resource Timing duration for the given request, matching what devtools' network panel reports.
- * Reads live via PerformanceObserver rather than the shared buffer, since Vite's own
- * module fetches fill that buffer's default capacity well before a status request completes.
+ * Reads live via PerformanceObserver.
  * @param {string} url
  * @returns {{durationMs: Promise<number|null>, cancel: function(): void}} durationMs is null when
  *     no entry arrives, which is the normal outcome for a request that never reached the server

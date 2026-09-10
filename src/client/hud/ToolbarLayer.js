@@ -263,8 +263,7 @@ export class ToolbarLayer extends Container {
      * @private
      */
     _rebuild() {
-        // An in-progress reorder drag's slot is about to be destroyed below; abort it rather than
-        // leaving _drag pointing at a dead Container.
+        // An in-progress reorder drag's slot is about to be destroyed below; abort it first.
         this._cancelDrag();
 
         for (const slot of [this._noneCell, ...this._cells]) {

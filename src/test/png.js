@@ -2,7 +2,7 @@ import {readFileSync} from "node:fs";
 import {inflateSync} from "node:zlib";
 
 // Bytes per pixel: only 8-bit RGBA (color type 6, depth 8) is read, which is what TexturePacker's
-// sources are. Anything else throws rather than decoding to nonsense.
+// sources are. Anything else throws.
 const BYTES_PER_PIXEL = 4;
 const COLOR_TYPE_RGBA = 6;
 const BIT_DEPTH = 8;
