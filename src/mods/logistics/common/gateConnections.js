@@ -29,8 +29,15 @@ export function canTransportsCouple(type, direction, gateDirection, behind) {
 }
 
 /**
+ * What stands on a tile, as the connection rules read it.
+ * @typedef {Object} Occupant
+ * @property {ObjectType} type
+ * @property {Direction} direction
+ */
+
+/**
  * The transport kinds coupled to a gate at (x, y) facing `direction`.
- * @param {function(number, number): ({type: ObjectType, direction: Direction}|null)} occupantAt
+ * @param {function(number, number): (Occupant|null)} occupantAt
  * @param {number} x
  * @param {number} y
  * @param {Direction} direction
@@ -57,7 +64,7 @@ export function gateConnections(occupantAt, x, y, direction) {
 
 /**
  * Whether an adjacent gate coupled to the other kind on its other side blocks this placement.
- * @param {function(number, number): ({type: ObjectType, direction: Direction}|null)} occupantAt
+ * @param {function(number, number): (Occupant|null)} occupantAt
  * @param {function({type: ObjectType, direction: Direction}): boolean} isGate
  * @param {ObjectType} type - the transport being placed
  * @param {number} x

@@ -125,19 +125,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         this._rulesScroll = null;
         this._rulesScrollY = 0;
 
-        this._connectors.set("terminal", () => this._managed.panel, () => {
-            const objectRef = this._targetObjectRef();
-            let entry;
-            if (objectRef === null) {
-                entry = null;
-            } else {
-                entry = this._objects.get(objectRef);
-            }
-            if (entry === null) {
-                return null;
-            }
-            return {x: entry.tileX, y: entry.tileY};
-        });
+        this._connectors.set("terminal", () => this._managed.panel, () => this._getTargetTile());
 
         cache.subscribe("logistics.configTarget", value => {
             if (value === null) {
@@ -155,6 +143,23 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 this._rebuild();
             }
         });
+    }
+
+    /**
+     * The tile the connector points at, null while no terminal is targeted or cached.
+     * @private
+     * @returns {Point|null}
+     */
+    _getTargetTile() {
+        const objectRef = this._targetObjectRef();
+        if (objectRef === null) {
+            return null;
+        }
+        const entry = this._objects.get(objectRef);
+        if (entry === null) {
+            return null;
+        }
+        return {x: entry.tileX, y: entry.tileY};
     }
 
     /**

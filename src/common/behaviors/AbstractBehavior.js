@@ -1,4 +1,10 @@
 /**
+ * @typedef {Object} StoredStock
+ * @property {number} itemTypeId
+ * @property {number} amount
+ */
+
+/**
  * A component+system bundle giving a placeable object type its sim behavior. PlacedObjects owns the
  * generic entity lifecycle (spawn/despawn/chunk-sync/inspect); a behavior supplies the type-specific
  * pieces: its components and systems ({@link install}, once per behavior class per engine — never
@@ -172,7 +178,7 @@ export class AbstractBehavior {
      * The entity's stored stock, summed into network "stored" totals; null when it stores nothing.
      * @param {GameEngine} engine
      * @param {number} eid
-     * @returns {{itemTypeId: number, amount: number}|null}
+     * @returns {StoredStock|null}
      */
     logicStored(engine, eid) {
         return null;

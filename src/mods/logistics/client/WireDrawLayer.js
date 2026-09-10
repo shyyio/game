@@ -167,7 +167,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
      * footprint center as the fallback for an entry that lost its anchor.
      * @private
      * @param {CacheEntry} entry
-     * @returns {{x: number, y: number}}
+     * @returns {Point}
      */
     static _anchor(entry) {
         const anchor = entry.data.type.wireAnchor;

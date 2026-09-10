@@ -26,6 +26,17 @@ class SplitterSystem extends AbstractSystem {
 }
 
 /**
+ * @typedef {Object} SplitterWiring
+ * @property {number} id
+ * @property {number} inputPortA
+ * @property {number} inputPortB
+ * @property {number} outputPortA
+ * @property {number} outputPortB
+ * @property {number} internalPortA
+ * @property {number} internalPortB
+ */
+
+/**
  * 1x2 splitter routing in_X -> int_X -> out_Y through internal buffer ports, resting a tick per
  * hop; the round-robin state follows whichever output the resolver picked.
  */
@@ -73,7 +84,7 @@ export class SplitterBehavior extends AbstractBehavior {
      * @param {GameEngine} engine
      * @param {number} eid
      * @param {{inputPortA:number, inputPortB:number, outputPortA:number, outputPortB:number}} ports
-     * @returns {{id:number, inputPortA:number, inputPortB:number, outputPortA:number, outputPortB:number, internalPortA:number, internalPortB:number}}
+     * @returns {SplitterWiring}
      */
     _wire(engine, eid, ports) {
         const internalPortA = engine.ports.create();
@@ -96,7 +107,7 @@ export class SplitterBehavior extends AbstractBehavior {
      * Creates a sim-only splitter for specs and debugging; ports fresh unless given in `wiring`.
      * @param {GameEngine} engine
      * @param {{inputPortA?:number, inputPortB?:number, outputPortA?:number, outputPortB?:number}} [wiring]
-     * @returns {{id:number, inputPortA:number, inputPortB:number, outputPortA:number, outputPortB:number, internalPortA:number, internalPortB:number}}
+     * @returns {SplitterWiring}
      */
     addSplitter(engine, wiring={}) {
         const port = given => {
@@ -121,7 +132,7 @@ export class SplitterBehavior extends AbstractBehavior {
      * @param {GameEngine} engine
      * @param {number} x
      * @param {number} y
-     * @returns {{id:number, inputPortA:number, inputPortB:number, outputPortA:number, outputPortB:number, internalPortA:number, internalPortB:number}}
+     * @returns {SplitterWiring}
      */
     placeSplitter(engine, x, y) {
         return this.addSplitter(engine, {

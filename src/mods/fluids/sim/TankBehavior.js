@@ -84,6 +84,9 @@ export class TankBehavior extends AbstractBehavior {
         return [LOGIC_KEY_AMOUNT];
     }
 
+    /**
+     * @returns {StoredStock|null}
+     */
     logicStored(engine, eid) {
         const tanks = engine.components.getComponentByName("Tank");
         const row = tanks.getRowByEid(eid);

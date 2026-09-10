@@ -34,6 +34,12 @@ const TOGGLE_GAP = 4;
 const UNPRODUCED_BRIGHTNESS = 0.3;
 
 /**
+ * @typedef {Object} ProductionCounts
+ * @property {Map<number, number>} counts by item type id
+ * @property {Map<number, number>} ranks by item type id
+ */
+
+/**
  * The production log panel: a player's log (every item by category, produced ones lit and
  * labeled with their count or rank) or a leaderboard, with a history of the views walked through
  * and a Back button along it.
@@ -274,7 +280,7 @@ export class ProductionLogPanelLayer extends Container {
      * The last log answer's counts and ranks when it is this player's, empty while still loading.
      * @private
      * @param {number} playerRef
-     * @returns {{counts: Map<number, number>, ranks: Map<number, number>}}
+     * @returns {ProductionCounts}
      */
     _getLogByPlayerRef(playerRef) {
         const log = this._cache.get("productionLog.log");

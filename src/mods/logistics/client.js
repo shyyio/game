@@ -122,16 +122,10 @@ export class LogisticsClientMod extends AbstractClientMod {
      * The SURFACE occupant resolver the shared connection rules use.
      * @private
      * @param {Client} client
-     * @returns {function(number, number): ({type: ObjectType, direction: Direction}|null)}
+     * @returns {function(number, number): (Occupant|null)}
      */
     _findOccupantAt(client) {
-        return (x, y) => {
-            const entry = client.objects.findObjectAt(x, y, LAYER_SURFACE);
-            if (entry === null) {
-                return null;
-            }
-            return {type: entry.data.type, direction: entry.data.direction};
-        };
+        return (x, y) => findOccupantAt(client, x, y);
     }
 
     /**
@@ -291,4 +285,19 @@ export class LogisticsClientMod extends AbstractClientMod {
         }
         return highlights;
     }
+}
+
+/**
+ * The SURFACE occupant at (x, y) as the connection rules see it, or null.
+ * @param {Client} client
+ * @param {number} x
+ * @param {number} y
+ * @returns {Occupant|null}
+ */
+function findOccupantAt(client, x, y) {
+    const entry = client.objects.findObjectAt(x, y, LAYER_SURFACE);
+    if (entry === null) {
+        return null;
+    }
+    return {type: entry.data.type, direction: entry.data.direction};
 }

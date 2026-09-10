@@ -162,7 +162,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
     /**
      * The world point the ghost centers on: the screen center in center-lock, else the cursor.
      * @private
-     * @returns {{x: number, y: number}|null}
+     * @returns {Point|null}
      */
     _targetPoint() {
         if (this.viewport === null) {

@@ -214,7 +214,7 @@ export class GateBehavior extends AbstractBehavior {
      * @param {GameEngine} engine
      * @param {number} x
      * @param {number} y
-     * @returns {{type: ObjectType, direction: Direction}|null}
+     * @returns {Occupant|null}
      */
     static _findOccupantAt(engine, x, y) {
         const placed = engine.placed;

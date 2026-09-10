@@ -48,6 +48,15 @@ class PipeNetwork {
 }
 
 /**
+ * @typedef {Object} PipeNetworkStats
+ * @property {number} id
+ * @property {number} fluidType
+ * @property {number} amount
+ * @property {number} capacity
+ * @property {number} size pipes in the network
+ */
+
+/**
  * Pipe fluid transport: a network is the same-chunk connected component of pipe tiles (never
  * crossing a seam) holding one uniform (fluidType, amount), so equalization is free. Boundary
  * edges reuse the port-transfer resolver: drain resting payloads at input ports, create one
@@ -107,7 +116,7 @@ export class Pipes extends AbstractSystem {
      * The network covering tile (x, y), or null.
      * @param {number} x
      * @param {number} y
-     * @returns {{id:number, fluidType:number, amount:number, capacity:number, size:number}|null}
+     * @returns {PipeNetworkStats|null}
      */
     findNetworkAt(x, y) {
         const net = this._networkByTile.get(tileKeyAt(x, y));

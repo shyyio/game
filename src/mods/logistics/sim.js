@@ -24,6 +24,12 @@ import {LogicNetworks} from "./sim/LogicNetworks.js";
 import {LogicRule, LogicRules, LogicCondition} from "./sim/LogicRules.js";
 
 /**
+ * @typedef {Object} WireEndpoints
+ * @property {number} aEid
+ * @property {number} bEid
+ */
+
+/**
  * Handles the Logistics mod's session messages; all tick logic lives in the behaviors.
  */
 export class LogisticsSimMod extends AbstractSimMod {
@@ -124,7 +130,7 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @param {WireLinkMessage|WireUnlinkMessage} message
      * @param {AbstractSession} session
      * @param {Game} game
-     * @returns {{aEid: number, bEid: number}|null}
+     * @returns {WireEndpoints|null}
      * @private
      */
     _resolveWireEndpoints(message, session, game) {

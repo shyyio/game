@@ -10,6 +10,19 @@ import {
 } from "./constants.js";
 
 /**
+ * The tile a belt is fed from; both null when nothing feeds it.
+ * @typedef {Object} ParentTile
+ * @property {number|null} parentX
+ * @property {number|null} parentY
+ */
+
+/**
+ * @typedef {Object} TunnelWalk
+ * @property {Point[]} tiles the underground tiles walked
+ * @property {CacheEntry|null} pair the mouth the walk ended on
+ */
+
+/**
  * Whether a feeder feeds forward on the surface: tunnel entrances/undergrounds bury the flow, any non-belt feeds forward.
  * @param {object} data - a feeder entry's data
  * @returns {boolean}
@@ -28,7 +41,7 @@ function isFeedingForward(data) {
  * @param {number} tileX
  * @param {number} tileY
  * @param {Direction} direction
- * @returns {{parentX: number|null, parentY: number|null}}
+ * @returns {ParentTile}
  */
 export function inferBeltParent(cache, tileX, tileY, direction) {
     // Stand-in entry with a normal belt's ports for the port-connection query.
@@ -71,7 +84,7 @@ export function surfaceBeltAt(index, tileX, tileY) {
  * Walks `mouth`'s tunnel along its axis, returning the buried tiles and the paired opposite mouth (or null).
  * @param {ObjectsView} index
  * @param {CacheEntry} mouth
- * @returns {{tiles: {x: number, y: number}[], pair: CacheEntry|null}}
+ * @returns {TunnelWalk}
  */
 export function walkTunnel(index, mouth) {
     const {dx, dy} = tunnelStep(mouth.data.type.beltKind, mouth.data.direction);
@@ -146,7 +159,7 @@ export function findTunnelPartner(x, y, direction, kind, beltsAt) {
 /**
  * @param {{x: number, y: number, type: number, direction: Direction} tunnelParent}
  * @param {{x: number, y: number, type: number, direction: Direction} options}
- * @returns {{x: number, y: number}[]}
+ * @returns {Point[]}
  */
 export function getUndergroundBeltsToCreate(tunnelParent, options) {
     if (tunnelParent === null || tunnelParent.direction !== options.direction

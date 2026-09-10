@@ -106,7 +106,7 @@ export class NoteGhostLayer extends AbstractDrawLayer {
 
     /**
      * @private
-     * @returns {{x: number, y: number}|null} the ghost's world position, null while it has none
+     * @returns {Point|null} the ghost's world position, null while it has none
      */
     _anchor() {
         const target = this._state.get("notes.editorTarget");

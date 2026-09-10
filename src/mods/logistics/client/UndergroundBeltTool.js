@@ -5,6 +5,13 @@ import {Belt} from "./BeltDrawLayer.js";
 import {getUndergroundBeltsToCreate, surfaceBeltAt, inferBeltParent, findTunnelPartner} from "../common/geometry.js";
 
 /**
+ * @typedef {Object} TunnelPlacement
+ * @property {BeltType} type
+ * @property {number|null} parentId the mouth this one pairs with
+ * @property {Direction} direction
+ */
+
+/**
  * Rotatable single-mouth tool that drops one mouth per tap, pairing it with the mouth it tunnels to.
  */
 export class UndergroundBeltTool extends AbstractTool {
@@ -194,7 +201,7 @@ export class UndergroundBeltTool extends AbstractTool {
     /**
      * Decides what a tap places: a TUNNEL_DOWN into a downstream exit, a TUNNEL_UP back to an upstream entrance, or a lone entrance.
      * @private
-     * @returns {{type: BeltType, parentId: number|null, direction: Direction}}
+     * @returns {TunnelPlacement}
      */
     _resolvePlacement(tileX, tileY, direction) {
         const downstreamExit = this._findTunnelParent(tileX, tileY, direction, BELT_TUNNEL_DOWN);
@@ -225,7 +232,7 @@ export class UndergroundBeltTool extends AbstractTool {
     /**
      * The buried belts laid between the new mouth and its matched `parentId` (empty when adjacent).
      * @private
-     * @returns {{x: number, y: number}[]}
+     * @returns {Point[]}
      */
     _getUndergroundTilesByParentId(parentId, tileX, tileY, type, direction) {
         const parent = this._cache.get(parentId);

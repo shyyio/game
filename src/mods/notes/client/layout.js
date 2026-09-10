@@ -5,7 +5,7 @@ import {NOTE_OFFSET_CENTER, NOTE_OFFSET_UNITS} from "../common/constants.js";
  * A note's marker position in world pixels; map mode parks every marker on its tile center.
  * @param {{tileX: number, tileY: number, offsetMx: number, offsetMy: number}} note
  * @param {boolean} [mapMode]
- * @returns {{x: number, y: number}}
+ * @returns {Point}
  */
 export function noteAnchor(note, mapMode) {
     let offsetMx = note.offsetMx;

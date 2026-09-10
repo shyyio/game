@@ -11,6 +11,12 @@ export const BELT_TUNNEL_UP = 2;
 export const BELT_UNDERGROUND = 3;
 
 /**
+ * @typedef {Object} TileStep
+ * @property {number} dx
+ * @property {number} dy
+ */
+
+/**
  * A belt kind ordinal (one of the BELT_* constants).
  * @typedef {number} BeltType
  */
@@ -19,7 +25,7 @@ export const BELT_UNDERGROUND = 3;
  * Per-step (dx, dy) for walking a mouth's tunnel: TUNNEL_UP steps against its facing, TUNNEL_DOWN along it.
  * @param {number} mouthType BELT_TUNNEL_UP or BELT_TUNNEL_DOWN
  * @param {Direction} direction the mouth's facing
- * @returns {{dx: number, dy: number}}
+ * @returns {TileStep}
  */
 export function tunnelStep(mouthType, direction) {
     const sign = mouthType === BELT_TUNNEL_UP ? -1 : 1;
