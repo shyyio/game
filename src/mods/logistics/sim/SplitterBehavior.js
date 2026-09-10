@@ -1,4 +1,5 @@
 import {Direction, EMPTY, NO_EID, TickPhase, AbstractBehavior} from "@spup/sdk";
+import {SplitterComponent} from "./SplitterComponent.js";
 
 /**
  * 1x2 splitter routing in_X -> int_X -> out_Y through internal buffer ports, resting a tick per
@@ -7,15 +8,7 @@ import {Direction, EMPTY, NO_EID, TickPhase, AbstractBehavior} from "@spup/sdk";
 export class SplitterBehavior extends AbstractBehavior {
 
     install(engine) {
-        engine.components.define("Splitter", [
-            {name: "in_a", kind: "eid", defaultValue: NO_EID},
-            {name: "in_b", kind: "eid", defaultValue: NO_EID},
-            {name: "out_a", kind: "eid", defaultValue: NO_EID},
-            {name: "out_b", kind: "eid", defaultValue: NO_EID},
-            {name: "int_a", kind: "eid", defaultValue: NO_EID},
-            {name: "int_b", kind: "eid", defaultValue: NO_EID},
-            {name: "state"},
-        ], {sparse: true});
+        engine.components.register(new SplitterComponent());
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents(engine));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._finish(engine));
     }
@@ -31,22 +24,22 @@ export class SplitterBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, eid) {
-        const def = engine.components.get("Splitter");
-        const row = def.row(eid);
-        engine.render.unregisterPort(def.store.out_a[row]);
-        engine.render.unregisterPort(def.store.out_b[row]);
+        const splitters = engine.components.get("Splitter");
+        const row = splitters.row(eid);
+        engine.render.unregisterPort(splitters.store.out_a[row]);
+        engine.render.unregisterPort(splitters.store.out_b[row]);
     }
 
     renderedPortEids(engine, eid) {
-        const def = engine.components.get("Splitter");
-        const row = def.row(eid);
-        return [def.store.out_a[row], def.store.out_b[row]];
+        const splitters = engine.components.get("Splitter");
+        const row = splitters.row(eid);
+        return [splitters.store.out_a[row], splitters.store.out_b[row]];
     }
 
     resyncRenderedPorts(engine, eid) {
-        const def = engine.components.get("Splitter");
-        const row = def.row(eid);
-        for (const out of [def.store.out_a[row], def.store.out_b[row]]) {
+        const splitters = engine.components.get("Splitter");
+        const row = splitters.row(eid);
+        for (const out of [splitters.store.out_a[row], splitters.store.out_b[row]]) {
             engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
         }
     }
@@ -62,10 +55,10 @@ export class SplitterBehavior extends AbstractBehavior {
     _wire(engine, eid, ports) {
         const int_a = engine.ports.create();
         const int_b = engine.ports.create();
-        const def = engine.components.get("Splitter");
-        def.attach(eid);
-        const splitter = def.store;
-        const row = def.row(eid);
+        const splitters = engine.components.get("Splitter");
+        splitters.attach(eid);
+        const splitter = splitters.store;
+        const row = splitters.row(eid);
         splitter.in_a[row] = ports.in_a;
         splitter.in_b[row] = ports.in_b;
         splitter.out_a[row] = ports.out_a;
@@ -120,9 +113,9 @@ export class SplitterBehavior extends AbstractBehavior {
      */
     _submitIntents(engine) {
         const item = engine.Port.item;
-        const def = engine.components.get("Splitter");
-        const splitter = def.store;
-        for (let row = 0; row < def.count; row += 1) {
+        const splitters = engine.components.get("Splitter");
+        const splitter = splitters.store;
+        for (let row = 0; row < splitters.count; row += 1) {
             if (item[splitter.in_a[row]] !== EMPTY) {
                 engine.transfers.submitTransfer(splitter.in_a[row], splitter.int_a[row], item[splitter.int_a[row]] === EMPTY);
             }
@@ -149,9 +142,9 @@ export class SplitterBehavior extends AbstractBehavior {
      * @returns {void}
      */
     _finish(engine) {
-        const def = engine.components.get("Splitter");
-        const splitter = def.store;
-        for (let row = 0; row < def.count; row += 1) {
+        const splitters = engine.components.get("Splitter");
+        const splitter = splitters.store;
+        for (let row = 0; row < splitters.count; row += 1) {
             if (engine.transfers.destFor(splitter.int_a[row]) !== EMPTY || engine.transfers.destFor(splitter.int_b[row]) !== EMPTY) {
                 splitter.state[row] = 1 - splitter.state[row];
             }

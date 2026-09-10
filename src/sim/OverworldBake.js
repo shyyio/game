@@ -165,10 +165,10 @@ export class OverworldBake {
     _rebuildAll() {
         this._chunks = new Map();
         const position = this.engine.Position;
-        const def = this.placed.objects;
+        const objects = this.placed.objects;
         const touched = new Set();
-        for (let row = 0; row < def.count; row += 1) {
-            const eid = def.eids[row];
+        for (let row = 0; row < objects.count; row += 1) {
+            const eid = objects.eids[row];
             touched.add(chunkKeyAt(position.x[eid], position.y[eid]));
         }
         for (const chunk of touched) {

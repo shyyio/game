@@ -23,11 +23,11 @@ export class PoleBehavior extends AbstractBehavior {
         const networks = engine.resolve(LogicNetworks);
         networks.reset();
         const placed = engine.placed;
-        const def = placed.objects;
-        const placedObject = def.store;
-        for (let row = 0; row < def.count; row += 1) {
+        const objects = placed.objects;
+        const placedObject = objects.store;
+        for (let row = 0; row < objects.count; row += 1) {
             if (placed.behaviorFor(placedObject.objectTypeId[row]) instanceof PoleBehavior) {
-                networks.addPole(def.eids[row]);
+                networks.addPole(objects.eids[row]);
             }
         }
     }

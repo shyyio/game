@@ -68,26 +68,26 @@ export function conversionLosses(snapshot, loadout) {
 
 /**
  * `snapshot` as `loadout` reads it: type columns renumbered, lost items emptied, component tables
- * matched to `componentDefs` (dropped when no longer registered, empty when new) and every row cut
+ * matched to `registered` (dropped when no longer registered, empty when new) and every row cut
  * down to the fields the next engine registers. Throws on an object whose type the loadout lacks.
  * @param {object} snapshot
  * @param {Loadout} loadout
- * @param {Array<{name: string, fields: Array<{name: string, kind: string, defaultValue: number}>}>} componentDefs the next engine's
+ * @param {Array<{name: string, fields: Array<{name: string, kind: string, defaultValue: number}>}>} registered the next engine's
  * @returns {object} a new snapshot; the given one is untouched
  */
-export function convertSnapshot(snapshot, loadout, componentDefs) {
+export function convertSnapshot(snapshot, loadout, registered) {
     const objectTypeIdByName = new Map(loadout.typeNames.map((name, objectTypeId) => [name, objectTypeId]));
     const saved = new Map(snapshot.components.map(component => [component.name, component]));
-    const components = componentDefs.map(def => {
-        const fields = def.fields.map(field => ({name: field.name, kind: field.kind}));
-        const component = saved.get(def.name);
-        if (component === undefined) {
-            return {name: def.name, fields, rows: []};
+    const components = registered.map(component => {
+        const fields = component.fields.map(field => ({name: field.name, kind: field.kind}));
+        const savedComponent = saved.get(component.name);
+        if (savedComponent === undefined) {
+            return {name: component.name, fields, rows: []};
         }
-        const savedNames = new Set(component.fields.map(field => field.name));
-        const rows = component.rows.map(row => {
+        const savedNames = new Set(savedComponent.fields.map(field => field.name));
+        const rows = savedComponent.rows.map(row => {
             const converted = {eid: row.eid};
-            for (const field of def.fields) {
+            for (const field of component.fields) {
                 if (!savedNames.has(field.name)) {
                     // A field this loadout added: the save has no value, so the column's own default stands.
                     converted[field.name] = field.defaultValue;
@@ -105,7 +105,7 @@ export function convertSnapshot(snapshot, loadout, componentDefs) {
             }
             return converted;
         });
-        return {name: def.name, fields, rows};
+        return {name: component.name, fields, rows};
     });
     return Object.assign({}, snapshot, {
         objectTypeNames: loadout.typeNames.slice(),

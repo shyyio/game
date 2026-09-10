@@ -6,6 +6,7 @@ import {deterministicRoll} from "@/sim/Rng.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 import {SyncedFields, SyncedField} from "@/common/SyncedFields.js";
 import {syncFluidSource} from "@/sim/behaviors/util.js";
+import {MachineComponent} from "@/sim/behaviors/MachineComponent.js";
 
 // Recipe input keys are always padded to three slots.
 const RECIPE_SLOTS = 3;
@@ -99,46 +100,16 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     install(engine) {
-        engine.components.define("Machine", [
-            {name: "out", kind: "eid", defaultValue: NO_EID},
-            // Byproduct port; NO_EID unless the object type declares a second output port.
-            {name: "out2", kind: "eid", defaultValue: NO_EID},
-            {name: "in0", kind: "eid", defaultValue: NO_EID},
-            {name: "in1", kind: "eid", defaultValue: NO_EID},
-            {name: "in2", kind: "eid", defaultValue: NO_EID},
-            {name: "slot0", kind: "item", defaultValue: EMPTY},
-            {name: "slot1", kind: "item", defaultValue: EMPTY},
-            {name: "slot2", kind: "item", defaultValue: EMPTY},
-            {name: "processing0", kind: "item", defaultValue: EMPTY},
-            {name: "processing1", kind: "item", defaultValue: EMPTY},
-            {name: "processing2", kind: "item", defaultValue: EMPTY},
-            {name: "remaining", kind: "f32", defaultValue: EMPTY},
-            // Overshot progress banked past a finished craft; the next craft starts this far along.
-            {name: "carry", kind: "f32"},
-            {name: "output", kind: "item", defaultValue: EMPTY},
-            {name: "lastOutput", kind: "item", defaultValue: EMPTY},
-            // This craft's rolled byproduct (EMPTY if the recipe has none or the roll missed).
-            {name: "byproduct", kind: "item", defaultValue: EMPTY},
-            {name: "lastByproduct", kind: "item", defaultValue: EMPTY},
-            // The two behavior constants the submit pass reads per machine per tick. Kept on the row so
-            // the pass never hops through PlacedObject to reach the behavior instance.
-            {name: "inputCount"},
-            {name: "processingTicks"},
-            // Per-tick processing progress (1 unstaffed, MANNED_SPEED_MULTIPLIER fully staffed;
-            // grants are full-crew-or-nothing); written by WorkerNetworks via setWorkers.
-            {name: "workerStep", kind: "f32", defaultValue: 1},
-            // Logic-network switch; a disabled machine pauses whole (no gather, craft, or output).
-            {name: "enabled", defaultValue: 1},
-        ], {sparse: true});
+        engine.components.register(new MachineComponent());
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => MachineBehavior._submitIntents(engine));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => MachineBehavior._finish(engine));
     }
 
     onSpawn(engine, eid, type, message) {
-        const def = engine.components.get("Machine");
-        def.attach(eid);
-        const machine = def.store;
-        const row = def.row(eid);
+        const machines = engine.components.get("Machine");
+        machines.attach(eid);
+        const machine = machines.store;
+        const row = machines.row(eid);
         machine.inputCount[row] = this.inputCount;
         machine.processingTicks[row] = this.processingTicks;
         for (const [i, port] of type.inputPorts.entries()) {
@@ -165,19 +136,19 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, eid) {
-        const def = engine.components.get("Machine");
-        const machine = def.store;
-        const row = def.row(eid);
+        const machines = engine.components.get("Machine");
+        const machine = machines.store;
+        const row = machines.row(eid);
         for (const [i, port] of this.type.inputPorts.entries()) {
             if (port.fluid) {
                 engine.ports.unmarkFluid(machine[IN_COLS[i]][row]);
             }
         }
-        engine.render.unregisterPort(def.store.out[row]);
-        engine.ports.setFluidSource(def.store.out[row], EMPTY);
+        engine.render.unregisterPort(machines.store.out[row]);
+        engine.ports.setFluidSource(machines.store.out[row], EMPTY);
         if (this.hasByproductPort) {
-            engine.render.unregisterPort(def.store.out2[row]);
-            engine.ports.setFluidSource(def.store.out2[row], EMPTY);
+            engine.render.unregisterPort(machines.store.out2[row]);
+            engine.ports.setFluidSource(machines.store.out2[row], EMPTY);
         }
         if (this.workerCost > 0) {
             const position = engine.Position;
@@ -186,27 +157,27 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     setWorkers(engine, eid, granted) {
-        const def = engine.components.get("Machine");
-        def.store.workerStep[def.row(eid)] = 1 + (MANNED_SPEED_MULTIPLIER - 1) * (granted / this.workerCost);
+        const machines = engine.components.get("Machine");
+        machines.store.workerStep[machines.row(eid)] = 1 + (MANNED_SPEED_MULTIPLIER - 1) * (granted / this.workerCost);
     }
 
     renderedPortEids(engine, eid) {
-        const def = engine.components.get("Machine");
-        const row = def.row(eid);
-        const portEids = [def.store.out[row]];
+        const machines = engine.components.get("Machine");
+        const row = machines.row(eid);
+        const portEids = [machines.store.out[row]];
         if (this.hasByproductPort) {
-            portEids.push(def.store.out2[row]);
+            portEids.push(machines.store.out2[row]);
         }
         return portEids;
     }
 
     resyncRenderedPorts(engine, eid) {
-        const def = engine.components.get("Machine");
-        const row = def.row(eid);
-        const out = def.store.out[row];
+        const machines = engine.components.get("Machine");
+        const row = machines.row(eid);
+        const out = machines.store.out[row];
         engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
         if (this.hasByproductPort) {
-            const out2 = def.store.out2[row];
+            const out2 = machines.store.out2[row];
             engine.render.registerPort(out2, engine.Position.x[out2], engine.Position.y[out2]);
         }
     }
@@ -219,9 +190,9 @@ export class MachineBehavior extends AbstractBehavior {
      */
     inspect(engine, eid, objectRef) {
         const item = engine.Port.item;
-        const def = engine.components.get("Machine");
-        const machine = def.store;
-        const row = def.row(eid);
+        const machines = engine.components.get("Machine");
+        const machine = machines.store;
+        const row = machines.row(eid);
         const inCols = columns(machine, IN_COLS);
         const slotCols = columns(machine, SLOT_COLS);
         const processingCols = columns(machine, PROCESSING_COLS);
@@ -301,10 +272,10 @@ export class MachineBehavior extends AbstractBehavior {
      */
     onRebuild(engine) {
         const placed = engine.placed;
-        const def = engine.components.get("Machine");
-        const machine = def.store;
-        const eids = def.eids;
-        for (let row = 0; row < def.count; row += 1) {
+        const machines = engine.components.get("Machine");
+        const machine = machines.store;
+        const eids = machines.eids;
+        for (let row = 0; row < machines.count; row += 1) {
             const behavior = placed.behaviorFor(placed.objectTypeIdOf(eids[row]));
             machine.inputCount[row] = behavior.inputCount;
             machine.processingTicks[row] = behavior.processingTicks;
@@ -316,14 +287,14 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     logicRead(engine, eid, key) {
-        const def = engine.components.get("Machine");
-        const row = def.row(eid);
+        const machines = engine.components.get("Machine");
+        const row = machines.row(eid);
         if (key === LOGIC_KEY_ENABLED) {
-            return def.store.enabled[row];
+            return machines.store.enabled[row];
         }
         if (key === LOGIC_KEY_PROCESSING) {
             // A held product is a craft in flight; a switched-off machine is frozen, not working.
-            if (def.store.enabled[row] === 0 || def.store.output[row] === EMPTY) {
+            if (machines.store.enabled[row] === 0 || machines.store.output[row] === EMPTY) {
                 return 0;
             }
             return 1;
@@ -335,11 +306,11 @@ export class MachineBehavior extends AbstractBehavior {
         if (key !== LOGIC_KEY_ENABLED) {
             return false;
         }
-        const def = engine.components.get("Machine");
+        const machines = engine.components.get("Machine");
         if (value === 0) {
-            def.store.enabled[def.row(eid)] = 0;
+            machines.store.enabled[machines.row(eid)] = 0;
         } else {
-            def.store.enabled[def.row(eid)] = 1;
+            machines.store.enabled[machines.row(eid)] = 1;
         }
         return true;
     }
@@ -434,8 +405,8 @@ export class MachineBehavior extends AbstractBehavior {
     static _submitIntents(engine) {
         const placed = engine.placed;
         const item = engine.Port.item;
-        const def = engine.components.get("Machine");
-        const machine = def.store;
+        const machines = engine.components.get("Machine");
+        const machine = machines.store;
         const inCols = columns(machine, IN_COLS);
         const slotCols = columns(machine, SLOT_COLS);
         const processingCols = columns(machine, PROCESSING_COLS);
@@ -451,8 +422,8 @@ export class MachineBehavior extends AbstractBehavior {
         const enabled = machine.enabled;
         // Hoisted: `count` and `eids` reach through the descriptor into the world's membership set, and
         // this loop runs once per machine per tick.
-        const eids = def.eids;
-        const count = def.count;
+        const eids = machines.eids;
+        const count = machines.count;
         for (let row = 0; row < count; row += 1) {
             if (enabled[row] === 0) {
                 continue;
@@ -546,11 +517,11 @@ export class MachineBehavior extends AbstractBehavior {
      */
     static _finish(engine) {
         const placed = engine.placed;
-        const def = engine.components.get("Machine");
-        const machine = def.store;
+        const machines = engine.components.get("Machine");
+        const machine = machines.store;
         const processingCols = columns(machine, PROCESSING_COLS);
-        const count = def.count;
-        const eids = def.eids;
+        const count = machines.count;
+        const eids = machines.eids;
         for (let row = 0; row < count; row += 1) {
             const byproductPending = machine.byproduct[row] !== EMPTY;
             const byproductDelivered = !byproductPending || engine.transfers.wasDest(machine.out2[row]);
@@ -559,7 +530,7 @@ export class MachineBehavior extends AbstractBehavior {
                 engine.itemProduced.notify(placed.claimOwnerOf(eid), machine.output[row], 1);
                 if (machine.lastOutput[row] !== machine.output[row]) {
                     machine.lastOutput[row] = machine.output[row];
-                    engine.sync.markDirty(def, eid);
+                    engine.sync.markDirty(machines, eid);
                 }
                 machine.output[row] = EMPTY;
                 machine.remaining[row] = EMPTY;

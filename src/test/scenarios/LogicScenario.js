@@ -33,8 +33,8 @@ function place(engine, type, x, y) {
     if (!engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, Direction.UP))) {
         throw new Error(`Logic scenario failed to place ${type.name} at (${x}, ${y})`);
     }
-    const def = engine.placed.objects;
-    return def.store.objectRef[def.row(def.eids[def.count - 1])];
+    const objects = engine.placed.objects;
+    return objects.store.objectRef[objects.row(objects.eids[objects.count - 1])];
 }
 
 /**

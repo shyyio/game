@@ -6,6 +6,7 @@ import {
 } from "../common/constants.js";
 import {LogicNetworks} from "./LogicNetworks.js";
 import {LogicRules} from "./LogicRules.js";
+import {LogicTerminalComponent} from "./LogicTerminalComponent.js";
 
 // Rules evaluate before the gate's buffered toggles apply (-30), so a rule's write lands this tick.
 const ORDER_RULES = -40;
@@ -17,9 +18,7 @@ const ORDER_RULES = -40;
 export class LogicTerminalBehavior extends AbstractBehavior {
 
     install(engine) {
-        engine.components.define("LogicTerminal", [
-            {name: "tier", defaultValue: LOGIC_TIER_BASE},
-        ], {sparse: true});
+        engine.components.register(new LogicTerminalComponent());
         engine.provide(LogicRules, new LogicRules());
         engine.registerSystem(
             TickPhase.SUBMIT_INTENTS,
@@ -49,9 +48,9 @@ export class LogicTerminalBehavior extends AbstractBehavior {
         const placed = engine.placed;
         const networks = engine.resolve(LogicNetworks);
         const rulesService = engine.resolve(LogicRules);
-        const def = engine.components.get("LogicTerminal");
-        const eids = def.eids;
-        for (let row = 0; row < def.count; row += 1) {
+        const terminals = engine.components.get("LogicTerminal");
+        const eids = terminals.eids;
+        for (let row = 0; row < terminals.count; row += 1) {
             const eid = eids[row];
             const rules = rulesService.rulesOf(placed.objectRefOf(eid));
             if (rules.length === 0) {

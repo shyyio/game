@@ -335,14 +335,14 @@ export class RoadNetwork {
      */
     rebuild() {
         this._tiles = new Map();
-        const def = this.placed.objects;
-        for (let row = 0; row < def.count; row += 1) {
-            const behavior = this.placed.behaviorFor(def.store.objectTypeId[row]);
+        const objects = this.placed.objects;
+        for (let row = 0; row < objects.count; row += 1) {
+            const behavior = this.placed.behaviorFor(objects.store.objectTypeId[row]);
             if (!(behavior instanceof RoadBehavior)) {
                 continue;
             }
-            const objectRef = def.store.objectRef[row];
-            for (const cell of this.footprintOf(behavior, def.eids[row])) {
+            const objectRef = objects.store.objectRef[row];
+            for (const cell of this.footprintOf(behavior, objects.eids[row])) {
                 this.addRoad(cell.x, cell.y, objectRef);
             }
         }

@@ -6,6 +6,8 @@ import {
     PipeFluidSetEvent,
     PipeFluidBatchEvent,
 } from "../common/events.js";
+import {PipeNetworkComponent} from "./PipeNetworkComponent.js";
+import {PipeNetworkMemberComponent} from "./PipeNetworkMemberComponent.js";
 
 /**
  * One same-chunk connected component of pipe tiles, holding a uniform (fluidType, amount).
@@ -74,14 +76,8 @@ export class Pipes {
         this._emittedNets = [];
 
         // snapshotOnly mirrors of the JS records above, written at save/load.
-        this._netDef = engine.components.define("PipeNetwork", [
-            {name: "fluidType", kind: "item", defaultValue: EMPTY},
-            {name: "amount"},
-        ], {snapshotOnly: true});
-        this._memberDef = engine.components.define("PipeNetworkMember", [
-            {name: "network", kind: "eid", defaultValue: NO_EID},
-            {name: "objectRef", defaultValue: NO_EID},
-        ], {snapshotOnly: true});
+        this._savedNetworks = engine.components.register(new PipeNetworkComponent());
+        this._savedMembers = engine.components.register(new PipeNetworkMemberComponent());
 
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
         engine.registerSystem(TickPhase.POST_RESOLVE, () => this._apply());
@@ -543,19 +539,19 @@ export class Pipes {
      * @returns {void}
      */
     _materialize() {
-        for (const def of [this._memberDef, this._netDef]) {
-            for (const eid of def.entities()) {
+        for (const component of [this._savedMembers, this._savedNetworks]) {
+            for (const eid of component.entities()) {
                 this.engine.components.destroyEntity(eid);
             }
         }
-        const N = this._netDef.store;
-        const M = this._memberDef.store;
+        const N = this._savedNetworks.store;
+        const M = this._savedMembers.store;
         for (const net of this.networks) {
-            const netEid = this._netDef.create();
+            const netEid = this._savedNetworks.create();
             N.fluidType[netEid] = net.fluidType;
             N.amount[netEid] = net.amount;
             for (const pipe of net.pipes) {
-                const memberEid = this._memberDef.create();
+                const memberEid = this._savedMembers.create();
                 M.network[memberEid] = netEid;
                 M.objectRef[memberEid] = pipe.id;
             }
@@ -591,17 +587,17 @@ export class Pipes {
         this._networkByTile = new Map();
         this._networksByChunk = new Map();
 
-        const N = this._netDef.store;
-        const M = this._memberDef.store;
+        const N = this._savedNetworks.store;
+        const M = this._savedMembers.store;
         const membersByNet = new Map();
-        for (const eid of this._memberDef.entities()) {
+        for (const eid of this._savedMembers.entities()) {
             const pipe = this.pipeById(M.objectRef[eid]);
             if (pipe === null) {
                 throw new Error(`PipeNetworkMember references unknown pipe ${M.objectRef[eid]}`);
             }
             getOrCreate(membersByNet, M.network[eid], () => []).push(pipe);
         }
-        for (const netEid of this._netDef.entities()) {
+        for (const netEid of this._savedNetworks.entities()) {
             const pipes = membersByNet.get(netEid);
             if (pipes === undefined) {
                 throw new Error(`PipeNetwork entity ${netEid} has no members`);

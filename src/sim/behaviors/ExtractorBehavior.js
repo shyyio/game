@@ -4,6 +4,7 @@ import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 import {SyncedFields, SyncedField} from "@/common/SyncedFields.js";
 import {LAYER_RESOURCE} from "@/sim/behaviors/ResourceBehavior.js";
+import {ExtractorComponent} from "@/sim/behaviors/ExtractorComponent.js";
 
 const SYNCED_FIELDS = new SyncedFields("Extractor", [new SyncedField("lastOutput", EMPTY)]);
 
@@ -30,18 +31,7 @@ export class ExtractorBehavior extends AbstractBehavior {
     }
 
     install(engine) {
-        engine.components.define("Extractor", [
-            {name: "out", kind: "eid", defaultValue: NO_EID},
-            {name: "resourceType", defaultValue: EMPTY},
-            {name: "remaining", kind: "f32", defaultValue: EMPTY},
-            // Overshot progress banked past a finished cycle; the next cycle starts this far along.
-            {name: "carry", kind: "f32"},
-            {name: "output", kind: "item", defaultValue: EMPTY},
-            {name: "lastOutput", kind: "item", defaultValue: EMPTY},
-            // The countdown length, kept on the row so the submit pass reaches no behavior instance
-            // while an extractor is merely counting down.
-            {name: "processingTicks"},
-        ], {sparse: true});
+        engine.components.register(new ExtractorComponent());
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => ExtractorBehavior._submitIntents(engine));
         engine.registerSystem(TickPhase.POST_RESOLVE, () => ExtractorBehavior._finish(engine));
     }
@@ -55,10 +45,10 @@ export class ExtractorBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, eid, type, message) {
-        const def = engine.components.get("Extractor");
-        def.attach(eid);
-        const extractor = def.store;
-        const row = def.row(eid);
+        const extractors = engine.components.get("Extractor");
+        extractors.attach(eid);
+        const extractor = extractors.store;
+        const row = extractors.row(eid);
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
         extractor.out[row] = output.port;
         extractor.processingTicks[row] = this.processingTicks;
@@ -79,8 +69,8 @@ export class ExtractorBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, eid) {
-        const def = engine.components.get("Extractor");
-        const out = def.store.out[def.row(eid)];
+        const extractors = engine.components.get("Extractor");
+        const out = extractors.store.out[extractors.row(eid)];
         engine.render.unregisterPort(out);
         // The port may outlive the extractor (an adjacent pipe pins it); it no longer produces.
         engine.ports.setFluidSource(out, EMPTY);
@@ -90,16 +80,16 @@ export class ExtractorBehavior extends AbstractBehavior {
         if (!this.type.outputPorts[0].render) {
             return [];
         }
-        const def = engine.components.get("Extractor");
-        return [def.store.out[def.row(eid)]];
+        const extractors = engine.components.get("Extractor");
+        return [extractors.store.out[extractors.row(eid)]];
     }
 
     resyncRenderedPorts(engine, eid) {
         if (!this.type.outputPorts[0].render) {
             return;
         }
-        const def = engine.components.get("Extractor");
-        const out = def.store.out[def.row(eid)];
+        const extractors = engine.components.get("Extractor");
+        const out = extractors.store.out[extractors.row(eid)];
         engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
 
@@ -108,9 +98,9 @@ export class ExtractorBehavior extends AbstractBehavior {
      * @returns {InspectHeartbeatEvent}
      */
     inspect(engine, eid, objectRef) {
-        const def = engine.components.get("Extractor");
-        const extractor = def.store;
-        const row = def.row(eid);
+        const extractors = engine.components.get("Extractor");
+        const extractor = extractors.store;
+        const row = extractors.row(eid);
         const resource = extractor.resourceType[row];
         // The wire carries whole ticks; the fractional countdown stays sim-side.
         let remaining = null;
@@ -148,10 +138,10 @@ export class ExtractorBehavior extends AbstractBehavior {
      */
     onRebuild(engine) {
         const placed = engine.placed;
-        const def = engine.components.get("Extractor");
-        const extractor = def.store;
-        const eids = def.eids;
-        for (let row = 0; row < def.count; row += 1) {
+        const extractors = engine.components.get("Extractor");
+        const extractor = extractors.store;
+        const eids = extractors.eids;
+        for (let row = 0; row < extractors.count; row += 1) {
             const behavior = placed.behaviorFor(placed.objectTypeIdOf(eids[row]));
             extractor.processingTicks[row] = behavior.processingTicks;
             const product = behavior.recipes.get(extractor.resourceType[row]);
@@ -171,10 +161,10 @@ export class ExtractorBehavior extends AbstractBehavior {
     static _submitIntents(engine) {
         const placed = engine.placed;
         const item = engine.Port.item;
-        const def = engine.components.get("Extractor");
-        const extractor = def.store;
-        const eids = def.eids;
-        const count = def.count;
+        const extractors = engine.components.get("Extractor");
+        const extractor = extractors.store;
+        const eids = extractors.eids;
+        const count = extractors.count;
         for (let row = 0; row < count; row += 1) {
             if (extractor.remaining[row] > 0) {
                 const next = extractor.remaining[row] - 1;
@@ -217,17 +207,17 @@ export class ExtractorBehavior extends AbstractBehavior {
      */
     static _finish(engine) {
         const placed = engine.placed;
-        const def = engine.components.get("Extractor");
-        const extractor = def.store;
-        const eids = def.eids;
-        const count = def.count;
+        const extractors = engine.components.get("Extractor");
+        const extractor = extractors.store;
+        const eids = extractors.eids;
+        const count = extractors.count;
         for (let row = 0; row < count; row += 1) {
             if (engine.transfers.wasDest(extractor.out[row])) {
                 const eid = eids[row];
                 engine.itemProduced.notify(placed.claimOwnerOf(eid), extractor.output[row], 1);
                 if (extractor.lastOutput[row] !== extractor.output[row]) {
                     extractor.lastOutput[row] = extractor.output[row];
-                    engine.sync.markDirty(def, eid);
+                    engine.sync.markDirty(extractors, eid);
                 }
                 extractor.output[row] = EMPTY;
                 extractor.remaining[row] = EMPTY;

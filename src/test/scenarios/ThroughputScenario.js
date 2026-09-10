@@ -37,6 +37,7 @@ import {BeltType, SplitterType} from "@/mods/logistics/common/objectTypes.js";
 import {TradingTerminalType} from "@/mods/market/common/objectTypes.js";
 import {ConfigureTradingTerminalMessage} from "@/mods/market/common/messages.js";
 import {MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "@/mods/market/common/constants.js";
+import {ThroughputSinkComponent} from "./ThroughputSinkComponent.js";
 
 // Own item range, clear of BaseGame's 3xx and the engine fixtures' 94x.
 export const ITEM_TYPE_THROUGHPUT_FEED = 950;
@@ -89,11 +90,7 @@ class SinkBehavior extends AbstractBehavior {
      * @returns {void}
      */
     install(engine) {
-        engine.components.define("ThroughputSink", [
-            {name: "in", kind: "eid", defaultValue: NO_EID},
-            {name: "consumed"},
-            {name: "lastConsumed", defaultValue: EMPTY},
-        ], {sparse: true});
+        engine.components.register(new ThroughputSinkComponent());
         engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => SinkBehavior._submitIntents(engine));
     }
 
@@ -105,10 +102,10 @@ class SinkBehavior extends AbstractBehavior {
      * @returns {void}
      */
     onSpawn(engine, eid, type, message) {
-        const def = engine.components.get("ThroughputSink");
-        def.attach(eid);
-        const row = def.row(eid);
-        def.store.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;
+        const sinks = engine.components.get("ThroughputSink");
+        sinks.attach(eid);
+        const row = sinks.row(eid);
+        sinks.store.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;
     }
 
     /**
@@ -120,9 +117,9 @@ class SinkBehavior extends AbstractBehavior {
      */
     static _submitIntents(engine) {
         const item = engine.Port.item;
-        const def = engine.components.get("ThroughputSink");
-        const sink = def.store;
-        const count = def.count;
+        const sinks = engine.components.get("ThroughputSink");
+        const sink = sinks.store;
+        const count = sinks.count;
         for (let row = 0; row < count; row += 1) {
             const inPort = sink.in[row];
             if (item[inPort] === EMPTY) {
@@ -224,10 +221,10 @@ function intParam(raw, fallback) {
  * @returns {number}
  */
 export function sinkConsumedTotal(engine) {
-    const def = engine.components.get("ThroughputSink");
-    const consumed = def.store.consumed;
+    const sinks = engine.components.get("ThroughputSink");
+    const consumed = sinks.store.consumed;
     let total = 0;
-    for (let row = 0; row < def.count; row += 1) {
+    for (let row = 0; row < sinks.count; row += 1) {
         total += consumed[row];
     }
     return total;

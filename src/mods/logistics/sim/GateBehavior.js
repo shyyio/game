@@ -1,13 +1,11 @@
 import {AbstractBehavior, TickPhase, EMPTY, NO_EID, LAYER_SURFACE, CONVEYS_ITEM, CONVEYS_FLUID, SyncedFields, SyncedField} from "@spup/sdk";
 import {LOGIC_KEY_OPEN} from "../common/constants.js";
 import {gateConnections, placementBlockedByGate} from "../common/gateConnections.js";
+import {GateComponent, PENDING_NONE} from "./GateComponent.js";
 
 // Buffered toggles land first, then mode review, then the gate's own intents.
 const ORDER_APPLY_PENDING = -30;
 const ORDER_REVIEW = -20;
-
-// No toggle buffered.
-const PENDING_NONE = -1;
 
 const SYNCED_FIELDS = new SyncedFields("Gate", [
     new SyncedField("open", 1),
@@ -27,21 +25,7 @@ export class GateBehavior extends AbstractBehavior {
     }
 
     install(engine) {
-        engine.components.define("Gate", [
-            {name: "in", kind: "eid", defaultValue: NO_EID},
-            {name: "out", kind: "eid", defaultValue: NO_EID},
-            // Item mode's internal port; NO_EID in fluid mode.
-            {name: "int", kind: "eid", defaultValue: NO_EID},
-            {name: "open", defaultValue: 1},
-            // Current mode, adopted from coupled transports (see _review).
-            {name: "fluid"},
-            // Fluid mode's one-unit buffer, EMPTY when empty.
-            {name: "buffered", kind: "item", defaultValue: EMPTY},
-            // The last fluid buffered, so a client placing a pipe knows what the gate carries.
-            {name: "lastOutput", kind: "item", defaultValue: EMPTY},
-            // Toggle request applied at the next tick; PENDING_NONE when idle.
-            {name: "pendingOpen", defaultValue: PENDING_NONE},
-        ], {sparse: true});
+        engine.components.register(new GateComponent());
         engine.registerPlacementGuard((type, x, y, direction) => !placementBlockedByGate(
             (tx, ty) => GateBehavior._occupantAt(engine, tx, ty),
             occupant => occupant.type.behavior instanceof GateBehavior,
@@ -54,10 +38,10 @@ export class GateBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, eid, type, message) {
-        const def = engine.components.get("Gate");
-        def.attach(eid);
-        const gate = def.store;
-        const row = def.row(eid);
+        const gates = engine.components.get("Gate");
+        gates.attach(eid);
+        const gate = gates.store;
+        const row = gates.row(eid);
         gate.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;
         gate.out[row] = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction).port;
         gate.open[row] = 1;
@@ -76,9 +60,9 @@ export class GateBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, eid) {
-        const def = engine.components.get("Gate");
-        const gate = def.store;
-        const row = def.row(eid);
+        const gates = engine.components.get("Gate");
+        const gate = gates.store;
+        const row = gates.row(eid);
         if (gate.fluid[row] === 1) {
             if (gate.open[row] === 1) {
                 engine.ports.unmarkFluid(gate.in[row]);
@@ -95,8 +79,8 @@ export class GateBehavior extends AbstractBehavior {
         if (key !== LOGIC_KEY_OPEN) {
             return null;
         }
-        const def = engine.components.get("Gate");
-        return def.store.open[def.row(eid)];
+        const gates = engine.components.get("Gate");
+        return gates.store.open[gates.row(eid)];
     }
 
     logicWrite(engine, eid, key, value) {
@@ -123,8 +107,8 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     requestOpen(engine, eid, open) {
-        const def = engine.components.get("Gate");
-        def.store.pendingOpen[def.row(eid)] = open ? 1 : 0;
+        const gates = engine.components.get("Gate");
+        gates.store.pendingOpen[gates.row(eid)] = open ? 1 : 0;
     }
 
     /**
@@ -146,15 +130,15 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {boolean} whether the state changed
      */
     static _applyOpen(engine, eid, open) {
-        const def = engine.components.get("Gate");
-        const gate = def.store;
-        const row = def.row(eid);
+        const gates = engine.components.get("Gate");
+        const gate = gates.store;
+        const row = gates.row(eid);
         const flag = open ? 1 : 0;
         if (gate.open[row] === flag) {
             return false;
         }
         gate.open[row] = flag;
-        engine.sync.markDirty(def, eid);
+        engine.sync.markDirty(gates, eid);
         // Unmarking the closed in-port makes the upstream network's out-edge skip it.
         if (gate.fluid[row] === 1) {
             if (flag === 1) {
@@ -167,14 +151,14 @@ export class GateBehavior extends AbstractBehavior {
     }
 
     renderedPortEids(engine, eid) {
-        const def = engine.components.get("Gate");
-        return [def.store.out[def.row(eid)]];
+        const gates = engine.components.get("Gate");
+        return [gates.store.out[gates.row(eid)]];
     }
 
     resyncRenderedPorts(engine, eid) {
-        const def = engine.components.get("Gate");
-        const gate = def.store;
-        const row = def.row(eid);
+        const gates = engine.components.get("Gate");
+        const gate = gates.store;
+        const row = gates.row(eid);
         if (gate.fluid[row] === 1) {
             return;
         }
@@ -188,9 +172,9 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     onRebuild(engine) {
-        const def = engine.components.get("Gate");
-        const gate = def.store;
-        for (let row = 0; row < def.count; row += 1) {
+        const gates = engine.components.get("Gate");
+        const gate = gates.store;
+        for (let row = 0; row < gates.count; row += 1) {
             if (gate.fluid[row] === 0) {
                 continue;
             }
@@ -236,15 +220,15 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _applyPending(engine) {
-        const def = engine.components.get("Gate");
-        const gate = def.store;
-        for (let row = 0; row < def.count; row += 1) {
+        const gates = engine.components.get("Gate");
+        const gate = gates.store;
+        for (let row = 0; row < gates.count; row += 1) {
             const pending = gate.pendingOpen[row];
             if (pending === PENDING_NONE) {
                 continue;
             }
             gate.pendingOpen[row] = PENDING_NONE;
-            GateBehavior._applyOpen(engine, def.eids[row], pending === 1);
+            GateBehavior._applyOpen(engine, gates.eids[row], pending === 1);
         }
     }
 
@@ -256,11 +240,11 @@ export class GateBehavior extends AbstractBehavior {
      */
     static _review(engine) {
         const placed = engine.placed;
-        const def = engine.components.get("Gate");
-        const gate = def.store;
+        const gates = engine.components.get("Gate");
+        const gate = gates.store;
         const position = engine.Position;
-        for (let row = 0; row < def.count; row += 1) {
-            const eid = def.eids[row];
+        for (let row = 0; row < gates.count; row += 1) {
+            const eid = gates.eids[row];
             const kinds = gateConnections(
                 (tx, ty) => GateBehavior._occupantAt(engine, tx, ty),
                 position.x[eid], position.y[eid], position.direction[eid],
@@ -288,10 +272,10 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _setMode(engine, eid, fluid) {
-        const def = engine.components.get("Gate");
-        const gate = def.store;
-        const row = def.row(eid);
-        engine.sync.markDirty(def, eid);
+        const gates = engine.components.get("Gate");
+        const gate = gates.store;
+        const row = gates.row(eid);
+        engine.sync.markDirty(gates, eid);
         engine.ports.setItem(gate.in[row], EMPTY);
         engine.ports.setItem(gate.out[row], EMPTY);
         if (fluid) {
@@ -351,9 +335,9 @@ export class GateBehavior extends AbstractBehavior {
      */
     static _submitIntents(engine) {
         const item = engine.Port.item;
-        const def = engine.components.get("Gate");
-        const gate = def.store;
-        for (let row = 0; row < def.count; row += 1) {
+        const gates = engine.components.get("Gate");
+        const gate = gates.store;
+        for (let row = 0; row < gates.count; row += 1) {
             if (gate.open[row] === 0) {
                 continue;
             }
@@ -365,7 +349,7 @@ export class GateBehavior extends AbstractBehavior {
                     engine.ports.setFluidSource(gate.out[row], resting);
                     if (gate.lastOutput[row] !== resting) {
                         gate.lastOutput[row] = resting;
-                        engine.sync.markDirty(def, def.eids[row]);
+                        engine.sync.markDirty(gates, gates.eids[row]);
                     }
                 }
                 if (gate.buffered[row] !== EMPTY) {
@@ -389,9 +373,9 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _finish(engine) {
-        const def = engine.components.get("Gate");
-        const gate = def.store;
-        for (let row = 0; row < def.count; row += 1) {
+        const gates = engine.components.get("Gate");
+        const gate = gates.store;
+        for (let row = 0; row < gates.count; row += 1) {
             if (gate.fluid[row] === 1 && gate.buffered[row] !== EMPTY && engine.transfers.wasDest(gate.out[row])) {
                 gate.buffered[row] = EMPTY;
                 engine.ports.setFluidSource(gate.out[row], EMPTY);

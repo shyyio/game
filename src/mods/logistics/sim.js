@@ -352,8 +352,8 @@ export class LogisticsSimMod extends AbstractSimMod {
         if (type === undefined || !isTerminalType(type)) {
             return;
         }
-        const def = engine.components.get("LogicTerminal");
-        const tier = def.store.tier[def.row(eid)];
+        const terminals = engine.components.get("LogicTerminal");
+        const tier = terminals.store.tier[terminals.row(eid)];
         const networks = engine.resolve(LogicNetworks);
         const deviceObjectRefs = [];
         const deviceTypeIds = [];

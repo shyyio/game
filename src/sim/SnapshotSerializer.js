@@ -69,12 +69,12 @@ export class SnapshotSerializer {
         for (const hook of this._serializeHooks) {
             hook();
         }
-        const components = engine.components.components.map(def => {
+        const components = engine.components.components.map(component => {
             const rows = [];
-            for (const slot of def.slots()) {
-                const row = {eid: def.eidAt(slot)};
-                for (const field of def.fields) {
-                    row[field.name] = def.store[field.name][slot];
+            for (const slot of component.slots()) {
+                const row = {eid: component.eidAt(slot)};
+                for (const field of component.fields) {
+                    row[field.name] = component.store[field.name][slot];
                 }
                 rows.push(row);
             }
@@ -82,8 +82,8 @@ export class SnapshotSerializer {
             // world then serializes to the same bytes however it was built.
             rows.sort((a, b) => a.eid - b.eid);
             return {
-                name: def.name,
-                fields: def.fields.map(field => ({name: field.name, kind: field.kind})),
+                name: component.name,
+                fields: component.fields.map(field => ({name: field.name, kind: field.kind})),
                 rows: rows,
             };
         });
@@ -151,14 +151,14 @@ export class SnapshotSerializer {
         const translate = value => (value === NO_EID ? NO_EID : remap.get(value));
 
         for (const component of snapshot.components) {
-            const def = engine.components.find(component.name);
+            const registered = engine.components.find(component.name);
             for (const row of component.rows) {
                 const eid = remap.get(row.eid);
-                def.attach(eid);
-                const slot = def.slot(eid);
-                for (const field of def.fields) {
+                registered.attach(eid);
+                const slot = registered.slot(eid);
+                for (const field of registered.fields) {
                     const raw = row[field.name];
-                    def.store[field.name][slot] = field.kind === "eid" ? translate(raw) : raw;
+                    registered.store[field.name][slot] = field.kind === "eid" ? translate(raw) : raw;
                 }
             }
         }
@@ -223,7 +223,7 @@ export class SnapshotSerializer {
 
     /**
      * Throws when `snapshot`'s components no longer match the ones this build registers.
-     * Rows restore by name against the current ComponentDefs: a dropped component crashes mid-restore,
+     * Rows restore by name against the current components: a dropped component crashes mid-restore,
      * and a drifted field restores silently as a zero-filled column or an i32 read as an eid.
      * @private
      * @param {{components: object[]}} snapshot
@@ -234,13 +234,13 @@ export class SnapshotSerializer {
         const savedNames = new Set();
         for (const component of snapshot.components) {
             savedNames.add(component.name);
-            const def = this.engine.components.find(component.name);
-            if (def === undefined) {
+            const registered = this.engine.components.find(component.name);
+            if (registered === undefined) {
                 mismatches.push(`component "${component.name}" is in the save but no longer registered`);
                 continue;
             }
             const savedKinds = new Map(component.fields.map(field => [field.name, field.kind]));
-            for (const field of def.fields) {
+            for (const field of registered.fields) {
                 const savedKind = savedKinds.get(field.name);
                 if (savedKind === undefined) {
                     mismatches.push(`${component.name}.${field.name} is registered but missing from the save`);
@@ -249,16 +249,16 @@ export class SnapshotSerializer {
                     mismatches.push(`${component.name}.${field.name} was saved as "${savedKind}", now "${field.kind}"`);
                 }
             }
-            const currentNames = new Set(def.fields.map(field => field.name));
+            const currentNames = new Set(registered.fields.map(field => field.name));
             for (const name of savedKinds.keys()) {
                 if (!currentNames.has(name)) {
                     mismatches.push(`${component.name}.${name} is in the save but no longer registered`);
                 }
             }
         }
-        for (const def of this.engine.components.components) {
-            if (!savedNames.has(def.name)) {
-                mismatches.push(`component "${def.name}" is registered but missing from the save`);
+        for (const component of this.engine.components.components) {
+            if (!savedNames.has(component.name)) {
+                mismatches.push(`component "${component.name}" is registered but missing from the save`);
             }
         }
         if (mismatches.length > 0) {

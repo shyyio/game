@@ -1,5 +1,3 @@
-import {AbstractComponent} from "@/sim/AbstractComponent.js";
-
 /**
  * Every {@link AbstractComponent} a loadout registers, in definition order. The generic serializer
  * walks these, so any state a module keeps in a component round-trips with no bespoke save code.
@@ -38,14 +36,6 @@ export class ComponentRegistry {
             component.bind(this.engine.world);
         }
         return component;
-    }
-
-    /**
-     * @deprecated transitional; registers a bare component
-     * @returns {AbstractComponent}
-     */
-    define(name, fieldSpecs, options) {
-        return this.register(new AbstractComponent(name, fieldSpecs, options));
     }
 
     /**

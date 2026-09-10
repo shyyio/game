@@ -2,7 +2,7 @@ import {NotImplementedError} from "@/common/error.js";
 
 /**
  * The optional sim part of a mod: bespoke ECS content registered on the engine. A sim mod defines
- * components (engine.components.define), registers per-phase systems (engine.registerSystem), and
+ * components (engine.components.register), registers per-phase systems (engine.registerSystem), and
  * handles its spawn/despawn messages (engine.registerMessageHandler) plus chunk sync and inspection.
  */
 export class AbstractSimMod {

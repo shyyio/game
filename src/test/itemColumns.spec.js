@@ -35,9 +35,9 @@ const ITEM_COLUMNS = [
 test("every column holding an item type is tagged for conversion", async () => {
     const engine = await makeGameEngine();
     const kinds = new Map();
-    for (const def of engine.components.components) {
-        for (const field of def.fields) {
-            kinds.set(`${def.name}.${field.name}`, field.kind);
+    for (const component of engine.components.components) {
+        for (const field of component.fields) {
+            kinds.set(`${component.name}.${field.name}`, field.kind);
         }
     }
     for (const column of ITEM_COLUMNS) {

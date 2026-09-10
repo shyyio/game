@@ -11,11 +11,11 @@ const INITIAL_CAPACITY = 1024;
 class SyncedSet {
 
     /**
-     * @param {ComponentDef} def
+     * @param {AbstractComponent} component
      * @param {SyncedField[]} fields
      */
-    constructor(def, fields) {
-        this.def = def;
+    constructor(component, fields) {
+        this.component = component;
         this.fields = fields;
         this.dirty = [];
         this.isDirty = new Uint8Array(INITIAL_CAPACITY);
@@ -50,7 +50,7 @@ class SyncedSet {
      * @returns {number[]}
      */
     valuesAt(row) {
-        return this.fields.map(field => this.def.store[field.name][row]);
+        return this.fields.map(field => this.component.store[field.name][row]);
     }
 
     /**
@@ -75,7 +75,7 @@ class SyncedSet {
      * @returns {boolean}
      */
     offDefault(row) {
-        return this.fields.some(field => this.def.store[field.name][row] !== field.defaultValue);
+        return this.fields.some(field => this.component.store[field.name][row] !== field.defaultValue);
     }
 }
 
@@ -91,7 +91,7 @@ export class FieldSync {
     constructor(engine) {
         this.engine = engine;
         /**
-         * @type {Map<ComponentDef, SyncedSet>}
+         * @type {Map<AbstractComponent, SyncedSet>}
          * @private
          */
         this._sets = new Map();
@@ -100,44 +100,44 @@ export class FieldSync {
     /**
      * Registers a behavior's synced fields on a sparse component it does not already have; each
      * field's default must match its component's.
-     * @param {ComponentDef} def
+     * @param {AbstractComponent} component
      * @param {SyncedField[]} fields
      * @returns {void}
      */
-    register(def, fields) {
-        if (!def.sparse) {
-            throw new Error(`Synced fields need a sparse component, "${def.name}" is dense`);
+    register(component, fields) {
+        if (!component.sparse) {
+            throw new Error(`Synced fields need a sparse component, "${component.name}" is dense`);
         }
-        if (this._sets.has(def)) {
-            throw new Error(`Component "${def.name}" already has synced fields`);
+        if (this._sets.has(component)) {
+            throw new Error(`Component "${component.name}" already has synced fields`);
         }
         for (const field of fields) {
-            const defined = def.fields.find(candidate => candidate.name === field.name);
+            const defined = component.fields.find(candidate => candidate.name === field.name);
             if (defined === undefined) {
-                throw new Error(`Synced field "${field.name}" is not on component "${def.name}"`);
+                throw new Error(`Synced field "${field.name}" is not on component "${component.name}"`);
             }
             if (defined.defaultValue !== field.defaultValue) {
-                throw new Error(`Synced field "${def.name}.${field.name}" default ${field.defaultValue} differs from the component's ${defined.defaultValue}`);
+                throw new Error(`Synced field "${component.name}.${field.name}" default ${field.defaultValue} differs from the component's ${defined.defaultValue}`);
             }
             // The shadow columns and the wire carry int32; a float would round-trip truncated.
             if (defined.kind === "f32") {
-                throw new Error(`Synced field "${def.name}.${field.name}" is f32, which the wire cannot carry`);
+                throw new Error(`Synced field "${component.name}.${field.name}" is f32, which the wire cannot carry`);
             }
             if (field.name === "type" || field.name === "direction") {
-                throw new Error(`Synced field "${def.name}.${field.name}" would overwrite the client entry's own data.${field.name}`);
+                throw new Error(`Synced field "${component.name}.${field.name}" would overwrite the client entry's own data.${field.name}`);
             }
         }
-        this._sets.set(def, new SyncedSet(def, fields));
+        this._sets.set(component, new SyncedSet(component, fields));
     }
 
     /**
      * Queues a row whose synced fields changed for the next emit.
-     * @param {ComponentDef} def
+     * @param {AbstractComponent} component
      * @param {number} eid
      * @returns {void}
      */
-    markDirty(def, eid) {
-        const set = this._set(def);
+    markDirty(component, eid) {
+        const set = this._set(component);
         set.grow(eid);
         if (set.isDirty[eid] === 1) {
             return;
@@ -149,29 +149,29 @@ export class FieldSync {
     /**
      * Resets a freshly spawned row's shadow to the defaults the client assumes, and queues it when it
      * starts off them.
-     * @param {ComponentDef} def
+     * @param {AbstractComponent} component
      * @param {number} eid
      * @returns {void}
      */
-    markSpawned(def, eid) {
-        const set = this._set(def);
+    markSpawned(component, eid) {
+        const set = this._set(component);
         set.grow(eid);
         set.adopt(eid, set.fields.map(field => field.defaultValue));
-        if (set.offDefault(def.row(eid))) {
-            this.markDirty(def, eid);
+        if (set.offDefault(component.row(eid))) {
+            this.markDirty(component, eid);
         }
     }
 
     /**
      * One row's current values as a single event, for a corrective send to one session.
-     * @param {ComponentDef} def
+     * @param {AbstractComponent} component
      * @param {number} eid
      * @returns {ObjectFieldsEvent}
      */
-    eventFor(def, eid) {
-        const set = this._set(def);
+    eventFor(component, eid) {
+        const set = this._set(component);
         const position = this.engine.Position;
-        return new ObjectFieldsEvent(this.engine.placed.objectRefOf(eid), position.x[eid], position.y[eid], set.valuesAt(def.row(eid)));
+        return new ObjectFieldsEvent(this.engine.placed.objectRefOf(eid), position.x[eid], position.y[eid], set.valuesAt(component.row(eid)));
     }
 
     /**
@@ -190,7 +190,7 @@ export class FieldSync {
             const batches = new Map();
             for (const eid of set.dirty) {
                 set.isDirty[eid] = 0;
-                const row = set.def.row(eid);
+                const row = set.component.row(eid);
                 if (row < 0) {
                     continue;
                 }
@@ -231,7 +231,7 @@ export class FieldSync {
         for (const set of this._sets.values()) {
             let batch = null;
             for (const eid of eids) {
-                const row = set.def.row(eid);
+                const row = set.component.row(eid);
                 if (row < 0 || !set.offDefault(row)) {
                     continue;
                 }
@@ -264,9 +264,9 @@ export class FieldSync {
      */
     rebuild() {
         for (const set of this._sets.values()) {
-            const def = set.def;
-            for (let row = 0; row < def.count; row += 1) {
-                const eid = def.eids[row];
+            const component = set.component;
+            for (let row = 0; row < component.count; row += 1) {
+                const eid = component.eids[row];
                 set.grow(eid);
                 set.adopt(eid, set.valuesAt(row));
             }
@@ -275,13 +275,13 @@ export class FieldSync {
 
     /**
      * @private
-     * @param {ComponentDef} def
+     * @param {AbstractComponent} component
      * @returns {SyncedSet}
      */
-    _set(def) {
-        const set = this._sets.get(def);
+    _set(component) {
+        const set = this._sets.get(component);
         if (set === undefined) {
-            throw new Error(`No synced fields registered on component "${def.name}"`);
+            throw new Error(`No synced fields registered on component "${component.name}"`);
         }
         return set;
     }

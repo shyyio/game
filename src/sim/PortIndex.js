@@ -368,17 +368,17 @@ export class PortIndex {
     collectUnreferenced() {
         const engine = this.engine;
         const referenced = new Set();
-        for (const def of engine.components.components) {
-            if (def.snapshotOnly) {
+        for (const component of engine.components.components) {
+            if (component.snapshotOnly) {
                 continue;
             }
-            const eidFields = def.fields.filter(field => field.kind === "eid");
+            const eidFields = component.fields.filter(field => field.kind === "eid");
             if (eidFields.length === 0) {
                 continue;
             }
-            for (const slot of def.slots()) {
+            for (const slot of component.slots()) {
                 for (const field of eidFields) {
-                    const target = def.store[field.name][slot];
+                    const target = component.store[field.name][slot];
                     if (target !== NO_EID) {
                         referenced.add(target);
                     }
