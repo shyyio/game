@@ -95,6 +95,22 @@ const CORE_WIRE_CLASSES = [
     LaneItemBatchEvent,
 ];
 
+class WireFieldSpec {
+
+    /**
+     * @param {string} kind - "scalar", "repeated", "map", or "messages"
+     * @param {string} [type]
+     * @param {string} [keyType]
+     * @param {boolean} [int64]
+     */
+    constructor(kind, type, keyType, int64) {
+        this.kind = kind;
+        this.type = type;
+        this.keyType = keyType;
+        this.int64 = int64;
+    }
+}
+
 /**
  * Parses a wireFields spec string into a descriptor.
  *   "int32"            -> scalar ("bool" decodes to a JS boolean)
@@ -105,29 +121,35 @@ const CORE_WIRE_CLASSES = [
  *                         as two columns — wire ids and encoded bodies (lets one
  *                         message/event bundle others of any registered class)
  * @param {string} spec
- * @returns {{kind: string, type?: string, keyType?: string, int64?: boolean}}
+ * @returns {WireFieldSpec}
  */
 function parseSpec(spec) {
     if (spec === "message[]") {
-        return {kind: "messages"};
+        return new WireFieldSpec("messages");
     }
     const mapMatch = spec.match(/^map<\s*(\w+)\s*,\s*(\w+)\s*>$/);
     if (mapMatch) {
-        return {kind: "map", keyType: mapMatch[1], type: mapMatch[2], int64: INT64_TYPES.has(mapMatch[2])};
+        return new WireFieldSpec("map", mapMatch[2], mapMatch[1], INT64_TYPES.has(mapMatch[2]));
     }
     if (spec.endsWith("[]")) {
         const type = spec.slice(0, -2);
-        return {kind: "repeated", type, int64: INT64_TYPES.has(type)};
+        return new WireFieldSpec("repeated", type, undefined, INT64_TYPES.has(type));
     }
     const type = spec.endsWith("?") ? spec.slice(0, -1) : spec;
-    return {kind: "scalar", type, int64: INT64_TYPES.has(type)};
+    return new WireFieldSpec("scalar", type, undefined, INT64_TYPES.has(type));
 }
+
+/**
+ * @typedef {Object} WireType
+ * @property {protobuf.Type} type
+ * @property {Object.<string, WireFieldSpec>} specs by field name
+ */
 
 /**
  * Builds a protobufjs Type from a class's wireFields, marking scalars optional to preserve zeros and decode absences to null.
  * @param {string} name
  * @param {Object.<string, string>} wireFields
- * @returns {{type: protobuf.Type, specs: Object.<string, object>}}
+ * @returns {WireType}
  */
 function buildType(name, wireFields) {
     const type = new Type(name);
@@ -170,6 +192,12 @@ function buildEnvelope() {
         .add(new Field("wireId", 1, "uint32"))
         .add(new Field("payload", 2, "bytes"));
 }
+
+/**
+ * @typedef {Object} WireBody
+ * @property {number} wireId
+ * @property {Uint8Array} body
+ */
 
 export class WireRegistry {
 
@@ -226,7 +254,7 @@ export class WireRegistry {
      * Encodes an instance's body with its class's codec.
      * @private
      * @param {object} obj
-     * @returns {{wireId: number, body: Uint8Array}}
+     * @returns {WireBody}
      */
     _encodeBody(obj) {
         const codec = this.byClass.get(obj.constructor);

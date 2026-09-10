@@ -16,6 +16,36 @@ function columnFor(kind, capacity, defaultValue) {
     return column.fill(defaultValue);
 }
 
+export class FieldSpec {
+
+    /**
+     * @param {string} name
+     * @param {string} kind - "i32", "eid", "type", or "item"
+     * @param {number} defaultValue
+     */
+    constructor(name, kind, defaultValue) {
+        this.name = name;
+        this.kind = kind;
+        this.defaultValue = defaultValue;
+    }
+
+    /**
+     * @param {{name: string, kind?: string, defaultValue?: number}} spec
+     * @returns {FieldSpec}
+     */
+    static parse(spec) {
+        let kind = spec.kind;
+        if (kind === undefined) {
+            kind = "i32";
+        }
+        let defaultValue = spec.defaultValue;
+        if (defaultValue === undefined) {
+            defaultValue = 0;
+        }
+        return new FieldSpec(spec.name, kind, defaultValue);
+    }
+}
+
 /**
  * A component: its SoA typed-array columns plus how they are indexed. A subclass names itself and
  * its fields in its constructor and carries the helpers over its rows.
@@ -42,17 +72,7 @@ export class AbstractComponent {
      */
     constructor(name, fieldSpecs, {snapshotOnly=false, sparse=false}={}) {
         this.name = name;
-        this.fields = fieldSpecs.map(spec => {
-            let kind = spec.kind;
-            if (kind === undefined) {
-                kind = "i32";
-            }
-            let defaultValue = spec.defaultValue;
-            if (defaultValue === undefined) {
-                defaultValue = 0;
-            }
-            return {name: spec.name, kind, defaultValue};
-        });
+        this.fields = fieldSpecs.map(spec => FieldSpec.parse(spec));
         this.snapshotOnly = snapshotOnly;
         this.sparse = sparse;
         this.capacity = INITIAL_CAPACITY;

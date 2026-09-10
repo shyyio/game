@@ -111,7 +111,7 @@ export class PortItemSync {
     /**
      * The tile a rendered port's resting item is drawn at, or null if the port is not rendered.
      * @param {number} eid
-     * @returns {{x:number, y:number}|null}
+     * @returns {Point|null}
      */
     findPortTileByEid(eid) {
         if (this._rendered[eid] === 0) {

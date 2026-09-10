@@ -21,6 +21,19 @@ import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 
 
 /**
+ * @typedef {Object} EngineGlobals
+ * @property {number} nextObjectRef
+ * @property {number} clock
+ * @property {number} seed
+ */
+
+/**
+ * @typedef {Object} PlacedPort
+ * @property {number} port the shared edge port's eid
+ * @property {Point} tile where a rendered port's item is drawn
+ */
+
+/**
  * The simulation engine Game drives: the port-transfer core over typed-array component
  * storage, the position/port indexes, (de)serialization, and the mod host — each loaded sim mod
  * registers its ECS content (components, systems, message handlers, chunk-sync contributors) via
@@ -379,7 +392,7 @@ export class GameEngine {
 
     /**
      * The persisted globals as one flat object: the engine's own counters plus whatever mods stashed.
-     * @returns {object}
+     * @returns {EngineGlobals}
      */
     saveGlobals() {
         return {nextObjectRef: this._nextObjectRef, clock: this.clock, seed: this.seed, ...this.globals};
@@ -605,7 +618,7 @@ export class GameEngine {
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
-     * @returns {{port:number, tile:{x:number, y:number}}}
+     * @returns {PlacedPort}
      */
     getPortAt(port, x, y, direction) {
         const placed = portAt(port, x, y, direction);

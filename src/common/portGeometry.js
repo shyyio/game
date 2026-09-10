@@ -11,7 +11,7 @@ import {rotate, tileKeyAt, tileVariantKey} from "@/common/util.js";
  * @param {number} tileX
  * @param {number} tileY
  * @param {Direction} direction
- * @returns {{x: number, y: number, direction: Direction}}
+ * @returns {Vec}
  */
 export function portAt(port, tileX, tileY, direction) {
     const rotated = rotate(port, direction);

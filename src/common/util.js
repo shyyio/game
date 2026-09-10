@@ -116,7 +116,7 @@ export function chunkNeighbors(chunkKey) {
 /**
  * Inverse of {@link chunkKeyAt}: the chunk coordinate (chunkX, chunkY) of a chunk key.
  * @param {number} chunkKey
- * @returns {{x: number, y: number}}
+ * @returns {Point}
  */
 export function chunkPosition(chunkKey) {
     return {
@@ -129,7 +129,7 @@ export function chunkPosition(chunkKey) {
  * The tile position of a chunk's top-left corner, the origin chunk-relative tile coordinates count
  * from.
  * @param {number} chunkKey
- * @returns {{x: number, y: number}}
+ * @returns {Point}
  */
 export function chunkOrigin(chunkKey) {
     const position = chunkPosition(chunkKey);
@@ -139,7 +139,7 @@ export function chunkOrigin(chunkKey) {
 /**
  * The tile position of a chunk's center.
  * @param {number} chunkKey
- * @returns {{x: number, y: number}}
+ * @returns {Point}
  */
 export function chunkCenter(chunkKey) {
     const origin = chunkOrigin(chunkKey);
@@ -300,10 +300,16 @@ export function* cellNeighbors(cells) {
 
 
 /**
+ * @typedef {Object} Point
+ * @property {number} x
+ * @property {number} y
+ */
+
+/**
  * @typedef {Object} Vec
- * @property direction {Direction}
- * @property x {number}
- * @property y {number}
+ * @property {Direction} direction
+ * @property {number} x
+ * @property {number} y
  */
 
 /**

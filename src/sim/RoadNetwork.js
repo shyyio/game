@@ -81,6 +81,12 @@ export class RoadComponent {
 }
 
 /**
+ * @typedef {Object} RoadDirtySeeds
+ * @property {RoadTile[]} seeds
+ * @property {Set<number>|null} affected null for a full recompute
+ */
+
+/**
  * The road tiles, the housings bridging them, and the edits that stale their connectivity. Roads
  * and housings form components by adjacency; a housing bridges the roads and housings its footprint
  * touches.
@@ -178,7 +184,7 @@ export class RoadNetwork {
     /**
      * Takes the pending edits as the fill seeds they need, or null when nothing changed. `affected`
      * is null for a full recompute, otherwise the set the fill adds each seed's prior component to.
-     * @returns {{seeds: RoadTile[], affected: Set<number>|null}|null}
+     * @returns {RoadDirtySeeds|null}
      */
     popDirty() {
         if (this._dirtyAll) {

@@ -1,4 +1,10 @@
 /**
+ * @typedef {Object} SubscriptionDelta
+ * @property {number[]} added
+ * @property {number[]} removed
+ */
+
+/**
  * Topic pub/sub for session event delivery. A session subscribes to the chunks it views and the
  * objects it inspects; `publish` picks recipients from the event's own topic and hands each the
  * event, and whether a given session's delivery crosses the wire is that session's own concern.
@@ -170,7 +176,7 @@ export class EventBus {
      * the delta so the caller syncs only the change.
      * @param {number} sessionRef
      * @param {number[]} chunks
-     * @returns {{added: number[], removed: number[]}}
+     * @returns {SubscriptionDelta}
      */
     setViewport(sessionRef, chunks) {
         const current = this._viewports.get(sessionRef);
@@ -200,7 +206,7 @@ export class EventBus {
      * topics and returning the delta so the caller seeds a snapshot for the added objects.
      * @param {number} sessionRef
      * @param {number[]} objectRefs
-     * @returns {{added: number[], removed: number[]}}
+     * @returns {SubscriptionDelta}
      */
     setInspects(sessionRef, objectRefs) {
         const current = this._inspects.get(sessionRef);

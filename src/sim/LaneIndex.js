@@ -124,6 +124,26 @@ function shouldConnectLevels(outLevel, outDirection, inLevel, inDirection) {
     return getLaneLevelLayer(outLevel, outDirection) === getLaneLevelLayer(inLevel, inDirection);
 }
 
+/**
+ * @typedef {Object} LaneItemRow
+ * @property {number} itemRef
+ * @property {number} itemTypeId
+ * @property {number} gap
+ */
+
+/**
+ * @typedef {Object} ParentCandidates
+ * @property {number[]} eids
+ * @property {Vec[]} edges
+ */
+
+/**
+ * @typedef {Object} ParentLink
+ * @property {Direction} edge
+ * @property {number} portEid
+ * @property {number} parent
+ */
+
 export class LaneIndex extends AbstractSystem {
 
     /**
@@ -230,7 +250,7 @@ export class LaneIndex extends AbstractSystem {
 
     /**
      * @param {number} laneRef
-     * @returns {{itemRef: number, itemTypeId: number, gap: number}[]} output-edge first
+     * @returns {LaneItemRow[]} output-edge first
      */
     getItemsByLaneRef(laneRef) {
         const store = this.items.store;
@@ -359,7 +379,7 @@ export class LaneIndex extends AbstractSystem {
      * with the edge each of them hands it.
      * @private
      * @param {number} eid
-     * @returns {{eids: number[], edges: {x: number, y: number, direction: Direction}[]}}
+     * @returns {ParentCandidates}
      */
     _getParentCandidatesByCellEid(eid) {
         const engine = this.engine;
@@ -387,7 +407,7 @@ export class LaneIndex extends AbstractSystem {
      * fed on its straight back edge.
      * @private
      * @param {number} eid
-     * @returns {{edge: Direction, portEid: number, parent: number}}
+     * @returns {ParentLink}
      */
     _getParentLinkByCellEid(eid) {
         const position = this.engine.Position;

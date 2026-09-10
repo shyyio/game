@@ -75,6 +75,12 @@ function integer(json, key, min, max) {
     return value;
 }
 
+/**
+ * @typedef {Object} ServerConfigOverride
+ * @property {ServerConfig} config
+ * @property {string[]} overridden the fields the overrides took
+ */
+
 export class ServerConfig {
 
     /**
@@ -119,7 +125,7 @@ export class ServerConfig {
     /**
      * This config with `values` on top: the flags an operator passed beside the file.
      * @param {object} values field -> value, only the fields to override
-     * @returns {{config: ServerConfig, overridden: string[]}} which fields the overrides took
+     * @returns {ServerConfigOverride}
      */
     withOverrides(values) {
         const json = this.toJSON();

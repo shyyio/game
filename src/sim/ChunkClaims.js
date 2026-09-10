@@ -5,6 +5,13 @@ import {chunkNeighbors, chunkPosition} from "@/common/util.js";
 export const CHUNK_CLAIM_TABLE = "ChunkClaim";
 
 /**
+ * @typedef {Object} ChunkClaimRows
+ * @property {number[]} chunks
+ * @property {number[]} playerRefs
+ * @property {number[]} permissions
+ */
+
+/**
  * Chunk ownership: which player owns each claimed chunk. A player's claimed chunks stay contiguous:
  * every claim after the first must touch an own chunk edge-on, and an unclaim that would split the
  * remainder is rejected.
@@ -154,7 +161,7 @@ export class ChunkClaims {
      * @param {number} chunkY
      * @param {number} chunkWidth
      * @param {number} chunkHeight
-     * @returns {{chunks: number[], playerRefs: number[], permissions: number[]}}
+     * @returns {ChunkClaimRows}
      */
     getClaimsInRect(chunkX, chunkY, chunkWidth, chunkHeight) {
         const chunks = [];

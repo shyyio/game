@@ -9,6 +9,13 @@ import {WorkerAssignmentEvent, WorkerAssignmentBatchEvent, NO_HOUSING} from "@/c
 const ORDER_WORKER_RECOMPUTE = -20;
 
 /**
+ * @typedef {Object} WorkerStats
+ * @property {number} granted
+ * @property {number} supply
+ * @property {number} demand
+ */
+
+/**
  * Road-network workers: roads and housings form networks by adjacency (a housing bridges the roads
  * and housings its footprint touches), each housing's workerSupply feeds its network once, and
  * road-adjacent machines consume their full workerCost by ascending (Manhattan distance to housing,
@@ -47,7 +54,7 @@ export class WorkerNetworks extends AbstractSystem {
     /**
      * The machine's worker stats for inspect, or null when it touches no road.
      * @param {number} objectRef
-     * @returns {{granted: number, supply: number, demand: number}|null}
+     * @returns {WorkerStats|null}
      */
     findWorkerStatsByObjectRef(objectRef) {
         this.rebuildDirtyAllocation();

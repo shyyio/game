@@ -51,9 +51,20 @@ export class MetricsRollupEvent extends AbstractEvent {
 }
 
 /**
+ * @typedef {Object} RollupColumns
+ * @property {number[]} buckets
+ * @property {number[]} bucketRowCounts
+ * @property {number[]} seriesCategory
+ * @property {number[]} seriesTag
+ * @property {number[]} seriesIndex
+ * @property {number[]} count
+ * @property {number[]} sum
+ */
+
+/**
  * Dictionary-encodes flat rollup rows into {@link MetricsRollupEvent}'s wire shape; assumes rows already grouped by bucket.
  * @param {MetricsRollupRow[]} rows
- * @returns {{buckets: number[], bucketRowCounts: number[], seriesCategory: number[], seriesTag: number[], seriesIndex: number[], count: number[], sum: number[]}}
+ * @returns {RollupColumns}
  */
 export function compactRollupRows(rows) {
     const buckets = [];
@@ -87,9 +98,16 @@ export function compactRollupRows(rows) {
 }
 
 /**
+ * @typedef {Object} RollupRows
+ * @property {number[]} bucketTick
+ * @property {number[]} category
+ * @property {number[]} tag
+ */
+
+/**
  * Expands {@link MetricsRollupEvent}'s dictionary-encoded rows back into one flat entry per row.
  * @param {MetricsRollupEvent} event
- * @returns {{bucketTick: number[], category: number[], tag: number[]}}
+ * @returns {RollupRows}
  */
 export function expandRollupRows(event) {
     const bucketTick = [];

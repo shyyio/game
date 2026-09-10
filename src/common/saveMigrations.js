@@ -3,6 +3,20 @@ import {Direction} from "@/common/constants.js";
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
 export const SAVE_FORMAT = 15;
 
+/**
+ * @typedef {Object} FieldSnapshot
+ * @property {string} name
+ * @property {string} kind
+ */
+
+/**
+ * One component or table as a snapshot carries it.
+ * @typedef {Object} TableSnapshot
+ * @property {string} name
+ * @property {FieldSnapshot[]} fields
+ * @property {object[]} rows
+ */
+
 // What a save written before the stamp counts as.
 const UNSTAMPED_FORMAT = 0;
 
