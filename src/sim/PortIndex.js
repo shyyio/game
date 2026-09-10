@@ -1,6 +1,18 @@
-import {EMPTY, NO_EID} from "@/sim/AbstractComponent.js";
+import {EMPTY, NO_EID, AbstractComponent, FieldDefinition} from "@/sim/AbstractComponent.js";
 import {edgeKey, portAt} from "@/common/portGeometry.js";
-import {PortComponent} from "@/sim/PortComponent.js";
+
+/**
+ * A port: the item it holds, EMPTY when unoccupied. An edge port also carries Position for the
+ * edge it sits on; a port with no Position is not an edge port.
+ */
+class PortComponent extends AbstractComponent {
+
+    constructor() {
+        super("Port", [
+            new FieldDefinition("item", "item", EMPTY),
+        ]);
+    }
+}
 
 // The endpoint answer for a port nothing declares; shared and never written.
 const NO_ENDPOINTS = Object.freeze([]);

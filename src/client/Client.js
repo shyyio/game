@@ -2,10 +2,8 @@ import {coreTextureAtlases} from "@/client/CoreTextures/assets.js";
 import {TextureCache} from "@/client/layers/TextureCache.js";
 import {SpriteOverrideStore} from "@/client/spriteEditor/SpriteOverrideStore.js";
 import {DrawLayerRegistry} from "@/client/layers/DrawLayerRegistry.js";
-import {ToolRotation} from "@/client/input/ToolRotation.js";
 import {EraserTool} from "@/client/input/EraserTool.js";
 import {SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
-import {ClaimResultFeedback} from "@/client/hud/ClaimResultFeedback.js";
 import {SetPlayerSettingMessage, SetPlayerSettingsToolOrderMessage} from "@/common/PlayerMessages.js";
 import {applyToolOrder} from "@/client/input/ToolOrder.js";
 import {ChunkClaimsDrawLayer} from "@/client/layers/ChunkClaimsDrawLayer.js";
@@ -38,7 +36,6 @@ import {PlacementFeedbackLayer} from "@/client/layers/PlacementFeedbackLayer.js"
 import {InspectLayer} from "@/client/layers/InspectLayer.js";
 import {ItemInspectLayer} from "@/client/layers/ItemInspectLayer.js";
 import {ObjectsView} from "@/client/state/ObjectsState.js";
-import {ObjectTypeClientBundle} from "@/client/ObjectTypeClientBundle.js";
 import {ObjectDrawLayer} from "@/client/layers/ObjectDrawLayer.js";
 import {ObjectGhostLayer} from "@/client/layers/ObjectGhostLayer.js";
 import {ObjectTool} from "@/client/input/ObjectTool.js";
@@ -59,6 +56,117 @@ import {
     SESSION_STATUS_CONNECTED, SESSION_STATUS_RECONNECTING, SESSION_STATUS_SERVER_SHUTDOWN, SESSION_STATUS_SUPERSEDED,
     SESSION_STATUS_REJECTED,
 } from "@/client/RemoteSession.js";
+import {ClaimResult, ClaimResultEvent} from "@/common/ClaimEvents.js";
+import {UnclaimChunkMessage} from "@/common/ClaimMessages.js";
+
+/**
+ * The derived client surface of one object type: its draw layer, placement ghost, and tool. Built by
+ * the client for every type with a behavior; each piece comes from the type's create* hook or the
+ * derived default.
+ */
+class ObjectTypeClientBundle {
+
+    /**
+     * @param {ObjectType} type
+     * @param {AbstractDrawLayer} drawLayer
+     * @param {AbstractDrawLayer} ghostLayer
+     * @param {AbstractTool} tool
+     */
+    constructor(type, drawLayer, ghostLayer, tool) {
+        this.type = type;
+        this.drawLayer = drawLayer;
+        this.ghostLayer = ghostLayer;
+        this.tool = tool;
+    }
+}
+
+/**
+ * Shared placement facing for orientable tools, held under the Client so it carries
+ * over across tool switches.
+ */
+class ToolRotation {
+
+    constructor() {
+        this._direction = Direction.UP;
+    }
+
+    /**
+     * @returns {Direction}
+     */
+    get direction() {
+        return this._direction;
+    }
+
+    /**
+     * @param {Direction} direction
+     */
+    set direction(direction) {
+        this._direction = direction;
+    }
+
+    /**
+     * Rotates the facing by `rotation` clockwise quarter-turns.
+     * @param {number} rotation
+     * @returns {void}
+     */
+    rotate(rotation) {
+        this._direction = Direction.rotate(this._direction, rotation);
+    }
+
+    /**
+     * Flips the facing 180°.
+     * @returns {void}
+     */
+    invert() {
+        this._direction = Direction.invert(this._direction);
+    }
+}
+
+// Rejection notices per ClaimResult; OK stays silent (the border appearing is the feedback).
+const CLAIM_RESULT_NOTICES = {
+    [ClaimResult.CLAIM_RESULT_OWNED]: "That chunk is already claimed",
+    [ClaimResult.CLAIM_RESULT_LIMIT]: "Chunk limit reached",
+    [ClaimResult.CLAIM_RESULT_NOT_ADJACENT]: "New chunks must touch one of your claimed chunks",
+    [ClaimResult.CLAIM_RESULT_NOT_OWNER]: "Not your chunk",
+    [ClaimResult.CLAIM_RESULT_WOULD_SPLIT]: "Unclaiming this would split your claimed chunks",
+};
+
+/**
+ * Routes a rejected claim/unclaim to a toast notice, except a non-empty unclaim, which opens
+ * the destructive confirm dialog instead.
+ */
+class ClaimResultFeedback {
+
+    /**
+     * @param {Client} client
+     */
+    constructor(client) {
+        this.client = client;
+    }
+
+    /**
+     * @param {AbstractEvent} event
+     * @returns {void}
+     */
+    onEvent(event) {
+        if (!(event instanceof ClaimResultEvent)) {
+            return;
+        }
+        if (event.result === ClaimResult.CLAIM_RESULT_NOT_EMPTY) {
+            this.client.hud.confirmDialogLayer.open({
+                title: "Unclaim chunk?",
+                message: "This chunk still contains buildings. Unclaiming will permanently delete everything in it.",
+                confirmLabel: "Delete and unclaim",
+                onConfirm: () => this.client.sendMessage(new UnclaimChunkMessage(event.chunkKey, true)),
+            });
+            return;
+        }
+        const notice = CLAIM_RESULT_NOTICES[event.result];
+        if (notice !== undefined) {
+            this.client.hud.notify(notice);
+        }
+    }
+}
 
 export class Client {
 

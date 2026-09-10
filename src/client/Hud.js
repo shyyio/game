@@ -12,17 +12,12 @@ import {StatusMessageLayer} from "@/client/hud/StatusMessageLayer.js";
 import {VersionWatermarkLayer} from "@/client/hud/VersionWatermarkLayer.js";
 import {TopStatusBarLayer} from "@/client/hud/TopStatusBarLayer.js";
 import {BottomActionBarLayer} from "@/client/hud/BottomActionBarLayer.js";
-import {SettingsButtonLayer} from "@/client/hud/SettingsButtonLayer.js";
-import {FriendsButtonLayer} from "@/client/hud/FriendsButtonLayer.js";
-import {ProductionButtonLayer} from "@/client/hud/ProductionButtonLayer.js";
-import {ArtButtonLayer} from "@/client/hud/ArtButtonLayer.js";
-import {TerrainButtonLayer} from "@/client/hud/TerrainButtonLayer.js";
 import {ProductionPanelLayer} from "@/client/hud/ProductionPanelLayer.js";
 import {FriendsPanelLayer} from "@/client/hud/FriendsPanelLayer.js";
 import {ChunkActionsLayer} from "@/client/hud/ChunkActionsLayer.js";
 import {MapButtonsLayer} from "@/client/hud/MapButtonsLayer.js";
 import {InspectTooltipLayer} from "@/client/hud/InspectTooltipLayer.js";
-import {drawClaimIcon, drawHomeIcon} from "@/client/hud/icons.js";
+import {drawClaimIcon, drawHomeIcon, drawBrushIcon, drawMountainIcon, drawChartIcon, drawSettingsIcon, drawSmileyIcon} from "@/client/hud/icons.js";
 import {onUiScaleChange} from "@/client/hud/UiScale.js";
 import {onThemeChange} from "@/client/Theme.js";
 import SafeArea from "@/client/SafeArea.js";
@@ -31,6 +26,104 @@ import {AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage} from "@/c
 import {MetricsSubscribeMessage, MetricsUnsubscribeMessage} from "@/common/MetricsMessages.js";
 import {METRICS_ENTRY_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN} from "@/common/MetricsEntry.js";
 import {ViewMode, FRIENDS_PANEL_REFRESH_THROTTLE_MS} from "@/client/constants.js";
+import {CircleButtonLayer} from "@/client/hud/CircleButtonLayer.js";
+
+/**
+ * Always-visible top-right friends button, immediately left of the settings button.
+ */
+class FriendsButtonLayer extends CircleButtonLayer {
+
+    /**
+     * @param {Application} app
+     */
+    constructor(app) {
+        super(app, drawSmileyIcon);
+    }
+
+    /**
+     * @protected
+     * @returns {number}
+     */
+    _x() {
+        return this._slotX(1);
+    }
+}
+
+/**
+ * Always-visible top-right settings button.
+ */
+class SettingsButtonLayer extends CircleButtonLayer {
+
+    /**
+     * @param {Application} app
+     */
+    constructor(app) {
+        super(app, drawSettingsIcon);
+    }
+}
+
+/**
+ * Always-visible top-right production button, immediately left of the friends button.
+ */
+class ProductionButtonLayer extends CircleButtonLayer {
+
+    /**
+     * @param {Application} app
+     */
+    constructor(app) {
+        super(app, drawChartIcon);
+    }
+
+    /**
+     * @protected
+     * @returns {number}
+     */
+    _x() {
+        return this._slotX(2);
+    }
+}
+
+/**
+ * Always-visible top-right terrain-tuning button, immediately left of the art button.
+ */
+class TerrainButtonLayer extends CircleButtonLayer {
+
+    /**
+     * @param {Application} app
+     */
+    constructor(app) {
+        super(app, drawMountainIcon);
+    }
+
+    /**
+     * @protected
+     * @returns {number}
+     */
+    _x() {
+        return this._slotX(4);
+    }
+}
+
+/**
+ * Always-visible top-right art (sprite editor) button, immediately left of the production button.
+ */
+class ArtButtonLayer extends CircleButtonLayer {
+
+    /**
+     * @param {Application} app
+     */
+    constructor(app) {
+        super(app, drawBrushIcon);
+    }
+
+    /**
+     * @protected
+     * @returns {number}
+     */
+    _x() {
+        return this._slotX(3);
+    }
+}
 
 /**
  * The toolbar is up only in world view with at least one claimed chunk: placement tools are inert

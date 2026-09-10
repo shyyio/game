@@ -2,7 +2,6 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {AbstractComponent, FieldDefinition, NO_EID} from "@/sim/AbstractComponent.js";
-import {LaneItemComponent} from "@/sim/LaneItemComponent.js";
 
 class WidgetComponent extends AbstractComponent {
 
@@ -38,7 +37,6 @@ test("LaneItemComponent walks the file from its first item", async () => {
     const engine = new GameEngine();
     await engine.init();
     const items = engine.lanes.items;
-    assert.ok(items instanceof LaneItemComponent);
     const firstEid = items.create(7);
     const secondEid = items.create(8);
     items.store.nextItem[items.getRowByEid(firstEid)] = secondEid;

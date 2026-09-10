@@ -1,6 +1,22 @@
-import {AbstractBehavior, EMPTY, NO_EID, SyncedFields, SyncedField, AbstractSystem} from "@spup/sdk";
+import {AbstractBehavior, EMPTY, NO_EID, SyncedFields, SyncedField, AbstractSystem, AbstractComponent, FieldDefinition} from "@spup/sdk";
 import {LOGIC_KEY_AMOUNT} from "../common/constants.js";
-import {TankComponent} from "./TankComponent.js";
+
+/**
+ * A tank: its ports, the fluid it holds and how much.
+ */
+class TankComponent extends AbstractComponent {
+
+    constructor() {
+        super("Tank", [
+            new FieldDefinition("inputPort", "eid", NO_EID),
+            new FieldDefinition("outputPort", "eid", NO_EID),
+            new FieldDefinition("fluidType", "item", EMPTY),
+            new FieldDefinition("amount"),
+            // Denormalized from the behavior so the tick pass stays on the row.
+            new FieldDefinition("capacity"),
+        ], {isSparse: true});
+    }
+}
 
 const SYNCED_FIELDS = new SyncedFields("Tank", [new SyncedField("fluidType", EMPTY)]);
 

@@ -1,4 +1,4 @@
-import {AbstractBehavior, AbstractSystem} from "@spup/sdk";
+import {AbstractBehavior, AbstractSystem, AbstractComponent, FieldDefinition} from "@spup/sdk";
 import {
     LOGIC_TIER_BASE,
     LOGIC_CONDITION_KIND_STORED,
@@ -6,7 +6,18 @@ import {
 } from "../common/constants.js";
 import {LogicNetworks} from "./LogicNetworks.js";
 import {LogicRules} from "./LogicRules.js";
-import {LogicTerminalComponent} from "./LogicTerminalComponent.js";
+
+/**
+ * A logic terminal: its tier.
+ */
+class LogicTerminalComponent extends AbstractComponent {
+
+    constructor() {
+        super("LogicTerminal", [
+            new FieldDefinition("tier", "i32", LOGIC_TIER_BASE),
+        ], {isSparse: true});
+    }
+}
 
 // Rules evaluate before the gate's buffered toggles apply (-30), so a rule's write lands this tick.
 const ORDER_RULES = -40;

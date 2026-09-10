@@ -1,7 +1,33 @@
-import {AbstractBehavior, EMPTY, NO_EID, LAYER_SURFACE, CONVEYS_ITEM, CONVEYS_FLUID, SyncedFields, SyncedField, AbstractSystem} from "@spup/sdk";
+import {AbstractBehavior, EMPTY, NO_EID, LAYER_SURFACE, CONVEYS_ITEM, CONVEYS_FLUID, SyncedFields, SyncedField, AbstractSystem, AbstractComponent, FieldDefinition} from "@spup/sdk";
 import {LOGIC_KEY_OPEN} from "../common/constants.js";
 import {gateConnections, isPlacementBlockedByGate} from "../common/gateConnections.js";
-import {GateComponent, PENDING_NONE} from "./GateComponent.js";
+
+// No toggle buffered.
+const PENDING_NONE = -1;
+
+/**
+ * A gate: its ports, open state, mode and the fluid buffer fluid mode carries.
+ */
+class GateComponent extends AbstractComponent {
+
+    constructor() {
+        super("Gate", [
+            new FieldDefinition("inputPort", "eid", NO_EID),
+            new FieldDefinition("outputPort", "eid", NO_EID),
+            // Item mode's internal port; NO_EID in fluid mode.
+            new FieldDefinition("internalPort", "eid", NO_EID),
+            new FieldDefinition("open", "i32", 1),
+            // Current mode, adopted from coupled transports (see _review).
+            new FieldDefinition("fluid"),
+            // Fluid mode's one-unit buffer, EMPTY when empty.
+            new FieldDefinition("buffered", "item", EMPTY),
+            // The last fluid buffered, so a client placing a pipe knows what the gate carries.
+            new FieldDefinition("lastOutput", "item", EMPTY),
+            // Toggle request applied at the next tick; PENDING_NONE when idle.
+            new FieldDefinition("pendingOpen", "i32", PENDING_NONE),
+        ], {isSparse: true});
+    }
+}
 
 const SYNCED_FIELDS = new SyncedFields("Gate", [
     new SyncedField("open", 1),

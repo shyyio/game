@@ -1,7 +1,33 @@
-import {AbstractBehavior, EMPTY, NO_EID, PLAYER_REF_NONE, SyncedFields, SyncedField, AbstractSystem} from "@spup/sdk";
+import {AbstractBehavior, EMPTY, NO_EID, PLAYER_REF_NONE, SyncedFields, SyncedField, AbstractSystem, AbstractComponent, FieldDefinition} from "@spup/sdk";
 import {MARKET_MODE_SELL, MARKET_MODE_BUY} from "../common/constants.js";
 import {MarketBook} from "./MarketBook.js";
-import {MarketTerminalComponent} from "./MarketTerminalComponent.js";
+
+/**
+ * A trading terminal: its mode, listing, ports and the per-tick market scratch.
+ */
+class MarketTerminalComponent extends AbstractComponent {
+
+    constructor() {
+        super("MarketTerminal", [
+            new FieldDefinition("mode"),
+            new FieldDefinition("itemTypeId", "item", EMPTY),
+            new FieldDefinition("price"),
+            // Buy only: cached owner balance, refreshed per tick by MarketSimMod.onTick. Not authoritative.
+            new FieldDefinition("balance"),
+            // Buy only: cached chunk owner, lets _submitIntents pool balance across a player's buy terminals.
+            new FieldDefinition("owner", "i32", PLAYER_REF_NONE),
+            // Sell only: whether this terminal's chunk is owned, refreshed per tick by MarketSimMod.onTick.
+            new FieldDefinition("sellEnabled"),
+            // Sell-only scratch: price/counterparty this row is selling to this tick.
+            new FieldDefinition("pendingPrice", "i32", EMPTY),
+            new FieldDefinition("pendingBuyer", "eid", NO_EID),
+            new FieldDefinition("pendingIsNpc", "i32", 0),
+            new FieldDefinition("inputPort", "eid", NO_EID),
+            new FieldDefinition("outputPort", "eid", NO_EID),
+            new FieldDefinition("lastOutput", "item", EMPTY),
+        ], {isSparse: true});
+    }
+}
 
 const SYNCED_FIELDS = new SyncedFields("MarketTerminal", [new SyncedField("lastOutput", EMPTY)]);
 

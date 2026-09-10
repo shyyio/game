@@ -1,8 +1,37 @@
-import {NO_EID} from "@/sim/AbstractComponent.js";
+import {NO_EID, AbstractComponent, FieldDefinition} from "@/sim/AbstractComponent.js";
 import {tileKeyAt, tileVariantKey, TILE_VARIANT_LIMIT} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
-import {PositionComponent} from "@/sim/PositionComponent.js";
-import {OccupancyComponent} from "@/sim/OccupancyComponent.js";
+
+/**
+ * The cell claim on a Position: its layer, the owner object (so a delete releases every cell by
+ * query) and per-cell userData (0 for plain footprints; resource cover stores its resource type).
+ * Always paired with Position; cells are the entities carrying both.
+ */
+class OccupancyComponent extends AbstractComponent {
+
+    constructor() {
+        super("Occupancy", [
+            new FieldDefinition("layer"),
+            new FieldDefinition("owner", "i32", NO_EID),
+            new FieldDefinition("userData"),
+        ]);
+    }
+}
+
+/**
+ * Where an entity sits: a placed object's anchor tile, an edge port's edge, an occupied cell.
+ * `direction` is NO_EID for things with no facing (cells).
+ */
+class PositionComponent extends AbstractComponent {
+
+    constructor() {
+        super("Position", [
+            new FieldDefinition("x"),
+            new FieldDefinition("y"),
+            new FieldDefinition("direction", "i32", NO_EID),
+        ]);
+    }
+}
 
 /**
  * Where things sit in the world: the Position and Occupancy components, the layer names their cells

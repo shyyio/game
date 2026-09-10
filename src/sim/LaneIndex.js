@@ -16,8 +16,67 @@ import {
 } from "@/common/LaneEvents.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {AbstractComponent, FieldDefinition, EMPTY, NO_EID} from "@/sim/AbstractComponent.js";
-import {LaneCellComponent} from "@/sim/LaneCellComponent.js";
-import {LaneItemComponent} from "@/sim/LaneItemComponent.js";
+
+/**
+ * One cell of a lane: the lane it belongs to, the cell flow continues into, and the edge flow
+ * reaches it over.
+ */
+class LaneCellComponent extends AbstractComponent {
+
+    constructor() {
+        super("LaneCell", [
+            new FieldDefinition("lane", "eid", NO_EID),
+            new FieldDefinition("childCell", "eid", NO_EID),
+            // In the cell's own frame: UP is its straight back edge.
+            new FieldDefinition("parentEdge", "i32", Direction.UP),
+        ], {isSparse: true});
+    }
+}
+
+/**
+ * The items riding the lanes: each lane holds its items in a singly linked file ordered
+ * output-edge first. An item carries the number of empty slots ahead of it, so one decrement
+ * advances it and everything behind it, and popping the lead leaves the next item's gap already
+ * correct.
+ */
+class LaneItemComponent extends AbstractComponent {
+
+    constructor() {
+        super("LaneItem", [
+            new FieldDefinition("lane", "eid", NO_EID),
+            new FieldDefinition("nextItem", "eid", NO_EID),
+            new FieldDefinition("itemTypeId", "item", EMPTY),
+            new FieldDefinition("gap"),
+            new FieldDefinition("itemRef"),
+        ], {isSparse: true});
+    }
+
+    /**
+     * Creates a detached item.
+     * @param {number} itemTypeId
+     * @returns {number} the item eid
+     */
+    create(itemTypeId) {
+        const eid = super.create();
+        this.store.itemTypeId[this.getRowByEid(eid)] = itemTypeId;
+        return eid;
+    }
+
+    /**
+     * Every item of a file, output-edge first.
+     * @param {number} firstItemEid - the lane's lead item, NO_EID when it holds none
+     * @returns {number[]} item eids
+     */
+    getFileByFirstItemEid(firstItemEid) {
+        const itemEids = [];
+        let itemEid = firstItemEid;
+        while (itemEid !== NO_EID) {
+            itemEids.push(itemEid);
+            itemEid = this.store.nextItem[this.getRowByEid(itemEid)];
+        }
+        return itemEids;
+    }
+}
 
 // The level a lane cell takes flow from or gives it to: 0 is the surface, negative is buried,
 // positive is elevated.

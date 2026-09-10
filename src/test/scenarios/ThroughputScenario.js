@@ -36,8 +36,22 @@ import {BeltType, SplitterType} from "@/mods/logistics/common/objectTypes.js";
 import {TradingTerminalType} from "@/mods/market/common/objectTypes.js";
 import {ConfigureTradingTerminalMessage} from "@/mods/market/common/messages.js";
 import {MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "@/mods/market/common/constants.js";
-import {ThroughputSinkComponent} from "./ThroughputSinkComponent.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
+import {AbstractComponent, FieldDefinition} from "@/sim/AbstractComponent.js";
+
+/**
+ * A benchmark sink: its input port and what it consumed.
+ */
+class ThroughputSinkComponent extends AbstractComponent {
+
+    constructor() {
+        super("ThroughputSink", [
+            new FieldDefinition("inputPort", "eid", NO_EID),
+            new FieldDefinition("consumed"),
+            new FieldDefinition("lastConsumed", "i32", EMPTY),
+        ], {isSparse: true});
+    }
+}
 
 // Own item range, clear of BaseGame's 3xx and the engine fixtures' 94x.
 export const ITEM_TYPE_THROUGHPUT_FEED = 950;

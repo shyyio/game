@@ -1,11 +1,27 @@
-import {NO_EID} from "@/sim/AbstractComponent.js";
+import {NO_EID, AbstractComponent, FieldDefinition} from "@/sim/AbstractComponent.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
 import {Direction, PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkKeyAt, chunkOrigin} from "@/common/util.js";
-import {PlacedObjectComponent} from "@/sim/PlacedObjectComponent.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {METRICS_ENTRY_TYPE_OBJECT_PLACED, METRICS_ENTRY_TYPE_OBJECT_DESPAWNED} from "@/common/MetricsEntry.js";
+
+/**
+ * A placed object: its type, its public handle, and who placed it. Where it sits lives on the
+ * shared Position component.
+ */
+class PlacedObjectComponent extends AbstractComponent {
+
+    constructor() {
+        super("PlacedObject", [
+            new FieldDefinition("objectTypeId", "type"),
+            new FieldDefinition("objectRef", "i32", NO_EID),
+            // A friend building in your chunk is recorded as themselves.
+            // Economics read getClaimOwnerByEid instead, which follows the ground.
+            new FieldDefinition("placedBy", "i32", PLAYER_REF_NONE),
+        ], {isSparse: true});
+    }
+}
 
 const EMPTY_EIDS = new Set();
 

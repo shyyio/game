@@ -1,4 +1,4 @@
-import {EMPTY, NO_EID, Direction, chunkKeyAt, chunkOrigin, tileKeyAt, getOrCreate, removeFromGroup, AbstractSystem} from "@spup/sdk";
+import {EMPTY, NO_EID, Direction, chunkKeyAt, chunkOrigin, tileKeyAt, getOrCreate, removeFromGroup, AbstractSystem, AbstractComponent, FieldDefinition} from "@spup/sdk";
 import {PIPE_SEGMENT_CAPACITY, DIRECTIONS, joinedFluidType} from "../common/constants.js";
 import {
     PipeNetworkRecalculateEvent,
@@ -6,8 +6,33 @@ import {
     PipeFluidSetEvent,
     PipeFluidBatchEvent,
 } from "../common/events.js";
-import {PipeNetworkComponent} from "./PipeNetworkComponent.js";
-import {PipeNetworkMemberComponent} from "./PipeNetworkMemberComponent.js";
+
+/**
+ * A pipe's membership as saved: its network and the pipe's object ref.
+ */
+class PipeNetworkMemberComponent extends AbstractComponent {
+
+    constructor() {
+        super("PipeNetworkMember", [
+            new FieldDefinition("network", "eid", NO_EID),
+            new FieldDefinition("objectRef", "i32", NO_EID),
+        ], {isSnapshotOnly: true});
+    }
+}
+
+/**
+ * A pipe network as saved: the fluid it holds and how much. Written at save, read at load; the
+ * live network is the JS record.
+ */
+class PipeNetworkComponent extends AbstractComponent {
+
+    constructor() {
+        super("PipeNetwork", [
+            new FieldDefinition("fluidType", "item", EMPTY),
+            new FieldDefinition("amount"),
+        ], {isSnapshotOnly: true});
+    }
+}
 
 /**
  * One same-chunk connected component of pipe tiles, holding a uniform (fluidType, amount).
