@@ -349,7 +349,7 @@ function connectEdges(engine, node, occupied) {
 /**
  * Builds the whole Stimpack production chain at (originX, originY) (Fill's own anchor), pre-funds
  * and pre-claims the chunks it occupies for STIMPACK_FACTORY_PLAYER_REF, and returns the root node
- * (whose `.type`/`.x`/`.y` locate the final Fill machine, for a caller that wants to watch its
+ * (whose `.type`/`.x`/`.y` locate the final Fill machine, for a caller that wants to follow its
  * output port).
  * @param {GameEngine} engine
  * @param {Game} game

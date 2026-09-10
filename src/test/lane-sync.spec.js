@@ -98,18 +98,18 @@ test("a subscribing session receives a lane's resting output port item", async (
     assert.equal(portItems[0].itemTypeId, CARGO);
 });
 
-// Lane traffic is chunk-routed: a session watching elsewhere is told nothing.
-test("lane events reach only the sessions watching the chunk", async () => {
+// Lane traffic is chunk-routed: a session subscribed elsewhere is told nothing.
+test("lane events reach only the sessions subscribed to the chunk", async () => {
     const {game, engine} = await setup();
-    const watcher = new CapturingSession(1);
+    const subscriber = new CapturingSession(1);
     const bystander = new CapturingSession(2);
-    game.connect(watcher);
+    game.connect(subscriber);
     game.connect(bystander);
-    game.dispatchMessage(new SetViewportMessage([chunkKeyAt(0, 0)]), watcher);
+    game.dispatchMessage(new SetViewportMessage([chunkKeyAt(0, 0)]), subscriber);
     game.dispatchMessage(new SetViewportMessage([chunkKeyAt(1000, 1000)]), bystander);
-    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(0, 0)), watcher);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(0, 0)), subscriber);
     for (const cell of CELLS) {
-        game.dispatchMessage(new CreateObjectMessage(TestLaneType.objectTypeId, cell[0], cell[1], Direction.UP), watcher);
+        game.dispatchMessage(new CreateObjectMessage(TestLaneType.objectTypeId, cell[0], cell[1], Direction.UP), subscriber);
     }
 
     const lane = getLaneRefAt(engine, 0, 2);
@@ -120,8 +120,8 @@ test("lane events reach only the sessions watching the chunk", async () => {
         .filter(event => event instanceof PortItemBatchEvent)
         .flatMap(batch => batch.explode());
     assert.ok(
-        portItems(watcher.events).some(event => event instanceof PortItemSetEvent && event.itemTypeId === CARGO),
-        "the watcher gets the item's render set",
+        portItems(subscriber.events).some(event => event instanceof PortItemSetEvent && event.itemTypeId === CARGO),
+        "the subscriber gets the item's render set",
     );
     assert.equal(portItems(bystander.events).length, 0, "the bystander gets no lane render events");
     assert.equal(

@@ -130,7 +130,7 @@ export function trackTap(target, onTap, {
         if (suppressTouchGhostClick && e.pointerType !== "mouse") {
             e.nativeEvent.preventDefault();
         }
-        // Travel is watched only while pressed, so an idle target costs nothing per move.
+        // Travel is tracked only while pressed, so an idle target costs nothing per move.
         if (recognizer.press(e.pointerId, e.button, e.global.x, e.global.y)) {
             target.on("globalpointermove", onMove);
         }

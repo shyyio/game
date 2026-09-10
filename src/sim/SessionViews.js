@@ -25,7 +25,7 @@ export class SessionViews {
     setViewport(session, chunks) {
         const {added, removed} = this.game.bus.setViewport(session.sessionRef, chunks);
         if (added.length > 0 || removed.length > 0) {
-            this.game.simEngine.invalidateObservers();
+            this.game.simEngine.invalidateSubscriptions();
         }
 
         for (const chunk of removed) {

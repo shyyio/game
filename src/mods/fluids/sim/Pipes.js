@@ -473,7 +473,7 @@ export class Pipes extends AbstractSystem {
 
     /**
      * POST_RESOLVE: debit each resolved emission, clear a drained network's type, and batch the
-     * changed fluid states per observed chunk.
+     * changed fluid states per subscribed chunk.
      * @private
      * @returns {void}
      */
@@ -498,7 +498,7 @@ export class Pipes extends AbstractSystem {
             }
             net.lastType = net.fluidType;
             net.lastAmount = net.amount;
-            if (!engine.isTileObserved(net.originX, net.originY)) {
+            if (!engine.isTileSubscribed(net.originX, net.originY)) {
                 continue;
             }
             const batch = getOrCreate(batches, net.chunkKey, () => new PipeFluidBatchEvent(net.originX, net.originY));

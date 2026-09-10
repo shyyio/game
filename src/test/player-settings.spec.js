@@ -34,10 +34,10 @@ async function gameWithSessions() {
     const game = new Game(modRegistry, new GameEngine(modRegistry));
     await game.init();
     const sender = new CapturingSession(1);
-    const watcher = new CapturingSession(2);
+    const subscriber = new CapturingSession(2);
     game.connect(sender);
-    game.connect(watcher);
-    return {game, sender, watcher};
+    game.connect(subscriber);
+    return {game, sender, subscriber};
 }
 
 function updateEvents(session) {
@@ -64,7 +64,7 @@ test("out-of-range setting writes are dropped", async () => {
 });
 
 test("a setting write updates the cache and echoes to the sender", async () => {
-    const {game, sender, watcher} = await gameWithSessions();
+    const {game, sender, subscriber} = await gameWithSessions();
     game.dispatchMessage(new SetPlayerSettingMessage(WRITABLE_KEY, 5), sender);
 
     assert.equal(game.playerSettings.getPlayerValueByKey(1, WRITABLE_KEY), 5);
@@ -72,5 +72,5 @@ test("a setting write updates the cache and echoes to the sender", async () => {
     assert.equal(echoes.length, 1);
     assert.equal(echoes[0].key, WRITABLE_KEY);
     assert.equal(echoes[0].value, 5);
-    assert.equal(updateEvents(watcher).length, 0, "another player's setting write never fans out");
+    assert.equal(updateEvents(subscriber).length, 0, "another player's setting write never fans out");
 });

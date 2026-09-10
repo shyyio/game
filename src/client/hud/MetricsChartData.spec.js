@@ -19,7 +19,7 @@ test("windowTicksFor adds two buckets of headroom, capped at MAX_HISTORY_TICKS",
     assert.equal(windowTicksFor(MAX_HISTORY_TICKS, 6000), MAX_HISTORY_TICKS);
 });
 
-test("buildSeries fills absent buckets with zero after a series' first observation, null before", () => {
+test("buildSeries fills absent buckets with zero after a series' first seen bucket, null before", () => {
     const rollup = {
         tier: 10,
         toTick: 45,
@@ -37,7 +37,7 @@ test("buildSeries fills absent buckets with zero after a series' first observati
     const first = seriesList.find(series => series.category === 1);
     const second = seriesList.find(series => series.category === 2);
     assert.deepEqual(first.values, [3, 0, 5, 0]);
-    // Series 2 first observed at bucket 20: earlier buckets are null, not zero.
+    // Series 2 first seen at bucket 20: earlier buckets are null, not zero.
     assert.deepEqual(second.values, [null, null, 2, 0]);
 });
 

@@ -18,7 +18,7 @@ test("a mod's records survive a save/load: notes come back with their chunk", as
     game.connect(author);
     game.dispatchMessage(new ClaimChunkMessage(CHUNK), author);
     game.dispatchMessage(new SetViewportMessage([CHUNK]), author);
-    game.dispatchMessage(new NotePlaceMessage(3, 4, 250, 750, "watch this"), author);
+    game.dispatchMessage(new NotePlaceMessage(3, 4, 250, 750, "check this"), author);
     await game.save();
 
     const restored = await makeGame([], store);
@@ -33,5 +33,5 @@ test("a mod's records survive a save/load: notes come back with their chunk", as
     assert.equal(notes[0].x, 3);
     assert.equal(notes[0].offsetMy, 750);
     assert.equal(notes[0].authorId, 1);
-    assert.equal(notes[0].text, "watch this");
+    assert.equal(notes[0].text, "check this");
 });

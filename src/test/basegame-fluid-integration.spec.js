@@ -126,7 +126,7 @@ test("Brew produces both Basic Potion Base and Overload Mix, one machine", async
     }
     assert.ok(basicPotionBase, "Brew produces Basic Potion Base from Mushroom + Water");
     // The machine pipeline-gathers its NEXT craft's inputs on the same tick this one completes (once
-    // remaining hits 0, gathering starts even before idle formally flips) — by the time we observe
+    // remaining hits 0, gathering starts even before idle formally flips) — by the time we look
     // completion, a second Mushroom+Water set is already sitting in slot0/slot1, queued. Clearing the
     // ports alone doesn't touch that internal state, so reset it directly for a truly blank machine.
     engine.ports.setItem(outputPort, EMPTY);

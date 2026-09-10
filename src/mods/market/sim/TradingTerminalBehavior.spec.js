@@ -172,7 +172,7 @@ test("an NPC-priced buy terminal keeps buying while a consumer drains its port t
     terminal.balance[row] = 1_000_000;
 
     // A belt takes the resting item in the same phase the terminal submits its purchase, so the port
-    // is never observed empty at submit time — the terminal has to ride that drain, not wait a tick.
+    // is never seen empty at submit time — the terminal has to ride that drain, not wait a tick.
     const outputPort = terminal.outputPort[row];
     let drained = 0;
     engine.registerSystem(new ProbeSystem({submitIntents: () => {

@@ -30,17 +30,17 @@ test("setViewport reports the added/removed chunk delta", () => {
 
 test("publish fans a chunk event to every subscribed session and no others", () => {
     const bus = new EventBus();
-    const watcher = new CapturingSession();
+    const subscriber = new CapturingSession();
     const bystander = new CapturingSession();
-    const watcherId = bus.addSession(watcher);
+    const subscriberId = bus.addSession(subscriber);
     const bystanderId = bus.addSession(bystander);
-    bus.setViewport(watcherId, [10]);
+    bus.setViewport(subscriberId, [10]);
     bus.setViewport(bystanderId, [99]);
 
     const event = chunkEvent(10);
     bus.publish(event);
 
-    assert.deepEqual(watcher.events, [event]);
+    assert.deepEqual(subscriber.events, [event]);
     assert.deepEqual(bystander.events, []);
 });
 

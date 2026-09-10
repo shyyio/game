@@ -1105,7 +1105,7 @@ export class LaneIndex extends AbstractSystem {
      */
     _flushBatches() {
         for (const batch of this._batches.values()) {
-            if (!batch.isEmpty && this.engine.isTileObserved(batch.x, batch.y)) {
+            if (!batch.isEmpty && this.engine.isTileSubscribed(batch.x, batch.y)) {
                 this.engine.emitEvent(batch);
             }
         }
@@ -1121,7 +1121,7 @@ export class LaneIndex extends AbstractSystem {
         const laneRow = this._getLaneRowByLaneRef(laneEid);
         const headCellEid = this.lanes.store.headCell[laneRow];
         const position = this.engine.Position;
-        if (!this.engine.isTileObserved(position.x[headCellEid], position.y[headCellEid])) {
+        if (!this.engine.isTileSubscribed(position.x[headCellEid], position.y[headCellEid])) {
             return;
         }
         this.engine.emitEvent(new LaneCreatedEvent(

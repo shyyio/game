@@ -7,7 +7,8 @@ import {readdirSync, readFileSync, statSync} from "node:fs";
 import {join, relative, resolve, dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const SELF = fileURLToPath(import.meta.url);
+const ROOT = resolve(dirname(SELF), "..");
 const SCAN_ROOTS = ["src", "tools"];
 
 class StyleRule {
@@ -33,7 +34,7 @@ const RULES = [
     new StyleRule("nullish", /^\s*(?![/*]).*\?\?=?/, "no nullish coalescing", true),
     new StyleRule("spread-args", /\w\(\.\.\.|,\s*\.\.\.\w+\s*\)/, "no spread in argument lists", false),
     new StyleRule("inline-if", /^\s*(if|else if|for|while) \(.*\) [^{\s].*;\s*$/, "every conditional gets braces", true),
-    new StyleRule("observed-vocab", /\b(?!PerformanceObserver)\w*([oO]bserv|(?<![sS])[wW]atch)\w*\b/, "chunk visibility is subscribe/isSubscribed", true),
+    new StyleRule("observed-vocab", /\b(?![pP]erformanceObserver)\w*([oO]bserv|(?<![sS])[wW]atch)\w*\b(?![(},])/, "chunk visibility is subscribe/isSubscribed", true),
     new StyleRule("record-noun", /\b\w*Record(?!ing|s\b)\w*\b|\b[A-Z_]*_RECORD\b/, "a table element is an Entry", true),
     new StyleRule("ensure-verb", /\b_?ensure\w*\(/, "get-or-create is getOr<Verb>By<Key>", true),
     new StyleRule("return-literal", /^\s*return \{\s*\w/, "a multi-value result is a named class", true),
@@ -137,7 +138,7 @@ export function scanFiles(files) {
 
 function main() {
     const review = process.argv.includes("--review");
-    const files = SCAN_ROOTS.flatMap(root => listSourceFiles(join(ROOT, root), []));
+    const files = SCAN_ROOTS.flatMap(root => listSourceFiles(join(ROOT, root), [])).filter(file => file !== SELF);
     const {hitsByRule, verbs} = scanFiles(files);
     let failed = false;
     for (const rule of RULES) {

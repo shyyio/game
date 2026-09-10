@@ -79,7 +79,7 @@ export function buildSeries(rollup, metric) {
         key,
         category: entry.category,
         tag: entry.tag,
-        // Before the series' first observed bucket it didn't exist yet, distinct from a real zero after.
+        // Before the series' first seen bucket it didn't exist yet, distinct from a real zero after.
         values: ticks.map(tick => tick < entry.firstTick ? null : valueAt(entry.points.get(tick), metric)),
     }));
     return {ticks, seriesList, tier: rollup.tier};

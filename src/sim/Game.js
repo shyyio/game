@@ -312,7 +312,7 @@ export class Game {
         for (const mod of this.modRegistry.simMods) {
             mod.onSessionDisconnect(sessionRef, this);
         }
-        this.simEngine.invalidateObservers();
+        this.simEngine.invalidateSubscriptions();
     }
 
     /**

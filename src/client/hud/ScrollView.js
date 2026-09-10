@@ -100,7 +100,7 @@ export class ScrollView extends Container {
             if (this._contentHeight <= this._height) {
                 return;
             }
-            // Travel is watched only while pressed, so an idle view costs nothing per move.
+            // Travel is tracked only while pressed, so an idle view costs nothing per move.
             if (this._contentDrag.press(event.pointerId, event.button, event.global.x, event.global.y)) {
                 this._contentDragStartY = event.global.y;
                 this._contentDragStartScroll = this._scrollY;

@@ -33,7 +33,7 @@ export function installCrashReporter() {
 }
 
 /**
- * Reports an error Vue's own error handler caught (component render/lifecycle/watcher errors
+ * Reports an error Vue's own error handler caught (component render/lifecycle/reactive-effect errors
  * never reach window's "error" event, since Vue handles them internally).
  * @param {unknown} error
  * @param {string} info Vue's error-source description, e.g. "render function".

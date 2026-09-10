@@ -9,10 +9,10 @@ import {NOTE_TEXT_MAX_LENGTH} from "./constants.js";
 
 test("Round-trips the note messages and events", () => {
     const reg = wireRegistryFor(new NotesDeclaration());
-    assertRoundTrip(reg, new NotePlaceMessage(12, -3, 250, 999, "watch this belt"), NotePlaceMessage);
-    assertRoundTrip(reg, new NoteEditMessage(12, -3, "watch that belt"), NoteEditMessage);
+    assertRoundTrip(reg, new NotePlaceMessage(12, -3, 250, 999, "check this belt"), NotePlaceMessage);
+    assertRoundTrip(reg, new NoteEditMessage(12, -3, "check that belt"), NoteEditMessage);
     assertRoundTrip(reg, new NoteDeleteMessage(12, -3), NoteDeleteMessage);
-    assertRoundTrip(reg, new NoteSetEvent(12, -3, 250, 999, 7, "watch this belt"), NoteSetEvent);
+    assertRoundTrip(reg, new NoteSetEvent(12, -3, 250, 999, 7, "check this belt"), NoteSetEvent);
     assertRoundTrip(reg, new NoteDeleteEvent(12, -3), NoteDeleteEvent);
     // The chunk is derived from the tile position, never wired.
     const decoded = reg.decode(reg.encode(new NoteSetEvent(12, -3, 250, 999, 7, "hi")));

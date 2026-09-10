@@ -12,7 +12,7 @@ const FOREIGN_CHUNK = chunkKeyAt(1000, 1000);
 const PERMISSION_FRIENDS = 1;
 
 /**
- * A game with an owner watching their claimed chunk and a neighbor watching the same chunk.
+ * A game with an owner subscribed to their claimed chunk and a neighbor subscribed to the same chunk.
  */
 async function claimedWorld() {
     const game = await makeGame();
@@ -36,14 +36,14 @@ function deleteEvents(session) {
 
 test("a placed note fans out to the chunk's viewers, the author's name first", async () => {
     const {game, owner, neighbor} = await claimedWorld();
-    game.dispatchMessage(new NotePlaceMessage(3, 4, 250, 750, "watch this"), owner);
+    game.dispatchMessage(new NotePlaceMessage(3, 4, 250, 750, "check this"), owner);
 
     const seen = setEvents(neighbor);
     assert.equal(seen.length, 1);
     assert.equal(seen[0].x, 3);
     assert.equal(seen[0].offsetMx, 250);
     assert.equal(seen[0].authorId, 1);
-    assert.equal(seen[0].text, "watch this");
+    assert.equal(seen[0].text, "check this");
     const nameIndex = neighbor.events.findIndex(event => event.playerRefs !== undefined && event.playerRefs.includes(1));
     assert.ok(nameIndex !== -1 && nameIndex < neighbor.events.indexOf(seen[0]), "the author's name arrives before the note");
     assert.equal(setEvents(owner).length, 1, "the author sees their own note too");
@@ -110,7 +110,7 @@ test("a note is deleted by its author or by a build-rights holder", async () => 
 
 test("a late subscriber gets the chunk's notes in its sync bundle, names first", async () => {
     const {game, owner} = await claimedWorld();
-    game.dispatchMessage(new NotePlaceMessage(3, 4, 250, 750, "watch this"), owner);
+    game.dispatchMessage(new NotePlaceMessage(3, 4, 250, 750, "check this"), owner);
 
     const latecomer = new CapturingSession(4);
     game.connect(latecomer);
@@ -119,7 +119,7 @@ test("a late subscriber gets the chunk's notes in its sync bundle, names first",
     const bundle = latecomer.events.find(event => event.events !== undefined);
     const notes = bundle.events.filter(event => event instanceof NoteSetEvent);
     assert.equal(notes.length, 1);
-    assert.equal(notes[0].text, "watch this");
+    assert.equal(notes[0].text, "check this");
     const nameIndex = latecomer.events.findIndex(event => event.playerRefs !== undefined && event.playerRefs.includes(1));
     assert.ok(nameIndex !== -1 && nameIndex < latecomer.events.indexOf(bundle), "the author's name precedes the bundle");
 });

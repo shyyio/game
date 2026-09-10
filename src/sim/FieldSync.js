@@ -176,7 +176,7 @@ export class FieldSync {
 
     /**
      * EMIT_RENDER: one batch per chunk per set of the marked rows still alive whose values moved
-     * off their shadow, to observed chunks. The shadow follows whether or not anyone watched: a later
+     * off their shadow, to subscribed chunks. The shadow follows whether or not anyone subscribed: a later
      * subscriber gets the state through chunk sync.
      * @returns {void}
      */
@@ -200,7 +200,7 @@ export class FieldSync {
                 }
                 const x = position.x[eid];
                 const y = position.y[eid];
-                if (!this.engine.isTileObserved(x, y)) {
+                if (!this.engine.isTileSubscribed(x, y)) {
                     continue;
                 }
                 const chunkKey = chunkKeyAt(x, y);

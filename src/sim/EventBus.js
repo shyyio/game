@@ -144,7 +144,7 @@ export class EventBus {
 
     /**
      * Whether any session is subscribed to a chunk's topic. The sim checks this before building a
-     * render event, so an unwatched chunk costs nothing.
+     * render event, so an unsubscribed chunk costs nothing.
      * @param {number} chunkKey
      * @returns {boolean}
      */

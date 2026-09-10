@@ -47,7 +47,7 @@ test("a marked row's synced fields batch per chunk at tick end, to the chunk's v
     game.runTick();
     assert.equal(player.events.find(event => event instanceof ObjectFieldsBatchEvent), undefined);
 
-    // A mark on an unobserved chunk builds no event.
+    // A mark on an unsubscribed chunk builds no event.
     const far = new CapturingSession(2);
     game.connect(far);
     game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(300, 300)), far);

@@ -136,7 +136,7 @@ const RESOURCE_TIMING_TIMEOUT_MS = 5000;
 
 /**
  * Resource Timing duration for the given request, matching what devtools' network panel reports.
- * Observes live via PerformanceObserver rather than reading the shared buffer, since Vite's own
+ * Reads live via PerformanceObserver rather than the shared buffer, since Vite's own
  * module fetches fill that buffer's default capacity well before a status request completes.
  * @param {string} url
  * @returns {{durationMs: Promise<number|null>, cancel: function(): void}} durationMs is null when
@@ -149,23 +149,23 @@ function observeNetworkDurationMs(url) {
   let stop = () => {};
   const durationMs = new Promise((resolve) => {
     const timeout = window.setTimeout(() => {
-      observer.disconnect();
+      performanceObserver.disconnect();
       resolve(null);
     }, RESOURCE_TIMING_TIMEOUT_MS);
-    const observer = new PerformanceObserver((list) => {
+    const performanceObserver = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
         if (entry.name === normalizedUrl) {
           window.clearTimeout(timeout);
-          observer.disconnect();
+          performanceObserver.disconnect();
           resolve(Math.round(entry.duration));
           return;
         }
       }
     });
-    observer.observe({type: "resource"});
+    performanceObserver.observe({type: "resource"});
     stop = () => {
       window.clearTimeout(timeout);
-      observer.disconnect();
+      performanceObserver.disconnect();
       resolve(null);
     };
   });

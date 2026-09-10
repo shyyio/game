@@ -334,14 +334,14 @@ export class PortItemSync {
      * @returns {boolean}
      */
     _isPortSubscribed(eid) {
-        const generation = this.engine.observerGeneration;
+        const generation = this.engine.subscriptionGeneration;
         if (this._subscribedGeneration[eid] === generation) {
             return this._subscribed[eid] === 1;
         }
-        const observed = this.engine.isTileObserved(this._x[eid], this._y[eid]);
+        const subscribed = this.engine.isTileSubscribed(this._x[eid], this._y[eid]);
         this._subscribedGeneration[eid] = generation;
-        this._subscribed[eid] = observed ? 1 : 0;
-        return observed;
+        this._subscribed[eid] = subscribed ? 1 : 0;
+        return subscribed;
     }
 
     /**

@@ -185,7 +185,7 @@ export class GameEngine {
     }
 
     /**
-     * Initializes the event, metrics, and observation sinks.
+     * Initializes the event, metrics, and subscription sinks.
      * @private
      * @returns {void}
      */
@@ -193,20 +193,20 @@ export class GameEngine {
         // Sink for domain events (placement/path/delete + port-item render deltas). Game broadcasts each
         // synchronously by chunk; tests install an EventCollector. Null until one is installed.
         this._eventSink = null;
-        // Sink for metrics facts; unlike _eventSink, ignores chunk observation.
+        // Sink for metrics facts, delivered whether or not the chunk has a subscriber.
         this._metricsSink = null;
         /**
          * Notified (playerRef, itemTypeId, amount) when a producer's output is delivered.
          * @type {ListenerList}
          */
         this.itemProduced = new ListenerList();
-        // Whether any session is watching a chunk. Emitters skip building an event nobody receives; a
+        // Whether any session is subscribed to a chunk. Emitters skip building an event nobody receives; a
         // session that subscribes later gets the state through chunkSync, not the missed deltas.
-        this._chunkObserved = () => false;
-        // Bumped whenever the answer `_chunkObserved` gives could have changed, so a system caching
-        // "is this thing watched" per entity can revalidate on an integer compare instead of asking
+        this._isChunkSubscribed = () => false;
+        // Bumped whenever the answer `_isChunkSubscribed` gives could have changed, so a system caching
+        // "is this thing subscribed" per entity can revalidate on an integer compare instead of asking
         // again every tick. Starts at 1, leaving 0 as "never computed" for those caches.
-        this._observerGeneration = 1;
+        this._subscriptionGeneration = 1;
     }
 
     /**
@@ -222,15 +222,15 @@ export class GameEngine {
 
     /**
      * Sets the sink each emitted event is delivered to, and optionally the predicate deciding whether
-     * a chunk has any watcher; without one every chunk counts as observed.
+     * a chunk has any subscriber; without one every chunk counts as subscribed.
      * @param {function(AbstractChunkRoutedEvent): void} sink
-     * @param {function(number): boolean} [chunkObserved]
+     * @param {function(number): boolean} [isChunkSubscribed]
      * @returns {void}
      */
-    setEventSink(sink, chunkObserved) {
+    setEventSink(sink, isChunkSubscribed) {
         this._eventSink = sink;
-        this._chunkObserved = chunkObserved === undefined ? () => true : chunkObserved;
-        this.invalidateObservers();
+        this._isChunkSubscribed = isChunkSubscribed === undefined ? () => true : isChunkSubscribed;
+        this.invalidateSubscriptions();
     }
 
     /**
@@ -283,19 +283,19 @@ export class GameEngine {
     }
 
     /**
-     * Marks every cached observation stale. The owner of the subscriptions calls this whenever a
+     * Marks every cached subscription answer stale. The owner of the subscriptions calls this whenever a
      * session's viewport changes, so the sim's per-entity caches recompute on their next check.
      * @returns {void}
      */
-    invalidateObservers() {
-        this._observerGeneration += 1;
+    invalidateSubscriptions() {
+        this._subscriptionGeneration += 1;
     }
 
     /**
-     * @returns {number} the current observation generation; a cache stamped with it is still valid
+     * @returns {number} the current subscription generation; a cache stamped with it is still valid
      */
-    get observerGeneration() {
-        return this._observerGeneration;
+    get subscriptionGeneration() {
+        return this._subscriptionGeneration;
     }
 
     /**
@@ -304,8 +304,8 @@ export class GameEngine {
      * @param {number} y
      * @returns {boolean}
      */
-    isTileObserved(x, y) {
-        return this._chunkObserved(chunkKeyAt(x, y));
+    isTileSubscribed(x, y) {
+        return this._isChunkSubscribed(chunkKeyAt(x, y));
     }
 
     /**
@@ -336,7 +336,7 @@ export class GameEngine {
 
     /**
      * Runs one whole tick: the resolver brackets SUBMIT_INTENTS and closes POST_RESOLVE, then the
-     * engine emits what the clients watch.
+     * engine emits what the clients are subscribed to.
      * @returns {void}
      */
     tick() {
