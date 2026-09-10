@@ -7,7 +7,6 @@ import {ITEM_TYPE_WATER} from "@/mods/base-game/common/constants.js";
 import {SplitterType, BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 
 // Populates an engine with one of every migrated object type and ticks it a few times.
 async function populated() {
@@ -24,11 +23,11 @@ async function populated() {
     for (let i = 0; i < 3; i += 1) {
         engine.tickAll();
     }
-    return {engine, splitterId, beltPaths: beltsOf(engine).paths.length};
+    return {engine, splitterId, beltLanes: engine.lanes.ids().length};
 }
 
 test("the whole world round-trips through the engine serializer", async () => {
-    const {engine, splitterId, beltPaths} = await populated();
+    const {engine, splitterId, beltLanes} = await populated();
     const snapshot = engine.snapshots.serialize();
 
     const restored = await makeGameEngine();
@@ -36,7 +35,7 @@ test("the whole world round-trips through the engine serializer", async () => {
 
     assert.equal(restored.placed.eidsOf(ExtractorType.objectTypeId).length, 1, "extractor restored");
     assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1, "machine restored");
-    assert.equal(beltsOf(restored).paths.length, beltPaths, "belt paths restored");
+    assert.equal(restored.lanes.ids().length, beltLanes, "belt lanes restored");
     assert.notEqual(restored.space.userDataAt(5, 5, "R"), null, "resource cover restored");
     assert.notEqual(restored.placed.eidByObjectRef(splitterId), undefined, "splitter restored");
     assert.equal(restored.space.cellsFree([{x: 10, y: 10, layer: "S"}]), false, "machine position restored");
@@ -74,7 +73,7 @@ test("a snapshot round-trips through structured SQLite (the node save path)", as
 
     const loaded = await store.load();
     const names = loaded.components.map(component => component.name);
-    for (const name of ["Port", "Position", "Occupancy", "PlacedObject", "Machine", "Extractor", "Splitter", "BeltPath", "BeltPathMember", "BeltItem"]) {
+    for (const name of ["Port", "Position", "Occupancy", "PlacedObject", "Machine", "Extractor", "Splitter", "Lane", "LaneCell", "LaneItem"]) {
         assert.ok(names.includes(name), `${name} table present`);
     }
 

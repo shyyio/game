@@ -208,7 +208,7 @@ export class GameEngine {
         // World seed for terrain generation; set by Game, restored from a save.
         this.seed = 0;
 
-        // Flat global counters that survive a save (mods stash their own here, e.g. beltNextRunId).
+        // Flat global counters that survive a save; mods stash their own here.
         this.globals = {};
 
         /**
@@ -396,6 +396,8 @@ export class GameEngine {
             // then bespoke sim mods register theirs.
             this._fluidTypes = this.modRegistry.fluidTypes;
             this.placed = new PlacedObjects(this, this.modRegistry);
+            // After the host's own hook, so every cell's ports are bound when the lanes re-derive.
+            this.snapshots.registerRebuildHook(() => this.lanes.rebuild());
             this.placed.installBehaviors();
             this.overworldBake = new OverworldBake(this, this.placed);
             this.workers = new WorkerNetworks(this, this.placed);

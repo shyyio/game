@@ -21,7 +21,6 @@
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {TickPhase, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
 import {EMPTY} from "@/sim/sentinels.js";
-import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
 import {ExtractorType, BakeType} from "@/mods/base-game/common/objectTypes.js";
 import {buildLine, lineOrigin, lineSinkPort} from "@/test/productionLine.js";
 import {CpuProfiler, printProfileSummary, printHeapUsage} from "@/test/profiler.js";
@@ -158,11 +157,11 @@ async function main() {
         tickProfile = await profiler.stop(tickProfilePath);
     }
 
-    const paths = beltsOf(engine).paths.length;
+    const lanes = engine.lanes.ids().length;
     console.log(
         `Measured: ${(runMs / MS_PER_SECOND).toFixed(2)}s over ${ticks} ticks `
         + `(${(runMs / ticks).toFixed(1)}ms/tick); `
-        + `${paths.toLocaleString()} belt paths on the last tick.`
+        + `${lanes.toLocaleString()} lanes on the last tick.`
     );
     const resolvedShare = intents === 0 ? 0 : (resolved / intents) * 100;
     console.log(

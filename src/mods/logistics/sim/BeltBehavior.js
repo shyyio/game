@@ -1,48 +1,79 @@
-import {AbstractBehavior, CreateObjectMessage, DeleteObjectMessage} from "@spup/sdk";
-import {Belts} from "./Belts.js";
+import {
+    LaneBehavior,
+    LANE_LEVEL_SURFACE,
+    LANE_LEVEL_BURIED,
+    LAYER_SURFACE,
+    Direction,
+    NO_EID,
+    CreateObjectMessage,
+    DeleteObjectMessage,
+    laneLevelLayer,
+} from "@spup/sdk";
+import {BELT_TUNNEL_DOWN, BELT_TUNNEL_UP, BELT_UNDERGROUND, tunnelStep} from "../common/constants.js";
 import {BeltUndergroundType} from "../common/objectTypes.js";
-import {getUndergroundBeltsToCreate, isTunnelMouth} from "../common/geometry.js";
+import {findTunnelPartner, getUndergroundBeltsToCreate, isTunnelMouth} from "../common/geometry.js";
 
 /**
- * A belt cell of one kind: spawn/despawn feed the shared Belts path engine; a mouth pair's tunnel
- * is derived sim-side (spawn fills the span, despawn collapses it).
+ * The level a belt kind takes flow from.
+ * @param {BeltType} beltKind
+ * @returns {number}
  */
-export class BeltBehavior extends AbstractBehavior {
+function beltInLevel(beltKind) {
+    if (beltKind === BELT_UNDERGROUND || beltKind === BELT_TUNNEL_UP) {
+        return LANE_LEVEL_BURIED;
+    }
+    return LANE_LEVEL_SURFACE;
+}
+
+/**
+ * The level a belt kind gives flow to.
+ * @param {BeltType} beltKind
+ * @returns {number}
+ */
+function beltOutLevel(beltKind) {
+    if (beltKind === BELT_UNDERGROUND || beltKind === BELT_TUNNEL_DOWN) {
+        return LANE_LEVEL_BURIED;
+    }
+    return LANE_LEVEL_SURFACE;
+}
+
+// Every layer a belt can stand on: the surface and the two buried axes.
+const BELT_LAYERS = [
+    LAYER_SURFACE,
+    laneLevelLayer(LANE_LEVEL_BURIED, Direction.UP),
+    laneLevelLayer(LANE_LEVEL_BURIED, Direction.RIGHT),
+];
+
+/**
+ * A belt cell of one kind: a lane cell whose kind fixes the levels it takes and gives flow at. A
+ * mouth pair's tunnel is derived sim-side: spawning a mouth fills the span to its partner with
+ * undergrounds, despawning one collapses them.
+ */
+export class BeltBehavior extends LaneBehavior {
 
     /**
      * @param {object} config
      * @param {BeltType} config.beltKind
      */
     constructor({beltKind}) {
-        super();
+        super({inLevel: beltInLevel(beltKind), outLevel: beltOutLevel(beltKind)});
         this.beltKind = beltKind;
     }
 
-    install(engine) {
-        engine.provide(Belts, new Belts(engine));
-    }
-
     onSpawn(engine, eid, type, message) {
-        const belts = engine.resolve(Belts);
         if (isTunnelMouth(this.beltKind)) {
-            this._fillTunnel(engine, belts, message);
+            this._fillTunnel(engine, message);
         }
-        belts.placeBelt(message.x, message.y, message.direction, this.beltKind, engine.placed.objectRefOf(eid));
+        super.onSpawn(engine, eid, type, message);
     }
 
     onDespawn(engine, eid) {
-        const belts = engine.resolve(Belts);
-        const belt = belts.beltById(engine.placed.objectRefOf(eid));
-        if (belt === null) {
-            return;
-        }
-        if (isTunnelMouth(belt.type)) {
-            // Buried undergrounds go first, while the mouth's run is still intact to walk.
-            for (const underground of belts.tunnelUndergrounds(belt)) {
-                engine.applyMessage(new DeleteObjectMessage(underground.id));
+        if (isTunnelMouth(this.beltKind)) {
+            for (const undergroundEid of this._tunnelUndergrounds(engine, eid)) {
+                engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(undergroundEid)));
             }
         }
-        belts.removeBelt(belt.x, belt.y, belt.direction);
+        super.onDespawn(engine, eid);
     }
 
     /**
@@ -50,12 +81,14 @@ export class BeltBehavior extends AbstractBehavior {
      * length stays unfilled, leaving the mouths unlinked, and occupied cells are skipped.
      * @private
      * @param {GameEngine} engine
-     * @param {Belts} belts
      * @param {CreateObjectMessage} message
      * @returns {void}
      */
-    _fillTunnel(engine, belts, message) {
-        const partner = belts.tunnelPartner(message.x, message.y, message.direction, this.beltKind);
+    _fillTunnel(engine, message) {
+        const partner = findTunnelPartner(
+            message.x, message.y, message.direction, this.beltKind,
+            (x, y) => BeltBehavior._beltsAt(engine, x, y),
+        );
         if (partner === null) {
             return;
         }
@@ -71,30 +104,52 @@ export class BeltBehavior extends AbstractBehavior {
     }
 
     /**
-     * Re-registers every placed belt with the path engine after a load.
+     * The undergrounds buried in a mouth's tunnel, walked from the mouth along its axis.
+     * @private
      * @param {GameEngine} engine
-     * @returns {void}
+     * @param {number} mouthEid
+     * @returns {number[]} eids
      */
-    onRebuild(engine) {
-        const belts = engine.resolve(Belts);
-        belts.resetBelts();
-        const placed = engine.placed;
-        const def = placed.def;
-        const placedObject = def.store;
+    _tunnelUndergrounds(engine, mouthEid) {
         const position = engine.Position;
-        for (let row = 0; row < def.count; row += 1) {
-            const behavior = placed.behaviorFor(placedObject.objectTypeId[row]);
-            if (!(behavior instanceof BeltBehavior)) {
+        const direction = position.direction[mouthEid];
+        const step = tunnelStep(this.beltKind, direction);
+        const layer = laneLevelLayer(LANE_LEVEL_BURIED, direction);
+        const undergrounds = [];
+        let x = position.x[mouthEid] + step.dx;
+        let y = position.y[mouthEid] + step.dy;
+        for (;;) {
+            const eid = engine.placed.eidAt(x, y, layer);
+            if (eid === NO_EID || position.direction[eid] !== direction
+                || engine.placed.behaviorFor(engine.placed.objectTypeIdOf(eid)).beltKind !== BELT_UNDERGROUND) {
+                return undergrounds;
+            }
+            undergrounds.push(eid);
+            x += step.dx;
+            y += step.dy;
+        }
+    }
+
+    /**
+     * Every belt standing on a tile, as partner-scan candidates.
+     * @private
+     * @param {GameEngine} engine
+     * @param {number} x
+     * @param {number} y
+     * @returns {{x: number, y: number, type: BeltType, direction: Direction}[]}
+     */
+    static _beltsAt(engine, x, y) {
+        const belts = [];
+        for (const layer of BELT_LAYERS) {
+            const eid = engine.placed.eidAt(x, y, layer);
+            if (eid === NO_EID) {
                 continue;
             }
-            const eid = def.eids[row];
-            belts.registerBelt({
-                x: position.x[eid],
-                y: position.y[eid],
-                direction: position.direction[eid],
-                type: behavior.beltKind,
-                id: placedObject.objectRef[row],
-            });
+            const behavior = engine.placed.behaviorFor(engine.placed.objectTypeIdOf(eid));
+            if (behavior instanceof BeltBehavior) {
+                belts.push({x, y, type: behavior.beltKind, direction: engine.Position.direction[eid]});
+            }
         }
+        return belts;
     }
 }

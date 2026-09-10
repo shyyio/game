@@ -9,7 +9,7 @@ import {migrateSnapshot, SAVE_FORMAT} from "@/common/saveMigrations.js";
 import {GAME_VERSION, Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
-import {GateType} from "@/mods/logistics/common/objectTypes.js";
+import {GateType, BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {TankType} from "@/mods/fluids/common/objectTypes.js";
 import {TradingTerminalType} from "@/mods/market/common/objectTypes.js";
 
@@ -306,12 +306,11 @@ test("a format-8 save renames every objectId column to objectRef", async () => {
     const snapshot = engine.snapshots.serialize();
     snapshot.saveFormat = 8;
     renameRowsBack(snapshot, "PlacedObject", "objectRef", "objectId");
-    renameRowsBack(snapshot, "BeltPathMember", "objectRef", "objectId");
     renameRowsBack(snapshot, "PipeNetworkMember", "objectRef", "objectId");
 
     const migrated = migrateSnapshot(snapshot);
 
-    for (const name of ["PlacedObject", "BeltPathMember", "PipeNetworkMember"]) {
+    for (const name of ["PlacedObject", "PipeNetworkMember"]) {
         const component = migrated.components.find(entry => entry.name === name);
         assert.ok(component.fields.some(field => field.name === "objectRef"), `${name} carries objectRef`);
         assert.ok(!component.fields.some(field => field.name === "objectId"), `${name} dropped objectId`);
@@ -351,4 +350,68 @@ test("a format-9 save renames the ChunkClaim record's chunk column to chunkKey",
     assert.ok(!upgraded.fields.some(field => field.name === "chunk"));
     assert.equal(upgraded.rows[0].chunk, undefined);
     assert.equal(upgraded.rows[0].chunkKey, chunkKeyAt(0, 0));
+});
+
+// The belt path engine's three components as a format-10 save held them.
+const BELT_PATH_COMPONENTS = [
+    {
+        name: "BeltPath",
+        fields: [
+            {name: "inPort", kind: "eid"},
+            {name: "outPort", kind: "eid"},
+            {name: "headGap", kind: "i32"},
+            {name: "length", kind: "i32"},
+        ],
+    },
+    {
+        name: "BeltPathMember",
+        fields: [{name: "path", kind: "eid"}, {name: "seq", kind: "i32"}, {name: "objectRef", kind: "i32"}],
+    },
+    {
+        name: "BeltItem",
+        fields: [
+            {name: "path", kind: "eid"},
+            {name: "seq", kind: "i32"},
+            {name: "gap", kind: "i32"},
+            {name: "type", kind: "item"},
+        ],
+    },
+];
+
+test("a format-10 save drops the belt path components and makes every belt a lane cell", async () => {
+    const engine = await makeGameEngine();
+    for (const y of [0, 1, 2]) {
+        engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 0, y, Direction.UP));
+    }
+    engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP));
+    const snapshot = engine.snapshots.serialize();
+    snapshot.saveFormat = 10;
+    for (const name of ["Lane", "LaneCell", "LaneItem"]) {
+        snapshot.components.find(component => component.name === name).rows = [];
+    }
+    for (const component of BELT_PATH_COMPONENTS) {
+        snapshot.components.push({name: component.name, fields: component.fields, rows: []});
+    }
+    const placed = snapshot.components.find(component => component.name === "PlacedObject");
+    const beltEids = placed.rows
+        .filter(row => row.objectTypeId === BeltType.objectTypeId)
+        .map(row => row.eid);
+
+    const migrated = migrateSnapshot(snapshot);
+
+    assert.equal(migrated.saveFormat, SAVE_FORMAT);
+    for (const component of BELT_PATH_COMPONENTS) {
+        assert.equal(migrated.components.find(entry => entry.name === component.name), undefined, `${component.name} is dropped`);
+    }
+    const cells = migrated.components.find(component => component.name === "LaneCell");
+    assert.deepEqual(
+        cells.rows,
+        beltEids.map(eid => ({eid, lane: -1, childCell: -1, parentEdge: 0})),
+        "every belt becomes an unlinked lane cell",
+    );
+
+    const restored = await makeGameEngine();
+    assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
+    assert.equal(restored.lanes.ids().length, 1, "the belts re-derive into one lane");
+    assert.equal(restored.lanes.cellsOf(restored.lanes.ids()[0]).length, 3);
 });

@@ -360,7 +360,7 @@ export class PortIndex {
 
     /**
      * A module registers a hook returning the port eids its JS-only runtime state still references
-     * (belt paths hold their end ports outside any component), so {@link collectUnreferenced} keeps
+     * (a pipe network holds its ports outside any component), so {@link collectUnreferenced} keeps
      * them.
      * @param {function(): Iterable<number>} hook
      * @returns {void}
@@ -399,6 +399,14 @@ export class PortIndex {
             for (const eid of hook()) {
                 referenced.add(eid);
             }
+        }
+        // A port a live object still binds as producer or consumer is an active endpoint, not an
+        // edge left behind: unbindEndpoints drops a deleted object's entries, so these are all live.
+        for (const portEid of this._producersByPort.keys()) {
+            referenced.add(portEid);
+        }
+        for (const portEid of this._consumersByPort.keys()) {
+            referenced.add(portEid);
         }
 
         const doomed = [];

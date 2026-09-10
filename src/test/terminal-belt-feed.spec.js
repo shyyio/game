@@ -5,7 +5,7 @@ import {Direction, EMPTY, CreateObjectMessage} from "@spup/sdk";
 import {TradingTerminalType} from "@/mods/market/common/objectTypes.js";
 import {MARKET_MODE_SELL, MARKET_MODE_BUY} from "@/mods/market/common/constants.js";
 import {MarketBook} from "@/mods/market/sim/MarketBook.js";
-import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
+import {placeBelt, beltLaneAt} from "@/test/beltFixture.js";
 
 const ITEM = 500;
 const PRICE = 10;
@@ -47,11 +47,10 @@ test("a belt-fed seller loses no items when a pop and a sale share a tick", asyn
     const buyerOutPort = terminal.out[buyerRow];
 
     // Belt line (5,7)->(5,6) facing UP feeds tile (5,5): the seller adopts the shared port.
-    const belts = beltsOf(engine);
-    belts.placeBelt(5, 7, Direction.UP);
-    const belt = belts.placeBelt(5, 6, Direction.UP);
-    assert.equal(belt.outPort, sellerInPort, "the belt feeds the seller's in-port");
-    const feed = belts.pathAt(5, 7);
+    placeBelt(engine, 5, 7, Direction.UP);
+    placeBelt(engine, 5, 6, Direction.UP);
+    const feed = beltLaneAt(engine, 5, 7);
+    assert.equal(feed.outPort, sellerInPort, "the belt feeds the seller's in-port");
 
     let fed = 0;
     let delivered = 0;
@@ -67,8 +66,7 @@ test("a belt-fed seller loses no items when a pop and a sale share a tick", asyn
         }
     }
 
-    const path = belts.paths.find(candidate => candidate.id === feed.id);
-    const inTransit = belts.itemCountOf(path) + held(engine, feed.inPort) + held(engine, sellerInPort);
+    const inTransit = engine.lanes.itemCountOf(feed.laneRef) + held(engine, feed.inPort) + held(engine, sellerInPort);
     assert.equal(delivered + inTransit, fed, "every fed item is delivered or still on the way");
     assert.ok(delivered >= TICKS / 2, "the line sells at a sustained rate");
 });

@@ -8,8 +8,8 @@ import {rotate} from "@/common/util.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import ReducedMotion from "@/client/ReducedMotion.js";
 
-// Item sprites resting in out-ports share this layer with belt-path items; their keys are
-// namespaced from the path-item row-id keys so the two can't collide.
+// Item sprites resting in out-ports share this layer with lane items; their keys are
+// namespaced from the lane item keys so the two can't collide.
 export const PORT_SPRITE_KEY = portRef => `port:${portRef}`;
 
 // Items glide to each new position over this long (the game tick is 600ms, so they
@@ -118,7 +118,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     get layerIndex() {
-        // Above belts (10), below the debug path overlay (100).
+        // Above belts (10), below the mod overlays (100).
         return 15;
     }
 
@@ -128,13 +128,13 @@ export class ItemDrawLayer extends AbstractDrawLayer {
 
     /**
      * Renders or clears a resting out-port item, deriving its tile from the object index;
-     * ignores ports not in the index (e.g. belt-path ports, which the Logistics mod drives).
+     * ignores ports not in the index (a lane's out-port, which LaneItemDrawLayer draws).
      * @param {AbstractEvent} event
      * @returns {void}
      */
     onEvent(event) {
-        // A null placement means a port this layer doesn't own (a belt-path port, or a
-        // port whose id isn't in the index) — leave it to the owning mod.
+        // A null placement means a port this layer doesn't own (a lane's out-port, or a
+        // port whose id isn't in the index): leave it to the owning layer.
         const placement = this._resolvePort(event.portRef);
         if (placement === null) {
             return;

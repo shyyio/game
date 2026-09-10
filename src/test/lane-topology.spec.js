@@ -281,3 +281,27 @@ test("deleting the machine returns the head to its back edge", async () => {
     assert.equal(engine.lanes.parentEdgeOf(head), Direction.UP, "the head is back on its back edge");
     assert.equal(engine.lanes.inPortOf(laneAt(engine, 5, 5)), engine.ports.at(5, 5, Direction.UP));
 });
+
+// Re-laying a cell (delete then place, as the drag tool does at a corner) fires the port sweep. A
+// flank turn earlier in the run must survive it: the run stays one lane, its bends intact, not
+// split at the reset edge.
+test("re-laying a far cell keeps an earlier flank turn linked", async () => {
+    const engine = await setup();
+    // Lay an L, re-laying each corner tile facing the new direction the way a drag does.
+    placeLane(engine, 33, 35, Direction.UP);
+    placeLane(engine, 33, 34, Direction.UP);
+    deleteLane(engine, 33, 34);
+    placeLane(engine, 33, 34, Direction.RIGHT);
+    placeLane(engine, 34, 34, Direction.RIGHT);
+    placeLane(engine, 35, 34, Direction.RIGHT);
+    deleteLane(engine, 35, 34);
+    placeLane(engine, 35, 34, Direction.UP);
+
+    assert.equal(engine.lanes.ids().length, 1, "the whole L is one lane");
+    assert.deepEqual(
+        laneTiles(engine, laneAt(engine, 33, 35)),
+        [[33, 35], [33, 34], [34, 34], [35, 34]],
+    );
+    assert.equal(engine.lanes.parentEdgeOf(engine.placed.eidAt(33, 34, LAYER_SURFACE)), Direction.LEFT,
+        "the first corner is still fed across its flank");
+});

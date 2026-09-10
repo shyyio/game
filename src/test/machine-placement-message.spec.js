@@ -12,7 +12,7 @@ import {
 } from "@/test/machineFixture.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector} from "@/test/EventCollector.js";
-import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
+import {placeBelt, beltLaneAt} from "@/test/beltFixture.js";
 
 test("a machine placed via message adopts a belt, cooks its input, and deletes", async () => {
     const engine = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
@@ -24,7 +24,8 @@ test("a machine placed via message adopts a belt, cooks its input, and deletes",
     assert.ok(insert, "ObjectInsertEvent emitted");
     assert.equal(insert.objectTypeId, TestMachineType.objectTypeId);
 
-    const belt = beltsOf(engine).placeBelt(5, 6, Direction.UP);
+    placeBelt(engine, 5, 6, Direction.UP);
+    const belt = beltLaneAt(engine, 5, 6);
     // Feed the machine's recipe input; it should produce the cooked output.
     engine.ports.setItem(belt.inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
     const outPort = engine.ports.at(5, 4, Direction.UP);

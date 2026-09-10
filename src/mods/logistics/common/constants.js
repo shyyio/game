@@ -1,4 +1,4 @@
-import {Direction, LAYER_SURFACE} from "@spup/sdk";
+import {Direction} from "@spup/sdk";
 
 // Shared numeric constants and enums for the Logistics mod.
 
@@ -15,23 +15,6 @@ export const BELT_UNDERGROUND = 3;
  * A belt kind ordinal (one of the BELT_* constants).
  * @typedef {number} BeltType
  */
-
-// Underground position layers, one per axis (LAYERS_UNDERGROUND_AXIS[direction % 2]), so a
-// surface belt and two crossing tunnels coexist on a tile.
-export const LAYERS_UNDERGROUND_AXIS = ["U0", "U1"];
-
-/**
- * The position layer a belt sits on: undergrounds get their axis layer, everything else SURFACE.
- * @param {BeltType} type
- * @param {Direction} direction
- * @returns {string}
- */
-export function beltPositionLayer(type, direction) {
-    if (type === BELT_UNDERGROUND) {
-        return LAYERS_UNDERGROUND_AXIS[direction % 2];
-    }
-    return LAYER_SURFACE;
-}
 
 /**
  * Per-step (dx, dy) for walking a mouth's tunnel: TUNNEL_UP steps against its facing, TUNNEL_DOWN along it.

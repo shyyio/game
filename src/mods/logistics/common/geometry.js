@@ -23,7 +23,7 @@ function feedsForward(data) {
 
 /**
  * The tile a belt at (tileX, tileY) facing `direction` is fed from, or nulls; the highest-id
- * forward feeder wins, mirroring Belts._chosenUpstream.
+ * forward feeder wins, the rule the lane rebuild applies.
  * @param {ObjectsView} cache
  * @param {number} tileX
  * @param {number} tileY
@@ -116,7 +116,7 @@ export function isTunnelMouth(type) {
 
 /**
  * Scans from (x, y) along a `kind` mouth's tunnel axis for its partner mouth; a same-kind mouth in
- * between blocks the pairing. Shared by the sim (`Belts.tunnelPartner`) and the client tool
+ * between blocks the pairing. Shared by the sim (`BeltBehavior`) and the client tool
  * (`UndergroundBeltTool`), each supplying its own belt lookup.
  * @param {number} x
  * @param {number} y

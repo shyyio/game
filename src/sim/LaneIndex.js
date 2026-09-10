@@ -25,7 +25,7 @@ const NO_INTENT = -1;
 
 // Every level that exists and the one fact the core holds about each: an axis-split level takes a
 // layer per axis, so two lanes cross on one tile and neither bends; an unsplit level takes one
-// layer, so lanes there bend freely but two of them cannot share a tile. Adding a level is one laneRow.
+// layer, so lanes there bend freely but two of them cannot share a tile. Adding a level is one row.
 const LANE_LEVELS = new Map([
     [LANE_LEVEL_BURIED, {axisSplit: true, layers: ["LB_H", "LB_V"]}],
     [LANE_LEVEL_SURFACE, {axisSplit: false, layers: [LAYER_SURFACE]}],
@@ -42,7 +42,7 @@ const LANE_LEVELS = new Map([
 export function laneLevelLayer(level, direction) {
     const entry = LANE_LEVELS.get(level);
     if (entry === undefined) {
-        throw new Error(`No laneEid level ${level}`);
+        throw new Error(`No lane level ${level}`);
     }
     if (!entry.axisSplit) {
         return entry.layers[0];
@@ -133,7 +133,11 @@ export class LaneIndex {
         // This pass's client rows, one batch per chunk.
         this._batches = new Map();
 
-        // Per-lane-laneRow intents submitted this tick, and the item each would take onto the lane.
+        engine.registerChunkSync(chunkKey => this.chunkSync(chunkKey));
+        engine.registerSpawnListener(eid => this.objectChanged(eid));
+        engine.registerDespawnListener(eid => this.objectChanged(eid));
+
+        // Per-lane-row intents submitted this tick, and the item each would take onto the lane.
         this._popIntent = new Int32Array(0);
         this._drainIntent = new Int32Array(0);
         this._popSourceItem = new Int32Array(0);
@@ -245,7 +249,7 @@ export class LaneIndex {
     parentEdgeOf(eid) {
         const cellRow = this.cellDef.row(eid);
         if (cellRow < 0) {
-            throw new Error(`Entity ${eid} is no laneEid cell`);
+            throw new Error(`Entity ${eid} is no lane cell`);
         }
         return this.cellDef.store.parentEdge[cellRow];
     }
@@ -275,7 +279,7 @@ export class LaneIndex {
     _laneRow(laneRef) {
         const laneRow = this.laneDef.row(laneRef);
         if (laneRow < 0) {
-            throw new Error(`No laneEid ${laneRef}`);
+            throw new Error(`No lane ${laneRef}`);
         }
         return laneRow;
     }
@@ -568,6 +572,9 @@ export class LaneIndex {
             this._captureItems(laneEid, heldByCell);
             this._destroyLane(laneEid);
         }
+        // The resets go out now: a rebuilt lane may take a destroyed one's eid, and the client
+        // forgets a lane on its reset.
+        this._flushBatches();
         this._destroyHeld(heldByCell.get(dropped));
         heldByCell.delete(dropped);
 
@@ -590,6 +597,8 @@ export class LaneIndex {
             this._emitSync(laneEid);
         }
         this._flushBatches();
+        // The port items the rebuild moved go out with its rows, not a render pass later.
+        this.engine.render.emit();
     }
 
     /**
@@ -761,7 +770,7 @@ export class LaneIndex {
             }
             offset -= slots[i];
         }
-        throw new Error(`Lane itemEid at slot ${slotFromInput} stands on no cell`);
+        throw new Error(`Lane item at slot ${slotFromInput} stands on no cell`);
     }
 
     /**
@@ -810,7 +819,9 @@ export class LaneIndex {
     }
 
     /**
-     * Takes the item in-port item in the edge before cell `index`, which the rebuild made interior.
+     * Takes the item resting in the edge before cell `index`, which the rebuild made interior. That
+     * edge is where the upstream cell hands flow over, not cell `index`'s straight back edge: a bent
+     * cell takes flow across a flank, and its back edge is a side input this lane never crosses.
      * @private
      * @param {Map<number, number[]>} heldByCell
      * @param {number[]} cells
@@ -819,7 +830,7 @@ export class LaneIndex {
      * @returns {void}
      */
     _absorbEdge(heldByCell, cells, slots, index) {
-        const portEid = this._inPortOfCell(cells[index]);
+        const portEid = this._outPortOfCell(cells[index - 1]);
         const portItem = this.engine.ports.item(portEid);
         if (portItem === EMPTY || this.engine.isFluid(portItem)) {
             return;
@@ -1128,8 +1139,8 @@ export class LaneIndex {
     _emitSync(laneEid) {
         const laneRow = this._laneRow(laneEid);
         const batch = this._batchForLane(laneRow);
-        for (const itemEid of this.itemsOf(laneEid)) {
-            batch.addSync(laneEid, itemEid.itemRef, itemEid.gap, itemEid.itemTypeId);
+        for (const item of this.itemsOf(laneEid)) {
+            batch.addSync(laneEid, item.itemRef, item.gap, item.itemTypeId);
         }
     }
 
@@ -1159,8 +1170,8 @@ export class LaneIndex {
                 this._parentEdgesOf(laneEid),
                 this.laneDef.store.outPort[laneRow],
             );
-            for (const itemEid of this.itemsOf(laneEid)) {
-                items.addSync(laneEid, itemEid.itemRef, itemEid.gap, itemEid.itemTypeId);
+            for (const item of this.itemsOf(laneEid)) {
+                items.addSync(laneEid, item.itemRef, item.gap, item.itemTypeId);
             }
         }
         if (geometry === null) {
@@ -1184,8 +1195,6 @@ export class LaneIndex {
         this._lanesByChunk = new Map();
         this._batches.clear();
         const cells = Array.from(this.engine.components.entitiesWith(this.cellDef));
-        for (const eid of cells) {
-            }
         const heldByCell = new Map();
         for (const laneEid of this.ids()) {
             this._captureItems(laneEid, heldByCell);
@@ -1234,11 +1243,11 @@ export class LaneIndex {
             return;
         }
         const items = this.engine.modRegistry.items;
-        for (const laneRow of heldByCell.values()) {
-            for (let slot = 0; slot < laneRow.length; slot += 1) {
-                const eid = laneRow[slot];
+        for (const cellSlots of heldByCell.values()) {
+            for (let slot = 0; slot < cellSlots.length; slot += 1) {
+                const eid = cellSlots[slot];
                 if (eid !== NO_EID && items.get(this.arena.store.itemTypeId[this.arena.row(eid)]) === undefined) {
-                    laneRow[slot] = NO_EID;
+                    cellSlots[slot] = NO_EID;
                     this.arena.destroy(eid);
                 }
             }

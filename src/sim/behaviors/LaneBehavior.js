@@ -52,16 +52,6 @@ export class LaneBehavior extends AbstractBehavior {
 
     /**
      * @param {GameEngine} engine
-     * @returns {void}
-     */
-    install(engine) {
-        engine.registerChunkSync(chunk => engine.lanes.chunkSync(chunk));
-        engine.registerSpawnListener(eid => engine.lanes.objectChanged(eid));
-        engine.registerDespawnListener(eid => engine.lanes.objectChanged(eid));
-    }
-
-    /**
-     * @param {GameEngine} engine
      * @param {number} eid
      * @param {ObjectType} type
      * @param {CreateObjectMessage} message
@@ -88,13 +78,5 @@ export class LaneBehavior extends AbstractBehavior {
      */
     resyncRenderedPorts(engine, eid) {
 
-    }
-
-    /**
-     * @param {GameEngine} engine
-     * @returns {void}
-     */
-    onRebuild(engine) {
-        engine.lanes.rebuild();
     }
 }

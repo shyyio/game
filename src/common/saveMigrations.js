@@ -1,5 +1,7 @@
+import {Direction} from "@/common/constants.js";
+
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
-export const SAVE_FORMAT = 10;
+export const SAVE_FORMAT = 11;
 
 // What a save written before the stamp counts as.
 const UNSTAMPED_FORMAT = 0;
@@ -84,7 +86,32 @@ export const SAVE_MIGRATIONS = new Map([
         saveFormat: 10,
         records: renameField(snapshot.records === undefined ? [] : snapshot.records, "ChunkClaim", "chunk", "chunkKey"),
     })],
+    // Format 11 moves belts onto the engine's lanes: the belt path components go, and every placed
+    // belt becomes a lane cell the load re-derives lanes from. Items in flight on a belt are lost.
+    [10, snapshot => ({
+        ...snapshot,
+        saveFormat: 11,
+        components: addRows(
+            snapshot.components.filter(component => !BELT_PATH_COMPONENTS.has(component.name)),
+            "LaneCell",
+            placedOfTypes(snapshot, BELT_TYPE_NAMES).map(eid => ({
+                eid,
+                lane: LANE_CELL_UNLINKED,
+                childCell: LANE_CELL_UNLINKED,
+                parentEdge: Direction.UP,
+            })),
+        ),
+    })],
 ]);
+
+// The belt path engine's components, dropped by format 11.
+const BELT_PATH_COMPONENTS = new Set(["BeltPath", "BeltPathMember", "BeltItem"]);
+
+// The object types that are lane cells from format 11 on.
+const BELT_TYPE_NAMES = new Set(["Belt", "BeltTunnelDown", "BeltTunnelUp", "BeltUnderground"]);
+
+// The eid sentinel a lane cell on no lane stores.
+const LANE_CELL_UNLINKED = -1;
 
 // The lane components as format 7 registers them, for the save that predates all three.
 const LANE_COMPONENTS = [
@@ -157,6 +184,35 @@ const RECORD_ID_FIELD_KINDS = new Map([
     ["ItemProduced.item_type", "item"],
     ["LogicRuleCondition.item_type", "item"],
 ]);
+
+/**
+ * The eids of every placed object whose type is one of `typeNames`.
+ * @param {object} snapshot
+ * @param {Set<string>} typeNames
+ * @returns {number[]}
+ */
+function placedOfTypes(snapshot, typeNames) {
+    const placed = snapshot.components.find(component => component.name === "PlacedObject");
+    return placed.rows
+        .filter(row => typeNames.has(snapshot.objectTypeNames[row.objectTypeId]))
+        .map(row => row.eid);
+}
+
+/**
+ * Returns `components` with `rows` appended to `componentName`.
+ * @param {object[]} components
+ * @param {string} componentName
+ * @param {object[]} rows
+ * @returns {object[]}
+ */
+function addRows(components, componentName, rows) {
+    return components.map(component => {
+        if (component.name !== componentName) {
+            return component;
+        }
+        return {...component, rows: component.rows.concat(rows)};
+    });
+}
 
 /**
  * Returns `components` with each named component appended, holding no rows; one already present is

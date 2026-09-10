@@ -1,5 +1,6 @@
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
 import {Direction} from "@/common/constants.js";
+import {LANE_LEVEL_SURFACE} from "@/sim/LaneIndex.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {
     LaneGeometryEvent,
@@ -9,7 +10,7 @@ import {
     LaneItemResetEvent,
 } from "@/common/LaneEvents.js";
 
-// Item sprite keys, namespaced away from the port and belt keys sharing the item layer.
+// Item sprite keys, namespaced away from the port keys sharing the item layer.
 const LANE_SPRITE_KEY = (laneRef, itemRef) => `lane:${laneRef}:${itemRef}`;
 const LANE_PORT_SPRITE_KEY = portRef => `lanePort:${portRef}`;
 
@@ -33,6 +34,8 @@ class LaneRecord {
          * @type {Map<number, {gap: number, type: number}>}
          */
         this.items = new Map();
+        // A lead was popped and its out-port sprite has yet to appear, so that one glides in.
+        this.popPending = false;
     }
 }
 
@@ -56,6 +59,26 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         this._lanes = new Map();
         // Lane id by the out-port ref it rests items in, so a port-item event finds its lane.
         this._laneByOutPort = new Map();
+        // Lane id by cell, so a cell cached after its lane's rows redraws them.
+        this._laneByCell = new Map();
+        // The item resting in each port, by port ref: a rebuilt lane keeps its out-port's item
+        // without the sim resending it.
+        this._portItems = new Map();
+    }
+
+    /**
+     * A lane's rows can land before its newest cell: redraw the lane once the cell is cached.
+     * @param {CacheEntry} entry
+     * @returns {void}
+     */
+    onCacheSet(entry) {
+        const laneRef = this._laneByCell.get(entry.id);
+        if (laneRef === undefined) {
+            return;
+        }
+        const lane = this._lanes.get(laneRef);
+        this._redraw(laneRef, lane, true);
+        this._drawPortItem(lane, true);
     }
 
     get layerIndex() {
@@ -73,22 +96,6 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
             PortItemSetEvent,
             PortItemClearEvent,
         ];
-    }
-
-    /**
-     * The edge a lane cell is fed over, in the cell's own frame, or null when no lane covers it.
-     * A mod's own draw layer reads a cell's bend from the sim's choice rather than re-deriving it.
-     * @param {number} objectRef
-     * @returns {Direction|null}
-     */
-    parentEdgeOf(objectRef) {
-        for (const lane of this._lanes.values()) {
-            const index = lane.cellObjectRefs.indexOf(objectRef);
-            if (index >= 0) {
-                return lane.cellParentEdges[index];
-            }
-        }
-        return null;
     }
 
     /**
@@ -122,8 +129,13 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      */
     _setGeometry(event) {
         this._forget(event.laneRef);
-        this._lanes.set(event.laneRef, new LaneRecord(event.cellObjectRefs, event.cellParentEdges, event.outPortRef));
+        const lane = new LaneRecord(event.cellObjectRefs, event.cellParentEdges, event.outPortRef);
+        this._lanes.set(event.laneRef, lane);
         this._laneByOutPort.set(event.outPortRef, event.laneRef);
+        for (const objectRef of event.cellObjectRefs) {
+            this._laneByCell.set(objectRef, event.laneRef);
+        }
+        this._drawPortItem(lane, true);
     }
 
     /**
@@ -142,6 +154,9 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         }
         this._itemLayer.removeItem(LANE_PORT_SPRITE_KEY(lane.outPortRef));
         this._laneByOutPort.delete(lane.outPortRef);
+        for (const objectRef of lane.cellObjectRefs) {
+            this._laneByCell.delete(objectRef);
+        }
         this._lanes.delete(laneRef);
     }
 
@@ -172,30 +187,70 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         }
         lane.items.delete(event.itemRef);
         this._itemLayer.removeItem(LANE_SPRITE_KEY(event.laneRef, event.itemRef));
+        // An item leaves a lane only by popping into its out-port.
+        lane.popPending = true;
         this._redraw(event.laneRef, lane, false);
     }
 
     /**
-     * The item resting past a lane's tail, which the engine renders as an ordinary port item.
+     * The item resting in a lane's out-port: drawn one tile past the tail on the edge facing back
+     * at it, gliding in when a pop put it there, and a consumed one glides on into the consumer.
      * @private
      * @param {PortItemSetEvent|PortItemClearEvent} event
      * @returns {void}
      */
     _portItem(event) {
+        if (event instanceof PortItemSetEvent) {
+            this._portItems.set(event.portRef, event.itemTypeId);
+        } else {
+            this._portItems.delete(event.portRef);
+        }
         const laneRef = this._laneByOutPort.get(event.portRef);
         if (laneRef === undefined) {
             return;
         }
-        if (event instanceof PortItemClearEvent) {
-            this._itemLayer.removeItem(LANE_PORT_SPRITE_KEY(event.portRef));
-            return;
-        }
         const lane = this._lanes.get(laneRef);
-        const slots = this._slotsOf(lane);
-        if (slots === null) {
+        if (event instanceof PortItemSetEvent) {
+            this._drawPortItem(lane, !lane.popPending);
+            lane.popPending = false;
             return;
         }
-        this._drawAt(LANE_PORT_SPRITE_KEY(event.portRef), lane, slots, slots.total - 1, event.itemTypeId, false);
+        const key = LANE_PORT_SPRITE_KEY(event.portRef);
+        const tail = this.cache.get(lane.cellObjectRefs[lane.cellObjectRefs.length - 1]);
+        if (event.consumed === 1 && tail !== null) {
+            this._itemLayer.consumeItem(key, Direction.invert(tail.data.direction));
+            return;
+        }
+        this._itemLayer.removeItem(key);
+    }
+
+    /**
+     * Places the sprite of the item resting in a lane's out-port, if any; nothing while the tail
+     * cell is still missing from the object index.
+     * @private
+     * @param {LaneRecord} lane
+     * @param {boolean} snap - the item did not move, so its sprite must not glide
+     * @returns {void}
+     */
+    _drawPortItem(lane, snap) {
+        const itemTypeId = this._portItems.get(lane.outPortRef);
+        if (itemTypeId === undefined) {
+            return;
+        }
+        const tail = this.cache.get(lane.cellObjectRefs[lane.cellObjectRefs.length - 1]);
+        if (tail === null) {
+            return;
+        }
+        const direction = tail.data.direction;
+        this._itemLayer.moveItem({
+            key: LANE_PORT_SPRITE_KEY(lane.outPortRef),
+            tileX: tail.tileX + Direction.dx(direction),
+            tileY: tail.tileY + Direction.dy(direction),
+            halfTile: true,
+            sourceDirection: Direction.invert(direction),
+            type: itemTypeId,
+            snap,
+        });
     }
 
     /**
@@ -245,6 +300,8 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
+     * A cell's slots run from its center to the edge it hands flow over, so a lane's file is drawn
+     * center, edge, center, edge... and its last slot is the out-port past the tail.
      * @private
      * @param {string} key
      * @param {LaneRecord} lane
@@ -259,17 +316,28 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         while (index > 0 && slots.offsets[index] > physical) {
             index -= 1;
         }
+        // A cell's last slot is the edge into the next cell: drawn there, on the edge it enters over.
+        const halfTile = physical === slots.offsets[index] + slots.slots[index] - 1;
+        if (halfTile) {
+            index += 1;
+        }
         const cell = slots.cells[index];
+        const behavior = cell.data.type.behavior;
         const entering = Direction.rotate(lane.cellParentEdges[index], cell.data.direction);
+        let hidden = behavior.inLevel < LANE_LEVEL_SURFACE;
+        if (!halfTile) {
+            // A center is under cover only while the cell is buried at both ends.
+            hidden = hidden && behavior.outLevel < LANE_LEVEL_SURFACE;
+        }
         this._itemLayer.moveItem({
             key,
             tileX: cell.tileX,
             tileY: cell.tileY,
-            // The first slot of a cell sits on the edge it takes flow over; the rest ride its center.
-            halfTile: physical === slots.offsets[index],
+            halfTile,
             sourceDirection: Direction.invert(entering),
             type: itemTypeId,
             snap,
+            hidden,
         });
     }
 }

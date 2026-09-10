@@ -43,7 +43,7 @@ export class WorkerDebugLayer extends AbstractDebugDrawLayer {
     }
 
     get layerIndex() {
-        // Above the belt path overlay (100).
+        // Above the mod overlays (100).
         return 101;
     }
 

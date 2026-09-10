@@ -10,7 +10,7 @@ import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {makeGameEngine, makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
+import {placeBelt, beltLaneAt} from "@/test/beltFixture.js";
 import {GateType, BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {SetGateOpenMessage} from "@/mods/logistics/common/messages.js";
 import {ObjectFieldsEvent, ObjectFieldsBatchEvent} from "@/common/ObjectEvents.js";
@@ -49,11 +49,12 @@ function gateMode(engine, eid) {
 
 test("an item flows through an open belt gate", async () => {
     const engine = await makeGameEngine();
-    const belts = beltsOf(engine);
     // Belt at (5,6) UP feeds the gate at (5,5); belt at (5,4) carries onward.
-    const feed = belts.placeBelt(5, 6, Direction.UP);
+    placeBelt(engine, 5, 6, Direction.UP);
     const gate = placeGate(engine, 5, 5, Direction.UP);
-    const onward = belts.placeBelt(5, 4, Direction.UP);
+    placeBelt(engine, 5, 4, Direction.UP);
+    const feed = beltLaneAt(engine, 5, 6);
+    const onward = beltLaneAt(engine, 5, 4);
 
     assert.equal(gate.in, feed.outPort, "the gate adopted the feeding belt's out-port");
     assert.equal(gate.out, onward.inPort, "the onward belt adopted the gate's out-port");
@@ -69,10 +70,10 @@ test("an item flows through an open belt gate", async () => {
 
 test("an item rests one tick inside the gate between the in- and out-port", async () => {
     const engine = await makeGameEngine();
-    const belts = beltsOf(engine);
-    const feed = belts.placeBelt(5, 6, Direction.UP);
+    placeBelt(engine, 5, 6, Direction.UP);
     const gate = placeGate(engine, 5, 5, Direction.UP);
-    belts.placeBelt(5, 4, Direction.UP);
+    placeBelt(engine, 5, 4, Direction.UP);
+    const feed = beltLaneAt(engine, 5, 6);
 
     engine.ports.setItem(feed.inPort, RED);
     let atMouth = false;
@@ -92,10 +93,11 @@ test("an item rests one tick inside the gate between the in- and out-port", asyn
 
 test("a closed belt gate jams the upstream belt and releases on open", async () => {
     const engine = await makeGameEngine();
-    const belts = beltsOf(engine);
-    const feed = belts.placeBelt(5, 6, Direction.UP);
+    placeBelt(engine, 5, 6, Direction.UP);
     const gate = placeGate(engine, 5, 5, Direction.UP);
-    const onward = belts.placeBelt(5, 4, Direction.UP);
+    placeBelt(engine, 5, 4, Direction.UP);
+    const feed = beltLaneAt(engine, 5, 6);
+    const onward = beltLaneAt(engine, 5, 4);
 
     gateBehavior(engine).setOpen(engine, gate.eid, false);
     engine.ports.setItem(feed.inPort, RED);
@@ -117,11 +119,12 @@ test("a closed belt gate jams the upstream belt and releases on open", async () 
 
 test("a belt gate works across a chunk seam", async () => {
     const engine = await makeGameEngine();
-    const belts = beltsOf(engine);
     // Feed belt in the chunk below the seam, gate and onward belt above it.
-    const feed = belts.placeBelt(0, 64, Direction.UP);
+    placeBelt(engine, 0, 64, Direction.UP);
     placeGate(engine, 0, 63, Direction.UP);
-    const onward = belts.placeBelt(0, 62, Direction.UP);
+    placeBelt(engine, 0, 62, Direction.UP);
+    const feed = beltLaneAt(engine, 0, 64);
+    const onward = beltLaneAt(engine, 0, 62);
     assert.notEqual(chunkKeyAt(0, 64), chunkKeyAt(0, 63), "the gate sits across the seam from its feed");
 
     engine.ports.setItem(feed.inPort, RED);

@@ -41,7 +41,7 @@ export class PlacedObjects {
         // Called with a chunk ordinal after any spawn/despawn in it (the overworld bake repaints).
         this._chunkObservers = [];
 
-        // Before the behavior installs, so anything a behavior registers (a belt path sync) runs
+        // Before the behavior installs, so anything a behavior registers (a chunk sync) runs
         // after the host's — the client rebuilds objects first, then what references them.
         engine.registerMessageHandler((message, playerRef) => this._message(message, playerRef));
         engine.registerChunkSync(chunk => this._chunkSync(chunk));

@@ -13,13 +13,6 @@ import {
     LogicTerminalType,
 } from "./common/objectTypes.js";
 import {
-    BeltPathRecalculateEvent,
-    BeltItemUpsertEvent,
-    BeltItemSyncEvent,
-    BeltItemDeleteEvent,
-    BeltItemResetEvent,
-    BeltItemBatchEvent,
-    BeltPathBatchEvent,
     LogicWireSetEvent,
     LogicWireClearEvent,
     LogicSnapshotEvent,
@@ -59,13 +52,6 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
 
     get wireClasses() {
         return [
-            BeltPathRecalculateEvent,
-            BeltItemUpsertEvent,
-            BeltItemSyncEvent,
-            BeltItemDeleteEvent,
-            BeltItemResetEvent,
-            BeltItemBatchEvent,
-            BeltPathBatchEvent,
             SetGateOpenMessage,
             LogicWireSetEvent,
             LogicWireClearEvent,

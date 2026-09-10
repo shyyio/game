@@ -17,7 +17,7 @@ import {
     VolcanoFixtureDeclaration,
 } from "@/test/volcanoFixture.js";
 import {BeltType} from "@/mods/logistics/common/objectTypes.js";
-import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
+import {beltLaneAt, laneItemCount} from "@/test/beltFixture.js";
 import {PortItemSetEvent} from "@/common/PortItemEvents.js";
 import {ObjectFieldsEvent} from "@/common/ObjectEvents.js";
 import {EventCollector} from "@/test/EventCollector.js";
@@ -204,14 +204,12 @@ test("a belt refuses a fluid payload resting in its in-port", async () => {
     engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 0, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 0, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 0, 4, Direction.UP));
-    const belts = beltsOf(engine);
 
     for (let i = 0; i < 20; i += 1) {
         engine.tickAll();
     }
 
-    const path = belts.paths[0];
-    assert.equal(belts.itemCountOf(path), 0, "no fluid item ever boards the belt");
+    assert.equal(laneItemCount(engine), 0, "no fluid item ever boards the belt");
     // The refused payload rests in the shared edge port; the extractor is backed up behind it.
     assert.equal(engine.ports.item(engine.ports.at(0, 4, Direction.UP)), ITEM_TYPE_WATER);
 });
@@ -220,9 +218,8 @@ test("a belt never pops an item into a fluid port", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 0, 1, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 0, 0, Direction.UP));
-    const belts = beltsOf(engine);
     const pipes = pipesOf(engine);
-    const path = belts.pathAt(0, 1);
+    const path = beltLaneAt(engine, 0, 1);
     engine.ports.setItem(path.inPort, ITEM_TYPE_IRON_ORE);
 
     for (let i = 0; i < 20; i += 1) {
@@ -231,5 +228,5 @@ test("a belt never pops an item into a fluid port", async () => {
 
     assert.equal(pipes.networkAt(0, 0).amount, 0, "no solid item enters the network");
     assert.equal(engine.ports.item(path.outPort), EMPTY, "the shared edge port stays untouched");
-    assert.equal(belts.itemCountOf(belts.paths[0]), 1, "the item waits at the belt's end");
+    assert.equal(laneItemCount(engine), 1, "the item waits at the belt's end");
 });

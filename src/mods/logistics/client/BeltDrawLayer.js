@@ -5,6 +5,7 @@ import {
     TILE_SIZE,
     Direction,
     AbstractTileMeshDrawLayer,
+    LaneGeometryEvent,
 } from "@spup/sdk/client";
 import {chunkKeyAt, getOrCreate, removeFromGroup} from "@spup/sdk";
 import {
@@ -16,7 +17,6 @@ import {
     MAP_COLOR_BELT,
     MAP_COLOR_BELT_TUNNEL,
 } from "../common/constants.js";
-import {inferBeltParent} from "../common/geometry.js";
 
 // Every beltFrameBase result except the never-drawn buried underground.
 const BELT_SEQUENCES = [
@@ -52,6 +52,22 @@ export function beltFrameBase(bend, type) {
     return "belt-straight";
 }
 
+/**
+ * The bend a belt draws for the edge its lane feeds it over, in the belt's own frame: a feed
+ * heading LEFT comes off the right flank.
+ * @param {Direction} parentEdge
+ * @returns {BeltBend}
+ */
+export function beltBendOf(parentEdge) {
+    if (parentEdge === Direction.LEFT) {
+        return BeltBend.RIGHT;
+    }
+    if (parentEdge === Direction.RIGHT) {
+        return BeltBend.LEFT;
+    }
+    return BeltBend.STRAIGHT;
+}
+
 export class Belt {
 
     /**
@@ -66,13 +82,9 @@ export class Belt {
         this.id = id;
         this.x = x;
         this.y = y;
-        this.parentX = x;
-        this.parentY = y;
         this.direction = direction;
         this.bend = bend;
         this.type = type;
-        // Behind any real epoch, so the first tick derives this belt's bend.
-        this.bendEpoch = -1;
     }
 
     static getBend(direction, x, y, parentX, parentY) {
@@ -102,6 +114,10 @@ export class Belt {
     }
 }
 
+/**
+ * Draws the belts; a belt's bend is the edge the sim's lane feeds it over, taken from the lane
+ * geometry feed.
+ */
 export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
 
     constructor() {
@@ -112,8 +128,8 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
         this._belts = new Map();
         // The belts each chunk holds.
         this._chunkBelts = new Map();
-        // Bumped on structural cache changes; a belt with an older bendEpoch re-derives when next ticked.
-        this._bendEpoch = 0;
+        // Belt id -> the edge its lane feeds it over; geometry may land before the belt is cached.
+        this._parentEdges = new Map();
     }
 
     get layerIndex() {
@@ -124,12 +140,27 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
         return BELT_SEQUENCES;
     }
 
+    get eventClasses() {
+        return [LaneGeometryEvent];
+    }
+
     /**
-     * A bend depends on neighbors of any mod, so any structural change flags every bend for a lazy re-derive.
+     * Records each cell's parent edge and re-bends the belts already drawn.
+     * @param {LaneGeometryEvent} event
      * @returns {void}
      */
-    onCacheStructuralChange() {
-        this._bendEpoch += 1;
+    onEvent(event) {
+        for (let i = 0; i < event.cellObjectRefs.length; i += 1) {
+            const id = event.cellObjectRefs[i];
+            const edge = event.cellParentEdges[i];
+            this._parentEdges.set(id, edge);
+            const belt = this._belts.get(id);
+            if (belt === undefined || belt.bend === beltBendOf(edge)) {
+                continue;
+            }
+            belt.bend = beltBendOf(edge);
+            this._dirtyChunks.add(chunkKeyAt(belt.x, belt.y));
+        }
     }
 
     /**
@@ -188,7 +219,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     }
 
     /**
-     * Renders a belt (buried undergrounds skipped); bend added straight, re-derived on the next structural change.
+     * Renders a belt (buried undergrounds skipped), bent by the edge its lane already reported.
      * @param {number} id
      * @param {number} x
      * @param {number} y
@@ -199,7 +230,9 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
         if (type === BELT_UNDERGROUND) {
             return;
         }
-        const belt = new Belt(id, x, y, direction, BeltBend.STRAIGHT, type);
+        const edge = this._parentEdges.get(id);
+        const bend = edge === undefined ? BeltBend.STRAIGHT : beltBendOf(edge);
+        const belt = new Belt(id, x, y, direction, bend, type);
         this._belts.set(id, belt);
 
         const chunkKey = chunkKeyAt(x, y);
@@ -208,43 +241,10 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     }
 
     /**
-     * Re-derives invalidated bends, marking the chunk for a mesh rebuild when any turned.
-     * @param {number} chunkKey
-     * @returns {void}
-     * @private
-     */
-    _refreshBends(chunkKey) {
-        for (const belt of this._beltsIn(chunkKey)) {
-            if (belt.bendEpoch === this._bendEpoch) {
-                continue;
-            }
-            belt.bendEpoch = this._bendEpoch;
-            if (belt.type === BELT_NORMAL && this._applyBend(belt)) {
-                this._dirtyChunks.add(chunkKey);
-            }
-        }
-    }
-
-    /**
-     * Re-derives a normal belt's bend from its cached neighbors.
-     * @param {Belt} belt
-     * @returns {boolean} whether the bend changed
-     * @private
-     */
-    _applyBend(belt) {
-        const {parentX, parentY} = inferBeltParent(this.cache, belt.x, belt.y, belt.direction);
-        const bend = Belt.getBend(belt.direction, belt.x, belt.y, parentX, parentY);
-        if (bend === belt.bend) {
-            return false;
-        }
-        belt.bend = bend;
-        return true;
-    }
-
-    /**
      * @param {number} id
      */
     removeBelt(id) {
+        this._parentEdges.delete(id);
         const belt = this._belts.get(id);
         if (belt === undefined) {
             return;
@@ -255,29 +255,6 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
 
         removeFromGroup(this._chunkBelts, chunkKey, belt);
         this._memberRemoved(chunkKey, !this._chunkBelts.has(chunkKey));
-    }
-
-    /**
-     * Re-derives stale bends, then advances every on-screen belt.
-     * @param {number} frame animation frame, in [0, 8)
-     * @param {number} deltaMS elapsed ms since the previous tick
-     * @returns {void}
-     */
-    _updateSprites(frame, deltaMS) {
-        for (const chunk of this._mounted) {
-            this._refreshBends(chunk);
-        }
-        super._updateSprites(frame, deltaMS);
-    }
-
-    /**
-     * Bends first: the mesh bakes them in, and a first-mount chunk has never derived them.
-     * @param {number} chunkKey
-     * @returns {void}
-     */
-    _prepareChunkSprites(chunkKey) {
-        this._refreshBends(chunkKey);
-        this._rebuildChunkSprites(chunkKey);
     }
 }
 
@@ -304,8 +281,6 @@ export class BeltSprite extends Sprite {
         this.bend = bend;
         this.type = type;
         this.frames = frames;
-        // Behind any real epoch, so the first tick derives this belt's bend.
-        this.bendEpoch = -1;
 
         this.position.set(x * TILE_SIZE + 32, y * TILE_SIZE + 32);
     }

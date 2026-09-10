@@ -1,89 +1,87 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
+import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {MAX_UNDERGROUND_LENGTH} from "@/mods/logistics/common/constants.js";
-import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {BeltTunnelDownType, BeltTunnelUpType} from "@/mods/logistics/common/objectTypes.js";
+import {BeltTunnelDownType, BeltTunnelUpType, BeltUndergroundType} from "@/mods/logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
+import {placeBelt, beltLaneAt, laneItemCount} from "@/test/beltFixture.js";
 
 const RED = 1;
 
 // Places a tunnel-down at (1,1) then a tunnel-up `gap+1` tiles east, filling the buried span; returns the
-// engine and both mouth ids. A RIGHT tunnel.
+// engine and both mouth refs. A RIGHT tunnel.
 async function tunnel(gap) {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(BeltTunnelDownType.objectTypeId, 1, 1, Direction.RIGHT));
-    const downId = beltsOf(engine)._beltAt(1, 1, Direction.RIGHT).id;
+    placeBelt(engine, 1, 1, Direction.RIGHT, BeltTunnelDownType);
+    const downRef = engine.placed.objectRefOf(engine.placed.eidsOf(BeltTunnelDownType.objectTypeId)[0]);
     const exitX = 1 + gap + 1;
-    engine.applyMessage(new CreateObjectMessage(BeltTunnelUpType.objectTypeId, exitX, 1, Direction.RIGHT));
-    const upId = beltsOf(engine)._beltAt(exitX, 1, Direction.RIGHT).id;
-    return {engine, downId, upId, exitX};
+    placeBelt(engine, exitX, 1, Direction.RIGHT, BeltTunnelUpType);
+    const upRef = engine.placed.objectRefOf(engine.placed.eidsOf(BeltTunnelUpType.objectTypeId)[0]);
+    return {engine, downRef, upRef, exitX};
 }
 
 function connected(engine, ax, ay, bx, by) {
-    const a = beltsOf(engine).pathAt(ax, ay);
-    const b = beltsOf(engine).pathAt(bx, by);
-    return a !== null && b !== null && a.id === b.id;
+    return beltLaneAt(engine, ax, ay).laneRef === beltLaneAt(engine, bx, by).laneRef;
 }
 
-function itemCells(engine) {
-    const belts = beltsOf(engine);
-    return belts.paths.reduce((sum, path) => sum + belts.itemCountOf(path), 0);
+function beltCount(engine) {
+    return [BeltTunnelDownType, BeltTunnelUpType, BeltUndergroundType]
+        .reduce((sum, type) => sum + engine.placed.eidsOf(type.objectTypeId).length, 0);
 }
 
-test("adjacent mouths connect into one tunnel path", async () => {
+test("adjacent mouths connect into one tunnel lane", async () => {
     const {engine, exitX} = await tunnel(0);
-    assert.ok(connected(engine, 1, 1, exitX, 1), "the two mouths are one path");
-    assert.equal(beltsOf(engine).beltCount, 2, "no undergrounds between adjacent mouths");
+    assert.ok(connected(engine, 1, 1, exitX, 1), "the two mouths are one lane");
+    assert.equal(beltCount(engine), 2, "no undergrounds between adjacent mouths");
 });
 
 test("mouths connect at the maximum tunnel length", async () => {
     const {engine, exitX} = await tunnel(MAX_UNDERGROUND_LENGTH);
     assert.ok(connected(engine, 1, 1, exitX, 1), "mouths at max span still connect");
-    assert.equal(beltsOf(engine).beltCount, MAX_UNDERGROUND_LENGTH + 2);
+    assert.equal(beltCount(engine), MAX_UNDERGROUND_LENGTH + 2);
 });
 
 test("mouths beyond the maximum tunnel length do not connect", async () => {
     const {engine, exitX} = await tunnel(MAX_UNDERGROUND_LENGTH + 1);
     assert.ok(!connected(engine, 1, 1, exitX, 1), "over-long mouths stay separate");
-    assert.equal(beltsOf(engine).paths.length, 2);
+    assert.equal(engine.lanes.ids().length, 2);
 });
 
 test("a reversed pair (tunnel-up first, then tunnel-down) connects", async () => {
     const engine = await makeGameEngine();
-    engine.applyMessage(new CreateObjectMessage(BeltTunnelUpType.objectTypeId, 3, 1, Direction.RIGHT));
-    engine.applyMessage(new CreateObjectMessage(BeltTunnelDownType.objectTypeId, 1, 1, Direction.RIGHT));
+    placeBelt(engine, 3, 1, Direction.RIGHT, BeltTunnelUpType);
+    placeBelt(engine, 1, 1, Direction.RIGHT, BeltTunnelDownType);
 
-    assert.ok(connected(engine, 1, 1, 3, 1), "the reversed pair forms one tunnel path");
-    assert.equal(beltsOf(engine).paths.length, 1);
+    assert.ok(connected(engine, 1, 1, 3, 1), "the reversed pair forms one tunnel lane");
+    assert.equal(engine.lanes.ids().length, 1);
 });
 
 test("deleting the up mouth collapses the tunnel, leaving the down mouth", async () => {
-    const {engine, upId} = await tunnel(1);
-    engine.applyMessage(new DeleteObjectMessage(upId));
+    const {engine, upRef} = await tunnel(1);
+    engine.applyMessage(new DeleteObjectMessage(upRef));
 
-    assert.equal(beltsOf(engine).beltCount, 1, "the tunnel-up and its undergrounds are gone");
-    assert.equal(beltsOf(engine).paths.length, 1);
-    assert.equal(beltsOf(engine).paths[0].length, 1, "the surviving tunnel-down is a standalone belt");
+    assert.equal(beltCount(engine), 1, "the tunnel-up and its undergrounds are gone");
+    assert.equal(engine.lanes.ids().length, 1);
+    assert.equal(engine.lanes.cellsOf(beltLaneAt(engine, 1, 1).laneRef).length, 1, "the surviving tunnel-down is a standalone belt");
 });
 
 test("deleting the down mouth collapses the tunnel, leaving the up mouth", async () => {
-    const {engine, downId} = await tunnel(1);
-    engine.applyMessage(new DeleteObjectMessage(downId));
+    const {engine, downRef, exitX} = await tunnel(1);
+    engine.applyMessage(new DeleteObjectMessage(downRef));
 
-    assert.equal(beltsOf(engine).beltCount, 1, "the tunnel-down and its undergrounds are gone");
-    assert.equal(beltsOf(engine).paths.length, 1);
-    assert.equal(beltsOf(engine).paths[0].length, 1);
+    assert.equal(beltCount(engine), 1, "the tunnel-down and its undergrounds are gone");
+    assert.equal(engine.lanes.ids().length, 1);
+    assert.equal(engine.lanes.cellsOf(beltLaneAt(engine, exitX, 1).laneRef).length, 1);
 });
 
 test("a tunnel item is kept on the surviving mouth when a mouth is deleted", async () => {
-    const {engine, upId} = await tunnel(1);
-    const path = beltsOf(engine).pathAt(1, 1);
-    engine.ports.setItem(path.inPort, RED);
+    const {engine, upRef} = await tunnel(1);
+    const lane = beltLaneAt(engine, 1, 1);
+    engine.ports.setItem(lane.inPort, RED);
     engine.tickAll(); // ingest the item into the tunnel
-    assert.equal(itemCells(engine), 1, "the item is in the tunnel");
+    assert.equal(laneItemCount(engine), 1, "the item is in the tunnel");
 
-    engine.applyMessage(new DeleteObjectMessage(upId));
-    assert.equal(itemCells(engine), 1, "the item is kept on the surviving mouth, not lost with the tunnel");
+    engine.applyMessage(new DeleteObjectMessage(upRef));
+    assert.equal(laneItemCount(engine), 1, "the item is kept on the surviving mouth, not lost with the tunnel");
 });

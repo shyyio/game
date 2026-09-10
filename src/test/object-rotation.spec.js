@@ -11,7 +11,7 @@ import {
     MachineFixtureDeclaration,
 } from "@/test/machineFixture.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {beltsOf} from "@/mods/logistics/sim/testHelpers.js";
+import {beltLaneAt} from "@/test/beltFixture.js";
 
 async function setup() {
     return makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
@@ -22,7 +22,7 @@ test("a RIGHT-facing machine adopts a RIGHT belt and cooks", async () => {
     // Belt (5,5) RIGHT feeds (6,5); machine at (6,5) facing RIGHT.
     engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 6, 5, Direction.RIGHT));
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 5, 5, Direction.RIGHT));
-    const belt = beltsOf(engine).pathAt(5, 5);
+    const belt = beltLaneAt(engine, 5, 5);
     assert.equal(belt.outPort, engine.ports.at(6, 5, Direction.RIGHT), "belt out adopted as machine input");
 
     engine.ports.setItem(belt.inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
@@ -40,7 +40,7 @@ test("a RIGHT-facing splitter adopts a RIGHT belt on its in_a", async () => {
     // Splitter at (6,5) facing RIGHT; in_a is its own tile edge. Belt (5,5) RIGHT feeds it.
     engine.applyMessage(new CreateObjectMessage(SplitterType.objectTypeId, 6, 5, Direction.RIGHT));
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 5, 5, Direction.RIGHT));
-    const belt = beltsOf(engine).pathAt(5, 5);
+    const belt = beltLaneAt(engine, 5, 5);
     assert.equal(belt.outPort, engine.ports.at(6, 5, Direction.RIGHT), "belt out adopted as splitter in_a");
 
     engine.ports.setItem(belt.inPort, 1);

@@ -153,7 +153,7 @@ export class ComponentRegistry {
      * @param {string} name
      * @param {{name:string, kind?:string, defaultValue?:number}[]} fieldSpecs
      * @param {{snapshotOnly?:boolean, sparse?:boolean}} [options] - snapshotOnly components hold state
-     *     materialized at save (belt paths), not kept in sync during play, so the port sweep ignores
+     *     materialized at save (pipe networks), not kept in sync during play, so the port sweep ignores
      *     their eid fields (the module's live pin hook is authoritative instead); sparse components
      *     index their columns by row instead of by eid, so a component only a slice of the world
      *     carries is sized to that slice (see {@link ComponentDef})

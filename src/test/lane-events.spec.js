@@ -8,6 +8,7 @@ import {
     LaneItemUpsertEvent,
     LaneItemSyncEvent,
     LaneItemDeleteEvent,
+    LaneItemResetEvent,
     LaneItemBatchEvent,
 } from "@/common/LaneEvents.js";
 import {ModPackage} from "@/common/ModPackage.js";
@@ -185,4 +186,52 @@ test("extending a lane upstream leaves a resting out-port item static", async ()
     const churned = editEvents.concat(tickEvents).some(event =>
         (event instanceof PortItemClearEvent || event instanceof PortItemSetEvent) && event.portRef === outPort);
     assert.ok(!churned, "the surviving out-port emits no clear or set, so its sprite stays put");
+});
+
+// A rebuilt lane can take the eid of the one it replaces. The client forgets a lane on its reset, so
+// that reset must land before the new lane's geometry, or the rows that follow name a lane it dropped.
+test("a rebuild's reset for a replaced lane precedes the geometry that reuses its id", async () => {
+    const engine = await setup();
+    const collector = new EventCollector(engine);
+    placeLane(engine, 0, 2, Direction.UP);
+    collector.drain();
+
+    placeLane(engine, 0, 1, Direction.UP);
+    const events = collector.drain();
+
+    const resets = events.filter(event => event instanceof LaneItemResetEvent);
+    assert.ok(resets.length > 0, "the replaced lane is reset");
+    for (const reset of resets) {
+        const resetAt = events.indexOf(reset);
+        const geometryAt = events.findIndex(event =>
+            event instanceof LaneGeometryEvent && event.laneRef === reset.laneRef);
+        assert.ok(geometryAt === -1 || geometryAt > resetAt, `the reset of lane ${reset.laneRef} precedes its new geometry`);
+    }
+});
+
+// A rebuild can move an item into a lane's new out-port; the client must learn that with the
+// rebuild's own rows, not a render pass later, or the sprite blinks out for a tick.
+test("a rebuild sends the port items it changed along with its rows", async () => {
+    const engine = await setup();
+    const collector = new EventCollector(engine);
+    placeLane(engine, 5, 5, Direction.RIGHT);
+    placeLane(engine, 6, 5, Direction.RIGHT);
+    const run = laneAt(engine, 5, 5);
+    engine.ports.setItem(engine.lanes.outPortOf(run), 2);
+    for (let i = 0; i < 6; i += 1) {
+        engine.ports.setItem(engine.lanes.inPortOf(run), CARGO);
+        engine.tickAll();
+    }
+    collector.drain();
+
+    // A junction steal orphans (5,5); its boundary item lands in its new out-port.
+    placeLane(engine, 6, 6, Direction.UP);
+    const events = collector.drain();
+
+    const orphanOut = engine.lanes.outPortOf(laneAt(engine, 5, 5));
+    assert.equal(engine.ports.item(orphanOut), CARGO);
+    assert.ok(
+        events.some(event => event instanceof PortItemSetEvent && event.portRef === orphanOut && event.itemTypeId === CARGO),
+        "the new out-port's item is sent with the rebuild",
+    );
 });

@@ -212,3 +212,32 @@ test("a tail merge re-ingests a resting out-port item onto the connecting cell",
     assert.equal(itemCells(engine), 1, "the item re-ingests onto the lane");
     assert.equal(drain(engine, laneAt(engine, 0, 0), 12), 1, "the re-ingested item reaches the merged output");
 });
+
+// A junction steal on a saturated straight run orphans the upstream cell. The item that was on the
+// stolen cell's input boundary belongs to the orphan's now-shortened out-port, not the stealing
+// lane: the stealing cell is fed from its own new parent, so its back edge is not that lane's flow.
+test("a junction steal leaves the boundary item on the orphan's out-port, not the stealing lane", async () => {
+    const engine = await setup();
+    // A straight run (5,5)->(6,5) facing RIGHT, packed solid with its out-port blocked.
+    placeLane(engine, 5, 5, Direction.RIGHT);
+    placeLane(engine, 6, 5, Direction.RIGHT);
+    const run = laneAt(engine, 5, 5);
+    engine.ports.setItem(engine.lanes.outPortOf(run), 2);
+    for (let i = 0; i < 6; i += 1) {
+        engine.ports.setItem(engine.lanes.inPortOf(run), CARGO);
+        engine.tickAll();
+    }
+    assert.equal(engine.lanes.itemCountOf(run), 3, "the run is saturated");
+
+    // A cell feeding (6,5) from below wins its junction, orphaning (5,5).
+    placeLane(engine, 6, 6, Direction.UP);
+
+    const orphan = laneAt(engine, 5, 5);
+    const stealer = laneAt(engine, 6, 6);
+    const orphanOut = engine.lanes.outPortOf(orphan);
+    const total = engine.lanes.itemCountOf(orphan) + engine.lanes.itemCountOf(stealer)
+        + (engine.ports.item(orphanOut) === CARGO ? 1 : 0);
+    assert.equal(total, 3, "every item is conserved across the steal");
+    assert.equal(engine.ports.item(orphanOut), CARGO, "the boundary item rests on the orphan's out-port");
+    assert.equal(engine.lanes.itemCountOf(stealer), 1, "the stealing lane keeps only what stood on its own cell");
+});

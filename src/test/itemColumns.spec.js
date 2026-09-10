@@ -7,7 +7,7 @@ import {makeGameEngine} from "@/test/ecsSim.js";
 
 const ITEM_COLUMNS = [
     "Port.item",
-    "BeltItem.type",
+    "LaneItem.itemTypeId",
     "Machine.slot0",
     "Machine.slot1",
     "Machine.slot2",

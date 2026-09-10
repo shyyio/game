@@ -6,19 +6,11 @@ import {
     ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent,
 } from "@spup/sdk";
 import {LogisticsDeclaration} from "../declaration.js";
-import {
-    BeltPathRecalculateEvent,
-    BeltItemBatchEvent,
-} from "./events.js";
+import {LogicSnapshotEvent} from "./events.js";
 
-test("Round-trips belt messages, including null and id fields", () => {
+test("Round-trips core messages, including id fields", () => {
     const reg = wireRegistryFor(new LogisticsDeclaration());
     assertRoundTrip(reg, new DeleteObjectMessage(123456789012345), DeleteObjectMessage);
-});
-
-test("Round-trips belt events, preserving exact ids", () => {
-    const reg = wireRegistryFor(new LogisticsDeclaration());
-    assertRoundTrip(reg, new BeltPathRecalculateEvent(1, 2, [1, 2, 999999999999]), BeltPathRecalculateEvent);
 });
 
 test("Round-trips generic object events, preserving exact ids in the port-id array", () => {
@@ -29,7 +21,7 @@ test("Round-trips generic object events, preserving exact ids in the port-id arr
     assertRoundTrip(reg, new CreateObjectMessage(1, 5, 6, 1), CreateObjectMessage);
 });
 
-test("Decoded belt ref is a Number, round-tripped exactly", () => {
+test("Decoded object ref is a Number, round-tripped exactly", () => {
     const reg = wireRegistryFor(new LogisticsDeclaration());
     const objectRef = 123456789012345;
     const decoded = reg.decode(reg.encode(new DeleteObjectMessage(objectRef)));
@@ -37,11 +29,12 @@ test("Decoded belt ref is a Number, round-tripped exactly", () => {
     assert.strictEqual(decoded.objectRef, objectRef);
 });
 
-test("Round-trips a BeltItemBatchEvent's packed columns", () => {
+test("Round-trips a LogicSnapshotEvent's parallel columns", () => {
     const reg = wireRegistryFor(new LogisticsDeclaration());
-    const batch = new BeltItemBatchEvent(12, -5);
-    batch.addDelete(999999999999, 41);
-    batch.addUpsert(7, 42, 0, 3);
-    batch.addUpsert(7, 43, 12, 3);
-    assertRoundTrip(reg, batch, BeltItemBatchEvent);
+    const snapshot = new LogicSnapshotEvent(
+        999999999999, 1, 2, [7, 8], [3, 4], [10, -5], [0, 12],
+        [7], [2], [1], [0], [1],
+        [0], [8], [-1], [2], [0], [5],
+    );
+    assertRoundTrip(reg, snapshot, LogicSnapshotEvent);
 });

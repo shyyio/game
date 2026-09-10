@@ -12,7 +12,6 @@ import {
     BELT_TUNNEL_DOWN,
     BELT_TUNNEL_UP,
     BELT_UNDERGROUND,
-    beltPositionLayer,
     HOUSING_WORKER_SUPPLY,
     MAP_COLOR_HOUSING,
     MAP_COLOR_ROAD,
@@ -52,11 +51,6 @@ class BeltObjectType extends ObjectType {
             ],
         });
         this.beltKind = beltKind;
-    }
-
-    // An underground occupies its axis layer, so it can cross under a surface belt.
-    positionLayerTiles(direction) {
-        return [{layer: beltPositionLayer(this.beltKind, direction), cells: this.geometry.tiles(direction)}];
     }
 
     // A mouth/underground never merges from the side: only its straight-axis input (local UP)
