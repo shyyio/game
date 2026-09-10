@@ -191,7 +191,12 @@ export class World {
         }
         modRegistry.freeze();
 
-        const seed = config.seed === null ? randomWorldSeed() : config.seed;
+        let seed;
+        if (config.seed === null) {
+            seed = randomWorldSeed();
+        } else {
+            seed = config.seed;
+        }
         const game = new Game(
             modRegistry, new GameEngine(modRegistry), new NodeSaveStore(config.db), new NodeMetricsStore(config.metricsDb),
             config.tickMs, seed,

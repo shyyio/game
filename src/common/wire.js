@@ -239,7 +239,11 @@ export class WireRegistry {
             const value = obj[name];
             if (spec.kind === "repeated") {
                 const arr = value == null ? [] : value;
-                payload[name] = spec.int64 ? arr.map(toLong) : arr;
+                if (spec.int64) {
+                    payload[name] = arr.map(toLong);
+                } else {
+                    payload[name] = arr;
+                }
             } else if (spec.kind === "messages") {
                 const arr = value == null ? [] : value;
                 const wireIds = [];
@@ -254,7 +258,11 @@ export class WireRegistry {
             } else if (spec.kind === "map") {
                 payload[name] = value == null ? {} : value;
             } else if (value != null) {
-                payload[name] = spec.int64 ? toLong(value) : value;
+                if (spec.int64) {
+                    payload[name] = toLong(value);
+                } else {
+                    payload[name] = value;
+                }
             }
         }
 

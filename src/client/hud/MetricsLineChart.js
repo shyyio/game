@@ -497,7 +497,12 @@ export class MetricsLineChart {
             this._lastPushToTick - 2 * this._latestSeriesData.tier,
         ));
         const [yMin, yMax] = this._yScale.domain();
-        const yTickValues = this._metric === CHART_METRIC_AVG ? this._yScale.ticks(5) : integerTicks(yMin, yMax, 5);
+        let yTickValues;
+        if (this._metric === CHART_METRIC_AVG) {
+            yTickValues = this._yScale.ticks(5);
+        } else {
+            yTickValues = integerTicks(yMin, yMax, 5);
+        }
         const yFormat = this._metric === CHART_METRIC_AVG ? formatAvg : formatCount;
         const yAxis = axisLeft(this._yScale).tickValues(yTickValues).tickFormat(yFormat).tickSizeOuter(0);
         this._gAxisY.call(yAxis);

@@ -19,7 +19,12 @@ export function canTransportsCouple(type, direction, gateDirection, behind) {
         return false;
     }
     // A buried end exposes nothing, so a tunnel span never couples.
-    const ports = behind ? type.getSurfacePortsByKind("outputPorts") : type.getSurfacePortsByKind("inputPorts");
+    let ports;
+    if (behind) {
+        ports = type.getSurfacePortsByKind("outputPorts");
+    } else {
+        ports = type.getSurfacePortsByKind("inputPorts");
+    }
     return ports.length > 0;
 }
 

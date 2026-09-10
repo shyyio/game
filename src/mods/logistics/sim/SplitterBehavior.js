@@ -99,7 +99,12 @@ export class SplitterBehavior extends AbstractBehavior {
      * @returns {{id:number, inputPortA:number, inputPortB:number, outputPortA:number, outputPortB:number, internalPortA:number, internalPortB:number}}
      */
     addSplitter(engine, wiring={}) {
-        const port = given => given === undefined ? engine.ports.create() : given;
+        const port = given => {
+            if (given === undefined) {
+                return engine.ports.create();
+            }
+            return given;
+        };
         // Ports first so their eids stay contiguous from 1.
         const ports = {
             inputPortA: port(wiring.inputPortA),

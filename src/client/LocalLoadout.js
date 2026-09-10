@@ -318,7 +318,12 @@ export class LocalLoadout {
     static fromLockfile(lockfile, listings) {
         return new LocalLoadout(lockfile.mods.map(entry => {
             const listing = listings.find(candidate => candidate.name === entry.name);
-            const title = listing === undefined ? entry.name : titleOf(listing);
+            let title;
+            if (listing === undefined) {
+                title = entry.name;
+            } else {
+                title = titleOf(listing);
+            }
             return new LocalMod(entry.name, title, entry.url, entry.version, entry.integrity, true);
         }));
     }

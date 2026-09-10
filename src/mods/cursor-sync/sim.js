@@ -213,7 +213,12 @@ export class CursorSyncSimMod extends AbstractSimMod {
         if (losing === undefined) {
             return;
         }
-        const keeping = toChunk === null ? undefined : game.bus.findSubscribersByChunkKey(toChunk);
+        let keeping;
+        if (toChunk === null) {
+            keeping = undefined;
+        } else {
+            keeping = game.bus.findSubscribersByChunkKey(toChunk);
+        }
         // One shared instance: delivery only encodes, and publishTo never resubscribes.
         const event = new PlayerCursorHideEvent(playerRef);
         for (const sessionRef of losing) {

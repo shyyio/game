@@ -53,11 +53,19 @@ export class TerrainBake {
         /**
          * @type {Uint8Array|null} the biome each cell blends toward
          */
-        this.others = blended ? new Uint8Array(cellCount) : null;
+        if (blended) {
+            this.others = new Uint8Array(cellCount);
+        } else {
+            this.others = null;
+        }
         /**
          * @type {Uint8Array|null} blend weight in [0, BLEND_WEIGHT_SCALE]; the scale is a 50/50 mix
          */
-        this.weights = blended ? new Uint8Array(cellCount) : null;
+        if (blended) {
+            this.weights = new Uint8Array(cellCount);
+        } else {
+            this.weights = null;
+        }
     }
 }
 

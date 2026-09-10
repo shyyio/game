@@ -429,7 +429,11 @@ class WorkerSprite extends Sprite {
         // Face the direction of travel; a vertical leg keeps the last horizontal facing.
         const dx = segDX * this._forward;
         if (dx !== 0) {
-            this.scale.x = dx < 0 ? -Math.abs(this.scale.x) : Math.abs(this.scale.x);
+            if (dx < 0) {
+                this.scale.x = -Math.abs(this.scale.x);
+            } else {
+                this.scale.x = Math.abs(this.scale.x);
+            }
         }
     }
 }

@@ -103,7 +103,12 @@ export class GameMetrics {
     onDisconnect(sessionRef) {
         const playerRef = this._bus.getPlayerRefBySessionRef(sessionRef);
         const joinedAt = this._sessionJoinedAt.get(sessionRef);
-        const sessionLengthMs = joinedAt === undefined ? 0 : Date.now() - joinedAt;
+        let sessionLengthMs;
+        if (joinedAt === undefined) {
+            sessionLengthMs = 0;
+        } else {
+            sessionLengthMs = Date.now() - joinedAt;
+        }
         this._sessionJoinedAt.delete(sessionRef);
         this.record(METRICS_FACT_TYPE_PLAYER_LEFT, playerRef, undefined, sessionLengthMs);
         this._subscriptions.delete(sessionRef);

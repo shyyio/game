@@ -264,7 +264,12 @@ export class LogisticsClientMod extends AbstractClientMod {
         }
         const entries = client.objects.getAtTile(tileX, tileY);
         const mouth = entries.find(entry => isBeltType(entry.data.type) && isTunnelMouth(entry.data.type.beltKind));
-        const tunnel = mouth === undefined ? null : walkTunnel(client.objects, mouth);
+        let tunnel;
+        if (mouth === undefined) {
+            tunnel = null;
+        } else {
+            tunnel = walkTunnel(client.objects, mouth);
+        }
         if (tunnel === null) {
             this._overlayLayer.clearUndergroundReveal();
         } else {

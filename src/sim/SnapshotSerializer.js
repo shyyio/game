@@ -125,7 +125,12 @@ export class SnapshotSerializer {
         for (const old of Array.from(referenced).sort((a, b) => a - b)) {
             remap.set(old, engine.world.addEntity());
         }
-        const translate = value => (value === NO_EID ? NO_EID : remap.get(value));
+        const translate = value => {
+            if (value === NO_EID) {
+                return NO_EID;
+            }
+            return remap.get(value);
+        };
 
         for (const component of snapshot.components) {
             const registered = engine.components.findComponentByName(component.name);
@@ -135,7 +140,11 @@ export class SnapshotSerializer {
                 const slot = registered.getSlotByEid(eid);
                 for (const field of registered.fields) {
                     const raw = row[field.name];
-                    registered.store[field.name][slot] = field.kind === "eid" ? translate(raw) : raw;
+                    if (field.kind === "eid") {
+                        registered.store[field.name][slot] = translate(raw);
+                    } else {
+                        registered.store[field.name][slot] = raw;
+                    }
                 }
             }
         }

@@ -578,7 +578,12 @@ class Mouse {
         const vx = this.currentX - this._clickStartX;
         const vy = this.currentY - this._clickStartY;
         const horizontal = Math.abs(vx) > Math.abs(vy);
-        const offAxisRad = horizontal ? Math.abs(Math.atan2(vy, vx)) : Math.abs(Math.atan2(vx, vy));
+        let offAxisRad;
+        if (horizontal) {
+            offAxisRad = Math.abs(Math.atan2(vy, vx));
+        } else {
+            offAxisRad = Math.abs(Math.atan2(vx, vy));
+        }
         const offAxis = offAxisRad * (180 / Math.PI);
 
         if (this._dragAxis === null) {

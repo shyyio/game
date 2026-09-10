@@ -113,7 +113,12 @@ export class TopStatusBarLayer extends AbstractEdgeBarLayer {
      * @returns {void}
      */
     setSection(id, section) {
-        const previous = this._sections.has(id) ? this._sections.get(id) : null;
+        let previous;
+        if (this._sections.has(id)) {
+            previous = this._sections.get(id);
+        } else {
+            previous = null;
+        }
         if (hasEqualSections(previous, section)) {
             return;
         }

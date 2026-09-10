@@ -43,7 +43,11 @@ export class Game {
          * The simulation engine the tick pipeline runs through.
          * @type {GameEngine}
          */
-        this.simEngine = simEngine === undefined ? new GameEngine(modRegistry) : simEngine;
+        if (simEngine === undefined) {
+            this.simEngine = new GameEngine(modRegistry);
+        } else {
+            this.simEngine = simEngine;
+        }
         // Publish each domain event synchronously to the sessions subscribed to its chunk topic.
         this.simEngine.setEventSink(
             event => this.bus.publish(event),

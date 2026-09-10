@@ -111,7 +111,12 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
         }
         for (const machineId of this._dirtyMachines) {
             const assignment = this._assignments.get(machineId);
-            const entry = assignment === undefined ? null : this.cache.get(machineId);
+            let entry;
+            if (assignment === undefined) {
+                entry = null;
+            } else {
+                entry = this.cache.get(machineId);
+            }
             if (entry === null) {
                 this._releaseBadge(machineId);
                 continue;

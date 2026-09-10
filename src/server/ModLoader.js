@@ -64,7 +64,12 @@ export async function loadPackagedMods(lockfile, cache) {
         }
         const bundlePath = cache.getPathByName(packaged.getContentNameByFile(manifest.entry));
         const bundle = await import(/* @vite-ignore */ pathToFileURL(bundlePath).href);
-        const sim = manifest.hasPart(MOD_PART_SIM) ? bundle.createSim(sdk) : null;
+        let sim;
+        if (manifest.hasPart(MOD_PART_SIM)) {
+            sim = bundle.createSim(sdk);
+        } else {
+            sim = null;
+        }
         packages.push(new ModPackage(bundle.createDeclaration(sdk), {sim}));
         mods.push(packaged);
     }

@@ -280,7 +280,12 @@ export class NodeMetricsStore extends AbstractMetricsStore {
      * @returns {Promise<MetricsRollupRow[]>}
      */
     async queryRollup(type, playerRef, fromTick, toTick, tier) {
-        const tailFromTick = METRICS_BAKED_TIERS.includes(tier) ? Math.max(fromTick, this._foldedThrough) : fromTick;
+        let tailFromTick;
+        if (METRICS_BAKED_TIERS.includes(tier)) {
+            tailFromTick = Math.max(fromTick, this._foldedThrough);
+        } else {
+            tailFromTick = fromTick;
+        }
         const params = {
             tier,
             type,

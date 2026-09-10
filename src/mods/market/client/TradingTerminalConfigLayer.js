@@ -44,7 +44,12 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
 
         this._connectors.set("terminal", () => this._managed.panel, () => {
             const objectRef = this._targetObjectRef();
-            const entry = objectRef === null ? null : this._objects.get(objectRef);
+            let entry;
+            if (objectRef === null) {
+                entry = null;
+            } else {
+                entry = this._objects.get(objectRef);
+            }
             if (entry === null) {
                 return null;
             }

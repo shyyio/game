@@ -119,7 +119,12 @@ export async function createClient(app, viewport, props) {
         );
     } else {
         const localConfig = readLocalConfig();
-        const seed = localConfig.seed === null ? randomWorldSeed() : localConfig.seed;
+        let seed;
+        if (localConfig.seed === null) {
+            seed = randomWorldSeed();
+        } else {
+            seed = localConfig.seed;
+        }
         game = new Game(
             modRegistry, new GameEngine(modRegistry), new ClientSaveStore(), new ClientMetricsStore(),
             localConfig.tickMs, seed,

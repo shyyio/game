@@ -35,7 +35,12 @@ async function packagedRegistry(outRoot) {
         const outDir = join(outRoot, dir);
         const manifest = await buildMod(resolve("src/mods", dir), outDir, {version: "1.0.0"});
         const bundle = await import(pathToFileURL(join(outDir, manifest.entry)).href);
-        const sim = manifest.hasPart(MOD_PART_SIM) ? bundle.createSim(sdk) : null;
+        let sim;
+        if (manifest.hasPart(MOD_PART_SIM)) {
+            sim = bundle.createSim(sdk);
+        } else {
+            sim = null;
+        }
         registry.register(new ModPackage(bundle.createDeclaration(sdk), {sim}));
         manifests.push(manifest);
         bundles.push(bundle);

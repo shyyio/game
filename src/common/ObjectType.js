@@ -181,9 +181,17 @@ export class ObjectType {
         // The position layer this object sits on. Objects on different layers coexist on a tile.
         this.positionLayer = LAYER_SURFACE;
         this.extractionTiles = extractionTiles;
-        this.behavior = behavior === undefined ? new StaticBehavior() : behavior;
+        if (behavior === undefined) {
+            this.behavior = new StaticBehavior();
+        } else {
+            this.behavior = behavior;
+        }
         this.behavior._attachType(this);
-        this.placement = placement === undefined ? new PlacementRule() : placement;
+        if (placement === undefined) {
+            this.placement = new PlacementRule();
+        } else {
+            this.placement = placement;
+        }
         this.bespokeClient = bespokeClient;
         this.toolId = toolId;
         this.conveys = conveys;

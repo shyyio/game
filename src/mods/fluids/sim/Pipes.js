@@ -153,7 +153,11 @@ export class Pipes extends AbstractSystem {
      * @returns {number} the network id
      */
     placePipe(x, y, id=undefined) {
-        const pipe = {x, y, id: id === undefined ? this.engine.createObjectRef() : id};
+        let pipeId = id;
+        if (pipeId === undefined) {
+            pipeId = this.engine.createObjectRef();
+        }
+        const pipe = {x, y, id: pipeId};
         this._pipeByTile.set(tileKeyAt(x, y), pipe);
         this._pipeById.set(pipe.id, pipe);
 

@@ -231,7 +231,12 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
             return;
         }
         const edge = this._parentEdges.get(id);
-        const bend = edge === undefined ? BeltBend.STRAIGHT : beltBendOf(edge);
+        let bend;
+        if (edge === undefined) {
+            bend = BeltBend.STRAIGHT;
+        } else {
+            bend = beltBendOf(edge);
+        }
         const belt = new Belt(id, x, y, direction, bend, type);
         this._belts.set(id, belt);
 
