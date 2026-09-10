@@ -33,7 +33,7 @@ export class ProductionLogRequestMessage extends AbstractMessage {
  * @param {number} offset
  * @returns {boolean}
  */
-function pageOffsetValid(offset) {
+function isPageOffsetValid(offset) {
     return Number.isInteger(offset) && offset >= 0 && offset % LEADERBOARD_PAGE_SIZE === 0;
 }
 
@@ -64,6 +64,6 @@ export class ItemLeaderboardRequestMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return Number.isInteger(this.itemTypeId) && this.itemTypeId >= 0 && pageOffsetValid(this.offset);
+        return Number.isInteger(this.itemTypeId) && this.itemTypeId >= 0 && isPageOffsetValid(this.offset);
     }
 }

@@ -48,7 +48,7 @@ export class AbstractDevicePreference {
      * @abstract
      * @returns {boolean}
      */
-    devicePrefers() {
+    isDevicePreferred() {
         throw new NotImplementedError();
     }
 }

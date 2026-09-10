@@ -1,6 +1,6 @@
 import {TILE_SIZE} from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
-import {chunkOrdinal, inRegion} from "@/common/util.js";
+import {chunkOrdinal, isInRegion} from "@/common/util.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 
@@ -116,7 +116,7 @@ export class ChunkCursor {
     findChunkKeyAt(tileX, tileY) {
         const chunkX = Math.floor(tileX / CHUNK_SIZE);
         const chunkY = Math.floor(tileY / CHUNK_SIZE);
-        if (!inRegion(chunkX, chunkY)) {
+        if (!isInRegion(chunkX, chunkY)) {
             return null;
         }
         return chunkOrdinal(chunkX, chunkY);

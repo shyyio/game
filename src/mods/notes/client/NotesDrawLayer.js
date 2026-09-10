@@ -125,7 +125,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
             return null;
         }
         for (const pin of this._pins.values()) {
-            if (pin.tile === null || !pin.visible || !pin.containsWorldPoint(point.x, point.y)) {
+            if (pin.tile === null || !pin.visible || !pin.hasWorldPoint(point.x, point.y)) {
                 continue;
             }
             const note = this._state.mapGet("notes.byTile", pin.tile);

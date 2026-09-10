@@ -6,7 +6,7 @@ import {AbstractDevicePreference} from "@/client/AbstractDevicePreference.js";
  */
 class Mobile extends AbstractDevicePreference {
 
-    devicePrefers() {
+    isDevicePreferred() {
         return isMobile.any;
     }
 }

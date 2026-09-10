@@ -227,7 +227,7 @@ export class AbstractComponent {
      * @returns {void}
      */
     destroy(eid) {
-        if (this.world.entityExists(eid)) {
+        if (this.world.hasEntity(eid)) {
             this.world.removeEntity(eid);
         }
     }

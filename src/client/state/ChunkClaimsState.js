@@ -179,7 +179,7 @@ export class ChunkClaimsView extends AbstractCacheView {
     /**
      * @returns {boolean} whether the own player holds every chunk they may
      */
-    atChunkLimit() {
+    isAtChunkLimit() {
         return this.ownCount() >= this.maxChunks;
     }
 
@@ -230,10 +230,10 @@ export class ChunkClaimsView extends AbstractCacheView {
         if (this.getOwnerByChunkKey(chunkKey) !== PLAYER_REF_NONE) {
             return ClaimResult.CLAIM_RESULT_OWNED;
         }
-        if (this.atChunkLimit()) {
+        if (this.isAtChunkLimit()) {
             return ClaimResult.CLAIM_RESULT_LIMIT;
         }
-        if (this.ownCount() > 0 && !this._touchesOwn(chunkKey)) {
+        if (this.ownCount() > 0 && !this._isTouchingOwn(chunkKey)) {
             return ClaimResult.CLAIM_RESULT_NOT_ADJACENT;
         }
         return ClaimResult.CLAIM_RESULT_OK;
@@ -245,7 +245,7 @@ export class ChunkClaimsView extends AbstractCacheView {
      * @param {number} chunkKey
      * @returns {boolean}
      */
-    _touchesOwn(chunkKey) {
+    _isTouchingOwn(chunkKey) {
         for (const neighbor of chunkNeighbors(chunkKey)) {
             if (this._state.setHas("chunkClaims.ownChunks", neighbor)) {
                 return true;

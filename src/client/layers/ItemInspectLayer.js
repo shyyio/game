@@ -152,7 +152,7 @@ export class ItemInspectLayer extends AbstractDrawLayer {
         if (this._particle !== null) {
             const lost = !this._particle.pickable
                 || this._particle.itemTypeId !== this._lockedType
-                || this._offScreen(this._particle);
+                || this._isOffScreen(this._particle);
             if (lost) {
                 this._lock(null);
             }
@@ -179,7 +179,7 @@ export class ItemInspectLayer extends AbstractDrawLayer {
      * @param {ItemParticle} particle
      * @returns {boolean}
      */
-    _offScreen(particle) {
+    _isOffScreen(particle) {
         return particle.x < this.viewport.left
             || particle.x > this.viewport.right
             || particle.y < this.viewport.top

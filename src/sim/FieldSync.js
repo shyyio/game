@@ -74,7 +74,7 @@ class SyncedSet {
      * @param {number} row
      * @returns {boolean}
      */
-    offDefault(row) {
+    isOffDefault(row) {
         return this.fields.some(field => this.component.store[field.name][row] !== field.defaultValue);
     }
 }
@@ -157,7 +157,7 @@ export class FieldSync {
         const set = this._set(component);
         set.grow(eid);
         set.adopt(eid, set.fields.map(field => field.defaultValue));
-        if (set.offDefault(component.getRowByEid(eid))) {
+        if (set.isOffDefault(component.getRowByEid(eid))) {
             this.markDirty(component, eid);
         }
     }
@@ -200,7 +200,7 @@ export class FieldSync {
                 }
                 const x = position.x[eid];
                 const y = position.y[eid];
-                if (!this.engine.observesTile(x, y)) {
+                if (!this.engine.isTileObserved(x, y)) {
                     continue;
                 }
                 const chunkKey = chunkKeyAt(x, y);
@@ -232,7 +232,7 @@ export class FieldSync {
             let batch = null;
             for (const eid of eids) {
                 const row = set.component.getRowByEid(eid);
-                if (row < 0 || !set.offDefault(row)) {
+                if (row < 0 || !set.isOffDefault(row)) {
                     continue;
                 }
                 if (batch === null) {

@@ -80,7 +80,7 @@ export const LOGIC_COMPARATOR_NOT = 3;
  * @param {number} target - the rule's threshold
  * @returns {boolean}
  */
-export function logicComparatorMatches(comparator, value, target) {
+export function isLogicComparatorMatching(comparator, value, target) {
     if (comparator === LOGIC_COMPARATOR_AT_LEAST) {
         return value >= target;
     }
@@ -117,6 +117,6 @@ export const LOGIC_CONDITION_RECORD = "LogicRuleCondition";
  * @param {number} y2
  * @returns {boolean}
  */
-export function withinWireRange(x1, y1, x2, y2) {
+export function isWithinWireRange(x1, y1, x2, y2) {
     return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2)) <= WIRE_LINK_RANGE;
 }

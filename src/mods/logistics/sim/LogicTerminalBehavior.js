@@ -2,7 +2,7 @@ import {AbstractBehavior, AbstractSystem} from "@spup/sdk";
 import {
     LOGIC_TIER_BASE,
     LOGIC_CONDITION_KIND_STORED,
-    logicComparatorMatches,
+    isLogicComparatorMatching,
 } from "../common/constants.js";
 import {LogicNetworks} from "./LogicNetworks.js";
 import {LogicRules} from "./LogicRules.js";
@@ -99,7 +99,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
                 rule.suspended = true;
                 return;
             }
-            if (!logicComparatorMatches(condition.comparator, value, condition.value)) {
+            if (!isLogicComparatorMatching(condition.comparator, value, condition.value)) {
                 return;
             }
         }

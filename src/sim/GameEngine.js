@@ -272,7 +272,7 @@ export class GameEngine {
      * @param {number} chunkKey
      * @returns {boolean}
      */
-    placementAllowed(playerRef, chunkKey) {
+    canBuildIn(playerRef, chunkKey) {
         if (playerRef === PLAYER_REF_NONE || this._placementGate === null) {
             return true;
         }
@@ -323,7 +323,7 @@ export class GameEngine {
      * @param {number} y
      * @returns {boolean}
      */
-    observesTile(x, y) {
+    isTileObserved(x, y) {
         return this._chunkObserved(chunkKeyAt(x, y));
     }
 
@@ -526,13 +526,13 @@ export class GameEngine {
     applyMessage(message, playerRef = PLAYER_REF_NONE) {
         // Both ownership gates live here, above every create/delete handler (bespoke ones too).
         if (message instanceof CreateObjectMessage
-            && !this.placementAllowed(playerRef, chunkKeyAt(message.x, message.y))) {
+            && !this.canBuildIn(playerRef, chunkKeyAt(message.x, message.y))) {
             return true;
         }
         let handled;
         if (message instanceof DeleteObjectMessage) {
             // Gate before untrack: a rejection after it would leave the object half-deleted.
-            if (!this._deleteAllowed(message.objectRef, playerRef)) {
+            if (!this._isDeleteAllowed(message.objectRef, playerRef)) {
                 return true;
             }
             this.untrack(message.objectRef);
@@ -581,7 +581,7 @@ export class GameEngine {
      * @param {number} playerRef
      * @returns {boolean}
      */
-    _deleteAllowed(objectRef, playerRef) {
+    _isDeleteAllowed(objectRef, playerRef) {
         if (this.placed === null) {
             return true;
         }
@@ -589,7 +589,7 @@ export class GameEngine {
         if (eid === undefined) {
             return true;
         }
-        return this.placementAllowed(playerRef, chunkKeyAt(this.Position.x[eid], this.Position.y[eid]));
+        return this.canBuildIn(playerRef, chunkKeyAt(this.Position.x[eid], this.Position.y[eid]));
     }
 
     /**

@@ -453,7 +453,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             for (const button of this._conditionButtons(snapshot, condition)) {
                 row.pushLeft(button);
             }
-            if (this._conditionIsNumeric(condition)) {
+            if (this._isConditionNumeric(condition)) {
                 const comparator = buildPanelButton(
                     this.textureCache,
                     COMPARATOR_LABELS[condition.comparator],
@@ -479,7 +479,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @param {LogicCondition} condition
      * @returns {boolean}
      */
-    _conditionIsNumeric(condition) {
+    _isConditionNumeric(condition) {
         if (condition.kind === LOGIC_CONDITION_KIND_STORED) {
             return true;
         }

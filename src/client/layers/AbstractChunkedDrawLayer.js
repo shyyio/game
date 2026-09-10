@@ -1,7 +1,7 @@
 import {Graphics} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
 import {ChunkNode} from "@/client/layers/ChunkNode.js";
-import {sameChunks} from "@/client/constants.js";
+import {isSameChunkSet} from "@/client/constants.js";
 import {NotImplementedError} from "@/common/error.js";
 import {getOrCreate} from "@/common/util.js";
 
@@ -92,7 +92,7 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
         if (visible === this._visibleChunks) {
             return;
         }
-        if (sameChunks(visible, this._visibleChunks)) {
+        if (isSameChunkSet(visible, this._visibleChunks)) {
             // Adopted so later frames take the identity path.
             this._visibleChunks = visible;
             return;

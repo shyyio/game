@@ -6,7 +6,7 @@ import {
     CURSOR_AUDIENCE_FRIENDS,
     CURSOR_AUDIENCE_EVERYONE,
     CURSOR_AUDIENCE_DEFAULT,
-    audienceAdmits,
+    isAudienceAdmitting,
 } from "./common/constants.js";
 import {CursorMoveMessage, CursorHideMessage} from "./common/messages.js";
 import {PlayerCursorEvent, PlayerCursorHideEvent} from "./common/events.js";
@@ -138,11 +138,11 @@ export class CursorSyncSimMod extends AbstractSimMod {
             }
             const viewerId = game.bus.getPlayerRefBySessionRef(viewerSessionRef);
             const isSelf = viewerId === session.playerRef;
-            if (!audienceAdmits(shareMode, isSelf, game.players.isFriend(session.playerRef, viewerId))) {
+            if (!isAudienceAdmitting(shareMode, isSelf, game.players.isFriend(session.playerRef, viewerId))) {
                 continue;
             }
             const displayMode = this._getAudienceByPlayerRef(viewerId, CURSOR_SETTING_DISPLAY, game);
-            if (!audienceAdmits(displayMode, isSelf, game.players.isFriend(viewerId, session.playerRef))) {
+            if (!isAudienceAdmitting(displayMode, isSelf, game.players.isFriend(viewerId, session.playerRef))) {
                 continue;
             }
             // The cursor label needs its owner's name; first sight of a player sends it.
@@ -174,7 +174,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
         const excludedIds = new Set();
         for (const state of this._cursorBySession.values()) {
             const isSelf = viewerId === state.playerRef;
-            if (!audienceAdmits(mode, isSelf, game.players.isFriend(viewerId, state.playerRef))) {
+            if (!isAudienceAdmitting(mode, isSelf, game.players.isFriend(viewerId, state.playerRef))) {
                 excludedIds.add(state.playerRef);
             }
         }

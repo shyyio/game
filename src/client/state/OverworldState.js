@@ -130,7 +130,7 @@ export class OverworldView extends AbstractCacheView {
      * @param {number} ttlMs
      * @returns {boolean}
      */
-    needsFetch(rect, nowMs, ttlMs) {
+    shouldFetch(rect, nowMs, ttlMs) {
         for (const chunk of rect.ordinals()) {
             const entry = this._state.mapGet("overworld.byChunk", chunk);
             if (entry === undefined || nowMs - entry.receivedAt > ttlMs) {

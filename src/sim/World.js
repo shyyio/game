@@ -185,7 +185,7 @@ export class World {
      * @param {number} eid
      * @returns {boolean}
      */
-    entityExists(eid) {
+    hasEntity(eid) {
         return eid < this._capacity && this._alive[eid] === 1;
     }
 

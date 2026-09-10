@@ -545,8 +545,8 @@ export class MachineBehavior extends AbstractBehavior {
         const eids = machines.eids;
         for (let row = 0; row < count; row += 1) {
             const byproductPending = machine.byproduct[row] !== EMPTY;
-            const byproductDelivered = !byproductPending || engine.transfers.wasDest(machine.out2[row]);
-            if (engine.transfers.wasDest(machine.out[row]) && byproductDelivered) {
+            const byproductDelivered = !byproductPending || engine.transfers.isDest(machine.out2[row]);
+            if (engine.transfers.isDest(machine.out[row]) && byproductDelivered) {
                 const eid = eids[row];
                 engine.itemProduced.notify(placed.getClaimOwnerByEid(eid), machine.output[row], 1);
                 if (machine.lastOutput[row] !== machine.output[row]) {

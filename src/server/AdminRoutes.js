@@ -48,7 +48,7 @@ function adminFileOf(url) {
  * @param {string} expected
  * @returns {boolean} equal, in time independent of where they differ
  */
-function tokenMatches(given, expected) {
+function isTokenMatch(given, expected) {
     const left = Buffer.from(given);
     const right = Buffer.from(expected);
     if (left.length !== right.length) {
@@ -98,13 +98,13 @@ export class AdminRoutes {
      */
     registerRoutes(app) {
         app.get("/admin/api/state", (res, req) => {
-            if (!this._authorized(res, req)) {
+            if (!this._isAuthorized(res, req)) {
                 return;
             }
             respondJson(res, this._state());
         });
         app.put("/admin/api/config", (res, req) => {
-            if (!this._authorized(res, req)) {
+            if (!this._isAuthorized(res, req)) {
                 return;
             }
             const convert = req.getQuery("convert") === "1";
@@ -115,7 +115,7 @@ export class AdminRoutes {
             });
         });
         app.post("/admin/api/reset", (res, req) => {
-            if (!this._authorized(res, req)) {
+            if (!this._isAuthorized(res, req)) {
                 return;
             }
             readJson(res, json => {
@@ -147,10 +147,10 @@ export class AdminRoutes {
      * @param {object} req
      * @returns {boolean} whether the request carries the admin token; rejected already when not
      */
-    _authorized(res, req) {
+    _isAuthorized(res, req) {
         const header = req.getHeader("authorization");
         const expected = this._runtime.running.adminToken;
-        if (expected !== null && header.startsWith(BEARER) && tokenMatches(header.slice(BEARER.length), expected)) {
+        if (expected !== null && header.startsWith(BEARER) && isTokenMatch(header.slice(BEARER.length), expected)) {
             return true;
         }
         rejectRequest(res, "401 Unauthorized", "Admin token required");

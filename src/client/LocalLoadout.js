@@ -202,7 +202,7 @@ export function publishedVersions(listing) {
  * @param {object} version
  * @returns {boolean}
  */
-export function versionLoadable(version) {
+export function isVersionLoadable(version) {
     return version.sdkVersion === SDK_VERSION;
 }
 

@@ -1,6 +1,6 @@
 import {AbstractBehavior, EMPTY, NO_EID, LAYER_SURFACE, CONVEYS_ITEM, CONVEYS_FLUID, SyncedFields, SyncedField, AbstractSystem} from "@spup/sdk";
 import {LOGIC_KEY_OPEN} from "../common/constants.js";
-import {gateConnections, placementBlockedByGate} from "../common/gateConnections.js";
+import {gateConnections, isPlacementBlockedByGate} from "../common/gateConnections.js";
 import {GateComponent, PENDING_NONE} from "./GateComponent.js";
 
 const SYNCED_FIELDS = new SyncedFields("Gate", [
@@ -33,7 +33,7 @@ class GateSystem extends AbstractSystem {
     }
 
     isPlacementAllowed(type, x, y, direction) {
-        return !placementBlockedByGate(
+        return !isPlacementBlockedByGate(
             (tx, ty) => GateBehavior._findOccupantAt(this.engine, tx, ty),
             occupant => occupant.type.behavior instanceof GateBehavior,
             type, x, y, direction,
@@ -396,7 +396,7 @@ export class GateBehavior extends AbstractBehavior {
         const gates = engine.components.getComponentByName("Gate");
         const gate = gates.store;
         for (let row = 0; row < gates.count; row += 1) {
-            if (gate.fluid[row] === 1 && gate.buffered[row] !== EMPTY && engine.transfers.wasDest(gate.out[row])) {
+            if (gate.fluid[row] === 1 && gate.buffered[row] !== EMPTY && engine.transfers.isDest(gate.out[row])) {
                 gate.buffered[row] = EMPTY;
                 engine.ports.setFluidSource(gate.out[row], EMPTY);
             }

@@ -120,7 +120,7 @@ export class ChunkSubscription {
         if (rect === null) {
             return;
         }
-        if (this._cache.view("overworld").needsFetch(rect, now, OVERWORLD_CHUNK_TTL_MS)) {
+        if (this._cache.view("overworld").shouldFetch(rect, now, OVERWORLD_CHUNK_TTL_MS)) {
             this._session.sendMessage(
                 new OverworldRequestMessage(rect.chunkX, rect.chunkY, rect.chunkWidth, rect.chunkHeight),
             );

@@ -18,7 +18,7 @@ import {RemoteSession} from "@/client/RemoteSession.js";
 import {WireRegistry} from "@/common/wire.js";
 import {Client} from "@/client/Client.js";
 import {createInputHandler} from "@/client/input/GameInputWiring.js";
-import {DITHER_PATTERNS, setActiveDither, setDitherEnabled, ditherOn, setDitherScale, ditherScale} from "@/client/layers/DitherPatterns.js";
+import {DITHER_PATTERNS, setActiveDither, setDitherEnabled, isDitherOn, setDitherScale, ditherScale} from "@/client/layers/DitherPatterns.js";
 import {setBlendLevels, blendLevelCount} from "@/client/layers/TerrainSprite.js";
 import {mintReconnectToken, enterServerContext} from "@/client/AuthClient.js";
 import WindowFocus from "@/client/WindowFocus.js";
@@ -44,7 +44,7 @@ async function loadoutFor(props, localLoadout) {
     // With built-in mods off, the base mods are among the chosen packages, at the chosen versions.
     const base = clientLoadout();
     const packages = [...base, ...await loadLocalMods(localLoadout)];
-    if (scenarioSelected()) {
+    if (isScenarioSelected()) {
         const {scenarioModPackages} = await import("@/test/scenarios/index.js");
         for (const pkg of scenarioModPackages()) {
             packages.push(pkg);
@@ -79,7 +79,7 @@ async function refreshedLoadout(stored) {
 /**
  * @returns {boolean}
  */
-function scenarioSelected() {
+function isScenarioSelected() {
     return new URLSearchParams(window.location.search).has(SCENARIO_PARAM);
 }
 
@@ -128,7 +128,7 @@ export async function createClient(app, viewport, props) {
 
         // Scenarios populate the world before any session connects, so the objects reach the client
         // through the normal chunk sync. Only a ?scenario= URL pulls in the tree.
-        if (scenarioSelected()) {
+        if (isScenarioSelected()) {
             const {applyScenarioFromLocation} = await import("@/test/scenarios/index.js");
             await applyScenarioFromLocation(game);
         }
@@ -198,7 +198,7 @@ export async function createClient(app, viewport, props) {
     window.setTerrainDithering = enabled => {
         setDitherEnabled(enabled);
         client.terrainLayer.repaint();
-        return ditherOn();
+        return isDitherOn();
     };
     // Only the "noise" pattern reads this: bigger scale = finer grain, smaller = broader patches.
     window.setTerrainDitherScale = scale => {

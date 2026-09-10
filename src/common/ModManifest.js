@@ -96,7 +96,7 @@ export class ModManifest {
      * @param {string} part one of MOD_PART_*
      * @returns {boolean}
      */
-    has(part) {
+    hasPart(part) {
         return this.parts.includes(part);
     }
 

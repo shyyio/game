@@ -109,7 +109,7 @@ export function drawRect(buffer, x0, y0, x1, y1, rgba, block) {
  */
 export function floodFill(buffer, x, y, rgba, block) {
     const target = getPixel(buffer, x, y);
-    if (sameColor(target, rgba)) {
+    if (isSameColor(target, rgba)) {
         return;
     }
     const columns = Math.ceil(buffer.width / block);
@@ -122,7 +122,7 @@ export function floodFill(buffer, x, y, rgba, block) {
             continue;
         }
         seen[by * columns + bx] = 1;
-        if (!sameColor(getPixel(buffer, bx * block, by * block), target)) {
+        if (!isSameColor(getPixel(buffer, bx * block, by * block), target)) {
             continue;
         }
         setBlock(buffer, bx * block, by * block, rgba, block);
@@ -135,7 +135,7 @@ export function floodFill(buffer, x, y, rgba, block) {
  * @param {number[]} b
  * @returns {boolean}
  */
-export function sameColor(a, b) {
+export function isSameColor(a, b) {
     return a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
 }
 

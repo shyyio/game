@@ -14,7 +14,7 @@ import {
  * @param {object} data - a feeder record's data
  * @returns {boolean}
  */
-function feedsForward(data) {
+function isFeedingForward(data) {
     if (isBeltType(data.type)) {
         return data.type.beltKind === BELT_NORMAL || data.type.beltKind === BELT_TUNNEL_UP;
     }
@@ -36,7 +36,7 @@ export function inferBeltParent(cache, tileX, tileY, direction) {
 
     let parent = null;
     for (const connection of cache.connectedPorts(belt)) {
-        if (connection.isOutput || !feedsForward(connection.neighbor.data)) {
+        if (connection.isOutput || !isFeedingForward(connection.neighbor.data)) {
             continue;
         }
         if (parent === null || connection.neighbor.id > parent.neighbor.id) {

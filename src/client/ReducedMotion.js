@@ -19,7 +19,7 @@ class ReducedMotion extends AbstractDevicePreference {
         super.setEnabled(on);
     }
 
-    devicePrefers() {
+    isDevicePreferred() {
         return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     }
 }

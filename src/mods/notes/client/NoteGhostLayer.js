@@ -24,12 +24,12 @@ export class NoteGhostLayer extends AbstractDrawLayer {
     constructor(state) {
         super();
         this._state = state;
-        this._claims = state.view("chunkClaims");
+        this._isClaiming = state.view("chunkClaims");
         this._active = false;
         // The tile the tool hovers; a note already standing there takes the ghost's place.
         this._hoveredTile = null;
         // Whether that tile refuses a note (unclaimed, or someone else's).
-        this._blocked = false;
+        this._isBlocked = false;
         // The color the pin currently carries; the own identity only arrives with the welcome
         // event, after this layer is built.
         this._paintedColor = null;
@@ -63,7 +63,7 @@ export class NoteGhostLayer extends AbstractDrawLayer {
         } else {
             this._hoveredTile = tileKeyAt(tileX, tileY);
         }
-        this._blocked = blocked;
+        this._isBlocked = blocked;
     }
 
     /**
@@ -90,9 +90,9 @@ export class NoteGhostLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _paint() {
-        let color = claimColor(this._claims.ownPlayerRef);
+        let color = claimColor(this._isClaiming.ownPlayerRef);
         let alpha = GHOST_ALPHA;
-        if (this._blocked) {
+        if (this._isBlocked) {
             color = GHOST_BLOCKED_TINT;
             alpha = GHOST_BLOCKED_ALPHA;
         }

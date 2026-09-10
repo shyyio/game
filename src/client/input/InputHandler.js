@@ -53,7 +53,7 @@ export class InputHandler {
      * @private
      * @returns {boolean}
      */
-    _paintingTool() {
+    _isPaintingTool() {
         const tool = this.activeTool;
         return tool != null && tool.paintsOnDrag;
     }
@@ -78,14 +78,14 @@ export class InputHandler {
         });
 
         Mouse.onDragStart((tileX, tileY) => {
-            if (!this._paintingTool()) {
+            if (!this._isPaintingTool()) {
                 return;
             }
             this.activeTool.onDragStart(tileX, tileY);
         });
 
         Mouse.onTileDrag((tileX, tileY, direction) => {
-            if (!this._paintingTool()) {
+            if (!this._isPaintingTool()) {
                 return;
             }
             this.activeTool.onDragTile(tileX, tileY, direction);

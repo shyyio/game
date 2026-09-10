@@ -9,7 +9,7 @@ import {MAX_BUCKETS_PER_REQUEST, TIER_LADDER} from "@/common/MetricsTiers.js";
  * @param {number} spanTicks
  * @returns {boolean}
  */
-function validTierSpan(tier, spanTicks) {
+function isValidTierSpan(tier, spanTicks) {
     return TIER_LADDER.includes(tier)
         && Number.isInteger(spanTicks) && spanTicks > 0 && spanTicks <= tier * MAX_BUCKETS_PER_REQUEST;
 }
@@ -22,7 +22,7 @@ function validTierSpan(tier, spanTicks) {
  * @param {number} metricsType METRICS_FACT_TYPE_*
  * @returns {boolean}
  */
-function validScope(api, scope, metricsType) {
+function isValidScope(api, scope, metricsType) {
     if (scope !== METRICS_QUERY_SCOPE_OWN && scope !== METRICS_QUERY_SCOPE_GLOBAL) {
         return false;
     }
@@ -64,11 +64,11 @@ export class MetricsRollupRequestMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        if (!validScope(api, this.scope, this.metricsType)) {
+        if (!isValidScope(api, this.scope, this.metricsType)) {
             return false;
         }
         return Number.isInteger(this.fromTick) && Number.isInteger(this.toTick) && this.fromTick <= this.toTick
-            && validTierSpan(this.tier, this.toTick - this.fromTick + 1);
+            && isValidTierSpan(this.tier, this.toTick - this.fromTick + 1);
     }
 }
 
@@ -104,10 +104,10 @@ export class MetricsSubscribeMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        if (!validScope(api, this.scope, this.metricsType)) {
+        if (!isValidScope(api, this.scope, this.metricsType)) {
             return false;
         }
-        return validTierSpan(this.tier, this.windowTicks);
+        return isValidTierSpan(this.tier, this.windowTicks);
     }
 }
 

@@ -92,7 +92,7 @@ export function tileVariantKey(tile, variant) {
  * @param {number} chunkY
  * @returns {boolean}
  */
-export function inRegion(chunkX, chunkY) {
+export function isInRegion(chunkX, chunkY) {
     return chunkX >= -REGION_HALF && chunkX < REGION_HALF && chunkY >= -REGION_HALF && chunkY < REGION_HALF;
 }
 
@@ -107,7 +107,7 @@ export function chunkNeighbors(chunkKey) {
     for (const delta of NEIGHBOR_DELTAS) {
         const x = position.x + delta.dx;
         const y = position.y + delta.dy;
-        if (inRegion(x, y)) {
+        if (isInRegion(x, y)) {
             neighbors.push(chunkOrdinal(x, y));
         }
     }

@@ -240,7 +240,7 @@ export class PlacedObjects extends AbstractSystem {
         }
         const engine = this.engine;
         // Chunk-keyed sync and position indexing assume every object lives in exactly one chunk.
-        if (type.geometry.spansChunks(message.x, message.y, message.direction)) {
+        if (type.geometry.isSpanningChunks(message.x, message.y, message.direction)) {
             return true;
         }
         if (!type.behavior.canSpawn(engine, type, message)) {
@@ -250,7 +250,7 @@ export class PlacedObjects extends AbstractSystem {
             return true;
         }
         const footprint = engine.getFootprintAt(type, message.x, message.y, message.direction);
-        if (type.placement.solid && !engine.space.cellsFree(footprint)) {
+        if (type.placement.solid && !engine.space.isEveryCellFree(footprint)) {
             return true;
         }
         const eid = this.objects.create();

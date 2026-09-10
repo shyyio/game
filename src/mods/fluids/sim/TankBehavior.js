@@ -158,7 +158,7 @@ export class TankBehavior extends AbstractBehavior {
         const tank = tanks.store;
         const count = tanks.count;
         for (let row = 0; row < count; row += 1) {
-            if (!engine.transfers.wasDest(tank.out[row])) {
+            if (!engine.transfers.isDest(tank.out[row])) {
                 continue;
             }
             tank.amount[row] -= 1;

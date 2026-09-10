@@ -19,8 +19,8 @@ test("a well-formed manifest parses into its fields", () => {
     assert.equal(manifest.name, "market");
     assert.equal(manifest.version, "1.4.0");
     assert.equal(manifest.entry, "mod.js");
-    assert.ok(manifest.has(MOD_PART_SIM));
-    assert.ok(manifest.has(MOD_PART_CLIENT));
+    assert.ok(manifest.hasPart(MOD_PART_SIM));
+    assert.ok(manifest.hasPart(MOD_PART_CLIENT));
     assert.equal(manifest.homepage, "https://mods.spupgame.com/market/");
     // A mod's art is inlined in its bundle, so a package is the manifest plus one file.
     assert.deepEqual(manifest.files, ["mod.js"]);
@@ -29,7 +29,7 @@ test("a well-formed manifest parses into its fields", () => {
 test("a declaration-only manifest needs no optional parts", () => {
     const manifest = ModManifest.parse(validJson({parts: ["declaration"]}));
 
-    assert.equal(manifest.has(MOD_PART_SIM), false);
+    assert.equal(manifest.hasPart(MOD_PART_SIM), false);
     assert.equal(manifest.homepage, null);
     assert.deepEqual(manifest.files, ["mod.js"]);
 });

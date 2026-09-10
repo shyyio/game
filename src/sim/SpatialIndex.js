@@ -70,7 +70,7 @@ export class SpatialIndex {
      * @param {{x:number, y:number, layer:string}[]} cells
      * @returns {boolean}
      */
-    cellsFree(cells) {
+    isEveryCellFree(cells) {
         return cells.every(cell => !this._cellByKey.has(this._getCellKeyAt(cell.x, cell.y, cell.layer)));
     }
 

@@ -46,7 +46,7 @@ export class NotePin extends Container {
      * @param {number} worldY
      * @returns {boolean}
      */
-    containsWorldPoint(worldX, worldY) {
+    hasWorldPoint(worldX, worldY) {
         const scale = this.scale.x;
         const left = this.position.x + PIN_HIT_AREA.x * scale;
         const top = this.position.y + PIN_HIT_AREA.y * scale;

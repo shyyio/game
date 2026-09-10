@@ -9,7 +9,7 @@ import {
 import {LogicSnapshotEvent} from "./common/events.js";
 import {isGateType, isTerminalType} from "./common/objectTypes.js";
 import {
-    withinWireRange,
+    isWithinWireRange,
     LOGIC_WIRE_RECORD,
     LOGIC_RULE_RECORD,
     LOGIC_CONDITION_RECORD,
@@ -110,7 +110,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         const x = engine.Position.x[eid];
         const y = engine.Position.y[eid];
         // Mod messages bypass the core placement gate, so gates check build rights themselves.
-        if (!engine.placementAllowed(session.playerRef, chunkKeyAt(x, y))) {
+        if (!engine.canBuildIn(session.playerRef, chunkKeyAt(x, y))) {
             // Correct the sender's optimistic flip with the authoritative state.
             game.bus.publishTo(session.sessionRef, engine.sync.getObjectFieldsEventByEid(engine.components.getComponentByName("Gate"), eid));
             return;
@@ -142,12 +142,12 @@ export class LogisticsSimMod extends AbstractSimMod {
             return null;
         }
         const position = engine.Position;
-        if (!withinWireRange(position.x[aEid], position.y[aEid], position.x[bEid], position.y[bEid])) {
+        if (!isWithinWireRange(position.x[aEid], position.y[aEid], position.x[bEid], position.y[bEid])) {
             return null;
         }
         // Mod messages bypass the core placement gate, so wires check build rights themselves.
-        if (!engine.placementAllowed(session.playerRef, chunkKeyAt(position.x[aEid], position.y[aEid]))
-            || !engine.placementAllowed(session.playerRef, chunkKeyAt(position.x[bEid], position.y[bEid]))) {
+        if (!engine.canBuildIn(session.playerRef, chunkKeyAt(position.x[aEid], position.y[aEid]))
+            || !engine.canBuildIn(session.playerRef, chunkKeyAt(position.x[bEid], position.y[bEid]))) {
             return null;
         }
         return {aEid, bEid};
@@ -167,7 +167,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         }
         const engine = game.simEngine;
         const networks = engine.resolve(LogicNetworks);
-        if (this._wireBreaksTerminalRule(engine, networks, endpoints)) {
+        if (this._isWireBreakingTerminalRule(engine, networks, endpoints)) {
             return;
         }
         networks.wire(engine.placed.getObjectRefByEid(endpoints.aEid), engine.placed.getObjectRefByEid(endpoints.bEid));
@@ -182,7 +182,7 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @returns {boolean}
      * @private
      */
-    _wireBreaksTerminalRule(engine, networks, endpoints) {
+    _isWireBreakingTerminalRule(engine, networks, endpoints) {
         const aObjectRef = engine.placed.getObjectRefByEid(endpoints.aEid);
         const bObjectRef = engine.placed.getObjectRefByEid(endpoints.bEid);
         const aNetwork = networks.findNetworkByObjectRef(aObjectRef);
@@ -190,8 +190,8 @@ export class LogisticsSimMod extends AbstractSimMod {
         if (aNetwork !== null && bNetwork !== null && aNetwork.id === bNetwork.id) {
             return false;
         }
-        return this._sideHasTerminal(engine, aNetwork, aObjectRef)
-            && this._sideHasTerminal(engine, bNetwork, bObjectRef);
+        return this._hasTerminalOnSide(engine, aNetwork, aObjectRef)
+            && this._hasTerminalOnSide(engine, bNetwork, bObjectRef);
     }
 
     /**
@@ -203,7 +203,7 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @returns {boolean}
      * @private
      */
-    _sideHasTerminal(engine, network, objectRef) {
+    _hasTerminalOnSide(engine, network, objectRef) {
         if (network === null) {
             return this._isTerminalObject(engine, objectRef);
         }
@@ -281,7 +281,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         // Mod messages bypass the core placement gate, so rules check build rights themselves.
         const x = engine.Position.x[eid];
         const y = engine.Position.y[eid];
-        if (!engine.placementAllowed(session.playerRef, chunkKeyAt(x, y))) {
+        if (!engine.canBuildIn(session.playerRef, chunkKeyAt(x, y))) {
             return;
         }
         const ruleCount = message.actionDeviceIds.length;

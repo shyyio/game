@@ -64,7 +64,7 @@ export class StatusBarSection {
  * @param {StatusBarSection|null} b
  * @returns {boolean}
  */
-function sectionsEqual(a, b) {
+function hasEqualSections(a, b) {
     if (a === b) {
         return true;
     }
@@ -114,7 +114,7 @@ export class TopStatusBarLayer extends AbstractEdgeBarLayer {
      */
     setSection(id, section) {
         const previous = this._sections.has(id) ? this._sections.get(id) : null;
-        if (sectionsEqual(previous, section)) {
+        if (hasEqualSections(previous, section)) {
             return;
         }
         if (section === null) {

@@ -11,7 +11,7 @@ import {isBeltType, isGateType, isTerminalType} from "./common/objectTypes.js";
 import {LogicWireSetEvent, LogicWireClearEvent} from "./common/events.js";
 import {tunnelStep, BELT_TUNNEL_UP} from "./common/constants.js";
 import {walkTunnel, isTunnelMouth} from "./common/geometry.js";
-import {placementBlockedByGate, gateConnections} from "./common/gateConnections.js";
+import {isPlacementBlockedByGate, gateConnections} from "./common/gateConnections.js";
 import {
     AbstractClientMod,
     Direction,
@@ -111,7 +111,7 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @returns {boolean}
      */
     canPlace(type, tileX, tileY, direction, client) {
-        return !placementBlockedByGate(
+        return !isPlacementBlockedByGate(
             this._findOccupantAt(client),
             occupant => isGateType(occupant.type),
             type, tileX, tileY, direction,

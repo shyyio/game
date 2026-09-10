@@ -35,7 +35,7 @@ async function packagedRegistry(outRoot) {
         const outDir = join(outRoot, dir);
         const manifest = await buildMod(resolve("src/mods", dir), outDir, {version: "1.0.0"});
         const bundle = await import(pathToFileURL(join(outDir, manifest.entry)).href);
-        const sim = manifest.has(MOD_PART_SIM) ? bundle.createSim(sdk) : null;
+        const sim = manifest.hasPart(MOD_PART_SIM) ? bundle.createSim(sdk) : null;
         registry.register(new ModPackage(bundle.createDeclaration(sdk), {sim}));
         manifests.push(manifest);
         bundles.push(bundle);
@@ -100,10 +100,10 @@ test("built mod packages register identically to the static loadout", () => {
 
     // A client part is packaged but must stay unevaluated headless: its factory exists, and nothing
     // above it touched pixi.
-    const clientMods = manifests.filter(manifest => manifest.has(MOD_PART_CLIENT));
+    const clientMods = manifests.filter(manifest => manifest.hasPart(MOD_PART_CLIENT));
     assert.ok(clientMods.length > 0, "no client parts built");
     for (const [index, manifest] of manifests.entries()) {
-        assert.equal(typeof bundles[index].createClient === "function", manifest.has(MOD_PART_CLIENT));
+        assert.equal(typeof bundles[index].createClient === "function", manifest.hasPart(MOD_PART_CLIENT));
     }
 });
 

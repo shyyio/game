@@ -5,7 +5,7 @@ import {tagsOf, displayNameOf, MOD_TAGS, MOD_LISTING_GUIDE_URL} from "@/client/M
 import {MOD_DIRS} from "@/mods/modDirs.js";
 import {modName, modTitle} from "@/mods/modNames.js";
 import {
-  LocalMod, compatibleVersions, latestCompatibleVersion, publishedVersions, versionLoadable,
+  LocalMod, compatibleVersions, latestCompatibleVersion, publishedVersions, isVersionLoadable,
 } from "@/client/LocalLoadout.js";
 import {SDK_VERSION} from "@/common/ModManifest.js";
 import {formatPastDate} from "@/common/dateFormat.js";
@@ -423,7 +423,7 @@ export default defineComponent({
                 v-for="version in allVersionsOf(row)"
                 :key="version.version"
                 :active="isPinned(row) && chosen(row).version === version.version"
-                :disabled="!versionLoadable(version)"
+                :disabled="!isVersionLoadable(version)"
                 :title="version.version"
                 :subtitle="versionMeta(version)"
                 @click="pick(row, version, true)"

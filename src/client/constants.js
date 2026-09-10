@@ -132,7 +132,7 @@ export class ViewportChunkWindow {
  * @param {Set<number>} b
  * @returns {boolean} whether both sets hold the same chunk keys
  */
-export function sameChunks(a, b) {
+export function isSameChunkSet(a, b) {
     if (a.size !== b.size) {
         return false;
     }

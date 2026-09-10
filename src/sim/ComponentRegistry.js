@@ -88,7 +88,7 @@ export class ComponentRegistry {
      * @returns {void}
      */
     destroyEntity(eid) {
-        if (this.engine.world.entityExists(eid)) {
+        if (this.engine.world.hasEntity(eid)) {
             this.engine.world.removeEntity(eid);
         }
     }

@@ -40,7 +40,7 @@ import {ViewMode, FRIENDS_PANEL_REFRESH_THROTTLE_MS} from "@/client/constants.js
  * @param {ViewMode} viewMode
  * @returns {boolean}
  */
-export function toolbarVisible(hasClaims, viewMode) {
+export function isToolbarVisible(hasClaims, viewMode) {
     return hasClaims && viewMode === ViewMode.WORLD;
 }
 
@@ -61,7 +61,7 @@ export function counterListTop(topBarHeight, statusHeight, safeAreaTop) {
  * @param {number} lastRefreshMs
  * @returns {boolean} whether the throttled friend-roster rebuild is due
  */
-export function friendsPanelRefreshDue(now, lastRefreshMs) {
+export function isFriendsPanelRefreshDue(now, lastRefreshMs) {
     return now - lastRefreshMs >= FRIENDS_PANEL_REFRESH_THROTTLE_MS;
 }
 
@@ -75,7 +75,7 @@ const NO_HUD_BAND = 0;
  * @param {Container} layer
  * @returns {boolean}
  */
-export function mountsInPanelHost(layer) {
+export function isMountedInPanelHost(layer) {
     return layer.zIndex === NO_HUD_BAND;
 }
 
@@ -314,7 +314,7 @@ export class Hud {
      */
     refreshToolbarVisibility() {
         const hasClaims = this._client.cache.view("chunkClaims").hasOwnClaims();
-        this.toolbarLayer.visible = toolbarVisible(hasClaims, this._client.viewMode.current);
+        this.toolbarLayer.visible = isToolbarVisible(hasClaims, this._client.viewMode.current);
     }
 
     /**
@@ -326,7 +326,7 @@ export class Hud {
      */
     viewportMoved() {
         const now = Date.now();
-        if (friendsPanelRefreshDue(now, this._lastFriendsPanelRefreshMs)) {
+        if (isFriendsPanelRefreshDue(now, this._lastFriendsPanelRefreshMs)) {
             this._lastFriendsPanelRefreshMs = now;
             this.friendsPanelLayer.refresh();
         }
@@ -386,7 +386,7 @@ export class Hud {
             layer.textureCache = textureCache;
             layer.viewport = viewport;
             layer.popovers = this.popoverHost;
-            if (mountsInPanelHost(layer)) {
+            if (isMountedInPanelHost(layer)) {
                 this.panelHost.add(layer);
             } else {
                 app.stage.addChild(layer);

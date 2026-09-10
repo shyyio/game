@@ -14,7 +14,7 @@ export const PLAYER_SETTINGS_SCHEMA = {
  * @param {number[]} b
  * @returns {boolean}
  */
-function sameToolOrder(a, b) {
+function isSameToolOrder(a, b) {
     if (a.length !== b.length) {
         return false;
     }
@@ -51,7 +51,7 @@ export class PlayerSettingsWriter extends AbstractCacheWriter {
         if (event instanceof PlayerSettingsToolOrderSyncEvent) {
             // ClientCache.set dedupes by reference, which never matches a decoded array; compare
             // contents so the echo of a just-applied local reorder doesn't rebuild the toolbar again.
-            if (!sameToolOrder(this._state.get("playerSettings.toolOrder"), event.toolIds)) {
+            if (!isSameToolOrder(this._state.get("playerSettings.toolOrder"), event.toolIds)) {
                 this._state.set("playerSettings.toolOrder", event.toolIds);
             }
         }

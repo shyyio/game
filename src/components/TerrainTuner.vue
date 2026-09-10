@@ -1,6 +1,6 @@
 <script setup>
 import {computed, markRaw, reactive, ref, watch} from "vue";
-import {DITHER_PATTERNS, activeDither, setActiveDither, setDitherEnabled, ditherOn, setDitherScale, ditherScale} from "@/client/layers/DitherPatterns.js";
+import {DITHER_PATTERNS, activeDither, setActiveDither, setDitherEnabled, isDitherOn, setDitherScale, ditherScale} from "@/client/layers/DitherPatterns.js";
 import {setBlendLevels, blendLevelCount, setShadeStep, shadeStep, setShadeBand, shadeBand} from "@/client/layers/TerrainSprite.js";
 import {setBlendWidth, blendWidth} from "@/common/Terrain.js";
 import {Biome, NoiseRange} from "@/common/Biome.js";
@@ -104,7 +104,7 @@ function load() {
   }));
   globals.blendLevels = blendLevelCount();
   globals.blendWidth = blendWidth();
-  globals.ditherEnabled = ditherOn();
+  globals.ditherEnabled = isDitherOn();
   globals.ditherPattern = activeDither().name;
   globals.ditherScale = Math.log(ditherScale()) / Math.log(LOG_BASE);
   globals.shadeStep = shadeStep();

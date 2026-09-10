@@ -8,13 +8,13 @@ test("An edge port shares a tile with a cell without occupying it", async () => 
     await engine.init();
     const port = engine.ports.getPortEidAt(4, 7, 0);
 
-    assert.equal(engine.space.cellsFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), true, "a port claims no cell");
+    assert.equal(engine.space.isEveryCellFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), true, "a port claims no cell");
 
     engine.space.occupy([{x: 4, y: 7, layer: LAYER_SURFACE}], 99);
-    assert.equal(engine.space.cellsFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), false);
+    assert.equal(engine.space.isEveryCellFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), false);
     assert.equal(engine.ports.getPortEidAt(4, 7, 0), port, "the shared edge port survives the cell");
 
     engine.space.destroyOwnerCells(99);
-    assert.equal(engine.space.cellsFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), true);
+    assert.equal(engine.space.isEveryCellFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), true);
     assert.equal(engine.ports.getPortEidAt(4, 7, 0), port, "releasing the cell leaves the port alone");
 });

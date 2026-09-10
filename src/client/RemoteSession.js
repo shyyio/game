@@ -249,7 +249,7 @@ export class RemoteSession extends AbstractSession {
         if (this._closed) {
             return;
         }
-        if (!this._tokenStillValid()) {
+        if (!this._isTokenStillValid()) {
             try {
                 this._token = await this._mintJoinToken();
             } catch {
@@ -270,7 +270,7 @@ export class RemoteSession extends AbstractSession {
      * @private
      * @returns {boolean}
      */
-    _tokenStillValid() {
+    _isTokenStillValid() {
         const exp = jwtExpiry(this._token);
         if (exp === null) {
             return false;

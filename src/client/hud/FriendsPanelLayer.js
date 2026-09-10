@@ -27,7 +27,7 @@ export class FriendsPanelLayer extends Container {
     constructor(app, state) {
         super();
         this._app = app;
-        this._claims = state.view("chunkClaims");
+        this._isClaiming = state.view("chunkClaims");
         this._players = state.view("players");
         this.textureCache = null;
         // The game viewport, for the currently-visible-owners roster (set by the host).
@@ -164,7 +164,7 @@ export class FriendsPanelLayer extends Container {
      * @returns {void}
      */
     _rebuild() {
-        const friendIds = this._sortByUsername(this._claims.friendIds());
+        const friendIds = this._sortByUsername(this._isClaiming.friendIds());
         const panel = this._managed.show({
             app: this._app,
             textureCache: this.textureCache,
@@ -204,7 +204,7 @@ export class FriendsPanelLayer extends Container {
         }
 
         stack.header("Add by code");
-        const ownFriendCode = this._claims.ownFriendCode;
+        const ownFriendCode = this._isClaiming.ownFriendCode;
         let ownCode;
         if (ownFriendCode !== null) {
             ownCode = ownFriendCode;
@@ -235,7 +235,7 @@ export class FriendsPanelLayer extends Container {
             return [];
         }
         const center = this.viewport.center;
-        return this._claims.nearbyForeignOwners(viewportChunks(this.viewport), center.x, center.y);
+        return this._isClaiming.nearbyForeignOwners(viewportChunks(this.viewport), center.x, center.y);
     }
 
     /**

@@ -22,7 +22,7 @@ export class SettleFlow {
      */
     constructor(client) {
         this._client = client;
-        this._claims = client.cache.view("chunkClaims");
+        this._isClaiming = client.cache.view("chunkClaims");
         this._cursor = client.chunkCursor;
         this._active = false;
         // One-shot: the connect-time view (map zoom without claims, home with them).
@@ -46,7 +46,7 @@ export class SettleFlow {
         if (!(event instanceof OwnClaimsSyncEvent) && !(event instanceof ChunkClaimUpdateEvent)) {
             return;
         }
-        this._setActive(this._noClaims());
+        this._setActive(this._hasNoClaims());
         if (event instanceof OwnClaimsSyncEvent && !this._connectViewApplied) {
             this._connectViewApplied = true;
             if (this._active) {
@@ -157,7 +157,7 @@ export class SettleFlow {
      * @private
      * @returns {boolean}
      */
-    _noClaims() {
-        return this._claims.ownPlayerRef !== null && !this._claims.hasOwnClaims();
+    _hasNoClaims() {
+        return this._isClaiming.ownPlayerRef !== null && !this._isClaiming.hasOwnClaims();
     }
 }

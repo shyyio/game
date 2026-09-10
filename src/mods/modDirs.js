@@ -26,7 +26,7 @@ export const CLIENT_FILE = "client.js";
  * @param {string} file
  * @returns {boolean}
  */
-export function modHasFile(root, dir, file) {
+export function hasModFile(root, dir, file) {
     return readdirSync(join(root, dir)).includes(file);
 }
 
@@ -40,7 +40,7 @@ export function dirsIn(root) {
         return [];
     }
     return readdirSync(root, {withFileTypes: true})
-        .filter(entry => entry.isDirectory() && modHasFile(root, entry.name, DECLARATION_FILE))
+        .filter(entry => entry.isDirectory() && hasModFile(root, entry.name, DECLARATION_FILE))
         .map(entry => entry.name)
         .sort((left, right) => left.localeCompare(right));
 }

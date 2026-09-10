@@ -233,7 +233,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         const eids = extractors.eids;
         const count = extractors.count;
         for (let row = 0; row < count; row += 1) {
-            if (engine.transfers.wasDest(extractor.out[row])) {
+            if (engine.transfers.isDest(extractor.out[row])) {
                 const eid = eids[row];
                 engine.itemProduced.notify(placed.getClaimOwnerByEid(eid), extractor.output[row], 1);
                 if (extractor.lastOutput[row] !== extractor.output[row]) {

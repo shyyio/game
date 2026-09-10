@@ -244,7 +244,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         const count = terminals.count;
         for (let row = 0; row < count; row += 1) {
             if (terminal.mode[row] === MARKET_MODE_BUY) {
-                if (engine.transfers.wasDest(terminal.out[row])) {
+                if (engine.transfers.isDest(terminal.out[row])) {
                     TradingTerminalBehavior._recordOutput(engine, terminals, row);
                     if (terminal.pendingPrice[row] !== EMPTY) {
                         book.recordPurchase(eids[row], terminal.itemTypeId[row], terminal.pendingPrice[row]);

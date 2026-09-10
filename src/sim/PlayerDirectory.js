@@ -67,7 +67,7 @@ export class PlayerDirectory {
      * @returns {void}
      */
     addFriend(session, playerRef) {
-        if (this.game.players.has(playerRef) && playerRef !== session.playerRef) {
+        if (this.game.players.hasPlayer(playerRef) && playerRef !== session.playerRef) {
             this.game.players.addFriend(session.playerRef, playerRef);
             this._syncBothSides(session, playerRef);
             return;

@@ -338,7 +338,7 @@ export class RenderDiff {
         if (this._observedGen[eid] === generation) {
             return this._observed[eid] === 1;
         }
-        const observed = this.engine.observesTile(this._x[eid], this._y[eid]);
+        const observed = this.engine.isTileObserved(this._x[eid], this._y[eid]);
         this._observedGen[eid] = generation;
         this._observed[eid] = observed ? 1 : 0;
         return observed;

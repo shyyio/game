@@ -5,7 +5,7 @@ import {NotImplementedError} from "@/common/error.js";
 
 class TestPreference extends AbstractDevicePreference {
 
-    devicePrefers() {
+    isDevicePreferred() {
         return true;
     }
 }
@@ -34,6 +34,6 @@ test("unsubscribing drops only that subscriber", () => {
     assert.deepEqual(seen, ["second:true"]);
 });
 
-test("a preference that does not answer devicePrefers breaks loudly", () => {
-    assert.throws(() => new AbstractDevicePreference().devicePrefers(), NotImplementedError);
+test("a preference that does not answer isDevicePreferred breaks loudly", () => {
+    assert.throws(() => new AbstractDevicePreference().isDevicePreferred(), NotImplementedError);
 });

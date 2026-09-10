@@ -1,5 +1,5 @@
 import {AbstractMessage, TILE_HALF} from "@spup/sdk";
-import {noteOffsetValid, noteTextValid} from "./constants.js";
+import {isNoteOffsetValid, isNoteTextValid} from "./constants.js";
 
 /**
  * Whether a tile position is inside the region's half-open tile box, matching tileKey's bounds.
@@ -7,7 +7,7 @@ import {noteOffsetValid, noteTextValid} from "./constants.js";
  * @param {number} tileY
  * @returns {boolean}
  */
-function tileInBounds(tileX, tileY) {
+function isTileInBounds(tileX, tileY) {
     return Number.isInteger(tileX) && Number.isInteger(tileY)
         && tileX >= -TILE_HALF && tileX < TILE_HALF
         && tileY >= -TILE_HALF && tileY < TILE_HALF;
@@ -48,10 +48,10 @@ export class NotePlaceMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return tileInBounds(this.tileX, this.tileY)
-            && noteOffsetValid(this.offsetMx)
-            && noteOffsetValid(this.offsetMy)
-            && noteTextValid(this.text);
+        return isTileInBounds(this.tileX, this.tileY)
+            && isNoteOffsetValid(this.offsetMx)
+            && isNoteOffsetValid(this.offsetMy)
+            && isNoteTextValid(this.text);
     }
 }
 
@@ -84,7 +84,7 @@ export class NoteEditMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return tileInBounds(this.tileX, this.tileY) && noteTextValid(this.text);
+        return isTileInBounds(this.tileX, this.tileY) && isNoteTextValid(this.text);
     }
 }
 
@@ -114,6 +114,6 @@ export class NoteDeleteMessage extends AbstractMessage {
      * @returns {boolean}
      */
     validate(api, session) {
-        return tileInBounds(this.tileX, this.tileY);
+        return isTileInBounds(this.tileX, this.tileY);
     }
 }

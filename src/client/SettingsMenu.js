@@ -131,8 +131,8 @@ export class SettingsMenu {
         return [
             new SettingCategory("Display", 0, [
                 new DeviceSettingToggle(DEVICE_SETTING_FULLSCREEN, "Fullscreen", false, on => Fullscreen.setEnabled(on)),
-                new DeviceSettingToggle(DEVICE_SETTING_REDUCED_MOTION, "Reduced motion", ReducedMotion.devicePrefers(), on => ReducedMotion.setEnabled(on)),
-                new DeviceSettingToggle(DEVICE_SETTING_MOBILE, "Touchscreen input", Mobile.devicePrefers(), on => Mobile.setEnabled(on)),
+                new DeviceSettingToggle(DEVICE_SETTING_REDUCED_MOTION, "Reduced motion", ReducedMotion.isDevicePreferred(), on => ReducedMotion.setEnabled(on)),
+                new DeviceSettingToggle(DEVICE_SETTING_MOBILE, "Touchscreen input", Mobile.isDevicePreferred(), on => Mobile.setEnabled(on)),
                 new DeviceSettingToggle(DEVICE_SETTING_TERRAIN, "Terrain", TERRAIN_ENABLED_DEFAULT, on => this.setTerrainEnabled(on)),
                 new DeviceSettingChoice(DEVICE_SETTING_THEME, "Theme", THEME_NAMES, THEME_DEFAULT, index => applyTheme(index)),
                 new DeviceSettingChoice(DEVICE_SETTING_FPS_CAP, "Frame rate cap", FPS_CAP_NAMES, FPS_CAP_DEFAULT, index => this.setFpsCap(index)),

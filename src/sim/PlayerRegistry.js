@@ -143,7 +143,7 @@ export class PlayerRegistry {
      * @param {number} playerRef
      * @returns {boolean}
      */
-    has(playerRef) {
+    hasPlayer(playerRef) {
         return this._byId.has(playerRef);
     }
 

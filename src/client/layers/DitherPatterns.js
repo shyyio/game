@@ -185,7 +185,7 @@ export function setDitherEnabled(enabled) {
 /**
  * @returns {boolean}
  */
-export function ditherOn() {
+export function isDitherOn() {
     return ditherEnabled;
 }
 

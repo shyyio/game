@@ -254,7 +254,7 @@ export class GeneratorBehavior extends AbstractBehavior {
         const count = generators.count;
         for (let row = 0; row < count; row += 1) {
             const eid = eids[row];
-            if (engine.transfers.wasDest(generator.out[row])) {
+            if (engine.transfers.isDest(generator.out[row])) {
                 engine.itemProduced.notify(placed.getClaimOwnerByEid(eid), generator.output[row], 1);
                 if (generator.lastOutput[row] !== generator.output[row]) {
                     generator.lastOutput[row] = generator.output[row];
@@ -263,7 +263,7 @@ export class GeneratorBehavior extends AbstractBehavior {
                 generator.output[row] = EMPTY;
                 generator.remaining[row] = EMPTY;
             }
-            if (generator.out2[row] !== NO_EID && engine.transfers.wasDest(generator.out2[row])) {
+            if (generator.out2[row] !== NO_EID && engine.transfers.isDest(generator.out2[row])) {
                 engine.itemProduced.notify(placed.getClaimOwnerByEid(eid), generator.output2[row], 1);
                 generator.lastOutput2[row] = generator.output2[row];
                 generator.output2[row] = EMPTY;

@@ -57,7 +57,7 @@ export async function checkPackage(dir) {
         return {manifest, problems};
     }
     for (const [part, factory] of [["declaration", "createDeclaration"], [MOD_PART_SIM, "createSim"], [MOD_PART_CLIENT, "createClient"]]) {
-        const declared = manifest.has(part);
+        const declared = manifest.hasPart(part);
         if (declared !== (typeof bundle[factory] === "function")) {
             problems.push(`the manifest ${declared ? "declares" : "omits"} the ${part} part, but the bundle ${declared ? "exports no" : "exports a"} ${factory}`);
         }
@@ -68,7 +68,7 @@ export async function checkPackage(dir) {
 
     try {
         const declaration = bundle.createDeclaration(sdk);
-        const sim = manifest.has(MOD_PART_SIM) ? bundle.createSim(sdk) : null;
+        const sim = manifest.hasPart(MOD_PART_SIM) ? bundle.createSim(sdk) : null;
         const registry = new ModRegistry();
         registry.register(new ModPackage(declaration, {sim}));
         registry.freeze();

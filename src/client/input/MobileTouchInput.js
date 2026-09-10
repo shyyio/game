@@ -92,7 +92,7 @@ export class MobileTouchInput {
         if (e.pointerType !== "touch") {
             return;
         }
-        if (this._overWorld(e.target)) {
+        if (this._isOverWorld(e.target)) {
             // Natively delivered to the viewport; a held HUD finger joins it for the pinch.
             this._flushHeldHudTouches();
             return;
@@ -111,7 +111,7 @@ export class MobileTouchInput {
      * @param {Container} target
      * @returns {boolean}
      */
-    _overWorld(target) {
+    _isOverWorld(target) {
         let node = target;
         while (node != null) {
             if (node === this._viewport) {

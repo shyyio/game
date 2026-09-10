@@ -49,7 +49,7 @@ export class ObjectGeometry {
      * @param {Direction} direction
      * @returns {boolean}
      */
-    spansChunks(tileX, tileY, direction) {
+    isSpanningChunks(tileX, tileY, direction) {
         const base = chunkKeyAt(tileX, tileY);
         return this.getTilesByDirection(direction).some(tile => chunkKeyAt(tileX + tile.x, tileY + tile.y) !== base);
     }

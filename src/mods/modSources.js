@@ -6,7 +6,7 @@
 
 import {join, resolve} from "node:path";
 import {pathToFileURL} from "node:url";
-import {MOD_DIRS, MOD_ROOTS, DECLARATION_FILE, SIM_FILE, modHasFile} from "@/mods/modDirs.js";
+import {MOD_DIRS, MOD_ROOTS, DECLARATION_FILE, SIM_FILE, hasModFile} from "@/mods/modDirs.js";
 
 /**
  * @param {string} dir
@@ -15,7 +15,7 @@ import {MOD_DIRS, MOD_ROOTS, DECLARATION_FILE, SIM_FILE, modHasFile} from "@/mod
  */
 async function partOf(dir, file) {
     const root = MOD_ROOTS.get(dir);
-    if (!modHasFile(root, dir, file)) {
+    if (!hasModFile(root, dir, file)) {
         return null;
     }
     return await import(pathToFileURL(resolve(join(root, dir, file))).href);

@@ -616,7 +616,7 @@ export class ObjectsView extends AbstractCacheView {
         if (entry === null) {
             return null;
         }
-        return this._portMatch(entry, "inputPorts", tileX, tileY, direction);
+        return this._isPortMatch(entry, "inputPorts", tileX, tileY, direction);
     }
 
     /**
@@ -634,7 +634,7 @@ export class ObjectsView extends AbstractCacheView {
         if (entry === null) {
             return null;
         }
-        return this._portMatch(entry, "outputPorts", tileX, tileY, direction);
+        return this._isPortMatch(entry, "outputPorts", tileX, tileY, direction);
     }
 
     /**
@@ -648,7 +648,7 @@ export class ObjectsView extends AbstractCacheView {
      * @returns {{entry: CacheEntry, portName: string}|null}
      * @private
      */
-    _portMatch(entry, portKind, portX, portY, facing) {
+    _isPortMatch(entry, portKind, portX, portY, facing) {
         const target = edgeKey(portX, portY, facing);
         for (const candidate of entry.data.type.getSurfacePortsByKind(portKind)) {
             const placed = portAt(candidate, entry.tileX, entry.tileY, entry.data.direction);

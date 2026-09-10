@@ -338,7 +338,7 @@ export class Client {
      * @param {Direction} direction
      * @returns {boolean}
      */
-    modsAllowPlacement(type, tileX, tileY, direction) {
+    isPlacementAllowedByMods(type, tileX, tileY, direction) {
         return this.modRegistry.clientMods.every(mod => mod.canPlace(type, tileX, tileY, direction, this));
     }
 

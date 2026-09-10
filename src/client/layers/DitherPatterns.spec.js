@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {DITHER_PATTERNS, DEFAULT_DITHER_PATTERN, activeDither, setActiveDither, setDitherEnabled, ditherOn, setDitherScale, ditherScale, setDitherTerrain, ditherThreshold} from "@/client/layers/DitherPatterns.js";
+import {DITHER_PATTERNS, DEFAULT_DITHER_PATTERN, activeDither, setActiveDither, setDitherEnabled, isDitherOn, setDitherScale, ditherScale, setDitherTerrain, ditherThreshold} from "@/client/layers/DitherPatterns.js";
 import {Terrain} from "@/common/Terrain.js";
 import {WorldNoise} from "@/common/WorldNoise.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
@@ -82,7 +82,7 @@ test("switched off, no cell can beat its threshold, whatever the pattern", () =>
     try {
         setActiveDither("r2");
         setDitherEnabled(false);
-        assert.equal(ditherOn(), false);
+        assert.equal(isDitherOn(), false);
         // A part-level is below 1 by definition, so a threshold of 1 is never beaten.
         assert.equal(ditherThreshold(3, -9), 1);
         assert.equal(ditherThreshold(0, 0), 1);

@@ -70,6 +70,6 @@ test("a snapshot without tables loads with empty registries", async () => {
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
-    assert.equal(restored.players.has(1), false);
+    assert.equal(restored.players.hasPlayer(1), false);
     assert.equal(restored.claims.getCountByPlayerRef(1), 0);
 });

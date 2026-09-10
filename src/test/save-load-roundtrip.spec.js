@@ -38,7 +38,7 @@ test("the whole world round-trips through the engine serializer", async () => {
     assert.equal(restored.lanes.getLaneRefs().length, beltLanes, "belt lanes restored");
     assert.notEqual(restored.space.getUserDataAt(5, 5, "R"), null, "resource cover restored");
     assert.notEqual(restored.placed.findEidByObjectRef(splitterId), undefined, "splitter restored");
-    assert.equal(restored.space.cellsFree([{x: 10, y: 10, layer: "S"}]), false, "machine position restored");
+    assert.equal(restored.space.isEveryCellFree([{x: 10, y: 10, layer: "S"}]), false, "machine position restored");
 
     // The extractor keeps producing water into its edge output port after the load.
     const outputPort = restored.ports.getPortEidAt(5, 4, Direction.UP);

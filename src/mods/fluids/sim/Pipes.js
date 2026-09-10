@@ -470,7 +470,7 @@ export class Pipes extends AbstractSystem {
     postResolve() {
         const engine = this.engine;
         for (let i = 0; i < this._emittedPorts.length; i += 1) {
-            if (engine.transfers.wasDest(this._emittedPorts[i])) {
+            if (engine.transfers.isDest(this._emittedPorts[i])) {
                 this._emittedNets[i].amount -= 1;
             }
         }
@@ -488,7 +488,7 @@ export class Pipes extends AbstractSystem {
             }
             net.lastType = net.fluidType;
             net.lastAmount = net.amount;
-            if (!engine.observesTile(net.originX, net.originY)) {
+            if (!engine.isTileObserved(net.originX, net.originY)) {
                 continue;
             }
             const batch = getOrCreate(batches, net.chunkKey, () => new PipeFluidBatchEvent(net.originX, net.originY));

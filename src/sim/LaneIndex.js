@@ -82,8 +82,7 @@ export function getLaneCellLayer(inLevel, outLevel, direction) {
  * @param {Direction} inDirection
  * @returns {boolean}
  */
-// Should be something like "shouldConnectPorts()"
-function levelsMeet(outLevel, outDirection, inLevel, inDirection) {
+function shouldConnectLevels(outLevel, outDirection, inLevel, inDirection) {
     if (outLevel !== inLevel) {
         return false;
     }
@@ -308,7 +307,7 @@ export class LaneIndex extends AbstractSystem {
             if (this.cells.getRowByEid(candidate) < 0) {
                 continue;
             }
-            if (levelsMeet(outLevel, direction, this._getBehaviorByCellEid(candidate).inLevel, position.direction[candidate])) {
+            if (shouldConnectLevels(outLevel, direction, this._getBehaviorByCellEid(candidate).inLevel, position.direction[candidate])) {
                 return candidate;
             }
         }
@@ -381,7 +380,7 @@ export class LaneIndex extends AbstractSystem {
         const edge = candidates.edges[index];
         let parent = NO_EID;
         if (this.cells.getRowByEid(winner) >= 0
-            && levelsMeet(this._getOutLevelByCellEid(winner), position.direction[winner], this._getBehaviorByCellEid(eid).inLevel, direction)) {
+            && shouldConnectLevels(this._getOutLevelByCellEid(winner), position.direction[winner], this._getBehaviorByCellEid(eid).inLevel, direction)) {
             parent = winner;
         }
         return {
@@ -945,7 +944,7 @@ export class LaneIndex extends AbstractSystem {
         const transfers = this.engine.transfers;
         for (let laneRow = 0; laneRow < this.lanes.count; laneRow += 1) {
             const laneEid = this.lanes.eids[laneRow];
-            const popped = this._popIntent[laneRow] !== NO_INTENT && transfers.wasResolved(this._popIntent[laneRow]);
+            const popped = this._popIntent[laneRow] !== NO_INTENT && transfers.isResolved(this._popIntent[laneRow]);
             let takenItem = EMPTY;
             if (popped) {
                 this._popLead(laneEid, laneRow);
@@ -954,7 +953,7 @@ export class LaneIndex extends AbstractSystem {
                 this._shiftItems(laneEid, laneRow);
             }
             // The item enters once, whichever intent emptied the port.
-            if (takenItem === EMPTY && this._drainIntent[laneRow] !== NO_INTENT && transfers.wasResolved(this._drainIntent[laneRow])) {
+            if (takenItem === EMPTY && this._drainIntent[laneRow] !== NO_INTENT && transfers.isResolved(this._drainIntent[laneRow])) {
                 takenItem = this._drainItem[laneRow];
             }
             if (takenItem !== EMPTY) {
@@ -1090,7 +1089,7 @@ export class LaneIndex extends AbstractSystem {
      */
     _flushBatches() {
         for (const batch of this._batches.values()) {
-            if (!batch.isEmpty && this.engine.observesTile(batch.x, batch.y)) {
+            if (!batch.isEmpty && this.engine.isTileObserved(batch.x, batch.y)) {
                 this.engine.emitEvent(batch);
             }
         }
@@ -1108,7 +1107,7 @@ export class LaneIndex extends AbstractSystem {
         const laneRow = this._getLaneRowByLaneRef(laneEid);
         const head = this.lanes.store.headCell[laneRow];
         const position = this.engine.Position;
-        if (!this.engine.observesTile(position.x[head], position.y[head])) {
+        if (!this.engine.isTileObserved(position.x[head], position.y[head])) {
             return;
         }
         this.engine.emitEvent(new LaneGeometryEvent(

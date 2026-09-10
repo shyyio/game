@@ -244,7 +244,7 @@ export class ObjectTool extends AbstractTool {
             const occupant = this._findSolidOccupantAt(cell.x, cell.y);
             if (occupant === null) {
                 bodyByKey.set(key, {cell, state: "clear"});
-            } else if (this._overwritable(occupant, direction)) {
+            } else if (this._isOverwritable(occupant, direction)) {
                 bodyByKey.set(key, {cell, state: "overwrite", id: occupant.id});
                 overwriteIds.add(occupant.id);
             } else {
@@ -288,7 +288,7 @@ export class ObjectTool extends AbstractTool {
 
         // An unbuildable chunk or a mod veto blocks the whole placement.
         const vetoed = !this._client.canBuildAt(tileX, tileY)
-            || !this._client.modsAllowPlacement(this._type, tileX, tileY, direction);
+            || !this._client.isPlacementAllowedByMods(this._type, tileX, tileY, direction);
         if (vetoed) {
             for (const cell of overwriteCells) {
                 blockedCells.push(cell);
@@ -355,7 +355,7 @@ export class ObjectTool extends AbstractTool {
      * @private
      * @returns {boolean}
      */
-    _overwritable(occupant, direction) {
+    _isOverwritable(occupant, direction) {
         if (this._replaceSameKind && occupant.data.type.objectTypeId === this._type.objectTypeId) {
             return true;
         }

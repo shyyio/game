@@ -11,7 +11,7 @@ import {Direction, CONVEYS_ITEM, CONVEYS_FLUID} from "@spup/sdk";
  * @param {boolean} behind - behind feeds the input port; front receives from the output port
  * @returns {boolean}
  */
-export function transportCouples(type, direction, gateDirection, behind) {
+export function canTransportsCouple(type, direction, gateDirection, behind) {
     if (type.conveys === CONVEYS_FLUID) {
         return true;
     }
@@ -39,7 +39,7 @@ export function gateConnections(occupantAt, x, y, direction) {
         if (occupant === null) {
             return null;
         }
-        if (!transportCouples(occupant.type, occupant.direction, direction, behind)) {
+        if (!canTransportsCouple(occupant.type, occupant.direction, direction, behind)) {
             return null;
         }
         return occupant.type.conveys;
@@ -60,7 +60,7 @@ export function gateConnections(occupantAt, x, y, direction) {
  * @param {Direction} direction - the placement facing
  * @returns {boolean}
  */
-export function placementBlockedByGate(occupantAt, isGate, type, x, y, direction) {
+export function isPlacementBlockedByGate(occupantAt, isGate, type, x, y, direction) {
     if (type.conveys === null) {
         return false;
     }
@@ -79,7 +79,7 @@ export function placementBlockedByGate(occupantAt, isGate, type, x, y, direction
         if (!behind && !front) {
             continue;
         }
-        if (!transportCouples(type, direction, gateDirection, behind)) {
+        if (!canTransportsCouple(type, direction, gateDirection, behind)) {
             continue;
         }
         const connections = gateConnections(occupantAt, gx, gy, gateDirection);

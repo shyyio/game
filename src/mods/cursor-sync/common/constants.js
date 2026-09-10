@@ -19,7 +19,7 @@ export const CURSOR_AUDIENCE_OPTIONS = ["No one", "Friends", "Everyone"];
  * @param {boolean} isFriend whether the other player is on the option holder's friend list
  * @returns {boolean}
  */
-export function audienceAdmits(mode, isSelf, isFriend) {
+export function isAudienceAdmitting(mode, isSelf, isFriend) {
     if (mode === CURSOR_AUDIENCE_NONE) {
         return false;
     }

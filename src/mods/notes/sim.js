@@ -85,7 +85,7 @@ export class NotesSimMod extends AbstractSimMod {
     _handlePlace(message, session, game) {
         const chunkKey = chunkKeyAt(message.tileX, message.tileY);
         // Mod messages bypass the core placement gate, so notes check it themselves.
-        if (!game.simEngine.placementAllowed(session.playerRef, chunkKey)) {
+        if (!game.simEngine.canBuildIn(session.playerRef, chunkKey)) {
             return;
         }
         const existing = this._store.findNoteAt(message.tileX, message.tileY);
@@ -134,7 +134,7 @@ export class NotesSimMod extends AbstractSimMod {
             return;
         }
         const chunkKey = chunkKeyAt(message.tileX, message.tileY);
-        if (note.authorId !== session.playerRef && !game.simEngine.placementAllowed(session.playerRef, chunkKey)) {
+        if (note.authorId !== session.playerRef && !game.simEngine.canBuildIn(session.playerRef, chunkKey)) {
             return;
         }
         this._store.delete(message.tileX, message.tileY);

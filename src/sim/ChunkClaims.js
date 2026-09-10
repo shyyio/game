@@ -94,7 +94,7 @@ export class ChunkClaims {
         if (owned.size >= maxChunks) {
             return ClaimResult.CLAIM_RESULT_LIMIT;
         }
-        if (owned.size > 0 && !this._touchesOwn(chunkKey, owned)) {
+        if (owned.size > 0 && !this._isTouchingOwn(chunkKey, owned)) {
             return ClaimResult.CLAIM_RESULT_NOT_ADJACENT;
         }
         this._ownerByChunk.set(chunkKey, playerRef);
@@ -141,7 +141,7 @@ export class ChunkClaims {
         if (this._ownerByChunk.get(chunkKey) !== playerRef) {
             return ClaimResult.CLAIM_RESULT_NOT_OWNER;
         }
-        if (!this._connectedWithout(this.getChunkKeysByPlayerRef(playerRef), chunkKey)) {
+        if (!this._isConnectedWithout(this.getChunkKeysByPlayerRef(playerRef), chunkKey)) {
             return ClaimResult.CLAIM_RESULT_WOULD_SPLIT;
         }
         return ClaimResult.CLAIM_RESULT_OK;
@@ -214,7 +214,7 @@ export class ChunkClaims {
      * @param {Set<number>} owned
      * @returns {boolean}
      */
-    _touchesOwn(chunkKey, owned) {
+    _isTouchingOwn(chunkKey, owned) {
         for (const neighbor of chunkNeighbors(chunkKey)) {
             if (owned.has(neighbor)) {
                 return true;
@@ -230,7 +230,7 @@ export class ChunkClaims {
      * @param {number} removed
      * @returns {boolean}
      */
-    _connectedWithout(owned, removed) {
+    _isConnectedWithout(owned, removed) {
         const remaining = new Set(owned);
         remaining.delete(removed);
         if (remaining.size <= 1) {

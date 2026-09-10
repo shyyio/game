@@ -113,7 +113,7 @@ test("creates a brand-new item with a source-less intent", async () => {
     });
 
     assert.equal(engine.ports.getItemByPortEid(ports[0]), 55);
-    assert.equal(engine.transfers.wasDest(ports[0]), true);
+    assert.equal(engine.transfers.isDest(ports[0]), true);
 });
 
 test("a drain empties its source", async () => {
@@ -188,6 +188,6 @@ test("a submitted intent reports whether it resolved", async () => {
         second = engine.transfers.submitCreate(ports[0], ITEM + 1, true);
     });
 
-    assert.equal(engine.transfers.wasResolved(first), true);
-    assert.equal(engine.transfers.wasResolved(second), false);
+    assert.equal(engine.transfers.isResolved(first), true);
+    assert.equal(engine.transfers.isResolved(second), false);
 });

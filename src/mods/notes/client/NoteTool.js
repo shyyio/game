@@ -24,7 +24,7 @@ export class NoteTool extends AbstractTool {
         this._client = client;
         this._cache = client.cache;
         // Only for the own player's identity; the build gate goes through the client.
-        this._claims = client.cache.view("chunkClaims");
+        this._isClaiming = client.cache.view("chunkClaims");
         this._notes = client.cache.writer("notes");
         this._notesLayer = notesLayer;
         this._ghostLayer = ghostLayer;
@@ -148,7 +148,7 @@ export class NoteTool extends AbstractTool {
      */
     _openExisting(note) {
         let mode = NOTE_EDITOR_MODE_EDIT;
-        if (note.authorId !== this._claims.ownPlayerRef) {
+        if (note.authorId !== this._isClaiming.ownPlayerRef) {
             if (!this._client.canBuildAt(note.tileX, note.tileY)) {
                 this._client.hud.notify("That note belongs to someone else");
                 return;

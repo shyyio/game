@@ -29,7 +29,7 @@ test("an invalid sub is rejected; the display name is unconstrained", () => {
 test("unknown ids break loudly", () => {
     const players = new PlayerRegistry();
     assert.throws(() => players.getPlayerByRef(7), RangeError);
-    assert.equal(players.has(7), false);
+    assert.equal(players.hasPlayer(7), false);
 });
 
 test("ensure registers external ids without disturbing the counter", () => {
@@ -80,7 +80,7 @@ test("records round-trip and the id counter resumes past the loaded ids", () => 
     assert.equal(restored.getOrCreate("sub-carol", "carol").playerRef, 3);
 
     restored.deserializeRecords(undefined, undefined);
-    assert.equal(restored.has(1), false);
+    assert.equal(restored.hasPlayer(1), false);
     assert.equal(restored.getOrCreate("sub-dave", "dave").playerRef, 1);
 });
 

@@ -436,7 +436,7 @@ class Mouse {
      * @returns {boolean}
      * @private
      */
-    _pointerOverInteractive() {
+    _isPointerOverInteractive() {
         const events = this._app.renderer.events;
         const boundary = events.rootBoundary;
         boundary.rootTarget = this._app.stage;
@@ -445,19 +445,19 @@ class Mouse {
     }
 
     /**
-     * Same as {@link _pointerOverInteractive}, re-tested only once the pointer has moved: HUD
+     * Same as {@link _isPointerOverInteractive}, re-tested only once the pointer has moved: HUD
      * rebuilt under a resting pointer (a panel redrawn by its own button) carries stale transforms
      * until it renders, so a hit test that frame misses it.
      * @returns {boolean}
      * @private
      */
-    _pointerRestsOverInteractive() {
+    _isPointerRestingOverInteractive() {
         const pointer = this._app.renderer.events.pointer.global;
         const moved = pointer.x !== this._pointerScreenX || pointer.y !== this._pointerScreenY;
         this._pointerScreenX = pointer.x;
         this._pointerScreenY = pointer.y;
         if (moved || !this._pointerWasOverInteractive) {
-            this._pointerWasOverInteractive = this._pointerOverInteractive();
+            this._pointerWasOverInteractive = this._isPointerOverInteractive();
         }
         return this._pointerWasOverInteractive;
     }
@@ -476,7 +476,7 @@ class Mouse {
         // keeps its hover).
         if (this._centerLock) {
             this._updateHoverTile();
-        } else if (this._clickStartX == null && this._pointerRestsOverInteractive()) {
+        } else if (this._clickStartX == null && this._isPointerRestingOverInteractive()) {
             this._emitTileExit();
         } else {
             this._updateHoverTile();

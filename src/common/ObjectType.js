@@ -260,7 +260,7 @@ export class ObjectType {
     }
 
     /**
-     * The geometry (tiles/corner/spansChunks) for this object's named size.
+     * The geometry (tiles/corner/isSpanningChunks) for this object's named size.
      * @returns {ObjectGeometry}
      */
     get geometry() {

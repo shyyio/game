@@ -143,7 +143,7 @@ export {ViewMode} from "@/client/constants.js";
 export {GAME_FONT} from "@/client/constants.js";
 
 // Compares a layer's mounted chunks against the visible set handed to `tick`.
-export {sameChunks} from "@/client/constants.js";
+export {isSameChunkSet} from "@/client/constants.js";
 
 // Groups a chunk's sprites and pooled map geometry under one mountable root.
 export {ChunkNode} from "@/client/layers/ChunkNode.js";

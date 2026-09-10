@@ -20,7 +20,7 @@ const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/;
  * @param {*} text
  * @returns {boolean}
  */
-export function noteTextValid(text) {
+export function isNoteTextValid(text) {
     if (typeof text !== "string") {
         return false;
     }
@@ -35,6 +35,6 @@ export function noteTextValid(text) {
  * @param {number} offset milli-tiles
  * @returns {boolean}
  */
-export function noteOffsetValid(offset) {
+export function isNoteOffsetValid(offset) {
     return Number.isInteger(offset) && offset >= 0 && offset < NOTE_OFFSET_UNITS;
 }

@@ -107,7 +107,7 @@ export class ProductionLogSimMod extends AbstractSimMod {
      * @private
      */
     _answerLog(message, session, game) {
-        if (!game.players.has(message.playerRef)) {
+        if (!game.players.hasPlayer(message.playerRef)) {
             return;
         }
         const counts = this._log.getCountsByPlayerRef(message.playerRef);
