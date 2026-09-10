@@ -62,8 +62,8 @@ class PickerDevice {
         this.tileX = tileX;
         this.tileY = tileY;
         this.ordinal = ordinal;
-        this.readKeys = type.behavior.logicReadKeys();
-        this.writeKeys = type.behavior.logicWriteKeys();
+        this.readKeys = type.behavior.getLogicReadKeys();
+        this.writeKeys = type.behavior.getLogicWriteKeys();
     }
 
     /**
@@ -296,7 +296,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         this._buildRulesBox(stack, snapshot);
         stack.gap();
         stack.row((row) => {
-            const actions = this._addActionOptionsFor(snapshot);
+            const actions = this._getAddActionOptionsBySnapshot(snapshot);
             const add = buildPanelButton(this.textureCache, "Add action", ACTIVE_ACCENT, () => {
                 this._openDropdown(actions, add);
             }, this._rules.length >= LOGIC_RULE_CAP || actions.length === 0);
@@ -313,7 +313,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      */
     _buildRulesBox(stack, snapshot) {
         this._valueInputs = [];
-        const rulesStack = new PanelStack(this.textureCache, ScrollView.contentWidthFor(stack.contentWidth));
+        const rulesStack = new PanelStack(this.textureCache, ScrollView.getContentWidth(stack.contentWidth));
         if (this._rules.length === 0) {
             rulesStack.text("No rules yet.", TextRole.MUTED);
         }
@@ -395,7 +395,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 this.textureCache,
                 `${this._actionVerb(rule)} ▾`,
                 ACTIVE_ACCENT,
-                () => this._openDropdown(this._actionVerbOptionsFor(snapshot, rule), verb),
+                () => this._openDropdown(this._getActionVerbOptionsByRule(snapshot, rule), verb),
             );
             row.pushLeft(verb);
             const device = this._deviceById(snapshot, rule.actionDeviceId);
@@ -420,7 +420,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             this._buildConditionRows(stack, snapshot, rule, condition, conditionIndex);
         }
         stack.row((row) => {
-            const conditionTypes = this._conditionTypeOptionsFor(snapshot, rule);
+            const conditionTypes = this._getConditionTypeOptionsByRule(snapshot, rule);
             const add = buildPanelButton(this.textureCache, "+ condition", INACTIVE_TINT, () => {
                 this._openDropdown(conditionTypes, add);
             }, rule.conditions.length >= LOGIC_CONDITION_CAP || conditionTypes.length === 0);
@@ -524,7 +524,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 })), containerButton));
             buttons.push(containerButton);
         }
-        const item = this._modRegistry.items.typeFor(condition.itemTypeId);
+        const item = this._modRegistry.items.getItemTypeOrDefaultByTypeId(condition.itemTypeId);
         const itemButton = buildIconButton(this.textureCache, item.texture, item.tint, ACTIVE_ACCENT,
             () => this._openIconPicker(this._storableEntries(), condition.itemTypeId, (itemTypeId) => {
                 condition.itemTypeId = itemTypeId;
@@ -556,7 +556,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 this._sendRules();
             })), deviceButton));
         buttons.push(deviceButton);
-        const entry = this._modRegistry.logicKeyEntry(condition.key);
+        const entry = this._modRegistry.getLogicKeyEntryByKey(condition.key);
         if (entry.states === null) {
             buttons.push(panelText(entry.name, TextRole.MUTED));
             return buttons;
@@ -617,7 +617,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @param {LogicRule} rule
      * @returns {DropdownOption[]}
      */
-    _actionVerbOptionsFor(snapshot, rule) {
+    _getActionVerbOptionsByRule(snapshot, rule) {
         let key = rule.actionKey;
         let device = this._deviceById(snapshot, rule.actionDeviceId);
         if (device === undefined || !device.writeKeys.includes(key)) {
@@ -633,7 +633,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 key = this._statedWriteKey(device);
             }
         }
-        return this._modRegistry.logicKeyEntry(key).states.map((state, stateIndex) =>
+        return this._modRegistry.getLogicKeyEntryByKey(key).states.map((state, stateIndex) =>
             new DropdownOption(state.verb, () => {
                 this._applySwitch(rule, device, key, stateIndex);
                 this._sendRules();
@@ -648,7 +648,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @param {LogicSnapshotEvent} snapshot
      * @returns {DropdownOption[]}
      */
-    _addActionOptionsFor(snapshot) {
+    _getAddActionOptionsBySnapshot(snapshot) {
         const options = [];
         const seenKeys = [];
         for (const device of this._switchableDevices(snapshot)) {
@@ -657,7 +657,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 continue;
             }
             seenKeys.push(key);
-            for (const [stateIndex, state] of this._modRegistry.logicKeyEntry(key).states.entries()) {
+            for (const [stateIndex, state] of this._modRegistry.getLogicKeyEntryByKey(key).states.entries()) {
                 options.push(new DropdownOption(state.verb, () => {
                     const appended = new LogicRule(device.objectRef, 0, 0, []);
                     this._applySwitch(appended, device, key, stateIndex);
@@ -681,7 +681,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
     _applySwitch(rule, device, key, stateIndex) {
         rule.actionDeviceId = device.objectRef;
         rule.actionKey = key;
-        rule.actionValue = this._modRegistry.logicKeyEntry(key).states[stateIndex].value;
+        rule.actionValue = this._modRegistry.getLogicKeyEntryByKey(key).states[stateIndex].value;
     }
 
     /**
@@ -692,7 +692,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      */
     _statedWriteKey(device) {
         for (const key of device.writeKeys) {
-            if (this._modRegistry.logicKeyEntry(key).states !== null) {
+            if (this._modRegistry.getLogicKeyEntryByKey(key).states !== null) {
                 return key;
             }
         }
@@ -717,7 +717,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @param {LogicRule} rule
      * @returns {DropdownOption[]}
      */
-    _conditionTypeOptionsFor(snapshot, rule) {
+    _getConditionTypeOptionsByRule(snapshot, rule) {
         const options = [];
         const append = (condition) => {
             rule.conditions.push(condition);
@@ -737,13 +737,13 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         const statedKeys = [];
         for (const device of this._pickerDevices(snapshot)) {
             for (const key of device.readKeys) {
-                if (this._modRegistry.logicKeyEntry(key).states !== null && !statedKeys.includes(key)) {
+                if (this._modRegistry.getLogicKeyEntryByKey(key).states !== null && !statedKeys.includes(key)) {
                     statedKeys.push(key);
                 }
             }
         }
         for (const key of statedKeys) {
-            const entry = this._modRegistry.logicKeyEntry(key);
+            const entry = this._modRegistry.getLogicKeyEntryByKey(key);
             const devices = this._devicesWithReadKey(snapshot, key);
             options.push(new DropdownOption(entry.stateLabel, () => append(deviceCondition(
                 devices[0].objectRef, key, LOGIC_COMPARATOR_EXACTLY, entry.states[0].value))));
@@ -758,7 +758,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {boolean}
      */
     _isContainer(device) {
-        return device.readKeys.some(key => this._modRegistry.logicKeyEntry(key).states === null);
+        return device.readKeys.some(key => this._modRegistry.getLogicKeyEntryByKey(key).states === null);
     }
 
     /**
@@ -788,7 +788,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      */
     _storableItems() {
         const fluidTypes = this._modRegistry.fluidTypes;
-        return Array.from(this._modRegistry.items.entries())
+        return Array.from(this._modRegistry.items.getEntries())
             .filter(([itemTypeId]) => fluidTypes.has(itemTypeId))
             .map(([itemTypeId, definition]) => new StorableItem(itemTypeId, definition))
             .sort((a, b) => a.name.localeCompare(b.name));
@@ -809,7 +809,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {string}
      */
     _actionVerb(rule) {
-        const entry = this._modRegistry.logicKeyEntry(rule.actionKey);
+        const entry = this._modRegistry.getLogicKeyEntryByKey(rule.actionKey);
         if (entry.states !== null) {
             const state = entry.states.find(held => held.value === rule.actionValue);
             if (state !== undefined) {
@@ -829,7 +829,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         if (condition.kind === LOGIC_CONDITION_KIND_STORED || condition.comparator !== LOGIC_COMPARATOR_EXACTLY) {
             return null;
         }
-        const entry = this._modRegistry.logicKeyEntry(condition.key);
+        const entry = this._modRegistry.getLogicKeyEntryByKey(condition.key);
         if (entry.states === null) {
             return null;
         }
@@ -855,7 +855,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             countByType.set(objectTypeId, ordinal);
             return new PickerDevice(
                 deviceObjectRef,
-                this._modRegistry.objectTypeById(objectTypeId),
+                this._modRegistry.getObjectTypeByTypeId(objectTypeId),
                 snapshot.deviceTileXs[i],
                 snapshot.deviceTileYs[i],
                 ordinal,

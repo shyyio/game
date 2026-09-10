@@ -78,12 +78,12 @@ export class MachineBehavior extends AbstractBehavior {
         this.fallback = fallback;
         this.workerCost = workerCost;
 
-        // Packed gathered-set key -> output (see _recipeKey).
+        // Packed gathered-set key -> output (see _getRecipeKeyByInputs).
         this.recipes = new Map();
         // Packed gathered-set key -> RecipeByproduct, only for recipes that have one.
         this.byproducts = new Map();
         for (const recipe of recipes) {
-            const key = this._recipeKey(recipe.inputs);
+            const key = this._getRecipeKeyByInputs(recipe.inputs);
             this.recipes.set(key, recipe.output);
             if (recipe.byproduct !== null) {
                 this.byproducts.set(key, recipe.byproduct);
@@ -105,7 +105,7 @@ export class MachineBehavior extends AbstractBehavior {
      * @param {number[]} inputs
      * @returns {number}
      */
-    _recipeKey(inputs) {
+    _getRecipeKeyByInputs(inputs) {
         let key = 0;
         for (let i = 0; i < RECIPE_SLOTS; i += 1) {
             const slot = i < inputs.length ? inputs[i] : 0;
@@ -127,23 +127,23 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, eid, type, message) {
-        const machines = engine.components.get("Machine");
+        const machines = engine.components.getComponentByName("Machine");
         machines.attach(eid);
         const machine = machines.store;
-        const row = machines.row(eid);
+        const row = machines.getRowByEid(eid);
         machine.inputCount[row] = this.inputCount;
         machine.processingTicks[row] = this.processingTicks;
         for (const [i, port] of type.inputPorts.entries()) {
-            const inputPort = engine.portFor(port, message.x, message.y, message.direction).port;
+            const inputPort = engine.getPortAt(port, message.x, message.y, message.direction).port;
             machine[IN_COLS[i]][row] = inputPort;
             if (port.fluid) {
                 engine.ports.markFluid(inputPort);
             }
         }
-        const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
+        const output = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction);
         machine.out[row] = output.port;
         if (this.hasByproductPort) {
-            const byproductOutput = engine.portFor(type.outputPorts[1], message.x, message.y, message.direction);
+            const byproductOutput = engine.getPortAt(type.outputPorts[1], message.x, message.y, message.direction);
             machine.out2[row] = byproductOutput.port;
             engine.render.registerPort(byproductOutput.port, byproductOutput.tile.x, byproductOutput.tile.y);
         }
@@ -152,14 +152,14 @@ export class MachineBehavior extends AbstractBehavior {
         machine.enabled[row] = 1;
         engine.render.registerPort(output.port, output.tile.x, output.tile.y);
         if (this.workerCost > 0) {
-            engine.workers.roads.markDirty(engine.footprint(type, message.x, message.y, message.direction));
+            engine.workers.roads.markDirty(engine.getFootprintAt(type, message.x, message.y, message.direction));
         }
     }
 
     onDespawn(engine, eid) {
-        const machines = engine.components.get("Machine");
+        const machines = engine.components.getComponentByName("Machine");
         const machine = machines.store;
-        const row = machines.row(eid);
+        const row = machines.getRowByEid(eid);
         for (const [i, port] of this.type.inputPorts.entries()) {
             if (port.fluid) {
                 engine.ports.unmarkFluid(machine[IN_COLS[i]][row]);
@@ -173,18 +173,18 @@ export class MachineBehavior extends AbstractBehavior {
         }
         if (this.workerCost > 0) {
             const position = engine.Position;
-            engine.workers.roads.markDirty(engine.footprint(this.type, position.x[eid], position.y[eid], position.direction[eid]));
+            engine.workers.roads.markDirty(engine.getFootprintAt(this.type, position.x[eid], position.y[eid], position.direction[eid]));
         }
     }
 
     setWorkers(engine, eid, granted) {
-        const machines = engine.components.get("Machine");
-        machines.store.workerStep[machines.row(eid)] = 1 + (MANNED_SPEED_MULTIPLIER - 1) * (granted / this.workerCost);
+        const machines = engine.components.getComponentByName("Machine");
+        machines.store.workerStep[machines.getRowByEid(eid)] = 1 + (MANNED_SPEED_MULTIPLIER - 1) * (granted / this.workerCost);
     }
 
-    renderedPortEids(engine, eid) {
-        const machines = engine.components.get("Machine");
-        const row = machines.row(eid);
+    getRenderedPortEids(engine, eid) {
+        const machines = engine.components.getComponentByName("Machine");
+        const row = machines.getRowByEid(eid);
         const portEids = [machines.store.out[row]];
         if (this.hasByproductPort) {
             portEids.push(machines.store.out2[row]);
@@ -193,8 +193,8 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     resyncRenderedPorts(engine, eid) {
-        const machines = engine.components.get("Machine");
-        const row = machines.row(eid);
+        const machines = engine.components.getComponentByName("Machine");
+        const row = machines.getRowByEid(eid);
         const out = machines.store.out[row];
         engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
         if (this.hasByproductPort) {
@@ -211,9 +211,9 @@ export class MachineBehavior extends AbstractBehavior {
      */
     inspect(engine, eid, objectRef) {
         const item = engine.Port.item;
-        const machines = engine.components.get("Machine");
+        const machines = engine.components.getComponentByName("Machine");
         const machine = machines.store;
-        const row = machines.row(eid);
+        const row = machines.getRowByEid(eid);
         const inCols = columns(machine, IN_COLS);
         const slotCols = columns(machine, SLOT_COLS);
         const processingCols = columns(machine, PROCESSING_COLS);
@@ -248,7 +248,7 @@ export class MachineBehavior extends AbstractBehavior {
         }
         let workerStats = null;
         if (this.workerCost > 0) {
-            workerStats = engine.workers.inspectFor(objectRef);
+            workerStats = engine.workers.findWorkerStatsByObjectRef(objectRef);
         }
         let workerCost = null;
         if (this.workerCost > 0) {
@@ -293,11 +293,11 @@ export class MachineBehavior extends AbstractBehavior {
      */
     onRebuild(engine) {
         const placed = engine.placed;
-        const machines = engine.components.get("Machine");
+        const machines = engine.components.getComponentByName("Machine");
         const machine = machines.store;
         const eids = machines.eids;
         for (let row = 0; row < machines.count; row += 1) {
-            const behavior = placed.behaviorFor(placed.objectTypeIdOf(eids[row]));
+            const behavior = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eids[row]));
             machine.inputCount[row] = behavior.inputCount;
             machine.processingTicks[row] = behavior.processingTicks;
             syncFluidSource(engine, machine.out[row], machine.output[row]);
@@ -308,8 +308,8 @@ export class MachineBehavior extends AbstractBehavior {
     }
 
     logicRead(engine, eid, key) {
-        const machines = engine.components.get("Machine");
-        const row = machines.row(eid);
+        const machines = engine.components.getComponentByName("Machine");
+        const row = machines.getRowByEid(eid);
         if (key === LOGIC_KEY_ENABLED) {
             return machines.store.enabled[row];
         }
@@ -327,20 +327,20 @@ export class MachineBehavior extends AbstractBehavior {
         if (key !== LOGIC_KEY_ENABLED) {
             return false;
         }
-        const machines = engine.components.get("Machine");
+        const machines = engine.components.getComponentByName("Machine");
         if (value === 0) {
-            machines.store.enabled[machines.row(eid)] = 0;
+            machines.store.enabled[machines.getRowByEid(eid)] = 0;
         } else {
-            machines.store.enabled[machines.row(eid)] = 1;
+            machines.store.enabled[machines.getRowByEid(eid)] = 1;
         }
         return true;
     }
 
-    logicReadKeys() {
+    getLogicReadKeys() {
         return [LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING];
     }
 
-    logicWriteKeys() {
+    getLogicWriteKeys() {
         return [LOGIC_KEY_ENABLED];
     }
 
@@ -354,7 +354,7 @@ export class MachineBehavior extends AbstractBehavior {
         if (!inputMemory.some(item => item > 0)) {
             return null;
         }
-        const output = this.recipes.get(this._recipeKey(inputMemory));
+        const output = this.recipes.get(this._getRecipeKeyByInputs(inputMemory));
         if (output === undefined) {
             return this.fallback;
         }
@@ -365,9 +365,9 @@ export class MachineBehavior extends AbstractBehavior {
      * @private
      * @param {ArrayLike<number>[]} slotCols
      * @param {number} row
-     * @returns {number} the packed gathered-set key (see _recipeKey)
+     * @returns {number} the packed gathered-set key (see _getRecipeKeyByInputs)
      */
-    _gatheredKey(slotCols, row) {
+    _getGatheredKeyByRow(slotCols, row) {
         let key = 0;
         for (let i = 0; i < RECIPE_SLOTS; i += 1) {
             const slot = i < this.inputCount ? slotCols[i][row] : EMPTY;
@@ -387,7 +387,7 @@ export class MachineBehavior extends AbstractBehavior {
      * @returns {number} the produced output for the gathered slots, or the fallback
      */
     _resolveRecipe(slotCols, row) {
-        const output = this.recipes.get(this._gatheredKey(slotCols, row));
+        const output = this.recipes.get(this._getGatheredKeyByRow(slotCols, row));
         if (output === undefined) {
             return this.fallback;
         }
@@ -405,7 +405,7 @@ export class MachineBehavior extends AbstractBehavior {
      * @returns {number} the rolled byproduct item type, or EMPTY
      */
     _resolveByproduct(slotCols, row, eid, clock) {
-        const byproduct = this.byproducts.get(this._gatheredKey(slotCols, row));
+        const byproduct = this.byproducts.get(this._getGatheredKeyByRow(slotCols, row));
         if (byproduct === undefined) {
             return EMPTY;
         }
@@ -426,7 +426,7 @@ export class MachineBehavior extends AbstractBehavior {
     static _submitIntents(engine) {
         const placed = engine.placed;
         const item = engine.Port.item;
-        const machines = engine.components.get("Machine");
+        const machines = engine.components.getComponentByName("Machine");
         const machine = machines.store;
         const inCols = columns(machine, IN_COLS);
         const slotCols = columns(machine, SLOT_COLS);
@@ -498,7 +498,7 @@ export class MachineBehavior extends AbstractBehavior {
             if (idle && filled === inputCount) {
                 // Only the recipe match needs the behavior instance, and only on the tick a set
                 // completes — rare next to the per-tick passes above.
-                const behavior = placed.behaviorFor(placed.objectTypeIdOf(eids[row]));
+                const behavior = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eids[row]));
                 output[row] = behavior._resolveRecipe(slotCols, row);
                 syncFluidSource(engine, out[row], output[row]);
                 if (behavior.hasByproductPort) {
@@ -538,7 +538,7 @@ export class MachineBehavior extends AbstractBehavior {
      */
     static _finish(engine) {
         const placed = engine.placed;
-        const machines = engine.components.get("Machine");
+        const machines = engine.components.getComponentByName("Machine");
         const machine = machines.store;
         const processingCols = columns(machine, PROCESSING_COLS);
         const count = machines.count;
@@ -548,7 +548,7 @@ export class MachineBehavior extends AbstractBehavior {
             const byproductDelivered = !byproductPending || engine.transfers.wasDest(machine.out2[row]);
             if (engine.transfers.wasDest(machine.out[row]) && byproductDelivered) {
                 const eid = eids[row];
-                engine.itemProduced.notify(placed.claimOwnerOf(eid), machine.output[row], 1);
+                engine.itemProduced.notify(placed.getClaimOwnerByEid(eid), machine.output[row], 1);
                 if (machine.lastOutput[row] !== machine.output[row]) {
                     machine.lastOutput[row] = machine.output[row];
                     engine.sync.markDirty(machines, eid);
@@ -556,7 +556,7 @@ export class MachineBehavior extends AbstractBehavior {
                 machine.output[row] = EMPTY;
                 machine.remaining[row] = EMPTY;
                 if (byproductPending) {
-                    engine.itemProduced.notify(placed.claimOwnerOf(eid), machine.byproduct[row], 1);
+                    engine.itemProduced.notify(placed.getClaimOwnerByEid(eid), machine.byproduct[row], 1);
                     machine.lastByproduct[row] = machine.byproduct[row];
                     machine.byproduct[row] = EMPTY;
                 }

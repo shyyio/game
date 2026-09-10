@@ -34,7 +34,7 @@ export class NotesSimMod extends AbstractSimMod {
      * @returns {void}
      */
     onChunkSubscribed(session, chunkKey, game) {
-        game.playerDirectory.syncUsernames(session.sessionRef, this._store.authorIdsIn(chunkKey));
+        game.playerDirectory.syncUsernames(session.sessionRef, this._store.getAuthorIdsByChunkKey(chunkKey));
     }
 
     /**
@@ -88,7 +88,7 @@ export class NotesSimMod extends AbstractSimMod {
         if (!game.simEngine.placementAllowed(session.playerRef, chunkKey)) {
             return;
         }
-        const existing = this._store.get(message.tileX, message.tileY);
+        const existing = this._store.findNoteAt(message.tileX, message.tileY);
         if (existing !== null && existing.authorId !== session.playerRef) {
             return;
         }
@@ -113,7 +113,7 @@ export class NotesSimMod extends AbstractSimMod {
      * @private
      */
     _handleEdit(message, session, game) {
-        const note = this._store.get(message.tileX, message.tileY);
+        const note = this._store.findNoteAt(message.tileX, message.tileY);
         if (note === null || note.authorId !== session.playerRef) {
             return;
         }
@@ -129,7 +129,7 @@ export class NotesSimMod extends AbstractSimMod {
      * @private
      */
     _handleDelete(message, session, game) {
-        const note = this._store.get(message.tileX, message.tileY);
+        const note = this._store.findNoteAt(message.tileX, message.tileY);
         if (note === null) {
             return;
         }
@@ -165,7 +165,7 @@ export class NotesSimMod extends AbstractSimMod {
      * @private
      */
     _publish(event, game) {
-        const subscribers = event.subscribersIn(game.bus);
+        const subscribers = event.getSubscribersByBus(game.bus);
         if (subscribers === undefined) {
             return;
         }

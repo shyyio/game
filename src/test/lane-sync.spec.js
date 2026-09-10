@@ -18,7 +18,7 @@ import {
     LaneFixtureDeclaration,
     TestLaneType,
     ITEM_TYPE_TEST_CARGO,
-    laneAt,
+    getLaneRefAt,
 } from "@/test/laneFixture.js";
 
 const CARGO = ITEM_TYPE_TEST_CARGO;
@@ -49,10 +49,10 @@ test("a session subscribing to a chunk receives its lanes, items and resting por
     for (const cell of CELLS) {
         game.dispatchMessage(new CreateObjectMessage(TestLaneType.objectTypeId, cell[0], cell[1], Direction.UP), builder);
     }
-    const lane = laneAt(engine, 0, 2);
-    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
+    const lane = getLaneRefAt(engine, 0, 2);
+    engine.ports.setItem(engine.lanes.getInputPortEidByLaneRef(lane), CARGO);
     runTicks(game, 2);
-    const carried = engine.lanes.itemCountOf(lane);
+    const carried = engine.lanes.getItemCountByLaneRef(lane);
     assert.equal(carried, 1, "one item is in flight when the viewer arrives");
 
     const viewer = new CapturingSession(2);
@@ -83,8 +83,8 @@ test("a subscribing session receives a lane's resting output port item", async (
     for (const cell of CELLS) {
         game.dispatchMessage(new CreateObjectMessage(TestLaneType.objectTypeId, cell[0], cell[1], Direction.UP), builder);
     }
-    const lane = laneAt(engine, 0, 2);
-    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
+    const lane = getLaneRefAt(engine, 0, 2);
+    engine.ports.setItem(engine.lanes.getInputPortEidByLaneRef(lane), CARGO);
     runTicks(game, 8);
 
     const viewer = new CapturingSession(2);
@@ -94,7 +94,7 @@ test("a subscribing session receives a lane's resting output port item", async (
     const synced = flattenBatches(viewer.events.find(event => event instanceof ChunkSyncEvent).events);
     const portItems = synced.filter(event => event instanceof PortItemSetEvent);
     assert.equal(portItems.length, 1, "the resting output port item is synced");
-    assert.equal(portItems[0].portRef, engine.lanes.outputPortOf(lane));
+    assert.equal(portItems[0].portRef, engine.lanes.getOutputPortEidByLaneRef(lane));
     assert.equal(portItems[0].itemTypeId, CARGO);
 });
 
@@ -112,8 +112,8 @@ test("lane events reach only the sessions watching the chunk", async () => {
         game.dispatchMessage(new CreateObjectMessage(TestLaneType.objectTypeId, cell[0], cell[1], Direction.UP), watcher);
     }
 
-    const lane = laneAt(engine, 0, 2);
-    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
+    const lane = getLaneRefAt(engine, 0, 2);
+    engine.ports.setItem(engine.lanes.getInputPortEidByLaneRef(lane), CARGO);
     runTicks(game, 8);
 
     const portItems = events => events

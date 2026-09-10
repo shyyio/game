@@ -93,7 +93,7 @@ export class WorkerDebugLayer extends AbstractDebugDrawLayer {
                 roadTiles,
                 seen,
                 housingAt: (x, y) => {
-                    const entry = this.cache.at(x, y, LAYER_SURFACE);
+                    const entry = this.cache.findObjectAt(x, y, LAYER_SURFACE);
                     if (entry === null || seenHousings.has(entry.id)) {
                         return null;
                     }
@@ -149,7 +149,7 @@ export class WorkerDebugLayer extends AbstractDebugDrawLayer {
             if (roadTiles.has(tileKeyAt(x, y))) {
                 continue;
             }
-            const entry = this.cache.at(x, y, LAYER_SURFACE);
+            const entry = this.cache.findObjectAt(x, y, LAYER_SURFACE);
             if (entry === null || attached.has(entry.id)) {
                 continue;
             }

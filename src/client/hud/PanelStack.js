@@ -152,7 +152,7 @@ export class PanelStack extends Container {
     scrollSection(items, describe, emptyLabel, {visibleRows, fixedHeight = false, centerRow = null} = {}) {
         const innerWidth = this._contentWidth - SECTION_PADDING_LEFT;
         // Always built at scrollbar-reserved width, so a short list never reflows crossing the threshold.
-        const rowsWidth = ScrollView.contentWidthFor(innerWidth);
+        const rowsWidth = ScrollView.getContentWidth(innerWidth);
         const rows = new Container();
         const rowsHeight = this._buildRows(rows, rowsWidth, items, describe, emptyLabel);
 

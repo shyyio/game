@@ -37,7 +37,7 @@ export class ProductionLog {
      * @param {number} playerRef
      * @returns {Map<number, number>} itemTypeId -> count
      */
-    countsOf(playerRef) {
+    getCountsByPlayerRef(playerRef) {
         const counts = this._byPlayer.get(playerRef);
         if (counts === undefined) {
             return new Map();
@@ -52,7 +52,7 @@ export class ProductionLog {
      * @param {number} requesterId the asking player
      * @returns {ItemLeaderboardEvent}
      */
-    itemPage(itemTypeId, offset, requesterId) {
+    getItemPageByItemTypeId(itemTypeId, offset, requesterId) {
         const ranking = Array.from(this._byPlayer)
             .filter(([playerRef, counts]) => counts.has(itemTypeId))
             .map(([playerRef, counts]) => [playerRef, counts.get(itemTypeId)])
@@ -62,7 +62,7 @@ export class ProductionLog {
             itemTypeId,
             page.map(entry => entry[0]),
             page.map(entry => entry[1]),
-            this.rankOf(requesterId, itemTypeId),
+            this.getRankByPlayerRef(requesterId, itemTypeId),
             ranking.length,
         );
     }
@@ -74,8 +74,8 @@ export class ProductionLog {
      * @param {number} itemTypeId
      * @returns {number}
      */
-    rankOf(playerRef, itemTypeId) {
-        const own = this.countsOf(playerRef).get(itemTypeId);
+    getRankByPlayerRef(playerRef, itemTypeId) {
+        const own = this.getCountsByPlayerRef(playerRef).get(itemTypeId);
         if (own === undefined) {
             return 0;
         }
@@ -127,7 +127,7 @@ export class ProductionLog {
             return;
         }
         for (const row of table.rows) {
-            if (items.get(row.item_type) === undefined) {
+            if (items.findItemTypeByTypeId(row.item_type) === undefined) {
                 continue;
             }
             this.add(row.player_id, row.item_type, row.count);

@@ -96,7 +96,7 @@ test("the served list says where each mod came from and what its bundle must has
     for (const mod of list.mods) {
         // The client downloads the bundle from that URL and checks it against this hash, so the two
         // have to describe the same bytes.
-        assert.equal(mod.url, lockfile.find(mod.name).url);
+        assert.equal(mod.url, lockfile.findEntryByName(mod.name).url);
         assert.equal(formatIntegrity(sha256Hex(cache.read(contentName(integrityHex(mod.integrity), "mod.js")))), mod.integrity);
     }
     assert.ok(list.mods.find(mod => mod.name === "market").parts.includes("sim"));
@@ -109,9 +109,9 @@ test("a tampered file fails the hash check instead of loading", async (t) => {
     const cache = new ModCache(join(root, "cache"));
     await cache.populate(lockfile);
 
-    const entry = lockfile.find("base-game");
-    const bundleName = `${entry.integrityOf("mod.js").slice("sha256-".length)}.js`;
-    writeFileSync(cache.pathOf(bundleName), `${readFileSync(cache.pathOf(bundleName), "utf8")}\n// tampered\n`);
+    const entry = lockfile.findEntryByName("base-game");
+    const bundleName = `${entry.getIntegrityByFile("mod.js").slice("sha256-".length)}.js`;
+    writeFileSync(cache.getPathByName(bundleName), `${readFileSync(cache.getPathByName(bundleName), "utf8")}\n// tampered\n`);
 
     assert.deepEqual(cache.verify(lockfile).length, 1);
     await assert.rejects(() => loadPackagedMods(lockfile, cache), /does not match its own hash/);
@@ -120,7 +120,7 @@ test("a tampered file fails the hash check instead of loading", async (t) => {
 test("a package whose bytes drift from the recorded hash refuses to cache", async (t) => {
     const root = tempRoot(t);
     const lockfile = await lockfileFor();
-    const entry = lockfile.find("fluids");
+    const entry = lockfile.findEntryByName("fluids");
     entry.integrity.set("mod.js", formatIntegrity("0".repeat(64)));
 
     const cache = new ModCache(join(root, "cache"));

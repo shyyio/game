@@ -32,9 +32,9 @@ test("own-claims sync fills the own set, the ownership mirror, and the permissio
     ));
     assert.deepEqual(claims.ownChunks().sort(), [100, 101]);
     assert.equal(claims.ownCount(), 2);
-    assert.equal(claims.ownerOf(100), 1);
-    assert.equal(claims.permissionOf(100), ChunkPermission.PERMISSION_FRIENDS);
-    assert.equal(claims.permissionOf(101), ChunkPermission.PERMISSION_ONLY_ME);
+    assert.equal(claims.getOwnerByChunkKey(100), 1);
+    assert.equal(claims.getPermissionByChunkKey(100), ChunkPermission.PERMISSION_FRIENDS);
+    assert.equal(claims.getPermissionByChunkKey(101), ChunkPermission.PERMISSION_ONLY_ME);
 });
 
 test("updates apply deltas to the mirror and the own set", () => {
@@ -44,7 +44,7 @@ test("updates apply deltas to the mirror and the own set", () => {
     state.subscribe("chunkClaims.ownerByChunk", (chunk, owner) => touched.push([chunk, owner]));
 
     state.onEvent(new ChunkClaimUpdateEvent(102, 2));
-    assert.equal(claims.ownerOf(102), 2);
+    assert.equal(claims.getOwnerByChunkKey(102), 2);
     assert.equal(claims.ownCount(), 0, "a foreign claim stays out of the own set");
     assert.deepEqual(touched.at(-1), [102, 2]);
 
@@ -52,7 +52,7 @@ test("updates apply deltas to the mirror and the own set", () => {
     assert.deepEqual(claims.ownChunks(), [100], "an own claim joins the own set");
 
     state.onEvent(new ChunkClaimUpdateEvent(100, PLAYER_REF_NONE));
-    assert.equal(claims.ownerOf(100), PLAYER_REF_NONE);
+    assert.equal(claims.getOwnerByChunkKey(100), PLAYER_REF_NONE);
     assert.equal(claims.ownCount(), 0, "an unclaim leaves the own set");
     assert.deepEqual(touched.at(-1), [100, undefined]);
 });
@@ -64,10 +64,10 @@ test("a chunk subscribe resets a stale foreign entry ahead of the seeded update"
     state.onEvent(new ChunkClaimUpdateEvent(101, 2));
 
     state.onEvent(new ChunkSubscribeEvent(101));
-    assert.equal(claims.ownerOf(101), PLAYER_REF_NONE, "no seed follows an unclaimed chunk");
+    assert.equal(claims.getOwnerByChunkKey(101), PLAYER_REF_NONE, "no seed follows an unclaimed chunk");
 
     state.onEvent(new ChunkSubscribeEvent(100));
-    assert.equal(claims.ownerOf(100), 1, "own claim survives");
+    assert.equal(claims.getOwnerByChunkKey(100), 1, "own claim survives");
 });
 
 test("an overworld snapshot stamps its rect's claims and sheds stale foreign entries", () => {
@@ -86,10 +86,10 @@ test("an overworld snapshot stamps its rect's claims and sheds stale foreign ent
     event.claimOwners = [2];
     state.onEvent(event);
 
-    assert.equal(claims.ownerOf(inRect), 2, "rect claim stamped");
-    assert.equal(claims.ownerOf(staleInRect), PLAYER_REF_NONE, "stale foreign entry in the rect shed");
-    assert.equal(claims.ownerOf(ownInRect), 1, "own claim survives the stamp");
-    assert.equal(claims.ownerOf(outsideRect), 4, "entries outside the rect untouched");
+    assert.equal(claims.getOwnerByChunkKey(inRect), 2, "rect claim stamped");
+    assert.equal(claims.getOwnerByChunkKey(staleInRect), PLAYER_REF_NONE, "stale foreign entry in the rect shed");
+    assert.equal(claims.getOwnerByChunkKey(ownInRect), 1, "own claim survives the stamp");
+    assert.equal(claims.getOwnerByChunkKey(outsideRect), 4, "entries outside the rect untouched");
 });
 
 test("canBuildIn mirrors the sim gate", () => {

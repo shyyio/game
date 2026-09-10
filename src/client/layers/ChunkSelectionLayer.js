@@ -131,7 +131,7 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
      */
     _selectionColor() {
         const chunkKey = this._selectedChunk;
-        if (this._claims.ownerOf(chunkKey) === this._claims.ownPlayerRef) {
+        if (this._claims.getOwnerByChunkKey(chunkKey) === this._claims.ownPlayerRef) {
             return CHUNK_SELECT_COLOR;
         }
         if (this._claims.claimCheck(chunkKey) === ClaimResult.CLAIM_RESULT_OK) {

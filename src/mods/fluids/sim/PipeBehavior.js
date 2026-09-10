@@ -16,11 +16,11 @@ export class PipeBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, eid, type, message) {
-        engine.resolve(Pipes).placePipe(message.x, message.y, engine.placed.objectRefOf(eid));
+        engine.resolve(Pipes).placePipe(message.x, message.y, engine.placed.getObjectRefByEid(eid));
     }
 
     onDespawn(engine, eid) {
-        engine.resolve(Pipes).removePipe(engine.placed.objectRefOf(eid));
+        engine.resolve(Pipes).removePipe(engine.placed.getObjectRefByEid(eid));
     }
 
     /**
@@ -36,7 +36,7 @@ export class PipeBehavior extends AbstractBehavior {
         const placedObject = objects.store;
         const position = engine.Position;
         for (let row = 0; row < objects.count; row += 1) {
-            if (!(placed.behaviorFor(placedObject.objectTypeId[row]) instanceof PipeBehavior)) {
+            if (!(placed.getBehaviorByTypeId(placedObject.objectTypeId[row]) instanceof PipeBehavior)) {
                 continue;
             }
             const eid = objects.eids[row];

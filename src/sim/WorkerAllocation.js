@@ -64,7 +64,7 @@ export class WorkerAllocation {
         this._affected = affected;
         let seedList = seeds;
         for (;;) {
-            const components = this.roads.componentsFrom(seedList, affected);
+            const components = this.roads.getComponentsBySeeds(seedList, affected);
             this._next = new Map();
             this._contested = new Set();
             for (const component of components) {
@@ -76,7 +76,7 @@ export class WorkerAllocation {
             seedList = Array.from(seedList);
             for (const id of this._contested) {
                 affected.add(id);
-                seedList.push(this.roads.tileByKey(id));
+                seedList.push(this.roads.findTileByKey(id));
             }
         }
     }
@@ -91,7 +91,7 @@ export class WorkerAllocation {
     _allocate(component) {
         const machines = new Map();
         for (const {x, y} of cellNeighbors(component.tiles)) {
-            if (this.roads.roadAt(x, y)) {
+            if (this.roads.hasRoadAt(x, y)) {
                 continue;
             }
             this._attach(x, y, component, machines);
@@ -112,7 +112,7 @@ export class WorkerAllocation {
 
         const machineList = Array.from(machines.values());
         for (const machine of machineList) {
-            machine.distance = this._minDistance(machine.cells, housingList);
+            machine.distance = this._getMinDistance(machine.cells, housingList);
             this._next.set(machine.objectRef, new WorkerAssignment({
                 objectRef: machine.objectRef,
                 x: machine.x,
@@ -168,19 +168,19 @@ export class WorkerAllocation {
      * @returns {void}
      */
     _attach(x, y, component, machines) {
-        const owner = this.engine.space.ownerAt(x, y, LAYER_SURFACE);
+        const owner = this.engine.space.getOwnerAt(x, y, LAYER_SURFACE);
         if (owner === null || machines.has(owner) || this._next.has(owner)) {
             return;
         }
-        const eid = this.placed.eidByObjectRef(owner);
+        const eid = this.placed.findEidByObjectRef(owner);
         if (eid === undefined) {
             return;
         }
-        const behavior = this.placed.behaviorFor(this.placed.objectTypeIdOf(eid));
+        const behavior = this.placed.getBehaviorByTypeId(this.placed.getObjectTypeIdByEid(eid));
         if (behavior.workerCost <= 0) {
             return;
         }
-        const cells = this.roads.footprintOf(behavior, eid);
+        const cells = this.roads.getFootprintByEid(behavior, eid);
         if (this._affected !== null && !this._claims(component, owner, cells)) {
             return;
         }
@@ -201,12 +201,12 @@ export class WorkerAllocation {
     _claims(component, owner, cells) {
         let winner = component.minTile;
         for (const {x, y} of cellNeighbors(cells)) {
-            const road = this.roads.tileByKey(tileKeyAt(x, y));
+            const road = this.roads.findTileByKey(tileKeyAt(x, y));
             if (road !== undefined && road.component !== null && road.component < winner) {
                 winner = road.component;
             }
         }
-        const existing = this.assignments.get(owner);
+        const existing = this.assignments.findAssignmentByObjectRef(owner);
         if (winner !== component.minTile) {
             if (!this._affected.has(winner) && (existing === undefined || existing.component !== winner)) {
                 this._contested.add(winner);
@@ -226,7 +226,7 @@ export class WorkerAllocation {
      * @param {HousingSupply[]} housingList
      * @returns {number}
      */
-    _minDistance(machineCells, housingList) {
+    _getMinDistance(machineCells, housingList) {
         let best = Number.MAX_SAFE_INTEGER;
         for (const housing of housingList) {
             for (const housingCell of housing.cells) {

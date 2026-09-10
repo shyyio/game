@@ -40,16 +40,16 @@ test("a placed object records who placed it, not whose chunk it landed in", asyn
     const {game, bob} = await setup();
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
 
-    const [eid] = game.simEngine.placed.eidsOf(BlenderType.objectTypeId);
-    assert.equal(game.simEngine.placed.placedByOf(eid), BOB);
+    const [eid] = game.simEngine.placed.getEidsByTypeId(BlenderType.objectTypeId);
+    assert.equal(game.simEngine.placed.getPlacerByEid(eid), BOB);
 });
 
 test("an object's claim owner is the ground's current owner, not a placement-time snapshot", async () => {
     const {game, bob} = await setup();
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), bob);
 
-    const [eid] = game.simEngine.placed.eidsOf(BlenderType.objectTypeId);
-    assert.equal(game.simEngine.placed.claimOwnerOf(eid), ALICE);
+    const [eid] = game.simEngine.placed.getEidsByTypeId(BlenderType.objectTypeId);
+    assert.equal(game.simEngine.placed.getClaimOwnerByEid(eid), ALICE);
 });
 
 test("production is credited to the chunk owner, not to the friend who built the machine", async () => {
@@ -60,9 +60,9 @@ test("production is credited to the chunk owner, not to the friend who built the
     game.dispatchMessage(new CreateObjectMessage(PipeType.objectTypeId, 5, 4, Direction.UP), bob);
 
     const engine = game.simEngine;
-    const [eid] = engine.placed.eidsOf(BlenderType.objectTypeId);
-    const def = engine.components.get("Machine");
-    const row = def.row(eid);
+    const [eid] = engine.placed.getEidsByTypeId(BlenderType.objectTypeId);
+    const def = engine.components.getComponentByName("Machine");
+    const row = def.getRowByEid(eid);
     for (let i = 0; i < 10; i += 1) {
         engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE);
         engine.tick();

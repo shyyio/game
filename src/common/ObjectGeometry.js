@@ -18,7 +18,7 @@ export class ObjectGeometry {
      * @param {Direction} direction
      * @returns {Vec}
      */
-    corner(direction) {
+    getCornerByDirection(direction) {
         return rotate(this.extent, direction);
     }
 
@@ -28,8 +28,8 @@ export class ObjectGeometry {
      * @param {Direction} direction
      * @returns {{x: number, y: number}[]}
      */
-    tiles(direction) {
-        const corner = this.corner(direction);
+    getTilesByDirection(direction) {
+        const corner = this.getCornerByDirection(direction);
         const stepX = Math.sign(corner.x);
         const stepY = Math.sign(corner.y);
         const tiles = [];
@@ -51,7 +51,7 @@ export class ObjectGeometry {
      */
     spansChunks(tileX, tileY, direction) {
         const base = chunkKeyAt(tileX, tileY);
-        return this.tiles(direction).some(tile => chunkKeyAt(tileX + tile.x, tileY + tile.y) !== base);
+        return this.getTilesByDirection(direction).some(tile => chunkKeyAt(tileX + tile.x, tileY + tile.y) !== base);
     }
 }
 

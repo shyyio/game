@@ -56,7 +56,7 @@ export class PlacedObjects extends AbstractSystem {
                 type.behavior.install(this.engine);
                 const synced = type.behavior.syncedFields;
                 if (synced !== null) {
-                    this.engine.sync.register(this.engine.components.get(synced.component), synced.fields);
+                    this.engine.sync.register(this.engine.components.getComponentByName(synced.component), synced.fields);
                 }
             }
         }
@@ -67,8 +67,8 @@ export class PlacedObjects extends AbstractSystem {
      * @param {number} eid
      * @returns {number}
      */
-    objectTypeIdOf(eid) {
-        return this.objects.store.objectTypeId[this.objects.row(eid)];
+    getObjectTypeIdByEid(eid) {
+        return this.objects.store.objectTypeId[this.objects.getRowByEid(eid)];
     }
 
     /**
@@ -76,8 +76,8 @@ export class PlacedObjects extends AbstractSystem {
      * @param {number} eid
      * @returns {number}
      */
-    objectRefOf(eid) {
-        return this.objects.store.objectRef[this.objects.row(eid)];
+    getObjectRefByEid(eid) {
+        return this.objects.store.objectRef[this.objects.getRowByEid(eid)];
     }
 
     /**
@@ -85,8 +85,8 @@ export class PlacedObjects extends AbstractSystem {
      * @param {number} eid
      * @returns {number}
      */
-    placedByOf(eid) {
-        return this.objects.store.placedBy[this.objects.row(eid)];
+    getPlacerByEid(eid) {
+        return this.objects.store.placedBy[this.objects.getRowByEid(eid)];
     }
 
     /**
@@ -96,9 +96,9 @@ export class PlacedObjects extends AbstractSystem {
      * @param {number} eid
      * @returns {number}
      */
-    claimOwnerOf(eid) {
+    getClaimOwnerByEid(eid) {
         const position = this.engine.Position;
-        return this.engine.chunkOwnerOf(chunkKeyAt(position.x[eid], position.y[eid]));
+        return this.engine.getChunkOwnerByChunkKey(chunkKeyAt(position.x[eid], position.y[eid]));
     }
 
     /**
@@ -106,7 +106,7 @@ export class PlacedObjects extends AbstractSystem {
      * @param {number} objectTypeId
      * @returns {AbstractBehavior}
      */
-    behaviorFor(objectTypeId) {
+    getBehaviorByTypeId(objectTypeId) {
         return this._behaviors[objectTypeId];
     }
 
@@ -115,7 +115,7 @@ export class PlacedObjects extends AbstractSystem {
      * @param {number} objectTypeId
      * @returns {ObjectType|undefined}
      */
-    typeFor(objectTypeId) {
+    getObjectTypeByTypeId(objectTypeId) {
         return this._types.get(objectTypeId);
     }
 
@@ -124,7 +124,7 @@ export class PlacedObjects extends AbstractSystem {
      * @param {number} objectTypeId
      * @returns {number[]}
      */
-    eidsOf(objectTypeId) {
+    getEidsByTypeId(objectTypeId) {
         const column = this.objects.store.objectTypeId;
         const eids = this.objects.eids;
         const matches = [];
@@ -143,8 +143,8 @@ export class PlacedObjects extends AbstractSystem {
      * @param {string} layer
      * @returns {number}
      */
-    eidAt(tileX, tileY, layer) {
-        const objectRef = this.engine.space.ownerAt(tileX, tileY, layer);
+    getEidAt(tileX, tileY, layer) {
+        const objectRef = this.engine.space.getOwnerAt(tileX, tileY, layer);
         if (objectRef === null) {
             return NO_EID;
         }
@@ -173,7 +173,7 @@ export class PlacedObjects extends AbstractSystem {
         if (type === undefined) {
             return NO_EID;
         }
-        return this.eidAt(tileX, tileY, type.positionLayerTiles(message.direction)[0].layer);
+        return this.getEidBySlot(tileX, tileY, type.getPositionLayerTilesByDirection(message.direction)[0].layer);
     }
 
     /**
@@ -182,7 +182,7 @@ export class PlacedObjects extends AbstractSystem {
      * @returns {void}
      */
     despawn(eid) {
-        const objectRef = this.objectRefOf(eid);
+        const objectRef = this.getObjectRefByEid(eid);
         this.engine.untrack(objectRef);
         this._delete(objectRef, PLAYER_REF_NONE);
         this.engine.ports.collectUnreferenced();
@@ -193,7 +193,7 @@ export class PlacedObjects extends AbstractSystem {
      * @param {number} objectRef
      * @returns {number|undefined}
      */
-    eidByObjectRef(objectRef) {
+    findEidByObjectRef(objectRef) {
         return this._eidByObjectRef.get(objectRef);
     }
 
@@ -202,7 +202,7 @@ export class PlacedObjects extends AbstractSystem {
      * @param {number} chunkKey
      * @returns {Set<number>}
      */
-    eidsInChunk(chunkKey) {
+    getEidsByChunkKey(chunkKey) {
         const held = this._eidsByChunk.get(chunkKey);
         if (held === undefined) {
             return EMPTY_EIDS;
@@ -249,13 +249,13 @@ export class PlacedObjects extends AbstractSystem {
         if (!engine.isPlacementAllowed(type, message.x, message.y, message.direction)) {
             return true;
         }
-        const footprint = engine.footprint(type, message.x, message.y, message.direction);
+        const footprint = engine.getFootprintAt(type, message.x, message.y, message.direction);
         if (type.placement.solid && !engine.space.cellsFree(footprint)) {
             return true;
         }
         const eid = this.objects.create();
         const objectRef = engine.createObjectRef();
-        const row = this.objects.row(eid);
+        const row = this.objects.getRowByEid(eid);
         this.objects.store.objectTypeId[row] = type.objectTypeId;
         this.objects.store.objectRef[row] = objectRef;
         this.objects.store.placedBy[row] = playerRef;
@@ -264,7 +264,7 @@ export class PlacedObjects extends AbstractSystem {
         type.behavior.onSpawn(engine, eid, type, message);
         const synced = type.behavior.syncedFields;
         if (synced !== null) {
-            engine.sync.markSpawned(engine.components.get(synced.component), eid);
+            engine.sync.markSpawned(engine.components.getComponentByName(synced.component), eid);
         }
         if (type.placement.solid) {
             engine.track(objectRef, footprint);
@@ -273,7 +273,7 @@ export class PlacedObjects extends AbstractSystem {
         this._indexChunk(eid, message.x, message.y);
         engine.notifyChunkChanged(chunkKeyAt(message.x, message.y));
         engine.notifySpawn(eid, objectRef);
-        const portEids = type.behavior.renderedPortEids(engine, eid);
+        const portEids = type.behavior.getRenderedPortEids(engine, eid);
         engine.emitEvent(new ObjectInsertEvent(type.objectTypeId, objectRef, message.x, message.y, message.direction, portEids));
         engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_PLACED, playerRef, type.objectTypeId, 1);
         return true;
@@ -293,7 +293,7 @@ export class PlacedObjects extends AbstractSystem {
         }
         const engine = this.engine;
         const position = engine.Position;
-        const type = this._types.get(this.objectTypeIdOf(eid));
+        const type = this._types.get(this.getObjectTypeIdByEid(eid));
         engine.ports.unbindEndpoints(eid);
         type.behavior.onDespawn(engine, eid);
         engine.notifyDespawn(eid, objectRef);
@@ -362,14 +362,14 @@ export class PlacedObjects extends AbstractSystem {
         const placedObject = this.objects.store;
         const position = this.engine.Position;
         for (const eid of eids) {
-            const row = this.objects.row(eid);
+            const row = this.objects.getRowByEid(eid);
             const type = this._types.get(placedObject.objectTypeId[row]);
             if (batch === null) {
                 batch = new ObjectSyncBatchEvent(origin.x, origin.y);
             }
             batch.add(
                 type.objectTypeId, placedObject.objectRef[row], position.x[eid], position.y[eid], position.direction[eid],
-                type.behavior.renderedPortEids(this.engine, eid),
+                type.behavior.getRenderedPortEids(this.engine, eid),
             );
         }
         if (batch === null) {
@@ -383,7 +383,7 @@ export class PlacedObjects extends AbstractSystem {
         if (eid === undefined) {
             return null;
         }
-        const type = this._types.get(this.objectTypeIdOf(eid));
+        const type = this._types.get(this.getObjectTypeIdByEid(eid));
         if (!type.inspectable) {
             return null;
         }

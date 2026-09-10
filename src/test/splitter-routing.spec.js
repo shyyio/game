@@ -22,10 +22,10 @@ test("a splitter round-robins a single input stream across both outputs", async 
         engine.ports.setItem(s.out_a, EMPTY);
         engine.ports.setItem(s.out_b, EMPTY);
         engine.tick();
-        if (engine.ports.item(s.out_a) === RED) {
+        if (engine.ports.getItemByPortEid(s.out_a) === RED) {
             toA += 1;
         }
-        if (engine.ports.item(s.out_b) === RED) {
+        if (engine.ports.getItemByPortEid(s.out_b) === RED) {
             toB += 1;
         }
     }

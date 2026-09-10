@@ -34,7 +34,7 @@ export class PlayersView extends AbstractCacheView {
      * @param {number} playerRef
      * @returns {string}
      */
-    usernameOf(playerRef) {
+    getUsernameByPlayerRef(playerRef) {
         const username = this._state.mapGet("players.usernameByPlayer", playerRef);
         if (username === undefined) {
             return syntheticUsername(playerRef);

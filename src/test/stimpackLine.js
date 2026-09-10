@@ -204,8 +204,8 @@ function placeNode(engine, node, originX, originY, occupied) {
         markFootprint(occupied, ExtractorType, node.x, node.y);
     } else if (node.kind === "terminal") {
         engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, node.x, node.y, Direction.UP));
-        const eid = engine.placed.eidsOf(TradingTerminalType.objectTypeId).at(-1);
-        node.objectRef = engine.placed.objectRefOf(eid);
+        const eid = engine.placed.getEidsByTypeId(TradingTerminalType.objectTypeId).at(-1);
+        node.objectRef = engine.placed.getObjectRefByEid(eid);
         node.outputPort = TradingTerminalType.outputPorts[0];
         markFootprint(occupied, TradingTerminalType, node.x, node.y);
     } else {

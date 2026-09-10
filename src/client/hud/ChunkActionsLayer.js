@@ -163,18 +163,18 @@ export class ChunkActionsLayer extends Container {
     _content() {
         const chunkKey = this._chunk;
         const claims = this._claims;
-        const owner = claims.ownerOf(chunkKey);
+        const owner = claims.getOwnerByChunkKey(chunkKey);
         if (owner !== PLAYER_REF_NONE && owner === claims.ownPlayerRef) {
             return {
                 status: "Your chunk. You can build here",
                 rows: [
-                    this._buildPermissionRow(claims.permissionOf(chunkKey)),
+                    this._buildPermissionRow(claims.getPermissionByChunkKey(chunkKey)),
                     this._buildButton("Unclaim chunk", () => this._onUnclaim(chunkKey)),
                 ],
             };
         }
         if (owner !== PLAYER_REF_NONE) {
-            const name = this._players.usernameOf(owner);
+            const name = this._players.getUsernameByPlayerRef(owner);
             // Access comes from THEIR grant; the button toggles the own player's grant back.
             let status;
             if (claims.isFriendsWithMe(owner)) {

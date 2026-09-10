@@ -53,7 +53,7 @@ export class PlayerDirectory {
             }
             known.add(playerRef);
             ids.push(playerRef);
-            usernames.push(this.game.players.byId(playerRef).username);
+            usernames.push(this.game.players.getPlayerByRef(playerRef).username);
         }
         if (ids.length > 0) {
             this.game.bus.publishTo(sessionRef, new PlayerNamesEvent(ids, usernames));
@@ -82,7 +82,7 @@ export class PlayerDirectory {
      * @returns {void}
      */
     addFriendByCode(session, code) {
-        const target = this.game.players.byFriendCode(code);
+        const target = this.game.players.findPlayerByFriendCode(code);
         const playerRef = target === undefined ? PLAYER_REF_NONE : target.playerRef;
         const found = playerRef !== PLAYER_REF_NONE && playerRef !== session.playerRef;
         this.addFriend(session, playerRef);
@@ -113,7 +113,7 @@ export class PlayerDirectory {
      */
     _syncBothSides(session, friendId) {
         this.syncFriendList(session.sessionRef, session.playerRef);
-        for (const sessionRef of this.game.bus.sessionRefsOf(friendId)) {
+        for (const sessionRef of this.game.bus.getSessionRefsByPlayerRef(friendId)) {
             this.syncFriendList(sessionRef, friendId);
         }
     }
@@ -125,8 +125,8 @@ export class PlayerDirectory {
      * @returns {void}
      */
     syncFriendList(sessionRef, playerRef) {
-        const friendIds = Array.from(this.game.players.byId(playerRef).friends);
-        const grantedByIds = this.game.players.grantedBy(playerRef);
+        const friendIds = Array.from(this.game.players.getPlayerByRef(playerRef).friends);
+        const grantedByIds = this.game.players.getGrantedRefsByPlayerRef(playerRef);
         this.syncUsernames(sessionRef, friendIds.concat(grantedByIds));
         this.game.bus.publishTo(sessionRef, new FriendListEvent(friendIds, grantedByIds));
     }

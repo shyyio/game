@@ -68,14 +68,14 @@ test("a behavior hook takes the engine and the entity, with PlacedObjects reache
     assert.equal(engine.placed !== null, true, "engine.placed is reachable while a behavior installs");
 
     engine.applyMessage(new CreateObjectMessage(RecordingType.objectTypeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(RecordingType.objectTypeId);
+    const [eid] = engine.placed.getEidsByTypeId(RecordingType.objectTypeId);
     const spawnArgs = behavior.argsOf("onSpawn");
     assert.equal(spawnArgs.length, 4);
     assert.equal(spawnArgs[0], engine);
     assert.equal(spawnArgs[1], eid);
     assert.equal(spawnArgs[2], RecordingType);
 
-    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(eid)));
+    engine.applyMessage(new DeleteObjectMessage(engine.placed.getObjectRefByEid(eid)));
     const despawnArgs = behavior.argsOf("onDespawn");
     assert.equal(despawnArgs.length, 2);
     assert.equal(despawnArgs[0], engine);
@@ -88,7 +88,7 @@ test("every AbstractBehavior hook drops the PlacedObjects parameter", () => {
         canSpawn: 3,
         onSpawn: 4,
         onDespawn: 2,
-        renderedPortEids: 2,
+        getRenderedPortEids: 2,
         inspect: 3,
         resyncRenderedPorts: 2,
         setWorkers: 3,

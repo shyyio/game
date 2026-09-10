@@ -25,9 +25,9 @@ const RED = 3;
  */
 function placeGate(engine, x, y, direction) {
     assert.equal(engine.applyMessage(new CreateObjectMessage(GateType.objectTypeId, x, y, direction)), true);
-    const def = engine.components.get("Gate");
+    const def = engine.components.getComponentByName("Gate");
     const eid = def.eids[def.count - 1];
-    const row = def.row(eid);
+    const row = def.getRowByEid(eid);
     return {eid, in: def.store.in[row], out: def.store.out[row]};
 }
 
@@ -39,12 +39,12 @@ function placePipe(engine, x, y) {
 }
 
 function gateBehavior(engine) {
-    return engine.placed.behaviorFor(GateType.objectTypeId);
+    return engine.placed.getBehaviorByTypeId(GateType.objectTypeId);
 }
 
 function gateMode(engine, eid) {
-    const def = engine.components.get("Gate");
-    return def.store.fluid[def.row(eid)];
+    const def = engine.components.getComponentByName("Gate");
+    return def.store.fluid[def.getRowByEid(eid)];
 }
 
 test("an item flows through an open belt gate", async () => {
@@ -63,7 +63,7 @@ test("an item flows through an open belt gate", async () => {
     let arrived = false;
     for (let i = 0; i < 12 && !arrived; i += 1) {
         engine.tick();
-        arrived = engine.ports.item(onward.outputPort) === RED;
+        arrived = engine.ports.getItemByPortEid(onward.outputPort) === RED;
     }
     assert.ok(arrived, "the item passed the open gate onto the onward belt");
 });
@@ -79,16 +79,16 @@ test("an item rests one tick inside the gate between the in- and output port", a
     let atMouth = false;
     for (let i = 0; i < 8 && !atMouth; i += 1) {
         engine.tick();
-        atMouth = engine.ports.item(gate.in) === RED;
+        atMouth = engine.ports.getItemByPortEid(gate.in) === RED;
     }
     assert.ok(atMouth, "the item reached the gate's input port");
 
     engine.tick();
-    assert.equal(engine.ports.item(gate.in), EMPTY, "the item entered the gate");
-    assert.equal(engine.ports.item(gate.out), EMPTY, "the item rests inside, not on the output port yet");
+    assert.equal(engine.ports.getItemByPortEid(gate.in), EMPTY, "the item entered the gate");
+    assert.equal(engine.ports.getItemByPortEid(gate.out), EMPTY, "the item rests inside, not on the output port yet");
 
     engine.tick();
-    assert.equal(engine.ports.item(gate.out), RED, "the item surfaced on the output port a tick later");
+    assert.equal(engine.ports.getItemByPortEid(gate.out), RED, "the item surfaced on the output port a tick later");
 });
 
 test("a closed belt gate jams the upstream belt and releases on open", async () => {
@@ -104,15 +104,15 @@ test("a closed belt gate jams the upstream belt and releases on open", async () 
     for (let i = 0; i < 12; i += 1) {
         engine.tick();
     }
-    assert.equal(engine.ports.item(gate.in), RED, "the lead item rests on the closed gate's input port");
-    assert.equal(engine.ports.item(gate.out), EMPTY, "nothing passed the closed gate");
-    assert.equal(engine.ports.item(onward.outputPort), EMPTY);
+    assert.equal(engine.ports.getItemByPortEid(gate.in), RED, "the lead item rests on the closed gate's input port");
+    assert.equal(engine.ports.getItemByPortEid(gate.out), EMPTY, "nothing passed the closed gate");
+    assert.equal(engine.ports.getItemByPortEid(onward.outputPort), EMPTY);
 
     gateBehavior(engine).setOpen(engine, gate.eid, true);
     let arrived = false;
     for (let i = 0; i < 12 && !arrived; i += 1) {
         engine.tick();
-        arrived = engine.ports.item(onward.outputPort) === RED;
+        arrived = engine.ports.getItemByPortEid(onward.outputPort) === RED;
     }
     assert.ok(arrived, "opening the gate released the jam");
 });
@@ -131,7 +131,7 @@ test("a belt gate works across a chunk seam", async () => {
     let arrived = false;
     for (let i = 0; i < 12 && !arrived; i += 1) {
         engine.tick();
-        arrived = engine.ports.item(onward.outputPort) === RED;
+        arrived = engine.ports.getItemByPortEid(onward.outputPort) === RED;
     }
     assert.ok(arrived, "the item crossed the seam through the gate");
 });
@@ -150,23 +150,23 @@ test("a gate placed against a pipe spawns in fluid mode and forwards fluid until
     let forwarded = false;
     for (let i = 0; i < 12 && !forwarded; i += 1) {
         engine.tick();
-        forwarded = pipes.networkAt(3, 0).amount > 0;
+        forwarded = pipes.findNetworkAt(3, 0).amount > 0;
     }
     assert.ok(forwarded, "fluid crossed the open gate into the downstream network");
-    assert.equal(pipes.networkAt(3, 0).fluidType, FLUID_TYPE_WATER);
+    assert.equal(pipes.findNetworkAt(3, 0).fluidType, FLUID_TYPE_WATER);
 
     gateBehavior(engine).setOpen(engine, gate.eid, false);
     // A payload already resting on the output port still lands; settle, then hold.
     for (let i = 0; i < 4; i += 1) {
         engine.tick();
     }
-    const upstreamBefore = pipes.networkAt(0, 0).amount;
-    const downstreamBefore = pipes.networkAt(3, 0).amount;
+    const upstreamBefore = pipes.findNetworkAt(0, 0).amount;
+    const downstreamBefore = pipes.findNetworkAt(3, 0).amount;
     for (let i = 0; i < 8; i += 1) {
         engine.tick();
     }
-    assert.equal(pipes.networkAt(0, 0).amount, upstreamBefore, "the closed gate stops draining upstream");
-    assert.equal(pipes.networkAt(3, 0).amount, downstreamBefore, "nothing more crossed the closed gate");
+    assert.equal(pipes.findNetworkAt(0, 0).amount, upstreamBefore, "the closed gate stops draining upstream");
+    assert.equal(pipes.findNetworkAt(3, 0).amount, downstreamBefore, "nothing more crossed the closed gate");
 });
 
 test("a closed fluid gate isolates different fluids on its two sides", async () => {
@@ -182,10 +182,10 @@ test("a closed fluid gate isolates different fluids on its two sides", async () 
     for (let i = 0; i < 8; i += 1) {
         engine.tick();
     }
-    assert.equal(pipes.networkAt(0, 0).fluidType, FLUID_TYPE_WATER);
-    assert.equal(pipes.networkAt(0, 0).amount, 2);
-    assert.equal(pipes.networkAt(2, 0).fluidType, FLUID_TYPE_OIL);
-    assert.equal(pipes.networkAt(2, 0).amount, 2);
+    assert.equal(pipes.findNetworkAt(0, 0).fluidType, FLUID_TYPE_WATER);
+    assert.equal(pipes.findNetworkAt(0, 0).amount, 2);
+    assert.equal(pipes.findNetworkAt(2, 0).fluidType, FLUID_TYPE_OIL);
+    assert.equal(pipes.findNetworkAt(2, 0).amount, 2);
 });
 
 test("connecting a transport to an unconnected gate transforms its mode", async () => {
@@ -199,7 +199,7 @@ test("connecting a transport to an unconnected gate transforms its mode", async 
     assert.equal(gateMode(engine, gate.eid), 1, "the coupled pipe transformed the gate");
 
     // Pipe gone, belt in front: back to item mode.
-    engine.applyMessage(new DeleteObjectMessage(engine.space.ownerAt(5, 6, LAYER_SURFACE)));
+    engine.applyMessage(new DeleteObjectMessage(engine.space.getOwnerAt(5, 6, LAYER_SURFACE)));
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 5, 4, Direction.UP));
     engine.tick();
     assert.equal(gateMode(engine, gate.eid), 0, "the coupled belt transformed the gate back");
@@ -213,7 +213,7 @@ test("the guard rejects coupling one transport kind while the other side holds t
 
     // A pipe in front must be rejected.
     placePipe(engine, 5, 4);
-    assert.equal(engine.space.ownerAt(5, 4, LAYER_SURFACE), null, "the conflicting pipe was not placed");
+    assert.equal(engine.space.getOwnerAt(5, 4, LAYER_SURFACE), null, "the conflicting pipe was not placed");
 
     // The reverse: pipe behind, belt in front rejected.
     const pipes = engine.resolve(Pipes);
@@ -221,8 +221,8 @@ test("the guard rejects coupling one transport kind while the other side holds t
     const other = placeGate(engine, 10, 5, Direction.DOWN);
     assert.equal(gateMode(engine, other.eid), 1, "pipe-fed gate is fluid");
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 10, 4, Direction.DOWN));
-    assert.equal(engine.space.ownerAt(10, 4, LAYER_SURFACE), null, "the conflicting belt was not placed");
-    assert.equal(pipes.networkAt(10, 6).size, 1, "the pipe network is untouched");
+    assert.equal(engine.space.getOwnerAt(10, 4, LAYER_SURFACE), null, "the conflicting belt was not placed");
+    assert.equal(pipes.findNetworkAt(10, 6).size, 1, "the pipe network is untouched");
 });
 
 test("a toggle applies at the next tick, batches the change, and syncs to late joiners", async () => {
@@ -234,15 +234,15 @@ test("a toggle applies at the next tick, batches the change, and syncs to late j
     game.dispatchMessage(new SetViewportMessage([chunkKey]), player);
     game.dispatchMessage(new CreateObjectMessage(GateType.objectTypeId, 5, 5, Direction.UP), player);
     const engine = game.simEngine;
-    const def = engine.components.get("Gate");
+    const def = engine.components.getComponentByName("Gate");
     const eid = def.eids[def.count - 1];
-    const objectRef = engine.placed.objectRefOf(eid);
+    const objectRef = engine.placed.getObjectRefByEid(eid);
 
     player.events.length = 0;
     game.dispatchMessage(new SetGateOpenMessage(objectRef, 0), player);
-    assert.equal(def.store.open[def.row(eid)], 1, "the toggle is buffered, not instantaneous");
+    assert.equal(def.store.open[def.getRowByEid(eid)], 1, "the toggle is buffered, not instantaneous");
     game.runTick();
-    assert.equal(def.store.open[def.row(eid)], 0, "the tick applied the buffered toggle");
+    assert.equal(def.store.open[def.getRowByEid(eid)], 0, "the tick applied the buffered toggle");
     const batch = player.events.find(event => event instanceof ObjectFieldsBatchEvent);
     assert.ok(batch, "the tick's delta batch fanned out to the chunk's viewers");
     const change = batch.explode().find(event => event.objectRef === objectRef);
@@ -273,16 +273,16 @@ test("a toggle without build rights is refused with a corrective event", async (
     game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), owner);
     game.dispatchMessage(new CreateObjectMessage(GateType.objectTypeId, 5, 5, Direction.UP), owner);
     const engine = game.simEngine;
-    const def = engine.components.get("Gate");
+    const def = engine.components.getComponentByName("Gate");
     const eid = def.eids[def.count - 1];
-    const objectRef = engine.placed.objectRefOf(eid);
+    const objectRef = engine.placed.getObjectRefByEid(eid);
 
     const intruder = new CapturingSession(2);
     game.connect(intruder);
     intruder.events.length = 0;
     game.dispatchMessage(new SetGateOpenMessage(objectRef, 0), intruder);
     game.runTick();
-    assert.equal(def.store.open[def.row(eid)], 1, "the foreign toggle was refused");
+    assert.equal(def.store.open[def.getRowByEid(eid)], 1, "the foreign toggle was refused");
     const corrective = intruder.events.find(event => event instanceof ObjectFieldsEvent);
     assert.ok(corrective, "the sender got the authoritative state back");
     assert.equal(corrective.objectRef, objectRef);
@@ -297,16 +297,16 @@ test("gate state survives a save/load", async () => {
     game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), player);
     game.dispatchMessage(new CreateObjectMessage(GateType.objectTypeId, 5, 5, Direction.UP), player);
     const engine = game.simEngine;
-    const def = engine.components.get("Gate");
+    const def = engine.components.getComponentByName("Gate");
     const eid = def.eids[def.count - 1];
-    const objectRef = engine.placed.objectRefOf(eid);
+    const objectRef = engine.placed.getObjectRefByEid(eid);
     game.dispatchMessage(new SetGateOpenMessage(objectRef, 0), player);
     game.runTick();
     await game.save();
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
-    const restoredDef = restored.simEngine.components.get("Gate");
+    const restoredDef = restored.simEngine.components.getComponentByName("Gate");
     assert.equal(restoredDef.count, 1);
     assert.equal(restoredDef.store.open[0], 0, "the closed state came back");
     assert.equal(restoredDef.store.fluid[0], 0, "the mode column persisted");

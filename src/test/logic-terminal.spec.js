@@ -22,7 +22,7 @@ import {LOGIC_TIER_BASE} from "@/mods/logistics/common/constants.js";
 function place(engine, type, x, y, direction=Direction.UP) {
     assert.equal(engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, direction)), true);
     const def = engine.placed.objects;
-    return def.store.objectRef[def.row(def.eids[def.count - 1])];
+    return def.store.objectRef[def.getRowByEid(def.eids[def.count - 1])];
 }
 
 /**
@@ -145,7 +145,7 @@ test("a terminal wired straight to a gate forms a working pole-less network", as
 
     game.dispatchMessage(new WireLinkMessage(terminal, gate), player);
     assert.equal(networks.hasWire(terminal, gate), true);
-    assert.deepEqual(networks.networkOf(terminal).poleIds, []);
+    assert.deepEqual(networks.findNetworkByObjectRef(terminal).poleIds, []);
 
     game.dispatchMessage(new LogicSnapshotRequestMessage(terminal), player);
     const snapshot = player.events.find(event => event instanceof LogicSnapshotEvent);

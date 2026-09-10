@@ -36,7 +36,7 @@ export class DrawLayerRegistry {
      * @param {AbstractEvent} event
      */
     dispatchEvent(event) {
-        for (const layer of this._subscribersFor(event.constructor)) {
+        for (const layer of this._getSubscribersByEventClass(event.constructor)) {
             layer.onEvent(event);
         }
     }
@@ -47,7 +47,7 @@ export class DrawLayerRegistry {
      * @returns {AbstractDrawLayer[]}
      * @private
      */
-    _subscribersFor(eventClass) {
+    _getSubscribersByEventClass(eventClass) {
         let subscribers = this._subscribers.get(eventClass);
         if (subscribers === undefined) {
             subscribers = this.layers.filter(layer => layer.eventClasses.some(

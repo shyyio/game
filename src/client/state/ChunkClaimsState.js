@@ -154,7 +154,7 @@ export class ChunkClaimsView extends AbstractCacheView {
      * @param {number} chunkKey
      * @returns {number} the owning playerRef, or PLAYER_REF_NONE when unclaimed
      */
-    ownerOf(chunkKey) {
+    getOwnerByChunkKey(chunkKey) {
         const owner = this._state.mapGet("chunkClaims.ownerByChunk", chunkKey);
         if (owner === undefined) {
             return PLAYER_REF_NONE;
@@ -194,7 +194,7 @@ export class ChunkClaimsView extends AbstractCacheView {
      * @param {number} chunkKey
      * @returns {number} the chunk's ChunkPermission, defaulting to owner-only when unclaimed
      */
-    permissionOf(chunkKey) {
+    getPermissionByChunkKey(chunkKey) {
         const permission = this._state.mapGet("chunkClaims.permissionByChunk", chunkKey);
         if (permission === undefined) {
             return ChunkPermission.PERMISSION_ONLY_ME;
@@ -208,14 +208,14 @@ export class ChunkClaimsView extends AbstractCacheView {
      * @returns {boolean}
      */
     canBuildIn(chunkKey) {
-        const owner = this.ownerOf(chunkKey);
+        const owner = this.getOwnerByChunkKey(chunkKey);
         if (owner === PLAYER_REF_NONE) {
             return false;
         }
         if (owner === this.ownPlayerRef) {
             return true;
         }
-        if (this.permissionOf(chunkKey) === ChunkPermission.PERMISSION_ONLY_ME) {
+        if (this.getPermissionByChunkKey(chunkKey) === ChunkPermission.PERMISSION_ONLY_ME) {
             return false;
         }
         return this.isFriendsWithMe(owner);
@@ -227,7 +227,7 @@ export class ChunkClaimsView extends AbstractCacheView {
      * @returns {number} a ClaimResult
      */
     claimCheck(chunkKey) {
-        if (this.ownerOf(chunkKey) !== PLAYER_REF_NONE) {
+        if (this.getOwnerByChunkKey(chunkKey) !== PLAYER_REF_NONE) {
             return ClaimResult.CLAIM_RESULT_OWNED;
         }
         if (this.atChunkLimit()) {
@@ -291,7 +291,7 @@ export class ChunkClaimsView extends AbstractCacheView {
     nearbyForeignOwners(chunks, centerX, centerY) {
         const nearestByOwner = new Map();
         for (const chunk of chunks) {
-            const owner = this.ownerOf(chunk);
+            const owner = this.getOwnerByChunkKey(chunk);
             if (owner === PLAYER_REF_NONE || owner === this.ownPlayerRef || this.isFriend(owner)) {
                 continue;
             }

@@ -30,7 +30,7 @@ export class ScrollView extends Container {
      * @param {number} width
      * @returns {number}
      */
-    static contentWidthFor(width) {
+    static getContentWidth(width) {
         return width - SCROLLBAR_WIDTH - SCROLLBAR_GAP;
     }
 

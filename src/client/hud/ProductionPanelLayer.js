@@ -139,7 +139,7 @@ export class ProductionPanelLayer extends Container {
      */
     _build() {
         const width = this._panelWidth();
-        const contentWidth = UIPanel.contentWidthFor(width);
+        const contentWidth = UIPanel.getContentWidth(width);
 
         // Placeholder the real DOM/SVG chart overlay sits on top of every frame (see _positionChartRoot()).
         this._chartInset = UIPanel.insetSprite(this.textureCache, contentWidth, CHART_HEIGHT, PANEL_TINT);
@@ -239,7 +239,7 @@ export class ProductionPanelLayer extends Container {
     _describeEntry(entry) {
         return new PanelRowDescriptor({
             label: this._itemName(entry.category),
-            swatchColor: this._chart.colorFor(entry.key),
+            swatchColor: this._chart.getColorByKey(entry.key),
             rightLabel: this._rateLabel(entry.ratePerTick),
             selected: entry.key === this._selectedKey,
             onRowClick: () => this._toggleSelect(entry.key),
@@ -252,7 +252,7 @@ export class ProductionPanelLayer extends Container {
      * @returns {string}
      */
     _itemName(itemTypeId) {
-        const definition = this._items.get(itemTypeId);
+        const definition = this._items.findItemTypeByTypeId(itemTypeId);
         if (definition === undefined) {
             return `Item ${itemTypeId}`;
         }

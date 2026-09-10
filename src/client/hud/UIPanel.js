@@ -176,7 +176,7 @@ export class UIPanel extends Container {
      * @param {number} width
      * @returns {number}
      */
-    static contentWidthFor(width) {
+    static getContentWidth(width) {
         return width - 2 * (BODY_MARGIN + PADDING);
     }
 
@@ -387,7 +387,7 @@ export class UIPanel extends Container {
      * @returns {UIPanel}
      */
     static managed(previous, options, buildBody) {
-        const stack = new PanelStack(options.textureCache, UIPanel.contentWidthFor(options.width));
+        const stack = new PanelStack(options.textureCache, UIPanel.getContentWidth(options.width));
         buildBody(stack);
         if (stack.overflow > 0) {
             throw new Error(`Panel "${options.title}" has a row overflowing by ${stack.overflow}px`);
@@ -441,7 +441,7 @@ export class UIPanel extends Container {
 
     /** @returns {number} width available to content inside the padded body */
     get contentWidth() {
-        return UIPanel.contentWidthFor(this._width);
+        return UIPanel.getContentWidth(this._width);
     }
 
     /**

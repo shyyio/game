@@ -115,7 +115,7 @@ export class Game {
          */
         this.claimAdmin = new ClaimAdmin(this);
         this.simEngine.setPlacementGate((playerRef, chunk) => this.claimAdmin.canBuildIn(playerRef, chunk));
-        this.simEngine.setChunkOwnerResolver(chunk => this.claims.ownerOf(chunk));
+        this.simEngine.setChunkOwnerResolver(chunk => this.claims.getOwnerByChunkKey(chunk));
 
         /**
          * The chunks, overworld and inspect menus each session is looking at.
@@ -277,7 +277,7 @@ export class Game {
      * @private
      */
     _syncPlayerState(session) {
-        const record = this.players.byId(session.playerRef);
+        const record = this.players.getPlayerByRef(session.playerRef);
         this.bus.publishTo(session.sessionRef, new WelcomeEvent(record.playerRef, record.maxChunks, record.friendCode));
         this.playerDirectory.syncUsernames(session.sessionRef, [session.playerRef]);
         this.claimAdmin.syncOwnClaims(session);
@@ -362,7 +362,7 @@ export class Game {
      * @private
      */
     _handleSetPlayerSetting(session, key, value) {
-        const entry = this.modRegistry.playerSettingEntry(key);
+        const entry = this.modRegistry.findPlayerSettingEntryByKey(key);
         if (entry === undefined || !entry.clientWritable) {
             return;
         }

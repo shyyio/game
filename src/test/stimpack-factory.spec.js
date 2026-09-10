@@ -58,7 +58,7 @@ test("the Stimpack factory places every object with no tile collisions", async (
         [QuartzDepositResourceType.name]: [QuartzDepositResourceType, 1],
     };
     for (const [type, expected] of Object.values(counts)) {
-        const actual = engine.placed.eidsOf(type.objectTypeId).length;
+        const actual = engine.placed.getEidsByTypeId(type.objectTypeId).length;
         assert.equal(actual, expected, `${type.name}: expected ${expected} placed, found ${actual} (a collision silently dropped a placement)`);
     }
 });
@@ -66,14 +66,14 @@ test("the Stimpack factory places every object with no tile collisions", async (
 test("the Stimpack factory actually produces a Stimpack when ticked", async () => {
     const {game, root} = await buildFactory();
     const engine = game.simEngine;
-    const def = engine.components.get("Machine");
-    const row = def.row(engine.placed.eidsOf(FillType.objectTypeId)[0]);
+    const def = engine.components.getComponentByName("Machine");
+    const row = def.getRowByEid(engine.placed.getEidsByTypeId(FillType.objectTypeId)[0]);
     const outputPort = def.store.out[row];
 
     let produced = false;
     for (let i = 0; i < 2000 && !produced; i += 1) {
         game.runTick();
-        produced = engine.ports.item(outputPort) === ITEM_TYPE_STIMPACK;
+        produced = engine.ports.getItemByPortEid(outputPort) === ITEM_TYPE_STIMPACK;
     }
     assert.ok(produced, "a Stimpack came out of Fill within the tick budget");
 });

@@ -153,12 +153,12 @@ export class LaneFixtureDeclaration extends AbstractModDeclaration {
  * @returns {number} the cell's eid, NO_EID when the placement was refused
  */
 export function placeLane(engine, tileX, tileY, direction, type = TestLaneType) {
-    const before = engine.placed.eidsOf(type.objectTypeId).length;
+    const before = engine.placed.getEidsByTypeId(type.objectTypeId).length;
     engine.applyMessage(new CreateObjectMessage(type.objectTypeId, tileX, tileY, direction));
-    if (engine.placed.eidsOf(type.objectTypeId).length === before) {
+    if (engine.placed.getEidsByTypeId(type.objectTypeId).length === before) {
         return NO_EID;
     }
-    return engine.placed.eidAt(tileX, tileY, type.positionLayerTiles(direction)[0].layer);
+    return engine.placed.getEidAt(tileX, tileY, type.getPositionLayerTilesByDirection(direction)[0].layer);
 }
 
 /**
@@ -170,8 +170,8 @@ export function placeLane(engine, tileX, tileY, direction, type = TestLaneType) 
  * @returns {void}
  */
 export function deleteLane(engine, tileX, tileY, layer = LAYER_SURFACE) {
-    const eid = engine.placed.eidAt(tileX, tileY, layer);
-    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(eid)));
+    const eid = engine.placed.getEidAt(tileX, tileY, layer);
+    engine.applyMessage(new DeleteObjectMessage(engine.placed.getObjectRefByEid(eid)));
 }
 
 /**
@@ -180,7 +180,7 @@ export function deleteLane(engine, tileX, tileY, layer = LAYER_SURFACE) {
  * @returns {number[][]} the lane's cells as [tileX, tileY] pairs, head first
  */
 export function laneTiles(engine, laneRef) {
-    return engine.lanes.cellsOf(laneRef).map(eid => [engine.Position.x[eid], engine.Position.y[eid]]);
+    return engine.lanes.getCellEidsByLaneRef(laneRef).map(eid => [engine.Position.x[eid], engine.Position.y[eid]]);
 }
 
 /**
@@ -191,12 +191,12 @@ export function laneTiles(engine, laneRef) {
  * @param {string} [layer]
  * @returns {number|null}
  */
-export function laneAt(engine, tileX, tileY, layer = LAYER_SURFACE) {
-    const eid = engine.placed.eidAt(tileX, tileY, layer);
+export function getLaneRefAt(engine, tileX, tileY, layer = LAYER_SURFACE) {
+    const eid = engine.placed.getEidAt(tileX, tileY, layer);
     if (eid === NO_EID) {
         return null;
     }
-    return engine.lanes.laneOf(eid);
+    return engine.lanes.getLaneRefByCellEid(eid);
 }
 
 /**
@@ -205,5 +205,5 @@ export function laneAt(engine, tileX, tileY, layer = LAYER_SURFACE) {
  * @returns {number}
  */
 export function itemCells(engine) {
-    return engine.lanes.ids().reduce((sum, laneRef) => sum + engine.lanes.itemCountOf(laneRef), 0);
+    return engine.lanes.getLaneRefs().reduce((sum, laneRef) => sum + engine.lanes.getItemCountByLaneRef(laneRef), 0);
 }

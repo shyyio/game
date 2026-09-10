@@ -122,7 +122,7 @@ export class Terrain {
      * @param {number} tileY
      * @returns {number} the biomeId of the first biome whose ranges all hold
      */
-    biomeAt(tileX, tileY) {
+    getBiomeIdAt(tileX, tileY) {
         return this.classify(tileX, tileY).biomeId;
     }
 
@@ -151,7 +151,7 @@ export class Terrain {
         const margins = this._margins;
         let winner = -1;
         for (const [index, biome] of this.biomes.entries()) {
-            margins[index] = this._margin(biome, tileX, tileY, samples);
+            margins[index] = this._getMargin(biome, tileX, tileY, samples);
             if (winner === -1 && margins[index] >= 0) {
                 winner = index;
             }
@@ -162,11 +162,11 @@ export class Terrain {
         }
         tile.biomeId = winner;
         tile.otherId = winner;
-        const winnerWidth = this._blendWidthOf(winner);
+        const winnerWidth = this._getBlendWidthByIndex(winner);
         let weight = 0;
         for (let index = 0; index < winner; index++) {
             const missedBy = -margins[index];
-            const width = Math.min(winnerWidth, this._blendWidthOf(index));
+            const width = Math.min(winnerWidth, this._getBlendWidthByIndex(index));
             if (missedBy < width) {
                 const candidate = BLEND_MAX * (1 - missedBy / width);
                 if (candidate > weight) {
@@ -181,7 +181,7 @@ export class Terrain {
             while (margins[next] < 0) {
                 next++;
             }
-            const width = Math.min(winnerWidth, this._blendWidthOf(next));
+            const width = Math.min(winnerWidth, this._getBlendWidthByIndex(next));
             if (margins[winner] < width) {
                 const candidate = BLEND_MAX * (1 - margins[winner] / width);
                 if (candidate > weight) {
@@ -199,7 +199,7 @@ export class Terrain {
      * @param {number} index into the biome list
      * @returns {number} the biome's blend width, or the global width when it declares none
      */
-    _blendWidthOf(index) {
+    _getBlendWidthByIndex(index) {
         const width = this.biomes[index].blendWidth;
         if (width === null) {
             return activeBlendWidth;
@@ -249,7 +249,7 @@ export class Terrain {
      * @param {number} tileY
      * @returns {TerrainDetail|null}
      */
-    detailFor(biome, tileX, tileY) {
+    findDetailByBiome(biome, tileX, tileY) {
         if (biome.details.length === 0) {
             return null;
         }
@@ -269,7 +269,7 @@ export class Terrain {
      * @param {number} tileY
      * @returns {number} the shade noise in [0, 1]
      */
-    shadeAt(tileX, tileY) {
+    getShadeAt(tileX, tileY) {
         return this.noise.get(tileX, tileY, SHADE_CHANNEL.channelId);
     }
 
@@ -278,7 +278,7 @@ export class Terrain {
      * @param {number} y bake cell, a tile in world and map mode
      * @returns {number} the dither noise in [0, 1]
      */
-    ditherAt(x, y) {
+    getDitherAt(x, y) {
         return this.noise.get(x, y, DITHER_CHANNEL.channelId);
     }
 
@@ -326,7 +326,7 @@ export class Terrain {
      * @param {Float64Array} samples
      * @returns {number}
      */
-    _margin(biome, tileX, tileY, samples) {
+    _getMargin(biome, tileX, tileY, samples) {
         let margin = Infinity;
         for (const range of biome.ranges) {
             const channelId = range.channel.channelId;

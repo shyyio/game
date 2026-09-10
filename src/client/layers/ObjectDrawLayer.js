@@ -43,7 +43,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
             entry.tileX,
             entry.tileY,
             entry.data.direction,
-            this.textureCache.get(this._type.textureFor(entry.data)),
+            this.textureCache.get(this._type.getTextureByData(entry.data)),
             this._type,
         ));
     }
@@ -69,7 +69,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
         if (sprite === undefined) {
             return;
         }
-        sprite.texture = this.textureCache.get(this._type.textureFor(entry.data));
+        sprite.texture = this.textureCache.get(this._type.getTextureByData(entry.data));
     }
 
     /**
@@ -123,7 +123,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
      */
     _drawChunkGeometry(chunkKey, graphics) {
         for (const sprite of this._chunks.get(chunkKey).spriteList) {
-            for (const cell of this._type.geometry.tiles(sprite.direction)) {
+            for (const cell of this._type.geometry.getTilesByDirection(sprite.direction)) {
                 graphics.rect(
                     (sprite.tileX + cell.x) * TILE_SIZE,
                     (sprite.tileY + cell.y) * TILE_SIZE,

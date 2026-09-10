@@ -20,9 +20,9 @@ function placeGate(game, player, x, y) {
     game.dispatchMessage(new SetViewportMessage([chunkKey]), player);
     game.dispatchMessage(new CreateObjectMessage(GateType.objectTypeId, x, y, Direction.UP), player);
     const engine = game.simEngine;
-    const def = engine.components.get("Gate");
+    const def = engine.components.getComponentByName("Gate");
     const eid = def.eids[def.count - 1];
-    return {engine, def, eid, chunkKey, objectRef: engine.placed.objectRefOf(eid)};
+    return {engine, def, eid, chunkKey, objectRef: engine.placed.getObjectRefByEid(eid)};
 }
 
 test("a marked row's synced fields batch per chunk at tick end, to the chunk's viewers only", async () => {
@@ -33,7 +33,7 @@ test("a marked row's synced fields batch per chunk at tick end, to the chunk's v
     const {engine, def, eid} = gate;
 
     player.events.length = 0;
-    def.store.open[def.row(eid)] = 0;
+    def.store.open[def.getRowByEid(eid)] = 0;
     engine.sync.markDirty(def, eid);
     assert.equal(player.events.find(event => event instanceof ObjectFieldsBatchEvent), undefined, "nothing until the tick ends");
     game.runTick();
@@ -55,7 +55,7 @@ test("a marked row's synced fields batch per chunk at tick end, to the chunk's v
     const farEid = def.eids[def.count - 1];
     player.events.length = 0;
     far.events.length = 0;
-    def.store.open[def.row(farEid)] = 0;
+    def.store.open[def.getRowByEid(farEid)] = 0;
     engine.sync.markDirty(def, farEid);
     game.runTick();
     assert.equal(far.events.find(event => event instanceof ObjectFieldsBatchEvent), undefined);
@@ -68,7 +68,7 @@ test("chunk sync carries every row off its defaults, after the objects themselve
     game.connect(player);
     const gate = placeGate(game, player, 5, 5);
     const {engine, def, eid} = gate;
-    def.store.open[def.row(eid)] = 0;
+    def.store.open[def.getRowByEid(eid)] = 0;
     engine.sync.markDirty(def, eid);
     game.runTick();
     // A second gate at its defaults stays out of the sync.
@@ -92,7 +92,7 @@ test("eventFor builds one row's current values as a single event", async () => {
     const player = new CapturingSession(1);
     game.connect(player);
     const gate = placeGate(game, player, 5, 5);
-    const event = gate.engine.sync.eventFor(gate.def, gate.eid);
+    const event = gate.engine.sync.getObjectFieldsEventByEid(gate.def, gate.eid);
     assert.ok(event instanceof ObjectFieldsEvent);
     assert.equal(event.objectRef, gate.objectRef);
     assert.equal(event.x, 5);
@@ -107,9 +107,9 @@ test("marks whose values net to what the client already holds emit nothing", asy
     const gate = placeGate(game, player, 5, 5);
     const {engine, def, eid} = gate;
     player.events.length = 0;
-    def.store.open[def.row(eid)] = 0;
+    def.store.open[def.getRowByEid(eid)] = 0;
     engine.sync.markDirty(def, eid);
-    def.store.open[def.row(eid)] = 1;
+    def.store.open[def.getRowByEid(eid)] = 1;
     engine.sync.markDirty(def, eid);
     game.runTick();
     assert.equal(player.events.find(event => event instanceof ObjectFieldsBatchEvent), undefined);
@@ -121,7 +121,7 @@ test("after a load the engine knows what a chunk sync told the client, so a chan
     const player = new CapturingSession(1);
     game.connect(player);
     const gate = placeGate(game, player, 5, 5);
-    gate.def.store.open[gate.def.row(gate.eid)] = 0;
+    gate.def.store.open[gate.def.getRowByEid(gate.eid)] = 0;
     gate.engine.sync.markDirty(gate.def, gate.eid);
     game.runTick();
     await game.save();
@@ -132,10 +132,10 @@ test("after a load the engine knows what a chunk sync told the client, so a chan
     restored.connect(joiner);
     restored.dispatchMessage(new SetViewportMessage([gate.chunkKey]), joiner);
     const engine = restored.simEngine;
-    const def = engine.components.get("Gate");
+    const def = engine.components.getComponentByName("Gate");
     const eid = def.eids[0];
     joiner.events.length = 0;
-    def.store.open[def.row(eid)] = 1;
+    def.store.open[def.getRowByEid(eid)] = 1;
     engine.sync.markDirty(def, eid);
     restored.runTick();
     const batch = joiner.events.find(event => event instanceof ObjectFieldsBatchEvent);

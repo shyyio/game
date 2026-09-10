@@ -48,7 +48,7 @@ export function externalModList(mods) {
         mod.manifest.version,
         mod.manifest.parts,
         mod.entry.url,
-        mod.entry.integrityOf(mod.manifest.entry),
+        mod.entry.getIntegrityByFile(mod.manifest.entry),
     ));
 }
 

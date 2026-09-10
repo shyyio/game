@@ -89,7 +89,7 @@ export class ObjectsWriter extends AbstractCacheWriter {
      * @returns {void}
      */
     _set(event) {
-        const type = this._registry.objectTypeById(event.objectTypeId);
+        const type = this._registry.getObjectTypeByTypeId(event.objectTypeId);
         const ports = {};
         const renderedPorts = type.outputPorts.filter(port => port.render);
         for (const [i, port] of renderedPorts.entries()) {
@@ -289,8 +289,8 @@ export class ObjectsView extends AbstractCacheView {
                 this.remove(id);
                 return;
             }
-            const type = this._modRegistry.objectTypeById(object.objectTypeId);
-            const cells = type.positionLayerTiles(object.direction).flatMap(group =>
+            const type = this._modRegistry.getObjectTypeByTypeId(object.objectTypeId);
+            const cells = type.getPositionLayerTilesByDirection(object.direction).flatMap(group =>
                 group.cells.map(cell => ({
                     x: object.tileX + cell.x,
                     y: object.tileY + cell.y,
@@ -357,7 +357,7 @@ export class ObjectsView extends AbstractCacheView {
      * @returns {number}
      * @private
      */
-    _cellKey(tileX, tileY, layer) {
+    _getCellKeyByEid(tileX, tileY, layer) {
         let code = this._layerCodes.get(layer);
         if (code === undefined) {
             code = this._layerCodes.size;
@@ -404,7 +404,7 @@ export class ObjectsView extends AbstractCacheView {
         }
 
         for (const cell of cells) {
-            const key = this._cellKey(cell.x, cell.y, cell.layer);
+            const key = this._getCellKeyByEid(cell.x, cell.y, cell.layer);
             const stacked = this._byCell.get(key);
             if (stacked === undefined) {
                 this._byCell.set(key, [entry]);
@@ -462,7 +462,7 @@ export class ObjectsView extends AbstractCacheView {
         }
 
         for (const cell of entry.cells) {
-            const key = this._cellKey(cell.x, cell.y, cell.layer);
+            const key = this._getCellKeyByEid(cell.x, cell.y, cell.layer);
             const stacked = this._byCell.get(key);
             if (stacked === undefined) {
                 continue;
@@ -533,7 +533,7 @@ export class ObjectsView extends AbstractCacheView {
      * @param {string} layer
      * @returns {CacheEntry|null}
      */
-    at(tileX, tileY, layer) {
+    findObjectAt(tileX, tileY, layer) {
         // A layer nothing has ever been stored on holds nothing; reads never register one.
         const code = this._layerCodes.get(layer);
         if (code === undefined) {
@@ -553,7 +553,7 @@ export class ObjectsView extends AbstractCacheView {
      * @param {string} layer
      * @returns {CacheEntry[]}
      */
-    allAt(tileX, tileY, layer) {
+    getObjectsAt(tileX, tileY, layer) {
         const code = this._layerCodes.get(layer);
         if (code === undefined) {
             return [];
@@ -572,8 +572,8 @@ export class ObjectsView extends AbstractCacheView {
      * @param {ObjectType} type
      * @returns {CacheEntry|null}
      */
-    objectAt(tileX, tileY, type) {
-        const entry = this.at(tileX, tileY, type.positionLayer);
+    findObjectByTypeAt(tileX, tileY, type) {
+        const entry = this.findObjectAt(tileX, tileY, type.positionLayer);
         if (entry !== null && entry.data.type.objectTypeId === type.objectTypeId) {
             return entry;
         }
@@ -611,8 +611,8 @@ export class ObjectsView extends AbstractCacheView {
      * @param {Direction} direction
      * @returns {{entry: CacheEntry, portName: string}|null}
      */
-    inputPortAt(tileX, tileY, direction) {
-        const entry = this.at(tileX, tileY, LAYER_SURFACE);
+    findInputPortAt(tileX, tileY, direction) {
+        const entry = this.findObjectAt(tileX, tileY, LAYER_SURFACE);
         if (entry === null) {
             return null;
         }
@@ -627,10 +627,10 @@ export class ObjectsView extends AbstractCacheView {
      * @param {Direction} direction
      * @returns {{entry: CacheEntry, portName: string}|null}
      */
-    outputPortAt(tileX, tileY, direction) {
+    findOutputPortAt(tileX, tileY, direction) {
         const sourceX = tileX - Direction.dx(direction);
         const sourceY = tileY - Direction.dy(direction);
-        const entry = this.at(sourceX, sourceY, LAYER_SURFACE);
+        const entry = this.findObjectAt(sourceX, sourceY, LAYER_SURFACE);
         if (entry === null) {
             return null;
         }
@@ -650,7 +650,7 @@ export class ObjectsView extends AbstractCacheView {
      */
     _portMatch(entry, portKind, portX, portY, facing) {
         const target = edgeKey(portX, portY, facing);
-        for (const candidate of entry.data.type.surfacePorts(portKind)) {
+        for (const candidate of entry.data.type.getSurfacePortsByKind(portKind)) {
             const placed = portAt(candidate, entry.tileX, entry.tileY, entry.data.direction);
             if (edgeKey(placed.x, placed.y, placed.direction) === target) {
                 return {entry, portName: candidate.name};
@@ -672,9 +672,9 @@ export class ObjectsView extends AbstractCacheView {
         const direction = record.data.direction;
         const connections = [];
 
-        for (const port of type.surfacePorts("outputPorts")) {
+        for (const port of type.getSurfacePortsByKind("outputPorts")) {
             const placed = portAt(port, record.tileX, record.tileY, direction);
-            const consumer = this.inputPortAt(placed.x, placed.y, placed.direction);
+            const consumer = this.findInputPortAt(placed.x, placed.y, placed.direction);
             if (consumer !== null) {
                 // An output port's stub sits on the emitting tile; the cell it reaches is the neighbor's.
                 connections.push({
@@ -689,9 +689,9 @@ export class ObjectsView extends AbstractCacheView {
             }
         }
 
-        for (const port of type.surfacePorts("inputPorts")) {
+        for (const port of type.getSurfacePortsByKind("inputPorts")) {
             const placed = portAt(port, record.tileX, record.tileY, direction);
-            const feeder = this.outputPortAt(placed.x, placed.y, placed.direction);
+            const feeder = this.findOutputPortAt(placed.x, placed.y, placed.direction);
             if (feeder !== null) {
                 // An input port's stub sits on its own cell; the feeder is the tile behind it.
                 connections.push({

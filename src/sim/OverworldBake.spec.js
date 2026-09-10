@@ -34,7 +34,7 @@ test("a placed belt bakes as one run at its tile", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 3, 2, Direction.UP));
 
-    const event = engine.overworldBake.snapshot(0, 0, 1, 1);
+    const event = engine.overworldBake.getSnapshotInRect(0, 0, 1, 1);
     assert.equal(event.chunks.length, 1);
     assert.deepEqual(runsFor(event, event.chunks[0]), [
         {start: 2 * CHUNK_SIZE + 3, length: 1, objectTypeId: BeltType.objectTypeId},
@@ -45,7 +45,7 @@ test("a 2x2 housing bakes as one run per covered row", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(HousingType.objectTypeId, 10, 10, Direction.UP));
 
-    const event = engine.overworldBake.snapshot(0, 0, 1, 1);
+    const event = engine.overworldBake.getSnapshotInRect(0, 0, 1, 1);
     assert.deepEqual(runsFor(event, event.chunks[0]), [
         {start: 10 * CHUNK_SIZE + 10, length: 2, objectTypeId: HousingType.objectTypeId},
         {start: 11 * CHUNK_SIZE + 10, length: 2, objectTypeId: HousingType.objectTypeId},
@@ -55,10 +55,10 @@ test("a 2x2 housing bakes as one run per covered row", async () => {
 test("a deleted object's chunk drops out of the snapshot", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 3, 2, Direction.UP));
-    const objectRef = engine.placed.objectRefOf(engine.placed.eidsOf(BeltType.objectTypeId)[0]);
+    const objectRef = engine.placed.getObjectRefByEid(engine.placed.getEidsByTypeId(BeltType.objectTypeId)[0]);
     engine.applyMessage(new DeleteObjectMessage(objectRef));
 
-    const event = engine.overworldBake.snapshot(0, 0, 1, 1);
+    const event = engine.overworldBake.getSnapshotInRect(0, 0, 1, 1);
     assert.equal(event.chunks.length, 0);
 });
 
@@ -68,7 +68,7 @@ test("undergrounds stay out of the bake; mouths stay in", async () => {
     engine.applyMessage(new CreateObjectMessage(BeltTunnelDownType.objectTypeId, 0, 4, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(BeltTunnelUpType.objectTypeId, 0, 1, Direction.UP));
 
-    const event = engine.overworldBake.snapshot(0, 0, 1, 1);
+    const event = engine.overworldBake.getSnapshotInRect(0, 0, 1, 1);
     assert.deepEqual(runsFor(event, event.chunks[0]), [
         {start: 1 * CHUNK_SIZE, length: 1, objectTypeId: BeltTunnelUpType.objectTypeId},
         {start: 4 * CHUNK_SIZE, length: 1, objectTypeId: BeltTunnelDownType.objectTypeId},
@@ -80,7 +80,7 @@ test("an extractor on a water tile wins the tile's bake", async () => {
     engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 5, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 5, 5, Direction.UP));
 
-    const event = engine.overworldBake.snapshot(0, 0, 1, 1);
+    const event = engine.overworldBake.getSnapshotInRect(0, 0, 1, 1);
     assert.deepEqual(runsFor(event, event.chunks[0]), [
         {start: 5 * CHUNK_SIZE + 5, length: 1, objectTypeId: ExtractorType.objectTypeId},
     ]);
@@ -90,11 +90,11 @@ test("the bake survives a serialize/deserialize round-trip", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 3, 2, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(HousingType.objectTypeId, -70, -70, Direction.UP));
-    const before = engine.overworldBake.snapshot(-2, -2, 4, 4);
+    const before = engine.overworldBake.getSnapshotInRect(-2, -2, 4, 4);
 
     const restored = await makeGameEngine();
     restored.snapshots.deserialize(engine.snapshots.serialize());
-    const after = restored.overworldBake.snapshot(-2, -2, 4, 4);
+    const after = restored.overworldBake.getSnapshotInRect(-2, -2, 4, 4);
 
     assert.deepEqual(after.chunks, before.chunks);
     assert.deepEqual(after.runCounts, before.runCounts);
@@ -105,5 +105,5 @@ test("the bake survives a serialize/deserialize round-trip", async () => {
 
 test("a rect outside the region throws", async () => {
     const engine = await makeGameEngine();
-    assert.throws(() => engine.overworldBake.snapshot(-100, 0, 64, 1), RangeError);
+    assert.throws(() => engine.overworldBake.getSnapshotInRect(-100, 0, 64, 1), RangeError);
 });

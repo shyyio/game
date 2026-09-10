@@ -39,7 +39,7 @@ import {LOGIC_KEY_AMOUNT, FLUID_TYPE_WATER} from "@/mods/fluids/common/constants
 function place(engine, type, x, y, direction=Direction.UP) {
     assert.equal(engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, direction)), true);
     const def = engine.placed.objects;
-    return def.store.objectRef[def.row(def.eids[def.count - 1])];
+    return def.store.objectRef[def.getRowByEid(def.eids[def.count - 1])];
 }
 
 /**
@@ -76,16 +76,16 @@ function rulesMessage(terminalId, rules) {
  * A component column value for a placed objectRef.
  */
 function columnOf(engine, componentName, column, objectRef) {
-    const def = engine.components.get(componentName);
-    return def.store[column][def.row(engine.placed.eidByObjectRef(objectRef))];
+    const def = engine.components.getComponentByName(componentName);
+    return def.store[column][def.getRowByEid(engine.placed.findEidByObjectRef(objectRef))];
 }
 
 /**
  * Fills a placed tank directly.
  */
 function fillTank(engine, tankId, fluidType, amount) {
-    const def = engine.components.get("Tank");
-    const row = def.row(engine.placed.eidByObjectRef(tankId));
+    const def = engine.components.getComponentByName("Tank");
+    const row = def.getRowByEid(engine.placed.findEidByObjectRef(tankId));
     def.store.fluidType[row] = fluidType;
     def.store.amount[row] = amount;
 }
@@ -141,15 +141,15 @@ test("the processing key reads real activity, not the enable switch", async () =
     const game = await makeGame();
     const engine = game.simEngine;
     const machine = place(engine, BlenderType, 10, 8, Direction.UP);
-    const eid = engine.placed.eidByObjectRef(machine);
-    const behavior = engine.placed.behaviorFor(engine.placed.objectTypeIdOf(eid));
+    const eid = engine.placed.findEidByObjectRef(machine);
+    const behavior = engine.placed.getBehaviorByTypeId(engine.placed.getObjectTypeIdByEid(eid));
 
     assert.equal(behavior.logicRead(engine, eid, LOGIC_KEY_ENABLED), 1);
     assert.equal(behavior.logicRead(engine, eid, LOGIC_KEY_PROCESSING), 0,
         "enabled but holding nothing reads idle");
 
-    const def = engine.components.get("Machine");
-    def.store.output[def.row(eid)] = ITEM_TYPE_NUTRIENT_SLOP;
+    const def = engine.components.getComponentByName("Machine");
+    def.store.output[def.getRowByEid(eid)] = ITEM_TYPE_NUTRIENT_SLOP;
     assert.equal(behavior.logicRead(engine, eid, LOGIC_KEY_PROCESSING), 1,
         "a held product is a craft in flight");
 
@@ -280,7 +280,7 @@ test("a rule referencing a device outside the network suspends without writing",
         ]),
     ]), player);
     engine.tick();
-    const rules = engine.resolve(LogicRules).rulesOf(terminal);
+    const rules = engine.resolve(LogicRules).getRulesByObjectRef(terminal);
     assert.equal(rules[0].suspended, true, "the stray condition device suspended the rule");
     assert.equal(columnOf(engine, "Gate", "open", gateB), 1, "the action never ran");
 });
@@ -299,19 +299,19 @@ test("an over-cap or wrong-shape rule list is rejected whole", async () => {
     const overCap = Array(LOGIC_RULE_CAP + 1).fill(null)
         .map(() => new LogicRule(gate, LOGIC_KEY_OPEN, 0, []));
     game.dispatchMessage(rulesMessage(terminal, overCap), player);
-    assert.equal(engine.resolve(LogicRules).rulesOf(terminal).length, 0, "over the rule cap");
+    assert.equal(engine.resolve(LogicRules).getRulesByObjectRef(terminal).length, 0, "over the rule cap");
 
     const overConditions = new LogicRule(gate, LOGIC_KEY_OPEN, 0, Array(LOGIC_CONDITION_CAP + 1)
         .fill(null).map(() => deviceCondition(gate, LOGIC_KEY_OPEN, LOGIC_COMPARATOR_AT_LEAST, 0)));
     game.dispatchMessage(rulesMessage(terminal, [overConditions]), player);
-    assert.equal(engine.resolve(LogicRules).rulesOf(terminal).length, 0, "over the condition cap");
+    assert.equal(engine.resolve(LogicRules).getRulesByObjectRef(terminal).length, 0, "over the condition cap");
 
     game.dispatchMessage(rulesMessage(terminal, [
         new LogicRule(gate, LOGIC_KEY_OPEN, 0, [
             deviceCondition(gate, LOGIC_KEY_OPEN, 99, 0),
         ]),
     ]), player);
-    assert.equal(engine.resolve(LogicRules).rulesOf(terminal).length, 0, "unknown comparator");
+    assert.equal(engine.resolve(LogicRules).getRulesByObjectRef(terminal).length, 0, "unknown comparator");
 });
 
 test("rules and their conditions persist through a save/load and keep running", async () => {
@@ -335,7 +335,7 @@ test("rules and their conditions persist through a save/load and keep running", 
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
-    const rules = restored.simEngine.resolve(LogicRules).rulesOf(terminal);
+    const rules = restored.simEngine.resolve(LogicRules).getRulesByObjectRef(terminal);
     assert.equal(rules.length, 1);
     assert.equal(rules[0].actionDeviceId, gateB);
     assert.equal(rules[0].conditions.length, 1);
@@ -346,18 +346,18 @@ test("rules and their conditions persist through a save/load and keep running", 
 
 test("behaviors declare their logic key lists and the registry names the keys", () => {
     const modRegistry = ecsModRegistry();
-    assert.deepEqual(GateType.behavior.logicReadKeys(), [LOGIC_KEY_OPEN]);
-    assert.deepEqual(GateType.behavior.logicWriteKeys(), [LOGIC_KEY_OPEN]);
-    assert.deepEqual(BlenderType.behavior.logicReadKeys(), [LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING]);
-    assert.deepEqual(BlenderType.behavior.logicWriteKeys(), [LOGIC_KEY_ENABLED], "processing is read-only");
-    assert.deepEqual(TankType.behavior.logicReadKeys(), [LOGIC_KEY_AMOUNT]);
-    assert.deepEqual(TankType.behavior.logicWriteKeys(), [], "the tank amount is read-only");
-    assert.equal(modRegistry.logicKeyName(LOGIC_KEY_ENABLED), "Enabled");
-    assert.equal(modRegistry.logicKeyEntry(LOGIC_KEY_OPEN).states[0].verb, "Open");
-    assert.equal(modRegistry.logicKeyEntry(LOGIC_KEY_OPEN).states[1].state, "is closed");
-    assert.equal(modRegistry.logicKeyEntry(LOGIC_KEY_ENABLED).states[0].verb, "Enable");
-    assert.equal(modRegistry.logicKeyEntry(LOGIC_KEY_AMOUNT).states, null, "amount is numeric");
-    assert.throws(() => modRegistry.logicKeyName(9999));
+    assert.deepEqual(GateType.behavior.getLogicReadKeys(), [LOGIC_KEY_OPEN]);
+    assert.deepEqual(GateType.behavior.getLogicWriteKeys(), [LOGIC_KEY_OPEN]);
+    assert.deepEqual(BlenderType.behavior.getLogicReadKeys(), [LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING]);
+    assert.deepEqual(BlenderType.behavior.getLogicWriteKeys(), [LOGIC_KEY_ENABLED], "processing is read-only");
+    assert.deepEqual(TankType.behavior.getLogicReadKeys(), [LOGIC_KEY_AMOUNT]);
+    assert.deepEqual(TankType.behavior.getLogicWriteKeys(), [], "the tank amount is read-only");
+    assert.equal(modRegistry.getLogicKeyNameByKey(LOGIC_KEY_ENABLED), "Enabled");
+    assert.equal(modRegistry.getLogicKeyEntryByKey(LOGIC_KEY_OPEN).states[0].verb, "Open");
+    assert.equal(modRegistry.getLogicKeyEntryByKey(LOGIC_KEY_OPEN).states[1].state, "is closed");
+    assert.equal(modRegistry.getLogicKeyEntryByKey(LOGIC_KEY_ENABLED).states[0].verb, "Enable");
+    assert.equal(modRegistry.getLogicKeyEntryByKey(LOGIC_KEY_AMOUNT).states, null, "amount is numeric");
+    assert.throws(() => modRegistry.getLogicKeyNameByKey(9999));
 });
 
 test("the snapshot carries rules, their conditions, and suspended flags", async () => {
@@ -407,8 +407,8 @@ test("removing a terminal drops its rules", async () => {
     game.dispatchMessage(rulesMessage(terminal, [
         new LogicRule(gate, LOGIC_KEY_OPEN, 0, []),
     ]), player);
-    assert.equal(engine.resolve(LogicRules).rulesOf(terminal).length, 1);
+    assert.equal(engine.resolve(LogicRules).getRulesByObjectRef(terminal).length, 1);
 
     engine.applyMessage(new DeleteObjectMessage(terminal));
-    assert.equal(engine.resolve(LogicRules).rulesOf(terminal).length, 0);
+    assert.equal(engine.resolve(LogicRules).getRulesByObjectRef(terminal).length, 0);
 });

@@ -38,9 +38,9 @@ test("resolves a packed transfer chain as a single shift when the end drains", a
         engine.transfers.submitTransfer(ports[2], ports[3], true);
     });
 
-    assert.equal(engine.transfers.resolvedEdges(), `${ports[0]}->${ports[1]}, ${ports[1]}->${ports[2]}, ${ports[2]}->${ports[3]}`);
-    assert.equal(engine.ports.item(ports[0]), EMPTY);
-    assert.equal(engine.ports.item(ports[3]), ITEM);
+    assert.equal(engine.transfers.getResolvedEdges(), `${ports[0]}->${ports[1]}, ${ports[1]}->${ports[2]}, ${ports[2]}->${ports[3]}`);
+    assert.equal(engine.ports.getItemByPortEid(ports[0]), EMPTY);
+    assert.equal(engine.ports.getItemByPortEid(ports[3]), ITEM);
 });
 
 test("resolves a packed chain the tail drains out of", async () => {
@@ -52,8 +52,8 @@ test("resolves a packed chain the tail drains out of", async () => {
         engine.transfers.submitDrain(ports[2]);
     });
 
-    assert.equal(engine.transfers.resolvedEdges(), `${ports[0]}->${ports[1]}, ${ports[1]}->${ports[2]}`);
-    assert.equal(engine.ports.item(ports[0]), EMPTY);
+    assert.equal(engine.transfers.getResolvedEdges(), `${ports[0]}->${ports[1]}, ${ports[1]}->${ports[2]}`);
+    assert.equal(engine.ports.getItemByPortEid(ports[0]), EMPTY);
 });
 
 test("resolves no transfer when the chain's end is blocked", async () => {
@@ -65,7 +65,7 @@ test("resolves no transfer when the chain's end is blocked", async () => {
         engine.transfers.submitTransfer(ports[2], ports[3], false);
     });
 
-    assert.equal(engine.transfers.resolvedEdges(), "");
+    assert.equal(engine.transfers.getResolvedEdges(), "");
 });
 
 test("a fan-out source moves into its best-ranked destination only", async () => {
@@ -76,9 +76,9 @@ test("a fan-out source moves into its best-ranked destination only", async () =>
         engine.transfers.submitTransfer(ports[0], ports[2], true, 0);
     });
 
-    assert.equal(engine.transfers.resolvedEdges(), `${ports[0]}->${ports[2]}`);
-    assert.equal(engine.ports.item(ports[1]), EMPTY);
-    assert.equal(engine.ports.item(ports[2]), ITEM);
+    assert.equal(engine.transfers.getResolvedEdges(), `${ports[0]}->${ports[2]}`);
+    assert.equal(engine.ports.getItemByPortEid(ports[1]), EMPTY);
+    assert.equal(engine.ports.getItemByPortEid(ports[2]), ITEM);
 });
 
 test("a contested destination takes the lowest-ranked contender", async () => {
@@ -89,9 +89,9 @@ test("a contested destination takes the lowest-ranked contender", async () => {
         engine.transfers.submitTransfer(ports[1], ports[2], true, 0);
     });
 
-    assert.equal(engine.transfers.resolvedEdges(), `${ports[1]}->${ports[2]}`);
-    assert.equal(engine.ports.item(ports[0]), ITEM);
-    assert.equal(engine.ports.item(ports[1]), EMPTY);
+    assert.equal(engine.transfers.getResolvedEdges(), `${ports[1]}->${ports[2]}`);
+    assert.equal(engine.ports.getItemByPortEid(ports[0]), ITEM);
+    assert.equal(engine.ports.getItemByPortEid(ports[1]), EMPTY);
 });
 
 test("translates the item type on a transfer via output_item", async () => {
@@ -101,8 +101,8 @@ test("translates the item type on a transfer via output_item", async () => {
         engine.transfers.submitTransfer(ports[0], ports[1], true, EMPTY, 99);
     });
 
-    assert.equal(engine.ports.item(ports[0]), EMPTY);
-    assert.equal(engine.ports.item(ports[1]), 99);
+    assert.equal(engine.ports.getItemByPortEid(ports[0]), EMPTY);
+    assert.equal(engine.ports.getItemByPortEid(ports[1]), 99);
 });
 
 test("creates a brand-new item with a source-less intent", async () => {
@@ -112,7 +112,7 @@ test("creates a brand-new item with a source-less intent", async () => {
         engine.transfers.submitCreate(ports[0], 55, true);
     });
 
-    assert.equal(engine.ports.item(ports[0]), 55);
+    assert.equal(engine.ports.getItemByPortEid(ports[0]), 55);
     assert.equal(engine.transfers.wasDest(ports[0]), true);
 });
 
@@ -123,7 +123,7 @@ test("a drain empties its source", async () => {
         engine.transfers.submitDrain(ports[0]);
     });
 
-    assert.equal(engine.ports.item(ports[0]), EMPTY);
+    assert.equal(engine.ports.getItemByPortEid(ports[0]), EMPTY);
 });
 
 // A sink drains before POST_RESOLVE, so a producer feeding the same port refills it the same tick.
@@ -131,7 +131,7 @@ test("a drained sink is empty by POST_RESOLVE", async () => {
     const {engine, ports} = await setup(1, [1]);
     let itemAtPostResolve = ITEM;
     engine.registerSystem(new ProbeSystem({postResolve: () => {
-        itemAtPostResolve = engine.ports.item(ports[0]);
+        itemAtPostResolve = engine.ports.getItemByPortEid(ports[0]);
     }}));
 
     tick(engine, () => {
@@ -148,7 +148,7 @@ test("a transfer's source is cleared before POST_RESOLVE", async () => {
     const [source, dest] = ports;
     const NEXT_ITEM = 8;
     engine.registerSystem(new ProbeSystem({postResolve: () => {
-        if (engine.ports.item(source) === EMPTY) {
+        if (engine.ports.getItemByPortEid(source) === EMPTY) {
             engine.ports.setItem(source, NEXT_ITEM);
         }
     }}));
@@ -157,8 +157,8 @@ test("a transfer's source is cleared before POST_RESOLVE", async () => {
         engine.transfers.submitTransfer(source, dest, true);
     });
 
-    assert.equal(engine.ports.item(dest), ITEM);
-    assert.equal(engine.ports.item(source), NEXT_ITEM);
+    assert.equal(engine.ports.getItemByPortEid(dest), ITEM);
+    assert.equal(engine.ports.getItemByPortEid(source), NEXT_ITEM);
 });
 
 // The destination fills after the POST_RESOLVE systems ran, so a consumer reading it there still
@@ -167,7 +167,7 @@ test("a transfer fills its destination after POST_RESOLVE", async () => {
     const {engine, ports} = await setup(2, [1]);
     let itemAtPostResolve = EMPTY;
     engine.registerSystem(new ProbeSystem({postResolve: () => {
-        itemAtPostResolve = engine.ports.item(ports[1]);
+        itemAtPostResolve = engine.ports.getItemByPortEid(ports[1]);
     }}));
 
     tick(engine, () => {
@@ -175,7 +175,7 @@ test("a transfer fills its destination after POST_RESOLVE", async () => {
     });
 
     assert.equal(itemAtPostResolve, EMPTY);
-    assert.equal(engine.ports.item(ports[1]), ITEM);
+    assert.equal(engine.ports.getItemByPortEid(ports[1]), ITEM);
 });
 
 test("a submitted intent reports whether it resolved", async () => {

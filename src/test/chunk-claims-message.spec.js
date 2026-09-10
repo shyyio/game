@@ -35,7 +35,7 @@ async function setup() {
 }
 
 function machineCount(game) {
-    return game.simEngine.placed.eidsOf(BlenderType.objectTypeId).length;
+    return game.simEngine.placed.getEidsByTypeId(BlenderType.objectTypeId).length;
 }
 
 test("connect syncs identity, the own name, own claims, and friends", async () => {
@@ -162,7 +162,7 @@ test("a claim defaults to only-me permission", async () => {
     const {game, alice} = await setup();
     const chunkKey = chunkKeyAt(5, 5);
     game.dispatchMessage(new ClaimChunkMessage(chunkKey), alice);
-    assert.equal(game.claims.permissionOf(chunkKey), ChunkPermission.PERMISSION_ONLY_ME);
+    assert.equal(game.claims.getPermissionByChunkKey(chunkKey), ChunkPermission.PERMISSION_ONLY_ME);
 });
 
 test("friends permission lets a friend-granted player build, only-me blocks them", async () => {
@@ -188,7 +188,7 @@ test("a non-owner's permission change is ignored", async () => {
     game.dispatchMessage(new ClaimChunkMessage(chunkKey), alice);
 
     game.dispatchMessage(new SetChunkPermissionMessage(chunkKey, ChunkPermission.PERMISSION_FRIENDS), bob);
-    assert.equal(game.claims.permissionOf(chunkKey), ChunkPermission.PERMISSION_ONLY_ME, "bob owns nothing here");
+    assert.equal(game.claims.getPermissionByChunkKey(chunkKey), ChunkPermission.PERMISSION_ONLY_ME, "bob owns nothing here");
 });
 
 test("a permission change reaches the chunk's viewers", async () => {
@@ -226,7 +226,7 @@ test("a friendship change resyncs both players' lists, names first", async () =>
 
 test("add-friend-by-code resolves the code before granting, and answers found", async () => {
     const {game, alice} = await setup();
-    const bobCode = game.players.byId(BOB).friendCode;
+    const bobCode = game.players.getPlayerByRef(BOB).friendCode;
     game.dispatchMessage(new AddFriendByCodeMessage(bobCode), alice);
 
     const aliceList = alice.events.filter(event => event instanceof FriendListEvent).at(-1);
@@ -242,7 +242,7 @@ test("add-friend-by-code for an unregistered code is silently ignored, and answe
     const unknownCode = generateFriendCode();
     game.dispatchMessage(new AddFriendByCodeMessage(unknownCode), alice);
 
-    assert.deepEqual(game.players.byId(ALICE).friends, new Set());
+    assert.deepEqual(game.players.getPlayerByRef(ALICE).friends, new Set());
     const aliceList = alice.events.filter(event => event instanceof FriendListEvent).at(-1);
     assert.deepEqual(aliceList.friendIds, [], "the unchanged list still re-sends");
     const result = alice.events.find(event => event instanceof AddFriendByCodeResultEvent);
@@ -252,7 +252,7 @@ test("add-friend-by-code for an unregistered code is silently ignored, and answe
 
 test("add-friend-by-code on your own code answers not found", async () => {
     const {game, alice} = await setup();
-    const ownCode = game.players.byId(ALICE).friendCode;
+    const ownCode = game.players.getPlayerByRef(ALICE).friendCode;
     game.dispatchMessage(new AddFriendByCodeMessage(ownCode), alice);
 
     const result = alice.events.find(event => event instanceof AddFriendByCodeResultEvent);
@@ -264,9 +264,9 @@ test("deleting in a foreign chunk is rejected and leaves occupancy intact", asyn
     const engine = game.simEngine;
     game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), alice);
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP), alice);
-    const eid = engine.placed.eidsOf(BlenderType.objectTypeId)[0];
-    const objectRef = engine.placed.objectRefOf(eid);
-    const footprint = engine.footprint(BlenderType, 5, 5, Direction.UP);
+    const eid = engine.placed.getEidsByTypeId(BlenderType.objectTypeId)[0];
+    const objectRef = engine.placed.getObjectRefByEid(eid);
+    const footprint = engine.getFootprintAt(BlenderType, 5, 5, Direction.UP);
 
     game.dispatchMessage(new DeleteObjectMessage(objectRef), bob);
     assert.equal(machineCount(game), 1, "stranger's delete rejected");
@@ -287,11 +287,11 @@ test("unclaiming a non-empty chunk needs the clear confirmation, which deletes t
     game.dispatchMessage(new UnclaimChunkMessage(chunkKey), alice);
     const rejected = alice.events.find(event => event instanceof ClaimResultEvent);
     assert.equal(rejected.result, ClaimResult.CLAIM_RESULT_NOT_EMPTY);
-    assert.equal(game.claims.ownerOf(chunkKey), ALICE, "still claimed");
+    assert.equal(game.claims.getOwnerByChunkKey(chunkKey), ALICE, "still claimed");
     assert.equal(machineCount(game), 1, "nothing deleted on the rejection");
 
     game.dispatchMessage(new UnclaimChunkMessage(chunkKey, true), alice);
-    assert.equal(game.claims.ownerOf(chunkKey), PLAYER_REF_NONE);
+    assert.equal(game.claims.getOwnerByChunkKey(chunkKey), PLAYER_REF_NONE);
     assert.equal(machineCount(game), 0, "the confirmation cleared the chunk");
 });
 
@@ -307,7 +307,7 @@ test("a splitting unclaim rejects with WOULD_SPLIT before the non-empty confirma
     game.dispatchMessage(new UnclaimChunkMessage(middle), alice);
     const rejected = alice.events.find(event => event instanceof ClaimResultEvent);
     assert.equal(rejected.result, ClaimResult.CLAIM_RESULT_WOULD_SPLIT);
-    assert.equal(game.claims.ownerOf(middle), ALICE, "still claimed");
+    assert.equal(game.claims.getOwnerByChunkKey(middle), ALICE, "still claimed");
     assert.equal(machineCount(game), 1, "nothing deleted");
 });
 

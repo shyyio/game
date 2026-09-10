@@ -29,8 +29,8 @@ export class PackagedMod {
      * @param {string} file
      * @returns {string}
      */
-    contentNameOf(file) {
-        return contentName(integrityHex(this.entry.integrityOf(file)), file);
+    getContentNameByFile(file) {
+        return contentName(integrityHex(this.entry.getIntegrityByFile(file)), file);
     }
 }
 
@@ -44,7 +44,7 @@ export async function loadPackagedMods(lockfile, cache) {
     const packages = [];
     const mods = [];
     for (const entry of lockfile.mods) {
-        const manifest = ModManifest.parse(cache.manifestJson(entry));
+        const manifest = ModManifest.parse(cache.getManifestJsonByEntry(entry));
         if (manifest.name !== entry.name || manifest.version !== entry.version) {
             throw new Error(
                 `${entry.url} ships ${manifest.name} ${manifest.version}, but the server lists ` +
@@ -60,9 +60,9 @@ export async function loadPackagedMods(lockfile, cache) {
         // Every file the manifest declares must be in the entry, and every one re-hashed, before
         // any of it is imported.
         for (const file of manifest.files) {
-            cache.read(packaged.contentNameOf(file));
+            cache.read(packaged.getContentNameByFile(file));
         }
-        const bundlePath = cache.pathOf(packaged.contentNameOf(manifest.entry));
+        const bundlePath = cache.getPathByName(packaged.getContentNameByFile(manifest.entry));
         const bundle = await import(/* @vite-ignore */ pathToFileURL(bundlePath).href);
         const sim = manifest.has(MOD_PART_SIM) ? bundle.createSim(sdk) : null;
         packages.push(new ModPackage(bundle.createDeclaration(sdk), {sim}));

@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {EMPTY} from "@/sim/sentinels.js";
-import {laneLevelLayer, LANE_LEVEL_BURIED} from "@/sim/LaneIndex.js";
+import {getLaneLevelLayer, LANE_LEVEL_BURIED} from "@/sim/LaneIndex.js";
 import {BeltType, BeltTunnelDownType, BeltTunnelUpType, BeltUndergroundType} from "@/mods/logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {placeBelt, beltLaneAt} from "@/test/beltFixture.js";
@@ -18,10 +18,10 @@ test("an item tunnels through a tunnel-down / underground / tunnel-up run", asyn
     placeBelt(engine, 0, 5, Direction.UP);
 
     // Undergrounds were auto-created and the whole run is one lane.
-    const buried = laneLevelLayer(LANE_LEVEL_BURIED, Direction.UP);
+    const buried = getLaneLevelLayer(LANE_LEVEL_BURIED, Direction.UP);
     for (const y of [3, 2]) {
-        const eid = engine.placed.eidAt(0, y, buried);
-        assert.equal(engine.placed.objectTypeIdOf(eid), BeltUndergroundType.objectTypeId, `underground filled at (0,${y})`);
+        const eid = engine.placed.getEidAt(0, y, buried);
+        assert.equal(engine.placed.getObjectTypeIdByEid(eid), BeltUndergroundType.objectTypeId, `underground filled at (0,${y})`);
     }
     const lane = beltLaneAt(engine, 0, 5);
     assert.equal(beltLaneAt(engine, 0, 4).laneRef, lane.laneRef);
@@ -34,7 +34,7 @@ test("an item tunnels through a tunnel-down / underground / tunnel-up run", asyn
     for (let i = 0; i < 20 && !arrived; i += 1) {
         engine.ports.setItem(lane.outputPort, EMPTY);
         engine.tick();
-        arrived = engine.ports.item(lane.outputPort) === RED;
+        arrived = engine.ports.getItemByPortEid(lane.outputPort) === RED;
     }
     assert.ok(arrived, "the item tunneled through to the output");
 });

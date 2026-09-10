@@ -352,7 +352,7 @@ export class ModRegistry {
      * @param {number} key
      * @returns {LogicKeyEntry}
      */
-    logicKeyEntry(key) {
+    getLogicKeyEntryByKey(key) {
         this._assertFrozen();
         const entry = this._logicKeyEntries.get(key);
         if (entry === undefined) {
@@ -377,8 +377,8 @@ export class ModRegistry {
      * @param {number} key
      * @returns {string}
      */
-    logicKeyName(key) {
-        return this.logicKeyEntry(key).name;
+    getLogicKeyNameByKey(key) {
+        return this.getLogicKeyEntryByKey(key).name;
     }
 
     /**
@@ -386,7 +386,7 @@ export class ModRegistry {
      * @param {number} objectTypeId
      * @returns {ObjectType}
      */
-    objectTypeById(objectTypeId) {
+    getObjectTypeByTypeId(objectTypeId) {
         this._assertFrozen();
         const type = this._objectTypeById.get(objectTypeId);
         if (type === undefined) {
@@ -462,7 +462,7 @@ export class ModRegistry {
      * @param {number} key
      * @returns {PlayerSettingEntry|undefined}
      */
-    playerSettingEntry(key) {
+    findPlayerSettingEntryByKey(key) {
         this._assertFrozen();
         return this._playerSettingEntries.get(key);
     }
@@ -544,7 +544,7 @@ export class ModRegistry {
      * @param {number} metricsType
      * @returns {MetricsGlobalQueryEntry|undefined}
      */
-    metricsGlobalQuery(metricsType) {
+    findMetricsGlobalQueryByType(metricsType) {
         this._assertFrozen();
         return this._metricsGlobalQueries.get(metricsType);
     }

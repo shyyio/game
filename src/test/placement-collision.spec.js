@@ -12,22 +12,22 @@ test("a second surface belt cannot occupy the same tile, and delete frees it", a
     const engine = await makeGameEngine();
 
     placeBelt(engine, 5, 5, Direction.UP);
-    assert.equal(engine.placed.eidsOf(BeltType.objectTypeId).length, 1, "first belt placed");
+    assert.equal(engine.placed.getEidsByTypeId(BeltType.objectTypeId).length, 1, "first belt placed");
     placeBelt(engine, 5, 5, Direction.RIGHT);
-    assert.equal(engine.placed.eidsOf(BeltType.objectTypeId).length, 1, "second surface belt on the tile is rejected");
+    assert.equal(engine.placed.getEidsByTypeId(BeltType.objectTypeId).length, 1, "second surface belt on the tile is rejected");
 
-    const eid = engine.placed.eidAt(5, 5, LAYER_SURFACE);
-    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(eid)));
-    assert.equal(engine.placed.eidAt(5, 5, LAYER_SURFACE), NO_EID);
+    const eid = engine.placed.getEidAt(5, 5, LAYER_SURFACE);
+    engine.applyMessage(new DeleteObjectMessage(engine.placed.getObjectRefByEid(eid)));
+    assert.equal(engine.placed.getEidAt(5, 5, LAYER_SURFACE), NO_EID);
     placeBelt(engine, 5, 5, Direction.RIGHT);
-    assert.equal(engine.placed.eidsOf(BeltType.objectTypeId).length, 1, "tile is free after delete");
+    assert.equal(engine.placed.getEidsByTypeId(BeltType.objectTypeId).length, 1, "tile is free after delete");
 });
 
 test("an object cannot be placed on an occupied tile", async () => {
     const engine = await makeGameEngine();
 
     engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP));
-    assert.equal(engine.placed.eidsOf(BlenderType.objectTypeId).length, 1);
+    assert.equal(engine.placed.getEidsByTypeId(BlenderType.objectTypeId).length, 1);
     engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP));
-    assert.equal(engine.placed.eidsOf(BlenderType.objectTypeId).length, 1, "overlapping machine rejected");
+    assert.equal(engine.placed.getEidsByTypeId(BlenderType.objectTypeId).length, 1, "overlapping machine rejected");
 });

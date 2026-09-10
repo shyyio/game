@@ -163,7 +163,7 @@ export class RoadNetwork {
      * @param {number} y
      * @returns {boolean}
      */
-    roadAt(x, y) {
+    hasRoadAt(x, y) {
         return this._tiles.has(tileKeyAt(x, y));
     }
 
@@ -171,7 +171,7 @@ export class RoadNetwork {
      * @param {number} key - a tileKey
      * @returns {RoadTile|undefined}
      */
-    tileByKey(key) {
+    findTileByKey(key) {
         return this._tiles.get(key);
     }
 
@@ -192,7 +192,7 @@ export class RoadNetwork {
         }
         const affected = this._dirtyComponents;
         this._dirtyComponents = new Set();
-        const seeds = this._dirtySeeds();
+        const seeds = this._getDirtySeeds();
         this._dirtyCells.clear();
         return {seeds, affected};
     }
@@ -204,7 +204,7 @@ export class RoadNetwork {
      * @private
      * @returns {RoadTile[]}
      */
-    _dirtySeeds() {
+    _getDirtySeeds() {
         const seeds = [];
         const seenRoads = new Set();
         const seenHousings = new Set();
@@ -219,7 +219,7 @@ export class RoadNetwork {
                 }
                 return;
             }
-            const housing = this.housingAt(x, y);
+            const housing = this.findHousingAt(x, y);
             if (housing !== null && !seenHousings.has(housing.objectRef)) {
                 seenHousings.add(housing.objectRef);
                 housingQueue.push(housing);
@@ -246,20 +246,20 @@ export class RoadNetwork {
      * @param {number} y
      * @returns {HousingSupply|null}
      */
-    housingAt(x, y) {
-        const owner = this.engine.space.ownerAt(x, y, LAYER_SURFACE);
+    findHousingAt(x, y) {
+        const owner = this.engine.space.getOwnerAt(x, y, LAYER_SURFACE);
         if (owner === null) {
             return null;
         }
-        const eid = this.placed.eidByObjectRef(owner);
+        const eid = this.placed.findEidByObjectRef(owner);
         if (eid === undefined) {
             return null;
         }
-        const behavior = this.placed.behaviorFor(this.placed.objectTypeIdOf(eid));
+        const behavior = this.placed.getBehaviorByTypeId(this.placed.getObjectTypeIdByEid(eid));
         if (behavior.workerSupply <= 0) {
             return null;
         }
-        return new HousingSupply(owner, behavior.workerSupply, this.footprintOf(behavior, eid));
+        return new HousingSupply(owner, behavior.workerSupply, this.getFootprintByEid(behavior, eid));
     }
 
     /**
@@ -267,9 +267,9 @@ export class RoadNetwork {
      * @param {number} eid
      * @returns {{x: number, y: number}[]}
      */
-    footprintOf(behavior, eid) {
+    getFootprintByEid(behavior, eid) {
         const position = this.engine.Position;
-        return this.engine.footprint(behavior.type, position.x[eid], position.y[eid], position.direction[eid]);
+        return this.engine.getFootprintAt(behavior.type, position.x[eid], position.y[eid], position.direction[eid]);
     }
 
     /**
@@ -279,7 +279,7 @@ export class RoadNetwork {
      * @param {Set<number>|null} affected
      * @returns {RoadComponent[]}
      */
-    componentsFrom(seeds, affected) {
+    getComponentsBySeeds(seeds, affected) {
         const seen = new Set();
         const seenHousings = new Set();
         const components = [];
@@ -295,7 +295,7 @@ export class RoadNetwork {
                 roadTiles: this._tiles,
                 seen,
                 housingAt: (x, y) => {
-                    const housing = this.housingAt(x, y);
+                    const housing = this.findHousingAt(x, y);
                     if (housing === null || seenHousings.has(housing.objectRef)) {
                         return null;
                     }
@@ -337,12 +337,12 @@ export class RoadNetwork {
         this._tiles = new Map();
         const objects = this.placed.objects;
         for (let row = 0; row < objects.count; row += 1) {
-            const behavior = this.placed.behaviorFor(objects.store.objectTypeId[row]);
+            const behavior = this.placed.getBehaviorByTypeId(objects.store.objectTypeId[row]);
             if (!(behavior instanceof RoadBehavior)) {
                 continue;
             }
             const objectRef = objects.store.objectRef[row];
-            for (const cell of this.footprintOf(behavior, objects.eids[row])) {
+            for (const cell of this.getFootprintByEid(behavior, objects.eids[row])) {
                 this.addRoad(cell.x, cell.y, objectRef);
             }
         }

@@ -80,7 +80,7 @@ export class ModCache {
      * @param {string} name as returned by contentName()
      * @returns {string}
      */
-    pathOf(name) {
+    getPathByName(name) {
         return join(this._dir, name);
     }
 
@@ -91,7 +91,7 @@ export class ModCache {
      * @returns {Uint8Array}
      */
     read(name) {
-        const bytes = readFileSync(this.pathOf(name));
+        const bytes = readFileSync(this.getPathByName(name));
         const hex = sha256Hex(bytes);
         if (!name.startsWith(hex)) {
             throw new Error(`Cached file ${name} does not match its own hash`);
@@ -111,7 +111,7 @@ export class ModCache {
         for (const entry of lockfile.mods) {
             for (const [file, integrity] of entry.integrity) {
                 const name = contentName(integrityHex(integrity), file);
-                if (existsSync(this.pathOf(name))) {
+                if (existsSync(this.getPathByName(name))) {
                     continue;
                 }
                 const bytes = await this._fetchFile(`${entry.url}${file}`);
@@ -121,7 +121,7 @@ export class ModCache {
                         `${entry.url}${file} hashes to ${formatIntegrity(hex)}, but "${entry.name}" records ${integrity}`,
                     );
                 }
-                writeFileSync(this.pathOf(name), bytes);
+                writeFileSync(this.getPathByName(name), bytes);
                 downloaded += 1;
             }
         }
@@ -138,11 +138,11 @@ export class ModCache {
         for (const entry of lockfile.mods) {
             for (const [file, integrity] of entry.integrity) {
                 const name = contentName(integrityHex(integrity), file);
-                if (!existsSync(this.pathOf(name))) {
+                if (!existsSync(this.getPathByName(name))) {
                     problems.push(`${entry.name}: ${file} is not cached`);
                     continue;
                 }
-                const hex = sha256Hex(readFileSync(this.pathOf(name)));
+                const hex = sha256Hex(readFileSync(this.getPathByName(name)));
                 if (formatIntegrity(hex) !== integrity) {
                     problems.push(`${entry.name}: ${file} hashes to ${formatIntegrity(hex)}, recorded ${integrity}`);
                 }
@@ -156,8 +156,8 @@ export class ModCache {
      * @param {ModLockEntry} entry
      * @returns {object} the raw mod.json payload
      */
-    manifestJson(entry) {
-        const name = contentName(integrityHex(entry.integrityOf(MANIFEST_FILE)), MANIFEST_FILE);
+    getManifestJsonByEntry(entry) {
+        const name = contentName(integrityHex(entry.getIntegrityByFile(MANIFEST_FILE)), MANIFEST_FILE);
         return JSON.parse(new TextDecoder().decode(this.read(name)));
     }
 }

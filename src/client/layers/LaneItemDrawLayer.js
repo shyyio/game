@@ -260,7 +260,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * @param {LaneRecord} lane
      * @returns {{cells: CacheEntry[], slots: number[], offsets: number[], total: number}|null}
      */
-    _slotsOf(lane) {
+    _getSlotsByLane(lane) {
         const cells = [];
         const slots = [];
         const offsets = [];
@@ -287,7 +287,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _redraw(laneRef, lane, snap) {
-        const slots = this._slotsOf(lane);
+        const slots = this._getSlotsByLane(lane);
         if (slots === null) {
             return;
         }

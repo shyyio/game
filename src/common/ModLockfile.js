@@ -38,7 +38,7 @@ export class ModLockEntry {
      * @param {string} file
      * @returns {string}
      */
-    integrityOf(file) {
+    getIntegrityByFile(file) {
         const hash = this.integrity.get(file);
         if (hash === undefined) {
             throw new Error(`Mod "${this.name}" records no hash for ${file}`);
@@ -108,7 +108,7 @@ export class ModLockfile {
      * @param {string} name
      * @returns {ModLockEntry|null}
      */
-    find(name) {
+    findEntryByName(name) {
         const found = this.mods.find(entry => entry.name === name);
         if (found === undefined) {
             return null;
@@ -125,7 +125,7 @@ export class ModLockfile {
      */
     withUpdated(built) {
         const mods = this.mods.map(entry => {
-            const replacement = built.find(entry.name);
+            const replacement = built.findEntryByName(entry.name);
             if (replacement === null) {
                 return entry;
             }

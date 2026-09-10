@@ -212,7 +212,7 @@ export class ConnectionDrawLayer extends AbstractTileMeshDrawLayer {
         for (const connection of this.cache.connectedPorts(entry)) {
             const base = connection.isOutput ? OUTPUT_CONNECTION : INPUT_CONNECTION;
             connections.push(new Connection(
-                this._slotOf(base),
+                this._getSlotByName(base),
                 connection.tileX,
                 connection.tileY,
                 quarterTurns,

@@ -29,7 +29,7 @@ function noiseThreshold(column, row) {
     if (ditherTerrain === null) {
         throw new Error("The noise dither has no terrain; setDitherTerrain() runs when the seed arrives");
     }
-    return ditherTerrain.ditherAt(column, row);
+    return ditherTerrain.getDitherAt(column, row);
 }
 
 /**
@@ -114,11 +114,11 @@ export class DitherPattern {
 
     /**
      * @param {string} name the console name, unique across the set
-     * @param {function(number, number): number} thresholdAt column, row -> threshold in [0, 1]
+     * @param {function(number, number): number} getThresholdAt column, row -> threshold in [0, 1]
      */
-    constructor(name, thresholdAt) {
+    constructor(name, getThresholdAt) {
         this.name = name;
-        this._thresholdAt = thresholdAt;
+        this._thresholdAt = getThresholdAt;
     }
 
     /**
@@ -126,7 +126,7 @@ export class DitherPattern {
      * @param {number} row world cell row
      * @returns {number} the threshold in [0, 1]
      */
-    thresholdAt(column, row) {
+    getThresholdAt(column, row) {
         return this._thresholdAt(column, row);
     }
 }
@@ -199,5 +199,5 @@ export function ditherThreshold(column, row) {
     if (!ditherEnabled) {
         return THRESHOLD_NEVER;
     }
-    return activePattern.thresholdAt(column, row);
+    return activePattern.getThresholdAt(column, row);
 }

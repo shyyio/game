@@ -10,8 +10,8 @@ const MAX = 9;
 test("first claim lands anywhere", () => {
     const claims = new ChunkClaims();
     assert.equal(claims.claim(1, chunkOrdinal(30, -20), MAX), ClaimResult.CLAIM_RESULT_OK);
-    assert.equal(claims.ownerOf(chunkOrdinal(30, -20)), 1);
-    assert.equal(claims.countOf(1), 1);
+    assert.equal(claims.getOwnerByChunkKey(chunkOrdinal(30, -20)), 1);
+    assert.equal(claims.getCountByPlayerRef(1), 1);
 });
 
 test("the null player cannot claim", () => {
@@ -48,7 +48,7 @@ test("only the owner may unclaim", () => {
     assert.equal(claims.unclaim(2, chunkOrdinal(0, 0)), ClaimResult.CLAIM_RESULT_NOT_OWNER);
     assert.equal(claims.unclaim(1, chunkOrdinal(5, 5)), ClaimResult.CLAIM_RESULT_NOT_OWNER);
     assert.equal(claims.unclaim(1, chunkOrdinal(0, 0)), ClaimResult.CLAIM_RESULT_OK);
-    assert.equal(claims.ownerOf(chunkOrdinal(0, 0)), PLAYER_REF_NONE);
+    assert.equal(claims.getOwnerByChunkKey(chunkOrdinal(0, 0)), PLAYER_REF_NONE);
 });
 
 test("unclaiming the middle of a line would split it", () => {
@@ -84,11 +84,11 @@ test("claimsIn filters claims to the rect", () => {
     claims.claim(1, chunkOrdinal(1, 0), MAX);
     claims.claim(2, chunkOrdinal(10, 10), MAX);
 
-    const inRect = claims.claimsIn(0, 0, 2, 1);
+    const inRect = claims.getClaimsInRect(0, 0, 2, 1);
     assert.deepEqual(inRect.chunks.sort(), [chunkOrdinal(0, 0), chunkOrdinal(1, 0)].sort());
     assert.deepEqual(inRect.playerRefs, [1, 1]);
 
-    const empty = claims.claimsIn(-5, -5, 3, 3);
+    const empty = claims.getClaimsInRect(-5, -5, 3, 3);
     assert.deepEqual(empty.chunks, []);
 });
 
@@ -100,12 +100,12 @@ test("table round-trip", () => {
 
     const restored = new ChunkClaims();
     restored.deserializeRecords(claims.serializeRecords());
-    assert.equal(restored.ownerOf(chunkOrdinal(0, 0)), 1);
-    assert.equal(restored.ownerOf(chunkOrdinal(10, 10)), 2);
-    assert.equal(restored.countOf(1), 2);
+    assert.equal(restored.getOwnerByChunkKey(chunkOrdinal(0, 0)), 1);
+    assert.equal(restored.getOwnerByChunkKey(chunkOrdinal(10, 10)), 2);
+    assert.equal(restored.getCountByPlayerRef(1), 2);
     // Contiguity survives the round-trip: an adjacent claim still works.
     assert.equal(restored.claim(1, chunkOrdinal(2, 0), MAX), ClaimResult.CLAIM_RESULT_OK);
 
     restored.deserializeRecords(undefined);
-    assert.equal(restored.countOf(1), 0);
+    assert.equal(restored.getCountByPlayerRef(1), 0);
 });

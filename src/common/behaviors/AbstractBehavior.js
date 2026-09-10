@@ -3,7 +3,7 @@
  * generic entity lifecycle (spawn/despawn/chunk-sync/inspect); a behavior supplies the type-specific
  * pieces: its components and systems ({@link install}, once per behavior class per engine — never
  * read instance config there) and the per-entity hooks. One behavior instance belongs to exactly one
- * ObjectType; systems read per-entity config through `engine.placed.behaviorFor(objectTypeId)`.
+ * ObjectType; systems read per-entity config through `engine.placed.getBehaviorByTypeId(objectTypeId)`.
  */
 export class AbstractBehavior {
 
@@ -55,7 +55,7 @@ export class AbstractBehavior {
      * @param {Direction} direction
      * @returns {string[]}
      */
-    positionLayers(direction) {
+    getPositionLayersByDirection(direction) {
         return [this.type.positionLayer];
     }
 
@@ -72,7 +72,7 @@ export class AbstractBehavior {
 
     /**
      * Wires the freshly spawned entity: attaches behavior components, resolves ports, registers
-     * rendered ports. The insert event's ports come from {@link renderedPortEids}.
+     * rendered ports. The insert event's ports come from {@link getRenderedPortEids}.
      * @param {GameEngine} engine
      * @param {number} eid
      * @param {ObjectType} type
@@ -100,7 +100,7 @@ export class AbstractBehavior {
      * @param {number} eid
      * @returns {number[]}
      */
-    renderedPortEids(engine, eid) {
+    getRenderedPortEids(engine, eid) {
         return [];
     }
 
@@ -182,7 +182,7 @@ export class AbstractBehavior {
      * The logic keys logicRead answers for this type.
      * @returns {number[]}
      */
-    logicReadKeys() {
+    getLogicReadKeys() {
         return [];
     }
 
@@ -190,7 +190,7 @@ export class AbstractBehavior {
      * The logic keys logicWrite accepts for this type.
      * @returns {number[]}
      */
-    logicWriteKeys() {
+    getLogicWriteKeys() {
         return [];
     }
 }

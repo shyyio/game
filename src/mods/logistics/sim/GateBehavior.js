@@ -34,7 +34,7 @@ class GateSystem extends AbstractSystem {
 
     isPlacementAllowed(type, x, y, direction) {
         return !placementBlockedByGate(
-            (tx, ty) => GateBehavior._occupantAt(this.engine, tx, ty),
+            (tx, ty) => GateBehavior._findOccupantAt(this.engine, tx, ty),
             occupant => occupant.type.behavior instanceof GateBehavior,
             type, x, y, direction,
         );
@@ -58,15 +58,15 @@ export class GateBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, eid, type, message) {
-        const gates = engine.components.get("Gate");
+        const gates = engine.components.getComponentByName("Gate");
         gates.attach(eid);
         const gate = gates.store;
-        const row = gates.row(eid);
-        gate.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;
-        gate.out[row] = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction).port;
+        const row = gates.getRowByEid(eid);
+        gate.in[row] = engine.getPortAt(type.inputPorts[0], message.x, message.y, message.direction).port;
+        gate.out[row] = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction).port;
         gate.open[row] = 1;
         const kinds = gateConnections(
-            (tx, ty) => GateBehavior._occupantAt(engine, tx, ty),
+            (tx, ty) => GateBehavior._findOccupantAt(engine, tx, ty),
             message.x, message.y, message.direction,
         );
         const wantsFluid = (kinds.behind === CONVEYS_FLUID || kinds.front === CONVEYS_FLUID)
@@ -80,9 +80,9 @@ export class GateBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, eid) {
-        const gates = engine.components.get("Gate");
+        const gates = engine.components.getComponentByName("Gate");
         const gate = gates.store;
-        const row = gates.row(eid);
+        const row = gates.getRowByEid(eid);
         if (gate.fluid[row] === 1) {
             if (gate.open[row] === 1) {
                 engine.ports.unmarkFluid(gate.in[row]);
@@ -99,8 +99,8 @@ export class GateBehavior extends AbstractBehavior {
         if (key !== LOGIC_KEY_OPEN) {
             return null;
         }
-        const gates = engine.components.get("Gate");
-        return gates.store.open[gates.row(eid)];
+        const gates = engine.components.getComponentByName("Gate");
+        return gates.store.open[gates.getRowByEid(eid)];
     }
 
     logicWrite(engine, eid, key, value) {
@@ -111,11 +111,11 @@ export class GateBehavior extends AbstractBehavior {
         return true;
     }
 
-    logicReadKeys() {
+    getLogicReadKeys() {
         return [LOGIC_KEY_OPEN];
     }
 
-    logicWriteKeys() {
+    getLogicWriteKeys() {
         return [LOGIC_KEY_OPEN];
     }
 
@@ -127,8 +127,8 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     requestOpen(engine, eid, open) {
-        const gates = engine.components.get("Gate");
-        gates.store.pendingOpen[gates.row(eid)] = open ? 1 : 0;
+        const gates = engine.components.getComponentByName("Gate");
+        gates.store.pendingOpen[gates.getRowByEid(eid)] = open ? 1 : 0;
     }
 
     /**
@@ -150,9 +150,9 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {boolean} whether the state changed
      */
     static _applyOpen(engine, eid, open) {
-        const gates = engine.components.get("Gate");
+        const gates = engine.components.getComponentByName("Gate");
         const gate = gates.store;
-        const row = gates.row(eid);
+        const row = gates.getRowByEid(eid);
         const flag = open ? 1 : 0;
         if (gate.open[row] === flag) {
             return false;
@@ -170,15 +170,15 @@ export class GateBehavior extends AbstractBehavior {
         return true;
     }
 
-    renderedPortEids(engine, eid) {
-        const gates = engine.components.get("Gate");
-        return [gates.store.out[gates.row(eid)]];
+    getRenderedPortEids(engine, eid) {
+        const gates = engine.components.getComponentByName("Gate");
+        return [gates.store.out[gates.getRowByEid(eid)]];
     }
 
     resyncRenderedPorts(engine, eid) {
-        const gates = engine.components.get("Gate");
+        const gates = engine.components.getComponentByName("Gate");
         const gate = gates.store;
-        const row = gates.row(eid);
+        const row = gates.getRowByEid(eid);
         if (gate.fluid[row] === 1) {
             return;
         }
@@ -192,7 +192,7 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     onRebuild(engine) {
-        const gates = engine.components.get("Gate");
+        const gates = engine.components.getComponentByName("Gate");
         const gate = gates.store;
         for (let row = 0; row < gates.count; row += 1) {
             if (gate.fluid[row] === 0) {
@@ -216,17 +216,17 @@ export class GateBehavior extends AbstractBehavior {
      * @param {number} y
      * @returns {{type: ObjectType, direction: Direction}|null}
      */
-    static _occupantAt(engine, x, y) {
+    static _findOccupantAt(engine, x, y) {
         const placed = engine.placed;
-        const objectRef = engine.space.ownerAt(x, y, LAYER_SURFACE);
+        const objectRef = engine.space.getOwnerAt(x, y, LAYER_SURFACE);
         if (objectRef === null) {
             return null;
         }
-        const eid = placed.eidByObjectRef(objectRef);
+        const eid = placed.findEidByObjectRef(objectRef);
         if (eid === undefined) {
             return null;
         }
-        const type = placed.typeFor(placed.objectTypeIdOf(eid));
+        const type = placed.getObjectTypeByTypeId(placed.getObjectTypeIdByEid(eid));
         if (type === undefined) {
             return null;
         }
@@ -240,7 +240,7 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _applyPending(engine) {
-        const gates = engine.components.get("Gate");
+        const gates = engine.components.getComponentByName("Gate");
         const gate = gates.store;
         for (let row = 0; row < gates.count; row += 1) {
             const pending = gate.pendingOpen[row];
@@ -260,13 +260,13 @@ export class GateBehavior extends AbstractBehavior {
      */
     static _review(engine) {
         const placed = engine.placed;
-        const gates = engine.components.get("Gate");
+        const gates = engine.components.getComponentByName("Gate");
         const gate = gates.store;
         const position = engine.Position;
         for (let row = 0; row < gates.count; row += 1) {
             const eid = gates.eids[row];
             const kinds = gateConnections(
-                (tx, ty) => GateBehavior._occupantAt(engine, tx, ty),
+                (tx, ty) => GateBehavior._findOccupantAt(engine, tx, ty),
                 position.x[eid], position.y[eid], position.direction[eid],
             );
             const hasItem = kinds.behind === CONVEYS_ITEM || kinds.front === CONVEYS_ITEM;
@@ -292,9 +292,9 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _setMode(engine, eid, fluid) {
-        const gates = engine.components.get("Gate");
+        const gates = engine.components.getComponentByName("Gate");
         const gate = gates.store;
-        const row = gates.row(eid);
+        const row = gates.getRowByEid(eid);
         engine.sync.markDirty(gates, eid);
         engine.ports.setItem(gate.in[row], EMPTY);
         engine.ports.setItem(gate.out[row], EMPTY);
@@ -355,7 +355,7 @@ export class GateBehavior extends AbstractBehavior {
      */
     static _submitIntents(engine) {
         const item = engine.Port.item;
-        const gates = engine.components.get("Gate");
+        const gates = engine.components.getComponentByName("Gate");
         const gate = gates.store;
         for (let row = 0; row < gates.count; row += 1) {
             if (gate.open[row] === 0) {
@@ -393,7 +393,7 @@ export class GateBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _finish(engine) {
-        const gates = engine.components.get("Gate");
+        const gates = engine.components.getComponentByName("Gate");
         const gate = gates.store;
         for (let row = 0; row < gates.count; row += 1) {
             if (gate.fluid[row] === 1 && gate.buffered[row] !== EMPTY && engine.transfers.wasDest(gate.out[row])) {

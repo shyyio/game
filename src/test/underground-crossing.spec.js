@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {EMPTY} from "@/sim/sentinels.js";
-import {laneLevelLayer, LANE_LEVEL_BURIED} from "@/sim/LaneIndex.js";
+import {getLaneLevelLayer, LANE_LEVEL_BURIED} from "@/sim/LaneIndex.js";
 import {BeltType, BeltTunnelDownType, BeltTunnelUpType} from "@/mods/logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {placeBelt, beltLaneAt} from "@/test/beltFixture.js";
@@ -24,7 +24,7 @@ test("a vertical tunnel and a horizontal belt cross on the same tile and flow in
     }
 
     // Tile (0,3) holds two belts on different layers.
-    const buried = laneLevelLayer(LANE_LEVEL_BURIED, Direction.UP);
+    const buried = getLaneLevelLayer(LANE_LEVEL_BURIED, Direction.UP);
     const tunnel = beltLaneAt(engine, 0, 3, buried);
     const horizontal = beltLaneAt(engine, 0, 3, LAYER_SURFACE);
     assert.notEqual(tunnel.laneRef, horizontal.laneRef, "underground + surface belt coexist on (0,3) as distinct lanes");
@@ -40,10 +40,10 @@ test("a vertical tunnel and a horizontal belt cross on the same tile and flow in
         engine.ports.setItem(tunnel.outputPort, EMPTY);
         engine.ports.setItem(horizontal.outputPort, EMPTY);
         engine.tick();
-        if (engine.ports.item(tunnel.outputPort) === RED) {
+        if (engine.ports.getItemByPortEid(tunnel.outputPort) === RED) {
             tunnelOut = true;
         }
-        if (engine.ports.item(horizontal.outputPort) === BLUE) {
+        if (engine.ports.getItemByPortEid(horizontal.outputPort) === BLUE) {
             horizOut = true;
         }
     }

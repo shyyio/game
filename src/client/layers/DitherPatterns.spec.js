@@ -20,7 +20,7 @@ function sample(pattern, side) {
     const thresholds = [];
     for (let row = -side / 2; row < side / 2; row++) {
         for (let column = -side / 2; column < side / 2; column++) {
-            thresholds.push(pattern.thresholdAt(column, row));
+            thresholds.push(pattern.getThresholdAt(column, row));
         }
     }
     return thresholds;
@@ -48,9 +48,9 @@ test("the bayer matrices disperse: no cell shares its neighbor's threshold", () 
         const pattern = DITHER_PATTERNS.find(candidate => candidate.name === name);
         for (let row = -4; row < 4; row++) {
             for (let column = -4; column < 4; column++) {
-                const threshold = pattern.thresholdAt(column, row);
-                assert.notEqual(threshold, pattern.thresholdAt(column + 1, row), `${name} at ${column},${row}`);
-                assert.notEqual(threshold, pattern.thresholdAt(column, row + 1), `${name} at ${column},${row}`);
+                const threshold = pattern.getThresholdAt(column, row);
+                assert.notEqual(threshold, pattern.getThresholdAt(column + 1, row), `${name} at ${column},${row}`);
+                assert.notEqual(threshold, pattern.getThresholdAt(column, row + 1), `${name} at ${column},${row}`);
             }
         }
     }
@@ -61,7 +61,7 @@ test("bayer4 holds the classic dispersed ranks", () => {
     const ranks = [];
     for (let row = 0; row < 4; row++) {
         for (let column = 0; column < 4; column++) {
-            ranks.push(Math.round(pattern.thresholdAt(column, row) * 16 - 0.5));
+            ranks.push(Math.round(pattern.getThresholdAt(column, row) * 16 - 0.5));
         }
     }
     assert.deepEqual(ranks, [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]);
@@ -72,8 +72,8 @@ test("the matrix patterns tile, negative coordinates included", () => {
         const pattern = DITHER_PATTERNS.find(candidate => candidate.name === name);
         const period = {bayer4: 4, bayer8: 8, halftone: 4}[name];
         for (const [column, row] of [[0, 0], [1, 3], [-1, -7], [5, -2]]) {
-            assert.equal(pattern.thresholdAt(column, row), pattern.thresholdAt(column + period, row));
-            assert.equal(pattern.thresholdAt(column, row), pattern.thresholdAt(column, row - period));
+            assert.equal(pattern.getThresholdAt(column, row), pattern.getThresholdAt(column + period, row));
+            assert.equal(pattern.getThresholdAt(column, row), pattern.getThresholdAt(column, row - period));
         }
     }
 });
@@ -89,7 +89,7 @@ test("switched off, no cell can beat its threshold, whatever the pattern", () =>
         // The pattern is remembered, so switching back needs no re-pick.
         assert.equal(activeDither().name, "r2");
         setDitherEnabled(true);
-        assert.equal(ditherThreshold(3, -9), activeDither().thresholdAt(3, -9));
+        assert.equal(ditherThreshold(3, -9), activeDither().getThresholdAt(3, -9));
     } finally {
         setDitherEnabled(true);
         setActiveDither(DEFAULT_PATTERN);
@@ -102,8 +102,8 @@ test("setActiveDither swaps what ditherThreshold reads, and refuses an unknown n
         const swapped = setActiveDither("r2");
         assert.notEqual(swapped, fallback);
         assert.equal(activeDither(), swapped);
-        assert.equal(ditherThreshold(2, 5), swapped.thresholdAt(2, 5));
-        assert.notEqual(ditherThreshold(2, 5), fallback.thresholdAt(2, 5));
+        assert.equal(ditherThreshold(2, 5), swapped.getThresholdAt(2, 5));
+        assert.notEqual(ditherThreshold(2, 5), fallback.getThresholdAt(2, 5));
         assert.throws(() => setActiveDither("floyd"), /Unknown dither pattern "floyd".*bayer4/s);
         // The failed swap left the last good pattern in place.
         assert.equal(activeDither(), swapped);
@@ -116,12 +116,12 @@ test("the dither scale retunes the noise field, and refuses a non-positive one",
     const pattern = DITHER_PATTERNS.find(candidate => candidate.name === "noise");
     const before = ditherScale();
     try {
-        const coarse = [pattern.thresholdAt(0, 0), pattern.thresholdAt(8, 3)];
+        const coarse = [pattern.getThresholdAt(0, 0), pattern.getThresholdAt(8, 3)];
         assert.equal(setDitherScale(2), 2);
-        assert.notDeepEqual([pattern.thresholdAt(0, 0), pattern.thresholdAt(8, 3)], coarse);
+        assert.notDeepEqual([pattern.getThresholdAt(0, 0), pattern.getThresholdAt(8, 3)], coarse);
         // Back to the old scale, back to the old field: the seed never moves.
         setDitherScale(before);
-        assert.deepEqual([pattern.thresholdAt(0, 0), pattern.thresholdAt(8, 3)], coarse);
+        assert.deepEqual([pattern.getThresholdAt(0, 0), pattern.getThresholdAt(8, 3)], coarse);
         assert.throws(() => setDitherScale(0), /must be > 0/);
         assert.throws(() => setDitherScale(-1), /must be > 0/);
     } finally {
@@ -134,7 +134,7 @@ test("the noise pattern refuses to answer before the seed arrives", () => {
     const terrain = new Terrain(new WorldNoise(7, registry.noiseChannels), registry.biomes);
     try {
         setDitherTerrain(null);
-        assert.throws(() => pattern.thresholdAt(0, 0), /no terrain/);
+        assert.throws(() => pattern.getThresholdAt(0, 0), /no terrain/);
     } finally {
         setDitherTerrain(terrain);
     }

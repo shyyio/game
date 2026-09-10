@@ -11,7 +11,7 @@ export class PortDefinition {
      *     {0, 0, UP} and a front output {0, -1, UP}; `engine.portFor` rotates it by the placement.
      *     null for an internal port.
      * @param [render] {boolean} the engine draws this output port's resting item, and the object's
-     *     insert/sync events carry its ref (renderedPortEids, in outputPorts order); off for a
+     *     insert/sync events carry its ref (getRenderedPortEids, in outputPorts order); off for a
      *     virtual port or one the behavior draws itself
      * @param [fluid] {boolean} an adjacent pipe network may deliver into this input port; the
      *     behavior claims it with `engine.ports.markFluid` on spawn (a pipe only ever delivers into a
@@ -227,7 +227,7 @@ export class ObjectType {
      * @param {ObjectClientData} data
      * @returns {string}
      */
-    textureFor(data) {
+    getTextureByData(data) {
         return this.textureName;
     }
 
@@ -275,9 +275,9 @@ export class ObjectType {
      * @param {Direction} direction
      * @returns {{layer: string, cells: {x: number, y: number}[]}[]}
      */
-    positionLayerTiles(direction) {
-        const cells = this.geometry.tiles(direction);
-        return this.behavior.positionLayers(direction).map(layer => ({layer, cells}));
+    getPositionLayerTilesByDirection(direction) {
+        const cells = this.geometry.getTilesByDirection(direction);
+        return this.behavior.getPositionLayersByDirection(direction).map(layer => ({layer, cells}));
     }
 
     /**
@@ -286,18 +286,18 @@ export class ObjectType {
      * @param {("inputPorts"|"outputPorts")} portKind
      * @returns {PortDefinition[]}
      */
-    activePorts(portKind) {
+    getActivePortsByKind(portKind) {
         return this[portKind];
     }
 
     /**
-     * The subset of activePorts a surface neighbor can connect to (for the client's connection
+     * The subset of getActivePortsByKind a surface neighbor can connect to (for the client's connection
      * rendering / adjacency). The default is all active ports; objects that bury a port
      * override this.
      * @param {("inputPorts"|"outputPorts")} portKind
      * @returns {PortDefinition[]}
      */
-    surfacePorts(portKind) {
-        return this.activePorts(portKind);
+    getSurfacePortsByKind(portKind) {
+        return this.getActivePortsByKind(portKind);
     }
 }

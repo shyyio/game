@@ -107,7 +107,7 @@ export class AbstractComponent {
      * @param {number} eid
      * @returns {number}
      */
-    row(eid) {
+    getRowByEid(eid) {
         if (eid < this.set.sparse.length) {
             return this.set.sparse[eid];
         }
@@ -119,9 +119,9 @@ export class AbstractComponent {
      * @param {number} eid
      * @returns {number}
      */
-    slot(eid) {
+    getSlotByEid(eid) {
         if (this.sparse) {
-            return this.row(eid);
+            return this.getRowByEid(eid);
         }
         return eid;
     }
@@ -131,7 +131,7 @@ export class AbstractComponent {
      * @param {number} slot
      * @returns {number}
      */
-    eidAt(slot) {
+    getEidBySlot(slot) {
         if (this.sparse) {
             return this.set.dense[slot];
         }
@@ -203,7 +203,7 @@ export class AbstractComponent {
             return;
         }
         this.world.addComponent(eid, this.store);
-        const row = this.row(eid);
+        const row = this.getRowByEid(eid);
         this.grow(row);
         for (const field of this.fields) {
             this.store[field.name][row] = field.defaultValue;
@@ -236,7 +236,7 @@ export class AbstractComponent {
      * The entities currently carrying this component.
      * @returns {Int32Array}
      */
-    entities() {
+    getLiveEids() {
         if (this.sparse) {
             return this.eids.slice(0, this.count);
         }
@@ -248,7 +248,7 @@ export class AbstractComponent {
      * passes (the port sweep, serialize) read any component without knowing which it is.
      * @returns {Int32Array}
      */
-    slots() {
+    getSlots() {
         if (!this.sparse) {
             return this.world.query([this.store]);
         }

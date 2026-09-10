@@ -49,9 +49,9 @@ export class WorkerNetworks extends AbstractSystem {
      * @param {number} objectRef
      * @returns {{granted: number, supply: number, demand: number}|null}
      */
-    inspectFor(objectRef) {
+    findWorkerStatsByObjectRef(objectRef) {
         this.ensureFresh();
-        const assignment = this.assignments.get(objectRef);
+        const assignment = this.assignments.findAssignmentByObjectRef(objectRef);
         if (assignment === undefined) {
             return null;
         }
@@ -84,14 +84,14 @@ export class WorkerNetworks extends AbstractSystem {
      */
     _recompute(seeds, affected) {
         const next = this.allocation.run(seeds, affected);
-        const previous = this.assignments.within(affected);
+        const previous = this.assignments.getAssignmentsByComponents(affected);
         this._applyGrants(previous, next);
         this._emitDeltas(previous, next);
         for (const objectRef of previous.keys()) {
             this.assignments.drop(objectRef);
         }
         for (const assignment of next.values()) {
-            this.assignments.store(assignment);
+            this.assignments.setAssignment(assignment);
         }
     }
 
@@ -123,11 +123,11 @@ export class WorkerNetworks extends AbstractSystem {
      * @returns {void}
      */
     _setGranted(objectRef, granted) {
-        const eid = this.placed.eidByObjectRef(objectRef);
+        const eid = this.placed.findEidByObjectRef(objectRef);
         if (eid === undefined) {
             return;
         }
-        const behavior = this.placed.behaviorFor(this.placed.objectTypeIdOf(eid));
+        const behavior = this.placed.getBehaviorByTypeId(this.placed.getObjectTypeIdByEid(eid));
         behavior.setWorkers(this.engine, eid, granted);
     }
 
@@ -174,14 +174,14 @@ export class WorkerNetworks extends AbstractSystem {
      */
     chunkSync(chunkKey) {
         this.ensureFresh();
-        const objectRefs = this.assignments.inChunk(chunkKey);
+        const objectRefs = this.assignments.findObjectRefsByChunkKey(chunkKey);
         if (objectRefs === undefined) {
             return [];
         }
         const origin = chunkOrigin(chunkKey);
         const batch = new WorkerAssignmentBatchEvent(origin.x, origin.y);
         for (const objectRef of objectRefs) {
-            const assignment = this.assignments.get(objectRef);
+            const assignment = this.assignments.findAssignmentByObjectRef(objectRef);
             const housingId = assignment.housingObjectRef === null ? NO_HOUSING : assignment.housingObjectRef;
             batch.add(objectRef, housingId, assignment.granted, assignment.x, assignment.y);
         }

@@ -55,19 +55,19 @@ export class TradingTerminalBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, eid, type, message) {
-        const terminals = engine.components.get("MarketTerminal");
+        const terminals = engine.components.getComponentByName("MarketTerminal");
         terminals.attach(eid);
         const terminal = terminals.store;
-        const row = terminals.row(eid);
-        terminal.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;
-        const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
+        const row = terminals.getRowByEid(eid);
+        terminal.in[row] = engine.getPortAt(type.inputPorts[0], message.x, message.y, message.direction).port;
+        const output = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction);
         terminal.out[row] = output.port;
         engine.render.registerPort(output.port, output.tile.x, output.tile.y);
     }
 
     onDespawn(engine, eid) {
-        const terminals = engine.components.get("MarketTerminal");
-        const row = terminals.row(eid);
+        const terminals = engine.components.getComponentByName("MarketTerminal");
+        const row = terminals.getRowByEid(eid);
         engine.render.unregisterPort(terminals.store.out[row]);
         const book = engine.resolve(MarketBook);
         book.removeBuy(eid);
@@ -91,14 +91,14 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         engine.sync.markDirty(terminals, terminals.eids[row]);
     }
 
-    renderedPortEids(engine, eid) {
-        const terminals = engine.components.get("MarketTerminal");
-        return [terminals.store.out[terminals.row(eid)]];
+    getRenderedPortEids(engine, eid) {
+        const terminals = engine.components.getComponentByName("MarketTerminal");
+        return [terminals.store.out[terminals.getRowByEid(eid)]];
     }
 
     resyncRenderedPorts(engine, eid) {
-        const terminals = engine.components.get("MarketTerminal");
-        const out = terminals.store.out[terminals.row(eid)];
+        const terminals = engine.components.getComponentByName("MarketTerminal");
+        const out = terminals.store.out[terminals.getRowByEid(eid)];
         engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
 
@@ -122,7 +122,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
      */
     static _submitIntents(engine) {
         const item = engine.Port.item;
-        const terminals = engine.components.get("MarketTerminal");
+        const terminals = engine.components.getComponentByName("MarketTerminal");
         const terminal = terminals.store;
         const book = engine.resolve(MarketBook);
         const count = terminals.count;
@@ -142,11 +142,11 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             if (item[inputPort] !== terminal.itemTypeId[row]) {
                 continue;
             }
-            const match = book.bestEligibleBuyer(
+            const match = book.findBestEligibleBuyer(
                 terminal.itemTypeId[row],
                 terminal.price[row],
                 port => item[port] === EMPTY,
-                buyerEid => TradingTerminalBehavior._remainingBalance(terminals, terminal, buyerEid, reservedBalance),
+                buyerEid => TradingTerminalBehavior._getRemainingBalance(terminals, terminal, buyerEid, reservedBalance),
             );
             if (match === null) {
                 continue;
@@ -158,8 +158,8 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             } else {
                 engine.transfers.submitTransfer(inputPort, match.outputPort, true, EMPTY, terminal.itemTypeId[row]);
                 terminal.pendingBuyer[row] = match.eid;
-                const owner = terminal.owner[terminals.row(match.eid)];
-                const remaining = TradingTerminalBehavior._remainingBalance(terminals, terminal, match.eid, reservedBalance);
+                const owner = terminal.owner[terminals.getRowByEid(match.eid)];
+                const remaining = TradingTerminalBehavior._getRemainingBalance(terminals, terminal, match.eid, reservedBalance);
                 reservedBalance.set(owner, remaining - match.price);
             }
         }
@@ -181,7 +181,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
      */
     static _submitNpcPurchase(engine, item, book, terminal, row, reservedBalance) {
         const itemTypeId = terminal.itemTypeId[row];
-        const fixedPrice = book.fixedPriceOf(itemTypeId);
+        const fixedPrice = book.findFixedPriceByItemTypeId(itemTypeId);
         if (fixedPrice === undefined) {
             return;
         }
@@ -214,8 +214,8 @@ export class TradingTerminalBehavior extends AbstractBehavior {
      * @param {Map<number, number>} reservedBalance owning player -> balance remaining this pass
      * @returns {number}
      */
-    static _remainingBalance(terminals, terminal, buyerEid, reservedBalance) {
-        const row = terminals.row(buyerEid);
+    static _getRemainingBalance(terminals, terminal, buyerEid, reservedBalance) {
+        const row = terminals.getRowByEid(buyerEid);
         const owner = terminal.owner[row];
         if (reservedBalance.has(owner)) {
             return reservedBalance.get(owner);
@@ -237,7 +237,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _finish(engine) {
-        const terminals = engine.components.get("MarketTerminal");
+        const terminals = engine.components.getComponentByName("MarketTerminal");
         const terminal = terminals.store;
         const eids = terminals.eids;
         const book = engine.resolve(MarketBook);
@@ -256,7 +256,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
                 continue;
             }
             const npc = terminal.pendingIsNpc[row] === 1;
-            const confirmed = npc || engine.transfers.destFor(terminal.in[row]) !== EMPTY;
+            const confirmed = npc || engine.transfers.getDestByPortEid(terminal.in[row]) !== EMPTY;
             if (!confirmed) {
                 continue;
             }

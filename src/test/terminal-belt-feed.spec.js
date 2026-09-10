@@ -17,7 +17,7 @@ const TICKS = 30;
  * @returns {number} 1 when the port holds an item
  */
 function held(engine, port) {
-    if (engine.ports.item(port) === EMPTY) {
+    if (engine.ports.getItemByPortEid(port) === EMPTY) {
         return 0;
     }
     return 1;
@@ -29,11 +29,11 @@ test("a belt-fed seller loses no items when a pop and a sale share a tick", asyn
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 5, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, 10, 10, Direction.UP));
-    const [sellerEid, buyerEid] = engine.placed.eidsOf(TradingTerminalType.objectTypeId);
-    const def = engine.components.get("MarketTerminal");
+    const [sellerEid, buyerEid] = engine.placed.getEidsByTypeId(TradingTerminalType.objectTypeId);
+    const def = engine.components.getComponentByName("MarketTerminal");
     const terminal = def.store;
-    const sellerRow = def.row(sellerEid);
-    const buyerRow = def.row(buyerEid);
+    const sellerRow = def.getRowByEid(sellerEid);
+    const buyerRow = def.getRowByEid(buyerEid);
     terminal.mode[sellerRow] = MARKET_MODE_SELL;
     terminal.itemTypeId[sellerRow] = ITEM;
     terminal.price[sellerRow] = PRICE;
@@ -55,18 +55,18 @@ test("a belt-fed seller loses no items when a pop and a sale share a tick", asyn
     let fed = 0;
     let delivered = 0;
     for (let tick = 0; tick < TICKS; tick += 1) {
-        if (engine.ports.item(feed.inputPort) === EMPTY) {
+        if (engine.ports.getItemByPortEid(feed.inputPort) === EMPTY) {
             engine.ports.setItem(feed.inputPort, ITEM);
             fed += 1;
         }
         engine.tick();
-        if (engine.ports.item(buyerOutputPort) === ITEM) {
+        if (engine.ports.getItemByPortEid(buyerOutputPort) === ITEM) {
             delivered += 1;
             engine.ports.setItem(buyerOutputPort, EMPTY);
         }
     }
 
-    const inTransit = engine.lanes.itemCountOf(feed.laneRef) + held(engine, feed.inputPort) + held(engine, sellerInputPort);
+    const inTransit = engine.lanes.getItemCountByLaneRef(feed.laneRef) + held(engine, feed.inputPort) + held(engine, sellerInputPort);
     assert.equal(delivered + inTransit, fed, "every fed item is delivered or still on the way");
     assert.ok(delivered >= TICKS / 2, "the line sells at a sustained rate");
 });

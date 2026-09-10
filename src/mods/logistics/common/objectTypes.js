@@ -55,7 +55,7 @@ class BeltObjectType extends ObjectType {
 
     // A mouth/underground never merges from the side: only its straight-axis input (local UP)
     // stays active; outputs are unchanged.
-    activePorts(portKind) {
+    getActivePortsByKind(portKind) {
         if (portKind === "inputPorts" && this.beltKind !== BELT_NORMAL) {
             return this.inputPorts.filter(port => port.direction === Direction.UP);
         }
@@ -64,10 +64,10 @@ class BeltObjectType extends ObjectType {
 
     // Ports a surface neighbor can connect to: a mouth buries one end, so TUNNEL_DOWN exposes only
     // its input, TUNNEL_UP only its output, and an underground nothing (fully buried).
-    surfacePorts(portKind) {
+    getSurfacePortsByKind(portKind) {
         if (this.beltKind === BELT_TUNNEL_DOWN) {
             if (portKind === "inputPorts") {
-                return this.activePorts(portKind);
+                return this.getActivePortsByKind(portKind);
             }
             return [];
         }
@@ -80,7 +80,7 @@ class BeltObjectType extends ObjectType {
         if (this.beltKind === BELT_UNDERGROUND) {
             return [];
         }
-        return this.activePorts(portKind);
+        return this.getActivePortsByKind(portKind);
     }
 }
 
@@ -182,7 +182,7 @@ class GateObjectType extends ObjectType {
         this.fluidClosedTextureName = fluidClosedTextureName;
     }
 
-    textureFor(data) {
+    getTextureByData(data) {
         if (data.fluid === 1) {
             return data.open === 0 ? this.fluidClosedTextureName : this.fluidTextureName;
         }

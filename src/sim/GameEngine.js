@@ -294,7 +294,7 @@ export class GameEngine {
      * @param {number} chunkKey
      * @returns {number}
      */
-    chunkOwnerOf(chunkKey) {
+    getChunkOwnerByChunkKey(chunkKey) {
         if (this._chunkOwnerResolver === null) {
             return PLAYER_REF_NONE;
         }
@@ -554,9 +554,9 @@ export class GameEngine {
      * @returns {number} how many were deleted
      */
     removeObjectsOfType(objectTypeId) {
-        const eids = this.placed.eidsOf(objectTypeId);
+        const eids = this.placed.getEidsByTypeId(objectTypeId);
         for (const eid of eids) {
-            const message = new DeleteObjectMessage(this.placed.objectRefOf(eid));
+            const message = new DeleteObjectMessage(this.placed.getObjectRefByEid(eid));
             this.untrack(message.objectRef);
             this._dispatchMessage(message, PLAYER_REF_NONE);
         }
@@ -585,7 +585,7 @@ export class GameEngine {
         if (this.placed === null) {
             return true;
         }
-        const eid = this.placed.eidByObjectRef(objectRef);
+        const eid = this.placed.findEidByObjectRef(objectRef);
         if (eid === undefined) {
             return true;
         }
@@ -626,10 +626,10 @@ export class GameEngine {
      * @param {Direction} direction
      * @returns {{port:number, tile:{x:number, y:number}}}
      */
-    portFor(port, x, y, direction) {
+    getPortAt(port, x, y, direction) {
         const placed = portAt(port, x, y, direction);
         const tile = {x: placed.x, y: placed.y};
-        return {port: this.ports.at(placed.x, placed.y, placed.direction), tile};
+        return {port: this.ports.getPortEidAt(placed.x, placed.y, placed.direction), tile};
     }
 
     /**
@@ -641,8 +641,8 @@ export class GameEngine {
      * @param {Direction} direction
      * @returns {{x:number, y:number, layer:string}[]}
      */
-    footprint(definition, x, y, direction) {
-        return definition.positionLayerTiles(direction).flatMap(group =>
+    getFootprintAt(definition, x, y, direction) {
+        return definition.getPositionLayerTilesByDirection(direction).flatMap(group =>
             group.cells.map(cell => ({x: x + cell.x, y: y + cell.y, layer: group.layer})));
     }
 

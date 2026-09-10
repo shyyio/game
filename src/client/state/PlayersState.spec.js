@@ -13,9 +13,9 @@ function playersState() {
 test("name events fill the map, unknown ids fall back to a synthetic name", () => {
     const {state, players} = playersState();
     state.onEvent(new PlayerNamesEvent([1, 3], ["alice", "carol"]));
-    assert.equal(players.usernameOf(1), "alice");
-    assert.equal(players.usernameOf(3), "carol");
-    assert.equal(players.usernameOf(9), "player9");
+    assert.equal(players.getUsernameByPlayerRef(1), "alice");
+    assert.equal(players.getUsernameByPlayerRef(3), "carol");
+    assert.equal(players.getUsernameByPlayerRef(9), "player9");
 });
 
 test("a repeated id overwrites, so a rename applies instantly", () => {
@@ -25,6 +25,6 @@ test("a repeated id overwrites, so a rename applies instantly", () => {
 
     state.onEvent(new PlayerNamesEvent([1], ["alice"]));
     state.onEvent(new PlayerNamesEvent([1], ["alicia"]));
-    assert.equal(players.usernameOf(1), "alicia");
+    assert.equal(players.getUsernameByPlayerRef(1), "alicia");
     assert.deepEqual(touched, [[1, "alice"], [1, "alicia"]], "subscribers see the rename");
 });

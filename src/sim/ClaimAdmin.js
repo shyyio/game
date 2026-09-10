@@ -28,14 +28,14 @@ export class ClaimAdmin {
      * @returns {boolean}
      */
     canBuildIn(playerRef, chunkKey) {
-        const owner = this.game.claims.ownerOf(chunkKey);
+        const owner = this.game.claims.getOwnerByChunkKey(chunkKey);
         if (owner === PLAYER_REF_NONE) {
             return false;
         }
         if (owner === playerRef) {
             return true;
         }
-        if (this.game.claims.permissionOf(chunkKey) === ChunkPermission.PERMISSION_ONLY_ME) {
+        if (this.game.claims.getPermissionByChunkKey(chunkKey) === ChunkPermission.PERMISSION_ONLY_ME) {
             return false;
         }
         return this.game.players.isFriend(owner, playerRef);
@@ -47,8 +47,8 @@ export class ClaimAdmin {
      * @returns {void}
      */
     syncOwnClaims(session) {
-        const ownChunks = Array.from(this.game.claims.chunksOf(session.playerRef));
-        const ownPermissions = ownChunks.map(chunk => this.game.claims.permissionOf(chunk));
+        const ownChunks = Array.from(this.game.claims.getChunkKeysByPlayerRef(session.playerRef));
+        const ownPermissions = ownChunks.map(chunk => this.game.claims.getPermissionByChunkKey(chunk));
         this.game.bus.publishTo(session.sessionRef, new OwnClaimsSyncEvent(ownChunks, ownPermissions));
     }
 
@@ -58,10 +58,10 @@ export class ClaimAdmin {
      * @returns {void}
      */
     claim(session, chunkKey) {
-        const record = this.game.players.byId(session.playerRef);
+        const record = this.game.players.getPlayerByRef(session.playerRef);
         const result = this.game.claims.claim(session.playerRef, chunkKey, record.maxChunks);
         if (result === ClaimResult.CLAIM_RESULT_OK) {
-            this._publishUpdate(session, chunkKey, session.playerRef, this.game.claims.permissionOf(chunkKey));
+            this._publishUpdate(session, chunkKey, session.playerRef, this.game.claims.getPermissionByChunkKey(chunkKey));
         }
         this.game.bus.publishTo(session.sessionRef, new ClaimResultEvent(chunkKey, result));
     }
@@ -94,7 +94,7 @@ export class ClaimAdmin {
             this.game.bus.publishTo(session.sessionRef, new ClaimResultEvent(chunkKey, check));
             return;
         }
-        const solidIds = this._solidObjectRefsIn(chunkKey);
+        const solidIds = this._getSolidObjectRefsByChunkKey(chunkKey);
         // An unclaim must empty the chunk; without the clear confirmation it is rejected.
         if (solidIds.length > 0 && !clear) {
             this.game.bus.publishTo(session.sessionRef, new ClaimResultEvent(chunkKey, ClaimResult.CLAIM_RESULT_NOT_EMPTY));
@@ -124,14 +124,14 @@ export class ClaimAdmin {
      */
     _publishUpdate(session, chunkKey, owner, permission) {
         const event = new ChunkClaimUpdateEvent(chunkKey, owner, permission);
-        const subscribers = this.game.bus.chunkSubscribers(chunkKey);
+        const subscribers = this.game.bus.findSubscribersByChunkKey(chunkKey);
         if (subscribers !== undefined) {
             for (const sessionRef of subscribers) {
                 this.game.playerDirectory.syncUsernames(sessionRef, [owner]);
             }
         }
         this.game.bus.publish(event);
-        for (const sessionRef of this.game.bus.sessionRefsOf(session.playerRef)) {
+        for (const sessionRef of this.game.bus.getSessionRefsByPlayerRef(session.playerRef)) {
             if (subscribers === undefined || !subscribers.has(sessionRef)) {
                 this.game.bus.publishTo(sessionRef, event);
             }
@@ -145,7 +145,7 @@ export class ClaimAdmin {
      * @param {number} chunkKey
      * @returns {number[]}
      */
-    _solidObjectRefsIn(chunkKey) {
+    _getSolidObjectRefsByChunkKey(chunkKey) {
         const ids = [];
         for (const event of this.game.simEngine.chunkSync(chunkKey)) {
             let inner = [event];
@@ -156,7 +156,7 @@ export class ClaimAdmin {
                 if (!(single instanceof ObjectSyncEvent)) {
                     continue;
                 }
-                const type = this.game.modRegistry.objectTypeById(single.objectTypeId);
+                const type = this.game.modRegistry.getObjectTypeByTypeId(single.objectTypeId);
                 if (type.placement.solid) {
                     ids.push(single.objectRef);
                 }

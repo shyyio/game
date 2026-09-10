@@ -82,8 +82,8 @@ async function main() {
         seedProfile = await profiler.stop(seedProfilePath);
     }
 
-    const extractors = engine.placed.eidsOf(ExtractorType.objectTypeId).length;
-    const machines = engine.placed.eidsOf(BakeType.objectTypeId).length;
+    const extractors = engine.placed.getEidsByTypeId(ExtractorType.objectTypeId).length;
+    const machines = engine.placed.getEidsByTypeId(BakeType.objectTypeId).length;
     console.log(
         `Built in ${(buildMs / MS_PER_SECOND).toFixed(1)}s: `
         + `${extractors.toLocaleString()} extractors, ${machines.toLocaleString()} machines.`
@@ -109,7 +109,7 @@ async function main() {
         if (!jammed) {
             // Consume each line's output, so the lines keep flowing instead of backing up.
             for (const port of sinkPorts) {
-                if (engine.ports.item(port) !== EMPTY) {
+                if (engine.ports.getItemByPortEid(port) !== EMPTY) {
                     engine.ports.setItem(port, EMPTY);
                 }
             }
@@ -122,7 +122,7 @@ async function main() {
         tickProfile = await profiler.stop(tickProfilePath);
     }
 
-    const lanes = engine.lanes.ids().length;
+    const lanes = engine.lanes.getLaneRefs().length;
     console.log(
         `Measured: ${(runMs / MS_PER_SECOND).toFixed(2)}s over ${ticks} ticks `
         + `(${(runMs / ticks).toFixed(1)}ms/tick); `

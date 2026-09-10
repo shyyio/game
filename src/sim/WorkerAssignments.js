@@ -55,7 +55,7 @@ export class WorkerAssignments {
      * @param {number} objectRef
      * @returns {WorkerAssignment|undefined}
      */
-    get(objectRef) {
+    findAssignmentByObjectRef(objectRef) {
         return this._byObjectRef.get(objectRef);
     }
 
@@ -64,7 +64,7 @@ export class WorkerAssignments {
      * @param {number} chunkKey
      * @returns {Set<number>|undefined}
      */
-    inChunk(chunkKey) {
+    findObjectRefsByChunkKey(chunkKey) {
         return this._byChunk.get(chunkKey);
     }
 
@@ -72,7 +72,7 @@ export class WorkerAssignments {
      * @param {WorkerAssignment} assignment
      * @returns {void}
      */
-    store(assignment) {
+    setAssignment(assignment) {
         this._byObjectRef.set(assignment.objectRef, assignment);
         getOrCreate(this._byChunk, chunkKeyAt(assignment.x, assignment.y), () => new Set()).add(assignment.objectRef);
         getOrCreate(this._byComponent, assignment.component, () => new Set()).add(assignment.objectRef);
@@ -98,7 +98,7 @@ export class WorkerAssignments {
      * @param {Set<number>|null} components
      * @returns {Map<number, WorkerAssignment>}
      */
-    within(components) {
+    getAssignmentsByComponents(components) {
         if (components === null) {
             return new Map(this._byObjectRef);
         }

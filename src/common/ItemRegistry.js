@@ -33,7 +33,7 @@ export class ItemRegistry {
      * @param {number} itemTypeId
      * @returns {ItemType}
      */
-    require(itemTypeId) {
+    getItemTypeByTypeId(itemTypeId) {
         const itemType = this._byType.get(itemTypeId);
         if (itemType === undefined) {
             throw new Error(`Unknown item type ${itemTypeId}`);
@@ -47,7 +47,7 @@ export class ItemRegistry {
      * @param {number} itemTypeId
      * @returns {ItemType|undefined}
      */
-    get(itemTypeId) {
+    findItemTypeByTypeId(itemTypeId) {
         return this._byType.get(itemTypeId);
     }
 
@@ -55,7 +55,7 @@ export class ItemRegistry {
      * Every registered (itemTypeId, ItemType) pair.
      * @returns {IterableIterator<[number, ItemType]>}
      */
-    entries() {
+    getEntries() {
         return this._byType.entries();
     }
 
@@ -64,7 +64,7 @@ export class ItemRegistry {
      * @param {number} itemTypeId
      * @returns {ItemType}
      */
-    typeFor(itemTypeId) {
+    getItemTypeOrDefaultByTypeId(itemTypeId) {
         const itemType = this._byType.get(itemTypeId);
         if (itemType === undefined) {
             return DEFAULT_ITEM_TYPE;

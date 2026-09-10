@@ -88,7 +88,7 @@ export class PlayerRegistry {
      * @param {string} code - as typed by a player, any casing/spacing/dashing
      * @returns {PlayerRecord|undefined}
      */
-    byFriendCode(code) {
+    findPlayerByFriendCode(code) {
         const normalized = normalizeFriendCode(code);
         if (normalized === null) {
             return undefined;
@@ -131,7 +131,7 @@ export class PlayerRegistry {
      * @param {number} playerRef
      * @returns {PlayerRecord}
      */
-    byId(playerRef) {
+    getPlayerByRef(playerRef) {
         const record = this._byId.get(playerRef);
         if (record === undefined) {
             throw new RangeError(`Unknown playerRef: ${playerRef}`);
@@ -153,8 +153,8 @@ export class PlayerRegistry {
      * @returns {void}
      */
     addFriend(playerRef, friendId) {
-        this.byId(friendId);
-        this.byId(playerRef).friends.add(friendId);
+        this.getPlayerByRef(friendId);
+        this.getPlayerByRef(playerRef).friends.add(friendId);
     }
 
     /**
@@ -163,7 +163,7 @@ export class PlayerRegistry {
      * @returns {void}
      */
     removeFriend(playerRef, friendId) {
-        this.byId(playerRef).friends.delete(friendId);
+        this.getPlayerByRef(playerRef).friends.delete(friendId);
     }
 
     /**
@@ -172,7 +172,7 @@ export class PlayerRegistry {
      * @param {number} playerRef
      * @returns {number[]}
      */
-    grantedBy(playerRef) {
+    getGrantedRefsByPlayerRef(playerRef) {
         const granters = [];
         for (const record of this._byId.values()) {
             if (record.friends.has(playerRef)) {
@@ -200,7 +200,7 @@ export class PlayerRegistry {
      * Every known player as parallel arrays, for the directory sync event.
      * @returns {{playerRefs: number[], usernames: string[]}}
      */
-    directory() {
+    getDirectory() {
         const playerRefs = [];
         const usernames = [];
         for (const record of this._byId.values()) {
@@ -274,7 +274,7 @@ export class PlayerRegistry {
             return;
         }
         for (const row of friendTable.rows) {
-            this.byId(row.player_id).friends.add(row.friend_id);
+            this.getPlayerByRef(row.player_id).friends.add(row.friend_id);
         }
     }
 }

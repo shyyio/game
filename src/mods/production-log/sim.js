@@ -61,7 +61,7 @@ export class ProductionLogSimMod extends AbstractSimMod {
             return true;
         }
         if (message instanceof ItemLeaderboardRequestMessage) {
-            const page = this._log.itemPage(message.itemTypeId, message.offset, session.playerRef);
+            const page = this._log.getItemPageByItemTypeId(message.itemTypeId, message.offset, session.playerRef);
             this._publish(session, game, page.playerRefs, page);
             return true;
         }
@@ -110,13 +110,13 @@ export class ProductionLogSimMod extends AbstractSimMod {
         if (!game.players.has(message.playerRef)) {
             return;
         }
-        const counts = this._log.countsOf(message.playerRef);
+        const counts = this._log.getCountsByPlayerRef(message.playerRef);
         const itemTypeIds = Array.from(counts.keys());
         this._publish(session, game, [message.playerRef], new ProductionLogEvent(
             message.playerRef,
             itemTypeIds,
             Array.from(counts.values()),
-            itemTypeIds.map(itemTypeId => this._log.rankOf(message.playerRef, itemTypeId)),
+            itemTypeIds.map(itemTypeId => this._log.getRankByPlayerRef(message.playerRef, itemTypeId)),
         ));
     }
 

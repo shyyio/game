@@ -51,20 +51,20 @@ export class TankBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, eid, type, message) {
-        const tanks = engine.components.get("Tank");
+        const tanks = engine.components.getComponentByName("Tank");
         tanks.attach(eid);
         const tank = tanks.store;
-        const row = tanks.row(eid);
-        tank.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;
-        tank.out[row] = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction).port;
+        const row = tanks.getRowByEid(eid);
+        tank.in[row] = engine.getPortAt(type.inputPorts[0], message.x, message.y, message.direction).port;
+        tank.out[row] = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction).port;
         tank.capacity[row] = this.capacity;
         engine.ports.markFluid(tank.in[row]);
         engine.ports.markFluid(tank.out[row]);
     }
 
     onDespawn(engine, eid) {
-        const tanks = engine.components.get("Tank");
-        const row = tanks.row(eid);
+        const tanks = engine.components.getComponentByName("Tank");
+        const row = tanks.getRowByEid(eid);
         const tank = tanks.store;
         engine.ports.unmarkFluid(tank.in[row]);
         engine.ports.unmarkFluid(tank.out[row]);
@@ -76,17 +76,17 @@ export class TankBehavior extends AbstractBehavior {
         if (key !== LOGIC_KEY_AMOUNT) {
             return null;
         }
-        const tanks = engine.components.get("Tank");
-        return tanks.store.amount[tanks.row(eid)];
+        const tanks = engine.components.getComponentByName("Tank");
+        return tanks.store.amount[tanks.getRowByEid(eid)];
     }
 
-    logicReadKeys() {
+    getLogicReadKeys() {
         return [LOGIC_KEY_AMOUNT];
     }
 
     logicStored(engine, eid) {
-        const tanks = engine.components.get("Tank");
-        const row = tanks.row(eid);
+        const tanks = engine.components.getComponentByName("Tank");
+        const row = tanks.getRowByEid(eid);
         if (tanks.store.fluidType[row] === EMPTY) {
             return null;
         }
@@ -101,11 +101,11 @@ export class TankBehavior extends AbstractBehavior {
      */
     onRebuild(engine) {
         const placed = engine.placed;
-        const tanks = engine.components.get("Tank");
+        const tanks = engine.components.getComponentByName("Tank");
         const tank = tanks.store;
         const eids = tanks.eids;
         for (let row = 0; row < tanks.count; row += 1) {
-            tank.capacity[row] = placed.behaviorFor(placed.objectTypeIdOf(eids[row])).capacity;
+            tank.capacity[row] = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eids[row])).capacity;
             engine.ports.markFluid(tank.in[row]);
             engine.ports.markFluid(tank.out[row]);
             if (tank.fluidType[row] === EMPTY) {
@@ -125,7 +125,7 @@ export class TankBehavior extends AbstractBehavior {
      */
     static _submitIntents(engine) {
         const item = engine.Port.item;
-        const tanks = engine.components.get("Tank");
+        const tanks = engine.components.getComponentByName("Tank");
         const tank = tanks.store;
         const count = tanks.count;
         for (let row = 0; row < count; row += 1) {
@@ -154,7 +154,7 @@ export class TankBehavior extends AbstractBehavior {
      * @returns {void}
      */
     static _finish(engine) {
-        const tanks = engine.components.get("Tank");
+        const tanks = engine.components.getComponentByName("Tank");
         const tank = tanks.store;
         const count = tanks.count;
         for (let row = 0; row < count; row += 1) {

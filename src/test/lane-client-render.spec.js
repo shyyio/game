@@ -68,7 +68,7 @@ class ReplayCache {
                 id: event.objectRef,
                 tileX: event.x,
                 tileY: event.y,
-                data: {type: this._modRegistry.objectTypeById(event.objectTypeId), direction: event.direction},
+                data: {type: this._modRegistry.getObjectTypeByTypeId(event.objectTypeId), direction: event.direction},
             };
             this._entries.set(event.objectRef, entry);
             for (const listener of this._setListeners) {
@@ -175,12 +175,12 @@ function explode(event) {
 function expectedSprites(engine) {
     const position = engine.Position;
     const sprites = new Map();
-    for (const laneRef of engine.lanes.ids()) {
-        const cells = engine.lanes.cellsOf(laneRef);
+    for (const laneRef of engine.lanes.getLaneRefs()) {
+        const cells = engine.lanes.getCellEidsByLaneRef(laneRef);
         const slotsPerCell = 2;
         const total = cells.length * slotsPerCell;
         let filePos = 0;
-        for (const item of engine.lanes.itemsOf(laneRef)) {
+        for (const item of engine.lanes.getItemsByLaneRef(laneRef)) {
             filePos += item.gap;
             const physical = total - 2 - filePos;
             const index = Math.floor(physical / slotsPerCell);
@@ -194,8 +194,8 @@ function expectedSprites(engine) {
             });
             filePos += 1;
         }
-        const outputPort = engine.lanes.outputPortOf(laneRef);
-        const resting = engine.ports.item(outputPort);
+        const outputPort = engine.lanes.getOutputPortEidByLaneRef(laneRef);
+        const resting = engine.ports.getItemByPortEid(outputPort);
         if (resting !== EMPTY) {
             const tail = cells[cells.length - 1];
             const direction = position.direction[tail];
@@ -238,12 +238,12 @@ class Scenario {
     }
 
     delete(tileY, tileX = COLUMN_X) {
-        const eid = this.engine.placed.eidAt(tileX, tileY, LAYER_SURFACE);
-        this.game.dispatchMessage(new DeleteObjectMessage(this.engine.placed.objectRefOf(eid)), this.client.session);
+        const eid = this.engine.placed.getEidAt(tileX, tileY, LAYER_SURFACE);
+        this.game.dispatchMessage(new DeleteObjectMessage(this.engine.placed.getObjectRefByEid(eid)), this.client.session);
     }
 
-    laneAt(tileY, tileX = COLUMN_X) {
-        return this.engine.lanes.laneAt(tileX, tileY, LAYER_SURFACE);
+    getLaneRefAt(tileY, tileX = COLUMN_X) {
+        return this.engine.lanes.getLaneRefAt(tileX, tileY, LAYER_SURFACE);
     }
 
     tick(count = 1) {
@@ -260,13 +260,13 @@ class Scenario {
      */
     saturate(laneRef) {
         const lanes = this.engine.lanes;
-        this.engine.ports.setItem(lanes.outputPortOf(laneRef), PLUG);
-        const slots = lanes.lengthOf(laneRef);
+        this.engine.ports.setItem(lanes.getOutputPortEidByLaneRef(laneRef), PLUG);
+        const slots = lanes.getSlotCountByLaneRef(laneRef);
         for (let i = 0; i < slots + 2; i += 1) {
-            this.engine.ports.setItem(lanes.inputPortOf(laneRef), RED);
+            this.engine.ports.setItem(lanes.getInputPortEidByLaneRef(laneRef), RED);
             this.tick();
         }
-        assert.equal(lanes.itemCountOf(laneRef), slots, "the lane is packed");
+        assert.equal(lanes.getItemCountByLaneRef(laneRef), slots, "the lane is packed");
     }
 
     /**
@@ -304,8 +304,8 @@ class Scenario {
             assert.ok(popped.has(laneRef), `${label}: output port sprite ${key} glides in without a pop`);
         }
         assert.deepEqual(sorted(this.client.items.sprites), sorted(expectedSprites(this.engine)), label);
-        for (const laneRef of this.engine.lanes.ids()) {
-            this.engine.ports.setItem(this.engine.lanes.outputPortOf(laneRef), EMPTY);
+        for (const laneRef of this.engine.lanes.getLaneRefs()) {
+            this.engine.ports.setItem(this.engine.lanes.getOutputPortEidByLaneRef(laneRef), EMPTY);
         }
         this.tick(3);
         this.client.drain();
@@ -319,9 +319,9 @@ async function saturatedLine() {
     for (const tileY of [10, 9, 8]) {
         scenario.place(tileY);
     }
-    scenario.saturate(scenario.laneAt(10));
+    scenario.saturate(scenario.getLaneRefAt(10));
     scenario.assertState("the saturated line renders");
-    scenario.saturate(scenario.laneAt(10));
+    scenario.saturate(scenario.getLaneRefAt(10));
     scenario.client.drain();
     return scenario;
 }
@@ -368,11 +368,11 @@ test("filling the gap between two saturated lanes renders the merged run", async
     for (const tileY of [10, 9, 7, 6]) {
         scenario.place(tileY);
     }
-    scenario.saturate(scenario.laneAt(10));
-    scenario.saturate(scenario.laneAt(7));
+    scenario.saturate(scenario.getLaneRefAt(10));
+    scenario.saturate(scenario.getLaneRefAt(7));
     scenario.assertState("both saturated lanes render");
-    scenario.saturate(scenario.laneAt(10));
-    scenario.saturate(scenario.laneAt(7));
+    scenario.saturate(scenario.getLaneRefAt(10));
+    scenario.saturate(scenario.getLaneRefAt(7));
     scenario.client.drain();
     scenario.place(8);
     scenario.assertRendered("after the merge");
@@ -385,9 +385,9 @@ test("re-laying a corner of a saturated run keeps its sprites", async () => {
     scenario.delete(9);
     scenario.place(9, Direction.RIGHT);
     scenario.place(9, Direction.RIGHT, COLUMN_X + 1);
-    scenario.saturate(scenario.laneAt(10));
+    scenario.saturate(scenario.getLaneRefAt(10));
     scenario.assertState("the bent run renders");
-    scenario.saturate(scenario.laneAt(10));
+    scenario.saturate(scenario.getLaneRefAt(10));
     scenario.client.drain();
     scenario.place(9, Direction.RIGHT, COLUMN_X + 2);
     scenario.delete(9, COLUMN_X + 2);

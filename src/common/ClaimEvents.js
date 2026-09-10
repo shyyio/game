@@ -74,8 +74,8 @@ export class ChunkClaimUpdateEvent extends AbstractEvent {
      * @param {EventBus} bus
      * @returns {Set<number>|undefined}
      */
-    subscribersIn(bus) {
-        return bus.chunkSubscribers(this.chunkKey);
+    getSubscribersByBus(bus) {
+        return bus.findSubscribersByChunkKey(this.chunkKey);
     }
 }
 

@@ -13,9 +13,9 @@ test("a machine's delivered output notifies the engine's itemProduced listeners"
     engine.itemProduced.add((playerRef, itemTypeId, amount) => produced.push([itemTypeId, amount]));
     engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 5, 4, Direction.UP));
-    const [eid] = engine.placed.eidsOf(BlenderType.objectTypeId);
-    const def = engine.components.get("Machine");
-    const row = def.row(eid);
+    const [eid] = engine.placed.getEidsByTypeId(BlenderType.objectTypeId);
+    const def = engine.components.getComponentByName("Machine");
+    const row = def.getRowByEid(eid);
 
     for (let i = 0; i < 10; i += 1) {
         engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE);

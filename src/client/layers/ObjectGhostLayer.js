@@ -218,7 +218,7 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
      */
     _centroidOffset(direction) {
         // The geometry is a filled rectangle from (0,0) to its corner, so its centroid is corner/2.
-        const corner = this._type.geometry.corner(direction);
+        const corner = this._type.geometry.getCornerByDirection(direction);
         return {x: corner.x / 2, y: corner.y / 2};
     }
 }

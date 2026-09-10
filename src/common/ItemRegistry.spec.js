@@ -4,16 +4,16 @@ import {ItemRegistry} from "@/common/ItemRegistry.js";
 import {ItemType} from "@/common/ItemType.js";
 
 
-test("require returns a registered definition and throws on an unknown type", () => {
+test("getItemTypeByTypeId returns a registered definition and throws on an unknown type", () => {
     const registry = new ItemRegistry();
     registry.register(310, new ItemType("Water", "items/1-gray"));
-    assert.equal(registry.require(310).name, "Water");
-    assert.throws(() => registry.require(311), /Unknown item type 311/);
+    assert.equal(registry.getItemTypeByTypeId(310).name, "Water");
+    assert.throws(() => registry.getItemTypeByTypeId(311), /Unknown item type 311/);
 });
 
-test("get tolerates an unknown type", () => {
+test("findItemTypeByTypeId tolerates an unknown type", () => {
     const registry = new ItemRegistry();
-    assert.equal(registry.get(310), undefined);
+    assert.equal(registry.findItemTypeByTypeId(310), undefined);
 });
 
 test("a duplicate item type throws", () => {

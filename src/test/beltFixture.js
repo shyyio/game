@@ -14,8 +14,8 @@ export class BeltLane {
      */
     constructor(engine, laneRef) {
         this.laneRef = laneRef;
-        this.inputPort = engine.lanes.inputPortOf(laneRef);
-        this.outputPort = engine.lanes.outputPortOf(laneRef);
+        this.inputPort = engine.lanes.getInputPortEidByLaneRef(laneRef);
+        this.outputPort = engine.lanes.getOutputPortEidByLaneRef(laneRef);
     }
 }
 
@@ -41,7 +41,7 @@ export function placeBelt(engine, tileX, tileY, direction, type = BeltType) {
  * @returns {BeltLane}
  */
 export function beltLaneAt(engine, tileX, tileY, layer = LAYER_SURFACE) {
-    const laneRef = engine.lanes.laneAt(tileX, tileY, layer);
+    const laneRef = engine.lanes.getLaneRefAt(tileX, tileY, layer);
     if (laneRef === NO_LANE) {
         throw new Error(`No lane at (${tileX}, ${tileY}) on ${layer}`);
     }
@@ -54,5 +54,5 @@ export function beltLaneAt(engine, tileX, tileY, layer = LAYER_SURFACE) {
  * @returns {number}
  */
 export function laneItemCount(engine) {
-    return engine.lanes.ids().reduce((sum, laneRef) => sum + engine.lanes.itemCountOf(laneRef), 0);
+    return engine.lanes.getLaneRefs().reduce((sum, laneRef) => sum + engine.lanes.getItemCountByLaneRef(laneRef), 0);
 }

@@ -112,7 +112,7 @@ export class LogisticsClientMod extends AbstractClientMod {
      */
     canPlace(type, tileX, tileY, direction, client) {
         return !placementBlockedByGate(
-            this._occupantAt(client),
+            this._findOccupantAt(client),
             occupant => isGateType(occupant.type),
             type, tileX, tileY, direction,
         );
@@ -124,9 +124,9 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @param {Client} client
      * @returns {function(number, number): ({type: ObjectType, direction: Direction}|null)}
      */
-    _occupantAt(client) {
+    _findOccupantAt(client) {
         return (x, y) => {
-            const entry = client.objects.at(x, y, LAYER_SURFACE);
+            const entry = client.objects.findObjectAt(x, y, LAYER_SURFACE);
             if (entry === null) {
                 return null;
             }
@@ -142,7 +142,7 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @returns {void}
      */
     _predictGateMode(client, entry) {
-        const kinds = gateConnections(this._occupantAt(client), entry.tileX, entry.tileY, entry.data.direction);
+        const kinds = gateConnections(this._findOccupantAt(client), entry.tileX, entry.tileY, entry.data.direction);
         const hasItem = kinds.behind === CONVEYS_ITEM || kinds.front === CONVEYS_ITEM;
         const hasFluid = kinds.behind === CONVEYS_FLUID || kinds.front === CONVEYS_FLUID;
         if (hasFluid && !hasItem) {
@@ -165,7 +165,7 @@ export class LogisticsClientMod extends AbstractClientMod {
                 continue;
             }
             for (let direction = 0; direction < 4; direction += 1) {
-                const neighbor = client.objects.at(
+                const neighbor = client.objects.findObjectAt(
                     cell.x + Direction.dx(direction),
                     cell.y + Direction.dy(direction),
                     LAYER_SURFACE,

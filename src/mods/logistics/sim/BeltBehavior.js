@@ -7,7 +7,7 @@ import {
     NO_EID,
     CreateObjectMessage,
     DeleteObjectMessage,
-    laneLevelLayer,
+    getLaneLevelLayer,
 } from "@spup/sdk";
 import {BELT_TUNNEL_DOWN, BELT_TUNNEL_UP, BELT_UNDERGROUND, tunnelStep} from "../common/constants.js";
 import {BeltUndergroundType} from "../common/objectTypes.js";
@@ -40,8 +40,8 @@ function beltOutLevel(beltKind) {
 // Every layer a belt can stand on: the surface and the two buried axes.
 const BELT_LAYERS = [
     LAYER_SURFACE,
-    laneLevelLayer(LANE_LEVEL_BURIED, Direction.UP),
-    laneLevelLayer(LANE_LEVEL_BURIED, Direction.RIGHT),
+    getLaneLevelLayer(LANE_LEVEL_BURIED, Direction.UP),
+    getLaneLevelLayer(LANE_LEVEL_BURIED, Direction.RIGHT),
 ];
 
 /**
@@ -69,8 +69,8 @@ export class BeltBehavior extends LaneBehavior {
 
     onDespawn(engine, eid) {
         if (isTunnelMouth(this.beltKind)) {
-            for (const undergroundEid of this._tunnelUndergrounds(engine, eid)) {
-                engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(undergroundEid)));
+            for (const undergroundEid of this._getTunnelUndergroundEidsByMouthEid(engine, eid)) {
+                engine.applyMessage(new DeleteObjectMessage(engine.placed.getObjectRefByEid(undergroundEid)));
             }
         }
         super.onDespawn(engine, eid);
@@ -87,7 +87,7 @@ export class BeltBehavior extends LaneBehavior {
     _fillTunnel(engine, message) {
         const partner = findTunnelPartner(
             message.x, message.y, message.direction, this.beltKind,
-            (x, y) => BeltBehavior._beltsAt(engine, x, y),
+            (x, y) => BeltBehavior._getBeltsAt(engine, x, y),
         );
         if (partner === null) {
             return;
@@ -110,18 +110,18 @@ export class BeltBehavior extends LaneBehavior {
      * @param {number} mouthEid
      * @returns {number[]} eids
      */
-    _tunnelUndergrounds(engine, mouthEid) {
+    _getTunnelUndergroundEidsByMouthEid(engine, mouthEid) {
         const position = engine.Position;
         const direction = position.direction[mouthEid];
         const step = tunnelStep(this.beltKind, direction);
-        const layer = laneLevelLayer(LANE_LEVEL_BURIED, direction);
+        const layer = getLaneLevelLayer(LANE_LEVEL_BURIED, direction);
         const undergrounds = [];
         let x = position.x[mouthEid] + step.dx;
         let y = position.y[mouthEid] + step.dy;
         for (;;) {
-            const eid = engine.placed.eidAt(x, y, layer);
+            const eid = engine.placed.getEidAt(x, y, layer);
             if (eid === NO_EID || position.direction[eid] !== direction
-                || engine.placed.behaviorFor(engine.placed.objectTypeIdOf(eid)).beltKind !== BELT_UNDERGROUND) {
+                || engine.placed.getBehaviorByTypeId(engine.placed.getObjectTypeIdByEid(eid)).beltKind !== BELT_UNDERGROUND) {
                 return undergrounds;
             }
             undergrounds.push(eid);
@@ -138,14 +138,14 @@ export class BeltBehavior extends LaneBehavior {
      * @param {number} y
      * @returns {{x: number, y: number, type: BeltType, direction: Direction}[]}
      */
-    static _beltsAt(engine, x, y) {
+    static _getBeltsAt(engine, x, y) {
         const belts = [];
         for (const layer of BELT_LAYERS) {
-            const eid = engine.placed.eidAt(x, y, layer);
+            const eid = engine.placed.getEidAt(x, y, layer);
             if (eid === NO_EID) {
                 continue;
             }
-            const behavior = engine.placed.behaviorFor(engine.placed.objectTypeIdOf(eid));
+            const behavior = engine.placed.getBehaviorByTypeId(engine.placed.getObjectTypeIdByEid(eid));
             if (behavior instanceof BeltBehavior) {
                 belts.push({x, y, type: behavior.beltKind, direction: engine.Position.direction[eid]});
             }

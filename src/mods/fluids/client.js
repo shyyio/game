@@ -70,12 +70,12 @@ export class FluidsClientMod extends AbstractClientMod {
             const ny = tileY + Direction.dy(neighborDirection);
             const candidates = [];
             if (chunkKeyAt(nx, ny) === chunkKey) {
-                const pipe = client.objects.objectAt(nx, ny, PipeType);
+                const pipe = client.objects.findObjectByTypeAt(nx, ny, PipeType);
                 if (pipe !== null) {
                     candidates.push(this._networkFluidType(pipe.id));
                 }
             }
-            const feeder = client.objects.outputPortAt(tileX, tileY, Direction.invert(neighborDirection));
+            const feeder = client.objects.findOutputPortAt(tileX, tileY, Direction.invert(neighborDirection));
             if (feeder !== null) {
                 candidates.push(this._producedFluidType(client, feeder.entry));
             }

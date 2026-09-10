@@ -26,7 +26,7 @@ export class ChunkClaims {
      * @param {number} chunkKey
      * @returns {number} the owning playerRef, or PLAYER_REF_NONE when unclaimed
      */
-    ownerOf(chunkKey) {
+    getOwnerByChunkKey(chunkKey) {
         const owner = this._ownerByChunk.get(chunkKey);
         if (owner === undefined) {
             return PLAYER_REF_NONE;
@@ -38,7 +38,7 @@ export class ChunkClaims {
      * @param {number} chunkKey
      * @returns {number} the chunk's ChunkPermission, defaulting to owner-only when unclaimed
      */
-    permissionOf(chunkKey) {
+    getPermissionByChunkKey(chunkKey) {
         const permission = this._permissionByChunk.get(chunkKey);
         if (permission === undefined) {
             return ChunkPermission.PERMISSION_ONLY_ME;
@@ -50,14 +50,14 @@ export class ChunkClaims {
      * @param {number} playerRef
      * @returns {number}
      */
-    countOf(playerRef) {
-        return this.chunksOf(playerRef).size;
+    getCountByPlayerRef(playerRef) {
+        return this.getChunkKeysByPlayerRef(playerRef).size;
     }
 
     /**
      * @returns {number} the total number of claimed chunks, across every player
      */
-    claimedCount() {
+    getClaimedCount() {
         return this._ownerByChunk.size;
     }
 
@@ -66,7 +66,7 @@ export class ChunkClaims {
      * @param {number} playerRef
      * @returns {Set<number>}
      */
-    chunksOf(playerRef) {
+    getChunkKeysByPlayerRef(playerRef) {
         const chunks = new Set();
         for (const [chunkKey, owner] of this._ownerByChunk) {
             if (owner === playerRef) {
@@ -90,7 +90,7 @@ export class ChunkClaims {
         if (this._ownerByChunk.has(chunkKey)) {
             return ClaimResult.CLAIM_RESULT_OWNED;
         }
-        const owned = this.chunksOf(playerRef);
+        const owned = this.getChunkKeysByPlayerRef(playerRef);
         if (owned.size >= maxChunks) {
             return ClaimResult.CLAIM_RESULT_LIMIT;
         }
@@ -141,7 +141,7 @@ export class ChunkClaims {
         if (this._ownerByChunk.get(chunkKey) !== playerRef) {
             return ClaimResult.CLAIM_RESULT_NOT_OWNER;
         }
-        if (!this._connectedWithout(this.chunksOf(playerRef), chunkKey)) {
+        if (!this._connectedWithout(this.getChunkKeysByPlayerRef(playerRef), chunkKey)) {
             return ClaimResult.CLAIM_RESULT_WOULD_SPLIT;
         }
         return ClaimResult.CLAIM_RESULT_OK;
@@ -156,7 +156,7 @@ export class ChunkClaims {
      * @param {number} chunkHeight
      * @returns {{chunks: number[], playerRefs: number[], permissions: number[]}}
      */
-    claimsIn(chunkX, chunkY, chunkWidth, chunkHeight) {
+    getClaimsInRect(chunkX, chunkY, chunkWidth, chunkHeight) {
         const chunks = [];
         const playerRefs = [];
         const permissions = [];
@@ -168,7 +168,7 @@ export class ChunkClaims {
             }
             chunks.push(chunkKey);
             playerRefs.push(playerRef);
-            permissions.push(this.permissionOf(chunkKey));
+            permissions.push(this.getPermissionByChunkKey(chunkKey));
         }
         return {chunks, playerRefs, permissions};
     }
@@ -179,7 +179,7 @@ export class ChunkClaims {
     serializeRecords() {
         const rows = [];
         for (const [chunkKey, playerRef] of this._ownerByChunk) {
-            rows.push({chunkKey, player_id: playerRef, permission: this.permissionOf(chunkKey)});
+            rows.push({chunkKey, player_id: playerRef, permission: this.getPermissionByChunkKey(chunkKey)});
         }
         return {
             name: CHUNK_CLAIM_RECORD,

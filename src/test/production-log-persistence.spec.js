@@ -32,7 +32,7 @@ test("a count for an item type no mod declares any more does not come back", asy
     const game = await makeGame([], store);
     const alice = game.players.getOrCreate("sub-alice", "alice");
     game.simEngine.itemProduced.notify(alice.playerRef, UNDECLARED, 5);
-    const declared = Array.from(game.modRegistry.items.entries())[0][0];
+    const declared = Array.from(game.modRegistry.items.getEntries())[0][0];
     game.simEngine.itemProduced.notify(alice.playerRef, declared, 2);
     await game.save();
 

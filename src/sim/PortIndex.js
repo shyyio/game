@@ -123,13 +123,13 @@ export class PortIndex {
      * @returns {void}
      */
     bindEndpoints(eid, type, x, y, direction) {
-        for (const definition of type.activePorts("outputPorts")) {
+        for (const definition of type.getActivePortsByKind("outputPorts")) {
             const edge = portAt(definition, x, y, direction);
-            push(this._producersByPort, this.at(edge.x, edge.y, edge.direction), eid);
+            push(this._producersByPort, this.getPortEidAt(edge.x, edge.y, edge.direction), eid);
         }
-        for (const definition of type.activePorts("inputPorts")) {
+        for (const definition of type.getActivePortsByKind("inputPorts")) {
             const edge = portAt(definition, x, y, direction);
-            push(this._consumersByPort, this.at(edge.x, edge.y, edge.direction), eid);
+            push(this._consumersByPort, this.getPortEidAt(edge.x, edge.y, edge.direction), eid);
         }
     }
 
@@ -146,7 +146,7 @@ export class PortIndex {
      * @param {number} portEid
      * @returns {number[]} the placed objects with an output port on that edge
      */
-    producersOf(portEid) {
+    getProducerEidsByPortEid(portEid) {
         const held = this._producersByPort.get(portEid);
         if (held === undefined) {
             return NO_ENDPOINTS;
@@ -158,7 +158,7 @@ export class PortIndex {
      * @param {number} portEid
      * @returns {number[]} the placed objects with an input port on that edge
      */
-    consumersOf(portEid) {
+    getConsumerEidsByPortEid(portEid) {
         const held = this._consumersByPort.get(portEid);
         if (held === undefined) {
             return NO_ENDPOINTS;
@@ -181,9 +181,9 @@ export class PortIndex {
      * @returns {void}
      */
     growColumns(capacity) {
-        const fluidSource = new Int32Array(capacity).fill(EMPTY);
-        fluidSource.set(this._fluidSource);
-        this._fluidSource = fluidSource;
+        const getFluidSourceByPortEid = new Int32Array(capacity).fill(EMPTY);
+        getFluidSourceByPortEid.set(this._fluidSource);
+        this._fluidSource = getFluidSourceByPortEid;
         const fluid = new Uint8Array(capacity);
         fluid.set(this._fluid);
         this._fluid = fluid;
@@ -226,7 +226,7 @@ export class PortIndex {
      * @param {number} eid
      * @returns {number} the port's item, or EMPTY
      */
-    item(eid) {
+    getItemByPortEid(eid) {
         return this.ports.store.item[eid];
     }
 
@@ -263,7 +263,7 @@ export class PortIndex {
      * @param {number} direction
      * @returns {number} the port eid
      */
-    at(x, y, direction) {
+    getPortEidAt(x, y, direction) {
         const key = edgeKey(x, y, direction);
         let eid = this._byEdge.get(key);
         if (eid === undefined) {
@@ -283,7 +283,7 @@ export class PortIndex {
      * @param {number} direction
      * @returns {number|null} the port eid
      */
-    peekAt(x, y, direction) {
+    findPortEidAt(x, y, direction) {
         const eid = this._byEdge.get(edgeKey(x, y, direction));
         if (eid === undefined) {
             return null;
@@ -313,7 +313,7 @@ export class PortIndex {
      * @param {number} eid
      * @returns {number} the fluid type produced into the port, or EMPTY
      */
-    fluidSource(eid) {
+    getFluidSourceByPortEid(eid) {
         return this._fluidSource[eid];
     }
 
@@ -362,7 +362,7 @@ export class PortIndex {
             if (eidFields.length === 0) {
                 continue;
             }
-            for (const slot of component.slots()) {
+            for (const slot of component.getSlots()) {
                 for (const field of eidFields) {
                     const target = component.store[field.name][slot];
                     if (target !== NO_EID) {
@@ -395,7 +395,7 @@ export class PortIndex {
         // item owes the client a clear no later diff would send.
         for (const eid of doomed) {
             if (engine.world.hasComponent(eid, engine.space.positions.store)) {
-                this._byEdge.delete(this._edgeKey(eid));
+                this._byEdge.delete(this._getEdgeKeyByPortEid(eid));
             }
         }
         engine.render.retirePorts(doomed);
@@ -417,7 +417,7 @@ export class PortIndex {
         // The edge ports are those carrying Position; a port with none sits on no edge.
         const edgePorts = this.engine.world.query([this.ports.store, this.engine.space.positions.store]);
         for (const eid of edgePorts) {
-            this._byEdge.set(this._edgeKey(eid), eid);
+            this._byEdge.set(this._getEdgeKeyByPortEid(eid), eid);
         }
     }
 
@@ -426,7 +426,7 @@ export class PortIndex {
      * @param {number} eid - an edge port
      * @returns {number} its index key
      */
-    _edgeKey(eid) {
+    _getEdgeKeyByPortEid(eid) {
         const position = this.engine.space.positions.store;
         return edgeKey(position.x[eid], position.y[eid], position.direction[eid]);
     }

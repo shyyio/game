@@ -22,9 +22,9 @@ test("every placed port round-trips through the sim's edge index", async () => {
     for (const type of engine.modRegistry.objectTypes) {
         for (const direction of DIRECTIONS) {
             for (const portKind of PORT_KINDS) {
-                for (const port of type.activePorts(portKind)) {
+                for (const port of type.getActivePortsByKind(portKind)) {
                     const placed = portAt(port, ORIGIN_X, ORIGIN_Y, direction);
-                    const {port: eid, tile} = engine.portFor(port, ORIGIN_X, ORIGIN_Y, direction);
+                    const {port: eid, tile} = engine.getPortAt(port, ORIGIN_X, ORIGIN_Y, direction);
 
                     assert.deepEqual(tile, {x: placed.x, y: placed.y});
                     // The eid the index handed back must carry the position its key was built from.
@@ -47,10 +47,10 @@ test("one edgeKey means one port eid", async () => {
     for (const type of engine.modRegistry.objectTypes) {
         for (const direction of DIRECTIONS) {
             for (const portKind of PORT_KINDS) {
-                for (const port of type.activePorts(portKind)) {
+                for (const port of type.getActivePortsByKind(portKind)) {
                     const placed = portAt(port, ORIGIN_X, ORIGIN_Y, direction);
                     const key = edgeKey(placed.x, placed.y, placed.direction);
-                    const {port: eid} = engine.portFor(port, ORIGIN_X, ORIGIN_Y, direction);
+                    const {port: eid} = engine.getPortAt(port, ORIGIN_X, ORIGIN_Y, direction);
                     const previous = seen.get(key);
                     if (previous === undefined) {
                         seen.set(key, eid);
@@ -75,8 +75,8 @@ test("a producer and the consumer it reaches share one port", async () => {
 
     assert.equal(edgeKey(emitter.x, emitter.y, emitter.direction), edgeKey(receiver.x, receiver.y, receiver.direction));
     assert.equal(
-        engine.portFor(out, ORIGIN_X, ORIGIN_Y, Direction.UP).port,
-        engine.portFor(inputPort, ORIGIN_X, consumerTileY, Direction.UP).port,
+        engine.getPortAt(out, ORIGIN_X, ORIGIN_Y, Direction.UP).port,
+        engine.getPortAt(inputPort, ORIGIN_X, consumerTileY, Direction.UP).port,
     );
 });
 
@@ -92,6 +92,6 @@ test("rotating a placement rotates its ports", async () => {
         {x: -1, y: 0, direction: Direction.LEFT},
     ]);
     // Four distinct edges, so no two rotations collide in the index.
-    const eids = DIRECTIONS.map(direction => engine.portFor(port, 0, 0, direction).port);
+    const eids = DIRECTIONS.map(direction => engine.getPortAt(port, 0, 0, direction).port);
     assert.equal(new Set(eids).size, DIRECTIONS.length);
 });

@@ -19,7 +19,7 @@ import {
     ITEM_TYPE_TEST_CARGO,
     placeLane,
     deleteLane,
-    laneAt,
+    getLaneRefAt,
 } from "@/test/laneFixture.js";
 
 const CARGO = ITEM_TYPE_TEST_CARGO;
@@ -36,10 +36,10 @@ test("an item emits an upsert on ingest and a delete on pop", async () => {
     for (const y of [0, 1, 2]) {
         placeLane(engine, 0, y, Direction.UP);
     }
-    const lane = laneAt(engine, 0, 2);
+    const lane = getLaneRefAt(engine, 0, 2);
     collector.drain();
 
-    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
+    engine.ports.setItem(engine.lanes.getInputPortEidByLaneRef(lane), CARGO);
     const rows = [];
     for (let i = 0; i < 8; i += 1) {
         engine.tick();
@@ -64,12 +64,12 @@ test("a move pass emits one item batch per chunk", async () => {
         for (let i = 0; i < 3; i += 1) {
             placeLane(engine, origin[0], origin[1] + i, Direction.UP);
         }
-        return laneAt(engine, origin[0], origin[1] + 2);
+        return getLaneRefAt(engine, origin[0], origin[1] + 2);
     });
 
     engine.setEventSink(event => emitted.push(event));
     for (const lane of lanes) {
-        engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
+        engine.ports.setItem(engine.lanes.getInputPortEidByLaneRef(lane), CARGO);
     }
     engine.tick();
 
@@ -87,10 +87,10 @@ test("a lane emits a port-item set when an item pops to its output port", async 
     for (const y of [0, 1, 2]) {
         placeLane(engine, 0, y, Direction.UP);
     }
-    const lane = laneAt(engine, 0, 2);
+    const lane = getLaneRefAt(engine, 0, 2);
     collector.drain();
 
-    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
+    engine.ports.setItem(engine.lanes.getInputPortEidByLaneRef(lane), CARGO);
     const sets = [];
     for (let i = 0; i < 8; i += 1) {
         engine.tick();
@@ -102,7 +102,7 @@ test("a lane emits a port-item set when an item pops to its output port", async 
     }
 
     assert.equal(sets.length, 1);
-    assert.equal(sets[0].portRef, engine.lanes.outputPortOf(lane));
+    assert.equal(sets[0].portRef, engine.lanes.getOutputPortEidByLaneRef(lane));
     assert.equal(sets[0].itemTypeId, CARGO);
 });
 
@@ -114,9 +114,9 @@ test("deleting the tail cell emits a port-item clear for the stranded output por
     for (const y of [0, 1, 2]) {
         placeLane(engine, 0, y, Direction.UP);
     }
-    const lane = laneAt(engine, 0, 2);
-    const outputPort = engine.lanes.outputPortOf(lane);
-    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
+    const lane = getLaneRefAt(engine, 0, 2);
+    const outputPort = engine.lanes.getOutputPortEidByLaneRef(lane);
+    engine.ports.setItem(engine.lanes.getInputPortEidByLaneRef(lane), CARGO);
     for (let i = 0; i < 8; i += 1) {
         engine.tick();
     }
@@ -138,10 +138,10 @@ test("a downstream extension emits geometry before item rows and clears the old 
     for (const y of [3, 4, 5]) {
         placeLane(engine, 0, y, Direction.UP);
     }
-    const lane = laneAt(engine, 0, 5);
-    const oldOutputPort = engine.lanes.outputPortOf(lane);
-    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
-    for (let i = 0; i < 10 && engine.ports.item(oldOutputPort) !== CARGO; i += 1) {
+    const lane = getLaneRefAt(engine, 0, 5);
+    const oldOutputPort = engine.lanes.getOutputPortEidByLaneRef(lane);
+    engine.ports.setItem(engine.lanes.getInputPortEidByLaneRef(lane), CARGO);
+    for (let i = 0; i < 10 && engine.ports.getItemByPortEid(oldOutputPort) !== CARGO; i += 1) {
         engine.tick();
     }
     collector.drain();
@@ -169,12 +169,12 @@ test("extending a lane upstream leaves a resting output port item static", async
     for (const y of [3, 4, 5]) {
         placeLane(engine, 0, y, Direction.UP);
     }
-    const outputPort = engine.lanes.outputPortOf(laneAt(engine, 0, 5));
-    engine.ports.setItem(engine.lanes.inputPortOf(laneAt(engine, 0, 5)), CARGO);
-    for (let i = 0; i < 10 && engine.ports.item(outputPort) !== CARGO; i += 1) {
+    const outputPort = engine.lanes.getOutputPortEidByLaneRef(getLaneRefAt(engine, 0, 5));
+    engine.ports.setItem(engine.lanes.getInputPortEidByLaneRef(getLaneRefAt(engine, 0, 5)), CARGO);
+    for (let i = 0; i < 10 && engine.ports.getItemByPortEid(outputPort) !== CARGO; i += 1) {
         engine.tick();
     }
-    assert.equal(engine.ports.item(outputPort), CARGO, "the item rests in the output port");
+    assert.equal(engine.ports.getItemByPortEid(outputPort), CARGO, "the item rests in the output port");
     collector.drain();
 
     placeLane(engine, 0, 6, Direction.UP);
@@ -182,7 +182,7 @@ test("extending a lane upstream leaves a resting output port item static", async
     engine.tick();
     const tickEvents = collector.drain();
 
-    assert.equal(engine.ports.item(outputPort), CARGO, "the item is still in the output port");
+    assert.equal(engine.ports.getItemByPortEid(outputPort), CARGO, "the item is still in the output port");
     const churned = editEvents.concat(tickEvents).some(event =>
         (event instanceof PortItemClearEvent || event instanceof PortItemSetEvent) && event.portRef === outputPort);
     assert.ok(!churned, "the surviving output port emits no clear or set, so its sprite stays put");
@@ -216,10 +216,10 @@ test("a rebuild sends the port items it changed along with its rows", async () =
     const collector = new EventCollector(engine);
     placeLane(engine, 5, 5, Direction.RIGHT);
     placeLane(engine, 6, 5, Direction.RIGHT);
-    const run = laneAt(engine, 5, 5);
-    engine.ports.setItem(engine.lanes.outputPortOf(run), 2);
+    const run = getLaneRefAt(engine, 5, 5);
+    engine.ports.setItem(engine.lanes.getOutputPortEidByLaneRef(run), 2);
     for (let i = 0; i < 6; i += 1) {
-        engine.ports.setItem(engine.lanes.inputPortOf(run), CARGO);
+        engine.ports.setItem(engine.lanes.getInputPortEidByLaneRef(run), CARGO);
         engine.tick();
     }
     collector.drain();
@@ -228,8 +228,8 @@ test("a rebuild sends the port items it changed along with its rows", async () =
     placeLane(engine, 6, 6, Direction.UP);
     const events = collector.drain();
 
-    const orphanOut = engine.lanes.outputPortOf(laneAt(engine, 5, 5));
-    assert.equal(engine.ports.item(orphanOut), CARGO);
+    const orphanOut = engine.lanes.getOutputPortEidByLaneRef(getLaneRefAt(engine, 5, 5));
+    assert.equal(engine.ports.getItemByPortEid(orphanOut), CARGO);
     assert.ok(
         events.some(event => event instanceof PortItemSetEvent && event.portRef === orphanOut && event.itemTypeId === CARGO),
         "the new output port's item is sent with the rebuild",

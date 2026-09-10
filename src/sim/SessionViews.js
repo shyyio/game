@@ -36,10 +36,10 @@ export class SessionViews {
             this.game.bus.publishTo(session.sessionRef, new ChunkSubscribeEvent(chunk));
 
             // Seed the chunk's claim (the client evicted it on unsubscribe), owner name first.
-            const owner = this.game.claims.ownerOf(chunk);
+            const owner = this.game.claims.getOwnerByChunkKey(chunk);
             if (owner !== PLAYER_REF_NONE) {
                 this.game.playerDirectory.syncUsernames(session.sessionRef, [owner]);
-                const permission = this.game.claims.permissionOf(chunk);
+                const permission = this.game.claims.getPermissionByChunkKey(chunk);
                 this.game.bus.publishTo(session.sessionRef, new ChunkClaimUpdateEvent(chunk, owner, permission));
             }
 
@@ -63,14 +63,14 @@ export class SessionViews {
      * @returns {void}
      */
     sendOverworldSnapshot(session, message) {
-        const snapshot = this.game.simEngine.overworldBake.snapshot(
+        const snapshot = this.game.simEngine.overworldBake.getSnapshotInRect(
             message.chunkX,
             message.chunkY,
             message.chunkWidth,
             message.chunkHeight,
         );
         // The bake knows tiles only; claims join here, owner names first so labels resolve.
-        const claims = this.game.claims.claimsIn(
+        const claims = this.game.claims.getClaimsInRect(
             message.chunkX,
             message.chunkY,
             message.chunkWidth,
@@ -127,7 +127,7 @@ export class SessionViews {
      * @returns {void}
      */
     dispatchInspectEvents() {
-        for (const objectRef of this.game.bus.subscribedObjects()) {
+        for (const objectRef of this.game.bus.getSubscribedObjectRefs()) {
             const snapshot = this.game.simEngine.inspectSnapshot(objectRef);
             if (snapshot === null) {
                 this.closeInspect(objectRef);

@@ -88,8 +88,8 @@ export class MarketSimMod extends AbstractSimMod {
      */
     _configure(message, game) {
         const engine = game.simEngine;
-        const eid = engine.placed.eidByObjectRef(message.objectRef);
-        if (eid === undefined || engine.placed.objectTypeIdOf(eid) !== TradingTerminalType.objectTypeId) {
+        const eid = engine.placed.findEidByObjectRef(message.objectRef);
+        if (eid === undefined || engine.placed.getObjectTypeIdByEid(eid) !== TradingTerminalType.objectTypeId) {
             return;
         }
         if (message.mode !== MARKET_MODE_SELL && message.mode !== MARKET_MODE_BUY) {
@@ -100,15 +100,15 @@ export class MarketSimMod extends AbstractSimMod {
         if (!isFixed && message.price <= 0) {
             return;
         }
-        const terminals = engine.components.get("MarketTerminal");
+        const terminals = engine.components.getComponentByName("MarketTerminal");
         const terminal = terminals.store;
-        const row = terminals.row(eid);
+        const row = terminals.getRowByEid(eid);
         book.removeBuy(eid);
         book.removeSell(eid);
         terminal.mode[row] = message.mode;
         terminal.itemTypeId[row] = message.itemTypeId;
         if (isFixed) {
-            terminal.price[row] = book.fixedPriceOf(message.itemTypeId);
+            terminal.price[row] = book.findFixedPriceByItemTypeId(message.itemTypeId);
             return;
         }
         terminal.price[row] = message.price;
@@ -139,16 +139,16 @@ export class MarketSimMod extends AbstractSimMod {
         for (const listing of engine.modRegistry.marketListings) {
             const itemTypeId = listing.itemTypeId;
             itemTypeIds.push(itemTypeId);
-            const npcPrice = book.fixedPriceOf(itemTypeId);
+            const npcPrice = book.findFixedPriceByItemTypeId(itemTypeId);
             const npcSnapshot = npcPrice === undefined ? MARKET_SNAPSHOT_NONE : npcPrice;
             npcPrices.push(npcSnapshot);
-            const bestBid = book.bestBid(itemTypeId);
+            const bestBid = book.findBestBidByItemTypeId(itemTypeId);
             const bestBidSnapshot = bestBid === undefined ? MARKET_SNAPSHOT_NONE : bestBid;
             bestBidPrices.push(bestBidSnapshot);
-            const bestAsk = book.bestAsk(itemTypeId);
+            const bestAsk = book.findBestAskByItemTypeId(itemTypeId);
             const bestAskSnapshot = bestAsk === undefined ? MARKET_SNAPSHOT_NONE : bestAsk;
             bestAskPrices.push(bestAskSnapshot);
-            const guidePrice = book.guidePriceOf(itemTypeId);
+            const guidePrice = book.findGuidePriceByItemTypeId(itemTypeId);
             const guideSnapshot = guidePrice === undefined ? MARKET_SNAPSHOT_NONE : guidePrice;
             guidePrices.push(guideSnapshot);
         }
@@ -156,11 +156,11 @@ export class MarketSimMod extends AbstractSimMod {
         let currentMode = MARKET_MODE_NONE;
         let currentItemTypeId = MARKET_SNAPSHOT_NONE;
         let currentPrice = MARKET_SNAPSHOT_NONE;
-        const eid = engine.placed.eidByObjectRef(message.objectRef);
-        if (eid !== undefined && engine.placed.objectTypeIdOf(eid) === TradingTerminalType.objectTypeId) {
-            const terminals = engine.components.get("MarketTerminal");
+        const eid = engine.placed.findEidByObjectRef(message.objectRef);
+        if (eid !== undefined && engine.placed.getObjectTypeIdByEid(eid) === TradingTerminalType.objectTypeId) {
+            const terminals = engine.components.getComponentByName("MarketTerminal");
             const terminal = terminals.store;
-            const row = terminals.row(eid);
+            const row = terminals.getRowByEid(eid);
             currentMode = terminal.mode[row];
             if (currentMode !== MARKET_MODE_NONE) {
                 currentItemTypeId = terminal.itemTypeId[row];
@@ -183,11 +183,11 @@ export class MarketSimMod extends AbstractSimMod {
      * @private
      * @returns {number} the chunk owner's playerRef, or PLAYER_REF_NONE
      */
-    _ownerOf(eid, engine, game, owners) {
+    _getOwnerByEid(eid, engine, game, owners) {
         let owner = owners.get(eid);
         if (owner === undefined) {
             const position = engine.Position;
-            owner = game.claims.ownerOf(chunkKeyAt(position.x[eid], position.y[eid]));
+            owner = game.claims.getOwnerByChunkKey(chunkKeyAt(position.x[eid], position.y[eid]));
             owners.set(eid, owner);
         }
         return owner;
@@ -213,7 +213,7 @@ export class MarketSimMod extends AbstractSimMod {
         }
         const deltas = new Map();
         for (const settlement of settlements) {
-            const sellerOwner = this._ownerOf(settlement.sellerEid, engine, game, owners);
+            const sellerOwner = this._getOwnerByEid(settlement.sellerEid, engine, game, owners);
             if (sellerOwner !== PLAYER_REF_NONE) {
                 deltas.set(sellerOwner, (deltas.get(sellerOwner) || 0) + settlement.price);
                 engine.emitMetrics(
@@ -222,7 +222,7 @@ export class MarketSimMod extends AbstractSimMod {
                 );
             }
             if (settlement.buyerEid !== NO_EID) {
-                const buyerOwner = this._ownerOf(settlement.buyerEid, engine, game, owners);
+                const buyerOwner = this._getOwnerByEid(settlement.buyerEid, engine, game, owners);
                 if (buyerOwner !== PLAYER_REF_NONE) {
                     deltas.set(buyerOwner, (deltas.get(buyerOwner) || 0) - settlement.price);
                     engine.emitMetrics(
@@ -260,7 +260,7 @@ export class MarketSimMod extends AbstractSimMod {
         }
         const deltas = new Map();
         for (const purchase of purchases) {
-            const buyerOwner = this._ownerOf(purchase.buyerEid, engine, game, owners);
+            const buyerOwner = this._getOwnerByEid(purchase.buyerEid, engine, game, owners);
             if (buyerOwner !== PLAYER_REF_NONE) {
                 deltas.set(buyerOwner, (deltas.get(buyerOwner) || 0) - purchase.price);
                 engine.emitMetrics(
@@ -290,13 +290,13 @@ export class MarketSimMod extends AbstractSimMod {
      * @returns {void}
      */
     _refreshBalances(engine, game, owners) {
-        const terminals = engine.components.get("MarketTerminal");
+        const terminals = engine.components.getComponentByName("MarketTerminal");
         const terminal = terminals.store;
         const eids = terminals.eids;
         const count = terminals.count;
         for (let row = 0; row < count; row += 1) {
             if (terminal.mode[row] === MARKET_MODE_SELL) {
-                const owner = this._ownerOf(eids[row], engine, game, owners);
+                const owner = this._getOwnerByEid(eids[row], engine, game, owners);
                 if (owner === PLAYER_REF_NONE) {
                     terminal.sellEnabled[row] = 0;
                 } else {
@@ -307,7 +307,7 @@ export class MarketSimMod extends AbstractSimMod {
             if (terminal.mode[row] !== MARKET_MODE_BUY) {
                 continue;
             }
-            const owner = this._ownerOf(eids[row], engine, game, owners);
+            const owner = this._getOwnerByEid(eids[row], engine, game, owners);
             let balance = 0;
             if (owner !== PLAYER_REF_NONE) {
                 balance = game.playerSettings.get(owner, MARKET_SETTING_BALANCE) || 0;

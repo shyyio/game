@@ -42,13 +42,13 @@ export class UndergroundBeltTool extends AbstractTool {
         const placement = this._resolvePlacement(tileX, tileY, this._rotation.direction);
         const blocked = this._blocked(tileX, tileY, placement);
         // An overwritable same-axis belt is deleted before the mouth lands.
-        const overwrite = !blocked && this._surfaceBeltAt(tileX, tileY) !== null;
+        const overwrite = !blocked && this._findSurfaceBeltAt(tileX, tileY) !== null;
         this._placementFeedbackLayer.showTile({tileX, tileY, blocked, overwrite});
         if (blocked || placement.parentId === null) {
             this._ghostLayer.showGhost(tileX, tileY, placement.direction, placement.type, BeltBend.STRAIGHT, blocked);
             return;
         }
-        const undergroundTiles = this._undergroundTilesFor(
+        const undergroundTiles = this._getUndergroundTilesByParentId(
             placement.parentId,
             tileX,
             tileY,
@@ -73,7 +73,7 @@ export class UndergroundBeltTool extends AbstractTool {
      * @private
      * @returns {{id: number, type: BeltType, direction: Direction}[]}
      */
-    _beltCandidatesAt(tileX, tileY) {
+    _getBeltCandidatesAt(tileX, tileY) {
         return this._cache.getAtTile(tileX, tileY)
             .filter(record => isBeltType(record.data.type))
             .map(record => ({id: record.id, type: record.data.type.beltKind, direction: record.data.direction}));
@@ -84,7 +84,7 @@ export class UndergroundBeltTool extends AbstractTool {
      * @private
      * @returns {{id: number, type: BeltType, direction: Direction, straight: boolean}|null}
      */
-    _surfaceBeltAt(tileX, tileY) {
+    _findSurfaceBeltAt(tileX, tileY) {
         const surface = surfaceBeltAt(this._cache, tileX, tileY);
         if (surface === null) {
             return null;
@@ -137,11 +137,11 @@ export class UndergroundBeltTool extends AbstractTool {
             return true;
         }
         // A non-belt surface object blocks outright.
-        const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
+        const occupant = this._cache.findObjectAt(tileX, tileY, LAYER_SURFACE);
         if (occupant !== null && !isBeltType(occupant.data.type)) {
             return true;
         }
-        const belt = this._surfaceBeltAt(tileX, tileY);
+        const belt = this._findSurfaceBeltAt(tileX, tileY);
         return belt !== null && !this._overwritable(belt, placement.direction);
     }
 
@@ -159,7 +159,7 @@ export class UndergroundBeltTool extends AbstractTool {
             return;
         }
 
-        const existing = this._surfaceBeltAt(tileX, tileY);
+        const existing = this._findSurfaceBeltAt(tileX, tileY);
         if (existing !== null) {
             if (!this._overwritable(existing, placement.direction)) {
                 return;
@@ -215,7 +215,7 @@ export class UndergroundBeltTool extends AbstractTool {
      * @returns {number|null} the paired mouth's id
      */
     _findTunnelParent(tileX, tileY, direction, type) {
-        const belt = findTunnelPartner(tileX, tileY, direction, type, (x, y) => this._beltCandidatesAt(x, y));
+        const belt = findTunnelPartner(tileX, tileY, direction, type, (x, y) => this._getBeltCandidatesAt(x, y));
         if (belt === null) {
             return null;
         }
@@ -227,7 +227,7 @@ export class UndergroundBeltTool extends AbstractTool {
      * @private
      * @returns {{x: number, y: number}[]}
      */
-    _undergroundTilesFor(parentId, tileX, tileY, type, direction) {
+    _getUndergroundTilesByParentId(parentId, tileX, tileY, type, direction) {
         const parent = this._cache.get(parentId);
         if (parent === null) {
             return [];

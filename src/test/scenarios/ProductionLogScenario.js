@@ -25,7 +25,7 @@ export class ProductionLogScenario extends AbstractScenario {
      * @returns {Promise<void>}
      */
     async apply(game, params) {
-        const itemTypeIds = Array.from(game.modRegistry.items.entries()).map(entry => entry[0]);
+        const itemTypeIds = Array.from(game.modRegistry.items.getEntries()).map(entry => entry[0]);
         for (let playerRef = OWN_PLAYER_REF; playerRef < OWN_PLAYER_REF + PLAYER_COUNT; playerRef += 1) {
             game.players.ensure(playerRef);
             for (const itemTypeId of itemTypeIds) {

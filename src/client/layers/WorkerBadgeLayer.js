@@ -140,7 +140,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
             badge = undefined;
         }
         if (badge === undefined) {
-            badge = this._poolFor(stateKey).take(workers, granted);
+            badge = this._getPoolByStateKey(stateKey).take(workers, granted);
             this._badges.set(machineId, badge);
         }
 
@@ -149,7 +149,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
             bounds.minTileX * TILE_SIZE + DOT_LEFT_INSET,
             bounds.minTileY * TILE_SIZE + DOT_EDGE_INSET,
         );
-        const container = this._containerFor(chunkKeyAt(bounds.minTileX, bounds.minTileY));
+        const container = this._getContainerByChunkKey(chunkKeyAt(bounds.minTileX, bounds.minTileY));
         if (badge.parent !== container) {
             container.addChild(badge);
         }
@@ -162,10 +162,10 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
      * @param {string} stateKey
      * @returns {DisplayPool}
      */
-    _poolFor(stateKey) {
+    _getPoolByStateKey(stateKey) {
         return getOrCreate(this._pools, stateKey, () => new DisplayPool(
             (workers, granted) => new Badge(
-                this._contextFor(stateKey, workers, granted),
+                this._getContextByStateKey(stateKey, workers, granted),
                 stateKey,
             ),
             badge => {},
@@ -182,7 +182,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
      * @param {number} granted
      * @returns {GraphicsContext}
      */
-    _contextFor(stateKey, workers, granted) {
+    _getContextByStateKey(stateKey, workers, granted) {
         return getOrCreate(this._contexts, stateKey, () => {
             const context = new GraphicsContext();
             for (let i = 0; i < workers; i += 1) {
@@ -207,7 +207,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
      * @param {number} chunkKey
      * @returns {BadgeChunkContainer}
      */
-    _containerFor(chunkKey) {
+    _getContainerByChunkKey(chunkKey) {
         return getOrCreate(this._chunkContainers, chunkKey, () => {
             const container = new BadgeChunkContainer(chunkKey);
             this.addChild(container);
@@ -236,7 +236,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
         }
         this._badges.delete(machineId);
         // An overflow destroy() leaves the shared context alone (the badge never owned it).
-        this._poolFor(badge.stateKey).release(badge);
+        this._getPoolByStateKey(badge.stateKey).release(badge);
     }
 }
 

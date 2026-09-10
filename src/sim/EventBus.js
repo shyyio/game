@@ -64,7 +64,7 @@ export class EventBus {
      * @returns {void}
      */
     publish(event) {
-        const subscribers = event.subscribersIn(this);
+        const subscribers = event.getSubscribersByBus(this);
         if (subscribers === undefined) {
             return;
         }
@@ -91,7 +91,7 @@ export class EventBus {
      * @param {number} playerRef
      * @returns {number[]}
      */
-    sessionRefsOf(playerRef) {
+    getSessionRefsByPlayerRef(playerRef) {
         const ids = [];
         for (const [sessionRef, session] of this._sessions) {
             if (session.playerRef === playerRef) {
@@ -120,7 +120,7 @@ export class EventBus {
      * @param {number} sessionRef
      * @returns {number}
      */
-    playerRefOf(sessionRef) {
+    getPlayerRefBySessionRef(sessionRef) {
         const session = this._sessions.get(sessionRef);
         if (session === undefined) {
             throw new RangeError(`Unknown sessionRef: ${sessionRef}`);
@@ -133,7 +133,7 @@ export class EventBus {
      * @param {number} chunkKey
      * @returns {Set<number>|undefined}
      */
-    chunkSubscribers(chunkKey) {
+    findSubscribersByChunkKey(chunkKey) {
         return this._chunkSubscribers.get(chunkKey);
     }
 
@@ -142,7 +142,7 @@ export class EventBus {
      * @param {number} objectRef
      * @returns {Set<number>|undefined}
      */
-    objectSubscribers(objectRef) {
+    findSubscribersByObjectRef(objectRef) {
         return this._objectSubscribers.get(objectRef);
     }
 
@@ -237,7 +237,7 @@ export class EventBus {
      * The ids of every object at least one session is inspecting.
      * @returns {number[]}
      */
-    subscribedObjects() {
+    getSubscribedObjectRefs() {
         const objectRefs = new Set();
         for (const inspects of this._inspects.values()) {
             for (const objectRef of inspects) {

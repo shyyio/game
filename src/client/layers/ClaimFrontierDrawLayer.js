@@ -109,7 +109,7 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
         const frontier = new Set();
         for (const chunk of this._claims.ownChunks()) {
             for (const neighbor of chunkNeighbors(chunk)) {
-                if (this._claims.ownerOf(neighbor) === PLAYER_REF_NONE) {
+                if (this._claims.getOwnerByChunkKey(neighbor) === PLAYER_REF_NONE) {
                     frontier.add(neighbor);
                 }
             }

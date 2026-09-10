@@ -18,7 +18,7 @@ export class ChartColors {
      * @param {string} key
      * @returns {number} categorical slot index, or -1 past the palette's capacity
      */
-    indexFor(key) {
+    getIndexByKey(key) {
         let index = this._indexByKey.get(key);
         if (index === undefined) {
             if (this._nextIndex < MAX_CATEGORICAL_SERIES) {
@@ -36,8 +36,8 @@ export class ChartColors {
      * @param {string} key
      * @returns {string}
      */
-    colorFor(key) {
-        const index = this.indexFor(key);
+    getColorByKey(key) {
+        const index = this.getIndexByKey(key);
         if (index === -1) {
             return INK_MUTED;
         }

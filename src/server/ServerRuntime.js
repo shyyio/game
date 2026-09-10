@@ -140,7 +140,7 @@ export class ServerRuntime {
         const restart = this._restartFields(config);
         const next = this._withHeldFieldsKept(config);
         const changed = this._running.diff(next);
-        const verifier = await this._verifierFor(next, changed);
+        const verifier = await this._createVerifier(next, changed);
         if (changed.includes("mods")) {
             const loadout = await this._loadoutFor(this.resolvePaths(next));
             // One snapshot serves both: what the losses are counted from is what a failed boot
@@ -171,7 +171,7 @@ export class ServerRuntime {
         const restart = this._restartFields(config);
         const next = this._withHeldFieldsKept(config);
         const changed = this._running.diff(next);
-        const verifier = await this._verifierFor(next, changed);
+        const verifier = await this._createVerifier(next, changed);
         const armed = this._tickInterval !== null;
         this.stop();
         try {
@@ -196,7 +196,7 @@ export class ServerRuntime {
      * @param {string[]} changed
      * @returns {Promise<object|null>} null when the auth server is the one already in use
      */
-    async _verifierFor(next, changed) {
+    async _createVerifier(next, changed) {
         if (!changed.includes("authServer")) {
             return null;
         }

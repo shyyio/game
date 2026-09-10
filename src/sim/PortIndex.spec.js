@@ -19,21 +19,21 @@ async function setup() {
 test("placing an object binds it to its ports' endpoints, deleting it unbinds", async () => {
     const engine = await setup();
     engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 5, 5, Direction.UP));
-    const machine = engine.placed.eidsOf(TestMachineType.objectTypeId)[0];
-    const inputPort = engine.ports.at(5, 5, Direction.UP);
-    const outputPort = engine.ports.at(5, 4, Direction.UP);
+    const machine = engine.placed.getEidsByTypeId(TestMachineType.objectTypeId)[0];
+    const inputPort = engine.ports.getPortEidAt(5, 5, Direction.UP);
+    const outputPort = engine.ports.getPortEidAt(5, 4, Direction.UP);
 
-    assert.deepEqual(engine.ports.consumersOf(inputPort), [machine], "the machine consumes its input edge");
-    assert.deepEqual(engine.ports.producersOf(outputPort), [machine], "and produces into its output edge");
-    assert.deepEqual(engine.ports.producersOf(inputPort), [], "nothing produces into its input yet");
+    assert.deepEqual(engine.ports.getConsumerEidsByPortEid(inputPort), [machine], "the machine consumes its input edge");
+    assert.deepEqual(engine.ports.getProducerEidsByPortEid(outputPort), [machine], "and produces into its output edge");
+    assert.deepEqual(engine.ports.getProducerEidsByPortEid(inputPort), [], "nothing produces into its input yet");
 
     engine.applyMessage(new CreateObjectMessage(TestLaneType.objectTypeId, 5, 4, Direction.UP));
-    const cell = engine.placed.eidsOf(TestLaneType.objectTypeId)[0];
-    assert.deepEqual(engine.ports.consumersOf(outputPort), [cell], "the cell across the edge consumes the machine's output");
+    const cell = engine.placed.getEidsByTypeId(TestLaneType.objectTypeId)[0];
+    assert.deepEqual(engine.ports.getConsumerEidsByPortEid(outputPort), [cell], "the cell across the edge consumes the machine's output");
 
-    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(machine)));
-    assert.deepEqual(engine.ports.producersOf(outputPort), [], "the deleted machine is unbound");
-    assert.deepEqual(engine.ports.consumersOf(outputPort), [cell], "the cell is still bound");
+    engine.applyMessage(new DeleteObjectMessage(engine.placed.getObjectRefByEid(machine)));
+    assert.deepEqual(engine.ports.getProducerEidsByPortEid(outputPort), [], "the deleted machine is unbound");
+    assert.deepEqual(engine.ports.getConsumerEidsByPortEid(outputPort), [cell], "the cell is still bound");
 });
 
 test("endpoints are rebuilt after a load", async () => {
@@ -43,9 +43,9 @@ test("endpoints are rebuilt after a load", async () => {
 
     const b = await setup();
     b.snapshots.deserialize(snapshot);
-    const machine = b.placed.eidsOf(TestMachineType.objectTypeId)[0];
+    const machine = b.placed.getEidsByTypeId(TestMachineType.objectTypeId)[0];
 
-    assert.deepEqual(b.ports.producersOf(b.ports.at(5, 4, Direction.UP)), [machine]);
+    assert.deepEqual(b.ports.getProducerEidsByPortEid(b.ports.getPortEidAt(5, 4, Direction.UP)), [machine]);
 });
 
 // An interior lane edge (a flank turn between two cells) is no component's stored eid field, but it
@@ -57,18 +57,18 @@ test("the sweep keeps a port that a live object still produces into or consumes 
     // an interior turn edge stored in no eid field.
     engine.applyMessage(new CreateObjectMessage(TestLaneType.objectTypeId, 5, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(TestLaneType.objectTypeId, 5, 4, Direction.RIGHT));
-    const feeder = engine.placed.eidsOf(TestLaneType.objectTypeId)[0];
-    const turn = engine.placed.eidsOf(TestLaneType.objectTypeId)[1];
-    const edge = engine.ports.at(5, 4, Direction.UP);
-    assert.deepEqual(engine.ports.producersOf(edge), [feeder], "the feeder produces into the turn edge");
-    assert.deepEqual(engine.ports.consumersOf(edge), [turn], "the turn cell consumes it");
+    const feeder = engine.placed.getEidsByTypeId(TestLaneType.objectTypeId)[0];
+    const turn = engine.placed.getEidsByTypeId(TestLaneType.objectTypeId)[1];
+    const edge = engine.ports.getPortEidAt(5, 4, Direction.UP);
+    assert.deepEqual(engine.ports.getProducerEidsByPortEid(edge), [feeder], "the feeder produces into the turn edge");
+    assert.deepEqual(engine.ports.getConsumerEidsByPortEid(edge), [turn], "the turn cell consumes it");
 
     // A delete somewhere else fires the global sweep; the still-bound interior edge must survive.
     engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 20, 20, Direction.UP));
-    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(
-        engine.placed.eidsOf(TestMachineType.objectTypeId)[0])));
+    engine.applyMessage(new DeleteObjectMessage(engine.placed.getObjectRefByEid(
+        engine.placed.getEidsByTypeId(TestMachineType.objectTypeId)[0])));
 
-    assert.equal(engine.ports.at(5, 4, Direction.UP), edge, "the interior edge port keeps its identity");
-    assert.deepEqual(engine.ports.producersOf(edge), [feeder], "and its bindings survive the sweep");
-    assert.deepEqual(engine.ports.consumersOf(edge), [turn]);
+    assert.equal(engine.ports.getPortEidAt(5, 4, Direction.UP), edge, "the interior edge port keeps its identity");
+    assert.deepEqual(engine.ports.getProducerEidsByPortEid(edge), [feeder], "and its bindings survive the sweep");
+    assert.deepEqual(engine.ports.getConsumerEidsByPortEid(edge), [turn]);
 });

@@ -21,10 +21,10 @@ async function setup() {
 function createMachine(game, x, y) {
     game.dispatchMessage(new CreateObjectMessage(BlenderType.objectTypeId, x, y, Direction.UP), new CapturingSession());
     const placed = game.simEngine.placed;
-    const eids = placed.eidsOf(BlenderType.objectTypeId);
+    const eids = placed.getEidsByTypeId(BlenderType.objectTypeId);
     const eid = eids[eids.length - 1];
-    const machine = game.simEngine.components.get("Machine");
-    return {id: placed.objectRefOf(eid), inputPort: machine.store.in0[machine.row(eid)]};
+    const machine = game.simEngine.components.getComponentByName("Machine");
+    return {id: placed.getObjectRefByEid(eid), inputPort: machine.store.in0[machine.getRowByEid(eid)]};
 }
 
 function heartbeats(session) {

@@ -95,7 +95,7 @@ export class Pipes extends AbstractSystem {
      * @param {number} id
      * @returns {{x:number, y:number, id:number}|null}
      */
-    pipeById(id) {
+    findPipeById(id) {
         const found = this._pipeById.get(id);
         if (found === undefined) {
             return null;
@@ -109,7 +109,7 @@ export class Pipes extends AbstractSystem {
      * @param {number} y
      * @returns {{id:number, fluidType:number, amount:number, capacity:number, size:number}|null}
      */
-    networkAt(x, y) {
+    findNetworkAt(x, y) {
         const net = this._networkByTile.get(tileKeyAt(x, y));
         if (net === undefined) {
             return null;
@@ -136,9 +136,9 @@ export class Pipes extends AbstractSystem {
                     candidates.push(net.fluidType);
                 }
             }
-            const port = this.engine.ports.peekAt(x, y, Direction.invert(direction));
+            const port = this.engine.ports.findPortEidAt(x, y, Direction.invert(direction));
             if (port !== null) {
-                candidates.push(this.engine.ports.fluidSource(port));
+                candidates.push(this.engine.ports.getFluidSourceByPortEid(port));
             }
             return candidates;
         }) !== null;
@@ -313,7 +313,7 @@ export class Pipes extends AbstractSystem {
                 if (tiles.has(tileKeyAt(nx, ny))) {
                     continue;
                 }
-                const inputPort = this.engine.ports.at(pipe.x, pipe.y, Direction.invert(direction));
+                const inputPort = this.engine.ports.getPortEidAt(pipe.x, pipe.y, Direction.invert(direction));
                 this.engine.ports.markFluid(inputPort);
                 inputPorts.push(inputPort);
                 outEdges.push({x: nx, y: ny, direction, neighborKey: tileKeyAt(nx, ny)});
@@ -341,7 +341,7 @@ export class Pipes extends AbstractSystem {
         // An adopted producer output port binds the type before the first payload.
         net.sourceGen = this.engine.ports.fluidSourceGeneration;
         if (net.fluidType === EMPTY) {
-            const bound = this._boundarySourceType(net);
+            const bound = this._getBoundarySourceTypeByNetwork(net);
             net.fluidType = bound;
             net.lastType = bound;
         }
@@ -354,9 +354,9 @@ export class Pipes extends AbstractSystem {
      * @param {PipeNetwork} net
      * @returns {number}
      */
-    _boundarySourceType(net) {
+    _getBoundarySourceTypeByNetwork(net) {
         for (const port of net.inputPorts) {
-            const source = this.engine.ports.fluidSource(port);
+            const source = this.engine.ports.getFluidSourceByPortEid(port);
             if (source !== EMPTY) {
                 return source;
             }
@@ -440,7 +440,7 @@ export class Pipes extends AbstractSystem {
                     break;
                 }
                 // Only fluid-flagged ports receive payloads.
-                const dest = engine.ports.peekAt(edge.x, edge.y, edge.direction);
+                const dest = engine.ports.findPortEidAt(edge.x, edge.y, edge.direction);
                 if (dest === null || !engine.ports.isFluidClaimed(dest)) {
                     continue;
                 }
@@ -480,7 +480,7 @@ export class Pipes extends AbstractSystem {
             // A drained network re-binds to a connected producer's type (EMPTY when none) — only
             // when just drained or a source changed, so idle networks skip the port scan.
             if (net.amount === 0 && (net.lastAmount !== 0 || net.sourceGen !== sourceGen)) {
-                net.fluidType = this._boundarySourceType(net);
+                net.fluidType = this._getBoundarySourceTypeByNetwork(net);
                 net.sourceGen = sourceGen;
             }
             if (net.fluidType === net.lastType && net.amount === net.lastAmount) {
@@ -536,7 +536,7 @@ export class Pipes extends AbstractSystem {
      */
     serialize() {
         for (const component of [this._savedMembers, this._savedNetworks]) {
-            for (const eid of component.entities()) {
+            for (const eid of component.getLiveEids()) {
                 this.engine.components.destroyEntity(eid);
             }
         }
@@ -586,14 +586,14 @@ export class Pipes extends AbstractSystem {
         const N = this._savedNetworks.store;
         const M = this._savedMembers.store;
         const membersByNet = new Map();
-        for (const eid of this._savedMembers.entities()) {
-            const pipe = this.pipeById(M.objectRef[eid]);
+        for (const eid of this._savedMembers.getLiveEids()) {
+            const pipe = this.findPipeById(M.objectRef[eid]);
             if (pipe === null) {
                 throw new Error(`PipeNetworkMember references unknown pipe ${M.objectRef[eid]}`);
             }
             getOrCreate(membersByNet, M.network[eid], () => []).push(pipe);
         }
-        for (const netEid of this._savedNetworks.entities()) {
+        for (const netEid of this._savedNetworks.getLiveEids()) {
             const pipes = membersByNet.get(netEid);
             if (pipes === undefined) {
                 throw new Error(`PipeNetwork entity ${netEid} has no members`);

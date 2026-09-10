@@ -14,10 +14,10 @@ const RED = 1;
 async function tunnel(gap) {
     const engine = await makeGameEngine();
     placeBelt(engine, 1, 1, Direction.RIGHT, BeltTunnelDownType);
-    const downRef = engine.placed.objectRefOf(engine.placed.eidsOf(BeltTunnelDownType.objectTypeId)[0]);
+    const downRef = engine.placed.getObjectRefByEid(engine.placed.getEidsByTypeId(BeltTunnelDownType.objectTypeId)[0]);
     const exitX = 1 + gap + 1;
     placeBelt(engine, exitX, 1, Direction.RIGHT, BeltTunnelUpType);
-    const upRef = engine.placed.objectRefOf(engine.placed.eidsOf(BeltTunnelUpType.objectTypeId)[0]);
+    const upRef = engine.placed.getObjectRefByEid(engine.placed.getEidsByTypeId(BeltTunnelUpType.objectTypeId)[0]);
     return {engine, downRef, upRef, exitX};
 }
 
@@ -27,7 +27,7 @@ function connected(engine, ax, ay, bx, by) {
 
 function beltCount(engine) {
     return [BeltTunnelDownType, BeltTunnelUpType, BeltUndergroundType]
-        .reduce((sum, type) => sum + engine.placed.eidsOf(type.objectTypeId).length, 0);
+        .reduce((sum, type) => sum + engine.placed.getEidsByTypeId(type.objectTypeId).length, 0);
 }
 
 test("adjacent mouths connect into one tunnel lane", async () => {
@@ -45,7 +45,7 @@ test("mouths connect at the maximum tunnel length", async () => {
 test("mouths beyond the maximum tunnel length do not connect", async () => {
     const {engine, exitX} = await tunnel(MAX_UNDERGROUND_LENGTH + 1);
     assert.ok(!connected(engine, 1, 1, exitX, 1), "over-long mouths stay separate");
-    assert.equal(engine.lanes.ids().length, 2);
+    assert.equal(engine.lanes.getLaneRefs().length, 2);
 });
 
 test("a reversed pair (tunnel-up first, then tunnel-down) connects", async () => {
@@ -54,7 +54,7 @@ test("a reversed pair (tunnel-up first, then tunnel-down) connects", async () =>
     placeBelt(engine, 1, 1, Direction.RIGHT, BeltTunnelDownType);
 
     assert.ok(connected(engine, 1, 1, 3, 1), "the reversed pair forms one tunnel lane");
-    assert.equal(engine.lanes.ids().length, 1);
+    assert.equal(engine.lanes.getLaneRefs().length, 1);
 });
 
 test("deleting the up mouth collapses the tunnel, leaving the down mouth", async () => {
@@ -62,8 +62,8 @@ test("deleting the up mouth collapses the tunnel, leaving the down mouth", async
     engine.applyMessage(new DeleteObjectMessage(upRef));
 
     assert.equal(beltCount(engine), 1, "the tunnel-up and its undergrounds are gone");
-    assert.equal(engine.lanes.ids().length, 1);
-    assert.equal(engine.lanes.cellsOf(beltLaneAt(engine, 1, 1).laneRef).length, 1, "the surviving tunnel-down is a standalone belt");
+    assert.equal(engine.lanes.getLaneRefs().length, 1);
+    assert.equal(engine.lanes.getCellEidsByLaneRef(beltLaneAt(engine, 1, 1).laneRef).length, 1, "the surviving tunnel-down is a standalone belt");
 });
 
 test("deleting the down mouth collapses the tunnel, leaving the up mouth", async () => {
@@ -71,8 +71,8 @@ test("deleting the down mouth collapses the tunnel, leaving the up mouth", async
     engine.applyMessage(new DeleteObjectMessage(downRef));
 
     assert.equal(beltCount(engine), 1, "the tunnel-down and its undergrounds are gone");
-    assert.equal(engine.lanes.ids().length, 1);
-    assert.equal(engine.lanes.cellsOf(beltLaneAt(engine, exitX, 1).laneRef).length, 1);
+    assert.equal(engine.lanes.getLaneRefs().length, 1);
+    assert.equal(engine.lanes.getCellEidsByLaneRef(beltLaneAt(engine, exitX, 1).laneRef).length, 1);
 });
 
 test("a tunnel item is kept on the surviving mouth when a mouth is deleted", async () => {

@@ -108,7 +108,7 @@ async function load() {
     listingsError.value = listError.message;
   }
   listingsLoading.value = false;
-  loadout.value = loadoutOf(config.value);
+  loadout.value = getLoadoutByConfig(config.value);
 }
 
 /**
@@ -126,7 +126,7 @@ async function signIn() {
  * @param {object} json a config's public JSON
  * @returns {LocalLoadout}
  */
-function loadoutOf(json) {
+function getLoadoutByConfig(json) {
   if (json.mods === null) {
     return new LocalLoadout([]);
   }
@@ -227,7 +227,7 @@ function currentModList() {
 }
 
 // Whether the picker still shows exactly what the config runs, so an untouched config saves as is.
-const pickerUntouched = computed(() => JSON.stringify(loadoutOf(config.value).toJSON()) === JSON.stringify(loadout.value.toJSON()));
+const pickerUntouched = computed(() => JSON.stringify(getLoadoutByConfig(config.value).toJSON()) === JSON.stringify(loadout.value.toJSON()));
 
 /**
  * @returns {object} the config to save, with the picker's pins in it
@@ -261,7 +261,7 @@ function validateJson(json) {
  */
 function applyJson(json) {
   config.value = ServerConfig.parse(json).toPublicJSON();
-  loadout.value = loadoutOf(config.value);
+  loadout.value = getLoadoutByConfig(config.value);
 }
 
 /**

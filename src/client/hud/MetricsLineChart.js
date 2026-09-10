@@ -151,8 +151,8 @@ export class MetricsLineChart {
      * @param {string} key
      * @returns {string}
      */
-    colorFor(key) {
-        return this._colors.colorFor(key);
+    getColorByKey(key) {
+        return this._colors.getColorByKey(key);
     }
 
     /**
@@ -425,11 +425,11 @@ export class MetricsLineChart {
         // series paints last, on top of the dimmed rest.
         this._gLines.selectAll("path").data(this._latestSeriesData.seriesList, d => d.key).join("path")
             .attr("fill", "none")
-            .attr("stroke-width", d => this._strokeWidthFor(d.key))
+            .attr("stroke-width", d => this._getStrokeWidthByKey(d.key))
             .attr("stroke-linejoin", "round")
             .attr("stroke-linecap", "round")
-            .attr("stroke", d => this._colors.colorFor(d.key))
-            .attr("stroke-opacity", d => this._strokeOpacityFor(d.key))
+            .attr("stroke", d => this._colors.getColorByKey(d.key))
+            .attr("stroke-opacity", d => this._getStrokeOpacityByKey(d.key))
             .attr("d", d => lineGenerator(this._latestSeriesData.ticks.map((tick, i) => ({tick, value: d.values[i]}))))
             .sort((a, b) => {
                 if (a.key === this._highlightKey) {
@@ -438,7 +438,7 @@ export class MetricsLineChart {
                 if (b.key === this._highlightKey) {
                     return -1;
                 }
-                return this._colors.indexFor(a.key) - this._colors.indexFor(b.key);
+                return this._colors.getIndexByKey(a.key) - this._colors.getIndexByKey(b.key);
             });
     }
 
@@ -447,7 +447,7 @@ export class MetricsLineChart {
      * @returns {number}
      * @private
      */
-    _strokeWidthFor(key) {
+    _getStrokeWidthByKey(key) {
         if (key === this._highlightKey) {
             return HIGHLIGHT_STROKE_WIDTH;
         }
@@ -459,7 +459,7 @@ export class MetricsLineChart {
      * @returns {number}
      * @private
      */
-    _strokeOpacityFor(key) {
+    _getStrokeOpacityByKey(key) {
         if (this._highlightKey === null || key === this._highlightKey) {
             return 1;
         }

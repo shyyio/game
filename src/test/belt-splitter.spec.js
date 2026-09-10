@@ -17,8 +17,8 @@ test("a belt line feeds a splitter through the shared edge port", async () => {
     placeBelt(engine, 5, 6, Direction.UP);
     engine.applyMessage(new CreateObjectMessage(SplitterType.objectTypeId, 5, 5, Direction.UP));
     const feed = beltLaneAt(engine, 5, 7);
-    const def = engine.components.get("Splitter");
-    const row = def.row(def.eids[0]);
+    const def = engine.components.getComponentByName("Splitter");
+    const row = def.getRowByEid(def.eids[0]);
     assert.equal(def.store.in_a[row], feed.outputPort, "splitter in_a adopted the belt's output port");
 
     const outA = def.store.out_a[row];
@@ -29,7 +29,7 @@ test("a belt line feeds a splitter through the shared edge port", async () => {
         engine.ports.setItem(outA, EMPTY);
         engine.ports.setItem(outB, EMPTY);
         engine.tick();
-        if (engine.ports.item(outA) === RED || engine.ports.item(outB) === RED) {
+        if (engine.ports.getItemByPortEid(outA) === RED || engine.ports.getItemByPortEid(outB) === RED) {
             delivered += 1;
         }
     }

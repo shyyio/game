@@ -127,7 +127,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
         // Each open belongs to another marker, so a spot dragged for the last one means nothing.
         this._editor.forgetPosition();
         if (target.mode !== NOTE_EDITOR_MODE_DELETE) {
-            this._input = new TextInput(this._app, UIPanel.contentWidthFor(PANEL_WIDTH), ROW_HEIGHT, NOTE_TEXT_MAX_LENGTH, "Leave a note");
+            this._input = new TextInput(this._app, UIPanel.getContentWidth(PANEL_WIDTH), ROW_HEIGHT, NOTE_TEXT_MAX_LENGTH, "Leave a note");
             this._input.value = text;
             this._input.onSubmit(() => this._save(target));
         }
@@ -199,7 +199,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
         if (this._input === null) {
             stack.text(target.text);
             if (this._showAuthor) {
-                stack.text(this._players.usernameOf(target.authorId), TextRole.MUTED);
+                stack.text(this._players.getUsernameByPlayerRef(target.authorId), TextRole.MUTED);
             }
         } else {
             stack.row(row => row.pushLeft(this._input));

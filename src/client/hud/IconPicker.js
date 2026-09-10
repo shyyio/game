@@ -108,7 +108,7 @@ export class IconPicker extends Container {
      * @param {number} [cellSize]
      * @returns {number}
      */
-    static columnsFor(width, cellSize = CELL_SIZE) {
+    static getColumnCount(width, cellSize = CELL_SIZE) {
         return Math.max(1, Math.floor((width - PADDING * 2 + CELL_GAP) / (cellSize + CELL_GAP)));
     }
 

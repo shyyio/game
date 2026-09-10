@@ -220,7 +220,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {boolean} [move.hidden] - the item is under cover (in a tunnel)
      */
     moveItem({key, tileX, tileY, halfTile, sourceDirection, type, snap=false, hidden=false}) {
-        const definition = this._itemRegistry.typeFor(type);
+        const definition = this._itemRegistry.getItemTypeOrDefaultByTypeId(type);
         const texture = this.textureCache.get(definition.texture);
         const particle = this._items.take(key, texture);
         particle.live = true;
@@ -257,7 +257,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {number} reach - world pixels from the point an item's center may sit
      * @returns {ItemParticle|null}
      */
-    itemAt(x, y, reach) {
+    findItemAt(x, y, reach) {
         let nearest = null;
         let nearestDistance = 0;
         for (const particle of this._items.values()) {

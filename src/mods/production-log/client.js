@@ -45,7 +45,7 @@ export class ProductionLogClientMod extends AbstractClientMod {
      * @returns {PlayerAction[]}
      */
     playerActions(playerRef, client) {
-        return [new PlayerAction("View log", () => this._logPanel.showFor(playerRef))];
+        return [new PlayerAction("View log", () => this._logPanel.showLog(playerRef))];
     }
 
     /**
@@ -70,7 +70,7 @@ export class ProductionLogClientMod extends AbstractClientMod {
      */
     _discoveryText(itemTypeIds, items) {
         if (itemTypeIds.length === 1) {
-            return `New item: ${items.require(itemTypeIds[0]).name}`;
+            return `New item: ${items.getItemTypeByTypeId(itemTypeIds[0]).name}`;
         }
         return `${itemTypeIds.length} new items`;
     }

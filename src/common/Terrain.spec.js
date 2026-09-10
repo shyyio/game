@@ -101,8 +101,8 @@ test("biomeAt is deterministic and honors first-match order", () => {
     for (let i = 0; i < 400; i++) {
         const tileX = (i * 37) % 500;
         const tileY = (i * 91) % 500;
-        const biomeId = a.biomeAt(tileX, tileY);
-        assert.equal(biomeId, b.biomeAt(tileX, tileY));
+        const biomeId = a.getBiomeIdAt(tileX, tileY);
+        assert.equal(biomeId, b.getBiomeIdAt(tileX, tileY));
         seen.add(biomeId);
         const h = a.noise.get(tileX, tileY, height.channelId);
         const m = a.noise.get(tileX, tileY, humidity.channelId);
@@ -123,7 +123,7 @@ test("bakeChunk lays tiles out row-major and caches the array", () => {
     const chunkKey = chunkKeyAt(CHUNK_SIZE * 2, CHUNK_SIZE * -3);
     const bake = terrain.bakeChunk(chunkKey);
     assert.equal(bake.biomes.length, CHUNK_SIZE * CHUNK_SIZE);
-    assert.equal(bake.biomes[5 * CHUNK_SIZE + 7], terrain.biomeAt(CHUNK_SIZE * 2 + 7, CHUNK_SIZE * -3 + 5));
+    assert.equal(bake.biomes[5 * CHUNK_SIZE + 7], terrain.getBiomeIdAt(CHUNK_SIZE * 2 + 7, CHUNK_SIZE * -3 + 5));
     assert.equal(terrain.bakeChunk(chunkKey), bake);
     assert.ok(bake.weights.some(weight => weight > 0), "some tiles blend");
     for (let index = 0; index < bake.biomes.length; index++) {
@@ -141,9 +141,9 @@ test("the engine's channels are registered first and their names are reserved", 
     assert.equal(SHADE_CHANNEL.channelId, 0);
     assert.equal(DITHER_CHANNEL.channelId, 1);
     const terrain = new Terrain(new WorldNoise(4, registry.noiseChannels), registry.biomes);
-    const shade = terrain.shadeAt(12, 34);
+    const shade = terrain.getShadeAt(12, 34);
     assert.ok(shade >= 0 && shade <= 1);
-    const dither = terrain.ditherAt(12, 34);
+    const dither = terrain.getDitherAt(12, 34);
     assert.ok(dither >= 0 && dither <= 1);
     assert.throws(
         () => freezeLoadout([new NoiseChannel("dither", 0.1)], []),
@@ -195,9 +195,9 @@ test("detailFor scatters a biome's details by density, deterministically", () =>
     const counts = new Map([[rock, 0], [tuft, 0], [null, 0]]);
     for (let tileX = 0; tileX < 200; tileX++) {
         for (let tileY = 0; tileY < 100; tileY++) {
-            const detail = a.detailFor(decorated, tileX, tileY);
-            assert.equal(detail, b.detailFor(decorated, tileX, tileY));
-            assert.equal(a.detailFor(bare, tileX, tileY), null);
+            const detail = a.findDetailByBiome(decorated, tileX, tileY);
+            assert.equal(detail, b.findDetailByBiome(decorated, tileX, tileY));
+            assert.equal(a.findDetailByBiome(bare, tileX, tileY), null);
             counts.set(detail, counts.get(detail) + 1);
         }
     }
@@ -207,7 +207,7 @@ test("detailFor scatters a biome's details by density, deterministically", () =>
     const other = new Terrain(new WorldNoise(78, registry.noiseChannels), registry.biomes);
     let differs = 0;
     for (let tileX = 0; tileX < 200; tileX++) {
-        if (other.detailFor(decorated, tileX, 0) !== a.detailFor(decorated, tileX, 0)) {
+        if (other.findDetailByBiome(decorated, tileX, 0) !== a.findDetailByBiome(decorated, tileX, 0)) {
             differs++;
         }
     }
@@ -266,7 +266,7 @@ test("a loadout with no biomes classifies every tile as biome 0 with no blend, a
     registry.freeze();
     const terrain = new Terrain(new WorldNoise(7, registry.noiseChannels), registry.biomes);
 
-    assert.equal(terrain.biomeAt(3, 4), 0);
+    assert.equal(terrain.getBiomeIdAt(3, 4), 0);
     const tile = terrain.classify(-20, 9);
     assert.deepEqual([tile.biomeId, tile.otherId, tile.weight], [0, 0, 0]);
     assert.equal(terrain.bakeChunk(chunkKeyAt(0, 0)).biomes.length, CHUNK_SIZE * CHUNK_SIZE);

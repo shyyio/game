@@ -121,7 +121,7 @@ export class AuthHttpServer extends AbstractHttpServer {
             }
             let account;
             try {
-                account = this._accounts.byId(accountId);
+                account = this._accounts.getPlayerByRef(accountId);
             } catch (error) {
                 rejectRequest(res, "401 Unauthorized", "Unknown account", {cors: true});
                 return;
@@ -151,7 +151,7 @@ export class AuthHttpServer extends AbstractHttpServer {
             }
             let account;
             try {
-                account = this._accounts.byId(claims.accountId);
+                account = this._accounts.getPlayerByRef(claims.accountId);
             } catch (error) {
                 rejectRequest(res, "401 Unauthorized", "Unknown account", {cors: true});
                 return;
@@ -175,7 +175,7 @@ export class AuthHttpServer extends AbstractHttpServer {
             rejectRequest(res, "401 Unauthorized", "Missing or invalid bearer token", {cors: true});
             return;
         }
-        respondJson(res, {servers: this._servers.list()});
+        respondJson(res, {servers: this._servers.findQuotesByItemTypeId()});
     }
 
     /**

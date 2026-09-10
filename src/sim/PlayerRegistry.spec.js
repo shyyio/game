@@ -9,7 +9,7 @@ test("getOrCreate is idempotent and allocates stable ids from 1", () => {
     assert.equal(alice.playerRef, 1);
     assert.equal(bob.playerRef, 2);
     assert.equal(players.getOrCreate("sub-alice", "alice"), alice);
-    assert.equal(players.byId(2), bob);
+    assert.equal(players.getPlayerByRef(2), bob);
 });
 
 test("a returning sub is recognized even if the display name changed", () => {
@@ -28,7 +28,7 @@ test("an invalid sub is rejected; the display name is unconstrained", () => {
 
 test("unknown ids break loudly", () => {
     const players = new PlayerRegistry();
-    assert.throws(() => players.byId(7), RangeError);
+    assert.throws(() => players.getPlayerByRef(7), RangeError);
     assert.equal(players.has(7), false);
 });
 
@@ -58,7 +58,7 @@ test("directory lists every player", () => {
     const players = new PlayerRegistry();
     players.getOrCreate("sub-alice", "alice");
     players.getOrCreate("sub-bob", "bob");
-    const directory = players.directory();
+    const directory = players.getDirectory();
     assert.deepEqual(directory.playerRefs, [1, 2]);
     assert.deepEqual(directory.usernames, ["alice", "bob"]);
 });
@@ -73,10 +73,10 @@ test("records round-trip and the id counter resumes past the loaded ids", () => 
     const [playerTable, friendTable] = players.serializeRecords();
     const restored = new PlayerRegistry();
     restored.deserializeRecords(playerTable, friendTable);
-    assert.equal(restored.byId(1).username, "alice");
-    assert.equal(restored.byId(1).maxChunks, 12);
+    assert.equal(restored.getPlayerByRef(1).username, "alice");
+    assert.equal(restored.getPlayerByRef(1).maxChunks, 12);
     assert.equal(restored.isFriend(1, 2), true);
-    assert.equal(restored.getOrCreate("sub-alice", "alice"), restored.byId(1), "sub survives the round-trip");
+    assert.equal(restored.getOrCreate("sub-alice", "alice"), restored.getPlayerByRef(1), "sub survives the round-trip");
     assert.equal(restored.getOrCreate("sub-carol", "carol").playerRef, 3);
 
     restored.deserializeRecords(undefined, undefined);
@@ -97,16 +97,16 @@ test("friend codes are random, unique per player, and not tied to playerRef", ()
     const alice = players.getOrCreate("sub-alice", "alice");
     const bob = players.getOrCreate("sub-bob", "bob");
     assert.notEqual(alice.friendCode, bob.friendCode);
-    assert.equal(players.byFriendCode(alice.friendCode), alice);
-    assert.equal(players.byFriendCode(bob.friendCode), bob);
+    assert.equal(players.findPlayerByFriendCode(alice.friendCode), alice);
+    assert.equal(players.findPlayerByFriendCode(bob.friendCode), bob);
 });
 
-test("byFriendCode is case/format-tolerant and returns undefined for an unknown or malformed code", () => {
+test("findPlayerByFriendCode is case/format-tolerant and returns undefined for an unknown or malformed code", () => {
     const players = new PlayerRegistry();
     const alice = players.getOrCreate("sub-alice", "alice");
-    assert.equal(players.byFriendCode(alice.friendCode.toLowerCase()), alice);
-    assert.equal(players.byFriendCode(alice.friendCode.replace("-", "")), alice);
-    assert.equal(players.byFriendCode("not-a-code"), undefined);
+    assert.equal(players.findPlayerByFriendCode(alice.friendCode.toLowerCase()), alice);
+    assert.equal(players.findPlayerByFriendCode(alice.friendCode.replace("-", "")), alice);
+    assert.equal(players.findPlayerByFriendCode("not-a-code"), undefined);
 });
 
 test("friend codes survive a round-trip; a save from before friend codes existed gets one minted", () => {
@@ -116,7 +116,7 @@ test("friend codes survive a round-trip; a save from before friend codes existed
     const [playerTable, friendTable] = players.serializeRecords();
     const restored = new PlayerRegistry();
     restored.deserializeRecords(playerTable, friendTable);
-    assert.equal(restored.byId(1).friendCode, alice.friendCode);
+    assert.equal(restored.getPlayerByRef(1).friendCode, alice.friendCode);
 
     const [legacyTable] = players.serializeRecords();
     for (const row of legacyTable.rows) {
@@ -124,6 +124,6 @@ test("friend codes survive a round-trip; a save from before friend codes existed
     }
     const migrated = new PlayerRegistry();
     migrated.deserializeRecords(legacyTable, friendTable);
-    assert.equal(typeof migrated.byId(1).friendCode, "string");
-    assert.equal(migrated.byFriendCode(migrated.byId(1).friendCode), migrated.byId(1));
+    assert.equal(typeof migrated.getPlayerByRef(1).friendCode, "string");
+    assert.equal(migrated.findPlayerByFriendCode(migrated.getPlayerByRef(1).friendCode), migrated.getPlayerByRef(1));
 });

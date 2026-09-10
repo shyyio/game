@@ -49,7 +49,7 @@ export class AccountRegistry {
      * @param {number} accountId
      * @returns {AccountRecord}
      */
-    byId(accountId) {
+    getPlayerByRef(accountId) {
         const row = this._store.findById(accountId);
         if (row === undefined) {
             throw new RangeError(`Unknown accountId: ${accountId}`);

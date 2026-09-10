@@ -9,7 +9,7 @@ import {
     LaneFixtureDeclaration,
     ITEM_TYPE_TEST_CARGO,
     placeLane,
-    laneAt,
+    getLaneRefAt,
     itemCells,
 } from "@/test/laneFixture.js";
 
@@ -26,8 +26,8 @@ function build(engine) {
         placeLane(engine, 0, y, Direction.UP);
     }
     return {
-        inputPort: engine.lanes.inputPortOf(laneAt(engine, 0, 65)),
-        outputPort: engine.lanes.outputPortOf(laneAt(engine, 0, 62)),
+        inputPort: engine.lanes.getInputPortEidByLaneRef(getLaneRefAt(engine, 0, 65)),
+        outputPort: engine.lanes.getOutputPortEidByLaneRef(getLaneRefAt(engine, 0, 62)),
     };
 }
 
@@ -44,12 +44,12 @@ test("lane state survives a serialize and deserialize round-trip mid-flight", as
     const b = await setup();
     b.snapshots.deserialize(serialized);
 
-    assert.equal(b.lanes.ids().length, a.lanes.ids().length, "the same lanes come back");
+    assert.equal(b.lanes.getLaneRefs().length, a.lanes.getLaneRefs().length, "the same lanes come back");
     assert.equal(itemCells(b), itemCells(a), "with the same items on them");
 
     const bPorts = {
-        inputPort: b.lanes.inputPortOf(laneAt(b, 0, 65)),
-        outputPort: b.lanes.outputPortOf(laneAt(b, 0, 62)),
+        inputPort: b.lanes.getInputPortEidByLaneRef(getLaneRefAt(b, 0, 65)),
+        outputPort: b.lanes.getOutputPortEidByLaneRef(getLaneRefAt(b, 0, 62)),
     };
     const aStream = [];
     const bStream = [];
@@ -58,8 +58,8 @@ test("lane state survives a serialize and deserialize round-trip mid-flight", as
         b.ports.setItem(bPorts.outputPort, EMPTY);
         a.tick();
         b.tick();
-        aStream.push(a.ports.item(aPorts.outputPort));
-        bStream.push(b.ports.item(bPorts.outputPort));
+        aStream.push(a.ports.getItemByPortEid(aPorts.outputPort));
+        bStream.push(b.ports.getItemByPortEid(bPorts.outputPort));
     }
 
     assert.deepEqual(bStream, aStream, "the restored engine produces the same output stream");
@@ -79,13 +79,13 @@ test("lane state persists through a save store and reloads", async () => {
     const b = await setup();
     b.snapshots.deserialize(loaded);
 
-    assert.equal(b.lanes.ids().length, a.lanes.ids().length);
-    const outputPort = b.lanes.outputPortOf(laneAt(b, 0, 62));
+    assert.equal(b.lanes.getLaneRefs().length, a.lanes.getLaneRefs().length);
+    const outputPort = b.lanes.getOutputPortEidByLaneRef(getLaneRefAt(b, 0, 62));
     let delivered = false;
     for (let i = 0; i < 12 && !delivered; i += 1) {
         b.ports.setItem(outputPort, EMPTY);
         b.tick();
-        delivered = b.ports.item(outputPort) === CARGO;
+        delivered = b.ports.getItemByPortEid(outputPort) === CARGO;
     }
     assert.ok(delivered, "the reloaded item flows to the output");
 });
@@ -114,14 +114,14 @@ test("an item of a type that no longer exists is dropped on load", async () => {
 
     assert.equal(itemCells(b), carried - 1, "the unknown item is dropped");
     // The seam port is one slot of the chain, so an item resting there is in flight too.
-    const seam = b.lanes.inputPortOf(laneAt(b, 0, 62));
-    const inFlight = itemCells(b) + (b.ports.item(seam) === CARGO ? 1 : 0);
-    const outputPort = b.lanes.outputPortOf(laneAt(b, 0, 62));
+    const seam = b.lanes.getInputPortEidByLaneRef(getLaneRefAt(b, 0, 62));
+    const inFlight = itemCells(b) + (b.ports.getItemByPortEid(seam) === CARGO ? 1 : 0);
+    const outputPort = b.lanes.getOutputPortEidByLaneRef(getLaneRefAt(b, 0, 62));
     let delivered = 0;
     for (let i = 0; i < 24; i += 1) {
         b.ports.setItem(outputPort, EMPTY);
         b.tick();
-        if (b.ports.item(outputPort) === CARGO) {
+        if (b.ports.getItemByPortEid(outputPort) === CARGO) {
             delivered += 1;
         }
     }

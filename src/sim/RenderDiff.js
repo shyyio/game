@@ -114,7 +114,7 @@ export class RenderDiff {
      * @param {number} eid
      * @returns {{x:number, y:number}|null}
      */
-    portTile(eid) {
+    findPortTileByEid(eid) {
         if (this._rendered[eid] === 0) {
             return null;
         }
@@ -185,7 +185,7 @@ export class RenderDiff {
         for (const eid of eids) {
             const pending = this._pendingClear.get(eid);
             if (pending !== undefined) {
-                this._batchAt(batches, pending.x, pending.y).addClear(eid);
+                this._getBatchAt(batches, pending.x, pending.y).addClear(eid);
                 this._pendingClear.delete(eid);
             }
             if (this._rendered[eid] === 1) {
@@ -225,7 +225,7 @@ export class RenderDiff {
         const batches = new Map();
 
         for (const [eid, position] of this._pendingClear) {
-            this._batchAt(batches, position.x, position.y).addClear(eid);
+            this._getBatchAt(batches, position.x, position.y).addClear(eid);
             this._shadow[eid] = EMPTY;
         }
         this._pendingClear.clear();
@@ -250,10 +250,10 @@ export class RenderDiff {
                 continue;
             }
             this._shadow[eid] = displayed;
-            if (!this._observedAt(eid)) {
+            if (!this._isObserved(eid)) {
                 continue;
             }
-            const batch = this._batchAt(batches, this._x[eid], this._y[eid]);
+            const batch = this._getBatchAt(batches, this._x[eid], this._y[eid]);
             if (emptiedShown || displayed === EMPTY) {
                 const consumed = emptied === PORT_EMPTIED_CONSUMED ? 1 : 0;
                 batch.addClear(eid, consumed);
@@ -333,7 +333,7 @@ export class RenderDiff {
      * @param {number} eid
      * @returns {boolean}
      */
-    _observedAt(eid) {
+    _isObserved(eid) {
         const generation = this.engine.observerGeneration;
         if (this._observedGen[eid] === generation) {
             return this._observed[eid] === 1;
@@ -352,7 +352,7 @@ export class RenderDiff {
      * @param {number} y
      * @returns {PortItemBatchEvent}
      */
-    _batchAt(batches, x, y) {
+    _getBatchAt(batches, x, y) {
         const chunkKey = chunkKeyAt(x, y);
         const existing = batches.get(chunkKey);
         if (existing !== undefined) {

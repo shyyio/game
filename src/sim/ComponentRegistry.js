@@ -43,7 +43,7 @@ export class ComponentRegistry {
      * @param {string} name
      * @returns {AbstractComponent}
      */
-    get(name) {
+    getComponentByName(name) {
         const component = this._byName.get(name);
         if (component === undefined) {
             throw new Error(`Unknown component "${name}"`);
@@ -57,7 +57,7 @@ export class ComponentRegistry {
      * @param {string} name
      * @returns {AbstractComponent|undefined}
      */
-    find(name) {
+    findComponentByName(name) {
         return this._byName.get(name);
     }
 

@@ -76,12 +76,12 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
             if (permission === undefined) {
                 return;
             }
-            this._updateBadge(chunk, this._claims.ownerOf(chunk));
+            this._updateBadge(chunk, this._claims.getOwnerByChunkKey(chunk));
         });
         // A grant toggling changes whether that owner's friends-only chunks read as buildable.
         state.subscribe("chunkClaims.grantedByIds", (playerRef) => {
             for (const chunk of this._graphics.keys()) {
-                if (this._claims.ownerOf(chunk) === playerRef) {
+                if (this._claims.getOwnerByChunkKey(chunk) === playerRef) {
                     this._updateBadge(chunk, playerRef);
                 }
             }
@@ -143,7 +143,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
         }
         this._dirtyChunks.clear();
         for (const neighbor of neighbors) {
-            this._drawChunk(neighbor, this._claims.ownerOf(neighbor));
+            this._drawChunk(neighbor, this._claims.getOwnerByChunkKey(neighbor));
         }
         if (this._labelsDirty) {
             this._labelsDirty = false;
@@ -160,7 +160,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
         const territories = new Map();
         let ownTerritory = null;
         for (const chunk of this._graphics.keys()) {
-            const owner = this._claims.ownerOf(chunk);
+            const owner = this._claims.getOwnerByChunkKey(chunk);
             let territory;
             // Own territory gets the home glyph, not a label.
             if (owner === this._claims.ownPlayerRef) {
@@ -202,7 +202,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
                 this._labelLayer.addChild(created);
                 return created;
             });
-            label.text = this._players.usernameOf(owner);
+            label.text = this._players.getUsernameByPlayerRef(owner);
             const position = this._labelPosition(territory);
             label.position.set(position.x, position.y);
         }
@@ -276,7 +276,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
             this._worldMode = world;
             this._overworld = overworld;
             for (const chunk of this._graphics.keys()) {
-                this._drawChunk(chunk, this._claims.ownerOf(chunk));
+                this._drawChunk(chunk, this._claims.getOwnerByChunkKey(chunk));
             }
             for (const badge of this._badges.values()) {
                 badge.visible = !overworld;
@@ -327,8 +327,8 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
      * @param {number} owner
      * @returns {function(Graphics, number, number): void|null}
      */
-    _badgeIconFor(chunkKey, owner) {
-        const permission = this._claims.permissionOf(chunkKey);
+    _getBadgeIconByChunkKey(chunkKey, owner) {
+        const permission = this._claims.getPermissionByChunkKey(chunkKey);
         if (owner === this._claims.ownPlayerRef) {
             if (permission === ChunkPermission.PERMISSION_FRIENDS) {
                 return drawFriendIcon;
@@ -349,7 +349,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _updateBadge(chunkKey, owner) {
-        const drawIcon = this._badgeIconFor(chunkKey, owner);
+        const drawIcon = this._getBadgeIconByChunkKey(chunkKey, owner);
         if (drawIcon === null) {
             this._dropBadge(chunkKey);
             return;
@@ -405,7 +405,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
         if (!inRegion(x, y)) {
             return PLAYER_REF_NONE;
         }
-        return this._claims.ownerOf(chunkOrdinal(x, y));
+        return this._claims.getOwnerByChunkKey(chunkOrdinal(x, y));
     }
 
     /**

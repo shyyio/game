@@ -27,7 +27,7 @@ export class ObjectSprite extends Sprite {
         this.angle = Direction.angle(direction);
 
         // Center on the geometry's centroid: a 1x1 sits on its tile, a 1x2 on its midpoint.
-        const cells = type.geometry.tiles(direction);
+        const cells = type.geometry.getTilesByDirection(direction);
         const sum = cells.reduce((acc, cell) => ({x: acc.x + cell.x, y: acc.y + cell.y}), {x: 0, y: 0});
         this.position.set(
             (x + sum.x / cells.length) * TILE_SIZE + TILE_SIZE / 2,

@@ -54,7 +54,7 @@ export class World {
         const items = this.game.modRegistry.items;
         return {
             objects: Array.from(losses.objects, ([name, count]) => ({name, count})),
-            items: Array.from(losses.items, ([itemTypeId, count]) => ({name: items.typeFor(itemTypeId).name, count})),
+            items: Array.from(losses.items, ([itemTypeId, count]) => ({name: items.getItemTypeOrDefaultByTypeId(itemTypeId).name, count})),
         };
     }
 
@@ -135,7 +135,7 @@ export class World {
      * @param {ServerConfig} config
      * @returns {Promise<{packages: ModPackage[], modListJson: string}>}
      */
-    static async _packagesOf(config) {
+    static async _getPackagesByConfig(config) {
         const packages = simLoadout();
         const entries = builtInModList(MOD_DIRS, GAME_VERSION);
         if (config.mods === null) {
@@ -157,8 +157,8 @@ export class World {
      * @param {ServerConfig} config
      * @returns {Promise<{typeNames: string[], itemTypeIds: Set<number>}>}
      */
-    static async loadoutOf(config) {
-        const {packages} = await World._packagesOf(config);
+    static async getLoadoutByConfig(config) {
+        const {packages} = await World._getPackagesByConfig(config);
         const typeNames = [];
         const itemTypeIds = new Set();
         for (const pkg of packages) {
@@ -183,7 +183,7 @@ export class World {
      * @returns {Promise<World>}
      */
     static async boot(config, snapshot = null) {
-        const {packages, modListJson: modList} = await World._packagesOf(config);
+        const {packages, modListJson: modList} = await World._getPackagesByConfig(config);
         const lockfile = config.lockfile;
         const modRegistry = new ModRegistry();
         for (const pkg of packages) {

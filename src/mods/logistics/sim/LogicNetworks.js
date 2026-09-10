@@ -67,7 +67,7 @@ export class LogicNetworks extends AbstractSystem {
      * @returns {void}
      */
     addPole(eid) {
-        this._poles.add(this.placed.objectRefOf(eid));
+        this._poles.add(this.placed.getObjectRefByEid(eid));
         this._dirty = true;
     }
 
@@ -193,7 +193,7 @@ export class LogicNetworks extends AbstractSystem {
      * @param {number} objectRef
      * @returns {LogicNetwork|null}
      */
-    networkOf(objectRef) {
+    findNetworkByObjectRef(objectRef) {
         for (const network of this.networks) {
             if (network.poleIds.includes(objectRef) || network.deviceIds.includes(objectRef)) {
                 return network;
@@ -256,7 +256,7 @@ export class LogicNetworks extends AbstractSystem {
         const position = engine.Position;
         const emitted = new Set();
         for (const objectRef of [aObjectRef, bObjectRef]) {
-            const eid = this.placed.eidByObjectRef(objectRef);
+            const eid = this.placed.findEidByObjectRef(objectRef);
             if (eid === undefined) {
                 continue;
             }
@@ -279,8 +279,8 @@ export class LogicNetworks extends AbstractSystem {
         this._dirty = false;
         const neighbors = new Map();
         for (const [key, wire] of Array.from(this._wires)) {
-            if (this.placed.eidByObjectRef(wire.a) === undefined
-                || this.placed.eidByObjectRef(wire.b) === undefined) {
+            if (this.placed.findEidByObjectRef(wire.a) === undefined
+                || this.placed.findEidByObjectRef(wire.b) === undefined) {
                 this._drop(key);
                 continue;
             }
@@ -347,7 +347,7 @@ export class LogicNetworks extends AbstractSystem {
         const events = [];
         for (const wire of this.wires) {
             for (const objectRef of [wire.a, wire.b]) {
-                const eid = this.placed.eidByObjectRef(objectRef);
+                const eid = this.placed.findEidByObjectRef(objectRef);
                 if (eid === undefined || chunkKeyAt(position.x[eid], position.y[eid]) !== chunkKey) {
                     continue;
                 }

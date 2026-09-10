@@ -12,7 +12,7 @@ import {RoadBehavior} from "@/sim/behaviors/RoadBehavior.js";
  * @returns {CacheEntry|null}
  */
 function walkableAt(cache, x, y) {
-    const entry = cache.at(x, y, LAYER_SURFACE);
+    const entry = cache.findObjectAt(x, y, LAYER_SURFACE);
     if (entry === null) {
         return null;
     }

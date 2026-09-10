@@ -210,7 +210,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
 
         stack.header("Item");
         stack.scrollSection(snapshot.itemTypeIds, (itemTypeId, i) => ({
-            label: `${this._items.require(itemTypeId).name} (${this._itemDetail(snapshot, i)})`,
+            label: `${this._items.getItemTypeByTypeId(itemTypeId).name} (${this._itemDetail(snapshot, i)})`,
             buttonLabel: i === this._itemIndex ? "Selected" : "Select",
             buttonTint: i === this._itemIndex ? ACTIVE_ACCENT : INACTIVE_TINT,
             onClick: () => this._selectAndReset(() => this._itemIndex = i),

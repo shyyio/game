@@ -24,7 +24,7 @@ export class ResourceBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, eid, type, message) {
-        const objectRef = engine.placed.objectRefOf(eid);
+        const objectRef = engine.placed.getObjectRefByEid(eid);
         const cells = type.extractionTiles.map(offset => ({
             x: message.x + offset.x,
             y: message.y + offset.y,

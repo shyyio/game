@@ -146,7 +146,7 @@ test("a format-4 save's PlacedObject.ownerId is renamed to placedBy", async () =
 
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
-    assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1);
+    assert.equal(restored.placed.getEidsByTypeId(BlenderType.objectTypeId).length, 1);
 });
 
 test("NodeSaveStore round-trips the format stamp", async () => {
@@ -194,7 +194,7 @@ test("a format-3 save, whose id columns were plain i32, loads with them retagged
     assert.equal(migrated.saveFormat, SAVE_FORMAT);
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
-    assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1);
+    assert.equal(restored.placed.getEidsByTypeId(BlenderType.objectTypeId).length, 1);
 });
 
 test("a format-5 save drops the gate's and tank's last-synced columns and gains an empty Gate.lastOutput", async () => {
@@ -232,8 +232,8 @@ test("a format-5 save drops the gate's and tank's last-synced columns and gains 
 
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
-    assert.equal(restored.placed.eidsOf(GateType.objectTypeId).length, 1);
-    assert.equal(restored.placed.eidsOf(TankType.objectTypeId).length, 1);
+    assert.equal(restored.placed.getEidsByTypeId(GateType.objectTypeId).length, 1);
+    assert.equal(restored.placed.getEidsByTypeId(TankType.objectTypeId).length, 1);
 });
 
 test("a format-6 save gains the empty lane components", async () => {
@@ -253,7 +253,7 @@ test("a format-6 save gains the empty lane components", async () => {
     }
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
-    assert.deepEqual(restored.lanes.ids(), []);
+    assert.deepEqual(restored.lanes.getLaneRefs(), []);
 });
 
 test("a format-7 save renames PlacedObject.typeId and MarketTerminal.itemType", async () => {
@@ -277,7 +277,7 @@ test("a format-7 save renames PlacedObject.typeId and MarketTerminal.itemType", 
 
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
-    assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1);
+    assert.equal(restored.placed.getEidsByTypeId(BlenderType.objectTypeId).length, 1);
 });
 
 /**
@@ -321,7 +321,7 @@ test("a format-8 save renames every objectId column to objectRef", async () => {
 
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
-    assert.equal(restored.placed.eidsOf(BlenderType.objectTypeId).length, 1);
+    assert.equal(restored.placed.getEidsByTypeId(BlenderType.objectTypeId).length, 1);
 });
 
 test("a format-9 save renames the ChunkClaim record's chunk column to chunkKey", async () => {
@@ -412,8 +412,8 @@ test("a format-10 save drops the belt path components and makes every belt a lan
 
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
-    assert.equal(restored.lanes.ids().length, 1, "the belts re-derive into one lane");
-    assert.equal(restored.lanes.cellsOf(restored.lanes.ids()[0]).length, 3);
+    assert.equal(restored.lanes.getLaneRefs().length, 1, "the belts re-derive into one lane");
+    assert.equal(restored.lanes.getCellEidsByLaneRef(restored.lanes.getLaneRefs()[0]).length, 3);
 });
 
 test("a format-11 save renames the Lane port columns to inputPort and outputPort", async () => {
@@ -436,5 +436,5 @@ test("a format-11 save renames the Lane port columns to inputPort and outputPort
 
     const restored = await makeGameEngine();
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
-    assert.equal(restored.lanes.cellsOf(restored.lanes.ids()[0]).length, 3);
+    assert.equal(restored.lanes.getCellEidsByLaneRef(restored.lanes.getLaneRefs()[0]).length, 3);
 });

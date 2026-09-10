@@ -26,7 +26,7 @@ export class NotesStore extends AbstractSystem {
      * @param {number} tileY
      * @returns {Note|null}
      */
-    get(tileX, tileY) {
+    findNoteAt(tileX, tileY) {
         const note = this._byTile.get(tileKeyAt(tileX, tileY));
         if (note === undefined) {
             return null;
@@ -63,7 +63,7 @@ export class NotesStore extends AbstractSystem {
      * @param {number} chunkKey
      * @returns {Note[]}
      */
-    notesIn(chunkKey) {
+    getNotesByChunkKey(chunkKey) {
         const tiles = this._tilesByChunk.get(chunkKey);
         if (tiles === undefined) {
             return [];
@@ -79,7 +79,7 @@ export class NotesStore extends AbstractSystem {
      * @param {number} chunkKey
      * @returns {Set<number>} the players authoring the chunk's notes
      */
-    authorIdsIn(chunkKey) {
+    getAuthorIdsByChunkKey(chunkKey) {
         const authorIds = new Set();
         const tiles = this._tilesByChunk.get(chunkKey);
         if (tiles === undefined) {
@@ -145,7 +145,7 @@ export class NotesStore extends AbstractSystem {
     }
 
     chunkSync(chunkKey) {
-        return this.notesIn(chunkKey).map(note => new NoteSetEvent(
+        return this.getNotesByChunkKey(chunkKey).map(note => new NoteSetEvent(
             note.tileX,
             note.tileY,
             note.offsetMx,

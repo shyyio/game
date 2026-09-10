@@ -196,7 +196,7 @@ function assertSdkVersion(manifest) {
  * @returns {Promise<ModPackage>}
  */
 export async function loadModPackage(store, entry, withSim) {
-    const manifestHex = integrityHex(entry.integrityOf(MANIFEST_FILE));
+    const manifestHex = integrityHex(entry.getIntegrityByFile(MANIFEST_FILE));
     const manifestBytes = await fetchVerifiedFile(
         store, `${entry.url}${MANIFEST_FILE}`, contentName(manifestHex, MANIFEST_FILE), manifestHex,
     );
@@ -208,7 +208,7 @@ export async function loadModPackage(store, entry, withSim) {
         );
     }
     assertSdkVersion(manifest);
-    const entryHex = integrityHex(entry.integrityOf(manifest.entry));
+    const entryHex = integrityHex(entry.getIntegrityByFile(manifest.entry));
     const bundleBytes = await fetchVerifiedFile(
         store, `${entry.url}${manifest.entry}`, contentName(entryHex, manifest.entry), entryHex,
     );

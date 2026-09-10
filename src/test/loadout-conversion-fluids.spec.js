@@ -50,13 +50,13 @@ function withFluidLost(engine) {
 
 test("a tank whose fluid the loadout dropped comes back empty, not holding untyped units", async () => {
     const engine = await filled();
-    const def = engine.components.get("Tank");
-    assert.ok(def.store.amount[def.row(engine.placed.eidsOf(TankType.objectTypeId)[0])] > 0);
+    const def = engine.components.getComponentByName("Tank");
+    assert.ok(def.store.amount[def.getRowByEid(engine.placed.getEidsByTypeId(TankType.objectTypeId)[0])] > 0);
 
     const restored = await makeGameEngine();
     restored.snapshots.deserialize(withFluidLost(engine));
-    const restoredDef = restored.components.get("Tank");
-    const row = restoredDef.row(restored.placed.eidsOf(TankType.objectTypeId)[0]);
+    const restoredDef = restored.components.getComponentByName("Tank");
+    const row = restoredDef.getRowByEid(restored.placed.getEidsByTypeId(TankType.objectTypeId)[0]);
     assert.deepEqual(
         [restoredDef.store.fluidType[row], restoredDef.store.amount[row]],
         [EMPTY, 0],
@@ -65,10 +65,10 @@ test("a tank whose fluid the loadout dropped comes back empty, not holding untyp
 
 test("a pipe network whose fluid the loadout dropped comes back empty", async () => {
     const engine = await filled();
-    assert.ok(pipesOf(engine).networkAt(0, 2).amount > 0);
+    assert.ok(pipesOf(engine).findNetworkAt(0, 2).amount > 0);
 
     const restored = await makeGameEngine();
     restored.snapshots.deserialize(withFluidLost(engine));
-    const net = pipesOf(restored).networkAt(0, 2);
+    const net = pipesOf(restored).findNetworkAt(0, 2);
     assert.deepEqual([net.fluidType, net.amount], [EMPTY, 0]);
 });

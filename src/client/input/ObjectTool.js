@@ -200,7 +200,7 @@ export class ObjectTool extends AbstractTool {
         if (!this._dragToPlace) {
             return;
         }
-        const occupant = this._cache.at(tileX, tileY, this._type.positionLayer);
+        const occupant = this._cache.findObjectAt(tileX, tileY, this._type.positionLayer);
         if (occupant !== null && occupant.data.type === this._type) {
             return;
         }
@@ -213,7 +213,7 @@ export class ObjectTool extends AbstractTool {
      * @returns {{x: number, y: number}[]}
      */
     _geometryTiles(tileX, tileY, direction) {
-        return this._type.geometry.tiles(direction).map(cell => ({x: tileX + cell.x, y: tileY + cell.y}));
+        return this._type.geometry.getTilesByDirection(direction).map(cell => ({x: tileX + cell.x, y: tileY + cell.y}));
     }
 
     /**
@@ -241,7 +241,7 @@ export class ObjectTool extends AbstractTool {
                 bodyByKey.set(key, {cell, state: "blocked"});
                 continue;
             }
-            const occupant = this._solidOccupantAt(cell.x, cell.y);
+            const occupant = this._findSolidOccupantAt(cell.x, cell.y);
             if (occupant === null) {
                 bodyByKey.set(key, {cell, state: "clear"});
             } else if (this._overwritable(occupant, direction)) {
@@ -255,7 +255,7 @@ export class ObjectTool extends AbstractTool {
         // Mirror the server's per-layer positions: block any footprint cell landing on a same-layer
         // occupant (overwritten cells excluded).
         const positions = this._positionsByLayer(overwriteIds);
-        for (const {layer, cells} of this._type.positionLayerTiles(direction)) {
+        for (const {layer, cells} of this._type.getPositionLayerTilesByDirection(direction)) {
             const occupied = positions.get(layer);
             if (occupied === undefined) {
                 continue;
@@ -312,8 +312,8 @@ export class ObjectTool extends AbstractTool {
      * @param {number} tileY
      * @returns {CacheEntry|null}
      */
-    _solidOccupantAt(tileX, tileY) {
-        const stacked = this._cache.allAt(tileX, tileY, this._type.positionLayer);
+    _findSolidOccupantAt(tileX, tileY) {
+        const stacked = this._cache.getObjectsAt(tileX, tileY, this._type.positionLayer);
         for (let i = stacked.length - 1; i >= 0; i -= 1) {
             if (stacked[i].data.type.placement.solid) {
                 return stacked[i];
@@ -336,7 +336,7 @@ export class ObjectTool extends AbstractTool {
             if (excludeIds.has(entry.id) || !entry.data.type.placement.solid) {
                 continue;
             }
-            for (const {layer, cells} of entry.data.type.positionLayerTiles(entry.data.direction)) {
+            for (const {layer, cells} of entry.data.type.getPositionLayerTilesByDirection(entry.data.direction)) {
                 if (!byLayer.has(layer)) {
                     byLayer.set(layer, new Set());
                 }

@@ -37,31 +37,31 @@ export class SplitterBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, eid, type, message) {
-        const inA = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction);
-        const inB = engine.portFor(type.inputPorts[1], message.x, message.y, message.direction);
-        const outA = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
-        const outB = engine.portFor(type.outputPorts[1], message.x, message.y, message.direction);
+        const inA = engine.getPortAt(type.inputPorts[0], message.x, message.y, message.direction);
+        const inB = engine.getPortAt(type.inputPorts[1], message.x, message.y, message.direction);
+        const outA = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction);
+        const outB = engine.getPortAt(type.outputPorts[1], message.x, message.y, message.direction);
         this._wire(engine, eid, {in_a: inA.port, in_b: inB.port, out_a: outA.port, out_b: outB.port});
         engine.render.registerPort(outA.port, outA.tile.x, outA.tile.y);
         engine.render.registerPort(outB.port, outB.tile.x, outB.tile.y);
     }
 
     onDespawn(engine, eid) {
-        const splitters = engine.components.get("Splitter");
-        const row = splitters.row(eid);
+        const splitters = engine.components.getComponentByName("Splitter");
+        const row = splitters.getRowByEid(eid);
         engine.render.unregisterPort(splitters.store.out_a[row]);
         engine.render.unregisterPort(splitters.store.out_b[row]);
     }
 
-    renderedPortEids(engine, eid) {
-        const splitters = engine.components.get("Splitter");
-        const row = splitters.row(eid);
+    getRenderedPortEids(engine, eid) {
+        const splitters = engine.components.getComponentByName("Splitter");
+        const row = splitters.getRowByEid(eid);
         return [splitters.store.out_a[row], splitters.store.out_b[row]];
     }
 
     resyncRenderedPorts(engine, eid) {
-        const splitters = engine.components.get("Splitter");
-        const row = splitters.row(eid);
+        const splitters = engine.components.getComponentByName("Splitter");
+        const row = splitters.getRowByEid(eid);
         for (const out of [splitters.store.out_a[row], splitters.store.out_b[row]]) {
             engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
         }
@@ -78,10 +78,10 @@ export class SplitterBehavior extends AbstractBehavior {
     _wire(engine, eid, ports) {
         const int_a = engine.ports.create();
         const int_b = engine.ports.create();
-        const splitters = engine.components.get("Splitter");
+        const splitters = engine.components.getComponentByName("Splitter");
         splitters.attach(eid);
         const splitter = splitters.store;
-        const row = splitters.row(eid);
+        const row = splitters.getRowByEid(eid);
         splitter.in_a[row] = ports.in_a;
         splitter.in_b[row] = ports.in_b;
         splitter.out_a[row] = ports.out_a;
@@ -107,7 +107,7 @@ export class SplitterBehavior extends AbstractBehavior {
             out_a: port(wiring.out_a),
             out_b: port(wiring.out_b),
         };
-        const eid = engine.components.get("Splitter").create();
+        const eid = engine.components.getComponentByName("Splitter").create();
         return this._wire(engine, eid, ports);
     }
 
@@ -120,10 +120,10 @@ export class SplitterBehavior extends AbstractBehavior {
      */
     placeSplitter(engine, x, y) {
         return this.addSplitter(engine, {
-            in_a: engine.ports.at(x, y, Direction.UP),
-            in_b: engine.ports.at(x + 1, y, Direction.UP),
-            out_a: engine.ports.at(x, y - 1, Direction.UP),
-            out_b: engine.ports.at(x + 1, y - 1, Direction.UP),
+            in_a: engine.ports.getPortEidAt(x, y, Direction.UP),
+            in_b: engine.ports.getPortEidAt(x + 1, y, Direction.UP),
+            out_a: engine.ports.getPortEidAt(x, y - 1, Direction.UP),
+            out_b: engine.ports.getPortEidAt(x + 1, y - 1, Direction.UP),
         });
     }
 
@@ -136,7 +136,7 @@ export class SplitterBehavior extends AbstractBehavior {
      */
     _submitIntents(engine) {
         const item = engine.Port.item;
-        const splitters = engine.components.get("Splitter");
+        const splitters = engine.components.getComponentByName("Splitter");
         const splitter = splitters.store;
         for (let row = 0; row < splitters.count; row += 1) {
             if (item[splitter.in_a[row]] !== EMPTY) {
@@ -165,10 +165,10 @@ export class SplitterBehavior extends AbstractBehavior {
      * @returns {void}
      */
     _finish(engine) {
-        const splitters = engine.components.get("Splitter");
+        const splitters = engine.components.getComponentByName("Splitter");
         const splitter = splitters.store;
         for (let row = 0; row < splitters.count; row += 1) {
-            if (engine.transfers.destFor(splitter.int_a[row]) !== EMPTY || engine.transfers.destFor(splitter.int_b[row]) !== EMPTY) {
+            if (engine.transfers.getDestByPortEid(splitter.int_a[row]) !== EMPTY || engine.transfers.getDestByPortEid(splitter.int_b[row]) !== EMPTY) {
                 splitter.state[row] = 1 - splitter.state[row];
             }
         }

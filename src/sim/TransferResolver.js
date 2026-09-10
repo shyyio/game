@@ -95,7 +95,7 @@ export class TransferResolver {
      * @param {number} source
      * @returns {number}
      */
-    destFor(source) {
+    getDestByPortEid(source) {
         return this._destBySource[source];
     }
 
@@ -374,7 +374,7 @@ export class TransferResolver {
      * The resolved real transfers (both ends real ports) as "source->dest", ordered by source.
      * @returns {string}
      */
-    resolvedEdges() {
+    getResolvedEdges() {
         const edges = [];
         for (let row = 0; row < this._resolvedCount; row += 1) {
             if (this._resolvedSource[row] !== EMPTY && this._resolvedDest[row] !== EMPTY) {

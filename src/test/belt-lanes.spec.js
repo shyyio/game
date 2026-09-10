@@ -23,31 +23,31 @@ async function lineOfBelts() {
 // A belt is a lane cell: the core derives the run from the placed belts.
 test("a belt line is one lane", async () => {
     const engine = await lineOfBelts();
-    const lane = engine.lanes.laneAt(HEAD.x, HEAD.y, LAYER_SURFACE);
+    const lane = engine.lanes.getLaneRefAt(HEAD.x, HEAD.y, LAYER_SURFACE);
     assert.notEqual(lane, NO_LANE, "the head belt is on a lane");
-    assert.equal(engine.lanes.cellsOf(lane).length, CELLS.length);
-    assert.equal(engine.lanes.ids().length, 1);
+    assert.equal(engine.lanes.getCellEidsByLaneRef(lane).length, CELLS.length);
+    assert.equal(engine.lanes.getLaneRefs().length, 1);
 });
 
 test("a belt line placed via messages flows two items to the tail", async () => {
     const engine = await lineOfBelts();
-    const lane = engine.lanes.laneAt(HEAD.x, HEAD.y, LAYER_SURFACE);
+    const lane = engine.lanes.getLaneRefAt(HEAD.x, HEAD.y, LAYER_SURFACE);
     const stream = [];
     for (let i = 0; i < 10; i += 1) {
-        engine.ports.setItem(engine.lanes.outputPortOf(lane), EMPTY);
+        engine.ports.setItem(engine.lanes.getOutputPortEidByLaneRef(lane), EMPTY);
         if (i < 2) {
-            engine.ports.setItem(engine.lanes.inputPortOf(lane), RED);
+            engine.ports.setItem(engine.lanes.getInputPortEidByLaneRef(lane), RED);
         }
         engine.tick();
-        stream.push(engine.ports.item(engine.lanes.outputPortOf(lane)));
+        stream.push(engine.ports.getItemByPortEid(engine.lanes.getOutputPortEidByLaneRef(lane)));
     }
     assert.deepEqual(stream, EXPECTED);
 });
 
 test("deleting a belt takes its tile off the lane", async () => {
     const engine = await lineOfBelts();
-    const eid = engine.placed.eidAt(0, 1, LAYER_SURFACE);
-    engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(eid)));
-    assert.equal(engine.lanes.laneAt(0, 1, LAYER_SURFACE), NO_LANE);
-    assert.equal(engine.lanes.ids().length, 2, "the survivors are two lanes");
+    const eid = engine.placed.getEidAt(0, 1, LAYER_SURFACE);
+    engine.applyMessage(new DeleteObjectMessage(engine.placed.getObjectRefByEid(eid)));
+    assert.equal(engine.lanes.getLaneRefAt(0, 1, LAYER_SURFACE), NO_LANE);
+    assert.equal(engine.lanes.getLaneRefs().length, 2, "the survivors are two lanes");
 });

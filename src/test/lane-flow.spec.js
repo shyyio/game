@@ -13,7 +13,7 @@ import {
     ITEM_TYPE_TEST_FLUID,
     placeLane,
     deleteLane,
-    laneAt,
+    getLaneRefAt,
     itemCells,
 } from "@/test/laneFixture.js";
 
@@ -31,7 +31,7 @@ async function setup() {
 // Places a machine and returns its output port, so the lane topology sees a real producer.
 function placeProducer(engine, tileX, tileY, direction) {
     engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, tileX, tileY, direction));
-    return engine.portFor(TestMachineType.outputPorts[0], tileX, tileY, direction).port;
+    return engine.getPortAt(TestMachineType.outputPorts[0], tileX, tileY, direction).port;
 }
 
 // Two items fed into a three-cell lane arrive at the tail two ticks apart, one slot per tick.
@@ -40,15 +40,15 @@ test("a lane carries fed items to its output port one slot per tick", async () =
     for (const y of [0, 1, 2]) {
         placeLane(engine, 0, y, Direction.UP);
     }
-    const lane = laneAt(engine, 0, 2);
+    const lane = getLaneRefAt(engine, 0, 2);
     const stream = [];
     for (let i = 0; i < 10; i += 1) {
-        engine.ports.setItem(engine.lanes.outputPortOf(lane), EMPTY);
+        engine.ports.setItem(engine.lanes.getOutputPortEidByLaneRef(lane), EMPTY);
         if (i < 2) {
-            engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
+            engine.ports.setItem(engine.lanes.getInputPortEidByLaneRef(lane), CARGO);
         }
         engine.tick();
-        stream.push(engine.ports.item(engine.lanes.outputPortOf(lane)));
+        stream.push(engine.ports.getItemByPortEid(engine.lanes.getOutputPortEidByLaneRef(lane)));
     }
     assert.deepEqual(stream, [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CARGO, CARGO, EMPTY, EMPTY, EMPTY]);
 });
@@ -64,7 +64,7 @@ test("a lane head ingests a producer feeding its flank", async () => {
     let drained = false;
     for (let i = 0; i < 8 && !drained; i += 1) {
         engine.tick();
-        drained = engine.ports.item(producerOut) === EMPTY;
+        drained = engine.ports.getItemByPortEid(producerOut) === EMPTY;
     }
 
     assert.ok(drained, "the producer's output port emptied into the lane");
@@ -80,22 +80,22 @@ test("a machine on the flank of a head with a parent cell is inert until that ce
     placeLane(engine, 0, 64, Direction.UP); // chunk 1: its parent
     const producerOut = placeProducer(engine, -1, 63, Direction.RIGHT);
     engine.ports.setItem(producerOut, CARGO);
-    const head = laneAt(engine, 0, 63);
-    assert.equal(engine.lanes.parentEdgeOf(engine.placed.eidAt(0, 63, LAYER_SURFACE)), Direction.UP, "fed from behind");
+    const head = getLaneRefAt(engine, 0, 63);
+    assert.equal(engine.lanes.getParentEdgeByCellEid(engine.placed.getEidAt(0, 63, LAYER_SURFACE)), Direction.UP, "fed from behind");
 
     for (let i = 0; i < 8; i += 1) {
         engine.tick();
     }
-    assert.equal(engine.ports.item(producerOut), CARGO, "the flank feed waits: the head's input is the seam");
-    assert.equal(engine.lanes.itemCountOf(head), 0);
+    assert.equal(engine.ports.getItemByPortEid(producerOut), CARGO, "the flank feed waits: the head's input is the seam");
+    assert.equal(engine.lanes.getItemCountByLaneRef(head), 0);
 
     deleteLane(engine, 0, 64);
 
     for (let i = 0; i < 8; i += 1) {
         engine.tick();
     }
-    assert.equal(engine.ports.item(producerOut), EMPTY, "with nothing behind it, the machine is the parent");
-    assert.equal(engine.lanes.parentEdgeOf(engine.placed.eidAt(0, 63, LAYER_SURFACE)), Direction.RIGHT);
+    assert.equal(engine.ports.getItemByPortEid(producerOut), EMPTY, "with nothing behind it, the machine is the parent");
+    assert.equal(engine.lanes.getParentEdgeByCellEid(engine.placed.getEidAt(0, 63, LAYER_SURFACE)), Direction.RIGHT);
 });
 
 // Flanks feed the head cell only: a feeder dead-ending into a cell mid-lane backs up.
@@ -111,7 +111,7 @@ test("a feeder into a mid-lane cell's flank backs up", async () => {
         engine.tick();
     }
 
-    assert.equal(engine.ports.item(producerOut), CARGO, "the feed stays in the producer's port");
+    assert.equal(engine.ports.getItemByPortEid(producerOut), CARGO, "the feed stays in the producer's port");
     assert.equal(itemCells(engine), 0, "nothing reached the lane");
 });
 
@@ -121,14 +121,14 @@ test("a lane refuses a resting fluid", async () => {
     for (const y of [0, 1, 2]) {
         placeLane(engine, 0, y, Direction.UP);
     }
-    const lane = laneAt(engine, 0, 2);
-    engine.ports.setItem(engine.lanes.inputPortOf(lane), FLUID);
+    const lane = getLaneRefAt(engine, 0, 2);
+    engine.ports.setItem(engine.lanes.getInputPortEidByLaneRef(lane), FLUID);
 
     for (let i = 0; i < 8; i += 1) {
         engine.tick();
     }
 
-    assert.equal(engine.ports.item(engine.lanes.inputPortOf(lane)), FLUID, "the fluid stays put");
+    assert.equal(engine.ports.getItemByPortEid(engine.lanes.getInputPortEidByLaneRef(lane)), FLUID, "the fluid stays put");
     assert.equal(itemCells(engine), 0, "and never enters the lane");
 });
 
@@ -139,8 +139,8 @@ test("a lane losing its output port to another producer keeps its lead", async (
     for (const y of [0, 1]) {
         placeLane(engine, 0, y, Direction.UP);
     }
-    const lane = laneAt(engine, 0, 1);
-    const outputPort = engine.lanes.outputPortOf(lane);
+    const lane = getLaneRefAt(engine, 0, 1);
+    const outputPort = engine.lanes.getOutputPortEidByLaneRef(lane);
     let contend = false;
     engine.registerSystem(new ProbeSystem({submitIntents: () => {
         if (contend) {
@@ -149,18 +149,18 @@ test("a lane losing its output port to another producer keeps its lead", async (
     }}));
 
     engine.ports.setItem(outputPort, OTHER);
-    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
+    engine.ports.setItem(engine.lanes.getInputPortEidByLaneRef(lane), CARGO);
     for (let i = 0; i < 8; i += 1) {
         engine.tick();
     }
-    assert.equal(engine.lanes.itemCountOf(lane), 1);
+    assert.equal(engine.lanes.getItemCountByLaneRef(lane), 1);
 
     engine.ports.setItem(outputPort, EMPTY);
     contend = true;
     engine.tick();
 
-    assert.equal(engine.ports.item(outputPort), OTHER);
-    assert.equal(engine.lanes.itemCountOf(lane), 1, "the lead the other producer beat stays on the lane");
+    assert.equal(engine.ports.getItemByPortEid(outputPort), OTHER);
+    assert.equal(engine.lanes.getItemCountByLaneRef(lane), 1, "the lead the other producer beat stays on the lane");
 });
 
 // A lane ingests only what its own drain took; an input port emptied by anything else carried nothing.
@@ -169,8 +169,8 @@ test("a lane does not ingest an input port item something else took", async () =
     for (const y of [0, 1]) {
         placeLane(engine, 0, y, Direction.UP);
     }
-    const lane = laneAt(engine, 0, 1);
-    const inputPort = engine.lanes.inputPortOf(lane);
+    const lane = getLaneRefAt(engine, 0, 1);
+    const inputPort = engine.lanes.getInputPortEidByLaneRef(lane);
     let steal = false;
     engine.registerSystem(new ProbeSystem({order: -1, postResolve: () => {
         if (steal) {
@@ -178,21 +178,21 @@ test("a lane does not ingest an input port item something else took", async () =
         }
     }}));
 
-    engine.ports.setItem(engine.lanes.outputPortOf(lane), OTHER);
+    engine.ports.setItem(engine.lanes.getOutputPortEidByLaneRef(lane), OTHER);
     for (let i = 0; i < 16; i += 1) {
         engine.ports.setItem(inputPort, CARGO);
         engine.tick();
     }
-    const packed = engine.lanes.itemCountOf(lane);
+    const packed = engine.lanes.getItemCountByLaneRef(lane);
     engine.ports.setItem(inputPort, CARGO);
     engine.tick();
-    assert.equal(engine.ports.item(inputPort), CARGO, "a packed lane leaves the input port item resting");
+    assert.equal(engine.ports.getItemByPortEid(inputPort), CARGO, "a packed lane leaves the input port item resting");
 
     steal = true;
     engine.tick();
 
-    assert.equal(engine.ports.item(inputPort), EMPTY);
-    assert.equal(engine.lanes.itemCountOf(lane), packed, "nothing reached the lane");
+    assert.equal(engine.ports.getItemByPortEid(inputPort), EMPTY);
+    assert.equal(engine.lanes.getItemCountByLaneRef(lane), packed, "nothing reached the lane");
 });
 
 // A lane popping empties its ingest port, so a feeder pushing the next item into that port the same
@@ -203,16 +203,16 @@ test("a feeder never overwrites the input port item of a lane that is popping", 
     for (const y of [0, 1, 2]) {
         placeLane(engine, 0, y, Direction.UP);
     }
-    const lane = laneAt(engine, 0, 2);
-    const inputPort = engine.lanes.inputPortOf(lane);
-    const outputPort = engine.lanes.outputPortOf(lane);
+    const lane = getLaneRefAt(engine, 0, 2);
+    const inputPort = engine.lanes.getInputPortEidByLaneRef(lane);
+    const outputPort = engine.lanes.getOutputPortEidByLaneRef(lane);
 
     // A producer pushing into the input port even while it is occupied: it resolves on the tick the
     // lane empties that port.
     let intentRow = -1;
     let fed = 0;
     engine.registerSystem(new ProbeSystem({submitIntents: () => {
-        intentRow = engine.transfers.submitCreate(inputPort, CARGO, engine.ports.item(inputPort) === EMPTY);
+        intentRow = engine.transfers.submitCreate(inputPort, CARGO, engine.ports.getItemByPortEid(inputPort) === EMPTY);
     }}));
     engine.registerSystem(new ProbeSystem({postResolve: () => {
         if (engine.transfers.wasResolved(intentRow)) {
@@ -229,12 +229,12 @@ test("a feeder never overwrites the input port item of a lane that is popping", 
     for (let i = 0; i < 24; i += 1) {
         engine.ports.setItem(outputPort, EMPTY);
         engine.tick();
-        if (engine.ports.item(outputPort) === CARGO) {
+        if (engine.ports.getItemByPortEid(outputPort) === CARGO) {
             delivered += 1;
         }
     }
 
-    const resting = engine.ports.item(inputPort) === CARGO ? 1 : 0;
+    const resting = engine.ports.getItemByPortEid(inputPort) === CARGO ? 1 : 0;
     assert.ok(delivered > 0, "items reach the output port");
-    assert.equal(delivered + engine.lanes.itemCountOf(lane) + resting, fed, "every fed item is still accounted for");
+    assert.equal(delivered + engine.lanes.getItemCountByLaneRef(lane) + resting, fed, "every fed item is still accounted for");
 });

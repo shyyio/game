@@ -30,8 +30,8 @@ import {EventCollector, flattenBatches} from "@/test/EventCollector.js";
  */
 function placeObject(engine, type, x, y) {
     assert.equal(engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, Direction.UP)), true);
-    const eids = engine.placed.eidsOf(type.objectTypeId);
-    return engine.placed.objectRefOf(eids[eids.length - 1]);
+    const eids = engine.placed.getEidsByTypeId(type.objectTypeId);
+    return engine.placed.getObjectRefByEid(eids[eids.length - 1]);
 }
 
 /**
@@ -46,11 +46,11 @@ function placeObject(engine, type, x, y) {
 function producedOver(engine, inputPort, outputPort, ticks) {
     let produced = 0;
     for (let i = 0; i < ticks; i += 1) {
-        if (engine.ports.item(inputPort) === EMPTY) {
+        if (engine.ports.getItemByPortEid(inputPort) === EMPTY) {
             engine.ports.setItem(inputPort, ITEM_TYPE_TEST_MACHINE_INPUT);
         }
         engine.tick();
-        if (engine.ports.item(outputPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT) {
+        if (engine.ports.getItemByPortEid(outputPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT) {
             produced += 1;
             engine.ports.setItem(outputPort, EMPTY);
         }
@@ -65,8 +65,8 @@ function producedOver(engine, inputPort, outputPort, ticks) {
  * @returns {number}
  */
 function carryOf(engine, objectRef) {
-    const def = engine.components.get("Machine");
-    return def.store.carry[def.row(engine.placed.eidByObjectRef(objectRef))];
+    const def = engine.components.getComponentByName("Machine");
+    return def.store.carry[def.getRowByEid(engine.placed.findEidByObjectRef(objectRef))];
 }
 
 // Housing at (2,4) (cells x2-3, y4-5), a road row along y=5, machines on y=4 each adjacent to the
@@ -99,22 +99,22 @@ test("a machine road-connected to housing is manned and sustains a faster rate",
 
     // The 1.3x multiplier shows up as sustained throughput (fractional progress carries over).
     const TICKS = 60;
-    const mannedCount = producedOver(engine, engine.ports.at(5, 4, Direction.UP), engine.ports.at(5, 3, Direction.UP), TICKS);
-    const controlCount = producedOver(engine, engine.ports.at(30, 10, Direction.UP), engine.ports.at(30, 9, Direction.UP), TICKS);
+    const mannedCount = producedOver(engine, engine.ports.getPortEidAt(5, 4, Direction.UP), engine.ports.getPortEidAt(5, 3, Direction.UP), TICKS);
+    const controlCount = producedOver(engine, engine.ports.getPortEidAt(30, 10, Direction.UP), engine.ports.getPortEidAt(30, 9, Direction.UP), TICKS);
     assert.ok(mannedCount > controlCount, `manned ${mannedCount} items vs unmanned ${controlCount} over ${TICKS} ticks`);
 });
 
 test("fractional progress banks past a craft and shortens the next", async () => {
     const {engine, nearId} = await mannedSetup();
-    const inputPort = engine.ports.at(5, 4, Direction.UP);
-    const outputPort = engine.ports.at(5, 3, Direction.UP);
+    const inputPort = engine.ports.getPortEidAt(5, 4, Direction.UP);
+    const outputPort = engine.ports.getPortEidAt(5, 3, Direction.UP);
 
     // First craft (processingTicks 2 at 1.3/tick) overshoots by 0.6, banked as carry.
     engine.ports.setItem(inputPort, ITEM_TYPE_TEST_MACHINE_INPUT);
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
         engine.tick();
-        produced = engine.ports.item(outputPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
+        produced = engine.ports.getItemByPortEid(outputPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
     }
     assert.ok(produced, "first craft completed");
     assert.ok(Math.abs(carryOf(engine, nearId) - 0.6) < 1e-3, `carry ${carryOf(engine, nearId)}`);
@@ -124,8 +124,8 @@ test("fractional progress banks past a craft and shortens the next", async () =>
     engine.ports.setItem(inputPort, ITEM_TYPE_TEST_MACHINE_INPUT);
     engine.tick();
     assert.equal(carryOf(engine, nearId), 0, "bank consumed at load");
-    const def = engine.components.get("Machine");
-    const remaining = def.store.remaining[def.row(engine.placed.eidByObjectRef(nearId))];
+    const def = engine.components.getComponentByName("Machine");
+    const remaining = def.store.remaining[def.getRowByEid(engine.placed.findEidByObjectRef(nearId))];
     assert.ok(Math.abs(remaining - 1.4) < 1e-3, `remaining ${remaining}`);
 });
 
@@ -283,11 +283,11 @@ test("a non-directional type spawns facing UP whatever the message says", async 
 test("worker assignments and banked progress survive a save/load", async () => {
     const {engine, nearId} = await mannedSetup();
     // Craft once (a single fed input) so the machine banks fractional progress, then idles.
-    engine.ports.setItem(engine.ports.at(5, 4, Direction.UP), ITEM_TYPE_TEST_MACHINE_INPUT);
+    engine.ports.setItem(engine.ports.getPortEidAt(5, 4, Direction.UP), ITEM_TYPE_TEST_MACHINE_INPUT);
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
         engine.tick();
-        produced = engine.ports.item(engine.ports.at(5, 3, Direction.UP)) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
+        produced = engine.ports.getItemByPortEid(engine.ports.getPortEidAt(5, 3, Direction.UP)) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
     }
     assert.ok(produced, "crafted before save");
     const carryBefore = carryOf(engine, nearId);
@@ -301,7 +301,7 @@ test("worker assignments and banked progress survive a save/load", async () => {
     const restored = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
     restored.snapshots.deserialize(snapshot);
 
-    assert.equal(restored.workers.roads.roadAt(5, 5), true, "road tiles rebuilt");
+    assert.equal(restored.workers.roads.hasRoadAt(5, 5), true, "road tiles rebuilt");
     assert.equal(restored.inspectSnapshot(nearId).workers, TEST_MACHINE_WORKER_COST, "allocation recomputed after load");
     assert.equal(carryOf(restored, nearId), carryBefore, "banked fractional progress restored");
 });

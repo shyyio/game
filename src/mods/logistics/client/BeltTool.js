@@ -53,7 +53,7 @@ export class BeltTool extends AbstractTool {
      * @private
      */
     _showGhost(tileX, tileY, direction) {
-        const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
+        const occupant = this._cache.findObjectAt(tileX, tileY, LAYER_SURFACE);
         const blocked = this._blocked(tileX, tileY, direction);
         const overwrite = occupant !== null && !blocked;
         this._placementFeedbackLayer.showTile({tileX, tileY, blocked, overwrite});
@@ -84,7 +84,7 @@ export class BeltTool extends AbstractTool {
         if (!this._client.modsAllowPlacement(BeltType, tileX, tileY, direction)) {
             return true;
         }
-        const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
+        const occupant = this._cache.findObjectAt(tileX, tileY, LAYER_SURFACE);
         return occupant !== null && !this._overwritable(occupant);
     }
 
@@ -117,7 +117,7 @@ export class BeltTool extends AbstractTool {
             || !this._client.modsAllowPlacement(BeltType, tileX, tileY, direction)) {
             return;
         }
-        const occupant = this._cache.at(tileX, tileY, LAYER_SURFACE);
+        const occupant = this._cache.findObjectAt(tileX, tileY, LAYER_SURFACE);
         if (occupant !== null) {
             if (!this._overwritable(occupant)) {
                 return;

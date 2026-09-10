@@ -194,13 +194,13 @@ export class TerrainPalette {
      */
     paintInto(bake, pixels, fromCell, toCell, shadeAt, ditherAt) {
         for (let cell = fromCell; cell < toCell; cell++) {
-            const shade = shadeAt(cell);
+            const shade = getShadeAt(cell);
             let biome = bake.biomes[cell];
             let weight = 0;
             let mixEntry = biome;
             if (bake.weights !== null && bake.weights[cell] > 0) {
                 if (blendLevels > 0) {
-                    weight = this._blendWeight(bake.weights[cell], ditherAt(cell));
+                    weight = this._blendWeight(bake.weights[cell], getDitherAt(cell));
                     // A shore blends one-way: the shore biome's edge runs to its own edge color at
                     // the line, and the neighbor keeps its color whole.
                     if (this._through[biome] !== -1) {
@@ -211,7 +211,7 @@ export class TerrainPalette {
                     } else {
                         mixEntry = bake.others[cell];
                     }
-                } else if (bake.weights[cell] * WEIGHT_PER_BAKED_UNIT > ditherAt(cell)) {
+                } else if (bake.weights[cell] * WEIGHT_PER_BAKED_UNIT > getDitherAt(cell)) {
                     // Nothing to mix, so the cell takes the other biome whole instead.
                     biome = bake.others[cell];
                 }
@@ -312,7 +312,7 @@ export class TerrainSprite extends Sprite {
      */
     static forChunk(palette, chunkKey, bake, terrain) {
         const origin = chunkOrigin(chunkKey);
-        const shadeAt = cell => shadeFor(terrain.shadeAt(origin.x + cell % CHUNK_SIZE, origin.y + Math.floor(cell / CHUNK_SIZE)));
+        const shadeAt = cell => shadeFor(terrain.getShadeAt(origin.x + cell % CHUNK_SIZE, origin.y + Math.floor(cell / CHUNK_SIZE)));
         // World tile, not chunk-local, so a pattern without a 64-tile period still tiles seamlessly.
         const ditherAt = cell => ditherThreshold(origin.x + cell % CHUNK_SIZE, origin.y + Math.floor(cell / CHUNK_SIZE));
         return new TerrainSprite(palette, bake, origin.x * TILE_SIZE, origin.y * TILE_SIZE, CHUNK_PX, shadeAt, ditherAt);

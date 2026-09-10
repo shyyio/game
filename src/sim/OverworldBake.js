@@ -45,7 +45,7 @@ export class OverworldBake extends AbstractSystem {
      * @param {number} chunkHeight
      * @returns {OverworldSnapshotEvent}
      */
-    snapshot(chunkX, chunkY, chunkWidth, chunkHeight) {
+    getSnapshotInRect(chunkX, chunkY, chunkWidth, chunkHeight) {
         if (chunkX < -REGION_HALF || chunkY < -REGION_HALF
             || chunkX + chunkWidth > REGION_HALF || chunkY + chunkHeight > REGION_HALF) {
             throw new RangeError(`Overworld rect (${chunkX}, ${chunkY}) ${chunkWidth}x${chunkHeight} is outside the region`);
@@ -114,7 +114,7 @@ export class OverworldBake extends AbstractSystem {
      * @returns {void}
      */
     _repaintChunk(chunkKey) {
-        const eids = this.placed.eidsInChunk(chunkKey);
+        const eids = this.placed.getEidsByChunkKey(chunkKey);
         if (eids.size === 0) {
             this._chunks.delete(chunkKey);
             return;
@@ -122,12 +122,12 @@ export class OverworldBake extends AbstractSystem {
         // Higher drawLayerIndex paints last, matching map-mode z-order; objectRef ties keep it
         // deterministic.
         const sorted = Array.from(eids).sort((a, b) => {
-            const layerA = this.placed.typeFor(this.placed.objectTypeIdOf(a)).drawLayerIndex;
-            const layerB = this.placed.typeFor(this.placed.objectTypeIdOf(b)).drawLayerIndex;
+            const layerA = this.placed.getObjectTypeByTypeId(this.placed.getObjectTypeIdByEid(a)).drawLayerIndex;
+            const layerB = this.placed.getObjectTypeByTypeId(this.placed.getObjectTypeIdByEid(b)).drawLayerIndex;
             if (layerA !== layerB) {
                 return layerA - layerB;
             }
-            return this.placed.objectRefOf(a) - this.placed.objectRefOf(b);
+            return this.placed.getObjectRefByEid(a) - this.placed.getObjectRefByEid(b);
         });
         const origin = chunkOrigin(chunkKey);
         const position = this.engine.Position;
@@ -139,14 +139,14 @@ export class OverworldBake extends AbstractSystem {
         }
         let filled = 0;
         for (const eid of sorted) {
-            const type = this.placed.typeFor(this.placed.objectTypeIdOf(eid));
+            const type = this.placed.getObjectTypeByTypeId(this.placed.getObjectTypeIdByEid(eid));
             if (!type.overworldVisible) {
                 continue;
             }
             const baseX = position.x[eid] - origin.x;
             const baseY = position.y[eid] - origin.y;
             const value = type.objectTypeId + 1;
-            for (const cell of type.geometry.tiles(position.direction[eid])) {
+            for (const cell of type.geometry.getTilesByDirection(position.direction[eid])) {
                 const offset = (baseY + cell.y) * CHUNK_SIZE + baseX + cell.x;
                 if (bake.tiles[offset] === 0) {
                     filled += 1;

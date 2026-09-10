@@ -26,8 +26,8 @@ import {makeGameEngine} from "@/test/ecsSim.js";
 // Units in flight at the two ports of the y=63/64 seam (one payload = one unit).
 function seamUnits(engine) {
     let units = 0;
-    for (const port of [engine.ports.at(0, 64, Direction.DOWN), engine.ports.at(0, 63, Direction.UP)]) {
-        if (engine.ports.item(port) !== EMPTY) {
+    for (const port of [engine.ports.getPortEidAt(0, 64, Direction.DOWN), engine.ports.getPortEidAt(0, 63, Direction.UP)]) {
+        if (engine.ports.getItemByPortEid(port) !== EMPTY) {
             units += 1;
         }
     }
@@ -43,12 +43,12 @@ test("fluid crosses a chunk seam and equalizes between the networks", async () =
 
     for (let i = 0; i < 30; i += 1) {
         engine.tick();
-        const total = pipes.networkAt(0, 62).amount + pipes.networkAt(0, 64).amount + seamUnits(engine);
+        const total = pipes.findNetworkAt(0, 62).amount + pipes.findNetworkAt(0, 64).amount + seamUnits(engine);
         assert.equal(total, 4, `tick ${i}: no fluid created or destroyed`);
     }
 
-    const above = pipes.networkAt(0, 62);
-    const below = pipes.networkAt(0, 64);
+    const above = pipes.findNetworkAt(0, 62);
+    const below = pipes.findNetworkAt(0, 64);
     assert.equal(above.amount, 2, "the seam settles at equal fill");
     assert.equal(below.amount, 2);
     assert.equal(below.fluidType, FLUID_TYPE_WATER, "the crossing payload carried its type");
@@ -58,8 +58,8 @@ test("fluid crosses a chunk seam and equalizes between the networks", async () =
     for (let i = 0; i < 5; i += 1) {
         engine.tick();
     }
-    assert.equal(pipes.networkAt(0, 62).amount, 2);
-    assert.equal(pipes.networkAt(0, 64).amount, 2);
+    assert.equal(pipes.findNetworkAt(0, 62).amount, 2);
+    assert.equal(pipes.findNetworkAt(0, 64).amount, 2);
 });
 
 test("different fluids meeting at a seam block instead of mixing", async () => {
@@ -74,10 +74,10 @@ test("different fluids meeting at a seam block instead of mixing", async () => {
         engine.tick();
     }
 
-    assert.equal(pipes.networkAt(0, 62).amount, 4, "the water side holds");
-    assert.equal(pipes.networkAt(0, 62).fluidType, FLUID_TYPE_WATER);
-    assert.equal(pipes.networkAt(0, 64).amount, 2, "the oil side holds");
-    assert.equal(pipes.networkAt(0, 64).fluidType, FLUID_TYPE_OIL);
+    assert.equal(pipes.findNetworkAt(0, 62).amount, 4, "the water side holds");
+    assert.equal(pipes.findNetworkAt(0, 62).fluidType, FLUID_TYPE_WATER);
+    assert.equal(pipes.findNetworkAt(0, 64).amount, 2, "the oil side holds");
+    assert.equal(pipes.findNetworkAt(0, 64).fluidType, FLUID_TYPE_OIL);
     assert.equal(seamUnits(engine), 0, "no payload enters the mismatched seam");
 });
 
@@ -100,13 +100,13 @@ test("a pipe network drains into a tank through the shared edge port", async () 
     assert.equal(tankDeltas.length, 1, "amount changes emit nothing");
     assert.deepEqual(tankDeltas[0].values, [FLUID_TYPE_WATER]);
 
-    const def = engine.components.get("Tank");
-    const row = def.row(engine.placed.eidsOf(TankType.objectTypeId)[0]);
-    const outputPort = engine.ports.at(1, -1, Direction.UP);
-    assert.equal(pipes.networkAt(0, 2).amount, 0, "the network drained fully");
+    const def = engine.components.getComponentByName("Tank");
+    const row = def.getRowByEid(engine.placed.getEidsByTypeId(TankType.objectTypeId)[0]);
+    const outputPort = engine.ports.getPortEidAt(1, -1, Direction.UP);
+    assert.equal(pipes.findNetworkAt(0, 2).amount, 0, "the network drained fully");
     assert.equal(def.store.fluidType[row], FLUID_TYPE_WATER);
     // One payload rests in the tank's output port (its unconsumed output).
-    assert.equal(engine.ports.item(outputPort), FLUID_TYPE_WATER);
+    assert.equal(engine.ports.getItemByPortEid(outputPort), FLUID_TYPE_WATER);
     assert.equal(def.store.amount[row] + 1, 4, "everything the network lost the tank (plus its output port) holds");
 });
 
@@ -121,7 +121,7 @@ test("an extractor pumps its produce into an adjacent pipe network", async () =>
         engine.tick();
     }
 
-    const net = pipes.networkAt(0, 0);
+    const net = pipes.findNetworkAt(0, 0);
     assert.equal(net.fluidType, ITEM_TYPE_WATER, "the network adopts the produced number as its fluid");
     assert.equal(net.amount, net.capacity, "the extractor fills the network to capacity");
 });
@@ -150,7 +150,7 @@ test("a pipe adopting a fluid producer's output port binds its type at placement
     engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 0, 4, Direction.UP));
     const pipes = pipesOf(engine);
 
-    const net = pipes.networkAt(0, 4);
+    const net = pipes.findNetworkAt(0, 4);
     assert.equal(net.fluidType, ITEM_TYPE_WATER, "typed before any payload");
     assert.equal(net.amount, 0);
 });
@@ -163,7 +163,7 @@ test("a producer placed after the pipes types the empty network", async () => {
     const pipes = pipesOf(engine);
 
     engine.tick();
-    assert.equal(pipes.networkAt(0, 4).fluidType, ITEM_TYPE_WATER, "the drained network re-binds to the producer");
+    assert.equal(pipes.findNetworkAt(0, 4).fluidType, ITEM_TYPE_WATER, "the drained network re-binds to the producer");
 });
 
 test("a pipe cannot connect a producer's output port to a different fluid", async () => {
@@ -176,7 +176,7 @@ test("a pipe cannot connect a producer's output port to a different fluid", asyn
 
     // (0, 4) touches both the oil network and the water extractor's output port.
     engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 0, 4, Direction.UP));
-    assert.equal(pipes.networkAt(0, 4), null, "the conflicting placement is rejected");
+    assert.equal(pipes.findNetworkAt(0, 4), null, "the conflicting placement is rejected");
     assert.equal(pipes.pipeCount, 1);
 });
 
@@ -188,14 +188,14 @@ test("a pipe binds brine from a deep extractor and cannot bridge to a water sour
 
     // The deep extractor's output port edge is at (6, 3): the adopting pipe binds brine at placement.
     engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 6, 3, Direction.UP));
-    assert.equal(pipes.networkAt(6, 3).fluidType, ITEM_TYPE_TEST_BRINE, "typed before any payload");
+    assert.equal(pipes.findNetworkAt(6, 3).fluidType, ITEM_TYPE_TEST_BRINE, "typed before any payload");
 
     // A water extractor facing DOWN puts its output port edge at (5, 3); a pipe there would join the
     // brine network to a water source.
     engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 5, 2, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 5, 2, Direction.DOWN));
     engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 5, 3, Direction.UP));
-    assert.equal(pipes.networkAt(5, 3), null, "the conflicting placement is rejected");
+    assert.equal(pipes.findNetworkAt(5, 3), null, "the conflicting placement is rejected");
     assert.equal(pipes.pipeCount, 1);
 });
 
@@ -211,7 +211,7 @@ test("a belt refuses a fluid payload resting in its input port", async () => {
 
     assert.equal(laneItemCount(engine), 0, "no fluid item ever boards the belt");
     // The refused payload rests in the shared edge port; the extractor is backed up behind it.
-    assert.equal(engine.ports.item(engine.ports.at(0, 4, Direction.UP)), ITEM_TYPE_WATER);
+    assert.equal(engine.ports.getItemByPortEid(engine.ports.getPortEidAt(0, 4, Direction.UP)), ITEM_TYPE_WATER);
 });
 
 test("a belt never pops an item into a fluid port", async () => {
@@ -226,7 +226,7 @@ test("a belt never pops an item into a fluid port", async () => {
         engine.tick();
     }
 
-    assert.equal(pipes.networkAt(0, 0).amount, 0, "no solid item enters the network");
-    assert.equal(engine.ports.item(path.outputPort), EMPTY, "the shared edge port stays untouched");
+    assert.equal(pipes.findNetworkAt(0, 0).amount, 0, "no solid item enters the network");
+    assert.equal(engine.ports.getItemByPortEid(path.outputPort), EMPTY, "the shared edge port stays untouched");
     assert.equal(laneItemCount(engine), 1, "the item waits at the belt's end");
 });

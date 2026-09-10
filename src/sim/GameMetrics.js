@@ -101,7 +101,7 @@ export class GameMetrics {
      * @returns {void}
      */
     onDisconnect(sessionRef) {
-        const playerRef = this._bus.playerRefOf(sessionRef);
+        const playerRef = this._bus.getPlayerRefBySessionRef(sessionRef);
         const joinedAt = this._sessionJoinedAt.get(sessionRef);
         const sessionLengthMs = joinedAt === undefined ? 0 : Date.now() - joinedAt;
         this._sessionJoinedAt.delete(sessionRef);
@@ -184,7 +184,7 @@ export class GameMetrics {
                     // The very first possible bucket hasn't happened yet — nothing to report.
                     continue;
                 }
-                const playerRef = this._playerRefForScope(sub.scope, sessionRef);
+                const playerRef = this._getPlayerRefByScope(sub.scope, sessionRef);
                 const signature = `${sub.metricsType}:${sub.scope}:${sub.tier}:${bucketTick}:${playerRef}`;
                 let group = groups.get(signature);
                 if (group === undefined) {
@@ -212,11 +212,11 @@ export class GameMetrics {
      * @returns {number|null}
      * @private
      */
-    _playerRefForScope(scope, sessionRef) {
+    _getPlayerRefByScope(scope, sessionRef) {
         if (scope === METRICS_QUERY_SCOPE_GLOBAL) {
             return null;
         }
-        return this._bus.playerRefOf(sessionRef);
+        return this._bus.getPlayerRefBySessionRef(sessionRef);
     }
 
     /**
@@ -227,7 +227,7 @@ export class GameMetrics {
      */
     _handleRollupRequest(session, message) {
         this._publishRollup(
-            [session.sessionRef], message.metricsType, message.scope, this._playerRefForScope(message.scope, session.sessionRef),
+            [session.sessionRef], message.metricsType, message.scope, this._getPlayerRefByScope(message.scope, session.sessionRef),
             message.fromTick, message.toTick, message.tier,
         );
     }
@@ -255,7 +255,7 @@ export class GameMetrics {
         const toTick = this._simEngine.clock;
         const fromTick = Math.max(0, toTick - message.windowTicks);
         this._publishRollup(
-            [session.sessionRef], message.metricsType, message.scope, this._playerRefForScope(message.scope, session.sessionRef),
+            [session.sessionRef], message.metricsType, message.scope, this._getPlayerRefByScope(message.scope, session.sessionRef),
             fromTick, toTick, message.tier,
             () => {
                 const current = subs.get(key);
@@ -306,7 +306,7 @@ export class GameMetrics {
         if (scope !== METRICS_QUERY_SCOPE_GLOBAL) {
             return rows;
         }
-        const entry = this._modRegistry.metricsGlobalQuery(metricsType);
+        const entry = this._modRegistry.findMetricsGlobalQueryByType(metricsType);
         if (entry === undefined || entry.rowFilter === null) {
             return rows;
         }

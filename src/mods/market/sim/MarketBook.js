@@ -142,7 +142,7 @@ class QuoteIndex {
      * @param {number} itemTypeId
      * @returns {MarketQuote[]|undefined}
      */
-    list(itemTypeId) {
+    findQuotesByItemTypeId(itemTypeId) {
         return this._byItem.get(itemTypeId);
     }
 
@@ -202,7 +202,7 @@ export class MarketBook {
      * @param {number} itemTypeId
      * @returns {number|undefined}
      */
-    fixedPriceOf(itemTypeId) {
+    findFixedPriceByItemTypeId(itemTypeId) {
         return this._fixedPrices.get(itemTypeId);
     }
 
@@ -257,7 +257,7 @@ export class MarketBook {
      * @param {number} itemTypeId
      * @returns {number}
      */
-    buyCount(itemTypeId) {
+    getBuyCountByItemTypeId(itemTypeId) {
         return this._buys.count(itemTypeId);
     }
 
@@ -265,7 +265,7 @@ export class MarketBook {
      * @param {number} itemTypeId
      * @returns {number}
      */
-    sellCount(itemTypeId) {
+    getSellCountByItemTypeId(itemTypeId) {
         return this._sells.count(itemTypeId);
     }
 
@@ -273,8 +273,8 @@ export class MarketBook {
      * @param {number} itemTypeId
      * @returns {number|undefined} the highest currently-posted bid, or undefined if none
      */
-    bestBid(itemTypeId) {
-        const quotes = this._buys.list(itemTypeId);
+    findBestBidByItemTypeId(itemTypeId) {
+        const quotes = this._buys.findQuotesByItemTypeId(itemTypeId);
         if (quotes === undefined || quotes.length === 0) {
             return undefined;
         }
@@ -289,8 +289,8 @@ export class MarketBook {
      * @param {number} itemTypeId
      * @returns {number|undefined} the lowest currently-posted ask, or undefined if none
      */
-    bestAsk(itemTypeId) {
-        const quotes = this._sells.list(itemTypeId);
+    findBestAskByItemTypeId(itemTypeId) {
+        const quotes = this._sells.findQuotesByItemTypeId(itemTypeId);
         if (quotes === undefined || quotes.length === 0) {
             return undefined;
         }
@@ -309,12 +309,12 @@ export class MarketBook {
      * @param {number} itemTypeId
      * @param {number} floorPrice
      * @param {function(number): boolean} portIsEmpty
-     * @param {function(number): number} balanceOf
+     * @param {function(number): number} getBalanceByEid
      * @returns {MarketMatch|null}
      */
-    bestEligibleBuyer(itemTypeId, floorPrice, portIsEmpty, balanceOf) {
+    findBestEligibleBuyer(itemTypeId, floorPrice, portIsEmpty, getBalanceByEid) {
         let best = null;
-        const quotes = this._buys.list(itemTypeId);
+        const quotes = this._buys.findQuotesByItemTypeId(itemTypeId);
         if (quotes !== undefined) {
             for (const quote of quotes) {
                 if (quote.price < floorPrice) {
@@ -323,7 +323,7 @@ export class MarketBook {
                 if (!portIsEmpty(quote.outputPort)) {
                     continue;
                 }
-                if (balanceOf(quote.eid) < quote.price) {
+                if (getBalanceByEid(quote.eid) < quote.price) {
                     continue;
                 }
                 if (best === null
@@ -399,7 +399,7 @@ export class MarketBook {
      * @param {number} itemTypeId
      * @returns {number|undefined} the item's guide price, or undefined if never traded/imbalanced
      */
-    guidePriceOf(itemTypeId) {
+    findGuidePriceByItemTypeId(itemTypeId) {
         const guide = this._guidePrices.get(itemTypeId);
         if (guide === undefined) {
             return undefined;
@@ -429,7 +429,7 @@ export class MarketBook {
                 const step = Math.round((average - price) * volumeWeight);
                 price += Math.max(-maxStep, Math.min(maxStep, step));
             }
-            const imbalance = this.buyCount(itemTypeId) - this.sellCount(itemTypeId);
+            const imbalance = this.getBuyCountByItemTypeId(itemTypeId) - this.getSellCountByItemTypeId(itemTypeId);
             if (imbalance !== 0) {
                 const step = Math.sign(imbalance) * Math.min(maxStep, Math.abs(imbalance));
                 price += step;

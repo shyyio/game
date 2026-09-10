@@ -192,7 +192,7 @@ export class GameServer extends AbstractHttpServer {
      * @returns {void}
      */
     _onStatus(res) {
-        const claimed = this._game.claims.claimedCount();
+        const claimed = this._game.claims.getClaimedCount();
         respondJson(res, {
             name: this._name,
             version: GAME_VERSION,
@@ -299,7 +299,7 @@ export class GameServer extends AbstractHttpServer {
             this._sessionsByPlayer.delete(session.playerRef);
         }
         this._game.disconnect(session.sessionRef);
-        const username = this._game.players.byId(session.playerRef).username;
+        const username = this._game.players.getPlayerByRef(session.playerRef).username;
         console.log(`- ${username} (player ${session.playerRef}, session ${session.sessionRef}, tx ${formatBytes(session.txBytes)}, rx ${formatBytes(session.rxBytes)})`);
     }
 }

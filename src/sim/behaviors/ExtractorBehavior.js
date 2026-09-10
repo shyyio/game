@@ -62,18 +62,18 @@ export class ExtractorBehavior extends AbstractBehavior {
      * @returns {boolean}
      */
     canSpawn(engine, type, message) {
-        return engine.space.userDataAt(message.x, message.y, LAYER_RESOURCE) !== null;
+        return engine.space.getUserDataAt(message.x, message.y, LAYER_RESOURCE) !== null;
     }
 
     onSpawn(engine, eid, type, message) {
-        const extractors = engine.components.get("Extractor");
+        const extractors = engine.components.getComponentByName("Extractor");
         extractors.attach(eid);
         const extractor = extractors.store;
-        const row = extractors.row(eid);
-        const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
+        const row = extractors.getRowByEid(eid);
+        const output = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction);
         extractor.out[row] = output.port;
         extractor.processingTicks[row] = this.processingTicks;
-        const resource = engine.space.userDataAt(message.x, message.y, LAYER_RESOURCE);
+        const resource = engine.space.getUserDataAt(message.x, message.y, LAYER_RESOURCE);
         extractor.resourceType[row] = resource;
         // The product is fixed by the bound resource, so show it before the first cycle delivers;
         // a fluid product also types the output port so an adopting pipe network binds immediately.
@@ -90,27 +90,27 @@ export class ExtractorBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, eid) {
-        const extractors = engine.components.get("Extractor");
-        const out = extractors.store.out[extractors.row(eid)];
+        const extractors = engine.components.getComponentByName("Extractor");
+        const out = extractors.store.out[extractors.getRowByEid(eid)];
         engine.render.unregisterPort(out);
         // The port may outlive the extractor (an adjacent pipe pins it); it no longer produces.
         engine.ports.setFluidSource(out, EMPTY);
     }
 
-    renderedPortEids(engine, eid) {
+    getRenderedPortEids(engine, eid) {
         if (!this.type.outputPorts[0].render) {
             return [];
         }
-        const extractors = engine.components.get("Extractor");
-        return [extractors.store.out[extractors.row(eid)]];
+        const extractors = engine.components.getComponentByName("Extractor");
+        return [extractors.store.out[extractors.getRowByEid(eid)]];
     }
 
     resyncRenderedPorts(engine, eid) {
         if (!this.type.outputPorts[0].render) {
             return;
         }
-        const extractors = engine.components.get("Extractor");
-        const out = extractors.store.out[extractors.row(eid)];
+        const extractors = engine.components.getComponentByName("Extractor");
+        const out = extractors.store.out[extractors.getRowByEid(eid)];
         engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
 
@@ -119,9 +119,9 @@ export class ExtractorBehavior extends AbstractBehavior {
      * @returns {InspectHeartbeatEvent}
      */
     inspect(engine, eid, objectRef) {
-        const extractors = engine.components.get("Extractor");
+        const extractors = engine.components.getComponentByName("Extractor");
         const extractor = extractors.store;
-        const row = extractors.row(eid);
+        const row = extractors.getRowByEid(eid);
         const resource = extractor.resourceType[row];
         // The wire carries whole ticks; the fractional countdown stays sim-side.
         let remaining = null;
@@ -159,11 +159,11 @@ export class ExtractorBehavior extends AbstractBehavior {
      */
     onRebuild(engine) {
         const placed = engine.placed;
-        const extractors = engine.components.get("Extractor");
+        const extractors = engine.components.getComponentByName("Extractor");
         const extractor = extractors.store;
         const eids = extractors.eids;
         for (let row = 0; row < extractors.count; row += 1) {
-            const behavior = placed.behaviorFor(placed.objectTypeIdOf(eids[row]));
+            const behavior = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eids[row]));
             extractor.processingTicks[row] = behavior.processingTicks;
             const product = behavior.recipes.get(extractor.resourceType[row]);
             if (product !== undefined && engine.isFluid(product)) {
@@ -182,7 +182,7 @@ export class ExtractorBehavior extends AbstractBehavior {
     static _submitIntents(engine) {
         const placed = engine.placed;
         const item = engine.Port.item;
-        const extractors = engine.components.get("Extractor");
+        const extractors = engine.components.getComponentByName("Extractor");
         const extractor = extractors.store;
         const eids = extractors.eids;
         const count = extractors.count;
@@ -200,7 +200,7 @@ export class ExtractorBehavior extends AbstractBehavior {
             // Only an idle extractor bound to a resource needs its recipe table, so the behavior hop
             // stays off the countdown path.
             if (extractor.output[row] === EMPTY && extractor.resourceType[row] !== EMPTY) {
-                const behavior = placed.behaviorFor(placed.objectTypeIdOf(eids[row]));
+                const behavior = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eids[row]));
                 if (behavior.recipes.has(extractor.resourceType[row])) {
                     extractor.output[row] = behavior.recipes.get(extractor.resourceType[row]);
                     const start = extractor.processingTicks[row] - extractor.carry[row];
@@ -228,14 +228,14 @@ export class ExtractorBehavior extends AbstractBehavior {
      */
     static _finish(engine) {
         const placed = engine.placed;
-        const extractors = engine.components.get("Extractor");
+        const extractors = engine.components.getComponentByName("Extractor");
         const extractor = extractors.store;
         const eids = extractors.eids;
         const count = extractors.count;
         for (let row = 0; row < count; row += 1) {
             if (engine.transfers.wasDest(extractor.out[row])) {
                 const eid = eids[row];
-                engine.itemProduced.notify(placed.claimOwnerOf(eid), extractor.output[row], 1);
+                engine.itemProduced.notify(placed.getClaimOwnerByEid(eid), extractor.output[row], 1);
                 if (extractor.lastOutput[row] !== extractor.output[row]) {
                     extractor.lastOutput[row] = extractor.output[row];
                     engine.sync.markDirty(extractors, eid);

@@ -209,8 +209,8 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
                 index++;
                 const tileX = origin.x + localX;
                 const tileY = origin.y + localY;
-                const detail = this._terrain.detailFor(biome, tileX, tileY);
-                if (detail === null || this.cache.at(tileX, tileY, LAYER_SURFACE) !== null) {
+                const detail = this._terrain.findDetailByBiome(biome, tileX, tileY);
+                if (detail === null || this.cache.findObjectAt(tileX, tileY, LAYER_SURFACE) !== null) {
                     continue;
                 }
                 node.sprites.addChild(this._pose(this._pool.take(), detail, biome, tileX, tileY, seed));

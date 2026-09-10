@@ -52,9 +52,9 @@ test("at resolves an object by cell and layer; layers are independent", () => {
     cache.set(1, 5, 5, cell(5, 5, 0), {}, {kind: 0});
     cache.set(2, 5, 5, cell(5, 5, 1), {}, {kind: 9});
 
-    assert.strictEqual(cache.at(5, 5, 0).id, 1);
-    assert.strictEqual(cache.at(5, 5, 1).id, 2);
-    assert.strictEqual(cache.at(5, 5, 2), null);
+    assert.strictEqual(cache.findObjectAt(5, 5, 0).id, 1);
+    assert.strictEqual(cache.findObjectAt(5, 5, 1).id, 2);
+    assert.strictEqual(cache.findObjectAt(5, 5, 2), null);
 });
 
 test("allAt returns the full stack on a cell, bottom-up", () => {
@@ -62,18 +62,18 @@ test("allAt returns the full stack on a cell, bottom-up", () => {
     cache.set(1, 5, 5, cell(5, 5, 0), {}, {kind: 0});
     cache.set(2, 5, 5, cell(5, 5, 0), {}, {kind: 9});
 
-    assert.deepStrictEqual(cache.allAt(5, 5, 0).map(record => record.id), [1, 2]);
-    assert.deepStrictEqual(cache.allAt(5, 5, 1), []);
+    assert.deepStrictEqual(cache.getObjectsAt(5, 5, 0).map(record => record.id), [1, 2]);
+    assert.deepStrictEqual(cache.getObjectsAt(5, 5, 1), []);
     cache.remove(2);
-    assert.deepStrictEqual(cache.allAt(5, 5, 0).map(record => record.id), [1]);
+    assert.deepStrictEqual(cache.getObjectsAt(5, 5, 0).map(record => record.id), [1]);
 });
 
 test("set with multiple cells indexes every covered cell", () => {
     const cache = new ObjectsView(null);
     cache.set(1, 5, 5, [{x: 5, y: 5, layer: 0}, {x: 6, y: 5, layer: 0}], {}, {kind: 1});
 
-    assert.strictEqual(cache.at(5, 5, 0).id, 1);
-    assert.strictEqual(cache.at(6, 5, 0).id, 1);
+    assert.strictEqual(cache.findObjectAt(5, 5, 0).id, 1);
+    assert.strictEqual(cache.findObjectAt(6, 5, 0).id, 1);
 });
 
 test("update merges into a record's data", () => {
@@ -94,7 +94,7 @@ test("remove clears all indexes and returns the record", () => {
     assert.strictEqual(removed.id, 1);
     assert.strictEqual(cache.get(1), null);
     assert.deepStrictEqual(cache.getAtTile(7, 8), []);
-    assert.strictEqual(cache.at(7, 8, 0), null);
+    assert.strictEqual(cache.findObjectAt(7, 8, 0), null);
     assert.deepStrictEqual(cache.getByChunk(chunkKeyAt(7, 8)), []);
     assert.strictEqual(cache.remove(1), null);
 });
@@ -104,8 +104,8 @@ test("set replaces a prior registration's cells", () => {
     cache.set(1, 5, 5, cell(5, 5, 0), {}, {kind: 0});
     cache.set(1, 5, 5, cell(5, 5, 1), {}, {kind: 0});
 
-    assert.strictEqual(cache.at(5, 5, 0), null);
-    assert.strictEqual(cache.at(5, 5, 1).id, 1);
+    assert.strictEqual(cache.findObjectAt(5, 5, 0), null);
+    assert.strictEqual(cache.findObjectAt(5, 5, 1).id, 1);
 });
 
 test("getByChunk returns objects grouped by chunk", () => {
@@ -133,23 +133,23 @@ test("getByPort resolves a rendered output port to its entry and port name", () 
     assert.strictEqual(cache.getByPort(42), null);
 });
 
-test("inputPortAt / outputPortAt resolve a feeder-consumer pair facing each other", () => {
+test("findInputPortAt / findOutputPortAt resolve a feeder-consumer pair facing each other", () => {
     const cache = new ObjectsView(null);
     // Feeder at (5,6) outputs up into (5,5); consumer at (5,5) takes input there.
     machine(cache, 1, 5, 6, Direction.UP);
     machine(cache, 2, 5, 5, Direction.UP);
 
-    const consumer = cache.inputPortAt(5, 5, Direction.UP);
+    const consumer = cache.findInputPortAt(5, 5, Direction.UP);
     assert.strictEqual(consumer.entry.id, 2);
     assert.strictEqual(consumer.portName, "in");
 
-    const feeder = cache.outputPortAt(5, 5, Direction.UP);
+    const feeder = cache.findOutputPortAt(5, 5, Direction.UP);
     assert.strictEqual(feeder.entry.id, 1);
     assert.strictEqual(feeder.portName, "out");
 
     // Wrong facing and an empty tile resolve to nothing.
-    assert.strictEqual(cache.inputPortAt(5, 5, Direction.DOWN), null);
-    assert.strictEqual(cache.inputPortAt(9, 9, Direction.UP), null);
+    assert.strictEqual(cache.findInputPortAt(5, 5, Direction.DOWN), null);
+    assert.strictEqual(cache.findInputPortAt(9, 9, Direction.UP), null);
 });
 
 test("connectedPorts reports a record's live output connection", () => {

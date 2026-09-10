@@ -55,7 +55,7 @@ export class Symbolicator {
         }
         const [, prefix, source, lineStr, columnStr] = match;
         const filename = source.split("/").pop().split("?")[0];
-        const consumer = this._consumerFor(buildVersion, buildDir, filename);
+        const consumer = this._getConsumerByFilename(buildVersion, buildDir, filename);
         if (consumer === null) {
             return line;
         }
@@ -74,7 +74,7 @@ export class Symbolicator {
      * @param {string} filename
      * @returns {SourceMapConsumer|null}
      */
-    _consumerFor(buildVersion, buildDir, filename) {
+    _getConsumerByFilename(buildVersion, buildDir, filename) {
         const key = `${buildVersion}/${filename}`;
         const cached = this._consumersByKey.get(key);
         if (cached !== undefined) {

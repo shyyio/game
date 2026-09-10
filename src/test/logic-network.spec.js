@@ -18,7 +18,7 @@ import {LogicNetworks} from "@/mods/logistics/sim/LogicNetworks.js";
 function place(engine, type, x, y, direction=Direction.UP) {
     assert.equal(engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, direction)), true);
     const def = engine.placed.objects;
-    return def.store.objectRef[def.row(def.eids[def.count - 1])];
+    return def.store.objectRef[def.getRowByEid(def.eids[def.count - 1])];
 }
 
 test("poles connect only through explicit wires", async () => {
@@ -32,15 +32,15 @@ test("poles connect only through explicit wires", async () => {
 
     networks.wire(a, b);
     assert.equal(networks.networks.length, 2, "the wire merged the endpoints");
-    assert.equal(networks.networkOf(a).id, networks.networkOf(b).id);
+    assert.equal(networks.findNetworkByObjectRef(a).id, networks.findNetworkByObjectRef(b).id);
 
     networks.wire(b, c);
     assert.equal(networks.networks.length, 1);
-    assert.deepEqual(networks.networkOf(a).poleIds, [a, b, c].sort((x, y) => x - y));
+    assert.deepEqual(networks.findNetworkByObjectRef(a).poleIds, [a, b, c].sort((x, y) => x - y));
 
     networks.unwire(a, b);
     assert.equal(networks.networks.length, 2, "removing the wire split the component");
-    assert.notEqual(networks.networkOf(a).id, networks.networkOf(c).id);
+    assert.notEqual(networks.findNetworkByObjectRef(a).id, networks.findNetworkByObjectRef(c).id);
 });
 
 test("removing a pole drops its wires and splits its component", async () => {
@@ -65,7 +65,7 @@ test("a wired logic network spans chunk seams", async () => {
     const b = place(engine, PoleType, 0, 68);
     assert.notEqual(chunkKeyAt(0, 60), chunkKeyAt(0, 68), "the poles sit in different chunks");
     networks.wire(a, b);
-    assert.equal(networks.networkOf(a).id, networks.networkOf(b).id);
+    assert.equal(networks.findNetworkByObjectRef(a).id, networks.findNetworkByObjectRef(b).id);
 });
 
 test("a pole-pole wire message round-trips, toggles off, and respects range", async () => {
@@ -112,21 +112,21 @@ test("a wire joins a gate to a pole's network; unwiring and pole removal detach 
 
     player.events.length = 0;
     game.dispatchMessage(new WireLinkMessage(gateId, poleId), player);
-    assert.deepEqual(networks.networkOf(poleId).deviceIds, [gateId]);
+    assert.deepEqual(networks.findNetworkByObjectRef(poleId).deviceIds, [gateId]);
     const set = player.events.find(event => event instanceof LogicWireSetEvent);
     assert.ok(set, "the wire fanned out to the chunk's viewers");
 
     player.events.length = 0;
     game.dispatchMessage(new WireUnlinkMessage(gateId, poleId), player);
-    assert.equal(networks.networkOf(gateId), null);
-    assert.deepEqual(networks.networkOf(poleId).deviceIds, []);
+    assert.equal(networks.findNetworkByObjectRef(gateId), null);
+    assert.deepEqual(networks.findNetworkByObjectRef(poleId).deviceIds, []);
     assert.ok(player.events.find(event => event instanceof LogicWireClearEvent));
 
     // Re-wire, then removing the pole clears the wire too.
     game.dispatchMessage(new WireLinkMessage(gateId, poleId), player);
     player.events.length = 0;
     engine.applyMessage(new DeleteObjectMessage(poleId));
-    assert.equal(networks.networkOf(gateId), null);
+    assert.equal(networks.findNetworkByObjectRef(gateId), null);
     assert.ok(player.events.find(event => event instanceof LogicWireClearEvent));
 });
 
@@ -142,14 +142,14 @@ test("devices wire to each other directly, poles optional", async () => {
 
     game.dispatchMessage(new WireLinkMessage(gateA, gateB), player);
     assert.equal(networks.hasWire(gateA, gateB), true, "a gate-gate wire holds");
-    const network = networks.networkOf(gateA);
-    assert.equal(network.id, networks.networkOf(gateB).id);
+    const network = networks.findNetworkByObjectRef(gateA);
+    assert.equal(network.id, networks.findNetworkByObjectRef(gateB).id);
     assert.deepEqual(network.poleIds, [], "no pole involved");
 
     // Removing one endpoint sweeps the wire.
     engine.applyMessage(new DeleteObjectMessage(gateB));
     assert.equal(networks.hasWire(gateA, gateB), false);
-    assert.equal(networks.networkOf(gateA), null);
+    assert.equal(networks.findNetworkByObjectRef(gateA), null);
 });
 
 test("wiring rejects a non-wireable device and an out-of-range pole", async () => {
@@ -189,7 +189,7 @@ test("poles and wires survive a save/load", async () => {
     assert.equal(await restored.load(), true);
     const networks = restored.simEngine.resolve(LogicNetworks);
     assert.equal(networks.hasWire(poleId, otherPoleId), true, "the pole wire persisted");
-    const network = networks.networkOf(poleId);
+    const network = networks.findNetworkByObjectRef(poleId);
     assert.deepEqual(network.poleIds, [poleId, otherPoleId].sort((x, y) => x - y));
     assert.deepEqual(network.deviceIds, [gateId], "the device wire persisted");
 });

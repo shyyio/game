@@ -22,12 +22,12 @@ test("players, friends, and claims survive a save/load", async () => {
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
-    assert.equal(restored.players.byId(alice.playerRef).username, "alice");
-    assert.equal(restored.players.byId(bob.playerRef).maxChunks, 20);
+    assert.equal(restored.players.getPlayerByRef(alice.playerRef).username, "alice");
+    assert.equal(restored.players.getPlayerByRef(bob.playerRef).maxChunks, 20);
     assert.equal(restored.players.isFriend(alice.playerRef, bob.playerRef), true);
-    assert.equal(restored.claims.ownerOf(chunkKeyAt(0, 0)), alice.playerRef);
-    assert.equal(restored.claims.ownerOf(chunkKeyAt(64, 0)), alice.playerRef);
-    assert.equal(restored.claims.countOf(alice.playerRef), 2);
+    assert.equal(restored.claims.getOwnerByChunkKey(chunkKeyAt(0, 0)), alice.playerRef);
+    assert.equal(restored.claims.getOwnerByChunkKey(chunkKeyAt(64, 0)), alice.playerRef);
+    assert.equal(restored.claims.getCountByPlayerRef(alice.playerRef), 2);
     // The id counter resumes past the loaded players.
     assert.equal(restored.players.getOrCreate("sub-carol", "carol").playerRef, 3);
 });
@@ -71,5 +71,5 @@ test("a snapshot without tables loads with empty registries", async () => {
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
     assert.equal(restored.players.has(1), false);
-    assert.equal(restored.claims.countOf(1), 0);
+    assert.equal(restored.claims.getCountByPlayerRef(1), 0);
 });

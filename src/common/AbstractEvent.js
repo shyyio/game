@@ -13,7 +13,7 @@ export class AbstractEvent extends AbstractWireObject {
      * @param {EventBus} bus
      * @returns {Set<number>|undefined}
      */
-    subscribersIn(bus) {
+    getSubscribersByBus(bus) {
         throw new NotImplementedError();
     }
 }

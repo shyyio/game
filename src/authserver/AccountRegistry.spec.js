@@ -20,13 +20,13 @@ test("invalid usernames are rejected", () => {
 
 test("unknown ids break loudly", () => {
     const accounts = new AccountRegistry(new NodeAccountStore());
-    assert.throws(() => accounts.byId(7), RangeError);
+    assert.throws(() => accounts.getPlayerByRef(7), RangeError);
 });
 
 test("accounts persist across registries sharing a store", () => {
     const store = new NodeAccountStore();
     const alice = new AccountRegistry(store).getOrCreate("alice");
     const reopened = new AccountRegistry(store);
-    assert.equal(reopened.byId(alice.accountId).username, "alice");
+    assert.equal(reopened.getPlayerByRef(alice.accountId).username, "alice");
     assert.deepEqual(reopened.getOrCreate("alice"), alice);
 });

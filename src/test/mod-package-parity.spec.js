@@ -120,7 +120,7 @@ test("a packaged loadout runs a game", async () => {
     game.dispatchMessage(new CreateObjectMessage(terminal.objectTypeId, 3, 3, Direction.UP), session);
     game.runTick();
 
-    assert.equal(game.simEngine.placed.eidsOf(terminal.objectTypeId).length, 1);
+    assert.equal(game.simEngine.placed.getEidsByTypeId(terminal.objectTypeId).length, 1);
 });
 
 test("a built package is its manifest plus one bundle, art included", async (t) => {

@@ -61,9 +61,9 @@ export class AbstractTileMeshDrawLayer extends AbstractChunkedDrawLayer {
      * @param {string} name
      * @returns {number}
      */
-    _slotOf(name) {
+    _getSlotByName(name) {
         this._meshShader();
-        return this._frameTable.slotOf(name);
+        return this._frameTable.getSlotByName(name);
     }
 
     /**

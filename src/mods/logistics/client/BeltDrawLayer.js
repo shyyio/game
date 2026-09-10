@@ -172,7 +172,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     _drawChunkGeometry(chunkKey, graphics) {
         for (const color of [MAP_COLOR_BELT, MAP_COLOR_BELT_TUNNEL]) {
             let drew = false;
-            for (const belt of this._beltsIn(chunkKey)) {
+            for (const belt of this._getBeltsByChunkKey(chunkKey)) {
                 const beltColor = belt.type === BELT_NORMAL ? MAP_COLOR_BELT : MAP_COLOR_BELT_TUNNEL;
                 if (beltColor !== color) {
                     continue;
@@ -193,12 +193,12 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
      */
     _buildTiles(chunkKey) {
         const tiles = [];
-        for (const belt of this._beltsIn(chunkKey)) {
+        for (const belt of this._getBeltsByChunkKey(chunkKey)) {
             tiles.push(new AnimatedTile(
                 belt.x,
                 belt.y,
                 belt.direction,
-                this._slotOf(beltFrameBase(belt.bend, belt.type)),
+                this._getSlotByName(beltFrameBase(belt.bend, belt.type)),
             ));
         }
         return tiles;
@@ -210,7 +210,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
      * @returns {Iterable<Belt>}
      * @private
      */
-    _beltsIn(chunkKey) {
+    _getBeltsByChunkKey(chunkKey) {
         const belts = this._chunkBelts.get(chunkKey);
         if (belts === undefined) {
             return [];

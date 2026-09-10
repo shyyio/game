@@ -400,7 +400,7 @@ export class ToolbarLayer extends Container {
      * @returns {Container}
      */
     _createCell(tool, draggable) {
-        const slot = this._createSlot(tool.label, this._shortcutFor(tool), (slot) => this._addSprite(slot, tool.textureName), draggable);
+        const slot = this._createSlot(tool.label, this._getShortcutByTool(tool), (slot) => this._addSprite(slot, tool.textureName), draggable);
         const onPress = () => {
             if (tool === this._activeTool) {
                 this.setActiveTool(null);
@@ -426,7 +426,7 @@ export class ToolbarLayer extends Container {
      * @param {AbstractTool} tool
      * @returns {string|null}
      */
-    _shortcutFor(tool) {
+    _getShortcutByTool(tool) {
         if (tool.hotkey !== null) {
             return tool.hotkey.toUpperCase();
         }

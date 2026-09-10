@@ -71,7 +71,7 @@ export class SpatialIndex {
      * @returns {boolean}
      */
     cellsFree(cells) {
-        return cells.every(cell => !this._cellByKey.has(this._cellKeyAt(cell.x, cell.y, cell.layer)));
+        return cells.every(cell => !this._cellByKey.has(this._getCellKeyAt(cell.x, cell.y, cell.layer)));
     }
 
     /**
@@ -81,8 +81,8 @@ export class SpatialIndex {
      * @param {string} layer
      * @returns {number|null}
      */
-    userDataAt(x, y, layer) {
-        const eid = this._cellByKey.get(this._cellKeyAt(x, y, layer));
+    getUserDataAt(x, y, layer) {
+        const eid = this._cellByKey.get(this._getCellKeyAt(x, y, layer));
         if (eid === undefined) {
             return null;
         }
@@ -96,8 +96,8 @@ export class SpatialIndex {
      * @param {string} layer
      * @returns {number|null}
      */
-    ownerAt(x, y, layer) {
-        const eid = this._cellByKey.get(this._cellKeyAt(x, y, layer));
+    getOwnerAt(x, y, layer) {
+        const eid = this._cellByKey.get(this._getCellKeyAt(x, y, layer));
         if (eid === undefined) {
             return null;
         }
@@ -113,13 +113,13 @@ export class SpatialIndex {
      * `owner` so {@link destroyOwnerCells} can destroy them all on delete.
      * @param {{x:number, y:number, layer:string}[]} cells
      * @param {number} [owner] - the owning object ref
-     * @param {number} [userData] - per-cell value read back via {@link userDataAt}
+     * @param {number} [userData] - per-cell value read back via {@link getUserDataAt}
      * @returns {void}
      */
     occupy(cells, owner=NO_EID, userData=0) {
         const occupancy = this.occupancies.store;
         for (const cell of cells) {
-            const key = this._cellKeyAt(cell.x, cell.y, cell.layer);
+            const key = this._getCellKeyAt(cell.x, cell.y, cell.layer);
             if (this._cellByKey.has(key)) {
                 continue;
             }
@@ -140,7 +140,7 @@ export class SpatialIndex {
      */
     destroyCells(cells) {
         for (const cell of cells) {
-            const key = this._cellKeyAt(cell.x, cell.y, cell.layer);
+            const key = this._getCellKeyAt(cell.x, cell.y, cell.layer);
             const eid = this._cellByKey.get(key);
             if (eid !== undefined) {
                 this.engine.world.removeEntity(eid);
@@ -156,9 +156,9 @@ export class SpatialIndex {
      */
     destroyOwnerCells(owner) {
         const occupancy = this.occupancies.store;
-        for (const eid of this.cellEids()) {
+        for (const eid of this.getCellEids()) {
             if (occupancy.owner[eid] === owner) {
-                this._cellByKey.delete(this._cellKey(eid));
+                this._cellByKey.delete(this._getCellKeyByEid(eid));
                 this.engine.world.removeEntity(eid);
             }
         }
@@ -168,7 +168,7 @@ export class SpatialIndex {
      * The cell entities: those carrying both Position and Occupancy (an edge port has Position alone).
      * @returns {Int32Array}
      */
-    cellEids() {
+    getCellEids() {
         return this.engine.world.query([this.positions.store, this.occupancies.store]);
     }
 
@@ -178,8 +178,8 @@ export class SpatialIndex {
      */
     rebuild() {
         this._cellByKey = new Map();
-        for (const eid of this.cellEids()) {
-            this._cellByKey.set(this._cellKey(eid), eid);
+        for (const eid of this.getCellEids()) {
+            this._cellByKey.set(this._getCellKeyByEid(eid), eid);
         }
     }
 
@@ -188,7 +188,7 @@ export class SpatialIndex {
      * @param {number} eid - a cell entity
      * @returns {number} its index key
      */
-    _cellKey(eid) {
+    _getCellKeyByEid(eid) {
         const tile = tileKeyAt(this.positions.store.x[eid], this.positions.store.y[eid]);
         return tileVariantKey(tile, this.occupancies.store.layer[eid]);
     }
@@ -200,7 +200,7 @@ export class SpatialIndex {
      * @param {string} layer
      * @returns {number} the index key of cell {x, y, layer}
      */
-    _cellKeyAt(x, y, layer) {
+    _getCellKeyAt(x, y, layer) {
         return tileVariantKey(tileKeyAt(x, y), this._layerCodes.get(layer));
     }
 }

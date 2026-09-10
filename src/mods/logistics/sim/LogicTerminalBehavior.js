@@ -42,11 +42,11 @@ export class LogicTerminalBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, eid, type, message) {
-        engine.components.get("LogicTerminal").attach(eid);
+        engine.components.getComponentByName("LogicTerminal").attach(eid);
     }
 
     onDespawn(engine, eid) {
-        engine.resolve(LogicRules).dropTerminal(engine.placed.objectRefOf(eid));
+        engine.resolve(LogicRules).dropTerminal(engine.placed.getObjectRefByEid(eid));
     }
 
     /**
@@ -62,15 +62,15 @@ export class LogicTerminalBehavior extends AbstractBehavior {
         const placed = engine.placed;
         const networks = engine.resolve(LogicNetworks);
         const rulesService = engine.resolve(LogicRules);
-        const terminals = engine.components.get("LogicTerminal");
+        const terminals = engine.components.getComponentByName("LogicTerminal");
         const eids = terminals.eids;
         for (let row = 0; row < terminals.count; row += 1) {
             const eid = eids[row];
-            const rules = rulesService.rulesOf(placed.objectRefOf(eid));
+            const rules = rulesService.getRulesByObjectRef(placed.getObjectRefByEid(eid));
             if (rules.length === 0) {
                 continue;
             }
-            const network = networks.networkOf(placed.objectRefOf(eid));
+            const network = networks.findNetworkByObjectRef(placed.getObjectRefByEid(eid));
             const claimed = new Set();
             for (const rule of rules) {
                 LogicTerminalBehavior._evaluateRule(engine, network, rule, claimed);
@@ -94,7 +94,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
             return;
         }
         for (const condition of rule.conditions) {
-            const value = LogicTerminalBehavior._conditionValue(engine, network, condition);
+            const value = LogicTerminalBehavior._getConditionValue(engine, network, condition);
             if (value === null) {
                 rule.suspended = true;
                 return;
@@ -106,12 +106,12 @@ export class LogicTerminalBehavior extends AbstractBehavior {
         if (claimed.has(rule.actionDeviceId)) {
             return;
         }
-        const actionEid = LogicTerminalBehavior._deviceEid(engine, network, rule.actionDeviceId);
+        const actionEid = LogicTerminalBehavior._getDeviceEidByObjectRef(engine, network, rule.actionDeviceId);
         if (actionEid === null) {
             rule.suspended = true;
             return;
         }
-        const written = placed.behaviorFor(placed.objectTypeIdOf(actionEid))
+        const written = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(actionEid))
             .logicWrite(engine, actionEid, rule.actionKey, rule.actionValue);
         if (!written) {
             rule.suspended = true;
@@ -130,7 +130,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
      * @param {LogicCondition} condition
      * @returns {number|null}
      */
-    static _conditionValue(engine, network, condition) {
+    static _getConditionValue(engine, network, condition) {
         const placed = engine.placed;
         if (condition.kind === LOGIC_CONDITION_KIND_STORED) {
             if (condition.deviceId !== 0 && !network.deviceIds.includes(condition.deviceId)) {
@@ -141,22 +141,22 @@ export class LogicTerminalBehavior extends AbstractBehavior {
                 if (condition.deviceId !== 0 && deviceId !== condition.deviceId) {
                     continue;
                 }
-                const eid = placed.eidByObjectRef(deviceId);
+                const eid = placed.findEidByObjectRef(deviceId);
                 if (eid === undefined) {
                     continue;
                 }
-                const stored = placed.behaviorFor(placed.objectTypeIdOf(eid)).logicStored(engine, eid);
+                const stored = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eid)).logicStored(engine, eid);
                 if (stored !== null && stored.itemTypeId === condition.itemTypeId) {
                     total += stored.amount;
                 }
             }
             return total;
         }
-        const eid = LogicTerminalBehavior._deviceEid(engine, network, condition.deviceId);
+        const eid = LogicTerminalBehavior._getDeviceEidByObjectRef(engine, network, condition.deviceId);
         if (eid === null) {
             return null;
         }
-        return placed.behaviorFor(placed.objectTypeIdOf(eid)).logicRead(engine, eid, condition.key);
+        return placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eid)).logicRead(engine, eid, condition.key);
     }
 
     /**
@@ -167,11 +167,11 @@ export class LogicTerminalBehavior extends AbstractBehavior {
      * @param {number} deviceObjectRef
      * @returns {number|null}
      */
-    static _deviceEid(engine, network, deviceObjectRef) {
+    static _getDeviceEidByObjectRef(engine, network, deviceObjectRef) {
         if (!network.deviceIds.includes(deviceObjectRef)) {
             return null;
         }
-        const eid = engine.placed.eidByObjectRef(deviceObjectRef);
+        const eid = engine.placed.findEidByObjectRef(deviceObjectRef);
         if (eid === undefined) {
             return null;
         }

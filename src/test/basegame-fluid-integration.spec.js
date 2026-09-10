@@ -33,9 +33,9 @@ import {
 test("a Blender pumps Nutrient Slop into an adjacent pipe network", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(BlenderType.objectTypeId);
-    const def = engine.components.get("Machine");
-    const row = def.row(eid);
+    const [eid] = engine.placed.getEidsByTypeId(BlenderType.objectTypeId);
+    const def = engine.components.getComponentByName("Machine");
+    const row = def.getRowByEid(eid);
     engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE);
     engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 5, 4, Direction.UP));
     const pipes = pipesOf(engine);
@@ -45,7 +45,7 @@ test("a Blender pumps Nutrient Slop into an adjacent pipe network", async () => 
         engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE);
     }
 
-    const net = pipes.networkAt(5, 4);
+    const net = pipes.findNetworkAt(5, 4);
     assert.equal(net.fluidType, ITEM_TYPE_NUTRIENT_SLOP, "the network adopted the Blender's fluid output");
     assert.ok(net.amount > 0, "some Nutrient Slop actually flowed in");
 });
@@ -56,7 +56,7 @@ test("an Air Filter types its pipe network before any payload arrives", async ()
     engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 5, 4, Direction.UP));
     const pipes = pipesOf(engine);
 
-    const net = pipes.networkAt(5, 4);
+    const net = pipes.findNetworkAt(5, 4);
     assert.equal(net.fluidType, ITEM_TYPE_OXYGEN, "typed before any payload, from the Generator's declared source");
 });
 
@@ -69,16 +69,16 @@ test("a pipe delivers Water into a Greenhouse's fluid input, completing the reci
     engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 7, 9, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 7, 8, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(GreenhouseType.objectTypeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(GreenhouseType.objectTypeId);
-    const def = engine.components.get("Machine");
-    const row = def.row(eid);
+    const [eid] = engine.placed.getEidsByTypeId(GreenhouseType.objectTypeId);
+    const def = engine.components.getComponentByName("Machine");
+    const row = def.getRowByEid(eid);
     const outputPort = def.store.out[row];
 
     let produced = false;
     for (let i = 0; i < 200 && !produced; i += 1) {
         engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE_SEED);
         engine.tick();
-        produced = engine.ports.item(outputPort) !== EMPTY;
+        produced = engine.ports.getItemByPortEid(outputPort) !== EMPTY;
     }
     assert.ok(produced, "Water reached the Greenhouse through the pipe and the craft completed");
 });
@@ -86,9 +86,9 @@ test("a pipe delivers Water into a Greenhouse's fluid input, completing the reci
 test("Blast Furnace produces Raw Steel from Iron Ore + Coke + Oxygen in one craft", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(BlastFurnaceType.objectTypeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(BlastFurnaceType.objectTypeId);
-    const def = engine.components.get("Machine");
-    const row = def.row(eid);
+    const [eid] = engine.placed.getEidsByTypeId(BlastFurnaceType.objectTypeId);
+    const def = engine.components.getComponentByName("Machine");
+    const row = def.getRowByEid(eid);
 
     let produced = false;
     for (let i = 0; i < 40 && !produced; i += 1) {
@@ -96,7 +96,7 @@ test("Blast Furnace produces Raw Steel from Iron Ore + Coke + Oxygen in one craf
         engine.ports.setItem(def.store.in1[row], ITEM_TYPE_COKE);
         engine.ports.setItem(def.store.in2[row], ITEM_TYPE_OXYGEN);
         engine.tick();
-        produced = engine.ports.item(def.store.out[row]) === ITEM_TYPE_RAW_STEEL;
+        produced = engine.ports.getItemByPortEid(def.store.out[row]) === ITEM_TYPE_RAW_STEEL;
     }
     assert.ok(produced, "Blast Furnace produces Raw Steel from Iron Ore + Coke + Oxygen");
 });
@@ -104,9 +104,9 @@ test("Blast Furnace produces Raw Steel from Iron Ore + Coke + Oxygen in one craf
 test("Brew produces both Basic Potion Base and Overload Mix, one machine", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(BrewType.objectTypeId, 5, 5, Direction.UP));
-    const [eid] = engine.placed.eidsOf(BrewType.objectTypeId);
-    const def = engine.components.get("Machine");
-    const row = def.row(eid);
+    const [eid] = engine.placed.getEidsByTypeId(BrewType.objectTypeId);
+    const def = engine.components.getComponentByName("Machine");
+    const row = def.getRowByEid(eid);
     const in0Port = def.store.in0[row];
     const in1Port = def.store.in1[row];
     const outputPort = def.store.out[row];
@@ -115,14 +115,14 @@ test("Brew produces both Basic Potion Base and Overload Mix, one machine", async
     // let the machine pipeline-gather a second Mushroom+Water craft before this one's even read.
     let basicPotionBase = false;
     for (let i = 0; i < 40 && !basicPotionBase; i += 1) {
-        if (engine.ports.item(in0Port) === EMPTY) {
+        if (engine.ports.getItemByPortEid(in0Port) === EMPTY) {
             engine.ports.setItem(in0Port, ITEM_TYPE_MUSHROOM);
         }
-        if (engine.ports.item(in1Port) === EMPTY) {
+        if (engine.ports.getItemByPortEid(in1Port) === EMPTY) {
             engine.ports.setItem(in1Port, ITEM_TYPE_WATER);
         }
         engine.tick();
-        basicPotionBase = engine.ports.item(outputPort) === ITEM_TYPE_BASIC_POTION_BASE;
+        basicPotionBase = engine.ports.getItemByPortEid(outputPort) === ITEM_TYPE_BASIC_POTION_BASE;
     }
     assert.ok(basicPotionBase, "Brew produces Basic Potion Base from Mushroom + Water");
     // The machine pipeline-gathers its NEXT craft's inputs on the same tick this one completes (once
@@ -137,14 +137,14 @@ test("Brew produces both Basic Potion Base and Overload Mix, one machine", async
 
     let overloadMix = false;
     for (let i = 0; i < 40 && !overloadMix; i += 1) {
-        if (engine.ports.item(in0Port) === EMPTY) {
+        if (engine.ports.getItemByPortEid(in0Port) === EMPTY) {
             engine.ports.setItem(in0Port, ITEM_TYPE_ADRENOCHROME);
         }
-        if (engine.ports.item(in1Port) === EMPTY) {
+        if (engine.ports.getItemByPortEid(in1Port) === EMPTY) {
             engine.ports.setItem(in1Port, ITEM_TYPE_BASIC_POTION_BASE);
         }
         engine.tick();
-        overloadMix = engine.ports.item(outputPort) === ITEM_TYPE_OVERLOAD_MIX;
+        overloadMix = engine.ports.getItemByPortEid(outputPort) === ITEM_TYPE_OVERLOAD_MIX;
     }
     assert.ok(overloadMix, "the same Brew also produces Overload Mix from Adrenochrome + Basic Potion Base");
 });

@@ -17,7 +17,7 @@ test("an extractor on water produces the water item into its output port", async
     const collector = new EventCollector(engine);
     engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 5, 5, Direction.UP));
     assert.equal(engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 5, 5, Direction.UP)), true);
-    assert.equal(engine.placed.eidsOf(ExtractorType.objectTypeId).length, 1, "extractor placed on the resource");
+    assert.equal(engine.placed.getEidsByTypeId(ExtractorType.objectTypeId).length, 1, "extractor placed on the resource");
 
     // The product is fixed by the resource, so the spawn tick's field delta already carries it.
     engine.tick();
@@ -27,11 +27,11 @@ test("an extractor on water produces the water item into its output port", async
     const fields = events.find(event => event instanceof ObjectFieldsEvent && event.objectRef === insert.objectRef);
     assert.deepEqual(fields.values, [ITEM_TYPE_WATER], "lastOutput seeded at placement");
 
-    const outputPort = engine.ports.at(5, 4, Direction.UP);
+    const outputPort = engine.ports.getPortEidAt(5, 4, Direction.UP);
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
         engine.tick();
-        produced = engine.ports.item(outputPort) === ITEM_TYPE_WATER;
+        produced = engine.ports.getItemByPortEid(outputPort) === ITEM_TYPE_WATER;
     }
     assert.ok(produced, "the extractor produced a water item");
 });
@@ -39,7 +39,7 @@ test("an extractor on water produces the water item into its output port", async
 test("an extractor cannot be placed off a resource", async () => {
     const engine = await setup();
     engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 10, 10, Direction.UP));
-    assert.equal(engine.placed.eidsOf(ExtractorType.objectTypeId).length, 0, "no extractor placed without a resource");
+    assert.equal(engine.placed.getEidsByTypeId(ExtractorType.objectTypeId).length, 0, "no extractor placed without a resource");
 });
 
 test("resource and extractor delete", async () => {
@@ -52,7 +52,7 @@ test("resource and extractor delete", async () => {
     const extractorId = inserts.find(e => e.objectTypeId === ExtractorType.objectTypeId).objectRef;
 
     assert.equal(engine.applyMessage(new DeleteObjectMessage(extractorId)), true);
-    assert.equal(engine.placed.eidsOf(ExtractorType.objectTypeId).length, 0);
+    assert.equal(engine.placed.getEidsByTypeId(ExtractorType.objectTypeId).length, 0);
     assert.equal(engine.applyMessage(new DeleteObjectMessage(resourceId)), true);
-    assert.equal(engine.space.userDataAt(5, 5, "R"), null, "resource cover cleared");
+    assert.equal(engine.space.getUserDataAt(5, 5, "R"), null, "resource cover cleared");
 });

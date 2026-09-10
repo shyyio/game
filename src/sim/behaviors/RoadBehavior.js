@@ -6,15 +6,15 @@ import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 export class RoadBehavior extends AbstractBehavior {
 
     onSpawn(engine, eid, type, message) {
-        const objectRef = engine.placed.objectRefOf(eid);
-        for (const cell of engine.footprint(type, message.x, message.y, message.direction)) {
+        const objectRef = engine.placed.getObjectRefByEid(eid);
+        for (const cell of engine.getFootprintAt(type, message.x, message.y, message.direction)) {
             engine.workers.roads.addRoad(cell.x, cell.y, objectRef);
         }
     }
 
     onDespawn(engine, eid) {
         const position = engine.Position;
-        for (const cell of engine.footprint(this.type, position.x[eid], position.y[eid], position.direction[eid])) {
+        for (const cell of engine.getFootprintAt(this.type, position.x[eid], position.y[eid], position.direction[eid])) {
             engine.workers.roads.removeRoad(cell.x, cell.y);
         }
     }

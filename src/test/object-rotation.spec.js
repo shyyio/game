@@ -23,14 +23,14 @@ test("a RIGHT-facing machine adopts a RIGHT belt and cooks", async () => {
     engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 6, 5, Direction.RIGHT));
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 5, 5, Direction.RIGHT));
     const belt = beltLaneAt(engine, 5, 5);
-    assert.equal(belt.outputPort, engine.ports.at(6, 5, Direction.RIGHT), "belt out adopted as machine input");
+    assert.equal(belt.outputPort, engine.ports.getPortEidAt(6, 5, Direction.RIGHT), "belt out adopted as machine input");
 
     engine.ports.setItem(belt.inputPort, ITEM_TYPE_TEST_MACHINE_INPUT);
-    const machineOut = engine.ports.at(7, 5, Direction.RIGHT);
+    const machineOut = engine.ports.getPortEidAt(7, 5, Direction.RIGHT);
     let cooked = false;
     for (let i = 0; i < 16 && !cooked; i += 1) {
         engine.tick();
-        cooked = engine.ports.item(machineOut) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
+        cooked = engine.ports.getItemByPortEid(machineOut) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
     }
     assert.ok(cooked, "RIGHT machine cooked the belt-fed input");
 });
@@ -41,16 +41,16 @@ test("a RIGHT-facing splitter adopts a RIGHT belt on its in_a", async () => {
     engine.applyMessage(new CreateObjectMessage(SplitterType.objectTypeId, 6, 5, Direction.RIGHT));
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 5, 5, Direction.RIGHT));
     const belt = beltLaneAt(engine, 5, 5);
-    assert.equal(belt.outputPort, engine.ports.at(6, 5, Direction.RIGHT), "belt out adopted as splitter in_a");
+    assert.equal(belt.outputPort, engine.ports.getPortEidAt(6, 5, Direction.RIGHT), "belt out adopted as splitter in_a");
 
     engine.ports.setItem(belt.inputPort, 1);
     let arrived = false;
     // out_a for RIGHT splitter is one tile right of in_a tile.
-    const outA = engine.ports.at(7, 5, Direction.RIGHT);
-    const outB = engine.ports.at(7, 6, Direction.RIGHT);
+    const outA = engine.ports.getPortEidAt(7, 5, Direction.RIGHT);
+    const outB = engine.ports.getPortEidAt(7, 6, Direction.RIGHT);
     for (let i = 0; i < 10 && !arrived; i += 1) {
         engine.tick();
-        arrived = engine.ports.item(outA) === 1 || engine.ports.item(outB) === 1;
+        arrived = engine.ports.getItemByPortEid(outA) === 1 || engine.ports.getItemByPortEid(outB) === 1;
     }
     assert.ok(arrived, "item flowed through the RIGHT splitter");
 });

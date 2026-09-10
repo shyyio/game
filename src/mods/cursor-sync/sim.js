@@ -92,10 +92,10 @@ export class CursorSyncSimMod extends AbstractSimMod {
      * @returns {void}
      */
     onFriendRemoved(playerRef, friendId, game) {
-        if (this._audienceOf(playerRef, CURSOR_SETTING_SHARE, game) === CURSOR_AUDIENCE_FRIENDS) {
+        if (this._getAudienceByPlayerRef(playerRef, CURSOR_SETTING_SHARE, game) === CURSOR_AUDIENCE_FRIENDS) {
             game.bus.publishToPlayer(friendId, new PlayerCursorHideEvent(playerRef));
         }
-        if (this._audienceOf(playerRef, CURSOR_SETTING_DISPLAY, game) === CURSOR_AUDIENCE_FRIENDS) {
+        if (this._getAudienceByPlayerRef(playerRef, CURSOR_SETTING_DISPLAY, game) === CURSOR_AUDIENCE_FRIENDS) {
             game.bus.publishToPlayer(playerRef, new PlayerCursorHideEvent(friendId));
         }
     }
@@ -110,7 +110,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
      */
     _handleCursorMove(message, session, game) {
         // Client-side gating trusted but re-checked: a non-sharing player's cursor never fans out.
-        const shareMode = this._audienceOf(session.playerRef, CURSOR_SETTING_SHARE, game);
+        const shareMode = this._getAudienceByPlayerRef(session.playerRef, CURSOR_SETTING_SHARE, game);
         if (shareMode === CURSOR_AUDIENCE_NONE) {
             return;
         }
@@ -126,7 +126,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
             }
             state.chunkKey = chunkKey;
         }
-        const viewers = game.bus.chunkSubscribers(chunkKey);
+        const viewers = game.bus.findSubscribersByChunkKey(chunkKey);
         if (viewers === undefined) {
             return;
         }
@@ -136,12 +136,12 @@ export class CursorSyncSimMod extends AbstractSimMod {
             if (viewerSessionRef === session.sessionRef) {
                 continue;
             }
-            const viewerId = game.bus.playerRefOf(viewerSessionRef);
+            const viewerId = game.bus.getPlayerRefBySessionRef(viewerSessionRef);
             const isSelf = viewerId === session.playerRef;
             if (!audienceAdmits(shareMode, isSelf, game.players.isFriend(session.playerRef, viewerId))) {
                 continue;
             }
-            const displayMode = this._audienceOf(viewerId, CURSOR_SETTING_DISPLAY, game);
+            const displayMode = this._getAudienceByPlayerRef(viewerId, CURSOR_SETTING_DISPLAY, game);
             if (!audienceAdmits(displayMode, isSelf, game.players.isFriend(viewerId, session.playerRef))) {
                 continue;
             }
@@ -158,7 +158,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
      * @returns {number} the player's CURSOR_AUDIENCE_* option
      * @private
      */
-    _audienceOf(playerRef, key, game) {
+    _getAudienceByPlayerRef(playerRef, key, game) {
         const value = game.playerSettings.get(playerRef, key);
         return value === undefined ? CURSOR_AUDIENCE_DEFAULT : value;
     }
@@ -209,11 +209,11 @@ export class CursorSyncSimMod extends AbstractSimMod {
      * @private
      */
     _publishCursorHide(playerRef, fromChunk, toChunk, ownerSessionRef, game) {
-        const losing = game.bus.chunkSubscribers(fromChunk);
+        const losing = game.bus.findSubscribersByChunkKey(fromChunk);
         if (losing === undefined) {
             return;
         }
-        const keeping = toChunk === null ? undefined : game.bus.chunkSubscribers(toChunk);
+        const keeping = toChunk === null ? undefined : game.bus.findSubscribersByChunkKey(toChunk);
         // One shared instance: delivery only encodes, and publishTo never resubscribes.
         const event = new PlayerCursorHideEvent(playerRef);
         for (const sessionRef of losing) {

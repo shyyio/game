@@ -80,7 +80,7 @@ export {
     LANE_LEVEL_ELEVATED_1,
     LANE_LEVEL_ELEVATED_2,
     NO_LANE,
-    laneLevelLayer,
+    getLaneLevelLayer,
 } from "@/sim/LaneIndex.js";
 export {HousingBehavior} from "@/sim/behaviors/HousingBehavior.js";
 export {AbstractSystem} from "@/sim/AbstractSystem.js";
@@ -193,6 +193,7 @@ export {MetricsGlobalQueryEntry} from "@/common/MetricsGlobalQueryEntry.js";
 // plus a texture name and a pixi multiply tint, so shared shapes stay visually distinct per item
 // type. The frozen ModRegistry merges them into its ItemRegistry (modRegistry.items).
 export {ItemType} from "@/common/ItemType.js";
+export {ItemRegistry} from "@/common/ItemRegistry.js";
 // A named section of item types a declaration contributes (items); same-name categories
 // merge across the loadout and sort by name (modRegistry.itemCategories).
 export {ItemCategory} from "@/common/ItemCategory.js";

@@ -428,7 +428,7 @@ export class TextInput extends Container {
      * @param {number} index
      * @returns {number}
      */
-    _offsetOf(index) {
+    _getOffsetByIndex(index) {
         if (index <= 0) {
             return 0;
         }
@@ -476,9 +476,9 @@ export class TextInput extends Container {
             return;
         }
 
-        const caretX = this._offsetOf(end);
+        const caretX = this._getOffsetByIndex(end);
         if (start !== end) {
-            const from = this._offsetOf(start);
+            const from = this._getOffsetByIndex(start);
             this._selection
                 .rect(from, this._textY, caretX - from, this._lineHeight)
                 .fill(SELECTION_COLOR);
@@ -490,8 +490,8 @@ export class TextInput extends Container {
         }
 
         if (this._composition !== null && this._composition.length > 0) {
-            const from = this._offsetOf(this._composition.start);
-            const to = this._offsetOf(this._composition.start + this._composition.length);
+            const from = this._getOffsetByIndex(this._composition.start);
+            const to = this._getOffsetByIndex(this._composition.start + this._composition.length);
             this._compositionLine
                 .rect(from, this._textY + this._lineHeight, to - from, COMPOSITION_UNDERLINE_HEIGHT)
                 .fill(TEXT_COLOR);

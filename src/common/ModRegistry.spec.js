@@ -37,8 +37,8 @@ test("a mod's player-setting entries collect at freeze", () => {
     const registry = new ModRegistry();
     registry.register(new ModPackage(new EntriesDeclaration("A", [new PlayerSettingEntry(MOD_KEY, false, 2)])));
     registry.freeze();
-    assert.equal(registry.playerSettingEntry(MOD_KEY).clientWritable, false);
-    assert.equal(registry.playerSettingEntry(999), undefined);
+    assert.equal(registry.findPlayerSettingEntryByKey(MOD_KEY).clientWritable, false);
+    assert.equal(registry.findPlayerSettingEntryByKey(999), undefined);
 });
 
 test("a duplicate key across mods throws at freeze", () => {
@@ -57,7 +57,7 @@ test("the same mod registered twice throws at freeze, naming it", () => {
 
 test("the entry accessor throws before freeze", () => {
     const registry = new ModRegistry();
-    assert.throws(() => registry.playerSettingEntry(MOD_KEY), /not frozen/);
+    assert.throws(() => registry.findPlayerSettingEntryByKey(MOD_KEY), /not frozen/);
 });
 
 class ItemsDeclaration extends AbstractModDeclaration {
@@ -86,7 +86,7 @@ test("a mod's item types collect into the item registry at freeze", () => {
     const fluids = new ItemCategory("Fluids", {[MOD_ITEM_TYPE]: new ItemType("Water", "items/1-gray")});
     registry.register(new ModPackage(new ItemsDeclaration("A", [fluids])));
     registry.freeze();
-    assert.equal(registry.items.require(MOD_ITEM_TYPE).name, "Water");
+    assert.equal(registry.items.getItemTypeByTypeId(MOD_ITEM_TYPE).name, "Water");
 });
 
 test("a duplicate item type across mods throws at freeze", () => {

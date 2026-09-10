@@ -68,17 +68,17 @@ export class GeneratorBehavior extends AbstractBehavior {
     }
 
     onSpawn(engine, eid, type, message) {
-        const generators = engine.components.get("Generator");
+        const generators = engine.components.getComponentByName("Generator");
         generators.attach(eid);
         const generator = generators.store;
-        const row = generators.row(eid);
-        const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
+        const row = generators.getRowByEid(eid);
+        const output = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction);
         generator.out[row] = output.port;
         generator.processingTicks[row] = this.processingTicks;
         engine.render.registerPort(output.port, output.tile.x, output.tile.y);
         syncFluidSource(engine, output.port, this.output);
         if (this.hasSecondaryPort) {
-            const secondary = engine.portFor(type.outputPorts[1], message.x, message.y, message.direction);
+            const secondary = engine.getPortAt(type.outputPorts[1], message.x, message.y, message.direction);
             generator.out2[row] = secondary.port;
             generator.processingTicks2[row] = this.secondaryOutput.processingTicks;
             engine.render.registerPort(secondary.port, secondary.tile.x, secondary.tile.y);
@@ -87,8 +87,8 @@ export class GeneratorBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, eid) {
-        const generators = engine.components.get("Generator");
-        const row = generators.row(eid);
+        const generators = engine.components.getComponentByName("Generator");
+        const row = generators.getRowByEid(eid);
         engine.render.unregisterPort(generators.store.out[row]);
         engine.ports.setFluidSource(generators.store.out[row], EMPTY);
         if (this.hasSecondaryPort) {
@@ -97,9 +97,9 @@ export class GeneratorBehavior extends AbstractBehavior {
         }
     }
 
-    renderedPortEids(engine, eid) {
-        const generators = engine.components.get("Generator");
-        const row = generators.row(eid);
+    getRenderedPortEids(engine, eid) {
+        const generators = engine.components.getComponentByName("Generator");
+        const row = generators.getRowByEid(eid);
         const portEids = [generators.store.out[row]];
         if (this.hasSecondaryPort) {
             portEids.push(generators.store.out2[row]);
@@ -108,8 +108,8 @@ export class GeneratorBehavior extends AbstractBehavior {
     }
 
     resyncRenderedPorts(engine, eid) {
-        const generators = engine.components.get("Generator");
-        const row = generators.row(eid);
+        const generators = engine.components.getComponentByName("Generator");
+        const row = generators.getRowByEid(eid);
         const out = generators.store.out[row];
         engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
         if (this.hasSecondaryPort) {
@@ -125,9 +125,9 @@ export class GeneratorBehavior extends AbstractBehavior {
      * @returns {InspectHeartbeatEvent}
      */
     inspect(engine, eid, objectRef) {
-        const generators = engine.components.get("Generator");
+        const generators = engine.components.getComponentByName("Generator");
         const generator = generators.store;
-        const row = generators.row(eid);
+        const row = generators.getRowByEid(eid);
         let remaining = null;
         if (generator.remaining[row] !== EMPTY) {
             remaining = Math.ceil(generator.remaining[row]);
@@ -147,11 +147,11 @@ export class GeneratorBehavior extends AbstractBehavior {
      */
     onRebuild(engine) {
         const placed = engine.placed;
-        const generators = engine.components.get("Generator");
+        const generators = engine.components.getComponentByName("Generator");
         const generator = generators.store;
         const eids = generators.eids;
         for (let row = 0; row < generators.count; row += 1) {
-            const behavior = placed.behaviorFor(placed.objectTypeIdOf(eids[row]));
+            const behavior = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eids[row]));
             generator.processingTicks[row] = behavior.processingTicks;
             syncFluidSource(engine, generator.out[row], behavior.output);
             if (behavior.hasSecondaryPort) {
@@ -213,14 +213,14 @@ export class GeneratorBehavior extends AbstractBehavior {
      */
     static _submitIntents(engine) {
         const placed = engine.placed;
-        const generators = engine.components.get("Generator");
+        const generators = engine.components.getComponentByName("Generator");
         const generator = generators.store;
         const eids = generators.eids;
         const count = generators.count;
         for (let row = 0; row < count; row += 1) {
             let itemTypeId = generator.output[row];
             if (itemTypeId === EMPTY) {
-                itemTypeId = placed.behaviorFor(placed.objectTypeIdOf(eids[row])).output;
+                itemTypeId = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eids[row])).output;
             }
             GeneratorBehavior._advanceCycle(
                 engine, generator.remaining, generator.carry, generator.output, generator.out,
@@ -231,7 +231,7 @@ export class GeneratorBehavior extends AbstractBehavior {
             }
             let secondaryItemTypeId = generator.output2[row];
             if (secondaryItemTypeId === EMPTY) {
-                secondaryItemTypeId = placed.behaviorFor(placed.objectTypeIdOf(eids[row])).secondaryOutput.itemTypeId;
+                secondaryItemTypeId = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eids[row])).secondaryOutput.itemTypeId;
             }
             GeneratorBehavior._advanceCycle(
                 engine, generator.remaining2, generator.carry2, generator.output2, generator.out2,
@@ -248,14 +248,14 @@ export class GeneratorBehavior extends AbstractBehavior {
      */
     static _finish(engine) {
         const placed = engine.placed;
-        const generators = engine.components.get("Generator");
+        const generators = engine.components.getComponentByName("Generator");
         const generator = generators.store;
         const eids = generators.eids;
         const count = generators.count;
         for (let row = 0; row < count; row += 1) {
             const eid = eids[row];
             if (engine.transfers.wasDest(generator.out[row])) {
-                engine.itemProduced.notify(placed.claimOwnerOf(eid), generator.output[row], 1);
+                engine.itemProduced.notify(placed.getClaimOwnerByEid(eid), generator.output[row], 1);
                 if (generator.lastOutput[row] !== generator.output[row]) {
                     generator.lastOutput[row] = generator.output[row];
                     engine.sync.markDirty(generators, eid);
@@ -264,7 +264,7 @@ export class GeneratorBehavior extends AbstractBehavior {
                 generator.remaining[row] = EMPTY;
             }
             if (generator.out2[row] !== NO_EID && engine.transfers.wasDest(generator.out2[row])) {
-                engine.itemProduced.notify(placed.claimOwnerOf(eid), generator.output2[row], 1);
+                engine.itemProduced.notify(placed.getClaimOwnerByEid(eid), generator.output2[row], 1);
                 generator.lastOutput2[row] = generator.output2[row];
                 generator.output2[row] = EMPTY;
                 generator.remaining2[row] = EMPTY;

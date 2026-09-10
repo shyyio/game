@@ -37,7 +37,7 @@ export class ChunkCursor {
             this.clear();
             return;
         }
-        const chunkKey = this.chunkAt(tileX, tileY);
+        const chunkKey = this.findChunkKeyAt(tileX, tileY);
         if (this._client.centerLock.enabled) {
             this.select(chunkKey);
         } else {
@@ -54,7 +54,7 @@ export class ChunkCursor {
      * @returns {void}
      */
     handleSelect(tileX, tileY, claimShortcut = false) {
-        const chunkKey = this.chunkAt(tileX, tileY);
+        const chunkKey = this.findChunkKeyAt(tileX, tileY);
         this.select(chunkKey);
         if (claimShortcut && chunkKey !== null) {
             const claims = this._client.cache.view("chunkClaims");
@@ -92,7 +92,7 @@ export class ChunkCursor {
      */
     selectCenterChunk() {
         const center = this._client.viewport.center;
-        this.select(this.chunkAt(
+        this.select(this.findChunkKeyAt(
             Math.floor(center.x / TILE_SIZE),
             Math.floor(center.y / TILE_SIZE),
         ));
@@ -113,7 +113,7 @@ export class ChunkCursor {
      * @param {number} tileY
      * @returns {number|null}
      */
-    chunkAt(tileX, tileY) {
+    findChunkKeyAt(tileX, tileY) {
         const chunkX = Math.floor(tileX / CHUNK_SIZE);
         const chunkY = Math.floor(tileY / CHUNK_SIZE);
         if (!inRegion(chunkX, chunkY)) {

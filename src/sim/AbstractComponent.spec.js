@@ -20,10 +20,10 @@ test("a sparse component registered on the engine creates rows it can look up", 
     const engine = new GameEngine();
     await engine.init();
     const widgets = engine.components.register(new WidgetComponent());
-    assert.equal(engine.components.get("Widget"), widgets);
+    assert.equal(engine.components.getComponentByName("Widget"), widgets);
 
     const eid = widgets.create();
-    const row = widgets.row(eid);
+    const row = widgets.getRowByEid(eid);
     assert.equal(widgets.count, 1);
     assert.equal(widgets.eids[row], eid);
     assert.equal(widgets.store.parent[row], NO_EID);
@@ -32,7 +32,7 @@ test("a sparse component registered on the engine creates rows it can look up", 
 
     widgets.destroy(eid);
     assert.equal(widgets.count, 0);
-    assert.equal(widgets.row(eid), -1);
+    assert.equal(widgets.getRowByEid(eid), -1);
 });
 
 test("LaneItemComponent walks the file from its first item", async () => {
@@ -42,7 +42,7 @@ test("LaneItemComponent walks the file from its first item", async () => {
     assert.ok(items instanceof LaneItemComponent);
     const firstEid = items.create(7);
     const secondEid = items.create(8);
-    items.store.nextItem[items.row(firstEid)] = secondEid;
+    items.store.nextItem[items.getRowByEid(firstEid)] = secondEid;
     assert.deepEqual(items.getFileByFirstItemEid(firstEid), [firstEid, secondEid]);
     assert.deepEqual(items.getFileByFirstItemEid(NO_EID), []);
 });

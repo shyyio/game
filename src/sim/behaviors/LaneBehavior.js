@@ -1,5 +1,5 @@
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
-import {LANE_LEVEL_SURFACE, laneCellLayer} from "@/sim/LaneIndex.js";
+import {LANE_LEVEL_SURFACE, getLaneCellLayer} from "@/sim/LaneIndex.js";
 
 /**
  * One cell of a transport lane: a tile items step along, `slotsPerTile` slots long, one slot per
@@ -35,7 +35,7 @@ export class LaneBehavior extends AbstractBehavior {
     chooseParent(engine, candidates) {
         let chosen = candidates[0];
         for (const eid of candidates) {
-            if (engine.placed.objectRefOf(eid) > engine.placed.objectRefOf(chosen)) {
+            if (engine.placed.getObjectRefByEid(eid) > engine.placed.getObjectRefByEid(chosen)) {
                 chosen = eid;
             }
         }
@@ -46,8 +46,8 @@ export class LaneBehavior extends AbstractBehavior {
      * @param {Direction} direction
      * @returns {string[]}
      */
-    positionLayers(direction) {
-        return [laneCellLayer(this.inLevel, this.outLevel, direction)];
+    getPositionLayersByDirection(direction) {
+        return [getLaneCellLayer(this.inLevel, this.outLevel, direction)];
     }
 
     /**

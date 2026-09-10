@@ -78,7 +78,7 @@ export class ProductionLogPanelLayer extends Container {
             this.hide();
             return;
         }
-        this.showFor(this._claims.ownPlayerRef);
+        this.showLog(this._claims.ownPlayerRef);
     }
 
     /**
@@ -86,7 +86,7 @@ export class ProductionLogPanelLayer extends Container {
      * @param {number} playerRef
      * @returns {void}
      */
-    showFor(playerRef) {
+    showLog(playerRef) {
         this._history = [new LogView(playerRef)];
         this._enter();
     }
@@ -196,7 +196,7 @@ export class ProductionLogPanelLayer extends Container {
         if (view.playerRef === this._claims.ownPlayerRef) {
             return "Production log";
         }
-        return `${this._players.usernameOf(view.playerRef)}'s log`;
+        return `${this._players.getUsernameByPlayerRef(view.playerRef)}'s log`;
     }
 
     /**
@@ -239,7 +239,7 @@ export class ProductionLogPanelLayer extends Container {
      * @returns {void}
      */
     _buildLogBody(stack, view) {
-        const {counts, ranks} = this._logOf(view.playerRef);
+        const {counts, ranks} = this._getLogByPlayerRef(view.playerRef);
         const total = this._categories.reduce((sum, category) => sum + Object.keys(category.items).length, 0);
         stack.row((row) => {
             row.pushLeft(this._buildBackButton());
@@ -256,7 +256,7 @@ export class ProductionLogPanelLayer extends Container {
         });
         stack.text(`${counts.size}/${total} items`);
         stack.gap();
-        const categories = new PanelStack(this.textureCache, ScrollView.contentWidthFor(stack.contentWidth));
+        const categories = new PanelStack(this.textureCache, ScrollView.getContentWidth(stack.contentWidth));
         for (const category of this._categories) {
             this._buildCategoryHeader(categories, category, counts);
             const picker = this._buildPicker(categories.contentWidth, category, counts, ranks);
@@ -276,7 +276,7 @@ export class ProductionLogPanelLayer extends Container {
      * @param {number} playerRef
      * @returns {{counts: Map<number, number>, ranks: Map<number, number>}}
      */
-    _logOf(playerRef) {
+    _getLogByPlayerRef(playerRef) {
         const log = this._cache.get("productionLog.log");
         const counts = new Map();
         const ranks = new Map();
@@ -344,7 +344,7 @@ export class ProductionLogPanelLayer extends Container {
             }
             this._push(new ItemBoardView(itemTypeId, rank));
         }, {
-            columns: IconPicker.columnsFor(width, ICON_CELL_SIZE),
+            columns: IconPicker.getColumnCount(width, ICON_CELL_SIZE),
             visibleRows: PICKER_VISIBLE_ROWS,
             cellSize: ICON_CELL_SIZE,
             onHover: (itemTypeId, cell) => this._hover(itemTypeId, cell),
@@ -385,11 +385,11 @@ export class ProductionLogPanelLayer extends Container {
      * @returns {void}
      */
     _buildBoardBody(stack, view) {
-        const board = this._boardOf(view);
+        const board = this._getBoardByView(view);
         stack.row((row) => {
             row.pushLeft(this._buildBackButton());
         });
-        stack.header(this._items.require(view.itemTypeId).name);
+        stack.header(this._items.getItemTypeByTypeId(view.itemTypeId).name);
         const ownPlayerRef = this._claims.ownPlayerRef;
         const rows = [];
         if (board !== null) {
@@ -398,7 +398,7 @@ export class ProductionLogPanelLayer extends Container {
             }
         }
         stack.scrollSection(rows, (row) => new PanelRowDescriptor({
-            label: `#${row.rank} ${this._players.usernameOf(row.playerRef)}`,
+            label: `#${row.rank} ${this._players.getUsernameByPlayerRef(row.playerRef)}`,
             rightLabel: formatExactCount(row.score),
             selected: row.playerRef === ownPlayerRef,
             onRowClick: () => this._push(new LogView(row.playerRef)),
@@ -418,7 +418,7 @@ export class ProductionLogPanelLayer extends Container {
      * @param {ItemBoardView} view
      * @returns {ItemLeaderboardEvent|null}
      */
-    _boardOf(view) {
+    _getBoardByView(view) {
         const board = this._cache.get("productionLog.itemBoard");
         if (board === null || board.itemTypeId !== view.itemTypeId) {
             return null;

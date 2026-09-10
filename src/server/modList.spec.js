@@ -45,7 +45,7 @@ test("built-in entries are the mods this build carries, at the game version", ()
 test("external entries carry each package's manifest and where its bundle came from", () => {
     const packaged = [{
         manifest: {name: "widgets", version: "1.2.0", parts: ["declaration"], entry: "mod.js"},
-        entry: {url: "https://mods.example.com/widgets/1.2.0/", integrityOf: () => "sha256-ab12"},
+        entry: {url: "https://mods.example.com/widgets/1.2.0/", getIntegrityByFile: () => "sha256-ab12"},
     }];
 
     assert.deepEqual(externalModList(packaged), [{

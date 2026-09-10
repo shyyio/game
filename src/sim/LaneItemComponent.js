@@ -26,7 +26,7 @@ export class LaneItemComponent extends AbstractComponent {
      */
     create(itemTypeId) {
         const eid = super.create();
-        this.store.itemTypeId[this.row(eid)] = itemTypeId;
+        this.store.itemTypeId[this.getRowByEid(eid)] = itemTypeId;
         return eid;
     }
 
@@ -40,7 +40,7 @@ export class LaneItemComponent extends AbstractComponent {
         let itemEid = firstItemEid;
         while (itemEid !== NO_EID) {
             itemEids.push(itemEid);
-            itemEid = this.store.nextItem[this.row(itemEid)];
+            itemEid = this.store.nextItem[this.getRowByEid(itemEid)];
         }
         return itemEids;
     }

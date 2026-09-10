@@ -18,7 +18,7 @@ export class ServerDirectory {
     /**
      * @returns {{origin: string}[]}
      */
-    list() {
+    findQuotesByItemTypeId() {
         if (!existsSync(this._path)) {
             return this._lastGood;
         }

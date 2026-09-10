@@ -49,7 +49,7 @@ class SyncedSet {
      * @param {number} row
      * @returns {number[]}
      */
-    valuesAt(row) {
+    getValuesByRow(row) {
         return this.fields.map(field => this.component.store[field.name][row]);
     }
 
@@ -157,7 +157,7 @@ export class FieldSync {
         const set = this._set(component);
         set.grow(eid);
         set.adopt(eid, set.fields.map(field => field.defaultValue));
-        if (set.offDefault(component.row(eid))) {
+        if (set.offDefault(component.getRowByEid(eid))) {
             this.markDirty(component, eid);
         }
     }
@@ -168,10 +168,10 @@ export class FieldSync {
      * @param {number} eid
      * @returns {ObjectFieldsEvent}
      */
-    eventFor(component, eid) {
+    getObjectFieldsEventByEid(component, eid) {
         const set = this._set(component);
         const position = this.engine.Position;
-        return new ObjectFieldsEvent(this.engine.placed.objectRefOf(eid), position.x[eid], position.y[eid], set.valuesAt(component.row(eid)));
+        return new ObjectFieldsEvent(this.engine.placed.getObjectRefByEid(eid), position.x[eid], position.y[eid], set.getValuesByRow(component.getRowByEid(eid)));
     }
 
     /**
@@ -190,11 +190,11 @@ export class FieldSync {
             const batches = new Map();
             for (const eid of set.dirty) {
                 set.isDirty[eid] = 0;
-                const row = set.component.row(eid);
+                const row = set.component.getRowByEid(eid);
                 if (row < 0) {
                     continue;
                 }
-                const values = set.valuesAt(row);
+                const values = set.getValuesByRow(row);
                 if (!set.adopt(eid, values)) {
                     continue;
                 }
@@ -209,7 +209,7 @@ export class FieldSync {
                     batch = new ObjectFieldsBatchEvent(x, y, set.fields.length);
                     batches.set(chunkKey, batch);
                 }
-                batch.add(placed.objectRefOf(eid), values);
+                batch.add(placed.getObjectRefByEid(eid), values);
             }
             set.dirty.length = 0;
             for (const batch of batches.values()) {
@@ -227,18 +227,18 @@ export class FieldSync {
         const position = this.engine.Position;
         const placed = this.engine.placed;
         const events = [];
-        const eids = placed.eidsInChunk(chunkKey);
+        const eids = placed.getEidsByChunkKey(chunkKey);
         for (const set of this._sets.values()) {
             let batch = null;
             for (const eid of eids) {
-                const row = set.component.row(eid);
+                const row = set.component.getRowByEid(eid);
                 if (row < 0 || !set.offDefault(row)) {
                     continue;
                 }
                 if (batch === null) {
                     batch = new ObjectFieldsBatchEvent(position.x[eid], position.y[eid], set.fields.length);
                 }
-                batch.add(placed.objectRefOf(eid), set.valuesAt(row));
+                batch.add(placed.getObjectRefByEid(eid), set.getValuesByRow(row));
             }
             if (batch !== null) {
                 events.push(batch);
@@ -268,7 +268,7 @@ export class FieldSync {
             for (let row = 0; row < component.count; row += 1) {
                 const eid = component.eids[row];
                 set.grow(eid);
-                set.adopt(eid, set.valuesAt(row));
+                set.adopt(eid, set.getValuesByRow(row));
             }
         }
     }

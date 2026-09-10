@@ -83,7 +83,7 @@ export class LogicRules {
      * @param {number} terminalObjectRef
      * @returns {LogicRule[]}
      */
-    rulesOf(terminalObjectRef) {
+    getRulesByObjectRef(terminalObjectRef) {
         const rules = this._rulesByTerminal.get(terminalObjectRef);
         if (rules === undefined) {
             return [];

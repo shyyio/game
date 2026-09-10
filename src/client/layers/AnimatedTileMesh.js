@@ -147,7 +147,7 @@ export class FrameTable {
      * @param {string} name
      * @returns {number}
      */
-    slotOf(name) {
+    getSlotByName(name) {
         const slot = this._slots.get(name);
         if (slot === undefined) {
             throw new Error(`Sequence "${name}" is not in the frame table`);

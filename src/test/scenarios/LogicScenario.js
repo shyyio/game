@@ -34,7 +34,7 @@ function place(engine, type, x, y) {
         throw new Error(`Logic scenario failed to place ${type.name} at (${x}, ${y})`);
     }
     const objects = engine.placed.objects;
-    return objects.store.objectRef[objects.row(objects.eids[objects.count - 1])];
+    return objects.store.objectRef[objects.getRowByEid(objects.eids[objects.count - 1])];
 }
 
 /**
@@ -69,8 +69,8 @@ export class LogicScenario extends AbstractScenario {
         const blender = place(engine, BlenderType, TERMINAL_X - 3, TERMINAL_Y + 3);
         const tank = place(engine, TankType, TERMINAL_X + 2, TERMINAL_Y + 3);
 
-        const tanks = engine.components.get("Tank");
-        const tankRow = tanks.row(engine.placed.eidByObjectRef(tank));
+        const tanks = engine.components.getComponentByName("Tank");
+        const tankRow = tanks.getRowByEid(engine.placed.findEidByObjectRef(tank));
         tanks.store.fluidType[tankRow] = ITEM_TYPE_WATER;
         tanks.store.amount[tankRow] = TANK_WATER_AMOUNT;
 

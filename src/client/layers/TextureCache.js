@@ -174,7 +174,7 @@ export class TextureCache {
      * @param {string} frameName
      * @returns {LoadedAtlas}
      */
-    atlasOf(frameName) {
+    getAtlasByFrameName(frameName) {
         const atlas = this._atlasByFrame.get(frameName);
         if (atlas === undefined) {
             throw new Error(`Unknown frame: "${frameName}"`);
@@ -188,7 +188,7 @@ export class TextureCache {
      * @returns {ImageData}
      */
     frameImageData(frameName) {
-        const atlas = this.atlasOf(frameName);
+        const atlas = this.getAtlasByFrameName(frameName);
         const rect = atlas.frameRect(frameName);
         return atlas.context.getImageData(rect.x, rect.y, rect.w, rect.h);
     }
@@ -200,7 +200,7 @@ export class TextureCache {
      * @returns {void}
      */
     patchFrame(frameName, pixels) {
-        const atlas = this.atlasOf(frameName);
+        const atlas = this.getAtlasByFrameName(frameName);
         const rect = atlas.frameRect(frameName);
         if (pixels.width !== rect.w || pixels.height !== rect.h) {
             throw new Error(`Frame "${frameName}" is ${rect.w}x${rect.h}, got ${pixels.width}x${pixels.height}`);

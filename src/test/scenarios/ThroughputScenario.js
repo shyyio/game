@@ -120,10 +120,10 @@ class SinkBehavior extends AbstractBehavior {
      * @returns {void}
      */
     onSpawn(engine, eid, type, message) {
-        const sinks = engine.components.get("ThroughputSink");
+        const sinks = engine.components.getComponentByName("ThroughputSink");
         sinks.attach(eid);
-        const row = sinks.row(eid);
-        sinks.store.in[row] = engine.portFor(type.inputPorts[0], message.x, message.y, message.direction).port;
+        const row = sinks.getRowByEid(eid);
+        sinks.store.in[row] = engine.getPortAt(type.inputPorts[0], message.x, message.y, message.direction).port;
     }
 
     /**
@@ -135,7 +135,7 @@ class SinkBehavior extends AbstractBehavior {
      */
     static _submitIntents(engine) {
         const item = engine.Port.item;
-        const sinks = engine.components.get("ThroughputSink");
+        const sinks = engine.components.getComponentByName("ThroughputSink");
         const sink = sinks.store;
         const count = sinks.count;
         for (let row = 0; row < count; row += 1) {
@@ -239,7 +239,7 @@ function intParam(raw, fallback) {
  * @returns {number}
  */
 export function sinkConsumedTotal(engine) {
-    const sinks = engine.components.get("ThroughputSink");
+    const sinks = engine.components.getComponentByName("ThroughputSink");
     const consumed = sinks.store.consumed;
     let total = 0;
     for (let row = 0; row < sinks.count; row += 1) {
@@ -378,9 +378,9 @@ export class ThroughputScenario extends AbstractScenario {
         }
 
         const session = new CapturingSession(THROUGHPUT_PLAYER_REF);
-        for (const terminalEid of engine.placed.eidsOf(TradingTerminalType.objectTypeId)) {
+        for (const terminalEid of engine.placed.getEidsByTypeId(TradingTerminalType.objectTypeId)) {
             game.dispatchMessage(new ConfigureTradingTerminalMessage(
-                engine.placed.objectRefOf(terminalEid), MARKET_MODE_BUY,
+                engine.placed.getObjectRefByEid(terminalEid), MARKET_MODE_BUY,
                 ITEM_TYPE_THROUGHPUT_FEED, NPC_PRICE_THROUGHPUT_FEED,
             ), session);
         }

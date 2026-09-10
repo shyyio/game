@@ -32,7 +32,7 @@ export class SnapshotSerializer {
         const registry = this.engine.modRegistry;
         return {
             typeNames: registry.objectTypes.map(type => type.name),
-            itemTypeIds: new Set(Array.from(registry.items.entries(), entry => entry[0])),
+            itemTypeIds: new Set(Array.from(registry.items.getEntries(), entry => entry[0])),
         };
     }
 
@@ -48,8 +48,8 @@ export class SnapshotSerializer {
         }
         const components = engine.components.components.map(component => {
             const rows = [];
-            for (const slot of component.slots()) {
-                const row = {eid: component.eidAt(slot)};
+            for (const slot of component.getSlots()) {
+                const row = {eid: component.getEidBySlot(slot)};
                 for (const field of component.fields) {
                     row[field.name] = component.store[field.name][slot];
                 }
@@ -128,11 +128,11 @@ export class SnapshotSerializer {
         const translate = value => (value === NO_EID ? NO_EID : remap.get(value));
 
         for (const component of snapshot.components) {
-            const registered = engine.components.find(component.name);
+            const registered = engine.components.findComponentByName(component.name);
             for (const row of component.rows) {
                 const eid = remap.get(row.eid);
                 registered.attach(eid);
-                const slot = registered.slot(eid);
+                const slot = registered.getSlotByEid(eid);
                 for (const field of registered.fields) {
                     const raw = row[field.name];
                     registered.store[field.name][slot] = field.kind === "eid" ? translate(raw) : raw;
@@ -212,7 +212,7 @@ export class SnapshotSerializer {
         const savedNames = new Set();
         for (const component of snapshot.components) {
             savedNames.add(component.name);
-            const registered = this.engine.components.find(component.name);
+            const registered = this.engine.components.findComponentByName(component.name);
             if (registered === undefined) {
                 mismatches.push(`component "${component.name}" is in the save but no longer registered`);
                 continue;

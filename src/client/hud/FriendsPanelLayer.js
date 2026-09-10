@@ -186,7 +186,7 @@ export class FriendsPanelLayer extends Container {
     _buildBody(stack, friendIds) {
         stack.header("Friends");
         stack.scrollSection(friendIds, (id) => ({
-            label: this._players.usernameOf(id),
+            label: this._players.getUsernameByPlayerRef(id),
             buttonLabel: "Remove",
             onClick: () => this._onUnfriend(id),
         }), "Not friends with anyone yet");
@@ -196,7 +196,7 @@ export class FriendsPanelLayer extends Container {
             const roster = this._sortByUsername(this._nearbyOwners());
             stack.header("Nearby (in view)");
             stack.scrollSection(roster, (id) => ({
-                label: this._players.usernameOf(id),
+                label: this._players.getUsernameByPlayerRef(id),
                 buttonLabel: "Add",
                 onClick: () => this._onAddFriend(id),
             }), "No other claimed chunks in view");
@@ -221,7 +221,7 @@ export class FriendsPanelLayer extends Container {
      * @returns {number[]}
      */
     _sortByUsername(ids) {
-        return Array.from(ids).sort((a, b) => this._players.usernameOf(a).localeCompare(this._players.usernameOf(b)));
+        return Array.from(ids).sort((a, b) => this._players.getUsernameByPlayerRef(a).localeCompare(this._players.getUsernameByPlayerRef(b)));
     }
 
     /**

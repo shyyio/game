@@ -5,11 +5,11 @@ import {CapturingSession} from "@/test/CapturingSession.js";
 
 // Test events routing through a fixed topic.
 function chunkEvent(chunkKey) {
-    return {chunkKey, subscribersIn: bus => bus.chunkSubscribers(chunkKey)};
+    return {chunkKey, getSubscribersByBus: bus => bus.findSubscribersByChunkKey(chunkKey)};
 }
 
 function objectEvent(objectRef) {
-    return {objectRef, subscribersIn: bus => bus.objectSubscribers(objectRef)};
+    return {objectRef, getSubscribersByBus: bus => bus.findSubscribersByObjectRef(objectRef)};
 }
 
 test("addSession allocates ascending ids", () => {
@@ -86,14 +86,14 @@ test("an object event fans to every inspecting session", () => {
     assert.deepEqual(b.events, [event]);
 });
 
-test("subscribedObjects returns the union of inspected ids", () => {
+test("getSubscribedObjectRefs returns the union of inspected ids", () => {
     const bus = new EventBus();
     const aId = bus.addSession(new CapturingSession());
     const bId = bus.addSession(new CapturingSession());
     bus.setInspects(aId, [7, 8]);
     bus.setInspects(bId, [8, 9]);
 
-    assert.deepEqual(bus.subscribedObjects().sort(), [7, 8, 9]);
+    assert.deepEqual(bus.getSubscribedObjectRefs().sort(), [7, 8, 9]);
 });
 
 test("clearObject drops every subscription to that object", () => {
@@ -104,7 +104,7 @@ test("clearObject drops every subscription to that object", () => {
 
     bus.clearObject(7);
 
-    assert.deepEqual(bus.subscribedObjects(), []);
+    assert.deepEqual(bus.getSubscribedObjectRefs(), []);
     bus.publish(objectEvent(7));
     assert.deepEqual(session.events, []);
 });
