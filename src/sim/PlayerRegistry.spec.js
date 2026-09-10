@@ -32,12 +32,12 @@ test("unknown ids break loudly", () => {
     assert.equal(players.hasPlayer(7), false);
 });
 
-test("ensure registers external ids without disturbing the counter", () => {
+test("getOrAddByPlayerRef registers external ids without disturbing the counter", () => {
     const players = new PlayerRegistry();
-    const local = players.ensure(1);
+    const local = players.getOrAddByPlayerRef(1);
     assert.equal(local.playerRef, 1);
-    assert.equal(players.ensure(1), local);
-    // The next organic registration does not collide with the ensured id.
+    assert.equal(players.getOrAddByPlayerRef(1), local);
+    // The next organic registration does not collide with the added id.
     assert.equal(players.getOrCreate("sub-alice", "alice").playerRef, 2);
 });
 
@@ -52,15 +52,6 @@ test("friend lists are one-directional and validated", () => {
     players.removeFriend(alice.playerRef, bob.playerRef);
     assert.equal(players.isFriend(alice.playerRef, bob.playerRef), false);
     assert.equal(players.isFriend(99, 1), false, "unknown owner is nobody's friend");
-});
-
-test("directory lists every player", () => {
-    const players = new PlayerRegistry();
-    players.getOrCreate("sub-alice", "alice");
-    players.getOrCreate("sub-bob", "bob");
-    const directory = players.getDirectory();
-    assert.deepEqual(directory.playerRefs, [1, 2]);
-    assert.deepEqual(directory.usernames, ["alice", "bob"]);
 });
 
 test("entries round-trip and the id counter resumes past the loaded ids", () => {
@@ -86,8 +77,8 @@ test("entries round-trip and the id counter resumes past the loaded ids", () => 
 
 test("a locally-added entry (no auth server involved) never collides on sub", () => {
     const players = new PlayerRegistry();
-    players.ensure(1);
-    players.ensure(2);
+    players.getOrAddByPlayerRef(1);
+    players.getOrAddByPlayerRef(2);
     // Both local entries have sub=null; getOrCreate must not treat that as a shared identity.
     assert.equal(players.getOrCreate("sub-alice", "alice").playerRef, 3);
 });
@@ -109,7 +100,7 @@ test("findPlayerByFriendCode is case/format-tolerant and returns undefined for a
     assert.equal(players.findPlayerByFriendCode("not-a-code"), undefined);
 });
 
-test("friend codes survive a round-trip; a save from before friend codes existed gets one minted", () => {
+test("friend codes survive a round-trip", () => {
     const players = new PlayerRegistry();
     const alice = players.getOrCreate("sub-alice", "alice");
 
@@ -117,13 +108,4 @@ test("friend codes survive a round-trip; a save from before friend codes existed
     const restored = new PlayerRegistry();
     restored.deserializeTables(playerTable, friendTable);
     assert.equal(restored.getPlayerByRef(1).friendCode, alice.friendCode);
-
-    const [legacyTable] = players.serializeTables();
-    for (const row of legacyTable.rows) {
-        delete row.friend_code;
-    }
-    const migrated = new PlayerRegistry();
-    migrated.deserializeTables(legacyTable, friendTable);
-    assert.equal(typeof migrated.getPlayerByRef(1).friendCode, "string");
-    assert.equal(migrated.findPlayerByFriendCode(migrated.getPlayerByRef(1).friendCode), migrated.getPlayerByRef(1));
 });

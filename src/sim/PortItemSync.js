@@ -40,7 +40,7 @@ export class PortItemSync {
         // was computed at (0 = never). The diff would otherwise hash the chunk and call through the
         // subscription predicate for every port written this tick.
         this._subscribed = new Uint8Array(portCapacity);
-        this._subscribedGeneration = new Int32Array(portCapacity);
+        this._subscriptionGeneration = new Int32Array(portCapacity);
         // Ports removed while holding a rendered item (eid -> {x, y}): a pending clear, canceled
         // if the port is added again in the same edit (so a churned-but-surviving port stays static,
         // no clear+set glide). Flushed by the diff.
@@ -53,7 +53,7 @@ export class PortItemSync {
      * @returns {void}
      */
     growPortColumns(capacity) {
-        for (const name of ["_x", "_y", "_subscribedGeneration"]) {
+        for (const name of ["_x", "_y", "_subscriptionGeneration"]) {
             const grown = new Int32Array(capacity);
             grown.set(this[name]);
             this[name] = grown;
@@ -82,7 +82,7 @@ export class PortItemSync {
             this._unindex(eid);
         }
         this._rendered[eid] = 1;
-        this._subscribedGeneration[eid] = 0;
+        this._subscriptionGeneration[eid] = 0;
         this._x[eid] = x;
         this._y[eid] = y;
         this._index(eid);
@@ -335,11 +335,11 @@ export class PortItemSync {
      */
     _isPortSubscribed(eid) {
         const generation = this.engine.subscriptionGeneration;
-        if (this._subscribedGeneration[eid] === generation) {
+        if (this._subscriptionGeneration[eid] === generation) {
             return this._subscribed[eid] === 1;
         }
         const subscribed = this.engine.isTileSubscribed(this._x[eid], this._y[eid]);
-        this._subscribedGeneration[eid] = generation;
+        this._subscriptionGeneration[eid] = generation;
         this._subscribed[eid] = subscribed ? 1 : 0;
         return subscribed;
     }

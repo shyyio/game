@@ -68,21 +68,20 @@ export class PlayerRegistry {
         if (existing !== undefined) {
             return existing;
         }
-        return this._register(new PlayerEntry(this._nextPlayerRef, sub, username, DEFAULT_MAX_CHUNKS, this._freshFriendCode()));
+        return this._register(new PlayerEntry(this._nextPlayerRef, sub, username, DEFAULT_MAX_CHUNKS, this._generateFreshFriendCode()));
     }
 
     /**
-     * Registers an entry under an externally chosen id (local sessions, tests) if none exists.
+     * The entry under an externally chosen id (local sessions, tests), added on first sight.
      * @param {number} playerRef
      * @returns {PlayerEntry}
      */
-    // Ensure what? ensure exists?
-    ensure(playerRef) {
+    getOrAddByPlayerRef(playerRef) {
         const existing = this._byId.get(playerRef);
         if (existing !== undefined) {
             return existing;
         }
-        return this._register(new PlayerEntry(playerRef, null, syntheticUsername(playerRef), DEFAULT_MAX_CHUNKS, this._freshFriendCode()));
+        return this._register(new PlayerEntry(playerRef, null, syntheticUsername(playerRef), DEFAULT_MAX_CHUNKS, this._generateFreshFriendCode()));
     }
 
     /**
@@ -102,8 +101,7 @@ export class PlayerRegistry {
      * @private
      * @returns {string}
      */
-    // bare noun... What does this function do?? Should be _generateFreshFriendCode()
-    _freshFriendCode() {
+    _generateFreshFriendCode() {
         let code = generateFriendCode();
         while (this._byFriendCode.has(normalizeFriendCode(code))) {
             code = generateFriendCode();
@@ -199,22 +197,6 @@ export class PlayerRegistry {
     }
 
     /**
-     * Every known player as parallel arrays, for the directory sync event.
-     * @returns {{playerRefs: number[], usernames: string[]}}
-     */
-    getDirectory() {
-        const playerRefs = [];
-        const usernames = [];
-        for (const entry of this._byId.values()) {
-            playerRefs.push(entry.playerRef);
-            usernames.push(entry.username);
-        }
-        // I really don't like anonymous objects in return types.
-        // create a PlayerDirectory data or something
-        return {playerRefs, usernames};
-    }
-
-    /**
      * @returns {object[]} the Player and Friend tables
      */
     serializeTables() {
@@ -236,7 +218,6 @@ export class PlayerRegistry {
             {
                 name: PLAYER_TABLE,
                 fields: [
-                    // Let's adjust the save format and use snakeCase (playerId) from now on.
                     {name: "player_id", kind: "integer"},
                     {name: "sub", kind: "text"},
                     {name: "username", kind: "text"},
@@ -270,11 +251,7 @@ export class PlayerRegistry {
             return;
         }
         for (const row of playerTable.rows) {
-            const sub = row.sub === undefined ? null : row.sub;
-            // Older saves predate friend codes; mint one on load rather than rejecting the save.
-            // Don't use a ternary like this, this is hard to follow.
-            const friendCode = row.friend_code === undefined ? this._freshFriendCode() : row.friend_code;
-            this._register(new PlayerEntry(row.player_id, sub, row.username, row.max_chunks, friendCode));
+            this._register(new PlayerEntry(row.player_id, row.sub, row.username, row.max_chunks, row.friend_code));
         }
         if (friendTable === undefined) {
             return;

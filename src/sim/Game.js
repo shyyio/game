@@ -251,7 +251,7 @@ export class Game {
         this.playerDirectory.connect(sessionRef);
         // Local and test sessions carry ids the registry has never seen; the server registers its
         // players before connecting them, so this is a no-op there.
-        this.players.ensure(session.playerRef);
+        this.players.getOrAddByPlayerRef(session.playerRef);
 
         this.metrics.onConnect(session);
 

@@ -524,7 +524,7 @@ export class GameEngine {
             handled = this._dispatchMessage(message, playerRef);
         }
         if (this.workers !== null) {
-            this.workers.ensureFresh();
+            this.workers.rebuildDirtyAllocation();
         }
         return handled;
     }

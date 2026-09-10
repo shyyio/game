@@ -50,7 +50,7 @@ export class WorkerNetworks extends AbstractSystem {
      * @returns {{granted: number, supply: number, demand: number}|null}
      */
     findWorkerStatsByObjectRef(objectRef) {
-        this.ensureFresh();
+        this.rebuildDirtyAllocation();
         const assignment = this.assignments.findAssignmentByObjectRef(objectRef);
         if (assignment === undefined) {
             return null;
@@ -63,10 +63,10 @@ export class WorkerNetworks extends AbstractSystem {
      * @returns {void}
      */
     submitIntents() {
-        this.ensureFresh();
+        this.rebuildDirtyAllocation();
     }
 
-    ensureFresh() {
+    rebuildDirtyAllocation() {
         const dirty = this.roads.popDirty();
         if (dirty === null) {
             return;
@@ -173,7 +173,7 @@ export class WorkerNetworks extends AbstractSystem {
      * @returns {WorkerAssignmentBatchEvent[]}
      */
     chunkSync(chunkKey) {
-        this.ensureFresh();
+        this.rebuildDirtyAllocation();
         const objectRefs = this.assignments.findObjectRefsByChunkKey(chunkKey);
         if (objectRefs === undefined) {
             return [];
@@ -195,6 +195,6 @@ export class WorkerNetworks extends AbstractSystem {
     rebuild() {
         this.assignments.clear();
         this.roads.rebuild();
-        this.ensureFresh();
+        this.rebuildDirtyAllocation();
     }
 }

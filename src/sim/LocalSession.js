@@ -16,9 +16,6 @@ export class LocalSession extends AbstractSession {
         if (this.client == null) {
             return;
         }
-        
-        // Early return was confusing here. The special case (DEV) should be the one
-        // being tested for in the if()
         if (DEV) {
             // Round-trip through the wire codec, so a codec break surfaces in single-player too.
             const encoded = this.api.wire.encode(event);
@@ -29,7 +26,6 @@ export class LocalSession extends AbstractSession {
     }
 
     get playerRef() {
-        // Don't document what something ISNT. That's not helpful
         return 1;
     }
 
