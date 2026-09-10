@@ -57,7 +57,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
 
         this._connectors.set("editor", () => this._editor.panel, () => this._targetTile());
 
-        cache.subscribe("notes.editorTarget", () => this._sync());
+        cache.subscribe("notes.editorTarget", () => this._applyTarget());
     }
 
     /**
@@ -66,7 +66,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
      */
     restyle() {
         this._shownTarget = null;
-        this._sync();
+        this._applyTarget();
     }
 
     /**
@@ -98,7 +98,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
      * @private
      * @returns {void}
      */
-    _sync() {
+    _applyTarget() {
         const target = this._target();
         if (target === this._shownTarget) {
             return;

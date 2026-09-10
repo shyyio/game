@@ -365,7 +365,7 @@ export class TextInput extends Container {
         // Every tick, not just on a move: what covers this input can change while it sits still.
         this._deferToCover(bounds);
         const canvasRect = this._app.canvas.getBoundingClientRect();
-        if (this._overlay.sync(bounds, canvasRect)) {
+        if (this._overlay.layout(bounds, canvasRect)) {
             this._applyClip(bounds, canvasRect);
         }
     }

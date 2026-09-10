@@ -1,6 +1,6 @@
 import {HUD_DOM_Z_INDEX} from "@/client/hud/HudLayer.js";
 
-// Every overlay starts parked at a 1px rect in the top-left corner, until the first sync places it.
+// Every overlay starts parked at a 1px rect in the top-left corner, until the first layout places it.
 const BASE_STYLE = {
     position: "fixed",
     zIndex: HUD_DOM_Z_INDEX,
@@ -38,7 +38,7 @@ export class DomOverlay {
      * @param {DOMRect} canvasRect
      * @returns {boolean} whether the rect changed, so a caller can follow a move up
      */
-    sync(bounds, canvasRect) {
+    layout(bounds, canvasRect) {
         const left = canvasRect.left + bounds.x;
         const top = canvasRect.top + bounds.y;
         const width = Math.max(bounds.width, 1);
@@ -58,7 +58,7 @@ export class DomOverlay {
     }
 
     /**
-     * Forgets the last synced rect, so the next {@link sync} writes even where it computes the same
+     * Forgets the last synced rect, so the next {@link layout} writes even where it computes the same
      * one; for an overlay pointed at a different display object.
      * @returns {void}
      */

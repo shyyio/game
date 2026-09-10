@@ -72,6 +72,6 @@ export class SelectableText {
      * @returns {void}
      */
     _position() {
-        this._overlay.sync(this._target.getBounds(), this._app.canvas.getBoundingClientRect());
+        this._overlay.layout(this._target.getBounds(), this._app.canvas.getBoundingClientRect());
     }
 }

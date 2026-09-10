@@ -126,7 +126,7 @@ onMounted(async () => {
     pixiApp.destroy();
     return;
   }
-  const {app, viewport, syncMobileTouchInput, destroy: destroyPixiApp} = pixiApp;
+  const {app, viewport, applyMobileTouchInput, destroy: destroyPixiApp} = pixiApp;
 
   // A failed start (unreachable server, mods that will not load) goes back with the reason instead
   // of leaving an empty canvas mounted: to the server list for a join, and to the mods screen for a
@@ -161,7 +161,7 @@ onMounted(async () => {
   // Installs/tears down touch input and recomputes center-lock/pan-freeze when the
   // "Touchscreen input" toggle flips mid-session.
   const unsubMobile = Mobile.onChange(() => {
-    syncMobileTouchInput();
+    applyMobileTouchInput();
     toolController.applyEffectiveTool();
     client.hud.versionWatermarkLayer.resync();
   });

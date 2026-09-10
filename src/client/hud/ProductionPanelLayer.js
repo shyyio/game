@@ -336,6 +336,6 @@ export class ProductionPanelLayer extends Container {
      * @returns {void}
      */
     _positionChartRoot() {
-        this._chartOverlay.sync(this._chartInset.getBounds(), this._app.canvas.getBoundingClientRect());
+        this._chartOverlay.layout(this._chartInset.getBounds(), this._app.canvas.getBoundingClientRect());
     }
 }

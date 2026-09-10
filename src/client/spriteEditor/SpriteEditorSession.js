@@ -154,7 +154,7 @@ export class SpriteEditorSession {
         this.pixels = this.textureCache.frameImageData(frameName);
         this.state.playIndex = 0;
         this._rebuildPalette();
-        this._syncStacks();
+        this._applyStacks();
         this.state.paintVersion++;
     }
 
@@ -251,7 +251,7 @@ export class SpriteEditorSession {
         this.pixels = context.getImageData(0, 0, frame.rect.w, frame.rect.h);
         this._push();
         this._pushUndo(before);
-        this._syncStacks();
+        this._applyStacks();
         this._rebuildPalette();
         this.state.commitVersion++;
         this.flushPersist();
@@ -403,7 +403,7 @@ export class SpriteEditorSession {
     _commit(before) {
         this._pushUndo(before);
         this._redo.set(this.state.frameName, []);
-        this._syncStacks();
+        this._applyStacks();
         this._rebuildPalette();
         this.state.commitVersion++;
         if (this._persistTimer !== null) {
@@ -455,7 +455,7 @@ export class SpriteEditorSession {
         this._stack(to).push(clone(this.pixels));
         this.pixels = stack.pop();
         this._push();
-        this._syncStacks();
+        this._applyStacks();
         this._rebuildPalette();
         this.state.commitVersion++;
         this._persistFrame(this.frame);
@@ -478,7 +478,7 @@ export class SpriteEditorSession {
     /**
      * @private
      */
-    _syncStacks() {
+    _applyStacks() {
         this.state.canUndo = this._stack(this._undo).length > 0;
         this.state.canRedo = this._stack(this._redo).length > 0;
     }

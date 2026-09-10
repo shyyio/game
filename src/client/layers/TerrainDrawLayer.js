@@ -85,7 +85,7 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
             this._overworld.destroy();
             this._overworld = null;
         }
-        this._syncOverworld();
+        this._applyOverworldMode();
     }
 
     /**
@@ -105,7 +105,7 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
         this.visible = true;
         this._mapMode = mode === ViewMode.MAP;
         this._overworldShown = mode === ViewMode.OVERWORLD;
-        this._syncOverworld();
+        this._applyOverworldMode();
     }
 
     /**
@@ -114,7 +114,7 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
      * @private
      * @returns {void}
      */
-    _syncOverworld() {
+    _applyOverworldMode() {
         if (!this._overworldShown || !this._ready) {
             if (this._overworld !== null) {
                 this._overworld.visible = false;

@@ -340,7 +340,7 @@ function drawPreview() {
 
 let playTimer = null;
 
-function syncPlayback() {
+function applyPlayback() {
   if (playTimer !== null) {
     view.clearInterval(playTimer);
     playTimer = null;
@@ -355,7 +355,7 @@ function syncPlayback() {
 
 watch(() => [state.paintVersion, state.zoom, state.grid, state.onion, state.frameName, state.tintHex], draw, {flush: "post"});
 watch(() => [state.paintVersion, state.playIndex, state.frameName, state.tintHex], drawPreview, {flush: "post"});
-watch(() => [state.playing, state.frameName], syncPlayback);
+watch(() => [state.playing, state.frameName], applyPlayback);
 
 onMounted(() => {
   view = root.value.ownerDocument.defaultView;
@@ -368,7 +368,7 @@ onMounted(() => {
   }
   draw();
   drawPreview();
-  syncPlayback();
+  applyPlayback();
   root.value.focus({preventScroll: true});
 });
 

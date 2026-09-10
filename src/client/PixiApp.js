@@ -72,13 +72,13 @@ export class BootedPixiApp {
     /**
      * @param {Application} app
      * @param {ClientViewport} viewport
-     * @param {function(): void} syncMobileTouchInput
+     * @param {function(): void} applyMobileTouchInput
      * @param {function(): void} destroy
      */
-    constructor(app, viewport, syncMobileTouchInput, destroy) {
+    constructor(app, viewport, applyMobileTouchInput, destroy) {
         this.app = app;
         this.viewport = viewport;
-        this.syncMobileTouchInput = syncMobileTouchInput;
+        this.applyMobileTouchInput = applyMobileTouchInput;
         this.destroy = destroy;
     }
 }
@@ -162,7 +162,7 @@ export async function createPixiApp() {
     // Live-toggled by the "Touchscreen input" device setting: adds/removes the pinch plugin and the
     // HUD-touch routing glue.
     let touchInput = null;
-    const syncMobileTouchInput = () => {
+    const applyMobileTouchInput = () => {
         if (Mobile.enabled) {
             if (touchInput === null) {
                 viewport.pinch();
@@ -177,7 +177,7 @@ export async function createPixiApp() {
             touchInput = null;
         }
     };
-    syncMobileTouchInput();
+    applyMobileTouchInput();
 
     Fullscreen.install();
 
@@ -205,5 +205,5 @@ export async function createPixiApp() {
         app.destroy({removeView: true}, {children: true});
     }
 
-    return new BootedPixiApp(app, viewport, syncMobileTouchInput, destroy);
+    return new BootedPixiApp(app, viewport, applyMobileTouchInput, destroy);
 }

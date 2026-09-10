@@ -30,16 +30,16 @@ function bounds(x, y, width, height) {
     return {x, y, width, height};
 }
 
-test("a sync offsets the display object's bounds by the canvas's page position", () => {
+test("a layout offsets the display object's bounds by the canvas's page position", () => {
     const element = stubElement();
-    new DomOverlay(element).sync(bounds(10, 5, 100, 30), CANVAS_RECT);
+    new DomOverlay(element).layout(bounds(10, 5, 100, 30), CANVAS_RECT);
     assert.equal(element.style.left, "50px");
     assert.equal(element.style.top, "25px");
     assert.equal(element.style.width, "100px");
     assert.equal(element.style.height, "30px");
 });
 
-test("an element starts parked at the base style until the first sync", () => {
+test("an element starts parked at the base style until the first layout", () => {
     const element = stubElement();
     new DomOverlay(element);
     assert.equal(element.style.position, "fixed");
@@ -56,7 +56,7 @@ test("the caller's styles layer over the base", () => {
 
 test("a collapsed display object still gets a 1px rect, so it stays hittable", () => {
     const element = stubElement();
-    new DomOverlay(element).sync(bounds(10, 5, 0, 0), CANVAS_RECT);
+    new DomOverlay(element).layout(bounds(10, 5, 0, 0), CANVAS_RECT);
     assert.equal(element.style.width, "1px");
     assert.equal(element.style.height, "1px");
 });
@@ -64,34 +64,34 @@ test("a collapsed display object still gets a 1px rect, so it stays hittable", (
 test("re-syncing the same rect reports no move and writes nothing", () => {
     const element = stubElement();
     const overlay = new DomOverlay(element);
-    assert.equal(overlay.sync(bounds(10, 5, 100, 30), CANVAS_RECT), true);
+    assert.equal(overlay.layout(bounds(10, 5, 100, 30), CANVAS_RECT), true);
     element.style.left = "stale";
-    assert.equal(overlay.sync(bounds(10, 5, 100, 30), CANVAS_RECT), false);
+    assert.equal(overlay.layout(bounds(10, 5, 100, 30), CANVAS_RECT), false);
     assert.equal(element.style.left, "stale");
 });
 
 test("a move in any one dimension re-writes the rect", () => {
     const element = stubElement();
     const overlay = new DomOverlay(element);
-    overlay.sync(bounds(10, 5, 100, 30), CANVAS_RECT);
-    assert.equal(overlay.sync(bounds(10, 5, 100, 31), CANVAS_RECT), true);
+    overlay.layout(bounds(10, 5, 100, 30), CANVAS_RECT);
+    assert.equal(overlay.layout(bounds(10, 5, 100, 31), CANVAS_RECT), true);
     assert.equal(element.style.height, "31px");
 });
 
 test("the canvas scrolling under a still display object moves the overlay with it", () => {
     const element = stubElement();
     const overlay = new DomOverlay(element);
-    overlay.sync(bounds(10, 5, 100, 30), CANVAS_RECT);
-    assert.equal(overlay.sync(bounds(10, 5, 100, 30), {left: 40, top: 0}), true);
+    overlay.layout(bounds(10, 5, 100, 30), CANVAS_RECT);
+    assert.equal(overlay.layout(bounds(10, 5, 100, 30), {left: 40, top: 0}), true);
     assert.equal(element.style.top, "5px");
 });
 
-test("invalidating makes the next sync write the same rect again", () => {
+test("invalidating makes the next layout write the same rect again", () => {
     const element = stubElement();
     const overlay = new DomOverlay(element);
-    overlay.sync(bounds(10, 5, 100, 30), CANVAS_RECT);
+    overlay.layout(bounds(10, 5, 100, 30), CANVAS_RECT);
     overlay.invalidate();
-    assert.equal(overlay.sync(bounds(10, 5, 100, 30), CANVAS_RECT), true);
+    assert.equal(overlay.layout(bounds(10, 5, 100, 30), CANVAS_RECT), true);
 });
 
 test("removing takes the element out of the document", () => {
