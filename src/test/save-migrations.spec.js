@@ -415,3 +415,26 @@ test("a format-10 save drops the belt path components and makes every belt a lan
     assert.equal(restored.lanes.ids().length, 1, "the belts re-derive into one lane");
     assert.equal(restored.lanes.cellsOf(restored.lanes.ids()[0]).length, 3);
 });
+
+test("a format-11 save renames the Lane port columns to inputPort and outputPort", async () => {
+    const engine = await makeGameEngine();
+    for (const y of [0, 1, 2]) {
+        engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 0, y, Direction.UP));
+    }
+    const snapshot = engine.snapshots.serialize();
+    snapshot.saveFormat = 11;
+    renameRowsBack(snapshot, "Lane", "inputPort", "inPort");
+    renameRowsBack(snapshot, "Lane", "outputPort", "outPort");
+
+    const migrated = migrateSnapshot(snapshot);
+
+    assert.equal(migrated.saveFormat, SAVE_FORMAT);
+    const lane = migrated.components.find(component => component.name === "Lane");
+    assert.deepEqual(lane.fields.map(field => field.name).filter(name => name.endsWith("Port")), ["inputPort", "outputPort"]);
+    assert.equal(lane.rows[0].inPort, undefined);
+    assert.ok(lane.rows[0].outputPort >= 0);
+
+    const restored = await makeGameEngine();
+    assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
+    assert.equal(restored.lanes.cellsOf(restored.lanes.ids()[0]).length, 3);
+});

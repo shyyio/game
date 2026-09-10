@@ -1,7 +1,7 @@
 import {Direction} from "@/common/constants.js";
 
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
-export const SAVE_FORMAT = 11;
+export const SAVE_FORMAT = 12;
 
 // What a save written before the stamp counts as.
 const UNSTAMPED_FORMAT = 0;
@@ -101,6 +101,12 @@ export const SAVE_MIGRATIONS = new Map([
                 parentEdge: Direction.UP,
             })),
         ),
+    })],
+    // Format 12 names the Lane port columns by their role.
+    [11, snapshot => ({
+        ...snapshot,
+        saveFormat: 12,
+        components: renameField(renameField(snapshot.components, "Lane", "inPort", "inputPort"), "Lane", "outPort", "outputPort"),
     })],
 ]);
 

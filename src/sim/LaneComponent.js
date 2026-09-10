@@ -10,8 +10,8 @@ export class LaneComponent extends AbstractComponent {
     constructor() {
         super("Lane", [
             {name: "headCell", kind: "eid", defaultValue: NO_EID},
-            {name: "inPort", kind: "eid", defaultValue: NO_EID},
-            {name: "outPort", kind: "eid", defaultValue: NO_EID},
+            {name: "inputPort", kind: "eid", defaultValue: NO_EID},
+            {name: "outputPort", kind: "eid", defaultValue: NO_EID},
             {name: "slotCount"},
             {name: "itemCount"},
             {name: "headGap"},
