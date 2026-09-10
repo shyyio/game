@@ -73,7 +73,7 @@ export class EventQueue {
      * @param {number} [bytes] - protobuf bytes this event arrived as (dev only; 0 for the
      *     inner events of a re-published bundle, already counted in the bundle)
      */
-    publish(event, bytes=0) {
+    dispatch(event, bytes=0) {
         if (DEV && BROWSER) {
             this._bytesReceived += bytes;
             // Logging every event costs a DevTools stack capture each and retains the payloads;

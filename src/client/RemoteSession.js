@@ -186,7 +186,7 @@ export class RemoteSession extends AbstractSession {
                     this._notifyStatus(SESSION_STATUS_CONNECTED);
                 }
             }
-            this.client.events.publish(decoded, bytes.length);
+            this.client.events.dispatch(decoded, bytes.length);
         };
         ws.onclose = event => this._handleClose(event.code);
         this._ws = ws;

@@ -330,7 +330,7 @@ class Mouse {
             const tileY = Math.floor(world.y / TILE_SIZE);
             // Clear the hovered tile first so the active tool's ghost preview drops
             // while the context gesture is up, matching the long-press path.
-            this._emitTileExit();
+            this._notifyTileExit();
             for (const cb of this._longPressCallbacks) {
                 cb(tileX, tileY, event.global.x, event.global.y);
             }
@@ -377,7 +377,7 @@ class Mouse {
             this._hasDragged = true;
             // The long-press fires the context gesture; clear the hovered tile first
             // so the active tool's ghost preview drops while it is up.
-            this._emitTileExit();
+            this._notifyTileExit();
             for (const cb of this._longPressCallbacks) {
                 cb(this._clickStartTileX, this._clickStartTileY, this._clickStartScreenX, this._clickStartScreenY);
             }
@@ -471,7 +471,7 @@ class Mouse {
         if (this._centerLock) {
             this._updateHoverTile();
         } else if (this._clickStartX == null && this._isPointerRestingOverInteractive()) {
-            this._emitTileExit();
+            this._notifyTileExit();
         } else {
             this._updateHoverTile();
         }
@@ -643,7 +643,7 @@ class Mouse {
      * so the next hover update re-enters cleanly.
      * @private
      */
-    _emitTileExit() {
+    _notifyTileExit() {
         if (this._hoverTileX == null) {
             return;
         }

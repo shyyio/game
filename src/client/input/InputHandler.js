@@ -64,7 +64,7 @@ export class InputHandler {
                 return;
             }
             if (this.activeTool == null) {
-                this._emitObjectTap(tileX, tileY);
+                this._notifyObjectTap(tileX, tileY);
                 return;
             }
             this.activeTool.onTap(tileX, tileY);
@@ -73,7 +73,7 @@ export class InputHandler {
         // Chunk selection rides the press (a pan's start included), not the release.
         Mouse.onPress((tileX, tileY, shiftKey) => {
             if (this._mapMode) {
-                this._emitMapTap(tileX, tileY, shiftKey);
+                this._notifyMapTap(tileX, tileY, shiftKey);
             }
         });
 
@@ -101,7 +101,7 @@ export class InputHandler {
                 return;
             }
             if (this.activeTool == null) {
-                this._emitInspect(null, null);
+                this._notifyInspect(null, null);
                 return;
             }
             this.activeTool.onTileExit(tileX, tileY);
@@ -215,7 +215,7 @@ export class InputHandler {
      * Clears the inspect-hover affordance when the cursor isn't moving (e.g. on tool select).
      */
     clearInspect() {
-        this._emitInspect(null, null);
+        this._notifyInspect(null, null);
     }
 
     /**
@@ -231,10 +231,10 @@ export class InputHandler {
         this._mapMode = mapMode;
         if (mapMode) {
             if (this._hoverTileX != null) {
-                this._emitMapHover(this._hoverTileX, this._hoverTileY);
+                this._notifyMapHover(this._hoverTileX, this._hoverTileY);
             }
         } else {
-            this._emitMapHover(null, null);
+            this._notifyMapHover(null, null);
         }
     }
 
@@ -258,11 +258,11 @@ export class InputHandler {
         this._hoverTileX = tileX;
         this._hoverTileY = tileY;
         if (this._mapMode) {
-            this._emitMapHover(tileX, tileY);
+            this._notifyMapHover(tileX, tileY);
             return;
         }
         if (this.activeTool == null) {
-            this._emitInspect(tileX, tileY);
+            this._notifyInspect(tileX, tileY);
             return;
         }
         this._previewTool = this.activeTool;
@@ -272,7 +272,7 @@ export class InputHandler {
     /**
      * @private
      */
-    _emitObjectTap(tileX, tileY) {
+    _notifyObjectTap(tileX, tileY) {
         if (this._onObjectTap == null) {
             return;
         }
@@ -282,7 +282,7 @@ export class InputHandler {
     /**
      * @private
      */
-    _emitObjectHold(tileX, tileY) {
+    _notifyObjectHold(tileX, tileY) {
         if (this._onObjectHold == null) {
             return;
         }
@@ -292,7 +292,7 @@ export class InputHandler {
     /**
      * @private
      */
-    _emitInspect(tileX, tileY) {
+    _notifyInspect(tileX, tileY) {
         if (this._onInspect == null) {
             return;
         }
@@ -302,7 +302,7 @@ export class InputHandler {
     /**
      * @private
      */
-    _emitMapHover(tileX, tileY) {
+    _notifyMapHover(tileX, tileY) {
         if (this._onMapHover == null) {
             return;
         }
@@ -312,7 +312,7 @@ export class InputHandler {
     /**
      * @private
      */
-    _emitMapTap(tileX, tileY, shiftKey) {
+    _notifyMapTap(tileX, tileY, shiftKey) {
         if (this._onMapTap == null) {
             return;
         }
@@ -329,7 +329,7 @@ export class InputHandler {
             return;
         }
         if (this.activeTool == null) {
-            this._emitObjectHold(tileX, tileY);
+            this._notifyObjectHold(tileX, tileY);
             return;
         }
         this._clearActiveTool();

@@ -86,27 +86,27 @@ function build() {
 
 test("an event whose chunk has no queued sync applies on arrival", () => {
     const {queue, client} = build();
-    queue.publish(new TileEvent(IN_CHUNK_A));
+    queue.dispatch(new TileEvent(IN_CHUNK_A));
     assert.deepEqual(client.appliedTiles(), [IN_CHUNK_A]);
 });
 
 test("an applied event reaches the cache, the mods, the layers and the status HUD, in that order", () => {
     const {queue, client} = build();
     const event = new GlobalEvent();
-    queue.publish(event);
+    queue.dispatch(event);
     assert.deepEqual(client.applied.map(([consumer]) => consumer), ["cache", "mod", "layers", "status"]);
     assert.equal(client.applied[1][2], client, "a mod is handed the client with the event");
 });
 
 test("a batch event applies as its per-delta events, never itself", () => {
     const {queue, client} = build();
-    queue.publish(new TileBatchEvent([IN_CHUNK_A, IN_CHUNK_A + 1]));
+    queue.dispatch(new TileBatchEvent([IN_CHUNK_A, IN_CHUNK_A + 1]));
     assert.deepEqual(client.appliedTiles(), [IN_CHUNK_A, IN_CHUNK_A + 1]);
 });
 
 test("a chunk sync bundle queues rather than applying, exploded to its deltas", () => {
     const {queue, client} = build();
-    queue.publish(new ChunkSyncEvent(CHUNK_A, [new TileBatchEvent([IN_CHUNK_A, IN_CHUNK_A + 1])]));
+    queue.dispatch(new ChunkSyncEvent(CHUNK_A, [new TileBatchEvent([IN_CHUNK_A, IN_CHUNK_A + 1])]));
     assert.deepEqual(client.appliedTiles(), []);
 
     queue.drain();
@@ -115,8 +115,8 @@ test("a chunk sync bundle queues rather than applying, exploded to its deltas", 
 
 test("a later event on a syncing chunk applies behind that chunk's queue", () => {
     const {queue, client} = build();
-    queue.publish(new ChunkSyncEvent(CHUNK_A, [new TileEvent(IN_CHUNK_A)]));
-    queue.publish(new TileEvent(IN_CHUNK_A + 1));
+    queue.dispatch(new ChunkSyncEvent(CHUNK_A, [new TileEvent(IN_CHUNK_A)]));
+    queue.dispatch(new TileEvent(IN_CHUNK_A + 1));
     assert.deepEqual(client.appliedTiles(), [], "the live event must not overtake the sync");
 
     queue.drain();
@@ -125,25 +125,25 @@ test("a later event on a syncing chunk applies behind that chunk's queue", () =>
 
 test("live traffic for a settled chunk never queues behind another chunk's sync", () => {
     const {queue, client} = build();
-    queue.publish(new ChunkSyncEvent(CHUNK_A, [new TileEvent(IN_CHUNK_A)]));
-    queue.publish(new TileEvent(IN_CHUNK_B));
+    queue.dispatch(new ChunkSyncEvent(CHUNK_A, [new TileEvent(IN_CHUNK_A)]));
+    queue.dispatch(new TileEvent(IN_CHUNK_B));
     assert.deepEqual(client.appliedTiles(), [IN_CHUNK_B]);
 });
 
 test("a drained chunk stops gating its later events", () => {
     const {queue, client} = build();
-    queue.publish(new ChunkSyncEvent(CHUNK_A, [new TileEvent(IN_CHUNK_A)]));
+    queue.dispatch(new ChunkSyncEvent(CHUNK_A, [new TileEvent(IN_CHUNK_A)]));
     queue.drain();
-    queue.publish(new TileEvent(IN_CHUNK_A + 1));
+    queue.dispatch(new TileEvent(IN_CHUNK_A + 1));
     assert.deepEqual(client.appliedTiles(), [IN_CHUNK_A, IN_CHUNK_A + 1]);
 });
 
 test("unsubscribing a chunk drops its queued sync, keeping every other chunk's", () => {
     const {queue, client} = build();
-    queue.publish(new ChunkSyncEvent(CHUNK_A, [new TileEvent(IN_CHUNK_A)]));
-    queue.publish(new ChunkSyncEvent(CHUNK_B, [new TileEvent(IN_CHUNK_B)]));
+    queue.dispatch(new ChunkSyncEvent(CHUNK_A, [new TileEvent(IN_CHUNK_A)]));
+    queue.dispatch(new ChunkSyncEvent(CHUNK_B, [new TileEvent(IN_CHUNK_B)]));
 
-    queue.publish(new ChunkUnsubscribeEvent(CHUNK_A));
+    queue.dispatch(new ChunkUnsubscribeEvent(CHUNK_A));
     queue.drain();
     assert.deepEqual(client.appliedTiles(), [IN_CHUNK_B]);
     // The unsubscribe itself rides the drain, so its teardown is budgeted like a sync.
@@ -154,11 +154,11 @@ test("host listeners see every applied event, and unsubscribe", () => {
     const {queue} = build();
     const seen = [];
     const unsubscribe = queue.onEvent(event => seen.push(event));
-    queue.publish(new TileEvent(IN_CHUNK_A));
+    queue.dispatch(new TileEvent(IN_CHUNK_A));
     assert.equal(seen.length, 1);
 
     unsubscribe();
-    queue.publish(new TileEvent(IN_CHUNK_A));
+    queue.dispatch(new TileEvent(IN_CHUNK_A));
     assert.equal(seen.length, 1);
 });
 
