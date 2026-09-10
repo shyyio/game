@@ -63,7 +63,7 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
         this._overwrite = overwrite;
         this._clear = clear;
         this._showTarget = showTarget;
-        this._redraw();
+        this._draw();
     }
 
     /**
@@ -85,7 +85,7 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
 
     setCenterLock(enabled) {
         this._centerLock = enabled;
-        this._redraw();
+        this._draw();
     }
 
     /**
@@ -95,25 +95,25 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
      */
     highlight(tiles) {
         this._highlight = tiles;
-        this._redraw();
+        this._draw();
     }
 
     clearHighlight() {
         this._highlight = [];
-        this._redraw();
+        this._draw();
     }
 
     clear() {
         this._blockedTiles = [];
         this._overwrite = [];
         this._clear = [];
-        this._redraw();
+        this._draw();
     }
 
     /**
      * @private
      */
-    _redraw() {
+    _draw() {
         this._graphics.clear();
         // The persistent target highlight (blue) sits under the per-hover markers.
         this._target(this._highlight, OVERWRITE_TILE_COLOR);

@@ -43,12 +43,12 @@ const BINARY = 2;
 class FakeTerrainLayer {
 
     constructor() {
-        this.repaints = 0;
+        this.rebuilds = 0;
         this.enabled = null;
     }
 
-    repaint() {
-        this.repaints += 1;
+    rebuild() {
+        this.rebuilds += 1;
     }
 
     setEnabled(enabled) {
@@ -168,31 +168,31 @@ test("the frame-rate cap paces the render ticker", () => {
     assert.equal(client.app.ticker.maxFPS, FPS_CAP_VALUES[1]);
 });
 
-test("a repaint rebakes both ground layers, keeping the classification", () => {
+test("a rebuild rebakes both ground layers, keeping the classification", () => {
     const {menu, client} = build();
     client.terrain = {invalidations: 0, invalidate() {
         this.invalidations += 1;
     }};
-    menu.repaintTerrain();
-    assert.equal(client.terrainLayer.repaints, 1);
-    assert.equal(client.terrainDetailLayer.repaints, 1);
+    menu.rebuildTerrain();
+    assert.equal(client.terrainLayer.rebuilds, 1);
+    assert.equal(client.terrainDetailLayer.rebuilds, 1);
     assert.equal(client.terrain.invalidations, 0);
 });
 
-test("a retune reclassifies before repainting", () => {
+test("a retune reclassifies before rebuilding", () => {
     const {menu, client} = build();
     client.terrain = {invalidations: 0, invalidate() {
         this.invalidations += 1;
     }};
     menu.retuneTerrain();
     assert.equal(client.terrain.invalidations, 1);
-    assert.equal(client.terrainLayer.repaints, 1);
+    assert.equal(client.terrainLayer.rebuilds, 1);
 });
 
-test("a retune before the seed arrives still repaints", () => {
+test("a retune before the seed arrives still rebuilds", () => {
     const {menu, client} = build();
     menu.retuneTerrain();
-    assert.equal(client.terrainLayer.repaints, 1);
+    assert.equal(client.terrainLayer.rebuilds, 1);
 });
 
 test("the stored terrain preference drives the ground from the start", () => {

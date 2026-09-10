@@ -85,7 +85,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
             return;
         }
         const lane = this._lanes.get(laneRef);
-        this._redraw(laneRef, lane, true);
+        this._drawLane(laneRef, lane, true);
         this._drawPortItem(lane, true);
     }
 
@@ -180,7 +180,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
             return;
         }
         lane.items.set(event.itemRef, {gap: event.gap, type: event.itemTypeId});
-        this._redraw(event.laneRef, lane, snap);
+        this._drawLane(event.laneRef, lane, snap);
     }
 
     /**
@@ -197,7 +197,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         this._itemLayer.removeItem(LANE_SPRITE_KEY(event.laneRef, event.itemRef));
         // An item leaves a lane only by popping into its output port.
         lane.popPending = true;
-        this._redraw(event.laneRef, lane, false);
+        this._drawLane(event.laneRef, lane, false);
     }
 
     /**
@@ -294,7 +294,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * @param {boolean} snap
      * @returns {void}
      */
-    _redraw(laneRef, lane, snap) {
+    _drawLane(laneRef, lane, snap) {
         const slots = this._getSlotsByLane(lane);
         if (slots === null) {
             return;

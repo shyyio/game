@@ -68,15 +68,15 @@ export class MapButtonsLayer extends Container {
         trackTap(container, () => button.onPress());
         container.on("pointerover", () => {
             button.hovered = true;
-            this._render(button);
+            this._drawButton(button);
         });
         container.on("pointerout", () => {
             button.hovered = false;
-            this._render(button);
+            this._drawButton(button);
         });
         this._buttons.push(button);
         this.addChild(container);
-        this._render(button);
+        this._drawButton(button);
         this._refresh();
     }
 
@@ -123,7 +123,7 @@ export class MapButtonsLayer extends Container {
      */
     restyle() {
         for (const button of this._buttons) {
-            this._render(button);
+            this._drawButton(button);
         }
     }
 
@@ -163,7 +163,7 @@ export class MapButtonsLayer extends Container {
      * @param {MapButton} button
      * @returns {void}
      */
-    _render(button) {
+    _drawButton(button) {
         const face = button.face;
         face.clear();
         drawCircleButtonFace(face, BUTTON_RADIUS, button.hovered);

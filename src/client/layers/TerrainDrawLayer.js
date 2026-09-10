@@ -52,7 +52,7 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
     setTerrain(terrain) {
         this._terrain = terrain;
         setDitherTerrain(terrain);
-        this.repaint();
+        this.rebuild();
     }
 
     /**
@@ -65,7 +65,7 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
             return;
         }
         this._enabled = enabled;
-        this.repaint();
+        this.rebuild();
     }
 
     /**
@@ -73,7 +73,7 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
      * palette is rebuilt too, so a retuned biome color or shade step takes effect here.
      * @returns {void}
      */
-    repaint() {
+    rebuild() {
         this._palette = new TerrainPalette(this._biomes);
         for (const chunk of Array.from(this._chunks.keys())) {
             this._removeChunk(chunk);

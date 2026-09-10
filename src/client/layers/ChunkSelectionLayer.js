@@ -61,7 +61,7 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
         const overworld = mode === ViewMode.OVERWORLD;
         if (overworld !== this._overworld) {
             this._overworld = overworld;
-            this._redrawSelection();
+            this._drawSelection();
         }
     }
 
@@ -74,9 +74,9 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
             return;
         }
         this._selectedChunk = chunkKey;
-        this._redrawSelection();
+        this._drawSelection();
         // The hover square yields to the selection square on the same chunk.
-        this._redrawHover();
+        this._drawHover();
     }
 
     /**
@@ -92,7 +92,7 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
             return;
         }
         this._hoverChunk = chunkKey;
-        this._redrawHover();
+        this._drawHover();
     }
 
     /**
@@ -111,7 +111,7 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     refresh() {
-        this._redrawSelection();
+        this._drawSelection();
     }
 
     tick(frame, deltaMS, visibleChunks) {
@@ -145,7 +145,7 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
      * @private
      * @returns {void}
      */
-    _redrawSelection() {
+    _drawSelection() {
         this._selection.clear();
         if (this._selectedChunk === null) {
             return;
@@ -168,7 +168,7 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
      * @private
      * @returns {void}
      */
-    _redrawHover() {
+    _drawHover() {
         let chunkKey = this._hoverChunk;
         if (chunkKey === this._selectedChunk) {
             chunkKey = null;

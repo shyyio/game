@@ -73,7 +73,7 @@ export class HoverTooltip extends AbstractTooltipLayer {
      */
     restyle() {
         this._label.style.fill = PANEL_TINT_TEXT;
-        this._redraw();
+        this._draw();
     }
 
     /**
@@ -118,14 +118,14 @@ export class HoverTooltip extends AbstractTooltipLayer {
             return;
         }
         this._label.text = text;
-        this._redraw();
+        this._draw();
     }
 
     /**
      * @returns {void}
      * @private
      */
-    _redraw() {
+    _draw() {
         this.drawBox(this._label.width, this._label.height);
     }
 }

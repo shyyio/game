@@ -95,13 +95,13 @@ export class SettingsMenu {
      * retuned color, shade or dither.
      * @returns {void}
      */
-    repaintTerrain() {
-        this._client.terrainLayer.repaint();
-        this._client.terrainDetailLayer.repaint();
+    rebuildTerrain() {
+        this._client.terrainLayer.rebuild();
+        this._client.terrainDetailLayer.rebuild();
     }
 
     /**
-     * Reclassifies as well as repaints: a retuned noise channel, biome range or blend width changes
+     * Reclassifies as well as rebuilds: a retuned noise channel, biome range or blend width changes
      * which biome a tile is, which the cached bakes would otherwise keep answering.
      * @returns {void}
      */
@@ -109,7 +109,7 @@ export class SettingsMenu {
         if (this._client.terrain !== null) {
             this._client.terrain.invalidate();
         }
-        this.repaintTerrain();
+        this.rebuildTerrain();
     }
 
     /**

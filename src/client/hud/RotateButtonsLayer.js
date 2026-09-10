@@ -68,7 +68,7 @@ export class RotateButtonsLayer extends Container {
      */
     restyle() {
         this._icon.style.fill = PANEL_TEXT;
-        this._render();
+        this._draw();
     }
 
     /**
@@ -95,13 +95,13 @@ export class RotateButtonsLayer extends Container {
         }, {stopNativePropagation: true});
         button.on("pointerover", () => {
             this._hovered = true;
-            this._render();
+            this._draw();
         });
         button.on("pointerout", () => {
             this._hovered = false;
-            this._render();
+            this._draw();
         });
-        this._render();
+        this._draw();
         return button;
     }
 
@@ -119,7 +119,7 @@ export class RotateButtonsLayer extends Container {
      * @private
      * @returns {void}
      */
-    _render() {
+    _draw() {
         this._face.clear();
         drawCircleButtonFace(this._face, BUTTON_RADIUS, this._hovered);
     }

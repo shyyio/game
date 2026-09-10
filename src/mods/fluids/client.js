@@ -46,7 +46,7 @@ export class FluidsClientMod extends AbstractClientMod {
         }
         if (event instanceof PipeFluidSetEvent) {
             this._fluidByNetwork.set(event.networkId, {fluidType: event.fluidType, amount: event.amount});
-            this._repaintNetwork(event.networkId);
+            this._setNetworkFills(event.networkId);
             this._debugLayer.markStale();
         }
     }
@@ -137,7 +137,7 @@ export class FluidsClientMod extends AbstractClientMod {
             this._pipeToNetwork.set(id, networkId);
         }
         this._networkParts.set(networkId, parts);
-        this._repaintNetwork(networkId);
+        this._setNetworkFills(networkId);
     }
 
     /**
@@ -146,7 +146,7 @@ export class FluidsClientMod extends AbstractClientMod {
      * @param {number} networkId
      * @returns {void}
      */
-    _repaintNetwork(networkId) {
+    _setNetworkFills(networkId) {
         const parts = this._networkParts.get(networkId);
         if (parts === undefined) {
             return;

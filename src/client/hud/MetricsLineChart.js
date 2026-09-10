@@ -124,7 +124,7 @@ export class MetricsLineChart {
     setSize(width, height) {
         this._targetWidth = width;
         this._targetHeight = height;
-        this._redrawAll();
+        this._drawAll();
     }
 
     /**
@@ -136,7 +136,7 @@ export class MetricsLineChart {
             return;
         }
         this._metric = metric;
-        this._redrawData();
+        this._drawData();
     }
 
     /**
@@ -200,7 +200,7 @@ export class MetricsLineChart {
             this._pendingUpdate = true;
             return;
         }
-        this._redrawData();
+        this._drawData();
     }
 
     /**
@@ -337,7 +337,7 @@ export class MetricsLineChart {
         this._isDragging = false;
         if (this._pendingUpdate) {
             this._pendingUpdate = false;
-            this._redrawData();
+            this._drawData();
         }
     }
 
@@ -364,7 +364,7 @@ export class MetricsLineChart {
             return;
         }
         this._rangeTicks = next;
-        this._redrawAll();
+        this._drawAll();
         this._requestWindow(false);
         if (this._onRangeChange !== null) {
             this._onRangeChange(next);
@@ -528,7 +528,7 @@ export class MetricsLineChart {
      * @returns {void}
      * @private
      */
-    _redrawAll() {
+    _drawAll() {
         if (this._svg === null) {
             return;
         }
@@ -563,7 +563,7 @@ export class MetricsLineChart {
      * @returns {void}
      * @private
      */
-    _redrawData() {
+    _drawData() {
         this._latestSeriesData = buildSeries(this._rollup, this._metric);
         this._updateYAxis();
         this._applyThemeStrokes();

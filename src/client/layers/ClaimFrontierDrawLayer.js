@@ -49,7 +49,7 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
         if (!this._dirty) {
             return;
         }
-        this._redraw();
+        this._draw();
     }
 
     /**
@@ -74,7 +74,7 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
             return;
         }
         this._modeActive = active;
-        this._redraw();
+        this._draw();
     }
 
     /**
@@ -86,7 +86,7 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
             return;
         }
         this._selectedChunk = chunkKey;
-        this._redraw();
+        this._draw();
     }
 
     /**
@@ -97,7 +97,7 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
     setViewMode(mode) {
         this._zoomedOut = mode !== ViewMode.WORLD;
         this._overworld = mode === ViewMode.OVERWORLD;
-        this._redraw();
+        this._draw();
     }
 
     /**
@@ -121,7 +121,7 @@ export class ClaimFrontierDrawLayer extends AbstractDrawLayer {
      * @private
      * @returns {void}
      */
-    _redraw() {
+    _draw() {
         this._dirty = false;
         this._graphics.clear();
         // At the chunk limit nothing is claimable, so the frontier has nothing to offer.

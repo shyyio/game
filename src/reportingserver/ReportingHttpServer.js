@@ -317,7 +317,7 @@ export class ReportingHttpServer extends AbstractHttpServer {
      */
     _onAdminList(res) {
         const rows = this._store.listGrouped(ADMIN_LIST_LIMIT);
-        res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._renderList(rows));
+        res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._buildListHtml(rows));
     }
 
     /**
@@ -337,7 +337,7 @@ export class ReportingHttpServer extends AbstractHttpServer {
         }
         if (report.resolvedStack !== null) {
             res.cork(() => {
-                res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._renderDetail(report, report.resolvedStack));
+                res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._buildDetailHtml(report, report.resolvedStack));
             });
             return;
         }
@@ -349,14 +349,14 @@ export class ReportingHttpServer extends AbstractHttpServer {
                 this._store.setResolvedStack(errorReportId, resolvedStack);
             }
             res.cork(() => {
-                res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._renderDetail(report, resolvedStack || report.stack));
+                res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._buildDetailHtml(report, resolvedStack || report.stack));
             });
         }).catch(error => {
             if (res.aborted) {
                 return;
             }
             res.cork(() => {
-                res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._renderDetail(report, report.stack));
+                res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._buildDetailHtml(report, report.stack));
             });
         });
     }
@@ -366,7 +366,7 @@ export class ReportingHttpServer extends AbstractHttpServer {
      * @param {Array<object>} rows
      * @returns {string}
      */
-    _renderList(rows) {
+    _buildListHtml(rows) {
         const items = rows.map(row => `
             <tr>
                 <td><span class="count-pill">${row.count}</span></td>
@@ -391,7 +391,7 @@ export class ReportingHttpServer extends AbstractHttpServer {
      * @param {string} stack
      * @returns {string}
      */
-    _renderDetail(report, stack) {
+    _buildDetailHtml(report, stack) {
         const extra = report.extra !== null
             ? `<h2>Extra</h2><pre>${escapeHtml(report.extra)}</pre>`
             : "";

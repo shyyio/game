@@ -37,14 +37,14 @@ export class CircleButtonLayer extends Container {
         }, {suppressTouchGhostClick: true});
         this.on("pointerover", () => {
             this._hovered = true;
-            this._render();
+            this._draw();
         });
         this.on("pointerout", () => {
             this._hovered = false;
-            this._render();
+            this._draw();
         });
 
-        this._render();
+        this._draw();
         this._layout();
         app.renderer.on("resize", () => this._layout());
     }
@@ -102,14 +102,14 @@ export class CircleButtonLayer extends Container {
      * @returns {void}
      */
     restyle() {
-        this._render();
+        this._draw();
     }
 
     /**
      * @private
      * @returns {void}
      */
-    _render() {
+    _draw() {
         const face = this._face;
         face.clear();
         drawCircleButtonFace(face, CIRCLE_BUTTON_RADIUS, this._hovered);

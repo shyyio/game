@@ -45,7 +45,7 @@ export class InspectTooltipLayer extends AbstractTooltipLayer {
      */
     restyle() {
         this._text.style.fill = PANEL_TINT_TEXT;
-        this._redraw();
+        this._draw();
     }
 
     /**
@@ -87,14 +87,14 @@ export class InspectTooltipLayer extends AbstractTooltipLayer {
             return;
         }
         this._text.text = name;
-        this._redraw();
+        this._draw();
     }
 
     /**
      * @private
      * @returns {void}
      */
-    _redraw() {
+    _draw() {
         this.drawBox(this._text.width, this._text.height);
     }
 }

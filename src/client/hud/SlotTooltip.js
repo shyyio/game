@@ -63,7 +63,7 @@ export class SlotTooltip extends AbstractTooltipLayer {
      */
     restyle() {
         this._name.style.fill = PANEL_TINT_TEXT;
-        this._redraw();
+        this._draw();
     }
 
     /**
@@ -121,14 +121,14 @@ export class SlotTooltip extends AbstractTooltipLayer {
             return;
         }
         this._name.text = label;
-        this._redraw();
+        this._draw();
     }
 
     /**
      * @returns {void}
      * @private
      */
-    _redraw() {
+    _draw() {
         this.drawBox(this._name.width, this._name.height);
     }
 }

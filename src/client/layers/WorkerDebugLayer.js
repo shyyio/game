@@ -63,7 +63,7 @@ export class WorkerDebugLayer extends AbstractDebugDrawLayer {
      * @private
      * @returns {void}
      */
-    _repaint() {
+    _draw() {
         this._graphics.clear();
         for (const label of this._labels.removeChildren()) {
             label.destroy();

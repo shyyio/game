@@ -62,7 +62,7 @@ export class AbstractDebugDrawLayer extends AbstractDrawLayer {
     tick(frame, deltaMS, visibleChunks) {
         if (this.visible && this._stale) {
             this._stale = false;
-            this._repaint();
+            this._draw();
         }
     }
 
@@ -71,7 +71,7 @@ export class AbstractDebugDrawLayer extends AbstractDrawLayer {
      * @abstract
      * @returns {void}
      */
-    _repaint() {
+    _draw() {
         throw new NotImplementedError();
     }
 }

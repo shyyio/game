@@ -34,7 +34,7 @@ function stubApp() {
  */
 class Probe extends HoverTooltip {
 
-    _redraw() {}
+    _draw() {}
 }
 
 /**

@@ -171,8 +171,8 @@ function snapshot() {
 }
 
 // Only the ground's colors changed; the biome each tile belongs to still stands.
-function repaint() {
-  props.client.settingsMenu.repaintTerrain();
+function rebuild() {
+  props.client.settingsMenu.rebuildTerrain();
 }
 
 // A tile's biome may have changed, so every cached bake has to go.
@@ -183,12 +183,12 @@ function retune() {
 function applyColor(entry, hex) {
   entry.color = hex;
   entry.biome.color = fromHex(hex);
-  repaint();
+  rebuild();
 }
 
 function applyShadeStrength(entry) {
   entry.biome.shadeStrength = entry.shadeStrength;
-  repaint();
+  rebuild();
 }
 
 function applyRange(row) {
@@ -309,7 +309,7 @@ function applyChannel(entry) {
 
 function applyBlendLevels() {
   setBlendLevels(globals.blendLevels);
-  repaint();
+  rebuild();
 }
 
 function applyBlendWidth() {
@@ -321,13 +321,13 @@ function applyDither() {
   setDitherEnabled(globals.ditherEnabled);
   setActiveDither(globals.ditherPattern);
   setDitherScale(LOG_BASE ** globals.ditherScale);
-  repaint();
+  rebuild();
 }
 
 function applyShade() {
   setShadeStep(globals.shadeStep);
   setShadeBand(globals.shadeBand);
-  repaint();
+  rebuild();
 }
 
 /**

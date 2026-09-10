@@ -208,7 +208,7 @@ export async function createClient(app, viewport, props) {
     // Console helper for comparing the ground's dither: setTerrainDither("r2") repaints in place.
     window.setTerrainDither = name => {
         const pattern = setActiveDither(name);
-        client.terrainLayer.repaint();
+        client.terrainLayer.rebuild();
         return pattern.name;
     };
     window.terrainDithers = () => DITHER_PATTERNS.map(pattern => pattern.name);
@@ -217,29 +217,29 @@ export async function createClient(app, viewport, props) {
     // flat bands or a hard step.
     window.setTerrainBlending = levels => {
         setBlendLevels(levels);
-        client.terrainLayer.repaint();
+        client.terrainLayer.rebuild();
         return blendLevelCount();
     };
     window.setTerrainDithering = enabled => {
         setDitherEnabled(enabled);
-        client.terrainLayer.repaint();
+        client.terrainLayer.rebuild();
         return isDitherOn();
     };
     // Only the "noise" pattern reads this: bigger scale = finer grain, smaller = broader patches.
     window.setTerrainDitherScale = scale => {
         setDitherScale(scale);
-        client.terrainLayer.repaint();
+        client.terrainLayer.rebuild();
         return ditherScale();
     };
 
     const inputHandler = createInputHandler(client);
 
-    const renderToolbar = () => client.hud.toolbarLayer.setTools(client.coreTools(), client.modTools());
-    renderToolbar();
+    const rebuildToolbar = () => client.hud.toolbarLayer.setTools(client.coreTools(), client.modTools());
+    rebuildToolbar();
     // Re-renders the toolbar once the player's custom order syncs (or after a local reorder);
     // wired only after the toolbar's first render, so an in-flight sync racing client.init()
     // never rebuilds it before its textureCache is set.
-    client.cache.subscribe("playerSettings.toolOrder", renderToolbar);
+    client.cache.subscribe("playerSettings.toolOrder", rebuildToolbar);
 
     /**
      * Reverses everything above that outlives a Client/viewport teardown: the reconnect loop,

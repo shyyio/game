@@ -113,7 +113,7 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
         }
         fill.fluidType = fluidType;
         fill.fraction = fraction;
-        this._redraw(fill);
+        this._drawFill(fill);
         this._dirtyChunks.add(fill.chunkKey);
     }
 
@@ -123,7 +123,7 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
      * @param {PipeFill} fill
      * @returns {void}
      */
-    _redraw(fill) {
+    _drawFill(fill) {
         const graphics = fill.graphics;
         graphics.clear();
         if (fill.fraction <= 0) {

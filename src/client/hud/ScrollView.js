@@ -124,7 +124,7 @@ export class ScrollView extends Container {
             });
         });
 
-        this._render();
+        this._draw();
     }
 
     /**
@@ -198,14 +198,14 @@ export class ScrollView extends Container {
         const maxScroll = Math.max(this._contentHeight - this._height, 0);
         this._scrollY = Math.min(Math.max(value, 0), maxScroll);
         this.content.y = -this._scrollY;
-        this._render();
+        this._draw();
     }
 
     /**
      * @private
      * @returns {void}
      */
-    _render() {
+    _draw() {
         const overflowing = this._contentHeight > this._height;
         this._track.visible = overflowing;
         this._thumb.visible = overflowing;

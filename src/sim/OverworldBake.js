@@ -104,16 +104,16 @@ export class OverworldBake extends AbstractSystem {
     }
 
     onChunkChanged(chunkKey) {
-        this._repaintChunk(chunkKey);
+        this._bakeChunk(chunkKey);
     }
 
     /**
-     * Repaints one chunk's bake from its placed objects, dropping the record when none are visible.
+     * Bakes one chunk from its placed objects, dropping the record when none are visible.
      * @private
      * @param {number} chunkKey
      * @returns {void}
      */
-    _repaintChunk(chunkKey) {
+    _bakeChunk(chunkKey) {
         const eids = this.placed.getEidsByChunkKey(chunkKey);
         if (eids.size === 0) {
             this._chunks.delete(chunkKey);
@@ -163,7 +163,7 @@ export class OverworldBake extends AbstractSystem {
     }
 
     /**
-     * Repaints every occupied chunk after a load.
+     * Bakes every occupied chunk after a load.
      * @returns {void}
      */
     rebuild() {
@@ -176,7 +176,7 @@ export class OverworldBake extends AbstractSystem {
             touched.add(chunkKeyAt(position.x[eid], position.y[eid]));
         }
         for (const chunk of touched) {
-            this._repaintChunk(chunk);
+            this._bakeChunk(chunk);
         }
     }
 }

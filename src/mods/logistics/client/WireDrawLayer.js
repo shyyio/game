@@ -126,7 +126,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
             return;
         }
         this._stale = false;
-        this._redraw();
+        this._draw();
     }
 
     /**
@@ -197,7 +197,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
      * @private
      * @returns {void}
      */
-    _redraw() {
+    _draw() {
         const graphics = this._graphics;
         graphics.clear();
         for (const edge of this._edges.values()) {

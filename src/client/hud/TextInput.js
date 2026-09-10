@@ -71,8 +71,8 @@ export class TextInput extends Container {
         this._tick = () => this._update();
         app.ticker.add(this._tick);
 
-        this._renderBox();
-        this._renderText();
+        this._drawBox();
+        this._drawText();
     }
 
     /**
@@ -116,7 +116,7 @@ export class TextInput extends Container {
         this._placeholder = placeholder;
 
         this._domInput.addEventListener("input", () => {
-            this._renderText();
+            this._drawText();
             if (this._onInput !== null) {
                 this._onInput(this._domInput.value);
             }
@@ -142,23 +142,23 @@ export class TextInput extends Container {
             if (this._composition !== null) {
                 this._composition.length = event.data.length;
             }
-            this._renderText();
+            this._drawText();
         });
         this._domInput.addEventListener("compositionend", () => {
             this._composition = null;
-            this._renderText();
+            this._drawText();
         });
         this._domInput.addEventListener("focus", () => {
             this._focused = true;
             this._restartCaretBlink();
-            this._renderBox();
-            this._renderText();
+            this._drawBox();
+            this._drawText();
         });
         this._domInput.addEventListener("blur", () => {
             this._focused = false;
             this._composition = null;
-            this._renderBox();
-            this._renderText();
+            this._drawBox();
+            this._drawText();
             if (this._onBlur !== null) {
                 this._onBlur(this._domInput.value);
             }
@@ -236,7 +236,7 @@ export class TextInput extends Container {
      */
     set value(value) {
         this._domInput.value = value;
-        this._renderText();
+        this._drawText();
     }
 
     /**
@@ -289,7 +289,7 @@ export class TextInput extends Container {
      */
     clear() {
         this._domInput.value = "";
-        this._renderText();
+        this._drawText();
     }
 
     /**
@@ -316,7 +316,7 @@ export class TextInput extends Container {
         if (this._domInput.selectionStart !== this._lastSelectionStart
             || this._domInput.selectionEnd !== this._lastSelectionEnd
             || this._domInput.value !== this._lastText) {
-            this._renderText();
+            this._drawText();
             return;
         }
         const on = (Date.now() - this._caretVisibleAt) % (CARET_BLINK_MS * 2) < CARET_BLINK_MS;
@@ -439,7 +439,7 @@ export class TextInput extends Container {
      * @private
      * @returns {void}
      */
-    _renderBox() {
+    _drawBox() {
         // The stroke centers on its path, so the rect is inset by half of it: the box then measures
         // exactly the size it was built at, and a row laying it out gets the width it asked for.
         const inset = BORDER_WIDTH / 2;
@@ -456,7 +456,7 @@ export class TextInput extends Container {
      * @private
      * @returns {void}
      */
-    _renderText() {
+    _drawText() {
         const value = this._domInput.value;
         this._lastText = value;
         this._text.text = value;
