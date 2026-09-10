@@ -22,7 +22,7 @@ async function filled() {
     engine.applyMessage(new CreateObjectMessage(TankType.objectTypeId, 0, 0, Direction.UP));
     pipesOf(engine).addFluid(0, 2, FLUID_TYPE_WATER, 8);
     for (let tick = 0; tick < 4; tick += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     pipesOf(engine).addFluid(0, 2, FLUID_TYPE_WATER, 4);
     return engine;

@@ -24,7 +24,6 @@ import {
     ItemCategory,
     MarketListingEntry,
     Direction,
-    TickPhase,
     EMPTY,
     NO_EID,
     CHUNK_SIZE,
@@ -38,6 +37,7 @@ import {TradingTerminalType} from "@/mods/market/common/objectTypes.js";
 import {ConfigureTradingTerminalMessage} from "@/mods/market/common/messages.js";
 import {MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "@/mods/market/common/constants.js";
 import {ThroughputSinkComponent} from "./ThroughputSinkComponent.js";
+import {AbstractSystem} from "@/sim/AbstractSystem.js";
 
 // Own item range, clear of BaseGame's 3xx and the engine fixtures' 94x.
 export const ITEM_TYPE_THROUGHPUT_FEED = 950;
@@ -80,6 +80,24 @@ function press(name, label, toolId, input, output) {
 }
 
 /**
+ * Ticks every sink.
+ */
+class SinkSystem extends AbstractSystem {
+
+    /**
+     * @param {GameEngine} engine
+     */
+    constructor(engine) {
+        super();
+        this.engine = engine;
+    }
+
+    submitIntents() {
+        SinkBehavior._submitIntents(this.engine);
+    }
+}
+
+/**
  * A bottomless consumer: drains its input port every tick and counts what it took, so a run's
  * delivered total is one component column read (see {@link sinkConsumedTotal}).
  */
@@ -91,7 +109,7 @@ class SinkBehavior extends AbstractBehavior {
      */
     install(engine) {
         engine.components.register(new ThroughputSinkComponent());
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => SinkBehavior._submitIntents(engine));
+        engine.registerSystem(new SinkSystem(engine));
     }
 
     /**

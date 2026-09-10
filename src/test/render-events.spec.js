@@ -23,18 +23,18 @@ test("rendered out-ports emit port-item set/clear deltas on change only", async 
     engine.render.registerPort(s.out_b, 6, 4);
 
     engine.ports.setItem(s.out_a, ITEM);
-    engine.tickAll();
+    engine.tick();
     let events = collector.drain();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemSetEvent);
     assert.equal(events[0].portRef, s.out_a);
     assert.equal(events[0].itemTypeId, ITEM);
 
-    engine.tickAll();
+    engine.tick();
     assert.deepEqual(collector.drain(), []);
 
     engine.ports.setItem(s.out_a, EMPTY);
-    engine.tickAll();
+    engine.tick();
     events = collector.drain();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemClearEvent);
@@ -59,7 +59,7 @@ test("a render pass emits one port-item batch per chunk", async () => {
     engine.ports.setItem(s.out_a, ITEM);
     engine.ports.setItem(s.out_b, ITEM);
     engine.ports.setItem(far.out_a, ITEM);
-    engine.tickAll();
+    engine.tick();
 
     assert.equal(emitted.length, 2, "one batch per chunk");
     const near = emitted.find(batch => batch.chunkKey === chunkKeyAt(5, 4));
@@ -78,7 +78,7 @@ async function riggedPort() {
     const collector = new EventCollector(engine);
     const port = engine.ports.create(ITEM);
     engine.render.registerPort(port, 5, 4);
-    engine.tickAll();
+    engine.tick();
     collector.drain();
     return {engine, collector, port};
 }
@@ -89,17 +89,17 @@ test("a drained rendered port's clear is flagged consumed", async () => {
     const {engine, collector, port} = await riggedPort();
 
     engine.ports.consumeItem(port);
-    engine.tickAll();
+    engine.tick();
     const events = collector.drain();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemClearEvent);
     assert.equal(events[0].consumed, 1);
 
     engine.ports.setItem(port, ITEM);
-    engine.tickAll();
+    engine.tick();
     collector.drain();
     engine.ports.setItem(port, EMPTY);
-    engine.tickAll();
+    engine.tick();
     const modCleared = collector.drain();
     assert.equal(modCleared.length, 1);
     assert.ok(modCleared[0] instanceof PortItemClearEvent);
@@ -112,7 +112,7 @@ test("a consumed port a transport carried on renders a plain clear", async () =>
 
     engine.ports.consumeItem(port);
     engine.render.noteConveyed(port);
-    engine.tickAll();
+    engine.tick();
     const events = collector.drain();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemClearEvent);
@@ -127,7 +127,7 @@ test("a consumed port refilled the same tick emits clear then set", async () => 
     const NEXT_ITEM = 8;
     engine.ports.consumeItem(port);
     engine.ports.setItem(port, NEXT_ITEM);
-    engine.tickAll();
+    engine.tick();
     const events = collector.drain();
     assert.equal(events.length, 2);
     assert.ok(events[0] instanceof PortItemClearEvent);
@@ -143,7 +143,7 @@ test("a mod-emptied port refilled the same tick emits clear then set", async () 
 
     engine.ports.setItem(port, EMPTY);
     engine.ports.setItem(port, ITEM);
-    engine.tickAll();
+    engine.tick();
     const events = collector.drain();
     assert.equal(events.length, 2);
     assert.ok(events[0] instanceof PortItemClearEvent);
@@ -167,12 +167,12 @@ test("a splitter draining its rendered in-port emits a consumed clear", async ()
     engine.ports.setItem(s.out_a, ITEM);
     engine.ports.setItem(s.out_b, ITEM);
     engine.ports.setItem(s.in_a, ITEM);
-    engine.tickAll();
+    engine.tick();
     collector.drain();
 
     // Unjam: the internal hop frees, the resting in-port item transfers into it.
     engine.ports.setItem(s.out_a, EMPTY);
-    engine.tickAll();
+    engine.tick();
     const events = collector.drain();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemClearEvent);

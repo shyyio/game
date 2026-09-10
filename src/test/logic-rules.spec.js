@@ -108,7 +108,7 @@ test("a rule whose conditions hold writes its action the same tick", async () =>
             deviceCondition(gateA, LOGIC_KEY_OPEN, LOGIC_COMPARATOR_EXACTLY, 1),
         ]),
     ]), player);
-    engine.tickAll();
+    engine.tick();
     assert.equal(columnOf(engine, "Gate", "open", gateB), 0, "the rule closed gate B");
     assert.equal(columnOf(engine, "Gate", "open", gateA), 1, "the condition gate is untouched");
 });
@@ -132,7 +132,7 @@ test("a condition-less rule always applies, and a failing condition stops the wr
             deviceCondition(gateA, LOGIC_KEY_OPEN, LOGIC_COMPARATOR_EXACTLY, 0),
         ]),
     ]), player);
-    engine.tickAll();
+    engine.tick();
     assert.equal(columnOf(engine, "Machine", "enabled", machine), 0, "the condition-less rule fired");
     assert.equal(columnOf(engine, "Gate", "open", gateB), 1, "gate A is open, so the close never ran");
 });
@@ -178,7 +178,7 @@ test("all conditions must hold (AND)", async () => {
             deviceCondition(gateB, LOGIC_KEY_OPEN, LOGIC_COMPARATOR_EXACTLY, 0),
         ]),
     ]), player);
-    engine.tickAll();
+    engine.tick();
     assert.equal(columnOf(engine, "Gate", "open", gateC), 1, "one failing condition vetoed the write");
 });
 
@@ -203,13 +203,13 @@ test("a stored condition sums the item across every storage in the network", asy
             storedCondition(FLUID_TYPE_WATER, LOGIC_COMPARATOR_AT_LEAST, 100),
         ]),
     ]), player);
-    engine.tickAll();
+    engine.tick();
     assert.equal(columnOf(engine, "Gate", "open", gate), 1, "90 stored is under the threshold");
 
     // Refill both: the first tick moved one unit from each tank into its out port.
     fillTank(engine, tankA, FLUID_TYPE_WATER, 50);
     fillTank(engine, tankB, FLUID_TYPE_WATER, 50);
-    engine.tickAll();
+    engine.tick();
     assert.equal(columnOf(engine, "Gate", "open", gate), 0, "50 + 50 across two tanks triggered");
 });
 
@@ -234,11 +234,11 @@ test("a container-filtered stored condition counts only that container", async (
             storedCondition(FLUID_TYPE_WATER, LOGIC_COMPARATOR_AT_LEAST, 100, tankA),
         ]),
     ]), player);
-    engine.tickAll();
+    engine.tick();
     assert.equal(columnOf(engine, "Gate", "open", gate), 1, "tank A alone is under the threshold");
 
     fillTank(engine, tankA, FLUID_TYPE_WATER, 120);
-    engine.tickAll();
+    engine.tick();
     assert.equal(columnOf(engine, "Gate", "open", gate), 0, "tank A crossing it triggered");
 });
 
@@ -257,7 +257,7 @@ test("the topmost rule writing a device wins the tick", async () => {
         new LogicRule(gateB, LOGIC_KEY_OPEN, 0, []),
         new LogicRule(gateB, LOGIC_KEY_OPEN, 1, []),
     ]), player);
-    engine.tickAll();
+    engine.tick();
     assert.equal(columnOf(engine, "Gate", "open", gateB), 0, "the first rule claimed gate B");
 });
 
@@ -279,7 +279,7 @@ test("a rule referencing a device outside the network suspends without writing",
             deviceCondition(strayGate, LOGIC_KEY_OPEN, LOGIC_COMPARATOR_AT_LEAST, 0),
         ]),
     ]), player);
-    engine.tickAll();
+    engine.tick();
     const rules = engine.resolve(LogicRules).rulesOf(terminal);
     assert.equal(rules[0].suspended, true, "the stray condition device suspended the rule");
     assert.equal(columnOf(engine, "Gate", "open", gateB), 1, "the action never ran");
@@ -340,7 +340,7 @@ test("rules and their conditions persist through a save/load and keep running", 
     assert.equal(rules[0].actionDeviceId, gateB);
     assert.equal(rules[0].conditions.length, 1);
     assert.equal(rules[0].conditions[0].deviceId, gateA);
-    restored.simEngine.tickAll();
+    restored.simEngine.tick();
     assert.equal(columnOf(restored.simEngine, "Gate", "open", gateB), 0, "the restored rule still fires");
 });
 
@@ -380,7 +380,7 @@ test("the snapshot carries rules, their conditions, and suspended flags", async 
             deviceCondition(strayGate, LOGIC_KEY_OPEN, LOGIC_COMPARATOR_EXACTLY, 1),
         ]),
     ]), player);
-    engine.tickAll();
+    engine.tick();
 
     player.events.length = 0;
     game.dispatchMessage(new LogicSnapshotRequestMessage(terminal), player);

@@ -42,7 +42,7 @@ test("a run splits at the chunk border and items flow across the seam", async ()
         if (i < 3) {
             engine.ports.setItem(inPort, CARGO);
         }
-        engine.tickAll();
+        engine.tick();
         outStream.push(engine.ports.item(outPort));
     }
 
@@ -65,7 +65,7 @@ test("a run bending on a chunk seam carries items across it", async () => {
     engine.ports.setItem(engine.lanes.inPortOf(upstream), CARGO);
     let carried = false;
     for (let i = 0; i < 16 && !carried; i += 1) {
-        engine.tickAll();
+        engine.tick();
         carried = engine.lanes.itemsOf(downstream).some(item => item.itemTypeId === CARGO);
     }
 
@@ -89,7 +89,7 @@ test("a packed chain across a seam shifts in one tick", async () => {
     engine.ports.setItem(outPort, CARGO);
     for (let i = 0; i < 16; i += 1) {
         engine.ports.setItem(inPort, CARGO);
-        engine.tickAll();
+        engine.tick();
     }
     // The seam port is one slot of the chain, so an item resting there is packed like any other.
     const seam = engine.lanes.outPortOf(upstream);
@@ -101,7 +101,7 @@ test("a packed chain across a seam shifts in one tick", async () => {
     for (let i = 0; i < 24; i += 1) {
         engine.ports.setItem(outPort, EMPTY);
         engine.ports.setItem(inPort, EMPTY);
-        engine.tickAll();
+        engine.tick();
         if (engine.ports.item(outPort) === CARGO) {
             delivered += 1;
         }

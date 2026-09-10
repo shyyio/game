@@ -65,7 +65,7 @@ test("production is credited to the chunk owner, not to the friend who built the
     const row = def.row(eid);
     for (let i = 0; i < 10; i += 1) {
         engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE);
-        engine.tickAll();
+        engine.tick();
     }
 
     assert.ok(produced.length > 0, "the machine produced nothing to attribute");

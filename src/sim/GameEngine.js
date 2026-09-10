@@ -15,47 +15,9 @@ import {FieldSync} from "@/sim/FieldSync.js";
 import {PortIndex} from "@/sim/PortIndex.js";
 import {LaneIndex} from "@/sim/LaneIndex.js";
 import {SnapshotSerializer} from "@/sim/SnapshotSerializer.js";
+import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 
-/**
- * @enum
- */
-export const TickPhase = {
-
-    /**
-     * Submit port transfer intents
-     */
-    SUBMIT_INTENTS: 1,
-
-    /**
-     * Executed after the transfer resolution, with every resolved source already emptied; the
-     * resolved destinations fill once the phase closes.
-     */
-    POST_RESOLVE: 2,
-
-    /**
-     * (internal, engine-only) Diff/emit the out-port render events after mods have captured this
-     * tick's watched port items. Mods register no ops here.
-     */
-    EMIT_RENDER: 3,
-
-    /**
-     * Mods snapshot inspected machines here; the engine drains them to sessions in postTick.
-     */
-    EMIT_INSPECT: 4,
-}
-
-// A mod's system order lies strictly inside ±SYSTEM_ORDER_LIMIT; the resolver's own systems sit at
-// the limits to bracket the phases.
-export const SYSTEM_ORDER_LIMIT = 1000;
-
-// The tick phases run in order each whole tick.
-export const TICK_PHASE_ORDER = [
-    TickPhase.SUBMIT_INTENTS,
-    TickPhase.POST_RESOLVE,
-    TickPhase.EMIT_RENDER,
-    TickPhase.EMIT_INSPECT,
-];
 
 /**
  * The simulation engine Game drives: the port-transfer core over typed-array component
@@ -87,7 +49,6 @@ export class GameEngine {
          */
         this.lanes = new LaneIndex(this);
         this._initSaveState();
-        this._registerCoreSystems();
         this._initRenderSinks();
 
         this.transfers.resetTick();
@@ -124,13 +85,17 @@ export class GameEngine {
         // registry at init.
         this._fluidTypes = new Set();
 
-        // Registered by mods.
-        this._messageHandlers = [];
-        this._chunkSyncers = [];
-        this._inspectors = [];
-        this._placementGuards = [];
-        this._spawnListeners = [];
-        this._despawnListeners = [];
+        /**
+         * Every registered system in registration order; the lifecycle hooks run in it.
+         * @type {AbstractSystem[]}
+         */
+        this.systems = [];
+
+        /**
+         * The same systems sorted by order then registration; the tick phases run in it.
+         * @type {AbstractSystem[]}
+         */
+        this.tickSystems = [];
 
         // Decides whether a player may modify a chunk; without one every change is allowed.
         this._placementGate = null;
@@ -201,7 +166,7 @@ export class GameEngine {
         // Global client-facing object ref, shared across all object types so ids never collide.
         this._nextObjectRef = 1;
 
-        // Whole ticks elapsed, incremented once per tick (see _registerCoreSystems).
+        // Whole ticks elapsed, incremented once per tick.
         // A stable per-tick seed component for deterministic per-craft rolls (see MachineBehavior).
         this.clock = 0;
 
@@ -216,28 +181,6 @@ export class GameEngine {
          * @type {SnapshotSerializer}
          */
         this.snapshots = new SnapshotSerializer(this);
-        this.snapshots.registerRebuildHook(() => this.sync.rebuild());
-    }
-
-    /**
-     * Registers the engine-owned systems that bracket every tick.
-     * @private
-     * @returns {void}
-     */
-    _registerCoreSystems() {
-        // Per-phase system entries {order, seq, system}, kept sorted and run in order by tick(phase).
-        this._systemSeq = 0;
-        this.systems = {};
-        for (const phase of TICK_PHASE_ORDER) {
-            this.systems[phase] = [];
-        }
-        this.transfers.registerSystems();
-        this.lanes.registerSystems();
-        this.registerSystem(TickPhase.SUBMIT_INTENTS, () => {
-            this.clock += 1;
-        });
-        this.registerSystem(TickPhase.EMIT_RENDER, () => this.render.emit());
-        this.registerSystem(TickPhase.EMIT_RENDER, () => this.sync.emit());
     }
 
     /**
@@ -396,8 +339,11 @@ export class GameEngine {
             // then bespoke sim mods register theirs.
             this._fluidTypes = this.modRegistry.fluidTypes;
             this.placed = new PlacedObjects(this, this.modRegistry);
-            // After the host's own hook, so every cell's ports are bound when the lanes re-derive.
-            this.snapshots.registerRebuildHook(() => this.lanes.rebuild());
+        }
+        // After the host, so a chunk syncs its objects before the lanes over them, and a rebuild
+        // binds every cell's ports before the lanes re-derive.
+        this.registerSystem(this.lanes);
+        if (this.modRegistry !== null) {
             this.placed.installBehaviors();
             this.overworldBake = new OverworldBake(this, this.placed);
             this.workers = new WorkerNetworks(this, this.placed);
@@ -408,54 +354,38 @@ export class GameEngine {
     }
 
     /**
-     * @param {TickPhase} phase
+     * Runs one whole tick: the resolver brackets SUBMIT_INTENTS and closes POST_RESOLVE, then the
+     * engine emits what the clients watch.
      * @returns {void}
      */
-    tick(phase) {
-        for (const entry of this.systems[phase]) {
-            entry.system();
+    tick() {
+        this.clock += 1;
+        this.transfers.resetTick();
+        for (const system of this.tickSystems) {
+            system.submitIntents();
         }
+        this.transfers.resolve();
+        for (const system of this.tickSystems) {
+            system.postResolve();
+        }
+        this.transfers.fillDestinations();
+        this.render.emit();
+        this.sync.emit();
     }
 
     /**
-     * Runs a whole tick (every phase in order).
-     * @returns {void}
+     * Registers a system; the engine calls its hooks by name from here on.
+     * @template {AbstractSystem} T
+     * @param {T} system
+     * @returns {T}
      */
-    tickAll() {
-        for (const phase of TICK_PHASE_ORDER) {
-            this.tick(phase);
+    registerSystem(system) {
+        if (!(system instanceof AbstractSystem)) {
+            throw new TypeError("a system extends AbstractSystem");
         }
-    }
-
-    /**
-     * Registers a system on a phase. Systems run by ascending `order`, ties by registration order;
-     * a negative order runs before the phase's default-order systems (e.g. a mode review that must
-     * settle before the intents it shapes are submitted). `order` lies strictly inside
-     * ±SYSTEM_ORDER_LIMIT.
-     * @param {TickPhase} phase
-     * @param {function(): void} system
-     * @param {number} [order]
-     * @returns {void}
-     */
-    registerSystem(phase, system, order=0) {
-        if (Math.abs(order) >= SYSTEM_ORDER_LIMIT) {
-            throw new Error(`system order ${order} is outside the resolver's brackets`);
-        }
-        this.registerBracketSystem(phase, system, order);
-    }
-
-    /**
-     * Registers one of the resolver's bracket systems, at an order a mod cannot reach.
-     * @param {TickPhase} phase
-     * @param {function(): void} system
-     * @param {number} order
-     * @returns {void}
-     */
-    registerBracketSystem(phase, system, order) {
-        const entries = this.systems[phase];
-        entries.push({order, seq: this._systemSeq, system});
-        this._systemSeq += 1;
-        entries.sort((a, b) => a.order - b.order || a.seq - b.seq);
+        this.systems.push(system);
+        this.tickSystems = this.systems.slice().sort((a, b) => a.order - b.order);
+        return system;
     }
 
     /**
@@ -501,54 +431,15 @@ export class GameEngine {
     }
 
     /**
-     * A mod registers a message handler (returns true if it handled the message).
-     * @param {function(AbstractMessage, number): boolean} handler - message, acting playerRef
-     * @returns {void}
-     */
-    registerMessageHandler(handler) {
-        this._messageHandlers.push(handler);
-    }
-
-    /**
-     * A mod registers a chunk-sync contributor: the events that recreate its state in a chunk for
-     * a newly subscribed session. They ride inside one ChunkSyncEvent, unrouted, so any wire event
-     * class is legal. Contributors run in registration order, after the core object sync.
-     * @param {function(number): AbstractEvent[]} contributor
-     * @returns {void}
-     */
-    registerChunkSync(contributor) {
-        this._chunkSyncers.push(contributor);
-    }
-
-    /**
-     * A mod registers a cross-object placement veto, consulted for every placed-object spawn.
-     * @param {function(ObjectType, number, number, Direction): boolean} guard - returns false to veto
-     * @returns {void}
-     */
-    registerPlacementGuard(guard) {
-        this._placementGuards.push(guard);
-    }
-
-    /**
-     * Whether every registered placement guard allows spawning `type` at (x, y).
+     * Whether every registered system allows spawning `type` at (x, y).
      * @param {ObjectType} type
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
      * @returns {boolean}
      */
-    placementGuardsAllow(type, x, y, direction) {
-        return this._placementGuards.every(guard => guard(type, x, y, direction));
-    }
-
-    /**
-     * A mod registers a spawn listener, called for every placed-object create once its footprint is
-     * tracked, before its insert event.
-     * @param {function(number, number): void} listener - (eid, objectRef)
-     * @returns {void}
-     */
-    registerSpawnListener(listener) {
-        this._spawnListeners.push(listener);
+    isPlacementAllowed(type, x, y, direction) {
+        return this.systems.every(system => system.isPlacementAllowed(type, x, y, direction));
     }
 
     /**
@@ -557,19 +448,9 @@ export class GameEngine {
      * @returns {void}
      */
     notifySpawn(eid, objectRef) {
-        for (const listener of this._spawnListeners) {
-            listener(eid, objectRef);
+        for (const system of this.systems) {
+            system.onSpawn(eid, objectRef);
         }
-    }
-
-    /**
-     * A mod registers a despawn listener, called for every placed-object delete before the entity
-     * is destroyed.
-     * @param {function(number, number): void} listener - (eid, objectRef)
-     * @returns {void}
-     */
-    registerDespawnListener(listener) {
-        this._despawnListeners.push(listener);
     }
 
     /**
@@ -578,18 +459,19 @@ export class GameEngine {
      * @returns {void}
      */
     notifyDespawn(eid, objectRef) {
-        for (const listener of this._despawnListeners) {
-            listener(eid, objectRef);
+        for (const system of this.systems) {
+            system.onDespawn(eid, objectRef);
         }
     }
 
     /**
-     * A mod registers an inspect snapshotter (object client id -> InspectHeartbeatEvent or null).
-     * @param {function(number): (object|null)} inspector
+     * @param {number} chunkKey
      * @returns {void}
      */
-    registerInspector(inspector) {
-        this._inspectors.push(inspector);
+    notifyChunkChanged(chunkKey) {
+        for (const system of this.systems) {
+            system.onChunkChanged(chunkKey);
+        }
     }
 
     /**
@@ -627,8 +509,8 @@ export class GameEngine {
      * @returns {InspectHeartbeatEvent|null}
      */
     inspectSnapshot(objectRef) {
-        for (let i = 0; i < this._inspectors.length; i += 1) {
-            const snapshot = this._inspectors[i](objectRef);
+        for (const system of this.systems) {
+            const snapshot = system.inspect(objectRef);
             if (snapshot !== null) {
                 return snapshot;
             }
@@ -654,11 +536,11 @@ export class GameEngine {
                 return true;
             }
             this.untrack(message.objectRef);
-            handled = this._messageHandlers.some(handler => handler(message, playerRef));
+            handled = this._dispatchMessage(message, playerRef);
             // A delete (and any belt relink it triggered) can strand ports; destroy them now.
             this.ports.collectUnreferenced();
         } else {
-            handled = this._messageHandlers.some(handler => handler(message, playerRef));
+            handled = this._dispatchMessage(message, playerRef);
         }
         if (this.workers !== null) {
             this.workers.ensureFresh();
@@ -676,10 +558,20 @@ export class GameEngine {
         for (const eid of eids) {
             const message = new DeleteObjectMessage(this.placed.objectRefOf(eid));
             this.untrack(message.objectRef);
-            this._messageHandlers.some(handler => handler(message, PLAYER_REF_NONE));
+            this._dispatchMessage(message, PLAYER_REF_NONE);
         }
         this.ports.collectUnreferenced();
         return eids.length;
+    }
+
+    /**
+     * @private
+     * @param {AbstractMessage} message
+     * @param {number} playerRef
+     * @returns {boolean} whether a system handled it
+     */
+    _dispatchMessage(message, playerRef) {
+        return this.systems.some(system => system.dispatchMessage(message, playerRef));
     }
 
     /**
@@ -706,12 +598,12 @@ export class GameEngine {
      */
     chunkSync(chunkKey) {
         const events = [];
-        for (const contributor of this._chunkSyncers) {
-            for (const event of contributor(chunkKey)) {
+        for (const system of this.systems) {
+            for (const event of system.chunkSync(chunkKey)) {
                 events.push(event);
             }
         }
-        // After the contributors: the client patches synced fields onto, and resolves a port item
+        // After the systems: the client patches synced fields onto, and resolves a port item
         // against, the object/path the contributors' events just recreated.
         for (const event of this.sync.chunkSync(chunkKey)) {
             events.push(event);

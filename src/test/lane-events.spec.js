@@ -42,7 +42,7 @@ test("an item emits an upsert on ingest and a delete on pop", async () => {
     engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
     const rows = [];
     for (let i = 0; i < 8; i += 1) {
-        engine.tickAll();
+        engine.tick();
         for (const event of collector.drain()) {
             if (event instanceof LaneItemUpsertEvent || event instanceof LaneItemDeleteEvent) {
                 rows.push(event);
@@ -71,7 +71,7 @@ test("a move pass emits one item batch per chunk", async () => {
     for (const lane of lanes) {
         engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
     }
-    engine.tickAll();
+    engine.tick();
 
     const batches = emitted.filter(event => event instanceof LaneItemBatchEvent);
     assert.equal(batches.length, 2, "one batch per chunk");
@@ -93,7 +93,7 @@ test("a lane emits a port-item set when an item pops to its out-port", async () 
     engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
     const sets = [];
     for (let i = 0; i < 8; i += 1) {
-        engine.tickAll();
+        engine.tick();
         for (const event of collector.drain()) {
             if (event instanceof PortItemSetEvent) {
                 sets.push(event);
@@ -118,7 +118,7 @@ test("deleting the tail cell emits a port-item clear for the stranded out-port",
     const outPort = engine.lanes.outPortOf(lane);
     engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
     for (let i = 0; i < 8; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     collector.drain();
 
@@ -142,7 +142,7 @@ test("a downstream extension emits geometry before item rows and clears the old 
     const oldOutPort = engine.lanes.outPortOf(lane);
     engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
     for (let i = 0; i < 10 && engine.ports.item(oldOutPort) !== CARGO; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     collector.drain();
 
@@ -155,7 +155,7 @@ test("a downstream extension emits geometry before item rows and clears the old 
     assert.ok(geometryAt >= 0 && firstRowAt >= 0, "both a geometry event and item rows are emitted");
     assert.ok(geometryAt < firstRowAt, "the geometry precedes the item rows");
 
-    engine.tickAll();
+    engine.tick();
     const cleared = events.concat(collector.drain()).some(event =>
         event instanceof PortItemClearEvent && event.portRef === oldOutPort);
     assert.ok(cleared, "the old out-port's resting sprite is cleared");
@@ -172,14 +172,14 @@ test("extending a lane upstream leaves a resting out-port item static", async ()
     const outPort = engine.lanes.outPortOf(laneAt(engine, 0, 5));
     engine.ports.setItem(engine.lanes.inPortOf(laneAt(engine, 0, 5)), CARGO);
     for (let i = 0; i < 10 && engine.ports.item(outPort) !== CARGO; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     assert.equal(engine.ports.item(outPort), CARGO, "the item rests in the out-port");
     collector.drain();
 
     placeLane(engine, 0, 6, Direction.UP);
     const editEvents = collector.drain();
-    engine.tickAll();
+    engine.tick();
     const tickEvents = collector.drain();
 
     assert.equal(engine.ports.item(outPort), CARGO, "the item is still in the out-port");
@@ -220,7 +220,7 @@ test("a rebuild sends the port items it changed along with its rows", async () =
     engine.ports.setItem(engine.lanes.outPortOf(run), 2);
     for (let i = 0; i < 6; i += 1) {
         engine.ports.setItem(engine.lanes.inPortOf(run), CARGO);
-        engine.tickAll();
+        engine.tick();
     }
     collector.drain();
 

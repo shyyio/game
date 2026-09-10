@@ -22,29 +22,6 @@ export class SnapshotSerializer {
 
         // Hooks run at the start of serialize, letting a bespoke module (belts) flush JS-only runtime
         // state into its registered components so the generic reflection captures it.
-        this._serializeHooks = [];
-        // Hooks a module registers to rebuild its derived indexes after deserialize repopulates the world.
-        this._rebuildHooks = [];
-    }
-
-    /**
-     * A bespoke module registers a hook run at the start of {@link serialize}, to materialize any
-     * JS-only runtime state into its registered components before reflection reads them.
-     * @param {function(): void} hook
-     * @returns {void}
-     */
-    registerSerializeHook(hook) {
-        this._serializeHooks.push(hook);
-    }
-
-    /**
-     * A module registers a hook run after {@link deserialize} repopulates the world, to rebuild its own
-     * derived indexes from the restored components. Receives the old-eid -> new-eid remap.
-     * @param {function(Map<number,number>): void} hook
-     * @returns {void}
-     */
-    registerRebuildHook(hook) {
-        this._rebuildHooks.push(hook);
     }
 
     /**
@@ -66,8 +43,8 @@ export class SnapshotSerializer {
      */
     serialize() {
         const engine = this.engine;
-        for (const hook of this._serializeHooks) {
-            hook();
+        for (const system of engine.systems) {
+            system.serialize();
         }
         const components = engine.components.components.map(component => {
             const rows = [];
@@ -166,8 +143,9 @@ export class SnapshotSerializer {
         engine.restoreGlobals(snapshot.globals);
         engine.space.rebuild();
         engine.ports.rebuild();
-        for (const hook of this._rebuildHooks) {
-            hook(remap);
+        engine.sync.rebuild();
+        for (const system of engine.systems) {
+            system.rebuild();
         }
     }
 

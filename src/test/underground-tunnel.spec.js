@@ -33,7 +33,7 @@ test("an item tunnels through a tunnel-down / underground / tunnel-up run", asyn
     let arrived = false;
     for (let i = 0; i < 20 && !arrived; i += 1) {
         engine.ports.setItem(lane.outPort, EMPTY);
-        engine.tickAll();
+        engine.tick();
         arrived = engine.ports.item(lane.outPort) === RED;
     }
     assert.ok(arrived, "the item tunneled through to the output");

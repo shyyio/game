@@ -59,7 +59,7 @@ test("a belt-fed seller loses no items when a pop and a sale share a tick", asyn
             engine.ports.setItem(feed.inPort, ITEM);
             fed += 1;
         }
-        engine.tickAll();
+        engine.tick();
         if (engine.ports.item(buyerOutPort) === ITEM) {
             delivered += 1;
             engine.ports.setItem(buyerOutPort, EMPTY);

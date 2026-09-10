@@ -10,7 +10,7 @@ import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/Ob
 import {LaneItemDeleteEvent} from "@/common/LaneEvents.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {Game} from "@/sim/Game.js";
-import {GameEngine, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
+import {GameEngine} from "@/sim/GameEngine.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 import {BeltType} from "@/mods/logistics/common/objectTypes.js";
@@ -248,9 +248,7 @@ class Scenario {
 
     tick(count = 1) {
         for (let i = 0; i < count; i += 1) {
-            for (const phase of TICK_PHASE_ORDER) {
-                this.game.tick(phase);
-            }
+            this.game.simEngine.tick();
             this.game.postTick();
         }
     }

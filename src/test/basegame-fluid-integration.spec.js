@@ -41,7 +41,7 @@ test("a Blender pumps Nutrient Slop into an adjacent pipe network", async () => 
     const pipes = pipesOf(engine);
 
     for (let i = 0; i < 40; i += 1) {
-        engine.tickAll();
+        engine.tick();
         engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE);
     }
 
@@ -77,7 +77,7 @@ test("a pipe delivers Water into a Greenhouse's fluid input, completing the reci
     let produced = false;
     for (let i = 0; i < 200 && !produced; i += 1) {
         engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE_SEED);
-        engine.tickAll();
+        engine.tick();
         produced = engine.ports.item(outPort) !== EMPTY;
     }
     assert.ok(produced, "Water reached the Greenhouse through the pipe and the craft completed");
@@ -95,7 +95,7 @@ test("Blast Furnace produces Raw Steel from Iron Ore + Coke + Oxygen in one craf
         engine.ports.setItem(def.store.in0[row], ITEM_TYPE_IRON_ORE);
         engine.ports.setItem(def.store.in1[row], ITEM_TYPE_COKE);
         engine.ports.setItem(def.store.in2[row], ITEM_TYPE_OXYGEN);
-        engine.tickAll();
+        engine.tick();
         produced = engine.ports.item(def.store.out[row]) === ITEM_TYPE_RAW_STEEL;
     }
     assert.ok(produced, "Blast Furnace produces Raw Steel from Iron Ore + Coke + Oxygen");
@@ -121,7 +121,7 @@ test("Brew produces both Basic Potion Base and Overload Mix, one machine", async
         if (engine.ports.item(in1Port) === EMPTY) {
             engine.ports.setItem(in1Port, ITEM_TYPE_WATER);
         }
-        engine.tickAll();
+        engine.tick();
         basicPotionBase = engine.ports.item(outPort) === ITEM_TYPE_BASIC_POTION_BASE;
     }
     assert.ok(basicPotionBase, "Brew produces Basic Potion Base from Mushroom + Water");
@@ -143,7 +143,7 @@ test("Brew produces both Basic Potion Base and Overload Mix, one machine", async
         if (engine.ports.item(in1Port) === EMPTY) {
             engine.ports.setItem(in1Port, ITEM_TYPE_BASIC_POTION_BASE);
         }
-        engine.tickAll();
+        engine.tick();
         overloadMix = engine.ports.item(outPort) === ITEM_TYPE_OVERLOAD_MIX;
     }
     assert.ok(overloadMix, "the same Brew also produces Overload Mix from Adrenochrome + Basic Potion Base");

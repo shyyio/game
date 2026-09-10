@@ -3,8 +3,7 @@ import assert from "node:assert/strict";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {ModPackage} from "@/common/ModPackage.js";
-import {TickPhase} from "@/sim/GameEngine.js";
-import {makeGameEngine} from "@/test/ecsSim.js";
+import {makeGameEngine, ProbeSystem} from "@/test/ecsSim.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {TestMachineType, MachineFixtureDeclaration} from "@/test/machineFixture.js";
 import {
@@ -48,7 +47,7 @@ test("a lane carries fed items to its out-port one slot per tick", async () => {
         if (i < 2) {
             engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
         }
-        engine.tickAll();
+        engine.tick();
         stream.push(engine.ports.item(engine.lanes.outPortOf(lane)));
     }
     assert.deepEqual(stream, [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CARGO, CARGO, EMPTY, EMPTY, EMPTY]);
@@ -64,7 +63,7 @@ test("a lane head ingests a producer feeding its flank", async () => {
 
     let drained = false;
     for (let i = 0; i < 8 && !drained; i += 1) {
-        engine.tickAll();
+        engine.tick();
         drained = engine.ports.item(producerOut) === EMPTY;
     }
 
@@ -85,7 +84,7 @@ test("a machine on the flank of a head with a parent cell is inert until that ce
     assert.equal(engine.lanes.parentEdgeOf(engine.placed.eidAt(0, 63, LAYER_SURFACE)), Direction.UP, "fed from behind");
 
     for (let i = 0; i < 8; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     assert.equal(engine.ports.item(producerOut), CARGO, "the flank feed waits: the head's input is the seam");
     assert.equal(engine.lanes.itemCountOf(head), 0);
@@ -93,7 +92,7 @@ test("a machine on the flank of a head with a parent cell is inert until that ce
     deleteLane(engine, 0, 64);
 
     for (let i = 0; i < 8; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     assert.equal(engine.ports.item(producerOut), EMPTY, "with nothing behind it, the machine is the parent");
     assert.equal(engine.lanes.parentEdgeOf(engine.placed.eidAt(0, 63, LAYER_SURFACE)), Direction.RIGHT);
@@ -109,7 +108,7 @@ test("a feeder into a mid-lane cell's flank backs up", async () => {
     engine.ports.setItem(producerOut, CARGO);
 
     for (let i = 0; i < 8; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
 
     assert.equal(engine.ports.item(producerOut), CARGO, "the feed stays in the producer's port");
@@ -126,7 +125,7 @@ test("a lane refuses a resting fluid", async () => {
     engine.ports.setItem(engine.lanes.inPortOf(lane), FLUID);
 
     for (let i = 0; i < 8; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
 
     assert.equal(engine.ports.item(engine.lanes.inPortOf(lane)), FLUID, "the fluid stays put");
@@ -143,22 +142,22 @@ test("a lane losing its out-port to another producer keeps its lead", async () =
     const lane = laneAt(engine, 0, 1);
     const outPort = engine.lanes.outPortOf(lane);
     let contend = false;
-    engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => {
+    engine.registerSystem(new ProbeSystem({submitIntents: () => {
         if (contend) {
             engine.transfers.submitCreate(outPort, OTHER, true);
         }
-    });
+    }}));
 
     engine.ports.setItem(outPort, OTHER);
     engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
     for (let i = 0; i < 8; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     assert.equal(engine.lanes.itemCountOf(lane), 1);
 
     engine.ports.setItem(outPort, EMPTY);
     contend = true;
-    engine.tickAll();
+    engine.tick();
 
     assert.equal(engine.ports.item(outPort), OTHER);
     assert.equal(engine.lanes.itemCountOf(lane), 1, "the lead the other producer beat stays on the lane");
@@ -173,24 +172,24 @@ test("a lane does not ingest an in-port item something else took", async () => {
     const lane = laneAt(engine, 0, 1);
     const inPort = engine.lanes.inPortOf(lane);
     let steal = false;
-    engine.registerSystem(TickPhase.POST_RESOLVE, () => {
+    engine.registerSystem(new ProbeSystem({order: -1, postResolve: () => {
         if (steal) {
             engine.ports.consumeItem(inPort);
         }
-    }, -1);
+    }}));
 
     engine.ports.setItem(engine.lanes.outPortOf(lane), OTHER);
     for (let i = 0; i < 16; i += 1) {
         engine.ports.setItem(inPort, CARGO);
-        engine.tickAll();
+        engine.tick();
     }
     const packed = engine.lanes.itemCountOf(lane);
     engine.ports.setItem(inPort, CARGO);
-    engine.tickAll();
+    engine.tick();
     assert.equal(engine.ports.item(inPort), CARGO, "a packed lane leaves the in-port item resting");
 
     steal = true;
-    engine.tickAll();
+    engine.tick();
 
     assert.equal(engine.ports.item(inPort), EMPTY);
     assert.equal(engine.lanes.itemCountOf(lane), packed, "nothing reached the lane");
@@ -212,24 +211,24 @@ test("a feeder never overwrites the in-port item of a lane that is popping", asy
     // lane empties that port.
     let intentRow = -1;
     let fed = 0;
-    engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => {
+    engine.registerSystem(new ProbeSystem({submitIntents: () => {
         intentRow = engine.transfers.submitCreate(inPort, CARGO, engine.ports.item(inPort) === EMPTY);
-    });
-    engine.registerSystem(TickPhase.POST_RESOLVE, () => {
+    }}));
+    engine.registerSystem(new ProbeSystem({postResolve: () => {
         if (engine.transfers.wasResolved(intentRow)) {
             fed += 1;
         }
-    });
+    }}));
 
     // Fill the lane solid against a blocked out-port, then drain it every tick.
     engine.ports.setItem(outPort, OTHER);
     for (let i = 0; i < 12; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     let delivered = 0;
     for (let i = 0; i < 24; i += 1) {
         engine.ports.setItem(outPort, EMPTY);
-        engine.tickAll();
+        engine.tick();
         if (engine.ports.item(outPort) === CARGO) {
             delivered += 1;
         }

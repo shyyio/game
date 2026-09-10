@@ -19,7 +19,6 @@
 // none resolvable). Report prints intents/resolved per tick either way.
 
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {TickPhase, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
 import {EMPTY} from "@/sim/sentinels.js";
 import {ExtractorType, BakeType} from "@/mods/base-game/common/objectTypes.js";
 import {buildLine, lineOrigin, lineSinkPort} from "@/test/productionLine.js";
@@ -33,8 +32,6 @@ const TOP_FUNCTIONS = 25;
 
 const MS_PER_SECOND = 1000;
 
-const PHASE_NAMES = new Map(Object.entries(TickPhase).map(([name, phase]) => [phase, name]));
-
 /**
  * Parses a positional integer argument, falling back when absent or unparsable.
  * @param {string|undefined} raw
@@ -47,29 +44,6 @@ function intArg(raw, fallback) {
         return parsed;
     }
     return fallback;
-}
-
-/**
- * Prints per-phase tick cost, most expensive first.
- * @param {Object<number, number>} phaseTotals
- * @param {number} ticks
- * @returns {void}
- */
-function printReport(phaseTotals, ticks) {
-    const rows = TICK_PHASE_ORDER
-        .map(phase => ({name: PHASE_NAMES.get(phase), totalMs: phaseTotals[phase]}))
-        .sort((a, b) => b.totalMs - a.totalMs);
-    const total = rows.reduce((sum, row) => sum + row.totalMs, 0);
-
-    console.log("Phase                 total ms    ms/tick   share");
-    for (const row of rows) {
-        const perTick = (row.totalMs / ticks).toFixed(2);
-        const share = ((row.totalMs / total) * 100).toFixed(1);
-        console.log(
-            `${row.name.padEnd(18)} ${row.totalMs.toFixed(1).padStart(10)} `
-            + `${perTick.padStart(10)} ${`${share}%`.padStart(7)}`
-        );
-    }
 }
 
 async function main() {
@@ -116,11 +90,6 @@ async function main() {
     );
     printHeapUsage("After build");
 
-    const phaseTotals = {};
-    for (const phase of TICK_PHASE_ORDER) {
-        phaseTotals[phase] = 0;
-    }
-
     if (profiling) {
         await profiler.start();
     }
@@ -134,11 +103,7 @@ async function main() {
     let resolved = 0;
     const runStart = performance.now();
     for (let i = 0; i < ticks; i += 1) {
-        for (const phase of TICK_PHASE_ORDER) {
-            const phaseStart = performance.now();
-            engine.tick(phase);
-            phaseTotals[phase] += performance.now() - phaseStart;
-        }
+        engine.tick();
         intents += engine.transfers.intentCount;
         resolved += engine.transfers.resolvedCount;
         if (!jammed) {
@@ -171,7 +136,6 @@ async function main() {
     printHeapUsage("After ticks");
     console.log("");
 
-    printReport(phaseTotals, ticks);
 
     if (profiling) {
         printProfileSummary(seedProfile, TOP_FUNCTIONS, "Seed");

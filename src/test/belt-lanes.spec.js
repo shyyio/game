@@ -38,7 +38,7 @@ test("a belt line placed via messages flows two items to the tail", async () => 
         if (i < 2) {
             engine.ports.setItem(engine.lanes.inPortOf(lane), RED);
         }
-        engine.tickAll();
+        engine.tick();
         stream.push(engine.ports.item(engine.lanes.outPortOf(lane)));
     }
     assert.deepEqual(stream, EXPECTED);

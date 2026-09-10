@@ -6,7 +6,7 @@ import {
     LaneGeometryBatchEvent,
     LaneItemBatchEvent,
 } from "@/common/LaneEvents.js";
-import {TickPhase} from "@/sim/GameEngine.js";
+import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {LaneComponent} from "@/sim/LaneComponent.js";
 import {LaneCellComponent} from "@/sim/LaneCellComponent.js";
 import {LaneItemComponent} from "@/sim/LaneItemComponent.js";
@@ -92,12 +92,13 @@ function levelsMeet(outLevel, outDirection, inLevel, inDirection) {
     return laneLevelLayer(outLevel, outDirection) === laneLevelLayer(inLevel, inDirection);
 }
 
-export class LaneIndex {
+export class LaneIndex extends AbstractSystem {
 
     /**
      * @param {GameEngine} engine
      */
     constructor(engine) {
+        super();
         this.engine = engine;
 
         this.items = engine.components.register(new LaneItemComponent());
@@ -116,25 +117,11 @@ export class LaneIndex {
         // This pass's client rows, one batch per chunk.
         this._batches = new Map();
 
-        engine.registerChunkSync(chunkKey => this.chunkSync(chunkKey));
-        engine.registerSpawnListener(eid => this.objectChanged(eid));
-        engine.registerDespawnListener(eid => this.objectChanged(eid));
-
         // Per-lane-row intents submitted this tick, and the item each would take onto the lane.
         this._popIntent = new Int32Array(0);
         this._drainIntent = new Int32Array(0);
         this._popSourceItem = new Int32Array(0);
         this._drainItem = new Int32Array(0);
-    }
-
-    /**
-     * Registers the per-tick systems: the intents, then what they resolved into.
-     * @returns {void}
-     */
-    // Repeated pattern, same as TransferResolver, why not have them both inherit a "AbstractSystem" class or something?
-    registerSystems() {
-        this.engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this.submit());
-        this.engine.registerSystem(TickPhase.POST_RESOLVE, () => this.resolve());
     }
 
     /**
@@ -450,7 +437,20 @@ export class LaneIndex {
      * @param {number} eid - the object spawned or being despawned
      * @returns {void}
      */
-    objectChanged(eid) {
+    onSpawn(eid) {
+        this._objectChanged(eid);
+    }
+
+    onDespawn(eid) {
+        this._objectChanged(eid);
+    }
+
+    /**
+     * @private
+     * @param {number} eid
+     * @returns {void}
+     */
+    _objectChanged(eid) {
         if (this.cells.row(eid) >= 0) {
             return;
         }
@@ -881,10 +881,10 @@ export class LaneIndex {
     // ---- the step ----
 
     /**
-     * SUBMIT_INTENTS: the pop past the tail and the ingest at the head.
+     * The pop past the tail and the ingest at the head.
      * @returns {void}
      */
-    submit() {
+    submitIntents() {
         const engine = this.engine;
         const lanes = this.lanes.store;
         const laneCount = this.lanes.count;
@@ -942,10 +942,10 @@ export class LaneIndex {
     }
 
     /**
-     * POST_RESOLVE: advance every file by what its intents won, and take in what its drain took.
+     * Advances every file by what its intents won, and takes in what its drain took.
      * @returns {void}
      */
-    resolve() {
+    postResolve() {
         const transfers = this.engine.transfers;
         for (let laneRow = 0; laneRow < this.lanes.count; laneRow += 1) {
             const laneEid = this.lanes.eids[laneRow];
@@ -1143,9 +1143,6 @@ export class LaneIndex {
      * @param {number} chunkKey
      * @returns {AbstractEvent[]}
      */
-    // Tons of functions have the .chunkSync() column but no standardized contract. needs to be formalized
-    // with an abstract class or something. This can't stay like this and is the cause of a lot of terminology
-    // drift, it's not enforced at all
     chunkSync(chunkKey) {
         const lanes = this._lanesByChunk.get(chunkKey);
         if (lanes === undefined) {

@@ -1,5 +1,5 @@
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
-import {TickPhase} from "@/sim/GameEngine.js";
+import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 import {SyncedFields, SyncedField} from "@/common/SyncedFields.js";
@@ -7,6 +7,28 @@ import {LAYER_RESOURCE} from "@/sim/behaviors/ResourceBehavior.js";
 import {ExtractorComponent} from "@/sim/behaviors/ExtractorComponent.js";
 
 const SYNCED_FIELDS = new SyncedFields("Extractor", [new SyncedField("lastOutput", EMPTY)]);
+
+/**
+ * Ticks every extractor.
+ */
+class ExtractorSystem extends AbstractSystem {
+
+    /**
+     * @param {GameEngine} engine
+     */
+    constructor(engine) {
+        super();
+        this.engine = engine;
+    }
+
+    submitIntents() {
+        ExtractorBehavior._submitIntents(this.engine);
+    }
+
+    postResolve() {
+        ExtractorBehavior._finish(this.engine);
+    }
+}
 
 /**
  * A resource extractor: a producer with no input port whose fixed input is the resource covered at
@@ -32,8 +54,7 @@ export class ExtractorBehavior extends AbstractBehavior {
 
     install(engine) {
         engine.components.register(new ExtractorComponent());
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => ExtractorBehavior._submitIntents(engine));
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => ExtractorBehavior._finish(engine));
+        engine.registerSystem(new ExtractorSystem(engine));
     }
 
     /**

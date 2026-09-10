@@ -19,7 +19,7 @@ async function populated() {
     const pipes = pipesOf(engine);
     pipes.addFluid(0, 2, FLUID_TYPE_WATER, 4);
     for (let i = 0; i < 4; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     return engine;
 }
@@ -52,7 +52,7 @@ test("pipe networks and fluid state round-trip through the engine serializer", a
 
     // The restored network keeps draining into the tank.
     for (let i = 0; i < 20; i += 1) {
-        restored.tickAll();
+        restored.tick();
     }
     assert.equal(restoredPipes.networkAt(0, 2).amount, 0, "restored network still flows");
     const outPort = restored.ports.at(1, -1, Direction.UP);

@@ -1,6 +1,6 @@
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
-import {TickPhase} from "@/sim/GameEngine.js";
+import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {deterministicRoll} from "@/sim/Rng.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
@@ -34,6 +34,28 @@ const PROCESSING_COLS = ["processing0", "processing1", "processing2"];
  */
 function columns(store, names) {
     return names.map(name => store[name]);
+}
+
+/**
+ * Ticks every machine.
+ */
+class MachineSystem extends AbstractSystem {
+
+    /**
+     * @param {GameEngine} engine
+     */
+    constructor(engine) {
+        super();
+        this.engine = engine;
+    }
+
+    submitIntents() {
+        MachineBehavior._submitIntents(this.engine);
+    }
+
+    postResolve() {
+        MachineBehavior._finish(this.engine);
+    }
 }
 
 /**
@@ -101,8 +123,7 @@ export class MachineBehavior extends AbstractBehavior {
 
     install(engine) {
         engine.components.register(new MachineComponent());
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => MachineBehavior._submitIntents(engine));
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => MachineBehavior._finish(engine));
+        engine.registerSystem(new MachineSystem(engine));
     }
 
     onSpawn(engine, eid, type, message) {

@@ -117,7 +117,7 @@ test("an item flows around a bend to the out-port", async () => {
     let delivered = 0;
     for (let i = 0; i < 12; i += 1) {
         engine.ports.setItem(engine.lanes.outPortOf(lane), EMPTY);
-        engine.tickAll();
+        engine.tick();
         if (engine.ports.item(engine.lanes.outPortOf(lane)) === CARGO) {
             delivered += 1;
         }
@@ -142,7 +142,7 @@ test("a closed loop is one lane sharing one port, and an item circulates", async
     engine.ports.setItem(port, CARGO);
     let rests = 0;
     for (let i = 0; i < 16; i += 1) {
-        engine.tickAll();
+        engine.tick();
         const inPort = engine.ports.item(port) === CARGO ? 1 : 0;
         const onLane = engine.lanes.itemCountOf(lane);
         assert.equal(inPort + onLane, 1, "exactly one item exists at all times");
@@ -260,7 +260,7 @@ test("a machine placed beside a finished lane head takes its flank as the in-por
     engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
     let delivered = false;
     for (let i = 0; i < 12 && !delivered; i += 1) {
-        engine.tickAll();
+        engine.tick();
         delivered = engine.ports.item(engine.lanes.outPortOf(lane)) === CARGO;
     }
     assert.ok(delivered, "the item waiting in the machine's output port rides the lane");

@@ -23,7 +23,7 @@ export class NotesSimMod extends AbstractSimMod {
      * @returns {void}
      */
     setup(engine) {
-        engine.registerChunkSync(chunk => this._store.notesIn(chunk).map(note => this._setEvent(note)));
+        engine.registerSystem(this._store);
     }
 
     /**

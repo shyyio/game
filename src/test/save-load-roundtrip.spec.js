@@ -21,7 +21,7 @@ async function populated() {
         engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, cell.x, cell.y, Direction.UP));
     }
     for (let i = 0; i < 3; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     return {engine, splitterId, beltLanes: engine.lanes.ids().length};
 }
@@ -49,7 +49,7 @@ test("the whole world round-trips through the engine serializer", async () => {
     }
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
-        restored.tickAll();
+        restored.tick();
         produced = restored.ports.item(outPort) === ITEM_TYPE_WATER;
     }
     assert.ok(produced, "restored extractor still produces");

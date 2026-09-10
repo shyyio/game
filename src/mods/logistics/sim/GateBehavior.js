@@ -1,17 +1,45 @@
-import {AbstractBehavior, TickPhase, EMPTY, NO_EID, LAYER_SURFACE, CONVEYS_ITEM, CONVEYS_FLUID, SyncedFields, SyncedField} from "@spup/sdk";
+import {AbstractBehavior, EMPTY, NO_EID, LAYER_SURFACE, CONVEYS_ITEM, CONVEYS_FLUID, SyncedFields, SyncedField, AbstractSystem} from "@spup/sdk";
 import {LOGIC_KEY_OPEN} from "../common/constants.js";
 import {gateConnections, placementBlockedByGate} from "../common/gateConnections.js";
 import {GateComponent, PENDING_NONE} from "./GateComponent.js";
-
-// Buffered toggles land first, then mode review, then the gate's own intents.
-const ORDER_APPLY_PENDING = -30;
-const ORDER_REVIEW = -20;
 
 const SYNCED_FIELDS = new SyncedFields("Gate", [
     new SyncedField("open", 1),
     new SyncedField("fluid"),
     new SyncedField("lastOutput", EMPTY),
 ]);
+
+/**
+ * Buffered toggles land first, then mode review, then the gate's own intents.
+ */
+class GateSystem extends AbstractSystem {
+
+    /**
+     * @param {GameEngine} engine
+     */
+    constructor(engine) {
+        super();
+        this.engine = engine;
+    }
+
+    submitIntents() {
+        GateBehavior._applyPending(this.engine);
+        GateBehavior._review(this.engine);
+        GateBehavior._submitIntents(this.engine);
+    }
+
+    postResolve() {
+        GateBehavior._finish(this.engine);
+    }
+
+    isPlacementAllowed(type, x, y, direction) {
+        return !placementBlockedByGate(
+            (tx, ty) => GateBehavior._occupantAt(this.engine, tx, ty),
+            occupant => occupant.type.behavior instanceof GateBehavior,
+            type, x, y, direction,
+        );
+    }
+}
 
 /**
  * A player-toggled flow stop that adopts the kind of the transport coupled to it: item mode
@@ -26,15 +54,7 @@ export class GateBehavior extends AbstractBehavior {
 
     install(engine) {
         engine.components.register(new GateComponent());
-        engine.registerPlacementGuard((type, x, y, direction) => !placementBlockedByGate(
-            (tx, ty) => GateBehavior._occupantAt(engine, tx, ty),
-            occupant => occupant.type.behavior instanceof GateBehavior,
-            type, x, y, direction,
-        ));
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GateBehavior._applyPending(engine), ORDER_APPLY_PENDING);
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GateBehavior._review(engine), ORDER_REVIEW);
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GateBehavior._submitIntents(engine));
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => GateBehavior._finish(engine));
+        engine.registerSystem(new GateSystem(engine));
     }
 
     onSpawn(engine, eid, type, message) {

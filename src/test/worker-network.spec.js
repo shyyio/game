@@ -49,7 +49,7 @@ function producedOver(engine, inPort, outPort, ticks) {
         if (engine.ports.item(inPort) === EMPTY) {
             engine.ports.setItem(inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
         }
-        engine.tickAll();
+        engine.tick();
         if (engine.ports.item(outPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT) {
             produced += 1;
             engine.ports.setItem(outPort, EMPTY);
@@ -113,7 +113,7 @@ test("fractional progress banks past a craft and shortens the next", async () =>
     engine.ports.setItem(inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
-        engine.tickAll();
+        engine.tick();
         produced = engine.ports.item(outPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
     }
     assert.ok(produced, "first craft completed");
@@ -122,7 +122,7 @@ test("fractional progress banks past a craft and shortens the next", async () =>
     // The next craft consumes the bank: it loads with remaining 1.4, not 2.
     engine.ports.setItem(outPort, EMPTY);
     engine.ports.setItem(inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
-    engine.tickAll();
+    engine.tick();
     assert.equal(carryOf(engine, nearId), 0, "bank consumed at load");
     const def = engine.components.get("Machine");
     const remaining = def.store.remaining[def.row(engine.placed.eidByObjectRef(nearId))];
@@ -174,7 +174,7 @@ test("cutting the road unmans the disconnected machine and emits the delta", asy
     collector.drain();
 
     assert.equal(engine.applyMessage(new DeleteObjectMessage(roadIds.get(6))), true);
-    engine.tickAll();
+    engine.tick();
 
     assert.equal(engine.inspectSnapshot(nearId).workers, TEST_MACHINE_WORKER_COST, "housing-side machine stays manned");
     assert.equal(engine.inspectSnapshot(farId).workers, 0, "cut-off machine loses its workers");
@@ -264,7 +264,7 @@ test("a machine stays with its smaller-id network when a new one appears beside 
 
 test("chunk sync carries the manned assignments", async () => {
     const {engine, housingId, nearId, farId} = await mannedSetup();
-    engine.tickAll();
+    engine.tick();
     const events = flattenBatches(engine.chunkSync(chunkKeyAt(5, 4)));
     const assignments = events.filter(event => event instanceof WorkerAssignmentEvent);
     const byMachine = new Map(assignments.map(event => [event.machineId, event.housingId]));
@@ -286,7 +286,7 @@ test("worker assignments and banked progress survive a save/load", async () => {
     engine.ports.setItem(engine.ports.at(5, 4, Direction.UP), ITEM_TYPE_TEST_MACHINE_INPUT);
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
-        engine.tickAll();
+        engine.tick();
         produced = engine.ports.item(engine.ports.at(5, 3, Direction.UP)) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
     }
     assert.ok(produced, "crafted before save");

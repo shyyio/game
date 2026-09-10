@@ -1,8 +1,30 @@
-import {AbstractBehavior, TickPhase, EMPTY, NO_EID, SyncedFields, SyncedField} from "@spup/sdk";
+import {AbstractBehavior, EMPTY, NO_EID, SyncedFields, SyncedField, AbstractSystem} from "@spup/sdk";
 import {LOGIC_KEY_AMOUNT} from "../common/constants.js";
 import {TankComponent} from "./TankComponent.js";
 
 const SYNCED_FIELDS = new SyncedFields("Tank", [new SyncedField("fluidType", EMPTY)]);
+
+/**
+ * Ticks every tank.
+ */
+class TankSystem extends AbstractSystem {
+
+    /**
+     * @param {GameEngine} engine
+     */
+    constructor(engine) {
+        super();
+        this.engine = engine;
+    }
+
+    submitIntents() {
+        TankBehavior._submitIntents(this.engine);
+    }
+
+    postResolve() {
+        TankBehavior._finish(this.engine);
+    }
+}
 
 /**
  * A fluid buffer: drains type-matching in-port payloads into an amount counter and creates one
@@ -25,26 +47,7 @@ export class TankBehavior extends AbstractBehavior {
 
     install(engine) {
         engine.components.register(new TankComponent());
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => TankBehavior._submitIntents(engine));
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => TankBehavior._finish(engine));
-        engine.snapshots.registerRebuildHook(() => TankBehavior._emptyUntyped(engine));
-    }
-
-    /**
-     * Rebuild hook: a loadout change empties the type column and leaves the amount, so a tank can
-     * come back holding units of no fluid. It holds nothing instead.
-     * @private
-     * @param {GameEngine} engine
-     * @returns {void}
-     */
-    static _emptyUntyped(engine) {
-        const tanks = engine.components.get("Tank");
-        const tank = tanks.store;
-        for (let row = 0; row < tanks.count; row += 1) {
-            if (tank.fluidType[row] === EMPTY) {
-                tank.amount[row] = 0;
-            }
-        }
+        engine.registerSystem(new TankSystem(engine));
     }
 
     onSpawn(engine, eid, type, message) {
@@ -91,7 +94,8 @@ export class TankBehavior extends AbstractBehavior {
     }
 
     /**
-     * Restores the denormalized capacity and the port fluid flags after a load.
+     * Restores the denormalized capacity and the port fluid flags after a load. A loadout change
+     * empties the type column and leaves the amount, so a tank of no fluid holds nothing.
      * @param {GameEngine} engine
      * @returns {void}
      */
@@ -104,7 +108,9 @@ export class TankBehavior extends AbstractBehavior {
             tank.capacity[row] = placed.behaviorFor(placed.objectTypeIdOf(eids[row])).capacity;
             engine.ports.markFluid(tank.in[row]);
             engine.ports.markFluid(tank.out[row]);
-            if (tank.fluidType[row] !== EMPTY) {
+            if (tank.fluidType[row] === EMPTY) {
+                tank.amount[row] = 0;
+            } else {
                 engine.ports.setFluidSource(tank.out[row], tank.fluidType[row]);
             }
         }

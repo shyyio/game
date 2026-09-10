@@ -1,5 +1,4 @@
 import {EMPTY} from "@/sim/sentinels.js";
-import {TickPhase, SYSTEM_ORDER_LIMIT} from "@/sim/GameEngine.js";
 
 // Initial row count for the per-tick intent/resolved columns; grows by doubling.
 const INTENT_CAPACITY = 1024;
@@ -39,34 +38,22 @@ export class TransferResolver {
         this._resolvedItem = new Int32Array(INTENT_CAPACITY);
         this._resolvedCount = 0;
 
-        // _resolve()'s working lists, reused tick to tick. Each holds at most one entry per intent
+        // resolve()'s working lists, reused tick to tick. Each holds at most one entry per intent
         // row, so a single grow against the intent count sizes them all.
         this._scratchCapacity = INTENT_CAPACITY;
         this._touchedDests = new Int32Array(INTENT_CAPACITY);
         this._rankedSources = new Int32Array(INTENT_CAPACITY);
 
         // Per-port resolution, persisting through the tick (mods query it in POST_RESOLVE).
-        // _resolve() clears only the slots it touched, so no pass costs the width of the world.
+        // resolve() clears only the slots it touched, so no pass costs the width of the world.
         this._destBySource = new Int32Array(portCapacity).fill(EMPTY);
         this._portResolved = new Uint8Array(portCapacity);
-        // Transient within _resolve(): the winning/best intent row per port, whether the port empties
+        // Transient within resolve(): the winning/best intent row per port, whether the port empties
         // this tick, and the ports that do, in propagation order.
         this._winnerByDest = new Int32Array(portCapacity).fill(EMPTY);
         this._bestBySource = new Int32Array(portCapacity).fill(EMPTY);
         this._emptying = new Uint8Array(portCapacity);
         this._emptyingQueue = new Int32Array(portCapacity);
-    }
-
-    /**
-     * Registers the resolver's own tick systems: it opens SUBMIT_INTENTS by clearing last tick and
-     * closes it by resolving what was submitted and emptying the resolved sources, then closes
-     * POST_RESOLVE by filling the resolved destinations.
-     * @returns {void}
-     */
-    registerSystems() {
-        this.engine.registerBracketSystem(TickPhase.SUBMIT_INTENTS, () => this.resetTick(), -SYSTEM_ORDER_LIMIT);
-        this.engine.registerBracketSystem(TickPhase.SUBMIT_INTENTS, () => this._resolve(), SYSTEM_ORDER_LIMIT);
-        this.engine.registerBracketSystem(TickPhase.POST_RESOLVE, () => this._fillDestinations(), SYSTEM_ORDER_LIMIT);
     }
 
     /**
@@ -214,11 +201,10 @@ export class TransferResolver {
 
     /**
      * Resolves this tick's intents into resolved transfers via a linear backward propagation over
-     * the functional transfer graph, then empties the resolved sources.
-     * @private
+     * the functional transfer graph, then empties the resolved sources. Closes SUBMIT_INTENTS.
      * @returns {void}
      */
-    _resolve() {
+    resolve() {
         const count = this._intentCount;
         const source = this._intentSource;
         const dest = this._intentDest;
@@ -371,10 +357,9 @@ export class TransferResolver {
     /**
      * Writes every resolved transfer's item into its destination. Runs after the POST_RESOLVE
      * systems, so a landed item rests a visible tick before anything reads it.
-     * @private
      * @returns {void}
      */
-    _fillDestinations() {
+    fillDestinations() {
         const engine = this.engine;
         for (let row = 0; row < this._resolvedCount; row += 1) {
             const dest = this._resolvedDest[row];

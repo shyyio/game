@@ -1,4 +1,4 @@
-import {TickPhase, EMPTY, NO_EID, Direction, chunkKeyAt, chunkOrigin, tileKeyAt, getOrCreate, removeFromGroup} from "@spup/sdk";
+import {EMPTY, NO_EID, Direction, chunkKeyAt, chunkOrigin, tileKeyAt, getOrCreate, removeFromGroup, AbstractSystem} from "@spup/sdk";
 import {PIPE_SEGMENT_CAPACITY, DIRECTIONS, joinedFluidType} from "../common/constants.js";
 import {
     PipeNetworkRecalculateEvent,
@@ -53,12 +53,13 @@ class PipeNetwork {
  * edges reuse the port-transfer resolver: drain resting payloads at in-ports, create one
  * one-unit payload per out-edge port.
  */
-export class Pipes {
+export class Pipes extends AbstractSystem {
 
     /**
      * @param {GameEngine} engine
      */
     constructor(engine) {
+        super();
         this.engine = engine;
         // Placed pipes by tile key and id; one pipe per tile.
         this._pipeByTile = new Map();
@@ -79,12 +80,7 @@ export class Pipes {
         this._savedNetworks = engine.components.register(new PipeNetworkComponent());
         this._savedMembers = engine.components.register(new PipeNetworkMemberComponent());
 
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents());
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => this._apply());
-        engine.snapshots.registerSerializeHook(() => this._materialize());
-        engine.snapshots.registerRebuildHook(() => this._reconstruct());
-        engine.ports.registerPin(() => this._pinnedPorts());
-        engine.registerChunkSync(chunk => this.chunkSync(chunk));
+        engine.registerSystem(this);
     }
 
     /**
@@ -399,7 +395,7 @@ export class Pipes {
      * @private
      * @returns {number[]}
      */
-    _pinnedPorts() {
+    getPinnedPortEids() {
         const ports = [];
         for (const net of this.networks) {
             for (const port of net.inPorts) {
@@ -416,7 +412,7 @@ export class Pipes {
      * @private
      * @returns {void}
      */
-    _submitIntents() {
+    submitIntents() {
         const engine = this.engine;
         const P = engine.Port.item;
         this._emittedPorts.length = 0;
@@ -471,7 +467,7 @@ export class Pipes {
      * @private
      * @returns {void}
      */
-    _apply() {
+    postResolve() {
         const engine = this.engine;
         for (let i = 0; i < this._emittedPorts.length; i += 1) {
             if (engine.transfers.wasDest(this._emittedPorts[i])) {
@@ -538,7 +534,7 @@ export class Pipes {
      * @private
      * @returns {void}
      */
-    _materialize() {
+    serialize() {
         for (const component of [this._savedMembers, this._savedNetworks]) {
             for (const eid of component.entities()) {
                 this.engine.components.destroyEntity(eid);
@@ -582,7 +578,7 @@ export class Pipes {
      * @private
      * @returns {void}
      */
-    _reconstruct() {
+    rebuild() {
         this.networks = [];
         this._networkByTile = new Map();
         this._networksByChunk = new Map();

@@ -9,10 +9,10 @@
 //       Most mods are declaration-only: each ObjectType bundles its geometry/ports
 //       with a behavior (a component+system bundle) and the engine derives the whole sim and
 //       client surface from it.
-//   sim.js (optional) — an AbstractSimMod for bespoke sim content, in ECS terms: define components
-//       (sim.components.register), register per-phase systems (sim.registerSystem(phase, fn, order)),
-//       handle spawn/despawn messages (sim.registerMessageHandler). Share instances across mods
-//       via sim.provide(ServiceKey, instance) / sim.resolve(ServiceKey).
+//   sim.js (optional) — an AbstractSimMod for bespoke sim content, in ECS terms: register components
+//       (sim.components.register) and systems (sim.registerSystem, an AbstractSystem the engine
+//       calls by name: submitIntents, postResolve, chunkSync, dispatchMessage, ...). Share
+//       instances across mods via sim.provide(ServiceKey, instance) / sim.resolve(ServiceKey).
 //   client.js (optional) — an AbstractClientMod for bespoke rendering/input (see @/sdk/client.js).
 //
 // Mod directory layout — the entry files above sit at the mod root; everything else mirrors the
@@ -61,7 +61,6 @@ export {
 // Component+system bundles a declaration plugs into an ObjectType's `behavior` slot; the engine's
 // PlacedObjects host derives the whole entity lifecycle from them. The base class and the empty
 // StaticBehavior sit in common/ beside ObjectType; the ones below it reach into the engine.
-// TickPhase is the enum of the per-tick phases systems are scheduled into.
 export {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 export {StaticBehavior} from "@/common/behaviors/StaticBehavior.js";
 // A behavior's `syncedFields`: component fields the engine mirrors into the client's object data.
@@ -84,7 +83,7 @@ export {
     laneLevelLayer,
 } from "@/sim/LaneIndex.js";
 export {HousingBehavior} from "@/sim/behaviors/HousingBehavior.js";
-export {TickPhase} from "@/sim/GameEngine.js";
+export {AbstractSystem} from "@/sim/AbstractSystem.js";
 export {EMPTY, NO_EID} from "@/sim/sentinels.js";
 // Thrown by a must-override hook a subclass left unimplemented.
 export {NotImplementedError} from "@/common/error.js";

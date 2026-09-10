@@ -24,7 +24,7 @@ function drain(engine, laneRef, ticks) {
     let delivered = 0;
     for (let i = 0; i < ticks; i += 1) {
         engine.ports.setItem(engine.lanes.outPortOf(laneRef), EMPTY);
-        engine.tickAll();
+        engine.tick();
         if (engine.ports.item(engine.lanes.outPortOf(laneRef)) === CARGO) {
             delivered += 1;
         }
@@ -40,8 +40,8 @@ test("extending a lane downstream preserves an in-flight item", async () => {
         placeLane(engine, 0, y, Direction.UP);
     }
     engine.ports.setItem(engine.lanes.inPortOf(laneAt(engine, 0, 5)), CARGO);
-    engine.tickAll();
-    engine.tickAll();
+    engine.tick();
+    engine.tick();
     assert.equal(itemCells(engine), 1, "the item is in flight before the extension");
 
     placeLane(engine, 0, 2, Direction.UP);
@@ -59,7 +59,7 @@ test("extending a lane downstream preserves an item resting in the out-port", as
     let lane = laneAt(engine, 0, 5);
     engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
     for (let i = 0; i < 10 && engine.ports.item(engine.lanes.outPortOf(lane)) !== CARGO; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     assert.equal(engine.ports.item(engine.lanes.outPortOf(lane)), CARGO, "the item rests in the out-port");
 
@@ -77,8 +77,8 @@ test("a tail extension keeps item rows ordered output-to-input", async () => {
         placeLane(engine, 0, y, Direction.UP);
     }
     engine.ports.setItem(engine.lanes.inPortOf(laneAt(engine, 0, 5)), CARGO);
-    engine.tickAll();
-    engine.tickAll();
+    engine.tick();
+    engine.tick();
 
     placeLane(engine, 0, 2, Direction.UP);
 
@@ -97,7 +97,7 @@ test("packed same-type items survive a split and each still pops", async () => {
     const fed = laneAt(engine, 0, 3);
     for (let i = 0; i < 12; i += 1) {
         engine.ports.setItem(engine.lanes.inPortOf(fed), CARGO);
-        engine.tickAll();
+        engine.tick();
     }
 
     deleteLane(engine, 0, 1);
@@ -120,7 +120,7 @@ test("items on cells orphaned by a junction steal survive the rebuild", async ()
     const fed = laneAt(engine, 5, 7);
     for (let i = 0; i < 16; i += 1) {
         engine.ports.setItem(engine.lanes.inPortOf(fed), CARGO);
-        engine.tickAll();
+        engine.tick();
     }
 
     placeLane(engine, 4, 5, Direction.RIGHT); // newer candidate into (5,5) wins its junction
@@ -139,8 +139,8 @@ test("an in-flight item survives deletion of a downstream cell and is still deli
         placeLane(engine, 0, y, Direction.UP);
     }
     engine.ports.setItem(engine.lanes.inPortOf(laneAt(engine, 0, 4)), CARGO);
-    engine.tickAll();
-    engine.tickAll();
+    engine.tick();
+    engine.tick();
     assert.equal(itemCells(engine), 1, "the item is in flight on an upstream cell");
 
     deleteLane(engine, 0, 0);
@@ -156,7 +156,7 @@ test("an in-flight item survives deletion of an upstream cell", async () => {
     }
     engine.ports.setItem(engine.lanes.inPortOf(laneAt(engine, 0, 4)), CARGO);
     for (let i = 0; i < 5; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     assert.equal(itemCells(engine), 1, "the item is in flight downstream");
 
@@ -171,7 +171,7 @@ test("filling a gap to merge two lanes keeps the source's in-flight item", async
     placeLane(engine, 12, 6, Direction.UP);
     placeLane(engine, 12, 4, Direction.UP);
     engine.ports.setItem(engine.lanes.inPortOf(laneAt(engine, 12, 6)), CARGO);
-    engine.tickAll();
+    engine.tick();
     assert.equal(itemCells(engine), 1, "the item rests on the source cell");
 
     placeLane(engine, 12, 5, Direction.UP);
@@ -225,7 +225,7 @@ test("a junction steal leaves the boundary item on the orphan's out-port, not th
     engine.ports.setItem(engine.lanes.outPortOf(run), 2);
     for (let i = 0; i < 6; i += 1) {
         engine.ports.setItem(engine.lanes.inPortOf(run), CARGO);
-        engine.tickAll();
+        engine.tick();
     }
     assert.equal(engine.lanes.itemCountOf(run), 3, "the run is saturated");
 

@@ -44,7 +44,7 @@ test("a machine placed at a lane's output adopts its out-port and receives items
     engine.ports.setItem(engine.lanes.inPortOf(lane), ITEM_TYPE_TEST_MACHINE_INPUT);
     let taken = false;
     for (let i = 0; i < 12 && !taken; i += 1) {
-        engine.tickAll();
+        engine.tick();
         taken = engine.lanes.itemCountOf(lane) === 0 && engine.ports.item(outPort) !== ITEM_TYPE_TEST_MACHINE_INPUT;
     }
     assert.ok(taken, "the item crossed the lane and the machine took it");

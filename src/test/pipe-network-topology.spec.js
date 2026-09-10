@@ -83,6 +83,6 @@ test("a drained network frees its fluid type for the next fill", async () => {
     assert.equal(pipes.networkAt(0, 0).fluidType, EMPTY, "a zero add binds no type");
     pipes.addFluid(0, 0, FLUID_TYPE_OIL, 2);
     assert.equal(pipes.networkAt(0, 0).fluidType, FLUID_TYPE_OIL);
-    engine.tickAll();
+    engine.tick();
     assert.equal(pipes.networkAt(0, 0).amount, 2, "nothing consumes, nothing leaves");
 });

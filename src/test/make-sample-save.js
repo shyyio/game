@@ -33,7 +33,7 @@ engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 30, 33, Direc
 engine.applyMessage(new CreateObjectMessage(TankType.objectTypeId, 30, 30, Direction.UP));
 engine.resolve(Pipes).addFluid(30, 32, FLUID_TYPE_WATER, 50);
 for (let i = 0; i < 5; i += 1) {
-    engine.tickAll();
+    engine.tick();
 }
 
 // Two players, a one-way friendship, and a claim on the extractor's chunk.

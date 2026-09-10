@@ -1,9 +1,31 @@
-import {AbstractBehavior, EMPTY, NO_EID, TickPhase, PLAYER_REF_NONE, SyncedFields, SyncedField} from "@spup/sdk";
+import {AbstractBehavior, EMPTY, NO_EID, PLAYER_REF_NONE, SyncedFields, SyncedField, AbstractSystem} from "@spup/sdk";
 import {MARKET_MODE_SELL, MARKET_MODE_BUY} from "../common/constants.js";
 import {MarketBook} from "./MarketBook.js";
 import {MarketTerminalComponent} from "./MarketTerminalComponent.js";
 
 const SYNCED_FIELDS = new SyncedFields("MarketTerminal", [new SyncedField("lastOutput", EMPTY)]);
+
+/**
+ * Ticks every trading terminal.
+ */
+class TradingTerminalSystem extends AbstractSystem {
+
+    /**
+     * @param {GameEngine} engine
+     */
+    constructor(engine) {
+        super();
+        this.engine = engine;
+    }
+
+    submitIntents() {
+        TradingTerminalBehavior._submitIntents(this.engine);
+    }
+
+    postResolve() {
+        TradingTerminalBehavior._finish(this.engine);
+    }
+}
 
 /**
  * Trading Terminal: input port (sell mode) and output port (buy mode), both always present; live
@@ -29,8 +51,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         }
         engine.provide(MarketBook, new MarketBook(fixedPrices));
         engine.components.register(new MarketTerminalComponent());
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => TradingTerminalBehavior._submitIntents(engine));
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => TradingTerminalBehavior._finish(engine));
+        engine.registerSystem(new TradingTerminalSystem(engine));
     }
 
     onSpawn(engine, eid, type, message) {

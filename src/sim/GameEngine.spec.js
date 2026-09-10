@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {GameEngine, TickPhase, SYSTEM_ORDER_LIMIT} from "@/sim/GameEngine.js";
+import {GameEngine} from "@/sim/GameEngine.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 
 test("An edge port shares a tile with a cell without occupying it", async () => {
@@ -17,12 +17,4 @@ test("An edge port shares a tile with a cell without occupying it", async () => 
     engine.space.destroyOwnerCells(99);
     assert.equal(engine.space.cellsFree([{x: 4, y: 7, layer: LAYER_SURFACE}]), true);
     assert.equal(engine.ports.at(4, 7, 0), port, "releasing the cell leaves the port alone");
-});
-
-test("a system order at or past the resolver's brackets is refused", async () => {
-    const engine = new GameEngine();
-    await engine.init();
-    assert.throws(() => engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => {}, SYSTEM_ORDER_LIMIT));
-    assert.throws(() => engine.registerSystem(TickPhase.POST_RESOLVE, () => {}, -SYSTEM_ORDER_LIMIT));
-    engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => {}, SYSTEM_ORDER_LIMIT - 1);
 });

@@ -63,7 +63,7 @@ test("a generator with no input port produces its main output on its own cadence
 
     let produced = 0;
     for (let tick = 0; tick < 10; tick += 1) {
-        engine.tickAll();
+        engine.tick();
         if (engine.ports.item(outPort) === ITEM_MAIN) {
             produced += 1;
             engine.ports.setItem(outPort, EMPTY);
@@ -85,7 +85,7 @@ test("main and secondary outputs run independent cadences into their own ports",
     let mainDelivered = 0;
     let secondaryDelivered = 0;
     for (let tick = 0; tick < 10; tick += 1) {
-        engine.tickAll();
+        engine.tick();
         if (engine.ports.item(outPort) === ITEM_MAIN) {
             mainDelivered += 1;
             engine.ports.setItem(outPort, EMPTY);
@@ -106,7 +106,7 @@ test("a generator with a single output port never wires or touches the second po
     const def = engine.components.get("Generator");
     const row = def.row(eid);
     assert.equal(def.store.out2[row], EMPTY, "no second port was wired");
-    engine.tickAll();
-    engine.tickAll();
+    engine.tick();
+    engine.tick();
     assert.equal(def.store.out2[row], EMPTY, "still untouched after ticking");
 });

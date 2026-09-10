@@ -1,5 +1,5 @@
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
-import {TickPhase} from "@/sim/GameEngine.js";
+import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 import {SyncedFields, SyncedField} from "@/common/SyncedFields.js";
@@ -7,6 +7,28 @@ import {syncFluidSource} from "@/sim/behaviors/util.js";
 import {GeneratorComponent} from "@/sim/behaviors/GeneratorComponent.js";
 
 const SYNCED_FIELDS = new SyncedFields("Generator", [new SyncedField("lastOutput", EMPTY)]);
+
+/**
+ * Ticks every generator.
+ */
+class GeneratorSystem extends AbstractSystem {
+
+    /**
+     * @param {GameEngine} engine
+     */
+    constructor(engine) {
+        super();
+        this.engine = engine;
+    }
+
+    submitIntents() {
+        GeneratorBehavior._submitIntents(this.engine);
+    }
+
+    postResolve() {
+        GeneratorBehavior._finish(this.engine);
+    }
+}
 
 /**
  * A passive producer with no input port: a fixed item lands in its output port every
@@ -42,8 +64,7 @@ export class GeneratorBehavior extends AbstractBehavior {
 
     install(engine) {
         engine.components.register(new GeneratorComponent());
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => GeneratorBehavior._submitIntents(engine));
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => GeneratorBehavior._finish(engine));
+        engine.registerSystem(new GeneratorSystem(engine));
     }
 
     onSpawn(engine, eid, type, message) {

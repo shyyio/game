@@ -37,7 +37,7 @@ test("lane state survives a serialize and deserialize round-trip mid-flight", as
     a.ports.setItem(aPorts.inPort, CARGO);
     for (let i = 0; i < 4; i += 1) {
         a.ports.setItem(aPorts.outPort, EMPTY);
-        a.tickAll();
+        a.tick();
     }
 
     const serialized = JSON.parse(JSON.stringify(a.snapshots.serialize()));
@@ -56,8 +56,8 @@ test("lane state survives a serialize and deserialize round-trip mid-flight", as
     for (let i = 0; i < 12; i += 1) {
         a.ports.setItem(aPorts.outPort, EMPTY);
         b.ports.setItem(bPorts.outPort, EMPTY);
-        a.tickAll();
-        b.tickAll();
+        a.tick();
+        b.tick();
         aStream.push(a.ports.item(aPorts.outPort));
         bStream.push(b.ports.item(bPorts.outPort));
     }
@@ -70,7 +70,7 @@ test("lane state persists through a save store and reloads", async () => {
     const a = await setup();
     const aPorts = build(a);
     a.ports.setItem(aPorts.inPort, CARGO);
-    a.tickAll();
+    a.tick();
 
     const store = new NodeSaveStore(":memory:");
     await store.save(a.snapshots.serialize());
@@ -84,7 +84,7 @@ test("lane state persists through a save store and reloads", async () => {
     let delivered = false;
     for (let i = 0; i < 12 && !delivered; i += 1) {
         b.ports.setItem(outPort, EMPTY);
-        b.tickAll();
+        b.tick();
         delivered = b.ports.item(outPort) === CARGO;
     }
     assert.ok(delivered, "the reloaded item flows to the output");
@@ -99,7 +99,7 @@ test("an item of a type that no longer exists is dropped on load", async () => {
     for (let i = 0; i < 6; i += 1) {
         a.ports.setItem(aPorts.inPort, CARGO);
         a.ports.setItem(aPorts.outPort, EMPTY);
-        a.tickAll();
+        a.tick();
     }
     const carried = itemCells(a);
     assert.ok(carried >= 2, "several items are in flight");
@@ -120,7 +120,7 @@ test("an item of a type that no longer exists is dropped on load", async () => {
     let delivered = 0;
     for (let i = 0; i < 24; i += 1) {
         b.ports.setItem(outPort, EMPTY);
-        b.tickAll();
+        b.tick();
         if (b.ports.item(outPort) === CARGO) {
             delivered += 1;
         }

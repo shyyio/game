@@ -29,7 +29,7 @@ test("a RIGHT-facing machine adopts a RIGHT belt and cooks", async () => {
     const machineOut = engine.ports.at(7, 5, Direction.RIGHT);
     let cooked = false;
     for (let i = 0; i < 16 && !cooked; i += 1) {
-        engine.tickAll();
+        engine.tick();
         cooked = engine.ports.item(machineOut) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
     }
     assert.ok(cooked, "RIGHT machine cooked the belt-fed input");
@@ -49,7 +49,7 @@ test("a RIGHT-facing splitter adopts a RIGHT belt on its in_a", async () => {
     const outA = engine.ports.at(7, 5, Direction.RIGHT);
     const outB = engine.ports.at(7, 6, Direction.RIGHT);
     for (let i = 0; i < 10 && !arrived; i += 1) {
-        engine.tickAll();
+        engine.tick();
         arrived = engine.ports.item(outA) === 1 || engine.ports.item(outB) === 1;
     }
     assert.ok(arrived, "item flowed through the RIGHT splitter");

@@ -21,7 +21,7 @@ test("a splitter round-robins a single input stream across both outputs", async 
         engine.ports.setItem(s.in_a, RED);
         engine.ports.setItem(s.out_a, EMPTY);
         engine.ports.setItem(s.out_b, EMPTY);
-        engine.tickAll();
+        engine.tick();
         if (engine.ports.item(s.out_a) === RED) {
             toA += 1;
         }

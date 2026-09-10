@@ -2,6 +2,7 @@ import {ModRegistry} from "@/common/ModRegistry.js";
 import {simLoadout} from "@/mods/loadout.js";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
+import {AbstractSystem} from "@/sim/AbstractSystem.js";
 
 /**
  * A frozen ModRegistry with the standard sim loadout (objectTypeIds assigned), for tests that need the
@@ -44,4 +45,30 @@ export async function makeGame(extraPackages = [], saveStore = undefined) {
     const game = new Game(modRegistry, new GameEngine(modRegistry), saveStore);
     await game.init();
     return game;
+}
+
+/**
+ * A system a spec scripts: stands in for a producer or consumer beside the code under test.
+ */
+export class ProbeSystem extends AbstractSystem {
+
+    /**
+     * @param {object} config
+     * @param {function(): void} [config.submitIntents]
+     * @param {function(): void} [config.postResolve]
+     * @param {number} [config.order]
+     */
+    constructor({submitIntents = () => {}, postResolve = () => {}, order = 0}) {
+        super(order);
+        this._submitIntents = submitIntents;
+        this._postResolve = postResolve;
+    }
+
+    submitIntents() {
+        this._submitIntents();
+    }
+
+    postResolve() {
+        this._postResolve();
+    }
 }

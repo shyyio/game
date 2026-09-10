@@ -20,7 +20,7 @@ test("an extractor on water produces the water item into its output port", async
     assert.equal(engine.placed.eidsOf(ExtractorType.objectTypeId).length, 1, "extractor placed on the resource");
 
     // The product is fixed by the resource, so the spawn tick's field delta already carries it.
-    engine.tickAll();
+    engine.tick();
     const events = collector.drain();
     const insert = events.find(event => event instanceof ObjectInsertEvent && event.objectTypeId === ExtractorType.objectTypeId);
     assert.equal(insert.lastOutput, undefined, "the insert carries no output slot");
@@ -30,7 +30,7 @@ test("an extractor on water produces the water item into its output port", async
     const outPort = engine.ports.at(5, 4, Direction.UP);
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
-        engine.tickAll();
+        engine.tick();
         produced = engine.ports.item(outPort) === ITEM_TYPE_WATER;
     }
     assert.ok(produced, "the extractor produced a water item");

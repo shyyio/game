@@ -62,7 +62,7 @@ test("an item flows through an open belt gate", async () => {
     engine.ports.setItem(feed.inPort, RED);
     let arrived = false;
     for (let i = 0; i < 12 && !arrived; i += 1) {
-        engine.tickAll();
+        engine.tick();
         arrived = engine.ports.item(onward.outPort) === RED;
     }
     assert.ok(arrived, "the item passed the open gate onto the onward belt");
@@ -78,16 +78,16 @@ test("an item rests one tick inside the gate between the in- and out-port", asyn
     engine.ports.setItem(feed.inPort, RED);
     let atMouth = false;
     for (let i = 0; i < 8 && !atMouth; i += 1) {
-        engine.tickAll();
+        engine.tick();
         atMouth = engine.ports.item(gate.in) === RED;
     }
     assert.ok(atMouth, "the item reached the gate's in-port");
 
-    engine.tickAll();
+    engine.tick();
     assert.equal(engine.ports.item(gate.in), EMPTY, "the item entered the gate");
     assert.equal(engine.ports.item(gate.out), EMPTY, "the item rests inside, not on the out-port yet");
 
-    engine.tickAll();
+    engine.tick();
     assert.equal(engine.ports.item(gate.out), RED, "the item surfaced on the out-port a tick later");
 });
 
@@ -102,7 +102,7 @@ test("a closed belt gate jams the upstream belt and releases on open", async () 
     gateBehavior(engine).setOpen(engine, gate.eid, false);
     engine.ports.setItem(feed.inPort, RED);
     for (let i = 0; i < 12; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     assert.equal(engine.ports.item(gate.in), RED, "the lead item rests on the closed gate's in-port");
     assert.equal(engine.ports.item(gate.out), EMPTY, "nothing passed the closed gate");
@@ -111,7 +111,7 @@ test("a closed belt gate jams the upstream belt and releases on open", async () 
     gateBehavior(engine).setOpen(engine, gate.eid, true);
     let arrived = false;
     for (let i = 0; i < 12 && !arrived; i += 1) {
-        engine.tickAll();
+        engine.tick();
         arrived = engine.ports.item(onward.outPort) === RED;
     }
     assert.ok(arrived, "opening the gate released the jam");
@@ -130,7 +130,7 @@ test("a belt gate works across a chunk seam", async () => {
     engine.ports.setItem(feed.inPort, RED);
     let arrived = false;
     for (let i = 0; i < 12 && !arrived; i += 1) {
-        engine.tickAll();
+        engine.tick();
         arrived = engine.ports.item(onward.outPort) === RED;
     }
     assert.ok(arrived, "the item crossed the seam through the gate");
@@ -149,7 +149,7 @@ test("a gate placed against a pipe spawns in fluid mode and forwards fluid until
     pipes.addFluid(0, 0, FLUID_TYPE_WATER, 4);
     let forwarded = false;
     for (let i = 0; i < 12 && !forwarded; i += 1) {
-        engine.tickAll();
+        engine.tick();
         forwarded = pipes.networkAt(3, 0).amount > 0;
     }
     assert.ok(forwarded, "fluid crossed the open gate into the downstream network");
@@ -158,12 +158,12 @@ test("a gate placed against a pipe spawns in fluid mode and forwards fluid until
     gateBehavior(engine).setOpen(engine, gate.eid, false);
     // A payload already resting on the out-port still lands; settle, then hold.
     for (let i = 0; i < 4; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     const upstreamBefore = pipes.networkAt(0, 0).amount;
     const downstreamBefore = pipes.networkAt(3, 0).amount;
     for (let i = 0; i < 8; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     assert.equal(pipes.networkAt(0, 0).amount, upstreamBefore, "the closed gate stops draining upstream");
     assert.equal(pipes.networkAt(3, 0).amount, downstreamBefore, "nothing more crossed the closed gate");
@@ -180,7 +180,7 @@ test("a closed fluid gate isolates different fluids on its two sides", async () 
     pipes.addFluid(0, 0, FLUID_TYPE_WATER, 2);
     pipes.addFluid(2, 0, FLUID_TYPE_OIL, 2);
     for (let i = 0; i < 8; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     assert.equal(pipes.networkAt(0, 0).fluidType, FLUID_TYPE_WATER);
     assert.equal(pipes.networkAt(0, 0).amount, 2);
@@ -195,13 +195,13 @@ test("connecting a transport to an unconnected gate transforms its mode", async 
 
     // A pipe behind the gate flips it to fluid mode.
     placePipe(engine, 5, 6);
-    engine.tickAll();
+    engine.tick();
     assert.equal(gateMode(engine, gate.eid), 1, "the coupled pipe transformed the gate");
 
     // Pipe gone, belt in front: back to item mode.
     engine.applyMessage(new DeleteObjectMessage(engine.space.ownerAt(5, 6, LAYER_SURFACE)));
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 5, 4, Direction.UP));
-    engine.tickAll();
+    engine.tick();
     assert.equal(gateMode(engine, gate.eid), 0, "the coupled belt transformed the gate back");
 });
 

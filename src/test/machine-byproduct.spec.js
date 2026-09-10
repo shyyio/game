@@ -68,7 +68,7 @@ test("a chance=1 byproduct lands in the second output port alongside the main ou
     engine.ports.setItem(inPort, ITEM_INPUT);
     let delivered = false;
     for (let i = 0; i < 8 && !delivered; i += 1) {
-        engine.tickAll();
+        engine.tick();
         delivered = engine.ports.item(outPort) === ITEM_OUTPUT && engine.ports.item(byproductPort) === ITEM_BYPRODUCT;
     }
     assert.ok(delivered, "both the main output and the byproduct landed");
@@ -88,7 +88,7 @@ test("a chance=0 recipe never produces a byproduct", async () => {
         engine.ports.setItem(inPort, ITEM_INPUT);
         let delivered = false;
         for (let i = 0; i < 8 && !delivered; i += 1) {
-            engine.tickAll();
+            engine.tick();
             delivered = engine.ports.item(outPort) === ITEM_OUTPUT;
         }
         assert.ok(delivered, `craft ${craft}: main output delivered`);

@@ -10,7 +10,7 @@ import {ObjectSyncEvent} from "@/common/ObjectEvents.js";
 import {LaneGeometryEvent, LaneItemSyncEvent} from "@/common/LaneEvents.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {Game} from "@/sim/Game.js";
-import {GameEngine, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
+import {GameEngine} from "@/sim/GameEngine.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {flattenBatches} from "@/test/EventCollector.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
@@ -34,9 +34,7 @@ async function setup() {
 
 function runTicks(game, count) {
     for (let i = 0; i < count; i += 1) {
-        for (const phase of TICK_PHASE_ORDER) {
-            game.tick(phase);
-        }
+        game.simEngine.tick();
         game.postTick();
     }
 }

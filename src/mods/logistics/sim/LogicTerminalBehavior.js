@@ -1,4 +1,4 @@
-import {AbstractBehavior, TickPhase} from "@spup/sdk";
+import {AbstractBehavior, AbstractSystem} from "@spup/sdk";
 import {
     LOGIC_TIER_BASE,
     LOGIC_CONDITION_KIND_STORED,
@@ -12,6 +12,24 @@ import {LogicTerminalComponent} from "./LogicTerminalComponent.js";
 const ORDER_RULES = -40;
 
 /**
+ * Runs the rules before any behavior submits, so a toggle lands the same tick.
+ */
+class LogicRulesSystem extends AbstractSystem {
+
+    /**
+     * @param {GameEngine} engine
+     */
+    constructor(engine) {
+        super(ORDER_RULES);
+        this.engine = engine;
+    }
+
+    submitIntents() {
+        LogicTerminalBehavior._evaluate(this.engine);
+    }
+}
+
+/**
  * A logic terminal: the config surface of its network. One per network, enforced at wire time
  * (LogisticsSimMod); its rules run every tick, top-down, first writer per device winning.
  */
@@ -20,11 +38,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
     install(engine) {
         engine.components.register(new LogicTerminalComponent());
         engine.provide(LogicRules, new LogicRules());
-        engine.registerSystem(
-            TickPhase.SUBMIT_INTENTS,
-            () => LogicTerminalBehavior._evaluate(engine),
-            ORDER_RULES,
-        );
+        engine.registerSystem(new LogicRulesSystem(engine));
     }
 
     onSpawn(engine, eid, type, message) {

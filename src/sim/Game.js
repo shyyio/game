@@ -10,7 +10,7 @@ import {
 import {WelcomeEvent} from "@/common/PlayerEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {WireRegistry} from "@/common/wire.js";
-import {GameEngine, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
+import {GameEngine} from "@/sim/GameEngine.js";
 import {EventBus} from "@/sim/EventBus.js";
 import {SettingsCache, PlayerSettingsCache, PLAYER_SETTING_RECORD} from "@/common/SettingsCache.js";
 import {PlayerSettingsToolOrderCache, PLAYER_SETTINGS_TOOL_ORDER_RECORD} from "@/common/PlayerSettingsToolOrderCache.js";
@@ -390,20 +390,11 @@ export class Game {
     // ---- Tick ----
 
     /**
-     * @param {TickPhase} phase
-     */
-    tick(phase) {
-        this.simEngine.tick(phase);
-    }
-
-    /**
-     * Runs one whole tick: every phase in order, then the post-tick drains.
+     * Runs one whole tick, then the post-tick drains.
      * @returns {void}
      */
     runTick() {
-        for (const phase of TICK_PHASE_ORDER) {
-            this.simEngine.tick(phase);
-        }
+        this.simEngine.tick();
         // better-sqlite3 is synchronous, so the write runs inline despite the async/await wrapping.
         this.metrics.flushAndPush();
         this.postTick();

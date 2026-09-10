@@ -85,7 +85,7 @@ test("a buried lane passes under a surface lane on the same tile", async () => {
     engine.ports.setItem(engine.lanes.inPortOf(buried), CARGO);
     let delivered = 0;
     for (let i = 0; i < 12; i += 1) {
-        engine.tickAll();
+        engine.tick();
         if (engine.ports.item(engine.lanes.outPortOf(buried)) === CARGO) {
             delivered += 1;
             engine.ports.setItem(engine.lanes.outPortOf(buried), EMPTY);
@@ -122,7 +122,7 @@ test("a buried lane crossing a seam keeps its own in-port", async () => {
     let delivered = 0;
     let stolen = 0;
     for (let i = 0; i < 12; i += 1) {
-        engine.tickAll();
+        engine.tick();
         if (engine.ports.item(engine.lanes.outPortOf(buried)) === CARGO) {
             delivered += 1;
             engine.ports.setItem(engine.lanes.outPortOf(buried), EMPTY);
@@ -147,7 +147,7 @@ test("deleting a buried cell keeps the item on the surviving upstream piece", as
     placeLane(engine, 4, 1, Direction.RIGHT, TestLaneUpType);
     const lane = laneAt(engine, 1, 1);
     engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
-    engine.tickAll();
+    engine.tick();
     assert.equal(itemCells(engine), 1, "the item is in the buried run");
 
     deleteLane(engine, 3, 1, laneLevelLayer(LANE_LEVEL_BURIED, Direction.RIGHT));
@@ -196,7 +196,7 @@ test("an elevated lane passes over a surface lane on the same tile", async () =>
     engine.ports.setItem(engine.lanes.inPortOf(elevated), CARGO);
     let delivered = 0;
     for (let i = 0; i < 12; i += 1) {
-        engine.tickAll();
+        engine.tick();
         if (engine.ports.item(engine.lanes.outPortOf(elevated)) === CARGO) {
             delivered += 1;
             engine.ports.setItem(engine.lanes.outPortOf(elevated), EMPTY);

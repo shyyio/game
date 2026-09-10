@@ -28,7 +28,7 @@ test("a belt line feeds a splitter through the shared edge port", async () => {
         engine.ports.setItem(feed.inPort, RED);
         engine.ports.setItem(outA, EMPTY);
         engine.ports.setItem(outB, EMPTY);
-        engine.tickAll();
+        engine.tick();
         if (engine.ports.item(outA) === RED || engine.ports.item(outB) === RED) {
             delivered += 1;
         }

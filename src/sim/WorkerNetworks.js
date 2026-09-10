@@ -1,5 +1,5 @@
 import {chunkOrigin} from "@/common/util.js";
-import {TickPhase} from "@/sim/GameEngine.js";
+import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {RoadNetwork} from "@/sim/RoadNetwork.js";
 import {WorkerAllocation} from "@/sim/WorkerAllocation.js";
 import {WorkerAssignments} from "@/sim/WorkerAssignments.js";
@@ -16,13 +16,14 @@ const ORDER_WORKER_RECOMPUTE = -20;
  * Edits mark their cells dirty; the allocation recomputes lazily (message apply, tick, chunk sync,
  * inspect), refilling only the road components the dirty cells touch.
  */
-export class WorkerNetworks {
+export class WorkerNetworks extends AbstractSystem {
 
     /**
      * @param {GameEngine} engine
      * @param {PlacedObjects} placed
      */
     constructor(engine, placed) {
+        super(ORDER_WORKER_RECOMPUTE);
         this.engine = engine;
         this.placed = placed;
         /**
@@ -40,9 +41,7 @@ export class WorkerNetworks {
          * @type {WorkerAllocation}
          */
         this.allocation = new WorkerAllocation(engine, placed, this.roads, this.assignments);
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this.ensureFresh(), ORDER_WORKER_RECOMPUTE);
-        engine.registerChunkSync(chunk => this._chunkSync(chunk));
-        engine.snapshots.registerRebuildHook(() => this._rebuild());
+        engine.registerSystem(this);
     }
 
     /**
@@ -63,6 +62,10 @@ export class WorkerNetworks {
      * Recomputes a dirtied allocation now, emitting its assignment deltas.
      * @returns {void}
      */
+    submitIntents() {
+        this.ensureFresh();
+    }
+
     ensureFresh() {
         const dirty = this.roads.takeDirty();
         if (dirty === null) {
@@ -166,11 +169,10 @@ export class WorkerNetworks {
 
     /**
      * The chunk's road-attached machines as one batch, or nothing when it holds none.
-     * @private
      * @param {number} chunkKey
      * @returns {WorkerAssignmentBatchEvent[]}
      */
-    _chunkSync(chunkKey) {
+    chunkSync(chunkKey) {
         this.ensureFresh();
         const objectRefs = this.assignments.inChunk(chunkKey);
         if (objectRefs === undefined) {
@@ -188,10 +190,9 @@ export class WorkerNetworks {
 
     /**
      * Re-registers every placed road's cells after a load, then recomputes the allocation.
-     * @private
      * @returns {void}
      */
-    _rebuild() {
+    rebuild() {
         this.assignments.clear();
         this.roads.rebuild();
         this.ensureFresh();

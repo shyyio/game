@@ -1,14 +1,16 @@
-import {chunkKeyAt, getOrCreate, removeFromGroup, tileKeyAt} from "@spup/sdk";
+import {AbstractSystem, chunkKeyAt, getOrCreate, removeFromGroup, tileKeyAt} from "@spup/sdk";
 import {NOTE_RECORD} from "../common/constants.js";
 import {Note} from "../common/Note.js";
+import {NoteSetEvent} from "../common/events.js";
 
 /**
  * Every placed note, keyed by tile and grouped by chunk. Pure state: it neither publishes nor
  * gates, so the sim mod owns permissions and fan-out.
  */
-export class NotesStore {
+export class NotesStore extends AbstractSystem {
 
     constructor() {
+        super();
         /**
          * @type {Map<number, Note>}
          */
@@ -140,5 +142,16 @@ export class NotesStore {
                 row.text,
             ));
         }
+    }
+
+    chunkSync(chunkKey) {
+        return this.notesIn(chunkKey).map(note => new NoteSetEvent(
+            note.tileX,
+            note.tileY,
+            note.offsetMx,
+            note.offsetMy,
+            note.authorId,
+            note.text,
+        ));
     }
 }

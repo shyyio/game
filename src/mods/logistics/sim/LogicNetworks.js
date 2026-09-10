@@ -1,3 +1,4 @@
+import {AbstractSystem, chunkKeyAt} from "@spup/sdk";
 import {LOGIC_WIRE_RECORD} from "../common/constants.js";
 import {LogicWireSetEvent, LogicWireClearEvent} from "../common/events.js";
 
@@ -33,12 +34,13 @@ export class LogicNetwork {
  * (pole-pole, device-pole, or device-device). Components recompute lazily after any edit; edges
  * whose endpoint despawned are swept via the engine's despawn listener.
  */
-export class LogicNetworks {
+export class LogicNetworks extends AbstractSystem {
 
     /**
      * @param {GameEngine} engine
      */
     constructor(engine) {
+        super();
         this.engine = engine;
         this.placed = engine.placed;
         /**
@@ -329,5 +331,30 @@ export class LogicNetworks {
             const deviceIds = sorted.filter(objectRef => !this._poles.has(objectRef));
             return new LogicNetwork(sorted[0], poleIds, deviceIds);
         });
+    }
+
+    onDespawn(eid, objectRef) {
+        this.removeObject(objectRef);
+    }
+
+    /**
+     * Every wire with an endpoint in the chunk, once.
+     * @param {number} chunkKey
+     * @returns {LogicWireSetEvent[]}
+     */
+    chunkSync(chunkKey) {
+        const position = this.engine.Position;
+        const events = [];
+        for (const wire of this.wires) {
+            for (const objectRef of [wire.a, wire.b]) {
+                const eid = this.placed.eidByObjectRef(objectRef);
+                if (eid === undefined || chunkKeyAt(position.x[eid], position.y[eid]) !== chunkKey) {
+                    continue;
+                }
+                events.push(new LogicWireSetEvent(position.x[eid], position.y[eid], wire.a, wire.b));
+                break;
+            }
+        }
+        return events;
     }
 }

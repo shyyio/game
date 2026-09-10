@@ -1,5 +1,29 @@
-import {Direction, EMPTY, NO_EID, TickPhase, AbstractBehavior} from "@spup/sdk";
+import {Direction, EMPTY, NO_EID, AbstractBehavior, AbstractSystem} from "@spup/sdk";
 import {SplitterComponent} from "./SplitterComponent.js";
+
+/**
+ * Ticks every splitter through the installed behavior.
+ */
+class SplitterSystem extends AbstractSystem {
+
+    /**
+     * @param {GameEngine} engine
+     * @param {SplitterBehavior} behavior
+     */
+    constructor(engine, behavior) {
+        super();
+        this.engine = engine;
+        this.behavior = behavior;
+    }
+
+    submitIntents() {
+        this.behavior._submitIntents(this.engine);
+    }
+
+    postResolve() {
+        this.behavior._finish(this.engine);
+    }
+}
 
 /**
  * 1x2 splitter routing in_X -> int_X -> out_Y through internal buffer ports, resting a tick per
@@ -9,8 +33,7 @@ export class SplitterBehavior extends AbstractBehavior {
 
     install(engine) {
         engine.components.register(new SplitterComponent());
-        engine.registerSystem(TickPhase.SUBMIT_INTENTS, () => this._submitIntents(engine));
-        engine.registerSystem(TickPhase.POST_RESOLVE, () => this._finish(engine));
+        engine.registerSystem(new SplitterSystem(engine, this));
     }
 
     onSpawn(engine, eid, type, message) {

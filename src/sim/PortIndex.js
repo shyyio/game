@@ -105,9 +105,6 @@ export class PortIndex {
         // Module-owned columns indexed by port eid.
         this._columns = [];
 
-        // Hooks returning the port eids a module still references in JS-only runtime state (belt
-        // paths), so the sweep keeps them alive.
-        this._pins = [];
 
         // Port eid -> the placed objects declaring it as an output port, and as an input port, so
         // a neighbor asks the edge who stands across it rather than scanning tiles.
@@ -349,17 +346,6 @@ export class PortIndex {
     }
 
     /**
-     * A module registers a hook returning the port eids its JS-only runtime state still references
-     * (a pipe network holds its ports outside any component), so {@link collectUnreferenced} keeps
-     * them.
-     * @param {function(): Iterable<number>} hook
-     * @returns {void}
-     */
-    registerPin(hook) {
-        this._pins.push(hook);
-    }
-
-    /**
      * Destroys every port no live entity or module references: scans all component eid fields (object
      * ports) plus the pin hooks (belt runtime ports), then removes any port outside that set —
      * destroying the edges a deleted object or belt left behind.
@@ -385,8 +371,8 @@ export class PortIndex {
                 }
             }
         }
-        for (const hook of this._pins) {
-            for (const eid of hook()) {
+        for (const system of engine.systems) {
+            for (const eid of system.getPinnedPortEids()) {
                 referenced.add(eid);
             }
         }

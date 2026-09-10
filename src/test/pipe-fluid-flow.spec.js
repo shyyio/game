@@ -42,7 +42,7 @@ test("fluid crosses a chunk seam and equalizes between the networks", async () =
     pipes.addFluid(0, 62, FLUID_TYPE_WATER, 4);
 
     for (let i = 0; i < 30; i += 1) {
-        engine.tickAll();
+        engine.tick();
         const total = pipes.networkAt(0, 62).amount + pipes.networkAt(0, 64).amount + seamUnits(engine);
         assert.equal(total, 4, `tick ${i}: no fluid created or destroyed`);
     }
@@ -56,7 +56,7 @@ test("fluid crosses a chunk seam and equalizes between the networks", async () =
 
     // Settled means settled: further ticks move nothing.
     for (let i = 0; i < 5; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
     assert.equal(pipes.networkAt(0, 62).amount, 2);
     assert.equal(pipes.networkAt(0, 64).amount, 2);
@@ -71,7 +71,7 @@ test("different fluids meeting at a seam block instead of mixing", async () => {
     pipes.addFluid(0, 64, FLUID_TYPE_OIL, 2);
 
     for (let i = 0; i < 10; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
 
     assert.equal(pipes.networkAt(0, 62).amount, 4, "the water side holds");
@@ -92,7 +92,7 @@ test("a pipe network drains into a tank through the shared edge port", async () 
     const collector = new EventCollector(engine);
 
     for (let i = 0; i < 20; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
 
     // Only the type change syncs: one delta when the tank adopts water, none for the fill.
@@ -118,7 +118,7 @@ test("an extractor pumps its produce into an adjacent pipe network", async () =>
     const pipes = pipesOf(engine);
 
     for (let i = 0; i < 80; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
 
     const net = pipes.networkAt(0, 0);
@@ -135,7 +135,7 @@ test("a resting fluid output never renders as a port item; a solid one does", as
     const collector = new EventCollector(engine);
 
     for (let i = 0; i < 10; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
 
     const sets = collector.drain().filter(event => event instanceof PortItemSetEvent);
@@ -162,7 +162,7 @@ test("a producer placed after the pipes types the empty network", async () => {
     engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 0, 5, Direction.UP));
     const pipes = pipesOf(engine);
 
-    engine.tickAll();
+    engine.tick();
     assert.equal(pipes.networkAt(0, 4).fluidType, ITEM_TYPE_WATER, "the drained network re-binds to the producer");
 });
 
@@ -206,7 +206,7 @@ test("a belt refuses a fluid payload resting in its in-port", async () => {
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 0, 4, Direction.UP));
 
     for (let i = 0; i < 20; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
 
     assert.equal(laneItemCount(engine), 0, "no fluid item ever boards the belt");
@@ -223,7 +223,7 @@ test("a belt never pops an item into a fluid port", async () => {
     engine.ports.setItem(path.inPort, ITEM_TYPE_IRON_ORE);
 
     for (let i = 0; i < 20; i += 1) {
-        engine.tickAll();
+        engine.tick();
     }
 
     assert.equal(pipes.networkAt(0, 0).amount, 0, "no solid item enters the network");

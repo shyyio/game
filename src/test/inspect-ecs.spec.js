@@ -6,7 +6,7 @@ import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
 import {ITEM_TYPE_CABBAGE, ITEM_TYPE_NUTRIENT_SLOP} from "@/mods/base-game/common/constants.js";
 import {SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import {InspectHeartbeatEvent, InspectClosedEvent} from "@/common/InspectEvents.js";
-import {GameEngine, TICK_PHASE_ORDER} from "@/sim/GameEngine.js";
+import {GameEngine} from "@/sim/GameEngine.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 
@@ -59,9 +59,7 @@ test("emits a heartbeat snapshot each tick to a subscribing session", async () =
 
     game.dispatchMessage(new SetInspectedObjectsMessage([machine.id]), session);
     session.events.length = 0;
-    for (const phase of TICK_PHASE_ORDER) {
-        game.tick(phase);
-    }
+    game.simEngine.tick();
     game.postTick();
 
     assert.equal(heartbeats(session).length, 1);
@@ -80,9 +78,7 @@ test("each inspecting session gets its own heartbeat for a shared machine", asyn
     game.dispatchMessage(new SetInspectedObjectsMessage([machine.id]), b);
     a.events.length = 0;
     b.events.length = 0;
-    for (const phase of TICK_PHASE_ORDER) {
-        game.tick(phase);
-    }
+    game.simEngine.tick();
     game.postTick();
 
     assert.equal(heartbeats(a).length, 1);
@@ -98,9 +94,7 @@ test("heartbeat tracks the processing countdown, consumed batch, and output", as
 
     const tick = () => {
         session.events.length = 0;
-        for (const phase of TICK_PHASE_ORDER) {
-            game.tick(phase);
-        }
+        game.simEngine.tick();
         game.postTick();
         return heartbeats(session)[0];
     };
@@ -130,9 +124,7 @@ test("unsubscribing stops the heartbeats", async () => {
     game.dispatchMessage(new SetInspectedObjectsMessage([machine.id]), session);
     game.dispatchMessage(new SetInspectedObjectsMessage([]), session);
     session.events.length = 0;
-    for (const phase of TICK_PHASE_ORDER) {
-        game.tick(phase);
-    }
+    game.simEngine.tick();
     game.postTick();
 
     assert.equal(heartbeats(session).length, 0);
@@ -165,9 +157,7 @@ test("deleting an inspected machine closes its menu and stops heartbeats", async
     assert.equal(closed[0].objectRef, machine.id);
 
     session.events.length = 0;
-    for (const phase of TICK_PHASE_ORDER) {
-        game.tick(phase);
-    }
+    game.simEngine.tick();
     game.postTick();
     assert.equal(heartbeats(session).length, 0);
 });

@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {GameEngine, TickPhase} from "@/sim/GameEngine.js";
+import {GameEngine} from "@/sim/GameEngine.js";
+import {ProbeSystem} from "@/test/ecsSim.js";
 import {EMPTY} from "@/sim/sentinels.js";
 
 const ITEM = 1;
@@ -24,19 +25,9 @@ async function setup(count, filledIds) {
 // Submits from SUBMIT_INTENTS and runs one whole tick, so the resolver's own systems drive the
 // resolution and the commit.
 function tick(engine, submit) {
-    engine.registerSystem(TickPhase.SUBMIT_INTENTS, submit);
-    engine.tickAll();
+    engine.registerSystem(new ProbeSystem({submitIntents: submit}));
+    engine.tick();
 }
-
-// The phases a mod schedules against: the transfer flow is the resolver's own business.
-test("the tick exposes no internal transfer phases", () => {
-    assert.deepEqual(Object.keys(TickPhase), [
-        "SUBMIT_INTENTS",
-        "POST_RESOLVE",
-        "EMIT_RENDER",
-        "EMIT_INSPECT",
-    ]);
-});
 
 test("resolves a packed transfer chain as a single shift when the end drains", async () => {
     const {engine, ports} = await setup(4, [1, 2, 3]);
@@ -139,9 +130,9 @@ test("a drain empties its source", async () => {
 test("a drained sink is empty by POST_RESOLVE", async () => {
     const {engine, ports} = await setup(1, [1]);
     let itemAtPostResolve = ITEM;
-    engine.registerSystem(TickPhase.POST_RESOLVE, () => {
+    engine.registerSystem(new ProbeSystem({postResolve: () => {
         itemAtPostResolve = engine.ports.item(ports[0]);
-    });
+    }}));
 
     tick(engine, () => {
         engine.transfers.submitDrain(ports[0]);
@@ -156,11 +147,11 @@ test("a transfer's source is cleared before POST_RESOLVE", async () => {
     const {engine, ports} = await setup(2, [1]);
     const [source, dest] = ports;
     const NEXT_ITEM = 8;
-    engine.registerSystem(TickPhase.POST_RESOLVE, () => {
+    engine.registerSystem(new ProbeSystem({postResolve: () => {
         if (engine.ports.item(source) === EMPTY) {
             engine.ports.setItem(source, NEXT_ITEM);
         }
-    });
+    }}));
 
     tick(engine, () => {
         engine.transfers.submitTransfer(source, dest, true);
@@ -175,9 +166,9 @@ test("a transfer's source is cleared before POST_RESOLVE", async () => {
 test("a transfer fills its destination after POST_RESOLVE", async () => {
     const {engine, ports} = await setup(2, [1]);
     let itemAtPostResolve = EMPTY;
-    engine.registerSystem(TickPhase.POST_RESOLVE, () => {
+    engine.registerSystem(new ProbeSystem({postResolve: () => {
         itemAtPostResolve = engine.ports.item(ports[1]);
-    });
+    }}));
 
     tick(engine, () => {
         engine.transfers.submitTransfer(ports[0], ports[1], true);

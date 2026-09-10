@@ -54,7 +54,7 @@ async function main() {
 
     console.log(`Warming up ${warmupTicks.toLocaleString()} ticks...`);
     for (let i = 0; i < warmupTicks; i += 1) {
-        engine.tickAll();
+        engine.tick();
         for (const port of sinkPorts) {
             if (engine.ports.item(port) !== EMPTY) {
                 engine.ports.setItem(port, EMPTY);

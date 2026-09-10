@@ -1,5 +1,6 @@
 import {CHUNK_SIZE, REGION_SIZE} from "@/common/constants.js";
 import {chunkKeyAt, chunkOrdinal, chunkOrigin} from "@/common/util.js";
+import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 
 const REGION_HALF = REGION_SIZE / 2;
@@ -20,20 +21,20 @@ class OverworldChunkBake {
  * The hot-read overworld map: a per-chunk bake of every overworld-visible object's tiles,
  * repainted on spawn/despawn so a snapshot never scans the ECS.
  */
-export class OverworldBake {
+export class OverworldBake extends AbstractSystem {
 
     /**
      * @param {GameEngine} engine
      * @param {PlacedObjects} placed
      */
     constructor(engine, placed) {
+        super();
         this.engine = engine;
         this.placed = placed;
         // Chunk ordinal -> OverworldChunkBake, only chunks with visible tiles.
         this._chunks = new Map();
-        placed.registerChunkObserver(chunk => this._repaintChunk(chunk));
-        // After PlacedObjects' own hook (construction order), so _eidsByChunk is rebuilt.
-        engine.snapshots.registerRebuildHook(() => this._rebuildAll());
+        // After PlacedObjects, so its chunk index is rebuilt before the repaint.
+        engine.registerSystem(this);
     }
 
     /**
@@ -102,6 +103,10 @@ export class OverworldBake {
         event.addChunk(chunkKey, starts, lengths, objectTypeIds);
     }
 
+    onChunkChanged(chunkKey) {
+        this._repaintChunk(chunkKey);
+    }
+
     /**
      * Repaints one chunk's bake from its placed objects, dropping the record when none are visible.
      * @private
@@ -159,10 +164,9 @@ export class OverworldBake {
 
     /**
      * Repaints every occupied chunk after a load.
-     * @private
      * @returns {void}
      */
-    _rebuildAll() {
+    rebuild() {
         this._chunks = new Map();
         const position = this.engine.Position;
         const objects = this.placed.objects;

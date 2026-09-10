@@ -4,6 +4,7 @@ import {Direction, PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkKeyAt, chunkOrigin} from "@/common/util.js";
 import {PlacedObjectComponent} from "@/sim/PlacedObjectComponent.js";
 import {NO_EID} from "@/sim/sentinels.js";
+import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {METRICS_FACT_TYPE_OBJECT_PLACED, METRICS_FACT_TYPE_OBJECT_DESPAWNED} from "@/common/MetricsFact.js";
 
 const EMPTY_EIDS = new Set();
@@ -13,13 +14,14 @@ const EMPTY_EIDS = new Set();
  * component, the objectRef -> eid index, and the ONE spawn/despawn/chunk-sync/inspect path. Built by
  * the engine before sim mods wire up; installs each frozen type's behavior once per behavior class.
  */
-export class PlacedObjects {
+export class PlacedObjects extends AbstractSystem {
 
     /**
      * @param {GameEngine} engine
      * @param {ModRegistry} registry
      */
     constructor(engine, registry) {
+        super();
         this.engine = engine;
         this.objects = engine.components.register(new PlacedObjectComponent());
 
@@ -32,15 +34,8 @@ export class PlacedObjects {
         // Chunk -> the eids placed in it, so a subscribing session syncs a chunk without a scan of
         // every placed object in the world.
         this._eidsByChunk = new Map();
-        // Called with a chunk ordinal after any spawn/despawn in it (the overworld bake repaints).
-        this._chunkObservers = [];
-
-        // Before the behavior installs, so anything a behavior registers (a chunk sync) runs
-        // after the host's — the client rebuilds objects first, then what references them.
-        engine.registerMessageHandler((message, playerRef) => this._message(message, playerRef));
-        engine.registerChunkSync(chunk => this._chunkSync(chunk));
-        engine.registerInspector(objectRef => this._inspect(objectRef));
-        engine.snapshots.registerRebuildHook(() => this._rebuild());
+        // Before the behaviors install, so a chunk syncs its objects before what references them.
+        engine.registerSystem(this);
 
         for (const type of registry.objectTypes) {
             this._types.set(type.objectTypeId, type);
@@ -215,33 +210,7 @@ export class PlacedObjects {
         return held;
     }
 
-    /**
-     * Registers an observer called with a chunk ordinal after any spawn/despawn in it.
-     * @param {function(number): void} observer
-     * @returns {void}
-     */
-    registerChunkObserver(observer) {
-        this._chunkObservers.push(observer);
-    }
-
-    /**
-     * @private
-     * @param {number} chunkKey
-     * @returns {void}
-     */
-    _notifyChunkChanged(chunkKey) {
-        for (const observer of this._chunkObservers) {
-            observer(chunkKey);
-        }
-    }
-
-    /**
-     * @private
-     * @param {AbstractMessage} message
-     * @param {number} playerRef
-     * @returns {boolean}
-     */
-    _message(message, playerRef) {
+    dispatchMessage(message, playerRef) {
         if (message instanceof CreateObjectMessage) {
             return this._place(message, playerRef);
         }
@@ -277,7 +246,7 @@ export class PlacedObjects {
         if (!type.behavior.canSpawn(engine, type, message)) {
             return true;
         }
-        if (!engine.placementGuardsAllow(type, message.x, message.y, message.direction)) {
+        if (!engine.isPlacementAllowed(type, message.x, message.y, message.direction)) {
             return true;
         }
         const footprint = engine.footprint(type, message.x, message.y, message.direction);
@@ -302,7 +271,7 @@ export class PlacedObjects {
         }
         this._eidByObjectRef.set(objectRef, eid);
         this._indexChunk(eid, message.x, message.y);
-        this._notifyChunkChanged(chunkKeyAt(message.x, message.y));
+        engine.notifyChunkChanged(chunkKeyAt(message.x, message.y));
         engine.notifySpawn(eid, objectRef);
         const portEids = type.behavior.renderedPortEids(engine, eid);
         engine.emitEvent(new ObjectInsertEvent(type.objectTypeId, objectRef, message.x, message.y, message.direction, portEids));
@@ -336,7 +305,7 @@ export class PlacedObjects {
         this._unindexChunk(eid, x, y);
         engine.components.destroyEntity(eid);
         this._eidByObjectRef.delete(objectRef);
-        this._notifyChunkChanged(chunkKeyAt(x, y));
+        engine.notifyChunkChanged(chunkKeyAt(x, y));
         return true;
     }
 
@@ -380,11 +349,10 @@ export class PlacedObjects {
 
     /**
      * The chunk's objects as one packed batch, or nothing when it holds none.
-     * @private
      * @param {number} chunkKey
      * @returns {ObjectSyncBatchEvent[]}
      */
-    _chunkSync(chunkKey) {
+    chunkSync(chunkKey) {
         const eids = this._eidsByChunk.get(chunkKey);
         if (eids === undefined) {
             return [];
@@ -410,12 +378,7 @@ export class PlacedObjects {
         return [batch];
     }
 
-    /**
-     * @private
-     * @param {number} objectRef
-     * @returns {InspectHeartbeatEvent|null}
-     */
-    _inspect(objectRef) {
+    inspect(objectRef) {
         const eid = this._eidByObjectRef.get(objectRef);
         if (eid === undefined) {
             return null;
@@ -430,10 +393,9 @@ export class PlacedObjects {
     /**
      * Rebuilds the objectRef index and every entity's rendered ports after a load, plus each behavior
      * class's derived indexes.
-     * @private
      * @returns {void}
      */
-    _rebuild() {
+    rebuild() {
         this._eidByObjectRef = new Map();
         this._eidsByChunk = new Map();
         const placedObject = this.objects.store;
