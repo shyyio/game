@@ -145,12 +145,12 @@ export class MachineBehavior extends AbstractBehavior {
         if (this.hasByproductPort) {
             const byproductOutput = engine.getPortAt(type.outputPorts[1], message.x, message.y, message.direction);
             machine.outputPort2[row] = byproductOutput.port;
-            engine.render.registerPort(byproductOutput.port, byproductOutput.tile.x, byproductOutput.tile.y);
+            engine.portItems.addOutputPort(byproductOutput.port, byproductOutput.tile.x, byproductOutput.tile.y);
         }
         // Explicit: a recycled row may hold stale state from a previous occupant.
         machine.workerStep[row] = 1;
         machine.enabled[row] = 1;
-        engine.render.registerPort(output.port, output.tile.x, output.tile.y);
+        engine.portItems.addOutputPort(output.port, output.tile.x, output.tile.y);
         if (this.workerCost > 0) {
             engine.workers.roads.markDirty(engine.getFootprintAt(type, message.x, message.y, message.direction));
         }
@@ -165,10 +165,10 @@ export class MachineBehavior extends AbstractBehavior {
                 engine.ports.unmarkFluid(machine[IN_COLS[i]][row]);
             }
         }
-        engine.render.unregisterPort(machines.store.outputPort[row]);
+        engine.portItems.removeOutputPort(machines.store.outputPort[row]);
         engine.ports.setFluidSource(machines.store.outputPort[row], EMPTY);
         if (this.hasByproductPort) {
-            engine.render.unregisterPort(machines.store.outputPort2[row]);
+            engine.portItems.removeOutputPort(machines.store.outputPort2[row]);
             engine.ports.setFluidSource(machines.store.outputPort2[row], EMPTY);
         }
         if (this.workerCost > 0) {
@@ -196,10 +196,10 @@ export class MachineBehavior extends AbstractBehavior {
         const machines = engine.components.getComponentByName("Machine");
         const row = machines.getRowByEid(eid);
         const out = machines.store.outputPort[row];
-        engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
+        engine.portItems.addOutputPort(out, engine.Position.x[out], engine.Position.y[out]);
         if (this.hasByproductPort) {
             const out2 = machines.store.outputPort2[row];
-            engine.render.registerPort(out2, engine.Position.x[out2], engine.Position.y[out2]);
+            engine.portItems.addOutputPort(out2, engine.Position.x[out2], engine.Position.y[out2]);
         }
     }
 

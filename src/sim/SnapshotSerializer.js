@@ -105,7 +105,7 @@ export class SnapshotSerializer {
         engine.components.bindAll();
         engine.components.clearAll();
         // Drop the prior world's render/tick state so its stale eids never leak into the new world.
-        engine.render.reset();
+        engine.portItems.reset();
         engine.sync.reset();
         engine.transfers.resetTick();
 

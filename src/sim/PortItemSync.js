@@ -9,13 +9,10 @@ const PORT_EMPTIED_MOD = 1;
 const PORT_EMPTIED_CONSUMED = 2;
 
 /**
- * What the client is told about resting port items. Modules register the output ports whose item is
- * drawn and the tile it is drawn at; EMIT_RENDER diffs each port written since the last pass against
- * the shadow of what was last emitted, and sends one batch per chunk.
+ * The set of output ports whose resting item the client draws, and the shadow of what each was last
+ * told; EMIT_RENDER diffs the ports written since the last pass and emits one batch per chunk.
  */
-// This needs a nound after this. What is this? Is it a store ? a cache? an index?
-// Feels like this might be a system?
-export class RenderDiff {
+export class PortItemSync {
 
     /**
      * @param {GameEngine} engine
@@ -26,8 +23,8 @@ export class RenderDiff {
 
         // Last emitted item per rendered port; EMPTY means nothing drawn.
         this._shadow = new Int32Array(portCapacity).fill(EMPTY);
-        // Output ports whose resting item is drawn, and the tile it is drawn at. Modules register theirs;
-        // re-registration is idempotent and a removed path's port can be unregistered (paths churn).
+        // Output ports whose resting item is drawn, and the tile it is drawn at. Modules add theirs;
+        // adding again is idempotent and a removed path's port can be removed (paths churn).
         this._rendered = new Uint8Array(portCapacity);
         this._x = new Int32Array(portCapacity);
         this._y = new Int32Array(portCapacity);
@@ -39,13 +36,13 @@ export class RenderDiff {
         this._isDirty = new Uint8Array(portCapacity);
         // How each port lost its item this tick (PORT_EMPTIED_*).
         this._emptied = new Uint8Array(portCapacity);
-        // Whether a rendered port's tile has a watcher, and the observation generation that answer was
-        // computed at (0 = never). The diff would otherwise hash the chunk and call through the
+        // Whether a rendered port's tile has a subscriber, and the subscription generation that answer
+        // was computed at (0 = never). The diff would otherwise hash the chunk and call through the
         // subscription predicate for every port written this tick.
-        this._observed = new Uint8Array(portCapacity);
-        this._observedGen = new Int32Array(portCapacity);
-        // Ports unregistered while holding a rendered item (eid -> {x, y}): a pending clear, canceled
-        // if the port is re-registered in the same edit (so a churned-but-surviving port stays static,
+        this._subscribed = new Uint8Array(portCapacity);
+        this._subscribedGeneration = new Int32Array(portCapacity);
+        // Ports removed while holding a rendered item (eid -> {x, y}): a pending clear, canceled
+        // if the port is added again in the same edit (so a churned-but-surviving port stays static,
         // no clear+set glide). Flushed by the diff.
         this._pendingClear = new Map();
     }
@@ -56,7 +53,7 @@ export class RenderDiff {
      * @returns {void}
      */
     growPortColumns(capacity) {
-        for (const name of ["_x", "_y", "_observedGen"]) {
+        for (const name of ["_x", "_y", "_subscribedGeneration"]) {
             const grown = new Int32Array(capacity);
             grown.set(this[name]);
             this[name] = grown;
@@ -64,7 +61,7 @@ export class RenderDiff {
         const shadow = new Int32Array(capacity).fill(EMPTY);
         shadow.set(this._shadow);
         this._shadow = shadow;
-        for (const name of ["_isDirty", "_emptied", "_rendered", "_observed"]) {
+        for (const name of ["_isDirty", "_emptied", "_rendered", "_subscribed"]) {
             const grown = new Uint8Array(capacity);
             grown.set(this[name]);
             this[name] = grown;
@@ -72,37 +69,36 @@ export class RenderDiff {
     }
 
     /**
-     * Registers an output port whose resting item is drawn at tile (x, y); EMIT_RENDER emits a set/clear
+     * Adds an output port whose resting item is drawn at tile (x, y); EMIT_RENDER emits a set/clear
      * event whenever its item changes.
      * @param {number} eid
      * @param {number} x
      * @param {number} y
      * @returns {void}
      */
-    // If this is a specifically for output ports, this should be registerOutputPort()
-    registerPort(eid, x, y) {
+    addOutputPort(eid, x, y) {
         if (this._rendered[eid] === 1) {
-            // Re-registered at a possibly different tile: drop the old chunk-index slot first.
+            // Added again at a possibly different tile: drop the old chunk-index slot first.
             this._unindex(eid);
         }
         this._rendered[eid] = 1;
-        this._observedGen[eid] = 0;
+        this._subscribedGeneration[eid] = 0;
         this._x[eid] = x;
         this._y[eid] = y;
         this._index(eid);
-        // A re-registered port survives the edit: cancel any pending clear so its sprite stays put
-        // (item unchanged -> the diff emits nothing) instead of a clear+set that glides in a new sprite.
+        // A port added again survives the edit: cancel any pending clear so its sprite stays put
+        // (item unchanged, the diff emits nothing).
         this._pendingClear.delete(eid);
         this.markDirty(eid);
     }
 
     /**
      * Stops drawing a port (its path was removed). If it held a rendered item, the clear is deferred to
-     * the next diff so a same-edit re-registration can cancel it (keeping a surviving port static).
+     * the next diff so adding it again in the same edit can cancel it (keeping a surviving port static).
      * @param {number} eid
      * @returns {void}
      */
-    unregisterPort(eid) {
+    removeOutputPort(eid) {
         if (this._rendered[eid] === 1) {
             if (this._shadow[eid] !== EMPTY) {
                 this._pendingClear.set(eid, {x: this._x[eid], y: this._y[eid]});
@@ -188,7 +184,7 @@ export class RenderDiff {
         for (const eid of eids) {
             const pending = this._pendingClear.get(eid);
             if (pending !== undefined) {
-                this._getBatchAt(batches, pending.x, pending.y).addClear(eid);
+                this._getPortItemBatchAt(batches, pending.x, pending.y).addClear(eid);
                 this._pendingClear.delete(eid);
             }
             if (this._rendered[eid] === 1) {
@@ -217,7 +213,7 @@ export class RenderDiff {
     }
 
     /**
-     * EMIT_RENDER: flush deferred clears (ports unregistered for good), then diff each port written
+     * EMIT_RENDER: flush deferred clears (ports removed for good), then diff each port written
      * since the last pass against the shadow, buffering a set (item appeared or changed) or clear
      * (item left) event.
      * @returns {void}
@@ -228,7 +224,7 @@ export class RenderDiff {
         const batches = new Map();
 
         for (const [eid, position] of this._pendingClear) {
-            this._getBatchAt(batches, position.x, position.y).addClear(eid);
+            this._getPortItemBatchAt(batches, position.x, position.y).addClear(eid);
             this._shadow[eid] = EMPTY;
         }
         this._pendingClear.clear();
@@ -253,10 +249,10 @@ export class RenderDiff {
                 continue;
             }
             this._shadow[eid] = displayed;
-            if (!this._isObserved(eid)) {
+            if (!this._isPortSubscribed(eid)) {
                 continue;
             }
-            const batch = this._getBatchAt(batches, this._x[eid], this._y[eid]);
+            const batch = this._getPortItemBatchAt(batches, this._x[eid], this._y[eid]);
             if (emptiedShown || displayed === EMPTY) {
                 const consumed = emptied === PORT_EMPTIED_CONSUMED ? 1 : 0;
                 batch.addClear(eid, consumed);
@@ -331,21 +327,20 @@ export class RenderDiff {
     }
 
     /**
-     * Whether the port's render tile has a watcher, cached until the observation generation moves.
+     * Whether any session is subscribed to the port's render tile, cached until the subscription
+     * generation moves.
      * @private
      * @param {number} eid
      * @returns {boolean}
      */
-    // Is what observed?? a port? If so, it should be _isPortObserved()
-    // "Observed" is a brand new verb. Clients 'subscribe' to a chunk, no?
-    _isObserved(eid) {
+    _isPortSubscribed(eid) {
         const generation = this.engine.observerGeneration;
-        if (this._observedGen[eid] === generation) {
-            return this._observed[eid] === 1;
+        if (this._subscribedGeneration[eid] === generation) {
+            return this._subscribed[eid] === 1;
         }
         const observed = this.engine.isTileObserved(this._x[eid], this._y[eid]);
-        this._observedGen[eid] = generation;
-        this._observed[eid] = observed ? 1 : 0;
+        this._subscribedGeneration[eid] = generation;
+        this._subscribed[eid] = observed ? 1 : 0;
         return observed;
     }
 
@@ -357,8 +352,7 @@ export class RenderDiff {
      * @param {number} y
      * @returns {PortItemBatchEvent}
      */
-    // batch of what? 
-    _getBatchAt(batches, x, y) {
+    _getPortItemBatchAt(batches, x, y) {
         const chunkKey = chunkKeyAt(x, y);
         const existing = batches.get(chunkKey);
         if (existing !== undefined) {

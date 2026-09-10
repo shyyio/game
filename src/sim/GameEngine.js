@@ -10,7 +10,7 @@ import {WorkerNetworks} from "@/sim/WorkerNetworks.js";
 import {ComponentRegistry} from "@/sim/ComponentRegistry.js";
 import {SpatialIndex} from "@/sim/SpatialIndex.js";
 import {TransferResolver} from "@/sim/TransferResolver.js";
-import {RenderDiff} from "@/sim/RenderDiff.js";
+import {PortItemSync} from "@/sim/PortItemSync.js";
 import {FieldSync} from "@/sim/FieldSync.js";
 import {PortIndex} from "@/sim/PortIndex.js";
 import {LaneIndex} from "@/sim/LaneIndex.js";
@@ -125,9 +125,9 @@ export class GameEngine {
 
         /**
          * What the client is told about resting port items.
-         * @type {RenderDiff}
+         * @type {PortItemSync}
          */
-        this.render = new RenderDiff(this, this.ports.capacity);
+        this.portItems = new PortItemSync(this, this.ports.capacity);
 
         /**
          * The port-transfer protocol: submitted intents, this tick's resolutions, and the commit.
@@ -350,7 +350,7 @@ export class GameEngine {
             system.postResolve();
         }
         this.transfers.fillDestinations();
-        this.render.emitPortItemBatch();
+        this.portItems.emitPortItemBatch();
         this.sync.emitObjectFieldsBatch();
     }
 
@@ -589,9 +589,9 @@ export class GameEngine {
         for (const event of this.sync.chunkSync(chunkKey)) {
             events.push(event);
         }
-        const portItems = this.render.chunkSync(chunkKey);
-        if (portItems !== null) {
-            events.push(portItems);
+        const portItemBatch = this.portItems.chunkSync(chunkKey);
+        if (portItemBatch !== null) {
+            events.push(portItemBatch);
         }
         return events;
     }

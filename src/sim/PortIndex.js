@@ -191,7 +191,7 @@ export class PortIndex {
             column.grow(capacity);
         }
         this.engine.transfers.growPortColumns(capacity);
-        this.engine.render.growPortColumns(capacity);
+        this.engine.portItems.growPortColumns(capacity);
     }
 
     /**
@@ -215,7 +215,7 @@ export class PortIndex {
         const eid = this.engine.world.addEntity();
         this.ports.attach(eid);
         // The world recycles eids, so clear any shadow/flag the previous tenant left behind.
-        this.engine.render.forgetPort(eid);
+        this.engine.portItems.forgetPort(eid);
         this._fluid[eid] = 0;
         this._fluidSource[eid] = EMPTY;
         this.setItem(eid, item);
@@ -237,10 +237,10 @@ export class PortIndex {
      */
     setItem(eid, item) {
         if (item === EMPTY && this.ports.store.item[eid] !== EMPTY) {
-            this.engine.render.noteCleared(eid);
+            this.engine.portItems.noteCleared(eid);
         }
         this.ports.store.item[eid] = item;
-        this.engine.render.markDirty(eid);
+        this.engine.portItems.markDirty(eid);
     }
 
     /**
@@ -250,8 +250,8 @@ export class PortIndex {
      */
     consumeItem(eid) {
         this.ports.store.item[eid] = EMPTY;
-        this.engine.render.noteConsumed(eid);
-        this.engine.render.markDirty(eid);
+        this.engine.portItems.noteConsumed(eid);
+        this.engine.portItems.markDirty(eid);
     }
 
     /**
@@ -398,7 +398,7 @@ export class PortIndex {
                 this._byEdge.delete(this._getEdgeKeyByPortEid(eid));
             }
         }
-        engine.render.retirePorts(doomed);
+        engine.portItems.retirePorts(doomed);
         for (const eid of doomed) {
             engine.world.removeEntity(eid);
         }

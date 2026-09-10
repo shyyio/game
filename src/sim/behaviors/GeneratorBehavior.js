@@ -75,13 +75,13 @@ export class GeneratorBehavior extends AbstractBehavior {
         const output = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction);
         generator.outputPort[row] = output.port;
         generator.processingTicks[row] = this.processingTicks;
-        engine.render.registerPort(output.port, output.tile.x, output.tile.y);
+        engine.portItems.addOutputPort(output.port, output.tile.x, output.tile.y);
         syncFluidSource(engine, output.port, this.output);
         if (this.hasSecondaryPort) {
             const secondary = engine.getPortAt(type.outputPorts[1], message.x, message.y, message.direction);
             generator.outputPort2[row] = secondary.port;
             generator.processingTicks2[row] = this.secondaryOutput.processingTicks;
-            engine.render.registerPort(secondary.port, secondary.tile.x, secondary.tile.y);
+            engine.portItems.addOutputPort(secondary.port, secondary.tile.x, secondary.tile.y);
             syncFluidSource(engine, secondary.port, this.secondaryOutput.itemTypeId);
         }
     }
@@ -89,10 +89,10 @@ export class GeneratorBehavior extends AbstractBehavior {
     onDespawn(engine, eid) {
         const generators = engine.components.getComponentByName("Generator");
         const row = generators.getRowByEid(eid);
-        engine.render.unregisterPort(generators.store.outputPort[row]);
+        engine.portItems.removeOutputPort(generators.store.outputPort[row]);
         engine.ports.setFluidSource(generators.store.outputPort[row], EMPTY);
         if (this.hasSecondaryPort) {
-            engine.render.unregisterPort(generators.store.outputPort2[row]);
+            engine.portItems.removeOutputPort(generators.store.outputPort2[row]);
             engine.ports.setFluidSource(generators.store.outputPort2[row], EMPTY);
         }
     }
@@ -111,10 +111,10 @@ export class GeneratorBehavior extends AbstractBehavior {
         const generators = engine.components.getComponentByName("Generator");
         const row = generators.getRowByEid(eid);
         const out = generators.store.outputPort[row];
-        engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
+        engine.portItems.addOutputPort(out, engine.Position.x[out], engine.Position.y[out]);
         if (this.hasSecondaryPort) {
             const out2 = generators.store.outputPort2[row];
-            engine.render.registerPort(out2, engine.Position.x[out2], engine.Position.y[out2]);
+            engine.portItems.addOutputPort(out2, engine.Position.x[out2], engine.Position.y[out2]);
         }
     }
 

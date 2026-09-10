@@ -606,7 +606,7 @@ export class LaneIndex extends AbstractSystem {
         }
         this._flushBatches();
         // The port items the rebuild moved go out with its rows, not a render pass later.
-        this.engine.render.emitPortItemBatch();
+        this.engine.portItems.emitPortItemBatch();
     }
 
     /**
@@ -694,7 +694,7 @@ export class LaneIndex extends AbstractSystem {
         // The output port is the tail cell's last slot, so its item draws on the tail's tile
         // and routes to the lane's own chunk.
         const position = engine.Position;
-        engine.render.registerPort(lanes.outputPort[laneRow], position.x[tailCellEid], position.y[tailCellEid]);
+        engine.portItems.addOutputPort(lanes.outputPort[laneRow], position.x[tailCellEid], position.y[tailCellEid]);
         return laneEid;
     }
 
@@ -711,7 +711,7 @@ export class LaneIndex extends AbstractSystem {
             this.cells.store.lane[cellRow] = NO_EID;
             this.cells.store.childCell[cellRow] = NO_EID;
         }
-        this.engine.render.unregisterPort(lanes.outputPort[laneRow]);
+        this.engine.portItems.removeOutputPort(lanes.outputPort[laneRow]);
         const chunkKey = this._getChunkKeyByEid(lanes.headCell[laneRow]);
         const chunkLanes = this._lanesByChunk.get(chunkKey);
         if (chunkLanes !== undefined) {

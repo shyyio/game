@@ -19,8 +19,8 @@ test("rendered output ports emit port-item set/clear deltas on change only", asy
     const splitter = new SplitterBehavior();
     splitter.install(engine);
     const s = splitter.addSplitter(engine);
-    engine.render.registerPort(s.outputPortA, 5, 4);
-    engine.render.registerPort(s.outputPortB, 6, 4);
+    engine.portItems.addOutputPort(s.outputPortA, 5, 4);
+    engine.portItems.addOutputPort(s.outputPortB, 6, 4);
 
     engine.ports.setItem(s.outputPortA, ITEM);
     engine.tick();
@@ -52,9 +52,9 @@ test("a render pass emits one port-item batch per chunk", async () => {
     const s = splitter.addSplitter(engine);
     const far = splitter.addSplitter(engine);
     // Two ports in one chunk, a third far enough out to land in another.
-    engine.render.registerPort(s.outputPortA, 5, 4);
-    engine.render.registerPort(s.outputPortB, 6, 4);
-    engine.render.registerPort(far.outputPortA, 5 + CHUNK_SIZE, 4);
+    engine.portItems.addOutputPort(s.outputPortA, 5, 4);
+    engine.portItems.addOutputPort(s.outputPortB, 6, 4);
+    engine.portItems.addOutputPort(far.outputPortA, 5 + CHUNK_SIZE, 4);
 
     engine.ports.setItem(s.outputPortA, ITEM);
     engine.ports.setItem(s.outputPortB, ITEM);
@@ -77,7 +77,7 @@ async function riggedPort() {
     await engine.init();
     const collector = new EventCollector(engine);
     const port = engine.ports.create(ITEM);
-    engine.render.registerPort(port, 5, 4);
+    engine.portItems.addOutputPort(port, 5, 4);
     engine.tick();
     collector.drain();
     return {engine, collector, port};
@@ -111,7 +111,7 @@ test("a consumed port a transport carried on renders a plain clear", async () =>
     const {engine, collector, port} = await riggedPort();
 
     engine.ports.consumeItem(port);
-    engine.render.noteConveyed(port);
+    engine.portItems.noteConveyed(port);
     engine.tick();
     const events = collector.drain();
     assert.equal(events.length, 1);
@@ -161,7 +161,7 @@ test("a splitter draining its rendered input port emits a consumed clear", async
     const splitter = new SplitterBehavior();
     splitter.install(engine);
     const s = splitter.addSplitter(engine);
-    engine.render.registerPort(s.inputPortA, 5, 4);
+    engine.portItems.addOutputPort(s.inputPortA, 5, 4);
     // Jam the splitter so the fed item rests in the input port for a tick.
     engine.ports.setItem(s.internalPortA, ITEM);
     engine.ports.setItem(s.outputPortA, ITEM);

@@ -365,7 +365,7 @@ export class TransferResolver {
             const dest = this._resolvedDest[row];
             if (dest !== EMPTY) {
                 engine.Port.item[dest] = this._resolvedItem[row];
-                engine.render.markDirty(dest);
+                engine.portItems.markDirty(dest);
             }
         }
     }
