@@ -2,6 +2,7 @@ import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js
 import {ObjectInsertEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
 import {Direction, PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkKeyAt, chunkOrigin} from "@/common/util.js";
+import {PlacedObjectComponent} from "@/sim/PlacedObjectComponent.js";
 import {NO_EID} from "@/sim/sentinels.js";
 import {METRICS_FACT_TYPE_OBJECT_PLACED, METRICS_FACT_TYPE_OBJECT_DESPAWNED} from "@/common/MetricsFact.js";
 
@@ -20,14 +21,7 @@ export class PlacedObjects {
      */
     constructor(engine, registry) {
         this.engine = engine;
-        // Where a placed object sits lives on the shared Position component, not here.
-        this.def = engine.components.define("PlacedObject", [
-            {name: "objectTypeId", kind: "type"},
-            {name: "objectRef", defaultValue: NO_EID},
-            // Who placed it, for record keeping: a friend building in your chunk is recorded as
-            // themselves. Economics read claimOwnerOf instead, which follows the ground.
-            {name: "placedBy", defaultValue: PLAYER_REF_NONE},
-        ], {sparse: true});
+        this.objects = engine.components.register(new PlacedObjectComponent());
 
         // objectTypeId -> ObjectType, derived types only.
         this._types = new Map();
@@ -79,7 +73,7 @@ export class PlacedObjects {
      * @returns {number}
      */
     objectTypeIdOf(eid) {
-        return this.def.store.objectTypeId[this.def.row(eid)];
+        return this.objects.store.objectTypeId[this.objects.row(eid)];
     }
 
     /**
@@ -88,7 +82,7 @@ export class PlacedObjects {
      * @returns {number}
      */
     objectRefOf(eid) {
-        return this.def.store.objectRef[this.def.row(eid)];
+        return this.objects.store.objectRef[this.objects.row(eid)];
     }
 
     /**
@@ -97,7 +91,7 @@ export class PlacedObjects {
      * @returns {number}
      */
     placedByOf(eid) {
-        return this.def.store.placedBy[this.def.row(eid)];
+        return this.objects.store.placedBy[this.objects.row(eid)];
     }
 
     /**
@@ -136,10 +130,10 @@ export class PlacedObjects {
      * @returns {number[]}
      */
     eidsOf(objectTypeId) {
-        const column = this.def.store.objectTypeId;
-        const eids = this.def.eids;
+        const column = this.objects.store.objectTypeId;
+        const eids = this.objects.eids;
         const matches = [];
-        for (let row = 0; row < this.def.count; row += 1) {
+        for (let row = 0; row < this.objects.count; row += 1) {
             if (column[row] === objectTypeId) {
                 matches.push(eids[row]);
             }
@@ -290,12 +284,12 @@ export class PlacedObjects {
         if (type.placement.solid && !engine.space.cellsFree(footprint)) {
             return true;
         }
-        const eid = this.def.create();
+        const eid = this.objects.create();
         const objectRef = engine.createObjectRef();
-        const row = this.def.row(eid);
-        this.def.store.objectTypeId[row] = type.objectTypeId;
-        this.def.store.objectRef[row] = objectRef;
-        this.def.store.placedBy[row] = playerRef;
+        const row = this.objects.row(eid);
+        this.objects.store.objectTypeId[row] = type.objectTypeId;
+        this.objects.store.objectRef[row] = objectRef;
+        this.objects.store.placedBy[row] = playerRef;
         engine.space.setPosition(eid, message.x, message.y, message.direction);
         engine.ports.bindEndpoints(eid, type, message.x, message.y, message.direction);
         type.behavior.onSpawn(engine, eid, type, message);
@@ -397,10 +391,10 @@ export class PlacedObjects {
         }
         const origin = chunkOrigin(chunkKey);
         let batch = null;
-        const placedObject = this.def.store;
+        const placedObject = this.objects.store;
         const position = this.engine.Position;
         for (const eid of eids) {
-            const row = this.def.row(eid);
+            const row = this.objects.row(eid);
             const type = this._types.get(placedObject.objectTypeId[row]);
             if (batch === null) {
                 batch = new ObjectSyncBatchEvent(origin.x, origin.y);
@@ -442,10 +436,10 @@ export class PlacedObjects {
     _rebuild() {
         this._eidByObjectRef = new Map();
         this._eidsByChunk = new Map();
-        const placedObject = this.def.store;
+        const placedObject = this.objects.store;
         const position = this.engine.Position;
-        const eids = this.def.eids;
-        for (let row = 0; row < this.def.count; row += 1) {
+        const eids = this.objects.eids;
+        for (let row = 0; row < this.objects.count; row += 1) {
             const eid = eids[row];
             this._eidByObjectRef.set(placedObject.objectRef[row], eid);
             this._indexChunk(eid, position.x[eid], position.y[eid]);

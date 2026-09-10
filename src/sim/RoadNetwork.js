@@ -335,7 +335,7 @@ export class RoadNetwork {
      */
     rebuild() {
         this._tiles = new Map();
-        const def = this.placed.def;
+        const def = this.placed.objects;
         for (let row = 0; row < def.count; row += 1) {
             const behavior = this.placed.behaviorFor(def.store.objectTypeId[row]);
             if (!(behavior instanceof RoadBehavior)) {

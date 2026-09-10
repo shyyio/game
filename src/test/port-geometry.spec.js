@@ -16,7 +16,7 @@ const ORIGIN_Y = -19;
 
 test("every placed port round-trips through the sim's edge index", async () => {
     const engine = await makeGameEngine();
-    const position = engine.space.Position;
+    const position = engine.space.positions.store;
     let checked = 0;
 
     for (const type of engine.modRegistry.objectTypes) {

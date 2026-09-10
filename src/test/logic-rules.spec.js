@@ -38,7 +38,7 @@ import {LOGIC_KEY_AMOUNT, FLUID_TYPE_WATER} from "@/mods/fluids/common/constants
  */
 function place(engine, type, x, y, direction=Direction.UP) {
     assert.equal(engine.applyMessage(new CreateObjectMessage(type.objectTypeId, x, y, direction)), true);
-    const def = engine.placed.def;
+    const def = engine.placed.objects;
     return def.store.objectRef[def.row(def.eids[def.count - 1])];
 }
 

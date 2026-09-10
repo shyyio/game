@@ -1,6 +1,8 @@
 import {tileKeyAt, tileVariantKey, TILE_VARIANT_LIMIT} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
 import {NO_EID} from "@/sim/sentinels.js";
+import {PositionComponent} from "@/sim/PositionComponent.js";
+import {OccupancyComponent} from "@/sim/OccupancyComponent.js";
 
 /**
  * Where things sit in the world: the Position and Occupancy components, the layer names their cells
@@ -22,30 +24,8 @@ export class SpatialIndex {
         this._layerNames = [];
         this.registerLayer(LAYER_SURFACE);
 
-        // Position component: where an entity sits. Carried by placed objects (their anchor tile), by
-        // edge ports (the seam flow crosses), and by every occupied cell. `direction` is NO_EID for
-        // things with no facing (cells).
-        this.positionDef = engine.components.define("Position", [
-            {name: "x"},
-            {name: "y"},
-            {name: "direction", defaultValue: NO_EID},
-        ]);
-
-        /**
-         * The Position columns, indexed by eid.
-         * @type {Object<string, Int32Array>}
-         */
-        this.Position = this.positionDef.store;
-
-        // Occupancy component: the cell claim on a Position, tagged with its owner object ref (so a
-        // delete releases all its cells by query) and per-cell userData read via userDataAt (0 for
-        // plain footprints; e.g. resource cover stores its resource type). Always paired with
-        // Position — cells are the entities carrying both.
-        this.occupancyDef = engine.components.define("Occupancy", [
-            {name: "layer"},
-            {name: "owner", defaultValue: NO_EID},
-            {name: "userData"},
-        ]);
+        this.positions = engine.components.register(new PositionComponent());
+        this.occupancies = engine.components.register(new OccupancyComponent());
 
         // Occupied cells by "x,y,layer" — a derived index over the two components above, rebuilt from
         // the world on deserialize.
@@ -79,10 +59,10 @@ export class SpatialIndex {
      * @returns {void}
      */
     setPosition(eid, x, y, direction=NO_EID) {
-        this.positionDef.attach(eid);
-        this.Position.x[eid] = x;
-        this.Position.y[eid] = y;
-        this.Position.direction[eid] = direction;
+        this.positions.attach(eid);
+        this.positions.store.x[eid] = x;
+        this.positions.store.y[eid] = y;
+        this.positions.store.direction[eid] = direction;
     }
 
     /**
@@ -106,7 +86,7 @@ export class SpatialIndex {
         if (eid === undefined) {
             return null;
         }
-        return this.occupancyDef.store.userData[eid];
+        return this.occupancies.store.userData[eid];
     }
 
     /**
@@ -121,7 +101,7 @@ export class SpatialIndex {
         if (eid === undefined) {
             return null;
         }
-        const owner = this.occupancyDef.store.owner[eid];
+        const owner = this.occupancies.store.owner[eid];
         if (owner === NO_EID) {
             return null;
         }
@@ -137,7 +117,7 @@ export class SpatialIndex {
      * @returns {void}
      */
     occupy(cells, owner=NO_EID, userData=0) {
-        const occupancy = this.occupancyDef.store;
+        const occupancy = this.occupancies.store;
         for (const cell of cells) {
             const key = this._cellKeyAt(cell.x, cell.y, cell.layer);
             if (this._cellByKey.has(key)) {
@@ -145,7 +125,7 @@ export class SpatialIndex {
             }
             const eid = this.engine.world.addEntity();
             this.setPosition(eid, cell.x, cell.y);
-            this.occupancyDef.attach(eid);
+            this.occupancies.attach(eid);
             occupancy.layer[eid] = this._layerCodes.get(cell.layer);
             occupancy.owner[eid] = owner;
             occupancy.userData[eid] = userData;
@@ -175,7 +155,7 @@ export class SpatialIndex {
      * @returns {void}
      */
     destroyOwnerCells(owner) {
-        const occupancy = this.occupancyDef.store;
+        const occupancy = this.occupancies.store;
         for (const eid of this.cellEids()) {
             if (occupancy.owner[eid] === owner) {
                 this._cellByKey.delete(this._cellKey(eid));
@@ -189,7 +169,7 @@ export class SpatialIndex {
      * @returns {Int32Array}
      */
     cellEids() {
-        return this.engine.world.query([this.positionDef.store, this.occupancyDef.store]);
+        return this.engine.world.query([this.positions.store, this.occupancies.store]);
     }
 
     /**
@@ -209,8 +189,8 @@ export class SpatialIndex {
      * @returns {number} its index key
      */
     _cellKey(eid) {
-        const tile = tileKeyAt(this.Position.x[eid], this.Position.y[eid]);
-        return tileVariantKey(tile, this.occupancyDef.store.layer[eid]);
+        const tile = tileKeyAt(this.positions.store.x[eid], this.positions.store.y[eid]);
+        return tileVariantKey(tile, this.occupancies.store.layer[eid]);
     }
 
     /**

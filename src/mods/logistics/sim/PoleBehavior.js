@@ -23,7 +23,7 @@ export class PoleBehavior extends AbstractBehavior {
         const networks = engine.resolve(LogicNetworks);
         networks.reset();
         const placed = engine.placed;
-        const def = placed.def;
+        const def = placed.objects;
         const placedObject = def.store;
         for (let row = 0; row < def.count; row += 1) {
             if (placed.behaviorFor(placedObject.objectTypeId[row]) instanceof PoleBehavior) {

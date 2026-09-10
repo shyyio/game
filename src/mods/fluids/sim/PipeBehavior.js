@@ -32,7 +32,7 @@ export class PipeBehavior extends AbstractBehavior {
         const pipes = engine.resolve(Pipes);
         pipes.resetPipes();
         const placed = engine.placed;
-        const def = placed.def;
+        const def = placed.objects;
         const placedObject = def.store;
         const position = engine.Position;
         for (let row = 0; row < def.count; row += 1) {

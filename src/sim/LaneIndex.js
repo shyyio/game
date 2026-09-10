@@ -7,7 +7,9 @@ import {
     LaneItemBatchEvent,
 } from "@/common/LaneEvents.js";
 import {TickPhase} from "@/sim/GameEngine.js";
-import {ItemArena} from "@/sim/ItemArena.js";
+import {LaneComponent} from "@/sim/LaneComponent.js";
+import {LaneCellComponent} from "@/sim/LaneCellComponent.js";
+import {LaneItemComponent} from "@/sim/LaneItemComponent.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 
 // The level a lane cell takes flow from or gives it to: 0 is the surface, negative is buried,
@@ -98,36 +100,10 @@ export class LaneIndex {
     constructor(engine) {
         this.engine = engine;
 
-        /**
-         * The items riding the lanes.
-         * @type {ItemArena}
-         */
-        // no need to invent a new term here. This can be this.items = new LaneItems(); "LaneItems" is already self-evident
-        //  for "collection of items that belong to a Lane"
-        // LaneItemComponent would also work.. 
-        this.arena = new ItemArena(engine);
+        this.items = engine.components.register(new LaneItemComponent());
 
-        // We're extracting LineItem to its own class but keeping Lane here? Why not systematically
-        // have a *Component class? Have it inherit an abstract AbstractComponent class and put common
-        // ECS patterns there??
-        this.laneDef = engine.components.define("Lane", [
-            {name: "headCell", kind: "eid", defaultValue: NO_EID},
-            {name: "inPort", kind: "eid", defaultValue: NO_EID},
-            {name: "outPort", kind: "eid", defaultValue: NO_EID},
-            {name: "slotCount"},
-            {name: "itemCount"},
-            {name: "headGap"},
-            {name: "firstItem", kind: "eid", defaultValue: NO_EID},
-            {name: "lastItem", kind: "eid", defaultValue: NO_EID},
-            {name: "nextItemRef", defaultValue: 1},
-        ], {sparse: true});
-
-        this.cellDef = engine.components.define("LaneCell", [
-            {name: "lane", kind: "eid", defaultValue: NO_EID},
-            {name: "childCell", kind: "eid", defaultValue: NO_EID},
-            // The edge flow reaches this cell over, in its own frame: UP is its straight back edge.
-            {name: "parentEdge", defaultValue: Direction.UP},
-        ], {sparse: true});
+        this.lanes = engine.components.register(new LaneComponent());
+        this.cells = engine.components.register(new LaneCellComponent());
 
         for (const level of LANE_LEVELS.values()) {
             for (const layer of level.layers) {
@@ -170,11 +146,11 @@ export class LaneIndex {
         if (eid === NO_EID) {
             return NO_LANE;
         }
-        const cellRow = this.cellDef.row(eid);
+        const cellRow = this.cells.row(eid);
         if (cellRow < 0) {
             return NO_LANE;
         }
-        const laneEid = this.cellDef.store.lane[cellRow];
+        const laneEid = this.cells.store.lane[cellRow];
         if (laneEid === NO_EID) {
             return NO_LANE;
         }
@@ -197,7 +173,7 @@ export class LaneIndex {
      */
     // getEids()
     ids() {
-        return Array.from(this.laneDef.entities());
+        return Array.from(this.lanes.entities());
     }
 
     /**
@@ -207,10 +183,10 @@ export class LaneIndex {
     // getCellsByRef()
     cellsOf(laneRef) {
         const cells = [];
-        let eid = this.laneDef.store.headCell[this._laneRow(laneRef)];
+        let eid = this.lanes.store.headCell[this._laneRow(laneRef)];
         while (eid !== NO_EID) {
             cells.push(eid);
-            eid = this.cellDef.store.childCell[this.cellDef.row(eid)];
+            eid = this.cells.store.childCell[this.cells.row(eid)];
         }
         return cells;
     }
@@ -221,7 +197,7 @@ export class LaneIndex {
      */
     // getLenghtByRef()
     lengthOf(laneRef) {
-        return this.laneDef.store.slotCount[this._laneRow(laneRef)];
+        return this.lanes.store.slotCount[this._laneRow(laneRef)];
     }
 
     /**
@@ -230,7 +206,7 @@ export class LaneIndex {
      */
     // getInputPortByEid()
     inPortOf(laneRef) {
-        return this.laneDef.store.inPort[this._laneRow(laneRef)];
+        return this.lanes.store.inPort[this._laneRow(laneRef)];
     }
 
     /**
@@ -238,7 +214,7 @@ export class LaneIndex {
      * @returns {number} port eid
      */
     outPortOf(laneRef) {
-        return this.laneDef.store.outPort[this._laneRow(laneRef)];
+        return this.lanes.store.outPort[this._laneRow(laneRef)];
     }
 
     /**
@@ -246,9 +222,9 @@ export class LaneIndex {
      * @returns {{itemRef: number, itemTypeId: number, gap: number}[]} output-edge first
      */
     itemsOf(laneRef) {
-        const store = this.arena.store;
-        return this.arena.file(this.laneDef.store.firstItem[this._laneRow(laneRef)]).map(itemEid => {
-            const itemRow = this.arena.row(itemEid);
+        const store = this.items.store;
+        return this.items.getFileByFirstItemEid(this.lanes.store.firstItem[this._laneRow(laneRef)]).map(itemEid => {
+            const itemRow = this.items.row(itemEid);
             return {itemRef: store.itemRef[itemRow], itemTypeId: store.itemTypeId[itemRow], gap: store.gap[itemRow]};
         });
     }
@@ -259,11 +235,11 @@ export class LaneIndex {
      * @returns {Direction}
      */
     parentEdgeOf(eid) {
-        const cellRow = this.cellDef.row(eid);
+        const cellRow = this.cells.row(eid);
         if (cellRow < 0) {
             throw new Error(`Entity ${eid} is no lane cell`);
         }
-        return this.cellDef.store.parentEdge[cellRow];
+        return this.cells.store.parentEdge[cellRow];
     }
 
     /**
@@ -272,7 +248,7 @@ export class LaneIndex {
      * @returns {Direction[]} one per cell, head first
      */
     _parentEdgesOf(laneRef) {
-        return this.cellsOf(laneRef).map(cell => this.cellDef.store.parentEdge[this.cellDef.row(cell)]);
+        return this.cellsOf(laneRef).map(cell => this.cells.store.parentEdge[this.cells.row(cell)]);
     }
 
     /**
@@ -280,7 +256,7 @@ export class LaneIndex {
      * @returns {number}
      */
     itemCountOf(laneRef) {
-        return this.laneDef.store.itemCount[this._laneRow(laneRef)];
+        return this.lanes.store.itemCount[this._laneRow(laneRef)];
     }
 
     /**
@@ -289,7 +265,7 @@ export class LaneIndex {
      * @returns {number} its column laneRow
      */
     _laneRow(laneRef) {
-        const laneRow = this.laneDef.row(laneRef);
+        const laneRow = this.lanes.row(laneRef);
         if (laneRow < 0) {
             throw new Error(`No lane ${laneRef}`);
         }
@@ -346,7 +322,7 @@ export class LaneIndex {
         const direction = position.direction[eid];
         const outLevel = this._behavior(eid).outLevel;
         for (const candidate of this.engine.ports.consumersOf(this._outPortOfCell(eid))) {
-            if (this.cellDef.row(candidate) < 0) {
+            if (this.cells.row(candidate) < 0) {
                 continue;
             }
             if (levelsMeet(outLevel, direction, this._behavior(candidate).inLevel, position.direction[candidate])) {
@@ -413,7 +389,7 @@ export class LaneIndex {
             return {edge: Direction.UP, portEid: this._inPortOfCell(eid), parent: NO_EID};
         }
         // A lane cell outranks any other object, so a machine beside a head never cuts the line behind it.
-        let contenders = candidates.eids.filter(candidate => this.cellDef.row(candidate) >= 0);
+        let contenders = candidates.eids.filter(candidate => this.cells.row(candidate) >= 0);
         if (contenders.length === 0) {
             contenders = candidates.eids;
         }
@@ -421,7 +397,7 @@ export class LaneIndex {
         const index = candidates.eids.indexOf(winner);
         const edge = candidates.edges[index];
         let parent = NO_EID;
-        if (this.cellDef.row(winner) >= 0
+        if (this.cells.row(winner) >= 0
             && levelsMeet(this._outLevelOf(winner), position.direction[winner], this._behavior(eid).inLevel, direction)) {
             parent = winner;
         }
@@ -439,7 +415,7 @@ export class LaneIndex {
      * @returns {number[]}
      */
     _parentCellsOf(eid) {
-        return this._parentCandidates(eid).eids.filter(candidate => this.cellDef.row(candidate) >= 0);
+        return this._parentCandidates(eid).eids.filter(candidate => this.cells.row(candidate) >= 0);
     }
 
     /**
@@ -460,7 +436,7 @@ export class LaneIndex {
      * @returns {void}
      */
     addCell(eid) {
-        this.cellDef.attach(eid);
+        this.cells.attach(eid);
         const affected = this._affectedCells(this._dirtyAround(eid));
         affected.add(eid);
         this._rebuildCells(affected, NO_EID);
@@ -475,7 +451,7 @@ export class LaneIndex {
      * @returns {void}
      */
     objectChanged(eid) {
-        if (this.cellDef.row(eid) >= 0) {
+        if (this.cells.row(eid) >= 0) {
             return;
         }
         const engine = this.engine;
@@ -485,8 +461,8 @@ export class LaneIndex {
         for (const definition of type.activePorts("outputPorts")) {
             const edge = portAt(definition, position.x[eid], position.y[eid], position.direction[eid]);
             for (const cell of engine.ports.consumersOf(engine.ports.at(edge.x, edge.y, edge.direction))) {
-                const cellRow = this.cellDef.row(cell);
-                if (cellRow >= 0 && this._parentLinkOf(cell).edge !== this.cellDef.store.parentEdge[cellRow]) {
+                const cellRow = this.cells.row(cell);
+                if (cellRow >= 0 && this._parentLinkOf(cell).edge !== this.cells.store.parentEdge[cellRow]) {
                     stale.add(cell);
                 }
             }
@@ -667,17 +643,17 @@ export class LaneIndex {
      */
     _createLane(cells) {
         const engine = this.engine;
-        const laneEid = this.laneDef.create();
-        const laneRow = this.laneDef.row(laneEid);
-        const lanes = this.laneDef.store;
+        const laneEid = this.lanes.create();
+        const laneRow = this.lanes.row(laneEid);
+        const lanes = this.lanes.store;
         const tail = cells[cells.length - 1];
         let slots = 0;
         for (let i = 0; i < cells.length; i += 1) {
-            const cellRow = this.cellDef.row(cells[i]);
-            this.cellDef.store.lane[cellRow] = laneEid;
+            const cellRow = this.cells.row(cells[i]);
+            this.cells.store.lane[cellRow] = laneEid;
             const next = i + 1 < cells.length ? cells[i + 1] : NO_EID;
-            this.cellDef.store.childCell[cellRow] = next;
-            this.cellDef.store.parentEdge[cellRow] = this._parentLinkOf(cells[i]).edge;
+            this.cells.store.childCell[cellRow] = next;
+            this.cells.store.parentEdge[cellRow] = this._parentLinkOf(cells[i]).edge;
             slots += this._behavior(cells[i]).slotsPerTile;
         }
         lanes.headCell[laneRow] = cells[0];
@@ -710,11 +686,11 @@ export class LaneIndex {
      */
     _destroyLane(laneEid) {
         const laneRow = this._laneRow(laneEid);
-        const lanes = this.laneDef.store;
+        const lanes = this.lanes.store;
         for (const cell of this.cellsOf(laneEid)) {
-            const cellRow = this.cellDef.row(cell);
-            this.cellDef.store.lane[cellRow] = NO_EID;
-            this.cellDef.store.childCell[cellRow] = NO_EID;
+            const cellRow = this.cells.row(cell);
+            this.cells.store.lane[cellRow] = NO_EID;
+            this.cells.store.childCell[cellRow] = NO_EID;
         }
         this.engine.render.unregisterPort(lanes.outPort[laneRow]);
         const chunkKey = this._chunkOf(lanes.headCell[laneRow]);
@@ -744,10 +720,10 @@ export class LaneIndex {
         for (const count of slots) {
             total += count;
         }
-        const store = this.arena.store;
+        const store = this.items.store;
         let slotFromOutput = 0;
-        for (const itemEid of this.arena.file(this.laneDef.store.firstItem[laneRow])) {
-            const itemRow = this.arena.row(itemEid);
+        for (const itemEid of this.items.getFileByFirstItemEid(this.lanes.store.firstItem[laneRow])) {
+            const itemRow = this.items.row(itemEid);
             slotFromOutput += store.gap[itemRow];
             const slotFromInput = total - 2 - slotFromOutput;
             this._hold(heldByCell, cells, slots, slotFromInput, itemEid);
@@ -755,9 +731,9 @@ export class LaneIndex {
             store.lane[itemRow] = NO_EID;
             store.nextItem[itemRow] = NO_EID;
         }
-        this.laneDef.store.firstItem[laneRow] = NO_EID;
-        this.laneDef.store.lastItem[laneRow] = NO_EID;
-        this.laneDef.store.itemCount[laneRow] = 0;
+        this.lanes.store.firstItem[laneRow] = NO_EID;
+        this.lanes.store.lastItem[laneRow] = NO_EID;
+        this.lanes.store.itemCount[laneRow] = 0;
     }
 
     /**
@@ -801,7 +777,7 @@ export class LaneIndex {
             this._absorbEdge(heldByCell, cells, slots, i);
         }
         const laneRow = this._laneRow(laneEid);
-        const lanes = this.laneDef.store;
+        const lanes = this.lanes.store;
         let total = 0;
         for (const count of slots) {
             total += count;
@@ -820,8 +796,8 @@ export class LaneIndex {
                 items[slot] = NO_EID;
                 if (slotFromOutput < 0) {
                     // The tail cell's last slot is the out-port itself.
-                    this.engine.ports.setItem(lanes.outPort[laneRow], this.arena.store.itemTypeId[this.arena.row(itemEid)]);
-                    this.arena.destroy(itemEid);
+                    this.engine.ports.setItem(lanes.outPort[laneRow], this.items.store.itemTypeId[this.items.row(itemEid)]);
+                    this.items.destroy(itemEid);
                     continue;
                 }
                 this._appendItem(laneEid, itemEid, slotFromOutput - previous - 1);
@@ -857,7 +833,7 @@ export class LaneIndex {
         if (cellSlots[slot] !== NO_EID) {
             return;
         }
-        cellSlots[slot] = this.arena.create(portItem);
+        cellSlots[slot] = this.items.create(portItem);
         this.engine.ports.setItem(portEid, EMPTY);
     }
 
@@ -868,10 +844,10 @@ export class LaneIndex {
      */
     _usedSlots(laneEid) {
         const laneRow = this._laneRow(laneEid);
-        const store = this.arena.store;
+        const store = this.items.store;
         let used = 0;
-        for (const itemEid of this.arena.file(this.laneDef.store.firstItem[laneRow])) {
-            used += store.gap[this.arena.row(itemEid)] + 1;
+        for (const itemEid of this.items.getFileByFirstItemEid(this.lanes.store.firstItem[laneRow])) {
+            used += store.gap[this.items.row(itemEid)] + 1;
         }
         return used;
     }
@@ -886,17 +862,17 @@ export class LaneIndex {
      */
     _appendItem(laneEid, itemEid, gap) {
         const laneRow = this._laneRow(laneEid);
-        const lanes = this.laneDef.store;
-        const itemRow = this.arena.row(itemEid);
-        this.arena.store.lane[itemRow] = laneEid;
-        this.arena.store.nextItem[itemRow] = NO_EID;
-        this.arena.store.gap[itemRow] = gap;
-        this.arena.store.itemRef[itemRow] = lanes.nextItemRef[laneRow];
+        const lanes = this.lanes.store;
+        const itemRow = this.items.row(itemEid);
+        this.items.store.lane[itemRow] = laneEid;
+        this.items.store.nextItem[itemRow] = NO_EID;
+        this.items.store.gap[itemRow] = gap;
+        this.items.store.itemRef[itemRow] = lanes.nextItemRef[laneRow];
         lanes.nextItemRef[laneRow] += 1;
         if (lanes.firstItem[laneRow] === NO_EID) {
             lanes.firstItem[laneRow] = itemEid;
         } else {
-            this.arena.store.nextItem[this.arena.row(lanes.lastItem[laneRow])] = itemEid;
+            this.items.store.nextItem[this.items.row(lanes.lastItem[laneRow])] = itemEid;
         }
         lanes.lastItem[laneRow] = itemEid;
         lanes.itemCount[laneRow] += 1;
@@ -910,10 +886,10 @@ export class LaneIndex {
      */
     submit() {
         const engine = this.engine;
-        const lanes = this.laneDef.store;
-        const laneCount = this.laneDef.count;
+        const lanes = this.lanes.store;
+        const laneCount = this.lanes.count;
         this._growScratch(laneCount);
-        const items = this.arena.store;
+        const items = this.items.store;
         for (let laneRow = 0; laneRow < laneCount; laneRow += 1) {
             this._popIntent[laneRow] = NO_INTENT;
             this._drainIntent[laneRow] = NO_INTENT;
@@ -922,8 +898,8 @@ export class LaneIndex {
             // A lane has one input; a resting fluid is refused, so its producer backs up.
             const inPortTakeable = inPortItem !== EMPTY && !engine.isFluid(inPortItem);
             const leadItem = lanes.firstItem[laneRow];
-            if (leadItem !== NO_EID && items.gap[this.arena.row(leadItem)] === 0 && this._canPop(laneRow)) {
-                this._submitPop(laneRow, inPortItem, items.itemTypeId[this.arena.row(leadItem)]);
+            if (leadItem !== NO_EID && items.gap[this.items.row(leadItem)] === 0 && this._canPop(laneRow)) {
+                this._submitPop(laneRow, inPortItem, items.itemTypeId[this.items.row(leadItem)]);
             }
             if (inPortTakeable && lanes.itemCount[laneRow] < lanes.slotCount[laneRow]) {
                 this._drainItem[laneRow] = inPortItem;
@@ -941,7 +917,7 @@ export class LaneIndex {
      * @returns {void}
      */
     _submitPop(laneRow, inPortItem, leadTypeId) {
-        const lanes = this.laneDef.store;
+        const lanes = this.lanes.store;
         const transfers = this.engine.transfers;
         const outPort = lanes.outPort[laneRow];
         const outPortEmpty = this.engine.ports.item(outPort) === EMPTY;
@@ -962,7 +938,7 @@ export class LaneIndex {
      * @returns {boolean}
      */
     _canPop(laneRow) {
-        return !this.engine.ports.isFluidClaimed(this.laneDef.store.outPort[laneRow]);
+        return !this.engine.ports.isFluidClaimed(this.lanes.store.outPort[laneRow]);
     }
 
     /**
@@ -971,8 +947,8 @@ export class LaneIndex {
      */
     resolve() {
         const transfers = this.engine.transfers;
-        for (let laneRow = 0; laneRow < this.laneDef.count; laneRow += 1) {
-            const laneEid = this.laneDef.eids[laneRow];
+        for (let laneRow = 0; laneRow < this.lanes.count; laneRow += 1) {
+            const laneEid = this.lanes.eids[laneRow];
             const popped = this._popIntent[laneRow] !== NO_INTENT && transfers.wasResolved(this._popIntent[laneRow]);
             let takenItem = EMPTY;
             if (popped) {
@@ -1001,17 +977,17 @@ export class LaneIndex {
      * @returns {void}
      */
     _popLead(laneEid, laneRow) {
-        const lanes = this.laneDef.store;
+        const lanes = this.lanes.store;
         const leadItem = lanes.firstItem[laneRow];
-        const itemRow = this.arena.row(leadItem);
-        this._getBatchByLaneRow(laneRow).addDelete(laneEid, this.arena.store.itemRef[itemRow]);
-        lanes.firstItem[laneRow] = this.arena.store.nextItem[itemRow];
+        const itemRow = this.items.row(leadItem);
+        this._getBatchByLaneRow(laneRow).addDelete(laneEid, this.items.store.itemRef[itemRow]);
+        lanes.firstItem[laneRow] = this.items.store.nextItem[itemRow];
         if (lanes.firstItem[laneRow] === NO_EID) {
             lanes.lastItem[laneRow] = NO_EID;
         }
         lanes.itemCount[laneRow] -= 1;
         lanes.headGap[laneRow] += 1;
-        this.arena.destroy(leadItem);
+        this.items.destroy(leadItem);
     }
 
     /**
@@ -1023,13 +999,13 @@ export class LaneIndex {
      * @returns {void}
      */
     _shiftItems(laneEid, laneRow) {
-        const items = this.arena.store;
-        let itemEid = this.laneDef.store.firstItem[laneRow];
+        const items = this.items.store;
+        let itemEid = this.lanes.store.firstItem[laneRow];
         while (itemEid !== NO_EID) {
-            const itemRow = this.arena.row(itemEid);
+            const itemRow = this.items.row(itemEid);
             if (items.gap[itemRow] > 0) {
                 items.gap[itemRow] -= 1;
-                this.laneDef.store.headGap[laneRow] += 1;
+                this.lanes.store.headGap[laneRow] += 1;
                 this._getBatchByLaneRow(laneRow).addUpsert(laneEid, items.itemRef[itemRow], items.gap[itemRow], items.itemTypeId[itemRow]);
                 return;
             }
@@ -1047,16 +1023,16 @@ export class LaneIndex {
      */
     // ingest? put? pick a terminology.
     _shiftItemIntoInputPort(laneEid, laneRow, itemTypeId) {
-        const lanes = this.laneDef.store;
-        const itemEid = this.arena.create(itemTypeId);
+        const lanes = this.lanes.store;
+        const itemEid = this.items.create(itemTypeId);
         this._appendItem(laneEid, itemEid, lanes.headGap[laneRow] - 1);
         lanes.headGap[laneRow] = 0;
-        const itemRow = this.arena.row(itemEid);
+        const itemRow = this.items.row(itemEid);
         this._getBatchByLaneRow(laneRow).addUpsert(
             laneEid,
-            this.arena.store.itemRef[itemRow],
-            this.arena.store.gap[itemRow],
-            this.arena.store.itemTypeId[itemRow],
+            this.items.store.itemRef[itemRow],
+            this.items.store.gap[itemRow],
+            this.items.store.itemTypeId[itemRow],
         );
     }
 
@@ -1091,7 +1067,7 @@ export class LaneIndex {
      * @returns {LaneItemBatchEvent}
      */
     _getBatchByLaneRow(laneRow) {
-        const head = this.laneDef.store.headCell[laneRow];
+        const head = this.lanes.store.headCell[laneRow];
         return this._batchFor(this._chunkOf(head), head);
     }
 
@@ -1134,7 +1110,7 @@ export class LaneIndex {
     // Should be something like _emitGeometryChange/Update/Diff. Propose a terminology and stick to it
     _emitGeometry(laneEid) {
         const laneRow = this._laneRow(laneEid);
-        const head = this.laneDef.store.headCell[laneRow];
+        const head = this.lanes.store.headCell[laneRow];
         const position = this.engine.Position;
         if (!this.engine.observesTile(position.x[head], position.y[head])) {
             return;
@@ -1145,7 +1121,7 @@ export class LaneIndex {
             laneEid,
             this.cellsOf(laneEid).map(cell => this.engine.placed.objectRefOf(cell)),
             this._parentEdgesOf(laneEid),
-            this.laneDef.store.outPort[laneRow],
+            this.lanes.store.outPort[laneRow],
         ));
     }
 
@@ -1180,7 +1156,7 @@ export class LaneIndex {
         let items = null;
         for (const laneEid of lanes) {
             const laneRow = this._laneRow(laneEid);
-            const head = this.laneDef.store.headCell[laneRow];
+            const head = this.lanes.store.headCell[laneRow];
             if (geometry === null) {
                 geometry = new LaneGeometryBatchEvent(position.x[head], position.y[head]);
                 items = new LaneItemBatchEvent(position.x[head], position.y[head]);
@@ -1189,7 +1165,7 @@ export class LaneIndex {
                 laneEid,
                 this.cellsOf(laneEid).map(cell => this.engine.placed.objectRefOf(cell)),
                 this._parentEdgesOf(laneEid),
-                this.laneDef.store.outPort[laneRow],
+                this.lanes.store.outPort[laneRow],
             );
             for (const item of this.itemsOf(laneEid)) {
                 items.addSync(laneEid, item.itemRef, item.gap, item.itemTypeId);
@@ -1212,7 +1188,7 @@ export class LaneIndex {
     rebuild() {
         this._lanesByChunk = new Map();
         this._batches.clear();
-        const cells = Array.from(this.cellDef.entities());
+        const cells = Array.from(this.cells.entities());
         const heldByCell = new Map();
         for (const laneEid of this.ids()) {
             this._captureItems(laneEid, heldByCell);
@@ -1247,7 +1223,7 @@ export class LaneIndex {
         }
         for (const eid of items) {
             if (eid !== NO_EID) {
-                this.arena.destroy(eid);
+                this.items.destroy(eid);
             }
         }
     }
@@ -1266,9 +1242,9 @@ export class LaneIndex {
         for (const cellSlots of heldByCell.values()) {
             for (let slot = 0; slot < cellSlots.length; slot += 1) {
                 const eid = cellSlots[slot];
-                if (eid !== NO_EID && items.get(this.arena.store.itemTypeId[this.arena.row(eid)]) === undefined) {
+                if (eid !== NO_EID && items.get(this.items.store.itemTypeId[this.items.row(eid)]) === undefined) {
                     cellSlots[slot] = NO_EID;
-                    this.arena.destroy(eid);
+                    this.items.destroy(eid);
                 }
             }
         }

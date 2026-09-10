@@ -155,7 +155,7 @@ export class GameEngine {
          * @type {PortIndex}
          */
         this.ports = new PortIndex(this);
-        this.Port = this.ports.Port;
+        this.Port = this.ports.ports.store;
 
         /**
          * What the client is told about resting port items.
@@ -175,7 +175,7 @@ export class GameEngine {
          */
         this.sync = new FieldSync(this);
 
-        this.ports.def.growListener = capacity => this.ports.growColumns(capacity);
+        this.ports.ports.growListener = capacity => this.ports.growColumns(capacity);
     }
 
     /**
@@ -189,7 +189,7 @@ export class GameEngine {
          * @type {SpatialIndex}
          */
         this.space = new SpatialIndex(this);
-        this.Position = this.space.Position;
+        this.Position = this.space.positions.store;
     }
 
     /**

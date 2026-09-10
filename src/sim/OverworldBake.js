@@ -165,7 +165,7 @@ export class OverworldBake {
     _rebuildAll() {
         this._chunks = new Map();
         const position = this.engine.Position;
-        const def = this.placed.def;
+        const def = this.placed.objects;
         const touched = new Set();
         for (let row = 0; row < def.count; row += 1) {
             const eid = def.eids[row];
